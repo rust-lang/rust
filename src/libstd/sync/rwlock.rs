@@ -97,9 +97,6 @@ pub struct StaticRwLock {
     poison: poison::Flag,
 }
 
-unsafe impl Send for StaticRwLock {}
-unsafe impl Sync for StaticRwLock {}
-
 /// Constant initialization for a statically-initialized rwlock.
 #[unstable(feature = "std_misc",
            reason = "may be merged with RwLock in the future")]

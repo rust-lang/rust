@@ -22,7 +22,7 @@ fn test_pattern_deref_forward() {
 fn test_empty_match_indices() {
     let data = "aä中!";
     let vec: Vec<_> = data.match_indices("").collect();
-    assert_eq!(vec, vec![(0, 0), (1, 1), (3, 3), (6, 6), (7, 7)]);
+    assert_eq!(vec, [(0, 0), (1, 1), (3, 3), (6, 6), (7, 7)]);
 }
 
 #[test]
@@ -69,20 +69,20 @@ fn test_rsplitn_char_iterator() {
 
     let mut split: Vec<&str> = data.rsplitn(3, ' ').collect();
     split.reverse();
-    assert_eq!(split, vec!["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
+    assert_eq!(split, ["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
 
     let mut split: Vec<&str> = data.rsplitn(3, |c: char| c == ' ').collect();
     split.reverse();
-    assert_eq!(split, vec!["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
+    assert_eq!(split, ["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
 
     // Unicode
     let mut split: Vec<&str> = data.rsplitn(3, 'ä').collect();
     split.reverse();
-    assert_eq!(split, vec!["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
+    assert_eq!(split, ["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
 
     let mut split: Vec<&str> = data.rsplitn(3, |c: char| c == 'ä').collect();
     split.reverse();
-    assert_eq!(split, vec!["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
+    assert_eq!(split, ["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
 }
 
 #[test]
@@ -90,33 +90,33 @@ fn test_split_char_iterator() {
     let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
     let split: Vec<&str> = data.split(' ').collect();
-    assert_eq!( split, vec!["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+    assert_eq!( split, ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
     let mut rsplit: Vec<&str> = data.split(' ').rev().collect();
     rsplit.reverse();
-    assert_eq!(rsplit, vec!["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+    assert_eq!(rsplit, ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
     let split: Vec<&str> = data.split(|c: char| c == ' ').collect();
-    assert_eq!( split, vec!["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+    assert_eq!( split, ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
     let mut rsplit: Vec<&str> = data.split(|c: char| c == ' ').rev().collect();
     rsplit.reverse();
-    assert_eq!(rsplit, vec!["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
+    assert_eq!(rsplit, ["\nMäry", "häd", "ä", "little", "lämb\nLittle", "lämb\n"]);
 
     // Unicode
     let split: Vec<&str> = data.split('ä').collect();
-    assert_eq!( split, vec!["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+    assert_eq!( split, ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
     let mut rsplit: Vec<&str> = data.split('ä').rev().collect();
     rsplit.reverse();
-    assert_eq!(rsplit, vec!["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+    assert_eq!(rsplit, ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
     let split: Vec<&str> = data.split(|c: char| c == 'ä').collect();
-    assert_eq!( split, vec!["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+    assert_eq!( split, ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 
     let mut rsplit: Vec<&str> = data.split(|c: char| c == 'ä').rev().collect();
     rsplit.reverse();
-    assert_eq!(rsplit, vec!["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
+    assert_eq!(rsplit, ["\nM", "ry h", "d ", " little l", "mb\nLittle l", "mb\n"]);
 }
 
 #[test]
@@ -125,18 +125,18 @@ fn test_rev_split_char_iterator_no_trailing() {
 
     let mut split: Vec<&str> = data.split('\n').rev().collect();
     split.reverse();
-    assert_eq!(split, vec!["", "Märy häd ä little lämb", "Little lämb", ""]);
+    assert_eq!(split, ["", "Märy häd ä little lämb", "Little lämb", ""]);
 
     let mut split: Vec<&str> = data.split_terminator('\n').rev().collect();
     split.reverse();
-    assert_eq!(split, vec!["", "Märy häd ä little lämb", "Little lämb"]);
+    assert_eq!(split, ["", "Märy häd ä little lämb", "Little lämb"]);
 }
 
 #[test]
 fn test_utf16_code_units() {
     use unicode::str::Utf16Encoder;
     assert_eq!(Utf16Encoder::new(vec!['é', '\u{1F4A9}'].into_iter()).collect::<Vec<u16>>(),
-               vec![0xE9, 0xD83D, 0xDCA9])
+               [0xE9, 0xD83D, 0xDCA9])
 }
 
 #[test]

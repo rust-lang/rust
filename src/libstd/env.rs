@@ -21,7 +21,8 @@ use prelude::v1::*;
 use error::Error;
 use ffi::{OsString, AsOsStr};
 use fmt;
-use old_io::IoResult;
+use io;
+use path::{AsPath, PathBuf};
 use sync::atomic::{AtomicIsize, ATOMIC_ISIZE_INIT, Ordering};
 use sync::{StaticMutex, MUTEX_INIT};
 use sys::os as os_imp;
@@ -46,7 +47,7 @@ use sys::os as os_imp;
 /// let p = env::current_dir().unwrap();
 /// println!("The current directory is {}", p.display());
 /// ```
-pub fn current_dir() -> IoResult<Path> {
+pub fn current_dir() -> io::Result<PathBuf> {
     os_imp::getcwd()
 }
 
@@ -57,14 +58,14 @@ pub fn current_dir() -> IoResult<Path> {
 ///
 /// ```rust
 /// use std::env;
-/// use std::old_path::Path;
+/// use std::path::Path;
 ///
 /// let root = Path::new("/");
 /// assert!(env::set_current_dir(&root).is_ok());
 /// println!("Successfully changed working directory to {}!", root.display());
 /// ```
-pub fn set_current_dir(p: &Path) -> IoResult<()> {
-    os_imp::chdir(p)
+pub fn set_current_dir<P: AsPath + ?Sized>(p: &P) -> io::Result<()> {
+    os_imp::chdir(p.as_path())
 }
 
 static ENV_LOCK: StaticMutex = MUTEX_INIT;
@@ -280,8 +281,8 @@ pub fn split_paths<T: AsOsStr + ?Sized>(unparsed: &T) -> SplitPaths {
 }
 
 impl<'a> Iterator for SplitPaths<'a> {
-    type Item = Path;
-    fn next(&mut self) -> Option<Path> { self.inner.next() }
+    type Item = PathBuf;
+    fn next(&mut self) -> Option<PathBuf> { self.inner.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
@@ -305,10 +306,11 @@ pub struct JoinPathsError {
 ///
 /// ```rust
 /// use std::env;
+/// use std::path::PathBuf;
 ///
 /// if let Some(path) = env::var_os("PATH") {
 ///     let mut paths = env::split_paths(&path).collect::<Vec<_>>();
-///     paths.push(Path::new("/home/xyz/bin"));
+///     paths.push(PathBuf::new("/home/xyz/bin"));
 ///     let new_path = env::join_paths(paths.iter()).unwrap();
 ///     env::set_var("PATH", &new_path);
 /// }
@@ -355,7 +357,7 @@ impl Error for JoinPathsError {
 ///     None => println!("Impossible to get your home dir!")
 /// }
 /// ```
-pub fn home_dir() -> Option<Path> {
+pub fn home_dir() -> Option<PathBuf> {
     os_imp::home_dir()
 }
 
@@ -369,7 +371,7 @@ pub fn home_dir() -> Option<Path> {
 /// On Windows, returns the value of, in order, the 'TMP', 'TEMP',
 /// 'USERPROFILE' environment variable  if any are set and not the empty
 /// string. Otherwise, tmpdir returns the path to the Windows directory.
-pub fn temp_dir() -> Path {
+pub fn temp_dir() -> PathBuf {
     os_imp::temp_dir()
 }
 
@@ -396,7 +398,7 @@ pub fn temp_dir() -> Path {
 ///     Err(e) => println!("failed to get current exe path: {}", e),
 /// };
 /// ```
-pub fn current_exe() -> IoResult<Path> {
+pub fn current_exe() -> io::Result<PathBuf> {
     os_imp::current_exe()
 }
 
@@ -825,6 +827,7 @@ mod tests {
     use iter::repeat;
     use rand::{self, Rng};
     use ffi::{OsString, OsStr};
+    use path::PathBuf;
 
     fn make_rand_name() -> OsString {
         let mut rng = rand::thread_rng();
@@ -924,7 +927,7 @@ mod tests {
     fn split_paths_windows() {
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
             split_paths(unparsed).collect::<Vec<_>>() ==
-                parsed.iter().map(|s| Path::new(*s)).collect::<Vec<_>>()
+                parsed.iter().map(|s| PathBuf::new(*s)).collect::<Vec<_>>()
         }
 
         assert!(check_parse("", &mut [""]));
@@ -944,7 +947,7 @@ mod tests {
     fn split_paths_unix() {
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
             split_paths(unparsed).collect::<Vec<_>>() ==
-                parsed.iter().map(|s| Path::new(*s)).collect::<Vec<_>>()
+                parsed.iter().map(|s| PathBuf::new(*s)).collect::<Vec<_>>()
         }
 
         assert!(check_parse("", &mut [""]));

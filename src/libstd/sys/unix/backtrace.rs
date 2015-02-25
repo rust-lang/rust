@@ -84,8 +84,9 @@
 /// all unix platforms we support right now, so it at least gets the job done.
 
 use prelude::v1::*;
+use os::unix::prelude::*;
 
-use ffi::CStr;
+use ffi::{CStr, AsOsStr};
 use old_io::IoResult;
 use libc;
 use mem;
@@ -327,7 +328,7 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
         };
         let filename = match selfname {
             Some(path) => {
-                let bytes = path.as_vec();
+                let bytes = path.as_os_str().as_bytes();
                 if bytes.len() < LAST_FILENAME.len() {
                     let i = bytes.iter();
                     for (slot, val) in LAST_FILENAME.iter_mut().zip(i) {

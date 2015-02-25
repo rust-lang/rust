@@ -13,7 +13,7 @@ use std::sync::mpsc::channel;
 use std::dynamic_lib::DynamicLibrary;
 use std::old_io::{Command, TempDir};
 use std::old_io;
-use std::env;
+use std::os;
 use std::str;
 use std::thread;
 use std::thunk::Thunk;
@@ -46,7 +46,7 @@ pub fn run(input: &str,
     let input = config::Input::File(input_path.clone());
 
     let sessopts = config::Options {
-        maybe_sysroot: Some(env::current_exe().unwrap().dir_path().dir_path()),
+        maybe_sysroot: Some(os::self_exe_name().unwrap().dir_path().dir_path()),
         search_paths: libs.clone(),
         crate_types: vec!(config::CrateTypeDylib),
         externs: externs.clone(),
@@ -113,7 +113,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     let input = config::Input::Str(test.to_string());
 
     let sessopts = config::Options {
-        maybe_sysroot: Some(env::current_exe().unwrap().dir_path().dir_path()),
+        maybe_sysroot: Some(os::self_exe_name().unwrap().dir_path().dir_path()),
         search_paths: libs,
         crate_types: vec!(config::CrateTypeExecutable),
         output_types: vec!(config::OutputTypeExe),

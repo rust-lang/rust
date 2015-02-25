@@ -26,7 +26,7 @@
 ///
 /// ```
 /// let v = vec![1; 3];
-/// assert_eq!(v, vec![1, 1, 1]);
+/// assert_eq!(v, [1, 1, 1]);
 /// ```
 ///
 /// Note that unlike array expressions this syntax supports all elements

@@ -777,7 +777,7 @@ impl<'a, A> IterMut<'a, A> {
     /// }
     /// {
     ///     let vec: Vec<_> = list.into_iter().collect();
-    ///     assert_eq!(vec, vec![1, 2, 3, 4]);
+    ///     assert_eq!(vec, [1, 2, 3, 4]);
     /// }
     /// ```
     #[inline]
@@ -918,7 +918,7 @@ impl<A: Clone> Clone for LinkedList<A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: fmt::Debug> fmt::Debug for LinkedList<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "LinkedList ["));
+        try!(write!(f, "["));
 
         for (i, e) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
@@ -1273,7 +1273,7 @@ mod tests {
         }
         check_links(&m);
         assert_eq!(m.len(), 3 + len * 2);
-        assert_eq!(m.into_iter().collect::<Vec<_>>(), vec![-2,0,1,2,3,4,5,6,7,8,9,0,1]);
+        assert_eq!(m.into_iter().collect::<Vec<_>>(), [-2,0,1,2,3,4,5,6,7,8,9,0,1]);
     }
 
     #[test]
@@ -1387,10 +1387,10 @@ mod tests {
     #[test]
     fn test_show() {
         let list: LinkedList<_> = (0..10).collect();
-        assert_eq!(format!("{:?}", list), "LinkedList [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+        assert_eq!(format!("{:?}", list), "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let list: LinkedList<_> = vec!["just", "one", "test", "more"].iter().cloned().collect();
-        assert_eq!(format!("{:?}", list), "LinkedList [\"just\", \"one\", \"test\", \"more\"]");
+        assert_eq!(format!("{:?}", list), "[\"just\", \"one\", \"test\", \"more\"]");
     }
 
     #[cfg(test)]

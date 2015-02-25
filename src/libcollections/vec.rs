@@ -93,7 +93,7 @@ use borrow::{Cow, IntoCow};
 /// for x in vec.iter() {
 ///     println!("{}", x);
 /// }
-/// assert_eq!(vec, vec![7, 1, 2, 3]);
+/// assert_eq!(vec, [7, 1, 2, 3]);
 /// ```
 ///
 /// The `vec!` macro is provided to make initialization more convenient:
@@ -101,7 +101,7 @@ use borrow::{Cow, IntoCow};
 /// ```
 /// let mut vec = vec![1, 2, 3];
 /// vec.push(4);
-/// assert_eq!(vec, vec![1, 2, 3, 4]);
+/// assert_eq!(vec, [1, 2, 3, 4]);
 /// ```
 ///
 /// Use a `Vec<T>` as an efficient stack:
@@ -242,7 +242,7 @@ impl<T> Vec<T> {
     ///
     ///         // Put everything back together into a Vec
     ///         let rebuilt = Vec::from_raw_parts(p, len, cap);
-    ///         assert_eq!(rebuilt, vec![4, 5, 6]);
+    ///         assert_eq!(rebuilt, [4, 5, 6]);
     ///     }
     /// }
     /// ```
@@ -267,7 +267,7 @@ impl<T> Vec<T> {
     pub unsafe fn from_raw_buf(ptr: *const T, elts: usize) -> Vec<T> {
         let mut dst = Vec::with_capacity(elts);
         dst.set_len(elts);
-        ptr::copy_nonoverlapping_memory(dst.as_mut_ptr(), ptr, elts);
+        ptr::copy_nonoverlapping(dst.as_mut_ptr(), ptr, elts);
         dst
     }
 
@@ -404,7 +404,7 @@ impl<T> Vec<T> {
     /// ```
     /// let mut vec = vec![1, 2, 3, 4];
     /// vec.truncate(2);
-    /// assert_eq!(vec, vec![1, 2]);
+    /// assert_eq!(vec, [1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, len: usize) {
@@ -505,10 +505,10 @@ impl<T> Vec<T> {
     /// let mut v = vec!["foo", "bar", "baz", "qux"];
     ///
     /// assert_eq!(v.swap_remove(1), "bar");
-    /// assert_eq!(v, vec!["foo", "qux", "baz"]);
+    /// assert_eq!(v, ["foo", "qux", "baz"]);
     ///
     /// assert_eq!(v.swap_remove(0), "foo");
-    /// assert_eq!(v, vec!["baz", "qux"]);
+    /// assert_eq!(v, ["baz", "qux"]);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -531,9 +531,9 @@ impl<T> Vec<T> {
     /// ```
     /// let mut vec = vec![1, 2, 3];
     /// vec.insert(1, 4);
-    /// assert_eq!(vec, vec![1, 4, 2, 3]);
+    /// assert_eq!(vec, [1, 4, 2, 3]);
     /// vec.insert(4, 5);
-    /// assert_eq!(vec, vec![1, 4, 2, 3, 5]);
+    /// assert_eq!(vec, [1, 4, 2, 3, 5]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, index: usize, element: T) {
@@ -548,7 +548,7 @@ impl<T> Vec<T> {
                 let p = self.as_mut_ptr().offset(index as isize);
                 // Shift everything over to make space. (Duplicating the
                 // `index`th element into two consecutive places.)
-                ptr::copy_memory(p.offset(1), &*p, len - index);
+                ptr::copy(p.offset(1), &*p, len - index);
                 // Write it in, overwriting the first copy of the `index`th
                 // element.
                 ptr::write(&mut *p, element);
@@ -569,7 +569,7 @@ impl<T> Vec<T> {
     /// ```
     /// let mut v = vec![1, 2, 3];
     /// assert_eq!(v.remove(1), 2);
-    /// assert_eq!(v, vec![1, 3]);
+    /// assert_eq!(v, [1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, index: usize) -> T {
@@ -585,7 +585,7 @@ impl<T> Vec<T> {
                 ret = ptr::read(ptr);
 
                 // Shift everything down to fill in that spot.
-                ptr::copy_memory(ptr, &*ptr.offset(1), len - index - 1);
+                ptr::copy(ptr, &*ptr.offset(1), len - index - 1);
             }
             self.set_len(len - 1);
             ret
@@ -603,7 +603,7 @@ impl<T> Vec<T> {
     /// ```
     /// let mut vec = vec![1, 2, 3, 4];
     /// vec.retain(|&x| x%2 == 0);
-    /// assert_eq!(vec, vec![2, 4]);
+    /// assert_eq!(vec, [2, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn retain<F>(&mut self, mut f: F) where F: FnMut(&T) -> bool {
@@ -636,7 +636,7 @@ impl<T> Vec<T> {
     /// ```rust
     /// let mut vec = vec!(1, 2);
     /// vec.push(3);
-    /// assert_eq!(vec, vec!(1, 2, 3));
+    /// assert_eq!(vec, [1, 2, 3]);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -674,7 +674,7 @@ impl<T> Vec<T> {
     /// ```rust
     /// let mut vec = vec![1, 2, 3];
     /// assert_eq!(vec.pop(), Some(3));
-    /// assert_eq!(vec, vec![1, 2]);
+    /// assert_eq!(vec, [1, 2]);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -701,8 +701,8 @@ impl<T> Vec<T> {
     /// let mut vec = vec![1, 2, 3];
     /// let mut vec2 = vec![4, 5, 6];
     /// vec.append(&mut vec2);
-    /// assert_eq!(vec, vec![1, 2, 3, 4, 5, 6]);
-    /// assert_eq!(vec2, vec![]);
+    /// assert_eq!(vec, [1, 2, 3, 4, 5, 6]);
+    /// assert_eq!(vec2, []);
     /// ```
     #[inline]
     #[unstable(feature = "collections",
@@ -718,7 +718,7 @@ impl<T> Vec<T> {
         self.reserve(other.len());
         let len = self.len();
         unsafe {
-            ptr::copy_nonoverlapping_memory(
+            ptr::copy_nonoverlapping(
                 self.get_unchecked_mut(len),
                 other.as_ptr(),
                 other.len());
@@ -1019,8 +1019,8 @@ impl<T> Vec<T> {
     /// ```
     /// let mut vec = vec![1,2,3];
     /// let vec2 = vec.split_off(1);
-    /// assert_eq!(vec, vec![1]);
-    /// assert_eq!(vec2, vec![2, 3]);
+    /// assert_eq!(vec, [1]);
+    /// assert_eq!(vec2, [2, 3]);
     /// ```
     #[inline]
     #[unstable(feature = "collections",
@@ -1036,7 +1036,7 @@ impl<T> Vec<T> {
             self.set_len(at);
             other.set_len(other_len);
 
-            ptr::copy_nonoverlapping_memory(
+            ptr::copy_nonoverlapping(
                 other.as_mut_ptr(),
                 self.as_ptr().offset(at as isize),
                 other.len());
@@ -1057,11 +1057,11 @@ impl<T: Clone> Vec<T> {
     /// ```
     /// let mut vec = vec!["hello"];
     /// vec.resize(3, "world");
-    /// assert_eq!(vec, vec!["hello", "world", "world"]);
+    /// assert_eq!(vec, ["hello", "world", "world"]);
     ///
     /// let mut vec = vec![1, 2, 3, 4];
     /// vec.resize(2, 0);
-    /// assert_eq!(vec, vec![1, 2]);
+    /// assert_eq!(vec, [1, 2]);
     /// ```
     #[unstable(feature = "collections",
                reason = "matches collection reform specification; waiting for dust to settle")]
@@ -1085,7 +1085,7 @@ impl<T: Clone> Vec<T> {
     /// ```
     /// let mut vec = vec![1];
     /// vec.push_all(&[2, 3, 4]);
-    /// assert_eq!(vec, vec![1, 2, 3, 4]);
+    /// assert_eq!(vec, [1, 2, 3, 4]);
     /// ```
     #[inline]
     #[unstable(feature = "collections",
@@ -1121,7 +1121,7 @@ impl<T: PartialEq> Vec<T> {
     ///
     /// vec.dedup();
     ///
-    /// assert_eq!(vec, vec![1, 2, 3, 2]);
+    /// assert_eq!(vec, [1, 2, 3, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn dedup(&mut self) {
@@ -2105,7 +2105,7 @@ mod tests {
             }
         }
 
-        assert!(values == vec![2, 3, 5, 6, 7]);
+        assert_eq!(values, [2, 3, 5, 6, 7]);
     }
 
     #[test]
@@ -2147,7 +2147,7 @@ mod tests {
     fn test_retain() {
         let mut vec = vec![1, 2, 3, 4];
         vec.retain(|&x| x % 2 == 0);
-        assert!(vec == vec![2, 4]);
+        assert_eq!(vec, [2, 4]);
     }
 
     #[test]
@@ -2207,13 +2207,13 @@ mod tests {
             let a = [1, 2, 3];
             let ptr = a.as_ptr();
             let b = Vec::from_raw_buf(ptr, 3);
-            assert_eq!(b, vec![1, 2, 3]);
+            assert_eq!(b, [1, 2, 3]);
 
             // Test on-heap copy-from-buf.
             let c = vec![1, 2, 3, 4, 5];
             let ptr = c.as_ptr();
             let d = Vec::from_raw_buf(ptr, 5);
-            assert_eq!(d, vec![1, 2, 3, 4, 5]);
+            assert_eq!(d, [1, 2, 3, 4, 5]);
         }
     }
 
@@ -2375,7 +2375,7 @@ mod tests {
         for i in vec {
             vec2.push(i);
         }
-        assert!(vec2 == vec![1, 2, 3]);
+        assert_eq!(vec2, [1, 2, 3]);
     }
 
     #[test]
@@ -2385,7 +2385,7 @@ mod tests {
         for i in vec.into_iter().rev() {
             vec2.push(i);
         }
-        assert!(vec2 == vec![3, 2, 1]);
+        assert_eq!(vec2, [3, 2, 1]);
     }
 
     #[test]
@@ -2395,7 +2395,7 @@ mod tests {
         for i in vec {
             vec2.push(i);
         }
-        assert!(vec2 == vec![(), (), ()]);
+        assert_eq!(vec2, [(), (), ()]);
     }
 
     #[test]
@@ -2443,16 +2443,16 @@ mod tests {
         let mut vec = vec![1, 2, 3];
         let mut vec2 = vec![4, 5, 6];
         vec.append(&mut vec2);
-        assert_eq!(vec, vec![1, 2, 3, 4, 5, 6]);
-        assert_eq!(vec2, vec![]);
+        assert_eq!(vec, [1, 2, 3, 4, 5, 6]);
+        assert_eq!(vec2, []);
     }
 
     #[test]
     fn test_split_off() {
         let mut vec = vec![1, 2, 3, 4, 5, 6];
         let vec2 = vec.split_off(4);
-        assert_eq!(vec, vec![1, 2, 3, 4]);
-        assert_eq!(vec2, vec![5, 6]);
+        assert_eq!(vec, [1, 2, 3, 4]);
+        assert_eq!(vec2, [5, 6]);
     }
 
     #[bench]

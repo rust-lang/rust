@@ -582,8 +582,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     /// let vec = vec![1, 2, 3, 4];
     /// let (even, odd): (Vec<_>, Vec<_>) = vec.into_iter().partition(|&n| n % 2 == 0);
-    /// assert_eq!(even, vec![2, 4]);
-    /// assert_eq!(odd, vec![1, 3]);
+    /// assert_eq!(even, [2, 4]);
+    /// assert_eq!(odd, [1, 3]);
     /// ```
     #[unstable(feature = "core",
                reason = "recently added as part of collections reform")]

@@ -347,7 +347,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
             let result = stack.with(move |pusher, node| {
                 // Same basic logic as found in `find`, but with PartialSearchStack mediating the
                 // actual nodes for us
-                return match Node::search(node, &key) {
+                match Node::search(node, &key) {
                     Found(mut handle) => {
                         // Perfect match, swap the values and return the old one
                         mem::swap(handle.val_mut(), &mut value);
@@ -372,7 +372,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 }
             });
             match result {
-                Finished(ret) => { return ret; },
+                Finished(ret) => return ret,
                 Continue((new_stack, renewed_key, renewed_val)) => {
                     stack = new_stack;
                     key = renewed_key;
@@ -439,7 +439,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
             let result = stack.with(move |pusher, node| {
-                return match Node::search(node, key) {
+                match Node::search(node, key) {
                     Found(handle) => {
                         // Perfect match. Terminate the stack here, and remove the entry
                         Finished(Some(pusher.seal(handle).remove()))
@@ -899,7 +899,7 @@ impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "BTreeMap {{"));
+        try!(write!(f, "{{"));
 
         for (i, (k, v)) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
@@ -1281,7 +1281,7 @@ impl<K, V> BTreeMap<K, V> {
     /// a.insert(2, "b");
     ///
     /// let keys: Vec<usize> = a.keys().cloned().collect();
-    /// assert_eq!(keys, vec![1,2,]);
+    /// assert_eq!(keys, [1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
@@ -1303,7 +1303,7 @@ impl<K, V> BTreeMap<K, V> {
     /// a.insert(2, "b");
     ///
     /// let values: Vec<&str> = a.values().cloned().collect();
-    /// assert_eq!(values, vec!["a","b"]);
+    /// assert_eq!(values, ["a", "b"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
@@ -1560,7 +1560,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
             let result = stack.with(move |pusher, node| {
-                return match Node::search(node, &key) {
+                match Node::search(node, &key) {
                     Found(handle) => {
                         // Perfect match
                         Finished(Occupied(OccupiedEntry {

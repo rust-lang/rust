@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::v1::*;
+
 use cell::UnsafeCell;
 use libc::{self, DWORD};
 use os;
@@ -16,6 +18,9 @@ use sys::sync as ffi;
 use time::Duration;
 
 pub struct Condvar { inner: UnsafeCell<ffi::CONDITION_VARIABLE> }
+
+unsafe impl Send for Condvar {}
+unsafe impl Sync for Condvar {}
 
 pub const CONDVAR_INIT: Condvar = Condvar {
     inner: UnsafeCell { value: ffi::CONDITION_VARIABLE_INIT }

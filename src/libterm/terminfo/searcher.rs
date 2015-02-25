@@ -17,12 +17,13 @@ use std::old_io::fs::PathExtensions;
 use std::env;
 
 /// Return path to database entry for `term`
+#[allow(deprecated)]
 pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
     if term.len() == 0 {
         return None;
     }
 
-    let homedir = env::home_dir();
+    let homedir = ::std::os::homedir();
 
     let mut dirs_to_search = Vec::new();
     let first_char = term.char_at(0);

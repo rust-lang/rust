@@ -1133,18 +1133,12 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 true // changed
             }
 
-            ErrorValue => {
-                false // no change
-            }
+            ErrorValue => false, // no change
 
             Value(a_region) => {
                 match a_data.classification {
-                    Expanding => {
-                        check_node(self, a_vid, a_data, a_region, b_region)
-                    }
-                    Contracting => {
-                        adjust_node(self, a_vid, a_data, a_region, b_region)
-                    }
+                    Expanding => check_node(self, a_vid, a_data, a_region, b_region),
+                    Contracting => adjust_node(self, a_vid, a_data, a_region, b_region),
                 }
             }
         };
@@ -1154,7 +1148,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                       a_data: &mut VarData,
                       a_region: Region,
                       b_region: Region)
-                   -> bool {
+                      -> bool {
             if !this.is_subregion_of(a_region, b_region) {
                 debug!("Setting {:?} to ErrorValue: {} not subregion of {}",
                        a_vid,
@@ -1170,7 +1164,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                        a_data: &mut VarData,
                        a_region: Region,
                        b_region: Region)
-                    -> bool {
+                       -> bool {
             match this.glb_concrete_regions(a_region, b_region) {
                 Ok(glb) => {
                     if glb == a_region {

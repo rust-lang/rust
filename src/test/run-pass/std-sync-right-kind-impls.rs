@@ -8,15 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that the type variable in the type(`Vec<_>`) of a closed over
-// variable does not interfere with type inference.
+use std::sync;
 
-fn f<F: FnMut()>(mut f: F) {
-    f();
-}
+fn assert_both<T: Sync + Send>() {}
 
 fn main() {
-    let mut v: Vec<_> = vec![];
-    f(|| v.push(0));
-    assert_eq!(v, [0]);
+    assert_both::<sync::StaticMutex>();
+    assert_both::<sync::StaticCondvar>();
+    assert_both::<sync::StaticRwLock>();
+    assert_both::<sync::Mutex<()>>();
+    assert_both::<sync::Condvar>();
+    assert_both::<sync::RwLock<()>>();
+    assert_both::<sync::Semaphore>();
+    assert_both::<sync::Barrier>();
+    assert_both::<sync::Arc<()>>();
+    assert_both::<sync::Weak<()>>();
+    assert_both::<sync::Once>();
 }

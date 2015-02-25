@@ -1,5 +1,3 @@
-// no-prefer-dynamic
-
 // Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -10,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::slice::SliceExt;
-use std::old_io::{fs, USER_RWX};
-use std::process;
+// no-prefer-dynamic
+
+#![feature(fs, process, env, path, rand)]
+
 use std::env;
-use std::old_path::BytesContainer;
+use std::fs;
+use std::process;
 use std::rand::random;
+use std::str;
 
 fn main() {
     // If we're the child, make sure we were invoked correctly
@@ -34,21 +35,20 @@ fn main() {
 fn test() {
     // If we're the parent, copy our own binary to a new directory.
     let my_path = env::current_exe().unwrap();
-    let my_dir  = my_path.dir_path();
+    let my_dir  = my_path.parent().unwrap();
 
     let random_u32: u32 = random();
-    let child_dir = Path::new(my_dir.join(format!("issue-15149-child-{}",
-                                                  random_u32)));
-    fs::mkdir(&child_dir, USER_RWX).unwrap();
+    let child_dir = my_dir.join(&format!("issue-15149-child-{}", random_u32));
+    fs::create_dir(&child_dir).unwrap();
 
-    let child_path = child_dir.join(format!("mytest{}",
-                                            env::consts::EXE_SUFFIX));
+    let child_path = child_dir.join(&format!("mytest{}",
+                                             env::consts::EXE_SUFFIX));
     fs::copy(&my_path, &child_path).unwrap();
 
     // Append the new directory to our own PATH.
     let path = {
         let mut paths: Vec<_> = env::split_paths(&env::var_os("PATH").unwrap()).collect();
-        paths.push(child_dir.clone());
+        paths.push(child_dir.to_path_buf());
         env::join_paths(paths.iter()).unwrap()
     };
 
@@ -58,9 +58,9 @@ fn test() {
 
     assert!(child_output.status.success(),
             format!("child assertion failed\n child stdout:\n {}\n child stderr:\n {}",
-                    child_output.stdout.container_as_str().unwrap(),
-                    child_output.stderr.container_as_str().unwrap()));
+                    str::from_utf8(&child_output.stdout).unwrap(),
+                    str::from_utf8(&child_output.stderr).unwrap()));
 
-    fs::rmdir_recursive(&child_dir).unwrap();
+    fs::remove_dir_all(&child_dir).unwrap();
 
 }
