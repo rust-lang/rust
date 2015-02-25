@@ -96,20 +96,10 @@ impl<'a> Code<'a> {
 
     /// Attempts to construct a Code from presumed FnLike or Block node input.
     pub fn from_node(node: Node) -> Option<Code> {
-        fn new(node: Node) -> FnLikeNode { FnLikeNode { node: node } }
-        match node {
-            ast_map::NodeItem(item) if item.is_fn_like() =>
-                Some(FnLikeCode(new(node))),
-            ast_map::NodeTraitItem(tm) if tm.is_fn_like() =>
-                Some(FnLikeCode(new(node))),
-            ast_map::NodeImplItem(_) =>
-                Some(FnLikeCode(new(node))),
-            ast_map::NodeExpr(e) if e.is_fn_like() =>
-                Some(FnLikeCode(new(node))),
-            ast_map::NodeBlock(block) =>
-                Some(BlockCode(block)),
-            _ =>
-                None,
+        if let ast_map::NodeBlock(block) = node {
+            Some(BlockCode(block))
+        } else {
+            FnLikeNode::from_node(node).map(|fn_like| FnLikeCode(fn_like))
         }
     }
 }
@@ -144,6 +134,24 @@ impl<'a> ClosureParts<'a> {
 }
 
 impl<'a> FnLikeNode<'a> {
+    /// Attempts to construct a FnLikeNode from presumed FnLike node input.
+    pub fn from_node(node: Node) -> Option<FnLikeNode> {
+        let fn_like = match node {
+            ast_map::NodeItem(item) => item.is_fn_like(),
+            ast_map::NodeTraitItem(tm) => tm.is_fn_like(),
+            ast_map::NodeImplItem(_) => true,
+            ast_map::NodeExpr(e) => e.is_fn_like(),
+            _ => false
+        };
+        if fn_like {
+            Some(FnLikeNode {
+                node: node
+            })
+        } else {
+            None
+        }
+    }
+
     pub fn to_fn_parts(self) -> FnParts<'a> {
         FnParts {
             decl: self.decl(),

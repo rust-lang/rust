@@ -20,10 +20,12 @@ use middle::ty::{self, Ty};
 use middle::astconv_util::ast_ty_to_prim_ty;
 
 use syntax::ast::{self, Expr};
+use syntax::ast_map::blocks::FnLikeNode;
+use syntax::ast_util::{self, PostExpansionMethod};
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
-use syntax::{ast_map, ast_util, codemap};
+use syntax::{ast_map, codemap, visit};
 
 use std::borrow::{Cow, IntoCow};
 use std::num::wrapping::OverflowingOps;
@@ -129,6 +131,63 @@ pub fn lookup_const_by_id<'a>(tcx: &'a ty::ctxt, def_id: ast::DefId)
         tcx.extern_const_statics.borrow_mut().insert(def_id,
                                                      expr_id.unwrap_or(ast::DUMMY_NODE_ID));
         expr_id.map(|id| tcx.map.expect_expr(id))
+    }
+}
+
+fn inline_const_fn_from_external_crate(tcx: &ty::ctxt, def_id: ast::DefId)
+                                       -> Option<ast::NodeId> {
+    match tcx.extern_const_fns.borrow().get(&def_id) {
+        Some(&ast::DUMMY_NODE_ID) => return None,
+        Some(&fn_id) => return Some(fn_id),
+        None => {}
+    }
+
+    if !csearch::is_const_fn(&tcx.sess.cstore, def_id) {
+        tcx.extern_const_fns.borrow_mut().insert(def_id, ast::DUMMY_NODE_ID);
+        return None;
+    }
+
+    let fn_id = match csearch::maybe_get_item_ast(tcx, def_id,
+        box |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
+        csearch::FoundAst::Found(&ast::IIItem(ref item)) => Some(item.id),
+        csearch::FoundAst::Found(&ast::IIImplItem(_, ast::MethodImplItem(ref m))) => Some(m.id),
+        _ => None
+    };
+    tcx.extern_const_fns.borrow_mut().insert(def_id,
+                                             fn_id.unwrap_or(ast::DUMMY_NODE_ID));
+    fn_id
+}
+
+pub fn lookup_const_fn_by_id<'a>(tcx: &'a ty::ctxt, def_id: ast::DefId)
+                                 -> Option<FnLikeNode<'a>> {
+
+    let fn_id = if !ast_util::is_local(def_id) {
+        if let Some(fn_id) = inline_const_fn_from_external_crate(tcx, def_id) {
+            fn_id
+        } else {
+            return None;
+        }
+    } else {
+        def_id.node
+    };
+
+    let fn_like = match FnLikeNode::from_node(tcx.map.get(fn_id)) {
+        Some(fn_like) => fn_like,
+        None => return None
+    };
+
+    match fn_like.kind() {
+        visit::FkItemFn(_, _, _, ast::Constness::Const, _) => {
+            Some(fn_like)
+        }
+        visit::FkMethod(_, _, m) => {
+            if m.pe_constness() == ast::Constness::Const {
+                Some(fn_like)
+            } else {
+                None
+            }
+        }
+        _ => None
     }
 }
 

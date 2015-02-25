@@ -176,6 +176,19 @@ fn item_visibility(item: rbml::Doc) -> ast::Visibility {
     }
 }
 
+fn fn_constness(item: rbml::Doc) -> ast::Constness {
+    match reader::maybe_get_doc(item, tag_items_data_item_constness) {
+        None => ast::Constness::NotConst,
+        Some(constness_doc) => {
+            match reader::doc_as_u8(constness_doc) as char {
+                'c' => ast::Constness::Const,
+                'n' => ast::Constness::NotConst,
+                _ => panic!("unknown constness character")
+            }
+        }
+    }
+}
+
 fn item_sort(item: rbml::Doc) -> Option<char> {
     let mut ret = None;
     reader::tagged_docs(item, tag_item_trait_item_sort, |doc| {
@@ -1448,6 +1461,14 @@ pub fn is_typedef(cdata: Cmd, id: ast::NodeId) -> bool {
     match item_family(item_doc) {
         Type => true,
         _ => false,
+    }
+}
+
+pub fn is_const_fn(cdata: Cmd, id: ast::NodeId) -> bool {
+    let item_doc = lookup_item(id, cdata.data());
+    match fn_constness(item_doc) {
+        ast::Constness::Const => true,
+        ast::Constness::NotConst => false,
     }
 }
 

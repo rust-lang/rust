@@ -581,6 +581,16 @@ fn encode_visibility(rbml_w: &mut Encoder, visibility: ast::Visibility) {
     rbml_w.wr_tagged_u8(tag_items_data_item_visibility, ch as u8);
 }
 
+fn encode_constness(rbml_w: &mut Encoder, constness: ast::Constness) {
+    rbml_w.start_tag(tag_items_data_item_constness);
+    let ch = match constness {
+        ast::Constness::Const => 'c',
+        ast::Constness::NotConst => 'n',
+    };
+    rbml_w.wr_str(&ch.to_string());
+    rbml_w.end_tag();
+}
+
 fn encode_explicit_self(rbml_w: &mut Encoder,
                         explicit_self: &ty::ExplicitSelfCategory) {
     let tag = tag_item_trait_method_explicit_self;
@@ -831,10 +841,14 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             encode_attributes(rbml_w, &impl_item.attrs);
             let scheme = ty::lookup_item_type(ecx.tcx, m.def_id);
             let any_types = !scheme.generics.types.is_empty();
-            if any_types || is_default_impl || attr::requests_inline(&impl_item.attrs) {
+            let needs_inline = any_types || is_default_impl ||
+                               attr::requests_inline(&impl_item.attrs);
+            let constness = ast_method.pe_constness();
+            if needs_inline || constness == ast::Constness::Const {
                 encode_inlined_item(ecx, rbml_w, IIImplItemRef(local_def(parent_id),
                                                                impl_item));
             }
+            encode_constness(rbml_w, constness);
             if !any_types {
                 encode_symbol(ecx, rbml_w, m.def_id.node);
             }
@@ -1015,7 +1029,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_stability(rbml_w, stab);
         rbml_w.end_tag();
       }
-      ast::ItemFn(ref decl, _, _, _, ref generics, _) => {
+      ast::ItemFn(ref decl, _, constness, _, ref generics, _) => {
         add_to_index(item, rbml_w, index);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
@@ -1025,12 +1039,14 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(rbml_w, item.ident.name);
         encode_path(rbml_w, path);
         encode_attributes(rbml_w, &item.attrs);
-        if tps_len > 0 || attr::requests_inline(&item.attrs) {
+        let needs_inline = tps_len > 0 || attr::requests_inline(&item.attrs);
+        if needs_inline || constness == ast::Constness::Const {
             encode_inlined_item(ecx, rbml_w, IIItemRef(item));
         }
         if tps_len == 0 {
             encode_symbol(ecx, rbml_w, item.id);
         }
+        encode_constness(rbml_w, constness);
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
         encode_method_argument_names(rbml_w, &**decl);
