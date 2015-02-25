@@ -311,6 +311,7 @@ impl KindOps for Lvalue {
                               val: ValueRef,
                               ty: Ty<'tcx>)
                               -> Block<'blk, 'tcx> {
+        let _icx = push_ctxt("<Lvalue as KindOps>::post_store");
         if type_needs_drop(bcx.tcx(), ty) {
             // cancel cleanup of affine values by zeroing out
             let () = zero_mem(bcx, val, ty);

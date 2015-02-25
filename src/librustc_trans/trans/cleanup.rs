@@ -1007,6 +1007,7 @@ impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
                    bcx: Block<'blk, 'tcx>,
                    debug_loc: DebugLoc)
                    -> Block<'blk, 'tcx> {
+        let _icx = base::push_ctxt("<DropValue as Cleanup>::trans");
         let bcx = if self.is_immediate {
             glue::drop_ty_immediate(bcx, self.val, self.ty, debug_loc)
         } else {
