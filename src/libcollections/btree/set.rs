@@ -613,7 +613,7 @@ impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>> for &'a BTreeSet<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for BTreeSet<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "BTreeSet {{"));
+        try!(write!(f, "{{"));
 
         for (i, x) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
@@ -911,7 +911,7 @@ mod test {
 
         let set_str = format!("{:?}", set);
 
-        assert_eq!(set_str, "BTreeSet {1, 2}");
-        assert_eq!(format!("{:?}", empty), "BTreeSet {}");
+        assert_eq!(set_str, "{1, 2}");
+        assert_eq!(format!("{:?}", empty), "{}");
     }
 }

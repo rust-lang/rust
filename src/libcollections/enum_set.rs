@@ -36,7 +36,7 @@ impl<E> Copy for EnumSet<E> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<E:CLike + fmt::Debug> fmt::Debug for EnumSet<E> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt, "EnumSet {{"));
+        try!(write!(fmt, "{{"));
         let mut first = true;
         for e in self {
             if !first {
@@ -314,11 +314,11 @@ mod test {
     #[test]
     fn test_show() {
         let mut e = EnumSet::new();
-        assert!(format!("{:?}", e) == "EnumSet {}");
+        assert!(format!("{:?}", e) == "{}");
         e.insert(A);
-        assert!(format!("{:?}", e) == "EnumSet {A}");
+        assert!(format!("{:?}", e) == "{A}");
         e.insert(C);
-        assert!(format!("{:?}", e) == "EnumSet {A, C}");
+        assert!(format!("{:?}", e) == "{A, C}");
     }
 
     #[test]

@@ -1754,7 +1754,7 @@ impl<A> Extend<A> for VecDeque<A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for VecDeque<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "VecDeque ["));
+        try!(write!(f, "["));
 
         for (i, e) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
@@ -2435,12 +2435,12 @@ mod tests {
     #[test]
     fn test_show() {
         let ringbuf: VecDeque<_> = (0..10).collect();
-        assert_eq!(format!("{:?}", ringbuf), "VecDeque [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+        assert_eq!(format!("{:?}", ringbuf), "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let ringbuf: VecDeque<_> = vec!["just", "one", "test", "more"].iter()
                                                                         .cloned()
                                                                         .collect();
-        assert_eq!(format!("{:?}", ringbuf), "VecDeque [\"just\", \"one\", \"test\", \"more\"]");
+        assert_eq!(format!("{:?}", ringbuf), "[\"just\", \"one\", \"test\", \"more\"]");
     }
 
     #[test]

@@ -978,7 +978,7 @@ impl Ord for BitVec {
 impl fmt::Debug for BitVec {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         for bit in self {
-            try!(write!(fmt, "{}", if bit { 1u32 } else { 0u32 }));
+            try!(write!(fmt, "{}", if bit { 1 } else { 0 }));
         }
         Ok(())
     }
@@ -1752,7 +1752,7 @@ impl BitSet {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for BitSet {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt, "BitSet {{"));
+        try!(write!(fmt, "{{"));
         let mut first = true;
         for n in self {
             if !first {
@@ -2655,7 +2655,7 @@ mod bit_set_test {
         s.insert(10);
         s.insert(50);
         s.insert(2);
-        assert_eq!("BitSet {1, 2, 10, 50}", format!("{:?}", s));
+        assert_eq!("{1, 2, 10, 50}", format!("{:?}", s));
     }
 
     #[test]
