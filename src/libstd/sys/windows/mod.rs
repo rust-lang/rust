@@ -198,7 +198,7 @@ pub fn set_nonblocking(fd: sock_t, nb: bool) {
     if unsafe { c::ioctlsocket(fd, c::FIONBIO, &mut set) } != 0 {
         // The above function should not return an error unless we passed it
         // invalid parameters. Panic on errors.
-        Err(last_error()).unwrap();
+        panic!("set_nonblocking called with invalid parameters: {}", last_error());
     }
 }
 
