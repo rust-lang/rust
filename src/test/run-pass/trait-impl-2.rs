@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo {
-    pub struct Foo {
-        x: isize,
-        y: isize,
+pub mod Foo {
+    pub trait Trait {
+        fn foo(&self);
     }
 }
 
-impl foo::Foo {
-//~^ ERROR implementations may only be implemented in the same module
-    fn bar() {}
+mod Bar {
+    impl<'a> ::Foo::Trait+'a {
+        fn bar(&self) { self.foo() }
+    }
 }
 
 fn main() {}
-

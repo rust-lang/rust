@@ -163,18 +163,14 @@ fn write_substs_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>,
         tcx.item_substs.borrow_mut().insert(node_id, item_substs);
     }
 }
-fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
+
+fn lookup_full_def(tcx: &ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
     match tcx.def_map.borrow().get(&id) {
-        Some(x) => x.clone(),
-        _ => {
+        Some(x) => x.full_def(),
+        None => {
             span_fatal!(tcx.sess, sp, E0242, "internal error looking up a definition")
         }
     }
-}
-
-fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
-                   -> def::Def {
-    lookup_def_tcx(ccx.tcx, sp, id)
 }
 
 fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,

@@ -529,8 +529,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             }
           }
 
-          ast::ExprPath(_) | ast::ExprQPath(_) => {
-            let def = (*self.tcx().def_map.borrow())[expr.id];
+          ast::ExprPath(..) => {
+            let def = self.tcx().def_map.borrow()[expr.id].full_def();
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
@@ -575,14 +575,14 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         match def {
           def::DefStruct(..) | def::DefVariant(..) | def::DefConst(..) |
-          def::DefFn(..) | def::DefStaticMethod(..) |  def::DefMethod(..) => {
+          def::DefFn(..) | def::DefMethod(..) => {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
           def::DefMod(_) | def::DefForeignMod(_) | def::DefUse(_) |
-          def::DefaultImpl(_) | def::DefTy(..) | def::DefPrimTy(_) |
-          def::DefTyParam(..) | def::DefTyParamBinder(..) | def::DefRegion(_) |
+          def::DefTrait(_) | def::DefTy(..) | def::DefPrimTy(_) |
+          def::DefTyParam(..) | def::DefRegion(_) |
           def::DefLabel(_) | def::DefSelfTy(..) |
-          def::DefAssociatedTy(..) | def::DefAssociatedPath(..)=> {
+          def::DefAssociatedTy(..) => {
               Ok(Rc::new(cmt_ {
                   id:id,
                   span:span,
@@ -1199,14 +1199,13 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         (*op)(self, cmt.clone(), pat);
 
-        let def_map = self.tcx().def_map.borrow();
-        let opt_def = def_map.get(&pat.id);
+        let opt_def = self.tcx().def_map.borrow().get(&pat.id).map(|d| d.full_def());
 
         // Note: This goes up here (rather than within the PatEnum arm
         // alone) because struct patterns can refer to struct types or
         // to struct variants within enums.
         let cmt = match opt_def {
-            Some(&def::DefVariant(enum_did, variant_did, _))
+            Some(def::DefVariant(enum_did, variant_did, _))
                 // univariant enums do not need downcasts
                 if !ty::enum_is_univariant(self.tcx(), enum_did) => {
                     self.cat_downcast(pat, cmt.clone(), cmt.ty, variant_did)
@@ -1224,7 +1223,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           }
           ast::PatEnum(_, Some(ref subpats)) => {
             match opt_def {
-                Some(&def::DefVariant(..)) => {
+                Some(def::DefVariant(..)) => {
                     // variant(x, y, z)
                     for (i, subpat) in subpats.iter().enumerate() {
                         let subpat_ty = try!(self.pat_ty(&**subpat)); // see (*2)
@@ -1237,7 +1236,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         try!(self.cat_pattern_(subcmt, &**subpat, op));
                     }
                 }
-                Some(&def::DefStruct(..)) => {
+                Some(def::DefStruct(..)) => {
                     for (i, subpat) in subpats.iter().enumerate() {
                         let subpat_ty = try!(self.pat_ty(&**subpat)); // see (*2)
                         let cmt_field =
@@ -1247,7 +1246,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         try!(self.cat_pattern_(cmt_field, &**subpat, op));
                     }
                 }
-                Some(&def::DefConst(..)) => {
+                Some(def::DefConst(..)) => {
                     for subpat in subpats {
                         try!(self.cat_pattern_(cmt.clone(), &**subpat, op));
                     }

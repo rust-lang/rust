@@ -33,7 +33,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               span: Span,
                               rcvr_ty: Ty<'tcx>,
                               method_name: ast::Name,
-                              callee_expr: &ast::Expr,
+                              rcvr_expr: Option<&ast::Expr>,
                               error: MethodError)
 {
     // avoid suggestions when we don't know what's going on.
@@ -45,16 +45,6 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         MethodError::NoMatch(static_sources, out_of_scope_traits) => {
             let cx = fcx.tcx();
             let method_ustring = method_name.user_string(cx);
-
-            // True if the type is a struct and contains a field with
-            // the same name as the not-found method
-            let is_field = match rcvr_ty.sty {
-                ty::ty_struct(did, _) =>
-                    ty::lookup_struct_fields(cx, did)
-                        .iter()
-                        .any(|f| f.name.user_string(cx) == method_ustring),
-                _ => false
-            };
 
             fcx.type_error_message(
                 span,
@@ -68,10 +58,13 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 None);
 
             // If the method has the name of a field, give a help note
-            if is_field {
-                cx.sess.span_note(span,
-                    &format!("use `(s.{0})(...)` if you meant to call the \
-                            function stored in the `{0}` field", method_ustring));
+            if let (&ty::ty_struct(did, _), Some(_)) = (&rcvr_ty.sty, rcvr_expr) {
+                let fields = ty::lookup_struct_fields(cx, did);
+                if fields.iter().any(|f| f.name == method_name) {
+                    cx.sess.span_note(span,
+                        &format!("use `(s.{0})(...)` if you meant to call the \
+                                 function stored in the `{0}` field", method_ustring));
+                }
             }
 
             if static_sources.len() > 0 {
@@ -82,7 +75,8 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 report_candidates(fcx, span, method_name, static_sources);
             }
 
-            suggest_traits_to_import(fcx, span, rcvr_ty, method_name, out_of_scope_traits)
+            suggest_traits_to_import(fcx, span, rcvr_ty, method_name,
+                                     rcvr_expr, out_of_scope_traits)
         }
 
         MethodError::Ambiguity(sources) => {
@@ -93,15 +87,18 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         MethodError::ClosureAmbiguity(trait_def_id) => {
-            fcx.sess().span_err(
-                span,
-                &*format!("the `{}` method from the `{}` trait cannot be explicitly \
-                           invoked on this closure as we have not yet inferred what \
-                           kind of closure it is; use overloaded call notation instead \
-                           (e.g., `{}()`)",
-                          method_name.user_string(fcx.tcx()),
-                          ty::item_path_str(fcx.tcx(), trait_def_id),
-                          pprust::expr_to_string(callee_expr)));
+            let msg = format!("the `{}` method from the `{}` trait cannot be explicitly \
+                               invoked on this closure as we have not yet inferred what \
+                               kind of closure it is",
+                               method_name.user_string(fcx.tcx()),
+                               ty::item_path_str(fcx.tcx(), trait_def_id));
+            let msg = if let Some(callee) = rcvr_expr {
+                format!("{}; use overloaded call notation instead (e.g., `{}()`)",
+                        msg, pprust::expr_to_string(callee))
+            } else {
+                msg
+            };
+            fcx.sess().span_err(span, &msg);
         }
     }
 
@@ -156,6 +153,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                       span: Span,
                                       rcvr_ty: Ty<'tcx>,
                                       method_name: ast::Name,
+                                      rcvr_expr: Option<&ast::Expr>,
                                       valid_out_of_scope_traits: Vec<ast::DefId>)
 {
     let tcx = fcx.tcx();
@@ -184,7 +182,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         return
     }
 
-    let type_is_local = type_derefs_to_local(fcx, span, rcvr_ty);
+    let type_is_local = type_derefs_to_local(fcx, span, rcvr_ty, rcvr_expr);
 
     // there's no implemented traits, so lets suggest some traits to
     // implement, by finding ones that have the method name, and are
@@ -233,33 +231,39 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 /// autoderefs of `rcvr_ty`.
 fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   span: Span,
-                                  rcvr_ty: Ty<'tcx>) -> bool {
-    check::autoderef(fcx, span, rcvr_ty, None,
-                     check::UnresolvedTypeAction::Ignore, check::NoPreference,
-                     |&: ty, _| {
-        let is_local = match ty.sty {
+                                  rcvr_ty: Ty<'tcx>,
+                                  rcvr_expr: Option<&ast::Expr>) -> bool {
+    fn is_local(ty: Ty) -> bool {
+        match ty.sty {
             ty::ty_enum(did, _) | ty::ty_struct(did, _) => ast_util::is_local(did),
 
             ty::ty_trait(ref tr) => ast_util::is_local(tr.principal_def_id()),
 
             ty::ty_param(_) => true,
 
-            // the user cannot implement traits for unboxed closures, so
-            // there's no point suggesting anything at all, local or not.
-            ty::ty_closure(..) => return Some(false),
-
             // everything else (primitive types etc.) is effectively
             // non-local (there are "edge" cases, e.g. (LocalType,), but
             // the noise from these sort of types is usually just really
             // annoying, rather than any sort of help).
             _ => false
-        };
-        if is_local {
-            Some(true)
+        }
+    }
+
+    // This occurs for UFCS desugaring of `T::method`, where there is no
+    // receiver expression for the method call, and thus no autoderef.
+    if rcvr_expr.is_none() {
+        return is_local(fcx.resolve_type_vars_if_possible(rcvr_ty));
+    }
+
+    check::autoderef(fcx, span, rcvr_ty, None,
+                     check::UnresolvedTypeAction::Ignore, check::NoPreference,
+                     |ty, _| {
+        if is_local(ty) {
+            Some(())
         } else {
             None
         }
-    }).2.unwrap_or(false)
+    }).2.is_some()
 }
 
 #[derive(Copy)]
@@ -330,7 +334,7 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
                                cstore: &cstore::CStore,
                                dl: decoder::DefLike) {
             match dl {
-                decoder::DlDef(def::DefaultImpl(did)) => {
+                decoder::DlDef(def::DefTrait(did)) => {
                     traits.push(TraitInfo::new(did));
                 }
                 decoder::DlDef(def::DefMod(did)) => {

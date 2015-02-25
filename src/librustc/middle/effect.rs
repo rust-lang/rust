@@ -175,7 +175,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
             ast::ExprInlineAsm(..) => {
                 self.require_unsafe(expr.span, "use of inline assembly");
             }
-            ast::ExprPath(_) | ast::ExprQPath(_) => {
+            ast::ExprPath(..) => {
                 if let def::DefStatic(_, true) = ty::resolve_expr(self.tcx, expr) {
                     self.require_unsafe(expr.span, "use of mutable static");
                 }

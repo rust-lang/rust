@@ -146,14 +146,7 @@ a more involved macro example, see
 
 ## Tips and tricks
 
-To see the results of expanding syntax extensions, run
-`rustc --pretty expanded`. The output represents a whole crate, so you
-can also feed it back in to `rustc`, which will sometimes produce better
-error messages than the original compilation. Note that the
-`--pretty expanded` output may have a different meaning if multiple
-variables of the same name (but different syntax contexts) are in play
-in the same scope. In this case `--pretty expanded,hygiene` will tell
-you about the syntax contexts.
+Some of the [macro debugging tips](macros.html#debugging-macro-code) are applicable.
 
 You can use [`syntax::parse`](../syntax/parse/index.html) to turn token trees into
 higher-level syntax elements like expressions:
@@ -183,6 +176,11 @@ will immediately abort compilation. It's better to instead call
 and return
 [`DummyResult`](../syntax/ext/base/struct.DummyResult.html),
 so that the compiler can continue and find further errors.
+
+To print syntax fragments for debugging, you can use
+[`span_note`](../syntax/ext/base/struct.ExtCtxt.html#method.span_note) together
+with
+[`syntax::print::pprust::*_to_string`](http://doc.rust-lang.org/syntax/print/pprust/index.html#functions).
 
 The example above produced an integer literal using
 [`AstBuilder::expr_uint`](../syntax/ext/build/trait.AstBuilder.html#tymethod.expr_uint).

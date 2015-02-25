@@ -774,7 +774,7 @@ mod test {
         assert!(string_to_expr("a".to_string()) ==
                    P(ast::Expr{
                     id: ast::DUMMY_NODE_ID,
-                    node: ast::ExprPath(ast::Path {
+                    node: ast::ExprPath(None, ast::Path {
                         span: sp(0, 1),
                         global: false,
                         segments: vec!(
@@ -792,7 +792,7 @@ mod test {
         assert!(string_to_expr("::a::b".to_string()) ==
                    P(ast::Expr {
                     id: ast::DUMMY_NODE_ID,
-                    node: ast::ExprPath(ast::Path {
+                    node: ast::ExprPath(None, ast::Path {
                             span: sp(0, 6),
                             global: true,
                             segments: vec!(
@@ -974,7 +974,7 @@ mod test {
                     id: ast::DUMMY_NODE_ID,
                     node:ast::ExprRet(Some(P(ast::Expr{
                         id: ast::DUMMY_NODE_ID,
-                        node:ast::ExprPath(ast::Path{
+                        node:ast::ExprPath(None, ast::Path{
                             span: sp(7, 8),
                             global: false,
                             segments: vec!(
@@ -995,7 +995,7 @@ mod test {
                    P(Spanned{
                        node: ast::StmtExpr(P(ast::Expr {
                            id: ast::DUMMY_NODE_ID,
-                           node: ast::ExprPath(ast::Path {
+                           node: ast::ExprPath(None, ast::Path {
                                span:sp(0,1),
                                global:false,
                                segments: vec!(
@@ -1041,7 +1041,7 @@ mod test {
                             node: ast::ItemFn(P(ast::FnDecl {
                                 inputs: vec!(ast::Arg{
                                     ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,
-                                                  node: ast::TyPath(ast::Path{
+                                                  node: ast::TyPath(None, ast::Path{
                                         span:sp(10,13),
                                         global:false,
                                         segments: vec!(
@@ -1051,7 +1051,7 @@ mod test {
                                                 parameters: ast::PathParameters::none(),
                                             }
                                         ),
-                                        }, ast::DUMMY_NODE_ID),
+                                        }),
                                         span:sp(10,13)
                                     }),
                                     pat: P(ast::Pat {
@@ -1084,7 +1084,7 @@ mod test {
                                         stmts: vec!(P(Spanned{
                                             node: ast::StmtSemi(P(ast::Expr{
                                                 id: ast::DUMMY_NODE_ID,
-                                                node: ast::ExprPath(
+                                                node: ast::ExprPath(None,
                                                       ast::Path{
                                                         span:sp(17,18),
                                                         global:false,

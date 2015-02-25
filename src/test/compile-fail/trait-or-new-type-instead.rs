@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
-
-impl<T> Option<T> { //~ERROR inherent implementations are not allowed for types not defined in the current module
+impl<T> Option<T> {
+//~^ ERROR cannot associate methods with a type outside the crate the type is defined in
     pub fn foo(&self) { }
 }
 

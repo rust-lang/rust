@@ -1233,8 +1233,8 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     }
                     ty_queue.push(&*mut_ty.ty);
                 }
-                ast::TyPath(ref path, id) => {
-                    let a_def = match self.tcx.def_map.borrow().get(&id) {
+                ast::TyPath(ref maybe_qself, ref path) => {
+                    let a_def = match self.tcx.def_map.borrow().get(&cur_ty.id) {
                         None => {
                             self.tcx
                                 .sess
@@ -1242,7 +1242,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                                         "unbound path {}",
                                         pprust::path_to_string(path)))
                         }
-                        Some(&d) => d
+                        Some(d) => d.full_def()
                     };
                     match a_def {
                         def::DefTy(did, _) | def::DefStruct(did) => {
@@ -1277,9 +1277,16 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                                 region_names: region_names
                             };
                             let new_path = self.rebuild_path(rebuild_info, lifetime);
+                            let qself = maybe_qself.as_ref().map(|qself| {
+                                ast::QSelf {
+                                    ty: self.rebuild_arg_ty_or_output(&qself.ty, lifetime,
+                                                                      anon_nums, region_names),
+                                    position: qself.position
+                                }
+                            });
                             let to = ast::Ty {
                                 id: cur_ty.id,
-                                node: ast::TyPath(new_path, id),
+                                node: ast::TyPath(qself, new_path),
                                 span: cur_ty.span
                             };
                             new_ty = self.rebuild_ty(new_ty, P(to));

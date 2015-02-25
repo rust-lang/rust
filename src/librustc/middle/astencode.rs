@@ -25,6 +25,7 @@ use metadata::tydecode::{RegionParameter, ClosureSource};
 use metadata::tyencode;
 use middle::check_const::ConstQualif;
 use middle::mem_categorization::Typer;
+use middle::privacy::{AllPublic, LastMod};
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::{self, Ty, MethodCall, MethodCallee, MethodOrigin};
@@ -423,13 +424,8 @@ impl tr for def::Def {
     fn tr(&self, dcx: &DecodeContext) -> def::Def {
         match *self {
           def::DefFn(did, is_ctor) => def::DefFn(did.tr(dcx), is_ctor),
-          def::DefStaticMethod(did, p) => {
-            def::DefStaticMethod(did.tr(dcx), p.map(|did2| did2.tr(dcx)))
-          }
-          def::DefMethod(did0, did1, p) => {
-            def::DefMethod(did0.tr(dcx),
-                           did1.map(|did1| did1.tr(dcx)),
-                           p.map(|did2| did2.tr(dcx)))
+          def::DefMethod(did, p) => {
+            def::DefMethod(did.tr(dcx), p.map(|did2| did2.tr(dcx)))
           }
           def::DefSelfTy(nid) => { def::DefSelfTy(dcx.tr_id(nid)) }
           def::DefMod(did) => { def::DefMod(did.tr(dcx)) }
@@ -440,13 +436,10 @@ impl tr for def::Def {
           def::DefVariant(e_did, v_did, is_s) => {
             def::DefVariant(e_did.tr(dcx), v_did.tr(dcx), is_s)
           },
-          def::DefaultImpl(did) => def::DefaultImpl(did.tr(dcx)),
+          def::DefTrait(did) => def::DefTrait(did.tr(dcx)),
           def::DefTy(did, is_enum) => def::DefTy(did.tr(dcx), is_enum),
-          def::DefAssociatedTy(did) => def::DefAssociatedTy(did.tr(dcx)),
-          def::DefAssociatedPath(def::TyParamProvenance::FromSelf(did), ident) =>
-              def::DefAssociatedPath(def::TyParamProvenance::FromSelf(did.tr(dcx)), ident),
-          def::DefAssociatedPath(def::TyParamProvenance::FromParam(did), ident) =>
-              def::DefAssociatedPath(def::TyParamProvenance::FromParam(did.tr(dcx)), ident),
+          def::DefAssociatedTy(trait_did, did) =>
+              def::DefAssociatedTy(trait_did.tr(dcx), did.tr(dcx)),
           def::DefPrimTy(p) => def::DefPrimTy(p),
           def::DefTyParam(s, index, def_id, n) => def::DefTyParam(s, index, def_id.tr(dcx), n),
           def::DefUse(did) => def::DefUse(did.tr(dcx)),
@@ -455,9 +448,6 @@ impl tr for def::Def {
           }
           def::DefStruct(did) => def::DefStruct(did.tr(dcx)),
           def::DefRegion(nid) => def::DefRegion(dcx.tr_id(nid)),
-          def::DefTyParamBinder(nid) => {
-            def::DefTyParamBinder(dcx.tr_id(nid))
-          }
           def::DefLabel(nid) => def::DefLabel(dcx.tr_id(nid))
         }
     }
@@ -1159,10 +1149,10 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     debug!("Encoding side tables for id {}", id);
 
-    if let Some(def) = tcx.def_map.borrow().get(&id) {
+    if let Some(def) = tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
         rbml_w.tag(c::tag_table_def, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| (*def).encode(rbml_w).unwrap());
+            rbml_w.tag(c::tag_table_val, |rbml_w| def.encode(rbml_w).unwrap());
         })
     }
 
@@ -1862,7 +1852,12 @@ fn decode_side_tables(dcx: &DecodeContext,
                 match value {
                     c::tag_table_def => {
                         let def = decode_def(dcx, val_doc);
-                        dcx.tcx.def_map.borrow_mut().insert(id, def);
+                        dcx.tcx.def_map.borrow_mut().insert(id, def::PathResolution {
+                            base_def: def,
+                            // This doesn't matter cross-crate.
+                            last_private: LastMod(AllPublic),
+                            depth: 0
+                        });
                     }
                     c::tag_table_node_type => {
                         let ty = val_dsr.read_ty(dcx);

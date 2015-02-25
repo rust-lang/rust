@@ -9,7 +9,9 @@
 // except according to those terms.
 
 fn f(x:isize) {
-    static child: isize = x + 1; //~ ERROR attempt to use a non-constant value in a constant
+    static child: isize = x + 1;
+    //~^ ERROR attempt to use a non-constant value in a constant
+    //~| ERROR unresolved name `x`
 }
 
 fn main() {}

@@ -165,13 +165,13 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     visit::walk_ty(this, ty);
                 });
             }
-            ast::TyPath(ref path, id) => {
+            ast::TyPath(None, ref path) => {
                 // if this path references a trait, then this will resolve to
                 // a trait ref, which introduces a binding scope.
-                match self.def_map.borrow().get(&id) {
-                    Some(&def::DefaultImpl(..)) => {
+                match self.def_map.borrow().get(&ty.id).map(|d| (d.base_def, d.depth)) {
+                    Some((def::DefTrait(..), 0)) => {
                         self.with(LateScope(&Vec::new(), self.scope), |_, this| {
-                            this.visit_path(path, id);
+                            this.visit_path(path, ty.id);
                         });
                     }
                     _ => {
@@ -270,15 +270,11 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                 for lifetime in &trait_ref.bound_lifetimes {
                     this.visit_lifetime_def(lifetime);
                 }
-                this.visit_trait_ref(&trait_ref.trait_ref)
+                visit::walk_path(this, &trait_ref.trait_ref.path)
             })
         } else {
             self.visit_trait_ref(&trait_ref.trait_ref)
         }
-    }
-
-    fn visit_trait_ref(&mut self, trait_ref: &ast::TraitRef) {
-        self.visit_path(&trait_ref.path, trait_ref.ref_id);
     }
 }
 

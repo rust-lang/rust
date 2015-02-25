@@ -598,7 +598,7 @@ fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
             ast::PatIdent(..) | ast::PatEnum(..) | ast::PatStruct(..) => {
                 // This is either an enum variant or a variable binding.
-                let opt_def = tcx.def_map.borrow().get(&cur.id).cloned();
+                let opt_def = tcx.def_map.borrow().get(&cur.id).map(|d| d.full_def());
                 match opt_def {
                     Some(def::DefVariant(enum_id, var_id, _)) => {
                         let variant = ty::enum_variant_with_id(tcx, enum_id, var_id);
@@ -725,14 +725,14 @@ fn any_irrefutable_adt_pat(tcx: &ty::ctxt, m: &[Match], col: uint) -> bool {
         match pat.node {
             ast::PatTup(_) => true,
             ast::PatStruct(..) => {
-                match tcx.def_map.borrow().get(&pat.id) {
-                    Some(&def::DefVariant(..)) => false,
+                match tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
+                    Some(def::DefVariant(..)) => false,
                     _ => true,
                 }
             }
             ast::PatEnum(..) | ast::PatIdent(_, _, None) => {
-                match tcx.def_map.borrow().get(&pat.id) {
-                    Some(&def::DefStruct(..)) => true,
+                match tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
+                    Some(def::DefStruct(..)) => true,
                     _ => false
                 }
             }
@@ -1277,20 +1277,20 @@ pub fn trans_match<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// Checks whether the binding in `discr` is assigned to anywhere in the expression `body`
 fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool {
     let (vid, field) = match discr.node {
-        ast::ExprPath(_) | ast::ExprQPath(_) => match bcx.def(discr.id) {
+        ast::ExprPath(..) => match bcx.def(discr.id) {
             def::DefLocal(vid) | def::DefUpvar(vid, _) => (vid, None),
             _ => return false
         },
         ast::ExprField(ref base, field) => {
-            let vid = match bcx.tcx().def_map.borrow().get(&base.id) {
-                Some(&def::DefLocal(vid)) | Some(&def::DefUpvar(vid, _)) => vid,
+            let vid = match bcx.tcx().def_map.borrow().get(&base.id).map(|d| d.full_def()) {
+                Some(def::DefLocal(vid)) | Some(def::DefUpvar(vid, _)) => vid,
                 _ => return false
             };
             (vid, Some(mc::NamedField(field.node.name)))
         },
         ast::ExprTupField(ref base, field) => {
-            let vid = match bcx.tcx().def_map.borrow().get(&base.id) {
-                Some(&def::DefLocal(vid)) | Some(&def::DefUpvar(vid, _)) => vid,
+            let vid = match bcx.tcx().def_map.borrow().get(&base.id).map(|d| d.full_def()) {
+                Some(def::DefLocal(vid)) | Some(def::DefUpvar(vid, _)) => vid,
                 _ => return false
             };
             (vid, Some(mc::PositionalField(field.node)))
@@ -1689,7 +1689,7 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         ast::PatEnum(_, ref sub_pats) => {
-            let opt_def = bcx.tcx().def_map.borrow().get(&pat.id).cloned();
+            let opt_def = bcx.tcx().def_map.borrow().get(&pat.id).map(|d| d.full_def());
             match opt_def {
                 Some(def::DefVariant(enum_id, var_id, _)) => {
                     let repr = adt::represent_node(bcx, pat.id);
