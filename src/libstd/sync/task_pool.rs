@@ -16,6 +16,8 @@
                         https://crates.io/crates/threadpool")]
 #![unstable(feature = "std_misc")]
 
+#![allow(deprecated)]
+
 use core::prelude::*;
 
 use sync::{Arc, Mutex};
