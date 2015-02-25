@@ -2745,7 +2745,21 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     // from csearch instead of using the current crate's name/version information
                     // in the hash of the symbol
                     let sym = sym();
-                    debug!("making {}", sym);
+                    debug!("making static {}", sym);
+
+                    // Check whether there’s no symbols with the same name yet. In case there are
+                    // any, we will suffer from the *extern declaration* being renamed if we
+                    // register this static with the same name too.
+                    // FIXME: this doesn’t work reliably anyway.
+                    if ccx.symbol_value(sym.to_string()).is_some() {
+                        ccx.sess().span_fatal(i.span, &format!("symbol {} is already declared",
+                                                               sym));
+                    } else if contains_null(&sym[..]) {
+                        // TODO: Should it be a bug? Sounds like prime example for checking
+                        // in parser and attribute getters.
+                        ccx.sess().span_fatal(i.span, &format!("Illegal null byte in export_name \
+                                                               value: `{}`", sym));
+                    }
 
                     // We need the translated value here, because for enums the LLVM type is not
                     // fully determined by the Rust type.
@@ -2760,11 +2774,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                         } else {
                             llvm::LLVMTypeOf(v)
                         };
-                        if contains_null(&sym[..]) {
-                            ccx.sess().fatal(
-                                &format!("Illegal null byte in export_name \
-                                         value: `{}`", sym));
-                        }
+
                         let buf = CString::new(sym.clone()).unwrap();
                         let g = llvm::LLVMAddGlobal(ccx.llmod(), llty,
                                                     buf.as_ptr());
@@ -2780,6 +2790,11 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                 ast::ItemFn(_, _, abi, _, _) => {
                     let sym = sym();
+                    if ccx.symbol_value(sym.to_string()).is_some() {
+                        ccx.sess().span_fatal(i.span, &format!("symbol {} is already declared",
+                                                               sym));
+                    }
+
                     let llfn = if abi == Rust {
                         register_fn(ccx, i.span, sym, i.id, ty)
                     } else {
@@ -2924,6 +2939,11 @@ fn register_method(ccx: &CrateContext, id: ast::NodeId,
     let mty = ty::node_id_to_type(ccx.tcx(), id);
 
     let sym = exported_name(ccx, id, mty, &m.attrs);
+    if ccx.symbol_value(sym.to_string()).is_some() {
+        ccx.sess().span_fatal(i.span, &format!("symbol {} is already declared",
+                                               sym));
+    }
+
 
     if let ty::ty_bare_fn(_, ref f) = mty.sty {
         let llfn = if f.abi == Rust || f.abi == RustCall {

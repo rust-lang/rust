@@ -740,18 +740,31 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
                     obj.repr(self.tcx())))
     }
 
+    /* FIXME?: not sure about placement of these functions */
     /// Double-check that we never ask LLVM to declare the same symbol twice. LLVM silently mangles
     /// such symbols if they have Internal linkage, breaking our linkage model.
     // FIXME: this function needs to be used more. Much more.
     pub fn assert_unique_symbol<'a>(&'a self, sym: String) {
-        let buf = CString::new(sym.clone()).unwrap();
-        let val = unsafe { llvm::LLVMGetNamedValue(self.llmod(), buf.as_ptr()) };
-        if !val.is_null() {
-            let linkage = unsafe { llvm::LLVMGetLinkage(val) };
-            if linkage == llvm::InternalLinkage as c_uint {
+        if let Some(v) = self.symbol_value(sym.clone()) {
+            if (unsafe { llvm::LLVMGetLinkage(v) }) == llvm::InternalLinkage as c_uint {
                 self.sess().bug(&format!("duplicate LLVM symbol: {}", sym));
             }
         }
+    }
+
+    /// Get LLVM value by symbol.
+    pub fn symbol_value<'a>(&'a self, sym: String) -> Option<ValueRef> {
+        let buf = CString::new(sym.clone()).unwrap();
+        let val = unsafe { llvm::LLVMGetNamedValue(self.llmod(), buf.as_ptr()) };
+        if val.is_null() { None } else { Some(val) }
+    }
+
+    /// Returns whether the symbol is defined as opposed to being just declared or not existing at
+    /// all.
+    pub fn symbol_defined<'a>(&'a self, sym: String) -> bool {
+        self.symbol_value(sym).map_or(false, |v| {
+            unsafe { llvm::LLVMIsDeclaration(v) != 0 }
+        })
     }
 }
 

@@ -111,6 +111,7 @@ pub fn register_static(ccx: &CrateContext,
     let llty = type_of::type_of(ccx, ty);
 
     let ident = link_name(foreign_item);
+    ccx.assert_unique_symbol(ident.to_string());
     match attr::first_attr_value_str_by_name(&foreign_item.attrs,
                                              "linkage") {
         // If this is a static with a linkage specified, then we need to handle
@@ -624,7 +625,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                       t: Ty<'tcx>) {
         if llvm::LLVMCountBasicBlocks(llwrapfn) != 0 {
             ccx.sess().bug("wrapping a function inside non-empty wrapper, most likely cause is \
-                           multiple functions are being wrapped");
+                           multiple functions being wrapped");
         }
 
         let _icx = push_ctxt(
