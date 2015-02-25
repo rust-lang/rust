@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::v1::*;
+
 use cell::UnsafeCell;
 use libc;
 use ptr;
-use std::option::Option::{Some, None};
 use sys::mutex::{self, Mutex};
 use sys::time;
 use sys::sync as ffi;
@@ -19,6 +20,9 @@ use time::Duration;
 use num::{Int, NumCast};
 
 pub struct Condvar { inner: UnsafeCell<ffi::pthread_cond_t> }
+
+unsafe impl Send for Condvar {}
+unsafe impl Sync for Condvar {}
 
 pub const CONDVAR_INIT: Condvar = Condvar {
     inner: UnsafeCell { value: ffi::PTHREAD_COND_INITIALIZER },

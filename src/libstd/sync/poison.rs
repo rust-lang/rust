@@ -16,6 +16,12 @@ use fmt;
 use thread;
 
 pub struct Flag { failed: UnsafeCell<bool> }
+
+// This flag is only ever accessed with a lock previously held. Note that this
+// a totally private structure.
+unsafe impl Send for Flag {}
+unsafe impl Sync for Flag {}
+
 pub const FLAG_INIT: Flag = Flag { failed: UnsafeCell { value: false } };
 
 impl Flag {
