@@ -183,7 +183,7 @@ impl StdError for JoinPathsError {
 }
 
 #[cfg(target_os = "freebsd")]
-pub fn current_exe() -> IoResult<Path> {
+pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         use libc::funcs::bsd44::*;
         use libc::consts::os::extra::*;
@@ -195,16 +195,16 @@ pub fn current_exe() -> IoResult<Path> {
         let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
                          ptr::null_mut(), &mut sz, ptr::null_mut(),
                          0 as libc::size_t);
-        if err != 0 { return Err(IoError::last_error()); }
-        if sz == 0 { return Err(IoError::last_error()); }
+        if err != 0 { return Err(io::Error::last_os_error()); }
+        if sz == 0 { return Err(io::Error::last_os_error()); }
         let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
         let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
                          v.as_mut_ptr() as *mut libc::c_void, &mut sz,
                          ptr::null_mut(), 0 as libc::size_t);
-        if err != 0 { return Err(IoError::last_error()); }
-        if sz == 0 { return Err(IoError::last_error()); }
+        if err != 0 { return Err(io::Error::last_os_error()); }
+        if sz == 0 { return Err(io::Error::last_os_error()); }
         v.set_len(sz as uint - 1); // chop off trailing NUL
-        Ok(Path::new(v))
+        Ok(PathBuf::new::<OsString>(&OsStringExt::from_vec(v)))
     }
 }
 
@@ -227,7 +227,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         let v = rust_current_exe();
         if v.is_null() {
-            Err(IoError::last_error())
+            Err(io::Error::last_os_error())
         } else {
             Ok(Path::new(CStr::from_ptr(v).to_bytes().to_vec()))
         }
@@ -240,17 +240,17 @@ pub fn current_exe() -> io::Result<PathBuf> {
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
-pub fn current_exe() -> IoResult<Path> {
+pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         use libc::funcs::extra::_NSGetExecutablePath;
         let mut sz: u32 = 0;
         _NSGetExecutablePath(ptr::null_mut(), &mut sz);
-        if sz == 0 { return Err(IoError::last_error()); }
+        if sz == 0 { return Err(io::Error::last_os_error()); }
         let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
         let err = _NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
-        if err != 0 { return Err(IoError::last_error()); }
+        if err != 0 { return Err(io::Error::last_os_error()); }
         v.set_len(sz as uint - 1); // chop off trailing NUL
-        Ok(Path::new(v))
+        Ok(PathBuf::new::<OsString>(&OsStringExt::from_vec(v)))
     }
 }
 
