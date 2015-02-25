@@ -739,7 +739,7 @@ impl<V: Ord> Ord for VecMap<V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<V: fmt::Debug> fmt::Debug for VecMap<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "VecMap {{"));
+        try!(write!(f, "{{"));
 
         for (i, (k, v)) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
@@ -1318,8 +1318,8 @@ mod test_map {
         map.insert(3, 4);
 
         let map_str = format!("{:?}", map);
-        assert!(map_str == "VecMap {1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
-        assert_eq!(format!("{:?}", empty), "VecMap {}");
+        assert!(map_str == "{1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
+        assert_eq!(format!("{:?}", empty), "{}");
     }
 
     #[test]
