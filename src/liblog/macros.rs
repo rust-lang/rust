@@ -50,13 +50,6 @@
 #[macro_export]
 macro_rules! log {
     ($lvl:expr, $($arg:tt)+) => ({
-        #[cfg(stage0)]
-        static LOC: ::log::LogLocation = ::log::LogLocation {
-            line: line!() as u32,
-            file: file!(),
-            module_path: module_path!(),
-        };
-        #[cfg(not(stage0))]
         static LOC: ::log::LogLocation = ::log::LogLocation {
             line: line!(),
             file: file!(),

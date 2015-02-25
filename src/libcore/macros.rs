@@ -15,9 +15,6 @@ macro_rules! panic {
         panic!("explicit panic")
     );
     ($msg:expr) => ({
-        #[cfg(stage0)]
-        static _MSG_FILE_LINE: (&'static str, &'static str, usize) = ($msg, file!(), line!());
-        #[cfg(not(stage0))]
         static _MSG_FILE_LINE: (&'static str, &'static str, u32) = ($msg, file!(), line!());
         ::core::panicking::panic(&_MSG_FILE_LINE)
     });
@@ -26,9 +23,6 @@ macro_rules! panic {
         // used inside a dead function. Just `#[allow(dead_code)]` is
         // insufficient, since the user may have
         // `#[forbid(dead_code)]` and which cannot be overridden.
-        #[cfg(stage0)]
-        static _FILE_LINE: (&'static str, usize) = (file!(), line!());
-        #[cfg(not(stage0))]
         static _FILE_LINE: (&'static str, u32) = (file!(), line!());
         ::core::panicking::panic_fmt(format_args!($fmt, $($arg)*), &_FILE_LINE)
     });
