@@ -8,22 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Lints built in to rustc.
+//! Some lints that are built in to the compiler.
 //!
-//! This is a sibling of `lint::context` in order to ensure that
-//! lints implemented here use the same public API as lint plugins.
-//!
-//! To add a new lint to rustc, declare it here using `declare_lint!()`.
-//! Then add code to emit the new lint in the appropriate circumstances.
-//! You can do that in an existing `LintPass` if it makes sense, or in
-//! a new `LintPass`, or using `Session::add_lint` elsewhere in the
-//! compiler. Only do the latter if the check can't be written cleanly
-//! as a `LintPass`.
-//!
-//! If you define a new `LintPass`, you will also need to add it to the
-//! `add_builtin!` or `add_builtin_with_new!` invocation in `context.rs`.
-//! Use the former for unit-like structs and the latter for structs with
-//! a `pub fn new()`.
+//! These are the built-in lints that are emitted direct in the main
+//! compiler code, rather than using their own custom pass. Those
+//! lints are all available in `rustc_lint::builtin`.
 
 use lint::{LintPass, LintArray};
 
