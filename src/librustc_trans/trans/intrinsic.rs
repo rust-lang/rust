@@ -156,6 +156,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let ccx = fcx.ccx;
     let tcx = bcx.tcx();
 
+    let _icx = push_ctxt("trans_intrinsic_call");
+
     let ret_ty = match callee_ty.sty {
         ty::ty_bare_fn(_, ref f) => {
             ty::erase_late_bound_regions(bcx.tcx(), &f.sig.output())
