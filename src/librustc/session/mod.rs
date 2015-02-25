@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use lint;
 use metadata::cstore::CStore;
 use metadata::filesearch;
@@ -389,7 +388,6 @@ pub fn build_session_(sopts: config::Options,
         can_print_warnings: can_print_warnings
     };
 
-    sess.lint_store.borrow_mut().register_builtin(Some(&sess));
     sess
 }
 

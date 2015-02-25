@@ -37,7 +37,8 @@ use syntax::codemap::Span;
 use syntax::visit::FnKind;
 use syntax::ast;
 
-pub use lint::context::{Context, LintStore, raw_emit_lint, check_crate, gather_attrs};
+pub use lint::context::{Context, LintStore, raw_emit_lint, check_crate, gather_attrs,
+                        GatherNodeLevels};
 
 /// Specification of a single lint.
 #[derive(Copy, Debug)]

@@ -9,6 +9,7 @@
 // except according to those terms.
 pub use self::MaybeTyped::*;
 
+use rustc_lint;
 use rustc_driver::driver;
 use rustc::session::{self, config};
 use rustc::session::config::UnstableFeatures;
@@ -114,6 +115,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
 
     let sess = session::build_session_(sessopts, cpath,
                                        span_diagnostic_handler);
+    rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let cfg = config::build_configuration(&sess);
 
