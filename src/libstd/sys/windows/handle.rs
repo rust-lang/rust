@@ -10,9 +10,10 @@
 
 use prelude::v1::*;
 
-use libc::{self, HANDLE};
-use io;
 use io::ErrorKind;
+use io;
+use libc::{self, HANDLE};
+use mem;
 use ptr;
 use sys::cvt;
 
@@ -27,6 +28,12 @@ impl Handle {
     }
 
     pub fn raw(&self) -> HANDLE { self.0 }
+
+    pub fn into_raw(self) -> HANDLE {
+        let ret = self.0;
+        unsafe { mem::forget(self) }
+        return ret;
+    }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
         read(self.0, buf)
