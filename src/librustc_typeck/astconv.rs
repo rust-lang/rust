@@ -73,9 +73,14 @@ use syntax::print::pprust;
 pub trait AstConv<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
 
-    fn get_item_type_scheme(&self, id: ast::DefId) -> ty::TypeScheme<'tcx>;
+    fn get_item_type_scheme(&self, span: Span, id: ast::DefId)
+                            -> Result<ty::TypeScheme<'tcx>, ErrorReported>;
 
-    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>>;
+    fn get_trait_def(&self, span: Span, id: ast::DefId)
+                     -> Result<Rc<ty::TraitDef<'tcx>>, ErrorReported>;
+
+    fn get_type_parameter_bounds(&self, span: Span, def_id: ast::NodeId)
+                                 -> Result<Vec<ty::PolyTraitRef<'tcx>>, ErrorReported>;
 
     /// Return an (optional) substitution to convert bound type parameters that
     /// are in scope into free ones. This function should only return Some
@@ -683,7 +688,14 @@ fn ast_path_to_trait_ref<'a,'tcx>(
     -> Rc<ty::TraitRef<'tcx>>
 {
     debug!("ast_path_to_trait_ref {:?}", trait_segment);
-    let trait_def = this.get_trait_def(trait_def_id);
+    let trait_def = match this.get_trait_def(span, trait_def_id) {
+        Ok(trait_def) => trait_def,
+        Err(ErrorReported) => {
+            // No convenient way to recover from a cycle here. Just bail. Sorry!
+            this.tcx().sess.abort_if_errors();
+            this.tcx().sess.bug("ErrorReported returned, but no errors reports?")
+        }
+    };
 
     let (regions, types, assoc_bindings) = match trait_segment.parameters {
         ast::AngleBracketedParameters(ref data) => {
@@ -860,10 +872,15 @@ fn ast_path_to_ty<'tcx>(
     item_segment: &ast::PathSegment)
     -> Ty<'tcx>
 {
-    let ty::TypeScheme {
-        generics,
-        ty: decl_ty
-    } = this.get_item_type_scheme(did);
+    let tcx = this.tcx();
+    let (generics, decl_ty) = match this.get_item_type_scheme(span, did) {
+        Ok(ty::TypeScheme { generics,  ty: decl_ty }) => {
+            (generics, decl_ty)
+        }
+        Err(ErrorReported) => {
+            return tcx.types.err;
+        }
+    };
 
     let substs = ast_path_substs_for_ty(this, rscope,
                                         span, param_mode,
@@ -1001,20 +1018,17 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         return (tcx.types.err, ty_path_def);
     };
 
-    let mut suitable_bounds: Vec<_>;
-    let ty_param_name: ast::Name;
-    { // contain scope of refcell:
-        let ty_param_defs = tcx.ty_param_defs.borrow();
-        let ty_param_def = &ty_param_defs[ty_param_node_id];
-        ty_param_name = ty_param_def.name;
+    let ty_param_name = tcx.ty_param_defs.borrow()[ty_param_node_id].name;
 
+    // FIXME(#20300) -- search where clauses, not bounds
+    let bounds =
+        this.get_type_parameter_bounds(span, ty_param_node_id)
+            .unwrap_or(Vec::new());
 
-        // FIXME(#20300) -- search where clauses, not bounds
-        suitable_bounds =
-            traits::transitive_bounds(tcx, &ty_param_def.bounds.trait_bounds)
-            .filter(|b| trait_defines_associated_type_named(this, b.def_id(), assoc_name))
-            .collect();
-    }
+    let mut suitable_bounds: Vec<_> =
+        traits::transitive_bounds(tcx, &bounds)
+        .filter(|b| trait_defines_associated_type_named(this, b.def_id(), assoc_name))
+        .collect();
 
     if suitable_bounds.len() == 0 {
         span_err!(tcx.sess, span, E0220,
