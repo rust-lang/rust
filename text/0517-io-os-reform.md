@@ -1159,12 +1159,9 @@ The current `stdio` module will be removed in favor of these constructors in the
 `io` module:
 
 ```rust
-fn stdin() -> Stdin;
-fn stdout() -> Stdout;
-fn stderr() -> Stderr;
-fn stdin_raw() -> StdinRaw;
-fn stdout_raw() -> StdoutRaw;
-fn stderr_raw() -> StderrRaw;
+pub fn stdin() -> Stdin;
+pub fn stdout() -> Stdout;
+pub fn stderr() -> Stderr;
 ```
 
 * `stdin` - returns a handle to a **globally shared** standard input of
@@ -1220,19 +1217,91 @@ fn stderr_raw() -> StderrRaw;
   impl Write for StdoutLock { ... }
   ```
 
-* `*_raw` - these constructors will return references to the raw handles which
-  are guaranteed to not be protected with any form of lock or have any backing
-  buffer. Their APIs will look like:
+#### Windows and stdio
+[Windows stdio]: #windows-and-stdio
 
-  ```rust
-  impl Read for StdinRaw { ... }
-  impl Write for StdoutRaw { ... }
-  impl Write for StderrRaw { ... }
-  ```
+On Windows, standard input and output handles can work with either arbitrary
+`[u8]` or `[u16]` depending on the state at runtime. For example a program
+attached to the console will work with arbitrary `[u16]`, but a program attached
+to a pipe would work with arbitrary `[u8]`.
 
-  The documentation for `stdin_raw` will indicate that extra data may be
-  buffered in the `stdin` handle which will not be accessible to the `stdin_raw`
-  handle.
+To handle this difference, the following behavior will be enforced for the
+standard primitives listed above:
+
+* If attached to a pipe then no attempts at encoding or decoding will be done,
+  the data will be ferried through as `[u8]`.
+
+* If attached to a console, then `stdin` will attempt to interpret all input as
+  UTF-16, re-encoding into UTF-8 and returning the UTF-8 data instead. This
+  implies that data will be buffered internally to handle partial reads/writes.
+  Invalid UTF-16 will simply be discarded returning an `io::Error` explaining
+  why.
+
+* If attached to a console, then `stdout` and `stderr` will attempt to interpret
+  input as UTF-8, re-encoding to UTF-16. If the input is not valid UTF-8 then an
+  error will be returned and no data will be written.
+
+#### Raw stdio
+[Raw stdio]: #raw-stdio
+
+The above standard input/output handles all involve some form of locking or
+buffering (or both). This cost is not always wanted, and hence raw variants will
+be provided. Due to platform differences across unix/windows, the following
+structure will be supported:
+
+```rust
+mod os {
+    mod unix {
+        mod stdio {
+            struct Stdio { .. }
+
+            impl Stdio {
+                fn stdout() -> Stdio;
+                fn stderr() -> Stdio;
+                fn stdin() -> Stdio;
+            }
+
+            impl Read for Stdio { ... }
+            impl Write for Stdio { ... }
+        }
+    }
+
+    mod windows {
+        mod stdio {
+            struct Stdio { ... }
+            struct StdioConsole { ... }
+
+            impl Stdio {
+                fn stdout() -> io::Result<Stdio>;
+                fn stderr() -> io::Result<Stdio>;
+                fn stdin() -> io::Result<Stdio>;
+            }
+            // same constructors StdioConsole
+
+            impl Read for Stdio { ... }
+            impl Write for Stdio { ... }
+
+            impl StdioConsole {
+                // returns slice of what was read
+                fn read<'a>(&self, buf: &'a mut OsString) -> io::Result<&'a OsStr>;
+                // returns remaining part of `buf` to be written
+                fn write<'a>(&self, buf: &'a OsStr) -> io::Result<&'a OsStr>;
+            }
+        }
+    }
+}
+```
+
+There are some key differences from today's API:
+
+* On unix, the API has not changed much except that the handles have been
+  consolidated into one type which implements both `Read` and `Write` (although
+  writing to stdin is likely to generate an error).
+* On windows, there are two sets of handles representing the difference between
+  "console mode" and not (e.g. a pipe). When not a console the normal I/O traits
+  are implemented (delegating to `ReadFile` and `WriteFile`. The console mode
+  operations work with `OsStr`, however, to show how they work with UCS-2 under
+  the hood.
 
 #### Printing functions
 [Printing functions]: #printing-functions
