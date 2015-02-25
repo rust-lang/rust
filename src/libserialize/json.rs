@@ -3945,9 +3945,7 @@ mod tests {
 
     #[test]
     fn test_encode_hashmap_with_arbitrary_key() {
-        use std::old_io::Writer;
         use std::collections::HashMap;
-        use std::fmt;
         #[derive(PartialEq, Eq, Hash, RustcEncodable)]
         struct ArbitraryType(uint);
         let mut hm: HashMap<ArbitraryType, bool> = HashMap::new();

@@ -760,13 +760,13 @@ mod test {
     #[test] fn idents_name_eq_test() {
         assert!(segments_name_eq(
             &[Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()[],
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>(),
             &[Ident{name:Name(3),ctxt:104}, Ident{name:Name(78),ctxt:182}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()[]));
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()));
         assert!(!segments_name_eq(
             &[Ident{name:Name(3),ctxt:4}, Ident{name:Name(78),ctxt:82}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()[],
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>(),
             &[Ident{name:Name(3),ctxt:104}, Ident{name:Name(77),ctxt:182}]
-                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()[]));
+                .iter().map(ident_to_segment).collect::<Vec<PathSegment>>()));
     }
 }

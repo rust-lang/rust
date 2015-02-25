@@ -2090,7 +2090,7 @@ mod tests {
             let (left, right) = values.split_at_mut(2);
             {
                 let left: &[_] = left;
-                assert!(&left[..left.len()] == &[1, 2][]);
+                assert!(&left[..left.len()] == &[1, 2]);
             }
             for p in left {
                 *p += 1;
@@ -2098,7 +2098,7 @@ mod tests {
 
             {
                 let right: &[_] = right;
-                assert!(&right[..right.len()] == &[3, 4, 5][]);
+                assert!(&right[..right.len()] == &[3, 4, 5]);
             }
             for p in right {
                 *p += 2;
