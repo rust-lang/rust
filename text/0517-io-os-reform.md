@@ -1155,9 +1155,19 @@ RFC recommends they remain unstable.
 #### `stdin`, `stdout`, `stderr`
 [stdin, stdout, stderr]: #stdin-stdout-stderr
 
-The current `stdio` module will be removed in favor of three constructors:
+The current `stdio` module will be removed in favor of these constructors in the
+`io` module:
 
-* `stdin` - returns a handle to a **globally shared** to the standard input of
+```rust
+fn stdin() -> Stdin;
+fn stdout() -> Stdout;
+fn stderr() -> Stderr;
+fn stdin_raw() -> StdinRaw;
+fn stdout_raw() -> StdoutRaw;
+fn stderr_raw() -> StderrRaw;
+```
+
+* `stdin` - returns a handle to a **globally shared** standard input of
   the process which is buffered as well. All operations on this handle will
   first require acquiring a lock to ensure access to the shared buffer is
   synchronized. The handle can be explicitly locked for a critical section so
@@ -1169,18 +1179,60 @@ The current `stdio` module will be removed in favor of three constructors:
 
   The design will largely be the same as is today with the `old_io` module.
 
+  ```rust
+  impl Stdin {
+      fn lock(&self) -> StdinLock;
+      fn read_line(&mut self, into: &mut String) -> io::Result<()>;
+      fn read_until(&mut self, byte: u8, into: &mut Vec<u8>) -> io::Result<()>;
+  }
+  impl Read for Stdin { ... }
+  impl Read for StdinLock { ... }
+  impl BufRead for StdinLock { ... }
+  ```
+
 * `stderr` - returns a **non buffered** handle to the standard error output
   stream for the process. Each call to `write` will roughly translate to a
-  system call to output data when written to `stderr`.
+  system call to output data when written to `stderr`. This handle is locked
+  like `stdin` to ensure, for example, that calls to `write_all` are atomic with
+  respect to one another. There will also be an RAII guard to lock the handle
+  and use the result as an instance of `Write`.
 
-* `stdout` - returns a **locally buffered** handle to the standard output of the
-  current process. The amount of buffering can be decided at runtime to allow
-  for different situations such as being attached to a TTY or being redirected
-  to an output file. The `Write` trait will be implemented for this handle.
+  ```rust
+  impl Stderr {
+      fn lock(&self) -> StderrLock;
+  }
+  impl Write for Stderr { ... }
+  impl Write for StderrLock { ... }
+  ```
 
-The `stderr_raw` constructor is removed because the handle is no longer buffered
-and the `stdin_raw` and `stdout_raw` handles are removed to be added at a later
-date in the `std::os` modules if necessary.
+* `stdout` - returns a **globally buffered** handle to the standard output of
+  the current process. The amount of buffering can be decided at runtime to
+  allow for different situations such as being attached to a TTY or being
+  redirected to an output file. The `Write` trait will be implemented for this
+  handle, and like `stderr` it will be possible to lock it and then use the
+  result as an instance of `Write` as well.
+
+  ```rust
+  impl Stdout {
+      fn lock(&self) -> StdoutLock;
+  }
+  impl Write for Stdout { ... }
+  impl Write for StdoutLock { ... }
+  ```
+
+* `*_raw` - these constructors will return references to the raw handles which
+  are guaranteed to not be protected with any form of lock or have any backing
+  buffer. Their APIs will look like:
+
+  ```rust
+  impl Read for StdinRaw { ... }
+  impl Write for StdoutRaw { ... }
+  impl Write for StderrRaw { ... }
+  ```
+
+  The documentation for `stdin_raw` will indicate that extra data may be
+  buffered in the `stdin` handle which will not be accessible to the `stdin_raw`
+  handle.
 
 #### Printing functions
 [Printing functions]: #printing-functions
@@ -1198,6 +1250,8 @@ The `set_stdout` and `set_stderr` functions will be moved to a new
 respectively. These new names reflect what they actually do, removing a
 longstanding confusion. The current `stdio::flush` function will also move to
 this module and be renamed to `flush_print`.
+
+The entire `std::fmt::output` module will remain `#[unstable]` for now, however.
 
 ### `std::env`
 [std::env]: #stdenv
