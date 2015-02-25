@@ -944,6 +944,9 @@ extern {
     pub fn LLVMGetNextFunction(Fn: ValueRef) -> ValueRef;
     pub fn LLVMGetPreviousFunction(Fn: ValueRef) -> ValueRef;
     pub fn LLVMDeleteFunction(Fn: ValueRef);
+    pub fn LLVMGetNamedValue(M: ModuleRef,
+                             Name: *const c_char)
+                             -> ValueRef;
     pub fn LLVMGetOrInsertFunction(M: ModuleRef,
                                    Name: *const c_char,
                                    FunctionTy: TypeRef)

@@ -37,6 +37,8 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::parse::token::InternedString;
 
+use libc::c_uint;
+
 pub struct Stats {
     pub n_static_tydescs: Cell<uint>,
     pub n_glues_created: Cell<uint>,
@@ -136,7 +138,6 @@ pub struct LocalCrateContext<'tcx> {
     llsizingtypes: RefCell<FnvHashMap<Ty<'tcx>, Type>>,
     adt_reprs: RefCell<FnvHashMap<Ty<'tcx>, Rc<adt::Repr<'tcx>>>>,
     type_hashcodes: RefCell<FnvHashMap<Ty<'tcx>, String>>,
-    all_llvm_symbols: RefCell<FnvHashSet<String>>,
     int_type: Type,
     opaque_vec_type: Type,
     builder: BuilderRef_res,
@@ -415,7 +416,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 llsizingtypes: RefCell::new(FnvHashMap()),
                 adt_reprs: RefCell::new(FnvHashMap()),
                 type_hashcodes: RefCell::new(FnvHashMap()),
-                all_llvm_symbols: RefCell::new(FnvHashSet()),
                 int_type: Type::from_ref(ptr::null_mut()),
                 opaque_vec_type: Type::from_ref(ptr::null_mut()),
                 builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
@@ -670,10 +670,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.type_hashcodes
     }
 
-    pub fn all_llvm_symbols<'a>(&'a self) -> &'a RefCell<FnvHashSet<String>> {
-        &self.local.all_llvm_symbols
-    }
-
     pub fn stats<'a>(&'a self) -> &'a Stats {
         &self.shared.stats
     }
@@ -742,6 +738,20 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.sess().fatal(
             &format!("the type `{}` is too big for the current architecture",
                     obj.repr(self.tcx())))
+    }
+
+    /// Double-check that we never ask LLVM to declare the same symbol twice. LLVM silently mangles
+    /// such symbols if they have Internal linkage, breaking our linkage model.
+    // FIXME: this function needs to be used more. Much more.
+    pub fn assert_unique_symbol<'a>(&'a self, sym: String) {
+        let buf = CString::new(sym.clone()).unwrap();
+        let val = unsafe { llvm::LLVMGetNamedValue(self.llmod(), buf.as_ptr()) };
+        if !val.is_null() {
+            let linkage = unsafe { llvm::LLVMGetLinkage(val) };
+            if linkage == llvm::InternalLinkage as c_uint {
+                self.sess().bug(&format!("duplicate LLVM symbol: {}", sym));
+            }
+        }
     }
 }
 

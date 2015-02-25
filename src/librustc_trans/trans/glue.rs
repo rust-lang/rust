@@ -518,7 +518,7 @@ pub fn declare_tydesc<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
         llvm::LLVMAddGlobal(ccx.llmod(), ccx.tydesc_type().to_ref(),
                             buf.as_ptr())
     };
-    note_unique_llvm_symbol(ccx, name);
+    ccx.assert_unique_symbol(name.to_string());
 
     let ty_name = token::intern_and_get_ident(
         &ppaux::ty_to_string(ccx.tcx(), t));
@@ -542,7 +542,6 @@ fn declare_generic_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
         t,
         &format!("glue_{}", name));
     let llfn = decl_cdecl_fn(ccx, &fn_nm[..], llfnty, ty::mk_nil(ccx.tcx()));
-    note_unique_llvm_symbol(ccx, fn_nm.clone());
     return (fn_nm, llfn);
 }
 
