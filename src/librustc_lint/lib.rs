@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Many of the lints built into the Rust compiler.
+//! Lints in the Rust compiler.
+//!
+//! This currently only contains the definitions and implementations
+//! of most of the lints that `rustc` supports directly, it does not
+//! contain the infrastructure for defining/registering lints. That is
+//! available in `rustc::lint` and `rustc::plugin` respectively.
 //!
 //! # Note
 //!
@@ -54,6 +59,9 @@ use lint::{LintPassObject, LintId};
 
 mod builtin;
 
+/// Tell the `LintStore` about all the built-in lints (the ones
+/// defined in this crate and the ones defined in
+/// `rustc::lint::builtin`).
 pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     macro_rules! add_builtin {
         ($sess:ident, $($name:ident),*,) => (

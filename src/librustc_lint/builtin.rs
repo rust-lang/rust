@@ -8,20 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Lints built in to rustc.
+//! Lints in the Rust compiler.
 //!
-//! This is a sibling of `lint::context` in order to ensure that
-//! lints implemented here use the same public API as lint plugins.
+//! This contains lints which can feasibly be implemented as their own
+//! AST visitor. Also see `rustc::lint::builtin`, which contains the
+//! definitions of lints that are emitted directly inside the main
+//! compiler.
 //!
 //! To add a new lint to rustc, declare it here using `declare_lint!()`.
 //! Then add code to emit the new lint in the appropriate circumstances.
-//! You can do that in an existing `LintPass` if it makes sense, or in
-//! a new `LintPass`, or using `Session::add_lint` elsewhere in the
-//! compiler. Only do the latter if the check can't be written cleanly
-//! as a `LintPass`.
+//! You can do that in an existing `LintPass` if it makes sense, or in a
+//! new `LintPass`, or using `Session::add_lint` elsewhere in the
+//! compiler. Only do the latter if the check can't be written cleanly as a
+//! `LintPass` (also, note that such lints will need to be defined in
+//! `rustc::lint::builtin`, not here).
 //!
 //! If you define a new `LintPass`, you will also need to add it to the
-//! `add_builtin!` or `add_builtin_with_new!` invocation in `context.rs`.
+//! `add_builtin!` or `add_builtin_with_new!` invocation in `lib.rs`.
 //! Use the former for unit-like structs and the latter for structs with
 //! a `pub fn new()`.
 
