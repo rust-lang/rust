@@ -944,6 +944,7 @@ pub struct Method {
     pub generics: Generics,
     pub self_: SelfTy,
     pub unsafety: ast::Unsafety,
+    pub constness: ast::Constness,
     pub decl: FnDecl,
     pub abi: abi::Abi
 }
@@ -965,7 +966,8 @@ impl Clean<Method> for ast::MethodSig {
         Method {
             generics: self.generics.clean(cx),
             self_: self.explicit_self.node.clean(cx),
-            unsafety: self.unsafety.clone(),
+            unsafety: self.unsafety,
+            constness: self.constness,
             decl: decl,
             abi: self.abi
         }
@@ -1030,6 +1032,7 @@ pub struct Function {
     pub decl: FnDecl,
     pub generics: Generics,
     pub unsafety: ast::Unsafety,
+    pub constness: ast::Constness,
 }
 
 impl Clean<Item> for doctree::Function {
@@ -1045,6 +1048,7 @@ impl Clean<Item> for doctree::Function {
                 decl: self.decl.clean(cx),
                 generics: self.generics.clean(cx),
                 unsafety: self.unsafety,
+                constness: self.constness,
             }),
         }
     }
@@ -2243,6 +2247,7 @@ impl Clean<Item> for ast::ForeignItem {
                     decl: decl.clean(cx),
                     generics: generics.clean(cx),
                     unsafety: ast::Unsafety::Unsafe,
+                    constness: ast::Constness::NotConst
                 })
             }
             ast::ForeignItemStatic(ref ty, mutbl) => {

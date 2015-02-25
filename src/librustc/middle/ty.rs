@@ -2355,7 +2355,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             }
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
-                    ast::ItemFn(_, _, _, _, ref body) => {
+                    ast::ItemFn(_, _, _, _, _, ref body) => {
                         // We assume this is a function.
                         let fn_def_id = ast_util::local_def(id);
                         let fn_scheme = lookup_item_type(cx, fn_def_id);

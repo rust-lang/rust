@@ -23,7 +23,7 @@ use syntax::{attr, visit};
 use syntax::ast;
 use syntax::ast::{Attribute, Block, Crate, DefId, FnDecl, NodeId, Variant};
 use syntax::ast::{Item, Generics, StructField};
-use syntax::ast_util::is_local;
+use syntax::ast_util::{is_local, PostExpansionMethod};
 use syntax::attr::{Stability, AttrMetaMethods};
 use syntax::visit::{FnKind, Visitor};
 use syntax::feature_gate::emit_feature_warn;

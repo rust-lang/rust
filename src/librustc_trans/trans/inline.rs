@@ -55,7 +55,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             trans_item(ccx, &**item);
 
             let linkage = match item.node {
-                ast::ItemFn(_, _, _, ref generics, _) => {
+                ast::ItemFn(_, _, _, _, ref generics, _) => {
                     if generics.is_type_parameterized() {
                         // Generics have no symbol, so they can't be given any
                         // linkage.

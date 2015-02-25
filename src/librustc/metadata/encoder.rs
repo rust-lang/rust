@@ -1015,7 +1015,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_stability(rbml_w, stab);
         rbml_w.end_tag();
       }
-      ast::ItemFn(ref decl, _, _, ref generics, _) => {
+      ast::ItemFn(ref decl, _, _, _, ref generics, _) => {
         add_to_index(item, rbml_w, index);
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
@@ -1875,7 +1875,7 @@ fn encode_reachable_extern_fns(ecx: &EncodeContext, rbml_w: &mut Encoder) {
 
     for id in ecx.reachable {
         if let Some(ast_map::NodeItem(i)) = ecx.tcx.map.find(*id) {
-            if let ast::ItemFn(_, _, abi, ref generics, _) = i.node {
+            if let ast::ItemFn(_, _, _, abi, ref generics, _) = i.node {
                 if abi != abi::Rust && !generics.is_type_parameterized() {
                     rbml_w.wr_tagged_u32(tag_reachable_extern_fn_id, *id);
                 }

@@ -36,6 +36,10 @@ pub struct VisSpace(pub Option<ast::Visibility>);
 /// space after it.
 #[derive(Copy)]
 pub struct UnsafetySpace(pub ast::Unsafety);
+/// Similarly to VisSpace, this structure is used to render a function constness
+/// with a space after it.
+#[derive(Copy)]
+pub struct ConstnessSpace(pub ast::Constness);
 /// Wrapper struct for properly emitting a method declaration.
 pub struct Method<'a>(pub &'a clean::SelfTy, pub &'a clean::FnDecl);
 /// Similar to VisSpace, but used for mutability
@@ -64,6 +68,12 @@ impl VisSpace {
 impl UnsafetySpace {
     pub fn get(&self) -> ast::Unsafety {
         let UnsafetySpace(v) = *self; v
+    }
+}
+
+impl ConstnessSpace {
+    pub fn get(&self) -> ast::Constness {
+        let ConstnessSpace(v) = *self; v
     }
 }
 
@@ -609,6 +619,15 @@ impl fmt::Display for UnsafetySpace {
         match self.get() {
             ast::Unsafety::Unsafe => write!(f, "unsafe "),
             ast::Unsafety::Normal => Ok(())
+        }
+    }
+}
+
+impl fmt::Display for ConstnessSpace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.get() {
+            ast::Constness::Const => write!(f, "const "),
+            ast::Constness::NotConst => Ok(())
         }
     }
 }

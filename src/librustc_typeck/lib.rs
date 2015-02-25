@@ -218,7 +218,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             match tcx.map.find(main_id) {
                 Some(ast_map::NodeItem(it)) => {
                     match it.node {
-                        ast::ItemFn(_, _, _, ref ps, _)
+                        ast::ItemFn(_, _, _, _, ref ps, _)
                         if ps.is_parameterized() => {
                             span_err!(ccx.tcx.sess, main_span, E0131,
                                       "main function is not allowed to have type parameters");
@@ -265,7 +265,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             match tcx.map.find(start_id) {
                 Some(ast_map::NodeItem(it)) => {
                     match it.node {
-                        ast::ItemFn(_,_,_,ref ps,_)
+                        ast::ItemFn(_,_,_,_,ref ps,_)
                         if ps.is_parameterized() => {
                             span_err!(tcx.sess, start_span, E0132,
                                       "start function is not allowed to have type parameters");

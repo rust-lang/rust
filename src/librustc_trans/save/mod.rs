@@ -1176,7 +1176,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                           &location[..],
                                           self.cur_scope);
             }
-            ast::ItemFn(ref decl, _, _, ref ty_params, ref body) =>
+            ast::ItemFn(ref decl, _, _, _, ref ty_params, ref body) =>
                 self.process_fn(item, &**decl, ty_params, &**body),
             ast::ItemStatic(ref typ, mt, ref expr) =>
                 self.process_static(item, &**typ, mt, &**expr),

@@ -1034,6 +1034,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                   Vec::new(),
                   ast::ItemFn(self.fn_decl(inputs, output),
                               ast::Unsafety::Normal,
+                              ast::Constness::NotConst,
                               abi::Rust,
                               generics,
                               body))

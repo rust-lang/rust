@@ -1391,7 +1391,7 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
             let ty = ccx.icx(&()).to_ty(&ExplicitRscope, &**t);
             ty::TypeScheme { ty: ty, generics: ty::Generics::empty() }
         }
-        ast::ItemFn(ref decl, unsafety, abi, ref generics, _) => {
+        ast::ItemFn(ref decl, unsafety, _, abi, ref generics, _) => {
             let ty_generics = ty_generics_for_fn(ccx, generics, &ty::Generics::empty());
             let tofd = astconv::ty_of_bare_fn(&ccx.icx(generics), unsafety, abi, &**decl);
             let ty = ty::mk_bare_fn(tcx, Some(local_def(it.id)), tcx.mk_bare_fn(tofd));
@@ -1443,7 +1443,7 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         ast::ItemStatic(..) | ast::ItemConst(..) => {
             ty::GenericPredicates::empty()
         }
-        ast::ItemFn(_, _, _, ref ast_generics, _) => {
+        ast::ItemFn(_, _, _, _, ref ast_generics, _) => {
             ty_generic_predicates_for_fn(ccx, ast_generics, &ty::GenericPredicates::empty())
         }
         ast::ItemTy(_, ref generics) => {
