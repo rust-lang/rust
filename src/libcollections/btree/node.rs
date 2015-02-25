@@ -1136,12 +1136,12 @@ impl<K, V> Node<K, V> {
     // This must be followed by insert_edge on an internal node.
     #[inline]
     unsafe fn insert_kv(&mut self, index: usize, key: K, val: V) -> &mut V {
-        ptr::copy_memory(
+        ptr::copy(
             self.keys_mut().as_mut_ptr().offset(index as isize + 1),
             self.keys().as_ptr().offset(index as isize),
             self.len() - index
         );
-        ptr::copy_memory(
+        ptr::copy(
             self.vals_mut().as_mut_ptr().offset(index as isize + 1),
             self.vals().as_ptr().offset(index as isize),
             self.len() - index
@@ -1158,7 +1158,7 @@ impl<K, V> Node<K, V> {
     // This can only be called immediately after a call to insert_kv.
     #[inline]
     unsafe fn insert_edge(&mut self, index: usize, edge: Node<K, V>) {
-        ptr::copy_memory(
+        ptr::copy(
             self.edges_mut().as_mut_ptr().offset(index as isize + 1),
             self.edges().as_ptr().offset(index as isize),
             self.len() - index
@@ -1191,12 +1191,12 @@ impl<K, V> Node<K, V> {
         let key = ptr::read(self.keys().get_unchecked(index));
         let val = ptr::read(self.vals().get_unchecked(index));
 
-        ptr::copy_memory(
+        ptr::copy(
             self.keys_mut().as_mut_ptr().offset(index as isize),
             self.keys().as_ptr().offset(index as isize + 1),
             self.len() - index - 1
         );
-        ptr::copy_memory(
+        ptr::copy(
             self.vals_mut().as_mut_ptr().offset(index as isize),
             self.vals().as_ptr().offset(index as isize + 1),
             self.len() - index - 1
@@ -1212,7 +1212,7 @@ impl<K, V> Node<K, V> {
     unsafe fn remove_edge(&mut self, index: usize) -> Node<K, V> {
         let edge = ptr::read(self.edges().get_unchecked(index));
 
-        ptr::copy_memory(
+        ptr::copy(
             self.edges_mut().as_mut_ptr().offset(index as isize),
             self.edges().as_ptr().offset(index as isize + 1),
             self.len() - index + 1
@@ -1239,18 +1239,18 @@ impl<K, V> Node<K, V> {
         unsafe {
             right._len = self.len() / 2;
             let right_offset = self.len() - right.len();
-            ptr::copy_nonoverlapping_memory(
+            ptr::copy_nonoverlapping(
                 right.keys_mut().as_mut_ptr(),
                 self.keys().as_ptr().offset(right_offset as isize),
                 right.len()
             );
-            ptr::copy_nonoverlapping_memory(
+            ptr::copy_nonoverlapping(
                 right.vals_mut().as_mut_ptr(),
                 self.vals().as_ptr().offset(right_offset as isize),
                 right.len()
             );
             if !self.is_leaf() {
-                ptr::copy_nonoverlapping_memory(
+                ptr::copy_nonoverlapping(
                     right.edges_mut().as_mut_ptr(),
                     self.edges().as_ptr().offset(right_offset as isize),
                     right.len() + 1
@@ -1280,18 +1280,18 @@ impl<K, V> Node<K, V> {
             ptr::write(self.keys_mut().get_unchecked_mut(old_len), key);
             ptr::write(self.vals_mut().get_unchecked_mut(old_len), val);
 
-            ptr::copy_nonoverlapping_memory(
+            ptr::copy_nonoverlapping(
                 self.keys_mut().as_mut_ptr().offset(old_len as isize + 1),
                 right.keys().as_ptr(),
                 right.len()
             );
-            ptr::copy_nonoverlapping_memory(
+            ptr::copy_nonoverlapping(
                 self.vals_mut().as_mut_ptr().offset(old_len as isize + 1),
                 right.vals().as_ptr(),
                 right.len()
             );
             if !self.is_leaf() {
-                ptr::copy_nonoverlapping_memory(
+                ptr::copy_nonoverlapping(
                     self.edges_mut().as_mut_ptr().offset(old_len as isize + 1),
                     right.edges().as_ptr(),
                     right.len() + 1
