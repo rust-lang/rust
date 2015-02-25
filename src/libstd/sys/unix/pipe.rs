@@ -145,7 +145,7 @@ impl UnixStream {
             fd: self.fd(),
             guard: unsafe { self.inner.lock.lock().unwrap() },
         };
-        assert!(set_nonblocking(self.fd(), true).is_ok());
+        set_nonblocking(self.fd(), true);
         ret
     }
 
