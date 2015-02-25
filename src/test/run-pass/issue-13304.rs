@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-fast
-
 use std::env;
-use std::old_io;
+use std::io::prelude::*;
+use std::io;
+use std::process::{Command, Stdio};
 use std::str;
 
 fn main() {
@@ -25,17 +25,19 @@ fn main() {
 
 fn parent() {
     let args: Vec<String> = env::args().collect();
-    let mut p = old_io::process::Command::new(&args[0])
-                                     .arg("child").spawn().unwrap();
-    p.stdin.as_mut().unwrap().write_str("test1\ntest2\ntest3").unwrap();
+    let mut p = Command::new(&args[0]).arg("child")
+                        .stdout(Stdio::capture())
+                        .stdin(Stdio::capture())
+                        .spawn().unwrap();
+    p.stdin.as_mut().unwrap().write_all(b"test1\ntest2\ntest3").unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(out.status.success());
-    let s = str::from_utf8(&out.output).unwrap();
-    assert_eq!(s, "test1\n\ntest2\n\ntest3\n");
+    let s = str::from_utf8(&out.stdout).unwrap();
+    assert_eq!(s, "test1\ntest2\ntest3\n");
 }
 
 fn child() {
-    let mut stdin = old_io::stdin();
+    let mut stdin = io::stdin();
     for line in stdin.lock().lines() {
         println!("{}", line.unwrap());
     }

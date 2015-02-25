@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use std::old_io::process;
-use std::old_io::Command;
-use std::old_io;
 use std::env;
+use std::io::prelude::*;
+use std::io;
+use std::process::{Command, Stdio};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -21,22 +20,23 @@ fn main() {
     }
 
     test();
-
 }
 
 fn child() {
-    old_io::stdout().write_line("foo").unwrap();
-    old_io::stderr().write_line("bar").unwrap();
-    let mut stdin = old_io::stdin();
-    assert_eq!(stdin.lock().read_line().err().unwrap().kind, old_io::EndOfFile);
+    writeln!(&mut io::stdout(), "foo").unwrap();
+    writeln!(&mut io::stderr(), "bar").unwrap();
+    let mut stdin = io::stdin();
+    let mut s = String::new();
+    stdin.lock().read_line(&mut s).unwrap();
+    assert_eq!(s.len(), 0);
 }
 
 fn test() {
     let args: Vec<String> = env::args().collect();
     let mut p = Command::new(&args[0]).arg("child")
-                                     .stdin(process::Ignored)
-                                     .stdout(process::Ignored)
-                                     .stderr(process::Ignored)
+                                     .stdin(Stdio::capture())
+                                     .stdout(Stdio::capture())
+                                     .stderr(Stdio::capture())
                                      .spawn().unwrap();
     assert!(p.wait().unwrap().success());
 }
