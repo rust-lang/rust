@@ -80,7 +80,7 @@ use std::vec::{CowVec, IntoIter};
 use collections::enum_set::{EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
-use syntax::ast::{CrateNum, DefId, Ident, ItemTrait, LOCAL_CRATE};
+use syntax::ast::{CrateNum, DefId, Ident, ItemTrait, DUMMY_NODE_ID, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{StmtExpr, StmtSemi, StructField, UnnamedField, Visibility};
 use syntax::ast_util::{self, is_local, lit_is_str, local_def, PostExpansionMethod};
@@ -2132,6 +2132,13 @@ impl<'tcx> TraitRef<'tcx> {
 pub struct ParameterEnvironment<'a, 'tcx:'a> {
     pub tcx: &'a ctxt<'tcx>,
 
+    /// Item the parameter environment is associated with. For `ItemImpl` or
+    /// `ItemFn`, this is the item itself; for `MethodImplItem`, however, this
+    /// is the implementation (container) it is in. A certain method may make
+    /// use of associated types, which are at the container level. So we need
+    /// to know this when instantiating associated types for methods.
+    pub def_id: DefId,
+
     /// See `construct_free_substs` for details.
     pub free_substs: Substs<'tcx>,
 
@@ -2158,6 +2165,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
     {
         ParameterEnvironment {
             tcx: self.tcx,
+            def_id: self.def_id,
             free_substs: self.free_substs.clone(),
             implicit_region_bound: self.implicit_region_bound,
             caller_bounds: caller_bounds,
@@ -2177,6 +2185,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                 let method_bounds = &method_ty.predicates;
                                 construct_parameter_environment(
                                     cx,
+                                    method_ty.container.id(),
                                     method.span,
                                     method_generics,
                                     method_bounds,
@@ -2214,6 +2223,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                 let method_bounds = &method_ty.predicates;
                                 construct_parameter_environment(
                                     cx,
+                                    method_ty.container.id(),
                                     method.span,
                                     method_generics,
                                     method_bounds,
@@ -2243,6 +2253,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         let fn_predicates = lookup_predicates(cx, fn_def_id);
 
                         construct_parameter_environment(cx,
+                                                        fn_def_id,
                                                         item.span,
                                                         &fn_scheme.generics,
                                                         &fn_predicates,
@@ -2257,6 +2268,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         let scheme = lookup_item_type(cx, def_id);
                         let predicates = lookup_predicates(cx, def_id);
                         construct_parameter_environment(cx,
+                                                        def_id,
                                                         item.span,
                                                         &scheme.generics,
                                                         &predicates,
@@ -4268,8 +4280,8 @@ pub fn ty_region(tcx: &ctxt,
     }
 }
 
-pub fn free_region_from_def(outlives_extent: region::DestructionScopeData,
-                            def: &RegionParameterDef)
+fn free_region_from_def(outlives_extent: region::DestructionScopeData,
+                        def: &RegionParameterDef)
     -> ty::Region
 {
     let ret =
@@ -5085,19 +5097,6 @@ pub fn is_associated_type(cx: &ctxt, id: ast::DefId) -> bool {
             csearch::is_associated_type(&cx.sess.cstore, id)
         }
     })
-}
-
-/// Returns the parameter index that the given associated type corresponds to.
-pub fn associated_type_parameter_index(cx: &ctxt,
-                                       trait_def: &TraitDef,
-                                       associated_type_id: ast::DefId)
-                                       -> uint {
-    for type_parameter_def in trait_def.generics.types.iter() {
-        if type_parameter_def.def_id == associated_type_id {
-            return type_parameter_def.index as uint
-        }
-    }
-    cx.sess.bug("couldn't find associated type parameter index")
 }
 
 pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
@@ -6316,6 +6315,7 @@ impl Variance {
 /// are no free type/lifetime parameters in scope.
 pub fn empty_parameter_environment<'a,'tcx>(cx: &'a ctxt<'tcx>) -> ParameterEnvironment<'a,'tcx> {
     ty::ParameterEnvironment { tcx: cx,
+                               def_id: local_def(DUMMY_NODE_ID),
                                free_substs: Substs::empty(),
                                caller_bounds: Vec::new(),
                                implicit_region_bound: ty::ReEmpty,
@@ -6353,7 +6353,7 @@ pub fn construct_free_substs<'a,'tcx>(
                           region_params: &[RegionParameterDef])
     {
         for r in region_params {
-            regions.push(r.space, ty::free_region_from_def(all_outlive_extent, r));
+            regions.push(r.space, free_region_from_def(all_outlive_extent, r));
         }
     }
 
@@ -6372,6 +6372,7 @@ pub fn construct_free_substs<'a,'tcx>(
 /// See `ParameterEnvironment` struct def'n for details
 pub fn construct_parameter_environment<'a,'tcx>(
     tcx: &'a ctxt<'tcx>,
+    def_id: DefId,
     span: Span,
     generics: &ty::Generics<'tcx>,
     generic_predicates: &ty::GenericPredicates<'tcx>,
@@ -6422,6 +6423,7 @@ pub fn construct_parameter_environment<'a,'tcx>(
 
     let unnormalized_env = ty::ParameterEnvironment {
         tcx: tcx,
+        def_id: def_id,
         free_substs: free_substs,
         implicit_region_bound: ty::ReScope(free_id_outlive.to_code_extent()),
         caller_bounds: predicates,

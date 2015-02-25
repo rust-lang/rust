@@ -21,7 +21,7 @@ use super::VtableImplData;
 use super::util;
 
 use middle::infer;
-use middle::subst::{Subst, Substs};
+use middle::subst::Substs;
 use middle::ty::{self, AsPredicate, ReferencesError, RegionEscape,
                  HasProjectionTypes, ToPolyTraitRef, Ty};
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
@@ -561,8 +561,7 @@ fn assemble_candidates_from_trait_def<'cx,'tcx>(
     };
 
     // If so, extract what we know from the trait and try to come up with a good answer.
-    let trait_predicates = ty::lookup_predicates(selcx.tcx(), trait_ref.def_id);
-    let bounds = trait_predicates.instantiate(selcx.tcx(), trait_ref.substs);
+    let bounds = selcx.instantiate_trait_predicates(&trait_ref);
     assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
                                         candidate_set, bounds.predicates.into_vec());
 }
@@ -850,36 +849,38 @@ fn confirm_impl_candidate<'cx,'tcx>(
     impl_vtable: VtableImplData<'tcx, PredicateObligation<'tcx>>)
     -> (Ty<'tcx>, Vec<PredicateObligation<'tcx>>)
 {
+    let tcx = selcx.tcx();
     // there don't seem to be nicer accessors to these:
-    let impl_items_map = selcx.tcx().impl_items.borrow();
-    let impl_or_trait_items_map = selcx.tcx().impl_or_trait_items.borrow();
+    let impl_items_map = tcx.impl_items.borrow();
+    let impl_or_trait_items_map = tcx.impl_or_trait_items.borrow();
 
     let impl_items = &impl_items_map[impl_vtable.impl_def_id];
-    let mut impl_ty = None;
-    for impl_item in impl_items {
-        let assoc_type = match impl_or_trait_items_map[impl_item.def_id()] {
-            ty::TypeTraitItem(ref assoc_type) => assoc_type.clone(),
-            ty::MethodTraitItem(..) => { continue; }
-        };
+    let assoc_type =
+        impl_items
+            .iter()
+            .filter_map(|item| {
+                match impl_or_trait_items_map[item.def_id()] {
+                    ty::TypeTraitItem(ref assoc_type)
+                    if assoc_type.name == obligation.predicate.item_name => {
+                        Some(assoc_type)
+                    }
+                    _ => None
+                }
+            })
+            .next();
 
-        if assoc_type.name != obligation.predicate.item_name {
-            continue;
-        }
-
-        let impl_poly_ty = ty::lookup_item_type(selcx.tcx(), assoc_type.def_id);
-        impl_ty = Some(impl_poly_ty.ty.subst(selcx.tcx(), &impl_vtable.substs));
-        break;
-    }
-
-    match impl_ty {
-        Some(ty) => (ty, impl_vtable.nested.into_vec()),
+    match assoc_type {
+        Some(assoc_type) => {
+            let impl_ty = selcx.instantiate_assoc_type(assoc_type,
+                                                       &impl_vtable.substs);
+            (impl_ty, impl_vtable.nested.into_vec())
+        },
         None => {
-            // This means that the impl is missing a
-            // definition for the associated type. This error
-            // ought to be reported by the type checker method
-            // `check_impl_items_against_trait`, so here we
-            // just return ty_err.
-            (selcx.tcx().types.err, vec!())
+            // This means that the impl is missing a definition for the
+            // associated type. This error ought to be reported by the
+            // type checker method `check_impl_items_against_trait`, so
+            // here we just return ty_err.
+            (tcx.types.err, vec![])
         }
     }
 }

@@ -8,22 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that the compiler checks that the 'static bound declared in
-// the trait must be satisfied on the impl. Issue #20890.
+pub trait LineFormatter<'a> {
+    type Iter: Iterator<Item=&'a str> + 'a;
+    fn iter(&'a self, line: &'a str) -> Self::Iter;
 
-trait Foo {
-    type Value: 'static;
-    fn dummy(&self) { }
+    fn dimensions(&'a self, line: &'a str) {
+        for grapheme in self.iter(line) {
+            let _ = grapheme.len();
+        }
+    }
 }
 
-impl<'a> Foo for &'a i32 {
-    //~^ ERROR does not fulfill the required lifetime
-    type Value = &'a i32;
-}
-
-impl<'a> Foo for i32 {
-    // OK.
-    type Value = i32;
-}
-
-fn main() { }
+fn main() {}

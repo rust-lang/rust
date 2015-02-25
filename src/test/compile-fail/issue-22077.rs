@@ -8,22 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that the compiler checks that the 'static bound declared in
-// the trait must be satisfied on the impl. Issue #20890.
-
-trait Foo {
-    type Value: 'static;
-    fn dummy(&self) { }
+trait Fun {
+    type Output;
+    fn call<'x>(&'x self) -> Self::Output;
 }
 
-impl<'a> Foo for &'a i32 {
-    //~^ ERROR does not fulfill the required lifetime
-    type Value = &'a i32;
+struct Holder { x: String }
+
+impl<'a> Fun for Holder {
+    type Output = &'a str;
+    fn call<'b>(&'b self) -> &'b str {
+    //~^ ERROR method `call` has an incompatible type for trait
+        &self.x[..]
+    }
 }
 
-impl<'a> Foo for i32 {
-    // OK.
-    type Value = i32;
-}
-
-fn main() { }
+fn main() {}

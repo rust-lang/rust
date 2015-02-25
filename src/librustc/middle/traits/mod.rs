@@ -425,10 +425,10 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
     }
 }
 
-pub fn normalize_param_env<'a,'tcx>(param_env: &ty::ParameterEnvironment<'a,'tcx>,
-                                    cause: ObligationCause<'tcx>)
-                                    -> Result<ty::ParameterEnvironment<'a,'tcx>,
-                                              Vec<FulfillmentError<'tcx>>>
+fn normalize_param_env<'a,'tcx>(param_env: &ty::ParameterEnvironment<'a,'tcx>,
+                                cause: ObligationCause<'tcx>)
+                                -> Result<ty::ParameterEnvironment<'a,'tcx>,
+                                          Vec<FulfillmentError<'tcx>>>
 {
     let tcx = param_env.tcx;
 
