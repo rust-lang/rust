@@ -34,6 +34,7 @@
 //! both occur before the crate is rendered.
 pub use self::ExternalLocation::*;
 
+use std::ascii::OwnedAsciiExt;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
@@ -246,6 +247,51 @@ struct IndexItem {
     path: String,
     desc: String,
     parent: Option<ast::DefId>,
+    search_type: Option<IndexItemFunctionType>,
+}
+
+/// A type used for the search index.
+struct Type {
+    name: Option<String>,
+}
+
+impl fmt::Display for Type {
+    /// Formats type as {name: $name}.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Wrapping struct fmt should never call us when self.name is None,
+        // but just to be safe we write `null` in that case.
+        match self.name {
+            Some(ref n) => write!(f, "{{\"name\":\"{}\"}}", n),
+            None => write!(f, "null")
+        }
+    }
+}
+
+/// Full type of functions/methods in the search index.
+struct IndexItemFunctionType {
+    inputs: Vec<Type>,
+    output: Option<Type>
+}
+
+impl fmt::Display for IndexItemFunctionType {
+    /// Formats a full fn type as a JSON {inputs: [Type], outputs: Type/null}.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // If we couldn't figure out a type, just write `null`.
+        if self.inputs.iter().any(|ref i| i.name.is_none()) ||
+           (self.output.is_some() && self.output.as_ref().unwrap().name.is_none()) {
+            return write!(f, "null")
+        }
+
+        let inputs: Vec<String> = self.inputs.iter().map(|ref t| format!("{}", t)).collect();
+        try!(write!(f, "{{\"inputs\":[{}],\"output\":", inputs.connect(",")));
+
+        match self.output {
+            Some(ref t) => try!(write!(f, "{}", t)),
+            None => try!(write!(f, "null"))
+        };
+
+        Ok(try!(write!(f, "}}")))
+    }
 }
 
 // TLS keys used to carry information around during rendering.
@@ -413,6 +459,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> old_io::IoResult<Stri
                         path: fqp[..fqp.len() - 1].connect("::"),
                         desc: shorter(item.doc_value()).to_string(),
                         parent: Some(did),
+                        search_type: None,
                     });
                 },
                 None => {}
@@ -462,7 +509,11 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> old_io::IoResult<Stri
                 let pathid = *nodeid_to_pathid.get(&nodeid).unwrap();
                 try!(write!(&mut w, ",{}", pathid));
             }
-            None => {}
+            None => try!(write!(&mut w, ",null"))
+        }
+        match item.search_type {
+            Some(ref t) => try!(write!(&mut w, ",{}", t)),
+            None => try!(write!(&mut w, ",null"))
         }
         try!(write!(&mut w, "]"));
     }
@@ -877,12 +928,21 @@ impl DocFolder for Cache {
 
             match parent {
                 (parent, Some(path)) if is_method || (!self.privmod && !hidden_field) => {
+                    // Needed to determine `self` type.
+                    let parent_basename = self.parent_stack.first().and_then(|parent| {
+                        match self.paths.get(parent) {
+                            Some(&(ref fqp, _)) => Some(fqp[fqp.len() - 1].clone()),
+                            _ => None
+                        }
+                    });
+
                     self.search_index.push(IndexItem {
                         ty: shortty(&item),
                         name: s.to_string(),
                         path: path.connect("::").to_string(),
                         desc: shorter(item.doc_value()).to_string(),
                         parent: parent,
+                        search_type: get_index_search_type(&item, parent_basename),
                     });
                 }
                 (Some(parent), None) if is_method || (!self.privmod && !hidden_field)=> {
@@ -2302,6 +2362,52 @@ fn get_basic_keywords() -> &'static str {
 
 fn make_item_keywords(it: &clean::Item) -> String {
     format!("{}, {}", get_basic_keywords(), it.name.as_ref().unwrap())
+}
+
+fn get_index_search_type(item: &clean::Item,
+                         parent: Option<String>) -> Option<IndexItemFunctionType> {
+    let decl = match item.inner {
+        clean::FunctionItem(ref f) => &f.decl,
+        clean::MethodItem(ref m) => &m.decl,
+        clean::TyMethodItem(ref m) => &m.decl,
+        _ => return None
+    };
+
+    let mut inputs = Vec::new();
+
+    // Consider `self` an argument as well.
+    if let Some(name) = parent {
+        inputs.push(Type { name: Some(name.into_ascii_lowercase()) });
+    }
+
+    inputs.extend(&mut decl.inputs.values.iter().map(|arg| {
+        get_index_type(&arg.type_)
+    }));
+
+    let output = match decl.output {
+        clean::FunctionRetTy::Return(ref return_type) => Some(get_index_type(return_type)),
+        _ => None
+    };
+
+    Some(IndexItemFunctionType { inputs: inputs, output: output })
+}
+
+fn get_index_type(clean_type: &clean::Type) -> Type {
+    Type { name: get_index_type_name(clean_type).map(|s| s.into_ascii_lowercase()) }
+}
+
+fn get_index_type_name(clean_type: &clean::Type) -> Option<String> {
+    match *clean_type {
+        clean::ResolvedPath { ref path, .. } => {
+            let segments = &path.segments;
+            Some(segments[segments.len() - 1].name.clone())
+        },
+        clean::Generic(ref s) => Some(s.clone()),
+        clean::Primitive(ref p) => Some(format!("{:?}", p)),
+        clean::BorrowedRef { ref type_, .. } => get_index_type_name(type_),
+        // FIXME: add all from clean::Type.
+        _ => None
+    }
 }
 
 pub fn cache() -> Arc<Cache> {
