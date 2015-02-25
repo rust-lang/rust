@@ -97,7 +97,7 @@ use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace
 use middle::traits;
 use middle::ty::{FnSig, GenericPredicates, VariantInfo, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
-use middle::ty::{self, HasProjectionTypes, RegionEscape, Ty};
+use middle::ty::{self, HasProjectionTypes, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
@@ -106,7 +106,7 @@ use session::Session;
 use {CrateCtxt, lookup_full_def, require_same_types};
 use TypeAndSubsts;
 use lint;
-use util::common::{block_query, indenter, loop_query};
+use util::common::{block_query, ErrorReported, indenter, loop_query};
 use util::ppaux::{self, Repr};
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 use util::lev_distance::lev_distance;
@@ -1206,16 +1206,46 @@ fn check_cast<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> { self.ccx.tcx }
 
-    fn get_item_type_scheme(&self, id: ast::DefId) -> ty::TypeScheme<'tcx> {
-        ty::lookup_item_type(self.tcx(), id)
+    fn get_item_type_scheme(&self, _: Span, id: ast::DefId)
+                            -> Result<ty::TypeScheme<'tcx>, ErrorReported>
+    {
+        Ok(ty::lookup_item_type(self.tcx(), id))
     }
 
-    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>> {
-        ty::lookup_trait_def(self.tcx(), id)
+    fn get_trait_def(&self, _: Span, id: ast::DefId)
+                     -> Result<Rc<ty::TraitDef<'tcx>>, ErrorReported>
+    {
+        Ok(ty::lookup_trait_def(self.tcx(), id))
     }
 
     fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
         Some(&self.inh.param_env.free_substs)
+    }
+
+    fn get_type_parameter_bounds(&self,
+                                 _: Span,
+                                 node_id: ast::NodeId)
+                                 -> Result<Vec<ty::PolyTraitRef<'tcx>>, ErrorReported>
+    {
+        let def = self.tcx().type_parameter_def(node_id);
+        let r = self.inh.param_env.caller_bounds
+                                  .iter()
+                                  .filter_map(|predicate| {
+                                      match *predicate {
+                                          ty::Predicate::Trait(ref data) => {
+                                              if data.0.self_ty().is_param(def.space, def.index) {
+                                                  Some(data.to_poly_trait_ref())
+                                              } else {
+                                                  None
+                                              }
+                                          }
+                                          _ => {
+                                              None
+                                          }
+                                      }
+                                  })
+                                  .collect();
+        Ok(r)
     }
 
     fn ty_infer(&self, _span: Span) -> Ty<'tcx> {
@@ -3607,7 +3637,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 }
             } else {
               tcx.sess.span_bug(expr.span,
-                                &format!("unbound path {}", expr.repr(tcx))[])
+                                &format!("unbound path {}", expr.repr(tcx)))
           };
 
           let mut def = path_res.base_def;

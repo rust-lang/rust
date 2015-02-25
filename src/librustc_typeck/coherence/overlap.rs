@@ -147,7 +147,7 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                             None => {
                                 self.tcx.sess.bug(
                                           &format!("no default implementation recorded for `{:?}`",
-                                          item)[]);
+                                          item));
                             }
                         }
                     }

@@ -99,6 +99,7 @@ pub struct Options {
     pub test: bool,
     pub parse_only: bool,
     pub no_trans: bool,
+    pub treat_err_as_bug: bool,
     pub no_analysis: bool,
     pub debugging_opts: DebuggingOptions,
     /// Whether to write dependency files. It's (enabled, optional filename).
@@ -223,6 +224,7 @@ pub fn basic_options() -> Options {
         test: false,
         parse_only: false,
         no_trans: false,
+        treat_err_as_bug: false,
         no_analysis: false,
         debugging_opts: basic_debugging_options(),
         write_dependency_info: (false, None),
@@ -573,6 +575,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "Parse only; do not compile, assemble, or link"),
     no_trans: bool = (false, parse_bool,
           "Run all passes except translation; no output"),
+    treat_err_as_bug: bool = (false, parse_bool,
+          "Treat all errors that occur as bugs"),
     no_analysis: bool = (false, parse_bool,
           "Parse and expand the source, but run no analysis"),
     extra_plugins: Vec<String> = (Vec::new(), parse_list,
@@ -843,6 +847,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let parse_only = debugging_opts.parse_only;
     let no_trans = debugging_opts.no_trans;
+    let treat_err_as_bug = debugging_opts.treat_err_as_bug;
     let no_analysis = debugging_opts.no_analysis;
 
     if debugging_opts.debug_llvm {
@@ -1030,6 +1035,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         test: test,
         parse_only: parse_only,
         no_trans: no_trans,
+        treat_err_as_bug: treat_err_as_bug,
         no_analysis: no_analysis,
         debugging_opts: debugging_opts,
         write_dependency_info: write_dependency_info,

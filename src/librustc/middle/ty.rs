@@ -55,7 +55,7 @@ use middle::region;
 use middle::resolve_lifetime;
 use middle::infer;
 use middle::stability;
-use middle::subst::{self, Subst, Substs, VecPerParamSpace};
+use middle::subst::{self, ParamSpace, Subst, Substs, VecPerParamSpace};
 use middle::traits;
 use middle::ty;
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
@@ -1750,7 +1750,6 @@ pub struct TypeParameterDef<'tcx> {
     pub def_id: ast::DefId,
     pub space: subst::ParamSpace,
     pub index: u32,
-    pub bounds: ParamBounds<'tcx>,
     pub default: Option<Ty<'tcx>>,
     pub object_lifetime_default: Option<ObjectLifetimeDefault>,
 }
@@ -2546,6 +2545,13 @@ impl<'tcx> ctxt<'tcx> {
     {
         self.closure_tys.borrow()[def_id].subst(self, substs)
     }
+
+    pub fn type_parameter_def(&self,
+                              node_id: ast::NodeId)
+                              -> TypeParameterDef<'tcx>
+    {
+        self.ty_param_defs.borrow()[node_id].clone()
+    }
 }
 
 // Interns a type/name combination, stores the resulting box in cx.interner,
@@ -2994,6 +3000,13 @@ impl<'tcx> TyS<'tcx> {
         match self.sty {
             ty::ty_param(ref d) => Some(d.clone()),
             _ => None,
+        }
+    }
+
+    pub fn is_param(&self, space: ParamSpace, index: u32) -> bool {
+        match self.sty {
+            ty::ty_param(ref data) => data.space == space && data.idx == index,
+            _ => false,
         }
     }
 }
