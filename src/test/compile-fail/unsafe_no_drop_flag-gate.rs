@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that the type variable in the type(`Vec<_>`) of a closed over
-// variable does not interfere with type inference.
+pub struct T;
 
-fn f<F: FnMut()>(mut f: F) {
-    f();
+#[unsafe_no_drop_flag]
+//~^ ERROR unsafe_no_drop_flag has unstable semantics and may be removed
+pub struct S {
+    pub x: T,
 }
 
-fn main() {
-    let mut v: Vec<_> = vec![];
-    f(|| v.push(0));
-    assert_eq!(v, [0]);
+impl Drop for S {
+    fn drop(&mut self) {}
 }
+
+pub fn main() {}

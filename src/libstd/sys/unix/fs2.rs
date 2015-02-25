@@ -90,6 +90,7 @@ impl FilePermissions {
             self.mode |= 0o222;
         }
     }
+    pub fn mode(&self) -> i32 { self.mode as i32 }
 }
 
 impl FromInner<i32> for FilePermissions {

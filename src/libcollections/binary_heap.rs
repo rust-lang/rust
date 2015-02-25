@@ -480,7 +480,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// heap.push(3);
     ///
     /// let vec = heap.into_sorted_vec();
-    /// assert_eq!(vec, vec![1, 2, 3, 4, 5, 6, 7]);
+    /// assert_eq!(vec, [1, 2, 3, 4, 5, 6, 7]);
     /// ```
     pub fn into_sorted_vec(mut self) -> Vec<T> {
         let mut end = self.len();

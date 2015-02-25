@@ -556,7 +556,7 @@ impl<T> Option<T> {
     /// ```
     /// let x = Some("string");
     /// let v: Vec<&str> = x.into_iter().collect();
-    /// assert_eq!(v, vec!["string"]);
+    /// assert_eq!(v, ["string"]);
     ///
     /// let x = None;
     /// let v: Vec<&str> = x.into_iter().collect();

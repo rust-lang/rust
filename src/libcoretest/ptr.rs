@@ -156,7 +156,7 @@ fn test_ptr_subtraction() {
             m_ptr = m_ptr.offset(-1);
         }
 
-        assert!(xs_mut == vec![0,2,4,6,8,10,12,14,16,18]);
+        assert_eq!(xs_mut, [0,2,4,6,8,10,12,14,16,18]);
     }
 }
 

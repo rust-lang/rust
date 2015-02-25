@@ -10,11 +10,13 @@
 
 //! Abstraction of a thread pool for basic parallelism.
 
-#![unstable(feature = "std_misc",
-            reason = "the semantics of a failing task and whether a thread is \
-                      re-attached to a thread pool are somewhat unclear, and the \
-                      utility of this type in `std::sync` is questionable with \
-                      respect to the jobs of other primitives")]
+#![deprecated(since = "1.0.0",
+              reason = "This kind of API needs some time to bake in \
+                        crates.io. This functionality is available through \
+                        https://crates.io/crates/threadpool")]
+#![unstable(feature = "std_misc")]
+
+#![allow(deprecated)]
 
 use core::prelude::*;
 

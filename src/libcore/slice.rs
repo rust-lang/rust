@@ -1500,7 +1500,7 @@ pub mod bytes {
     impl MutableByteVector for [u8] {
         #[inline]
         fn set_memory(&mut self, value: u8) {
-            unsafe { ptr::set_memory(self.as_mut_ptr(), value, self.len()) };
+            unsafe { ptr::write_bytes(self.as_mut_ptr(), value, self.len()) };
         }
     }
 
@@ -1514,9 +1514,9 @@ pub mod bytes {
         // `dst` is unaliasable, so we know statically it doesn't overlap
         // with `src`.
         unsafe {
-            ptr::copy_nonoverlapping_memory(dst.as_mut_ptr(),
-                                            src.as_ptr(),
-                                            len_src);
+            ptr::copy_nonoverlapping(dst.as_mut_ptr(),
+                                     src.as_ptr(),
+                                     len_src);
         }
     }
 }

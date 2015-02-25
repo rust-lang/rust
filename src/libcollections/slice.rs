@@ -1331,12 +1331,10 @@ fn insertion_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> O
 
             if i != j {
                 let tmp = ptr::read(read_ptr);
-                ptr::copy_memory(buf_v.offset(j + 1),
-                                 &*buf_v.offset(j),
-                                 (i - j) as usize);
-                ptr::copy_nonoverlapping_memory(buf_v.offset(j),
-                                                &tmp,
-                                                1);
+                ptr::copy(buf_v.offset(j + 1),
+                          &*buf_v.offset(j),
+                          (i - j) as usize);
+                ptr::copy_nonoverlapping(buf_v.offset(j), &tmp, 1);
                 mem::forget(tmp);
             }
         }
@@ -1409,10 +1407,10 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
                 // j + 1 could be `len` (for the last `i`), but in
                 // that case, `i == j` so we don't copy. The
                 // `.offset(j)` is always in bounds.
-                ptr::copy_memory(buf_dat.offset(j + 1),
-                                 &*buf_dat.offset(j),
-                                 i - j as usize);
-                ptr::copy_nonoverlapping_memory(buf_dat.offset(j), read_ptr, 1);
+                ptr::copy(buf_dat.offset(j + 1),
+                          &*buf_dat.offset(j),
+                          i - j as usize);
+                ptr::copy_nonoverlapping(buf_dat.offset(j), read_ptr, 1);
             }
         }
     }
@@ -1460,11 +1458,11 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
                     if left == right_start {
                         // the number remaining in this run.
                         let elems = (right_end as usize - right as usize) / mem::size_of::<T>();
-                        ptr::copy_nonoverlapping_memory(out, &*right, elems);
+                        ptr::copy_nonoverlapping(out, &*right, elems);
                         break;
                     } else if right == right_end {
                         let elems = (right_start as usize - left as usize) / mem::size_of::<T>();
-                        ptr::copy_nonoverlapping_memory(out, &*left, elems);
+                        ptr::copy_nonoverlapping(out, &*left, elems);
                         break;
                     }
 
@@ -1478,7 +1476,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
                     } else {
                         step(&mut left)
                     };
-                    ptr::copy_nonoverlapping_memory(out, &*to_copy, 1);
+                    ptr::copy_nonoverlapping(out, &*to_copy, 1);
                     step(&mut out);
                 }
             }
@@ -1492,7 +1490,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
     // write the result to `v` in one go, so that there are never two copies
     // of the same object in `v`.
     unsafe {
-        ptr::copy_nonoverlapping_memory(v.as_mut_ptr(), &*buf_dat, len);
+        ptr::copy_nonoverlapping(v.as_mut_ptr(), &*buf_dat, len);
     }
 
     // increment the pointer, returning the old pointer.
@@ -1779,10 +1777,10 @@ mod tests {
         let mut v = vec![1, 2, 3, 4, 5];
         let mut e = v.swap_remove(0);
         assert_eq!(e, 1);
-        assert_eq!(v, vec![5, 2, 3, 4]);
+        assert_eq!(v, [5, 2, 3, 4]);
         e = v.swap_remove(3);
         assert_eq!(e, 4);
-        assert_eq!(v, vec![5, 2, 3]);
+        assert_eq!(v, [5, 2, 3]);
     }
 
     #[test]
@@ -1890,7 +1888,7 @@ mod tests {
     fn test_retain() {
         let mut v = vec![1, 2, 3, 4, 5];
         v.retain(is_odd);
-        assert_eq!(v, vec![1, 3, 5]);
+        assert_eq!(v, [1, 3, 5]);
     }
 
     #[test]
@@ -2159,45 +2157,45 @@ mod tests {
         let v: [Vec<i32>; 0] = [];
         let c = v.concat();
         assert_eq!(c, []);
-        let d = [vec![1], vec![2,3]].concat();
-        assert_eq!(d, vec![1, 2, 3]);
+        let d = [vec![1], vec![2, 3]].concat();
+        assert_eq!(d, [1, 2, 3]);
 
         let v: &[&[_]] = &[&[1], &[2, 3]];
-        assert_eq!(v.connect(&0), vec![1, 0, 2, 3]);
+        assert_eq!(v.connect(&0), [1, 0, 2, 3]);
         let v: &[&[_]] = &[&[1], &[2], &[3]];
-        assert_eq!(v.connect(&0), vec![1, 0, 2, 0, 3]);
+        assert_eq!(v.connect(&0), [1, 0, 2, 0, 3]);
     }
 
     #[test]
     fn test_connect() {
         let v: [Vec<i32>; 0] = [];
-        assert_eq!(v.connect(&0), vec![]);
-        assert_eq!([vec![1], vec![2, 3]].connect(&0), vec![1, 0, 2, 3]);
-        assert_eq!([vec![1], vec![2], vec![3]].connect(&0), vec![1, 0, 2, 0, 3]);
+        assert_eq!(v.connect(&0), []);
+        assert_eq!([vec![1i], vec![2, 3]].connect(&0), [1, 0, 2, 3]);
+        assert_eq!([vec![1i], vec![2], vec![3]].connect(&0), [1, 0, 2, 0, 3]);
 
         let v: [&[_]; 2] = [&[1], &[2, 3]];
-        assert_eq!(v.connect(&0), vec![1, 0, 2, 3]);
+        assert_eq!(v.connect(&0), [1, 0, 2, 3]);
         let v: [&[_]; 3] = [&[1], &[2], &[3]];
-        assert_eq!(v.connect(&0), vec![1, 0, 2, 0, 3]);
+        assert_eq!(v.connect(&0), [1, 0, 2, 0, 3]);
     }
 
     #[test]
     fn test_insert() {
         let mut a = vec![1, 2, 4];
         a.insert(2, 3);
-        assert_eq!(a, vec![1, 2, 3, 4]);
+        assert_eq!(a, [1, 2, 3, 4]);
 
         let mut a = vec![1, 2, 3];
         a.insert(0, 0);
-        assert_eq!(a, vec![0, 1, 2, 3]);
+        assert_eq!(a, [0, 1, 2, 3]);
 
         let mut a = vec![1, 2, 3];
         a.insert(3, 4);
-        assert_eq!(a, vec![1, 2, 3, 4]);
+        assert_eq!(a, [1, 2, 3, 4]);
 
         let mut a = vec![];
         a.insert(0, 1);
-        assert_eq!(a, vec![1]);
+        assert_eq!(a, [1]);
     }
 
     #[test]
@@ -2212,16 +2210,16 @@ mod tests {
         let mut a = vec![1, 2, 3, 4];
 
         assert_eq!(a.remove(2), 3);
-        assert_eq!(a, vec![1, 2, 4]);
+        assert_eq!(a, [1, 2, 4]);
 
         assert_eq!(a.remove(2), 4);
-        assert_eq!(a, vec![1, 2]);
+        assert_eq!(a, [1, 2]);
 
         assert_eq!(a.remove(0), 1);
-        assert_eq!(a, vec![2]);
+        assert_eq!(a, [2]);
 
         assert_eq!(a.remove(0), 2);
-        assert_eq!(a, vec![]);
+        assert_eq!(a, []);
     }
 
     #[test]

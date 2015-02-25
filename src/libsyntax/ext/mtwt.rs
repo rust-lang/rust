@@ -288,19 +288,19 @@ mod tests {
     fn xorpush_test () {
         let mut s = Vec::new();
         xor_push(&mut s, 14);
-        assert_eq!(s.clone(), vec!(14));
+        assert_eq!(s.clone(), [14]);
         xor_push(&mut s, 14);
-        assert_eq!(s.clone(), Vec::new());
+        assert_eq!(s.clone(), []);
         xor_push(&mut s, 14);
-        assert_eq!(s.clone(), vec!(14));
+        assert_eq!(s.clone(), [14]);
         xor_push(&mut s, 15);
-        assert_eq!(s.clone(), vec!(14, 15));
+        assert_eq!(s.clone(), [14, 15]);
         xor_push(&mut s, 16);
-        assert_eq!(s.clone(), vec!(14, 15, 16));
+        assert_eq!(s.clone(), [14, 15, 16]);
         xor_push(&mut s, 16);
-        assert_eq!(s.clone(), vec!(14, 15));
+        assert_eq!(s.clone(), [14, 15]);
         xor_push(&mut s, 15);
-        assert_eq!(s.clone(), vec!(14));
+        assert_eq!(s.clone(), [14]);
     }
 
     fn id(n: u32, s: SyntaxContext) -> Ident {
@@ -389,13 +389,13 @@ mod tests {
         assert_eq!(marksof_internal (EMPTY_CTXT,stopname,&t),Vec::new());
         // FIXME #5074: ANF'd to dodge nested calls
         { let ans = unfold_marks(vec!(4,98),EMPTY_CTXT,&mut t);
-         assert_eq! (marksof_internal (ans,stopname,&t),vec!(4,98));}
+         assert_eq! (marksof_internal (ans,stopname,&t), [4, 98]);}
         // does xoring work?
         { let ans = unfold_marks(vec!(5,5,16),EMPTY_CTXT,&mut t);
-         assert_eq! (marksof_internal (ans,stopname,&t), vec!(16));}
+         assert_eq! (marksof_internal (ans,stopname,&t), [16]);}
         // does nested xoring work?
         { let ans = unfold_marks(vec!(5,10,10,5,16),EMPTY_CTXT,&mut t);
-         assert_eq! (marksof_internal (ans, stopname,&t), vec!(16));}
+         assert_eq! (marksof_internal (ans, stopname,&t), [16]);}
         // rename where stop doesn't match:
         { let chain = vec!(M(9),
                         R(id(name1.usize() as u32,
@@ -403,7 +403,7 @@ mod tests {
                           Name(100101102)),
                         M(14));
          let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
-         assert_eq! (marksof_internal (ans, stopname, &t), vec!(9,14));}
+         assert_eq! (marksof_internal (ans, stopname, &t), [9, 14]);}
         // rename where stop does match
         { let name1sc = apply_mark_internal(4, EMPTY_CTXT, &mut t);
          let chain = vec!(M(9),
@@ -411,7 +411,7 @@ mod tests {
                          stopname),
                        M(14));
          let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);
-         assert_eq! (marksof_internal (ans, stopname, &t), vec!(9)); }
+         assert_eq! (marksof_internal (ans, stopname, &t), [9]); }
     }
 
 

@@ -49,6 +49,7 @@ use ops::{Drop, FnOnce};
 use option::Option::{Some, None};
 use option::Option;
 use old_path::{Path, GenericPath, BytesContainer};
+use path::{self, PathBuf};
 use ptr::PtrExt;
 use ptr;
 use result::Result::{Err, Ok};
@@ -66,6 +67,35 @@ use vec::Vec;
 
 #[cfg(unix)] pub use sys::ext as unix;
 #[cfg(windows)] pub use sys::ext as windows;
+
+fn err2old(new: ::io::Error) -> IoError {
+    IoError {
+        kind: ::old_io::OtherIoError,
+        desc: "os error",
+        detail: Some(new.to_string()),
+    }
+}
+
+#[cfg(windows)]
+fn path2new(path: &Path) -> PathBuf {
+    PathBuf::new(path.as_str().unwrap())
+}
+#[cfg(unix)]
+fn path2new(path: &Path) -> PathBuf {
+    use os::unix::prelude::*;
+    PathBuf::new(<OsStr as OsStrExt>::from_bytes(path.as_vec()))
+}
+
+#[cfg(unix)]
+fn path2old(path: &path::Path) -> Path {
+    use os::unix::prelude::*;
+    use ffi::AsOsStr;
+    Path::new(path.as_os_str().as_bytes())
+}
+#[cfg(windows)]
+fn path2old(path: &path::Path) -> Path {
+    Path::new(path.to_str().unwrap())
+}
 
 /// Get the number of cores available
 pub fn num_cpus() -> uint {
@@ -100,10 +130,9 @@ pub const TMPBUF_SZ : uint = 1000;
 /// let current_working_directory = os::getcwd().unwrap();
 /// println!("The current directory is {:?}", current_working_directory.display());
 /// ```
-#[deprecated(since = "1.0.0", reason = "renamed to std::env::current_dir")]
 #[unstable(feature = "os")]
 pub fn getcwd() -> IoResult<Path> {
-    env::current_dir()
+    env::current_dir().map_err(err2old).map(|s| path2old(&s))
 }
 
 /// Returns a vector of (variable, value) pairs, for all the environment
@@ -245,12 +274,11 @@ pub fn unsetenv(n: &str) {
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
-#[deprecated(since = "1.0.0", reason = "renamed to env::split_paths")]
 #[unstable(feature = "os")]
 pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
     let b = unparsed.container_as_bytes();
     let s = str::from_utf8(b).unwrap();
-    env::split_paths(s).collect()
+    env::split_paths(s).map(|s| path2old(&s)).collect()
 }
 
 /// Joins a collection of `Path`s appropriately for the `PATH`
@@ -274,7 +302,6 @@ pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
 /// paths.push(Path::new("/home/xyz/bin"));
 /// os::setenv(key, os::join_paths(paths.as_slice()).unwrap());
 /// ```
-#[deprecated(since = "1.0.0", reason = "renamed to env::join_paths")]
 #[unstable(feature = "os")]
 pub fn join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static str> {
     env::join_paths(paths.iter().map(|s| {
@@ -335,10 +362,9 @@ pub fn dll_filename(base: &str) -> String {
 ///     None => println!("Unable to get the path of this executable!")
 /// };
 /// ```
-#[deprecated(since = "1.0.0", reason = "renamed to env::current_exe")]
 #[unstable(feature = "os")]
 pub fn self_exe_name() -> Option<Path> {
-    env::current_exe().ok()
+    env::current_exe().ok().map(|p| path2old(&p))
 }
 
 /// Optionally returns the filesystem path to the current executable which is
@@ -356,10 +382,9 @@ pub fn self_exe_name() -> Option<Path> {
 ///     None => println!("Impossible to fetch the path of this executable.")
 /// };
 /// ```
-#[deprecated(since = "1.0.0", reason = "use env::current_exe + dir_path/pop")]
 #[unstable(feature = "os")]
 pub fn self_exe_path() -> Option<Path> {
-    env::current_exe().ok().map(|mut p| { p.pop(); p })
+    env::current_exe().ok().map(|p| { let mut p = path2old(&p); p.pop(); p })
 }
 
 /// Optionally returns the path to the current user's home directory if known.
@@ -386,9 +411,8 @@ pub fn self_exe_path() -> Option<Path> {
 ///     None => println!("Impossible to get your home dir!")
 /// }
 /// ```
-#[deprecated(since = "1.0.0", reason = "renamed to env::home_dir")]
-#[allow(deprecated)]
 #[unstable(feature = "os")]
+#[allow(deprecated)]
 pub fn homedir() -> Option<Path> {
     #[inline]
     #[cfg(unix)]
@@ -424,9 +448,8 @@ pub fn homedir() -> Option<Path> {
 /// On Windows, returns the value of, in order, the 'TMP', 'TEMP',
 /// 'USERPROFILE' environment variable  if any are set and not the empty
 /// string. Otherwise, tmpdir returns the path to the Windows directory.
-#[deprecated(since = "1.0.0", reason = "renamed to env::temp_dir")]
-#[allow(deprecated)]
 #[unstable(feature = "os")]
+#[allow(deprecated)]
 pub fn tmpdir() -> Path {
     return lookup();
 
@@ -488,7 +511,8 @@ pub fn make_absolute(p: &Path) -> IoResult<Path> {
     if p.is_absolute() {
         Ok(p.clone())
     } else {
-        env::current_dir().map(|mut cwd| {
+        env::current_dir().map_err(err2old).map(|cwd| {
+            let mut cwd = path2old(&cwd);
             cwd.push(p);
             cwd
         })
@@ -507,10 +531,9 @@ pub fn make_absolute(p: &Path) -> IoResult<Path> {
 /// assert!(os::change_dir(&root).is_ok());
 /// println!("Successfully changed working directory to {}!", root.display());
 /// ```
-#[deprecated(since = "1.0.0", reason = "renamed to env::set_current_dir")]
 #[unstable(feature = "os")]
 pub fn change_dir(p: &Path) -> IoResult<()> {
-    return sys::os::chdir(p);
+    sys::os::chdir(&path2new(p)).map_err(err2old)
 }
 
 /// Returns the platform-specific value of errno

@@ -1295,46 +1295,36 @@ impl LintPass for UnsafeCode {
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
-        use syntax::ast::Unsafety::Unsafe;
-
-        fn check_method(cx: &Context, meth: &P<ast::Method>) {
-            if let ast::Method_::MethDecl(_, _, _, _, Unsafe, _, _, _) = meth.node {
-                cx.span_lint(UNSAFE_CODE, meth.span, "implementation of an `unsafe` method");
-            }
-        }
-
         match it.node {
-            ast::ItemFn(_, Unsafe, _, _, _) =>
-                cx.span_lint(UNSAFE_CODE, it.span, "declaration of an `unsafe` function"),
+            ast::ItemTrait(ast::Unsafety::Unsafe, _, _, _) =>
+                cx.span_lint(UNSAFE_CODE, it.span, "declaration of an `unsafe` trait"),
 
-            ast::ItemTrait(trait_safety, _, _, ref items) => {
-                if trait_safety == Unsafe {
-                    cx.span_lint(UNSAFE_CODE, it.span, "declaration of an `unsafe` trait");
-                }
-
-                for it in items {
-                    match *it {
-                        ast::RequiredMethod(ast::TypeMethod { unsafety: Unsafe, span, ..}) =>
-                            cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` method"),
-                        ast::ProvidedMethod(ref meth) => check_method(cx, meth),
-                        _ => (),
-                    }
-                }
-            },
-
-            ast::ItemImpl(impl_safety, _, _, _, _, ref impls) => {
-                if impl_safety == Unsafe {
-                    cx.span_lint(UNSAFE_CODE, it.span, "implementation of an `unsafe` trait");
-                }
-
-                for item in impls {
-                    if let ast::ImplItem::MethodImplItem(ref meth) = *item {
-                        check_method(cx, meth);
-                    }
-                }
-            },
+            ast::ItemImpl(ast::Unsafety::Unsafe, _, _, _, _, _) =>
+                cx.span_lint(UNSAFE_CODE, it.span, "implementation of an `unsafe` trait"),
 
             _ => return,
+        }
+    }
+
+    fn check_fn(&mut self, cx: &Context, fk: visit::FnKind, _: &ast::FnDecl,
+                _: &ast::Block, span: Span, _: ast::NodeId) {
+        match fk {
+            visit::FkItemFn(_, _, ast::Unsafety::Unsafe, _) =>
+                cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function"),
+
+            visit::FkMethod(_, _, m) => {
+                if let ast::Method_::MethDecl(_, _, _, _, ast::Unsafety::Unsafe, _, _, _) = m.node {
+                    cx.span_lint(UNSAFE_CODE, m.span, "implementation of an `unsafe` method")
+                }
+            },
+
+            _ => (),
+        }
+    }
+
+    fn check_ty_method(&mut self, cx: &Context, ty_method: &ast::TypeMethod) {
+        if let ast::TypeMethod { unsafety: ast::Unsafety::Unsafe, span, ..} = *ty_method {
+            cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` method")
         }
     }
 }

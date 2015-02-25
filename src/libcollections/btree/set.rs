@@ -121,7 +121,7 @@ impl<T> BTreeSet<T> {
     /// }
     ///
     /// let v: Vec<usize> = set.iter().cloned().collect();
-    /// assert_eq!(v, vec![1,2,3,4]);
+    /// assert_eq!(v, [1, 2, 3, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
@@ -138,7 +138,7 @@ impl<T> BTreeSet<T> {
     /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().cloned().collect();
     ///
     /// let v: Vec<usize> = set.into_iter().collect();
-    /// assert_eq!(v, vec![1,2,3,4]);
+    /// assert_eq!(v, [1, 2, 3, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<T> {
@@ -197,7 +197,7 @@ impl<T: Ord> BTreeSet<T> {
     /// b.insert(3);
     ///
     /// let diff: Vec<usize> = a.difference(&b).cloned().collect();
-    /// assert_eq!(diff, vec![1]);
+    /// assert_eq!(diff, [1]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn difference<'a>(&'a self, other: &'a BTreeSet<T>) -> Difference<'a, T> {
@@ -220,7 +220,7 @@ impl<T: Ord> BTreeSet<T> {
     /// b.insert(3);
     ///
     /// let sym_diff: Vec<usize> = a.symmetric_difference(&b).cloned().collect();
-    /// assert_eq!(sym_diff, vec![1,3]);
+    /// assert_eq!(sym_diff, [1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn symmetric_difference<'a>(&'a self, other: &'a BTreeSet<T>)
@@ -244,7 +244,7 @@ impl<T: Ord> BTreeSet<T> {
     /// b.insert(3);
     ///
     /// let intersection: Vec<usize> = a.intersection(&b).cloned().collect();
-    /// assert_eq!(intersection, vec![2]);
+    /// assert_eq!(intersection, [2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a BTreeSet<T>)
@@ -266,7 +266,7 @@ impl<T: Ord> BTreeSet<T> {
     /// b.insert(2);
     ///
     /// let union: Vec<usize> = a.union(&b).cloned().collect();
-    /// assert_eq!(union, vec![1,2]);
+    /// assert_eq!(union, [1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a BTreeSet<T>) -> Union<'a, T> {
@@ -534,7 +534,7 @@ impl<'a, 'b, T: Ord + Clone> Sub<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     ///
     /// let result = &a - &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
-    /// assert_eq!(result_vec, vec![1, 2]);
+    /// assert_eq!(result_vec, [1, 2]);
     /// ```
     fn sub(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
         self.difference(rhs).cloned().collect()
@@ -557,7 +557,7 @@ impl<'a, 'b, T: Ord + Clone> BitXor<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     ///
     /// let result = &a ^ &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
-    /// assert_eq!(result_vec, vec![1, 4]);
+    /// assert_eq!(result_vec, [1, 4]);
     /// ```
     fn bitxor(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
         self.symmetric_difference(rhs).cloned().collect()
@@ -580,7 +580,7 @@ impl<'a, 'b, T: Ord + Clone> BitAnd<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     ///
     /// let result = &a & &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
-    /// assert_eq!(result_vec, vec![2, 3]);
+    /// assert_eq!(result_vec, [2, 3]);
     /// ```
     fn bitand(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
         self.intersection(rhs).cloned().collect()
@@ -603,7 +603,7 @@ impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     ///
     /// let result = &a | &b;
     /// let result_vec: Vec<_> = result.into_iter().collect();
-    /// assert_eq!(result_vec, vec![1, 2, 3, 4, 5]);
+    /// assert_eq!(result_vec, [1, 2, 3, 4, 5]);
     /// ```
     fn bitor(self, rhs: &BTreeSet<T>) -> BTreeSet<T> {
         self.union(rhs).cloned().collect()
@@ -613,7 +613,7 @@ impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>> for &'a BTreeSet<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for BTreeSet<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "BTreeSet {{"));
+        try!(write!(f, "{{"));
 
         for (i, x) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
@@ -911,7 +911,7 @@ mod test {
 
         let set_str = format!("{:?}", set);
 
-        assert_eq!(set_str, "BTreeSet {1, 2}");
-        assert_eq!(format!("{:?}", empty), "BTreeSet {}");
+        assert_eq!(set_str, "{1, 2}");
+        assert_eq!(format!("{:?}", empty), "{}");
     }
 }

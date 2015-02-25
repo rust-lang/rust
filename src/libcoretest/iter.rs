@@ -74,7 +74,7 @@ fn test_multi_iter() {
 fn test_counter_from_iter() {
     let it = count(0, 5).take(10);
     let xs: Vec<int> = FromIterator::from_iter(it);
-    assert!(xs == vec![0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
+    assert_eq!(xs, [0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
 }
 
 #[test]
@@ -104,7 +104,7 @@ fn test_iterator_chain() {
 fn test_filter_map() {
     let it = count(0, 1).take(10)
         .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
-    assert!(it.collect::<Vec<uint>>() == vec![0*0, 2*2, 4*4, 6*6, 8*8]);
+    assert_eq!(it.collect::<Vec<uint>>(), [0*0, 2*2, 4*4, 6*6, 8*8]);
 }
 
 #[test]
@@ -730,12 +730,12 @@ fn test_random_access_cycle() {
 
 #[test]
 fn test_double_ended_range() {
-    assert!((11..14).rev().collect::<Vec<_>>() == vec![13, 12, 11]);
+    assert_eq!((11..14).rev().collect::<Vec<_>>(), [13, 12, 11]);
     for _ in (10..0).rev() {
         panic!("unreachable");
     }
 
-    assert!((11..14).rev().collect::<Vec<_>>() == vec![13, 12, 11]);
+    assert_eq!((11..14).rev().collect::<Vec<_>>(), [13, 12, 11]);
     for _ in (10..0).rev() {
         panic!("unreachable");
     }
@@ -743,10 +743,9 @@ fn test_double_ended_range() {
 
 #[test]
 fn test_range() {
-    assert!((0..5).collect::<Vec<_>>() == vec![0, 1, 2, 3, 4]);
-    assert!((-10..-1).collect::<Vec<_>>() ==
-               vec![-10, -9, -8, -7, -6, -5, -4, -3, -2]);
-    assert!((0..5).rev().collect::<Vec<_>>() == vec![4, 3, 2, 1, 0]);
+    assert_eq!((0..5).collect::<Vec<_>>(), [0, 1, 2, 3, 4]);
+    assert_eq!((-10..-1).collect::<Vec<_>>(), [-10, -9, -8, -7, -6, -5, -4, -3, -2]);
+    assert_eq!((0..5).rev().collect::<Vec<_>>(), [4, 3, 2, 1, 0]);
     assert_eq!((200..-5).count(), 0);
     assert_eq!((200..-5).rev().count(), 0);
     assert_eq!((200..200).count(), 0);
@@ -767,38 +766,28 @@ fn test_range_inclusive() {
             vec![5, 4, 3, 2, 1, 0]);
     assert_eq!(range_inclusive(200, -5).count(), 0);
     assert_eq!(range_inclusive(200, -5).rev().count(), 0);
-    assert!(range_inclusive(200, 200).collect::<Vec<int>>() == vec![200]);
-    assert!(range_inclusive(200, 200).rev().collect::<Vec<int>>() == vec![200]);
+    assert_eq!(range_inclusive(200, 200).collect::<Vec<int>>(), [200]);
+    assert_eq!(range_inclusive(200, 200).rev().collect::<Vec<int>>(), [200]);
 }
 
 #[test]
 fn test_range_step() {
-    assert!(range_step(0, 20, 5).collect::<Vec<int>>() ==
-            vec![0, 5, 10, 15]);
-    assert!(range_step(20, 0, -5).collect::<Vec<int>>() ==
-            vec![20, 15, 10, 5]);
-    assert!(range_step(20, 0, -6).collect::<Vec<int>>() ==
-            vec![20, 14, 8, 2]);
-    assert!(range_step(200u8, 255, 50).collect::<Vec<u8>>() ==
-            vec![200u8, 250]);
-    assert!(range_step(200, -5, 1).collect::<Vec<int>>() == vec![]);
-    assert!(range_step(200, 200, 1).collect::<Vec<int>>() == vec![]);
+    assert_eq!(range_step(0, 20, 5).collect::<Vec<int>>(), [0, 5, 10, 15]);
+    assert_eq!(range_step(20, 0, -5).collect::<Vec<int>>(), [20, 15, 10, 5]);
+    assert_eq!(range_step(20, 0, -6).collect::<Vec<int>>(), [20, 14, 8, 2]);
+    assert_eq!(range_step(200u8, 255, 50).collect::<Vec<u8>>(), [200u8, 250]);
+    assert_eq!(range_step(200i, -5, 1).collect::<Vec<int>>(), []);
+    assert_eq!(range_step(200i, 200, 1).collect::<Vec<int>>(), []);
 }
 
 #[test]
 fn test_range_step_inclusive() {
-    assert!(range_step_inclusive(0, 20, 5).collect::<Vec<int>>() ==
-            vec![0, 5, 10, 15, 20]);
-    assert!(range_step_inclusive(20, 0, -5).collect::<Vec<int>>() ==
-            vec![20, 15, 10, 5, 0]);
-    assert!(range_step_inclusive(20, 0, -6).collect::<Vec<int>>() ==
-            vec![20, 14, 8, 2]);
-    assert!(range_step_inclusive(200u8, 255, 50).collect::<Vec<u8>>() ==
-            vec![200u8, 250]);
-    assert!(range_step_inclusive(200, -5, 1).collect::<Vec<int>>() ==
-            vec![]);
-    assert!(range_step_inclusive(200, 200, 1).collect::<Vec<int>>() ==
-            vec![200]);
+    assert_eq!(range_step_inclusive(0, 20, 5).collect::<Vec<int>>(), [0, 5, 10, 15, 20]);
+    assert_eq!(range_step_inclusive(20, 0, -5).collect::<Vec<int>>(), [20, 15, 10, 5, 0]);
+    assert_eq!(range_step_inclusive(20, 0, -6).collect::<Vec<int>>(), [20, 14, 8, 2]);
+    assert_eq!(range_step_inclusive(200u8, 255, 50).collect::<Vec<u8>>(), [200u8, 250]);
+    assert_eq!(range_step_inclusive(200, -5, 1).collect::<Vec<int>>(), []);
+    assert_eq!(range_step_inclusive(200, 200, 1).collect::<Vec<int>>(), [200]);
 }
 
 #[test]

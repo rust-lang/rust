@@ -16,12 +16,13 @@ use os::unix::*;
 use error::Error as StdError;
 use ffi::{CString, CStr, OsString, OsStr, AsOsStr};
 use fmt;
+use io;
 use iter;
 use libc::{self, c_int, c_char, c_void};
 use mem;
-use io;
-use old_io::{IoResult, IoError, fs};
+use old_io::{IoError, IoResult};
 use ptr;
+use path::{self, PathBuf};
 use slice;
 use str;
 use sys::c;
@@ -31,6 +32,14 @@ use vec;
 
 const BUF_BYTES: usize = 2048;
 const TMPBUF_SZ: usize = 128;
+
+fn bytes2path(b: &[u8]) -> PathBuf {
+    PathBuf::new(<OsStr as OsStrExt>::from_bytes(b))
+}
+
+fn os2path(os: OsString) -> PathBuf {
+    bytes2path(os.as_bytes())
+}
 
 /// Returns the platform-specific value of errno
 pub fn errno() -> i32 {
@@ -102,30 +111,30 @@ pub fn error_string(errno: i32) -> String {
     }
 }
 
-pub fn getcwd() -> IoResult<Path> {
+pub fn getcwd() -> io::Result<PathBuf> {
     let mut buf = [0 as c_char; BUF_BYTES];
     unsafe {
         if libc::getcwd(buf.as_mut_ptr(), buf.len() as libc::size_t).is_null() {
-            Err(IoError::last_error())
+            Err(io::Error::last_os_error())
         } else {
-            Ok(Path::new(CStr::from_ptr(buf.as_ptr()).to_bytes()))
+            Ok(bytes2path(CStr::from_ptr(buf.as_ptr()).to_bytes()))
         }
     }
 }
 
-pub fn chdir(p: &Path) -> IoResult<()> {
-    let p = CString::new(p.as_vec()).unwrap();
+pub fn chdir(p: &path::Path) -> io::Result<()> {
+    let p = try!(CString::new(p.as_os_str().as_bytes()));
     unsafe {
         match libc::chdir(p.as_ptr()) == (0 as c_int) {
             true => Ok(()),
-            false => Err(IoError::last_error()),
+            false => Err(io::Error::last_os_error()),
         }
     }
 }
 
 pub struct SplitPaths<'a> {
     iter: iter::Map<slice::Split<'a, u8, fn(&u8) -> bool>,
-                    fn(&'a [u8]) -> Path>,
+                    fn(&'a [u8]) -> PathBuf>,
 }
 
 pub fn split_paths<'a>(unparsed: &'a OsStr) -> SplitPaths<'a> {
@@ -133,13 +142,13 @@ pub fn split_paths<'a>(unparsed: &'a OsStr) -> SplitPaths<'a> {
     let unparsed = unparsed.as_bytes();
     SplitPaths {
         iter: unparsed.split(is_colon as fn(&u8) -> bool)
-                      .map(Path::new as fn(&'a [u8]) ->  Path)
+                      .map(bytes2path as fn(&'a [u8]) -> PathBuf)
     }
 }
 
 impl<'a> Iterator for SplitPaths<'a> {
-    type Item = Path;
-    fn next(&mut self) -> Option<Path> { self.iter.next() }
+    type Item = PathBuf;
+    fn next(&mut self) -> Option<PathBuf> { self.iter.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 
@@ -174,7 +183,7 @@ impl StdError for JoinPathsError {
 }
 
 #[cfg(target_os = "freebsd")]
-pub fn current_exe() -> IoResult<Path> {
+pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         use libc::funcs::bsd44::*;
         use libc::consts::os::extra::*;
@@ -186,26 +195,26 @@ pub fn current_exe() -> IoResult<Path> {
         let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
                          ptr::null_mut(), &mut sz, ptr::null_mut(),
                          0 as libc::size_t);
-        if err != 0 { return Err(IoError::last_error()); }
-        if sz == 0 { return Err(IoError::last_error()); }
+        if err != 0 { return Err(io::Error::last_os_error()); }
+        if sz == 0 { return Err(io::Error::last_os_error()); }
         let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
         let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
                          v.as_mut_ptr() as *mut libc::c_void, &mut sz,
                          ptr::null_mut(), 0 as libc::size_t);
-        if err != 0 { return Err(IoError::last_error()); }
-        if sz == 0 { return Err(IoError::last_error()); }
+        if err != 0 { return Err(io::Error::last_os_error()); }
+        if sz == 0 { return Err(io::Error::last_os_error()); }
         v.set_len(sz as uint - 1); // chop off trailing NUL
-        Ok(Path::new(v))
+        Ok(PathBuf::new::<OsString>(&OsStringExt::from_vec(v)))
     }
 }
 
 #[cfg(target_os = "dragonfly")]
-pub fn current_exe() -> IoResult<Path> {
-    fs::readlink(&Path::new("/proc/curproc/file"))
+pub fn current_exe() -> io::Result<PathBuf> {
+    ::fs::read_link("/proc/curproc/file")
 }
 
 #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
-pub fn current_exe() -> IoResult<Path> {
+pub fn current_exe() -> io::Result<PathBuf> {
     use sync::{StaticMutex, MUTEX_INIT};
     static LOCK: StaticMutex = MUTEX_INIT;
 
@@ -218,7 +227,7 @@ pub fn current_exe() -> IoResult<Path> {
     unsafe {
         let v = rust_current_exe();
         if v.is_null() {
-            Err(IoError::last_error())
+            Err(io::Error::last_os_error())
         } else {
             Ok(Path::new(CStr::from_ptr(v).to_bytes().to_vec()))
         }
@@ -226,22 +235,22 @@ pub fn current_exe() -> IoResult<Path> {
 }
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
-pub fn current_exe() -> IoResult<Path> {
-    fs::readlink(&Path::new("/proc/self/exe"))
+pub fn current_exe() -> io::Result<PathBuf> {
+    ::fs::read_link("/proc/self/exe")
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
-pub fn current_exe() -> IoResult<Path> {
+pub fn current_exe() -> io::Result<PathBuf> {
     unsafe {
         use libc::funcs::extra::_NSGetExecutablePath;
         let mut sz: u32 = 0;
         _NSGetExecutablePath(ptr::null_mut(), &mut sz);
-        if sz == 0 { return Err(IoError::last_error()); }
+        if sz == 0 { return Err(io::Error::last_os_error()); }
         let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
         let err = _NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
-        if err != 0 { return Err(IoError::last_error()); }
+        if err != 0 { return Err(io::Error::last_os_error()); }
         v.set_len(sz as uint - 1); // chop off trailing NUL
-        Ok(Path::new(v))
+        Ok(PathBuf::new::<OsString>(&OsStringExt::from_vec(v)))
     }
 }
 
@@ -451,22 +460,20 @@ pub fn page_size() -> usize {
     }
 }
 
-pub fn temp_dir() -> Path {
-    getenv("TMPDIR".as_os_str()).map(|p| Path::new(p.into_vec())).unwrap_or_else(|| {
+pub fn temp_dir() -> PathBuf {
+    getenv("TMPDIR".as_os_str()).map(os2path).unwrap_or_else(|| {
         if cfg!(target_os = "android") {
-            Path::new("/data/local/tmp")
+            PathBuf::new("/data/local/tmp")
         } else {
-            Path::new("/tmp")
+            PathBuf::new("/tmp")
         }
     })
 }
 
-pub fn home_dir() -> Option<Path> {
+pub fn home_dir() -> Option<PathBuf> {
     return getenv("HOME".as_os_str()).or_else(|| unsafe {
         fallback()
-    }).map(|os| {
-        Path::new(os.into_vec())
-    });
+    }).map(os2path);
 
     #[cfg(any(target_os = "android",
               target_os = "ios"))]

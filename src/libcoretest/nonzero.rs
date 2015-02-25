@@ -54,7 +54,7 @@ fn test_match_option_empty_vec() {
 fn test_match_option_vec() {
     let a = Some(vec![1, 2, 3, 4]);
     match a {
-        Some(v) => assert_eq!(v, vec![1, 2, 3, 4]),
+        Some(v) => assert_eq!(v, [1, 2, 3, 4]),
         None => panic!("unexpected None while matching on Some(vec![1, 2, 3, 4])")
     }
 }

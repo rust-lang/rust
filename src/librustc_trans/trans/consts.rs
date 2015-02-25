@@ -359,7 +359,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
     unsafe {
         let _icx = push_ctxt("const_expr");
-        return match e.node {
+        match e.node {
           ast::ExprLit(ref lit) => {
               const_lit(cx, e, &**lit)
           }
@@ -379,7 +379,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let (te2, _) = const_expr(cx, &**e2, param_substs);
             let te2 = base::cast_shift_const_rhs(b, te1, te2);
 
-            return match b.node {
+            match b.node {
               ast::BiAdd   => {
                 if is_float { llvm::LLVMConstFAdd(te1, te2) }
                 else        { llvm::LLVMConstAdd(te1, te2) }
@@ -433,7 +433,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           ast::ExprUnary(u, ref e) => {
             let (te, ty) = const_expr(cx, &**e, param_substs);
             let is_float = ty::type_is_fp(ty);
-            return match u {
+            match u {
               ast::UnUniq | ast::UnDeref => {
                 const_deref(cx, te, ty).0
               }
@@ -514,8 +514,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             if expr::cast_is_noop(basety, ety) {
                 return v;
             }
-            return match (expr::cast_type_kind(cx.tcx(), basety),
-                           expr::cast_type_kind(cx.tcx(), ety)) {
+            match (expr::cast_type_kind(cx.tcx(), basety),
+                   expr::cast_type_kind(cx.tcx(), ety)) {
 
               (expr::cast_integral, expr::cast_integral) => {
                 let s = ty::type_is_signed(basety) as Bool;
@@ -584,13 +584,13 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
               }
               let opt_def = cx.tcx().def_map.borrow().get(&cur.id).map(|d| d.full_def());
               if let Some(def::DefStatic(def_id, _)) = opt_def {
-                  return get_static_val(cx, def_id, ety);
+                  get_static_val(cx, def_id, ety)
+              } else {
+                  // If this isn't the address of a static, then keep going through
+                  // normal constant evaluation.
+                  let (v, _) = const_expr(cx, &**sub, param_substs);
+                  addr_of(cx, v, "ref", e.id)
               }
-
-              // If this isn't the address of a static, then keep going through
-              // normal constant evaluation.
-              let (v, _) = const_expr(cx, &**sub, param_substs);
-              addr_of(cx, v, "ref", e.id)
           }
           ast::ExprAddrOf(ast::MutMutable, ref sub) => {
               let (v, _) = const_expr(cx, &**sub, param_substs);
@@ -740,7 +740,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           }
           _ => cx.sess().span_bug(e.span,
                   "bad constant expression type in consts::const_expr")
-        };
+        }
     }
 }
 

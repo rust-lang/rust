@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use std::collections::HashSet;
 use std::env;
 use std::old_io::IoError;
+use std::os;
 use syntax::ast;
 
 pub struct RPathConfig<F, G> where
@@ -109,7 +109,7 @@ fn get_rpath_relative_to_output<F, G>(config: &mut RPathConfig<F, G>, lib: &Path
         "$ORIGIN"
     };
 
-    let cwd = env::current_dir().unwrap();
+    let cwd = os::getcwd().unwrap();
     let mut lib = (config.realpath)(&cwd.join(lib)).unwrap();
     lib.pop();
     let mut output = (config.realpath)(&cwd.join(&config.out_filename)).unwrap();
@@ -129,7 +129,7 @@ fn get_install_prefix_rpath<F, G>(config: RPathConfig<F, G>) -> String where
     let path = (config.get_install_prefix_lib_path)();
     let path = env::current_dir().unwrap().join(&path);
     // FIXME (#9639): This needs to handle non-utf8 paths
-    path.as_str().expect("non-utf8 component in rpath").to_string()
+    path.to_str().expect("non-utf8 component in rpath").to_string()
 }
 
 fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {

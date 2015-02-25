@@ -223,6 +223,78 @@ let input = io::stdin().read_line()
                        .ok()
                        .expect("Failed to read line");
 ```
+
 `ok()` converts the `IoResult` into an `Option`, and `expect()` does the same
 thing as `unwrap()`, but takes a message. This message is passed along to the
 underlying `panic!`, providing a better error message if the code errors.
+
+# Using `try!`
+
+When writing code that calls many functions that return the `Result` type, the
+error handling can be tedious. The `try!` macro hides some of the boilerplate
+of propagating errors up the call stack.
+
+It replaces this:
+
+```rust
+use std::fs::File;
+use std::io;
+use std::io::prelude::*;
+
+struct Info {
+    name: String,
+    age: i32,
+    rating: i32,
+}
+
+fn write_info(info: &Info) -> io::Result<()> {
+    let mut file = File::open("my_best_friends.txt").unwrap();
+
+    if let Err(e) = writeln!(&mut file, "name: {}", info.name) {
+        return Err(e)
+    }
+    if let Err(e) = writeln!(&mut file, "age: {}", info.age) {
+        return Err(e)
+    }
+    if let Err(e) = writeln!(&mut file, "rating: {}", info.rating) {
+        return Err(e)
+    }
+
+    return Ok(());
+}
+```
+
+With this:
+
+```rust
+use std::fs::File;
+use std::io;
+use std::io::prelude::*;
+
+struct Info {
+    name: String,
+    age: i32,
+    rating: i32,
+}
+
+fn write_info(info: &Info) -> io::Result<()> {
+    let mut file = try!(File::open("my_best_friends.txt"));
+
+    try!(writeln!(&mut file, "name: {}", info.name));
+    try!(writeln!(&mut file, "age: {}", info.age));
+    try!(writeln!(&mut file, "rating: {}", info.rating));
+
+    return Ok(());
+}
+```
+
+Wrapping an expression in `try!` will result in the unwrapped success (`Ok`)
+value, unless the result is `Err`, in which case `Err` is returned early from
+the enclosing function.
+
+It's worth noting that you can only use `try!` from a function that returns a
+`Result`, which means that you cannot use `try!` inside of `main()`, because
+`main()` doesn't return anything.
+
+`try!` makes use of [`FromError`](../std/error/#the-fromerror-trait) to determine
+what to return in the error case.
