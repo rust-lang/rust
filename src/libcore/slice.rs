@@ -51,7 +51,7 @@ use ptr;
 use ptr::PtrExt;
 use mem;
 use mem::size_of;
-use marker::{Sized, self};
+use marker::{Send, Sized, Sync, self};
 use raw::Repr;
 // Avoid conflicts with *both* the Slice trait (buggy) and the `slice::raw` module.
 use raw::Slice as RawSlice;
@@ -740,6 +740,9 @@ pub struct Iter<'a, T: 'a> {
     _marker: marker::PhantomData<&'a T>,
 }
 
+unsafe impl<'a, T: Sync> Sync for Iter<'a, T> {}
+unsafe impl<'a, T: Sync> Send for Iter<'a, T> {}
+
 #[unstable(feature = "core")]
 impl<'a, T> ops::Index<ops::Range<usize>> for Iter<'a, T> {
     type Output = [T];
@@ -830,6 +833,8 @@ pub struct IterMut<'a, T: 'a> {
     _marker: marker::PhantomData<&'a mut T>,
 }
 
+unsafe impl<'a, T: Sync> Sync for IterMut<'a, T> {}
+unsafe impl<'a, T: Send> Send for IterMut<'a, T> {}
 
 #[unstable(feature = "core")]
 impl<'a, T> ops::Index<ops::Range<usize>> for IterMut<'a, T> {

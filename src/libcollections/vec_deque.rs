@@ -59,12 +59,6 @@ pub struct VecDeque<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Send> Send for VecDeque<T> {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Sync> Sync for VecDeque<T> {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for VecDeque<T> {
     fn clone(&self) -> VecDeque<T> {
         self.iter().cloned().collect()
