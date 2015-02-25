@@ -1362,7 +1362,6 @@ pub mod types {
                 use types::os::arch::c95::{c_long};
                 pub type off_t = i64;
                 pub type dev_t = i32;
-                pub type ino_t = u64;
                 pub type pid_t = i32;
                 pub type uid_t = u32;
                 pub type gid_t = u32;
