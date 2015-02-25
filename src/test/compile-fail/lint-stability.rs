@@ -317,11 +317,17 @@ mod this_crate {
 
     #[unstable(feature = "test_feature")]
     #[deprecated(since = "1.0.0")]
-    pub struct DeprecatedStruct { i: isize }
+    pub struct DeprecatedStruct {
+        #[stable(feature = "test_feature", since = "1.0.0")] i: isize
+    }
     #[unstable(feature = "test_feature")]
-    pub struct UnstableStruct { i: isize }
+    pub struct UnstableStruct {
+        #[stable(feature = "test_feature", since = "1.0.0")] i: isize
+    }
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub struct StableStruct { i: isize }
+    pub struct StableStruct {
+        #[stable(feature = "test_feature", since = "1.0.0")] i: isize
+    }
 
     #[unstable(feature = "test_feature")]
     #[deprecated(since = "1.0.0")]

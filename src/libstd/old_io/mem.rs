@@ -102,6 +102,7 @@ impl MemWriter {
 
 impl Writer for MemWriter {
     #[inline]
+    #[allow(deprecated)]
     fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.buf.push_all(buf);
         Ok(())
