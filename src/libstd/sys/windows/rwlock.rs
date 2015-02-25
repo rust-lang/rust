@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::v1::*;
+
 use cell::UnsafeCell;
 use sys::sync as ffi;
 
@@ -16,6 +18,9 @@ pub struct RWLock { inner: UnsafeCell<ffi::SRWLOCK> }
 pub const RWLOCK_INIT: RWLock = RWLock {
     inner: UnsafeCell { value: ffi::SRWLOCK_INIT }
 };
+
+unsafe impl Send for RWLock {}
+unsafe impl Sync for RWLock {}
 
 impl RWLock {
     #[inline]

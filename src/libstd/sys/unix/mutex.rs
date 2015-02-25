@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use prelude::v1::*;
+
 use cell::UnsafeCell;
-use marker::Sync;
 use sys::sync as ffi;
 use sys_common::mutex;
 
@@ -24,6 +25,7 @@ pub const MUTEX_INIT: Mutex = Mutex {
     inner: UnsafeCell { value: ffi::PTHREAD_MUTEX_INITIALIZER },
 };
 
+unsafe impl Send for Mutex {}
 unsafe impl Sync for Mutex {}
 
 impl Mutex {
