@@ -120,6 +120,7 @@ struct ItemFnParts<'a> {
     ident:    ast::Ident,
     decl:     &'a ast::FnDecl,
     unsafety: ast::Unsafety,
+    constness: ast::Constness,
     abi:      abi::Abi,
     vis:      ast::Visibility,
     generics: &'a ast::Generics,
@@ -180,7 +181,7 @@ impl<'a> FnLikeNode<'a> {
 
     pub fn kind(self) -> visit::FnKind<'a> {
         let item = |p: ItemFnParts<'a>| -> visit::FnKind<'a> {
-            visit::FkItemFn(p.ident, p.generics, p.unsafety, p.abi, p.vis)
+            visit::FkItemFn(p.ident, p.generics, p.unsafety, p.abi, p.constness, p.vis)
         };
         let closure = |_: ClosureParts| {
             visit::FkFnBlock
@@ -204,10 +205,19 @@ impl<'a> FnLikeNode<'a> {
     {
         match self.node {
             ast_map::NodeItem(i) => match i.node {
-                ast::ItemFn(ref decl, unsafety, abi, ref generics, ref block) =>
-                    item_fn(ItemFnParts{
-                        ident: i.ident, decl: &**decl, unsafety: unsafety, body: &**block,
-                        generics: generics, abi: abi, vis: i.vis, id: i.id, span: i.span
+                ast::ItemFn(ref decl, unsafety, constness, ref abi, ref generics, ref block) =>
+                    item_fn(ItemFnParts {
+                        id: i.id,
+                        ident: i.ident,
+                        decl: &**decl,
+                        unsafety: unsafety,
+                        constness: constness,
+                        body: &**block,
+                        generics: generics,
+                        abi: abi,
+                        vis: i.vis,
+                        constness: constness,
+                        span: i.span
                     }),
                 _ => panic!("item FnLikeNode that is not fn-like"),
             },
