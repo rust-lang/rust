@@ -2940,8 +2940,7 @@ fn register_method(ccx: &CrateContext, id: ast::NodeId,
 
     let sym = exported_name(ccx, id, mty, &m.attrs);
     if ccx.symbol_value(sym.to_string()).is_some() {
-        ccx.sess().span_fatal(i.span, &format!("symbol {} is already declared",
-                                               sym));
+        ccx.sess().span_fatal(m.span, &format!("symbol {} is already declared", sym));
     }
 
 
