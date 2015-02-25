@@ -99,6 +99,16 @@ pub fn get_drop_glue_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     if !type_is_sized(tcx, t) {
         return t
     }
+
+    // FIXME (#22815): note that type_needs_drop conservatively
+    // approximates in some cases and may say a type expression
+    // requires drop glue when it actually does not.
+    //
+    // (In this case it is not clear whether any harm is done, i.e.
+    // erroneously returning `t` in some cases where we could have
+    // returned `tcx.types.i8` does not appear unsound. The impact on
+    // code quality is unknown at this time.)
+
     if !type_needs_drop(tcx, t) {
         return tcx.types.i8;
     }
@@ -125,7 +135,7 @@ pub fn drop_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // NB: v is an *alias* of type t here, not a direct value.
     debug!("drop_ty(t={})", t.repr(bcx.tcx()));
     let _icx = push_ctxt("drop_ty");
-    if type_needs_drop(bcx.tcx(), t) {
+    if bcx.fcx.type_needs_drop(t) {
         let ccx = bcx.ccx();
         let glue = get_drop_glue(ccx, t);
         let glue_type = get_drop_glue_type(ccx, t);
@@ -480,7 +490,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
         },
         _ => {
             assert!(type_is_sized(bcx.tcx(), t));
-            if type_needs_drop(bcx.tcx(), t) && ty::type_is_structural(t) {
+            if bcx.fcx.type_needs_drop(t) && ty::type_is_structural(t) {
                 iter_structural_ty(bcx,
                                    v0,
                                    t,
