@@ -105,10 +105,12 @@ pub struct Key<T> {
     // This is trivially devirtualizable by LLVM because we never store anything
     // to this field and rustc can declare the `static` as constant as well.
     #[doc(hidden)]
+    #[unstable(feature = "thread_local_internals")]
     pub inner: fn() -> &'static __impl::KeyInner<UnsafeCell<Option<T>>>,
 
     // initialization routine to invoke to create a value
     #[doc(hidden)]
+    #[unstable(feature = "thread_local_internals")]
     pub init: fn() -> T,
 }
 
