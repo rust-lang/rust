@@ -329,6 +329,10 @@ impl FromInner<fs_imp::FilePermissions> for Permissions {
     }
 }
 
+impl AsInner<fs_imp::FilePermissions> for Permissions {
+    fn as_inner(&self) -> &fs_imp::FilePermissions { &self.0 }
+}
+
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
