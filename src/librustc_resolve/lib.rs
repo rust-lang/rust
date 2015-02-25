@@ -1809,7 +1809,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                ItemRibKind),
                                              |this| visit::walk_item(this, item));
             }
-            ItemFn(_, _, _, ref generics, _) => {
+            ItemFn(_, _, _, _, ref generics, _) => {
                 self.with_type_parameter_rib(HasTypeParameters(generics,
                                                                FnSpace,
                                                                ItemRibKind),
