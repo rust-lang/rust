@@ -14,13 +14,14 @@
 
 use prelude::v1::*;
 
-use ffi::OsStr;
+use ffi::{OsStr, OsString};
 use io::{self, ErrorKind};
 use libc;
 use mem;
-use old_io::{self, IoResult, IoError};
 use num::Int;
-use os::windows::OsStrExt;
+use old_io::{self, IoResult, IoError};
+use os::windows::{OsStrExt, OsStringExt};
+use path::PathBuf;
 use sync::{Once, ONCE_INIT};
 
 macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
@@ -314,9 +315,10 @@ fn fill_utf16_buf_new<F1, F2, T>(f1: F1, f2: F2) -> io::Result<T>
     fill_utf16_buf_base(f1, f2).map_err(|()| io::Error::last_os_error())
 }
 
-fn os2path(s: &[u16]) -> Path {
-    // FIXME: this should not be a panicking conversion (aka path reform)
-    Path::new(String::from_utf16(s).unwrap())
+fn os2path(s: &[u16]) -> PathBuf {
+    let os = <OsString as OsStringExt>::from_wide(s);
+    // FIXME(#22751) should consume `os`
+    PathBuf::new(&os)
 }
 
 pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {

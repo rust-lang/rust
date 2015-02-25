@@ -15,7 +15,7 @@ use metadata::creader::CrateReader;
 use plugin::registry::Registry;
 
 use std::mem;
-use std::env;
+use std::os;
 use std::dynamic_lib::DynamicLibrary;
 use std::borrow::ToOwned;
 use syntax::ast;
@@ -103,7 +103,7 @@ impl<'a> PluginLoader<'a> {
                         path: Path,
                         symbol: String) -> PluginRegistrarFun {
         // Make sure the path contains a / or the linker will search for it.
-        let path = env::current_dir().unwrap().join(&path);
+        let path = os::getcwd().unwrap().join(&path);
 
         let lib = match DynamicLibrary::open(Some(&path)) {
             Ok(lib) => lib,
