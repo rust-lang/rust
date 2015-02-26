@@ -4,10 +4,10 @@
 
 # Summary
 
-Add type ascription to expressions and patterns.
+Add type ascription to expressions. (An earlier version of this RFC covered type
+ascription in patterns too, that has been postponed).
 
-Type ascription on expression has already been implemented. Type ascription on
-patterns can probably wait until post-1.0.
+Type ascription on expression has already been implemented.
 
 See also discussion on [#354](https://github.com/rust-lang/rfcs/issues/354) and
 [rust issue 10502](https://github.com/rust-lang/rust/issues/10502).
@@ -16,12 +16,12 @@ See also discussion on [#354](https://github.com/rust-lang/rfcs/issues/354) and
 # Motivation
 
 Type inference is imperfect. It is often useful to help type inference by
-annotating a sub-expression or sub-pattern with a type. Currently, this is only
-possible by extracting the sub-expression into a variable using a `let`
-statement and/or giving a type for a whole expression or pattern. This is un-
-ergonomic, and sometimes impossible due to lifetime issues. Specifically, a
-variable has lifetime of its enclosing scope, but a sub-expression's lifetime is
-typically limited to the nearest semi-colon.
+annotating a sub-expression with a type. Currently, this is only possible by
+extracting the sub-expression into a variable using a `let` statement and/or
+giving a type for a whole expression or pattern. This is un- ergonomic, and
+sometimes impossible due to lifetime issues. Specifically, where a variable has
+lifetime of its enclosing scope, but a sub-expression's lifetime is typically
+limited to the nearest semi-colon.
 
 Typical use cases are where a function's return type is generic (e.g., collect)
 and where we want to force a coercion.
@@ -90,18 +90,6 @@ let x: T = {
 let x: T foo(): U<_>;
 ```
 
-In patterns:
-
-```
-struct Foo<T> { a: T, b: String }
-
-// Current
-fn foo(Foo { a, .. }: Foo<i32>) { ... }
-
-// With type ascription.
-fn foo(Foo { a: i32, .. }) { ... }
-```
-
 
 # Detailed design
 
@@ -122,72 +110,44 @@ At runtime, type ascription is a no-op, unless an implicit coercion was used in
 type checking, in which case the dynamic semantics of a type ascription
 expression are exactly those of the implicit coercion.
 
-The syntax of patterns is extended to include an optional type ascription.
-Old syntax:
-
-```
-PT ::= P: T
-P ::= var | 'box' P | ...
-e ::= 'let' (PT | P) = ... | ...
-```
-
-where `PT` is a pattern with optional type, `P` is a sub-pattern, `T` is a type,
-and `var` is a variable name. (Formal arguments are `PT`, patterns in match arms
-are `P`).
-
-New syntax:
-
-```
-PT ::= P: T | P
-P ::= var | 'box' PT | ...
-e ::= 'let' PT = ... | ...
-```
-
-Type ascription in patterns has the narrowest precedence, e.g., `box x: T` means
-`box (x: T)`. In particular, in a struct initialiser or patter, `x : y : z` is
-parsed as `x : (y: z)`, i.e., a field named `x` is initialised with a value `y`
-and that value must have type `z`. If only `x: y` is given, that is considered
-to be the field name and the field's contents, with no type ascription.
-
-The chagnes to pattern syntax mean that in some contexts where a pattern
-previously required a type annotation, it is no longer required if all variables
-can be assigned types via the ascription. Examples,
-
-```
-struct Foo {
-    a: Bar,
-    b: Baz,
-}
-fn foo(x: Foo); // Ok, type of x given by type of whole pattern
-fn foo(Foo { a: x, b: y}: Foo) // Ok, types of x and y found by destructuring
-fn foo(Foo { a: x: Bar, b: y: Baz}) // Ok, no type annotation, but types given as ascriptions
-fn foo(Foo { a: x: Bar, _ }) // Ok, we can still deduce the type of x and the whole argument
-fn foo(Foo { a: x, b: y}) // Ok, type of x and y given by Foo
-
-struct Qux<X> {
-    a: Bar,
-    b: X,
-}
-fn foo(x: Qux<Baz>); // Ok, type of x given by type of whole pattern
-fn foo(Qux { a: x, b: y}: Qux<Baz>) // Ok, types of x and y found by destructuring
-fn foo(Qux { a: x: Bar, b: y: Baz}) // Ok, no type annotation, but types given as ascriptions
-fn foo(Qux { a: x: Bar, _ }) // Error, can't find the type of the whole argument
-fn foo(Qux { a: x, b: y}) // Error can't find type of y or the whole argument
-```
-
-Note the above changes mean moving some errors from parsing to later in type
-checking. For example, all uses of patterns have optional types, and it is a
-type error if there must be a type (e.g., in function arguments) but it is not
-fully specified (currently it would be a parsing error).
-
-In type checking, if an expression is matched against a pattern, when matching
-a sub-pattern the matching sub-expression must have the ascribed type (again,
-this check includes subtyping and implicit coercion). Types in patterns play no
-role at runtime.
-
 @eddyb has implemented the expressions part of this RFC,
 [PR](https://github.com/rust-lang/rust/pull/21836).
 
+
+### coercion and `as` vs `:`
+
+A downside of type ascription is the overlap with explicit coercions (aka casts,
+the `as` operator). Type ascription makes implicit coercions explicit. In RFC
+401, it is proposed that all valid implicit coercions are valid explicit
+coercions. However, that may be too confusing for users, since there is no
+reason to use type ascription rather than `as` (if there is some coercion).
+Furthermore, if programmers do opt to use `as` as the default whether or not it
+is required, then it loses its function as a warning sign for programmers to
+beware of.
+
+To address this I propose three lints which check for: trivial casts, coercible
+casts, and trivial numeric casts. Other than these lints we stick with the
+proposal from #401 that unnecessary casts will no longer be an error.
+
+A trivial cast is a cast `x as T` where `x` has type `U` and `U` is a subtype of
+`T` (note that subtyping includes reflexivity).
+
+A coercible cast is a cast `x as T` where `x` has type `U` and `x` can be
+implicitly coerced to `T`, but `U` is not a subtype of `T`.
+
+A trivial numeric cast is a cast `x as T` where `x` has type `U` and `x` is
+implicitly coercible to `T` or `U` is a subtype of `T`, and both `U` and `T` are
+numeric types.
+
+Like any lints, these can be customised per-crate by the programmer. The trivial
+cast lint is 'deny' by default (i.e., causes an error); the coercible cast and
+trivial numeric cast lints are 'warn' by default.
+
+Although this is a somewhat complex scheme, it allows code that works today to
+work with only minor adjustment, it allows for a backwards compatible path to
+'promoting' type conversions from explicit casts to implicit coercions, and it
+allows customisation of a contentious kind of error (especially so in the
+context of cross-platform programming).
 
 # Drawbacks
 
@@ -205,11 +165,6 @@ difficult to support the same syntax as field initialisers.
 
 We could do nothing and force programmers to use temporary variables to specify
 a type. However, this is less ergonomic and has problems with scopes/lifetimes.
-Patterns can be given a type as a whole rather than annotating a part of the
-pattern.
-
-We could allow type ascription in expressions but not patterns. This is a
-smaller change and addresses most of the motivation.
 
 Rely on explicit coercions - the current plan [RFC 401](https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md)
 is to allow explicit coercion to any valid type and to use a customisable lint
@@ -221,35 +176,12 @@ which require more programmer attention. This also does not help with patterns.
 
 We could use a different symbol or keyword instead of `:`, e.g., `is`.
 
+
 # Unresolved questions
 
-Is the suggested precedence correct? Especially for patterns.
+Is the suggested precedence correct?
 
-Does type ascription on patterns have backwards compatibility issues?
+Should we remove integer suffixes in favour of type ascription?
 
-Given the potential confusion with struct literal syntax, it is perhaps worth
-re-opening that discussion. But given the timing, probably not.
-
-Should remove integer suffixes in favour of type ascription?
-
-### `as` vs `:`
-
-A downside of type ascription is the overlap with explicit coercions (aka casts,
-the `as` operator). Type ascription makes implicit coercions explicit. In RFC
-401, it is proposed that all valid implicit coercions are valid explicit
-coercions. However, that may be too confusing for users, since there is no
-reason to use type ascription rather than `as` (if there is some coercion). It
-might be a good idea to revisit that decision (it has not yet been implemented).
-Then it is clear that the user uses `as` for explicit casts and `:` for non-
-coercing ascription and implicit casts. Although there is no hard guideline for
-which operations are implicit or explicit, the intuition is that if the
-programmer ought to be aware of the change (i.e., the invariants of using the
-type change to become less safe in any way) then coercion should be explicit,
-otherwise it can be implicit.
-
-Alternatively we could remove `as` and require `:` for explicit coercions, but
-not for implicit ones (they would keep the same rules as they currently have).
-The only loss would be that `:` doesn't stand out as much as `as` and there
-would be no lint for trivial coercions. Another (backwards compatible)
-alternative would be to keep `as` and `:` as synonyms and recommend against
-using `as`.
+Style guidelines - should we recommend spacing or parenthesis to make type
+ascription syntax more easily recognisable?
