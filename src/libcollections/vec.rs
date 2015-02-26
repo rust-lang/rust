@@ -1755,6 +1755,9 @@ pub struct Drain<'a, T:'a> {
     marker: PhantomData<&'a T>,
 }
 
+unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
+unsafe impl<'a, T: Send> Send for Drain<'a, T> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Drain<'a, T> {
     type Item = T;
