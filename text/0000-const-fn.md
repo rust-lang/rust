@@ -75,7 +75,9 @@ Traits, trait implementations and their methods cannot be `const` - this
 allows us to properly design a constness/CTFE system that interacts well
 with traits - for more details, see *Alternatives*.
 
-Only simple by-value immutable bindings are allowed as arguments' patterns.
+Only simple by-value bindings are allowed in arguments, e.g. `x: T`. While
+by-ref bindings and destructuring can be supported, they're not necessary
+and they would only complicate the implementation.
 
 The body of the function is checked as if it were a block inside a `const`:
 ```rust
