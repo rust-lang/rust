@@ -23,7 +23,7 @@ macro_rules! pos {
 macro_rules! check {
     ($counter:expr; $($pos:expr),*) => ({
         if *$counter == 0 {
-            // XXX we cannot include the current position because
+            // FIXME(#18285): we cannot include the current position because
             // the macro span takes over the last frame's file/line.
             dump_filelines(&[$($pos),*]);
             panic!();
