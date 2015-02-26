@@ -320,9 +320,9 @@ next line to be ignored.
 let a = "foobar";
 let b = "foo\
          bar";
-```
 
-`a` is equivalent to `b`.
+assert_eq!(a,b);
+```
 
 ##### Character escapes
 
