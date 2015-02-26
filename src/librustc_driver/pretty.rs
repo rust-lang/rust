@@ -38,7 +38,7 @@ use syntax::ptr::P;
 
 use graphviz as dot;
 
-use std::old_io::{self, MemReader};
+use std::old_io::{self, BufReader};
 use std::option;
 use std::str::FromStr;
 
@@ -103,93 +103,13 @@ pub fn parse_pretty(sess: &Session,
     (first, opt_second)
 }
 
+struct NoAnn;
+const NO_ANNOTATION: &'static pprust::PpAnn = &NoAnn;
+impl pprust::PpAnn for NoAnn {}
 
-
-// This slightly awkward construction is to allow for each PpMode to
-// choose whether it needs to do analyses (which can consume the
-// Session) and then pass through the session (now attached to the
-// analysis results) on to the chosen pretty-printer, along with the
-// `&PpAnn` object.
-//
-// Note that since the `&PrinterSupport` is freshly constructed on each
-// call, it would not make sense to try to attach the lifetime of `self`
-// to the lifetime of the `&PrinterObject`.
-
-impl PpSourceMode {
-    /// Constructs a `PrinterSupport` object and passes it to `f`.
-    fn call_with_pp_support<'tcx, A, F>(&self,
-                                        sess: Session,
-                                        ast_map: Option<ast_map::Map<'tcx>>,
-                                        arenas: &'tcx ty::CtxtArenas<'tcx>,
-                                        id: String,
-                                        f: F) -> A where
-        F: FnOnce(&PrinterSupport) -> A,
-    {
-        match *self {
-            PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
-                f(&NoAnn { sess: &sess, ast_map: ast_map.as_ref() })
-            }
-
-            PpmIdentified | PpmExpandedIdentified => {
-                f(&IdentifiedAnnotation { sess: &sess, ast_map: ast_map.as_ref() })
-            }
-            PpmExpandedHygiene => {
-                f(&HygieneAnnotation { sess: &sess, ast_map: ast_map.as_ref() })
-            }
-            PpmTyped => {
-                let ast_map = ast_map.expect("--pretty=typed missing ast_map");
-                let analysis = driver::phase_3_run_analysis_passes(sess,
-                                                                   ast_map,
-                                                                   arenas,
-                                                                   id,
-                                                                   resolve::MakeGlobMap::No);
-                f(&TypedAnnotation { tcx: &analysis.ty_cx })
-            }
-        }
-    }
-}
-
-trait PrinterSupport<'ast>: pprust::PpAnn {
-    /// Provides a uniform interface for re-extracting a reference to a
-    /// `Session` from a value that now owns it.
-    fn sess<'a>(&'a self) -> &'a Session;
-
-    /// Provides a uniform interface for re-extracting a reference to an
-    /// `ast_map::Map` from a value that now owns it.
-    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'ast>>;
-
-    /// Produces the pretty-print annotation object.
-    ///
-    /// (Rust does not yet support upcasting from a trait object to
-    /// an object for one of its super-traits.)
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn;
-}
-
-struct NoAnn<'a, 'ast: 'a> {
-    sess: &'a Session,
-    ast_map: Option<&'a ast_map::Map<'ast>>
-}
-
-impl<'a, 'ast: 'a> PrinterSupport<'ast> for NoAnn<'a, 'ast> {
-    fn sess<'b>(&'b self) -> &'b Session { self.sess }
-    fn ast_map<'b>(&'b self) -> Option<&'b ast_map::Map<'ast>> { self.ast_map }
-    fn pp_ann<'b>(&'b self) -> &'b pprust::PpAnn { self }
-}
-
-impl<'a, 'ast> pprust::PpAnn for NoAnn<'a, 'ast> {}
-
-struct IdentifiedAnnotation<'a, 'ast: 'a> {
-    sess: &'a Session,
-    ast_map: Option<&'a ast_map::Map<'ast>>
-}
-
-impl<'a, 'ast: 'a> PrinterSupport<'ast> for IdentifiedAnnotation<'a, 'ast> {
-    fn sess<'b>(&'b self) -> &'b Session { self.sess }
-    fn ast_map<'b>(&'b self) -> Option<&'b ast_map::Map<'ast>> { self.ast_map }
-    fn pp_ann<'b>(&'b self) -> &'b pprust::PpAnn { self }
-}
-
-impl<'a, 'ast> pprust::PpAnn for IdentifiedAnnotation<'a, 'ast> {
+struct IdentifiedAnnotation;
+const IDENTIFIED_ANNOTATION: &'static pprust::PpAnn = &IdentifiedAnnotation;
+impl pprust::PpAnn for IdentifiedAnnotation {
     fn pre(&self,
            s: &mut pprust::State,
            node: pprust::AnnNode) -> old_io::IoResult<()> {
@@ -225,18 +145,9 @@ impl<'a, 'ast> pprust::PpAnn for IdentifiedAnnotation<'a, 'ast> {
     }
 }
 
-struct HygieneAnnotation<'a, 'ast: 'a> {
-    sess: &'a Session,
-    ast_map: Option<&'a ast_map::Map<'ast>>
-}
-
-impl<'a, 'ast: 'a> PrinterSupport<'ast> for HygieneAnnotation<'a, 'ast> {
-    fn sess<'b>(&'b self) -> &'b Session { self.sess }
-    fn ast_map<'b>(&'b self) -> Option<&'b ast_map::Map<'ast>> { self.ast_map }
-    fn pp_ann<'b>(&'b self) -> &'b pprust::PpAnn { self }
-}
-
-impl<'a, 'ast> pprust::PpAnn for HygieneAnnotation<'a, 'ast> {
+struct HygieneAnnotation;
+const HYGIENE_ANNOTATION: &'static pprust::PpAnn = &HygieneAnnotation;
+impl pprust::PpAnn for HygieneAnnotation {
     fn post(&self,
             s: &mut pprust::State,
             node: pprust::AnnNode) -> old_io::IoResult<()> {
@@ -256,19 +167,8 @@ impl<'a, 'ast> pprust::PpAnn for HygieneAnnotation<'a, 'ast> {
     }
 }
 
-
 struct TypedAnnotation<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-}
-
-impl<'a, 'tcx: 'a> PrinterSupport<'tcx> for TypedAnnotation<'a, 'tcx> {
-    fn sess<'b>(&'b self) -> &'b Session { &self.tcx.sess }
-
-    fn ast_map<'b>(&'b self) -> Option<&'b ast_map::Map<'tcx>> {
-        Some(&self.tcx.map)
-    }
-
-    fn pp_ann<'b>(&'b self) -> &'b pprust::PpAnn { self }
 }
 
 impl<'a, 'tcx> pprust::PpAnn for TypedAnnotation<'a, 'tcx> {
@@ -395,8 +295,8 @@ impl UserIdentifiedItem {
     }
 }
 
-fn needs_ast_map(ppm: &PpMode, opt_uii: &Option<UserIdentifiedItem>) -> bool {
-    match *ppm {
+fn needs_ast_map(ppm: PpMode, opt_uii: &Option<UserIdentifiedItem>) -> bool {
+    match ppm {
         PpmSource(PpmNormal) |
         PpmSource(PpmEveryBodyLoops) |
         PpmSource(PpmIdentified) => opt_uii.is_some(),
@@ -409,8 +309,8 @@ fn needs_ast_map(ppm: &PpMode, opt_uii: &Option<UserIdentifiedItem>) -> bool {
     }
 }
 
-fn needs_expansion(ppm: &PpMode) -> bool {
-    match *ppm {
+fn needs_expansion(ppm: PpMode) -> bool {
+    match ppm {
         PpmSource(PpmNormal) |
         PpmSource(PpmEveryBodyLoops) |
         PpmSource(PpmIdentified) => false,
@@ -418,6 +318,20 @@ fn needs_expansion(ppm: &PpMode) -> bool {
         PpmSource(PpmExpanded) |
         PpmSource(PpmExpandedIdentified) |
         PpmSource(PpmExpandedHygiene) |
+        PpmSource(PpmTyped) |
+        PpmFlowGraph(_) => true
+    }
+}
+
+fn needs_types(ppm: PpMode) -> bool {
+    match ppm {
+        PpmSource(PpmNormal) |
+        PpmSource(PpmEveryBodyLoops) |
+        PpmSource(PpmIdentified) |
+        PpmSource(PpmExpanded) |
+        PpmSource(PpmExpandedIdentified) |
+        PpmSource(PpmExpandedHygiene) => false,
+
         PpmSource(PpmTyped) |
         PpmFlowGraph(_) => true
     }
@@ -486,7 +400,8 @@ pub fn pretty_print_input(sess: Session,
                           input: &Input,
                           ppm: PpMode,
                           opt_uii: Option<UserIdentifiedItem>,
-                          ofile: Option<Path>) {
+                          ofile: Option<Path>)
+                          -> old_io::IoResult<()> {
     let krate = driver::phase_1_parse_input(&sess, cfg, input);
 
     let krate = if let PpmSource(PpmEveryBodyLoops) = ppm {
@@ -498,11 +413,11 @@ pub fn pretty_print_input(sess: Session,
 
     let id = link::find_crate_name(Some(&sess), &krate.attrs, input);
 
-    let is_expanded = needs_expansion(&ppm);
-    let compute_ast_map = needs_ast_map(&ppm, &opt_uii);
+    let compute_ast_map = needs_ast_map(ppm, &opt_uii);
+    let compute_types = needs_types(ppm);
     let krate = if compute_ast_map {
         match driver::phase_2_configure_and_expand(&sess, krate, &id[..], None) {
-            None => return,
+            None => return Ok(()),
             Some(k) => k
         }
     } else {
@@ -519,75 +434,97 @@ pub fn pretty_print_input(sess: Session,
         (forest.krate(), None)
     };
 
-    let src_name = driver::source_name(input);
-    let src = sess.codemap().get_filemap(&src_name[..])
-                            .src.as_bytes().to_vec();
-    let mut rdr = MemReader::new(src);
+    let analysis;
+    let (ast_map, tcx, sess) = if compute_types {
+        let ast_map = ast_map.expect("--pretty missing ast_map for type context");
+        analysis = driver::phase_3_run_analysis_passes(sess,
+                                                       ast_map,
+                                                       &arenas,
+                                                       id,
+                                                       resolve::MakeGlobMap::No);
+        (Some(&analysis.ty_cx.map), Some(&analysis.ty_cx), &analysis.ty_cx.sess)
+    } else {
+        (ast_map.as_ref(), None, &sess)
+    };
 
     let out = match ofile {
         None => box old_io::stdout() as Box<Writer+'static>,
         Some(p) => {
-            let r = old_io::File::create(&p);
-            match r {
+            match old_io::File::create(&p) {
                 Ok(w) => box w as Box<Writer+'static>,
                 Err(e) => panic!("print-print failed to open {} due to {}",
-                                p.display(), e),
+                                 p.display(), e),
             }
         }
     };
 
-    match (ppm, opt_uii) {
-        (PpmSource(s), None) =>
-            s.call_with_pp_support(
-                sess, ast_map, &arenas, id, |annotation| {
-                    debug!("pretty printing source code {:?}", s);
-                    let sess = annotation.sess();
-                    pprust::print_crate(sess.codemap(),
-                                        sess.diagnostic(),
-                                        krate,
-                                        src_name.to_string(),
-                                        &mut rdr,
-                                        out,
-                                        annotation.pp_ann(),
-                                        is_expanded)
-                }),
+    match ppm {
+        PpmSource(mode) => {
+            debug!("pretty printing source code {:?}", mode);
 
-        (PpmSource(s), Some(uii)) =>
-            s.call_with_pp_support(
-                sess, ast_map, &arenas, id, |annotation| {
-                    debug!("pretty printing source code {:?}", s);
-                    let sess = annotation.sess();
-                    let ast_map = annotation.ast_map()
-                        .expect("--pretty missing ast_map");
-                    let mut pp_state =
-                        pprust::State::new_from_input(sess.codemap(),
-                                                      sess.diagnostic(),
-                                                      src_name.to_string(),
-                                                      &mut rdr,
-                                                      out,
-                                                      annotation.pp_ann(),
-                                                      is_expanded);
-                    for node_id in uii.all_matching_node_ids(ast_map) {
-                        let node = ast_map.get(node_id);
-                        try!(pp_state.print_node(&node));
-                        try!(pp::space(&mut pp_state.s));
-                        try!(pp_state.synth_comment(ast_map.path_to_string(node_id)));
-                        try!(pp::hardbreak(&mut pp_state.s));
-                    }
-                    pp::eof(&mut pp_state.s)
-                }),
+            let typed_annotation = tcx.map(|tcx| TypedAnnotation { tcx: tcx });
+            let annotation: &pprust::PpAnn = match mode {
+                PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
+                    NO_ANNOTATION
+                }
+                PpmIdentified | PpmExpandedIdentified => {
+                    IDENTIFIED_ANNOTATION
+                }
+                PpmExpandedHygiene => {
+                    HYGIENE_ANNOTATION
+                }
+                PpmTyped => {
+                    typed_annotation.as_ref().expect("--pretty=typed missing type context")
+                }
+            };
 
-        (PpmFlowGraph(mode), opt_uii) => {
+            let is_expanded = needs_expansion(ppm);
+
+            let src_name = driver::source_name(input);
+            let filemap = sess.codemap().get_filemap(&src_name);
+            let mut rdr = BufReader::new(filemap.src.as_bytes());
+
+            if let Some(ref uii) = opt_uii {
+                let ast_map = ast_map.expect("--pretty missing ast_map");
+                let mut pp_state =
+                    pprust::State::new_from_input(sess.codemap(),
+                                                  sess.diagnostic(),
+                                                  src_name,
+                                                  &mut rdr,
+                                                  out,
+                                                  annotation,
+                                                  is_expanded);
+                for node_id in uii.all_matching_node_ids(ast_map) {
+                    let node = ast_map.get(node_id);
+                    try!(pp_state.print_node(&node));
+                    try!(pp::space(&mut pp_state.s));
+                    try!(pp_state.synth_comment(ast_map.path_to_string(node_id)));
+                    try!(pp::hardbreak(&mut pp_state.s));
+                }
+                pp::eof(&mut pp_state.s)
+            } else {
+                pprust::print_crate(sess.codemap(),
+                                    sess.diagnostic(),
+                                    krate,
+                                    src_name,
+                                    &mut rdr,
+                                    out,
+                                    annotation,
+                                    is_expanded)
+            }
+        }
+
+        PpmFlowGraph(mode) => {
             debug!("pretty printing flow graph for {:?}", opt_uii);
             let uii = opt_uii.unwrap_or_else(|| {
                 sess.fatal(&format!("`pretty flowgraph=..` needs NodeId (int) or
                                      unique path suffix (b::c::d)"))
 
             });
-            let ast_map = ast_map.expect("--pretty flowgraph missing ast_map");
-            let nodeid = uii.to_one_node_id("--pretty", &sess, &ast_map);
+            let tcx = tcx.expect("--pretty flowgraph missing type context");
+            let nodeid = uii.to_one_node_id("--pretty", sess, &tcx.map);
 
-            let node = ast_map.find(nodeid).unwrap_or_else(|| {
+            let node = tcx.map.find(nodeid).unwrap_or_else(|| {
                 sess.fatal(&format!("--pretty flowgraph couldn't find id: {}",
                                    nodeid))
             });
@@ -595,13 +532,8 @@ pub fn pretty_print_input(sess: Session,
             let code = blocks::Code::from_node(node);
             match code {
                 Some(code) => {
-                    let variants = gather_flowgraph_variants(&sess);
-                    let analysis = driver::phase_3_run_analysis_passes(sess,
-                                                                       ast_map,
-                                                                       &arenas,
-                                                                       id,
-                                                                       resolve::MakeGlobMap::No);
-                    print_flowgraph(variants, analysis, code, mode, out)
+                    let variants = gather_flowgraph_variants(sess);
+                    print_flowgraph(variants, tcx, code, mode, out)
                 }
                 None => {
                     let message = format!("--pretty=flowgraph needs \
@@ -610,29 +542,28 @@ pub fn pretty_print_input(sess: Session,
 
                     // point to what was found, if there's an
                     // accessible span.
-                    match ast_map.opt_span(nodeid) {
+                    match tcx.map.opt_span(nodeid) {
                         Some(sp) => sess.span_fatal(sp, &message[..]),
                         None => sess.fatal(&message[..])
                     }
                 }
             }
         }
-    }.unwrap()
+    }
 }
 
 fn print_flowgraph<W:old_io::Writer>(variants: Vec<borrowck_dot::Variant>,
-                                 analysis: ty::CrateAnalysis,
-                                 code: blocks::Code,
-                                 mode: PpFlowGraphMode,
-                                 mut out: W) -> old_io::IoResult<()> {
-    let ty_cx = &analysis.ty_cx;
+                                     tcx: &ty::ctxt,
+                                     code: blocks::Code,
+                                     mode: PpFlowGraphMode,
+                                     mut out: W) -> old_io::IoResult<()> {
     let cfg = match code {
-        blocks::BlockCode(block) => cfg::CFG::new(ty_cx, &*block),
-        blocks::FnLikeCode(fn_like) => cfg::CFG::new(ty_cx, &*fn_like.body()),
+        blocks::BlockCode(block) => cfg::CFG::new(tcx, &*block),
+        blocks::FnLikeCode(fn_like) => cfg::CFG::new(tcx, &*fn_like.body()),
     };
     let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
     let lcfg = LabelledCFG {
-        ast_map: &ty_cx.map,
+        ast_map: &tcx.map,
         cfg: &cfg,
         name: format!("node_{}", code.id()),
         labelled_edges: labelled_edges,
@@ -644,14 +575,14 @@ fn print_flowgraph<W:old_io::Writer>(variants: Vec<borrowck_dot::Variant>,
             return expand_err_details(r);
         }
         blocks::BlockCode(_) => {
-            ty_cx.sess.err("--pretty flowgraph with -Z flowgraph-print \
-                            annotations requires fn-like node id.");
+            tcx.sess.err("--pretty flowgraph with -Z flowgraph-print \
+                          annotations requires fn-like node id.");
             return Ok(())
         }
         blocks::FnLikeCode(fn_like) => {
             let fn_parts = borrowck::FnPartsWithCFG::from_fn_like(&fn_like, &cfg);
             let (bccx, analysis_data) =
-                borrowck::build_borrowck_dataflow_data_for_fn(ty_cx, fn_parts);
+                borrowck::build_borrowck_dataflow_data_for_fn(tcx, fn_parts);
 
             let lcfg = borrowck_dot::DataflowLabeller {
                 inner: lcfg,

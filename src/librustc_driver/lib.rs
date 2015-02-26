@@ -144,13 +144,9 @@ pub fn run_compiler<'a>(args: &[String],
 
     // It is somewhat unfortunate that this is hardwired in - this is forced by
     // the fact that pretty_print_input requires the session by value.
-    let pretty = callbacks.parse_pretty(&sess, &matches);
-    match pretty {
-        Some((ppm, opt_uii)) => {
-            pretty::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile);
-            return;
-        }
-        None => {/* continue */ }
+    if let Some((ppm, opt_uii)) = callbacks.parse_pretty(&sess, &matches) {
+        pretty::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile).unwrap();
+        return;
     }
 
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
