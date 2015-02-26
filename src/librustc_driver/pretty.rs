@@ -131,17 +131,14 @@ impl PpSourceMode {
     {
         match *self {
             PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
-                let annotation = NoAnn { sess: sess, ast_map: ast_map };
-                f(&annotation, payload)
+                f(&NoAnn { sess: &sess, ast_map: ast_map.as_ref() }, payload)
             }
 
             PpmIdentified | PpmExpandedIdentified => {
-                let annotation = IdentifiedAnnotation { sess: sess, ast_map: ast_map };
-                f(&annotation, payload)
+                f(&IdentifiedAnnotation { sess: &sess, ast_map: ast_map.as_ref() }, payload)
             }
             PpmExpandedHygiene => {
-                let annotation = HygieneAnnotation { sess: sess, ast_map: ast_map };
-                f(&annotation, payload)
+                f(&HygieneAnnotation { sess: &sess, ast_map: ast_map.as_ref() }, payload)
             }
             PpmTyped => {
                 let ast_map = ast_map.expect("--pretty=typed missing ast_map");
@@ -150,8 +147,7 @@ impl PpSourceMode {
                                                                    arenas,
                                                                    id,
                                                                    resolve::MakeGlobMap::No);
-                let annotation = TypedAnnotation { analysis: analysis };
-                f(&annotation, payload)
+                f(&TypedAnnotation { tcx: &analysis.ty_cx }, payload)
             }
         }
     }
@@ -173,39 +169,31 @@ trait PrinterSupport<'ast>: pprust::PpAnn {
     fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn;
 }
 
-struct NoAnn<'ast> {
-    sess: Session,
-    ast_map: Option<ast_map::Map<'ast>>
+struct NoAnn<'a, 'ast: 'a> {
+    sess: &'a Session,
+    ast_map: Option<&'a ast_map::Map<'ast>>
 }
 
-impl<'ast> PrinterSupport<'ast> for NoAnn<'ast> {
-    fn sess<'a>(&'a self) -> &'a Session { &self.sess }
-
-    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'ast>> {
-        self.ast_map.as_ref()
-    }
-
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self }
+impl<'a, 'ast: 'a> PrinterSupport<'ast> for NoAnn<'a, 'ast> {
+    fn sess<'b>(&'b self) -> &'b Session { self.sess }
+    fn ast_map<'b>(&'b self) -> Option<&'b ast_map::Map<'ast>> { self.ast_map }
+    fn pp_ann<'b>(&'b self) -> &'b pprust::PpAnn { self }
 }
 
-impl<'ast> pprust::PpAnn for NoAnn<'ast> {}
+impl<'a, 'ast> pprust::PpAnn for NoAnn<'a, 'ast> {}
 
-struct IdentifiedAnnotation<'ast> {
-    sess: Session,
-    ast_map: Option<ast_map::Map<'ast>>,
+struct IdentifiedAnnotation<'a, 'ast: 'a> {
+    sess: &'a Session,
+    ast_map: Option<&'a ast_map::Map<'ast>>
 }
 
-impl<'ast> PrinterSupport<'ast> for IdentifiedAnnotation<'ast> {
-    fn sess<'a>(&'a self) -> &'a Session { &self.sess }
-
-    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'ast>> {
-        self.ast_map.as_ref()
-    }
-
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self }
+impl<'a, 'ast: 'a> PrinterSupport<'ast> for IdentifiedAnnotation<'a, 'ast> {
+    fn sess<'b>(&'b self) -> &'b Session { self.sess }
+    fn ast_map<'b>(&'b self) -> Option<&'b ast_map::Map<'ast>> { self.ast_map }
+    fn pp_ann<'b>(&'b self) -> &'b pprust::PpAnn { self }
 }
 
-impl<'ast> pprust::PpAnn for IdentifiedAnnotation<'ast> {
+impl<'a, 'ast> pprust::PpAnn for IdentifiedAnnotation<'a, 'ast> {
     fn pre(&self,
            s: &mut pprust::State,
            node: pprust::AnnNode) -> old_io::IoResult<()> {
@@ -241,22 +229,18 @@ impl<'ast> pprust::PpAnn for IdentifiedAnnotation<'ast> {
     }
 }
 
-struct HygieneAnnotation<'ast> {
-    sess: Session,
-    ast_map: Option<ast_map::Map<'ast>>,
+struct HygieneAnnotation<'a, 'ast: 'a> {
+    sess: &'a Session,
+    ast_map: Option<&'a ast_map::Map<'ast>>
 }
 
-impl<'ast> PrinterSupport<'ast> for HygieneAnnotation<'ast> {
-    fn sess<'a>(&'a self) -> &'a Session { &self.sess }
-
-    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'ast>> {
-        self.ast_map.as_ref()
-    }
-
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self }
+impl<'a, 'ast: 'a> PrinterSupport<'ast> for HygieneAnnotation<'a, 'ast> {
+    fn sess<'b>(&'b self) -> &'b Session { self.sess }
+    fn ast_map<'b>(&'b self) -> Option<&'b ast_map::Map<'ast>> { self.ast_map }
+    fn pp_ann<'b>(&'b self) -> &'b pprust::PpAnn { self }
 }
 
-impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
+impl<'a, 'ast> pprust::PpAnn for HygieneAnnotation<'a, 'ast> {
     fn post(&self,
             s: &mut pprust::State,
             node: pprust::AnnNode) -> old_io::IoResult<()> {
@@ -277,21 +261,21 @@ impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
 }
 
 
-struct TypedAnnotation<'tcx> {
-    analysis: ty::CrateAnalysis<'tcx>,
+struct TypedAnnotation<'a, 'tcx: 'a> {
+    tcx: &'a ty::ctxt<'tcx>,
 }
 
-impl<'tcx> PrinterSupport<'tcx> for TypedAnnotation<'tcx> {
-    fn sess<'a>(&'a self) -> &'a Session { &self.analysis.ty_cx.sess }
+impl<'a, 'tcx: 'a> PrinterSupport<'tcx> for TypedAnnotation<'a, 'tcx> {
+    fn sess<'b>(&'b self) -> &'b Session { &self.tcx.sess }
 
-    fn ast_map<'a>(&'a self) -> Option<&'a ast_map::Map<'tcx>> {
-        Some(&self.analysis.ty_cx.map)
+    fn ast_map<'b>(&'b self) -> Option<&'b ast_map::Map<'tcx>> {
+        Some(&self.tcx.map)
     }
 
-    fn pp_ann<'a>(&'a self) -> &'a pprust::PpAnn { self }
+    fn pp_ann<'b>(&'b self) -> &'b pprust::PpAnn { self }
 }
 
-impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
+impl<'a, 'tcx> pprust::PpAnn for TypedAnnotation<'a, 'tcx> {
     fn pre(&self,
            s: &mut pprust::State,
            node: pprust::AnnNode) -> old_io::IoResult<()> {
@@ -303,7 +287,6 @@ impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
     fn post(&self,
             s: &mut pprust::State,
             node: pprust::AnnNode) -> old_io::IoResult<()> {
-        let tcx = &self.analysis.ty_cx;
         match node {
             pprust::NodeExpr(expr) => {
                 try!(pp::space(&mut s.s));
@@ -311,8 +294,8 @@ impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
                 try!(pp::space(&mut s.s));
                 try!(pp::word(&mut s.s,
                               &ppaux::ty_to_string(
-                                  tcx,
-                                  ty::expr_ty(tcx, expr))));
+                                  self.tcx,
+                                  ty::expr_ty(self.tcx, expr))));
                 s.pclose()
             }
             _ => Ok(())
