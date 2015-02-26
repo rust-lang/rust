@@ -1044,7 +1044,7 @@ fn get_struct_datatype_def<'tcx>(tcx: &ty::ctxt<'tcx>, intr: &IdentInterner,
     let name = item_name(intr, item);
     let def_id = item_def_id(item, cdata);
 
-    let fields = get_variant_fields(tcx, intr, cdata, item);
+    let fields = get_variant_fields(intr, cdata, item);
     let def = tcx.mk_datatype_def(ty::DatatypeDef {
         def_id: def_id,
         variants: vec![ty::VariantDef {
@@ -1086,7 +1086,7 @@ fn get_enum_datatype_def<'tcx>(tcx: &ty::ctxt<'tcx>, intr: &IdentInterner,
             _ => {}
         }
 
-        let fields = get_variant_fields(tcx, intr, cdata, item);
+        let fields = get_variant_fields(intr, cdata, item);
 
         ty::VariantDef {
             id: *did,
@@ -1113,7 +1113,7 @@ fn get_enum_datatype_def<'tcx>(tcx: &ty::ctxt<'tcx>, intr: &IdentInterner,
     def
 }
 
-fn get_variant_fields<'tcx>(tcx: &ty::ctxt<'tcx>, intr: &IdentInterner, cdata: Cmd,
+fn get_variant_fields<'tcx>(intr: &IdentInterner, cdata: Cmd,
                             item: rbml::Doc) -> Vec<ty::FieldTy<'tcx>> {
 
     let mut fields = Vec::new();
@@ -1124,7 +1124,7 @@ fn get_variant_fields<'tcx>(tcx: &ty::ctxt<'tcx>, intr: &IdentInterner, cdata: C
 
         let tagdoc = reader::get_doc(an_item, tag_item_field_origin);
         let origin_id = translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
-        let fld = ty::FieldTy::new(tcx, did, name,
+        let fld = ty::FieldTy::new(did, name,
                                    struct_field_family_to_visibility(f),
                                    origin_id);
         fields.push(fld);
@@ -1136,7 +1136,7 @@ fn get_variant_fields<'tcx>(tcx: &ty::ctxt<'tcx>, intr: &IdentInterner, cdata: C
         let tagdoc = reader::get_doc(an_item, tag_item_field_origin);
         let f = item_family(an_item);
         let origin_id =  translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
-        let fld = ty::FieldTy::new(tcx, did, special_idents::unnamed_field.name,
+        let fld = ty::FieldTy::new(did, special_idents::unnamed_field.name,
                                    struct_field_family_to_visibility(f),
                                    origin_id);
         fields.push(fld);

@@ -1552,10 +1552,10 @@ fn get_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                     Err(e) => { e.insert(f.span); }
                 }
 
-                ty::FieldTy::new(tcx, local_def(f.node.id), ident.name, visibility, def_id)
+                ty::FieldTy::new(local_def(f.node.id), ident.name, visibility, def_id)
             }
             ast::UnnamedField(visibility) => {
-                ty::FieldTy::new(tcx, local_def(f.node.id),
+                ty::FieldTy::new(local_def(f.node.id),
                                  special_idents::unnamed_field.name,
                                  visibility, def_id)
             }
@@ -1627,7 +1627,7 @@ fn get_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, def_id: ast::DefId,
         match v.node.kind {
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let fields = args.iter().map(|f| {
-                    ty::FieldTy::new(tcx, local_def(f.id),
+                    ty::FieldTy::new(local_def(f.id),
                                      special_idents::unnamed_field.name,
                                      ast::Public,
                                      def_id)
@@ -1664,11 +1664,11 @@ fn get_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, def_id: ast::DefId,
                                 Err(e) => { e.insert(f.span); }
                             }
 
-                            ty::FieldTy::new(tcx, local_def(f.node.id),
+                            ty::FieldTy::new(local_def(f.node.id),
                                              ident.name, visibility, def_id)
                         }
                         ast::UnnamedField(visibility) => {
-                            ty::FieldTy::new(tcx, local_def(f.node.id),
+                            ty::FieldTy::new(local_def(f.node.id),
                                              special_idents::unnamed_field.name,
                                              visibility, def_id)
                         }

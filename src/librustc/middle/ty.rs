@@ -66,6 +66,7 @@ use util::ppaux::{Repr, UserString};
 use util::common::{memoized, ErrorReported};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::{FnvHashMap};
+use util::ivar::Ivar;
 
 use arena::TypedArena;
 use std::borrow::{Borrow, Cow};
@@ -2291,16 +2292,15 @@ pub struct FieldTy<'tcx> {
     pub vis: ast::Visibility,
     // The "parent" of the field, the DefId of the struct or enum this field comes from
     pub origin: DefId,
-    // `Cell` is used here to to allow the construction of a DatatypeDef that contains types
+    // Ivar is used here to to allow the construction of a DatatypeDef that contains types
     // that reference this type. For example:
     //
     //     struct Foo(Bar);
     //     struct Bar(Option<Box<Foo>>);
     //
     // Making the `ty_struct` for `Foo` requires the type of `Bar`, but making the `type`
-    // of `Bar` requires the type of `Foo`. The `Cell` is initially set to `ty_err` and
-    // the real type is filled in later
-    ty: Cell<Ty<'tcx>>
+    // of `Bar` requires the type of `Foo`.
+    ty: Ivar<Ty<'tcx>>
 }
 
 impl<'tcx> DatatypeDef<'tcx> {
@@ -2349,14 +2349,13 @@ impl<'tcx> VariantDef<'tcx> {
 }
 
 impl<'tcx> FieldTy<'tcx> {
-    pub fn new(tcx: &ctxt<'tcx>,
-               id: DefId, name: Name, vis: ast::Visibility, origin: DefId) -> FieldTy<'tcx> {
+    pub fn new(id: DefId, name: Name, vis: ast::Visibility, origin: DefId) -> FieldTy<'tcx> {
         FieldTy {
             id: id,
             name: name,
             vis: vis,
             origin: origin,
-            ty: Cell::new(tcx.types.err),
+            ty: Ivar::new(),
         }
     }
 
@@ -2365,15 +2364,11 @@ impl<'tcx> FieldTy<'tcx> {
     }
 
     pub fn set_ty(&self, ty: Ty<'tcx>) {
-        if let ty_err = self.ty().sty {
-            self.ty.set(ty);
-        } else {
-            panic!("FieldTy::set_ty: Field type already set");
-        }
+        self.ty.fulfill(ty);
     }
 
     pub fn ty(&self) -> Ty<'tcx> {
-        self.ty.get()
+        self.ty.unwrap()
     }
 
     pub fn subst_ty(&self, tcx: &ctxt<'tcx>, substs: &Substs<'tcx>) -> Ty<'tcx> {

@@ -265,8 +265,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TraitRef<'tcx> {
 
 impl<'tcx> TypeFoldable<'tcx> for ty::FieldTy<'tcx> {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::FieldTy<'tcx> {
-        let ty = ty::FieldTy::new(folder.tcx(),
-                                  self.id, self.name, self.vis, self.origin);
+        let ty = ty::FieldTy::new(self.id, self.name, self.vis, self.origin);
         ty.set_ty(self.ty().fold_with(folder));
         ty
     }

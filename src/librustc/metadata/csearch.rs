@@ -13,7 +13,6 @@
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
-use middle::def;
 use middle::lang_items;
 use middle::ty;
 
