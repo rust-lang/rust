@@ -218,6 +218,10 @@ impl File {
         Ok(File(FileDesc::new(fd)))
     }
 
+    pub fn close(self) -> io::Result<()> {
+        self.0.close()
+    }
+
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         let mut stat: libc::stat = unsafe { mem::zeroed() };
         try!(cvt(unsafe { libc::fstat(self.0.raw(), &mut stat) }));

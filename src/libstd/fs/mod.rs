@@ -126,6 +126,14 @@ impl File {
         OpenOptions::new().write(true).create(true).truncate(true).open(path)
     }
 
+    /// Close the file.
+    ///
+    /// Use this function if you want to avoid panicking when the destructor of
+    /// the file is run.
+    pub fn close(self) -> io::Result<()> {
+        self.inner.close()
+    }
+
     /// Returns the original path that was used to open this file.
     pub fn path(&self) -> Option<&Path> {
         Some(&self.path)
@@ -262,8 +270,8 @@ impl OpenOptions {
     ///
     /// * Opening a file that does not exist with read access.
     /// * Attempting to open a file with access that the user lacks
-    ///   permissions for
-    /// * Filesystem-level errors (full disk, etc)
+    ///   permissions for.
+    /// * Filesystem-level errors (full disk, etc).
     pub fn open<P: AsPath + ?Sized>(&self, path: &P) -> io::Result<File> {
         let path = path.as_path();
         let inner = try!(fs_imp::File::open(path, &self.0));
@@ -273,7 +281,7 @@ impl OpenOptions {
         // tradition before the introduction of opendir(3).  We explicitly
         // reject it because there are few use cases.
         if cfg!(not(any(target_os = "linux", target_os = "android"))) &&
-           try!(inner.file_attr()).is_dir() {
+            try!(inner.file_attr()).is_dir() {
             Err(Error::new(ErrorKind::InvalidInput, "is a directory", None))
         } else {
             Ok(File { path: path.to_path_buf(), inner: inner })
