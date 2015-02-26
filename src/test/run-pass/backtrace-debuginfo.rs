@@ -10,8 +10,6 @@
 
 // compile-flags:-g
 
-#![feature(asm)]
-
 use std::old_io::stderr;
 use std::env;
 
