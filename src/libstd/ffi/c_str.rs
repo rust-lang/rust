@@ -451,6 +451,23 @@ impl IntoBytes for Vec<u8> {
     fn into_bytes(self) -> Vec<u8> { self }
 }
 
+macro_rules! array_impls {
+    ($($N: expr)+) => {
+        $(
+            impl<'a> IntoBytes for &'a [u8; $N] {
+                fn into_bytes(self) -> Vec<u8> { self.to_vec() }
+            }
+        )+
+    }
+}
+
+array_impls! {
+     0  1  2  3  4  5  6  7  8  9
+    10 11 12 13 14 15 16 17 18 19
+    20 21 22 23 24 25 26 27 28 29
+    30 31 32
+}
+
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;

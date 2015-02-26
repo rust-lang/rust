@@ -632,9 +632,9 @@ mod tests {
             );
         }
 
-        t!(v: b"a/b/c", filename, Some(b"c"));
-        t!(v: b"a/b/c\xFF", filename, Some(b"c\xFF"));
-        t!(v: b"a/b\xFF/c", filename, Some(b"c"));
+        t!(v: b"a/b/c", filename, Some(&b"c"[..]));
+        t!(v: b"a/b/c\xFF", filename, Some(&b"c\xFF"[..]));
+        t!(v: b"a/b\xFF/c", filename, Some(&b"c"[..]));
         t!(s: "a/b/c", filename, Some("c"), opt);
         t!(s: "/a/b/c", filename, Some("c"), opt);
         t!(s: "a", filename, Some("a"), opt);
@@ -656,9 +656,9 @@ mod tests {
         t!(s: "..", dirname, "..");
         t!(s: "../..", dirname, "../..");
 
-        t!(v: b"hi/there.txt", filestem, Some(b"there"));
-        t!(v: b"hi/there\x80.txt", filestem, Some(b"there\x80"));
-        t!(v: b"hi/there.t\x80xt", filestem, Some(b"there"));
+        t!(v: b"hi/there.txt", filestem, Some(&b"there"[..]));
+        t!(v: b"hi/there\x80.txt", filestem, Some(&b"there\x80"[..]));
+        t!(v: b"hi/there.t\x80xt", filestem, Some(&b"there"[..]));
         t!(s: "hi/there.txt", filestem, Some("there"), opt);
         t!(s: "hi/there", filestem, Some("there"), opt);
         t!(s: "there.txt", filestem, Some("there"), opt);
@@ -672,9 +672,9 @@ mod tests {
         t!(s: "..", filestem, None, opt);
         t!(s: "../..", filestem, None, opt);
 
-        t!(v: b"hi/there.txt", extension, Some(b"txt"));
-        t!(v: b"hi/there\x80.txt", extension, Some(b"txt"));
-        t!(v: b"hi/there.t\x80xt", extension, Some(b"t\x80xt"));
+        t!(v: b"hi/there.txt", extension, Some(&b"txt"[..]));
+        t!(v: b"hi/there\x80.txt", extension, Some(&b"txt"[..]));
+        t!(v: b"hi/there.t\x80xt", extension, Some(&b"t\x80xt"[..]));
         t!(v: b"hi/there", extension, None);
         t!(v: b"hi/there\x80", extension, None);
         t!(s: "hi/there.txt", extension, Some("txt"), opt);
@@ -756,8 +756,8 @@ mod tests {
         t!(s: "a/b/c", ["d", "/e"], "/e");
         t!(s: "a/b/c", ["d", "/e", "f"], "/e/f");
         t!(s: "a/b/c", ["d".to_string(), "e".to_string()], "a/b/c/d/e");
-        t!(v: b"a/b/c", [b"d", b"e"], b"a/b/c/d/e");
-        t!(v: b"a/b/c", [b"d", b"/e", b"f"], b"/e/f");
+        t!(v: b"a/b/c", [&b"d"[..], &b"e"[..]], b"a/b/c/d/e");
+        t!(v: b"a/b/c", [&b"d"[..], &b"/e"[..], &b"f"[..]], b"/e/f");
         t!(v: b"a/b/c", [b"d".to_vec(), b"e".to_vec()], b"a/b/c/d/e");
     }
 
@@ -983,10 +983,10 @@ mod tests {
             )
         }
 
-        t!(v: Path::new(b"a/b/c"), Some(b"c"), b"a/b", Some(b"c"), None);
-        t!(v: Path::new(b"a/b/\xFF"), Some(b"\xFF"), b"a/b", Some(b"\xFF"), None);
-        t!(v: Path::new(b"hi/there.\xFF"), Some(b"there.\xFF"), b"hi",
-              Some(b"there"), Some(b"\xFF"));
+        t!(v: Path::new(b"a/b/c"), Some(&b"c"[..]), b"a/b", Some(&b"c"[..]), None);
+        t!(v: Path::new(b"a/b/\xFF"), Some(&b"\xFF"[..]), b"a/b", Some(&b"\xFF"[..]), None);
+        t!(v: Path::new(b"hi/there.\xFF"), Some(&b"there.\xFF"[..]), b"hi",
+              Some(&b"there"[..]), Some(&b"\xFF"[..]));
         t!(s: Path::new("a/b/c"), Some("c"), Some("a/b"), Some("c"), None);
         t!(s: Path::new("."), None, Some("."), None, None);
         t!(s: Path::new("/"), None, Some("/"), None, None);

@@ -2505,10 +2505,11 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     match lit.node {
         ast::LitStr(..) => ty::mk_str_slice(tcx, tcx.mk_region(ty::ReStatic), ast::MutImmutable),
-        ast::LitBinary(..) => {
-            ty::mk_slice(tcx,
-                         tcx.mk_region(ty::ReStatic),
-                         ty::mt{ ty: tcx.types.u8, mutbl: ast::MutImmutable })
+        ast::LitBinary(ref v) => {
+            ty::mk_rptr(tcx, tcx.mk_region(ty::ReStatic), ty::mt {
+                ty: ty::mk_vec(tcx, tcx.types.u8, Some(v.len())),
+                mutbl: ast::MutImmutable,
+            })
         }
         ast::LitByte(_) => tcx.types.u8,
         ast::LitChar(_) => tcx.types.char,

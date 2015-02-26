@@ -1397,7 +1397,7 @@ mod tests {
             )
         }
 
-        t!(v: b"a\\b\\c", filename, Some(b"c"));
+        t!(v: b"a\\b\\c", filename, Some(&b"c"[..]));
         t!(s: "a\\b\\c", filename_str, "c");
         t!(s: "\\a\\b\\c", filename_str, "c");
         t!(s: "a", filename_str, "a");
@@ -1461,7 +1461,7 @@ mod tests {
         t!(s: "\\\\.\\foo", dirname_str, "\\\\.\\foo");
         t!(s: "\\\\?\\a\\b\\", dirname_str, "\\\\?\\a");
 
-        t!(v: b"hi\\there.txt", filestem, Some(b"there"));
+        t!(v: b"hi\\there.txt", filestem, Some(&b"there"[..]));
         t!(s: "hi\\there.txt", filestem_str, "there");
         t!(s: "hi\\there", filestem_str, "there");
         t!(s: "there.txt", filestem_str, "there");
@@ -1476,7 +1476,7 @@ mod tests {
         t!(s: "..\\..", filestem_str, None, opt);
         // filestem is based on filename, so we don't need the full set of prefix tests
 
-        t!(v: b"hi\\there.txt", extension, Some(b"txt"));
+        t!(v: b"hi\\there.txt", extension, Some(&b"txt"[..]));
         t!(v: b"hi\\there", extension, None);
         t!(s: "hi\\there.txt", extension_str, Some("txt"), opt);
         t!(s: "hi\\there", extension_str, None, opt);
@@ -1603,8 +1603,8 @@ mod tests {
         t!(s: "a\\b\\c", ["d", "\\e"], "\\e");
         t!(s: "a\\b\\c", ["d", "\\e", "f"], "\\e\\f");
         t!(s: "a\\b\\c", ["d".to_string(), "e".to_string()], "a\\b\\c\\d\\e");
-        t!(v: b"a\\b\\c", [b"d", b"e"], b"a\\b\\c\\d\\e");
-        t!(v: b"a\\b\\c", [b"d", b"\\e", b"f"], b"\\e\\f");
+        t!(v: b"a\\b\\c", [&b"d"[..], &b"e"[..]], b"a\\b\\c\\d\\e");
+        t!(v: b"a\\b\\c", [&b"d"[..], &b"\\e"[..], &b"f"[..]], b"\\e\\f");
         t!(v: b"a\\b\\c", [b"d".to_vec(), b"e".to_vec()],
            b"a\\b\\c\\d\\e");
     }
@@ -1898,7 +1898,7 @@ mod tests {
             )
         }
 
-        t!(v: Path::new(b"a\\b\\c"), Some(b"c"), b"a\\b", Some(b"c"), None);
+        t!(v: Path::new(b"a\\b\\c"), Some(&b"c"[..]), b"a\\b", Some(&b"c"[..]), None);
         t!(s: Path::new("a\\b\\c"), Some("c"), Some("a\\b"), Some("c"), None);
         t!(s: Path::new("."), None, Some("."), None, None);
         t!(s: Path::new("\\"), None, Some("\\"), None, None);
