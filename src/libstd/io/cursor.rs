@@ -129,6 +129,23 @@ impl<'a> BufRead for Cursor<&'a mut [u8]> { buffer!(); }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> BufRead for Cursor<Vec<u8>> { buffer!(); }
 
+macro_rules! array_impls {
+    ($($N: expr)+) => {
+        $(
+            impl<'a> io::Seek for Cursor<&'a [u8; $N]> { seek!(); }
+            impl<'a> Read for Cursor<&'a [u8; $N]> { read!(); }
+            impl<'a> BufRead for Cursor<&'a [u8; $N]> { buffer!(); }
+        )+
+    }
+}
+
+array_impls! {
+     0  1  2  3  4  5  6  7  8  9
+    10 11 12 13 14 15 16 17 18 19
+    20 21 22 23 24 25 26 27 28 29
+    30 31 32
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for Cursor<&'a mut [u8]> {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {

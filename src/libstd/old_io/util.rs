@@ -445,7 +445,8 @@ mod test {
 
     #[test]
     fn limit_reader_buffer() {
-        let r = &mut b"0123456789\n0123456789\n";
+        let mut r: &[u8] = b"0123456789\n0123456789\n";
+        let r = &mut r;
         {
             let mut r = LimitReader::new(r.by_ref(), 3);
             assert_eq!(r.read_line(), Ok("012".to_string()));

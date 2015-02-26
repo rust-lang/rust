@@ -75,14 +75,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
         ast::LitBool(b) => C_bool(cx, b),
         ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
         ast::LitBinary(ref data) => {
-            let g = addr_of(cx, C_bytes(cx, &data[..]), "binary", e.id);
-            let base = ptrcast(g, Type::i8p(cx));
-            let prev_const = cx.const_unsized().borrow_mut()
-                               .insert(base, g);
-            assert!(prev_const.is_none() || prev_const == Some(g));
-            assert_eq!(abi::FAT_PTR_ADDR, 0);
-            assert_eq!(abi::FAT_PTR_EXTRA, 1);
-            C_struct(cx, &[base, C_uint(cx, data.len())], false)
+            addr_of(cx, C_bytes(cx, &data[..]), "binary", e.id)
         }
     }
 }
