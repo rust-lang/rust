@@ -51,8 +51,8 @@ struct Rawlink<T> {
 }
 
 impl<T> Copy for Rawlink<T> {}
-unsafe impl<T:'static+Send> Send for Rawlink<T> {}
-unsafe impl<T:Send+Sync> Sync for Rawlink<T> {}
+unsafe impl<T:Send> Send for Rawlink<T> {}
+unsafe impl<T:Sync> Sync for Rawlink<T> {}
 
 struct Node<T> {
     next: Link<T>,

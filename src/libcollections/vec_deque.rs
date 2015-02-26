@@ -24,7 +24,6 @@ use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::iter::{self, repeat, FromIterator, IntoIterator, RandomAccessIterator};
-use core::marker;
 use core::mem;
 use core::num::{Int, UnsignedInt};
 use core::ops::{Index, IndexMut};
@@ -58,12 +57,6 @@ pub struct VecDeque<T> {
     cap: usize,
     ptr: Unique<T>,
 }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Send> Send for VecDeque<T> {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Sync> Sync for VecDeque<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for VecDeque<T> {
@@ -545,9 +538,7 @@ impl<T> VecDeque<T> {
         IterMut {
             tail: self.tail,
             head: self.head,
-            cap: self.cap,
-            ptr: *self.ptr,
-            marker: marker::PhantomData,
+            ring: unsafe { self.buffer_as_mut_slice() },
         }
     }
 
@@ -1515,17 +1506,12 @@ impl<'a, T> RandomAccessIterator for Iter<'a, T> {
     }
 }
 
-// FIXME This was implemented differently from Iter because of a problem
-//       with returning the mutable reference. I couldn't find a way to
-//       make the lifetime checker happy so, but there should be a way.
 /// `VecDeque` mutable iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T:'a> {
-    ptr: *mut T,
+    ring: &'a mut [T],
     tail: usize,
     head: usize,
-    cap: usize,
-    marker: marker::PhantomData<&'a mut T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1538,16 +1524,17 @@ impl<'a, T> Iterator for IterMut<'a, T> {
             return None;
         }
         let tail = self.tail;
-        self.tail = wrap_index(self.tail + 1, self.cap);
+        self.tail = wrap_index(self.tail + 1, self.ring.len());
 
         unsafe {
-            Some(&mut *self.ptr.offset(tail as isize))
+            let elem = self.ring.get_unchecked_mut(tail);
+            Some(&mut *(elem as *mut _))
         }
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = count(self.tail, self.head, self.cap);
+        let len = count(self.tail, self.head, self.ring.len());
         (len, Some(len))
     }
 }
@@ -1559,10 +1546,11 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
         if self.tail == self.head {
             return None;
         }
-        self.head = wrap_index(self.head - 1, self.cap);
+        self.head = wrap_index(self.head - 1, self.ring.len());
 
         unsafe {
-            Some(&mut *self.ptr.offset(self.head as isize))
+            let elem = self.ring.get_unchecked_mut(self.head);
+            Some(&mut *(elem as *mut _))
         }
     }
 }

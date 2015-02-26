@@ -1085,7 +1085,7 @@ impl<K, V> Node<K, V> {
                     vals: RawItems::from_slice(self.vals()),
                     edges: RawItems::from_slice(self.edges()),
 
-                    ptr: *self.keys as *mut u8,
+                    ptr: Unique::new(*self.keys as *mut u8),
                     capacity: self.capacity(),
                     is_leaf: self.is_leaf()
                 },
@@ -1354,10 +1354,13 @@ struct MoveTraversalImpl<K, V> {
     edges: RawItems<Node<K, V>>,
 
     // For deallocation when we are done iterating.
-    ptr: *mut u8,
+    ptr: Unique<u8>,
     capacity: usize,
     is_leaf: bool
 }
+
+unsafe impl<K: Sync, V: Sync> Sync for MoveTraversalImpl<K, V> {}
+unsafe impl<K: Send, V: Send> Send for MoveTraversalImpl<K, V> {}
 
 impl<K, V> TraversalImpl for MoveTraversalImpl<K, V> {
     type Item = (K, V);
@@ -1401,7 +1404,7 @@ impl<K, V> Drop for MoveTraversalImpl<K, V> {
 
         let (alignment, size) =
                 calculate_allocation_generic::<K, V>(self.capacity, self.is_leaf);
-        unsafe { heap::deallocate(self.ptr, size, alignment) };
+        unsafe { heap::deallocate(*self.ptr, size, alignment) };
     }
 }
 
@@ -1425,12 +1428,12 @@ pub enum TraversalItem<K, V, E> {
 /// A traversal over a node's entries and edges
 pub type Traversal<'a, K, V> = AbsTraversal<ElemsAndEdges<Zip<slice::Iter<'a, K>,
                                                               slice::Iter<'a, V>>,
-                                                              slice::Iter<'a, Node<K, V>>>>;
+                                                          slice::Iter<'a, Node<K, V>>>>;
 
 /// A mutable traversal over a node's entries and edges
 pub type MutTraversal<'a, K, V> = AbsTraversal<ElemsAndEdges<Zip<slice::Iter<'a, K>,
                                                                  slice::IterMut<'a, V>>,
-                                                                 slice::IterMut<'a, Node<K, V>>>>;
+                                                             slice::IterMut<'a, Node<K, V>>>>;
 
 /// An owning traversal over a node's entries and edges
 pub type MoveTraversal<K, V> = AbsTraversal<MoveTraversalImpl<K, V>>;
