@@ -134,11 +134,7 @@ pub trait Reseeder<R> {
 /// Reseed an RNG using a `Default` instance. This reseeds by
 /// replacing the RNG with the result of a `Default::default` call.
 #[derive(Copy)]
-pub struct ReseedWithDefault { __hack: [u8; 0] }
-// FIXME(#21721) used to be an unit struct but that can cause
-// certain LLVM versions to abort during optimizations.
-#[allow(non_upper_case_globals)]
-pub const ReseedWithDefault: ReseedWithDefault = ReseedWithDefault { __hack: [] };
+pub struct ReseedWithDefault;
 
 impl<R: Rng + Default> Reseeder<R> for ReseedWithDefault {
     fn reseed(&mut self, rng: &mut R) {
