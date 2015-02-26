@@ -524,7 +524,7 @@ fn enforce_trait_manually_implementable(tcx: &ty::ctxt, sp: Span, trait_def_id: 
         return // everything OK
     };
     span_err!(tcx.sess, sp, E0183, "manual implementations of `{}` are experimental", trait_name);
-    span_help!(tcx.sess, sp,
+    fileline_help!(tcx.sess, sp,
                "add `#![feature(unboxed_closures)]` to the crate attributes to enable");
 }
 

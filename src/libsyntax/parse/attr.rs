@@ -77,7 +77,7 @@ impl<'a> ParserAttr for Parser<'a> {
                         self.span_err(span,
                                       "an inner attribute is not permitted in \
                                        this context");
-                        self.span_help(span,
+                        self.fileline_help(span,
                                        "place inner attribute at the top of the module or block");
                     }
                     ast::AttrInner

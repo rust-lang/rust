@@ -3098,7 +3098,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 },
                 expr_t, None);
 
-            tcx.sess.span_help(field.span,
+            tcx.sess.fileline_help(field.span,
                                "maybe a `()` to call it is missing? \
                                If not, try an anonymous function");
         } else {
@@ -4480,7 +4480,7 @@ pub fn check_instantiable(tcx: &ty::ctxt,
         span_err!(tcx.sess, sp, E0073,
             "this type cannot be instantiated without an \
              instance of itself");
-        span_help!(tcx.sess, sp, "consider using `Option<{}>`",
+        fileline_help!(tcx.sess, sp, "consider using `Option<{}>`",
             ppaux::ty_to_string(tcx, item_ty));
         false
     } else {

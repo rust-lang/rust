@@ -4115,10 +4115,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                           uses it like a function name",
                                          path_name));
 
-                        self.session.span_help(expr.span,
-                            &format!("Did you mean to write: \
-                                     `{} {{ /* fields */ }}`?",
-                                     path_name));
+                        let msg = format!("Did you mean to write: \
+                                           `{} {{ /* fields */ }}`?",
+                                          path_name);
+                        if self.emit_errors {
+                            self.session.fileline_help(expr.span, &msg);
+                        } else {
+                            self.session.span_help(expr.span, &msg);
+                        }
                     } else {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `{}`",
@@ -4146,18 +4150,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     match type_res.map(|r| r.base_def) {
                         Some(DefTy(struct_id, _))
                             if self.structs.contains_key(&struct_id) => {
-                            self.resolve_error(expr.span,
+                                self.resolve_error(expr.span,
                                     &format!("`{}` is a structure name, but \
                                                 this expression \
                                                 uses it like a function name",
                                                 path_name));
 
-                            self.session.span_help(expr.span,
-                                &format!("Did you mean to write: \
-                                            `{} {{ /* fields */ }}`?",
-                                            path_name));
-
-                        }
+                                let msg = format!("Did you mean to write: \
+                                                     `{} {{ /* fields */ }}`?",
+                                                    path_name);
+                                if self.emit_errors {
+                                    self.session.fileline_help(expr.span, &msg);
+                                } else {
+                                    self.session.span_help(expr.span, &msg);
+                                }
+                            }
                         _ => {
                             // Keep reporting some errors even if they're ignored above.
                             self.resolve_path(expr.id, path, 0, ValueNS, true);
