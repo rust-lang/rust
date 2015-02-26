@@ -16,7 +16,7 @@
 //! interface for panicking is:
 //!
 //! ```ignore
-//! fn panic_impl(fmt: fmt::Arguments, &(&'static str, uint)) -> !;
+//! fn panic_impl(fmt: fmt::Arguments, &(&'static str, u64)) -> !;
 //! ```
 //!
 //! This definition allows for panicking with any general message, but it does not
@@ -66,11 +66,11 @@ fn panic_bounds_check(file_line: &(&'static str, u32),
 
 #[cold] #[inline(never)]
 #[cfg(stage0)]
-pub fn panic_fmt(fmt: fmt::Arguments, file_line: &(&'static str, usize)) -> ! {
+pub fn panic_fmt(fmt: fmt::Arguments, file_line: &(&'static str, u64)) -> ! {
     #[allow(improper_ctypes)]
     extern {
         #[lang = "panic_fmt"]
-        fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: uint) -> !;
+        fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: u64) -> !;
     }
     let (file, line) = *file_line;
     unsafe { panic_impl(fmt, file, line as uint) }
@@ -81,7 +81,7 @@ pub fn panic_fmt(fmt: fmt::Arguments, file_line: &(&'static str, u32)) -> ! {
     #[allow(improper_ctypes)]
     extern {
         #[lang = "panic_fmt"]
-        fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: uint) -> !;
+        fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: u32) -> !;
     }
     let (file, line) = *file_line;
     unsafe { panic_impl(fmt, file, line as uint) }
