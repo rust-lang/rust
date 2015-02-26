@@ -991,6 +991,17 @@ fn trait_ref_to_object_type<'tcx>(this: &AstConv<'tcx>,
     result
 }
 
+fn report_ambiguous_associated_type(tcx: &ty::ctxt,
+                                    span: Span,
+                                    type_str: &str,
+                                    trait_str: &str,
+                                    name: &str) {
+    span_err!(tcx.sess, span, E0223,
+              "ambiguous associated type; specify the type using the syntax \
+               `<{} as {}>::{}`",
+              type_str, trait_str, name);
+}
+
 fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                    span: Span,
                                    ty: Ty<'tcx>,
@@ -1011,10 +1022,8 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
     let ty_param_node_id = if is_param {
         ty_path_def.local_node_id()
     } else {
-        span_err!(tcx.sess, span, E0223,
-                "ambiguous associated type; specify the type using the syntax \
-                `<{} as Trait>::{}`",
-                ty.user_string(tcx), token::get_name(assoc_name));
+        report_ambiguous_associated_type(
+            tcx, span, &ty.user_string(tcx), "Trait", &token::get_name(assoc_name));
         return (tcx.types.err, ty_path_def);
     };
 
@@ -1109,10 +1118,8 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
         ty
     } else {
         let path_str = ty::item_path_str(tcx, trait_def_id);
-        span_err!(tcx.sess, span, E0223,
-                  "ambiguous associated type; specify the type using the syntax \
-                   `<Type as {}>::{}`",
-                   path_str, &token::get_ident(item_segment.identifier));
+        report_ambiguous_associated_type(
+            tcx, span, "Type", &path_str, &token::get_ident(item_segment.identifier));
         return tcx.types.err;
     };
 
