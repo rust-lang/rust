@@ -448,7 +448,8 @@ impl<T, E> Result<T, E> {
     /// ```
     /// use std::old_io::IoResult;
     ///
-    /// let mut buffer = &mut b"1\n2\n3\n4\n";
+    /// let mut buffer: &[u8] = b"1\n2\n3\n4\n";
+    /// let mut buffer = &mut buffer;
     ///
     /// let mut sum = 0;
     ///
