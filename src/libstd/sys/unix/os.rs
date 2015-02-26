@@ -229,7 +229,8 @@ pub fn current_exe() -> io::Result<PathBuf> {
         if v.is_null() {
             Err(io::Error::last_os_error())
         } else {
-            Ok(Path::new(CStr::from_ptr(v).to_bytes().to_vec()))
+            let vec = CStr::from_ptr(v).to_bytes().to_vec();
+            Ok(PathBuf::new::<OsString>(&OsStringExt::from_vec(vec)))
         }
     }
 }
