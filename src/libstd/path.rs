@@ -108,7 +108,7 @@
 use core::prelude::*;
 
 use ascii::*;
-use borrow::{Borrow, ToOwned, Cow};
+use borrow::{Borrow, IntoCow, ToOwned, Cow};
 use cmp;
 use iter::{self, IntoIterator};
 use mem;
@@ -987,6 +987,18 @@ impl Borrow<Path> for PathBuf {
     }
 }
 
+impl IntoCow<'static, Path> for PathBuf {
+    fn into_cow(self) -> Cow<'static, Path> {
+        Cow::Owned(self)
+    }
+}
+
+impl<'a> IntoCow<'a, Path> for &'a Path {
+    fn into_cow(self) -> Cow<'a, Path> {
+        Cow::Borrowed(self)
+    }
+}
+
 impl ToOwned for Path {
     type Owned = PathBuf;
     fn to_owned(&self) -> PathBuf { self.to_path_buf() }
@@ -1410,6 +1422,26 @@ mod tests {
             }
         );
     );
+
+    #[test]
+    fn into_cow() {
+        use borrow::{Cow, IntoCow};
+
+        let static_path = Path::new("/home/foo");
+        let static_cow_path: Cow<'static, Path> = static_path.into_cow();
+        let pathbuf = PathBuf::new("/home/foo");
+
+        {
+            let path: &Path = &pathbuf;
+            let borrowed_cow_path: Cow<Path> = path.into_cow();
+
+            assert_eq!(static_cow_path, borrowed_cow_path);
+        }
+
+        let owned_cow_path: Cow<'static, Path> = pathbuf.into_cow();
+
+        assert_eq!(static_cow_path, owned_cow_path);
+    }
 
     #[test]
     #[cfg(unix)]
