@@ -146,7 +146,7 @@ Path to the archive utility to use when assembling archives.
 Path to the linker utility to use when linking libraries, executables, and
 objects.
 .TP
-\fBlink\-args\fR='\fI\-FLAG1 \-FLAG2\fR'
+\fBlink\-args\fR='\fI\-flag1 \-flag2\fR'
 A space\[hy]separated list of extra arguments to pass to the linker when the linker
 is invoked.
 .TP
@@ -157,18 +157,18 @@ Perform LLVM link\[hy]time optimizations.
 Selects a target processor.
 If the value is 'help', then a list of available CPUs is printed.
 .TP
-\fBtarget\-feature\fR='\fI+FEATURE1\fR,\fI\-FEATURE2\fR'
+\fBtarget\-feature\fR='\fI+feature1\fR,\fI\-feature2\fR'
 A comma\[hy]separated list of features to enable or disable for the target.
 A preceding '+' enables a feature while a preceding '\-' disables it.
 Available features can be discovered through \fItarget\-cpu=help\fR.
 .TP
-\fBpasses\fR=\fILIST\fR
+\fBpasses\fR=\fIval\fR
 A space\[hy]separated list of extra LLVM passes to run.
 A value of 'list' will cause \fBrustc\fR to print all known passes and
 exit.
 The passes specified are appended at the end of the normal pass manager.
 .TP
-\fBllvm\-args\fR='\fI\-ARG1\fR \fI\-ARG2\fR'
+\fBllvm\-args\fR='\fI\-arg1\fR \fI\-arg2\fR'
 A space\[hy]separated list of arguments to pass through to LLVM.
 .TP
 \fBsave\-temps\fR
@@ -210,22 +210,22 @@ The relocation model to use.
 \fBcode\-model\fR=[small,kernel,medium,large]
 Choose the code model to use.
 .TP
-\fBmetadata\fR=\fIVAL\fR
+\fBmetadata\fR=\fIval\fR
 Metadata to mangle symbol names with.
 .TP
-\fBextra\-filename\fR=\fIVAL\fR
+\fBextra\-filename\fR=\fIval\fR
 Extra data to put in each output filename.
 .TP
-\fBcodegen\-units\fR=\fIN\fR
-Divide crate into \fIN\fR units to optimize in parallel.
+\fBcodegen\-units\fR=\fIn\fR
+Divide crate into \fIn\fR units to optimize in parallel.
 .TP
-\fBremark\fR=\fIVAL\fR
+\fBremark\fR=\fIval\fR
 Print remarks for these optimization passes (space separated, or "all").
 .TP
 \fBno\-stack\-check\fR
 Disable checks for stack exhaustion (a memory\[hy]safety hazard!).
 .TP
-\fBdebuginfo\fR=\fIVAL\fR
+\fBdebuginfo\fR=\fIval\fR
 Debug info emission level:
 .RS
 .TP
