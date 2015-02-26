@@ -550,9 +550,9 @@ fn test_to_hlist() {
 There seem to be few drawbacks to implementing this feature as an
 extension of the existing macro machinery. The change adds a small
 amount of additional complexity to the
-[parser](https://github.com/freebroccolo/rust/blob/e09cb32bcc04029dc4c16790e2aaa9811af27f25/src/libsyntax/parse/parser.rs#L1547-L1560)
+[parser](https://github.com/freebroccolo/rust/commit/a224739e92a3aa1febb67d6371988622bd141361)
 and
-[conversion](https://github.com/freebroccolo/rust/blob/e4b826b7afa1b5496b41ddaa1666014046ac5704/src/librustc_typeck/astconv.rs#L1301-L1303)
+[conversion](https://github.com/freebroccolo/rust/commit/9341232087991dee73713dc4521acdce11a799a2)
 but the changes are minimal.
 
 As with all feature proposals, it is possible that designs for future
