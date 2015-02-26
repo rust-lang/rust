@@ -1637,8 +1637,6 @@ impl<I: Iterator, P> Iterator for Filter<I, P> where P: FnMut(&I::Item) -> bool 
         for x in self.iter.by_ref() {
             if (self.predicate)(&x) {
                 return Some(x);
-            } else {
-                continue
             }
         }
         None
