@@ -114,31 +114,27 @@ pub fn parse_pretty(sess: &Session,
 // Note that since the `&PrinterSupport` is freshly constructed on each
 // call, it would not make sense to try to attach the lifetime of `self`
 // to the lifetime of the `&PrinterObject`.
-//
-// (The `use_once_payload` is working around the current lack of once
-// functions in the compiler.)
 
 impl PpSourceMode {
     /// Constructs a `PrinterSupport` object and passes it to `f`.
-    fn call_with_pp_support<'tcx, A, B, F>(&self,
-                                           sess: Session,
-                                           ast_map: Option<ast_map::Map<'tcx>>,
-                                           arenas: &'tcx ty::CtxtArenas<'tcx>,
-                                           id: String,
-                                           payload: B,
-                                           f: F) -> A where
-        F: FnOnce(&PrinterSupport, B) -> A,
+    fn call_with_pp_support<'tcx, A, F>(&self,
+                                        sess: Session,
+                                        ast_map: Option<ast_map::Map<'tcx>>,
+                                        arenas: &'tcx ty::CtxtArenas<'tcx>,
+                                        id: String,
+                                        f: F) -> A where
+        F: FnOnce(&PrinterSupport) -> A,
     {
         match *self {
             PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
-                f(&NoAnn { sess: &sess, ast_map: ast_map.as_ref() }, payload)
+                f(&NoAnn { sess: &sess, ast_map: ast_map.as_ref() })
             }
 
             PpmIdentified | PpmExpandedIdentified => {
-                f(&IdentifiedAnnotation { sess: &sess, ast_map: ast_map.as_ref() }, payload)
+                f(&IdentifiedAnnotation { sess: &sess, ast_map: ast_map.as_ref() })
             }
             PpmExpandedHygiene => {
-                f(&HygieneAnnotation { sess: &sess, ast_map: ast_map.as_ref() }, payload)
+                f(&HygieneAnnotation { sess: &sess, ast_map: ast_map.as_ref() })
             }
             PpmTyped => {
                 let ast_map = ast_map.expect("--pretty=typed missing ast_map");
@@ -147,7 +143,7 @@ impl PpSourceMode {
                                                                    arenas,
                                                                    id,
                                                                    resolve::MakeGlobMap::No);
-                f(&TypedAnnotation { tcx: &analysis.ty_cx }, payload)
+                f(&TypedAnnotation { tcx: &analysis.ty_cx })
             }
         }
     }
@@ -543,7 +539,7 @@ pub fn pretty_print_input(sess: Session,
     match (ppm, opt_uii) {
         (PpmSource(s), None) =>
             s.call_with_pp_support(
-                sess, ast_map, &arenas, id, out, |annotation, out| {
+                sess, ast_map, &arenas, id, |annotation| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust::print_crate(sess.codemap(),
@@ -558,7 +554,7 @@ pub fn pretty_print_input(sess: Session,
 
         (PpmSource(s), Some(uii)) =>
             s.call_with_pp_support(
-                sess, ast_map, &arenas, id, (out,uii), |annotation, (out,uii)| {
+                sess, ast_map, &arenas, id, |annotation| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     let ast_map = annotation.ast_map()

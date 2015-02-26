@@ -377,12 +377,11 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         if sess.opts.debugging_opts.save_analysis {
             control.after_analysis.callback = box |state| {
                 time(state.session.time_passes(),
-                     "save analysis",
-                     state.expanded_crate.unwrap(),
-                     |krate| save::process_crate(state.session,
-                                                 krate,
-                                                 state.analysis.unwrap(),
-                                                 state.out_dir));
+                     "save analysis", ||
+                     save::process_crate(state.session,
+                                         state.expanded_crate.unwrap(),
+                                         state.analysis.unwrap(),
+                                         state.out_dir));
             };
             control.make_glob_map = resolve::MakeGlobMap::Yes;
         }
