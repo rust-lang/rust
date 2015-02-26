@@ -87,7 +87,7 @@ let x: T = {
 };
 
 // With type ascription.
-let x: T foo(): U<_>;
+let x: T = foo(): U<_>;
 ```
 
 
@@ -117,13 +117,14 @@ expression are exactly those of the implicit coercion.
 ### coercion and `as` vs `:`
 
 A downside of type ascription is the overlap with explicit coercions (aka casts,
-the `as` operator). Type ascription makes implicit coercions explicit. In RFC
-401, it is proposed that all valid implicit coercions are valid explicit
-coercions. However, that may be too confusing for users, since there is no
-reason to use type ascription rather than `as` (if there is some coercion).
-Furthermore, if programmers do opt to use `as` as the default whether or not it
-is required, then it loses its function as a warning sign for programmers to
-beware of.
+the `as` operator). To the programmer, type ascription makes implicit coercions
+explicit (however, the compiler makes no distinction between coercions due to
+type ascription and other coercions). In RFC 401, it is proposed that all valid
+implicit coercions are valid explicit coercions. However, that may be too
+confusing for users, since there is no reason to use type ascription rather than
+`as` (if there is some coercion). Furthermore, if programmers do opt to use `as`
+as the default whether or not it is required, then it loses its function as a
+warning sign for programmers to beware of.
 
 To address this I propose three lints which check for: trivial casts, coercible
 casts, and trivial numeric casts. Other than these lints we stick with the
