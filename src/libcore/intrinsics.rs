@@ -241,7 +241,12 @@ extern "rust-intrinsic" {
     /// will trigger a compiler error.
     pub fn return_address() -> *const u8;
 
-    /// Returns `true` if a type requires drop glue.
+    /// Returns `true` if the actual type given as `T` requires drop
+    /// glue; returns `false` if the actual type provided for `T`
+    /// implements `Copy`.
+    ///
+    /// If the actual type neither requires drop glue nor implements
+    /// `Copy`, then may return `true` or `false`.
     pub fn needs_drop<T>() -> bool;
 
     /// Returns `true` if a type is managed (will be allocated on the local heap)
