@@ -187,6 +187,7 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("no_link", Normal),
     ("derive", Normal),
     ("should_fail", Normal),
+    ("should_panic", Normal),
     ("ignore", Normal),
     ("no_implicit_prelude", Normal),
     ("reexport_test_harness_main", Normal),
