@@ -11,17 +11,21 @@ Allow macros in type positions
 
 Macros are currently allowed in syntax fragments for expressions,
 items, and patterns, but not for types. This RFC proposes to lift that
-restriction for the following reasons:
+restriction.
 
-1. Increase generality of the macro system - the limitation should be
-  removed in order to promote generality and to enable use cases which
-  would otherwise require resorting either more elaborate plugins or
-  macros at the item-level.
+1. This would allow macros to be used more flexibly, avoiding the
+  need for more complex item-level macros or plugins in some
+  cases. For example, when creating trait implementations with
+  macros, it is sometimes useful to be able to define the
+  associated types using a nested type macro but this is
+  currently problematic.
 
-2. Enable more programming patterns - macros in type positions provide
-  a means to express **recursion** and **choice** within types in a
-  fashion that is still legible. Associated types alone can accomplish
-  the former (recursion/choice) but not the latter (legibility).
+2. Enable more programming patterns, particularly with respect to
+  type level programming. Macros in type positions provide
+  convenient way to express recursion and choice. It is possible
+  to do the same thing purely through programming with associated
+  types but the resulting code can be cumbersome to read and write.
+
 
 # Detailed design
 
