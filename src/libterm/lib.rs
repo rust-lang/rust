@@ -59,7 +59,6 @@
 #![feature(staged_api)]
 #![feature(unicode)]
 #![feature(std_misc)]
-#![feature(env)]
 #![feature(os)]
 #![cfg_attr(windows, feature(libc))]
 

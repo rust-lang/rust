@@ -31,7 +31,6 @@
 #![feature(int_uint)]
 #![feature(old_io)]
 #![feature(libc)]
-#![feature(env)]
 #![feature(old_path)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
