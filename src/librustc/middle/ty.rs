@@ -4298,6 +4298,9 @@ pub fn free_region_from_def(outlives_extent: region::DestructionScopeData,
 pub fn pat_ty<'tcx>(cx: &ctxt<'tcx>, pat: &ast::Pat) -> Ty<'tcx> {
     return node_id_to_type(cx, pat.id);
 }
+pub fn pat_ty_opt<'tcx>(cx: &ctxt<'tcx>, pat: &ast::Pat) -> Option<Ty<'tcx>> {
+    return node_id_to_type_opt(cx, pat.id);
+}
 
 
 // Returns the type of an expression as a monotype.

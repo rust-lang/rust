@@ -1771,6 +1771,11 @@ impl LintPass for Stability {
         stability::check_path(cx.tcx, path, id,
                               &mut |id, sp, stab| self.lint(cx, id, sp, stab));
     }
+
+    fn check_pat(&mut self, cx: &Context, pat: &ast::Pat) {
+        stability::check_pat(cx.tcx, pat,
+                             &mut |id, sp, stab| self.lint(cx, id, sp, stab))
+    }
 }
 
 declare_lint! {
