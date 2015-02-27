@@ -357,16 +357,6 @@ fn main() {
 
 [items]: ../reference.html#items
 
-# Common Macros
-
-The Rust Programming Language has a few macros that you might find useful. Some of them are:
-  + panic!
-  + unreachable!
-  + vec!
-  + unimplemented!
-
-and [more](http://doc.rust-lang.org/std/index.html#macros). 
-
 # Further reading
 
 The [advanced macros chapter][] goes into more detail about macro syntax. It
