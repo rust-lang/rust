@@ -439,6 +439,7 @@ fn translate_status(status: c_int) -> ExitStatus {
               target_os = "ios",
               target_os = "freebsd",
               target_os = "dragonfly",
+              target_os = "bitrig",
               target_os = "openbsd"))]
     mod imp {
         pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
