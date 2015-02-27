@@ -275,7 +275,13 @@ macro_rules! impls{
 /// any methods, but instead is used to gate access to data.
 ///
 /// FIXME. Better documentation needed here!
-pub trait MarkerTrait : PhantomFn<Self> { }
+pub trait MarkerTrait : PhantomFn<Self,Self> { }
+//                                    ~~~~~ <-- FIXME(#22806)?
+//
+// Marker trait has been made invariant so as to avoid inf recursion,
+// but we should ideally solve the underlying problem. That's a bit
+// complicated.
+
 impl<T:?Sized> MarkerTrait for T { }
 
 /// `PhantomFn` is a marker trait for use with traits that contain

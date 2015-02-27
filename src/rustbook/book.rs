@@ -114,12 +114,12 @@ pub fn parse_summary<R: Reader>(input: R, src: &Path) -> Result<Book, Vec<String
             }
         };
 
-        let star_idx = match line.find_str("*") { Some(i) => i, None => continue };
+        let star_idx = match line.find("*") { Some(i) => i, None => continue };
 
-        let start_bracket = star_idx + line[star_idx..].find_str("[").unwrap();
-        let end_bracket = start_bracket + line[start_bracket..].find_str("](").unwrap();
+        let start_bracket = star_idx + line[star_idx..].find("[").unwrap();
+        let end_bracket = start_bracket + line[start_bracket..].find("](").unwrap();
         let start_paren = end_bracket + 1;
-        let end_paren = start_paren + line[start_paren..].find_str(")").unwrap();
+        let end_paren = start_paren + line[start_paren..].find(")").unwrap();
 
         let given_path = &line[start_paren + 1 .. end_paren];
         let title = line[start_bracket + 1..end_bracket].to_string();

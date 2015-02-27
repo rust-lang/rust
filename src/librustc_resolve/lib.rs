@@ -2985,7 +2985,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         } else {
             let msg = format!("use of undeclared trait name `{}`",
                               self.path_names_to_string(trait_path, path_depth));
-            self.resolve_error(trait_path.span, &msg[]);
+            self.resolve_error(trait_path.span, &msg);
             Err(())
         }
     }

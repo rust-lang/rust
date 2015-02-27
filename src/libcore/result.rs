@@ -641,9 +641,9 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn or(self, res: Result<T, E>) -> Result<T, E> {
+    pub fn or<F>(self, res: Result<T, F>) -> Result<T, F> {
         match self {
-            Ok(_) => self,
+            Ok(v) => Ok(v),
             Err(_) => res,
         }
     }

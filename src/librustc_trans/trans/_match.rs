@@ -1499,6 +1499,7 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     fn create_dummy_locals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                        pat: &ast::Pat)
                                        -> Block<'blk, 'tcx> {
+        let _icx = push_ctxt("create_dummy_locals");
         // create dummy memory for the variables if we have no
         // value to store into them immediately
         let tcx = bcx.tcx();

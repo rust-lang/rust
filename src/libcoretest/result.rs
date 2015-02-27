@@ -36,10 +36,10 @@ pub fn test_and_then() {
 
 #[test]
 pub fn test_or() {
-    assert_eq!(op1().or(Ok(667)).unwrap(), 666);
+    assert_eq!(op1().or(Ok::<_, &'static str>(667)).unwrap(), 666);
     assert_eq!(op1().or(Err("bad")).unwrap(), 666);
 
-    assert_eq!(op2().or(Ok(667)).unwrap(), 667);
+    assert_eq!(op2().or(Ok::<_, &'static str>(667)).unwrap(), 667);
     assert_eq!(op2().or(Err("bad")).unwrap_err(), "bad");
 }
 

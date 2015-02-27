@@ -939,6 +939,7 @@ impl<'a, P: Pattern<'a>> Iterator for SplitStr<'a, P> {
     type Item = &'a str;
 
     #[inline]
+    #[allow(deprecated)]
     fn next(&mut self) -> Option<&'a str> {
         Iterator::next(&mut self.0)
     }

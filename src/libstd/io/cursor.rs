@@ -173,7 +173,7 @@ mod tests {
         assert_eq!(writer.write(&[1, 2, 3]), Ok(3));
         assert_eq!(writer.write(&[4, 5, 6, 7]), Ok(4));
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
     }
 
     #[test]
@@ -369,28 +369,28 @@ mod tests {
         assert_eq!(writer.write(&[4, 5, 6, 7]), Ok(4));
         assert_eq!(writer.position(), 8);
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
 
         assert_eq!(writer.seek(SeekFrom::Start(0)), Ok(0));
         assert_eq!(writer.position(), 0);
         assert_eq!(writer.write(&[3, 4]), Ok(2));
         let b: &[_] = &[3, 4, 2, 3, 4, 5, 6, 7];
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
 
         assert_eq!(writer.seek(SeekFrom::Current(1)), Ok(3));
         assert_eq!(writer.write(&[0, 1]), Ok(2));
         let b: &[_] = &[3, 4, 2, 0, 1, 5, 6, 7];
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
 
         assert_eq!(writer.seek(SeekFrom::End(-1)), Ok(7));
         assert_eq!(writer.write(&[1, 2]), Ok(2));
         let b: &[_] = &[3, 4, 2, 0, 1, 5, 6, 1, 2];
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
 
         assert_eq!(writer.seek(SeekFrom::End(1)), Ok(10));
         assert_eq!(writer.write(&[1]), Ok(1));
         let b: &[_] = &[3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1];
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
     }
 
     #[test]

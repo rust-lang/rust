@@ -974,7 +974,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let src_datum = unpack_datum!(bcx, trans(bcx, &**src));
             let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &**dst, "assign"));
 
-            if type_needs_drop(bcx.tcx(), dst_datum.ty) {
+            if bcx.fcx.type_needs_drop(dst_datum.ty) {
                 // If there are destructors involved, make sure we
                 // are copying from an rvalue, since that cannot possible
                 // alias an lvalue. We are concerned about code like:
@@ -1498,7 +1498,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         assert_eq!(discr, 0);
 
         match ty::expr_kind(bcx.tcx(), &*base.expr) {
-            ty::RvalueDpsExpr | ty::RvalueDatumExpr if !type_needs_drop(bcx.tcx(), ty) => {
+            ty::RvalueDpsExpr | ty::RvalueDatumExpr if !bcx.fcx.type_needs_drop(ty) => {
                 bcx = trans_into(bcx, &*base.expr, SaveIn(addr));
             },
             ty::RvalueStmtExpr => bcx.tcx().sess.bug("unexpected expr kind for struct base expr"),
@@ -2116,7 +2116,7 @@ fn trans_assign_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Evaluate LHS (destination), which should be an lvalue
     let dst_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, dst, "assign_op"));
-    assert!(!type_needs_drop(bcx.tcx(), dst_datum.ty));
+    assert!(!bcx.fcx.type_needs_drop(dst_datum.ty));
     let dst_ty = dst_datum.ty;
     let dst = load_ty(bcx, dst_datum.val, dst_datum.ty);
 
