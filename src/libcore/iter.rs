@@ -637,8 +637,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn all<F>(self, mut f: F) -> bool where F: FnMut(Self::Item) -> bool {
-        for x in self { if !f(x) { return false; } }
+    fn all<F>(&mut self, mut f: F) -> bool where F: FnMut(Self::Item) -> bool {
+        for x in self.by_ref() { if !f(x) { return false; } }
         true
     }
 
