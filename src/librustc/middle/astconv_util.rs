@@ -68,7 +68,7 @@ pub fn ast_ty_to_prim_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ast_ty: &ast::Ty)
             Some(d) => d.full_def()
         };
         if let def::DefPrimTy(nty) = def {
-            Some(prim_ty_to_ty(tcx, &path.segments[], nty))
+            Some(prim_ty_to_ty(tcx, &path.segments, nty))
         } else {
             None
         }
@@ -76,4 +76,3 @@ pub fn ast_ty_to_prim_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ast_ty: &ast::Ty)
         None
     }
 }
-
