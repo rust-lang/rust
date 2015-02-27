@@ -15,6 +15,7 @@ use marker;
 use ops::{Deref, DerefMut};
 use sync::poison::{self, TryLockError, TryLockResult, LockResult};
 use sys_common::mutex as sys;
+use fmt;
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///
@@ -247,6 +248,19 @@ impl<T: Send> Drop for Mutex<T> {
         // this mutex (it's up to the user to arrange for a mutex to get
         // dropped, that's not our job)
         unsafe { self.inner.lock.destroy() }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: fmt::Debug + Send + 'static> fmt::Debug for Mutex<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.try_lock() {
+            Ok(guard) => write!(f, "Mutex {{ data: {:?} }}", *guard),
+            Err(TryLockError::Poisoned(err)) => {
+                write!(f, "Mutex {{ data: Poisoned({:?}) }}", **err.get_ref())
+            },
+            Err(TryLockError::WouldBlock) => write!(f, "Mutex {{ <locked> }}")
+        }
     }
 }
 
