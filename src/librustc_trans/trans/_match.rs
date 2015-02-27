@@ -789,7 +789,7 @@ fn pick_column_to_specialize(def_map: &DefMap, m: &[Match]) -> Option<uint> {
 
         // Irrefutable columns always go first, they'd only be duplicated in the branches.
         if total_score == 0 {
-            std::uint::MAX
+            std::usize::MAX
         } else {
             total_score
         }

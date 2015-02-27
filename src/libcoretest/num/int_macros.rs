@@ -12,7 +12,7 @@ macro_rules! int_module { ($T:ty, $T_i:ident) => (
 #[cfg(test)]
 mod tests {
     use core::$T_i::*;
-    use core::int;
+    use core::isize;
     use core::num::{FromStrRadix, Int, SignedInt};
     use core::ops::{Shl, Shr, Not, BitXor, BitAnd, BitOr};
     use num;
@@ -153,7 +153,7 @@ mod tests {
     fn test_signed_checked_div() {
         assert!(10.checked_div(2) == Some(5));
         assert!(5.checked_div(0) == None);
-        assert!(int::MIN.checked_div(-1) == None);
+        assert!(isize::MIN.checked_div(-1) == None);
     }
 
     #[test]
