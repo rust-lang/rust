@@ -334,6 +334,10 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
                 let tok = if let TtToken(_, ref tok) = *token { tok } else { unreachable!() };
                 // If T' is in the set FOLLOW(NT), continue. Else, reject.
                 match (&next_token, is_in_follow(cx, &next_token, frag_spec.as_str())) {
+                    (_, Err(msg)) => {
+                        cx.span_err(sp, &msg);
+                        continue
+                    }
                     (&Eof, _) => return Some((sp, tok.clone())),
                     (_, Ok(true)) => continue,
                     (next, Ok(false)) => {
@@ -343,10 +347,6 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
                                                  token_to_string(next)));
                         continue
                     },
-                    (_, Err(msg)) => {
-                        cx.span_err(sp, &msg);
-                        continue
-                    }
                 }
             },
             TtSequence(sp, ref seq) => {
