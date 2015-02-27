@@ -108,6 +108,7 @@ pub fn compile_input(sess: Session,
                                                                  &sess,
                                                                  outdir,
                                                                  output,
+                                                                 &outputs,
                                                                  &expanded_crate,
                                                                  &id[..]));
 
@@ -122,6 +123,7 @@ pub fn compile_input(sess: Session,
                                                                      &sess,
                                                                      outdir,
                                                                      output,
+                                                                     &outputs,
                                                                      &ast_map,
                                                                      &ast_map.krate(),
                                                                      &id[..]));
@@ -137,6 +139,7 @@ pub fn compile_input(sess: Session,
                                                                    &analysis.ty_cx.sess,
                                                                    outdir,
                                                                    output,
+                                                                   &outputs,
                                                                    analysis.ty_cx.map.krate(),
                                                                    &analysis,
                                                                    &analysis.ty_cx));
@@ -164,6 +167,7 @@ pub fn compile_input(sess: Session,
                                                            &sess,
                                                            outdir,
                                                            output,
+                                                           &outputs,
                                                            &trans));
 
     phase_6_link_output(&sess, &trans, &outputs);
@@ -259,17 +263,18 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
     fn empty(input: &'a Input,
              session: &'a Session,
              out_dir: &'a Option<Path>,
-             output: &'a Option<Path>)
+             output: &'a Option<Path>,
+             output_filenames: Option<&'a OutputFilenames>)
              -> CompileState<'a, 'tcx> {
         CompileState {
             input: input,
             session: session,
             out_dir: out_dir.as_ref(),
             output: output.as_ref(),
+            output_filenames: output_filenames,
             cfg: None,
             krate: None,
             crate_name: None,
-            output_filenames: None,
             expanded_crate: None,
             ast_map: None,
             analysis: None,
@@ -286,7 +291,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                          -> CompileState<'a, 'tcx> {
         CompileState {
             krate: Some(krate),
-            .. CompileState::empty(input, session, out_dir, output)
+            .. CompileState::empty(input, session, out_dir, output, None)
         }
     }
 
@@ -294,13 +299,15 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                           session: &'a Session,
                           out_dir: &'a Option<Path>,
                           output: &'a Option<Path>,
+                          output_filenames: &'a OutputFilenames,
                           expanded_crate: &'a ast::Crate,
                           crate_name: &'a str)
                           -> CompileState<'a, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
             expanded_crate: Some(expanded_crate),
-            .. CompileState::empty(input, session, out_dir, output)
+            .. CompileState::empty(input, session, out_dir, output,
+                                   Some(output_filenames))
         }
     }
 
@@ -308,6 +315,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                               session: &'a Session,
                               out_dir: &'a Option<Path>,
                               output: &'a Option<Path>,
+                              output_filenames: &'a OutputFilenames,
                               ast_map: &'a ast_map::Map<'tcx>,
                               expanded_crate: &'a ast::Crate,
                               crate_name: &'a str)
@@ -316,7 +324,8 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             crate_name: Some(crate_name),
             ast_map: Some(ast_map),
             expanded_crate: Some(expanded_crate),
-            .. CompileState::empty(input, session, out_dir, output)
+            .. CompileState::empty(input, session, out_dir, output,
+                                   Some(output_filenames))
         }
     }
 
@@ -324,6 +333,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                             session: &'a Session,
                             out_dir: &'a Option<Path>,
                             output: &'a Option<Path>,
+                            output_filenames: &'a OutputFilenames,
                             expanded_crate: &'a ast::Crate,
                             analysis: &'a ty::CrateAnalysis<'tcx>,
                             tcx: &'a ty::ctxt<'tcx>)
@@ -332,7 +342,8 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
             analysis: Some(analysis),
             tcx: Some(tcx),
             expanded_crate: Some(expanded_crate),
-            .. CompileState::empty(input, session, out_dir, output)
+            .. CompileState::empty(input, session, out_dir, output,
+                                   Some(output_filenames))
         }
     }
 
@@ -341,11 +352,13 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                         session: &'a Session,
                         out_dir: &'a Option<Path>,
                         output: &'a Option<Path>,
+                        output_filenames: &'a OutputFilenames,
                         trans: &'a trans::CrateTranslation)
                         -> CompileState<'a, 'tcx> {
         CompileState {
             trans: Some(trans),
-            .. CompileState::empty(input, session, out_dir, output)
+            .. CompileState::empty(input, session, out_dir, output,
+                                   Some(output_filenames))
         }
     }
 }

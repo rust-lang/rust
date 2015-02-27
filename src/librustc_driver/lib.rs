@@ -76,6 +76,7 @@ use std::cmp::Ordering::Equal;
 use std::old_io::{self, stdio};
 use std::iter::repeat;
 use std::env;
+use std::os;
 use std::sync::mpsc::channel;
 use std::thread;
 
@@ -235,7 +236,8 @@ pub trait CompilerCalls<'a> {
 // CompilerCalls instance for a regular rustc build.
 pub struct RustcDefaultCalls {
     save_analysis: bool,
-    pretty_print: Option<(PpMode, Option<UserIdentifiedItem>)>
+    pretty_print: Option<(PpMode, Option<UserIdentifiedItem>)>,
+    pretty_dump_dir: Option<Path>
 }
 
 impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
@@ -310,6 +312,12 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             }));
         }
 
+        if let Some(ref dir) = sess.opts.debugging_opts.pretty_dump_dir {
+            let pretty_dump_dir = os::getcwd().unwrap().join(dir);
+            assert!(pretty_dump_dir.is_absolute());
+            self.pretty_dump_dir = Some(pretty_dump_dir);
+        }
+
         RustcDefaultCalls::print_crate_info(sess, Some(input), odir, ofile).and_then(
             || RustcDefaultCalls::list_metadata(sess, matches, input))
     }
@@ -338,8 +346,30 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         if let Some((ppm, opt_uii)) = self.pretty_print.take() {
             let phase = pretty::printing_phase(&mut control, ppm, opt_uii.as_ref());
 
+            let dump_dir = self.pretty_dump_dir.take();
             phase.callback = box move |state| {
-                let output = state.output;
+                let pretty_output_path;
+                let output = if let Some(ref dir) = dump_dir {
+                    let file_path = if let Some(outputs) = state.output_filenames {
+                        outputs.with_extension("rs")
+                    } else {
+                        state.session.fatal(
+                            "-Z pretty-dump-dir cannot be used with --pretty \
+                             options that print before expansion");
+                    };
+                    let file_path = os::getcwd().unwrap().join(&file_path);
+                    assert!(file_path.is_absolute());
+
+                    // Cheap isomorphism: /foo/bar--bar/baz <-> foo--bar----bar--baz.
+                    let components: Vec<_> = file_path.components().map(|bytes| {
+                        String::from_utf8_lossy(bytes).replace("--", "----")
+                    }).collect();
+
+                    pretty_output_path = dir.join(components.connect("--"));
+                    Some(&pretty_output_path)
+                } else {
+                    state.output
+                };
                 pretty::print_from_phase(state, ppm, opt_uii.as_ref(), output).unwrap();
             };
 
@@ -368,7 +398,8 @@ impl RustcDefaultCalls {
     pub fn new() -> RustcDefaultCalls {
         RustcDefaultCalls {
             save_analysis: false,
-            pretty_print: None
+            pretty_print: None,
+            pretty_dump_dir: None
         }
     }
 
