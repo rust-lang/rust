@@ -65,7 +65,10 @@ Hidden clones?
 
 # Alternatives
 
-Nope.
+Restrict this proposal to only work for Copy types. This avoids any concern over 
+implicit expensive operations, and enables easily working with Plain Old Data. 
+The only downside is creating a larger divide between Clone and Copy, while also
+being a bit needlessly inexpressive.
 
 # Unresolved questions
 
