@@ -386,7 +386,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                          cleanup_scope: ScopeId,
                          val: ValueRef,
                          ty: Ty<'tcx>) {
-        if !common::type_needs_drop(self.ccx.tcx(), ty) { return; }
+        if !self.type_needs_drop(ty) { return; }
         let drop = box DropValue {
             is_immediate: false,
             must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
@@ -408,7 +408,8 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                                   cleanup_scope: ScopeId,
                                   val: ValueRef,
                                   ty: Ty<'tcx>) {
-        if !common::type_needs_drop(self.ccx.tcx(), ty) { return; }
+        if !self.type_needs_drop(ty) { return; }
+
         let drop = box DropValue {
             is_immediate: false,
             must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
@@ -432,7 +433,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                                val: ValueRef,
                                ty: Ty<'tcx>) {
 
-        if !common::type_needs_drop(self.ccx.tcx(), ty) { return; }
+        if !self.type_needs_drop(ty) { return; }
         let drop = box DropValue {
             is_immediate: true,
             must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
@@ -1007,6 +1008,7 @@ impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
                    bcx: Block<'blk, 'tcx>,
                    debug_loc: DebugLoc)
                    -> Block<'blk, 'tcx> {
+        let _icx = base::push_ctxt("<DropValue as Cleanup>::trans");
         let bcx = if self.is_immediate {
             glue::drop_ty_immediate(bcx, self.val, self.ty, debug_loc)
         } else {
