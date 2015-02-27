@@ -53,11 +53,10 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let not_null = IsNotNull(bcx, vptr);
     with_cond(bcx, not_null, |bcx| {
         let ccx = bcx.ccx();
-        let tcx = bcx.tcx();
         let _icx = push_ctxt("tvec::make_drop_glue_unboxed");
 
         let dataptr = get_dataptr(bcx, vptr);
-        let bcx = if type_needs_drop(tcx, unit_ty) {
+        let bcx = if bcx.fcx.type_needs_drop(unit_ty) {
             let len = get_len(bcx, vptr);
             iter_vec_raw(bcx,
                          dataptr,

@@ -59,16 +59,16 @@ fn iterator_to_slice() {
                 let mut iter = data.iter_mut();
                 assert_eq!(&iter[..], &other_data[..]);
                 // mutability:
-                assert!(&mut iter[] == other_data);
+                assert!(&mut iter[..] == other_data);
 
                 iter.next();
                 assert_eq!(&iter[..], &other_data[1..]);
-                assert!(&mut iter[] == &mut other_data[1..]);
+                assert!(&mut iter[..] == &mut other_data[1..]);
 
                 iter.next_back();
 
                 assert_eq!(&iter[..], &other_data[1..2]);
-                assert!(&mut iter[] == &mut other_data[1..2]);
+                assert!(&mut iter[..] == &mut other_data[1..2]);
 
                 let s = iter.into_slice();
                 assert!(s == &mut other_data[1..2]);

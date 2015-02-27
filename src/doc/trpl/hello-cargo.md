@@ -18,13 +18,15 @@ the Cargo
 README](https://github.com/rust-lang/cargo#installing-cargo-from-nightlies)
 for specific instructions about installing it.
 
+## Converting to Cargo
+
 Let's convert Hello World to Cargo.
 
 To Cargo-ify our project, we need to do two things: Make a `Cargo.toml`
 configuration file, and put our source file in the right place. Let's
 do that part first:
 
-```{bash}
+```bash
 $ mkdir src
 $ mv main.rs src/main.rs
 ```
@@ -36,7 +38,7 @@ place for everything, and everything in its place.
 
 Next, our configuration file:
 
-```{bash}
+```bash
 $ editor Cargo.toml
 ```
 
@@ -73,7 +75,7 @@ well as what it is named.
 
 Once you have this file in place, we should be ready to build! Try this:
 
-```{bash}
+```bash
 $ cargo build
    Compiling hello_world v0.0.1 (file:///home/yourname/projects/hello_world)
 $ ./target/hello_world
@@ -102,6 +104,62 @@ to touch this file yourself, just let Cargo handle it.
 That's it! We've successfully built `hello_world` with Cargo. Even though our
 program is simple, it's using much of the real tooling that you'll use for the
 rest of your Rust career.
+
+## A New Project
+
+You don't have to go through this whole process every time you want to start a new
+project! Cargo has the ability to make a bare-bones project directory in which you
+can start developing right away.
+
+To start a new project with Cargo, use `cargo new`:
+
+```bash
+$ cargo new hello_world --bin
+```
+
+We're passing `--bin` because we're making a binary program: if we
+were making a library, we'd leave it off.
+
+Let's check out what Cargo has generated for us:
+
+```bash
+$ cd hello_world
+$ tree .
+.
+├── Cargo.toml
+└── src
+    └── main.rs
+
+1 directory, 2 files
+```
+
+If you don't have the `tree` command, you can probably get it from your distro's package
+manager. It's not necessary, but it's certainly useful.
+
+This is all we need to get started. First, let's check out `Cargo.toml`:
+
+```toml
+[package]
+
+name = "hello_world"
+version = "0.0.1"
+authors = ["Your Name <you@example.com>"]
+```
+
+Cargo has populated this file with reasonable defaults based off the arguments you gave
+it and your `git` global configuration. You may notice that Cargo has also initialized
+the `hello_world` directory as a `git` repository.
+
+Here's what's in `src/main.rs`:
+
+```rust
+fn main() {
+    println!("Hello, world!");
+}
+```
+
+Cargo has generated a "Hello World!" for us, and you're ready to start coding! A
+much more in-depth guide to Cargo can be found [here](http://doc.crates.io/guide.html).
 
 Now that you've got the tools down, let's actually learn more about the Rust
 language itself. These are the basics that will serve you well through the rest

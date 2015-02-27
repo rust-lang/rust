@@ -9,18 +9,18 @@
 // except according to those terms.
 
 use std::num::FromPrimitive;
-use std::int;
+use std::isize;
 
 #[derive(PartialEq, FromPrimitive, Debug)]
 enum A {
-    Foo = int::MAX,
+    Foo = isize::MAX,
     Bar = 1,
     Baz = 3,
     Qux,
 }
 
 pub fn main() {
-    let x: Option<A> = FromPrimitive::from_int(int::MAX);
+    let x: Option<A> = FromPrimitive::from_int(isize::MAX);
     assert_eq!(x, Some(A::Foo));
 
     let x: Option<A> = FromPrimitive::from_int(1);

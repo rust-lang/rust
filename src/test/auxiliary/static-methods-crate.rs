@@ -11,14 +11,12 @@
 #![crate_name="static_methods_crate"]
 #![crate_type = "lib"]
 
-use std::int;
-
 pub trait read {
     fn readMaybe(s: String) -> Option<Self>;
 }
 
-impl read for int {
-    fn readMaybe(s: String) -> Option<int> {
+impl read for isize {
+    fn readMaybe(s: String) -> Option<isize> {
         s.parse().ok()
     }
 }

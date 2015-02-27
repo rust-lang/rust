@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn main() {
-    // sometimes we have had trouble finding
-    // the right type for f, as we unified
-    // bot and u32 here
-    let f = match "1234".parse::<usize>().ok() {
-        None => return (),
-        Some(num) => num as u32
+fn main() {
+    static NONE: Option<((), &'static u8)> = None;
+    let ptr = unsafe {
+        *(&NONE as *const _ as *const *const u8)
     };
-    assert_eq!(f, 1234u32);
-    println!("{}", f)
+    assert!(ptr.is_null());
 }

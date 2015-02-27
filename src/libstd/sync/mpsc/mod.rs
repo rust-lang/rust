@@ -384,7 +384,7 @@ impl<T> !Sync for SyncSender<T> {}
 /// contains the data being sent as a payload so it can be recovered.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, Clone, Copy)]
-pub struct SendError<T>(pub T);
+pub struct SendError<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 
 /// An error returned from the `recv` function on a `Receiver`.
 ///

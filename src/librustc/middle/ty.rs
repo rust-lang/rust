@@ -3896,7 +3896,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                 let types_a = substs_a.types.get_slice(subst::TypeSpace);
                 let types_b = substs_b.types.get_slice(subst::TypeSpace);
 
-                let pairs = types_a.iter().zip(types_b.iter());
+                let mut pairs = types_a.iter().zip(types_b.iter());
 
                 pairs.all(|(&a, &b)| same_type(a, b))
             }
@@ -4297,6 +4297,9 @@ pub fn free_region_from_def(outlives_extent: region::DestructionScopeData,
 // doesn't provide type parameter substitutions.
 pub fn pat_ty<'tcx>(cx: &ctxt<'tcx>, pat: &ast::Pat) -> Ty<'tcx> {
     return node_id_to_type(cx, pat.id);
+}
+pub fn pat_ty_opt<'tcx>(cx: &ctxt<'tcx>, pat: &ast::Pat) -> Option<Ty<'tcx>> {
+    return node_id_to_type_opt(cx, pat.id);
 }
 
 

@@ -506,16 +506,25 @@ impl<T: Writer> ConsoleTestState<T> {
                 if self.use_color {
                     try!(term.reset());
                 }
-                Ok(())
+                term.flush()
             }
-            Raw(ref mut stdout) => stdout.write_all(word.as_bytes())
+            Raw(ref mut stdout) => {
+                try!(stdout.write_all(word.as_bytes()));
+                stdout.flush()
+            }
         }
     }
 
     pub fn write_plain(&mut self, s: &str) -> old_io::IoResult<()> {
         match self.out {
-            Pretty(ref mut term) => term.write_all(s.as_bytes()),
-            Raw(ref mut stdout) => stdout.write_all(s.as_bytes())
+            Pretty(ref mut term) => {
+                try!(term.write_all(s.as_bytes()));
+                term.flush()
+            },
+            Raw(ref mut stdout) => {
+                try!(stdout.write_all(s.as_bytes()));
+                stdout.flush()
+            },
         }
     }
 

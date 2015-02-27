@@ -734,7 +734,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             };
             if !is_rust_fn ||
               type_of::return_uses_outptr(ccx, ret_ty) ||
-              common::type_needs_drop(bcx.tcx(), ret_ty) {
+              bcx.fcx.type_needs_drop(ret_ty) {
                 // Push the out-pointer if we use an out-pointer for this
                 // return type, otherwise push "undef".
                 if common::type_is_zero_size(ccx, ret_ty) {
