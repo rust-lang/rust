@@ -117,6 +117,7 @@ impl Read for ChildStderr {
 /// });
 /// let hello = output.stdout;
 /// ```
+#[derive(Clone)]
 pub struct Command {
     inner: CommandImp,
 
