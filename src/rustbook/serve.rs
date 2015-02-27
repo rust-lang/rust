@@ -19,7 +19,7 @@ struct Serve;
 
 pub fn parse_cmd(name: &str) -> Option<Box<Subcommand>> {
     if name == "serve" {
-        Some(box Serve as Box<Subcommand>)
+        Some(Box::new(Serve))
     } else {
         None
     }

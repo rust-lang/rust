@@ -38,8 +38,11 @@ use syntax::ptr::P;
 
 use graphviz as dot;
 
-use std::old_io::{self, MemReader};
+use std::fs::File;
+use std::io::{self, Write};
+use std::old_io;
 use std::option;
+use std::path::PathBuf;
 use std::str::FromStr;
 
 #[derive(Copy, PartialEq, Debug)]
@@ -208,7 +211,7 @@ impl<'ast> PrinterSupport<'ast> for IdentifiedAnnotation<'ast> {
 impl<'ast> pprust::PpAnn for IdentifiedAnnotation<'ast> {
     fn pre(&self,
            s: &mut pprust::State,
-           node: pprust::AnnNode) -> old_io::IoResult<()> {
+           node: pprust::AnnNode) -> io::Result<()> {
         match node {
             pprust::NodeExpr(_) => s.popen(),
             _ => Ok(())
@@ -216,7 +219,7 @@ impl<'ast> pprust::PpAnn for IdentifiedAnnotation<'ast> {
     }
     fn post(&self,
             s: &mut pprust::State,
-            node: pprust::AnnNode) -> old_io::IoResult<()> {
+            node: pprust::AnnNode) -> io::Result<()> {
         match node {
             pprust::NodeIdent(_) | pprust::NodeName(_) => Ok(()),
 
@@ -259,7 +262,7 @@ impl<'ast> PrinterSupport<'ast> for HygieneAnnotation<'ast> {
 impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
     fn post(&self,
             s: &mut pprust::State,
-            node: pprust::AnnNode) -> old_io::IoResult<()> {
+            node: pprust::AnnNode) -> io::Result<()> {
         match node {
             pprust::NodeIdent(&ast::Ident { name: ast::Name(nm), ctxt }) => {
                 try!(pp::space(&mut s.s));
@@ -294,7 +297,7 @@ impl<'tcx> PrinterSupport<'tcx> for TypedAnnotation<'tcx> {
 impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
     fn pre(&self,
            s: &mut pprust::State,
-           node: pprust::AnnNode) -> old_io::IoResult<()> {
+           node: pprust::AnnNode) -> io::Result<()> {
         match node {
             pprust::NodeExpr(_) => s.popen(),
             _ => Ok(())
@@ -302,7 +305,7 @@ impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
     }
     fn post(&self,
             s: &mut pprust::State,
-            node: pprust::AnnNode) -> old_io::IoResult<()> {
+            node: pprust::AnnNode) -> io::Result<()> {
         let tcx = &self.analysis.ty_cx;
         match node {
             pprust::NodeExpr(expr) => {
@@ -507,7 +510,7 @@ pub fn pretty_print_input(sess: Session,
                           input: &Input,
                           ppm: PpMode,
                           opt_uii: Option<UserIdentifiedItem>,
-                          ofile: Option<Path>) {
+                          ofile: Option<PathBuf>) {
     let krate = driver::phase_1_parse_input(&sess, cfg, input);
 
     let krate = if let PpmSource(PpmEveryBodyLoops) = ppm {
@@ -547,24 +550,15 @@ pub fn pretty_print_input(sess: Session,
                             .unwrap()
                             .as_bytes()
                             .to_vec();
-    let mut rdr = MemReader::new(src);
+    let mut rdr = &src[..];
 
-    let out = match ofile {
-        None => box old_io::stdout() as Box<Writer+'static>,
-        Some(p) => {
-            let r = old_io::File::create(&p);
-            match r {
-                Ok(w) => box w as Box<Writer+'static>,
-                Err(e) => panic!("print-print failed to open {} due to {}",
-                                p.display(), e),
-            }
-        }
-    };
+    let mut out = Vec::new();
 
     match (ppm, opt_uii) {
-        (PpmSource(s), None) =>
+        (PpmSource(s), None) => {
+            let out: &mut Write = &mut out;
             s.call_with_pp_support(
-                sess, ast_map, &arenas, id, out, |annotation, out| {
+                sess, ast_map, &arenas, id, box out, |annotation, out| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust::print_crate(sess.codemap(),
@@ -575,9 +569,11 @@ pub fn pretty_print_input(sess: Session,
                                         out,
                                         annotation.pp_ann(),
                                         is_expanded)
-                }),
+            })
+        }
 
-        (PpmSource(s), Some(uii)) =>
+        (PpmSource(s), Some(uii)) => {
+            let out: &mut Write = &mut out;
             s.call_with_pp_support(
                 sess, ast_map, &arenas, id, (out,uii), |annotation, (out,uii)| {
                     debug!("pretty printing source code {:?}", s);
@@ -589,7 +585,7 @@ pub fn pretty_print_input(sess: Session,
                                                       sess.diagnostic(),
                                                       src_name.to_string(),
                                                       &mut rdr,
-                                                      out,
+                                                      box out,
                                                       annotation.pp_ann(),
                                                       is_expanded);
                     for node_id in uii.all_matching_node_ids(ast_map) {
@@ -600,7 +596,8 @@ pub fn pretty_print_input(sess: Session,
                         try!(pp::hardbreak(&mut pp_state.s));
                     }
                     pp::eof(&mut pp_state.s)
-                }),
+                })
+        }
 
         (PpmFlowGraph(mode), opt_uii) => {
             debug!("pretty printing flow graph for {:?}", opt_uii);
@@ -618,6 +615,7 @@ pub fn pretty_print_input(sess: Session,
             });
 
             let code = blocks::Code::from_node(node);
+            let out: &mut Writer = &mut out;
             match code {
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
@@ -642,14 +640,25 @@ pub fn pretty_print_input(sess: Session,
                 }
             }
         }
-    }.unwrap()
+    }.unwrap();
+
+    match ofile {
+        None => print!("{}", String::from_utf8(out).unwrap()),
+        Some(p) => {
+            match File::create(&p) {
+                Ok(mut w) => w.write_all(&out).unwrap(),
+                Err(e) => panic!("print-print failed to open {} due to {}",
+                                p.display(), e),
+            }
+        }
+    }
 }
 
 fn print_flowgraph<W:old_io::Writer>(variants: Vec<borrowck_dot::Variant>,
                                  analysis: ty::CrateAnalysis,
                                  code: blocks::Code,
                                  mode: PpFlowGraphMode,
-                                 mut out: W) -> old_io::IoResult<()> {
+                                 mut out: W) -> io::Result<()> {
     let ty_cx = &analysis.ty_cx;
     let cfg = match code {
         blocks::BlockCode(block) => cfg::CFG::new(ty_cx, &*block),
@@ -689,17 +698,10 @@ fn print_flowgraph<W:old_io::Writer>(variants: Vec<borrowck_dot::Variant>,
         }
     }
 
-    fn expand_err_details(r: old_io::IoResult<()>) -> old_io::IoResult<()> {
+    fn expand_err_details(r: old_io::IoResult<()>) -> io::Result<()> {
         r.map_err(|ioerr| {
-            let orig_detail = ioerr.detail.clone();
-            let m = "graphviz::render failed";
-            old_io::IoError {
-                detail: Some(match orig_detail {
-                    None => m.to_string(),
-                    Some(d) => format!("{}: {}", m, d)
-                }),
-                ..ioerr
-            }
+            io::Error::new(io::ErrorKind::Other, "graphviz::render failed",
+                           Some(ioerr.to_string()))
         })
     }
 }

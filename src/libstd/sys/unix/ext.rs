@@ -54,6 +54,7 @@ pub trait AsRawFd {
     fn as_raw_fd(&self) -> Fd;
 }
 
+#[allow(deprecated)]
 impl AsRawFd for old_io::fs::File {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()

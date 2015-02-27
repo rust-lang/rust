@@ -9,15 +9,16 @@
 // except according to those terms.
 
 use std::slice;
+use std::path::{Path, PathBuf};
 
 #[derive(Clone, Debug)]
 pub struct SearchPaths {
-    paths: Vec<(PathKind, Path)>,
+    paths: Vec<(PathKind, PathBuf)>,
 }
 
 pub struct Iter<'a> {
     kind: PathKind,
-    iter: slice::Iter<'a, (PathKind, Path)>,
+    iter: slice::Iter<'a, (PathKind, PathBuf)>,
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug)]
@@ -49,7 +50,7 @@ impl SearchPaths {
         } else {
             (PathKind::All, path)
         };
-        self.paths.push((kind, Path::new(path)));
+        self.paths.push((kind, PathBuf::new(path)));
     }
 
     pub fn iter(&self, kind: PathKind) -> Iter {

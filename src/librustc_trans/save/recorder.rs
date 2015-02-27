@@ -13,7 +13,7 @@ pub use self::Row::*;
 use super::escape;
 use super::span_utils::SpanUtils;
 
-use std::vec::Vec;
+use std::io::Write;
 
 use syntax::ast;
 use syntax::ast::{NodeId,DefId};
@@ -23,7 +23,7 @@ const ZERO_DEF_ID: DefId = DefId { node: 0, krate: 0 };
 
 pub struct Recorder {
     // output file
-    pub out: Box<Writer+'static>,
+    pub out: Box<Write+'static>,
     pub dump_spans: bool,
 }
 

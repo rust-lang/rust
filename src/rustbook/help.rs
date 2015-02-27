@@ -19,7 +19,7 @@ struct Help;
 
 pub fn parse_cmd(name: &str) -> Option<Box<Subcommand>> {
     match name {
-        "help" | "--help" | "-h" | "-?" => Some(box Help as Box<Subcommand>),
+        "help" | "--help" | "-h" | "-?" => Some(Box::new(Help)),
         _ => None
     }
 }

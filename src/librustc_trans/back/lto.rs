@@ -59,7 +59,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         };
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
-        let file = path.filename_str().unwrap();
+        let file = path.file_name().unwrap().to_str().unwrap();
         let file = &file[3..file.len() - 5]; // chop off lib/.rlib
         debug!("reading {}", file);
         for i in iter::count(0, 1) {
