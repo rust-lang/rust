@@ -19,7 +19,7 @@ extern crate rustc;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ast::{TokenTree, TtToken};
-use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacExpr};
+use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax::ext::build::AstBuilder;  // trait for expr_usize
 use rustc::plugin::Registry;
 
@@ -61,7 +61,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         }
     }
 
-    MacExpr::new(cx.expr_usize(sp, total))
+    MacEager::expr(cx.expr_usize(sp, total))
 }
 
 #[plugin_registrar]
