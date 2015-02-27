@@ -94,7 +94,7 @@ type Pass = (&'static str,                                      // name
              fn(clean::Crate) -> plugins::PluginResult,         // fn
              &'static str);                                     // description
 
-static PASSES: &'static [Pass] = &[
+const PASSES: &'static [Pass] = &[
     ("strip-hidden", passes::strip_hidden,
      "strips all doc(hidden) items from the output"),
     ("unindent-comments", passes::unindent_comments,
@@ -105,7 +105,7 @@ static PASSES: &'static [Pass] = &[
      "strips all private items from a crate which cannot be seen externally"),
 ];
 
-static DEFAULT_PASSES: &'static [&'static str] = &[
+const DEFAULT_PASSES: &'static [&'static str] = &[
     "strip-hidden",
     "strip-private",
     "collapse-docs",

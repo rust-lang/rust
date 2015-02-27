@@ -202,9 +202,9 @@ pub fn get_or_default_sysroot() -> Path {
 }
 
 #[cfg(windows)]
-static PATH_ENTRY_SEPARATOR: &'static str = ";";
+const PATH_ENTRY_SEPARATOR: char = ';';
 #[cfg(not(windows))]
-static PATH_ENTRY_SEPARATOR: &'static str = ":";
+const PATH_ENTRY_SEPARATOR: char = ':';
 
 /// Returns RUST_PATH as a string, without default paths added
 pub fn get_rust_path() -> Option<String> {

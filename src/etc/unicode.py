@@ -290,11 +290,11 @@ def emit_bsearch_range_table(f):
 fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
     use core::cmp::Ordering::{Equal, Less, Greater};
     use core::slice::SliceExt;
-    r.binary_search(|&(lo,hi)| {
+    r.binary_search_by(|&(lo,hi)| {
         if lo <= c && c <= hi { Equal }
         else if hi < c { Less }
         else { Greater }
-    }).found().is_some()
+    }).is_ok()
 }\n
 """)
 
@@ -303,7 +303,7 @@ def emit_table(f, name, t_data, t_type = "&'static [(char, char)]", is_pub=True,
     pub_string = ""
     if is_pub:
         pub_string = "pub "
-    f.write("    %sstatic %s: %s = &[\n" % (pub_string, name, t_type))
+    f.write("    %sconst %s: %s = &[\n" % (pub_string, name, t_type))
     data = ""
     first = True
     for dat in t_data:
@@ -329,14 +329,14 @@ def emit_property_module(f, mod, tbl, emit_fn):
 def emit_regex_module(f, cats, w_data):
     f.write("pub mod regex {\n")
     regex_class = "&'static [(char, char)]"
-    class_table = "&'static [(&'static str, &'static %s)]" % regex_class
+    class_table = "&'static [(&'static str, %s)]" % regex_class
 
     emit_table(f, "UNICODE_CLASSES", cats, class_table,
-        pfun=lambda x: "(\"%s\",&super::%s::%s_table)" % (x[0], x[1], x[0]))
+        pfun=lambda x: "(\"%s\",super::%s::%s_table)" % (x[0], x[1], x[0]))
 
-    f.write("    pub static PERLD: &'static %s = &super::general_category::Nd_table;\n\n"
+    f.write("    pub const PERLD: %s = super::general_category::Nd_table;\n\n"
             % regex_class)
-    f.write("    pub static PERLS: &'static %s = &super::property::White_Space_table;\n\n"
+    f.write("    pub const PERLS: %s = super::property::White_Space_table;\n\n"
             % regex_class)
 
     emit_table(f, "PERLW", w_data, regex_class)
@@ -350,7 +350,7 @@ def emit_conversions_module(f, lowerupper, upperlower):
     use core::slice::SliceExt;
     use core::option::Option;
     use core::option::Option::{Some, None};
-    use core::slice;
+    use core::result::Result::{Ok, Err};
 
     pub fn to_lower(c: char) -> char {
         match bsearch_case_table(c, LuLl_table) {
@@ -367,13 +367,13 @@ def emit_conversions_module(f, lowerupper, upperlower):
     }
 
     fn bsearch_case_table(c: char, table: &'static [(char, char)]) -> Option<usize> {
-        match table.binary_search(|&(key, _)| {
+        match table.binary_search_by(|&(key, _)| {
             if c == key { Equal }
             else if key < c { Less }
             else { Greater }
         }) {
-            slice::BinarySearchResult::Found(i) => Some(i),
-            slice::BinarySearchResult::NotFound(_) => None,
+            Ok(i) => Some(i),
+            Err(_) => None,
         }
     }
 
@@ -386,10 +386,9 @@ def emit_conversions_module(f, lowerupper, upperlower):
 
 def emit_grapheme_module(f, grapheme_table, grapheme_cats):
     f.write("""pub mod grapheme {
-    use core::kinds::Copy;
     use core::slice::SliceExt;
     pub use self::GraphemeCat::*;
-    use core::slice;
+    use core::result::Result::{Ok, Err};
 
     #[allow(non_camel_case_types)]
     #[derive(Clone, Copy)]
@@ -401,16 +400,16 @@ def emit_grapheme_module(f, grapheme_table, grapheme_cats):
 
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, GraphemeCat)]) -> GraphemeCat {
         use core::cmp::Ordering::{Equal, Less, Greater};
-        match r.binary_search(|&(lo, hi, _)| {
+        match r.binary_search_by(|&(lo, hi, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
         }) {
-            slice::BinarySearchResult::Found(idx) => {
+            Ok(idx) => {
                 let (_, _, cat) = r[idx];
                 cat
             }
-            slice::BinarySearchResult::NotFound(_) => GC_Any
+            Err(_) => GC_Any
         }
     }
 
@@ -430,20 +429,20 @@ def emit_charwidth_module(f, width_table):
     f.write("    use core::option::Option;\n")
     f.write("    use core::option::Option::{Some, None};\n")
     f.write("    use core::slice::SliceExt;\n")
-    f.write("    use core::slice;\n")
+    f.write("    use core::result::Result::{Ok, Err};\n")
     f.write("""
     fn bsearch_range_value_table(c: char, is_cjk: bool, r: &'static [(char, char, u8, u8)]) -> u8 {
         use core::cmp::Ordering::{Equal, Less, Greater};
-        match r.binary_search(|&(lo, hi, _, _)| {
+        match r.binary_search_by(|&(lo, hi, _, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
         }) {
-            slice::BinarySearchResult::Found(idx) => {
+            Ok(idx) => {
                 let (_, _, r_ncjk, r_cjk) = r[idx];
                 if is_cjk { r_cjk } else { r_ncjk }
             }
-            slice::BinarySearchResult::NotFound(_) => 1
+            Err(_) => 1
         }
     }
 """)
@@ -530,17 +529,17 @@ def emit_norm_module(f, canon, compat, combine, norm_props):
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, u8)]) -> u8 {
         use core::cmp::Ordering::{Equal, Less, Greater};
         use core::slice::SliceExt;
-        use core::slice;
-        match r.binary_search(|&(lo, hi, _)| {
+        use core::result::Result::{Ok, Err};
+        match r.binary_search_by(|&(lo, hi, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
             else { Greater }
         }) {
-            slice::BinarySearchResult::Found(idx) => {
+            Ok(idx) => {
                 let (_, _, result) = r[idx];
                 result
             }
-            slice::BinarySearchResult::NotFound(_) => 0
+            Err(_) => 0
         }
     }\n
 """)
@@ -609,7 +608,7 @@ if __name__ == "__main__":
             unicode_version = re.search(pattern, readme.read()).groups()
         rf.write("""
 /// The version of [Unicode](http://www.unicode.org/)
-/// that the `UnicodeChar` and `UnicodeStrPrelude` traits are based on.
+/// that the unicode parts of `CharExt` and `UnicodeStrPrelude` traits are based on.
 pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
 """ % unicode_version)
         (canon_decomp, compat_decomp, gencats, combines,

@@ -425,7 +425,7 @@ mod tests {
 
     #[test]
     fn multiple_connect_interleaved_lazy_schedule_ip4() {
-        static MAX: usize = 10;
+        const MAX: usize = 10;
         each_ip(&mut |addr| {
             let acceptor = t!(TcpListener::bind(&addr));
 

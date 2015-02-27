@@ -1343,8 +1343,8 @@ fn insertion_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> O
 
 fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Ordering {
     // warning: this wildly uses unsafe.
-    static BASE_INSERTION: usize = 32;
-    static LARGE_INSERTION: usize = 16;
+    const BASE_INSERTION: usize = 32;
+    const LARGE_INSERTION: usize = 16;
 
     // FIXME #12092: smaller insertion runs seems to make sorting
     // vectors of large elements a little faster on some platforms,

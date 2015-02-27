@@ -25,7 +25,7 @@ use term::WriterWrapper;
 use term;
 
 /// maximum number of lines we will print for each error; arbitrary.
-static MAX_LINES: usize = 6;
+const MAX_LINES: usize = 6;
 
 #[derive(Clone, Copy)]
 pub enum RenderSpan {

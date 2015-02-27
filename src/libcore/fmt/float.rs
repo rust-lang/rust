@@ -53,7 +53,7 @@ pub enum SignFormat {
     SignNeg
 }
 
-static DIGIT_E_RADIX: u32 = ('e' as u32) - ('a' as u32) + 11;
+const DIGIT_E_RADIX: u32 = ('e' as u32) - ('a' as u32) + 11;
 
 /// Converts a number to its string representation as a byte vector.
 /// This is meant to be a common base implementation for all numeric string

@@ -153,8 +153,8 @@ impl String {
             }
         }
 
-        static TAG_CONT_U8: u8 = 128u8;
-        static REPLACEMENT: &'static [u8] = b"\xEF\xBF\xBD"; // U+FFFD in UTF-8
+        const TAG_CONT_U8: u8 = 128u8;
+        const REPLACEMENT: &'static [u8] = b"\xEF\xBF\xBD"; // U+FFFD in UTF-8
         let total = v.len();
         fn unsafe_get(xs: &[u8], i: usize) -> u8 {
             unsafe { *xs.get_unchecked(i) }

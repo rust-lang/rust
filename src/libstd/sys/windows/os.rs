@@ -59,8 +59,8 @@ pub fn error_string(errnum: i32) -> String {
                           -> DWORD;
     }
 
-    static FORMAT_MESSAGE_FROM_SYSTEM: DWORD = 0x00001000;
-    static FORMAT_MESSAGE_IGNORE_INSERTS: DWORD = 0x00000200;
+    const FORMAT_MESSAGE_FROM_SYSTEM: DWORD = 0x00001000;
+    const FORMAT_MESSAGE_IGNORE_INSERTS: DWORD = 0x00000200;
 
     // This value is calculated from the macro
     // MAKELANGID(LANG_SYSTEM_DEFAULT, SUBLANG_SYS_DEFAULT)

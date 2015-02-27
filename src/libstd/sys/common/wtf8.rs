@@ -43,7 +43,7 @@ use sys_common::AsInner;
 use unicode::str::{Utf16Item, utf16_items};
 use vec::Vec;
 
-static UTF8_REPLACEMENT_CHARACTER: &'static [u8] = b"\xEF\xBF\xBD";
+const UTF8_REPLACEMENT_CHARACTER: &'static [u8] = b"\xEF\xBF\xBD";
 
 /// A Unicode code point: from U+0000 to U+10FFFF.
 ///
