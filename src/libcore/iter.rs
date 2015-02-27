@@ -171,8 +171,7 @@ pub trait IteratorExt: Iterator + Sized {
         self.fold(0, |cnt, _x| cnt + 1)
     }
 
-    /// Loops through the entire iterator, returning the last element of the
-    /// iterator.
+    /// Loops through the entire iterator, returning the last element.
     ///
     /// # Examples
     ///
