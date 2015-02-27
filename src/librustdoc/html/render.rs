@@ -38,11 +38,13 @@ use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::default::Default;
+use std::ffi::OsStr;
 use std::fmt;
-use std::old_io::fs::PathExtensions;
-use std::old_io::{fs, File, BufferedWriter, BufferedReader};
-use std::old_io;
+use std::fs::{self, File};
+use std::io::prelude::*;
+use std::io::{self, BufWriter, BufReader};
 use std::iter::repeat;
+use std::path::{PathBuf, Path};
 use std::str;
 use std::sync::Arc;
 
@@ -89,10 +91,10 @@ pub struct Context {
     pub root_path: String,
     /// The path to the crate root source minus the file name.
     /// Used for simplifying paths to the highlighted source code files.
-    pub src_root: Path,
+    pub src_root: PathBuf,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
-    pub dst: Path,
+    pub dst: PathBuf,
     /// This describes the layout of each page, and is not modified after
     /// creation of the context (contains info like the favicon and added html).
     pub layout: layout::Layout,
@@ -220,7 +222,7 @@ struct SourceCollector<'a> {
     /// Processed source-file paths
     seen: HashSet<String>,
     /// Root destination to place all HTML output into
-    dst: Path,
+    dst: PathBuf,
 }
 
 /// Wrapper struct to render the source code of a file. This will do things like
@@ -257,11 +259,15 @@ thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate,
            external_html: &ExternalHtml,
-           dst: Path,
-           passes: HashSet<String>) -> old_io::IoResult<()> {
+           dst: PathBuf,
+           passes: HashSet<String>) -> io::Result<()> {
+    let src_root = match krate.src.parent() {
+        Some(p) => p.to_path_buf(),
+        None => PathBuf::new(""),
+    };
     let mut cx = Context {
         dst: dst,
-        src_root: krate.src.dir_path(),
+        src_root: src_root,
         passes: passes,
         current: Vec::new(),
         root_path: String::new(),
@@ -392,7 +398,7 @@ pub fn run(mut krate: clean::Crate,
     cx.krate(krate, summary)
 }
 
-fn build_index(krate: &clean::Crate, cache: &mut Cache) -> old_io::IoResult<String> {
+fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
     // Build the search index from the collected metadata
     let mut nodeid_to_pathid = HashMap::new();
     let mut pathid_to_nodeid = Vec::new();
@@ -437,7 +443,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> old_io::IoResult<Stri
     }
 
     // Collect the index into a string
-    let mut w = Vec::new();
+    let mut w = io::Cursor::new(Vec::new());
     try!(write!(&mut w, r#"searchIndex['{}'] = {{"items":["#, krate.name));
 
     let mut lastpath = "".to_string();
@@ -480,13 +486,13 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> old_io::IoResult<Stri
 
     try!(write!(&mut w, "]}};"));
 
-    Ok(String::from_utf8(w).unwrap())
+    Ok(String::from_utf8(w.into_inner()).unwrap())
 }
 
 fn write_shared(cx: &Context,
                 krate: &clean::Crate,
                 cache: &Cache,
-                search_index: String) -> old_io::IoResult<()> {
+                search_index: String) -> io::Result<()> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
@@ -518,10 +524,10 @@ fn write_shared(cx: &Context,
                include_bytes!("static/SourceCodePro-Semibold.woff")));
 
     fn collect(path: &Path, krate: &str,
-               key: &str) -> old_io::IoResult<Vec<String>> {
+               key: &str) -> io::Result<Vec<String>> {
         let mut ret = Vec::new();
         if path.exists() {
-            for line in BufferedReader::new(File::open(path)).lines() {
+            for line in BufReader::new(try!(File::open(path))).lines() {
                 let line = try!(line);
                 if !line.starts_with(key) {
                     continue
@@ -567,14 +573,14 @@ fn write_shared(cx: &Context,
             mydst.push(part);
             try!(mkdir(&mydst));
         }
-        mydst.push(format!("{}.{}.js",
-                           remote_item_type.to_static_str(),
-                           remote_path[remote_path.len() - 1]));
+        mydst.push(&format!("{}.{}.js",
+                            remote_item_type.to_static_str(),
+                            remote_path[remote_path.len() - 1]));
         let all_implementors = try!(collect(&mydst, &krate.name,
                                             "implementors"));
 
-        try!(mkdir(&mydst.dir_path()));
-        let mut f = BufferedWriter::new(try!(File::create(&mydst)));
+        try!(mkdir(mydst.parent().unwrap()));
+        let mut f = BufWriter::new(try!(File::create(&mydst)));
         try!(writeln!(&mut f, "(function() {{var implementors = {{}};"));
 
         for implementor in &all_implementors {
@@ -606,7 +612,7 @@ fn write_shared(cx: &Context,
 }
 
 fn render_sources(cx: &mut Context,
-                  krate: clean::Crate) -> old_io::IoResult<clean::Crate> {
+                  krate: clean::Crate) -> io::Result<clean::Crate> {
     info!("emitting source files");
     let dst = cx.dst.join("src");
     try!(mkdir(&dst));
@@ -624,15 +630,15 @@ fn render_sources(cx: &mut Context,
 
 /// Writes the entire contents of a string to a destination, not attempting to
 /// catch any errors.
-fn write(dst: Path, contents: &[u8]) -> old_io::IoResult<()> {
-    File::create(&dst).write_all(contents)
+fn write(dst: PathBuf, contents: &[u8]) -> io::Result<()> {
+    try!(File::create(&dst)).write_all(contents)
 }
 
 /// Makes a directory on the filesystem, failing the task if an error occurs and
 /// skipping if the directory already exists.
-fn mkdir(path: &Path) -> old_io::IoResult<()> {
+fn mkdir(path: &Path) -> io::Result<()> {
     if !path.exists() {
-        fs::mkdir(path, old_io::USER_RWX)
+        fs::create_dir(path)
     } else {
         Ok(())
     }
@@ -648,21 +654,17 @@ fn shortty(item: &clean::Item) -> ItemType {
 /// static HTML tree.
 // FIXME (#9639): The closure should deal with &[u8] instead of &str
 // FIXME (#9639): This is too conservative, rejecting non-UTF-8 paths
-fn clean_srcpath<F>(src_root: &Path, src: &[u8], mut f: F) where
+fn clean_srcpath<F>(src_root: &Path, p: &Path, mut f: F) where
     F: FnMut(&str),
 {
-    let p = Path::new(src);
-
     // make it relative, if possible
-    let p = p.path_relative_from(src_root).unwrap_or(p);
+    let p = p.relative_from(src_root).unwrap_or(p);
 
-    if p.as_vec() != b"." {
-        for c in p.str_components().map(|x|x.unwrap()) {
-            if ".." == c {
-                f("up");
-            } else {
-                f(c)
-            }
+    for c in p.iter().map(|x| x.to_str().unwrap()) {
+        if ".." == c {
+            f("up");
+        } else {
+            f(c)
         }
     }
 }
@@ -733,13 +735,14 @@ impl<'a> DocFolder for SourceCollector<'a> {
 
 impl<'a> SourceCollector<'a> {
     /// Renders the given filename into its corresponding HTML source file.
-    fn emit_source(&mut self, filename: &str) -> old_io::IoResult<()> {
-        let p = Path::new(filename);
+    fn emit_source(&mut self, filename: &str) -> io::Result<()> {
+        let p = PathBuf::new(filename);
 
         // If we couldn't open this file, then just returns because it
         // probably means that it's some standard library macro thing and we
         // can't have the source to it anyway.
-        let contents = match File::open(&p).read_to_end() {
+        let mut contents = Vec::new();
+        match File::open(&p).and_then(|mut f| f.read_to_end(&mut contents)) {
             Ok(r) => r,
             // macros from other libraries get special filenames which we can
             // safely ignore
@@ -759,18 +762,20 @@ impl<'a> SourceCollector<'a> {
         // Create the intermediate directories
         let mut cur = self.dst.clone();
         let mut root_path = String::from_str("../../");
-        clean_srcpath(&self.cx.src_root, p.dirname(), |component| {
+        clean_srcpath(&self.cx.src_root, &p, |component| {
             cur.push(component);
             mkdir(&cur).unwrap();
             root_path.push_str("../");
         });
 
-        let mut fname = p.filename().expect("source has no filename").to_vec();
-        fname.extend(".html".bytes());
-        cur.push(fname);
-        let mut w = BufferedWriter::new(try!(File::create(&cur)));
+        let mut fname = p.file_name().expect("source has no filename")
+                         .to_os_string();
+        fname.push_os_str(OsStr::from_str(".html"));
+        cur.push(&fname);
+        let mut w = BufWriter::new(try!(File::create(&cur)));
 
-        let title = format!("{} -- source", cur.filename_display());
+        let title = format!("{} -- source", cur.file_name().unwrap()
+                                               .to_string_lossy());
         let desc = format!("Source to the Rust file `{}`.", filename);
         let page = layout::Page {
             title: &title,
@@ -779,7 +784,7 @@ impl<'a> SourceCollector<'a> {
             description: &desc,
             keywords: get_basic_keywords(),
         };
-        try!(layout::render(&mut w as &mut Writer, &self.cx.layout,
+        try!(layout::render(&mut w, &self.cx.layout,
                             &page, &(""), &Source(contents)));
         try!(w.flush());
         return Ok(());
@@ -1081,7 +1086,7 @@ impl Context {
     /// This currently isn't parallelized, but it'd be pretty easy to add
     /// parallelization to this function.
     fn krate(mut self, mut krate: clean::Crate,
-             stability: stability_summary::ModuleSummary) -> old_io::IoResult<()> {
+             stability: stability_summary::ModuleSummary) -> io::Result<()> {
         let mut item = match krate.module.take() {
             Some(i) => i,
             None => return Ok(())
@@ -1091,7 +1096,7 @@ impl Context {
         // render stability dashboard
         try!(self.recurse(stability.name.clone(), |this| {
             let json_dst = &this.dst.join("stability.json");
-            let mut json_out = BufferedWriter::new(try!(File::create(json_dst)));
+            let mut json_out = BufWriter::new(try!(File::create(json_dst)));
             try!(write!(&mut json_out, "{}", json::as_json(&stability)));
 
             let mut title = stability.name.clone();
@@ -1106,7 +1111,7 @@ impl Context {
                 keywords: get_basic_keywords(),
             };
             let html_dst = &this.dst.join("stability.html");
-            let mut html_out = BufferedWriter::new(try!(File::create(html_dst)));
+            let mut html_out = BufWriter::new(try!(File::create(html_dst)));
             layout::render(&mut html_out, &this.layout, &page,
                            &Sidebar{ cx: this, item: &item },
                            &stability)
@@ -1131,12 +1136,12 @@ impl Context {
     /// all sub-items which need to be rendered.
     ///
     /// The rendering driver uses this closure to queue up more work.
-    fn item<F>(&mut self, item: clean::Item, mut f: F) -> old_io::IoResult<()> where
+    fn item<F>(&mut self, item: clean::Item, mut f: F) -> io::Result<()> where
         F: FnMut(&mut Context, clean::Item),
     {
-        fn render(w: old_io::File, cx: &Context, it: &clean::Item,
-                  pushname: bool) -> old_io::IoResult<()> {
-            info!("Rendering an item to {}", w.path().display());
+        fn render(w: File, cx: &Context, it: &clean::Item,
+                  pushname: bool) -> io::Result<()> {
+            info!("Rendering an item to {}", w.path().unwrap().display());
             // A little unfortunate that this is done like this, but it sure
             // does make formatting *a lot* nicer.
             CURRENT_LOCATION_KEY.with(|slot| {
@@ -1177,7 +1182,7 @@ impl Context {
             // We have a huge number of calls to write, so try to alleviate some
             // of the pain by using a buffered writer instead of invoking the
             // write syscall all the time.
-            let mut writer = BufferedWriter::new(w);
+            let mut writer = BufWriter::new(w);
             if !cx.render_redirect_pages {
                 try!(layout::render(&mut writer, &cx.layout, &page,
                                     &Sidebar{ cx: cx, item: it },
@@ -1238,7 +1243,7 @@ impl Context {
             // Things which don't have names (like impls) don't get special
             // pages dedicated to them.
             _ if item.name.is_some() => {
-                let dst = self.dst.join(item_path(&item));
+                let dst = self.dst.join(&item_path(&item));
                 let dst = try!(File::create(&dst));
                 render(dst, self, &item, true)
             }
@@ -1307,7 +1312,7 @@ impl<'a> Item<'a> {
         // has anchors for the line numbers that we're linking to.
         if ast_util::is_local(self.item.def_id) {
             let mut path = Vec::new();
-            clean_srcpath(&cx.src_root, self.item.source.filename.as_bytes(),
+            clean_srcpath(&cx.src_root, Path::new(&self.item.source.filename),
                           |component| {
                 path.push(component.to_string());
             });

@@ -25,7 +25,7 @@ use visit::{self, Visitor};
 use arena::TypedArena;
 use std::cell::RefCell;
 use std::fmt;
-use std::old_io::IoResult;
+use std::io;
 use std::iter::{self, repeat};
 use std::mem;
 use std::slice;
@@ -997,11 +997,11 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
 }
 
 pub trait NodePrinter {
-    fn print_node(&mut self, node: &Node) -> IoResult<()>;
+    fn print_node(&mut self, node: &Node) -> io::Result<()>;
 }
 
 impl<'a> NodePrinter for pprust::State<'a> {
-    fn print_node(&mut self, node: &Node) -> IoResult<()> {
+    fn print_node(&mut self, node: &Node) -> io::Result<()> {
         match *node {
             NodeItem(a)        => self.print_item(&*a),
             NodeForeignItem(a) => self.print_foreign_item(&*a),

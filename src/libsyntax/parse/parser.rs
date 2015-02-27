@@ -78,10 +78,11 @@ use ptr::P;
 use owned_slice::OwnedSlice;
 
 use std::collections::HashSet;
-use std::old_io::fs::PathExtensions;
+use std::io::prelude::*;
 use std::iter;
 use std::mem;
 use std::num::Float;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::slice;
 
@@ -5248,14 +5249,23 @@ impl<'a> Parser<'a> {
                     outer_attrs: &[ast::Attribute],
                     id_sp: Span)
                     -> (ast::Item_, Vec<ast::Attribute> ) {
-        let mut prefix = Path::new(self.sess.span_diagnostic.cm.span_to_filename(self.span));
-        prefix.pop();
-        let mod_path = Path::new(".").join_many(&self.mod_path_stack);
-        let dir_path = prefix.join(&mod_path);
+        let mut prefix = PathBuf::new(&self.sess.span_diagnostic.cm
+                                           .span_to_filename(self.span));
+        // FIXME(acrichto): right now "a".pop() == "a", but need to confirm with
+        //                  aturon whether this is expected or not.
+        if prefix.parent().is_some() {
+            prefix.pop();
+        } else {
+            prefix = PathBuf::new("");
+        }
+        let mut dir_path = prefix;
+        for part in &self.mod_path_stack {
+            dir_path.push(&**part);
+        }
         let mod_string = token::get_ident(id);
         let (file_path, owns_directory) = match ::attr::first_attr_value_str_by_name(
                 outer_attrs, "path") {
-            Some(d) => (dir_path.join(d), true),
+            Some(d) => (dir_path.join(&*d), true),
             None => {
                 let mod_name = mod_string.to_string();
                 let default_path_str = format!("{}.rs", mod_name);
@@ -5319,7 +5329,7 @@ impl<'a> Parser<'a> {
     }
 
     fn eval_src_mod_from_path(&mut self,
-                              path: Path,
+                              path: PathBuf,
                               owns_directory: bool,
                               name: String,
                               id_sp: Span) -> (ast::Item_, Vec<ast::Attribute> ) {
@@ -5329,10 +5339,10 @@ impl<'a> Parser<'a> {
                 let mut err = String::from_str("circular modules: ");
                 let len = included_mod_stack.len();
                 for p in &included_mod_stack[i.. len] {
-                    err.push_str(&p.display().as_cow());
+                    err.push_str(&p.to_string_lossy());
                     err.push_str(" -> ");
                 }
-                err.push_str(&path.display().as_cow());
+                err.push_str(&path.to_string_lossy());
                 self.span_fatal(id_sp, &err[..]);
             }
             None => ()

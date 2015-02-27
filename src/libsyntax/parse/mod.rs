@@ -18,11 +18,13 @@ use parse::parser::Parser;
 use ptr::P;
 
 use std::cell::{Cell, RefCell};
-use std::old_io::File;
-use std::rc::Rc;
-use std::num::Int;
-use std::str;
+use std::fs::File;
+use std::io::Read;
 use std::iter;
+use std::num::Int;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
+use std::str;
 
 #[macro_use]
 pub mod parser;
@@ -39,7 +41,7 @@ pub mod obsolete;
 pub struct ParseSess {
     pub span_diagnostic: SpanHandler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
-    included_mod_stack: RefCell<Vec<Path>>,
+    included_mod_stack: RefCell<Vec<PathBuf>>,
     pub node_id: Cell<ast::NodeId>,
 }
 
@@ -250,24 +252,24 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
             None => sess.span_diagnostic.handler().fatal(msg),
         }
     };
-    let bytes = match File::open(path).read_to_end() {
-        Ok(bytes) => bytes,
+    let mut bytes = Vec::new();
+    match File::open(path).and_then(|mut f| f.read_to_end(&mut bytes)) {
+        Ok(..) => {}
         Err(e) => {
-            err(&format!("couldn't read {:?}: {}",
-                        path.display(), e));
-            unreachable!()
+            err(&format!("couldn't read {:?}: {}", path.display(), e));
+            unreachable!();
         }
     };
     match str::from_utf8(&bytes[..]).ok() {
         Some(s) => {
-            return string_to_filemap(sess, s.to_string(),
-                                     path.as_str().unwrap().to_string())
+            string_to_filemap(sess, s.to_string(),
+                              path.to_str().unwrap().to_string())
         }
         None => {
-            err(&format!("{:?} is not UTF-8 encoded", path.display()))
+            err(&format!("{:?} is not UTF-8 encoded", path.display()));
+            unreachable!();
         }
     }
-    unreachable!()
 }
 
 /// Given a session and a string, add the string to

@@ -21,7 +21,7 @@ pub struct Term {
 impl Term {
     pub fn new() -> Term {
         Term {
-            err: box stdio::stderr() as Box<Writer>,
+            err: Box::new(stdio::stderr())
         }
     }
 

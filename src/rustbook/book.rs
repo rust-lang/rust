@@ -10,14 +10,16 @@
 
 //! Basic data structures for representing a book.
 
-use std::old_io::BufferedReader;
+use std::io::prelude::*;
+use std::io::BufReader;
 use std::iter;
 use std::iter::AdditiveIterator;
+use std::path::{Path, PathBuf};
 
 pub struct BookItem {
     pub title: String,
-    pub path: Path,
-    pub path_to_root: Path,
+    pub path: PathBuf,
+    pub path_to_root: PathBuf,
     pub children: Vec<BookItem>,
 }
 
@@ -76,7 +78,7 @@ impl Book {
 }
 
 /// Construct a book by parsing a summary (markdown table of contents).
-pub fn parse_summary<R: Reader>(input: R, src: &Path) -> Result<Book, Vec<String>> {
+pub fn parse_summary(input: &mut Read, src: &Path) -> Result<Book, Vec<String>> {
     fn collapse(stack: &mut Vec<BookItem>,
                 top_items: &mut Vec<BookItem>,
                 to_level: usize) {
@@ -100,16 +102,16 @@ pub fn parse_summary<R: Reader>(input: R, src: &Path) -> Result<Book, Vec<String
     // always include the introduction
     top_items.push(BookItem {
         title: "Introduction".to_string(),
-        path: Path::new("README.md"),
-        path_to_root: Path::new("."),
+        path: PathBuf::new("README.md"),
+        path_to_root: PathBuf::new("."),
         children: vec!(),
     });
 
-    for line_result in BufferedReader::new(input).lines() {
+    for line_result in BufReader::new(input).lines() {
         let line = match line_result {
             Ok(line) => line,
             Err(err) => {
-                errors.push(err.desc.to_string()); // FIXME: include detail
+                errors.push(err.to_string());
                 return Err(errors);
             }
         };
@@ -125,16 +127,16 @@ pub fn parse_summary<R: Reader>(input: R, src: &Path) -> Result<Book, Vec<String
         let title = line[start_bracket + 1..end_bracket].to_string();
         let indent = &line[..star_idx];
 
-        let path_from_root = match src.join(given_path).path_relative_from(src) {
-            Some(p) => p,
+        let path_from_root = match src.join(given_path).relative_from(src) {
+            Some(p) => p.to_path_buf(),
             None => {
                 errors.push(format!("paths in SUMMARY.md must be relative, \
                                      but path '{}' for section '{}' is not.",
                                      given_path, title));
-                Path::new("")
+                PathBuf::new("")
             }
         };
-        let path_to_root = Path::new(iter::repeat("../")
+        let path_to_root = PathBuf::new(&iter::repeat("../")
                                          .take(path_from_root.components().count() - 1)
                                          .collect::<String>());
         let item = BookItem {

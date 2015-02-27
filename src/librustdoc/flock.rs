@@ -20,7 +20,9 @@ pub use self::imp::Lock;
 
 #[cfg(unix)]
 mod imp {
-    use std::ffi::CString;
+    use std::ffi::{AsOsStr, CString};
+    use std::os::unix::prelude::*;
+    use std::path::Path;
     use libc;
     use std::os as stdos;
 
@@ -114,7 +116,7 @@ mod imp {
 
     impl Lock {
         pub fn new(p: &Path) -> Lock {
-            let buf = CString::new(p.as_vec()).unwrap();
+            let buf = CString::new(p.as_os_str().as_bytes()).unwrap();
             let fd = unsafe {
                 libc::open(buf.as_ptr(), libc::O_RDWR | libc::O_CREAT,
                            libc::S_IRWXU)
@@ -163,8 +165,11 @@ mod imp {
 #[cfg(windows)]
 mod imp {
     use libc;
+    use std::ffi::AsOsStr;
     use std::mem;
+    use std::os::windows::prelude::*;
     use std::os;
+    use std::path::Path;
     use std::ptr;
 
     const LOCKFILE_EXCLUSIVE_LOCK: libc::DWORD = 0x00000002;
@@ -190,7 +195,7 @@ mod imp {
 
     impl Lock {
         pub fn new(p: &Path) -> Lock {
-            let mut p_16: Vec<u16> = p.as_str().unwrap().utf16_units().collect();
+            let mut p_16: Vec<_> = p.as_os_str().encode_wide().collect();
             p_16.push(0);
             let handle = unsafe {
                 libc::CreateFileW(p_16.as_ptr(),

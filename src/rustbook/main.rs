@@ -8,30 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
-#![feature(collections)]
+#![deny(warnings)]
+
 #![feature(core)]
+#![feature(exit_status)]
+#![feature(fs)]
+#![feature(io)]
 #![feature(old_io)]
-#![feature(env)]
-#![feature(os)]
-#![feature(old_path)]
+#![feature(path)]
 #![feature(rustdoc)]
+#![feature(tempdir)]
 
 extern crate rustdoc;
 
 use std::env;
+use std::error::Error;
 use subcommand::Subcommand;
 use term::Term;
-
-macro_rules! try (
-    ($expr:expr) => ({
-        use error;
-        match $expr {
-            Ok(val) => val,
-            Err(err) => return Err(error::FromError::from_err(err))
-        }
-    })
-);
 
 mod term;
 mod error;
@@ -56,15 +49,12 @@ fn main() {
     } else {
         match subcommand::parse_name(&cmd[1][..]) {
             Some(mut subcmd) => {
-                match subcmd.parse_args(cmd.tail()) {
+                match subcmd.parse_args(&cmd[..cmd.len()-1]) {
                     Ok(_) => {
                         match subcmd.execute(&mut term) {
                             Ok(_) => (),
                             Err(err) => {
-                                term.err(&format!("error: {}", err.description())[..]);
-                                err.detail().map(|detail| {
-                                    term.err(&format!("detail: {}", detail)[..]);
-                                });
+                                term.err(&format!("error: {}", err));
                             }
                         }
                     }

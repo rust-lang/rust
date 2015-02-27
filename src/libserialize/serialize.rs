@@ -15,6 +15,7 @@ Core encoding and decoding interfaces.
 */
 
 use std::old_path;
+use std::path;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
 use std::sync::Arc;
@@ -561,6 +562,19 @@ impl Decodable for old_path::windows::Path {
     fn decode<D: Decoder>(d: &mut D) -> Result<old_path::windows::Path, D::Error> {
         let bytes: Vec<u8> = try!(Decodable::decode(d));
         Ok(old_path::windows::Path::new(bytes))
+    }
+}
+
+impl Encodable for path::PathBuf {
+    fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
+        self.to_str().unwrap().encode(e)
+    }
+}
+
+impl Decodable for path::PathBuf {
+    fn decode<D: Decoder>(d: &mut D) -> Result<path::PathBuf, D::Error> {
+        let bytes: String = try!(Decodable::decode(d));
+        Ok(path::PathBuf::new(&bytes))
     }
 }
 

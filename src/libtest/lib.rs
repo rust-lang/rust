@@ -38,10 +38,12 @@
 #![feature(core)]
 #![feature(int_uint)]
 #![feature(old_io)]
-#![feature(old_path)]
+#![feature(path)]
+#![feature(fs)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(std_misc)]
+#![feature(io)]
 
 extern crate getopts;
 extern crate serialize;
@@ -65,13 +67,16 @@ use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 use std::any::Any;
 use std::cmp;
 use std::collections::BTreeMap;
+use std::env;
 use std::fmt;
-use std::old_io::stdio::StdWriter;
-use std::old_io::{File, ChanReader, ChanWriter};
-use std::old_io;
+use std::fs::File;
+use std::io::{self, Write};
 use std::iter::repeat;
 use std::num::{Float, Int};
-use std::env;
+use std::old_io::stdio::StdWriter;
+use std::old_io::{ChanReader, ChanWriter};
+use std::old_io;
+use std::path::{PathBuf};
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 use std::thunk::{Thunk, Invoke};
@@ -287,7 +292,7 @@ pub struct TestOpts {
     pub run_ignored: bool,
     pub run_tests: bool,
     pub run_benchmarks: bool,
-    pub logfile: Option<Path>,
+    pub logfile: Option<PathBuf>,
     pub nocapture: bool,
     pub color: ColorConfig,
 }
@@ -376,7 +381,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let run_ignored = matches.opt_present("ignored");
 
     let logfile = matches.opt_str("logfile");
-    let logfile = logfile.map(|s| Path::new(s));
+    let logfile = logfile.map(|s| PathBuf::new(&s));
 
     let run_benchmarks = matches.opt_present("bench");
     let run_tests = ! run_benchmarks ||
@@ -446,11 +451,19 @@ struct ConsoleTestState<T> {
     max_name_len: uint, // number of columns to fill when aligning names
 }
 
+fn new2old(new: io::Error) -> old_io::IoError {
+    old_io::IoError {
+        kind: old_io::OtherIoError,
+        desc: "other error",
+        detail: Some(new.to_string()),
+    }
+}
+
 impl<T: Writer> ConsoleTestState<T> {
     pub fn new(opts: &TestOpts,
                _: Option<T>) -> old_io::IoResult<ConsoleTestState<StdWriter>> {
         let log_out = match opts.logfile {
-            Some(ref path) => Some(try!(File::create(path))),
+            Some(ref path) => Some(try!(File::create(path).map_err(new2old))),
             None => None
         };
         let out = match term::stdout() {
@@ -560,7 +573,7 @@ impl<T: Writer> ConsoleTestState<T> {
     }
 
     pub fn write_log(&mut self, test: &TestDesc,
-                     result: &TestResult) -> old_io::IoResult<()> {
+                     result: &TestResult) -> io::Result<()> {
         match self.log_out {
             None => Ok(()),
             Some(ref mut o) => {
@@ -646,7 +659,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> old_io:
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
             TeWait(ref test, padding) => st.write_test_start(test, padding),
             TeResult(test, result, stdout) => {
-                try!(st.write_log(&test, &result));
+                try!(st.write_log(&test, &result).map_err(new2old));
                 try!(st.write_result(&result));
                 match result {
                     TrOk => st.passed += 1,

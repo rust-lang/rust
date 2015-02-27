@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::old_io::process::{ProcessExit, Command, Process, ProcessOutput};
+use std::process::{ExitStatus, Command, Child, Output, Stdio};
+use std::io::prelude::*;
 use std::dynamic_lib::DynamicLibrary;
 
 fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
@@ -25,10 +26,10 @@ fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
     let var = DynamicLibrary::envvar();
     let newpath = DynamicLibrary::create_path(&path);
     let newpath = String::from_utf8(newpath).unwrap();
-    cmd.env(var.to_string(), newpath);
+    cmd.env(var, &newpath);
 }
 
-pub struct Result {pub status: ProcessExit, pub out: String, pub err: String}
+pub struct Result {pub status: ExitStatus, pub out: String, pub err: String}
 
 pub fn run(lib_path: &str,
            prog: &str,
@@ -38,10 +39,13 @@ pub fn run(lib_path: &str,
            input: Option<String>) -> Option<Result> {
 
     let mut cmd = Command::new(prog);
-    cmd.args(args);
+    cmd.args(args)
+       .stdin(Stdio::piped())
+       .stdout(Stdio::piped())
+       .stderr(Stdio::piped());
     add_target_env(&mut cmd, lib_path, aux_path);
     for (key, val) in env {
-        cmd.env(key, val);
+        cmd.env(&key, &val);
     }
 
     match cmd.spawn() {
@@ -49,13 +53,13 @@ pub fn run(lib_path: &str,
             if let Some(input) = input {
                 process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
             }
-            let ProcessOutput { status, output, error } =
+            let Output { status, stdout, stderr } =
                 process.wait_with_output().unwrap();
 
             Some(Result {
                 status: status,
-                out: String::from_utf8(output).unwrap(),
-                err: String::from_utf8(error).unwrap()
+                out: String::from_utf8(stdout).unwrap(),
+                err: String::from_utf8(stderr).unwrap()
             })
         },
         Err(..) => None
@@ -67,13 +71,16 @@ pub fn run_background(lib_path: &str,
            aux_path: Option<&str>,
            args: &[String],
            env: Vec<(String, String)> ,
-           input: Option<String>) -> Option<Process> {
+           input: Option<String>) -> Option<Child> {
 
     let mut cmd = Command::new(prog);
-    cmd.args(args);
+    cmd.args(args)
+       .stdin(Stdio::piped())
+       .stdout(Stdio::piped())
+       .stderr(Stdio::piped());
     add_target_env(&mut cmd, lib_path, aux_path);
     for (key, val) in env {
-        cmd.env(key, val);
+        cmd.env(&key, &val);
     }
 
     match cmd.spawn() {

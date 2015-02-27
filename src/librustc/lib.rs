@@ -39,6 +39,9 @@
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(os)]
+#![feature(path)]
+#![feature(fs)]
+#![feature(io)]
 #![cfg_attr(test, feature(test))]
 
 extern crate arena;
