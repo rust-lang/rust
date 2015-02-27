@@ -1692,9 +1692,9 @@ pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
     }
 }
 
-// trans_closure: Builds an LLVM function out of a source function.
-// If the function closes over its environment a closure will be
-// returned.
+/// Builds an LLVM function out of a source function.
+///
+/// If the function closes over its environment a closure will be returned.
 pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                    decl: &ast::FnDecl,
                                    body: &ast::Block,
@@ -1827,8 +1827,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     finish_fn(&fcx, bcx, output_type, ret_debug_loc);
 }
 
-// trans_fn: creates an LLVM function corresponding to a source language
-// function.
+/// Creates an LLVM function corresponding to a source language function.
 pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                           decl: &ast::FnDecl,
                           body: &ast::Block,
@@ -2645,10 +2644,9 @@ fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, id: ast::NodeId,
         None => {}
     }
 
-    match attr::first_attr_value_str_by_name(attrs, "export_name") {
+    match attr::find_export_name_attr(ccx.sess().diagnostic(), attrs) {
         // Use provided name
         Some(name) => name.to_string(),
-
         _ => ccx.tcx().map.with_path(id, |path| {
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle

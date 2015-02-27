@@ -282,6 +282,23 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<InternedString> {
     first_attr_value_str_by_name(attrs, "crate_name")
 }
 
+/// Find the value of #[export_name=*] attribute and check its validity.
+pub fn find_export_name_attr(diag: &SpanHandler, attrs: &[Attribute]) -> Option<InternedString> {
+    attrs.iter().fold(None, |ia,attr| {
+        if attr.check_name("export_name") {
+            if let s@Some(_) = attr.value_str() {
+                s
+            } else {
+                diag.span_err(attr.span, "export_name attribute has invalid format");
+                diag.handler.help("use #[export_name=\"*\"]");
+                None
+            }
+        } else {
+            ia
+        }
+    })
+}
+
 #[derive(Copy, Clone, PartialEq)]
 pub enum InlineAttr {
     None,
