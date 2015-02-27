@@ -259,6 +259,47 @@ pub trait MacResult {
     }
 }
 
+/// Single type implementing MacResult with Option fields for all the types
+/// MacResult can return, and a Default impl that fills in None.
+pub struct MacGeneral {
+    expr: Option<P<ast::Expr>>,
+    pat: Option<P<ast::Pat>>,
+    items: Option<SmallVector<P<ast::Item>>>,
+    methods: Option<SmallVector<P<ast::Method>>>,
+    def: Option<MacroDef>
+}
+impl MacGeneral {
+    pub fn new(expr: Option<P<ast::Expr>>,
+               pat: Option<P<ast::Pat>>,
+               items: Option<SmallVector<P<ast::Items>>>,
+               methods: Option<SmallVector<P<ast::Method>>>,
+               def: Option<MacroDef>)
+        -> Box<MacResult+'static> {
+        box MacGeneral { expr: expr, pat: pat, items: items,
+            methods: methods, def: def } as Box<MacResult+'static>
+    }
+    pub fn Default() -> Box<MacResult+'static> {
+        box MacGeneral { expr: None, pat: None, items: None
+            methods: None, def: None} as Box<MacResult+'static>
+    }
+}
+impl MacResult for MacGeneral {
+    fn make_expr(self: Box<MacGeneral>) -> Option<P<ast::Expr>> {
+        self.expr
+    }
+    fn make_pat(self: Box<MacGeneral>) -> Option<P<ast::Pat>> {
+        self.pat
+    }
+    fn make_items(self: Box<MacGeneral>) -> Option<SmallVector<P<ast::Item>>> {
+        self.items
+    }
+    fn make_methods(self: Box<Self>) -> Option<SmallVector<P<ast::Method>>> {
+        self.methods
+    }
+    fn make_def(&mut self) -> Option<MacroDef> {
+        self.def
+    }
+}
 /// A convenience type for macros that return a single expression.
 pub struct MacExpr {
     e: P<ast::Expr>
