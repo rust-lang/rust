@@ -11,27 +11,21 @@ remove `std::thread_local` from the standard library.
 # Motivation
 
 Thread locals are directly related to threading. Combining the modules
-would reduce the number of top level modules, making browsing the docs
-easier as well as reduce the number of `use` statements.
+would reduce the number of top level modules, combine related concepts,
+and make browsing the docs easier. It also would have the potential to
+slightly reduce the number of `use` statementsl
 
 # Detailed design
 
-The goal is to move the contents of `std::thread_local` into
-`std::thread`. There are a few possible strategies that could be used to
-achieve this.
+The `std::thread_local` module would be renamed to `std::thread::local`.
+All contents of the module would remain the same. This way, all thread
+related code is combined in one module.
 
-One option would be to move the contents as is into `std::thread`. This
-would leave `Key` and `State` as is. There would be no naming conflict,
-but the names would be less ideal since the containing module is not
-directly related to thread locals anymore. This could be handled by
-renaming the types to something like `LocalKey` and `LocalState`.
+It would also allow using it as such:
 
-Another option would be to move the contents into a dedicated sub module
-such as `std::thread::local`. This would mean some code would still have
-an extra `use` statement for pulling in thread local related types, but
-it would also enable doing:
-
-`use std::thread::{local, Thread};`
+```rust
+use std::thread::{local, Thread};
+```
 
 # Drawbacks
 
@@ -42,7 +36,11 @@ may prefer to have more top level modules.
 
 # Alternatives
 
-Leaving `std::thread_local` in its own module.
+Another strategy for moving `std::thread_local` would be to move it
+directly into `std::thread` without scoping it in a dedicated module.
+There are no naming conflicts, but the names would not be ideal anymore.
+One way to mitigate would be to rename the types to something like
+`LocalKey` and `LocalState`.
 
 # Unresolved questions
 
