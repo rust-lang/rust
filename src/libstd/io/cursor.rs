@@ -11,6 +11,7 @@
 use prelude::v1::*;
 use io::prelude::*;
 
+use core::array::FixedSizeArray;
 use cmp;
 use io::{self, SeekFrom, Error, ErrorKind};
 use iter::repeat;
@@ -72,7 +73,7 @@ macro_rules! seek {
         fn seek(&mut self, style: SeekFrom) -> io::Result<u64> {
             let pos = match style {
                 SeekFrom::Start(n) => { self.pos = n; return Ok(n) }
-                SeekFrom::End(n) => self.inner.len() as i64 + n,
+                SeekFrom::End(n) => self.inner.as_slice().len() as i64 + n,
                 SeekFrom::Current(n) => self.pos as i64 + n,
             };
 
@@ -94,6 +95,7 @@ impl<'a> io::Seek for Cursor<&'a [u8]> { seek!(); }
 impl<'a> io::Seek for Cursor<&'a mut [u8]> { seek!(); }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl io::Seek for Cursor<Vec<u8>> { seek!(); }
+impl<'a, T: FixedSizeArray<u8>> io::Seek for Cursor<&'a T> { seek!(); }
 
 macro_rules! read {
     () => {
@@ -111,12 +113,13 @@ impl<'a> Read for Cursor<&'a [u8]> { read!(); }
 impl<'a> Read for Cursor<&'a mut [u8]> { read!(); }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for Cursor<Vec<u8>> { read!(); }
+impl<'a, T: FixedSizeArray<u8>> Read for Cursor<&'a T> { read!(); }
 
 macro_rules! buffer {
     () => {
         fn fill_buf(&mut self) -> io::Result<&[u8]> {
-            let amt = cmp::min(self.pos, self.inner.len() as u64);
-            Ok(&self.inner[(amt as usize)..])
+            let amt = cmp::min(self.pos, self.inner.as_slice().len() as u64);
+            Ok(&self.inner.as_slice()[(amt as usize)..])
         }
         fn consume(&mut self, amt: usize) { self.pos += amt as u64; }
     }
@@ -128,23 +131,7 @@ impl<'a> BufRead for Cursor<&'a [u8]> { buffer!(); }
 impl<'a> BufRead for Cursor<&'a mut [u8]> { buffer!(); }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> BufRead for Cursor<Vec<u8>> { buffer!(); }
-
-macro_rules! array_impls {
-    ($($N: expr)+) => {
-        $(
-            impl<'a> io::Seek for Cursor<&'a [u8; $N]> { seek!(); }
-            impl<'a> Read for Cursor<&'a [u8; $N]> { read!(); }
-            impl<'a> BufRead for Cursor<&'a [u8; $N]> { buffer!(); }
-        )+
-    }
-}
-
-array_impls! {
-     0  1  2  3  4  5  6  7  8  9
-    10 11 12 13 14 15 16 17 18 19
-    20 21 22 23 24 25 26 27 28 29
-    30 31 32
-}
+impl<'a, T: FixedSizeArray<u8>> BufRead for Cursor<&'a T> { buffer!(); }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for Cursor<&'a mut [u8]> {
