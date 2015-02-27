@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::uint;
-
 pub fn main() {
     // sometimes we have had trouble finding
     // the right type for f, as we unified
     // bot and u32 here
-    let f = match "1234".parse::<uint>().ok() {
+    let f = match "1234".parse::<usize>().ok() {
         None => return (),
         Some(num) => num as u32
     };
