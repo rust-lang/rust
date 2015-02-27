@@ -224,7 +224,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void,
-         symaddr: *mut libc::c_void) -> IoResult<()> {
+         _symaddr: *mut libc::c_void) -> IoResult<()> {
     use intrinsics;
     #[repr(C)]
     struct Dl_info {
@@ -450,6 +450,7 @@ fn output(w: &mut Writer, idx: int, addr: *mut libc::c_void,
     w.write_all(&['\n' as u8])
 }
 
+#[allow(dead_code)]
 fn output_fileline(w: &mut Writer, file: &[u8], line: libc::c_int,
                    more: bool) -> IoResult<()> {
     let file = str::from_utf8(file).ok().unwrap_or("<unknown>");
