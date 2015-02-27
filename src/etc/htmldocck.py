@@ -96,6 +96,9 @@ There are a number of supported commands:
   highlights for example. If you want to simply check the presence of
   given node or attribute, use an empty string (`""`) as a `PATTERN`.
 
+* `@count PATH XPATH COUNT' checks for the occurrence of given XPath
+  in the given file. The number of occurrences must match the given count.
+
 All conditions can be negated with `!`. `@!has foo/type.NoSuch.html`
 checks if the given file does not exist, for example.
 
@@ -333,6 +336,11 @@ def check_tree_text(tree, path, pat, regexp):
     return ret
 
 
+def check_tree_count(tree, path, count):
+    path = normalize_xpath(path)
+    return len(tree.findall(path)) == count
+
+
 def check(target, commands):
     cache = CachedFiles(target)
     for c in commands:
@@ -356,6 +364,13 @@ def check(target, commands):
                     if pat.endswith('/text()'):
                         pat = pat[:-7]
                     ret = check_tree_text(cache.get_tree(c.args[0]), pat, c.args[2], regexp)
+            else:
+                raise RuntimeError('Invalid number of @{} arguments \
+                                    at line {}'.format(c.cmd, c.lineno))
+
+        elif c.cmd == 'count': # count test
+            if len(c.args) == 3: # @count <path> <pat> <count> = count test
+                ret = check_tree_count(cache.get_tree(c.args[0]), c.args[1], int(c.args[2]))
             else:
                 raise RuntimeError('Invalid number of @{} arguments \
                                     at line {}'.format(c.cmd, c.lineno))
