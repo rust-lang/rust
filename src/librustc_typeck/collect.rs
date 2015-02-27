@@ -1570,7 +1570,6 @@ fn get_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             name: name,
             disr_val: 0,
             fields: fields,
-            vis: ast::Public,
         }]
     });
 
@@ -1637,7 +1636,6 @@ fn get_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, def_id: ast::DefId,
                     name: v.node.name.name,
                     disr_val: discriminant,
                     fields: fields,
-                    vis: ast::Public,
                 }
             }
             ast::TupleVariantKind(_) => {
@@ -1646,7 +1644,6 @@ fn get_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, def_id: ast::DefId,
                     name: v.node.name.name,
                     disr_val: discriminant,
                     fields: Vec::new(),
-                    vis: ast::Public,
                 }
             }
             ast::StructVariantKind(ref struct_def) => {
@@ -1681,7 +1678,6 @@ fn get_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, def_id: ast::DefId,
                     name: v.node.name.name,
                     disr_val: discriminant,
                     fields: fields,
-                    vis: ast::Public,
                 }
             }
         }

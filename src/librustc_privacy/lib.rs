@@ -879,6 +879,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             ast::ExprStruct(_, ref fields, _) => {
                 match ty::expr_ty(self.tcx, expr).sty {
                     ty::ty_struct(def, _) => {
+                        // RFC 736: ensure all unmentioned fields are visible.
+                        // Rather than computing the set of unmentioned fields
+                        // (i.e. `all_fields - fields`, just check them all.
                         for field in &def.variants[0].fields {
                             self.check_field(expr.span, def, def.def_id,
                                              NamedField(field.name));

@@ -1052,7 +1052,6 @@ fn get_struct_datatype_def<'tcx>(tcx: &ty::ctxt<'tcx>, intr: &IdentInterner,
             name: name,
             disr_val: 0,
             fields: fields,
-            vis: ast::Public,
         }]
     });
 
@@ -1093,7 +1092,6 @@ fn get_enum_datatype_def<'tcx>(tcx: &ty::ctxt<'tcx>, intr: &IdentInterner,
             name: vname,
             disr_val: disr_val,
             fields: fields,
-            vis: ast::Public,
         }
     }).collect();
 

@@ -86,7 +86,7 @@ use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv, PathParamMode};
 use check::_match::pat_ctxt;
 use fmt_macros::{Parser, Piece, Position};
 use middle::astconv_util::{check_path_args, NO_TPS, NO_REGIONS};
-use middle::{const_eval, def};
+use middle::{def};
 use middle::infer;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;

@@ -2281,7 +2281,6 @@ pub struct VariantDef<'tcx> {
     pub name: Name,
     pub disr_val: Disr,
     pub fields: Vec<FieldTy<'tcx>>,
-    pub vis: Visibility,
 }
 
 

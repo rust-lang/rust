@@ -1136,19 +1136,19 @@ fn encode_info_for_item(ecx: &EncodeContext,
           let def = ty::lookup_datatype_def(tcx, def_id);
           let fields = &def.variants[0].fields[..];
 
-          /* First, encode the fields
-          These come first because we need to write them to make
-          the index, and the index needs to be in the item for the
-          class itself */
+          // First, encode the fields
+          // These come first because we need to write them to make
+          // the index, and the index needs to be in the item for the
+          // class itself
           let idx = encode_info_for_struct(ecx,
                                            rbml_w,
                                            fields,
                                            index);
 
-          /* Index the class*/
+          // Index the class
           add_to_index(item, rbml_w, index);
 
-          /* Now, make an item for the class itself */
+          // Now, make an item for the class itself
           rbml_w.start_tag(tag_items_data_item);
           encode_def_id(rbml_w, def_id);
           encode_family(rbml_w, 'S');
@@ -1162,9 +1162,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
           encode_visibility(rbml_w, vis);
           encode_repr_attrs(rbml_w, ecx, &item.attrs[]);
 
-          /* Encode def_ids for each field and method
-          for methods, write all the stuff get_trait_method
-          needs to know*/
+          // Encode def_ids for each field and method
+          // for methods, write all the stuff get_trait_method
+          // needs to know
           encode_struct_fields(rbml_w, fields, def_id);
 
           encode_inlined_item(ecx, rbml_w, IIItemRef(item));
@@ -1172,7 +1172,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
           // Encode inherent implementations for this structure.
           encode_inherent_implementations(ecx, rbml_w, def_id);
 
-          /* Each class has its own index -- encode it */
+          // Each class has its own index -- encode it
           encode_index(rbml_w, idx, write_i64);
           rbml_w.end_tag();
 
