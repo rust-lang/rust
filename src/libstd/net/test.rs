@@ -14,14 +14,14 @@ use env;
 use net::{SocketAddr, IpAddr};
 use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
+static PORT: AtomicUsize = ATOMIC_USIZE_INIT;
+
 pub fn next_test_ip4() -> SocketAddr {
-    static PORT: AtomicUsize = ATOMIC_USIZE_INIT;
     SocketAddr::new(IpAddr::new_v4(127, 0, 0, 1),
                     PORT.fetch_add(1, Ordering::SeqCst) as u16 + base_port())
 }
 
 pub fn next_test_ip6() -> SocketAddr {
-    static PORT: AtomicUsize = ATOMIC_USIZE_INIT;
     SocketAddr::new(IpAddr::new_v6(0, 0, 0, 0, 0, 0, 0, 1),
                     PORT.fetch_add(1, Ordering::SeqCst) as u16 + base_port())
 }
