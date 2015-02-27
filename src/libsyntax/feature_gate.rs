@@ -45,7 +45,7 @@ use std::ascii::AsciiExt;
 // stable (active).
 // NB: The featureck.py script parses this information directly out of the source
 // so take care when modifying it.
-static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
+const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("globs", "1.0.0", Accepted),
     ("macro_rules", "1.0.0", Accepted),
     ("struct_variant", "1.0.0", Accepted),
@@ -159,7 +159,7 @@ enum Status {
 }
 
 // Attributes that have a special meaning to rustc or rustdoc
-pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
+pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     // Normal attributes
 
     ("warn", Normal),

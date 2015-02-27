@@ -14,7 +14,7 @@ use common::Config;
 use std::env;
 
 /// Conversion table from triple OS name to Rust SYSNAME
-static OS_TABLE: &'static [(&'static str, &'static str)] = &[
+const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("mingw32", "windows"),
     ("win32", "windows"),
     ("windows", "windows"),

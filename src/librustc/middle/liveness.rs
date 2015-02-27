@@ -540,9 +540,9 @@ struct Specials {
     clean_exit_var: Variable
 }
 
-static ACC_READ: u32 = 1;
-static ACC_WRITE: u32 = 2;
-static ACC_USE: u32 = 4;
+const ACC_READ: u32 = 1;
+const ACC_WRITE: u32 = 2;
+const ACC_USE: u32 = 4;
 
 struct Liveness<'a, 'tcx: 'a> {
     ir: &'a mut IrMaps<'a, 'tcx>,

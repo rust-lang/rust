@@ -18,7 +18,7 @@ use core::default::Default;
 
 /// How many bytes of entropy the underling RNG is allowed to generate
 /// before it is reseeded.
-static DEFAULT_GENERATION_THRESHOLD: uint = 32 * 1024;
+const DEFAULT_GENERATION_THRESHOLD: uint = 32 * 1024;
 
 /// A wrapper around any RNG which reseeds the underlying RNG after it
 /// has generated a certain number of random bytes.
@@ -212,7 +212,7 @@ mod test {
         assert_eq!(string1, string2);
     }
 
-    static FILL_BYTES_V_LEN: uint = 13579;
+    const FILL_BYTES_V_LEN: uint = 13579;
     #[test]
     fn test_rng_fill_bytes() {
         let mut v = repeat(0u8).take(FILL_BYTES_V_LEN).collect::<Vec<_>>();

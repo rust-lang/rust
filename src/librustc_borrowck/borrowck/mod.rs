@@ -312,7 +312,7 @@ impl<'tcx> LoanPath<'tcx> {
 // FIXME (pnkfelix): See discussion here
 // https://github.com/pnkfelix/rust/commit/
 //     b2b39e8700e37ad32b486b9a8409b50a8a53aa51#commitcomment-7892003
-static DOWNCAST_PRINTED_OPERATOR : &'static str = " as ";
+const DOWNCAST_PRINTED_OPERATOR: &'static str = " as ";
 
 // A local, "cleaned" version of `mc::InteriorKind` that drops
 // information that is not relevant to loan-path analysis. (In

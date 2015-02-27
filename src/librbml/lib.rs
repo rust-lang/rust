@@ -856,9 +856,9 @@ pub mod writer {
     // Set to true to generate more debugging in EBML code.
     // Totally lame approach.
     #[cfg(not(ndebug))]
-    static DEBUG: bool = true;
+    const DEBUG: bool = true;
     #[cfg(ndebug)]
-    static DEBUG: bool = false;
+    const DEBUG: bool = false;
 
     impl<'a, W: Writer + Seek> Encoder<'a, W> {
         // used internally to emit things like the vector length and so on

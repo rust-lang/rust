@@ -38,12 +38,12 @@ mod tests {
         assert!(MAX - (0b1011 as $T) == (0b1011 as $T).not());
     }
 
-    static A: $T = 0b0101100;
-    static B: $T = 0b0100001;
-    static C: $T = 0b1111001;
+    const A: $T = 0b0101100;
+    const B: $T = 0b0100001;
+    const C: $T = 0b1111001;
 
-    static _0: $T = 0;
-    static _1: $T = !0;
+    const _0: $T = 0;
+    const _1: $T = !0;
 
     #[test]
     fn test_count_ones() {

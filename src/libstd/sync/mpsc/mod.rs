@@ -1157,8 +1157,8 @@ mod test {
 
     #[test]
     fn stress_shared() {
-        static AMT: u32 = 10000;
-        static NTHREADS: u32 = 8;
+        const AMT: u32 = 10000;
+        const NTHREADS: u32 = 8;
         let (tx, rx) = channel::<i32>();
 
         let t = thread::spawn(move|| {
@@ -1663,8 +1663,8 @@ mod sync_tests {
 
     #[test]
     fn stress_shared() {
-        static AMT: u32 = 1000;
-        static NTHREADS: u32 = 8;
+        const AMT: u32 = 1000;
+        const NTHREADS: u32 = 8;
         let (tx, rx) = sync_channel::<i32>(0);
         let (dtx, drx) = sync_channel::<()>(0);
 

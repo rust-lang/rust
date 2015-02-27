@@ -487,12 +487,12 @@ fn range_to_inttype(cx: &CrateContext, hint: Hint, bounds: &IntBounds) -> IntTyp
     debug!("range_to_inttype: {:?} {:?}", hint, bounds);
     // Lists of sizes to try.  u64 is always allowed as a fallback.
     #[allow(non_upper_case_globals)]
-    static choose_shortest: &'static[IntType] = &[
+    const choose_shortest: &'static [IntType] = &[
         attr::UnsignedInt(ast::TyU8), attr::SignedInt(ast::TyI8),
         attr::UnsignedInt(ast::TyU16), attr::SignedInt(ast::TyI16),
         attr::UnsignedInt(ast::TyU32), attr::SignedInt(ast::TyI32)];
     #[allow(non_upper_case_globals)]
-    static at_least_32: &'static[IntType] = &[
+    const at_least_32: &'static [IntType] = &[
         attr::UnsignedInt(ast::TyU32), attr::SignedInt(ast::TyI32)];
 
     let attempts;
