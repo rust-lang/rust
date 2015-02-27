@@ -132,11 +132,9 @@ pub mod reader {
     use std::char;
 
     use std::isize;
-    use std::old_io::extensions::u64_from_be_bytes;
     use std::mem::transmute;
     use std::num::Int;
-    use std::option::Option;
-    use std::option::Option::{None, Some};
+    use std::slice::bytes;
 
     use serialize;
 
@@ -199,20 +197,24 @@ pub mod reader {
             return vuint_at_slow(data, start);
         }
 
-        // Lookup table for parsing EBML Element IDs as per http://ebml.sourceforge.net/specs/
-        // The Element IDs are parsed by reading a big endian u32 positioned at data[start].
-        // Using the four most significant bits of the u32 we lookup in the table below how the
-        // element ID should be derived from it.
+        // Lookup table for parsing EBML Element IDs as per
+        // http://ebml.sourceforge.net/specs/ The Element IDs are parsed by
+        // reading a big endian u32 positioned at data[start].  Using the four
+        // most significant bits of the u32 we lookup in the table below how
+        // the element ID should be derived from it.
         //
-        // The table stores tuples (shift, mask) where shift is the number the u32 should be right
-        // shifted with and mask is the value the right shifted value should be masked with.
-        // If for example the most significant bit is set this means it's a class A ID and the u32
-        // should be right shifted with 24 and masked with 0x7f. Therefore we store (24, 0x7f) at
-        // index 0x8 - 0xF (four bit numbers where the most significant bit is set).
+        // The table stores tuples (shift, mask) where shift is the number the
+        // u32 should be right shifted with and mask is the value the right
+        // shifted value should be masked with.  If for example the most
+        // significant bit is set this means it's a class A ID and the u32
+        // should be right shifted with 24 and masked with 0x7f. Therefore we
+        // store (24, 0x7f) at index 0x8 - 0xF (four bit numbers where the most
+        // significant bit is set).
         //
-        // By storing the number of shifts and masks in a table instead of checking in order if
-        // the most significant bit is set, the second most significant bit is set etc. we can
-        // replace up to three "and+branch" with a single table lookup which gives us a measured
+        // By storing the number of shifts and masks in a table instead of
+        // checking in order if the most significant bit is set, the second
+        // most significant bit is set etc. we can replace up to three
+        // "and+branch" with a single table lookup which gives us a measured
         // speedup of around 2x on x86_64.
         static SHIFT_MASK_TABLE: [(uint, u32); 16] = [
             (0, 0x0), (0, 0x0fffffff),
@@ -318,17 +320,23 @@ pub mod reader {
 
     pub fn doc_as_u16(d: Doc) -> u16 {
         assert_eq!(d.end, d.start + 2);
-        u64_from_be_bytes(d.data, d.start, 2) as u16
+        let mut b = [0; 2];
+        bytes::copy_memory(&mut b, &d.data[d.start..d.end]);
+        unsafe { (*(b.as_ptr() as *const u16)).to_be() }
     }
 
     pub fn doc_as_u32(d: Doc) -> u32 {
         assert_eq!(d.end, d.start + 4);
-        u64_from_be_bytes(d.data, d.start, 4) as u32
+        let mut b = [0; 4];
+        bytes::copy_memory(&mut b, &d.data[d.start..d.end]);
+        unsafe { (*(b.as_ptr() as *const u32)).to_be() }
     }
 
     pub fn doc_as_u64(d: Doc) -> u64 {
         assert_eq!(d.end, d.start + 8);
-        u64_from_be_bytes(d.data, d.start, 8)
+        let mut b = [0; 8];
+        bytes::copy_memory(&mut b, &d.data[d.start..d.end]);
+        unsafe { (*(b.as_ptr() as *const u64)).to_be() }
     }
 
     pub fn doc_as_i8(d: Doc) -> i8 { doc_as_u8(d) as i8 }
@@ -689,11 +697,10 @@ pub mod reader {
 }
 
 pub mod writer {
-    use std::clone::Clone;
-    use std::old_io::extensions::u64_to_be_bytes;
+    use std::mem;
+    use std::num::Int;
     use std::old_io::{Writer, Seek};
     use std::old_io;
-    use std::mem;
 
     use super::{ EsVec, EsMap, EsEnum, EsVecLen, EsVecElt, EsMapLen, EsMapKey,
         EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64, EsI32, EsI16, EsI8,
@@ -794,21 +801,18 @@ pub mod writer {
         }
 
         pub fn wr_tagged_u64(&mut self, tag_id: uint, v: u64) -> EncodeResult {
-            u64_to_be_bytes(v, 8, |v| {
-                self.wr_tagged_bytes(tag_id, v)
-            })
+            let bytes: [u8; 8] = unsafe { mem::transmute(v.to_be()) };
+            self.wr_tagged_bytes(tag_id, &bytes)
         }
 
         pub fn wr_tagged_u32(&mut self, tag_id: uint, v: u32)  -> EncodeResult{
-            u64_to_be_bytes(v as u64, 4, |v| {
-                self.wr_tagged_bytes(tag_id, v)
-            })
+            let bytes: [u8; 4] = unsafe { mem::transmute(v.to_be()) };
+            self.wr_tagged_bytes(tag_id, &bytes)
         }
 
         pub fn wr_tagged_u16(&mut self, tag_id: uint, v: u16) -> EncodeResult {
-            u64_to_be_bytes(v as u64, 2, |v| {
-                self.wr_tagged_bytes(tag_id, v)
-            })
+            let bytes: [u8; 2] = unsafe { mem::transmute(v.to_be()) };
+            self.wr_tagged_bytes(tag_id, &bytes)
         }
 
         pub fn wr_tagged_u8(&mut self, tag_id: uint, v: u8) -> EncodeResult {
@@ -816,21 +820,15 @@ pub mod writer {
         }
 
         pub fn wr_tagged_i64(&mut self, tag_id: uint, v: i64) -> EncodeResult {
-            u64_to_be_bytes(v as u64, 8, |v| {
-                self.wr_tagged_bytes(tag_id, v)
-            })
+            self.wr_tagged_u64(tag_id, v as u64)
         }
 
         pub fn wr_tagged_i32(&mut self, tag_id: uint, v: i32) -> EncodeResult {
-            u64_to_be_bytes(v as u64, 4, |v| {
-                self.wr_tagged_bytes(tag_id, v)
-            })
+            self.wr_tagged_u32(tag_id, v as u32)
         }
 
         pub fn wr_tagged_i16(&mut self, tag_id: uint, v: i16) -> EncodeResult {
-            u64_to_be_bytes(v as u64, 2, |v| {
-                self.wr_tagged_bytes(tag_id, v)
-            })
+            self.wr_tagged_u16(tag_id, v as u16)
         }
 
         pub fn wr_tagged_i8(&mut self, tag_id: uint, v: i8) -> EncodeResult {

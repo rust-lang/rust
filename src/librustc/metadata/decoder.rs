@@ -34,10 +34,11 @@ use middle::astencode::vtable_decoder_helpers;
 
 use std::collections::HashMap;
 use std::hash::{self, Hash, SipHasher};
-use std::old_io::extensions::u64_from_be_bytes;
-use std::old_io;
 use std::num::FromPrimitive;
+use std::num::Int;
+use std::old_io;
 use std::rc::Rc;
+use std::slice::bytes;
 use std::str;
 
 use rbml::reader;
@@ -60,20 +61,26 @@ pub type Cmd<'a> = &'a crate_metadata;
 // what crate that's in and give us a def_id that makes sense for the current
 // build.
 
+fn u32_from_be_bytes(bytes: &[u8]) -> u32 {
+    let mut b = [0; 4];
+    bytes::copy_memory(&mut b, &bytes[..4]);
+    unsafe { (*(b.as_ptr() as *const u32)).to_be() }
+}
+
 fn lookup_hash<'a, F>(d: rbml::Doc<'a>, mut eq_fn: F, hash: u64) -> Option<rbml::Doc<'a>> where
     F: FnMut(&[u8]) -> bool,
 {
     let index = reader::get_doc(d, tag_index);
     let table = reader::get_doc(index, tag_index_table);
     let hash_pos = table.start + (hash % 256 * 4) as uint;
-    let pos = u64_from_be_bytes(d.data, hash_pos, 4) as uint;
+    let pos = u32_from_be_bytes(&d.data[hash_pos..]) as uint;
     let tagged_doc = reader::doc_at(d.data, pos).unwrap();
 
     let belt = tag_index_buckets_bucket_elt;
 
     let mut ret = None;
     reader::tagged_docs(tagged_doc.doc, belt, |elt| {
-        let pos = u64_from_be_bytes(elt.data, elt.start, 4) as uint;
+        let pos = u32_from_be_bytes(&elt.data[elt.start..]) as uint;
         if eq_fn(&elt.data[elt.start + 4 .. elt.end]) {
             ret = Some(reader::doc_at(d.data, pos).unwrap().doc);
             false
@@ -87,9 +94,7 @@ fn lookup_hash<'a, F>(d: rbml::Doc<'a>, mut eq_fn: F, hash: u64) -> Option<rbml:
 pub fn maybe_find_item<'a>(item_id: ast::NodeId,
                            items: rbml::Doc<'a>) -> Option<rbml::Doc<'a>> {
     fn eq_item(bytes: &[u8], item_id: ast::NodeId) -> bool {
-        return u64_from_be_bytes(
-            &bytes[0..4], 0, 4) as ast::NodeId
-            == item_id;
+        u32_from_be_bytes(bytes) == item_id
     }
     lookup_hash(items,
                 |a| eq_item(a, item_id),

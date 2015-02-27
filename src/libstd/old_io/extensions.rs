@@ -11,6 +11,10 @@
 //! Utility mixins that apply to all Readers and Writers
 
 #![allow(missing_docs)]
+#![unstable(feature = "old_io")]
+#![deprecated(since = "1.0.0",
+              reason = "functionality will be removed with no immediate \
+                        replacement")]
 
 // FIXME: Not sure how this should be structured
 // FIXME: Iteration should probably be considered separately
