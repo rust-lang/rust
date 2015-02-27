@@ -199,7 +199,7 @@ pub mod rt {
         fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitStr(
                     token::intern_and_get_ident(self), ast::CookedStr));
-            pprust::lit_to_string(&lit)
+            pprust::lit_to_string(&lit).into_owned()
         }
     }
     impl ToSourceWithHygiene for str {
@@ -222,7 +222,7 @@ pub mod rt {
     impl ToSource for bool {
         fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitBool(*self));
-            pprust::lit_to_string(&lit)
+            pprust::lit_to_string(&lit).into_owned()
         }
     }
     impl ToSourceWithHygiene for bool {
@@ -234,7 +234,7 @@ pub mod rt {
     impl ToSource for char {
         fn to_source(&self) -> String {
             let lit = dummy_spanned(ast::LitChar(*self));
-            pprust::lit_to_string(&lit)
+            pprust::lit_to_string(&lit).into_owned()
         }
     }
     impl ToSourceWithHygiene for char {
@@ -249,7 +249,7 @@ pub mod rt {
                 fn to_source(&self) -> String {
                     let lit = ast::LitInt(*self as u64, ast::SignedIntLit($tag,
                                                                           ast::Sign::new(*self)));
-                    pprust::lit_to_string(&dummy_spanned(lit))
+                    pprust::lit_to_string(&dummy_spanned(lit)).into_owned()
                 }
             }
             impl ToSourceWithHygiene for $t {
@@ -262,7 +262,7 @@ pub mod rt {
             impl ToSource for $t {
                 fn to_source(&self) -> String {
                     let lit = ast::LitInt(*self as u64, ast::UnsignedIntLit($tag));
-                    pprust::lit_to_string(&dummy_spanned(lit))
+                    pprust::lit_to_string(&dummy_spanned(lit)).into_owned()
                 }
             }
             impl ToSourceWithHygiene for $t {
