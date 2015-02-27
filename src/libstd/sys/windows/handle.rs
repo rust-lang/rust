@@ -10,9 +10,10 @@
 
 use prelude::v1::*;
 
-use libc::{self, HANDLE};
 use io;
 use io::ErrorKind;
+use libc::{self, HANDLE};
+use mem;
 use ptr;
 use sys::cvt;
 
@@ -24,6 +25,19 @@ unsafe impl Sync for Handle {}
 impl Handle {
     pub fn new(handle: HANDLE) -> Handle {
         Handle(handle)
+    }
+
+    pub fn close(self) -> io::Result<()> {
+        let handle = self.0;
+        unsafe { mem::forget(self) };
+
+        // Don't try to close the invalid handle, this is relied upon in the destructor.
+        if handle == libc::INVALID_HANLE_VALUE {
+            return Ok(());
+        }
+
+        try!(cvt(unsafe { libc::CloseHandle(self.0); }));
+        Ok(())
     }
 
     pub fn raw(&self) -> HANDLE { self.0 }
@@ -39,7 +53,8 @@ impl Handle {
 
 impl Drop for Handle {
     fn drop(&mut self) {
-        unsafe { let _ = libc::CloseHandle(self.0); }
+        let handle = mem::replace(self, Handle::new(libc::INVALID_HANDLE_VALUE));
+        handle.close().unwrap();
     }
 }
 
