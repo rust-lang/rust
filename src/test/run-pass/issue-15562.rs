@@ -15,9 +15,6 @@
 extern crate issue_15562 as i;
 
 pub fn main() {
-    extern {
-        fn transmute();
-    }
     unsafe {
         transmute();
         i::transmute();
