@@ -924,6 +924,7 @@ extern {
     pub fn LLVMSetThreadLocal(GlobalVar: ValueRef, IsThreadLocal: Bool);
     pub fn LLVMIsGlobalConstant(GlobalVar: ValueRef) -> Bool;
     pub fn LLVMSetGlobalConstant(GlobalVar: ValueRef, IsConstant: Bool);
+    pub fn LLVMGetNamedValue(M: ModuleRef, Name: *const c_char) -> ValueRef;
 
     /* Operations on aliases */
     pub fn LLVMAddAlias(M: ModuleRef,
