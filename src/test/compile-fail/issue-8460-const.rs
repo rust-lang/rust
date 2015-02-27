@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{int, i8, i16, i32, i64};
+use std::{isize, i8, i16, i32, i64};
 use std::thread;
 
 fn main() {
-    assert!(thread::spawn(move|| { int::MIN / -1; }).join().is_err());
+    assert!(thread::spawn(move|| { isize::MIN / -1; }).join().is_err());
     //~^ ERROR attempted to divide with overflow in a constant expression
     assert!(thread::spawn(move|| { i8::MIN / -1; }).join().is_err());
     //~^ ERROR attempted to divide with overflow in a constant expression
@@ -32,7 +32,7 @@ fn main() {
     //~^ ERROR attempted to divide by zero in a constant expression
     assert!(thread::spawn(move|| { 1i64 / 0; }).join().is_err());
     //~^ ERROR attempted to divide by zero in a constant expression
-    assert!(thread::spawn(move|| { int::MIN % -1; }).join().is_err());
+    assert!(thread::spawn(move|| { isize::MIN % -1; }).join().is_err());
     //~^ ERROR attempted remainder with overflow in a constant expression
     assert!(thread::spawn(move|| { i8::MIN % -1; }).join().is_err());
     //~^ ERROR attempted remainder with overflow in a constant expression

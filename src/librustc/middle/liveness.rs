@@ -51,8 +51,8 @@
 //! enclosing function.  On the way down the tree, it identifies those AST
 //! nodes and variable IDs that will be needed for the liveness analysis
 //! and assigns them contiguous IDs.  The liveness id for an AST node is
-//! called a `live_node` (it's a newtype'd uint) and the id for a variable
-//! is called a `variable` (another newtype'd uint).
+//! called a `live_node` (it's a newtype'd usize) and the id for a variable
+//! is called a `variable` (another newtype'd usize).
 //!
 //! On the way back up the tree, as we are about to exit from a function
 //! declaration we allocate a `liveness` instance.  Now that we know
@@ -118,7 +118,7 @@ use middle::ty::ClosureTyper;
 use lint;
 use util::nodemap::NodeMap;
 
-use std::{fmt, old_io, uint};
+use std::{fmt, old_io, usize};
 use std::rc::Rc;
 use std::iter::repeat;
 use syntax::ast::{self, NodeId, Expr};
@@ -138,17 +138,17 @@ enum LoopKind<'a> {
 }
 
 #[derive(Copy, PartialEq)]
-struct Variable(uint);
+struct Variable(usize);
 
 #[derive(Copy, PartialEq)]
-struct LiveNode(uint);
+struct LiveNode(usize);
 
 impl Variable {
-    fn get(&self) -> uint { let Variable(v) = *self; v }
+    fn get(&self) -> usize { let Variable(v) = *self; v }
 }
 
 impl LiveNode {
-    fn get(&self) -> uint { let LiveNode(v) = *self; v }
+    fn get(&self) -> usize { let LiveNode(v) = *self; v }
 }
 
 impl Clone for LiveNode {
@@ -232,11 +232,11 @@ impl fmt::Debug for Variable {
 
 impl LiveNode {
     fn is_valid(&self) -> bool {
-        self.get() != uint::MAX
+        self.get() != usize::MAX
     }
 }
 
-fn invalid_node() -> LiveNode { LiveNode(uint::MAX) }
+fn invalid_node() -> LiveNode { LiveNode(usize::MAX) }
 
 struct CaptureInfo {
     ln: LiveNode,
@@ -260,8 +260,8 @@ enum VarKind {
 struct IrMaps<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
 
-    num_live_nodes: uint,
-    num_vars: uint,
+    num_live_nodes: usize,
+    num_vars: usize,
     live_node_map: NodeMap<LiveNode>,
     variable_map: NodeMap<Variable>,
     capture_info_map: NodeMap<Rc<Vec<CaptureInfo>>>,
@@ -540,9 +540,9 @@ struct Specials {
     clean_exit_var: Variable
 }
 
-static ACC_READ: uint = 1;
-static ACC_WRITE: uint = 2;
-static ACC_USE: uint = 4;
+static ACC_READ: u32 = 1;
+static ACC_WRITE: u32 = 2;
+static ACC_USE: u32 = 4;
 
 struct Liveness<'a, 'tcx: 'a> {
     ir: &'a mut IrMaps<'a, 'tcx>,
@@ -631,7 +631,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         succ
     }
 
-    fn idx(&self, ln: LiveNode, var: Variable) -> uint {
+    fn idx(&self, ln: LiveNode, var: Variable) -> usize {
         ln.get() * self.ir.num_vars + var.get()
     }
 
@@ -670,7 +670,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn indices2<F>(&mut self, ln: LiveNode, succ_ln: LiveNode, mut op: F) where
-        F: FnMut(&mut Liveness<'a, 'tcx>, uint, uint),
+        F: FnMut(&mut Liveness<'a, 'tcx>, usize, usize),
     {
         let node_base_idx = self.idx(ln, Variable(0));
         let succ_base_idx = self.idx(succ_ln, Variable(0));
@@ -684,7 +684,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                      ln: LiveNode,
                      mut test: F)
                      -> old_io::IoResult<()> where
-        F: FnMut(uint) -> LiveNode,
+        F: FnMut(usize) -> LiveNode,
     {
         let node_base_idx = self.idx(ln, Variable(0));
         for var_idx in 0..self.ir.num_vars {
@@ -807,7 +807,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     // Either read, write, or both depending on the acc bitset
-    fn acc(&mut self, ln: LiveNode, var: Variable, acc: uint) {
+    fn acc(&mut self, ln: LiveNode, var: Variable, acc: u32) {
         debug!("{:?} accesses[{:x}] {:?}: {}",
                ln, acc, var, self.ln_str(ln));
 
@@ -1283,7 +1283,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     // see comment on propagate_through_lvalue()
-    fn write_lvalue(&mut self, expr: &Expr, succ: LiveNode, acc: uint)
+    fn write_lvalue(&mut self, expr: &Expr, succ: LiveNode, acc: u32)
                     -> LiveNode {
         match expr.node {
           ast::ExprPath(..) => {
@@ -1298,7 +1298,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         }
     }
 
-    fn access_path(&mut self, expr: &Expr, succ: LiveNode, acc: uint)
+    fn access_path(&mut self, expr: &Expr, succ: LiveNode, acc: u32)
                    -> LiveNode {
         match self.ir.tcx.def_map.borrow()[expr.id].full_def() {
           DefLocal(nid) => {

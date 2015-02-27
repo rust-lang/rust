@@ -12,7 +12,7 @@ use core::iter::*;
 use core::iter::order::*;
 use core::iter::MinMaxResult::*;
 use core::num::SignedInt;
-use core::uint;
+use core::usize;
 use core::cmp;
 
 use test::Bencher;
@@ -292,7 +292,7 @@ fn test_unfoldr() {
 fn test_cycle() {
     let cycle_len = 3;
     let it = count(0, 1).take(cycle_len).cycle();
-    assert_eq!(it.size_hint(), (uint::MAX, None));
+    assert_eq!(it.size_hint(), (usize::MAX, None));
     for (i, x) in it.take(100).enumerate() {
         assert_eq!(i % cycle_len, x);
     }
@@ -365,19 +365,19 @@ fn test_iterator_size_hint() {
     let v2 = &[10, 11, 12];
     let vi = v.iter();
 
-    assert_eq!(c.size_hint(), (uint::MAX, None));
+    assert_eq!(c.size_hint(), (usize::MAX, None));
     assert_eq!(vi.clone().size_hint(), (10, Some(10)));
 
     assert_eq!(c.clone().take(5).size_hint(), (5, Some(5)));
     assert_eq!(c.clone().skip(5).size_hint().1, None);
     assert_eq!(c.clone().take_while(|_| false).size_hint(), (0, None));
     assert_eq!(c.clone().skip_while(|_| false).size_hint(), (0, None));
-    assert_eq!(c.clone().enumerate().size_hint(), (uint::MAX, None));
-    assert_eq!(c.clone().chain(vi.clone().cloned()).size_hint(), (uint::MAX, None));
+    assert_eq!(c.clone().enumerate().size_hint(), (usize::MAX, None));
+    assert_eq!(c.clone().chain(vi.clone().cloned()).size_hint(), (usize::MAX, None));
     assert_eq!(c.clone().zip(vi.clone()).size_hint(), (10, Some(10)));
     assert_eq!(c.clone().scan(0, |_,_| Some(0)).size_hint(), (0, None));
     assert_eq!(c.clone().filter(|_| false).size_hint(), (0, None));
-    assert_eq!(c.clone().map(|_| 0).size_hint(), (uint::MAX, None));
+    assert_eq!(c.clone().map(|_| 0).size_hint(), (usize::MAX, None));
     assert_eq!(c.filter_map(|_| Some(0)).size_hint(), (0, None));
 
     assert_eq!(vi.clone().take(5).size_hint(), (5, Some(5)));
@@ -753,7 +753,7 @@ fn test_range() {
 
     assert_eq!((0..100).size_hint(), (100, Some(100)));
     // this test is only meaningful when sizeof uint < sizeof u64
-    assert_eq!((uint::MAX - 1..uint::MAX).size_hint(), (1, Some(1)));
+    assert_eq!((usize::MAX - 1..usize::MAX).size_hint(), (1, Some(1)));
     assert_eq!((-10..-1).size_hint(), (9, Some(9)));
     assert_eq!((-1..-10).size_hint(), (0, Some(0)));
 }

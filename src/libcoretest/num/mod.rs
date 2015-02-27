@@ -21,7 +21,6 @@ mod i8;
 mod i16;
 mod i32;
 mod i64;
-mod int;
 
 #[macro_use]
 mod uint_macros;
@@ -30,7 +29,6 @@ mod u8;
 mod u16;
 mod u32;
 mod u64;
-mod uint;
 
 /// Helper function for testing numeric operations
 pub fn test_num<T>(ten: T, two: T) where
