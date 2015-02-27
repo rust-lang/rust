@@ -14,7 +14,7 @@
 //! environment varibles, process arguments, the current directory, and various
 //! other important directories.
 
-#![unstable(feature = "env", reason = "recently added via RFC 578")]
+#![stable(feature = "env", since = "1.0.0")]
 
 use prelude::v1::*;
 
@@ -47,6 +47,7 @@ use sys::os as os_imp;
 /// let p = env::current_dir().unwrap();
 /// println!("The current directory is {}", p.display());
 /// ```
+#[stable(feature = "env", since = "1.0.0")]
 pub fn current_dir() -> io::Result<PathBuf> {
     os_imp::getcwd()
 }
@@ -64,6 +65,7 @@ pub fn current_dir() -> io::Result<PathBuf> {
 /// assert!(env::set_current_dir(&root).is_ok());
 /// println!("Successfully changed working directory to {}!", root.display());
 /// ```
+#[stable(feature = "env", since = "1.0.0")]
 pub fn set_current_dir<P: AsPath + ?Sized>(p: &P) -> io::Result<()> {
     os_imp::chdir(p.as_path())
 }
@@ -74,12 +76,14 @@ static ENV_LOCK: StaticMutex = MUTEX_INIT;
 ///
 /// This iterator is created through `std::env::vars()` and yields `(String,
 /// String)` pairs.
+#[stable(feature = "env", since = "1.0.0")]
 pub struct Vars { inner: VarsOs }
 
 /// An iterator over a snapshot of the environment variables of this process.
 ///
 /// This iterator is created through `std::env::vars_os()` and yields
 /// `(OsString, OsString)` pairs.
+#[stable(feature = "env", since = "1.0.0")]
 pub struct VarsOs { inner: os_imp::Env }
 
 /// Returns an iterator of (variable, value) pairs of strings, for all the
@@ -106,6 +110,7 @@ pub struct VarsOs { inner: os_imp::Env }
 ///     println!("{}: {}", key, value);
 /// }
 /// ```
+#[stable(feature = "env", since = "1.0.0")]
 pub fn vars() -> Vars {
     Vars { inner: vars_os() }
 }
@@ -128,11 +133,13 @@ pub fn vars() -> Vars {
 ///     println!("{:?}: {:?}", key, value);
 /// }
 /// ```
+#[stable(feature = "env", since = "1.0.0")]
 pub fn vars_os() -> VarsOs {
     let _g = ENV_LOCK.lock();
     VarsOs { inner: os_imp::env() }
 }
 
+#[stable(feature = "env", since = "1.0.0")]
 impl Iterator for Vars {
     type Item = (String, String);
     fn next(&mut self) -> Option<(String, String)> {
@@ -143,6 +150,7 @@ impl Iterator for Vars {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
+#[stable(feature = "env", since = "1.0.0")]
 impl Iterator for VarsOs {
     type Item = (OsString, OsString);
     fn next(&mut self) -> Option<(OsString, OsString)> { self.inner.next() }
@@ -166,6 +174,7 @@ impl Iterator for VarsOs {
 ///     Err(e) => println!("couldn't interpret {}: {}", key, e),
 /// }
 /// ```
+#[stable(feature = "env", since = "1.0.0")]
 pub fn var<K: ?Sized>(key: &K) -> Result<String, VarError> where K: AsOsStr {
     match var_os(key) {
         Some(s) => s.into_string().map_err(VarError::NotUnicode),
@@ -187,6 +196,7 @@ pub fn var<K: ?Sized>(key: &K) -> Result<String, VarError> where K: AsOsStr {
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
+#[stable(feature = "env", since = "1.0.0")]
 pub fn var_os<K: ?Sized>(key: &K) -> Option<OsString> where K: AsOsStr {
     let _g = ENV_LOCK.lock();
     os_imp::getenv(key.as_os_str())
@@ -194,17 +204,21 @@ pub fn var_os<K: ?Sized>(key: &K) -> Option<OsString> where K: AsOsStr {
 
 /// Possible errors from the `env::var` method.
 #[derive(Debug, PartialEq, Eq, Clone)]
+#[stable(feature = "env", since = "1.0.0")]
 pub enum VarError {
     /// The specified environment variable was not present in the current
     /// process's environment.
+    #[stable(feature = "env", since = "1.0.0")]
     NotPresent,
 
     /// The specified environment variable was found, but it did not contain
     /// valid unicode data. The found data is returned as a payload of this
     /// variant.
+    #[stable(feature = "env", since = "1.0.0")]
     NotUnicode(OsString),
 }
 
+#[stable(feature = "env", since = "1.0.0")]
 impl fmt::Display for VarError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -216,6 +230,7 @@ impl fmt::Display for VarError {
     }
 }
 
+#[stable(feature = "env", since = "1.0.0")]
 impl Error for VarError {
     fn description(&self) -> &str {
         match *self {
@@ -237,6 +252,7 @@ impl Error for VarError {
 /// env::set_var(key, "VALUE");
 /// assert_eq!(env::var(key), Ok("VALUE".to_string()));
 /// ```
+#[stable(feature = "env", since = "1.0.0")]
 pub fn set_var<K: ?Sized, V: ?Sized>(k: &K, v: &V)
     where K: AsOsStr, V: AsOsStr
 {
@@ -245,6 +261,7 @@ pub fn set_var<K: ?Sized, V: ?Sized>(k: &K, v: &V)
 }
 
 /// Remove a variable from the environment entirely.
+#[stable(feature = "env", since = "1.0.0")]
 pub fn remove_var<K: ?Sized>(k: &K) where K: AsOsStr {
     let _g = ENV_LOCK.lock();
     os_imp::unsetenv(k.as_os_str())
@@ -254,6 +271,7 @@ pub fn remove_var<K: ?Sized>(k: &K) where K: AsOsStr {
 /// according to platform-specific conventions.
 ///
 /// This structure is returned from `std::env::split_paths`.
+#[stable(feature = "env", since = "1.0.0")]
 pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
 
 /// Parses input according to platform conventions for the `PATH`
@@ -276,10 +294,12 @@ pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
+#[stable(feature = "env", since = "1.0.0")]
 pub fn split_paths<T: AsOsStr + ?Sized>(unparsed: &T) -> SplitPaths {
     SplitPaths { inner: os_imp::split_paths(unparsed.as_os_str()) }
 }
 
+#[stable(feature = "env", since = "1.0.0")]
 impl<'a> Iterator for SplitPaths<'a> {
     type Item = PathBuf;
     fn next(&mut self) -> Option<PathBuf> { self.inner.next() }
@@ -289,6 +309,7 @@ impl<'a> Iterator for SplitPaths<'a> {
 /// Error type returned from `std::env::join_paths` when paths fail to be
 /// joined.
 #[derive(Debug)]
+#[stable(feature = "env", since = "1.0.0")]
 pub struct JoinPathsError {
     inner: os_imp::JoinPathsError
 }
@@ -315,6 +336,7 @@ pub struct JoinPathsError {
 ///     env::set_var("PATH", &new_path);
 /// }
 /// ```
+#[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
     where I: Iterator<Item=T>, T: AsOsStr
 {
@@ -323,12 +345,14 @@ pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
     })
 }
 
+#[stable(feature = "env", since = "1.0.0")]
 impl fmt::Display for JoinPathsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.inner.fmt(f)
     }
 }
 
+#[stable(feature = "env", since = "1.0.0")]
 impl Error for JoinPathsError {
     fn description(&self) -> &str { self.inner.description() }
 }
@@ -357,6 +381,7 @@ impl Error for JoinPathsError {
 ///     None => println!("Impossible to get your home dir!")
 /// }
 /// ```
+#[stable(feature = "env", since = "1.0.0")]
 pub fn home_dir() -> Option<PathBuf> {
     os_imp::home_dir()
 }
@@ -371,6 +396,7 @@ pub fn home_dir() -> Option<PathBuf> {
 /// On Windows, returns the value of, in order, the 'TMP', 'TEMP',
 /// 'USERPROFILE' environment variable  if any are set and not the empty
 /// string. Otherwise, tmpdir returns the path to the Windows directory.
+#[stable(feature = "env", since = "1.0.0")]
 pub fn temp_dir() -> PathBuf {
     os_imp::temp_dir()
 }
@@ -398,6 +424,7 @@ pub fn temp_dir() -> PathBuf {
 ///     Err(e) => println!("failed to get current exe path: {}", e),
 /// };
 /// ```
+#[stable(feature = "env", since = "1.0.0")]
 pub fn current_exe() -> io::Result<PathBuf> {
     os_imp::current_exe()
 }
@@ -412,12 +439,14 @@ static EXIT_STATUS: AtomicIsize = ATOMIC_ISIZE_INIT;
 /// ignored and the process exits with the default panic status.
 ///
 /// Note that this is not synchronized against modifications of other threads.
+#[unstable(feature = "exit_status", reason = "managing the exit status may change")]
 pub fn set_exit_status(code: i32) {
     EXIT_STATUS.store(code as isize, Ordering::SeqCst)
 }
 
 /// Fetches the process's current exit code. This defaults to 0 and can change
 /// by calling `set_exit_status`.
+#[unstable(feature = "exit_status", reason = "managing the exit status may change")]
 pub fn get_exit_status() -> i32 {
     EXIT_STATUS.load(Ordering::SeqCst) as i32
 }
@@ -426,12 +455,14 @@ pub fn get_exit_status() -> i32 {
 /// for each argument.
 ///
 /// This structure is created through the `std::env::args` method.
+#[stable(feature = "env", since = "1.0.0")]
 pub struct Args { inner: ArgsOs }
 
 /// An iterator over the arguments of a process, yielding an `OsString` value
 /// for each argument.
 ///
 /// This structure is created through the `std::env::args_os` method.
+#[stable(feature = "env", since = "1.0.0")]
 pub struct ArgsOs { inner: os_imp::Args }
 
 /// Returns the arguments which this program was started with (normally passed
@@ -457,6 +488,7 @@ pub struct ArgsOs { inner: os_imp::Args }
 ///     println!("{}", argument);
 /// }
 /// ```
+#[stable(feature = "env", since = "1.0.0")]
 pub fn args() -> Args {
     Args { inner: args_os() }
 }
@@ -478,10 +510,12 @@ pub fn args() -> Args {
 ///     println!("{:?}", argument);
 /// }
 /// ```
+#[stable(feature = "env", since = "1.0.0")]
 pub fn args_os() -> ArgsOs {
     ArgsOs { inner: os_imp::args() }
 }
 
+#[stable(feature = "env", since = "1.0.0")]
 impl Iterator for Args {
     type Item = String;
     fn next(&mut self) -> Option<String> {
@@ -490,333 +524,200 @@ impl Iterator for Args {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
+#[stable(feature = "env", since = "1.0.0")]
 impl ExactSizeIterator for Args {
     fn len(&self) -> usize { self.inner.len() }
 }
 
+#[stable(feature = "env", since = "1.0.0")]
 impl Iterator for ArgsOs {
     type Item = OsString;
     fn next(&mut self) -> Option<OsString> { self.inner.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
+#[stable(feature = "env", since = "1.0.0")]
 impl ExactSizeIterator for ArgsOs {
     fn len(&self) -> usize { self.inner.len() }
 }
 
 /// Returns the page size of the current architecture in bytes.
+#[unstable(feature = "page_size", reason = "naming and/or location may change")]
 pub fn page_size() -> usize {
     os_imp::page_size()
 }
 
 /// Constants associated with the current target
-#[cfg(target_os = "linux")]
+#[stable(feature = "env", since = "1.0.0")]
 pub mod consts {
-    pub use super::arch_consts::ARCH;
+    /// A string describing the architecture of the CPU that this is currently
+    /// in use.
+    #[stable(feature = "env", since = "1.0.0")]
+    pub const ARCH: &'static str = super::arch::ARCH;
 
-    pub const FAMILY: &'static str = "unix";
+    #[stable(feature = "env", since = "1.0.0")]
+    pub const FAMILY: &'static str = super::os::FAMILY;
 
     /// A string describing the specific operating system in use: in this
     /// case, `linux`.
+    #[stable(feature = "env", since = "1.0.0")]
+    pub const OS: &'static str = super::os::OS;
+
+    /// Specifies the filename prefix used for shared libraries on this
+    /// platform: in this case, `lib`.
+    #[stable(feature = "env", since = "1.0.0")]
+    pub const DLL_PREFIX: &'static str = super::os::DLL_PREFIX;
+
+    /// Specifies the filename suffix used for shared libraries on this
+    /// platform: in this case, `.so`.
+    #[stable(feature = "env", since = "1.0.0")]
+    pub const DLL_SUFFIX: &'static str = super::os::DLL_SUFFIX;
+
+    /// Specifies the file extension used for shared libraries on this
+    /// platform that goes after the dot: in this case, `so`.
+    #[stable(feature = "env", since = "1.0.0")]
+    pub const DLL_EXTENSION: &'static str = super::os::DLL_EXTENSION;
+
+    /// Specifies the filename suffix used for executable binaries on this
+    /// platform: in this case, the empty string.
+    #[stable(feature = "env", since = "1.0.0")]
+    pub const EXE_SUFFIX: &'static str = super::os::EXE_SUFFIX;
+
+    /// Specifies the file extension, if any, used for executable binaries
+    /// on this platform: in this case, the empty string.
+    #[stable(feature = "env", since = "1.0.0")]
+    pub const EXE_EXTENSION: &'static str = super::os::EXE_EXTENSION;
+
+}
+
+#[cfg(target_os = "linux")]
+mod os {
+    pub const FAMILY: &'static str = "unix";
     pub const OS: &'static str = "linux";
-
-    /// Specifies the filename prefix used for shared libraries on this
-    /// platform: in this case, `lib`.
     pub const DLL_PREFIX: &'static str = "lib";
-
-    /// Specifies the filename suffix used for shared libraries on this
-    /// platform: in this case, `.so`.
     pub const DLL_SUFFIX: &'static str = ".so";
-
-    /// Specifies the file extension used for shared libraries on this
-    /// platform that goes after the dot: in this case, `so`.
     pub const DLL_EXTENSION: &'static str = "so";
-
-    /// Specifies the filename suffix used for executable binaries on this
-    /// platform: in this case, the empty string.
     pub const EXE_SUFFIX: &'static str = "";
-
-    /// Specifies the file extension, if any, used for executable binaries
-    /// on this platform: in this case, the empty string.
     pub const EXE_EXTENSION: &'static str = "";
 }
 
-/// Constants associated with the current target
 #[cfg(target_os = "macos")]
-pub mod consts {
-    pub use super::arch_consts::ARCH;
-
+mod os {
     pub const FAMILY: &'static str = "unix";
-
-    /// A string describing the specific operating system in use: in this
-    /// case, `macos`.
     pub const OS: &'static str = "macos";
-
-    /// Specifies the filename prefix used for shared libraries on this
-    /// platform: in this case, `lib`.
     pub const DLL_PREFIX: &'static str = "lib";
-
-    /// Specifies the filename suffix used for shared libraries on this
-    /// platform: in this case, `.dylib`.
     pub const DLL_SUFFIX: &'static str = ".dylib";
-
-    /// Specifies the file extension used for shared libraries on this
-    /// platform that goes after the dot: in this case, `dylib`.
     pub const DLL_EXTENSION: &'static str = "dylib";
-
-    /// Specifies the filename suffix used for executable binaries on this
-    /// platform: in this case, the empty string.
     pub const EXE_SUFFIX: &'static str = "";
-
-    /// Specifies the file extension, if any, used for executable binaries
-    /// on this platform: in this case, the empty string.
     pub const EXE_EXTENSION: &'static str = "";
 }
 
-/// Constants associated with the current target
 #[cfg(target_os = "ios")]
-pub mod consts {
-    pub use super::arch_consts::ARCH;
-
+mod os {
     pub const FAMILY: &'static str = "unix";
-
-    /// A string describing the specific operating system in use: in this
-    /// case, `ios`.
     pub const OS: &'static str = "ios";
-
-    /// Specifies the filename suffix used for executable binaries on this
-    /// platform: in this case, the empty string.
     pub const EXE_SUFFIX: &'static str = "";
-
-    /// Specifies the file extension, if any, used for executable binaries
-    /// on this platform: in this case, the empty string.
     pub const EXE_EXTENSION: &'static str = "";
 }
 
-/// Constants associated with the current target
 #[cfg(target_os = "freebsd")]
-pub mod consts {
-    pub use super::arch_consts::ARCH;
-
+mod os {
     pub const FAMILY: &'static str = "unix";
-
-    /// A string describing the specific operating system in use: in this
-    /// case, `freebsd`.
     pub const OS: &'static str = "freebsd";
-
-    /// Specifies the filename prefix used for shared libraries on this
-    /// platform: in this case, `lib`.
     pub const DLL_PREFIX: &'static str = "lib";
-
-    /// Specifies the filename suffix used for shared libraries on this
-    /// platform: in this case, `.so`.
     pub const DLL_SUFFIX: &'static str = ".so";
-
-    /// Specifies the file extension used for shared libraries on this
-    /// platform that goes after the dot: in this case, `so`.
     pub const DLL_EXTENSION: &'static str = "so";
-
-    /// Specifies the filename suffix used for executable binaries on this
-    /// platform: in this case, the empty string.
     pub const EXE_SUFFIX: &'static str = "";
-
-    /// Specifies the file extension, if any, used for executable binaries
-    /// on this platform: in this case, the empty string.
     pub const EXE_EXTENSION: &'static str = "";
 }
 
-/// Constants associated with the current target
 #[cfg(target_os = "dragonfly")]
-pub mod consts {
-    pub use super::arch_consts::ARCH;
-
+mod os {
     pub const FAMILY: &'static str = "unix";
-
-    /// A string describing the specific operating system in use: in this
-    /// case, `dragonfly`.
     pub const OS: &'static str = "dragonfly";
-
-    /// Specifies the filename prefix used for shared libraries on this
-    /// platform: in this case, `lib`.
     pub const DLL_PREFIX: &'static str = "lib";
-
-    /// Specifies the filename suffix used for shared libraries on this
-    /// platform: in this case, `.so`.
     pub const DLL_SUFFIX: &'static str = ".so";
-
-    /// Specifies the file extension used for shared libraries on this
-    /// platform that goes after the dot: in this case, `so`.
     pub const DLL_EXTENSION: &'static str = "so";
-
-    /// Specifies the filename suffix used for executable binaries on this
-    /// platform: in this case, the empty string.
     pub const EXE_SUFFIX: &'static str = "";
-
-    /// Specifies the file extension, if any, used for executable binaries
-    /// on this platform: in this case, the empty string.
     pub const EXE_EXTENSION: &'static str = "";
 }
 
-/// Constants associated with the current target
 #[cfg(target_os = "bitrig")]
-pub mod consts {
-    pub use super::arch_consts::ARCH;
-
+mod os {
     pub const FAMILY: &'static str = "unix";
-
-    /// A string describing the specific operating system in use: in this
-    /// case, `bitrig`.
     pub const OS: &'static str = "bitrig";
-
-    /// Specifies the filename prefix used for shared libraries on this
-    /// platform: in this case, `lib`.
     pub const DLL_PREFIX: &'static str = "lib";
-
-    /// Specifies the filename suffix used for shared libraries on this
-    /// platform: in this case, `.so`.
     pub const DLL_SUFFIX: &'static str = ".so";
-
-    /// Specifies the file extension used for shared libraries on this
-    /// platform that goes after the dot: in this case, `so`.
     pub const DLL_EXTENSION: &'static str = "so";
-
-    /// Specifies the filename suffix used for executable binaries on this
-    /// platform: in this case, the empty string.
     pub const EXE_SUFFIX: &'static str = "";
-
-    /// Specifies the file extension, if any, used for executable binaries
-    /// on this platform: in this case, the empty string.
     pub const EXE_EXTENSION: &'static str = "";
 }
 
-/// Constants associated with the current target
 #[cfg(target_os = "openbsd")]
-pub mod consts {
-    pub use super::arch_consts::ARCH;
-
+mod os {
     pub const FAMILY: &'static str = "unix";
-
-    /// A string describing the specific operating system in use: in this
-    /// case, `openbsd`.
     pub const OS: &'static str = "openbsd";
-
-    /// Specifies the filename prefix used for shared libraries on this
-    /// platform: in this case, `lib`.
     pub const DLL_PREFIX: &'static str = "lib";
-
-    /// Specifies the filename suffix used for shared libraries on this
-    /// platform: in this case, `.so`.
     pub const DLL_SUFFIX: &'static str = ".so";
-
-    /// Specifies the file extension used for shared libraries on this
-    /// platform that goes after the dot: in this case, `so`.
     pub const DLL_EXTENSION: &'static str = "so";
-
-    /// Specifies the filename suffix used for executable binaries on this
-    /// platform: in this case, the empty string.
     pub const EXE_SUFFIX: &'static str = "";
-
-    /// Specifies the file extension, if any, used for executable binaries
-    /// on this platform: in this case, the empty string.
     pub const EXE_EXTENSION: &'static str = "";
 }
 
-/// Constants associated with the current target
 #[cfg(target_os = "android")]
-pub mod consts {
-    pub use super::arch_consts::ARCH;
-
+mod os {
     pub const FAMILY: &'static str = "unix";
-
-    /// A string describing the specific operating system in use: in this
-    /// case, `android`.
     pub const OS: &'static str = "android";
-
-    /// Specifies the filename prefix used for shared libraries on this
-    /// platform: in this case, `lib`.
     pub const DLL_PREFIX: &'static str = "lib";
-
-    /// Specifies the filename suffix used for shared libraries on this
-    /// platform: in this case, `.so`.
     pub const DLL_SUFFIX: &'static str = ".so";
-
-    /// Specifies the file extension used for shared libraries on this
-    /// platform that goes after the dot: in this case, `so`.
     pub const DLL_EXTENSION: &'static str = "so";
-
-    /// Specifies the filename suffix used for executable binaries on this
-    /// platform: in this case, the empty string.
     pub const EXE_SUFFIX: &'static str = "";
-
-    /// Specifies the file extension, if any, used for executable binaries
-    /// on this platform: in this case, the empty string.
     pub const EXE_EXTENSION: &'static str = "";
 }
 
-/// Constants associated with the current target
 #[cfg(target_os = "windows")]
-pub mod consts {
-    pub use super::arch_consts::ARCH;
-
+mod os {
     pub const FAMILY: &'static str = "windows";
-
-    /// A string describing the specific operating system in use: in this
-    /// case, `windows`.
     pub const OS: &'static str = "windows";
-
-    /// Specifies the filename prefix used for shared libraries on this
-    /// platform: in this case, the empty string.
     pub const DLL_PREFIX: &'static str = "";
-
-    /// Specifies the filename suffix used for shared libraries on this
-    /// platform: in this case, `.dll`.
     pub const DLL_SUFFIX: &'static str = ".dll";
-
-    /// Specifies the file extension used for shared libraries on this
-    /// platform that goes after the dot: in this case, `dll`.
     pub const DLL_EXTENSION: &'static str = "dll";
-
-    /// Specifies the filename suffix used for executable binaries on this
-    /// platform: in this case, `.exe`.
     pub const EXE_SUFFIX: &'static str = ".exe";
-
-    /// Specifies the file extension, if any, used for executable binaries
-    /// on this platform: in this case, `exe`.
     pub const EXE_EXTENSION: &'static str = "exe";
 }
 
 #[cfg(target_arch = "x86")]
-mod arch_consts {
+mod arch {
     pub const ARCH: &'static str = "x86";
 }
 
 #[cfg(target_arch = "x86_64")]
-mod arch_consts {
+mod arch {
     pub const ARCH: &'static str = "x86_64";
 }
 
 #[cfg(target_arch = "arm")]
-mod arch_consts {
+mod arch {
     pub const ARCH: &'static str = "arm";
 }
 
 #[cfg(target_arch = "aarch64")]
-mod arch_consts {
+mod arch {
     pub const ARCH: &'static str = "aarch64";
 }
 
 #[cfg(target_arch = "mips")]
-mod arch_consts {
+mod arch {
     pub const ARCH: &'static str = "mips";
 }
 
 #[cfg(target_arch = "mipsel")]
-mod arch_consts {
+mod arch {
     pub const ARCH: &'static str = "mipsel";
 }
 
 #[cfg(target_arch = "powerpc")]
-mod arch_consts {
+mod arch {
     pub const ARCH: &'static str = "powerpc";
 }
 
