@@ -337,7 +337,7 @@ pub fn predicate_for_trait_ref<'tcx>(
     })
 }
 
-pub fn predicate_for_default_trait_impl<'tcx>(
+pub fn predicate_for_trait_def<'tcx>(
     tcx: &ty::ctxt<'tcx>,
     cause: ObligationCause<'tcx>,
     trait_def_id: ast::DefId,
