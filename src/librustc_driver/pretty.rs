@@ -15,19 +15,15 @@ pub use self::PpSourceMode::*;
 pub use self::PpMode::*;
 use self::NodesMatchingUII::*;
 
-use rustc_trans::back::link;
-
 use driver;
 
 use rustc::middle::ty;
 use rustc::middle::cfg;
 use rustc::middle::cfg::graphviz::LabelledCFG;
 use rustc::session::Session;
-use rustc::session::config::Input;
 use rustc::util::ppaux;
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
-use rustc_resolve as resolve;
 
 use syntax::ast;
 use syntax::ast_map::{self, blocks, NodePrinter};
@@ -266,7 +262,8 @@ impl UserIdentifiedItem {
         }
     }
 
-    fn to_one_node_id(self, user_option: &str, sess: &Session, map: &ast_map::Map) -> ast::NodeId {
+    fn to_one_node_id(&self, user_option: &str, sess: &Session, map: &ast_map::Map)
+                      -> ast::NodeId {
         let fail_because = |is_wrong_because| -> ast::NodeId {
             let message =
                 format!("{} needs NodeId (int) or unique \
@@ -295,54 +292,12 @@ impl UserIdentifiedItem {
     }
 }
 
-fn needs_ast_map(ppm: PpMode, opt_uii: &Option<UserIdentifiedItem>) -> bool {
-    match ppm {
-        PpmSource(PpmNormal) |
-        PpmSource(PpmEveryBodyLoops) |
-        PpmSource(PpmIdentified) => opt_uii.is_some(),
-
-        PpmSource(PpmExpanded) |
-        PpmSource(PpmExpandedIdentified) |
-        PpmSource(PpmExpandedHygiene) |
-        PpmSource(PpmTyped) |
-        PpmFlowGraph(_) => true
-    }
-}
-
-fn needs_expansion(ppm: PpMode) -> bool {
-    match ppm {
-        PpmSource(PpmNormal) |
-        PpmSource(PpmEveryBodyLoops) |
-        PpmSource(PpmIdentified) => false,
-
-        PpmSource(PpmExpanded) |
-        PpmSource(PpmExpandedIdentified) |
-        PpmSource(PpmExpandedHygiene) |
-        PpmSource(PpmTyped) |
-        PpmFlowGraph(_) => true
-    }
-}
-
-fn needs_types(ppm: PpMode) -> bool {
-    match ppm {
-        PpmSource(PpmNormal) |
-        PpmSource(PpmEveryBodyLoops) |
-        PpmSource(PpmIdentified) |
-        PpmSource(PpmExpanded) |
-        PpmSource(PpmExpandedIdentified) |
-        PpmSource(PpmExpandedHygiene) => false,
-
-        PpmSource(PpmTyped) |
-        PpmFlowGraph(_) => true
-    }
-}
-
-struct ReplaceBodyWithLoop {
+pub struct ReplaceBodyWithLoop {
     within_static_or_const: bool,
 }
 
 impl ReplaceBodyWithLoop {
-    fn new() -> ReplaceBodyWithLoop {
+    pub fn new() -> ReplaceBodyWithLoop {
         ReplaceBodyWithLoop { within_static_or_const: false }
     }
 }
@@ -395,62 +350,52 @@ impl fold::Folder for ReplaceBodyWithLoop {
     }
 }
 
-pub fn pretty_print_input(sess: Session,
-                          cfg: ast::CrateConfig,
-                          input: &Input,
-                          ppm: PpMode,
-                          opt_uii: Option<UserIdentifiedItem>,
-                          ofile: Option<Path>)
-                          -> old_io::IoResult<()> {
-    let krate = driver::phase_1_parse_input(&sess, cfg, input);
+pub fn printing_phase<'a, 'b>(control: &'a mut driver::CompileController<'b>,
+                              ppm: PpMode,
+                              opt_uii: Option<&UserIdentifiedItem>)
+                              -> &'a mut driver::PhaseController<'b> {
+    if ppm == PpmSource(PpmEveryBodyLoops) {
+        control.every_body_loops = true;
+    }
 
-    let krate = if let PpmSource(PpmEveryBodyLoops) = ppm {
-        let mut fold = ReplaceBodyWithLoop::new();
-        fold.fold_crate(krate)
-    } else {
-        krate
-    };
-
-    let id = link::find_crate_name(Some(&sess), &krate.attrs, input);
-
-    let compute_ast_map = needs_ast_map(ppm, &opt_uii);
-    let compute_types = needs_types(ppm);
-    let krate = if compute_ast_map {
-        match driver::phase_2_configure_and_expand(&sess, krate, &id[..], None) {
-            None => return Ok(()),
-            Some(k) => k
+    match ppm {
+        PpmSource(PpmNormal) |
+        PpmSource(PpmEveryBodyLoops) |
+        PpmSource(PpmIdentified) => {
+            if opt_uii.is_some() {
+                &mut control.after_write_deps
+            } else {
+                &mut control.after_parse
+            }
         }
-    } else {
-        krate
-    };
 
-    let mut forest = ast_map::Forest::new(krate);
-    let arenas = ty::CtxtArenas::new();
+        PpmSource(PpmExpanded) |
+        PpmSource(PpmExpandedIdentified) |
+        PpmSource(PpmExpandedHygiene) => {
+            &mut control.after_write_deps
+        }
 
-    let (krate, ast_map) = if compute_ast_map {
-        let map = driver::assign_node_ids_and_map(&sess, &mut forest);
-        (map.krate(), Some(map))
-    } else {
-        (forest.krate(), None)
-    };
+        PpmSource(PpmTyped) |
+        PpmFlowGraph(_) => {
+            &mut control.after_analysis
+        }
+    }
+}
 
-    let analysis;
-    let (ast_map, tcx, sess) = if compute_types {
-        let ast_map = ast_map.expect("--pretty missing ast_map for type context");
-        analysis = driver::phase_3_run_analysis_passes(sess,
-                                                       ast_map,
-                                                       &arenas,
-                                                       id,
-                                                       resolve::MakeGlobMap::No);
-        (Some(&analysis.ty_cx.map), Some(&analysis.ty_cx), &analysis.ty_cx.sess)
-    } else {
-        (ast_map.as_ref(), None, &sess)
-    };
+pub fn print_from_phase(state: driver::CompileState,
+                        ppm: PpMode,
+                        opt_uii: Option<&UserIdentifiedItem>,
+                        output: Option<&Path>)
+                        -> old_io::IoResult<()> {
+    let sess = state.session;
+    let krate = state.krate.or(state.expanded_crate)
+                           .expect("--pretty=typed missing crate");
+    let ast_map = state.ast_map.or_else(|| state.tcx.map(|tcx| &tcx.map));
 
-    let out = match ofile {
+    let out = match output {
         None => box old_io::stdout() as Box<Writer+'static>,
         Some(p) => {
-            match old_io::File::create(&p) {
+            match old_io::File::create(p) {
                 Ok(w) => box w as Box<Writer+'static>,
                 Err(e) => panic!("print-print failed to open {} due to {}",
                                  p.display(), e),
@@ -462,7 +407,7 @@ pub fn pretty_print_input(sess: Session,
         PpmSource(mode) => {
             debug!("pretty printing source code {:?}", mode);
 
-            let typed_annotation = tcx.map(|tcx| TypedAnnotation { tcx: tcx });
+            let typed_annotation = state.tcx.map(|tcx| TypedAnnotation { tcx: tcx });
             let annotation: &pprust::PpAnn = match mode {
                 PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
                     NO_ANNOTATION
@@ -478,13 +423,13 @@ pub fn pretty_print_input(sess: Session,
                 }
             };
 
-            let is_expanded = needs_expansion(ppm);
+            let is_expanded = ast_map.is_some();
 
-            let src_name = driver::source_name(input);
+            let src_name = driver::source_name(state.input);
             let filemap = sess.codemap().get_filemap(&src_name);
             let mut rdr = BufReader::new(filemap.src.as_bytes());
 
-            if let Some(ref uii) = opt_uii {
+            if let Some(uii) = opt_uii {
                 let ast_map = ast_map.expect("--pretty missing ast_map");
                 let mut pp_state =
                     pprust::State::new_from_input(sess.codemap(),
@@ -521,7 +466,7 @@ pub fn pretty_print_input(sess: Session,
                                      unique path suffix (b::c::d)"))
 
             });
-            let tcx = tcx.expect("--pretty flowgraph missing type context");
+            let tcx = state.tcx.expect("--pretty flowgraph missing type context");
             let nodeid = uii.to_one_node_id("--pretty", sess, &tcx.map);
 
             let node = tcx.map.find(nodeid).unwrap_or_else(|| {

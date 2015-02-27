@@ -69,10 +69,18 @@ pub fn compile_input(sess: Session,
         let (outputs, expanded_crate, id) = {
             let krate = phase_1_parse_input(&sess, cfg, input);
 
+            let krate = if control.every_body_loops {
+                use syntax::fold::Folder;
+                ::pretty::ReplaceBodyWithLoop::new().fold_crate(krate)
+            } else {
+                krate
+            };
+
             controller_entry_point!(after_parse,
                                     CompileState::state_after_parse(input,
                                                                     &sess,
                                                                     outdir,
+                                                                    output,
                                                                     &krate));
 
             let outputs = build_output_filenames(input,
@@ -99,6 +107,7 @@ pub fn compile_input(sess: Session,
                                 CompileState::state_after_expand(input,
                                                                  &sess,
                                                                  outdir,
+                                                                 output,
                                                                  &expanded_crate,
                                                                  &id[..]));
 
@@ -112,6 +121,7 @@ pub fn compile_input(sess: Session,
                                 CompileState::state_after_write_deps(input,
                                                                      &sess,
                                                                      outdir,
+                                                                     output,
                                                                      &ast_map,
                                                                      &ast_map.krate(),
                                                                      &id[..]));
@@ -126,6 +136,7 @@ pub fn compile_input(sess: Session,
                                 CompileState::state_after_analysis(input,
                                                                    &analysis.ty_cx.sess,
                                                                    outdir,
+                                                                   output,
                                                                    analysis.ty_cx.map.krate(),
                                                                    &analysis,
                                                                    &analysis.ty_cx));
@@ -152,6 +163,7 @@ pub fn compile_input(sess: Session,
                             CompileState::state_after_llvm(input,
                                                            &sess,
                                                            outdir,
+                                                           output,
                                                            &trans));
 
     phase_6_link_output(&sess, &trans, &outputs);
@@ -193,6 +205,7 @@ pub struct CompileController<'a> {
     pub after_llvm: PhaseController<'a>,
 
     pub make_glob_map: resolve::MakeGlobMap,
+    pub every_body_loops: bool,
 }
 
 impl<'a> CompileController<'a> {
@@ -204,6 +217,7 @@ impl<'a> CompileController<'a> {
             after_analysis: PhaseController::basic(),
             after_llvm: PhaseController::basic(),
             make_glob_map: resolve::MakeGlobMap::No,
+            every_body_loops: false,
         }
     }
 }
@@ -225,7 +239,7 @@ impl<'a> PhaseController<'a> {
 /// State that is passed to a callback. What state is available depends on when
 /// during compilation the callback is made. See the various constructor methods
 /// (`state_*`) in the impl to see which data is provided for any given entry point.
-pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
+pub struct CompileState<'a, 'tcx: 'a> {
     pub input: &'a Input,
     pub session: &'a Session,
     pub cfg: Option<&'a ast::CrateConfig>,
@@ -233,22 +247,25 @@ pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
     pub crate_name: Option<&'a str>,
     pub output_filenames: Option<&'a OutputFilenames>,
     pub out_dir: Option<&'a Path>,
+    pub output: Option<&'a Path>,
     pub expanded_crate: Option<&'a ast::Crate>,
-    pub ast_map: Option<&'a ast_map::Map<'ast>>,
+    pub ast_map: Option<&'a ast_map::Map<'tcx>>,
     pub analysis: Option<&'a ty::CrateAnalysis<'tcx>>,
     pub tcx: Option<&'a ty::ctxt<'tcx>>,
     pub trans: Option<&'a trans::CrateTranslation>,
 }
 
-impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
+impl<'a, 'tcx> CompileState<'a, 'tcx> {
     fn empty(input: &'a Input,
              session: &'a Session,
-             out_dir: &'a Option<Path>)
-             -> CompileState<'a, 'ast, 'tcx> {
+             out_dir: &'a Option<Path>,
+             output: &'a Option<Path>)
+             -> CompileState<'a, 'tcx> {
         CompileState {
             input: input,
             session: session,
             out_dir: out_dir.as_ref(),
+            output: output.as_ref(),
             cfg: None,
             krate: None,
             crate_name: None,
@@ -264,54 +281,58 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     fn state_after_parse(input: &'a Input,
                          session: &'a Session,
                          out_dir: &'a Option<Path>,
+                         output: &'a Option<Path>,
                          krate: &'a ast::Crate)
-                         -> CompileState<'a, 'ast, 'tcx> {
+                         -> CompileState<'a, 'tcx> {
         CompileState {
             krate: Some(krate),
-            .. CompileState::empty(input, session, out_dir)
+            .. CompileState::empty(input, session, out_dir, output)
         }
     }
 
     fn state_after_expand(input: &'a Input,
                           session: &'a Session,
                           out_dir: &'a Option<Path>,
+                          output: &'a Option<Path>,
                           expanded_crate: &'a ast::Crate,
                           crate_name: &'a str)
-                          -> CompileState<'a, 'ast, 'tcx> {
+                          -> CompileState<'a, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
             expanded_crate: Some(expanded_crate),
-            .. CompileState::empty(input, session, out_dir)
+            .. CompileState::empty(input, session, out_dir, output)
         }
     }
 
     fn state_after_write_deps(input: &'a Input,
                               session: &'a Session,
                               out_dir: &'a Option<Path>,
-                              ast_map: &'a ast_map::Map<'ast>,
+                              output: &'a Option<Path>,
+                              ast_map: &'a ast_map::Map<'tcx>,
                               expanded_crate: &'a ast::Crate,
                               crate_name: &'a str)
-                              -> CompileState<'a, 'ast, 'tcx> {
+                              -> CompileState<'a, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
             ast_map: Some(ast_map),
             expanded_crate: Some(expanded_crate),
-            .. CompileState::empty(input, session, out_dir)
+            .. CompileState::empty(input, session, out_dir, output)
         }
     }
 
     fn state_after_analysis(input: &'a Input,
                             session: &'a Session,
                             out_dir: &'a Option<Path>,
+                            output: &'a Option<Path>,
                             expanded_crate: &'a ast::Crate,
                             analysis: &'a ty::CrateAnalysis<'tcx>,
                             tcx: &'a ty::ctxt<'tcx>)
-                            -> CompileState<'a, 'ast, 'tcx> {
+                            -> CompileState<'a, 'tcx> {
         CompileState {
             analysis: Some(analysis),
             tcx: Some(tcx),
             expanded_crate: Some(expanded_crate),
-            .. CompileState::empty(input, session, out_dir)
+            .. CompileState::empty(input, session, out_dir, output)
         }
     }
 
@@ -319,11 +340,12 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     fn state_after_llvm(input: &'a Input,
                         session: &'a Session,
                         out_dir: &'a Option<Path>,
+                        output: &'a Option<Path>,
                         trans: &'a trans::CrateTranslation)
-                        -> CompileState<'a, 'ast, 'tcx> {
+                        -> CompileState<'a, 'tcx> {
         CompileState {
             trans: Some(trans),
-            .. CompileState::empty(input, session, out_dir)
+            .. CompileState::empty(input, session, out_dir, output)
         }
     }
 }
