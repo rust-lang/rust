@@ -181,9 +181,7 @@ impl<'a, 'tcx> pprust::PpAnn for TypedAnnotation<'a, 'tcx> {
             node: pprust::AnnNode) -> old_io::IoResult<()> {
         match node {
             pprust::NodeExpr(expr) => {
-                try!(pp::space(&mut s.s));
-                try!(pp::word(&mut s.s, "as"));
-                try!(pp::space(&mut s.s));
+                try!(s.word_space(":"));
                 try!(pp::word(&mut s.s,
                               &ppaux::ty_to_string(
                                   self.tcx,
