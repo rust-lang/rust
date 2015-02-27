@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-flags:-g
+// ignore-pretty as this critically relies on line numbers
 
 use std::old_io::stderr;
 use std::env;
@@ -19,14 +20,35 @@ macro_rules! pos {
     () => ((file!(), line!()))
 }
 
+#[cfg(all(unix,
+          not(target_os = "macos"),
+          not(target_os = "ios"),
+          not(target_os = "android"),
+          not(all(target_os = "linux", target_arch = "arm"))))]
+macro_rules! dump_and_die {
+    ($($pos:expr),*) => ({
+        // FIXME(#18285): we cannot include the current position because
+        // the macro span takes over the last frame's file/line.
+        dump_filelines(&[$($pos),*]);
+        panic!();
+    })
+}
+
+// this does not work on Windows, Android, OSX or iOS
+#[cfg(any(not(unix),
+          target_os = "macos",
+          target_os = "ios",
+          target_os = "android",
+          all(target_os = "linux", target_arch = "arm")))]
+macro_rules! dump_and_die {
+    ($($pos:expr),*) => ({ let _ = [$($pos),*]; })
+}
+
 // we can't use a function as it will alter the backtrace
 macro_rules! check {
     ($counter:expr; $($pos:expr),*) => ({
         if *$counter == 0 {
-            // FIXME(#18285): we cannot include the current position because
-            // the macro span takes over the last frame's file/line.
-            dump_filelines(&[$($pos),*]);
-            panic!();
+            dump_and_die!($($pos),*)
         } else {
             *$counter -= 1;
         }
