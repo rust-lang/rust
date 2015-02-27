@@ -580,6 +580,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "Include assignment analysis data in --pretty flowgraph output"),
     flowgraph_print_all: bool = (false, parse_bool,
         "Include all dataflow analysis data in --pretty flowgraph output"),
+    pretty_keep_going: bool = (false, parse_bool,
+        "Do not stop after pretty-printing (use with --pretty)"),
     print_region_graph: bool = (false, parse_bool,
          "Prints region inference graph. \
           Use with RUST_REGION_GRAPH=help for more info"),

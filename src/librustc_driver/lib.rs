@@ -342,7 +342,10 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                 let output = state.output;
                 pretty::print_from_phase(state, ppm, opt_uii.as_ref(), output).unwrap();
             };
-            phase.stop = Compilation::Stop;
+
+            if !sess.opts.debugging_opts.pretty_keep_going {
+                phase.stop = Compilation::Stop;
+            }
         }
 
         if self.save_analysis {
