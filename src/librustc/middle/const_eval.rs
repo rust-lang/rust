@@ -283,106 +283,40 @@ impl ConstEvalErr {
     }
 }
 
-fn invalid_op_for_bools(e: &Expr, op: ast::BinOp_) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::InvalidOpForBools(op) }
-}
-fn invalid_op_for_floats(e: &Expr, op: ast::BinOp_) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::InvalidOpForFloats(op) }
-}
-fn invalid_op_for_int_uint(e: &Expr, op: ast::BinOp_) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::InvalidOpForIntUint(op) }
-}
-fn invalid_op_for_uint_int(e: &Expr, op: ast::BinOp_) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::InvalidOpForUintInt(op) }
-}
-fn negate_on_string(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::NegateOnString }
-}
-fn negate_on_boolean(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::NegateOnBoolean }
-}
-fn not_on_float(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::NotOnFloat }
-}
-fn not_on_string(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::NotOnString }
-}
+macro_rules! signal {
+    ($e:expr, $ctor:ident) => {
+        return Err(ConstEvalErr { span: $e.span, kind: ErrKind::$ctor })
+    };
 
-fn addi_with_overflow(e: &Expr, a: i64, b: i64) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::AddiWithOverflow(a, b) }
+    ($e:expr, $ctor:ident($($arg:expr),*)) => {
+        return Err(ConstEvalErr { span: $e.span, kind: ErrKind::$ctor($($arg),*) })
+    }
 }
-fn subi_with_overflow(e: &Expr, a: i64, b: i64) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::SubiWithOverflow(a, b) }
-}
-fn muli_with_overflow(e: &Expr, a: i64, b: i64) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::MuliWithOverflow(a, b) }
-}
-fn addu_with_overflow(e: &Expr, a: u64, b: u64) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::AdduWithOverflow(a, b) }
-}
-fn subu_with_overflow(e: &Expr, a: u64, b: u64) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::SubuWithOverflow(a, b) }
-}
-fn mulu_with_overflow(e: &Expr, a: u64, b: u64) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::MuluWithOverflow(a, b) }
-}
-fn divide_by_zero(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::DivideByZero }
-}
-fn divide_with_overflow(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::DivideWithOverflow }
-}
-fn modulo_by_zero(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::ModuloByZero }
-}
-fn modulo_with_overflow(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::ModuloWithOverflow }
-}
-fn missing_struct_field(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::MissingStructField }
-}
-fn non_const_path(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::NonConstPath }
-}
-fn non_const_struct(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::NonConstStruct }
-}
-fn tuple_index_out_of_bounds(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::TupleIndexOutOfBounds }
-}
-
-fn misc_binary_op(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::MiscBinaryOp }
-}
-fn misc_catch_all(e: &Expr) -> ConstEvalErr {
-    ConstEvalErr { span: e.span, kind: ErrKind::MiscCatchAll }
-}
-
 
 fn checked_add_int(e: &Expr, a: i64, b: i64) -> Result<const_val, ConstEvalErr> {
     let (ret, oflo) = a.overflowing_add(b);
-    if !oflo { Ok(const_int(ret)) } else { Err(addi_with_overflow(e, a, b)) }
+    if !oflo { Ok(const_int(ret)) } else { signal!(e, AddiWithOverflow(a, b)) }
 }
 fn checked_sub_int(e: &Expr, a: i64, b: i64) -> Result<const_val, ConstEvalErr> {
     let (ret, oflo) = a.overflowing_sub(b);
-    if !oflo { Ok(const_int(ret)) } else { Err(subi_with_overflow(e, a, b)) }
+    if !oflo { Ok(const_int(ret)) } else { signal!(e, SubiWithOverflow(a, b)) }
 }
 fn checked_mul_int(e: &Expr, a: i64, b: i64) -> Result<const_val, ConstEvalErr> {
     let (ret, oflo) = a.overflowing_mul(b);
-    if !oflo { Ok(const_int(ret)) } else { Err(muli_with_overflow(e, a, b)) }
+    if !oflo { Ok(const_int(ret)) } else { signal!(e, MuliWithOverflow(a, b)) }
 }
 
 fn checked_add_uint(e: &Expr, a: u64, b: u64) -> Result<const_val, ConstEvalErr> {
     let (ret, oflo) = a.overflowing_add(b);
-    if !oflo { Ok(const_uint(ret)) } else { Err(addu_with_overflow(e, a, b)) }
+    if !oflo { Ok(const_uint(ret)) } else { signal!(e, AdduWithOverflow(a, b)) }
 }
 fn checked_sub_uint(e: &Expr, a: u64, b: u64) -> Result<const_val, ConstEvalErr> {
     let (ret, oflo) = a.overflowing_sub(b);
-    if !oflo { Ok(const_uint(ret)) } else { Err(subu_with_overflow(e, a, b)) }
+    if !oflo { Ok(const_uint(ret)) } else { signal!(e, SubuWithOverflow(a, b)) }
 }
 fn checked_mul_uint(e: &Expr, a: u64, b: u64) -> Result<const_val, ConstEvalErr> {
     let (ret, oflo) = a.overflowing_mul(b);
-    if !oflo { Ok(const_uint(ret)) } else { Err(mulu_with_overflow(e, a, b)) }
+    if !oflo { Ok(const_uint(ret)) } else { signal!(e, MuluWithOverflow(a, b)) }
 }
 
 
@@ -400,8 +334,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           Ok(const_float(f)) => Ok(const_float(-f)),
           Ok(const_int(i)) => Ok(const_int(-i)),
           Ok(const_uint(i)) => Ok(const_uint(-i)),
-          Ok(const_str(_)) => Err(negate_on_string(e)),
-          Ok(const_bool(_)) => Err(negate_on_boolean(e)),
+          Ok(const_str(_)) => signal!(e, NegateOnString),
+          Ok(const_bool(_)) => signal!(e, NegateOnBoolean),
           err => err
         }
       }
@@ -410,8 +344,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           Ok(const_int(i)) => Ok(const_int(!i)),
           Ok(const_uint(i)) => Ok(const_uint(!i)),
           Ok(const_bool(b)) => Ok(const_bool(!b)),
-          Ok(const_str(_)) => Err(not_on_string(e)),
-          Ok(const_float(_)) => Err(not_on_float(e)),
+          Ok(const_str(_)) => signal!(e, NotOnString),
+          Ok(const_float(_)) => signal!(e, NotOnFloat),
           err => err
         }
       }
@@ -435,7 +369,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               ast::BiNe => fromb(a != b),
               ast::BiGe => fromb(a >= b),
               ast::BiGt => fromb(a > b),
-              _ => Err(invalid_op_for_floats(e, op.node)),
+              _ => signal!(e, InvalidOpForFloats(op.node))
             }
           }
           (Ok(const_int(a)), Ok(const_int(b))) => {
@@ -463,18 +397,18 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               ast::BiMul => checked_mul_int(e, a, b),
               ast::BiDiv => {
                   if b == 0 {
-                      Err(divide_by_zero(e))
+                      signal!(e, DivideByZero);
                   } else if b == -1 && is_a_min_value() {
-                      Err(divide_with_overflow(e))
+                      signal!(e, DivideWithOverflow);
                   } else {
                       Ok(const_int(a / b))
                   }
               }
               ast::BiRem => {
                   if b == 0 {
-                      Err(modulo_by_zero(e))
+                      signal!(e, ModuloByZero)
                   } else if b == -1 && is_a_min_value() {
-                      Err(modulo_with_overflow(e))
+                      signal!(e, ModuloWithOverflow)
                   } else {
                       Ok(const_int(a % b))
                   }
@@ -497,9 +431,9 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               ast::BiAdd => checked_add_uint(e, a, b),
               ast::BiSub => checked_sub_uint(e, a, b),
               ast::BiMul => checked_mul_uint(e, a, b),
-              ast::BiDiv if b == 0 => Err(divide_by_zero(e)),
+              ast::BiDiv if b == 0 => signal!(e, DivideByZero),
               ast::BiDiv => Ok(const_uint(a / b)),
-              ast::BiRem if b == 0 => Err(modulo_by_zero(e)),
+              ast::BiRem if b == 0 => signal!(e, ModuloByZero),
               ast::BiRem => Ok(const_uint(a % b)),
               ast::BiAnd | ast::BiBitAnd => Ok(const_uint(a & b)),
               ast::BiOr | ast::BiBitOr => Ok(const_uint(a | b)),
@@ -519,14 +453,14 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             match op.node {
               ast::BiShl => Ok(const_int(a << b as uint)),
               ast::BiShr => Ok(const_int(a >> b as uint)),
-              _ => Err(invalid_op_for_int_uint(e, op.node)),
+              _ => signal!(e, InvalidOpForIntUint(op.node)),
             }
           }
           (Ok(const_uint(a)), Ok(const_int(b))) => {
             match op.node {
               ast::BiShl => Ok(const_uint(a << b as uint)),
               ast::BiShr => Ok(const_uint(a >> b as uint)),
-              _ => Err(invalid_op_for_uint_int(e, op.node)),
+              _ => signal!(e, InvalidOpForUintInt(op.node)),
             }
           }
           (Ok(const_bool(a)), Ok(const_bool(b))) => {
@@ -538,13 +472,13 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               ast::BiBitOr => a | b,
               ast::BiEq => a == b,
               ast::BiNe => a != b,
-              _ => return Err(invalid_op_for_bools(e, op.node)),
+              _ => signal!(e, InvalidOpForBools(op.node)),
              }))
           }
           (err @ Err(..), _) |
           (_, err @ Err(..)) => err,
 
-          _ => Err(misc_binary_op(e)),
+          _ => signal!(e, MiscBinaryOp),
         }
       }
       ast::ExprCast(ref base, ref target_ty) => {
@@ -589,7 +523,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           };
           let const_expr = match const_expr {
               Some(actual_e) => actual_e,
-              None => return Err(non_const_path(e)),
+              None => signal!(e, NonConstPath)
           };
           let ety = ety.or_else(|| const_ty.and_then(|ty| ast_ty_to_prim_ty(tcx, ty)));
           eval_const_expr_partial(tcx, const_expr, ety)
@@ -611,11 +545,11 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             if fields.len() > index.node {
                 return eval_const_expr_partial(tcx, &*fields[index.node], None)
             } else {
-                return Err(tuple_index_out_of_bounds(e))
+                signal!(e, TupleIndexOutOfBounds);
             }
         }
 
-        Err(non_const_struct(e))
+        signal!(e, NonConstStruct);
       }
       ast::ExprField(ref base, field_name) => {
         // Get the base expression if it is a struct and it is constant
@@ -626,13 +560,13 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                                            f.ident.node.as_str() == field_name.node.as_str()) {
                 return eval_const_expr_partial(tcx, &*f.expr, None)
             } else {
-                return Err(missing_struct_field(e));
+                signal!(e, MissingStructField);
             }
         }
 
-        Err(non_const_struct(e))
+        signal!(e, NonConstStruct);
       }
-      _ => Err(misc_catch_all(e))
+      _ => signal!(e, MiscCatchAll)
     }
 }
 
