@@ -15,11 +15,13 @@
 
 use back::abi;
 use back::link::*;
-use llvm::{ValueRef, get_param};
 use llvm;
+use llvm::{ValueRef, get_param};
+use metadata::csearch;
 use middle::lang_items::ExchangeFreeFnLangItem;
 use middle::subst;
 use middle::subst::{Subst, Substs};
+use middle::ty::{self, Ty};
 use trans::adt;
 use trans::adt::GetDtorType; // for tcx.dtor_type()
 use trans::base::*;
@@ -28,15 +30,19 @@ use trans::callee;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
 use trans::common::*;
+use trans::consts;
 use trans::datum;
 use trans::debuginfo::DebugLoc;
 use trans::expr;
+use trans::foreign;
+use trans::inline;
 use trans::machine::*;
-use trans::type_::Type;
+use trans::monomorphize;
+use trans::tvec;
 use trans::type_of::{type_of, sizing_type_of, align_of};
-use middle::ty::{self, Ty};
-use util::ppaux::{ty_to_short_str, Repr};
+use trans::type_::Type;
 use util::ppaux;
+use util::ppaux::{ty_to_short_str, Repr};
 
 use arena::TypedArena;
 use libc::c_uint;
@@ -257,6 +263,44 @@ fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         trans_struct_drop(cx, t, v0, dtor_did, class_did, substs)
     })
 
+}
+
+pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                              did: ast::DefId,
+                              t: Ty<'tcx>,
+                              parent_id: ast::DefId,
+                              substs: &Substs<'tcx>)
+                              -> ValueRef {
+    let _icx = push_ctxt("trans_res_dtor");
+    let did = inline::maybe_instantiate_inline(ccx, did);
+
+    if !substs.types.is_empty() {
+        assert_eq!(did.krate, ast::LOCAL_CRATE);
+
+        // Since we're in trans we don't care for any region parameters
+        let substs = ccx.tcx().mk_substs(Substs::erased(substs.types.clone()));
+
+        let (val, _, _) = monomorphize::monomorphic_fn(ccx, did, substs, None);
+
+        val
+    } else if did.krate == ast::LOCAL_CRATE {
+        get_item_val(ccx, did.node)
+    } else {
+        let tcx = ccx.tcx();
+        let name = csearch::get_symbol(&ccx.sess().cstore, did);
+        let class_ty = ty::lookup_item_type(tcx, parent_id).ty.subst(tcx, substs);
+        let llty = type_of_dtor(ccx, class_ty);
+        let dtor_ty = ty::mk_ctor_fn(ccx.tcx(),
+                                     did,
+                                     &[get_drop_glue_type(ccx, t)],
+                                     ty::mk_nil(ccx.tcx()));
+        foreign::get_extern_fn(ccx,
+                      &mut *ccx.externs().borrow_mut(),
+                      &name[..],
+                      llvm::CCallConv,
+                      llty,
+                      dtor_ty)
+    }
 }
 
 fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,

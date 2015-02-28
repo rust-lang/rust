@@ -54,7 +54,7 @@ use trans::cleanup;
 use trans::closure;
 use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_integral};
 use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
-use trans::common::{CrateContext, ExternMap, FunctionContext};
+use trans::common::{CrateContext, FunctionContext};
 use trans::common::{Result, NodeIdAndSpan};
 use trans::common::{node_id_type, return_type_is_void};
 use trans::common::{type_is_immediate, type_is_zero_size, val_ty};
@@ -67,7 +67,6 @@ use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
 use trans::expr;
 use trans::foreign;
 use trans::glue;
-use trans::inline;
 use trans::intrinsic;
 use trans::machine;
 use trans::machine::{llsize_of, llsize_of_real};
@@ -84,7 +83,7 @@ use util::sha2::Sha256;
 use util::nodemap::NodeMap;
 
 use arena::TypedArena;
-use libc::{c_uint, uint64_t};
+use libc::c_uint;
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
@@ -216,23 +215,6 @@ pub fn decl_cdecl_fn(ccx: &CrateContext,
                      ty: Type,
                      output: Ty) -> ValueRef {
     decl_fn(ccx, name, llvm::CCallConv, ty, ty::FnConverging(output))
-}
-
-// only use this for foreign function ABIs and glue, use `get_extern_rust_fn` for Rust functions
-pub fn get_extern_fn(ccx: &CrateContext,
-                     externs: &mut ExternMap,
-                     name: &str,
-                     cc: llvm::CallConv,
-                     ty: Type,
-                     output: Ty)
-                     -> ValueRef {
-    match externs.get(name) {
-        Some(n) => return *n,
-        None => {}
-    }
-    let f = decl_fn(ccx, name, cc, ty, ty::FnConverging(output));
-    externs.insert(name.to_string(), f);
-    f
 }
 
 fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>,
@@ -398,45 +380,6 @@ pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: String) {
         ccx.sess().bug(&format!("duplicate LLVM symbol: {}", sym));
     }
     ccx.all_llvm_symbols().borrow_mut().insert(sym);
-}
-
-
-pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                              did: ast::DefId,
-                              t: Ty<'tcx>,
-                              parent_id: ast::DefId,
-                              substs: &Substs<'tcx>)
-                              -> ValueRef {
-    let _icx = push_ctxt("trans_res_dtor");
-    let did = inline::maybe_instantiate_inline(ccx, did);
-
-    if !substs.types.is_empty() {
-        assert_eq!(did.krate, ast::LOCAL_CRATE);
-
-        // Since we're in trans we don't care for any region parameters
-        let substs = ccx.tcx().mk_substs(Substs::erased(substs.types.clone()));
-
-        let (val, _, _) = monomorphize::monomorphic_fn(ccx, did, substs, None);
-
-        val
-    } else if did.krate == ast::LOCAL_CRATE {
-        get_item_val(ccx, did.node)
-    } else {
-        let tcx = ccx.tcx();
-        let name = csearch::get_symbol(&ccx.sess().cstore, did);
-        let class_ty = ty::lookup_item_type(tcx, parent_id).ty.subst(tcx, substs);
-        let llty = type_of_dtor(ccx, class_ty);
-        let dtor_ty = ty::mk_ctor_fn(ccx.tcx(),
-                                     did,
-                                     &[glue::get_drop_glue_type(ccx, t)],
-                                     ty::mk_nil(ccx.tcx()));
-        get_extern_fn(ccx,
-                      &mut *ccx.externs().borrow_mut(),
-                      &name[..],
-                      llvm::CCallConv,
-                      llty,
-                      dtor_ty)
-    }
 }
 
 pub fn bin_op_to_icmp_predicate(ccx: &CrateContext, op: ast::BinOp_, signed: bool)

@@ -165,6 +165,23 @@ pub fn register_static(ccx: &CrateContext,
     }
 }
 
+// only use this for foreign function ABIs and glue, use `get_extern_rust_fn` for Rust functions
+pub fn get_extern_fn(ccx: &CrateContext,
+                     externs: &mut ExternMap,
+                     name: &str,
+                     cc: llvm::CallConv,
+                     ty: Type,
+                     output: Ty)
+                     -> ValueRef {
+    match externs.get(name) {
+        Some(n) => return *n,
+        None => {}
+    }
+    let f = base::decl_fn(ccx, name, cc, ty, ty::FnConverging(output));
+    externs.insert(name.to_string(), f);
+    f
+}
+
 /// Registers a foreign function found in a library. Just adds a LLVM global.
 pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                           abi: Abi, fty: Ty<'tcx>,
@@ -190,12 +207,7 @@ pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Create the LLVM value for the C extern fn
     let llfn_ty = lltype_for_fn_from_foreign_types(ccx, &tys);
 
-    let llfn = base::get_extern_fn(ccx,
-                                   &mut *ccx.externs().borrow_mut(),
-                                   name,
-                                   cc,
-                                   llfn_ty,
-                                   fty);
+    let llfn = get_extern_fn(ccx, &mut *ccx.externs().borrow_mut(), name, cc, llfn_ty, fty);
     add_argument_attributes(&tys, llfn);
 
     llfn
