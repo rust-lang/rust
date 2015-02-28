@@ -37,6 +37,9 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
         }
     }
 
+    debug!("maybe_instantiate_inline: inlining {}",
+           ty::item_path_str(ccx.tcx(), fn_id));
+
     let csearch_result =
         csearch::maybe_get_item_ast(
             ccx.tcx(), fn_id,
@@ -101,14 +104,14 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
 
           let mut my_id = 0;
           match item.node {
-            ast::ItemEnum(_, _) => {
-              let vs_here = ty::enum_variants(ccx.tcx(), local_def(item.id));
-              let vs_there = ty::enum_variants(ccx.tcx(), parent_id);
-              for (here, there) in vs_here.iter().zip(vs_there.iter()) {
-                  if there.id == fn_id { my_id = here.id.node; }
-                  ccx.external().borrow_mut().insert(there.id, Some(here.id.node));
+              ast::ItemEnum(ref def_here, _) => {
+                  let def_there = ty::lookup_datatype_def(ccx.tcx(), parent_id);
+
+                  for (here, there) in def_here.variants.iter().zip(def_there.variants.iter()) {
+                      if there.id == fn_id { my_id = here.node.id; }
+                      ccx.external().borrow_mut().insert(there.id, Some(here.node.id));
+                  }
               }
-            }
             ast::ItemStruct(ref struct_def, _) => {
               match struct_def.ctor_id {
                 None => {}

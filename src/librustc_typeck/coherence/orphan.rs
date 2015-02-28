@@ -49,9 +49,9 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                 debug!("coherence2::orphan check: inherent impl {}", item.repr(self.tcx));
                 let self_ty = ty::lookup_item_type(self.tcx, def_id).ty;
                 match self_ty.sty {
-                    ty::ty_enum(def_id, _) |
-                    ty::ty_struct(def_id, _) => {
-                        self.check_def_id(item, def_id);
+                    ty::ty_enum(def, _) |
+                    ty::ty_struct(def, _) => {
+                        self.check_def_id(item, def.def_id);
                     }
                     ty::ty_trait(ref data) => {
                         self.check_def_id(item, data.principal_def_id());

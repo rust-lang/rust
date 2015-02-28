@@ -123,7 +123,7 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             if use_out_pointer {
                 atys.push(lloutputtype.ptr_to());
                 Type::void(cx)
-            } else if return_type_is_void(cx, output) {
+            } else if return_type_is_void(output) {
                 Type::void(cx)
             } else {
                 lloutputtype
@@ -219,8 +219,8 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
         ty::ty_struct(..) => {
             if ty::type_is_simd(cx.tcx(), t) {
-                let llet = type_of(cx, ty::simd_type(cx.tcx(), t));
-                let n = ty::simd_size(cx.tcx(), t) as u64;
+                let llet = type_of(cx, ty::simd_type(t));
+                let n = ty::simd_size(t) as u64;
                 ensure_array_fits_in_address_space(cx, llet, n, t);
                 Type::vector(&llet, n)
             } else {
@@ -329,14 +329,14 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::ty_int(t) => Type::int_from_ty(cx, t),
       ty::ty_uint(t) => Type::uint_from_ty(cx, t),
       ty::ty_float(t) => Type::float_from_ty(cx, t),
-      ty::ty_enum(did, ref substs) => {
+      ty::ty_enum(def, ref substs) => {
           // Only create the named struct, but don't fill it in. We
           // fill it in *after* placing it into the type cache. This
           // avoids creating more than one copy of the enum when one
           // of the enum's variants refers to the enum itself.
           let repr = adt::represent_type(cx, t);
           let tps = substs.types.get_slice(subst::TypeSpace);
-          let name = llvm_type_name(cx, did, tps);
+          let name = llvm_type_name(cx, def.def_id, tps);
           adt::incomplete_type_of(cx, &*repr, &name[..])
       }
       ty::ty_closure(..) => {
@@ -397,10 +397,10 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
           let repr = adt::represent_type(cx, t);
           adt::type_of(cx, &*repr)
       }
-      ty::ty_struct(did, ref substs) => {
+      ty::ty_struct(def, ref substs) => {
           if ty::type_is_simd(cx.tcx(), t) {
-              let llet = in_memory_type_of(cx, ty::simd_type(cx.tcx(), t));
-              let n = ty::simd_size(cx.tcx(), t) as u64;
+              let llet = in_memory_type_of(cx, ty::simd_type(t));
+              let n = ty::simd_size(t) as u64;
               ensure_array_fits_in_address_space(cx, llet, n, t);
               Type::vector(&llet, n)
           } else {
@@ -409,7 +409,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
               // infinite recursion with recursive struct types.
               let repr = adt::represent_type(cx, t);
               let tps = substs.types.get_slice(subst::TypeSpace);
-              let name = llvm_type_name(cx, did, tps);
+              let name = llvm_type_name(cx, def.def_id, tps);
               adt::incomplete_type_of(cx, &*repr, &name[..])
           }
       }

@@ -13,7 +13,6 @@
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
-use middle::def;
 use middle::lang_items;
 use middle::ty;
 
@@ -34,6 +33,14 @@ pub struct MethodInfo {
     pub name: ast::Name,
     pub def_id: ast::DefId,
     pub vis: ast::Visibility,
+}
+
+#[derive(Copy)]
+pub struct FieldInfo {
+    pub name: ast::Name,
+    pub def_id: ast::DefId,
+    pub vis: ast::Visibility,
+    pub origin: ast::DefId,
 }
 
 pub fn get_symbol(cstore: &cstore::CStore, def: ast::DefId) -> String {
@@ -114,19 +121,6 @@ pub fn maybe_get_item_ast<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId,
     decoder::maybe_get_item_ast(&*cdata, tcx, def.node, decode_inlined_item)
 }
 
-pub fn get_enum_variant_defs(cstore: &cstore::CStore, enum_id: ast::DefId)
-                             -> Vec<(def::Def, ast::Name, ast::Visibility)> {
-    let cdata = cstore.get_crate_data(enum_id.krate);
-    decoder::get_enum_variant_defs(&*cstore.intr, &*cdata, enum_id.node)
-}
-
-pub fn get_enum_variants<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId)
-                               -> Vec<Rc<ty::VariantInfo<'tcx>>> {
-    let cstore = &tcx.sess.cstore;
-    let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_enum_variants(cstore.intr.clone(), &*cdata, def.node, tcx)
-}
-
 /// Returns information about the given implementation.
 pub fn get_impl_items(cstore: &cstore::CStore, impl_def_id: ast::DefId)
                       -> Vec<ty::ImplOrTraitItemId> {
@@ -203,9 +197,16 @@ pub fn get_item_attrs(cstore: &cstore::CStore,
     decoder::get_item_attrs(&*cdata, def_id.node)
 }
 
-pub fn get_struct_fields(cstore: &cstore::CStore,
-                         def: ast::DefId)
-                      -> Vec<ty::field_ty> {
+pub fn get_datatype_def<'tcx>(tcx: &ty::ctxt<'tcx>,
+                            def: ast::DefId) -> &'tcx ty::DatatypeDef<'tcx> {
+    let cstore = &tcx.sess.cstore;
+    let cdata = cstore.get_crate_data(def.krate);
+    decoder::get_datatype_def(tcx, cstore.intr.clone(), &*cdata, def.node)
+}
+
+/// Get the fields for the struct. Use this when you don't have a type context to
+/// pass to `ty::lookup_struct_def`.
+pub fn get_struct_fields(cstore: &cstore::CStore, def: ast::DefId) -> Vec<FieldInfo> {
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_struct_fields(cstore.intr.clone(), &*cdata, def.node)
 }

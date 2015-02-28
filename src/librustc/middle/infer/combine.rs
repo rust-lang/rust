@@ -484,10 +484,12 @@ pub fn super_tys<'tcx, C>(this: &C,
         (&ty::ty_param(ref a_p), &ty::ty_param(ref b_p)) if
           a_p.idx == b_p.idx && a_p.space == b_p.space => Ok(a),
 
-        (&ty::ty_enum(a_id, a_substs), &ty::ty_enum(b_id, b_substs))
-          if a_id == b_id => {
-            let substs = try!(this.substs(a_id, a_substs, b_substs));
-            Ok(ty::mk_enum(tcx, a_id, tcx.mk_substs(substs)))
+        (&ty::ty_enum(def_a, a_substs), &ty::ty_enum(def_b, b_substs))
+          if def_a.def_id == def_b.def_id => {
+            let substs = try!(this.substs(def_a.def_id,
+                                          a_substs,
+                                          b_substs));
+            Ok(ty::mk_enum(tcx, def_a, tcx.mk_substs(substs)))
         }
 
         (&ty::ty_trait(ref a_), &ty::ty_trait(ref b_)) => {
@@ -497,10 +499,10 @@ pub fn super_tys<'tcx, C>(this: &C,
             Ok(ty::mk_trait(tcx, principal, bounds))
         }
 
-        (&ty::ty_struct(a_id, a_substs), &ty::ty_struct(b_id, b_substs))
-          if a_id == b_id => {
-            let substs = try!(this.substs(a_id, a_substs, b_substs));
-            Ok(ty::mk_struct(tcx, a_id, tcx.mk_substs(substs)))
+        (&ty::ty_struct(def_a, a_substs), &ty::ty_struct(def_b, b_substs))
+          if def_a.def_id == def_b.def_id => {
+            let substs = try!(this.substs(def_a.def_id, a_substs, b_substs));
+            Ok(ty::mk_struct(tcx, def_a, tcx.mk_substs(substs)))
         }
 
         (&ty::ty_closure(a_id, a_region, a_substs),

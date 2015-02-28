@@ -295,9 +295,9 @@ fn encode_parent_item(rbml_w: &mut Encoder, id: DefId) {
     rbml_w.end_tag();
 }
 
-fn encode_struct_fields(rbml_w: &mut Encoder,
-                        fields: &[ty::field_ty],
-                        origin: DefId) {
+fn encode_struct_fields<'tcx>(rbml_w: &mut Encoder,
+                                  fields: &[ty::FieldTy<'tcx>],
+                                  origin: DefId) {
     for f in fields {
         if f.name == special_idents::unnamed_field.name {
             rbml_w.start_tag(tag_item_unnamed_field);
@@ -322,10 +322,10 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                             index: &mut Vec<entry<i64>>) {
     debug!("encode_enum_variant_info(id={})", id);
 
-    let mut disr_val = 0;
     let mut i = 0;
-    let vi = ty::enum_variants(ecx.tcx,
-                               DefId { krate: ast::LOCAL_CRATE, node: id });
+    let def = ty::lookup_datatype_def(ecx.tcx,
+                                      DefId { krate: ast::LOCAL_CRATE, node: id });
+    let vi = &def.variants[];
     for variant in variants {
         let def_id = local_def(variant.node.id);
         index.push(entry {
@@ -347,27 +347,19 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
         let stab = stability::lookup(ecx.tcx, ast_util::local_def(variant.node.id));
         encode_stability(rbml_w, stab);
 
-        match variant.node.kind {
-            ast::TupleVariantKind(_) => {},
-            ast::StructVariantKind(_) => {
-                let fields = ty::lookup_struct_fields(ecx.tcx, def_id);
-                let idx = encode_info_for_struct(ecx,
-                                                 rbml_w,
-                                                 &fields[..],
-                                                 index);
-                encode_struct_fields(rbml_w, &fields[..], def_id);
-                encode_index(rbml_w, idx, write_i64);
-            }
-        }
-        if (*vi)[i].disr_val != disr_val {
-            encode_disr_val(ecx, rbml_w, (*vi)[i].disr_val);
-            disr_val = (*vi)[i].disr_val;
-        }
-        encode_bounds_and_type_for_item(rbml_w, ecx, def_id.local_id());
+        let fields = &vi[i].fields[];
+        let idx = encode_info_for_struct(ecx,
+                                         rbml_w,
+                                         fields,
+                                         index);
+        encode_struct_fields(rbml_w, fields, def_id);
+        encode_index(rbml_w, idx, write_i64);
+
+        encode_disr_val(ecx, rbml_w, (*vi)[i].disr_val);
+        encode_bounds_and_type_for_item(rbml_w, ecx, variant.node.id);
 
         ecx.tcx.map.with_path(variant.node.id, |path| encode_path(rbml_w, path));
         rbml_w.end_tag();
-        disr_val += 1;
         i += 1;
     }
 }
@@ -683,11 +675,10 @@ fn encode_provided_source(rbml_w: &mut Encoder,
 }
 
 /* Returns an index of items in this class */
-fn encode_info_for_struct(ecx: &EncodeContext,
-                          rbml_w: &mut Encoder,
-                          fields: &[ty::field_ty],
-                          global_index: &mut Vec<entry<i64>>)
-                          -> Vec<entry<i64>> {
+fn encode_info_for_struct<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
+                                    rbml_w: &mut Encoder,
+                                    fields: &[ty::FieldTy<'tcx>],
+                                    global_index: &mut Vec<entry<i64>>) -> Vec<entry<i64>> {
     /* Each class has its own index, since different classes
        may have fields with the same name */
     let mut index = Vec::new();
@@ -1142,56 +1133,57 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                  index);
       }
       ast::ItemStruct(ref struct_def, _) => {
-        let fields = ty::lookup_struct_fields(tcx, def_id);
+          let def = ty::lookup_datatype_def(tcx, def_id);
+          let fields = &def.variants[0].fields[..];
 
-        /* First, encode the fields
-           These come first because we need to write them to make
-           the index, and the index needs to be in the item for the
-           class itself */
-        let idx = encode_info_for_struct(ecx,
-                                         rbml_w,
-                                         &fields[..],
-                                         index);
+          // First, encode the fields
+          // These come first because we need to write them to make
+          // the index, and the index needs to be in the item for the
+          // class itself
+          let idx = encode_info_for_struct(ecx,
+                                           rbml_w,
+                                           fields,
+                                           index);
 
-        /* Index the class*/
-        add_to_index(item, rbml_w, index);
+          // Index the class
+          add_to_index(item, rbml_w, index);
 
-        /* Now, make an item for the class itself */
-        rbml_w.start_tag(tag_items_data_item);
-        encode_def_id(rbml_w, def_id);
-        encode_family(rbml_w, 'S');
-        encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
+          // Now, make an item for the class itself
+          rbml_w.start_tag(tag_items_data_item);
+          encode_def_id(rbml_w, def_id);
+          encode_family(rbml_w, 'S');
+          encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
 
-        encode_item_variances(rbml_w, ecx, item.id);
-        encode_name(rbml_w, item.ident.name);
-        encode_attributes(rbml_w, &item.attrs);
-        encode_path(rbml_w, path.clone());
-        encode_stability(rbml_w, stab);
-        encode_visibility(rbml_w, vis);
-        encode_repr_attrs(rbml_w, ecx, &item.attrs);
+          encode_item_variances(rbml_w, ecx, item.id);
+          encode_name(rbml_w, item.ident.name);
+          encode_attributes(rbml_w, &item.attrs[]);
+          encode_path(rbml_w, path.clone());
+          encode_stability(rbml_w, stab);
+          encode_visibility(rbml_w, vis);
+          encode_repr_attrs(rbml_w, ecx, &item.attrs[]);
 
-        /* Encode def_ids for each field and method
-         for methods, write all the stuff get_trait_method
-        needs to know*/
-        encode_struct_fields(rbml_w, &fields[..], def_id);
+          // Encode def_ids for each field and method
+          // for methods, write all the stuff get_trait_method
+          // needs to know
+          encode_struct_fields(rbml_w, fields, def_id);
 
-        encode_inlined_item(ecx, rbml_w, IIItemRef(item));
+          encode_inlined_item(ecx, rbml_w, IIItemRef(item));
 
-        // Encode inherent implementations for this structure.
-        encode_inherent_implementations(ecx, rbml_w, def_id);
+          // Encode inherent implementations for this structure.
+          encode_inherent_implementations(ecx, rbml_w, def_id);
 
-        /* Each class has its own index -- encode it */
-        encode_index(rbml_w, idx, write_i64);
-        rbml_w.end_tag();
+          // Each class has its own index -- encode it
+          encode_index(rbml_w, idx, write_i64);
+          rbml_w.end_tag();
 
-        // If this is a tuple-like struct, encode the type of the constructor.
-        match struct_def.ctor_id {
-            Some(ctor_id) => {
-                encode_info_for_struct_ctor(ecx, rbml_w, item.ident,
-                                            ctor_id, index, def_id.node);
-            }
-            None => {}
-        }
+          // If this is a tuple-like struct, encode the type of the constructor.
+          match struct_def.ctor_id {
+              Some(ctor_id) => {
+                  encode_info_for_struct_ctor(ecx, rbml_w, item.ident,
+                                              ctor_id, index, def_id.node);
+              }
+              None => {}
+          }
       }
       ast::ItemDefaultImpl(unsafety, _) => {
           add_to_index(item, rbml_w, index);

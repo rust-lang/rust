@@ -329,7 +329,7 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
         return (size, align);
     }
     match t.sty {
-        ty::ty_struct(id, substs) => {
+        ty::ty_struct(def, substs) => {
             let ccx = bcx.ccx();
             // First get the size of all statically known fields.
             // Don't use type_of::sizing_type_of because that expects t to be sized.
@@ -341,9 +341,8 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
-            let fields = ty::struct_fields(bcx.tcx(), id, substs);
-            let last_field = fields[fields.len()-1];
-            let field_ty = last_field.mt.ty;
+            let last_field = &def.variants[0].fields[def.variants[0].fields.len()-1];
+            let field_ty = last_field.subst_ty(bcx.tcx(), substs);
             let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
 
             // Return the sum of sizes and max of aligns.
@@ -434,7 +433,8 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                 }
             }
         }
-        ty::ty_struct(did, substs) | ty::ty_enum(did, substs) => {
+        ty::ty_struct(def, substs) | ty::ty_enum(def, substs) => {
+            let did = def.def_id;
             let tcx = bcx.tcx();
             match ty::ty_dtor(tcx, did) {
                 ty::TraitDtor(dtor, true) => {

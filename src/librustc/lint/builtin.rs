@@ -601,8 +601,8 @@ impl LintPass for RawPointerDerive {
                 }
 
                 match ty::node_id_to_type(cx.tcx, item.id).sty {
-                    ty::ty_enum(did, _) => did,
-                    ty::ty_struct(did, _) => did,
+                    ty::ty_enum(def, _) |
+                    ty::ty_struct(def, _) => def.def_id,
                     _ => return,
                 }
             }
@@ -727,15 +727,15 @@ impl LintPass for UnusedResults {
         match t.sty {
             ty::ty_tup(ref tys) if tys.is_empty() => return,
             ty::ty_bool => return,
-            ty::ty_struct(did, _) |
-            ty::ty_enum(did, _) => {
-                if ast_util::is_local(did) {
-                    if let ast_map::NodeItem(it) = cx.tcx.map.get(did.node) {
+            ty::ty_struct(def, _) |
+            ty::ty_enum(def, _) => {
+                if ast_util::is_local(def.def_id) {
+                    if let ast_map::NodeItem(it) = cx.tcx.map.get(def.def_id.node) {
                         warned |= check_must_use(cx, &it.attrs, s.span);
                     }
                 } else {
-                    let attrs = csearch::get_item_attrs(&cx.sess().cstore, did);
-                    warned |= check_must_use(cx, &attrs[..], s.span);
+                    let attrs = csearch::get_item_attrs(&cx.sess().cstore, def.def_id);
+                    warned |= check_must_use(cx, &attrs, s.span);
                 }
             }
             _ => {}
@@ -1626,16 +1626,18 @@ impl LintPass for MissingCopyImplementations {
                 if ast_generics.is_parameterized() {
                     return
                 }
+                let def = ty::lookup_datatype_def(cx.tcx, ast_util::local_def(item.id));
                 ty::mk_struct(cx.tcx,
-                              ast_util::local_def(item.id),
+                              def,
                               cx.tcx.mk_substs(Substs::empty()))
             }
             ast::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return
                 }
+                let def = ty::lookup_datatype_def(cx.tcx, ast_util::local_def(item.id));
                 ty::mk_enum(cx.tcx,
-                            ast_util::local_def(item.id),
+                            def,
                             cx.tcx.mk_substs(Substs::empty()))
             }
             _ => return,

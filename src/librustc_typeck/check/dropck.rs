@@ -61,9 +61,9 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
         // If we encounter `PhantomData<T>`, then we should replace it
         // with `T`, the type it represents as owned by the
         // surrounding context, before doing further analysis.
-        let typ = if let ty::ty_struct(struct_did, substs) = typ.sty {
-            if opt_phantom_data_def_id == Some(struct_did) {
-                let item_type = ty::lookup_item_type(rcx.tcx(), struct_did);
+        let typ = if let ty::ty_struct(def, substs) = typ.sty {
+            if opt_phantom_data_def_id == Some(def.def_id) {
+                let item_type = ty::lookup_item_type(rcx.tcx(), def.def_id);
                 let tp_def = item_type.generics.types
                     .opt_get(subst::TypeSpace, 0).unwrap();
                 let new_typ = substs.type_for_def(tp_def);
@@ -77,14 +77,14 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
             typ
         };
 
-        let opt_type_did = match typ.sty {
-            ty::ty_struct(struct_did, _) => Some(struct_did),
-            ty::ty_enum(enum_did, _) => Some(enum_did),
+        let opt_type_def = match typ.sty {
+            ty::ty_struct(def, _) => Some(def),
+            ty::ty_enum(def, _) => Some(def),
             _ => None,
         };
 
         let opt_dtor =
-            opt_type_did.and_then(|did| destructor_for_type.get(&did));
+            opt_type_def.and_then(|def| destructor_for_type.get(&def.def_id));
 
         debug!("iterate_over_potentially_unsafe_regions_in_type \
                 {}typ: {} scope: {:?} opt_dtor: {:?}",
@@ -227,19 +227,15 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
             // destructor.
 
             match typ.sty {
-                ty::ty_struct(struct_did, substs) => {
+                ty::ty_enum(def, substs) |
+                ty::ty_struct(def, substs) => {
                     // Don't recurse; we extract type's substructure,
                     // so do not process subparts of type expression.
                     walker.skip_current_subtree();
 
-                    let fields =
-                        ty::lookup_struct_fields(rcx.tcx(), struct_did);
-                    for field in fields.iter() {
-                        let field_type =
-                            ty::lookup_field_type(rcx.tcx(),
-                                                  struct_did,
-                                                  field.id,
-                                                  substs);
+                    let tcx = rcx.tcx();
+                    for field_type in def.variants.iter()
+                        .flat_map(|v| v.subst_fields(tcx, substs)) {
                         iterate_over_potentially_unsafe_regions_in_type(
                             rcx,
                             breadcrumbs,
@@ -247,28 +243,6 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                             span,
                             scope,
                             depth+1)
-                    }
-                }
-
-                ty::ty_enum(enum_did, substs) => {
-                    // Don't recurse; we extract type's substructure,
-                    // so do not process subparts of type expression.
-                    walker.skip_current_subtree();
-
-                    let all_variant_info =
-                        ty::substd_enum_variants(rcx.tcx(),
-                                                 enum_did,
-                                                 substs);
-                    for variant_info in all_variant_info.iter() {
-                        for argument_type in variant_info.args.iter() {
-                            iterate_over_potentially_unsafe_regions_in_type(
-                                rcx,
-                                breadcrumbs,
-                                *argument_type,
-                                span,
-                                scope,
-                                depth+1)
-                        }
                     }
                 }
 

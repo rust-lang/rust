@@ -18,7 +18,7 @@ use self::Family::*;
 use back::svh::Svh;
 use metadata::cstore::crate_metadata;
 use metadata::common::*;
-use metadata::csearch::MethodInfo;
+use metadata::csearch::{FieldInfo, MethodInfo};
 use metadata::csearch;
 use metadata::cstore;
 use metadata::tydecode::{parse_ty_data, parse_region_data, parse_def_id,
@@ -727,72 +727,6 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeI
     }
 }
 
-pub fn get_enum_variant_defs(intr: &IdentInterner,
-                             cdata: Cmd,
-                             id: ast::NodeId)
-                             -> Vec<(def::Def, ast::Name, ast::Visibility)> {
-    let data = cdata.data();
-    let items = reader::get_doc(rbml::Doc::new(data), tag_items);
-    let item = find_item(id, items);
-    enum_variant_ids(item, cdata).iter().map(|did| {
-        let item = find_item(did.node, items);
-        let name = item_name(intr, item);
-        let visibility = item_visibility(item);
-        match item_to_def_like(item, *did, cdata.cnum) {
-            DlDef(def @ def::DefVariant(..)) => (def, name, visibility),
-            _ => unreachable!()
-        }
-    }).collect()
-}
-
-pub fn get_enum_variants<'tcx>(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId,
-                               tcx: &ty::ctxt<'tcx>) -> Vec<Rc<ty::VariantInfo<'tcx>>> {
-    let data = cdata.data();
-    let items = reader::get_doc(rbml::Doc::new(data), tag_items);
-    let item = find_item(id, items);
-    let mut disr_val = 0;
-    enum_variant_ids(item, cdata).iter().map(|did| {
-        let item = find_item(did.node, items);
-        let ctor_ty = item_type(ast::DefId { krate: cdata.cnum, node: id},
-                                item, tcx, cdata);
-        let name = item_name(&*intr, item);
-        let (ctor_ty, arg_tys, arg_names) = match ctor_ty.sty {
-            ty::ty_bare_fn(_, ref f) =>
-                (Some(ctor_ty), f.sig.0.inputs.clone(), None),
-            _ => { // Nullary or struct enum variant.
-                let mut arg_names = Vec::new();
-                let arg_tys = get_struct_fields(intr.clone(), cdata, did.node)
-                    .iter()
-                    .map(|field_ty| {
-                        arg_names.push(ast::Ident::new(field_ty.name));
-                        get_type(cdata, field_ty.id.node, tcx).ty
-                    })
-                    .collect();
-                let arg_names = if arg_names.len() == 0 { None } else { Some(arg_names) };
-
-                (None, arg_tys, arg_names)
-            }
-        };
-        match variant_disr_val(item) {
-            Some(val) => { disr_val = val; }
-            _         => { /* empty */ }
-        }
-        let old_disr_val = disr_val;
-        disr_val += 1;
-        Rc::new(ty::VariantInfo {
-            args: arg_tys,
-            arg_names: arg_names,
-            ctor_ty: ctor_ty,
-            name: name,
-            // I'm not even sure if we encode visibility
-            // for variants -- TEST -- tjc
-            id: *did,
-            disr_val: old_disr_val,
-            vis: ast::Inherited
-        })
-    }).collect()
-}
-
 fn get_explicit_self(item: rbml::Doc) -> ty::ExplicitSelfCategory {
     fn get_mutability(ch: u8) -> ast::Mutability {
         match ch as char {
@@ -1089,40 +1023,164 @@ fn struct_field_family_to_visibility(family: Family) -> ast::Visibility {
     }
 }
 
-pub fn get_struct_fields(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::NodeId)
-    -> Vec<ty::field_ty> {
+pub fn get_datatype_def<'tcx>(tcx: &ty::ctxt<'tcx>, intr: Rc<IdentInterner>,
+                              cdata: Cmd, id: ast::NodeId) -> &'tcx ty::DatatypeDef<'tcx> {
     let data = cdata.data();
     let item = lookup_item(id, data);
-    let mut result = Vec::new();
+
+    let family = item_family(item);
+    match family {
+        Enum => get_enum_datatype_def(tcx, &*intr, cdata, id),
+        Struct => get_struct_datatype_def(tcx, &*intr, cdata, id),
+        _ => tcx.sess.bug("Non data-type item family in get_datatype_def")
+    }
+}
+
+fn get_struct_datatype_def<'tcx>(tcx: &ty::ctxt<'tcx>, intr: &IdentInterner,
+                                 cdata: Cmd, id: ast::NodeId) -> &'tcx ty::DatatypeDef<'tcx> {
+    let data = cdata.data();
+    let item = lookup_item(id, data);
+
+    let name = item_name(intr, item);
+    let def_id = item_def_id(item, cdata);
+
+    let fields = get_variant_fields(intr, cdata, item);
+    let def = tcx.mk_datatype_def(ty::DatatypeDef {
+        def_id: def_id,
+        variants: vec![ty::VariantDef {
+            id: def_id,
+            name: name,
+            disr_val: 0,
+            fields: fields,
+        }]
+    });
+
+    tcx.datatype_defs.borrow_mut().insert(def_id, def);
+
+    for fld in def.variants.iter().flat_map(|v| v.fields.iter()) {
+        // FIXME(aatch) I shouldn't have to use get_type here, but using item_type seems
+        // to break things (Like cause infinite recursion in trans)
+        let ty = get_type(cdata, fld.id.node, tcx).ty;
+        fld.set_ty(ty);
+    }
+
+    def
+}
+
+fn get_enum_datatype_def<'tcx>(tcx: &ty::ctxt<'tcx>, intr: &IdentInterner,
+                               cdata: Cmd, id: ast::NodeId) -> &'tcx ty::DatatypeDef<'tcx> {
+    let data = cdata.data();
+    let item = lookup_item(id, data);
+
+    let def_id = item_def_id(item, cdata);
+
+    let variants_doc = reader::get_doc(rbml::Doc::new(data), tag_items);
+
+    let mut disr_val = 0;
+    let variants = enum_variant_ids(item, cdata).iter().map(|did| {
+        let item = find_item(did.node, variants_doc);
+        let vname = item_name(intr, item);
+        match variant_disr_val(item) {
+            Some(val) => { disr_val = val; }
+            _ => {}
+        }
+
+        let fields = get_variant_fields(intr, cdata, item);
+
+        ty::VariantDef {
+            id: *did,
+            name: vname,
+            disr_val: disr_val,
+            fields: fields,
+        }
+    }).collect();
+
+    let def = tcx.mk_datatype_def(ty::DatatypeDef {
+        def_id: def_id,
+        variants: variants,
+    });
+
+    tcx.datatype_defs.borrow_mut().insert(def_id, def);
+    for fld in def.variants.iter().flat_map(|v| v.fields.iter()) {
+        // FIXME(aatch) I shouldn't have to use get_type here, but using item_type seems
+        // to break things (Like cause infinite recursion in trans)
+        let ty = get_type(cdata, fld.id.node, tcx).ty;
+        fld.set_ty(ty);
+    }
+
+    def
+}
+
+fn get_variant_fields<'tcx>(intr: &IdentInterner, cdata: Cmd,
+                            item: rbml::Doc) -> Vec<ty::FieldTy<'tcx>> {
+
+    let mut fields = Vec::new();
     reader::tagged_docs(item, tag_item_field, |an_item| {
         let f = item_family(an_item);
-        if f == PublicField || f == InheritedField {
-            let name = item_name(&*intr, an_item);
-            let did = item_def_id(an_item, cdata);
-            let tagdoc = reader::get_doc(an_item, tag_item_field_origin);
-            let origin_id =  translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
-            result.push(ty::field_ty {
-                name: name,
-                id: did,
-                vis: struct_field_family_to_visibility(f),
-                origin: origin_id,
-            });
-        }
+        let name = item_name(intr, an_item);
+        let did = item_def_id(an_item, cdata);
+
+        let tagdoc = reader::get_doc(an_item, tag_item_field_origin);
+        let origin_id = translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
+        let fld = ty::FieldTy::new(did, name,
+                                   struct_field_family_to_visibility(f),
+                                   origin_id);
+        fields.push(fld);
         true
     });
+
     reader::tagged_docs(item, tag_item_unnamed_field, |an_item| {
         let did = item_def_id(an_item, cdata);
         let tagdoc = reader::get_doc(an_item, tag_item_field_origin);
         let f = item_family(an_item);
         let origin_id =  translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
-        result.push(ty::field_ty {
-            name: special_idents::unnamed_field.name,
-            id: did,
+        let fld = ty::FieldTy::new(did, special_idents::unnamed_field.name,
+                                   struct_field_family_to_visibility(f),
+                                   origin_id);
+        fields.push(fld);
+        true
+    });
+
+    return fields;
+}
+
+pub fn get_struct_fields(intr: Rc<IdentInterner>,
+                              cdata: Cmd, id: ast::NodeId) -> Vec<FieldInfo> {
+    let data = cdata.data();
+    let item = lookup_item(id, data);
+    let mut result = Vec::new();
+    reader::tagged_docs(item, tag_item_field, |an_item| {
+        let f = item_family(an_item);
+        let name = item_name(&*intr, an_item);
+        let did = item_def_id(an_item, cdata);
+
+        let tagdoc = reader::get_doc(an_item, tag_item_field_origin);
+        let origin_id =  translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
+
+        result.push(FieldInfo {
+            name: name,
+            def_id: did,
             vis: struct_field_family_to_visibility(f),
             origin: origin_id,
         });
         true
     });
+    reader::tagged_docs(item, tag_item_unnamed_field, |an_item| {
+        let did = item_def_id(an_item, cdata);
+        let f = item_family(an_item);
+
+        let tagdoc = reader::get_doc(an_item, tag_item_field_origin);
+        let origin_id =  translate_def_id(cdata, reader::with_doc_data(tagdoc, parse_def_id));
+
+        result.push(FieldInfo {
+            name: special_idents::unnamed_field.name,
+            def_id: did,
+            vis: struct_field_family_to_visibility(f),
+            origin: origin_id,
+        });
+        true
+    });
+
     result
 }
 

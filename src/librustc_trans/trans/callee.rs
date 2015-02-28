@@ -177,17 +177,17 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                                                                 bcx.fcx.param_substs).val)
             }
             def::DefVariant(tid, vid, _) => {
-                let vinfo = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
-                let substs = common::node_id_substs(bcx.ccx(),
-                                                    ExprId(ref_expr.id),
-                                                    bcx.fcx.param_substs);
+                let enum_def = ty::lookup_datatype_def(bcx.tcx(), tid);
+                let variant = enum_def.get_variant(vid).expect("variant not in enum");
+                let substs = common::node_id_substs(bcx.ccx(), ExprId(ref_expr.id),
+                                            bcx.fcx.param_substs);
 
                 // Nullary variants are not callable
-                assert!(vinfo.args.len() > 0);
+                assert!(variant.fields.len() > 0u);
 
                 Callee {
                     bcx: bcx,
-                    data: NamedTupleConstructor(substs, vinfo.disr_val)
+                    data: NamedTupleConstructor(substs, variant.disr_val)
                 }
             }
             def::DefStruct(_) => {

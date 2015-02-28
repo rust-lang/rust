@@ -53,15 +53,15 @@ pub fn simplify_type(tcx: &ty::ctxt,
         ty::ty_int(int_type) => Some(IntSimplifiedType(int_type)),
         ty::ty_uint(uint_type) => Some(UintSimplifiedType(uint_type)),
         ty::ty_float(float_type) => Some(FloatSimplifiedType(float_type)),
-        ty::ty_enum(def_id, _) => Some(EnumSimplifiedType(def_id)),
+        ty::ty_enum(def, _) => Some(EnumSimplifiedType(def.def_id)),
         ty::ty_str => Some(StrSimplifiedType),
         ty::ty_vec(..) => Some(VecSimplifiedType),
         ty::ty_ptr(_) => Some(PtrSimplifiedType),
         ty::ty_trait(ref trait_info) => {
             Some(TraitSimplifiedType(trait_info.principal_def_id()))
         }
-        ty::ty_struct(def_id, _) => {
-            Some(StructSimplifiedType(def_id))
+        ty::ty_struct(def, _) => {
+            Some(StructSimplifiedType(def.def_id))
         }
         ty::ty_rptr(_, mt) => {
             // since we introduce auto-refs during method lookup, we
@@ -96,4 +96,3 @@ pub fn simplify_type(tcx: &ty::ctxt,
         ty::ty_infer(_) | ty::ty_err => None,
     }
 }
-

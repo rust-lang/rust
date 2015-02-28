@@ -781,20 +781,19 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
               child_name_bindings.define_type(def, DUMMY_SP, modifiers);
           }
           DefStruct(def_id) => {
-            debug!("(building reduced graph for external \
-                    crate) building type and value for {}",
-                   final_ident);
-            child_name_bindings.define_type(def, DUMMY_SP, modifiers);
-            let fields = csearch::get_struct_fields(&self.session.cstore, def_id).iter().map(|f| {
-                f.name
-            }).collect::<Vec<_>>();
+              debug!("(building reduced graph for external \
+                     crate) building type and value for {}",
+                     final_ident);
+              child_name_bindings.define_type(def, DUMMY_SP, modifiers);
+              let fields : Vec<_> = csearch::get_struct_fields(&self.session.cstore, def_id)
+                  .into_iter().map(|f| f.name ).collect();
 
-            if fields.len() == 0 {
-                child_name_bindings.define_value(def, DUMMY_SP, modifiers);
-            }
+              if fields.len() == 0 {
+                  child_name_bindings.define_value(def, DUMMY_SP, modifiers);
+              }
 
-            // Record the def ID and fields of this struct.
-            self.structs.insert(def_id, fields);
+              // Record the def ID and fields of this struct.
+              self.structs.insert(def_id, fields);
           }
           DefLocal(..) | DefPrimTy(..) | DefTyParam(..) |
           DefUse(..) | DefUpvar(..) | DefRegion(..) |

@@ -129,21 +129,6 @@ pub fn parse_state_from_data<'a, 'tcx>(data: &'a [u8], crate_num: ast::CrateNum,
     }
 }
 
-fn data_log_string(data: &[u8], pos: uint) -> String {
-    let mut buf = String::new();
-    buf.push_str("<<");
-    for i in pos..data.len() {
-        let c = data[i];
-        if c > 0x20 && c <= 0x7F {
-            buf.push(c as char);
-        } else {
-            buf.push('.');
-        }
-    }
-    buf.push_str(">>");
-    buf
-}
-
 pub fn parse_ty_closure_data<'tcx, F>(data: &[u8],
                                       crate_num: ast::CrateNum,
                                       pos: uint,
@@ -160,7 +145,7 @@ pub fn parse_ty_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: uint,
                               tcx: &ty::ctxt<'tcx>, conv: F) -> Ty<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
-    debug!("parse_ty_data {}", data_log_string(data, pos));
+    debug!("parse_ty_data(data=#{} bytes, pos={}", data.len(), pos);
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_ty(&mut st, conv)
 }
@@ -169,7 +154,7 @@ pub fn parse_region_data<F>(data: &[u8], crate_num: ast::CrateNum, pos: uint, tc
                             conv: F) -> ty::Region where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
-    debug!("parse_region_data {}", data_log_string(data, pos));
+    debug!("parse_region_data(data=#{} bytes, pos={}", data.len(), pos);
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_region(&mut st, conv)
 }
@@ -179,7 +164,7 @@ pub fn parse_bare_fn_ty_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos
                                       -> ty::BareFnTy<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
-    debug!("parse_bare_fn_ty_data {}", data_log_string(data, pos));
+    debug!("parse_bare_fn_ty_data(data=#{} bytes, pos={}", data.len(), pos);
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_bare_fn_ty(&mut st, conv)
 }
@@ -189,7 +174,7 @@ pub fn parse_trait_ref_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos:
                                      -> Rc<ty::TraitRef<'tcx>> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
-    debug!("parse_trait_ref_data {}", data_log_string(data, pos));
+    debug!("parse_trait_ref_data(data=#{} bytes, pos={}", data.len(), pos);
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_trait_ref(&mut st, conv)
 }
@@ -198,7 +183,7 @@ pub fn parse_substs_data<'tcx, F>(data: &[u8], crate_num: ast::CrateNum, pos: ui
                                   tcx: &ty::ctxt<'tcx>, conv: F) -> subst::Substs<'tcx> where
     F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
 {
-    debug!("parse_substs_data {}", data_log_string(data, pos));
+    debug!("parse_substs_data(data=#{} bytes, pos={}", data.len(), pos);
     let mut st = parse_state_from_data(data, crate_num, pos, tcx);
     parse_substs(&mut st, conv)
 }
@@ -465,13 +450,14 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
         }
       }
       'c' => return tcx.types.char,
-      't' => {
-        assert_eq!(next(st), '[');
-        let def = parse_def_(st, NominalType, conv);
-        let substs = parse_substs_(st, conv);
-        assert_eq!(next(st), ']');
-        return ty::mk_enum(tcx, def, st.tcx.mk_substs(substs));
-      }
+        't' => {
+            assert_eq!(next(st), '[');
+            let def_id = parse_def_(st, NominalType, conv);
+            let substs = parse_substs_(st, conv);
+            assert_eq!(next(st), ']');
+            let def = ty::lookup_datatype_def(st.tcx, def_id);
+            return ty::mk_enum(tcx, def, st.tcx.mk_substs(substs));
+        }
       'x' => {
         assert_eq!(next(st), '[');
         let trait_ref = ty::Binder(parse_trait_ref_(st, conv));
@@ -542,15 +528,16 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
       }
       '\"' => {
         let _ = parse_def_(st, TypeWithId, conv);
-        let inner = parse_ty_(st, conv);
-        inner
+        return parse_ty_(st, conv);
       }
       'a' => {
           assert_eq!(next(st), '[');
           let did = parse_def_(st, NominalType, conv);
           let substs = parse_substs_(st, conv);
           assert_eq!(next(st), ']');
-          return ty::mk_struct(st.tcx, did, st.tcx.mk_substs(substs));
+
+          let def = ty::lookup_datatype_def(st.tcx, did);
+          return ty::mk_struct(st.tcx, def, st.tcx.mk_substs(substs));
       }
       'k' => {
           assert_eq!(next(st), '[');
@@ -572,6 +559,7 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
       }
       c => { panic!("unexpected char in type string: {}", c);}
     }
+
 }
 
 fn parse_mutability(st: &mut PState) -> ast::Mutability {

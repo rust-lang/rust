@@ -197,8 +197,8 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         ast_map::NodeVariant(v) => {
             let parent = ccx.tcx().map.get_parent(fn_id.node);
-            let tvs = ty::enum_variants(ccx.tcx(), local_def(parent));
-            let this_tv = tvs.iter().find(|tv| { tv.id.node == fn_id.node}).unwrap();
+            let disr_val = get_enum_disr(ccx.tcx(), local_def(parent), fn_id.node);
+
             let d = mk_lldecl(abi::Rust);
             set_inline_hint(d);
             match v.node.kind {
@@ -207,7 +207,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                        parent,
                                        &*v,
                                        &args[..],
-                                       this_tv.disr_val,
+                                       disr_val,
                                        psubsts,
                                        d);
                 }
@@ -284,6 +284,35 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     debug!("leaving monomorphic fn {}", ty::item_path_str(ccx.tcx(), fn_id));
     (lldecl, mono_ty, true)
+}
+
+// Get the discriminant value for the given enum. Inlined items have different def_ids to what
+// ty::lookup_datatype_def expects, but we don't need the full datatype, just the discriminant
+// value.
+// This assumes that it has been passed a proper ADT enum, and not a C-Like enum, as C-Like enum
+// variants cannot be monomorphised. This means we don't have to actually calculate the
+// discriminant properly, we can just use the index of the variant.
+fn get_enum_disr<'tcx>(tcx: &ty::ctxt<'tcx>, def_id: ast::DefId, variant: ast::NodeId) -> ty::Disr {
+    // Use the existing datatype def if there is one.
+    if let Some(def) = tcx.datatype_defs.borrow().get(&def_id) {
+        return def.variants.iter().find(|v| v.id.node == variant).unwrap().disr_val;
+    }
+
+    // Otherwise, get the item out of the ast_map
+    match tcx.map.get(def_id.node) {
+        ast_map::NodeItem(item) => {
+            match item.node {
+                ast::ItemEnum(ref enum_def, _) => {
+                    for (i, v) in enum_def.variants.iter().enumerate() {
+                        if v.node.id == variant { return i as ty::Disr }
+                    }
+                    panic!("variant not in enum")
+                }
+                _ => panic!("Not an enum")
+            }
+        }
+        _ => panic!("Not an item")
+    }
 }
 
 #[derive(PartialEq, Eq, Hash, Debug)]

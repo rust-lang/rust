@@ -195,9 +195,9 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
             false
         }
 
-        ty::ty_enum(def_id, _) |
-        ty::ty_struct(def_id, _) => {
-            def_id.krate == ast::LOCAL_CRATE
+        ty::ty_enum(def, _) |
+        ty::ty_struct(def, _) => {
+            def.def_id.krate == ast::LOCAL_CRATE
         }
 
         ty::ty_uniq(_) => { // treat ~T like Box<T>

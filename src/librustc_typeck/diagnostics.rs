@@ -82,6 +82,7 @@ register_diagnostics! {
     E0122,
     E0123,
     E0124,
+    E0125,
     E0127,
     E0128,
     E0129,
@@ -173,9 +174,10 @@ register_diagnostics! {
     E0248, // found value name used as a type
     E0249, // expected constant expr for array length
     E0250, // expected constant expr for array length
+    E0264, // expected integer constant for discriminant value
+    E0265, // expected constant for discriminant value
     E0318, // can't create default impls for traits outside their crates
     E0319  // trait impls for defaulted traits allowed just for structs/enums
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }
-

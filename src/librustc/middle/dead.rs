@@ -135,8 +135,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_field_access(&mut self, lhs: &ast::Expr, name: &ast::Ident) {
         match ty::expr_ty_adjusted(self.tcx, lhs).sty {
-            ty::ty_struct(id, _) => {
-                let fields = ty::lookup_struct_fields(self.tcx, id);
+            ty::ty_struct(def, _) => {
+                let fields = &def.variants[0].fields[];
                 let field_id = fields.iter()
                     .find(|field| field.name == name.name).unwrap().id;
                 self.live_symbols.insert(field_id.node);
@@ -147,8 +147,8 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_tup_field_access(&mut self, lhs: &ast::Expr, idx: uint) {
         match ty::expr_ty_adjusted(self.tcx, lhs).sty {
-            ty::ty_struct(id, _) => {
-                let fields = ty::lookup_struct_fields(self.tcx, id);
+            ty::ty_struct(def, _) => {
+                let fields = &def.variants[0].fields[];
                 let field_id = fields[idx].id;
                 self.live_symbols.insert(field_id.node);
             },
@@ -158,21 +158,26 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_field_pattern_match(&mut self, lhs: &ast::Pat,
                                   pats: &[codemap::Spanned<ast::FieldPat>]) {
-        let id = match self.tcx.def_map.borrow()[lhs.id].full_def() {
-            def::DefVariant(_, id, _) => id,
+        let variant = match self.tcx.def_map.borrow()[lhs.id].full_def() {
+            def::DefVariant(eid, vid, _) => {
+                let def = ty::lookup_datatype_def(self.tcx, eid);
+                def.get_variant(vid).expect("variant not in enum")
+            }
             _ => {
-                match ty::ty_to_def_id(ty::node_id_to_type(self.tcx,
-                                                           lhs.id)) {
-                    None => {
-                        self.tcx.sess.span_bug(lhs.span,
-                                               "struct pattern wasn't of a \
-                                                type with a def ID?!")
+                // Should be a struct type
+                match ty::node_id_to_type(self.tcx, lhs.id).sty {
+                    ty::ty_struct(def, _) |
+                    // This case shouldn't happen, but handle it anyway
+                    ty::ty_enum(def, _) => {
+                        assert!(def.is_univariant());
+                        &def.variants[0]
                     }
-                    Some(def_id) => def_id,
+                    _ => self.tcx.sess.span_bug(lhs.span, "pattern is not a data type")
                 }
             }
         };
-        let fields = ty::lookup_struct_fields(self.tcx, id);
+
+        let fields = &variant.fields[];
         for pat in pats {
             let field_id = fields.iter()
                 .find(|field| field.name == pat.node.ident.name).unwrap().id;

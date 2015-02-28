@@ -901,14 +901,14 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
         let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, ex).sty;
         let struct_def = match *ty {
-            ty::ty_struct(def_id, _) => {
+            ty::ty_struct(def, _) => {
                 let sub_span = self.span.span_for_last_ident(path.span);
                 self.fmt.ref_str(recorder::StructRef,
                                  path.span,
                                  sub_span,
-                                 def_id,
+                                 def.def_id,
                                  self.cur_scope);
-                Some(def_id)
+                Some(def)
             }
             _ => None
         };
@@ -916,8 +916,8 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         for field in fields {
             match struct_def {
                 Some(struct_def) => {
-                    let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_def);
-                    for f in &fields {
+                    let fields = &struct_def.variants[0].fields[];
+                    for f in fields {
                         if generated_code(field.ident.span) {
                             continue;
                         }
@@ -1021,10 +1021,11 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 };
 
                 if let Some(struct_def) = struct_def {
-                    let struct_fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_def);
+                    let struct_def = ty::lookup_datatype_def(&self.analysis.ty_cx, struct_def);
                     for &Spanned { node: ref field, span } in fields {
                         let sub_span = self.span.span_for_first_ident(span);
-                        for f in &struct_fields {
+                        let fields = &struct_def.variants[0].fields[];
+                        for f in fields {
                             if f.name == field.ident.name {
                                 self.fmt.ref_str(recorder::VarRef,
                                                  span,
@@ -1033,8 +1034,8 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                                  self.cur_scope);
                                 break;
                             }
+                            self.visit_pat(&*field.pat);
                         }
-                        self.visit_pat(&*field.pat);
                     }
                 }
             }
@@ -1351,11 +1352,12 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 }
 
                 self.visit_expr(&**sub_ex);
+
                 let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex).sty;
                 match *ty {
-                    ty::ty_struct(def_id, _) => {
-                        let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
-                        for f in &fields {
+                    ty::ty_struct(def, _) => {
+                        let fields = &def.variants[0].fields[];
+                        for f in fields {
                             if f.name == ident.node.name {
                                 let sub_span = self.span.span_for_last_ident(ex.span);
                                 self.fmt.ref_str(recorder::VarRef,
@@ -1380,8 +1382,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
 
                 let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex).sty;
                 match *ty {
-                    ty::ty_struct(def_id, _) => {
-                        let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
+                    ty::ty_struct(def, _) => {
+                        let fields = &def.variants[0].fields[];
                         for (i, f) in fields.iter().enumerate() {
                             if i == idx.node {
                                 let sub_span = self.span.sub_span_after_token(ex.span, token::Dot);
