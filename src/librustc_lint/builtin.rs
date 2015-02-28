@@ -741,23 +741,24 @@ impl LintPass for UnusedResults {
         }
 
         let t = ty::expr_ty(cx.tcx, expr);
-        let mut warned = false;
-        match t.sty {
+        let warned = match t.sty {
             ty::ty_tup(ref tys) if tys.is_empty() => return,
             ty::ty_bool => return,
             ty::ty_struct(did, _) |
             ty::ty_enum(did, _) => {
                 if ast_util::is_local(did) {
                     if let ast_map::NodeItem(it) = cx.tcx.map.get(did.node) {
-                        warned |= check_must_use(cx, &it.attrs, s.span);
+                        check_must_use(cx, &it.attrs, s.span)
+                    } else {
+                        false
                     }
                 } else {
                     let attrs = csearch::get_item_attrs(&cx.sess().cstore, did);
-                    warned |= check_must_use(cx, &attrs[..], s.span);
+                    check_must_use(cx, &attrs[..], s.span)
                 }
             }
-            _ => {}
-        }
+            _ => false,
+        };
         if !warned {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
