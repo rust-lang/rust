@@ -700,7 +700,7 @@ impl Display for char {
 impl<T> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.flags |= 1 << (FlagV1::Alternate as u32);
-        let ret = LowerHex::fmt(&(*self as u32), f);
+        let ret = LowerHex::fmt(&(*self as usize), f);
         f.flags &= !(1 << (FlagV1::Alternate as u32));
         ret
     }
