@@ -20,6 +20,7 @@ use std::thunk::Thunk;
 
 use std::collections::{HashSet, HashMap};
 use testing;
+use rustc_lint;
 use rustc::session::{self, config};
 use rustc::session::config::get_unstable_features_setting;
 use rustc::session::search_paths::{SearchPaths, PathKind};
@@ -62,6 +63,7 @@ pub fn run(input: &str,
     let sess = session::build_session_(sessopts,
                                       Some(input_path.clone()),
                                       span_diagnostic_handler);
+    rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let mut cfg = config::build_configuration(&sess);
     cfg.extend(config::parse_cfgspecs(cfgs).into_iter());
@@ -165,6 +167,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     let sess = session::build_session_(sessopts,
                                        None,
                                        span_diagnostic_handler);
+    rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
     let outdir = TempDir::new("rustdoctest").ok().expect("rustdoc needs a tempdir");
     let out = Some(outdir.path().clone());

@@ -54,7 +54,7 @@ TARGET_CRATES := libc std flate arena term \
                  log graphviz core rbml alloc \
                  unicode rustc_bitflags
 RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
-                rustc_trans rustc_back rustc_llvm rustc_privacy
+                rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint
 HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc fmt_macros
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc rustbook
@@ -70,7 +70,7 @@ DEPS_graphviz := std
 DEPS_syntax := std term serialize log fmt_macros arena libc
 DEPS_rustc_driver := arena flate getopts graphviz libc rustc rustc_back rustc_borrowck \
                      rustc_typeck rustc_resolve log syntax serialize rustc_llvm \
-		     rustc_trans rustc_privacy
+		     rustc_trans rustc_privacy rustc_lint
 
 DEPS_rustc_trans := arena flate getopts graphviz libc rustc rustc_back \
 	                log syntax serialize rustc_llvm
@@ -78,12 +78,13 @@ DEPS_rustc_typeck := rustc syntax
 DEPS_rustc_borrowck := rustc log graphviz syntax
 DEPS_rustc_resolve := rustc log syntax
 DEPS_rustc_privacy := rustc log syntax
+DEPS_rustc_lint := rustc log syntax
 DEPS_rustc := syntax flate arena serialize getopts rbml \
               log graphviz rustc_llvm rustc_back
 DEPS_rustc_llvm := native:rustllvm libc std
 DEPS_rustc_back := std syntax rustc_llvm flate log libc
 DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
-                test
+                test rustc_lint
 DEPS_rustc_bitflags := core
 DEPS_flate := std native:miniz
 DEPS_arena := std
@@ -128,11 +129,13 @@ DOC_CRATES := $(filter-out rustc, \
               $(filter-out rustc_resolve, \
               $(filter-out rustc_driver, \
               $(filter-out rustc_privacy, \
+              $(filter-out rustc_lint, \
               $(filter-out log, \
               $(filter-out getopts, \
-              $(filter-out syntax, $(CRATES)))))))))))
+              $(filter-out syntax, $(CRATES))))))))))))
 COMPILER_DOC_CRATES := rustc rustc_trans rustc_borrowck rustc_resolve \
-                       rustc_typeck rustc_driver syntax rustc_privacy
+                       rustc_typeck rustc_driver syntax rustc_privacy \
+                       rustc_lint
 
 # This macro creates some simple definitions for each crate being built, just
 # some munging of all of the parameters above.

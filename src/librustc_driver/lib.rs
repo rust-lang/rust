@@ -47,6 +47,7 @@ extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
 extern crate rustc_borrowck;
+extern crate rustc_lint;
 extern crate rustc_privacy;
 extern crate rustc_resolve;
 extern crate rustc_trans;
@@ -133,6 +134,7 @@ pub fn run_compiler<'a>(args: &[String],
     };
 
     let mut sess = build_session(sopts, input_file_path, descriptions);
+    rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     if sess.unstable_options() {
         sess.opts.show_span = matches.opt_str("show-span");
     }
@@ -299,11 +301,12 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             0 => {
                 if sopts.describe_lints {
                     let mut ls = lint::LintStore::new();
-                    ls.register_builtin(None);
+                    rustc_lint::register_builtins(&mut ls, None);
                     describe_lints(&ls, false);
                     return None;
                 }
                 let sess = build_session(sopts.clone(), None, descriptions.clone());
+                rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
                 let should_stop = RustcDefaultCalls::print_crate_info(&sess, None, odir, ofile);
                 if should_stop == Compilation::Stop {
                     return None;
@@ -844,4 +847,3 @@ pub fn main() {
     let result = run(env::args().collect());
     std::env::set_exit_status(result as i32);
 }
-
