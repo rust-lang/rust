@@ -57,11 +57,13 @@ length, adding/removing items, computing permutations, etc.
 Heterogeneous lists can be defined like so:
 
 ```rust
+#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct Nil; // empty HList
+#[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 struct Cons<H, T: HList>(H, T); // cons cell of HList
 
 // trait to classify valid HLists
-trait HList {}
+trait HList: MarkerTrait {}
 impl HList for Nil {}
 impl<H, T: HList> HList for Cons<H, T> {}
 ```
@@ -185,17 +187,17 @@ struct _0; // 0 bit
 struct _1; // 1 bit
 
 // classify valid bits
-trait Bit {}
+trait Bit: MarkerTrait {}
 impl Bit for _0 {}
 impl Bit for _1 {}
 
 // classify positive binary naturals
-trait Pos {}
+trait Pos: MarkerTrait {}
 impl Pos for _1 {}
 impl<B: Bit, P: Pos> Pos for (P, B) {}
 
 // classify binary naturals with 0
-trait Nat {}
+trait Nat: MarkerTrait {}
 impl Nat for _0 {}
 impl Nat for _1 {}
 impl<B: Bit, P: Pos> Nat for (P, B) {}
