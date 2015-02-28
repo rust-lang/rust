@@ -565,7 +565,7 @@ while retaining safety. The answer is iterators:
 ```{rust}
 let vec = vec![1, 2, 3];
 
-for x in vec {
+for x in &vec {
     println!("{}", x);
 }
 ```
