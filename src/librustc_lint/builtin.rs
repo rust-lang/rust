@@ -28,8 +28,6 @@
 //! Use the former for unit-like structs and the latter for structs with
 //! a `pub fn new()`.
 
-use self::MethodContext::*;
-
 use metadata::{csearch, decoder};
 use middle::def::*;
 use middle::subst::Substs;
@@ -870,22 +868,22 @@ fn method_context(cx: &Context, m: &ast::Method) -> MethodContext {
             match md {
                 ty::MethodTraitItem(md) => {
                     match md.container {
-                        ty::TraitContainer(..) => TraitDefaultImpl,
+                        ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
                         ty::ImplContainer(cid) => {
                             match ty::impl_trait_ref(cx.tcx, cid) {
-                                Some(..) => TraitImpl,
-                                None => PlainImpl
+                                Some(..) => MethodContext::TraitImpl,
+                                None => MethodContext::PlainImpl
                             }
                         }
                     }
                 }
                 ty::TypeTraitItem(typedef) => {
                     match typedef.container {
-                        ty::TraitContainer(..) => TraitDefaultImpl,
+                        ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
                         ty::ImplContainer(cid) => {
                             match ty::impl_trait_ref(cx.tcx, cid) {
-                                Some(..) => TraitImpl,
-                                None => PlainImpl
+                                Some(..) => MethodContext::TraitImpl,
+                                None => MethodContext::PlainImpl
                             }
                         }
                     }
@@ -979,9 +977,9 @@ impl LintPass for NonSnakeCase {
                 _: &ast::Block, span: Span, _: ast::NodeId) {
         match fk {
             visit::FkMethod(ident, _, m) => match method_context(cx, m) {
-                PlainImpl
+                MethodContext::PlainImpl
                     => self.check_snake_case(cx, "method", ident, span),
-                TraitDefaultImpl
+                MethodContext::TraitDefaultImpl
                     => self.check_snake_case(cx, "trait method", ident, span),
                 _ => (),
             },
@@ -1563,7 +1561,7 @@ impl LintPass for MissingDoc {
             _: &ast::Block, _: Span, _: ast::NodeId) {
         if let visit::FkMethod(_, _, m) = fk {
             // If the method is an impl for a trait, don't doc.
-            if method_context(cx, m) == TraitImpl { return; }
+            if method_context(cx, m) == MethodContext::TraitImpl { return; }
 
             // Otherwise, doc according to privacy. This will also check
             // doc for default methods defined on traits.
