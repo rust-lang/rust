@@ -96,7 +96,7 @@ pub fn open(term: &str) -> Result<File, String> {
 fn test_get_dbpath_for_term() {
     // woefully inadequate test coverage
     // note: current tests won't work with non-standard terminfo hierarchies (e.g. OS X's)
-    use std::os::{setenv, unsetenv};
+    use std::env;
     // FIXME (#9639): This needs to handle non-utf8 paths
     fn x(t: &str) -> String {
         let p = get_dbpath_for_term(t).expect("no terminfo entry found");
@@ -104,9 +104,9 @@ fn test_get_dbpath_for_term() {
     };
     assert!(x("screen") == "/usr/share/terminfo/s/screen");
     assert!(get_dbpath_for_term("") == None);
-    setenv("TERMINFO_DIRS", ":");
+    env::set_var("TERMINFO_DIRS", ":");
     assert!(x("screen") == "/usr/share/terminfo/s/screen");
-    unsetenv("TERMINFO_DIRS");
+    env::remove_var("TERMINFO_DIRS");
 }
 
 #[test]

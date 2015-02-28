@@ -85,7 +85,7 @@ struct CustomHasher { output: u64 }
 
 impl Hasher for CustomHasher {
     fn finish(&self) -> u64 { self.output }
-    fn write(&mut self, data: &[u8]) { panic!() }
+    fn write(&mut self, _: &[u8]) { panic!() }
     fn write_u64(&mut self, data: u64) { self.output = data; }
 }
 
