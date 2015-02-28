@@ -1163,7 +1163,6 @@ impl<'a> Parser<'a> {
         {
             self.bump();
             self.bump();
-            return;
         } else if
             self.eat(&token::Colon)
         {
