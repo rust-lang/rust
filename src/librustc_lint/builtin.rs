@@ -1218,26 +1218,17 @@ impl LintPass for UnusedImportBraces {
     }
 
     fn check_item(&mut self, cx: &Context, item: &ast::Item) {
-        match item.node {
-            ast::ItemUse(ref view_path) => {
-                match view_path.node {
-                    ast::ViewPathList(_, ref items) => {
-                        if items.len() == 1 {
-                            match items[0].node {
-                                ast::PathListIdent {ref name, ..} => {
-                                    let m = format!("braces around {} is unnecessary",
-                                                    &token::get_ident(*name));
-                                    cx.span_lint(UNUSED_IMPORT_BRACES, item.span,
-                                                 &m[..]);
-                                },
-                                _ => ()
-                            }
-                        }
+        if let ast::ItemUse(ref view_path) = item.node {
+            if let ast::ViewPathList(_, ref items) = view_path.node {
+                if items.len() == 1 {
+                    if let ast::PathListIdent {ref name, ..} = items[0].node {
+                        let m = format!("braces around {} is unnecessary",
+                                        &token::get_ident(*name));
+                        cx.span_lint(UNUSED_IMPORT_BRACES, item.span,
+                                     &m[..]);
                     }
-                    _ => ()
                 }
-            },
-            _ => ()
+            }
         }
     }
 }
