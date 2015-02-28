@@ -656,6 +656,7 @@ impl LintPass for UnusedAttributes {
     }
 
     fn check_attribute(&mut self, cx: &Context, attr: &ast::Attribute) {
+        // Note that check_name() marks the attribute as used if it matches.
         for &(ref name, ty) in KNOWN_ATTRIBUTES {
             match ty {
                 AttributeType::Whitelisted
