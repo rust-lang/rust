@@ -45,7 +45,7 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
     scope: region::CodeExtent,
     depth: uint)
 {
-    let origin = |&:| infer::SubregionOrigin::SafeDestructor(span);
+    let origin = || infer::SubregionOrigin::SafeDestructor(span);
     let mut walker = ty_root.walk();
     let opt_phantom_data_def_id = rcx.tcx().lang_items.phantom_data();
 
