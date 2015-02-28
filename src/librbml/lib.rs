@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -115,6 +115,7 @@ pub enum EbmlEncoderTag {
 #[derive(Debug)]
 pub enum Error {
     IntTooBig(uint),
+    InvalidTag(uint),
     Expected(String),
     IoError(std::old_io::IoError),
     ApplicationError(String)
@@ -142,7 +143,7 @@ pub mod reader {
         EsMapLen, EsMapKey, EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64,
         EsI32, EsI16, EsI8, EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal,
         EsEnumBody, EsUint, EsOpaque, EsLabel, EbmlEncoderTag, Doc, TaggedDoc,
-        Error, IntTooBig, Expected };
+        Error, IntTooBig, InvalidTag, Expected };
 
     pub type DecodeResult<T> = Result<T, Error>;
     // rbml reading
@@ -163,6 +164,18 @@ pub mod reader {
     pub struct Res {
         pub val: uint,
         pub next: uint
+    }
+
+    pub fn tag_at(data: &[u8], start: uint) -> DecodeResult<Res> {
+        let v = data[start] as uint;
+        if v < 0xf0 {
+            Ok(Res { val: v, next: start + 1 })
+        } else if v > 0xf0 {
+            Ok(Res { val: ((v & 0xf) << 8) | data[start + 1] as uint, next: start + 2 })
+        } else {
+            // every tag starting with byte 0xf0 is an overlong form, which is prohibited.
+            Err(InvalidTag(v))
+        }
     }
 
     #[inline(never)]
@@ -238,7 +251,7 @@ pub mod reader {
     }
 
     pub fn doc_at<'a>(data: &'a [u8], start: uint) -> DecodeResult<TaggedDoc<'a>> {
-        let elt_tag = try!(vuint_at(data, start));
+        let elt_tag = try!(tag_at(data, start));
         let elt_size = try!(vuint_at(data, elt_tag.next));
         let end = elt_size.next + elt_size.val;
         Ok(TaggedDoc {
@@ -250,7 +263,7 @@ pub mod reader {
     pub fn maybe_get_doc<'a>(d: Doc<'a>, tg: uint) -> Option<Doc<'a>> {
         let mut pos = d.start;
         while pos < d.end {
-            let elt_tag = try_or!(vuint_at(d.data, pos), None);
+            let elt_tag = try_or!(tag_at(d.data, pos), None);
             let elt_size = try_or!(vuint_at(d.data, elt_tag.next), None);
             pos = elt_size.next + elt_size.val;
             if elt_tag.val == tg {
@@ -276,7 +289,7 @@ pub mod reader {
     {
         let mut pos = d.start;
         while pos < d.end {
-            let elt_tag = try_or!(vuint_at(d.data, pos), false);
+            let elt_tag = try_or!(tag_at(d.data, pos), false);
             let elt_size = try_or!(vuint_at(d.data, elt_tag.next), false);
             pos = elt_size.next + elt_size.val;
             let doc = Doc { data: d.data, start: elt_size.next, end: pos };
@@ -292,7 +305,7 @@ pub mod reader {
     {
         let mut pos = d.start;
         while pos < d.end {
-            let elt_tag = try_or!(vuint_at(d.data, pos), false);
+            let elt_tag = try_or!(tag_at(d.data, pos), false);
             let elt_size = try_or!(vuint_at(d.data, elt_tag.next), false);
             pos = elt_size.next + elt_size.val;
             if elt_tag.val == tg {
@@ -718,6 +731,20 @@ pub mod writer {
         size_positions: Vec<uint>,
     }
 
+    fn write_tag<W: Writer>(w: &mut W, n: uint) -> EncodeResult {
+        if n < 0xf0 {
+            w.write_all(&[n as u8])
+        } else if 0x100 <= n && n < 0x1000 {
+            w.write_all(&[0xf0 | (n >> 8) as u8, n as u8])
+        } else {
+            Err(old_io::IoError {
+                kind: old_io::OtherIoError,
+                desc: "invalid tag",
+                detail: Some(format!("{}", n))
+            })
+        }
+    }
+
     fn write_sized_vuint<W: Writer>(w: &mut W, n: uint, size: uint) -> EncodeResult {
         match size {
             1 => w.write_all(&[0x80u8 | (n as u8)]),
@@ -766,7 +793,7 @@ pub mod writer {
             debug!("Start tag {:?}", tag_id);
 
             // Write the enum ID:
-            try!(write_vuint(self.writer, tag_id));
+            try!(write_tag(self.writer, tag_id));
 
             // Write a placeholder four-byte size.
             self.size_positions.push(try!(self.writer.tell()) as uint);
@@ -795,7 +822,7 @@ pub mod writer {
         }
 
         pub fn wr_tagged_bytes(&mut self, tag_id: uint, b: &[u8]) -> EncodeResult {
-            try!(write_vuint(self.writer, tag_id));
+            try!(write_tag(self.writer, tag_id));
             try!(write_vuint(self.writer, b.len()));
             self.writer.write_all(b)
         }
