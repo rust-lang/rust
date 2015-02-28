@@ -2332,6 +2332,11 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
           // Do static_assert checking. It can't really be done much earlier
           // because we need to get the value of the bool out of LLVM
           if attr::contains_name(&item.attrs, "static_assert") {
+              if !ty::type_is_bool(ty::expr_ty(ccx.tcx(), expr)) {
+                  ccx.sess().span_fatal(expr.span,
+                                        "can only have static_assert on a static \
+                                         with type `bool`");
+              }
               if m == ast::MutMutable {
                   ccx.sess().span_fatal(expr.span,
                                         "cannot have static_assert on a mutable \
