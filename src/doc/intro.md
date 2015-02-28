@@ -536,7 +536,7 @@ use std::thread::Thread;
 
 fn main() {
     let numbers = vec![1, 2, 3];
-    
+
     let guards: Vec<_> = (0..3).map(|i| {
         Thread::scoped(move || {
             println!("{}", numbers[i]);
@@ -565,7 +565,7 @@ while retaining safety. The answer is iterators:
 ```{rust}
 let vec = vec![1, 2, 3];
 
-for x in vec.iter() {
+for x in &vec {
     println!("{}", x);
 }
 ```
