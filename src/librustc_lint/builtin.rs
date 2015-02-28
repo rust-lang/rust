@@ -887,32 +887,28 @@ fn method_context(cx: &Context, m: &ast::Method) -> MethodContext {
 
     match cx.tcx.impl_or_trait_items.borrow().get(&did).cloned() {
         None => cx.sess().span_bug(m.span, "missing method descriptor?!"),
-        Some(md) => {
-            match md {
-                ty::MethodTraitItem(md) => {
-                    match md.container {
-                        ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
-                        ty::ImplContainer(cid) => {
-                            match ty::impl_trait_ref(cx.tcx, cid) {
-                                Some(..) => MethodContext::TraitImpl,
-                                None => MethodContext::PlainImpl
-                            }
-                        }
-                    }
-                }
-                ty::TypeTraitItem(typedef) => {
-                    match typedef.container {
-                        ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
-                        ty::ImplContainer(cid) => {
-                            match ty::impl_trait_ref(cx.tcx, cid) {
-                                Some(..) => MethodContext::TraitImpl,
-                                None => MethodContext::PlainImpl
-                            }
-                        }
+        Some(ty::MethodTraitItem(md)) => {
+            match md.container {
+                ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
+                ty::ImplContainer(cid) => {
+                    match ty::impl_trait_ref(cx.tcx, cid) {
+                        Some(..) => MethodContext::TraitImpl,
+                        None => MethodContext::PlainImpl
                     }
                 }
             }
-        }
+        },
+        Some(ty::TypeTraitItem(typedef)) => {
+            match typedef.container {
+                ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
+                ty::ImplContainer(cid) => {
+                    match ty::impl_trait_ref(cx.tcx, cid) {
+                        Some(..) => MethodContext::TraitImpl,
+                        None => MethodContext::PlainImpl
+                    }
+                }
+            }
+        },
     }
 }
 
