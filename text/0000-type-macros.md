@@ -149,8 +149,10 @@ impl<Rec: HList + Sized, X, Xs: HList, Ys: HList> ops::Add<Ys> for Cons<X, Xs> w
 
 // type macro Expr allows us to expand the + operator appropriately
 macro_rules! Expr {
-    { $A:ty } => { $A };
-    { $LHS:tt + $RHS:tt } => { <Expr!($LHS) as ops::Add<Expr!($RHS)>>::Output };
+    { ( $($LHS:tt)+ ) } => { Expr!($($LHS)+) };
+    { HList ! [ $($LHS:tt)* ] + $($RHS:tt)+ } => { <Expr!(HList![$($LHS)*]) as std::ops::Add<Expr!($($RHS)+)>>::Output };
+    { $LHS:tt + $($RHS:tt)+ } => { <Expr!($LHS) as std::ops::Add<Expr!($($RHS)+)>>::Output };
+    { $LHS:ty } => { $LHS };
 }
 
 // test demonstrating term level `xs + ys` and type level `Expr!(Xs + Ys)`
@@ -164,10 +166,10 @@ fn test_append() {
     let xs: HList![&str, bool, Vec<u64>] = hlist!["foo", false, vec![]];
     let ys: HList![u64, [u8; 3], ()] = hlist![0, [0, 1, 2], ()];
 
-    // parentheses around compound types due to limitations in macro parsing;
-    // real implementation could use a plugin to avoid this
-    let zs: Expr!((HList![&str, bool, Vec<u64>]) +
-                  (HList![u64, [u8; 3], ()]))
+    // demonstrate recursive expansion of Expr!
+    let zs: Expr!((HList![&str] + HList![bool] + HList![Vec<u64>]) +
+                  (HList![u64] + HList![[u8; 3], ()]) +
+                  HList![])
         = aux(xs, ys);
     assert_eq!(zs, hlist!["foo", false, vec![], 0, [0, 1, 2], ()])
 }
