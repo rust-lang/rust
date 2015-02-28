@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,21 +7,20 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-// trans.rs: Translate the completed AST to the LLVM IR.
-//
-// Some functions here, such as trans_block and trans_expr, return a value --
-// the result of the translation to LLVM -- while others, such as trans_fn,
-// trans_impl, and trans_item, are called only for the side effect of adding a
-// particular definition to the LLVM IR output we're producing.
-//
-// Hopefully useful general knowledge about trans:
-//
-//   * There's no way to find out the Ty type of a ValueRef.  Doing so
-//     would be "trying to get the eggs out of an omelette" (credit:
-//     pcwalton).  You can, instead, find out its TypeRef by calling val_ty,
-//     but one TypeRef corresponds to many `Ty`s; for instance, tup(int, int,
-//     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
+//! Translate the completed AST to the LLVM IR.
+//!
+//! Some functions here, such as trans_block and trans_expr, return a value --
+//! the result of the translation to LLVM -- while others, such as trans_fn,
+//! trans_impl, and trans_item, are called only for the side effect of adding a
+//! particular definition to the LLVM IR output we're producing.
+//!
+//! Hopefully useful general knowledge about trans:
+//!
+//!   * There's no way to find out the Ty type of a ValueRef.  Doing so
+//!     would be "trying to get the eggs out of an omelette" (credit:
+//!     pcwalton).  You can, instead, find out its TypeRef by calling val_ty,
+//!     but one TypeRef corresponds to many `Ty`s; for instance, tup(int, int,
+//!     int) and rec(x=int, y=int, z=int) will have the same TypeRef.
 
 #![allow(non_camel_case_types)]
 
@@ -33,7 +32,7 @@ use super::ModuleTranslation;
 use back::link::mangle_exported_name;
 use back::{link, abi};
 use lint;
-use llvm::{AttrHelper, BasicBlockRef, Linkage, ValueRef, Vector, get_param};
+use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
 use metadata::{csearch, encoder, loader};
 use middle::astencode;
@@ -46,6 +45,7 @@ use session::config::{self, NoDebugInfo};
 use session::Session;
 use trans::_match;
 use trans::adt;
+use trans::attributes;
 use trans::build::*;
 use trans::builder::{Builder, noname};
 use trans::callee;
@@ -204,7 +204,7 @@ pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
     llvm::SetUnnamedAddr(llfn, true);
 
     if ccx.is_split_stack_supported() && !ccx.sess().opts.cg.no_stack_check {
-        set_split_stack(llfn);
+        attributes::split_stack(llfn, true);
     }
 
     llfn
@@ -245,7 +245,7 @@ fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>,
     let f = decl_rust_fn(ccx, fn_ty, name);
 
     let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
-    set_llvm_fn_attrs(ccx, &attrs[..], f);
+    attributes::convert_fn_attrs_to_llvm(ccx, &attrs[..], f);
 
     ccx.externs().borrow_mut().insert(name.to_string(), f);
     f
@@ -390,77 +390,6 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
 }
 
-#[allow(dead_code)] // useful
-pub fn set_optimize_for_size(f: ValueRef) {
-    llvm::SetFunctionAttribute(f, llvm::OptimizeForSizeAttribute)
-}
-
-pub fn set_no_inline(f: ValueRef) {
-    llvm::SetFunctionAttribute(f, llvm::NoInlineAttribute)
-}
-
-#[allow(dead_code)] // useful
-pub fn set_no_unwind(f: ValueRef) {
-    llvm::SetFunctionAttribute(f, llvm::NoUnwindAttribute)
-}
-
-// Tell LLVM to emit the information necessary to unwind the stack for the
-// function f.
-pub fn set_uwtable(f: ValueRef) {
-    llvm::SetFunctionAttribute(f, llvm::UWTableAttribute)
-}
-
-pub fn set_inline_hint(f: ValueRef) {
-    llvm::SetFunctionAttribute(f, llvm::InlineHintAttribute)
-}
-
-pub fn set_llvm_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
-    use syntax::attr::{find_inline_attr, InlineAttr};
-    // Set the inline hint if there is one
-    match find_inline_attr(Some(ccx.sess().diagnostic()), attrs) {
-        InlineAttr::Hint   => set_inline_hint(llfn),
-        InlineAttr::Always => set_always_inline(llfn),
-        InlineAttr::Never  => set_no_inline(llfn),
-        InlineAttr::None   => { /* fallthrough */ }
-    }
-
-    for attr in attrs {
-        let mut used = true;
-        match &attr.name()[..] {
-            "no_stack_check" => unset_split_stack(llfn),
-            "cold" => unsafe {
-                llvm::LLVMAddFunctionAttribute(llfn,
-                                               llvm::FunctionIndex as c_uint,
-                                               llvm::ColdAttribute as uint64_t)
-            },
-            "allocator" => {
-                llvm::NoAliasAttribute.apply_llfn(llvm::ReturnIndex as c_uint, llfn);
-            }
-            _ => used = false,
-        }
-        if used {
-            attr::mark_used(attr);
-        }
-    }
-}
-
-pub fn set_always_inline(f: ValueRef) {
-    llvm::SetFunctionAttribute(f, llvm::AlwaysInlineAttribute)
-}
-
-pub fn set_split_stack(f: ValueRef) {
-    unsafe {
-        llvm::LLVMAddFunctionAttrString(f, llvm::FunctionIndex as c_uint,
-                                        "split-stack\0".as_ptr() as *const _);
-    }
-}
-
-pub fn unset_split_stack(f: ValueRef) {
-    unsafe {
-        llvm::LLVMRemoveFunctionAttrString(f, llvm::FunctionIndex as c_uint,
-                                           "split-stack\0".as_ptr() as *const _);
-    }
-}
 
 // Double-check that we never ask LLVM to declare the same symbol twice. It
 // silently mangles such symbols, breaking our linkage model.
@@ -898,7 +827,7 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 _ => {
                     let llfn = foreign::register_foreign_item_fn(ccx, fn_ty.abi, t, &name[..]);
                     let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
-                    set_llvm_fn_attrs(ccx, &attrs, llfn);
+                    attributes::convert_fn_attrs_to_llvm(ccx, &attrs, llfn);
                     llfn
                 }
             }
@@ -1708,7 +1637,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
 
     let _icx = push_ctxt("trans_closure");
-    set_uwtable(llfndecl);
+    attributes::emit_uwtable(llfndecl, true);
 
     debug!("trans_closure(..., param_substs={})",
            param_substs.repr(ccx.tcx()));
@@ -2312,7 +2241,7 @@ fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: String, node_id: ast::N
     // eh_personality functions need to be externally linkable.
     let def = ast_util::local_def(node_id);
     if ccx.tcx().lang_items.stack_exhausted() == Some(def) {
-        unset_split_stack(llfn);
+        attributes::split_stack(llfn, false);
         llvm::SetLinkage(llfn, llvm::ExternalLinkage);
     }
     if ccx.tcx().lang_items.eh_personality() == Some(def) {
@@ -2733,7 +2662,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                                                    sym,
                                                                    i.id)
                     };
-                    set_llvm_fn_attrs(ccx, &i.attrs, llfn);
+                    attributes::convert_fn_attrs_to_llvm(ccx, &i.attrs, llfn);
                     llfn
                 }
 
@@ -2794,7 +2723,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     let ty = ty::node_id_to_type(ccx.tcx(), ni.id);
                     let name = foreign::link_name(&*ni);
                     let llfn = foreign::register_foreign_item_fn(ccx, abi, ty, &name);
-                    set_llvm_fn_attrs(ccx, &ni.attrs, llfn);
+                    attributes::convert_fn_attrs_to_llvm(ccx, &ni.attrs, llfn);
                     llfn
                 }
                 ast::ForeignItemStatic(..) => {
@@ -2826,7 +2755,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                 }
                 _ => ccx.sess().bug("NodeVariant, shouldn't happen")
             };
-            set_inline_hint(llfn);
+            attributes::inline(llfn, attributes::InlineHint);
             llfn
         }
 
@@ -2848,7 +2777,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                     &struct_item.attrs);
             let llfn = register_fn(ccx, struct_item.span,
                                    sym, ctor_id, ty);
-            set_inline_hint(llfn);
+            attributes::inline(llfn, attributes::InlineHint);
             llfn
         }
 
@@ -2883,7 +2812,7 @@ fn register_method(ccx: &CrateContext, id: ast::NodeId,
         } else {
             foreign::register_rust_fn_with_foreign_abi(ccx, span, sym, id)
         };
-        set_llvm_fn_attrs(ccx, &attrs, llfn);
+        attributes::convert_fn_attrs_to_llvm(ccx, &attrs, llfn);
         return llfn;
     } else {
         ccx.sess().span_bug(span, "expected bare rust function");
