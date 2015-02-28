@@ -10,6 +10,7 @@
 
 extern crate rustc;
 extern crate rustc_driver;
+extern crate rustc_lint;
 extern crate syntax;
 
 use rustc::session::{build_session, Session};
@@ -46,6 +47,7 @@ fn basic_sess(sysroot: Path) -> Session {
 
     let descriptions = Registry::new(&rustc::diagnostics::DIAGNOSTICS);
     let sess = build_session(opts, None, descriptions);
+    rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     sess
 }
 
