@@ -1577,7 +1577,7 @@ impl LintPass for MissingDoc {
                                      tm.span, "a type method");
     }
 
-    fn check_trait_method(&mut self, cx: &Context, it: &ast::TraitItem) {
+    fn check_trait_item(&mut self, cx: &Context, it: &ast::TraitItem) {
         if let ast::TraitItem::TypeTraitItem(ref ty) = *it {
             let assoc_ty = &ty.ty_param;
             self.check_missing_docs_attrs(cx, Some(assoc_ty.id), &ty.attrs,
