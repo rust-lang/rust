@@ -14,10 +14,11 @@ use std::collections::BTreeMap;
 use ast;
 use ast::{Ident, Name, TokenTree};
 use codemap::Span;
-use ext::base::{ExtCtxt, MacExpr, MacResult, MacItems};
+use ext::base::{ExtCtxt, MacEager, MacResult};
 use ext::build::AstBuilder;
 use parse::token;
 use ptr::P;
+use util::small_vector::SmallVector;
 
 thread_local! {
     static REGISTERED_DIAGNOSTICS: RefCell<BTreeMap<Name, Option<Name>>> = {
@@ -73,7 +74,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
             ));
         }
     });
-    MacExpr::new(quote_expr!(ecx, ()))
+    MacEager::expr(quote_expr!(ecx, ()))
 }
 
 pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
@@ -101,7 +102,7 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
     let sym = Ident::new(token::gensym(&(
         "__register_diagnostic_".to_string() + &token::get_ident(*code)
     )));
-    MacItems::new(vec![quote_item!(ecx, mod $sym {}).unwrap()].into_iter())
+    MacEager::items(SmallVector::many(vec![quote_item!(ecx, mod $sym {}).unwrap()]))
 }
 
 pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
@@ -126,7 +127,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
             (descriptions.len(), ecx.expr_vec(span, descriptions))
         });
 
-    MacItems::new(vec![quote_item!(ecx,
+    MacEager::items(SmallVector::many(vec![quote_item!(ecx,
         pub static $name: [(&'static str, &'static str); $count] = $expr;
-    ).unwrap()].into_iter())
+    ).unwrap()]))
 }

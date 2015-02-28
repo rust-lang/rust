@@ -40,7 +40,6 @@
 #![feature(old_path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(env)]
 #![feature(path)]
 
 extern crate syntax;
