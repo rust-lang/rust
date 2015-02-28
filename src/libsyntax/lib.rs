@@ -27,7 +27,6 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(env)]
 #![feature(int_uint)]
 #![feature(old_io)]
 #![feature(libc)]
