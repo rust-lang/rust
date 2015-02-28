@@ -40,6 +40,7 @@ use cmp::{Ordering, PartialEq, PartialOrd, Eq, Ord};
 use cmp::Ordering::{Less, Equal, Greater};
 use cmp;
 use default::Default;
+use intrinsics::assume;
 use iter::*;
 use ops::{FnMut, self, Index};
 use ops::RangeFull;
@@ -137,6 +138,7 @@ impl<T> SliceExt for [T] {
     fn iter<'a>(&'a self) -> Iter<'a, T> {
         unsafe {
             let p = self.as_ptr();
+            assume(!p.is_null());
             if mem::size_of::<T>() == 0 {
                 Iter {ptr: p,
                       end: (p as usize + self.len()) as *const T,
@@ -276,6 +278,7 @@ impl<T> SliceExt for [T] {
     fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
         unsafe {
             let p = self.as_mut_ptr();
+            assume(!p.is_null());
             if mem::size_of::<T>() == 0 {
                 IterMut {ptr: p,
                          end: (p as usize + self.len()) as *mut T,
