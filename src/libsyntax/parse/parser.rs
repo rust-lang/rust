@@ -3538,6 +3538,19 @@ impl<'a> Parser<'a> {
                         self.bump();
                         pat = PatStruct(enum_path, fields, etc);
                     }
+                    token::DotDotDot => {
+                        let hi = self.last_span.hi;
+                        let start = self.mk_expr(lo, hi, ExprPath(None, enum_path));
+                        self.eat(&token::DotDotDot);
+                        let end = if self.token.is_ident() || self.token.is_path() {
+                            let path = self.parse_path(LifetimeAndTypesWithColons);
+                            let hi = self.span.hi;
+                            self.mk_expr(lo, hi, ExprPath(None, path))
+                        } else {
+                            self.parse_literal_maybe_minus()
+                        };
+                        pat = PatRange(start, end);
+                    }
                     _ => {
                         let mut args: Vec<P<Pat>> = Vec::new();
                         match self.token {
