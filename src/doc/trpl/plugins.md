@@ -71,8 +71,8 @@ extern crate rustc;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ast::{TokenTree, TtToken};
-use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacExpr};
-use syntax::ext::build::AstBuilder;  // trait for expr_uint
+use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
+use syntax::ext::build::AstBuilder;  // trait for expr_usize
 use rustc::plugin::Registry;
 
 fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
@@ -107,7 +107,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         }
     }
 
-    MacExpr::new(cx.expr_uint(sp, total))
+    MacEager::expr(cx.expr_usize(sp, total))
 }
 
 #[plugin_registrar]
@@ -183,7 +183,7 @@ with
 [`syntax::print::pprust::*_to_string`](http://doc.rust-lang.org/syntax/print/pprust/index.html#functions).
 
 The example above produced an integer literal using
-[`AstBuilder::expr_uint`](../syntax/ext/build/trait.AstBuilder.html#tymethod.expr_uint).
+[`AstBuilder::expr_usize`](../syntax/ext/build/trait.AstBuilder.html#tymethod.expr_usize).
 As an alternative to the `AstBuilder` trait, `libsyntax` provides a set of
 [quasiquote macros](../syntax/ext/quote/index.html).  They are undocumented and
 very rough around the edges.  However, the implementation may be a good

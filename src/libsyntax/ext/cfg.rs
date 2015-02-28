@@ -35,5 +35,5 @@ pub fn expand_cfg<'cx>(cx: &mut ExtCtxt,
     }
 
     let matches_cfg = attr::cfg_matches(&cx.parse_sess.span_diagnostic, &cx.cfg, &*cfg);
-    MacExpr::new(cx.expr_bool(sp, matches_cfg))
+    MacEager::expr(cx.expr_bool(sp, matches_cfg))
 }
