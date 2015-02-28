@@ -60,7 +60,7 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
             }
         }
     }
-    base::MacExpr::new(cx.expr_str(
+    base::MacEager::expr(cx.expr_str(
             sp,
             token::intern_and_get_ident(&accumulator[..])))
 }

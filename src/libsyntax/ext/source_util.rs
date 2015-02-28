@@ -35,7 +35,7 @@ pub fn expand_line(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let topmost = cx.original_span_in_file();
     let loc = cx.codemap().lookup_char_pos(topmost.lo);
 
-    base::MacExpr::new(cx.expr_u32(topmost, loc.line as u32))
+    base::MacEager::expr(cx.expr_u32(topmost, loc.line as u32))
 }
 
 /* column!(): expands to the current column number */
@@ -46,7 +46,7 @@ pub fn expand_column(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let topmost = cx.original_span_in_file();
     let loc = cx.codemap().lookup_char_pos(topmost.lo);
 
-    base::MacExpr::new(cx.expr_u32(topmost, loc.col.to_usize() as u32))
+    base::MacEager::expr(cx.expr_u32(topmost, loc.col.to_usize() as u32))
 }
 
 /// file!(): expands to the current filename */
@@ -59,13 +59,13 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let topmost = cx.original_span_in_file();
     let loc = cx.codemap().lookup_char_pos(topmost.lo);
     let filename = token::intern_and_get_ident(&loc.file.name);
-    base::MacExpr::new(cx.expr_str(topmost, filename))
+    base::MacEager::expr(cx.expr_str(topmost, filename))
 }
 
 pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         -> Box<base::MacResult+'static> {
     let s = pprust::tts_to_string(tts);
-    base::MacExpr::new(cx.expr_str(sp,
+    base::MacEager::expr(cx.expr_str(sp,
                                    token::intern_and_get_ident(&s[..])))
 }
 
@@ -77,7 +77,7 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    .map(|x| token::get_ident(*x).to_string())
                    .collect::<Vec<String>>()
                    .connect("::");
-    base::MacExpr::new(cx.expr_str(
+    base::MacEager::expr(cx.expr_str(
             sp,
             token::intern_and_get_ident(&string[..])))
 }
@@ -155,7 +155,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             let interned = token::intern_and_get_ident(&src[..]);
             cx.codemap().new_filemap(filename, src);
 
-            base::MacExpr::new(cx.expr_str(sp, interned))
+            base::MacEager::expr(cx.expr_str(sp, interned))
         }
         Err(_) => {
             cx.span_err(sp,
@@ -181,7 +181,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
         Ok(bytes) => {
             let bytes = bytes.iter().cloned().collect();
-            base::MacExpr::new(cx.expr_lit(sp, ast::LitBinary(Rc::new(bytes))))
+            base::MacEager::expr(cx.expr_lit(sp, ast::LitBinary(Rc::new(bytes))))
         }
     }
 }
