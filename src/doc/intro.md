@@ -511,7 +511,7 @@ numbers[0] is 2
 ```
 
 Each time, we can get a slightly different output because the threads are not
-quaranteed to run in any set order. If you get the same order every time it is
+guaranteed to run in any set order. If you get the same order every time it is
 because each of these threads are very small and complete too fast for their
 indeterminate behavior to surface.
 
