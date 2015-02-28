@@ -274,7 +274,7 @@ impl Process {
                 // file descriptor. Otherwise, the first file descriptor opened
                 // up in the child would be numbered as one of the stdio file
                 // descriptors, which is likely to wreak havoc.
-                let setup = |&: src: Option<AnonPipe>, dst: c_int| {
+                let setup = |src: Option<AnonPipe>, dst: c_int| {
                     let src = match src {
                         None => {
                             let flags = if dst == libc::STDIN_FILENO {

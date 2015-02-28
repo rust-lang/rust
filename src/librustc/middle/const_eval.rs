@@ -257,7 +257,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             }
           }
           (Ok(const_int(a)), Ok(const_int(b))) => {
-            let is_a_min_value = |&:| {
+            let is_a_min_value = || {
                 let int_ty = match ty::expr_ty_opt(tcx, e).map(|ty| &ty.sty) {
                     Some(&ty::ty_int(int_ty)) => int_ty,
                     _ => return false
