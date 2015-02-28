@@ -17,6 +17,7 @@
 #![feature(box_syntax)]
 
 use std::fmt;
+use std::usize;
 
 struct A;
 struct B;
