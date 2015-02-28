@@ -34,6 +34,7 @@ use syntax::ptr::P;
 
 use graphviz as dot;
 
+use std::borrow::{Cow, IntoCow};
 use std::old_io::{self, BufReader};
 use std::option;
 use std::str::FromStr;
@@ -44,6 +45,7 @@ pub enum PpSourceMode {
     PpmEveryBodyLoops,
     PpmExpanded,
     PpmTyped,
+    PpmTypedUnsuffixedLiterals,
     PpmIdentified,
     PpmExpandedIdentified,
     PpmExpandedHygiene,
@@ -76,6 +78,7 @@ pub fn parse_pretty(sess: &Session,
         ("everybody_loops", true) => PpmSource(PpmEveryBodyLoops),
         ("expanded", _)     => PpmSource(PpmExpanded),
         ("typed", _)        => PpmSource(PpmTyped),
+        ("typed,unsuffixed_literals", true) => PpmSource(PpmTypedUnsuffixedLiterals),
         ("expanded,identified", _) => PpmSource(PpmExpandedIdentified),
         ("expanded,hygiene", _) => PpmSource(PpmExpandedHygiene),
         ("identified", _)   => PpmSource(PpmIdentified),
@@ -85,7 +88,8 @@ pub fn parse_pretty(sess: &Session,
             if extended {
                 sess.fatal(&format!(
                     "argument to `xpretty` must be one of `normal`, \
-                     `expanded`, `flowgraph[,unlabelled]=<nodeid>`, `typed`, `identified`, \
+                     `expanded`, `flowgraph[,unlabelled]=<nodeid>`, `typed`, \
+                     `typed,unsuffixed_literals`, `identified`, \
                      `expanded,identified`, or `everybody_loops`; got {}", name));
             } else {
                 sess.fatal(&format!(
@@ -163,6 +167,7 @@ impl pprust::PpAnn for HygieneAnnotation {
     }
 }
 
+#[derive(Copy)]
 struct TypedAnnotation<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
 }
@@ -189,6 +194,44 @@ impl<'a, 'tcx> pprust::PpAnn for TypedAnnotation<'a, 'tcx> {
                 s.pclose()
             }
             _ => Ok(())
+        }
+    }
+}
+
+struct UnsuffixedLitAnnotation<A> {
+    ann: A
+}
+
+impl<A: pprust::PpAnn> pprust::PpAnn for UnsuffixedLitAnnotation<A> {
+    fn pre(&self,
+           s: &mut pprust::State,
+           node: pprust::AnnNode) -> old_io::IoResult<()> {
+        self.ann.pre(s, node)
+    }
+    fn post(&self,
+            s: &mut pprust::State,
+            node: pprust::AnnNode) -> old_io::IoResult<()> {
+        self.ann.post(s, node)
+    }
+    fn literal_to_string<'a>(&self,
+                             s: &mut pprust::State,
+                             lit: &'a ast::Lit) -> Cow<'a, str> {
+        match lit.node {
+            ast::LitInt(i, t) => {
+                match t {
+                    ast::UnsignedIntLit(_) |
+                    ast::SignedIntLit(_, ast::Plus) |
+                    ast::UnsuffixedIntLit(ast::Plus) => {
+                        format!("{}", i)
+                    }
+                    ast::SignedIntLit(_, ast::Minus) |
+                    ast::UnsuffixedIntLit(ast::Minus) => {
+                        format!("-{}", i)
+                    }
+                }.into_cow()
+            }
+            ast::LitFloat(ref f, _) => f.into_cow(),
+            _ => self.ann.literal_to_string(s, lit)
         }
     }
 }
@@ -374,6 +417,7 @@ pub fn printing_phase<'a, 'b>(control: &'a mut driver::CompileController<'b>,
         }
 
         PpmSource(PpmTyped) |
+        PpmSource(PpmTypedUnsuffixedLiterals) |
         PpmFlowGraph(_) => {
             &mut control.after_analysis
         }
@@ -405,7 +449,10 @@ pub fn print_from_phase(state: driver::CompileState,
         PpmSource(mode) => {
             debug!("pretty printing source code {:?}", mode);
 
-            let typed_annotation = state.tcx.map(|tcx| TypedAnnotation { tcx: tcx });
+            let typed_ann = state.tcx.map(|tcx| TypedAnnotation { tcx: tcx });
+            let typed_unsuffixed_lit_ann = typed_ann.map(|ann| {
+                UnsuffixedLitAnnotation { ann: ann }
+            });
             let annotation: &pprust::PpAnn = match mode {
                 PpmNormal | PpmEveryBodyLoops | PpmExpanded => {
                     NO_ANNOTATION
@@ -417,7 +464,11 @@ pub fn print_from_phase(state: driver::CompileState,
                     HYGIENE_ANNOTATION
                 }
                 PpmTyped => {
-                    typed_annotation.as_ref().expect("--pretty=typed missing type context")
+                    typed_ann.as_ref().expect("--pretty=typed missing type context")
+                }
+                PpmTypedUnsuffixedLiterals => {
+                    typed_unsuffixed_lit_ann.as_ref().expect(
+                        "--xpretty=typed,unsuffixed_literals missing type context")
                 }
             };
 
