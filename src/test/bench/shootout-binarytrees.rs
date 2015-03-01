@@ -109,7 +109,7 @@ fn main() {
 
     let messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
         use std::num::Int;
-        let iterations = 2.pow((max_depth - depth + min_depth) as usize);
+        let iterations = 2.pow((max_depth - depth + min_depth) as u32);
         thread::scoped(move || inner(depth, iterations))
     }).collect::<Vec<_>>();
 

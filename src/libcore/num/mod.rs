@@ -372,9 +372,10 @@ pub trait Int
     #[unstable(feature = "core",
                reason = "pending integer conventions")]
     #[inline]
-    fn pow(self, mut exp: uint) -> Self {
+    fn pow(self, mut exp: u32) -> Self {
         let mut base = self;
         let mut acc: Self = Int::one();
+
         while exp > 0 {
             if (exp & 1) == 1 {
                 acc = acc * base;
