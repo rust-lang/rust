@@ -11,7 +11,6 @@
 use middle::infer::{InferCtxt};
 use middle::ty::{self, RegionEscape, Ty};
 use std::collections::HashSet;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::default::Default;
 use syntax::ast;
 use util::common::ErrorReported;
@@ -437,9 +436,7 @@ fn register_region_obligation<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("register_region_obligation({})",
            region_obligation.repr(tcx));
 
-    match region_obligations.entry(region_obligation.cause.body_id) {
-        Vacant(entry) => { entry.insert(vec![region_obligation]); },
-        Occupied(mut entry) => { entry.get_mut().push(region_obligation); },
-    }
+    region_obligations.entry(region_obligation.cause.body_id).default(vec![])
+        .push(region_obligation);
 
 }

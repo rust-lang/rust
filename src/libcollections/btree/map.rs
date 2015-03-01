@@ -1587,21 +1587,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     /// # #![feature(collections)]
     /// use std::collections::BTreeMap;
-    /// use std::collections::btree_map::Entry;
     ///
     /// let mut count: BTreeMap<&str, usize> = BTreeMap::new();
     ///
     /// // count the number of occurrences of letters in the vec
-    /// for x in vec!["a","b","a","c","a","b"].iter() {
-    ///     match count.entry(*x) {
-    ///         Entry::Vacant(view) => {
-    ///             view.insert(1);
-    ///         },
-    ///         Entry::Occupied(mut view) => {
-    ///             let v = view.get_mut();
-    ///             *v += 1;
-    ///         },
-    ///     }
+    /// for x in vec!["a","b","a","c","a","b"] {
+    ///     *count.entry(x).default(0) += 1;
     /// }
     ///
     /// assert_eq!(count["a"], 3);
