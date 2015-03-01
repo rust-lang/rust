@@ -589,15 +589,16 @@ pub fn trans_object_shim<'a, 'tcx>(
     };
     let fty = monomorphize::apply_param_substs(tcx, &object_substs, &method_ty.fty);
     let fty = tcx.mk_bare_fn(fty);
-    debug!("trans_object_shim: fty={}", fty.repr(tcx));
+    let method_ty = opaque_method_ty(tcx, fty);
+    debug!("trans_object_shim: fty={} method_ty={}", fty.repr(tcx), method_ty.repr(tcx));
 
     //
-    let method_bare_fn_ty =
-        ty::mk_bare_fn(tcx, None, fty);
+    let shim_fn_ty = ty::mk_bare_fn(tcx, None, fty);
+    let method_bare_fn_ty = ty::mk_bare_fn(tcx, None, method_ty);
     let function_name =
-        link::mangle_internal_name_by_type_and_seq(ccx, method_bare_fn_ty, "object_shim");
+        link::mangle_internal_name_by_type_and_seq(ccx, shim_fn_ty, "object_shim");
     let llfn =
-        decl_internal_rust_fn(ccx, method_bare_fn_ty, &function_name);
+        decl_internal_rust_fn(ccx, shim_fn_ty, &function_name);
 
     let sig = ty::erase_late_bound_regions(ccx.tcx(), &fty.sig);
 
@@ -865,4 +866,21 @@ pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     Store(bcx, vtable, llvtabledest);
 
     bcx
+}
+
+/// Replace the self type (&Self or Box<Self>) with an opaque pointer.
+pub fn opaque_method_ty<'tcx>(tcx: &ty::ctxt<'tcx>, method_ty: &ty::BareFnTy<'tcx>)
+        -> &'tcx ty::BareFnTy<'tcx> {
+    let mut inputs = method_ty.sig.0.inputs.clone();
+    inputs[0] = ty::mk_mut_ptr(tcx, ty::mk_mach_int(tcx, ast::TyI8));
+
+    tcx.mk_bare_fn(ty::BareFnTy {
+        unsafety: method_ty.unsafety,
+        abi: method_ty.abi,
+        sig: ty::Binder(ty::FnSig {
+            inputs: inputs,
+            output: method_ty.sig.0.output,
+            variadic: method_ty.sig.0.variadic,
+        }),
+    })
 }
