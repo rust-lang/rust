@@ -45,7 +45,7 @@ pub mod scoped;
 
 // Sure wish we had macro hygiene, no?
 #[doc(hidden)]
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "thread_local_internals")]
 pub mod __impl {
     pub use super::imp::Key as KeyInner;
     pub use super::imp::destroy_value;
@@ -117,6 +117,7 @@ pub struct Key<T> {
 /// Declare a new thread local storage key of type `std::thread_local::Key`.
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable]
 macro_rules! thread_local {
     (static $name:ident: $t:ty = $init:expr) => (
         static $name: ::std::thread_local::Key<$t> = {
@@ -176,6 +177,7 @@ macro_rules! thread_local {
 
 #[macro_export]
 #[doc(hidden)]
+#[allow_internal_unstable]
 macro_rules! __thread_local_inner {
     (static $name:ident: $t:ty = $init:expr) => (
         #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
@@ -337,7 +339,7 @@ mod imp {
     use ptr;
 
     #[doc(hidden)]
-    #[stable(since = "1.0.0", feature = "rust1")]
+    #[unstable(feature = "thread_local_internals")]
     pub struct Key<T> {
         // Place the inner bits in an `UnsafeCell` to currently get around the
         // "only Sync statics" restriction. This allows any type to be placed in
@@ -345,14 +347,14 @@ mod imp {
         //
         // Note that all access requires `T: 'static` so it can't be a type with
         // any borrowed pointers still.
-        #[stable(since = "1.0.0", feature = "rust1")]
+        #[unstable(feature = "thread_local_internals")]
         pub inner: UnsafeCell<T>,
 
         // Metadata to keep track of the state of the destructor. Remember that
         // these variables are thread-local, not global.
-        #[stable(since = "1.0.0", feature = "rust1")]
+        #[unstable(feature = "thread_local_internals")]
         pub dtor_registered: UnsafeCell<bool>, // should be Cell
-        #[stable(since = "1.0.0", feature = "rust1")]
+        #[unstable(feature = "thread_local_internals")]
         pub dtor_running: UnsafeCell<bool>, // should be Cell
     }
 
@@ -455,7 +457,7 @@ mod imp {
     }
 
     #[doc(hidden)]
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "thread_local_internals")]
     pub unsafe extern fn destroy_value<T>(ptr: *mut u8) {
         let ptr = ptr as *mut Key<T>;
         // Right before we run the user destructor be sure to flag the
@@ -477,15 +479,15 @@ mod imp {
     use sys_common::thread_local::StaticKey as OsStaticKey;
 
     #[doc(hidden)]
-    #[stable(since = "1.0.0", feature = "rust1")]
+    #[unstable(feature = "thread_local_internals")]
     pub struct Key<T> {
         // Statically allocated initialization expression, using an `UnsafeCell`
         // for the same reasons as above.
-        #[stable(since = "1.0.0", feature = "rust1")]
+        #[unstable(feature = "thread_local_internals")]
         pub inner: UnsafeCell<T>,
 
         // OS-TLS key that we'll use to key off.
-        #[stable(since = "1.0.0", feature = "rust1")]
+        #[unstable(feature = "thread_local_internals")]
         pub os: OsStaticKey,
     }
 
@@ -528,7 +530,7 @@ mod imp {
     }
 
     #[doc(hidden)]
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "thread_local_internals")]
     pub unsafe extern fn destroy_value<T: 'static>(ptr: *mut u8) {
         // The OS TLS ensures that this key contains a NULL value when this
         // destructor starts to run. We set it back to a sentinel value of 1 to
