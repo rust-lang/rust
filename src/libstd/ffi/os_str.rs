@@ -34,10 +34,10 @@
 
 use core::prelude::*;
 
-use borrow::{Borrow, ToOwned};
+use borrow::{Borrow, Cow, ToOwned};
 use fmt::{self, Debug};
 use mem;
-use string::{String, CowString};
+use string::String;
 use ops;
 use cmp;
 use hash::{Hash, Hasher};
@@ -183,10 +183,10 @@ impl OsStr {
         self.inner.to_str()
     }
 
-    /// Convert an `OsStr` to a `CowString`.
+    /// Convert an `OsStr` to a `Cow<str>`.
     ///
     /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
-    pub fn to_string_lossy(&self) -> CowString {
+    pub fn to_string_lossy(&self) -> Cow<str> {
         self.inner.to_string_lossy()
     }
 
