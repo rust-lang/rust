@@ -419,6 +419,13 @@ pub trait StrExt: Index<RangeFull, Output = str> {
         self.chars().flat_map(|c| c.escape_default()).collect()
     }
 
+    /// Escapes each char in `s` with `char::escape_control`.
+    #[unstable(feature = "collections",
+               reason = "return type may change to be an iterator")]
+    fn escape_control(&self) -> String {
+        self.chars().flat_map(|c| c.escape_control()).collect()
+    }
+
     /// Escapes each char in `s` with `char::escape_unicode`.
     #[unstable(feature = "collections",
                reason = "return type may change to be an iterator")]
@@ -2238,6 +2245,17 @@ mod tests {
                    String::from_str("ab\\u{fb00}"));
         assert_eq!("\u{1d4ea}\r".escape_default(),
                    String::from_str("\\u{1d4ea}\\r"));
+    }
+
+    #[test]
+    fn test_escape_control() {
+        assert_eq!("abc".escape_control(), String::from_str("abc"));
+        assert_eq!("öbµ".escape_control(), String::from_str("öbµ"));
+        assert_eq!("a c".escape_control(), String::from_str("a c"));
+        assert_eq!("\r\n\t".escape_control(), String::from_str("\\r\\n\\t"));
+        assert_eq!("'\"\\".escape_control(), String::from_str("\\'\\\"\\\\"));
+        assert_eq!("\u{100}".escape_control(),
+                   String::from_str("\u{100}"));
     }
 
     #[test]
