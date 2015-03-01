@@ -84,7 +84,7 @@ struct LowerHex;
 
 /// A hexadecimal (base 16) radix, formatted with upper-case characters
 #[derive(Clone, PartialEq)]
-pub struct UpperHex;
+struct UpperHex;
 
 macro_rules! radix {
     ($T:ident, $base:expr, $prefix:expr, $($x:pat => $conv:expr),+) => {
@@ -156,7 +156,7 @@ pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
 }
 
 macro_rules! radix_fmt {
-    ($T:ty as $U:ty, $fmt:ident, $S:expr) => {
+    ($T:ty as $U:ty, $fmt:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Debug for RadixFmt<$T, Radix> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -182,8 +182,8 @@ macro_rules! int_base {
     }
 }
 
-macro_rules! show {
-    ($T:ident with $S:expr) => {
+macro_rules! debug {
+    ($T:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl fmt::Debug for $T {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -194,27 +194,24 @@ macro_rules! show {
 }
 macro_rules! integer {
     ($Int:ident, $Uint:ident) => {
-        integer! { $Int, $Uint, stringify!($Int), stringify!($Uint) }
-    };
-    ($Int:ident, $Uint:ident, $SI:expr, $SU:expr) => {
         int_base! { Display  for $Int as $Int   -> Decimal }
         int_base! { Binary   for $Int as $Uint  -> Binary }
         int_base! { Octal    for $Int as $Uint  -> Octal }
         int_base! { LowerHex for $Int as $Uint  -> LowerHex }
         int_base! { UpperHex for $Int as $Uint  -> UpperHex }
-        radix_fmt! { $Int as $Int, fmt_int, $SI }
-        show! { $Int with $SI }
+        radix_fmt! { $Int as $Int, fmt_int }
+        debug! { $Int }
 
         int_base! { Display  for $Uint as $Uint -> Decimal }
         int_base! { Binary   for $Uint as $Uint -> Binary }
         int_base! { Octal    for $Uint as $Uint -> Octal }
         int_base! { LowerHex for $Uint as $Uint -> LowerHex }
         int_base! { UpperHex for $Uint as $Uint -> UpperHex }
-        radix_fmt! { $Uint as $Uint, fmt_int, $SU }
-        show! { $Uint with $SU }
+        radix_fmt! { $Uint as $Uint, fmt_int }
+        debug! { $Uint }
     }
 }
-integer! { isize, usize, "i", "u" }
+integer! { isize, usize }
 integer! { i8, u8 }
 integer! { i16, u16 }
 integer! { i32, u32 }
