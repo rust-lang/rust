@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    pub use std::uint; //~ ERROR: visibility has no effect
+    pub use std::usize; //~ ERROR: visibility has no effect
     pub struct A; //~ ERROR: visibility has no effect
     pub enum B {} //~ ERROR: visibility has no effect
     pub trait C { //~ ERROR: visibility has no effect
