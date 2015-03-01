@@ -65,6 +65,7 @@ pub struct Key<T> { #[doc(hidden)] pub inner: __impl::KeyInner<T> }
 /// This macro declares a `static` item on which methods are used to get and
 /// set the value stored within.
 #[macro_export]
+#[allow_internal_unstable]
 macro_rules! scoped_thread_local {
     (static $name:ident: $t:ty) => (
         __scoped_thread_local_inner!(static $name: $t);
@@ -76,6 +77,7 @@ macro_rules! scoped_thread_local {
 
 #[macro_export]
 #[doc(hidden)]
+#[allow_internal_unstable]
 macro_rules! __scoped_thread_local_inner {
     (static $name:ident: $t:ty) => (
         #[cfg_attr(not(any(windows,
