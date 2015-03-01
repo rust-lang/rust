@@ -582,6 +582,14 @@ item_impl
 {
   $$ = mk_node("ItemImplNeg", 7, $1, $3, $5, $7, $8, $10, $11);
 }
+| maybe_unsafe IMPL generic_params trait_ref FOR DOTDOT '{' '}'
+{
+  $$ = mk_node("ItemImplDefault", 3, $1, $3, $4);
+}
+| maybe_unsafe IMPL generic_params '!' trait_ref FOR DOTDOT '{' '}'
+{
+  $$ = mk_node("ItemImplDefaultNeg", 3, $1, $3, $4);
+}
 ;
 
 maybe_impl_items
