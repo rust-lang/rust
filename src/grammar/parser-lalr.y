@@ -1032,7 +1032,8 @@ ty_qualified_path_and_generic_values
 }
 | ty_qualified_path ',' ty_sums maybe_bindings
 {
-  $$ = mk_node("GenericValues", 3, mk_none(), ext_node(mk_node("TySums", 1, $1), 1, $3), $4); }
+  $$ = mk_node("GenericValues", 3, mk_none(), mk_node("TySums", 2, $1, $3), $4);
+}
 ;
 
 ty_qualified_path
@@ -1521,31 +1522,35 @@ nonblock_prefix_expr
 ;
 
 expr_qualified_path
-: '<' ty_sum AS trait_ref '>' MOD_SEP ident
+: '<' ty_sum maybe_as_trait_ref '>' MOD_SEP ident
 {
-  $$ = mk_node("ExprQualifiedPath", 3, $2, $4, $7);
+  $$ = mk_node("ExprQualifiedPath", 3, $2, $3, $6);
 }
-| '<' ty_sum AS trait_ref '>' MOD_SEP ident generic_args
+| '<' ty_sum maybe_as_trait_ref '>' MOD_SEP ident generic_args
 {
-  $$ = mk_node("ExprQualifiedPath", 4, $2, $4, $7, $8);
+  $$ = mk_node("ExprQualifiedPath", 4, $2, $3, $6, $7);
 }
-| SHL ty_sum AS trait_ref '>' MOD_SEP ident AS trait_ref '>' MOD_SEP ident
+| SHL ty_sum maybe_as_trait_ref '>' MOD_SEP ident maybe_as_trait_ref '>' MOD_SEP ident
 {
-  $$ = mk_node("ExprQualifiedPath", 3, mk_node("ExprQualifiedPath", 3, $2, $4, $7), $9, $12);
+  $$ = mk_node("ExprQualifiedPath", 3, mk_node("ExprQualifiedPath", 3, $2, $3, $6), $7, $10);
 }
-| SHL ty_sum AS trait_ref '>' MOD_SEP ident generic_args AS trait_ref '>' MOD_SEP ident
+| SHL ty_sum maybe_as_trait_ref '>' MOD_SEP ident generic_args maybe_as_trait_ref '>' MOD_SEP ident
 {
-  $$ = mk_node("ExprQualifiedPath", 3, mk_node("ExprQualifiedPath", 4, $2, $4, $7, $8), $10, $13);
+  $$ = mk_node("ExprQualifiedPath", 3, mk_node("ExprQualifiedPath", 4, $2, $3, $6, $7), $8, $11);
 }
-| SHL ty_sum AS trait_ref '>' MOD_SEP ident AS trait_ref '>' MOD_SEP ident generic_args
+| SHL ty_sum maybe_as_trait_ref '>' MOD_SEP ident maybe_as_trait_ref '>' MOD_SEP ident generic_args
 {
-  $$ = mk_node("ExprQualifiedPath", 4, mk_node("ExprQualifiedPath", 3, $2, $4, $7), $9, $12, $13);
+  $$ = mk_node("ExprQualifiedPath", 4, mk_node("ExprQualifiedPath", 3, $2, $3, $6), $7, $10, $11);
 }
-| SHL ty_sum AS trait_ref '>' MOD_SEP ident generic_args AS trait_ref '>' MOD_SEP ident generic_args
+| SHL ty_sum maybe_as_trait_ref '>' MOD_SEP ident generic_args maybe_as_trait_ref '>' MOD_SEP ident generic_args
 {
-  $$ = mk_node("ExprQualifiedPath", 4, mk_node("ExprQualifiedPath", 4, $2, $4, $7, $8), $10, $13, $14);
+  $$ = mk_node("ExprQualifiedPath", 4, mk_node("ExprQualifiedPath", 4, $2, $3, $6, $7), $8, $11, $12);
 }
 
+maybe_as_trait_ref
+: AS trait_ref { $$ = $2; }
+| %empty       { $$ = mk_none(); }
+;
 
 lambda_expr
 : %prec LAMBDA
