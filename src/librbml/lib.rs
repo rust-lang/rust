@@ -108,11 +108,7 @@ pub enum EbmlEncoderTag {
     EsMap      = 0x15,
     EsMapKey   = 0x16,
     EsMapVal   = 0x17,
-
     EsOpaque   = 0x18,
-
-    // Used only when debugging
-    EsLabel    = 0x19,
 }
 
 const NUM_TAGS: uint = 0x1000;
@@ -159,7 +155,7 @@ pub mod reader {
     use super::{ ApplicationError, EsVec, EsMap, EsEnum, EsVecLen, EsVecElt,
         EsMapLen, EsMapKey, EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64,
         EsI32, EsI16, EsI8, EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal,
-        EsUint, EsOpaque, EsLabel, EbmlEncoderTag, Doc, TaggedDoc,
+        EsUint, EsOpaque, EbmlEncoderTag, Doc, TaggedDoc,
         Error, IntTooBig, InvalidTag, Expected, NUM_IMPLICIT_TAGS, TAG_IMPLICIT_LEN };
 
     pub type DecodeResult<T> = Result<T, Error>;
@@ -395,23 +391,6 @@ pub mod reader {
             }
         }
 
-        fn _check_label(&mut self, lbl: &str) -> DecodeResult<()> {
-            if self.pos < self.parent.end {
-                let TaggedDoc { tag: r_tag, doc: r_doc } =
-                    try!(doc_at(self.parent.data, self.pos));
-
-                if r_tag == (EsLabel as uint) {
-                    self.pos = r_doc.end;
-                    let str = r_doc.as_str_slice();
-                    if lbl != str {
-                        return Err(Expected(format!("Expected label {:?} but \
-                                                     found {:?}", lbl, str)));
-                    }
-                }
-            }
-            Ok(())
-        }
-
         fn next_doc(&mut self, exp_tag: EbmlEncoderTag) -> DecodeResult<Doc<'doc>> {
             debug!(". next_doc(exp_tag={:?})", exp_tag);
             if self.pos >= self.parent.end {
@@ -540,7 +519,6 @@ pub mod reader {
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
             debug!("read_enum({})", name);
-            try!(self._check_label(name));
 
             let doc = try!(self.next_doc(EsEnum));
 
@@ -606,7 +584,6 @@ pub mod reader {
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
             debug!("read_struct_field(name={}, idx={})", name, idx);
-            try!(self._check_label(name));
             f(self)
         }
 
@@ -723,7 +700,7 @@ pub mod writer {
     use super::{ EsVec, EsMap, EsEnum, EsVecLen, EsVecElt, EsMapLen, EsMapKey,
         EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64, EsI32, EsI16, EsI8,
         EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal, EsUint,
-        EsOpaque, EsLabel, EbmlEncoderTag, NUM_IMPLICIT_TAGS, NUM_TAGS };
+        EsOpaque, EbmlEncoderTag, NUM_IMPLICIT_TAGS, NUM_TAGS };
 
     use serialize;
 
@@ -928,29 +905,11 @@ pub mod writer {
     // FIXME (#2743): optionally perform "relaxations" on end_tag to more
     // efficiently encode sizes; this is a fixed point iteration
 
-    // Set to true to generate more debugging in EBML code.
-    // Totally lame approach.
-    #[cfg(not(ndebug))]
-    static DEBUG: bool = true;
-    #[cfg(ndebug)]
-    static DEBUG: bool = false;
-
     impl<'a, W: Writer + Seek> Encoder<'a, W> {
         // used internally to emit things like the vector length and so on
         fn _emit_tagged_uint(&mut self, t: EbmlEncoderTag, v: uint) -> EncodeResult {
             assert!(v <= 0xFFFF_FFFF);
             self.wr_tagged_raw_u32(t as uint, v as u32)
-        }
-
-        fn _emit_label(&mut self, label: &str) -> EncodeResult {
-            // There are various strings that we have access to, such as
-            // the name of a record field, which do not actually appear in
-            // the encoded EBML (normally).  This is just for
-            // efficiency.  When debugging, though, we can emit such
-            // labels and then they will be checked by decoder to
-            // try and check panics more quickly.
-            if DEBUG { self.wr_tagged_str(EsLabel as uint, label) }
-            else { Ok(()) }
         }
 
         pub fn emit_opaque<F>(&mut self, f: F) -> EncodeResult where
@@ -1021,10 +980,9 @@ pub mod writer {
             self.wr_tagged_str(EsStr as uint, v)
         }
 
-        fn emit_enum<F>(&mut self, name: &str, f: F) -> EncodeResult where
+        fn emit_enum<F>(&mut self, _name: &str, f: F) -> EncodeResult where
             F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
         {
-            try!(self._emit_label(name));
             try!(self.start_tag(EsEnum as uint));
             try!(f(self));
             self.end_tag()
@@ -1072,10 +1030,9 @@ pub mod writer {
             f(self)
         }
 
-        fn emit_struct_field<F>(&mut self, name: &str, _: uint, f: F) -> EncodeResult where
+        fn emit_struct_field<F>(&mut self, _name: &str, _: uint, f: F) -> EncodeResult where
             F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
         {
-            try!(self._emit_label(name));
             f(self)
         }
 
