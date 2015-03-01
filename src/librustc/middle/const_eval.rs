@@ -225,8 +225,10 @@ pub enum ErrKind {
     InvalidOpForUintInt(ast::BinOp_),
     NegateOnString,
     NegateOnBoolean,
+    NegateOnBinary,
     NotOnFloat,
     NotOnString,
+    NotOnBinary,
 
     AddiWithOverflow(i64, i64),
     SubiWithOverflow(i64, i64),
@@ -259,8 +261,10 @@ impl ConstEvalErr {
             InvalidOpForUintInt(..) => "can't do this op on a uint and int".into_cow(),
             NegateOnString => "negate on string".into_cow(),
             NegateOnBoolean => "negate on boolean".into_cow(),
+            NegateOnBinary => "negate on binary literal".into_cow(),
             NotOnFloat => "not on float or string".into_cow(),
             NotOnString => "not on float or string".into_cow(),
+            NotOnBinary => "not on binary literal".into_cow(),
 
             AddiWithOverflow(..) => "attempted to add with overflow".into_cow(),
             SubiWithOverflow(..) => "attempted to sub with overflow".into_cow(),
@@ -324,29 +328,29 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      e: &Expr,
                                      ty_hint: Option<Ty<'tcx>>)
                                      -> Result<const_val, ConstEvalErr> {
-    fn fromb<T>(b: bool) -> Result<const_val, T> { Ok(const_int(b as i64)) }
+    fn fromb(b: bool) -> const_val { const_int(b as i64) }
 
     let ety = ty_hint.or_else(|| ty::expr_ty_opt(tcx, e));
 
-    match e.node {
+    let result = match e.node {
       ast::ExprUnary(ast::UnNeg, ref inner) => {
-        match eval_const_expr_partial(tcx, &**inner, ety) {
-          Ok(const_float(f)) => Ok(const_float(-f)),
-          Ok(const_int(i)) => Ok(const_int(-i)),
-          Ok(const_uint(i)) => Ok(const_uint(-i)),
-          Ok(const_str(_)) => signal!(e, NegateOnString),
-          Ok(const_bool(_)) => signal!(e, NegateOnBoolean),
-          err => err
+        match try!(eval_const_expr_partial(tcx, &**inner, ety)) {
+          const_float(f) => const_float(-f),
+          const_int(i) => const_int(-i),
+          const_uint(i) => const_uint(-i),
+          const_str(_) => signal!(e, NegateOnString),
+          const_bool(_) => signal!(e, NegateOnBoolean),
+          const_binary(_) => signal!(e, NegateOnBinary),
         }
       }
       ast::ExprUnary(ast::UnNot, ref inner) => {
-        match eval_const_expr_partial(tcx, &**inner, ety) {
-          Ok(const_int(i)) => Ok(const_int(!i)),
-          Ok(const_uint(i)) => Ok(const_uint(!i)),
-          Ok(const_bool(b)) => Ok(const_bool(!b)),
-          Ok(const_str(_)) => signal!(e, NotOnString),
-          Ok(const_float(_)) => signal!(e, NotOnFloat),
-          err => err
+        match try!(eval_const_expr_partial(tcx, &**inner, ety)) {
+          const_int(i) => const_int(!i),
+          const_uint(i) => const_uint(!i),
+          const_bool(b) => const_bool(!b),
+          const_str(_) => signal!(e, NotOnString),
+          const_float(_) => signal!(e, NotOnFloat),
+          const_binary(_) => signal!(e, NotOnBinary),
         }
       }
       ast::ExprBinary(op, ref a, ref b) => {
@@ -354,15 +358,15 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             ast::BiShl | ast::BiShr => Some(tcx.types.uint),
             _ => ety
         };
-        match (eval_const_expr_partial(tcx, &**a, ety),
-               eval_const_expr_partial(tcx, &**b, b_ty)) {
-          (Ok(const_float(a)), Ok(const_float(b))) => {
+        match (try!(eval_const_expr_partial(tcx, &**a, ety)),
+               try!(eval_const_expr_partial(tcx, &**b, b_ty))) {
+          (const_float(a), const_float(b)) => {
             match op.node {
-              ast::BiAdd => Ok(const_float(a + b)),
-              ast::BiSub => Ok(const_float(a - b)),
-              ast::BiMul => Ok(const_float(a * b)),
-              ast::BiDiv => Ok(const_float(a / b)),
-              ast::BiRem => Ok(const_float(a % b)),
+              ast::BiAdd => const_float(a + b),
+              ast::BiSub => const_float(a - b),
+              ast::BiMul => const_float(a * b),
+              ast::BiDiv => const_float(a / b),
+              ast::BiRem => const_float(a % b),
               ast::BiEq => fromb(a == b),
               ast::BiLt => fromb(a < b),
               ast::BiLe => fromb(a <= b),
@@ -372,7 +376,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               _ => signal!(e, InvalidOpForFloats(op.node))
             }
           }
-          (Ok(const_int(a)), Ok(const_int(b))) => {
+          (const_int(a), const_int(b)) => {
             let is_a_min_value = || {
                 let int_ty = match ty::expr_ty_opt(tcx, e).map(|ty| &ty.sty) {
                     Some(&ty::ty_int(int_ty)) => int_ty,
@@ -392,16 +396,16 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                 }
             };
             match op.node {
-              ast::BiAdd => checked_add_int(e, a, b),
-              ast::BiSub => checked_sub_int(e, a, b),
-              ast::BiMul => checked_mul_int(e, a, b),
+              ast::BiAdd => try!(checked_add_int(e, a, b)),
+              ast::BiSub => try!(checked_sub_int(e, a, b)),
+              ast::BiMul => try!(checked_mul_int(e, a, b)),
               ast::BiDiv => {
                   if b == 0 {
                       signal!(e, DivideByZero);
                   } else if b == -1 && is_a_min_value() {
                       signal!(e, DivideWithOverflow);
                   } else {
-                      Ok(const_int(a / b))
+                      const_int(a / b)
                   }
               }
               ast::BiRem => {
@@ -410,14 +414,14 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                   } else if b == -1 && is_a_min_value() {
                       signal!(e, ModuloWithOverflow)
                   } else {
-                      Ok(const_int(a % b))
+                      const_int(a % b)
                   }
               }
-              ast::BiAnd | ast::BiBitAnd => Ok(const_int(a & b)),
-              ast::BiOr | ast::BiBitOr => Ok(const_int(a | b)),
-              ast::BiBitXor => Ok(const_int(a ^ b)),
-              ast::BiShl => Ok(const_int(a << b as uint)),
-              ast::BiShr => Ok(const_int(a >> b as uint)),
+              ast::BiAnd | ast::BiBitAnd => const_int(a & b),
+              ast::BiOr | ast::BiBitOr => const_int(a | b),
+              ast::BiBitXor => const_int(a ^ b),
+              ast::BiShl => const_int(a << b as uint),
+              ast::BiShr => const_int(a >> b as uint),
               ast::BiEq => fromb(a == b),
               ast::BiLt => fromb(a < b),
               ast::BiLe => fromb(a <= b),
@@ -426,20 +430,20 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               ast::BiGt => fromb(a > b)
             }
           }
-          (Ok(const_uint(a)), Ok(const_uint(b))) => {
+          (const_uint(a), const_uint(b)) => {
             match op.node {
-              ast::BiAdd => checked_add_uint(e, a, b),
-              ast::BiSub => checked_sub_uint(e, a, b),
-              ast::BiMul => checked_mul_uint(e, a, b),
+              ast::BiAdd => try!(checked_add_uint(e, a, b)),
+              ast::BiSub => try!(checked_sub_uint(e, a, b)),
+              ast::BiMul => try!(checked_mul_uint(e, a, b)),
               ast::BiDiv if b == 0 => signal!(e, DivideByZero),
-              ast::BiDiv => Ok(const_uint(a / b)),
+              ast::BiDiv => const_uint(a / b),
               ast::BiRem if b == 0 => signal!(e, ModuloByZero),
-              ast::BiRem => Ok(const_uint(a % b)),
-              ast::BiAnd | ast::BiBitAnd => Ok(const_uint(a & b)),
-              ast::BiOr | ast::BiBitOr => Ok(const_uint(a | b)),
-              ast::BiBitXor => Ok(const_uint(a ^ b)),
-              ast::BiShl => Ok(const_uint(a << b as uint)),
-              ast::BiShr => Ok(const_uint(a >> b as uint)),
+              ast::BiRem => const_uint(a % b),
+              ast::BiAnd | ast::BiBitAnd => const_uint(a & b),
+              ast::BiOr | ast::BiBitOr => const_uint(a | b),
+              ast::BiBitXor => const_uint(a ^ b),
+              ast::BiShl => const_uint(a << b as uint),
+              ast::BiShr => const_uint(a >> b as uint),
               ast::BiEq => fromb(a == b),
               ast::BiLt => fromb(a < b),
               ast::BiLe => fromb(a <= b),
@@ -449,22 +453,22 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             }
           }
           // shifts can have any integral type as their rhs
-          (Ok(const_int(a)), Ok(const_uint(b))) => {
+          (const_int(a), const_uint(b)) => {
             match op.node {
-              ast::BiShl => Ok(const_int(a << b as uint)),
-              ast::BiShr => Ok(const_int(a >> b as uint)),
+              ast::BiShl => const_int(a << b as uint),
+              ast::BiShr => const_int(a >> b as uint),
               _ => signal!(e, InvalidOpForIntUint(op.node)),
             }
           }
-          (Ok(const_uint(a)), Ok(const_int(b))) => {
+          (const_uint(a), const_int(b)) => {
             match op.node {
-              ast::BiShl => Ok(const_uint(a << b as uint)),
-              ast::BiShr => Ok(const_uint(a >> b as uint)),
+              ast::BiShl => const_uint(a << b as uint),
+              ast::BiShr => const_uint(a >> b as uint),
               _ => signal!(e, InvalidOpForUintInt(op.node)),
             }
           }
-          (Ok(const_bool(a)), Ok(const_bool(b))) => {
-            Ok(const_bool(match op.node {
+          (const_bool(a), const_bool(b)) => {
+            const_bool(match op.node {
               ast::BiAnd => a && b,
               ast::BiOr => a || b,
               ast::BiBitXor => a ^ b,
@@ -473,10 +477,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               ast::BiEq => a == b,
               ast::BiNe => a != b,
               _ => signal!(e, InvalidOpForBools(op.node)),
-             }))
+             })
           }
-          (err @ Err(..), _) |
-          (_, err @ Err(..)) => err,
 
           _ => signal!(e, MiscBinaryOp),
         }
@@ -494,8 +496,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
         let base_hint = ty::expr_ty_opt(tcx, &**base).unwrap_or(ety);
         let val = try!(eval_const_expr_partial(tcx, &**base, Some(base_hint)));
         match cast_const(val, ety) {
-            Ok(val) => Ok(val),
-            Err(kind) => Err(ConstEvalErr { span: e.span, kind: kind }),
+            Ok(val) => val,
+            Err(kind) => return Err(ConstEvalErr { span: e.span, kind: kind }),
         }
       }
       ast::ExprPath(..) => {
@@ -526,16 +528,16 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               None => signal!(e, NonConstPath)
           };
           let ety = ety.or_else(|| const_ty.and_then(|ty| ast_ty_to_prim_ty(tcx, ty)));
-          eval_const_expr_partial(tcx, const_expr, ety)
+          try!(eval_const_expr_partial(tcx, const_expr, ety))
       }
       ast::ExprLit(ref lit) => {
-          Ok(lit_to_const(&**lit, ety))
+          lit_to_const(&**lit, ety)
       }
-      ast::ExprParen(ref e)     => eval_const_expr_partial(tcx, &**e, ety),
+      ast::ExprParen(ref e) => try!(eval_const_expr_partial(tcx, &**e, ety)),
       ast::ExprBlock(ref block) => {
         match block.expr {
-            Some(ref expr) => eval_const_expr_partial(tcx, &**expr, ety),
-            None => Ok(const_int(0i64))
+            Some(ref expr) => try!(eval_const_expr_partial(tcx, &**expr, ety)),
+            None => const_int(0i64)
         }
       }
       ast::ExprTupField(ref base, index) => {
@@ -543,7 +545,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
         if let Some(&ast::ExprTup(ref fields)) = lookup_const(tcx, &**base).map(|s| &s.node) {
             // Check that the given index is within bounds and evaluate its value
             if fields.len() > index.node {
-                return eval_const_expr_partial(tcx, &*fields[index.node], None)
+                return eval_const_expr_partial(tcx, &*fields[index.node], None);
             } else {
                 signal!(e, TupleIndexOutOfBounds);
             }
@@ -558,7 +560,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             // Check that the given field exists and evaluate it
             if let Some(f) = fields.iter().find(|f|
                                            f.ident.node.as_str() == field_name.node.as_str()) {
-                return eval_const_expr_partial(tcx, &*f.expr, None)
+                return eval_const_expr_partial(tcx, &*f.expr, None);
             } else {
                 signal!(e, MissingStructField);
             }
@@ -567,7 +569,9 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
         signal!(e, NonConstStruct);
       }
       _ => signal!(e, MiscCatchAll)
-    }
+    };
+
+    Ok(result)
 }
 
 fn cast_const(val: const_val, ty: Ty) -> Result<const_val, ErrKind> {
