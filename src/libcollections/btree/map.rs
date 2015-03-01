@@ -1143,13 +1143,37 @@ impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
 }
 
 impl<'a, K: Ord, V> Entry<'a, K, V> {
-    /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
     #[unstable(feature = "std_misc",
                reason = "will soon be replaced by or_insert")]
+    #[deprecated(since = "1.0",
+                reason = "replaced with more ergonomic `default` and `default_with`")]
+    /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
     pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, K, V>> {
         match self {
             Occupied(entry) => Ok(entry.into_mut()),
             Vacant(entry) => Err(entry),
+        }
+    }
+
+    #[unstable(feature = "collections",
+               reason = "matches entry v3 specification, waiting for dust to settle")]
+    /// Ensures a value is in the entry by inserting the default if empty, and returns
+    /// a mutable reference to the value in the entry.
+    pub fn default(self, default: V) -> &'a mut V {
+        match self {
+            Occupied(entry) => entry.into_mut(),
+            Vacant(entry) => entry.insert(default),
+        }
+    }
+
+    #[unstable(feature = "collections",
+               reason = "matches entry v3 specification, waiting for dust to settle")]
+    /// Ensures a value is in the entry by inserting the result of the default function if empty,
+    /// and returns a mutable reference to the value in the entry.
+    pub fn default_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
+        match self {
+            Occupied(entry) => entry.into_mut(),
+            Vacant(entry) => entry.insert(default()),
         }
     }
 }
