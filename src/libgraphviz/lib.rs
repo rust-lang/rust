@@ -37,7 +37,7 @@
 //! Each node label is derived directly from the int representing the node,
 //! while the edge labels are all empty strings.
 //!
-//! This example also illustrates how to use `CowVec` to return
+//! This example also illustrates how to use `Cow<[T]>` to return
 //! an owned vector or a borrowed slice as appropriate: we construct the
 //! node vector from scratch, but borrow the edge list (rather than
 //! constructing a copy of all the edges from scratch).
@@ -502,7 +502,7 @@ pub type Edges<'a,E> = Cow<'a,[E]>;
 /// that is bound by the self lifetime `'a`.
 ///
 /// The `nodes` and `edges` method each return instantiations of
-/// `CowVec` to leave implementers the freedom to create
+/// `Cow<[T]>` to leave implementers the freedom to create
 /// entirely new vectors or to pass back slices into internally owned
 /// vectors.
 pub trait GraphWalk<'a, N, E> {
