@@ -265,8 +265,8 @@ pub trait CharExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_default(self) -> EscapeDefault;
 
-    /// Escapes all C0 and C1 control characters (ISO 646 (ASCII), ISO 6429). 
-    /// This method is called when printing a string with `{:?}`. The exact 
+    /// Escapes all C0 and C1 control characters (ISO 646 (ASCII), ISO 6429).
+    /// This method is called when printing a string with `{:?}`. The exact
     /// rules for escaping are:
     ///
     /// * Tab, CR and LF are escaped as '\t', '\r' and '\n' respectively.
@@ -440,7 +440,7 @@ impl CharExt for char {
             '\'' => EscapeDefaultState::Backslash('\''),
             '"'  => EscapeDefaultState::Backslash('"'),
             // Unicode-escape other C0 or C1 control character.
-            '\x00' ... '\x1f' | '\u{80}' ... '\u{9f}' => 
+            '\x00' ... '\x1f' | '\u{80}' ... '\u{9f}' =>
                 EscapeDefaultState::Unicode(self.escape_unicode()),
             // Don't escape everything else.
             _ => EscapeDefaultState::Char(self),
