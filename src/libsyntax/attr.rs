@@ -10,7 +10,6 @@
 
 // Functions dealing with attributes and meta items
 
-pub use self::InlineAttr::*;
 pub use self::StabilityLevel::*;
 pub use self::ReprAttr::*;
 pub use self::IntType::*;
@@ -285,33 +284,33 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<InternedString> {
 
 #[derive(Copy, PartialEq)]
 pub enum InlineAttr {
-    InlineNone,
-    InlineHint,
-    InlineAlways,
-    InlineNever,
+    None,
+    Hint,
+    Always,
+    Never,
 }
 
 /// Determine what `#[inline]` attribute is present in `attrs`, if any.
 pub fn find_inline_attr(diagnostic: Option<&SpanHandler>, attrs: &[Attribute]) -> InlineAttr {
     // FIXME (#2809)---validate the usage of #[inline] and #[inline]
-    attrs.iter().fold(InlineNone, |ia,attr| {
+    attrs.iter().fold(InlineAttr::None, |ia,attr| {
         match attr.node.value.node {
             MetaWord(ref n) if *n == "inline" => {
                 mark_used(attr);
-                InlineHint
+                InlineAttr::Hint
             }
             MetaList(ref n, ref items) if *n == "inline" => {
                 mark_used(attr);
                 if items.len() != 1 {
                     diagnostic.map(|d|{ d.span_err(attr.span, "expected one argument"); });
-                    InlineNone
+                    InlineAttr::None
                 } else if contains_name(&items[..], "always") {
-                    InlineAlways
+                    InlineAttr::Always
                 } else if contains_name(&items[..], "never") {
-                    InlineNever
+                    InlineAttr::Never
                 } else {
                     diagnostic.map(|d|{ d.span_err((*items[0]).span, "invalid argument"); });
-                    InlineNone
+                    InlineAttr::None
                 }
             }
             _ => ia
@@ -322,8 +321,8 @@ pub fn find_inline_attr(diagnostic: Option<&SpanHandler>, attrs: &[Attribute]) -
 /// True if `#[inline]` or `#[inline(always)]` is present in `attrs`.
 pub fn requests_inline(attrs: &[Attribute]) -> bool {
     match find_inline_attr(None, attrs) {
-        InlineHint | InlineAlways => true,
-        InlineNone | InlineNever => false,
+        InlineAttr::Hint | InlineAttr::Always => true,
+        InlineAttr::None | InlineAttr::Never => false,
     }
 }
 
