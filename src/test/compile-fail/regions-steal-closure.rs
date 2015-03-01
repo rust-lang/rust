@@ -20,9 +20,9 @@ fn box_it<'r>(x: Box<FnMut() + 'r>) -> closure_box<'r> {
 }
 
 fn main() {
-    let cl_box = {
+    let mut cl_box = {
         let mut i = 3;
-        box_it(box || i += 1) //~ ERROR cannot infer
+        box_it(box || i += 1) //~ ERROR `i` does not live long enough
     };
     cl_box.cl.call_mut(());
 }
