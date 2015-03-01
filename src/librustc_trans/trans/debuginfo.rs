@@ -182,6 +182,7 @@
 //! comparatively expensive to construct, though, `ty::type_id()` is still used
 //! additionally as an optimization for cases where the exact same type has been
 //! seen before (which is most of the time).
+
 use self::VariableAccess::*;
 use self::VariableKind::*;
 use self::MemberOffset::*;
@@ -200,9 +201,11 @@ use trans::common::{self, NodeIdAndSpan, CrateContext, FunctionContext, Block,
                     C_bytes, NormalizingClosureTyper};
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::monomorphize;
+use trans::consts;
 use trans::type_::Type;
 use middle::ty::{self, Ty, ClosureTyper};
 use middle::pat_util;
+use middle::def;
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
 use util::ppaux;
@@ -3486,8 +3489,20 @@ fn create_scope_map(cx: &CrateContext,
         match exp.node {
             ast::ExprLit(_)   |
             ast::ExprBreak(_) |
-            ast::ExprAgain(_) |
-            ast::ExprPath(..) => {}
+            ast::ExprAgain(_) => {}
+
+            // see also expr::trans_into
+            ast::ExprPath(..) => {
+                let def_map = &cx.tcx().def_map;
+                let def = def_map.borrow().get(&exp.id).and_then(|pr| Some(pr.full_def()));
+                match def {
+                    Some(def::DefConst(did)) => {
+                        let const_expr = consts::get_const_expr(cx, did, exp);
+                        walk_expr(cx, const_expr, scope_stack, scope_map);
+                    }
+                    _ => {}
+                }
+            }
 
             ast::ExprCast(ref sub_exp, _)     |
             ast::ExprAddrOf(_, ref sub_exp)  |
