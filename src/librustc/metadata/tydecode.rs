@@ -555,11 +555,9 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
       'k' => {
           assert_eq!(next(st), '[');
           let did = parse_def_(st, ClosureSource, conv);
-          let region = parse_region_(st, conv);
           let substs = parse_substs_(st, conv);
           assert_eq!(next(st), ']');
-          return ty::mk_closure(st.tcx, did,
-                  st.tcx.mk_region(region), st.tcx.mk_substs(substs));
+          return ty::mk_closure(st.tcx, did, st.tcx.mk_substs(substs));
       }
       'P' => {
           assert_eq!(next(st), '[');

@@ -320,8 +320,10 @@ impl InnermostEnclosingExpr {
 
 #[derive(Debug, Copy)]
 pub struct Context {
+    /// the scope that contains any new variables declared
     var_parent: InnermostDeclaringBlock,
 
+    /// region parent of expressions etc
     parent: InnermostEnclosingExpr,
 }
 

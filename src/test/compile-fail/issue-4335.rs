@@ -14,7 +14,9 @@
 fn id<T>(t: T) -> T { t }
 
 fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
-    id(box || *v) //~ ERROR cannot infer
+    id(box || *v)
+        //~^ ERROR `v` does not live long enough
+        //~| ERROR cannot move out of borrowed content
 }
 
 fn main() {

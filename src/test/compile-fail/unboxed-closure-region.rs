@@ -15,6 +15,6 @@
 fn main() {
     let _f = {
         let x = 0_usize;
-        || x //~ ERROR cannot infer an appropriate lifetime due to conflicting requirements
+        || x //~ ERROR `x` does not live long enough
     };
 }

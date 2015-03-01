@@ -16,7 +16,6 @@ use astconv;
 use middle::region;
 use middle::subst;
 use middle::ty::{self, ToPolyTraitRef, Ty};
-use rscope::RegionScope;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_util;
@@ -61,17 +60,8 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         abi::RustCall,
         expected_sig);
 
-    let region = match fcx.anon_regions(expr.span, 1) {
-        Err(_) => {
-            fcx.ccx.tcx.sess.span_bug(expr.span,
-                                      "can't make anon regions here?!")
-        }
-        Ok(regions) => regions[0],
-    };
-
     let closure_type = ty::mk_closure(fcx.ccx.tcx,
                                       expr_def_id,
-                                      fcx.ccx.tcx.mk_region(region),
                                       fcx.ccx.tcx.mk_substs(
                                         fcx.inh.param_env.free_substs.clone()));
 

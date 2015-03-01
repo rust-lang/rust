@@ -45,7 +45,7 @@ impl<'tcx> TypeWalker<'tcx> {
             }
             ty::ty_enum(_, ref substs) |
             ty::ty_struct(_, ref substs) |
-            ty::ty_closure(_, _, ref substs) => {
+            ty::ty_closure(_, ref substs) => {
                 self.push_reversed(substs.types.as_slice());
             }
             ty::ty_tup(ref ts) => {

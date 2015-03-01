@@ -138,7 +138,7 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
     // duplicate declarations
     let function_type = erase_regions(ccx.tcx(), &function_type);
     let params = match function_type.sty {
-        ty::ty_closure(_, _, substs) => &substs.types,
+        ty::ty_closure(_, substs) => &substs.types,
         _ => unreachable!()
     };
     let mono_id = MonoId {
