@@ -364,7 +364,7 @@
 //!     * `o` - precedes the argument with a "0o"
 //! * '0' - This is used to indicate for integer formats that the padding should
 //!         both be done with a `0` character as well as be sign-aware. A format
-//!         like `{:08d}` would yield `00000001` for the integer `1`, while the
+//!         like `{:08}` would yield `00000001` for the integer `1`, while the
 //!         same format would yield `-0000001` for the integer `-1`. Notice that
 //!         the negative version has one fewer zero than the positive version.
 //!
