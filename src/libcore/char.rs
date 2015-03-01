@@ -265,6 +265,41 @@ pub trait CharExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_default(self) -> EscapeDefault;
 
+    /// Escapes all C0 and C1 control characters (ISO 646 (ASCII), ISO 6429).
+    /// This method is called when printing a string with `{:?}`. The exact
+    /// rules for escaping are:
+    ///
+    /// * Tab, CR and LF are escaped as '\t', '\r' and '\n' respectively.
+    /// * Single-quote, double-quote and backslash chars are backslash-
+    ///   escaped.
+    /// * Any other C0 ([0x00, 0x1f]) and C1 ([0x80, 0x9f]) chars are escaped
+    ///   with the Rust unicode syntax: `\\u{NNNN}`.
+    /// * Any other chars are not escaped
+    ///
+    /// Note: 0x7f (delete) is often considered a control character, but is not
+    /// escaped!
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// for c in "ä\n☃".chars() {
+    ///     for i in c.escape_control() {
+    ///         print!("{}", i);
+    ///     }
+    ///     println!("");
+    /// }
+    /// ```
+    ///
+    /// This prints:
+    ///
+    /// ```text
+    /// ä
+    /// \n
+    /// ☃
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn escape_control(self) -> EscapeDefault;
+
     /// Returns the number of bytes this character would need if encoded in UTF-8.
     ///
     /// # Examples
@@ -390,6 +425,25 @@ impl CharExt for char {
             '"'  => EscapeDefaultState::Backslash('"'),
             '\x20' ... '\x7e' => EscapeDefaultState::Char(self),
             _ => EscapeDefaultState::Unicode(self.escape_unicode())
+        };
+        EscapeDefault { state: init_state }
+    }
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn escape_control(self) -> EscapeDefault {
+        let init_state = match self {
+            // Backslash-escape special control character.
+            '\t' => EscapeDefaultState::Backslash('t'),
+            '\r' => EscapeDefaultState::Backslash('r'),
+            '\n' => EscapeDefaultState::Backslash('n'),
+            '\\' => EscapeDefaultState::Backslash('\\'),
+            '\'' => EscapeDefaultState::Backslash('\''),
+            '"'  => EscapeDefaultState::Backslash('"'),
+            // Unicode-escape other C0 or C1 control character.
+            '\x00' ... '\x1f' | '\u{80}' ... '\u{9f}' =>
+                EscapeDefaultState::Unicode(self.escape_unicode()),
+            // Don't escape anything else.
+            _ => EscapeDefaultState::Char(self),
         };
         EscapeDefault { state: init_state }
     }
