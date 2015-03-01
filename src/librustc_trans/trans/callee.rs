@@ -603,7 +603,18 @@ pub fn trans_method_call<'a, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_method_call");
     debug!("trans_method_call(call_expr={})", call_expr.repr(bcx.tcx()));
     let method_call = MethodCall::expr(call_expr.id);
-    let method_ty = (*bcx.tcx().method_map.borrow())[method_call].ty;
+    let method_ty = match bcx.tcx().method_map.borrow().get(&method_call) {
+        Some(method) => match method.origin {
+            ty::MethodTraitObject(_) => match method.ty.sty {
+                ty::ty_bare_fn(_, ref fty) => {
+                    ty::mk_bare_fn(bcx.tcx(), None, meth::opaque_method_ty(bcx.tcx(), fty))
+                }
+                _ => method.ty
+            },
+            _ => method.ty
+        },
+        None => panic!("method not found in trans_method_call")
+    };
     trans_call_inner(
         bcx,
         call_expr.debug_loc(),
