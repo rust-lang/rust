@@ -927,20 +927,21 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
                                                           tuple_expr.id));
             let repr = adt::represent_type(bcx.ccx(), tuple_type);
             let repr_ptr = &*repr;
-            for i in 0..field_types.len() {
+            llargs.extend(field_types.iter().enumerate().map(|(i, field_type)| {
                 let arg_datum = tuple_lvalue_datum.get_element(
                     bcx,
-                    field_types[i],
+                    field_type,
                     |srcval| {
                         adt::trans_field_ptr(bcx, repr_ptr, srcval, 0, i)
-                    });
-                let arg_datum = arg_datum.to_expr_datum();
-                let arg_datum =
-                    unpack_datum!(bcx, arg_datum.to_rvalue_datum(bcx, "arg"));
-                let arg_datum =
-                    unpack_datum!(bcx, arg_datum.to_appropriate_datum(bcx));
-                llargs.push(arg_datum.add_clean(bcx.fcx, arg_cleanup_scope));
-            }
+                    }).to_expr_datum();
+                unpack_result!(bcx, trans_arg_datum(
+                    bcx,
+                    field_type,
+                    arg_datum,
+                    arg_cleanup_scope,
+                    DontAutorefArg)
+                )
+            }));
         }
         _ => {
             bcx.sess().span_bug(tuple_expr.span,
