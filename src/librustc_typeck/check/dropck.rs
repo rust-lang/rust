@@ -14,8 +14,9 @@ use middle::infer;
 use middle::region;
 use middle::subst;
 use middle::ty::{self, Ty};
-use util::ppaux::{Repr};
+use util::ppaux::{Repr, UserString};
 
+use syntax::ast;
 use syntax::codemap::Span;
 
 pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
@@ -28,28 +29,97 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
     // types that have been traversed so far by `traverse_type_if_unseen`
     let mut breadcrumbs: Vec<Ty<'tcx>> = Vec::new();
 
-    iterate_over_potentially_unsafe_regions_in_type(
+    let result = iterate_over_potentially_unsafe_regions_in_type(
         rcx,
         &mut breadcrumbs,
+        TypeContext::Root,
         typ,
         span,
         scope,
+        0,
         0);
+    match result {
+        Ok(()) => {}
+        Err(Error::Overflow(ref ctxt, ref detected_on_typ)) => {
+            let tcx = rcx.tcx();
+            span_err!(tcx.sess, span, E0320,
+                      "overflow while adding drop-check rules for {}",
+                      typ.user_string(rcx.tcx()));
+            match *ctxt {
+                TypeContext::Root => {
+                    // no need for an additional note if the overflow
+                    // was somehow on the root.
+                }
+                TypeContext::EnumVariant { def_id, variant, arg_index } => {
+                    // FIXME (pnkfelix): eventually lookup arg_name
+                    // for the given index on struct variants.
+                    span_note!(
+                        rcx.tcx().sess,
+                        span,
+                        "overflowed on enum {} variant {} argument {} type: {}",
+                        ty::item_path_str(tcx, def_id),
+                        variant,
+                        arg_index,
+                        detected_on_typ.user_string(rcx.tcx()));
+                }
+                TypeContext::Struct { def_id, field } => {
+                    span_note!(
+                        rcx.tcx().sess,
+                        span,
+                        "overflowed on struct {} field {} type: {}",
+                        ty::item_path_str(tcx, def_id),
+                        field,
+                        detected_on_typ.user_string(rcx.tcx()));
+                }
+            }
+        }
+    }
 }
 
+enum Error<'tcx> {
+    Overflow(TypeContext, ty::Ty<'tcx>),
+}
+
+enum TypeContext {
+    Root,
+    EnumVariant {
+        def_id: ast::DefId,
+        variant: ast::Name,
+        arg_index: usize,
+    },
+    Struct {
+        def_id: ast::DefId,
+        field: ast::Name,
+    }
+}
+
+// The `depth` counts the number of calls to this function;
+// the `xref_depth` counts the subset of such calls that go
+// across a `Box<T>` or `PhantomData<T>`.
 fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
     rcx: &mut Rcx<'a, 'tcx>,
     breadcrumbs: &mut Vec<Ty<'tcx>>,
+    context: TypeContext,
     ty_root: ty::Ty<'tcx>,
     span: Span,
     scope: region::CodeExtent,
-    depth: uint)
+    depth: uint,
+    xref_depth: uint) -> Result<(), Error<'tcx>>
 {
+    // Issue #22443: Watch out for overflow. While we are careful to
+    // handle regular types properly, non-regular ones cause problems.
+    let recursion_limit = rcx.tcx().sess.recursion_limit.get();
+    if xref_depth >= recursion_limit {
+        return Err(Error::Overflow(context, ty_root))
+    }
+
     let origin = || infer::SubregionOrigin::SafeDestructor(span);
     let mut walker = ty_root.walk();
     let opt_phantom_data_def_id = rcx.tcx().lang_items.phantom_data();
 
     let destructor_for_type = rcx.tcx().destructor_for_type.borrow();
+
+    let xref_depth_orig = xref_depth;
 
     while let Some(typ) = walker.next() {
         // Avoid recursing forever.
@@ -61,20 +131,33 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
         // If we encounter `PhantomData<T>`, then we should replace it
         // with `T`, the type it represents as owned by the
         // surrounding context, before doing further analysis.
-        let typ = if let ty::ty_struct(struct_did, substs) = typ.sty {
-            if opt_phantom_data_def_id == Some(struct_did) {
-                let item_type = ty::lookup_item_type(rcx.tcx(), struct_did);
-                let tp_def = item_type.generics.types
-                    .opt_get(subst::TypeSpace, 0).unwrap();
-                let new_typ = substs.type_for_def(tp_def);
-                debug!("replacing phantom {} with {}",
-                       typ.repr(rcx.tcx()), new_typ.repr(rcx.tcx()));
-                new_typ
-            } else {
-                typ
+        let (typ, xref_depth) = match typ.sty {
+            ty::ty_struct(struct_did, substs) => {
+                if opt_phantom_data_def_id == Some(struct_did) {
+                    let item_type = ty::lookup_item_type(rcx.tcx(), struct_did);
+                    let tp_def = item_type.generics.types
+                        .opt_get(subst::TypeSpace, 0).unwrap();
+                    let new_typ = substs.type_for_def(tp_def);
+                    debug!("replacing phantom {} with {}",
+                           typ.repr(rcx.tcx()), new_typ.repr(rcx.tcx()));
+                    (new_typ, xref_depth_orig + 1)
+                } else {
+                    (typ, xref_depth_orig)
+                }
             }
-        } else {
-            typ
+
+            // Note: When ty_uniq is removed from compiler, the
+            // definition of `Box<T>` must carry a PhantomData that
+            // puts us into the previous case.
+            ty::ty_uniq(new_typ) => {
+                debug!("replacing ty_uniq {} with {}",
+                       typ.repr(rcx.tcx()), new_typ.repr(rcx.tcx()));
+                (new_typ, xref_depth_orig + 1)
+            }
+
+            _ => {
+                (typ, xref_depth_orig)
+            }
         };
 
         let opt_type_did = match typ.sty {
@@ -87,9 +170,9 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
             opt_type_did.and_then(|did| destructor_for_type.get(&did));
 
         debug!("iterate_over_potentially_unsafe_regions_in_type \
-                {}typ: {} scope: {:?} opt_dtor: {:?}",
+                {}typ: {} scope: {:?} opt_dtor: {:?} xref: {}",
                (0..depth).map(|_| ' ').collect::<String>(),
-               typ.repr(rcx.tcx()), scope, opt_dtor);
+               typ.repr(rcx.tcx()), scope, opt_dtor, xref_depth);
 
         // If `typ` has a destructor, then we must ensure that all
         // borrowed data reachable via `typ` must outlive the parent
@@ -228,6 +311,8 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
 
             match typ.sty {
                 ty::ty_struct(struct_did, substs) => {
+                    debug!("typ: {} is struct; traverse structure and not type-expression",
+                           typ.repr(rcx.tcx()));
                     // Don't recurse; we extract type's substructure,
                     // so do not process subparts of type expression.
                     walker.skip_current_subtree();
@@ -240,17 +325,24 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                                                   struct_did,
                                                   field.id,
                                                   substs);
-                        iterate_over_potentially_unsafe_regions_in_type(
+                        try!(iterate_over_potentially_unsafe_regions_in_type(
                             rcx,
                             breadcrumbs,
+                            TypeContext::Struct {
+                                def_id: struct_did,
+                                field: field.name,
+                            },
                             field_type,
                             span,
                             scope,
-                            depth+1)
+                            depth+1,
+                            xref_depth))
                     }
                 }
 
                 ty::ty_enum(enum_did, substs) => {
+                    debug!("typ: {} is enum; traverse structure and not type-expression",
+                           typ.repr(rcx.tcx()));
                     // Don't recurse; we extract type's substructure,
                     // so do not process subparts of type expression.
                     walker.skip_current_subtree();
@@ -260,14 +352,20 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                                                  enum_did,
                                                  substs);
                     for variant_info in all_variant_info.iter() {
-                        for argument_type in variant_info.args.iter() {
-                            iterate_over_potentially_unsafe_regions_in_type(
+                        for (i, arg_type) in variant_info.args.iter().enumerate() {
+                            try!(iterate_over_potentially_unsafe_regions_in_type(
                                 rcx,
                                 breadcrumbs,
-                                *argument_type,
+                                TypeContext::EnumVariant {
+                                    def_id: enum_did,
+                                    variant: variant_info.name,
+                                    arg_index: i,
+                                },
+                                *arg_type,
                                 span,
                                 scope,
-                                depth+1)
+                                depth+1,
+                                xref_depth));
                         }
                     }
                 }
@@ -290,4 +388,6 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
             // is done.
         }
     }
+
+    return Ok(());
 }

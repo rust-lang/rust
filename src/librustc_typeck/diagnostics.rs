@@ -174,7 +174,8 @@ register_diagnostics! {
     E0249, // expected constant expr for array length
     E0250, // expected constant expr for array length
     E0318, // can't create default impls for traits outside their crates
-    E0319  // trait impls for defaulted traits allowed just for structs/enums
+    E0319, // trait impls for defaulted traits allowed just for structs/enums
+    E0320  // recursive overflow during dropck
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }
