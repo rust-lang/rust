@@ -68,7 +68,7 @@ use num::{ToPrimitive, Int};
 use ops::{Add, Deref, FnMut};
 use option::Option;
 use option::Option::{Some, None};
-use marker::{Send, Sized, Sync};
+use marker::Sized;
 use usize;
 
 /// An interface for dealing with "external iterators". These types of iterators
@@ -1782,10 +1782,6 @@ pub struct Peekable<I: Iterator> {
     iter: I,
     peeked: Option<I::Item>,
 }
-
-// FIXME: after #22828 being fixed, the following unsafe impl should be removed
-unsafe impl<I: Iterator> Sync for Peekable<I> where I: Sync, I::Item: Sync {}
-unsafe impl<I: Iterator> Send for Peekable<I> where I: Send, I::Item: Send {}
 
 impl<I: Iterator + Clone> Clone for Peekable<I> where I::Item: Clone {
     fn clone(&self) -> Peekable<I> {
