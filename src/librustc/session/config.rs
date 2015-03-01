@@ -35,7 +35,6 @@ use syntax::parse::token::InternedString;
 
 use getopts;
 use std::collections::HashMap;
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::env;
 use std::fmt;
 use std::path::PathBuf;
@@ -1037,10 +1036,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             None => early_error("--extern value must be of the format `foo=bar`"),
         };
 
-        match externs.entry(name.to_string()) {
-            Vacant(entry) => { entry.insert(vec![location.to_string()]); },
-            Occupied(mut entry) => { entry.get_mut().push(location.to_string()); },
-        }
+        externs.entry(name.to_string()).default(vec![]).push(location.to_string());
     }
 
     let crate_name = matches.opt_str("crate-name");

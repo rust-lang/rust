@@ -160,12 +160,7 @@ fn build_nodeid_to_index(decl: Option<&ast::FnDecl>,
 
     cfg.graph.each_node(|node_idx, node| {
         if let cfg::CFGNodeData::AST(id) = node.data {
-            match index.entry(id).get() {
-                Ok(v) => v.push(node_idx),
-                Err(e) => {
-                    e.insert(vec![node_idx]);
-                }
-            }
+            index.entry(id).default(vec![]).push(node_idx);
         }
         true
     });
@@ -185,12 +180,7 @@ fn build_nodeid_to_index(decl: Option<&ast::FnDecl>,
         visit::walk_fn_decl(&mut formals, decl);
         impl<'a, 'v> visit::Visitor<'v> for Formals<'a> {
             fn visit_pat(&mut self, p: &ast::Pat) {
-                match self.index.entry(p.id).get() {
-                    Ok(v) => v.push(self.entry),
-                    Err(e) => {
-                        e.insert(vec![self.entry]);
-                    }
-                }
+                self.index.entry(p.id).default(vec![]).push(self.entry);
                 visit::walk_pat(self, p)
             }
         }

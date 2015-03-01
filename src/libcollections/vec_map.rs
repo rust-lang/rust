@@ -632,21 +632,12 @@ impl<V> VecMap<V> {
     /// ```
     /// # #![feature(collections)]
     /// use std::collections::VecMap;
-    /// use std::collections::vec_map::Entry;
     ///
     /// let mut count: VecMap<u32> = VecMap::new();
     ///
     /// // count the number of occurrences of numbers in the vec
-    /// for x in vec![1, 2, 1, 2, 3, 4, 1, 2, 4].iter() {
-    ///     match count.entry(*x) {
-    ///         Entry::Vacant(view) => {
-    ///             view.insert(1);
-    ///         },
-    ///         Entry::Occupied(mut view) => {
-    ///             let v = view.get_mut();
-    ///             *v += 1;
-    ///         },
-    ///     }
+    /// for x in vec![1, 2, 1, 2, 3, 4, 1, 2, 4] {
+    ///     *count.entry(x).default(0) += 1;
     /// }
     ///
     /// assert_eq!(count[1], 3);

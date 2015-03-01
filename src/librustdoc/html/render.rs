@@ -876,9 +876,7 @@ impl DocFolder for Cache {
         if let clean::ImplItem(ref i) = item.inner {
             match i.trait_ {
                 Some(clean::ResolvedPath{ did, .. }) => {
-                    let v = self.implementors.entry(did).get().unwrap_or_else(
-                        |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
-                    v.push(Implementor {
+                    self.implementors.entry(did).default(vec![]).push(Implementor {
                         def_id: item.def_id,
                         generics: i.generics.clone(),
                         trait_: i.trait_.as_ref().unwrap().clone(),
@@ -1080,9 +1078,7 @@ impl DocFolder for Cache {
                         };
 
                         if let Some(did) = did {
-                            let v = self.impls.entry(did).get().unwrap_or_else(
-                                |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
-                            v.push(Impl {
+                            self.impls.entry(did).default(vec![]).push(Impl {
                                 impl_: i,
                                 dox: dox,
                                 stability: item.stability.clone(),
@@ -1334,9 +1330,8 @@ impl Context {
                 Some(ref s) => s.to_string(),
             };
             let short = short.to_string();
-            let v = map.entry(short).get().unwrap_or_else(
-                |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
-            v.push((myname, Some(plain_summary_line(item.doc_value()))));
+            map.entry(short).default(vec![])
+                .push((myname, Some(plain_summary_line(item.doc_value()))));
         }
 
         for (_, items) in &mut map {
