@@ -97,22 +97,21 @@ pub enum EbmlEncoderTag {
     EsChar     = 0x0b, // + 4 bytes
     EsF64      = 0x0c, // + 8 bytes
     EsF32      = 0x0d, // + 4 bytes
-    EsEnumVid  = 0x0e, // + 4 bytes
-    EsVecLen   = 0x0f, // + 4 bytes
-    EsMapLen   = 0x10, // + 4 bytes
+    EsSub8     = 0x0e, // + 1 byte
+    EsSub32    = 0x0f, // + 4 bytes
 
-    EsStr      = 0x11,
-    EsEnum     = 0x12,
-    EsVec      = 0x13,
-    EsVecElt   = 0x14,
-    EsMap      = 0x15,
-    EsMapKey   = 0x16,
-    EsMapVal   = 0x17,
-    EsOpaque   = 0x18,
+    EsStr      = 0x10,
+    EsEnum     = 0x11, // encodes the variant id as the first EsSub*
+    EsVec      = 0x12, // encodes the # of elements as the first EsSub*
+    EsVecElt   = 0x13,
+    EsMap      = 0x14, // encodes the # of pairs as the first EsSub*
+    EsMapKey   = 0x15,
+    EsMapVal   = 0x16,
+    EsOpaque   = 0x17,
 }
 
 const NUM_TAGS: uint = 0x1000;
-const NUM_IMPLICIT_TAGS: uint = 0x11;
+const NUM_IMPLICIT_TAGS: uint = 0x10;
 
 static TAG_IMPLICIT_LEN: [i8; NUM_IMPLICIT_TAGS] = [
     8, 8, 4, 2, 1, // EsU*
@@ -120,9 +119,7 @@ static TAG_IMPLICIT_LEN: [i8; NUM_IMPLICIT_TAGS] = [
     1, // EsBool
     4, // EsChar
     8, 4, // EsF*
-    4, // EsEnumVid
-    4, // EsVecLen
-    4, // EsMapLen
+    1, 4, // EsSub*
 ];
 
 #[derive(Debug)]
@@ -152,8 +149,8 @@ pub mod reader {
 
     use serialize;
 
-    use super::{ ApplicationError, EsVec, EsMap, EsEnum, EsVecLen, EsVecElt,
-        EsMapLen, EsMapKey, EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64,
+    use super::{ ApplicationError, EsVec, EsMap, EsEnum, EsSub8, EsSub32,
+        EsVecElt, EsMapKey, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64,
         EsI32, EsI16, EsI8, EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal,
         EsUint, EsOpaque, EbmlEncoderTag, Doc, TaggedDoc,
         Error, IntTooBig, InvalidTag, Expected, NUM_IMPLICIT_TAGS, TAG_IMPLICIT_LEN };
@@ -419,6 +416,37 @@ pub mod reader {
             Ok(r_doc)
         }
 
+        fn next_doc2(&mut self,
+                     exp_tag1: EbmlEncoderTag,
+                     exp_tag2: EbmlEncoderTag) -> DecodeResult<(bool, Doc<'doc>)> {
+            assert!((exp_tag1 as uint) != (exp_tag2 as uint));
+            debug!(". next_doc2(exp_tag1={:?}, exp_tag2={:?})", exp_tag1, exp_tag2);
+            if self.pos >= self.parent.end {
+                return Err(Expected(format!("no more documents in \
+                                             current node!")));
+            }
+            let TaggedDoc { tag: r_tag, doc: r_doc } =
+                try!(doc_at(self.parent.data, self.pos));
+            debug!("self.parent={:?}-{:?} self.pos={:?} r_tag={:?} r_doc={:?}-{:?}",
+                   self.parent.start,
+                   self.parent.end,
+                   self.pos,
+                   r_tag,
+                   r_doc.start,
+                   r_doc.end);
+            if r_tag != (exp_tag1 as uint) && r_tag != (exp_tag2 as uint) {
+                return Err(Expected(format!("expected EBML doc with tag {:?} or {:?} but \
+                                             found tag {:?}", exp_tag1, exp_tag2, r_tag)));
+            }
+            if r_doc.end > self.parent.end {
+                return Err(Expected(format!("invalid EBML, child extends to \
+                                             {:#x}, parent to {:#x}",
+                                            r_doc.end, self.parent.end)));
+            }
+            self.pos = r_doc.end;
+            Ok((r_tag == (exp_tag2 as uint), r_doc))
+        }
+
         fn push_doc<T, F>(&mut self, exp_tag: EbmlEncoderTag, f: F) -> DecodeResult<T> where
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
@@ -433,10 +461,15 @@ pub mod reader {
             Ok(r)
         }
 
-        fn _next_uint(&mut self, exp_tag: EbmlEncoderTag) -> DecodeResult<uint> {
-            let r = doc_as_u32(try!(self.next_doc(exp_tag)));
-            debug!("_next_uint exp_tag={:?} result={:?}", exp_tag, r);
-            Ok(r as uint)
+        fn _next_sub(&mut self) -> DecodeResult<uint> {
+            let (big, doc) = try!(self.next_doc2(EsSub8, EsSub32));
+            let r = if big {
+                doc_as_u32(doc) as uint
+            } else {
+                doc_as_u8(doc) as uint
+            };
+            debug!("_next_sub result={:?}", r);
+            Ok(r)
         }
 
         pub fn read_opaque<R, F>(&mut self, op: F) -> DecodeResult<R> where
@@ -538,7 +571,7 @@ pub mod reader {
             where F: FnMut(&mut Decoder<'doc>, uint) -> DecodeResult<T>,
         {
             debug!("read_enum_variant()");
-            let idx = try!(self._next_uint(EsEnumVid));
+            let idx = try!(self._next_sub());
             debug!("  idx={}", idx);
 
             f(self, idx)
@@ -556,7 +589,7 @@ pub mod reader {
             where F: FnMut(&mut Decoder<'doc>, uint) -> DecodeResult<T>,
         {
             debug!("read_enum_struct_variant()");
-            let idx = try!(self._next_uint(EsEnumVid));
+            let idx = try!(self._next_sub());
             debug!("  idx={}", idx);
 
             f(self, idx)
@@ -647,7 +680,7 @@ pub mod reader {
         {
             debug!("read_seq()");
             self.push_doc(EsVec, move |d| {
-                let len = try!(d._next_uint(EsVecLen));
+                let len = try!(d._next_sub());
                 debug!("  len={}", len);
                 f(d, len)
             })
@@ -665,7 +698,7 @@ pub mod reader {
         {
             debug!("read_map()");
             self.push_doc(EsMap, move |d| {
-                let len = try!(d._next_uint(EsMapLen));
+                let len = try!(d._next_sub());
                 debug!("  len={}", len);
                 f(d, len)
             })
@@ -697,10 +730,10 @@ pub mod writer {
     use std::old_io::{Writer, Seek};
     use std::old_io;
 
-    use super::{ EsVec, EsMap, EsEnum, EsVecLen, EsVecElt, EsMapLen, EsMapKey,
-        EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64, EsI32, EsI16, EsI8,
+    use super::{ EsVec, EsMap, EsEnum, EsSub8, EsSub32, EsVecElt, EsMapKey,
+        EsU64, EsU32, EsU16, EsU8, EsInt, EsI64, EsI32, EsI16, EsI8,
         EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal, EsUint,
-        EsOpaque, EbmlEncoderTag, NUM_IMPLICIT_TAGS, NUM_TAGS };
+        EsOpaque, NUM_IMPLICIT_TAGS, NUM_TAGS };
 
     use serialize;
 
@@ -907,9 +940,18 @@ pub mod writer {
 
     impl<'a, W: Writer + Seek> Encoder<'a, W> {
         // used internally to emit things like the vector length and so on
-        fn _emit_tagged_uint(&mut self, t: EbmlEncoderTag, v: uint) -> EncodeResult {
-            assert!(v <= 0xFFFF_FFFF);
-            self.wr_tagged_raw_u32(t as uint, v as u32)
+        fn _emit_tagged_sub(&mut self, v: uint) -> EncodeResult {
+            if let Some(v) = v.to_u8() {
+                self.wr_tagged_raw_u8(EsSub8 as uint, v)
+            } else if let Some(v) = v.to_u32() {
+                self.wr_tagged_raw_u32(EsSub32 as uint, v)
+            } else {
+                Err(old_io::IoError {
+                    kind: old_io::OtherIoError,
+                    desc: "length or variant id too big",
+                    detail: Some(format!("{}", v))
+                })
+            }
         }
 
         pub fn emit_opaque<F>(&mut self, f: F) -> EncodeResult where
@@ -995,7 +1037,7 @@ pub mod writer {
                                 f: F) -> EncodeResult where
             F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
         {
-            try!(self._emit_tagged_uint(EsEnumVid, v_id));
+            try!(self._emit_tagged_sub(v_id));
             f(self)
         }
 
@@ -1078,7 +1120,7 @@ pub mod writer {
         {
 
             try!(self.start_tag(EsVec as uint));
-            try!(self._emit_tagged_uint(EsVecLen, len));
+            try!(self._emit_tagged_sub(len));
             try!(f(self));
             self.end_tag()
         }
@@ -1097,7 +1139,7 @@ pub mod writer {
         {
 
             try!(self.start_tag(EsMap as uint));
-            try!(self._emit_tagged_uint(EsMapLen, len));
+            try!(self._emit_tagged_sub(len));
             try!(f(self));
             self.end_tag()
         }
