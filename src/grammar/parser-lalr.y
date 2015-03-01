@@ -152,6 +152,12 @@ extern char *yytext;
 %precedence MOD_SEP
 %precedence RARROW ':'
 
+// In where clauses, "for" should have greater precedence when used as
+// a higher ranked constraint than when used as the beginning of a
+// for_in_type (which is a ty)
+%precedence FORTYPE
+%precedence FOR
+
 // Binops & unops, and their precedences
 %precedence BOX
 %precedence BOXPLACE
@@ -777,9 +783,13 @@ where_predicates
 ;
 
 where_predicate
-: lifetime ':' bounds    { $$ = mk_node("WherePredicate", 2, $1, $3); }
-| ty ':' ty_param_bounds { $$ = mk_node("WherePredicate", 2, $1, $3); }
+: maybe_for_lifetimes lifetime ':' bounds    { $$ = mk_node("WherePredicate", 3, $1, $2, $4); }
+| maybe_for_lifetimes ty ':' ty_param_bounds { $$ = mk_node("WherePredicate", 3, $1, $2, $4); }
 ;
+
+maybe_for_lifetimes
+: FOR '<' lifetimes '>' { $$ = mk_none(); }
+| %prec FORTYPE %empty  { $$ = mk_none(); }
 
 ty_params
 : ty_param               { $$ = mk_node("TyParams", 1, $1); }
