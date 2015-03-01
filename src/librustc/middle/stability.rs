@@ -362,8 +362,6 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
 /// Helper for discovering nodes to check for stability
 pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
                   cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
-    if is_internal(tcx, e.span) { return; }
-
     let span;
     let id = match e.node {
         ast::ExprMethodCall(i, _, _) => {
@@ -527,12 +525,13 @@ pub fn check_pat(tcx: &ty::ctxt, pat: &ast::Pat,
 fn maybe_do_stability_check(tcx: &ty::ctxt, id: ast::DefId, span: Span,
                             cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
     if !is_staged_api(tcx, id) { return  }
+    if is_internal(tcx, span) { return }
     let ref stability = lookup(tcx, id);
     cb(id, span, stability);
 }
 
 fn is_internal(tcx: &ty::ctxt, span: Span) -> bool {
-    tcx.sess.codemap().span_is_internal(span)
+    tcx.sess.codemap().span_allows_unstable(span)
 }
 
 fn is_staged_api(tcx: &ty::ctxt, id: DefId) -> bool {

@@ -1216,7 +1216,8 @@ impl<'a> TraitDef<'a> {
             callee: codemap::NameAndSpan {
                 name: format!("derive({})", trait_name),
                 format: codemap::MacroAttribute,
-                span: Some(self.span)
+                span: Some(self.span),
+                allow_internal_unstable: false,
             }
         });
         to_set

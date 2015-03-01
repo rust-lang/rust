@@ -267,7 +267,7 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
         rhses: rhses,
     };
 
-    NormalTT(exp, Some(def.span))
+    NormalTT(exp, Some(def.span), def.allow_internal_unstable)
 }
 
 fn check_lhs_nt_follows(cx: &mut ExtCtxt, lhs: &NamedMatch, sp: Span) {
