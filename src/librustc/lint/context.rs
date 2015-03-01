@@ -612,7 +612,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, m: &ast::TraitItem) {
-        run_lints!(self, check_trait_method, m);
+        run_lints!(self, check_trait_item, m);
         visit::walk_trait_item(self, m);
     }
 
