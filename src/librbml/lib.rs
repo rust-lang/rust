@@ -103,17 +103,16 @@ pub enum EbmlEncoderTag {
 
     EsStr      = 0x11,
     EsEnum     = 0x12,
-    EsEnumBody = 0x13,
-    EsVec      = 0x14,
-    EsVecElt   = 0x15,
-    EsMap      = 0x16,
-    EsMapKey   = 0x17,
-    EsMapVal   = 0x18,
+    EsVec      = 0x13,
+    EsVecElt   = 0x14,
+    EsMap      = 0x15,
+    EsMapKey   = 0x16,
+    EsMapVal   = 0x17,
 
-    EsOpaque   = 0x19,
+    EsOpaque   = 0x18,
 
     // Used only when debugging
-    EsLabel    = 0x1a,
+    EsLabel    = 0x19,
 }
 
 const NUM_TAGS: uint = 0x1000;
@@ -160,7 +159,7 @@ pub mod reader {
     use super::{ ApplicationError, EsVec, EsMap, EsEnum, EsVecLen, EsVecElt,
         EsMapLen, EsMapKey, EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64,
         EsI32, EsI16, EsI8, EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal,
-        EsEnumBody, EsUint, EsOpaque, EsLabel, EbmlEncoderTag, Doc, TaggedDoc,
+        EsUint, EsOpaque, EsLabel, EbmlEncoderTag, Doc, TaggedDoc,
         Error, IntTooBig, InvalidTag, Expected, NUM_IMPLICIT_TAGS, TAG_IMPLICIT_LEN };
 
     pub type DecodeResult<T> = Result<T, Error>;
@@ -564,17 +563,7 @@ pub mod reader {
             let idx = try!(self._next_uint(EsEnumVid));
             debug!("  idx={}", idx);
 
-            let doc = try!(self.next_doc(EsEnumBody));
-
-            let (old_parent, old_pos) = (self.parent, self.pos);
-            self.parent = doc;
-            self.pos = self.parent.start;
-
-            let result = try!(f(self, idx));
-
-            self.parent = old_parent;
-            self.pos = old_pos;
-            Ok(result)
+            f(self, idx)
         }
 
         fn read_enum_variant_arg<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
@@ -592,17 +581,7 @@ pub mod reader {
             let idx = try!(self._next_uint(EsEnumVid));
             debug!("  idx={}", idx);
 
-            let doc = try!(self.next_doc(EsEnumBody));
-
-            let (old_parent, old_pos) = (self.parent, self.pos);
-            self.parent = doc;
-            self.pos = self.parent.start;
-
-            let result = try!(f(self, idx));
-
-            self.parent = old_parent;
-            self.pos = old_pos;
-            Ok(result)
+            f(self, idx)
         }
 
         fn read_enum_struct_variant_field<T, F>(&mut self,
@@ -743,7 +722,7 @@ pub mod writer {
 
     use super::{ EsVec, EsMap, EsEnum, EsVecLen, EsVecElt, EsMapLen, EsMapKey,
         EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64, EsI32, EsI16, EsI8,
-        EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal, EsEnumBody, EsUint,
+        EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal, EsUint,
         EsOpaque, EsLabel, EbmlEncoderTag, NUM_IMPLICIT_TAGS, NUM_TAGS };
 
     use serialize;
@@ -1059,9 +1038,7 @@ pub mod writer {
             F: FnOnce(&mut Encoder<'a, W>) -> EncodeResult,
         {
             try!(self._emit_tagged_uint(EsEnumVid, v_id));
-            try!(self.start_tag(EsEnumBody as uint));
-            try!(f(self));
-            self.end_tag()
+            f(self)
         }
 
         fn emit_enum_variant_arg<F>(&mut self, _: uint, f: F) -> EncodeResult where
