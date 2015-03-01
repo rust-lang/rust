@@ -442,7 +442,7 @@ impl CharExt for char {
             // Unicode-escape other C0 or C1 control character.
             '\x00' ... '\x1f' | '\u{80}' ... '\u{9f}' =>
                 EscapeDefaultState::Unicode(self.escape_unicode()),
-            // Don't escape everything else.
+            // Don't escape anything else.
             _ => EscapeDefaultState::Char(self),
         };
         EscapeDefault { state: init_state }
