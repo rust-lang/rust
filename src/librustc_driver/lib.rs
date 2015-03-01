@@ -76,7 +76,6 @@ use std::cmp::Ordering::Equal;
 use std::old_io::{self, stdio};
 use std::iter::repeat;
 use std::env;
-use std::os;
 use std::sync::mpsc::channel;
 use std::thread;
 
@@ -236,8 +235,7 @@ pub trait CompilerCalls<'a> {
 // CompilerCalls instance for a regular rustc build.
 pub struct RustcDefaultCalls {
     save_analysis: bool,
-    pretty_print: Option<(PpMode, Option<UserIdentifiedItem>)>,
-    pretty_dump_dir: Option<Path>
+    pretty_print: Option<(PpMode, Option<UserIdentifiedItem>)>
 }
 
 impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
@@ -305,17 +303,11 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         if sess.unstable_options() {
             self.pretty_print = matches.opt_default("pretty", "normal").map(|a| {
                 // stable pretty-print variants only
-                pretty::parse_pretty(sess, &a, false)
+                pretty::parse_pretty(&a, false).unwrap_or_else(|e| sess.fatal(&e))
             }).or_else(|| matches.opt_str("xpretty").map(|a| {
                 // extended with unstable pretty-print variants
-                pretty::parse_pretty(sess, &a, true)
+                pretty::parse_pretty(&a, true).unwrap_or_else(|e| sess.fatal(&e))
             }));
-        }
-
-        if let Some(ref dir) = sess.opts.debugging_opts.pretty_dump_dir {
-            let pretty_dump_dir = os::getcwd().unwrap().join(dir);
-            assert!(pretty_dump_dir.is_absolute());
-            self.pretty_dump_dir = Some(pretty_dump_dir);
         }
 
         RustcDefaultCalls::print_crate_info(sess, Some(input), odir, ofile).and_then(
@@ -343,40 +335,11 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             control.after_llvm.stop = Compilation::Stop;
         }
 
-        if let Some((ppm, opt_uii)) = self.pretty_print.take() {
-            let phase = pretty::printing_phase(&mut control, ppm, opt_uii.as_ref());
-
-            let dump_dir = self.pretty_dump_dir.take();
-            phase.callback = box move |state| {
-                let pretty_output_path;
-                let output = if let Some(ref dir) = dump_dir {
-                    let file_path = if let Some(outputs) = state.output_filenames {
-                        outputs.with_extension("rs")
-                    } else {
-                        state.session.fatal(
-                            "-Z pretty-dump-dir cannot be used with --pretty \
-                             options that print before expansion");
-                    };
-                    let file_path = os::getcwd().unwrap().join(&file_path);
-                    assert!(file_path.is_absolute());
-
-                    // Cheap isomorphism: /foo/bar--bar/baz <-> foo--bar----bar--baz.
-                    let components: Vec<_> = file_path.components().map(|bytes| {
-                        String::from_utf8_lossy(bytes).replace("--", "----")
-                    }).collect();
-
-                    pretty_output_path = dir.join(components.connect("--"));
-                    Some(&pretty_output_path)
-                } else {
-                    state.output
-                };
-                pretty::print_from_phase(state, ppm, opt_uii.as_ref(), output).unwrap();
-            };
-
-            if !sess.opts.debugging_opts.pretty_keep_going {
-                phase.stop = Compilation::Stop;
-            }
-        }
+        pretty::setup_controller(&mut control,
+                                 self.pretty_print.take(),
+                                 sess.opts.debugging_opts.pretty_dump_dir
+                                                         .as_ref().map(|s| &s[..]),
+                                 sess.opts.debugging_opts.pretty_keep_going);
 
         if self.save_analysis {
             control.after_analysis.callback = box |state| {
@@ -398,8 +361,7 @@ impl RustcDefaultCalls {
     pub fn new() -> RustcDefaultCalls {
         RustcDefaultCalls {
             save_analysis: false,
-            pretty_print: None,
-            pretty_dump_dir: None
+            pretty_print: None
         }
     }
 

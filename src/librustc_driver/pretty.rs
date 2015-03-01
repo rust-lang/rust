@@ -35,8 +35,10 @@ use syntax::ptr::P;
 use graphviz as dot;
 
 use std::borrow::{Cow, IntoCow};
+use std::env;
 use std::old_io::{self, BufReader};
 use std::option;
+use std::os;
 use std::str::FromStr;
 
 #[derive(Copy, PartialEq, Debug)]
@@ -67,9 +69,8 @@ pub enum PpMode {
     PpmFlowGraph(PpFlowGraphMode),
 }
 
-pub fn parse_pretty(sess: &Session,
-                    name: &str,
-                    extended: bool) -> (PpMode, Option<UserIdentifiedItem>) {
+pub fn parse_pretty(name: &str, extended: bool)
+                    -> Result<(PpMode, Option<UserIdentifiedItem>), String> {
     let mut split = name.splitn(1, '=');
     let first = split.next().unwrap();
     let opt_second = split.next();
@@ -84,23 +85,23 @@ pub fn parse_pretty(sess: &Session,
         ("identified", _)   => PpmSource(PpmIdentified),
         ("flowgraph", true)    => PpmFlowGraph(PpFlowGraphMode::Default),
         ("flowgraph,unlabelled", true)    => PpmFlowGraph(PpFlowGraphMode::UnlabelledEdges),
-        _ => {
+        _ => return Err({
             if extended {
-                sess.fatal(&format!(
+                format!(
                     "argument to `xpretty` must be one of `normal`, \
                      `expanded`, `flowgraph[,unlabelled]=<nodeid>`, `typed`, \
                      `typed,unsuffixed_literals`, `identified`, \
-                     `expanded,identified`, or `everybody_loops`; got {}", name));
+                     `expanded,identified`, or `everybody_loops`; got {}", name)
             } else {
-                sess.fatal(&format!(
+                format!(
                     "argument to `pretty` must be one of `normal`, \
                      `expanded`, `typed`, `identified`, \
-                     or `expanded,identified`; got {}", name));
+                     or `expanded,identified`; got {}", name)
             }
-        }
+        })
     };
     let opt_second = opt_second.and_then(|s| s.parse::<UserIdentifiedItem>().ok());
-    (first, opt_second)
+    Ok((first, opt_second))
 }
 
 struct NoAnn;
@@ -391,15 +392,46 @@ impl fold::Folder for ReplaceBodyWithLoop {
     }
 }
 
-pub fn printing_phase<'a, 'b>(control: &'a mut driver::CompileController<'b>,
-                              ppm: PpMode,
-                              opt_uii: Option<&UserIdentifiedItem>)
-                              -> &'a mut driver::PhaseController<'b> {
+pub fn setup_controller(control: &mut driver::CompileController,
+                        ppm_and_uui: Option<(PpMode, Option<UserIdentifiedItem>)>,
+                        dump_dir: Option<&str>,
+                        keep_going: bool) {
+
+    fn mk_absolute(path: &str) -> Path {
+        let path = os::getcwd().unwrap().join(path);
+        assert!(path.is_absolute());
+        path
+    }
+
+    let (ppm, opt_uii, dump_dir, keep_going) = match ppm_and_uui {
+        Some((ppm, opt_uii)) => {
+            (ppm, opt_uii, dump_dir.map(mk_absolute), keep_going)
+        }
+        None => {
+            let decoded = env::var("RUSTC_PRETTY_DUMP").ok().and_then(|s| {
+                let mut s = s.split(":");
+
+                s.next().and_then(|mode| {
+                    parse_pretty(mode, true).ok()
+                }).and_then(|(ppm, opt_uii)| {
+                    s.next().map(|dump_dir| {
+                        (ppm, opt_uii, Some(mk_absolute(dump_dir)), true)
+                    })
+                })
+            });
+            if let Some(parts) = decoded {
+                parts
+            } else {
+                return;
+            }
+        }
+    };
+
     if ppm == PpmSource(PpmEveryBodyLoops) {
         control.every_body_loops = true;
     }
 
-    match ppm {
+    let phase = match ppm {
         PpmSource(PpmNormal) |
         PpmSource(PpmEveryBodyLoops) |
         PpmSource(PpmIdentified) => {
@@ -421,14 +453,44 @@ pub fn printing_phase<'a, 'b>(control: &'a mut driver::CompileController<'b>,
         PpmFlowGraph(_) => {
             &mut control.after_analysis
         }
+    };
+
+    phase.callback = box move |state| {
+        let pretty_output_path;
+        let output = if let Some(ref dir) = dump_dir {
+            let file_path = if let Some(outputs) = state.output_filenames {
+                outputs.with_extension("rs")
+            } else {
+                state.session.fatal(
+                    "-Z pretty-dump-dir cannot be used with --pretty \
+                        options that print before expansion");
+            };
+            let file_path = os::getcwd().unwrap().join(&file_path);
+            assert!(file_path.is_absolute());
+
+            // Cheap isomorphism: /foo/bar--bar/baz <-> foo--bar----bar--baz.
+            let components: Vec<_> = file_path.components().map(|bytes| {
+                String::from_utf8_lossy(bytes).replace("--", "----")
+            }).collect();
+
+            pretty_output_path = dir.join(components.connect("--"));
+            Some(&pretty_output_path)
+        } else {
+            state.output
+        };
+        print_from_phase(state, ppm, opt_uii.as_ref(), output).unwrap();
+    };
+
+    if !keep_going {
+        phase.stop = ::Compilation::Stop;
     }
 }
 
-pub fn print_from_phase(state: driver::CompileState,
-                        ppm: PpMode,
-                        opt_uii: Option<&UserIdentifiedItem>,
-                        output: Option<&Path>)
-                        -> old_io::IoResult<()> {
+fn print_from_phase(state: driver::CompileState,
+                    ppm: PpMode,
+                    opt_uii: Option<&UserIdentifiedItem>,
+                    output: Option<&Path>)
+                    -> old_io::IoResult<()> {
     let sess = state.session;
     let krate = state.krate.or(state.expanded_crate)
                            .expect("--pretty=typed missing crate");
