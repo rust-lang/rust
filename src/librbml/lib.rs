@@ -80,37 +80,55 @@ pub struct TaggedDoc<'a> {
 
 #[derive(Copy, Debug)]
 pub enum EbmlEncoderTag {
-    EsUint,     // 0
-    EsU64,      // 1
-    EsU32,      // 2
-    EsU16,      // 3
-    EsU8,       // 4
-    EsInt,      // 5
-    EsI64,      // 6
-    EsI32,      // 7
-    EsI16,      // 8
-    EsI8,       // 9
-    EsBool,     // 10
-    EsChar,     // 11
-    EsStr,      // 12
-    EsF64,      // 13
-    EsF32,      // 14
-    EsFloat,    // 15
-    EsEnum,     // 16
-    EsEnumVid,  // 17
-    EsEnumBody, // 18
-    EsVec,      // 19
-    EsVecLen,   // 20
-    EsVecElt,   // 21
-    EsMap,      // 22
-    EsMapLen,   // 23
-    EsMapKey,   // 24
-    EsMapVal,   // 25
+    // tags 00..1f are reserved for auto-serialization.
+    // first NUM_IMPLICIT_TAGS tags are implicitly sized and lengths are not encoded.
 
-    EsOpaque,
+    EsUint     = 0x00, // + 8 bytes
+    EsU64      = 0x01, // + 8 bytes
+    EsU32      = 0x02, // + 4 bytes
+    EsU16      = 0x03, // + 2 bytes
+    EsU8       = 0x04, // + 1 byte
+    EsInt      = 0x05, // + 8 bytes
+    EsI64      = 0x06, // + 8 bytes
+    EsI32      = 0x07, // + 4 bytes
+    EsI16      = 0x08, // + 2 bytes
+    EsI8       = 0x09, // + 1 byte
+    EsBool     = 0x0a, // + 1 byte
+    EsChar     = 0x0b, // + 4 bytes
+    EsF64      = 0x0c, // + 8 bytes
+    EsF32      = 0x0d, // + 4 bytes
+    EsEnumVid  = 0x0e, // + 4 bytes
+    EsVecLen   = 0x0f, // + 4 bytes
+    EsMapLen   = 0x10, // + 4 bytes
 
-    EsLabel, // Used only when debugging
+    EsStr      = 0x11,
+    EsEnum     = 0x12,
+    EsEnumBody = 0x13,
+    EsVec      = 0x14,
+    EsVecElt   = 0x15,
+    EsMap      = 0x16,
+    EsMapKey   = 0x17,
+    EsMapVal   = 0x18,
+
+    EsOpaque   = 0x19,
+
+    // Used only when debugging
+    EsLabel    = 0x1a,
 }
+
+const NUM_TAGS: uint = 0x1000;
+const NUM_IMPLICIT_TAGS: uint = 0x11;
+
+static TAG_IMPLICIT_LEN: [i8; NUM_IMPLICIT_TAGS] = [
+    8, 8, 4, 2, 1, // EsU*
+    8, 8, 4, 2, 1, // ESI*
+    1, // EsBool
+    4, // EsChar
+    8, 4, // EsF*
+    4, // EsEnumVid
+    4, // EsVecLen
+    4, // EsMapLen
+];
 
 #[derive(Debug)]
 pub enum Error {
@@ -143,7 +161,7 @@ pub mod reader {
         EsMapLen, EsMapKey, EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64,
         EsI32, EsI16, EsI8, EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal,
         EsEnumBody, EsUint, EsOpaque, EsLabel, EbmlEncoderTag, Doc, TaggedDoc,
-        Error, IntTooBig, InvalidTag, Expected };
+        Error, IntTooBig, InvalidTag, Expected, NUM_IMPLICIT_TAGS, TAG_IMPLICIT_LEN };
 
     pub type DecodeResult<T> = Result<T, Error>;
     // rbml reading
@@ -250,9 +268,17 @@ pub mod reader {
         }
     }
 
+    pub fn tag_len_at(data: &[u8], tag: Res) -> DecodeResult<Res> {
+        if tag.val < NUM_IMPLICIT_TAGS && TAG_IMPLICIT_LEN[tag.val] >= 0 {
+            Ok(Res { val: TAG_IMPLICIT_LEN[tag.val] as uint, next: tag.next })
+        } else {
+            vuint_at(data, tag.next)
+        }
+    }
+
     pub fn doc_at<'a>(data: &'a [u8], start: uint) -> DecodeResult<TaggedDoc<'a>> {
         let elt_tag = try!(tag_at(data, start));
-        let elt_size = try!(vuint_at(data, elt_tag.next));
+        let elt_size = try!(tag_len_at(data, elt_tag));
         let end = elt_size.next + elt_size.val;
         Ok(TaggedDoc {
             tag: elt_tag.val,
@@ -264,7 +290,7 @@ pub mod reader {
         let mut pos = d.start;
         while pos < d.end {
             let elt_tag = try_or!(tag_at(d.data, pos), None);
-            let elt_size = try_or!(vuint_at(d.data, elt_tag.next), None);
+            let elt_size = try_or!(tag_len_at(d.data, elt_tag), None);
             pos = elt_size.next + elt_size.val;
             if elt_tag.val == tg {
                 return Some(Doc { data: d.data, start: elt_size.next,
@@ -290,7 +316,7 @@ pub mod reader {
         let mut pos = d.start;
         while pos < d.end {
             let elt_tag = try_or!(tag_at(d.data, pos), false);
-            let elt_size = try_or!(vuint_at(d.data, elt_tag.next), false);
+            let elt_size = try_or!(tag_len_at(d.data, elt_tag), false);
             pos = elt_size.next + elt_size.val;
             let doc = Doc { data: d.data, start: elt_size.next, end: pos };
             if !it(elt_tag.val, doc) {
@@ -306,7 +332,7 @@ pub mod reader {
         let mut pos = d.start;
         while pos < d.end {
             let elt_tag = try_or!(tag_at(d.data, pos), false);
-            let elt_size = try_or!(vuint_at(d.data, elt_tag.next), false);
+            let elt_size = try_or!(tag_len_at(d.data, elt_tag), false);
             pos = elt_size.next + elt_size.val;
             if elt_tag.val == tg {
                 let doc = Doc { data: d.data, start: elt_size.next,
@@ -718,7 +744,7 @@ pub mod writer {
     use super::{ EsVec, EsMap, EsEnum, EsVecLen, EsVecElt, EsMapLen, EsMapKey,
         EsEnumVid, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64, EsI32, EsI16, EsI8,
         EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal, EsEnumBody, EsUint,
-        EsOpaque, EsLabel, EbmlEncoderTag };
+        EsOpaque, EsLabel, EbmlEncoderTag, NUM_IMPLICIT_TAGS, NUM_TAGS };
 
     use serialize;
 
@@ -734,7 +760,7 @@ pub mod writer {
     fn write_tag<W: Writer>(w: &mut W, n: uint) -> EncodeResult {
         if n < 0xf0 {
             w.write_all(&[n as u8])
-        } else if 0x100 <= n && n < 0x1000 {
+        } else if 0x100 <= n && n < NUM_TAGS {
             w.write_all(&[0xf0 | (n >> 8) as u8, n as u8])
         } else {
             Err(old_io::IoError {
@@ -791,6 +817,7 @@ pub mod writer {
 
         pub fn start_tag(&mut self, tag_id: uint) -> EncodeResult {
             debug!("Start tag {:?}", tag_id);
+            assert!(tag_id >= NUM_IMPLICIT_TAGS);
 
             // Write the enum ID:
             try!(write_tag(self.writer, tag_id));
@@ -822,6 +849,7 @@ pub mod writer {
         }
 
         pub fn wr_tagged_bytes(&mut self, tag_id: uint, b: &[u8]) -> EncodeResult {
+            assert!(tag_id >= NUM_IMPLICIT_TAGS);
             try!(write_tag(self.writer, tag_id));
             try!(write_vuint(self.writer, b.len()));
             self.writer.write_all(b)
@@ -866,6 +894,47 @@ pub mod writer {
             self.wr_tagged_bytes(tag_id, v.as_bytes())
         }
 
+        // for auto-serialization
+        fn wr_tagged_raw_bytes(&mut self, tag_id: uint, b: &[u8]) -> EncodeResult {
+            try!(write_tag(self.writer, tag_id));
+            self.writer.write_all(b)
+        }
+
+        fn wr_tagged_raw_u64(&mut self, tag_id: uint, v: u64) -> EncodeResult {
+            let bytes: [u8; 8] = unsafe { mem::transmute(v.to_be()) };
+            self.wr_tagged_raw_bytes(tag_id, &bytes)
+        }
+
+        fn wr_tagged_raw_u32(&mut self, tag_id: uint, v: u32)  -> EncodeResult{
+            let bytes: [u8; 4] = unsafe { mem::transmute(v.to_be()) };
+            self.wr_tagged_raw_bytes(tag_id, &bytes)
+        }
+
+        fn wr_tagged_raw_u16(&mut self, tag_id: uint, v: u16) -> EncodeResult {
+            let bytes: [u8; 2] = unsafe { mem::transmute(v.to_be()) };
+            self.wr_tagged_raw_bytes(tag_id, &bytes)
+        }
+
+        fn wr_tagged_raw_u8(&mut self, tag_id: uint, v: u8) -> EncodeResult {
+            self.wr_tagged_raw_bytes(tag_id, &[v])
+        }
+
+        fn wr_tagged_raw_i64(&mut self, tag_id: uint, v: i64) -> EncodeResult {
+            self.wr_tagged_raw_u64(tag_id, v as u64)
+        }
+
+        fn wr_tagged_raw_i32(&mut self, tag_id: uint, v: i32) -> EncodeResult {
+            self.wr_tagged_raw_u32(tag_id, v as u32)
+        }
+
+        fn wr_tagged_raw_i16(&mut self, tag_id: uint, v: i16) -> EncodeResult {
+            self.wr_tagged_raw_u16(tag_id, v as u16)
+        }
+
+        fn wr_tagged_raw_i8(&mut self, tag_id: uint, v: i8) -> EncodeResult {
+            self.wr_tagged_raw_bytes(tag_id, &[v as u8])
+        }
+
         pub fn wr_bytes(&mut self, b: &[u8]) -> EncodeResult {
             debug!("Write {:?} bytes", b.len());
             self.writer.write_all(b)
@@ -891,7 +960,7 @@ pub mod writer {
         // used internally to emit things like the vector length and so on
         fn _emit_tagged_uint(&mut self, t: EbmlEncoderTag, v: uint) -> EncodeResult {
             assert!(v <= 0xFFFF_FFFF);
-            self.wr_tagged_u32(t as uint, v as u32)
+            self.wr_tagged_raw_u32(t as uint, v as u32)
         }
 
         fn _emit_label(&mut self, label: &str) -> EncodeResult {
@@ -922,51 +991,51 @@ pub mod writer {
         }
 
         fn emit_uint(&mut self, v: uint) -> EncodeResult {
-            self.wr_tagged_u64(EsUint as uint, v as u64)
+            self.wr_tagged_raw_u64(EsUint as uint, v as u64)
         }
         fn emit_u64(&mut self, v: u64) -> EncodeResult {
-            self.wr_tagged_u64(EsU64 as uint, v)
+            self.wr_tagged_raw_u64(EsU64 as uint, v)
         }
         fn emit_u32(&mut self, v: u32) -> EncodeResult {
-            self.wr_tagged_u32(EsU32 as uint, v)
+            self.wr_tagged_raw_u32(EsU32 as uint, v)
         }
         fn emit_u16(&mut self, v: u16) -> EncodeResult {
-            self.wr_tagged_u16(EsU16 as uint, v)
+            self.wr_tagged_raw_u16(EsU16 as uint, v)
         }
         fn emit_u8(&mut self, v: u8) -> EncodeResult {
-            self.wr_tagged_u8(EsU8 as uint, v)
+            self.wr_tagged_raw_u8(EsU8 as uint, v)
         }
 
         fn emit_int(&mut self, v: int) -> EncodeResult {
-            self.wr_tagged_i64(EsInt as uint, v as i64)
+            self.wr_tagged_raw_i64(EsInt as uint, v as i64)
         }
         fn emit_i64(&mut self, v: i64) -> EncodeResult {
-            self.wr_tagged_i64(EsI64 as uint, v)
+            self.wr_tagged_raw_i64(EsI64 as uint, v)
         }
         fn emit_i32(&mut self, v: i32) -> EncodeResult {
-            self.wr_tagged_i32(EsI32 as uint, v)
+            self.wr_tagged_raw_i32(EsI32 as uint, v)
         }
         fn emit_i16(&mut self, v: i16) -> EncodeResult {
-            self.wr_tagged_i16(EsI16 as uint, v)
+            self.wr_tagged_raw_i16(EsI16 as uint, v)
         }
         fn emit_i8(&mut self, v: i8) -> EncodeResult {
-            self.wr_tagged_i8(EsI8 as uint, v)
+            self.wr_tagged_raw_i8(EsI8 as uint, v)
         }
 
         fn emit_bool(&mut self, v: bool) -> EncodeResult {
-            self.wr_tagged_u8(EsBool as uint, v as u8)
+            self.wr_tagged_raw_u8(EsBool as uint, v as u8)
         }
 
         fn emit_f64(&mut self, v: f64) -> EncodeResult {
             let bits = unsafe { mem::transmute(v) };
-            self.wr_tagged_u64(EsF64 as uint, bits)
+            self.wr_tagged_raw_u64(EsF64 as uint, bits)
         }
         fn emit_f32(&mut self, v: f32) -> EncodeResult {
             let bits = unsafe { mem::transmute(v) };
-            self.wr_tagged_u32(EsF32 as uint, bits)
+            self.wr_tagged_raw_u32(EsF32 as uint, bits)
         }
         fn emit_char(&mut self, v: char) -> EncodeResult {
-            self.wr_tagged_u32(EsChar as uint, v as u32)
+            self.wr_tagged_raw_u32(EsChar as uint, v as u32)
         }
 
         fn emit_str(&mut self, v: &str) -> EncodeResult {
