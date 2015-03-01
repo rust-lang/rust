@@ -2435,21 +2435,19 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
     use middle::ty::{BrAnon, ReLateBound};
 
     let function_type;
-    let (fn_sig, abi, has_env) = match fn_ty.sty {
-        ty::ty_bare_fn(_, ref f) => (&f.sig, f.abi, false),
+    let (fn_sig, abi, env_ty) = match fn_ty.sty {
+        ty::ty_bare_fn(_, ref f) => (&f.sig, f.abi, None),
         ty::ty_closure(closure_did, _, substs) => {
             let typer = common::NormalizingClosureTyper::new(ccx.tcx());
             function_type = typer.closure_type(closure_did, substs);
-            (&function_type.sig, RustCall, true)
+            let self_type = self_type_for_closure(ccx, closure_did, fn_ty);
+            (&function_type.sig, RustCall, Some(self_type))
         }
         _ => ccx.sess().bug("expected closure or function.")
     };
 
     let fn_sig = ty::erase_late_bound_regions(ccx.tcx(), fn_sig);
 
-    // Since index 0 is the return value of the llvm func, we start
-    // at either 1 or 2 depending on whether there's an env slot or not
-    let mut first_arg_offset = if has_env { 2 } else { 1 };
     let mut attrs = llvm::AttrBuilder::new();
     let ret_ty = fn_sig.output;
 
@@ -2460,7 +2458,11 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
             assert!(abi == RustCall);
 
             match fn_sig.inputs[0].sty {
-                ty::ty_tup(ref inputs) => inputs.clone(),
+                ty::ty_tup(ref inputs) => {
+                    let mut full_inputs = vec![env_ty.expect("Missing closure environment")];
+                    full_inputs.push_all(inputs);
+                    full_inputs
+                }
                 _ => ccx.sess().bug("expected tuple'd inputs")
             }
         },
@@ -2478,6 +2480,8 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
         _ => fn_sig.inputs.clone()
     };
 
+    // Index 0 is the return value of the llvm func, so we start at 1
+    let mut first_arg_offset = 1;
     if let ty::FnConverging(ret_ty) = ret_ty {
         // A function pointer is called without the declaration
         // available, so we have to apply any attributes with ABI
