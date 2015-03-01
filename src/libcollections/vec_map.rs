@@ -308,7 +308,7 @@ impl<V> VecMap<V> {
     ///
     /// let vec: Vec<(usize, &str)> = map.into_iter().collect();
     ///
-    /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
+    /// assert_eq!(vec, [(1, "a"), (2, "b"), (3, "c")]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<V> {
@@ -425,7 +425,7 @@ impl<V> VecMap<V> {
     ///
     /// let vec: Vec<(usize, &str)> = map.drain().collect();
     ///
-    /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
+    /// assert_eq!(vec, [(1, "a"), (2, "b"), (3, "c")]);
     /// ```
     #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
@@ -739,7 +739,7 @@ impl<V: Ord> Ord for VecMap<V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<V: fmt::Debug> fmt::Debug for VecMap<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "VecMap {{"));
+        try!(write!(f, "{{"));
 
         for (i, (k, v)) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
@@ -1226,7 +1226,7 @@ mod test_map {
 
         let vec: Vec<_> = map.drain().collect();
 
-        assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
+        assert_eq!(vec, [(1, "a"), (2, "b"), (3, "c")]);
         assert_eq!(map.len(), 0);
     }
 
@@ -1318,8 +1318,8 @@ mod test_map {
         map.insert(3, 4);
 
         let map_str = format!("{:?}", map);
-        assert!(map_str == "VecMap {1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
-        assert_eq!(format!("{:?}", empty), "VecMap {}");
+        assert!(map_str == "{1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
+        assert_eq!(format!("{:?}", empty), "{}");
     }
 
     #[test]

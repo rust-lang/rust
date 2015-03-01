@@ -159,86 +159,12 @@ impl LintStore {
         }
     }
 
-    fn register_renamed(&mut self, old_name: &str, new_name: &str) {
+    pub fn register_renamed(&mut self, old_name: &str, new_name: &str) {
         let target = match self.by_name.get(new_name) {
             Some(&Id(lint_id)) => lint_id.clone(),
             _ => panic!("invalid lint renaming of {} to {}", old_name, new_name)
         };
         self.by_name.insert(old_name.to_string(), Renamed(new_name.to_string(), target));
-    }
-
-    pub fn register_builtin(&mut self, sess: Option<&Session>) {
-        macro_rules! add_builtin {
-            ($sess:ident, $($name:ident),*,) => (
-                {$(
-                    self.register_pass($sess, false, box builtin::$name as LintPassObject);
-                )*}
-            )
-        }
-
-        macro_rules! add_builtin_with_new {
-            ($sess:ident, $($name:ident),*,) => (
-                {$(
-                    self.register_pass($sess, false, box builtin::$name::new() as LintPassObject);
-                )*}
-            )
-        }
-
-        macro_rules! add_lint_group {
-            ($sess:ident, $name:expr, $($lint:ident),*) => (
-                self.register_group($sess, false, $name, vec![$(LintId::of(builtin::$lint)),*]);
-            )
-        }
-
-        add_builtin!(sess,
-                     HardwiredLints,
-                     WhileTrue,
-                     UnusedCasts,
-                     ImproperCTypes,
-                     BoxPointers,
-                     UnusedAttributes,
-                     PathStatements,
-                     UnusedResults,
-                     NonCamelCaseTypes,
-                     NonSnakeCase,
-                     NonUpperCaseGlobals,
-                     UnusedParens,
-                     UnusedImportBraces,
-                     NonShorthandFieldPatterns,
-                     UnusedUnsafe,
-                     UnsafeCode,
-                     UnusedMut,
-                     UnusedAllocation,
-                     MissingCopyImplementations,
-                     UnstableFeatures,
-                     Stability,
-                     UnconditionalRecursion,
-                     InvalidNoMangleItems,
-                     PluginAsLibrary,
-        );
-
-        add_builtin_with_new!(sess,
-                              TypeLimits,
-                              RawPointerDerive,
-                              MissingDoc,
-                              MissingDebugImplementations,
-        );
-
-        add_lint_group!(sess, "bad_style",
-                        NON_CAMEL_CASE_TYPES, NON_SNAKE_CASE, NON_UPPER_CASE_GLOBALS);
-
-        add_lint_group!(sess, "unused",
-                        UNUSED_IMPORTS, UNUSED_VARIABLES, UNUSED_ASSIGNMENTS, DEAD_CODE,
-                        UNUSED_MUT, UNREACHABLE_CODE, UNUSED_MUST_USE,
-                        UNUSED_UNSAFE, PATH_STATEMENTS);
-
-        // We have one lint pass defined in this module.
-        self.register_pass(sess, false, box GatherNodeLevels as LintPassObject);
-
-        // Insert temporary renamings for a one-time deprecation
-        self.register_renamed("raw_pointer_deriving", "raw_pointer_derive");
-
-        self.register_renamed("unknown_features", "unused_features");
     }
 
     #[allow(unused_variables)]
@@ -741,7 +667,7 @@ impl<'a, 'tcx> IdVisitingOperation for Context<'a, 'tcx> {
 // nodes, so that the variant size difference check in trans can call
 // `raw_emit_lint`.
 
-struct GatherNodeLevels;
+pub struct GatherNodeLevels;
 
 impl LintPass for GatherNodeLevels {
     fn get_lints(&self) -> LintArray {

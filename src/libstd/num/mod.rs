@@ -1830,6 +1830,6 @@ mod bench {
     #[bench]
     fn bench_pow_function(b: &mut Bencher) {
         let v = (0..1024).collect::<Vec<_>>();
-        b.iter(|| {v.iter().fold(0, |old, new| old.pow(*new));});
+        b.iter(|| {v.iter().fold(0, |old, new| old.pow(*new as u32));});
     }
 }

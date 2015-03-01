@@ -32,6 +32,7 @@ use super::Compilation;
 use serialize::json;
 
 use std::env;
+use std::os;
 use std::ffi::OsString;
 use std::old_io::fs;
 use std::old_io;
@@ -471,7 +472,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             if cfg!(windows) {
                 _old_path = env::var_os("PATH").unwrap_or(_old_path);
                 let mut new_path = sess.host_filesearch(PathKind::All).get_dylib_search_paths();
-                new_path.extend(env::split_paths(&_old_path));
+                new_path.extend(os::split_paths(_old_path.to_str().unwrap()).into_iter());
                 env::set_var("PATH", &env::join_paths(new_path.iter()).unwrap());
             }
             let features = sess.features.borrow();
@@ -736,7 +737,7 @@ pub fn phase_6_link_output(sess: &Session,
                            outputs: &OutputFilenames) {
     let old_path = env::var_os("PATH").unwrap_or(OsString::from_str(""));
     let mut new_path = sess.host_filesearch(PathKind::All).get_tools_search_paths();
-    new_path.extend(env::split_paths(&old_path));
+    new_path.extend(os::split_paths(old_path.to_str().unwrap()).into_iter());
     env::set_var("PATH", &env::join_paths(new_path.iter()).unwrap());
 
     time(sess.time_passes(), "linking", (), |_|

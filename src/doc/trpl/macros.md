@@ -73,7 +73,7 @@ macro_rules! vec {
     };
 }
 # fn main() {
-#     assert_eq!(&[1,2,3], &vec![1,2,3]);
+#     assert_eq!([1,2,3], vec![1,2,3]);
 # }
 ```
 
@@ -189,14 +189,12 @@ shorthand for a data type could be valid as either an expression or a pattern.
 
 ## Repetition
 
-The repetition behavior can seem somewhat magical, especially when multiple
-names are bound at multiple nested levels of repetition. The two rules to keep
-in mind are:
+The repetition operator follows two principal rules:
 
-1. the behavior of `$(...)*` is to walk through one "layer" of repetitions, for
-all of the `$name`s it contains, in lockstep, and
+1. `$(...)*` walks through one "layer" of repetitions, for all of the `$name`s
+   it contains, in lockstep, and
 2. each `$name` must be under at least as many `$(...)*`s as it was matched
-against. If it is under more, it'll be duplicated, as appropriate.
+   against. If it is under more, it'll be duplicated, as appropriate.
 
 This baroque macro illustrates the duplication of variables from outer
 repetition levels.
@@ -225,6 +223,10 @@ That's most of the matcher syntax. These examples use `$(...)*`, which is a
 "zero or more" match. Alternatively you can write `$(...)+` for a "one or
 more" match. Both forms optionally include a separator, which can be any token
 except `+` or `*`.
+
+This system is based on
+"[Macro-by-Example](http://www.cs.indiana.edu/ftp/techreports/TR206.pdf)"
+(PDF link).
 
 # Hygiene
 
@@ -273,18 +275,25 @@ macro, using [a GNU C extension] to emulate Rust's expression blocks.
 })
 ```
 
-This looks reasonable, but watch what happens in this example:
+Here's a simple use case that goes terribly wrong:
 
 ```text
 const char *state = "reticulating splines";
-LOG(state);
+LOG(state)
 ```
 
-The program will likely segfault, after it tries to execute
+This expands to
 
 ```text
-printf("log(%d): %s\n", state, state);
+const char *state = "reticulating splines";
+int state = get_log_state();
+if (state > 0) {
+    printf("log(%d): %s\n", state, state);
+}
 ```
+
+The second variable named `state` shadows the first one.  This is a problem
+because the print statement should refer to both of them.
 
 The equivalent Rust macro has the desired behavior.
 
@@ -356,6 +365,64 @@ fn main() {
 ```
 
 [items]: ../reference.html#items
+
+# Recursive macros
+
+A macro's expansion can include more macro invocations, including invocations
+of the very same macro being expanded.  These recursive macros are useful for
+processing tree-structured input, as illustrated by this (simplistic) HTML
+shorthand:
+
+```rust
+# #![allow(unused_must_use)]
+macro_rules! write_html {
+    ($w:expr, ) => (());
+
+    ($w:expr, $e:tt) => (write!($w, "{}", $e));
+
+    ($w:expr, $tag:ident [ $($inner:tt)* ] $($rest:tt)*) => {{
+        write!($w, "<{}>", stringify!($tag));
+        write_html!($w, $($inner)*);
+        write!($w, "</{}>", stringify!($tag));
+        write_html!($w, $($rest)*);
+    }};
+}
+
+fn main() {
+#   // FIXME(#21826)
+    use std::fmt::Write;
+    let mut out = String::new();
+
+    write_html!(&mut out,
+        html[
+            head[title["Macros guide"]]
+            body[h1["Macros are the best!"]]
+        ]);
+
+    assert_eq!(out,
+        "<html><head><title>Macros guide</title></head>\
+         <body><h1>Macros are the best!</h1></body></html>");
+}
+```
+
+# Debugging macro code
+
+To see the results of expanding macros, run `rustc --pretty expanded`. The
+output represents a whole crate, so you can also feed it back in to `rustc`,
+which will sometimes produce better error messages than the original
+compilation. Note that the `--pretty expanded` output may have a different
+meaning if multiple variables of the same name (but different syntax contexts)
+are in play in the same scope. In this case `--pretty expanded,hygiene` will
+tell you about the syntax contexts.
+
+`rustc` provides two syntax extensions that help with macro debugging. For now,
+they are unstable and require feature gates.
+
+* `log_syntax!(...)` will print its arguments to standard output, at compile
+  time, and "expand" to nothing.
+
+* `trace_macros!(true)` will enable a compiler message every time a macro is
+  expanded. Use `trace_macros!(false)` later in expansion to turn it off.
 
 # Further reading
 

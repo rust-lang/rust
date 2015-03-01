@@ -24,7 +24,6 @@ use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::iter::{self, repeat, FromIterator, IntoIterator, RandomAccessIterator};
-use core::marker;
 use core::mem;
 use core::num::{Int, UnsignedInt};
 use core::ops::{Index, IndexMut};
@@ -58,12 +57,6 @@ pub struct VecDeque<T> {
     cap: usize,
     ptr: Unique<T>,
 }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Send> Send for VecDeque<T> {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<T: Sync> Sync for VecDeque<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for VecDeque<T> {
@@ -134,7 +127,7 @@ impl<T> VecDeque<T> {
                       self.cap);
         debug_assert!(src + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
                       self.cap);
-        ptr::copy_memory(
+        ptr::copy(
             self.ptr.offset(dst as isize),
             self.ptr.offset(src as isize),
             len);
@@ -147,7 +140,7 @@ impl<T> VecDeque<T> {
                       self.cap);
         debug_assert!(src + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
                       self.cap);
-        ptr::copy_nonoverlapping_memory(
+        ptr::copy_nonoverlapping(
             self.ptr.offset(dst as isize),
             self.ptr.offset(src as isize),
             len);
@@ -545,9 +538,7 @@ impl<T> VecDeque<T> {
         IterMut {
             tail: self.tail,
             head: self.head,
-            cap: self.cap,
-            ptr: *self.ptr,
-            marker: marker::PhantomData,
+            ring: unsafe { self.buffer_as_mut_slice() },
         }
     }
 
@@ -1343,22 +1334,22 @@ impl<T> VecDeque<T> {
                 // `at` lies in the first half.
                 let amount_in_first = first_len - at;
 
-                ptr::copy_nonoverlapping_memory(*other.ptr,
-                                                first_half.as_ptr().offset(at as isize),
-                                                amount_in_first);
+                ptr::copy_nonoverlapping(*other.ptr,
+                                         first_half.as_ptr().offset(at as isize),
+                                         amount_in_first);
 
                 // just take all of the second half.
-                ptr::copy_nonoverlapping_memory(other.ptr.offset(amount_in_first as isize),
-                                                second_half.as_ptr(),
-                                                second_len);
+                ptr::copy_nonoverlapping(other.ptr.offset(amount_in_first as isize),
+                                         second_half.as_ptr(),
+                                         second_len);
             } else {
                 // `at` lies in the second half, need to factor in the elements we skipped
                 // in the first half.
                 let offset = at - first_len;
                 let amount_in_second = second_len - offset;
-                ptr::copy_nonoverlapping_memory(*other.ptr,
-                                                second_half.as_ptr().offset(offset as isize),
-                                                amount_in_second);
+                ptr::copy_nonoverlapping(*other.ptr,
+                                         second_half.as_ptr().offset(offset as isize),
+                                         amount_in_second);
             }
         }
 
@@ -1515,17 +1506,12 @@ impl<'a, T> RandomAccessIterator for Iter<'a, T> {
     }
 }
 
-// FIXME This was implemented differently from Iter because of a problem
-//       with returning the mutable reference. I couldn't find a way to
-//       make the lifetime checker happy so, but there should be a way.
 /// `VecDeque` mutable iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T:'a> {
-    ptr: *mut T,
+    ring: &'a mut [T],
     tail: usize,
     head: usize,
-    cap: usize,
-    marker: marker::PhantomData<&'a mut T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1538,16 +1524,17 @@ impl<'a, T> Iterator for IterMut<'a, T> {
             return None;
         }
         let tail = self.tail;
-        self.tail = wrap_index(self.tail + 1, self.cap);
+        self.tail = wrap_index(self.tail + 1, self.ring.len());
 
         unsafe {
-            Some(&mut *self.ptr.offset(tail as isize))
+            let elem = self.ring.get_unchecked_mut(tail);
+            Some(&mut *(elem as *mut _))
         }
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = count(self.tail, self.head, self.cap);
+        let len = count(self.tail, self.head, self.ring.len());
         (len, Some(len))
     }
 }
@@ -1559,10 +1546,11 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
         if self.tail == self.head {
             return None;
         }
-        self.head = wrap_index(self.head - 1, self.cap);
+        self.head = wrap_index(self.head - 1, self.ring.len());
 
         unsafe {
-            Some(&mut *self.ptr.offset(self.head as isize))
+            let elem = self.ring.get_unchecked_mut(self.head);
+            Some(&mut *(elem as *mut _))
         }
     }
 }
@@ -1754,7 +1742,7 @@ impl<A> Extend<A> for VecDeque<A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for VecDeque<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "VecDeque ["));
+        try!(write!(f, "["));
 
         for (i, e) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
@@ -2105,7 +2093,7 @@ mod tests {
         let mut d: VecDeque<_> = (0..5).collect();
         d.pop_front();
         d.swap(0, 3);
-        assert_eq!(d.iter().cloned().collect::<Vec<_>>(), vec!(4, 2, 3, 1));
+        assert_eq!(d.iter().cloned().collect::<Vec<_>>(), [4, 2, 3, 1]);
     }
 
     #[test]
@@ -2435,12 +2423,12 @@ mod tests {
     #[test]
     fn test_show() {
         let ringbuf: VecDeque<_> = (0..10).collect();
-        assert_eq!(format!("{:?}", ringbuf), "VecDeque [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+        assert_eq!(format!("{:?}", ringbuf), "[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let ringbuf: VecDeque<_> = vec!["just", "one", "test", "more"].iter()
                                                                         .cloned()
                                                                         .collect();
-        assert_eq!(format!("{:?}", ringbuf), "VecDeque [\"just\", \"one\", \"test\", \"more\"]");
+        assert_eq!(format!("{:?}", ringbuf), "[\"just\", \"one\", \"test\", \"more\"]");
     }
 
     #[test]
@@ -2868,17 +2856,17 @@ mod tests {
 
         // normal append
         a.append(&mut b);
-        assert_eq!(a.iter().cloned().collect(), vec![1, 2, 3, 4, 5, 6]);
-        assert_eq!(b.iter().cloned().collect(), vec![]);
+        assert_eq!(a.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
+        assert_eq!(b.iter().cloned().collect::<Vec<_>>(), []);
 
         // append nothing to something
         a.append(&mut b);
-        assert_eq!(a.iter().cloned().collect(), vec![1, 2, 3, 4, 5, 6]);
-        assert_eq!(b.iter().cloned().collect(), vec![]);
+        assert_eq!(a.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
+        assert_eq!(b.iter().cloned().collect::<Vec<_>>(), []);
 
         // append something to nothing
         b.append(&mut a);
-        assert_eq!(b.iter().cloned().collect(), vec![1, 2, 3, 4, 5, 6]);
-        assert_eq!(a.iter().cloned().collect(), vec![]);
+        assert_eq!(b.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
+        assert_eq!(a.iter().cloned().collect::<Vec<_>>(), []);
     }
 }

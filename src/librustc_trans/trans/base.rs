@@ -433,13 +433,13 @@ pub fn set_inline_hint(f: ValueRef) {
 }
 
 pub fn set_llvm_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
-    use syntax::attr::*;
+    use syntax::attr::{find_inline_attr, InlineAttr};
     // Set the inline hint if there is one
     match find_inline_attr(Some(ccx.sess().diagnostic()), attrs) {
-        InlineHint   => set_inline_hint(llfn),
-        InlineAlways => set_always_inline(llfn),
-        InlineNever  => set_no_inline(llfn),
-        InlineNone   => { /* fallthrough */ }
+        InlineAttr::Hint   => set_inline_hint(llfn),
+        InlineAttr::Always => set_always_inline(llfn),
+        InlineAttr::Never  => set_no_inline(llfn),
+        InlineAttr::None   => { /* fallthrough */ }
     }
 
     for attr in attrs {
@@ -2332,6 +2332,11 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
           // Do static_assert checking. It can't really be done much earlier
           // because we need to get the value of the bool out of LLVM
           if attr::contains_name(&item.attrs, "static_assert") {
+              if !ty::type_is_bool(ty::expr_ty(ccx.tcx(), expr)) {
+                  ccx.sess().span_fatal(expr.span,
+                                        "can only have static_assert on a static \
+                                         with type `bool`");
+              }
               if m == ast::MutMutable {
                   ccx.sess().span_fatal(expr.span,
                                         "cannot have static_assert on a mutable \

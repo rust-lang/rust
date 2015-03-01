@@ -52,8 +52,15 @@ fn overlap(selcx: &mut SelectionContext,
            b_def_id: ast::DefId)
            -> bool
 {
+    debug!("overlap(a_def_id={}, b_def_id={})",
+           a_def_id.repr(selcx.tcx()),
+           b_def_id.repr(selcx.tcx()));
+
     let (a_trait_ref, a_obligations) = impl_trait_ref_and_oblig(selcx, a_def_id);
     let (b_trait_ref, b_obligations) = impl_trait_ref_and_oblig(selcx, b_def_id);
+
+    debug!("overlap: a_trait_ref={}", a_trait_ref.repr(selcx.tcx()));
+    debug!("overlap: b_trait_ref={}", b_trait_ref.repr(selcx.tcx()));
 
     // Does `a <: b` hold? If not, no overlap.
     if let Err(_) = infer::mk_sub_poly_trait_refs(selcx.infcx(),
@@ -64,10 +71,20 @@ fn overlap(selcx: &mut SelectionContext,
         return false;
     }
 
+    debug!("overlap: subtraitref check succeeded");
+
     // Are any of the obligations unsatisfiable? If so, no overlap.
-    a_obligations.iter()
-                 .chain(b_obligations.iter())
-                 .all(|o| selcx.evaluate_obligation(o))
+    let opt_failing_obligation =
+        a_obligations.iter()
+                     .chain(b_obligations.iter())
+                     .find(|o| !selcx.evaluate_obligation(o));
+
+    if let Some(failing_obligation) = opt_failing_obligation {
+        debug!("overlap: obligation unsatisfiable {}", failing_obligation.repr(selcx.tcx()));
+        return false;
+    }
+
+    true
 }
 
 /// Instantiate fresh variables for all bound parameters of the impl

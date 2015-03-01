@@ -851,7 +851,9 @@ pub fn run_passes(sess: &Session,
 
     // FIXME: time_llvm_passes support - does this use a global context or
     // something?
-    //if sess.time_llvm_passes() { llvm::LLVMRustPrintPassTimings(); }
+    if sess.opts.cg.codegen_units == 1 && sess.time_llvm_passes() {
+        unsafe { llvm::LLVMRustPrintPassTimings(); }
+    }
 }
 
 struct WorkItem {

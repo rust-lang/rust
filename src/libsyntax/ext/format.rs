@@ -633,7 +633,7 @@ pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt, sp: Span,
 
     match parse_args(ecx, sp, tts) {
         Some((efmt, args, order, names)) => {
-            MacExpr::new(expand_preparsed_format_args(ecx, sp, efmt,
+            MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt,
                                                       args, order, names))
         }
         None => DummyResult::expr(sp)

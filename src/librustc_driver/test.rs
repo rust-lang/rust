@@ -13,6 +13,7 @@
 use diagnostic;
 use diagnostic::Emitter;
 use driver;
+use rustc_lint;
 use rustc_resolve as resolve;
 use rustc_typeck::middle::lang_items;
 use rustc_typeck::middle::region::{self, CodeExtent, DestructionScopeData};
@@ -108,6 +109,7 @@ fn test_env<F>(source_string: &str,
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
     let sess = session::build_session_(options, None, span_diagnostic_handler);
+    rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
     let krate_config = Vec::new();
     let input = config::Input::Str(source_string.to_string());
     let krate = driver::phase_1_parse_input(&sess, krate_config, &input);
@@ -806,11 +808,11 @@ fn walk_ty() {
         let tup2_ty = ty::mk_tup(tcx, vec!(tup1_ty, tup1_ty, uint_ty));
         let uniq_ty = ty::mk_uniq(tcx, tup2_ty);
         let walked: Vec<_> = uniq_ty.walk().collect();
-        assert_eq!(vec!(uniq_ty,
-                        tup2_ty,
-                        tup1_ty, int_ty, uint_ty, int_ty, uint_ty,
-                        tup1_ty, int_ty, uint_ty, int_ty, uint_ty,
-                        uint_ty),
+        assert_eq!([uniq_ty,
+                    tup2_ty,
+                    tup1_ty, int_ty, uint_ty, int_ty, uint_ty,
+                    tup1_ty, int_ty, uint_ty, int_ty, uint_ty,
+                    uint_ty],
                    walked);
     })
 }

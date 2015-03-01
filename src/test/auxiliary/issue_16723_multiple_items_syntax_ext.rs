@@ -19,7 +19,8 @@ extern crate rustc;
 
 use syntax::ast;
 use syntax::codemap;
-use syntax::ext::base::{ExtCtxt, MacResult, MacItems};
+use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
+use syntax::util::small_vector::SmallVector;
 use rustc::plugin::Registry;
 
 #[plugin_registrar]
@@ -28,8 +29,8 @@ pub fn plugin_registrar(reg: &mut Registry) {
 }
 
 fn expand(cx: &mut ExtCtxt, _: codemap::Span, _: &[ast::TokenTree]) -> Box<MacResult+'static> {
-    MacItems::new(vec![
+    MacEager::items(SmallVector::many(vec![
         quote_item!(cx, struct Struct1;).unwrap(),
         quote_item!(cx, struct Struct2;).unwrap()
-    ].into_iter())
+    ]))
 }

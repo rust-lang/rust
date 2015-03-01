@@ -736,12 +736,10 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
             }
         };
         return match ArchiveMetadata::new(archive).map(|ar| MetadataArchive(ar)) {
-            None => {
-                return Err((format!("failed to read rlib metadata: '{}'",
-                                    filename.display())))
-            }
-            Some(blob) => return Ok(blob)
-        }
+            None => Err(format!("failed to read rlib metadata: '{}'",
+                                filename.display())),
+            Some(blob) => Ok(blob)
+        };
     }
     unsafe {
         let buf = CString::new(filename.as_vec()).unwrap();
@@ -791,7 +789,7 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
             }
             llvm::LLVMMoveToNextSection(si.llsi);
         }
-        return Err(format!("metadata not found: '{}'", filename.display()));
+        Err(format!("metadata not found: '{}'", filename.display()))
     }
 }
 

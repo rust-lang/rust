@@ -174,7 +174,6 @@
 #![feature(core)]
 #![feature(old_io)]
 #![feature(std_misc)]
-#![feature(env)]
 
 use std::boxed;
 use std::cell::RefCell;

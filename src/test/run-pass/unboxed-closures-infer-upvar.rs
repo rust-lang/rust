@@ -18,5 +18,5 @@ fn f<F: FnMut()>(mut f: F) {
 fn main() {
     let mut v: Vec<_> = vec![];
     f(|| v.push(0));
-    assert_eq!(v, vec![0]);
+    assert_eq!(v, [0]);
 }

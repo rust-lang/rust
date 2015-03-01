@@ -372,9 +372,10 @@ pub trait Int
     #[unstable(feature = "core",
                reason = "pending integer conventions")]
     #[inline]
-    fn pow(self, mut exp: uint) -> Self {
+    fn pow(self, mut exp: u32) -> Self {
         let mut base = self;
         let mut acc: Self = Int::one();
+
         while exp > 0 {
             if (exp & 1) == 1 {
                 acc = acc * base;
@@ -1672,6 +1673,7 @@ macro_rules! from_str_radix_int_impl {
                 let is_signed_ty = (0 as $T) > Int::min_value();
 
                 match src.slice_shift_char() {
+                    Some(('-', "")) => Err(PIE { kind: Empty }),
                     Some(('-', src)) if is_signed_ty => {
                         // The number is negative
                         let mut result = 0;

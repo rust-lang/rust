@@ -48,7 +48,7 @@ impl<R: Read> BufReader<R> {
     }
 
     /// Gets a reference to the underlying reader.
-    pub fn get_ref<'a>(&self) -> &R { &self.inner }
+    pub fn get_ref(&self) -> &R { &self.inner }
 
     /// Gets a mutable reference to the underlying reader.
     ///
@@ -155,9 +155,9 @@ impl<W: Write> BufWriter<W> {
         if written > 0 {
             // NB: would be better expressed as .remove(0..n) if it existed
             unsafe {
-                ptr::copy_memory(self.buf.as_mut_ptr(),
-                                 self.buf.as_ptr().offset(written as isize),
-                                 len - written);
+                ptr::copy(self.buf.as_mut_ptr(),
+                          self.buf.as_ptr().offset(written as isize),
+                          len - written);
             }
         }
         self.buf.truncate(len - written);

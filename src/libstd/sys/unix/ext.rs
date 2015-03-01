@@ -173,10 +173,13 @@ impl OsStrExt for OsStr {
 
 // Unix-specific extensions to `Permissions`
 pub trait PermissionsExt {
+    fn mode(&self) -> i32;
     fn set_mode(&mut self, mode: i32);
 }
 
 impl PermissionsExt for Permissions {
+    fn mode(&self) -> i32 { self.as_inner().mode() }
+
     fn set_mode(&mut self, mode: i32) {
         *self = FromInner::from_inner(FromInner::from_inner(mode));
     }

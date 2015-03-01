@@ -548,11 +548,11 @@ impl<T, E> Result<T, E> {
     /// ```
     /// let x: Result<u32, &str> = Ok(5);
     /// let v: Vec<u32> = x.into_iter().collect();
-    /// assert_eq!(v, vec![5]);
+    /// assert_eq!(v, [5]);
     ///
     /// let x: Result<u32, &str> = Err("nothing!");
     /// let v: Vec<u32> = x.into_iter().collect();
-    /// assert_eq!(v, vec![]);
+    /// assert_eq!(v, []);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -641,9 +641,9 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn or(self, res: Result<T, E>) -> Result<T, E> {
+    pub fn or<F>(self, res: Result<T, F>) -> Result<T, F> {
         match self {
-            Ok(_) => self,
+            Ok(v) => Ok(v),
             Err(_) => res,
         }
     }

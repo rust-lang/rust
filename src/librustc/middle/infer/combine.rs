@@ -228,11 +228,11 @@ pub trait Combine<'tcx> : Sized {
                              variadic: a.variadic});
 
 
-        fn argvecs<'tcx, C: Combine<'tcx>>(combiner: &C,
-                                           a_args: &[Ty<'tcx>],
-                                           b_args: &[Ty<'tcx>])
-                                           -> cres<'tcx, Vec<Ty<'tcx>>>
-        {
+        fn argvecs<'tcx, C>(combiner: &C,
+                            a_args: &[Ty<'tcx>],
+                            b_args: &[Ty<'tcx>])
+                            -> cres<'tcx, Vec<Ty<'tcx>>>
+                            where C: Combine<'tcx> {
             if a_args.len() == b_args.len() {
                 a_args.iter().zip(b_args.iter())
                     .map(|(a, b)| combiner.args(*a, *b)).collect()
@@ -265,13 +265,7 @@ pub trait Combine<'tcx> : Sized {
             Err(ty::terr_projection_name_mismatched(
                 expected_found(self, a.item_name, b.item_name)))
         } else {
-            // Note that the trait refs for the projection must be
-            // *equal*. This is because there is no inherent
-            // relationship between `<T as Foo>::Bar` and `<U as
-            // Foo>::Bar` that we can derive based on how `T` relates
-            // to `U`. Issue #21726 contains further discussion and
-            // in-depth examples.
-            let trait_ref = try!(self.equate().trait_refs(&*a.trait_ref, &*b.trait_ref));
+            let trait_ref = try!(self.trait_refs(&*a.trait_ref, &*b.trait_ref));
             Ok(ty::ProjectionTy { trait_ref: Rc::new(trait_ref), item_name: a.item_name })
         }
     }
@@ -351,51 +345,51 @@ pub trait Combineable<'tcx> : Repr<'tcx> + TypeFoldable<'tcx> {
 impl<'tcx,T> Combineable<'tcx> for Rc<T>
     where T : Combineable<'tcx>
 {
-    fn combine<C:Combine<'tcx>>(combiner: &C,
-                                a: &Rc<T>,
-                                b: &Rc<T>)
-                                -> cres<'tcx, Rc<T>>
-    {
+    fn combine<C>(combiner: &C,
+                  a: &Rc<T>,
+                  b: &Rc<T>)
+                  -> cres<'tcx, Rc<T>>
+                  where C: Combine<'tcx> {
         Ok(Rc::new(try!(Combineable::combine(combiner, &**a, &**b))))
     }
 }
 
 impl<'tcx> Combineable<'tcx> for ty::TraitRef<'tcx> {
-    fn combine<C:Combine<'tcx>>(combiner: &C,
-                                a: &ty::TraitRef<'tcx>,
-                                b: &ty::TraitRef<'tcx>)
-                                -> cres<'tcx, ty::TraitRef<'tcx>>
-    {
+    fn combine<C>(combiner: &C,
+                  a: &ty::TraitRef<'tcx>,
+                  b: &ty::TraitRef<'tcx>)
+                  -> cres<'tcx, ty::TraitRef<'tcx>>
+                  where C: Combine<'tcx> {
         combiner.trait_refs(a, b)
     }
 }
 
 impl<'tcx> Combineable<'tcx> for Ty<'tcx> {
-    fn combine<C:Combine<'tcx>>(combiner: &C,
-                                a: &Ty<'tcx>,
-                                b: &Ty<'tcx>)
-                                -> cres<'tcx, Ty<'tcx>>
-    {
+    fn combine<C>(combiner: &C,
+                  a: &Ty<'tcx>,
+                  b: &Ty<'tcx>)
+                  -> cres<'tcx, Ty<'tcx>>
+                  where C: Combine<'tcx> {
         combiner.tys(*a, *b)
     }
 }
 
 impl<'tcx> Combineable<'tcx> for ty::ProjectionPredicate<'tcx> {
-    fn combine<C:Combine<'tcx>>(combiner: &C,
-                                a: &ty::ProjectionPredicate<'tcx>,
-                                b: &ty::ProjectionPredicate<'tcx>)
-                                -> cres<'tcx, ty::ProjectionPredicate<'tcx>>
-    {
+    fn combine<C>(combiner: &C,
+                  a: &ty::ProjectionPredicate<'tcx>,
+                  b: &ty::ProjectionPredicate<'tcx>)
+                  -> cres<'tcx, ty::ProjectionPredicate<'tcx>>
+                  where C: Combine<'tcx> {
         combiner.projection_predicates(a, b)
     }
 }
 
 impl<'tcx> Combineable<'tcx> for ty::FnSig<'tcx> {
-    fn combine<C:Combine<'tcx>>(combiner: &C,
-                                a: &ty::FnSig<'tcx>,
-                                b: &ty::FnSig<'tcx>)
-                                -> cres<'tcx, ty::FnSig<'tcx>>
-    {
+    fn combine<C>(combiner: &C,
+                  a: &ty::FnSig<'tcx>,
+                  b: &ty::FnSig<'tcx>)
+                  -> cres<'tcx, ty::FnSig<'tcx>>
+                  where C: Combine<'tcx> {
         combiner.fn_sigs(a, b)
     }
 }
@@ -407,8 +401,11 @@ pub struct CombineFields<'a, 'tcx: 'a> {
     pub trace: TypeTrace<'tcx>,
 }
 
-pub fn expected_found<'tcx, C: Combine<'tcx>, T>(
-        this: &C, a: T, b: T) -> ty::expected_found<T> {
+pub fn expected_found<'tcx, C, T>(this: &C,
+                                  a: T,
+                                  b: T)
+                                  -> ty::expected_found<T>
+                                  where C: Combine<'tcx> {
     if this.a_is_expected() {
         ty::expected_found {expected: a, found: b}
     } else {
@@ -416,29 +413,26 @@ pub fn expected_found<'tcx, C: Combine<'tcx>, T>(
     }
 }
 
-pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
-                                         a: Ty<'tcx>,
-                                         b: Ty<'tcx>)
-                                         -> cres<'tcx, Ty<'tcx>>
-{
+pub fn super_tys<'tcx, C>(this: &C,
+                          a: Ty<'tcx>,
+                          b: Ty<'tcx>)
+                          -> cres<'tcx, Ty<'tcx>>
+                          where C: Combine<'tcx> {
     let tcx = this.infcx().tcx;
     let a_sty = &a.sty;
     let b_sty = &b.sty;
     debug!("super_tys: a_sty={:?} b_sty={:?}", a_sty, b_sty);
     return match (a_sty, b_sty) {
-      // The "subtype" ought to be handling cases involving var:
-      (&ty::ty_infer(TyVar(_)), _) |
-      (_, &ty::ty_infer(TyVar(_))) => {
-        tcx.sess.bug(
-            &format!("{}: bot and var types should have been handled ({},{})",
-                    this.tag(),
-                    a.repr(this.infcx().tcx),
-                    b.repr(this.infcx().tcx)));
-      }
+        // The "subtype" ought to be handling cases involving var:
+        (&ty::ty_infer(TyVar(_)), _)
+        | (_, &ty::ty_infer(TyVar(_))) =>
+            tcx.sess.bug(
+                &format!("{}: bot and var types should have been handled ({},{})",
+                this.tag(),
+                a.repr(this.infcx().tcx),
+                b.repr(this.infcx().tcx))),
 
-      (&ty::ty_err, _) | (_, &ty::ty_err) => {
-          Ok(tcx.types.err)
-      }
+        (&ty::ty_err, _) | (_, &ty::ty_err) => Ok(tcx.types.err),
 
         // Relate integral variables to other types
         (&ty::ty_infer(IntVar(a_id)), &ty::ty_infer(IntVar(b_id))) => {
@@ -475,68 +469,62 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
             unify_float_variable(this, !this.a_is_expected(), v_id, v)
         }
 
-      (&ty::ty_char, _) |
-      (&ty::ty_bool, _) |
-      (&ty::ty_int(_), _) |
-      (&ty::ty_uint(_), _) |
-      (&ty::ty_float(_), _) => {
-        if a == b {
-            Ok(a)
-        } else {
-            Err(ty::terr_sorts(expected_found(this, a, b)))
+        (&ty::ty_char, _)
+        | (&ty::ty_bool, _)
+        | (&ty::ty_int(_), _)
+        | (&ty::ty_uint(_), _)
+        | (&ty::ty_float(_), _) => {
+            if a == b {
+                Ok(a)
+            } else {
+                Err(ty::terr_sorts(expected_found(this, a, b)))
+            }
         }
-      }
 
-      (&ty::ty_param(ref a_p), &ty::ty_param(ref b_p)) if
-          a_p.idx == b_p.idx && a_p.space == b_p.space => {
-        Ok(a)
-      }
+        (&ty::ty_param(ref a_p), &ty::ty_param(ref b_p)) if
+          a_p.idx == b_p.idx && a_p.space == b_p.space => Ok(a),
 
-      (&ty::ty_enum(a_id, a_substs),
-       &ty::ty_enum(b_id, b_substs))
-      if a_id == b_id => {
-          let substs = try!(this.substs(a_id,
-                                          a_substs,
-                                          b_substs));
-          Ok(ty::mk_enum(tcx, a_id, tcx.mk_substs(substs)))
-      }
+        (&ty::ty_enum(a_id, a_substs), &ty::ty_enum(b_id, b_substs))
+          if a_id == b_id => {
+            let substs = try!(this.substs(a_id, a_substs, b_substs));
+            Ok(ty::mk_enum(tcx, a_id, tcx.mk_substs(substs)))
+        }
 
-      (&ty::ty_trait(ref a_),
-       &ty::ty_trait(ref b_)) => {
-          debug!("Trying to match traits {:?} and {:?}", a, b);
-          let principal = try!(this.binders(&a_.principal, &b_.principal));
-          let bounds = try!(this.existential_bounds(&a_.bounds, &b_.bounds));
-          Ok(ty::mk_trait(tcx, principal, bounds))
-      }
+        (&ty::ty_trait(ref a_), &ty::ty_trait(ref b_)) => {
+            debug!("Trying to match traits {:?} and {:?}", a, b);
+            let principal = try!(this.binders(&a_.principal, &b_.principal));
+            let bounds = try!(this.existential_bounds(&a_.bounds, &b_.bounds));
+            Ok(ty::mk_trait(tcx, principal, bounds))
+        }
 
-      (&ty::ty_struct(a_id, a_substs), &ty::ty_struct(b_id, b_substs))
-      if a_id == b_id => {
+        (&ty::ty_struct(a_id, a_substs), &ty::ty_struct(b_id, b_substs))
+          if a_id == b_id => {
             let substs = try!(this.substs(a_id, a_substs, b_substs));
             Ok(ty::mk_struct(tcx, a_id, tcx.mk_substs(substs)))
-      }
+        }
 
-      (&ty::ty_closure(a_id, a_region, a_substs),
-       &ty::ty_closure(b_id, b_region, b_substs))
-      if a_id == b_id => {
-          // All ty_closure types with the same id represent
-          // the (anonymous) type of the same closure expression. So
-          // all of their regions should be equated.
-          let region = try!(this.equate().regions(*a_region, *b_region));
-          let substs = try!(this.substs_variances(None, a_substs, b_substs));
-          Ok(ty::mk_closure(tcx, a_id, tcx.mk_region(region), tcx.mk_substs(substs)))
-      }
+        (&ty::ty_closure(a_id, a_region, a_substs),
+         &ty::ty_closure(b_id, b_region, b_substs))
+          if a_id == b_id => {
+            // All ty_closure types with the same id represent
+            // the (anonymous) type of the same closure expression. So
+            // all of their regions should be equated.
+            let region = try!(this.equate().regions(*a_region, *b_region));
+            let substs = try!(this.substs_variances(None, a_substs, b_substs));
+            Ok(ty::mk_closure(tcx, a_id, tcx.mk_region(region), tcx.mk_substs(substs)))
+        }
 
-      (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) => {
-          let typ = try!(this.tys(a_inner, b_inner));
-          Ok(ty::mk_uniq(tcx, typ))
-      }
+        (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) => {
+            let typ = try!(this.tys(a_inner, b_inner));
+            Ok(ty::mk_uniq(tcx, typ))
+        }
 
-      (&ty::ty_ptr(ref a_mt), &ty::ty_ptr(ref b_mt)) => {
-          let mt = try!(this.mts(a_mt, b_mt));
-          Ok(ty::mk_ptr(tcx, mt))
-      }
+        (&ty::ty_ptr(ref a_mt), &ty::ty_ptr(ref b_mt)) => {
+            let mt = try!(this.mts(a_mt, b_mt));
+            Ok(ty::mk_ptr(tcx, mt))
+        }
 
-      (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) => {
+        (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) => {
             let r = try!(this.regions_with_variance(ty::Contravariant, *a_r, *b_r));
 
             // FIXME(14985)  If we have mutable references to trait objects, we
@@ -551,45 +539,43 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
                 _ => try!(this.mts(a_mt, b_mt))
             };
             Ok(ty::mk_rptr(tcx, tcx.mk_region(r), mt))
-      }
+        }
 
-      (&ty::ty_vec(a_t, Some(sz_a)), &ty::ty_vec(b_t, Some(sz_b))) => {
-        this.tys(a_t, b_t).and_then(|t| {
-            if sz_a == sz_b {
-                Ok(ty::mk_vec(tcx, t, Some(sz_a)))
-            } else {
-                Err(ty::terr_fixed_array_size(expected_found(this, sz_a, sz_b)))
-            }
-        })
-      }
+        (&ty::ty_vec(a_t, Some(sz_a)), &ty::ty_vec(b_t, Some(sz_b))) => {
+            this.tys(a_t, b_t).and_then(|t| {
+                if sz_a == sz_b {
+                    Ok(ty::mk_vec(tcx, t, Some(sz_a)))
+                } else {
+                    Err(ty::terr_fixed_array_size(expected_found(this, sz_a, sz_b)))
+                }
+            })
+        }
 
-      (&ty::ty_vec(a_t, sz_a), &ty::ty_vec(b_t, sz_b)) => {
-        this.tys(a_t, b_t).and_then(|t| {
-            if sz_a == sz_b {
-                Ok(ty::mk_vec(tcx, t, sz_a))
+        (&ty::ty_vec(a_t, sz_a), &ty::ty_vec(b_t, sz_b)) => {
+            this.tys(a_t, b_t).and_then(|t| {
+                if sz_a == sz_b {
+                    Ok(ty::mk_vec(tcx, t, sz_a))
+                } else {
+                    Err(ty::terr_sorts(expected_found(this, a, b)))
+                }
+            })
+        }
+
+        (&ty::ty_str, &ty::ty_str) => Ok(ty::mk_str(tcx)),
+
+        (&ty::ty_tup(ref as_), &ty::ty_tup(ref bs)) => {
+            if as_.len() == bs.len() {
+                as_.iter().zip(bs.iter())
+                   .map(|(a, b)| this.tys(*a, *b))
+                   .collect::<Result<_, _>>()
+                   .map(|ts| ty::mk_tup(tcx, ts))
+            } else if as_.len() != 0 && bs.len() != 0 {
+                Err(ty::terr_tuple_size(
+                    expected_found(this, as_.len(), bs.len())))
             } else {
                 Err(ty::terr_sorts(expected_found(this, a, b)))
             }
-        })
-      }
-
-      (&ty::ty_str, &ty::ty_str) => {
-            Ok(ty::mk_str(tcx))
-      }
-
-      (&ty::ty_tup(ref as_), &ty::ty_tup(ref bs)) => {
-        if as_.len() == bs.len() {
-            as_.iter().zip(bs.iter())
-               .map(|(a, b)| this.tys(*a, *b))
-               .collect::<Result<_, _>>()
-               .map(|ts| ty::mk_tup(tcx, ts))
-        } else if as_.len() != 0 && bs.len() != 0 {
-            Err(ty::terr_tuple_size(
-                expected_found(this, as_.len(), bs.len())))
-        } else {
-            Err(ty::terr_sorts(expected_found(this, a, b)))
         }
-      }
 
         (&ty::ty_bare_fn(a_opt_def_id, a_fty), &ty::ty_bare_fn(b_opt_def_id, b_fty))
             if a_opt_def_id == b_opt_def_id =>
@@ -598,33 +584,33 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
             Ok(ty::mk_bare_fn(tcx, a_opt_def_id, tcx.mk_bare_fn(fty)))
         }
 
-      (&ty::ty_projection(ref a_data), &ty::ty_projection(ref b_data)) => {
-          let projection_ty = try!(this.projection_tys(a_data, b_data));
-          Ok(ty::mk_projection(tcx, projection_ty.trait_ref, projection_ty.item_name))
-      }
+        (&ty::ty_projection(ref a_data), &ty::ty_projection(ref b_data)) => {
+            let projection_ty = try!(this.projection_tys(a_data, b_data));
+            Ok(ty::mk_projection(tcx, projection_ty.trait_ref, projection_ty.item_name))
+        }
 
-      _ => Err(ty::terr_sorts(expected_found(this, a, b)))
+        _ => Err(ty::terr_sorts(expected_found(this, a, b))),
     };
 
-    fn unify_integral_variable<'tcx, C: Combine<'tcx>>(
-        this: &C,
-        vid_is_expected: bool,
-        vid: ty::IntVid,
-        val: ty::IntVarValue) -> cres<'tcx, Ty<'tcx>>
-    {
+    fn unify_integral_variable<'tcx, C>(this: &C,
+                                        vid_is_expected: bool,
+                                        vid: ty::IntVid,
+                                        val: ty::IntVarValue)
+                                        -> cres<'tcx, Ty<'tcx>>
+                                        where C: Combine<'tcx> {
         try!(this.infcx().simple_var_t(vid_is_expected, vid, val));
         match val {
             IntType(v) => Ok(ty::mk_mach_int(this.tcx(), v)),
-            UintType(v) => Ok(ty::mk_mach_uint(this.tcx(), v))
+            UintType(v) => Ok(ty::mk_mach_uint(this.tcx(), v)),
         }
     }
 
-    fn unify_float_variable<'tcx, C: Combine<'tcx>>(
-        this: &C,
-        vid_is_expected: bool,
-        vid: ty::FloatVid,
-        val: ast::FloatTy) -> cres<'tcx, Ty<'tcx>>
-    {
+    fn unify_float_variable<'tcx, C>(this: &C,
+                                     vid_is_expected: bool,
+                                     vid: ty::FloatVid,
+                                     val: ast::FloatTy)
+                                     -> cres<'tcx, Ty<'tcx>>
+                                     where C: Combine<'tcx> {
         try!(this.infcx().simple_var_t(vid_is_expected, vid, val));
         Ok(ty::mk_mach_float(this.tcx(), val))
     }
@@ -696,12 +682,8 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
                 None => {     // ...not yet instantiated:
                     // Generalize type if necessary.
                     let generalized_ty = try!(match dir {
-                        EqTo => {
-                            self.generalize(a_ty, b_vid, false)
-                        }
-                        BiTo | SupertypeOf | SubtypeOf => {
-                            self.generalize(a_ty, b_vid, true)
-                        }
+                        EqTo => self.generalize(a_ty, b_vid, false),
+                        BiTo | SupertypeOf | SubtypeOf => self.generalize(a_ty, b_vid, true),
                     });
                     debug!("instantiate(a_ty={}, dir={:?}, \
                                         b_vid={}, generalized_ty={})",
@@ -723,22 +705,14 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
             // to associate causes/spans with each of the relations in
             // the stack to get this right.
             match dir {
-                BiTo => {
-                    try!(self.bivariate().tys(a_ty, b_ty));
-                }
+                BiTo => try!(self.bivariate().tys(a_ty, b_ty)),
 
-                EqTo => {
-                    try!(self.equate().tys(a_ty, b_ty));
-                }
+                EqTo => try!(self.equate().tys(a_ty, b_ty)),
 
-                SubtypeOf => {
-                    try!(self.sub().tys(a_ty, b_ty));
-                }
+                SubtypeOf => try!(self.sub().tys(a_ty, b_ty)),
 
-                SupertypeOf => {
-                    try!(self.sub().tys_with_variance(ty::Contravariant, a_ty, b_ty));
-                }
-            }
+                SupertypeOf => try!(self.sub().tys_with_variance(ty::Contravariant, a_ty, b_ty)),
+            };
         }
 
         Ok(())
@@ -754,11 +728,13 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
                   make_region_vars: bool)
                   -> cres<'tcx, Ty<'tcx>>
     {
-        let mut generalize = Generalizer { infcx: self.infcx,
-                                           span: self.trace.origin.span(),
-                                           for_vid: for_vid,
-                                           make_region_vars: make_region_vars,
-                                           cycle_detected: false };
+        let mut generalize = Generalizer {
+            infcx: self.infcx,
+            span: self.trace.origin.span(),
+            for_vid: for_vid,
+            make_region_vars: make_region_vars,
+            cycle_detected: false
+        };
         let u = ty.fold_with(&mut generalize);
         if generalize.cycle_detected {
             Err(ty::terr_cyclic_ty)

@@ -598,7 +598,7 @@ impl<T, S> fmt::Debug for HashSet<T, S>
           S: HashState
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "HashSet {{"));
+        try!(write!(f, "{{"));
 
         for (i, x) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
@@ -1186,8 +1186,8 @@ mod test_set {
 
         let set_str = format!("{:?}", set);
 
-        assert!(set_str == "HashSet {1, 2}" || set_str == "HashSet {2, 1}");
-        assert_eq!(format!("{:?}", empty), "HashSet {}");
+        assert!(set_str == "{1, 2}" || set_str == "{2, 1}");
+        assert_eq!(format!("{:?}", empty), "{}");
     }
 
     #[test]

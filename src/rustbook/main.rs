@@ -13,6 +13,7 @@
 #![feature(core)]
 #![feature(old_io)]
 #![feature(env)]
+#![feature(os)]
 #![feature(old_path)]
 #![feature(rustdoc)]
 

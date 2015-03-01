@@ -36,7 +36,7 @@ impl<E> Copy for EnumSet<E> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<E:CLike + fmt::Debug> fmt::Debug for EnumSet<E> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(fmt, "EnumSet {{"));
+        try!(write!(fmt, "{{"));
         let mut first = true;
         for e in self {
             if !first {
@@ -314,11 +314,11 @@ mod test {
     #[test]
     fn test_show() {
         let mut e = EnumSet::new();
-        assert!(format!("{:?}", e) == "EnumSet {}");
+        assert!(format!("{:?}", e) == "{}");
         e.insert(A);
-        assert!(format!("{:?}", e) == "EnumSet {A}");
+        assert!(format!("{:?}", e) == "{A}");
         e.insert(C);
-        assert!(format!("{:?}", e) == "EnumSet {A, C}");
+        assert!(format!("{:?}", e) == "{A, C}");
     }
 
     #[test]
@@ -428,19 +428,19 @@ mod test {
 
         e1.insert(A);
         let elems: ::vec::Vec<_> = e1.iter().collect();
-        assert_eq!(vec![A], elems);
+        assert_eq!([A], elems);
 
         e1.insert(C);
         let elems: ::vec::Vec<_> = e1.iter().collect();
-        assert_eq!(vec![A,C], elems);
+        assert_eq!([A,C], elems);
 
         e1.insert(C);
         let elems: ::vec::Vec<_> = e1.iter().collect();
-        assert_eq!(vec![A,C], elems);
+        assert_eq!([A,C], elems);
 
         e1.insert(B);
         let elems: ::vec::Vec<_> = e1.iter().collect();
-        assert_eq!(vec![A,B,C], elems);
+        assert_eq!([A,B,C], elems);
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -458,35 +458,35 @@ mod test {
 
         let e_union = e1 | e2;
         let elems: ::vec::Vec<_> = e_union.iter().collect();
-        assert_eq!(vec![A,B,C], elems);
+        assert_eq!([A,B,C], elems);
 
         let e_intersection = e1 & e2;
         let elems: ::vec::Vec<_> = e_intersection.iter().collect();
-        assert_eq!(vec![C], elems);
+        assert_eq!([C], elems);
 
         // Another way to express intersection
         let e_intersection = e1 - (e1 - e2);
         let elems: ::vec::Vec<_> = e_intersection.iter().collect();
-        assert_eq!(vec![C], elems);
+        assert_eq!([C], elems);
 
         let e_subtract = e1 - e2;
         let elems: ::vec::Vec<_> = e_subtract.iter().collect();
-        assert_eq!(vec![A], elems);
+        assert_eq!([A], elems);
 
         // Bitwise XOR of two sets, aka symmetric difference
         let e_symmetric_diff = e1 ^ e2;
         let elems: ::vec::Vec<_> = e_symmetric_diff.iter().collect();
-        assert_eq!(vec![A,B], elems);
+        assert_eq!([A,B], elems);
 
         // Another way to express symmetric difference
         let e_symmetric_diff = (e1 - e2) | (e2 - e1);
         let elems: ::vec::Vec<_> = e_symmetric_diff.iter().collect();
-        assert_eq!(vec![A,B], elems);
+        assert_eq!([A,B], elems);
 
         // Yet another way to express symmetric difference
         let e_symmetric_diff = (e1 | e2) - (e1 & e2);
         let elems: ::vec::Vec<_> = e_symmetric_diff.iter().collect();
-        assert_eq!(vec![A,B], elems);
+        assert_eq!([A,B], elems);
     }
 
     #[test]

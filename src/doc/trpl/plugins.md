@@ -71,8 +71,8 @@ extern crate rustc;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ast::{TokenTree, TtToken};
-use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacExpr};
-use syntax::ext::build::AstBuilder;  // trait for expr_uint
+use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
+use syntax::ext::build::AstBuilder;  // trait for expr_usize
 use rustc::plugin::Registry;
 
 fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
@@ -107,7 +107,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         }
     }
 
-    MacExpr::new(cx.expr_uint(sp, total))
+    MacEager::expr(cx.expr_usize(sp, total))
 }
 
 #[plugin_registrar]
@@ -146,14 +146,7 @@ a more involved macro example, see
 
 ## Tips and tricks
 
-To see the results of expanding syntax extensions, run
-`rustc --pretty expanded`. The output represents a whole crate, so you
-can also feed it back in to `rustc`, which will sometimes produce better
-error messages than the original compilation. Note that the
-`--pretty expanded` output may have a different meaning if multiple
-variables of the same name (but different syntax contexts) are in play
-in the same scope. In this case `--pretty expanded,hygiene` will tell
-you about the syntax contexts.
+Some of the [macro debugging tips](macros.html#debugging-macro-code) are applicable.
 
 You can use [`syntax::parse`](../syntax/parse/index.html) to turn token trees into
 higher-level syntax elements like expressions:
@@ -184,8 +177,13 @@ and return
 [`DummyResult`](../syntax/ext/base/struct.DummyResult.html),
 so that the compiler can continue and find further errors.
 
+To print syntax fragments for debugging, you can use
+[`span_note`](../syntax/ext/base/struct.ExtCtxt.html#method.span_note) together
+with
+[`syntax::print::pprust::*_to_string`](http://doc.rust-lang.org/syntax/print/pprust/index.html#functions).
+
 The example above produced an integer literal using
-[`AstBuilder::expr_uint`](../syntax/ext/build/trait.AstBuilder.html#tymethod.expr_uint).
+[`AstBuilder::expr_usize`](../syntax/ext/build/trait.AstBuilder.html#tymethod.expr_usize).
 As an alternative to the `AstBuilder` trait, `libsyntax` provides a set of
 [quasiquote macros](../syntax/ext/quote/index.html).  They are undocumented and
 very rough around the edges.  However, the implementation may be a good

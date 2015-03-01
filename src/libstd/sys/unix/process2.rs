@@ -141,7 +141,6 @@ impl Process {
                  -> io::Result<Process>
     {
         use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
-        use libc::funcs::bsd44::getdtablesize;
 
         mod rustrt {
             extern {
@@ -152,6 +151,16 @@ impl Process {
         unsafe fn set_cloexec(fd: c_int) {
             let ret = c::ioctl(fd, c::FIOCLEX);
             assert_eq!(ret, 0);
+        }
+
+        #[cfg(all(target_os = "android", target_arch = "aarch64"))]
+        unsafe fn getdtablesize() -> c_int {
+            libc::sysconf(libc::consts::os::sysconf::_SC_OPEN_MAX) as c_int
+        }
+
+        #[cfg(not(all(target_os = "android", target_arch = "aarch64")))]
+        unsafe fn getdtablesize() -> c_int {
+            libc::funcs::bsd44::getdtablesize()
         }
 
         let dirp = cfg.cwd.as_ref().map(|c| c.as_ptr()).unwrap_or(ptr::null());
@@ -265,7 +274,7 @@ impl Process {
                 // file descriptor. Otherwise, the first file descriptor opened
                 // up in the child would be numbered as one of the stdio file
                 // descriptors, which is likely to wreak havoc.
-                let setup = |&: src: Option<AnonPipe>, dst: c_int| {
+                let setup = |src: Option<AnonPipe>, dst: c_int| {
                     let src = match src {
                         None => {
                             let flags = if dst == libc::STDIN_FILENO {
@@ -430,6 +439,7 @@ fn translate_status(status: c_int) -> ExitStatus {
               target_os = "ios",
               target_os = "freebsd",
               target_os = "dragonfly",
+              target_os = "bitrig",
               target_os = "openbsd"))]
     mod imp {
         pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }

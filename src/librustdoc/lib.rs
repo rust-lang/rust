@@ -22,7 +22,7 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(env)]
+#![feature(exit_status)]
 #![feature(int_uint)]
 #![feature(old_io)]
 #![feature(libc)]
@@ -42,6 +42,7 @@ extern crate rustc;
 extern crate rustc_trans;
 extern crate rustc_driver;
 extern crate rustc_resolve;
+extern crate rustc_lint;
 extern crate serialize;
 extern crate syntax;
 extern crate "test" as testing;

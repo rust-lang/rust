@@ -23,7 +23,7 @@ use num::{Int, UnsignedInt};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{Some, None};
-use ptr::{self, PtrExt, copy_nonoverlapping_memory, Unique, zero_memory};
+use ptr::{self, PtrExt, Unique};
 use rt::heap::{allocate, deallocate, EMPTY};
 use collections::hash_state::HashState;
 
@@ -477,8 +477,8 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> GapThenFull<K, V, M> {
     pub fn shift(mut self) -> Option<GapThenFull<K, V, M>> {
         unsafe {
             *self.gap.raw.hash = mem::replace(&mut *self.full.raw.hash, EMPTY_BUCKET);
-            copy_nonoverlapping_memory(self.gap.raw.key, self.full.raw.key, 1);
-            copy_nonoverlapping_memory(self.gap.raw.val, self.full.raw.val, 1);
+            ptr::copy_nonoverlapping(self.gap.raw.key, self.full.raw.key, 1);
+            ptr::copy_nonoverlapping(self.gap.raw.val, self.full.raw.val, 1);
         }
 
         let FullBucket { raw: prev_raw, idx: prev_idx, .. } = self.full;
@@ -637,7 +637,7 @@ impl<K, V> RawTable<K, V> {
     pub fn new(capacity: usize) -> RawTable<K, V> {
         unsafe {
             let ret = RawTable::new_uninitialized(capacity);
-            zero_memory(*ret.hashes, capacity);
+            ptr::write_bytes(*ret.hashes, 0, capacity);
             ret
         }
     }

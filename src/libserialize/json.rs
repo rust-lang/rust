@@ -3074,19 +3074,19 @@ mod tests {
     #[test]
     fn test_decode_array() {
         let v: Vec<()> = super::decode("[]").unwrap();
-        assert_eq!(v, vec![]);
+        assert_eq!(v, []);
 
         let v: Vec<()> = super::decode("[null]").unwrap();
-        assert_eq!(v, vec![()]);
+        assert_eq!(v, [()]);
 
         let v: Vec<bool> = super::decode("[true]").unwrap();
-        assert_eq!(v, vec![true]);
+        assert_eq!(v, [true]);
 
         let v: Vec<int> = super::decode("[3, 1]").unwrap();
-        assert_eq!(v, vec![3, 1]);
+        assert_eq!(v, [3, 1]);
 
         let v: Vec<Vec<uint>> = super::decode("[[3], [1, 2]]").unwrap();
-        assert_eq!(v, vec![vec![3], vec![1, 2]]);
+        assert_eq!(v, [vec![3], vec![1, 2]]);
     }
 
     #[test]
@@ -3945,9 +3945,7 @@ mod tests {
 
     #[test]
     fn test_encode_hashmap_with_arbitrary_key() {
-        use std::old_io::Writer;
         use std::collections::HashMap;
-        use std::fmt;
         #[derive(PartialEq, Eq, Hash, RustcEncodable)]
         struct ArbitraryType(uint);
         let mut hm: HashMap<ArbitraryType, bool> = HashMap::new();

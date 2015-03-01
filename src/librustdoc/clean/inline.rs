@@ -308,6 +308,9 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
                 if method.vis != ast::Public && associated_trait.is_none() {
                     return None
                 }
+                if method.provided_source.is_some() {
+                    return None
+                }
                 let mut item = method.clean(cx);
                 item.inner = match item.inner.clone() {
                     clean::TyMethodItem(clean::TyMethod {

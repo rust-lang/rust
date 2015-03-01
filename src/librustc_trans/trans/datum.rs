@@ -311,7 +311,8 @@ impl KindOps for Lvalue {
                               val: ValueRef,
                               ty: Ty<'tcx>)
                               -> Block<'blk, 'tcx> {
-        if type_needs_drop(bcx.tcx(), ty) {
+        let _icx = push_ctxt("<Lvalue as KindOps>::post_store");
+        if bcx.fcx.type_needs_drop(ty) {
             // cancel cleanup of affine values by zeroing out
             let () = zero_mem(bcx, val, ty);
             bcx
@@ -656,7 +657,7 @@ impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
     /// scalar-ish (like an int or a pointer) which (1) does not require drop glue and (2) is
     /// naturally passed around by value, and not by reference.
     pub fn to_llscalarish<'blk>(self, bcx: Block<'blk, 'tcx>) -> ValueRef {
-        assert!(!type_needs_drop(bcx.tcx(), self.ty));
+        assert!(!bcx.fcx.type_needs_drop(self.ty));
         assert!(self.appropriate_rvalue_mode(bcx.ccx()) == ByValue);
         if self.kind.is_by_ref() {
             load_ty(bcx, self.val, self.ty)

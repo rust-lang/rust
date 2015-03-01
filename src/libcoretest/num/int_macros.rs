@@ -201,6 +201,17 @@ mod tests {
         assert_eq!(FromStrRadix::from_str_radix("Z", 35).ok(), None::<$T>);
         assert_eq!(FromStrRadix::from_str_radix("-9", 2).ok(), None::<$T>);
     }
+
+    #[test]
+    fn test_pow() {
+        let mut r = 2 as $T;
+
+        assert_eq!(r.pow(2u32), 4 as $T);
+        assert_eq!(r.pow(0u32), 1 as $T);
+        r = -2 as $T;
+        assert_eq!(r.pow(2u32), 4 as $T);
+        assert_eq!(r.pow(3u32), -8 as $T);
+    }
 }
 
 )}
