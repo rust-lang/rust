@@ -430,12 +430,15 @@ pub enum SyntaxExtension {
     /// A normal, function-like syntax extension.
     ///
     /// `bytes!` is a `NormalTT`.
-    NormalTT(Box<TTMacroExpander + 'static>, Option<Span>),
+    ///
+    /// The `bool` dictates whether the contents of the macro can
+    /// directly use `#[unstable]` things (true == yes).
+    NormalTT(Box<TTMacroExpander + 'static>, Option<Span>, bool),
 
     /// A function-like syntax extension that has an extra ident before
     /// the block.
     ///
-    IdentTT(Box<IdentMacroExpander + 'static>, Option<Span>),
+    IdentTT(Box<IdentMacroExpander + 'static>, Option<Span>, bool),
 
     /// Represents `macro_rules!` itself.
     MacroRulesTT,
@@ -465,14 +468,14 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
                                         -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_expander(f: MacroExpanderFn) -> SyntaxExtension {
-        NormalTT(Box::new(f), None)
+        NormalTT(Box::new(f), None, false)
     }
 
     let mut syntax_expanders = SyntaxEnv::new();
     syntax_expanders.insert(intern("macro_rules"), MacroRulesTT);
     syntax_expanders.insert(intern("format_args"),
-                            builtin_normal_expander(
-                                ext::format::expand_format_args));
+                            // format_args uses `unstable` things internally.
+                            NormalTT(Box::new(ext::format::expand_format_args), None, true));
     syntax_expanders.insert(intern("env"),
                             builtin_normal_expander(
                                     ext::env::expand_env));

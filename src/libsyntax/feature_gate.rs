@@ -142,6 +142,12 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows the use of `static_assert`
     ("static_assert", "1.0.0", Active),
+
+    // Allows the use of #[allow_internal_unstable]. This is an
+    // attribute on macro_rules! and can't use the attribute handling
+    // below (it has to be checked before expansion possibly makes
+    // macros disappear).
+    ("allow_internal_unstable", "1.0.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -308,6 +314,7 @@ pub struct Features {
     pub allow_log_syntax: bool,
     pub allow_concat_idents: bool,
     pub allow_trace_macros: bool,
+    pub allow_internal_unstable: bool,
     pub old_orphan_check: bool,
     pub simd_ffi: bool,
     pub unmarked_api: bool,
@@ -328,6 +335,7 @@ impl Features {
             allow_log_syntax: false,
             allow_concat_idents: false,
             allow_trace_macros: false,
+            allow_internal_unstable: false,
             old_orphan_check: false,
             simd_ffi: false,
             unmarked_api: false,
@@ -387,6 +395,8 @@ pub const EXPLAIN_CONCAT_IDENTS: &'static str =
 
 pub const EXPLAIN_TRACE_MACROS: &'static str =
     "`trace_macros` is not stable enough for use and is subject to change";
+pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &'static str =
+    "allow_internal_unstable side-steps feature gating and stability checks";
 
 struct MacroVisitor<'a> {
     context: &'a Context<'a>
@@ -421,6 +431,13 @@ impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
             self.context.gate_feature("concat_idents", path.span, EXPLAIN_CONCAT_IDENTS);
         }
     }
+
+    fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
+        if attr.name() == "allow_internal_unstable" {
+            self.context.gate_feature("allow_internal_unstable", attr.span,
+                                      EXPLAIN_ALLOW_INTERNAL_UNSTABLE)
+        }
+    }
 }
 
 struct PostExpansionVisitor<'a> {
@@ -429,7 +446,7 @@ struct PostExpansionVisitor<'a> {
 
 impl<'a> PostExpansionVisitor<'a> {
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
-        if !self.context.cm.span_is_internal(span) {
+        if !self.context.cm.span_allows_unstable(span) {
             self.context.gate_feature(feature, span, explain)
         }
     }
@@ -754,6 +771,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
         allow_log_syntax: cx.has_feature("log_syntax"),
         allow_concat_idents: cx.has_feature("concat_idents"),
         allow_trace_macros: cx.has_feature("trace_macros"),
+        allow_internal_unstable: cx.has_feature("allow_internal_unstable"),
         old_orphan_check: cx.has_feature("old_orphan_check"),
         simd_ffi: cx.has_feature("simd_ffi"),
         unmarked_api: cx.has_feature("unmarked_api"),

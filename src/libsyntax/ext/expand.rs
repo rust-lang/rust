@@ -22,7 +22,7 @@ use attr::AttrMetaMethods;
 use codemap;
 use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use ext::base::*;
-use feature_gate::{Features};
+use feature_gate::{self, Features};
 use fold;
 use fold::*;
 use parse;
@@ -395,13 +395,14 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                     None
                 }
                 Some(rc) => match *rc {
-                    NormalTT(ref expandfun, exp_span) => {
+                    NormalTT(ref expandfun, exp_span, allow_internal_unstable) => {
                         fld.cx.bt_push(ExpnInfo {
                                 call_site: span,
                                 callee: NameAndSpan {
                                     name: extnamestr.to_string(),
                                     format: MacroBang,
                                     span: exp_span,
+                                    allow_internal_unstable: allow_internal_unstable,
                                 },
                             });
                         let fm = fresh_mark();
@@ -530,6 +531,9 @@ fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
                             name: mname.to_string(),
                             format: MacroAttribute,
                             span: None,
+                            // attributes can do whatever they like,
+                            // for now
+                            allow_internal_unstable: true,
                         }
                     });
                     it = mac.expand(fld.cx, attr.span, &*attr.node.value, it);
@@ -614,7 +618,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
             }
 
             Some(rc) => match *rc {
-                NormalTT(ref expander, span) => {
+                NormalTT(ref expander, span, allow_internal_unstable) => {
                     if it.ident.name != parse::token::special_idents::invalid.name {
                         fld.cx
                             .span_err(path_span,
@@ -628,14 +632,15 @@ pub fn expand_item_mac(it: P<ast::Item>,
                         callee: NameAndSpan {
                             name: extnamestr.to_string(),
                             format: MacroBang,
-                            span: span
+                            span: span,
+                            allow_internal_unstable: allow_internal_unstable,
                         }
                     });
                     // mark before expansion:
                     let marked_before = mark_tts(&tts[..], fm);
                     expander.expand(fld.cx, it.span, &marked_before[..])
                 }
-                IdentTT(ref expander, span) => {
+                IdentTT(ref expander, span, allow_internal_unstable) => {
                     if it.ident.name == parse::token::special_idents::invalid.name {
                         fld.cx.span_err(path_span,
                                         &format!("macro {}! expects an ident argument",
@@ -647,7 +652,8 @@ pub fn expand_item_mac(it: P<ast::Item>,
                         callee: NameAndSpan {
                             name: extnamestr.to_string(),
                             format: MacroBang,
-                            span: span
+                            span: span,
+                            allow_internal_unstable: allow_internal_unstable,
                         }
                     });
                     // mark before expansion:
@@ -661,15 +667,34 @@ pub fn expand_item_mac(it: P<ast::Item>,
                                         );
                         return SmallVector::zero();
                     }
+
                     fld.cx.bt_push(ExpnInfo {
                         call_site: it.span,
                         callee: NameAndSpan {
                             name: extnamestr.to_string(),
                             format: MacroBang,
                             span: None,
+                            // `macro_rules!` doesn't directly allow
+                            // unstable (this is orthogonal to whether
+                            // the macro it creates allows it)
+                            allow_internal_unstable: false,
                         }
                     });
                     // DON'T mark before expansion.
+
+                    let allow_internal_unstable = attr::contains_name(&it.attrs,
+                                                                      "allow_internal_unstable");
+
+                    // ensure any #[allow_internal_unstable]s are
+                    // detected (including nested macro definitions
+                    // etc.)
+                    if allow_internal_unstable && !fld.cx.ecfg.enable_allow_internal_unstable() {
+                        feature_gate::emit_feature_err(
+                            &fld.cx.parse_sess.span_diagnostic,
+                            "allow_internal_unstable",
+                            it.span,
+                            feature_gate::EXPLAIN_ALLOW_INTERNAL_UNSTABLE)
+                    }
 
                     let def = ast::MacroDef {
                         ident: it.ident,
@@ -679,6 +704,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                         imported_from: None,
                         export: attr::contains_name(&it.attrs, "macro_export"),
                         use_locally: true,
+                        allow_internal_unstable: allow_internal_unstable,
                         body: tts,
                     };
                     fld.cx.insert_macro(def);
@@ -959,13 +985,14 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
             }
 
             Some(rc) => match *rc {
-                NormalTT(ref expander, tt_span) => {
+                NormalTT(ref expander, tt_span, allow_internal_unstable) => {
                     fld.cx.bt_push(ExpnInfo {
                         call_site: span,
                         callee: NameAndSpan {
                             name: extnamestr.to_string(),
                             format: MacroBang,
-                            span: tt_span
+                            span: tt_span,
+                            allow_internal_unstable: allow_internal_unstable,
                         }
                     });
 
@@ -1094,7 +1121,10 @@ fn expand_annotatable(a: Annotatable,
                         callee: NameAndSpan {
                             name: mname.to_string(),
                             format: MacroAttribute,
-                            span: None
+                            span: None,
+                            // attributes can do whatever they like,
+                            // for now.
+                            allow_internal_unstable: true,
                         }
                     });
 
@@ -1244,6 +1274,9 @@ fn expand_item_multi_modifier(mut it: Annotatable,
                             name: mname.to_string(),
                             format: MacroAttribute,
                             span: None,
+                            // attributes can do whatever they like,
+                            // for now
+                            allow_internal_unstable: true,
                         }
                     });
                     it = mac.expand(fld.cx, attr.span, &*attr.node.value, it);
@@ -1455,6 +1488,13 @@ impl<'feat> ExpansionConfig<'feat> {
         match self.features {
             Some(&Features { allow_trace_macros: true, .. }) => true,
             _ => false,
+        }
+    }
+
+    pub fn enable_allow_internal_unstable(&self) -> bool {
+        match self.features {
+            Some(&Features { allow_internal_unstable: true, .. }) => true,
+            _ => false
         }
     }
 }
