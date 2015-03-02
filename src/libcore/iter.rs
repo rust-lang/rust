@@ -607,20 +607,28 @@ pub trait IteratorExt: Iterator + Sized {
     /// Performs a fold operation over the entire iterator, returning the
     /// eventual state at the end of the iteration.
     ///
+    /// # Arguments
+    ///
+    /// * `init` - initial value for accumulator, it is also returned if iterator is empty
+    /// * `func(acc, item)` - function applied to the elements
+    ///     + `acc` - accumulator = value returned by last call of `func` (or `init` if it is first
+    ///               call)
+    ///     + `item` - current element
+    ///
     /// # Examples
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().fold(0, |a, &b| a + b) == 15);
+    /// assert!(a.iter().fold(0, |acc, &item| acc + item) == 15);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fold<B, F>(self, init: B, mut f: F) -> B where
+    fn fold<B, F>(self, init: B, mut func: F) -> B where
         F: FnMut(B, Self::Item) -> B,
     {
         let mut accum = init;
         for x in self {
-            accum = f(accum, x);
+            accum = func(accum, x);
         }
         accum
     }
