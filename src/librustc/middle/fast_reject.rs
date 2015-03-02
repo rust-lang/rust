@@ -74,7 +74,7 @@ pub fn simplify_type(tcx: &ty::ctxt,
             let def_id = tcx.lang_items.owned_box().unwrap();
             Some(StructSimplifiedType(def_id))
         }
-        ty::ty_closure(def_id, _, _) => {
+        ty::ty_closure(def_id, _) => {
             Some(ClosureSimplifiedType(def_id))
         }
         ty::ty_tup(ref tys) => {

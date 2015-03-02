@@ -472,7 +472,7 @@ impl<'tcx> TypeMap<'tcx> {
                     }
                 }
             },
-            ty::ty_closure(def_id, _, substs) => {
+            ty::ty_closure(def_id, substs) => {
                 let typer = NormalizingClosureTyper::new(cx.tcx());
                 let closure_ty = typer.closure_type(def_id, substs);
                 self.get_unique_type_id_of_closure_type(cx,
@@ -2983,7 +2983,7 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_bare_fn(_, ref barefnty) => {
             subroutine_type_metadata(cx, unique_type_id, &barefnty.sig, usage_site_span)
         }
-        ty::ty_closure(def_id, _, substs) => {
+        ty::ty_closure(def_id, substs) => {
             let typer = NormalizingClosureTyper::new(cx.tcx());
             let sig = typer.closure_type(def_id, substs).sig;
             subroutine_type_metadata(cx, unique_type_id, &sig, usage_site_span)

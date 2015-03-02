@@ -173,6 +173,7 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("plugin_registrar", Normal),
 
     ("cfg", Normal),
+    ("cfg_attr", Normal),
     ("main", Normal),
     ("start", Normal),
     ("test", Normal),

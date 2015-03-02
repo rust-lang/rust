@@ -650,10 +650,9 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
             let substs = substs.fold_with(this);
             ty::ty_struct(did, this.tcx().mk_substs(substs))
         }
-        ty::ty_closure(did, ref region, ref substs) => {
-            let r = region.fold_with(this);
+        ty::ty_closure(did, ref substs) => {
             let s = substs.fold_with(this);
-            ty::ty_closure(did, this.tcx().mk_region(r), this.tcx().mk_substs(s))
+            ty::ty_closure(did, this.tcx().mk_substs(s))
         }
         ty::ty_projection(ref data) => {
             ty::ty_projection(data.fold_with(this))

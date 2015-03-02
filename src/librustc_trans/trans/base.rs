@@ -291,7 +291,7 @@ pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::ty_bare_fn(_, ref f) => {
             (&f.sig, f.abi, None)
         }
-        ty::ty_closure(closure_did, _, substs) => {
+        ty::ty_closure(closure_did, substs) => {
             let typer = common::NormalizingClosureTyper::new(ccx.tcx());
             function_type = typer.closure_type(closure_did, substs);
             let self_type = self_type_for_closure(ccx, closure_did, fn_ty);
@@ -685,7 +685,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
               }
           })
       }
-      ty::ty_closure(def_id, _, substs) => {
+      ty::ty_closure(def_id, substs) => {
           let repr = adt::represent_type(cx.ccx(), t);
           let typer = common::NormalizingClosureTyper::new(cx.tcx());
           let upvars = typer.closure_upvars(def_id, substs).unwrap();
@@ -2437,7 +2437,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
     let function_type;
     let (fn_sig, abi, env_ty) = match fn_ty.sty {
         ty::ty_bare_fn(_, ref f) => (&f.sig, f.abi, None),
-        ty::ty_closure(closure_did, _, substs) => {
+        ty::ty_closure(closure_did, substs) => {
             let typer = common::NormalizingClosureTyper::new(ccx.tcx());
             function_type = typer.closure_type(closure_did, substs);
             let self_type = self_type_for_closure(ccx, closure_did, fn_ty);
@@ -2454,7 +2454,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
     // These have an odd calling convention, so we need to manually
     // unpack the input ty's
     let input_tys = match fn_ty.sty {
-        ty::ty_closure(_, _, _) => {
+        ty::ty_closure(..) => {
             assert!(abi == RustCall);
 
             match fn_sig.inputs[0].sty {
