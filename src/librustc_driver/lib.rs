@@ -29,7 +29,6 @@
 #![feature(int_uint)]
 #![feature(old_io)]
 #![feature(libc)]
-#![feature(os)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]

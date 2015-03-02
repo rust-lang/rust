@@ -35,12 +35,10 @@
 #![feature(rustc_private)]
 #![feature(unsafe_destructor)]
 #![feature(staged_api)]
-#![feature(std_misc)]
 #![feature(unicode)]
 #![feature(io)]
 #![feature(fs)]
 #![feature(path)]
-#![feature(os)]
 #![feature(tempdir)]
 
 extern crate arena;

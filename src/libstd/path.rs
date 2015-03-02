@@ -872,10 +872,10 @@ impl PathBuf {
 
         // `path` is a pure relative path
         } else if need_sep {
-            self.inner.push_os_str(OsStr::from_str(MAIN_SEP_STR));
+            self.inner.push(MAIN_SEP_STR);
         }
 
-        self.inner.push_os_str(path.as_os_str());
+        self.inner.push(path);
     }
 
     /// Truncate `self` to `self.parent()`.
@@ -937,8 +937,8 @@ impl PathBuf {
 
         let extension = extension.as_os_str();
         if os_str_as_u8_slice(extension).len() > 0 {
-            stem.push_os_str(OsStr::from_str("."));
-            stem.push_os_str(extension.as_os_str());
+            stem.push(".");
+            stem.push(extension);
         }
         self.set_file_name(&stem);
 
