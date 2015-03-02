@@ -10,6 +10,8 @@
 
 // ignore-pretty - token trees can't pretty print
 
+#![feature(custom_attribute)]
+
 macro_rules! compiles_fine {
     (#[$at:meta]) => {
         // test that the different types of attributes work
