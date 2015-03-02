@@ -1370,6 +1370,91 @@ The contents of `std::io::net` submodules `tcp`, `udp`, `ip` and
 the other modules are being moved or removed and are described
 elsewhere.
 
+#### InetAddr
+
+The composition of an `IpAddr` and a port. It has the following interface:
+
+```rust
+impl InetAddr {
+  /// Returns a new InetAddr composed of an unspecified v4 IP and a 0
+  /// port
+  fn any_v4() -> InetAddr;
+
+  /// Returns a new InetAddr composed of an unspecified v6 IP and a 0
+  /// port
+  fn any_v6() -> InetAddr;
+
+  fn ip(&self) -> IpAddr;
+  fn port(&self) -> u16;
+
+  /// Returns true if the IpAddr is unspecified and port == 0
+  fn is_unspecified(&self) -> bool;
+}
+```
+
+#### IpAddr
+
+Represents an IP address. It has the following interface:
+
+```rust
+impl IpAddr {
+  fn new_v4(a: u8, b: u8, c: u8, d: u8) -> IpAddr;
+  fn any_v4() -> IpAddr;
+
+  fn new_v6(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> IpAddr;
+  fn any_v6() -> IpAddr;
+
+  // The following functions proxy to the versioned IP address value
+  fn is_unspecified(&self) -> bool;
+  fn is_loopback(&self) -> bool;
+  fn is_global(&self) -> bool;
+  fn is_private(&self) -> bool;
+  fn is_multicast(&self) -> bool;
+}
+```
+
+#### Ipv4Addr
+
+Represents a version 4 IP address. It has the following interface:
+
+```rust
+impl Ipv4Addr {
+  fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr;
+  fn any() -> Ipv4Addr;
+  fn octets(&self) -> [u8; 4];
+  fn is_unspecified(&self) -> bool;
+  fn is_loopback(&self) -> bool;
+  fn is_private(&self) -> bool;
+  fn is_link_local(&self) -> bool;
+  fn is_global(&self) -> bool;
+  fn is_multicast(&self) -> bool;
+  fn to_ipv6_compatible(&self) -> Ipv6Addr;
+  fn to_ipv6_mapped(&self) -> Ipv6Addr;
+}
+```
+
+#### Ipv6Addr
+
+Represents a version 6 IP address. It has the following interface:
+
+```rust
+impl Ipv6Addr {
+  fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> Ipv6Addr;
+  fn any() -> Ipv6Addr;
+  fn segments(&self) -> [u16; 8]
+  fn is_unspecified(&self) -> bool;
+  fn is_loopback(&self) -> bool;
+  fn is_global(&self) -> bool;
+  fn is_unique_local(&self) -> bool;
+  fn is_unicast_link_local(&self) -> bool;
+  fn is_unicast_site_local(&self) -> bool;
+  fn is_unicast_global(&self) -> bool;
+  fn multicast_scope(&self) -> Option<Ipv6MulticastScope>;
+  fn is_multicast(&self) -> bool;
+  fn to_ipv4(&self) -> Option<Ipv4Addr>;
+}
+```
+
 #### TCP
 [TCP]: #tcp
 
@@ -1380,9 +1465,9 @@ following interface:
 // TcpStream, which contains both a reader and a writer
 
 impl TcpStream {
-    fn connect<A: ToSocketAddrs>(addr: &A) -> io::Result<TcpStream>;
-    fn peer_addr(&self) -> io::Result<SocketAddr>;
-    fn socket_addr(&self) -> io::Result<SocketAddr>;
+    fn connect<A: ToInetAddrs>(addr: &A) -> io::Result<TcpStream>;
+    fn peer_addr(&self) -> io::Result<InetAddr>;
+    fn inet_addr(&self) -> io::Result<InetAddr>;
     fn shutdown(&self, how: Shutdown) -> io::Result<()>;
     fn duplicate(&self) -> io::Result<TcpStream>;
 }
@@ -1420,10 +1505,10 @@ into the `TcpListener` structure. Specifically, this will be the resulting API:
 
 ```rust
 impl TcpListener {
-    fn bind<A: ToSocketAddrs>(addr: &A) -> io::Result<TcpListener>;
-    fn socket_addr(&self) -> io::Result<SocketAddr>;
+    fn bind<A: ToInetAddrs>(addr: &A) -> io::Result<TcpListener>;
+    fn inet_addr(&self) -> io::Result<InetAddr>;
     fn duplicate(&self) -> io::Result<TcpListener>;
-    fn accept(&self) -> io::Result<(TcpStream, SocketAddr)>;
+    fn accept(&self) -> io::Result<(TcpStream, InetAddr)>;
     fn incoming(&self) -> Incoming;
 }
 
@@ -1447,10 +1532,10 @@ Some major changes from today's API include:
   date with a more robust interface.
 * The `set_timeout` functionality has also been removed in favor of returning at
   a later date in a more robust fashion with `select`.
-* The `accept` function no longer takes `&mut self` and returns `SocketAddr`.
+* The `accept` function no longer takes `&mut self` and returns `InetAddr`.
   The change in mutability is done to express that multiple `accept` calls can
   happen concurrently.
-* For convenience the iterator does not yield the `SocketAddr` from `accept`.
+* For convenience the iterator does not yield the `InetAddr` from `accept`.
 
 The `TcpListener` type will also adhere to `Send` and `Sync`.
 
@@ -1462,10 +1547,10 @@ infrastructure will:
 
 ```rust
 impl UdpSocket {
-    fn bind<A: ToSocketAddrs>(addr: &A) -> io::Result<UdpSocket>;
-    fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)>;
-    fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: &A) -> io::Result<usize>;
-    fn socket_addr(&self) -> io::Result<SocketAddr>;
+    fn bind<A: ToInetAddrs>(addr: &A) -> io::Result<UdpSocket>;
+    fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, InetAddr)>;
+    fn send_to<A: ToInetAddrs>(&self, buf: &[u8], addr: &A) -> io::Result<usize>;
+    fn inet_addr(&self) -> io::Result<InetAddr>;
     fn duplicate(&self) -> io::Result<UdpSocket>;
 }
 
@@ -1514,7 +1599,7 @@ For the current `addrinfo` module:
 
 For the current `ip` module:
 
-* The `ToSocketAddr` trait should become `ToSocketAddrs`
+* The `ToInetAddr` trait should become `ToInetAddrs`
 * The default `to_socket_addr_all` method should be removed.
 
 The actual address structures could use some scrutiny, but any
