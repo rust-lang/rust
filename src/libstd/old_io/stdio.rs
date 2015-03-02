@@ -224,10 +224,10 @@ pub fn stdin() -> StdinReader {
 
     unsafe {
         ONCE.call_once(|| {
-            // The default buffer capacity is 64k, but apparently windows doesn't like
-            // 64k reads on stdin. See #13304 for details, but the idea is that on
-            // windows we use a slightly smaller buffer that's been seen to be
-            // acceptable.
+            // The default buffer capacity is 64k, but apparently windows
+            // doesn't like 64k reads on stdin. See #13304 for details, but the
+            // idea is that on windows we use a slightly smaller buffer that's
+            // been seen to be acceptable.
             let stdin = if cfg!(windows) {
                 BufferedReader::with_capacity(8 * 1024, stdin_raw())
             } else {

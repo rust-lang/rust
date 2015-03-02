@@ -19,11 +19,13 @@
 // A var moved into a proc, that has a mutable loan path should
 // not trigger a misleading unused_mut warning.
 
+use std::io::prelude::*;
 use std::thread;
 
 pub fn main() {
-    let mut stdin = std::old_io::stdin();
+    let mut stdin = std::io::stdin();
     thread::spawn(move|| {
-        let _ = stdin.read_to_end();
-    });
+        let mut v = Vec::new();
+        let _ = stdin.read_to_end(&mut v);
+    }).join().ok().unwrap();
 }

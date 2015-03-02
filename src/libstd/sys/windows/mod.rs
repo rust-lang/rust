@@ -61,6 +61,7 @@ pub mod time;
 pub mod timer;
 pub mod tty;
 pub mod udp;
+pub mod stdio;
 
 pub mod addrinfo {
     pub use sys_common::net::get_host_addresses;

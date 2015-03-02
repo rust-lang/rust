@@ -11,13 +11,13 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-use std::old_io;
+use std::io::{self, Write};
 
-fn f(wr: &mut Writer) {
-    wr.write_str("hello").ok().expect("failed");
+fn f(wr: &mut Write) {
+    wr.write_all(b"hello").ok().expect("failed");
 }
 
 fn main() {
-    let mut wr = box old_io::stdout() as Box<Writer + 'static>;
+    let mut wr = box io::stdout() as Box<Write>;
     f(&mut wr);
 }

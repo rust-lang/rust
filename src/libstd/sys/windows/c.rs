@@ -48,6 +48,11 @@ pub const WSAESHUTDOWN: libc::c_int = 10058;
 pub const ERROR_NO_MORE_FILES: libc::DWORD = 18;
 pub const TOKEN_READ: libc::DWORD = 0x20008;
 
+// Note that these are not actually HANDLEs, just values to pass to GetStdHandle
+pub const STD_INPUT_HANDLE: libc::DWORD = -10;
+pub const STD_OUTPUT_HANDLE: libc::DWORD = -11;
+pub const STD_ERROR_HANDLE: libc::DWORD = -12;
+
 #[repr(C)]
 #[cfg(target_arch = "x86")]
 pub struct WSADATA {
@@ -427,6 +432,7 @@ extern "system" {
                             DesiredAccess: libc::DWORD,
                             TokenHandle: *mut libc::HANDLE) -> libc::BOOL;
     pub fn GetCurrentProcess() -> libc::HANDLE;
+    pub fn GetStdHandle(which: libc::DWORD) -> libc::HANDLE;
 }
 
 #[link(name = "userenv")]
