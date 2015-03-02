@@ -48,7 +48,7 @@ Occupied case into an `&mut V`. Usage looks like:
 ```
 
 ```
-entry(key).get().unwrap_or_else(|entry| entry.insert(vec![])).push(val);
+map.entry(key).get().unwrap_or_else(|entry| entry.insert(vec![])).push(val);
 ```
 
 This is certainly *nicer*. No imports are needed, the Occupied case is handled, and we're closer
@@ -70,7 +70,6 @@ Replace `Entry::get` with the following two methods:
         }
     }
 
-    #[unstable(feature = "collections",
     /// Ensures a value is in the entry by inserting the result of the default function if empty,
     /// and returns a mutable reference to the value in the entry.
     pub fn default_with<F: FnOnce() -> V>(self. default: F) -> &'a mut V {
@@ -90,11 +89,11 @@ which allows the following:
 
 ```
 // vec![] doesn't even allocate, and is only 3 ptrs big.
-entry(key).default(vec![]).push(val);
+map.entry(key).default(vec![]).push(val);
 ```
 
 ```
-let val = entry(key).default_with(|| expensive(big, data));
+let val = map.entry(key).default_with(|| expensive(big, data));
 ```
 
 Look at all that ergonomics. *Look at it*. This pushes us more into the "one right way"
@@ -119,5 +118,11 @@ Settle for Result chumpsville or abandon this sugar altogether. Truly, fates wor
 
 # Unresolved questions
 
-None.
+`default` and `default_with` are universally reviled as *names*. Need a better name. Some candidates.
+
+* set_default
+* or_insert
+* insert_default
+* insert_if_vacant
+* with_default
 
