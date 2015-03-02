@@ -49,17 +49,20 @@ use super::AsOsStr;
 
 /// Owned, mutable OS strings.
 #[derive(Clone)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsString {
     inner: Buf
 }
 
 /// Slices into OS strings.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct OsStr {
     inner: Slice
 }
 
 impl OsString {
     /// Constructs an `OsString` at no cost by consuming a `String`.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_string(s: String) -> OsString {
         OsString { inner: Buf::from_string(s) }
     }
@@ -67,11 +70,13 @@ impl OsString {
     /// Constructs an `OsString` by copying from a `&str` slice.
     ///
     /// Equivalent to: `OsString::from_string(String::from_str(s))`.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_str(s: &str) -> OsString {
         OsString { inner: Buf::from_str(s) }
     }
 
     /// Constructs a new empty `OsString`.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> OsString {
         OsString { inner: Buf::from_string(String::new()) }
     }
@@ -79,16 +84,26 @@ impl OsString {
     /// Convert the `OsString` into a `String` if it contains valid Unicode data.
     ///
     /// On failure, ownership of the original `OsString` is returned.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_string(self) -> Result<String, OsString> {
         self.inner.into_string().map_err(|buf| OsString { inner: buf} )
     }
 
     /// Extend the string with the given `&OsStr` slice.
+    #[deprecated(since = "1.0.0", reason = "renamed to `push`")]
+    #[unstable(feature = "os")]
     pub fn push_os_str(&mut self, s: &OsStr) {
         self.inner.push_slice(&s.inner)
     }
+
+    /// Extend the string with the given `&OsStr` slice.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn push<T: AsOsStr + ?Sized>(&mut self, s: &T) {
+        self.inner.push_slice(&s.as_os_str().inner)
+    }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeFull> for OsString {
     type Output = OsStr;
 
@@ -98,6 +113,7 @@ impl ops::Index<ops::RangeFull> for OsString {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Deref for OsString {
     type Target = OsStr;
 
@@ -107,32 +123,38 @@ impl ops::Deref for OsString {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for OsString {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         fmt::Debug::fmt(&**self, formatter)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for OsString {
     fn eq(&self, other: &OsString) -> bool {
         &**self == &**other
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<str> for OsString {
     fn eq(&self, other: &str) -> bool {
         &**self == other
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<OsString> for str {
     fn eq(&self, other: &OsString) -> bool {
         &**other == self
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for OsString {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for OsString {
     #[inline]
     fn partial_cmp(&self, other: &OsString) -> Option<cmp::Ordering> {
@@ -148,6 +170,7 @@ impl PartialOrd for OsString {
     fn ge(&self, other: &OsString) -> bool { &**self >= &**other }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd<str> for OsString {
     #[inline]
     fn partial_cmp(&self, other: &str) -> Option<cmp::Ordering> {
@@ -155,6 +178,7 @@ impl PartialOrd<str> for OsString {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for OsString {
     #[inline]
     fn cmp(&self, other: &OsString) -> cmp::Ordering {
@@ -172,6 +196,7 @@ impl Hash for OsString {
 
 impl OsStr {
     /// Coerce directly from a `&str` slice to a `&OsStr` slice.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_str(s: &str) -> &OsStr {
         unsafe { mem::transmute(Slice::from_str(s)) }
     }
@@ -179,6 +204,7 @@ impl OsStr {
     /// Yield a `&str` slice if the `OsStr` is valid unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_str(&self) -> Option<&str> {
         self.inner.to_str()
     }
@@ -186,11 +212,13 @@ impl OsStr {
     /// Convert an `OsStr` to a `Cow<str>`.
     ///
     /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_string_lossy(&self) -> Cow<str> {
         self.inner.to_string_lossy()
     }
 
     /// Copy the slice into an owned `OsString`.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_os_string(&self) -> OsString {
         OsString { inner: self.inner.to_owned() }
     }
@@ -204,26 +232,31 @@ impl OsStr {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for OsStr {
     fn eq(&self, other: &OsStr) -> bool {
         self.bytes().eq(other.bytes())
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<str> for OsStr {
     fn eq(&self, other: &str) -> bool {
         *self == *OsStr::from_str(other)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<OsStr> for str {
     fn eq(&self, other: &OsStr) -> bool {
         *other == *OsStr::from_str(self)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for OsStr {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for OsStr {
     #[inline]
     fn partial_cmp(&self, other: &OsStr) -> Option<cmp::Ordering> {
@@ -239,6 +272,7 @@ impl PartialOrd for OsStr {
     fn ge(&self, other: &OsStr) -> bool { self.bytes().ge(other.bytes()) }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd<str> for OsStr {
     #[inline]
     fn partial_cmp(&self, other: &str) -> Option<cmp::Ordering> {
@@ -249,6 +283,7 @@ impl PartialOrd<str> for OsStr {
 // FIXME (#19470): cannot provide PartialOrd<OsStr> for str until we
 // have more flexible coherence rules.
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for OsStr {
     #[inline]
     fn cmp(&self, other: &OsStr) -> cmp::Ordering { self.bytes().cmp(other.bytes()) }
@@ -262,21 +297,25 @@ impl Hash for OsStr {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Debug for OsStr {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         self.inner.fmt(formatter)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<OsStr> for OsString {
     fn borrow(&self) -> &OsStr { &self[..] }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl ToOwned for OsStr {
     type Owned = OsString;
     fn to_owned(&self) -> OsString { self.to_os_string() }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: AsOsStr + ?Sized> AsOsStr for &'a T {
     fn as_os_str(&self) -> &OsStr {
         (*self).as_os_str()
@@ -307,15 +346,12 @@ impl AsOsStr for String {
     }
 }
 
-#[cfg(unix)]
 impl AsOsStr for Path {
+    #[cfg(unix)]
     fn as_os_str(&self) -> &OsStr {
         unsafe { mem::transmute(self.as_vec()) }
     }
-}
-
-#[cfg(windows)]
-impl AsOsStr for Path {
+    #[cfg(windows)]
     fn as_os_str(&self) -> &OsStr {
         // currently .as_str() is actually infallible on windows
         OsStr::from_str(self.as_str().unwrap())

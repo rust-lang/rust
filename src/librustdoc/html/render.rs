@@ -38,7 +38,6 @@ use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::default::Default;
-use std::ffi::OsStr;
 use std::fmt;
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -770,7 +769,7 @@ impl<'a> SourceCollector<'a> {
 
         let mut fname = p.file_name().expect("source has no filename")
                          .to_os_string();
-        fname.push_os_str(OsStr::from_str(".html"));
+        fname.push(".html");
         cur.push(&fname);
         let mut w = BufWriter::new(try!(File::create(&cur)));
 
