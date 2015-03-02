@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -46,7 +46,7 @@ use syntax::ptr::P;
 use syntax::visit::Visitor;
 use syntax::visit;
 use syntax;
-use rbml::writer;
+use rbml::writer::Encoder;
 use rbml::io::SeekableMemWriter;
 
 /// A borrowed version of `ast::InlinedItem`.
@@ -56,8 +56,6 @@ pub enum InlinedItemRef<'a> {
     IIImplItemRef(DefId, &'a ast::ImplItem),
     IIForeignRef(&'a ast::ForeignItem)
 }
-
-pub type Encoder<'a> = writer::Encoder<'a, SeekableMemWriter>;
 
 pub type EncodeInlinedItem<'a> =
     Box<FnMut(&EncodeContext, &mut Encoder, InlinedItemRef) + 'a>;
@@ -115,7 +113,7 @@ fn encode_trait_ref<'a, 'tcx>(rbml_w: &mut Encoder,
     };
 
     rbml_w.start_tag(tag);
-    tyencode::enc_trait_ref(rbml_w.writer, ty_str_ctxt, trait_ref);
+    tyencode::enc_trait_ref(rbml_w, ty_str_ctxt, trait_ref);
     rbml_w.end_tag();
 }
 
@@ -169,7 +167,7 @@ pub fn write_closure_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         tcx: ecx.tcx,
         abbrevs: &ecx.type_abbrevs
     };
-    tyencode::enc_closure_ty(rbml_w.writer, ty_str_ctxt, closure_type);
+    tyencode::enc_closure_ty(rbml_w, ty_str_ctxt, closure_type);
 }
 
 pub fn write_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
@@ -181,7 +179,7 @@ pub fn write_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         tcx: ecx.tcx,
         abbrevs: &ecx.type_abbrevs
     };
-    tyencode::enc_ty(rbml_w.writer, ty_str_ctxt, typ);
+    tyencode::enc_ty(rbml_w, ty_str_ctxt, typ);
 }
 
 pub fn write_trait_ref<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
@@ -193,7 +191,7 @@ pub fn write_trait_ref<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         tcx: ecx.tcx,
         abbrevs: &ecx.type_abbrevs
     };
-    tyencode::enc_trait_ref(rbml_w.writer, ty_str_ctxt, trait_ref);
+    tyencode::enc_trait_ref(rbml_w, ty_str_ctxt, trait_ref);
 }
 
 pub fn write_region(ecx: &EncodeContext,
@@ -205,7 +203,7 @@ pub fn write_region(ecx: &EncodeContext,
         tcx: ecx.tcx,
         abbrevs: &ecx.type_abbrevs
     };
-    tyencode::enc_region(rbml_w.writer, ty_str_ctxt, r);
+    tyencode::enc_region(rbml_w, ty_str_ctxt, r);
 }
 
 fn encode_bounds<'a, 'tcx>(rbml_w: &mut Encoder,
@@ -218,7 +216,7 @@ fn encode_bounds<'a, 'tcx>(rbml_w: &mut Encoder,
                                         ds: def_to_string,
                                         tcx: ecx.tcx,
                                         abbrevs: &ecx.type_abbrevs };
-    tyencode::enc_bounds(rbml_w.writer, ty_str_ctxt, bounds);
+    tyencode::enc_bounds(rbml_w, ty_str_ctxt, bounds);
 
     rbml_w.end_tag();
 }
@@ -250,7 +248,7 @@ fn encode_method_fty<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
         tcx: ecx.tcx,
         abbrevs: &ecx.type_abbrevs
     };
-    tyencode::enc_bare_fn_ty(rbml_w.writer, ty_str_ctxt, typ);
+    tyencode::enc_bare_fn_ty(rbml_w, ty_str_ctxt, typ);
 
     rbml_w.end_tag();
 }
@@ -312,7 +310,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
         let def_id = local_def(variant.node.id);
         index.push(entry {
             val: variant.node.id as i64,
-            pos: rbml_w.writer.tell().unwrap(),
+            pos: rbml_w.mark_stable_position(),
         });
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
@@ -659,10 +657,11 @@ fn encode_info_for_struct(ecx: &EncodeContext,
         let nm = field.name;
         let id = field.id.node;
 
-        index.push(entry {val: id as i64, pos: rbml_w.writer.tell().unwrap()});
+        let pos = rbml_w.mark_stable_position();
+        index.push(entry {val: id as i64, pos: pos});
         global_index.push(entry {
             val: id as i64,
-            pos: rbml_w.writer.tell().unwrap(),
+            pos: pos,
         });
         rbml_w.start_tag(tag_items_data_item);
         debug!("encode_info_for_struct: doing {} {}",
@@ -688,7 +687,7 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                struct_id: NodeId) {
     index.push(entry {
         val: ctor_id as i64,
-        pos: rbml_w.writer.tell().unwrap(),
+        pos: rbml_w.mark_stable_position(),
     });
 
     rbml_w.start_tag(tag_items_data_item);
@@ -731,7 +730,7 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
     };
     for param in generics.types.iter() {
         rbml_w.start_tag(tag_type_param_def);
-        tyencode::enc_type_param_def(rbml_w.writer, ty_str_ctxt, param);
+        tyencode::enc_type_param_def(rbml_w, ty_str_ctxt, param);
         rbml_w.end_tag();
     }
 
@@ -765,7 +764,7 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
         rbml_w.wr_tagged_u8(tag_predicate_space, space as u8);
 
         rbml_w.start_tag(tag_predicate_data);
-        tyencode::enc_predicate(rbml_w.writer, ty_str_ctxt, predicate);
+        tyencode::enc_predicate(rbml_w, ty_str_ctxt, predicate);
         rbml_w.end_tag();
 
         rbml_w.end_tag();
@@ -964,11 +963,11 @@ fn encode_info_for_item(ecx: &EncodeContext,
                         vis: ast::Visibility) {
     let tcx = ecx.tcx;
 
-    fn add_to_index(item: &ast::Item, rbml_w: &Encoder,
+    fn add_to_index(item: &ast::Item, rbml_w: &mut Encoder,
                     index: &mut Vec<entry<i64>>) {
         index.push(entry {
             val: item.id as i64,
-            pos: rbml_w.writer.tell().unwrap(),
+            pos: rbml_w.mark_stable_position(),
         });
     }
 
@@ -1224,7 +1223,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
             index.push(entry {
                 val: trait_item_def_id.def_id().node as i64,
-                pos: rbml_w.writer.tell().unwrap(),
+                pos: rbml_w.mark_stable_position(),
             });
 
             let trait_item_type =
@@ -1322,7 +1321,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
             index.push(entry {
                 val: item_def_id.def_id().node as i64,
-                pos: rbml_w.writer.tell().unwrap(),
+                pos: rbml_w.mark_stable_position(),
             });
 
             rbml_w.start_tag(tag_items_data_item);
@@ -1427,7 +1426,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
                                 abi: abi::Abi) {
     index.push(entry {
         val: nitem.id as i64,
-        pos: rbml_w.writer.tell().unwrap(),
+        pos: rbml_w.mark_stable_position(),
     });
 
     rbml_w.start_tag(tag_items_data_item);
@@ -1527,7 +1526,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
     rbml_w.start_tag(tag_items_data);
     index.push(entry {
         val: ast::CRATE_NODE_ID as i64,
-        pos: rbml_w.writer.tell().unwrap(),
+        pos: rbml_w.mark_stable_position(),
     });
     encode_info_for_mod(ecx,
                         rbml_w,
@@ -1567,7 +1566,7 @@ fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: 
     let mut bucket_locs = Vec::new();
     rbml_w.start_tag(tag_index_buckets);
     for bucket in &buckets {
-        bucket_locs.push(rbml_w.writer.tell().unwrap());
+        bucket_locs.push(rbml_w.mark_stable_position());
         rbml_w.start_tag(tag_index_buckets_bucket);
         for elt in bucket {
             rbml_w.start_tag(tag_index_buckets_bucket_elt);
@@ -1926,7 +1925,13 @@ pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 
 pub fn encode_metadata(parms: EncodeParams, krate: &ast::Crate) -> Vec<u8> {
     let mut wr = SeekableMemWriter::new();
     encode_metadata_inner(&mut wr, parms, krate);
+
+    // RBML compacts the encoded bytes whenever appropriate,
+    // so there are some garbages left after the end of the data.
+    let metalen = wr.tell().unwrap() as uint;
     let mut v = wr.unwrap();
+    v.truncate(metalen);
+    assert_eq!(v.len(), metalen);
 
     // And here we run into yet another obscure archive bug: in which metadata
     // loaded from archives may have trailing garbage bytes. Awhile back one of
@@ -2008,7 +2013,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
         reachable: reachable,
      };
 
-    let mut rbml_w = writer::Encoder::new(wr);
+    let mut rbml_w = Encoder::new(wr);
 
     encode_crate_name(&mut rbml_w, &ecx.link_meta.crate_name);
     encode_crate_triple(&mut rbml_w,
@@ -2099,7 +2104,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
 // Get the encoded string for a type
 pub fn encoded_ty<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> String {
     let mut wr = SeekableMemWriter::new();
-    tyencode::enc_ty(&mut wr, &tyencode::ctxt {
+    tyencode::enc_ty(&mut Encoder::new(&mut wr), &tyencode::ctxt {
         diag: tcx.sess.diagnostic(),
         ds: def_to_string,
         tcx: tcx,
