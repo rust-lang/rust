@@ -1565,24 +1565,13 @@ pub struct Map<I, F> {
     f: F,
 }
 
-impl<I: Iterator, F, B> Map<I, F> where F: FnMut(I::Item) -> B {
-    #[inline]
-    fn do_map(&mut self, elt: Option<I::Item>) -> Option<B> {
-        match elt {
-            Some(a) => Some((self.f)(a)),
-            _ => None
-        }
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<B, I: Iterator, F> Iterator for Map<I, F> where F: FnMut(I::Item) -> B {
     type Item = B;
 
     #[inline]
     fn next(&mut self) -> Option<B> {
-        let next = self.iter.next();
-        self.do_map(next)
+        self.iter.next().map(|a| (self.f)(a))
     }
 
     #[inline]
@@ -1597,8 +1586,7 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for Map<I, F> where
 {
     #[inline]
     fn next_back(&mut self) -> Option<B> {
-        let next = self.iter.next_back();
-        self.do_map(next)
+        self.iter.next_back().map(|a| (self.f)(a))
     }
 }
 
@@ -1613,8 +1601,7 @@ impl<B, I: RandomAccessIterator, F> RandomAccessIterator for Map<I, F> where
 
     #[inline]
     fn idx(&mut self, index: usize) -> Option<B> {
-        let elt = self.iter.idx(index);
-        self.do_map(elt)
+        self.iter.idx(index).map(|a| (self.f)(a))
     }
 }
 
