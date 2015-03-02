@@ -87,39 +87,37 @@ pub enum EbmlEncoderTag {
     // tags 00..1f are reserved for auto-serialization.
     // first NUM_IMPLICIT_TAGS tags are implicitly sized and lengths are not encoded.
 
-    EsUint     = 0x00, // + 8 bytes
-    EsU64      = 0x01, // + 8 bytes
-    EsU32      = 0x02, // + 4 bytes
-    EsU16      = 0x03, // + 2 bytes
-    EsU8       = 0x04, // + 1 byte
-    EsInt      = 0x05, // + 8 bytes
-    EsI64      = 0x06, // + 8 bytes
-    EsI32      = 0x07, // + 4 bytes
-    EsI16      = 0x08, // + 2 bytes
-    EsI8       = 0x09, // + 1 byte
-    EsBool     = 0x0a, // + 1 byte
-    EsChar     = 0x0b, // + 4 bytes
-    EsF64      = 0x0c, // + 8 bytes
-    EsF32      = 0x0d, // + 4 bytes
-    EsSub8     = 0x0e, // + 1 byte
-    EsSub32    = 0x0f, // + 4 bytes
+    EsU64      = 0x00, // + 8 bytes
+    EsU32      = 0x01, // + 4 bytes
+    EsU16      = 0x02, // + 2 bytes
+    EsU8       = 0x03, // + 1 byte
+    EsI64      = 0x04, // + 8 bytes
+    EsI32      = 0x05, // + 4 bytes
+    EsI16      = 0x06, // + 2 bytes
+    EsI8       = 0x07, // + 1 byte
+    EsBool     = 0x08, // + 1 byte
+    EsChar     = 0x09, // + 4 bytes
+    EsF64      = 0x0a, // + 8 bytes
+    EsF32      = 0x0b, // + 4 bytes
+    EsSub8     = 0x0c, // + 1 byte
+    EsSub32    = 0x0d, // + 4 bytes
 
-    EsStr      = 0x10,
-    EsEnum     = 0x11, // encodes the variant id as the first EsSub*
-    EsVec      = 0x12, // encodes the # of elements as the first EsSub*
-    EsVecElt   = 0x13,
-    EsMap      = 0x14, // encodes the # of pairs as the first EsSub*
-    EsMapKey   = 0x15,
-    EsMapVal   = 0x16,
-    EsOpaque   = 0x17,
+    EsStr      = 0x0e,
+    EsEnum     = 0x0f, // encodes the variant id as the first EsSub*
+    EsVec      = 0x10, // encodes the # of elements as the first EsSub*
+    EsVecElt   = 0x11,
+    EsMap      = 0x12, // encodes the # of pairs as the first EsSub*
+    EsMapKey   = 0x13,
+    EsMapVal   = 0x14,
+    EsOpaque   = 0x15,
 }
 
 const NUM_TAGS: uint = 0x1000;
-const NUM_IMPLICIT_TAGS: uint = 0x10;
+const NUM_IMPLICIT_TAGS: uint = 0x0e;
 
 static TAG_IMPLICIT_LEN: [i8; NUM_IMPLICIT_TAGS] = [
-    8, 8, 4, 2, 1, // EsU*
-    8, 8, 4, 2, 1, // ESI*
+    8, 4, 2, 1, // EsU*
+    8, 4, 2, 1, // ESI*
     1, // EsBool
     4, // EsChar
     8, 4, // EsF*
@@ -154,9 +152,9 @@ pub mod reader {
     use serialize;
 
     use super::{ ApplicationError, EsVec, EsMap, EsEnum, EsSub8, EsSub32,
-        EsVecElt, EsMapKey, EsU64, EsU32, EsU16, EsU8, EsInt, EsI64,
+        EsVecElt, EsMapKey, EsU64, EsU32, EsU16, EsU8, EsI64,
         EsI32, EsI16, EsI8, EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal,
-        EsUint, EsOpaque, EbmlEncoderTag, Doc, TaggedDoc,
+        EsOpaque, EbmlEncoderTag, Doc, TaggedDoc,
         Error, IntTooBig, InvalidTag, Expected, NUM_IMPLICIT_TAGS, TAG_IMPLICIT_LEN };
 
     pub type DecodeResult<T> = Result<T, Error>;
@@ -420,37 +418,6 @@ pub mod reader {
             Ok(r_doc)
         }
 
-        fn next_doc2(&mut self,
-                     exp_tag1: EbmlEncoderTag,
-                     exp_tag2: EbmlEncoderTag) -> DecodeResult<(bool, Doc<'doc>)> {
-            assert!((exp_tag1 as uint) != (exp_tag2 as uint));
-            debug!(". next_doc2(exp_tag1={:?}, exp_tag2={:?})", exp_tag1, exp_tag2);
-            if self.pos >= self.parent.end {
-                return Err(Expected(format!("no more documents in \
-                                             current node!")));
-            }
-            let TaggedDoc { tag: r_tag, doc: r_doc } =
-                try!(doc_at(self.parent.data, self.pos));
-            debug!("self.parent={:?}-{:?} self.pos={:?} r_tag={:?} r_doc={:?}-{:?}",
-                   self.parent.start,
-                   self.parent.end,
-                   self.pos,
-                   r_tag,
-                   r_doc.start,
-                   r_doc.end);
-            if r_tag != (exp_tag1 as uint) && r_tag != (exp_tag2 as uint) {
-                return Err(Expected(format!("expected EBML doc with tag {:?} or {:?} but \
-                                             found tag {:?}", exp_tag1, exp_tag2, r_tag)));
-            }
-            if r_doc.end > self.parent.end {
-                return Err(Expected(format!("invalid EBML, child extends to \
-                                             {:#x}, parent to {:#x}",
-                                            r_doc.end, self.parent.end)));
-            }
-            self.pos = r_doc.end;
-            Ok((r_tag == (exp_tag2 as uint), r_doc))
-        }
-
         fn push_doc<T, F>(&mut self, exp_tag: EbmlEncoderTag, f: F) -> DecodeResult<T> where
             F: FnOnce(&mut Decoder<'doc>) -> DecodeResult<T>,
         {
@@ -471,13 +438,56 @@ pub mod reader {
                 return Ok(0);
             }
 
-            let (big, doc) = try!(self.next_doc2(EsSub8, EsSub32));
-            let r = if big {
-                doc_as_u32(doc) as uint
+            let TaggedDoc { tag: r_tag, doc: r_doc } =
+                try!(doc_at(self.parent.data, self.pos));
+            let r = if r_tag == (EsSub8 as uint) {
+                doc_as_u8(r_doc) as uint
+            } else if r_tag == (EsSub32 as uint) {
+                doc_as_u32(r_doc) as uint
             } else {
-                doc_as_u8(doc) as uint
+                return Err(Expected(format!("expected EBML doc with tag {:?} or {:?} but \
+                                             found tag {:?}", EsSub8, EsSub32, r_tag)));
             };
+            if r_doc.end > self.parent.end {
+                return Err(Expected(format!("invalid EBML, child extends to \
+                                             {:#x}, parent to {:#x}",
+                                            r_doc.end, self.parent.end)));
+            }
+            self.pos = r_doc.end;
             debug!("_next_sub result={:?}", r);
+            Ok(r)
+        }
+
+        // variable-length unsigned integer with different tags
+        fn _next_int(&mut self,
+                     first_tag: EbmlEncoderTag,
+                     last_tag: EbmlEncoderTag) -> DecodeResult<u64> {
+            if self.pos >= self.parent.end {
+                return Err(Expected(format!("no more documents in \
+                                             current node!")));
+            }
+
+            let TaggedDoc { tag: r_tag, doc: r_doc } =
+                try!(doc_at(self.parent.data, self.pos));
+            let r = if first_tag as uint <= r_tag && r_tag <= last_tag as uint {
+                match last_tag as uint - r_tag {
+                    0 => doc_as_u8(r_doc) as u64,
+                    1 => doc_as_u16(r_doc) as u64,
+                    2 => doc_as_u32(r_doc) as u64,
+                    3 => doc_as_u64(r_doc) as u64,
+                    _ => unreachable!(),
+                }
+            } else {
+                return Err(Expected(format!("expected EBML doc with tag {:?} through {:?} but \
+                                             found tag {:?}", first_tag, last_tag, r_tag)));
+            };
+            if r_doc.end > self.parent.end {
+                return Err(Expected(format!("invalid EBML, child extends to \
+                                             {:#x}, parent to {:#x}",
+                                            r_doc.end, self.parent.end)));
+            }
+            self.pos = r_doc.end;
+            debug!("_next_int({:?}, {:?}) result={:?}", first_tag, last_tag, r);
             Ok(r)
         }
 
@@ -502,12 +512,12 @@ pub mod reader {
         type Error = Error;
         fn read_nil(&mut self) -> DecodeResult<()> { Ok(()) }
 
-        fn read_u64(&mut self) -> DecodeResult<u64> { Ok(doc_as_u64(try!(self.next_doc(EsU64)))) }
-        fn read_u32(&mut self) -> DecodeResult<u32> { Ok(doc_as_u32(try!(self.next_doc(EsU32)))) }
-        fn read_u16(&mut self) -> DecodeResult<u16> { Ok(doc_as_u16(try!(self.next_doc(EsU16)))) }
-        fn read_u8 (&mut self) -> DecodeResult<u8 > { Ok(doc_as_u8 (try!(self.next_doc(EsU8 )))) }
+        fn read_u64(&mut self) -> DecodeResult<u64> { self._next_int(EsU64, EsU8) }
+        fn read_u32(&mut self) -> DecodeResult<u32> { Ok(try!(self._next_int(EsU32, EsU8)) as u32) }
+        fn read_u16(&mut self) -> DecodeResult<u16> { Ok(try!(self._next_int(EsU16, EsU8)) as u16) }
+        fn read_u8(&mut self) -> DecodeResult<u8> { Ok(doc_as_u8(try!(self.next_doc(EsU8)))) }
         fn read_uint(&mut self) -> DecodeResult<uint> {
-            let v = doc_as_u64(try!(self.next_doc(EsUint)));
+            let v = try!(self._next_int(EsU64, EsU8));
             if v > (::std::usize::MAX as u64) {
                 Err(IntTooBig(v as uint))
             } else {
@@ -515,20 +525,12 @@ pub mod reader {
             }
         }
 
-        fn read_i64(&mut self) -> DecodeResult<i64> {
-            Ok(doc_as_u64(try!(self.next_doc(EsI64))) as i64)
-        }
-        fn read_i32(&mut self) -> DecodeResult<i32> {
-            Ok(doc_as_u32(try!(self.next_doc(EsI32))) as i32)
-        }
-        fn read_i16(&mut self) -> DecodeResult<i16> {
-            Ok(doc_as_u16(try!(self.next_doc(EsI16))) as i16)
-        }
-        fn read_i8 (&mut self) -> DecodeResult<i8> {
-            Ok(doc_as_u8(try!(self.next_doc(EsI8 ))) as i8)
-        }
+        fn read_i64(&mut self) -> DecodeResult<i64> { Ok(try!(self._next_int(EsI64, EsI8)) as i64) }
+        fn read_i32(&mut self) -> DecodeResult<i32> { Ok(try!(self._next_int(EsI32, EsI8)) as i32) }
+        fn read_i16(&mut self) -> DecodeResult<i16> { Ok(try!(self._next_int(EsI16, EsI8)) as i16) }
+        fn read_i8(&mut self) -> DecodeResult<i8> { Ok(doc_as_u8(try!(self.next_doc(EsI8))) as i8) }
         fn read_int(&mut self) -> DecodeResult<int> {
-            let v = doc_as_u64(try!(self.next_doc(EsInt))) as i64;
+            let v = try!(self._next_int(EsI64, EsI8)) as i64;
             if v > (isize::MAX as i64) || v < (isize::MIN as i64) {
                 debug!("FIXME \\#6122: Removing this makes this function miscompile");
                 Err(IntTooBig(v as uint))
@@ -739,10 +741,11 @@ pub mod writer {
     use std::old_io::{Writer, Seek};
     use std::old_io;
     use std::slice::bytes;
+    use std::num::ToPrimitive;
 
     use super::{ EsVec, EsMap, EsEnum, EsSub8, EsSub32, EsVecElt, EsMapKey,
-        EsU64, EsU32, EsU16, EsU8, EsInt, EsI64, EsI32, EsI16, EsI8,
-        EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal, EsUint,
+        EsU64, EsU32, EsU16, EsU8, EsI64, EsI32, EsI16, EsI8,
+        EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal,
         EsOpaque, NUM_IMPLICIT_TAGS, NUM_TAGS };
     use super::io::SeekableMemWriter;
 
@@ -1010,32 +1013,50 @@ pub mod writer {
         }
 
         fn emit_uint(&mut self, v: uint) -> EncodeResult {
-            self.wr_tagged_raw_u64(EsUint as uint, v as u64)
+            self.emit_u64(v as u64)
         }
         fn emit_u64(&mut self, v: u64) -> EncodeResult {
-            self.wr_tagged_raw_u64(EsU64 as uint, v)
+            match v.to_u32() {
+                Some(v) => self.emit_u32(v),
+                None => self.wr_tagged_raw_u64(EsU64 as uint, v)
+            }
         }
         fn emit_u32(&mut self, v: u32) -> EncodeResult {
-            self.wr_tagged_raw_u32(EsU32 as uint, v)
+            match v.to_u16() {
+                Some(v) => self.emit_u16(v),
+                None => self.wr_tagged_raw_u32(EsU32 as uint, v)
+            }
         }
         fn emit_u16(&mut self, v: u16) -> EncodeResult {
-            self.wr_tagged_raw_u16(EsU16 as uint, v)
+            match v.to_u8() {
+                Some(v) => self.emit_u8(v),
+                None => self.wr_tagged_raw_u16(EsU16 as uint, v)
+            }
         }
         fn emit_u8(&mut self, v: u8) -> EncodeResult {
             self.wr_tagged_raw_u8(EsU8 as uint, v)
         }
 
         fn emit_int(&mut self, v: int) -> EncodeResult {
-            self.wr_tagged_raw_i64(EsInt as uint, v as i64)
+            self.emit_i64(v as i64)
         }
         fn emit_i64(&mut self, v: i64) -> EncodeResult {
-            self.wr_tagged_raw_i64(EsI64 as uint, v)
+            match v.to_i32() {
+                Some(v) => self.emit_i32(v),
+                None => self.wr_tagged_raw_i64(EsI64 as uint, v)
+            }
         }
         fn emit_i32(&mut self, v: i32) -> EncodeResult {
-            self.wr_tagged_raw_i32(EsI32 as uint, v)
+            match v.to_i16() {
+                Some(v) => self.emit_i16(v),
+                None => self.wr_tagged_raw_i32(EsI32 as uint, v)
+            }
         }
         fn emit_i16(&mut self, v: i16) -> EncodeResult {
-            self.wr_tagged_raw_i16(EsI16 as uint, v)
+            match v.to_i8() {
+                Some(v) => self.emit_i8(v),
+                None => self.wr_tagged_raw_i16(EsI16 as uint, v)
+            }
         }
         fn emit_i8(&mut self, v: i8) -> EncodeResult {
             self.wr_tagged_raw_i8(EsI8 as uint, v)
