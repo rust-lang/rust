@@ -1203,21 +1203,6 @@ pub fn alloca_no_lifetime(cx: Block, ty: Type, name: &str) -> ValueRef {
     Alloca(cx, ty, name)
 }
 
-pub fn alloca_zeroed<'blk, 'tcx>(cx: Block<'blk, 'tcx>, ty: Ty<'tcx>,
-                                 name: &str) -> ValueRef {
-    let llty = type_of::type_of(cx.ccx(), ty);
-    if cx.unreachable.get() {
-        unsafe {
-            return llvm::LLVMGetUndef(llty.ptr_to().to_ref());
-        }
-    }
-    let p = alloca_no_lifetime(cx, llty, name);
-    let b = cx.fcx.ccx.builder();
-    b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
-    memzero(&b, p, ty);
-    p
-}
-
 // Creates the alloca slot which holds the pointer to the slot for the final return value
 pub fn make_return_slot_pointer<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                                           output_type: Ty<'tcx>) -> ValueRef {
@@ -1547,7 +1532,6 @@ fn create_datums_for_fn_args_under_call_abi<'blk, 'tcx>(
                                   datum::lvalue_scratch_datum(bcx,
                                                               arg_ty,
                                                               "tupled_args",
-                                                              false,
                                                               tuple_args_scope_id,
                                                               (),
                                                               |(),
