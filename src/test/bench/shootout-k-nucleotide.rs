@@ -43,12 +43,16 @@
 #![feature(box_syntax)]
 
 use std::ascii::OwnedAsciiExt;
+use std::env;
+use std::fs::File;
+use std::io::prelude::*;
+use std::io;
 use std::slice;
 use std::sync::Arc;
 use std::thread;
 
 static TABLE: [u8;4] = [ 'A' as u8, 'C' as u8, 'G' as u8, 'T' as u8 ];
-static TABLE_SIZE: uint = 2 << 16;
+static TABLE_SIZE: usize = 2 << 16;
 
 static OCCURRENCES: [&'static str;5] = [
     "GGT",
@@ -73,7 +77,7 @@ impl Code {
         Code((self.hash() << 2) + (pack_symbol(c) as u64))
     }
 
-    fn rotate(&self, c: u8, frame: uint) -> Code {
+    fn rotate(&self, c: u8, frame: usize) -> Code {
         Code(self.push_char(c).hash() & ((1u64 << (2 * frame)) - 1))
     }
 
@@ -81,7 +85,7 @@ impl Code {
         string.bytes().fold(Code(0u64), |a, b| a.push_char(b))
     }
 
-    fn unpack(&self, frame: uint) -> String {
+    fn unpack(&self, frame: usize) -> String {
         let mut key = self.hash();
         let mut result = Vec::new();
         for _ in 0..frame {
@@ -113,13 +117,13 @@ struct PrintCallback(&'static str);
 impl TableCallback for PrintCallback {
     fn f(&self, entry: &mut Entry) {
         let PrintCallback(s) = *self;
-        println!("{}\t{}", entry.count as int, s);
+        println!("{}\t{}", entry.count, s);
     }
 }
 
 struct Entry {
     code: Code,
-    count: uint,
+    count: usize,
     next: Option<Box<Entry>>,
 }
 
@@ -165,20 +169,20 @@ impl Table {
         let index = key.hash() % (TABLE_SIZE as u64);
 
         {
-            if self.items[index as uint].is_none() {
+            if self.items[index as usize].is_none() {
                 let mut entry = box Entry {
                     code: key,
                     count: 0,
                     next: None,
                 };
                 c.f(&mut *entry);
-                self.items[index as uint] = Some(entry);
+                self.items[index as usize] = Some(entry);
                 return;
             }
         }
 
         {
-            let entry = self.items[index as uint].as_mut().unwrap();
+            let entry = self.items[index as usize].as_mut().unwrap();
             if entry.code == key {
                 c.f(&mut **entry);
                 return;
@@ -233,10 +237,10 @@ fn pack_symbol(c: u8) -> u8 {
 }
 
 fn unpack_symbol(c: u8) -> u8 {
-    TABLE[c as uint]
+    TABLE[c as usize]
 }
 
-fn generate_frequencies(mut input: &[u8], frame: uint) -> Table {
+fn generate_frequencies(mut input: &[u8], frame: usize) -> Table {
     let mut frequencies = Table::new();
     if input.len() < frame { return frequencies; }
     let mut code = Code(0);
@@ -256,7 +260,7 @@ fn generate_frequencies(mut input: &[u8], frame: uint) -> Table {
     frequencies
 }
 
-fn print_frequencies(frequencies: &Table, frame: uint) {
+fn print_frequencies(frequencies: &Table, frame: usize) {
     let mut vector = Vec::new();
     for entry in frequencies.iter() {
         vector.push((entry.count, entry.code));
@@ -280,9 +284,9 @@ fn print_occurrences(frequencies: &mut Table, occurrence: &'static str) {
     frequencies.lookup(Code::pack(occurrence), PrintCallback(occurrence))
 }
 
-fn get_sequence<R: Buffer>(r: &mut R, key: &str) -> Vec<u8> {
+fn get_sequence<R: BufRead>(r: &mut R, key: &str) -> Vec<u8> {
     let mut res = Vec::new();
-    for l in r.lines().map(|l| l.ok().unwrap())
+    for l in r.lines().map(|l| l.unwrap())
         .skip_while(|l| key != &l[..key.len()]).skip(1)
     {
         res.push_all(l.trim().as_bytes());
@@ -291,13 +295,13 @@ fn get_sequence<R: Buffer>(r: &mut R, key: &str) -> Vec<u8> {
 }
 
 fn main() {
-    let input = if std::env::var_os("RUST_BENCH").is_some() {
-        let fd = std::old_io::File::open(&Path::new("shootout-k-nucleotide.data"));
-        get_sequence(&mut std::old_io::BufferedReader::new(fd), ">THREE")
+    let input = if env::var_os("RUST_BENCH").is_some() {
+        let f = File::open("shootout-k-nucleotide.data").unwrap();
+        get_sequence(&mut io::BufReader::new(f), ">THREE")
     } else {
-        let mut stdin = std::old_io::stdin();
+        let stdin = io::stdin();
         let mut stdin = stdin.lock();
-        get_sequence(&mut *stdin, ">THREE")
+        get_sequence(&mut stdin, ">THREE")
     };
     let input = Arc::new(input);
 

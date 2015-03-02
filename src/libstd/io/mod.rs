@@ -39,6 +39,10 @@ pub use self::buffered::IntoInnerError;
 pub use self::cursor::Cursor;
 pub use self::error::{Result, Error, ErrorKind};
 pub use self::util::{copy, sink, Sink, empty, Empty, repeat, Repeat};
+pub use self::stdio::{stdin, stdout, stderr, Stdin, Stdout, Stderr};
+pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
+
+#[macro_use] mod lazy;
 
 pub mod prelude;
 mod buffered;
@@ -46,6 +50,7 @@ mod cursor;
 mod error;
 mod impls;
 mod util;
+mod stdio;
 
 const DEFAULT_BUF_SIZE: usize = 64 * 1024;
 
