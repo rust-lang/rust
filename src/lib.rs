@@ -23,7 +23,7 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_lint_pass(box misc::MiscPass as LintPassObject);
     reg.register_lint_pass(box misc::StrToStringPass as LintPassObject);
     reg.register_lint_pass(box misc::TopLevelRefPass as LintPassObject);
-    reg.register_lint_group("clippy", vec![types::BOX_VEC, types::DLIST,
+    reg.register_lint_group("clippy", vec![types::BOX_VEC, types::LINKEDLIST,
                                            misc::SINGLE_MATCH, misc::STR_TO_STRING,
                                            misc::TOPLEVEL_REF_ARG]);
 }

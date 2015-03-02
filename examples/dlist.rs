@@ -1,15 +1,14 @@
 #![feature(plugin)]
 
-#[plugin]
-extern crate clippy;
+#![plugin(clippy)]
 
 extern crate collections;
-use collections::dlist::DList;
+use collections::linked_list::LinkedList;
 
-pub fn test(foo: DList<uint>) {
+pub fn test(foo: LinkedList<uint>) {
     println!("{:?}", foo)
 }
 
 fn main(){
-    test(DList::new());
+    test(LinkedList::new());
 }

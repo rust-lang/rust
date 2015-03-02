@@ -12,8 +12,8 @@ pub struct TypePass;
 
 declare_lint!(pub BOX_VEC, Warn,
               "Warn on usage of Box<Vec<T>>");
-declare_lint!(pub DLIST, Warn,
-              "Warn on usage of DList");
+declare_lint!(pub LINKEDLIST, Warn,
+              "Warn on usage of LinkedList");
 
 /// Matches a type with a provided string, and returns its type parameters if successful
 pub fn match_ty_unwrap<'a>(ty: &'a Ty, segments: &[&str]) -> Option<&'a [P<Ty>]> {
@@ -48,7 +48,7 @@ pub fn span_note_and_lint(cx: &Context, lint: &'static Lint, span: Span, msg: &s
 
 impl LintPass for TypePass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(BOX_VEC, DLIST)
+        lint_array!(BOX_VEC, LINKEDLIST)
     }
 
     fn check_ty(&mut self, cx: &Context, ty: &ast::Ty) {
@@ -66,17 +66,17 @@ impl LintPass for TypePass {
           });
         {
             // In case stuff gets moved around
-            use collections::dlist::DList as DL1;
-            use std::collections::dlist::DList as DL2;
-            use std::collections::DList as DL3;
+            use collections::linked_list::LinkedList as DL1;
+            use std::collections::linked_list::LinkedList as DL2;
+            use std::collections::linked_list::LinkedList as DL3;
         }
-        let dlists = [vec!["std","collections","dlist","DList"],
-                      vec!["std","collections","DList"],
-                      vec!["collections","dlist","DList"]];
+        let dlists = [vec!["std","collections","linked_list","LinkedList"],
+                      vec!["std","collections","linked_list","LinkedList"],
+                      vec!["collections","linked_list","LinkedList"]];
         for path in dlists.iter() {
             if match_ty_unwrap(ty, path.as_slice()).is_some() {
-                span_note_and_lint(cx, DLIST, ty.span,
-                                   "I see you're using a DList! Perhaps you meant some other data structure?",
+                span_note_and_lint(cx, LINKEDLIST, ty.span,
+                                   "I see you're using a LinkedList! Perhaps you meant some other data structure?",
                                    "A RingBuf might work.");
                 return;
             }

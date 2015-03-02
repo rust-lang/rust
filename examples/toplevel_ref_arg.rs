@@ -1,7 +1,6 @@
 #![feature(plugin)]
 
-#[plugin]
-extern crate clippy;
+#![plugin(clippy)]
 
 fn the_answer(ref mut x: u8) {
   *x = 42;

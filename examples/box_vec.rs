@@ -1,7 +1,6 @@
 #![feature(plugin)]
 
-#[plugin]
-extern crate clippy;
+#![plugin(clippy)]
 
 pub fn test(foo: Box<Vec<bool>>) {
     println!("{:?}", foo.get(0))

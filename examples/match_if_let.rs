@@ -1,7 +1,6 @@
 #![feature(plugin)]
 
-#[plugin]
-extern crate clippy;
+#![plugin(clippy)]
 
 fn main(){
     let x = Some(1u);
