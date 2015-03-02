@@ -47,7 +47,7 @@ This pattern is very powerful, and we'll see it repeated more later.
 
 There are also a few things you can do with a tuple as a whole, without
 destructuring. You can assign one tuple into another, if they have the same
-contained types and arity. Tuples have the same arity when they have the same
+contained types and [arity]. Tuples have the same arity when they have the same
 length.
 
 ```rust
@@ -357,6 +357,7 @@ tool that will let us deconstruct this sum type (the type theory term for enums)
 in a very elegant way and avoid all these messy `if`/`else`s.
 
 
+[arity]: ./glossary.html#arity
 [match]: ./match.html
 [game]: ./guessing-game.html#comparing-guesses
 [generics]: ./generics.html
