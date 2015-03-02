@@ -1920,7 +1920,7 @@ fn encode_dylib_dependency_formats(rbml_w: &mut Encoder, ecx: &EncodeContext) {
 
 // NB: Increment this as you change the metadata encoding version.
 #[allow(non_upper_case_globals)]
-pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 1 ];
+pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 2 ];
 
 pub fn encode_metadata(parms: EncodeParams, krate: &ast::Crate) -> Vec<u8> {
     let mut wr = SeekableMemWriter::new();
