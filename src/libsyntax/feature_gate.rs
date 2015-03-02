@@ -139,6 +139,9 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows the use of rustc_* attributes; RFC 572
     ("rustc_attrs", "1.0.0", Active),
+
+    // Allows the use of `static_assert`
+    ("static_assert", "1.0.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -241,7 +244,8 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("no_split_stack", Whitelisted),
     ("no_stack_check", Whitelisted),
     ("packed", Whitelisted),
-    ("static_assert", Whitelisted),
+    ("static_assert", Gated("static_assert",
+                            "`#[static_assert]` is an experimental feature, and has a poor API")),
     ("no_debug", Whitelisted),
     ("omit_gdb_pretty_printer_section", Whitelisted),
     ("unsafe_no_drop_flag", Gated("unsafe_no_drop_flag",
@@ -769,4 +773,3 @@ pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
                       |ctx, krate| visit::walk_crate(&mut PostExpansionVisitor { context: ctx },
                                                      krate))
 }
-
