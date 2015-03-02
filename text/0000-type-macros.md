@@ -80,8 +80,16 @@ At the term-level, this is an easy fix using macros:
 // term-level macro for HLists
 macro_rules! hlist {
     {} => { Nil };
-    { $head:expr } => { Cons($head, Nil) };
+    {=> $($elem:tt),+ } => { hlist_pat!($($elem),+) };
     { $head:expr, $($tail:expr),* } => { Cons($head, hlist!($($tail),*)) };
+    { $head:expr } => { Cons($head, Nil) };
+}
+
+// term-level HLists in patterns
+macro_rules! hlist_pat {
+    {} => { Nil };
+    { $head:pat, $($tail:tt),* } => { Cons($head, hlist_pat!($($tail),*)) };
+    { $head:pat } => { Cons($head, Nil) };
 }
 
 let xs = hlist!["foo", false, vec![0u64]];
@@ -102,8 +110,16 @@ well. The complete example follows:
 // term-level macro for HLists
 macro_rules! hlist {
     {} => { Nil };
-    { $head:expr } => { Cons($head, Nil) };
+    {=> $($elem:tt),+ } => { hlist_pat!($($elem),+) };
     { $head:expr, $($tail:expr),* } => { Cons($head, hlist!($($tail),*)) };
+    { $head:expr } => { Cons($head, Nil) };
+}
+
+// term-level HLists in patterns
+macro_rules! hlist_pat {
+    {} => { Nil };
+    { $head:pat, $($tail:tt),* } => { Cons($head, hlist_pat!($($tail),*)) };
+    { $head:pat } => { Cons($head, Nil) };
 }
 
 // type-level macro for HLists
@@ -428,15 +444,16 @@ macro_rules! HList {
 // term-level macro for HLists
 macro_rules! hlist {
     {} => { Nil };
-    { $head:expr } => { Cons($head, Nil) };
+    {=> $($elem:tt),+ } => { hlist_pat!($($elem),+) };
     { $head:expr, $($tail:expr),* } => { Cons($head, hlist!($($tail),*)) };
+    { $head:expr } => { Cons($head, Nil) };
 }
 
 // term-level HLists in patterns
-macro_rules! hlist_match {
+macro_rules! hlist_pat {
     {} => { Nil };
-    { $head:ident } => { Cons($head, Nil) };
-    { $head:ident, $($tail:ident),* } => { Cons($head, hlist_match!($($tail),*)) };
+    { $head:pat, $($tail:tt),* } => { Cons($head, hlist_pat!($($tail),*)) };
+    { $head:pat } => { Cons($head, Nil) };
 }
 
 // `invoke_for_seq_upto` is a `higher-order` macro that takes the name
@@ -512,7 +529,7 @@ macro_rules! impl_to_tuple {
             type Output = ($($seq,)*);
             extern "rust-call" fn call(&self, (this,): (HList![$($seq),*],)) -> ($($seq,)*) {
                 match this {
-                    hlist_match![$($seq),*] => ($($seq,)*)
+                    hlist![=> $($seq),*] => ($($seq,)*)
                 }
             }
         }
