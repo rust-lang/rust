@@ -10,7 +10,7 @@
 
 //! Working with processes.
 
-#![unstable(feature = "process", reason = "recently added via RFC 579")]
+#![stable(feature = "process", since = "1.0.0")]
 #![allow(non_upper_case_globals)]
 
 use prelude::v1::*;
@@ -48,6 +48,7 @@ use thread;
 /// let contents = output.stdout;
 /// assert!(output.status.success());
 /// ```
+#[stable(feature = "process", since = "1.0.0")]
 pub struct Child {
     handle: ProcessImp,
 
@@ -55,20 +56,25 @@ pub struct Child {
     status: Option<ExitStatusImp>,
 
     /// The handle for writing to the child's stdin, if it has been captured
+    #[stable(feature = "process", since = "1.0.0")]
     pub stdin: Option<ChildStdin>,
 
     /// The handle for reading from the child's stdout, if it has been captured
+    #[stable(feature = "process", since = "1.0.0")]
     pub stdout: Option<ChildStdout>,
 
     /// The handle for reading from the child's stderr, if it has been captured
+    #[stable(feature = "process", since = "1.0.0")]
     pub stderr: Option<ChildStderr>,
 }
 
 /// A handle to a child procesess's stdin
+#[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdin {
     inner: AnonPipe
 }
 
+#[stable(feature = "process", since = "1.0.0")]
 impl Write for ChildStdin {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
@@ -80,10 +86,12 @@ impl Write for ChildStdin {
 }
 
 /// A handle to a child procesess's stdout
+#[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStdout {
     inner: AnonPipe
 }
 
+#[stable(feature = "process", since = "1.0.0")]
 impl Read for ChildStdout {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
@@ -91,10 +99,12 @@ impl Read for ChildStdout {
 }
 
 /// A handle to a child procesess's stderr
+#[stable(feature = "process", since = "1.0.0")]
 pub struct ChildStderr {
     inner: AnonPipe
 }
 
+#[stable(feature = "process", since = "1.0.0")]
 impl Read for ChildStderr {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
@@ -108,8 +118,6 @@ impl Read for ChildStderr {
 /// to be changed (for example, by adding arguments) prior to spawning:
 ///
 /// ```
-/// # #![feature(process)]
-///
 /// use std::process::Command;
 ///
 /// let output = Command::new("sh").arg("-c").arg("echo hello").output().unwrap_or_else(|e| {
@@ -117,6 +125,7 @@ impl Read for ChildStderr {
 /// });
 /// let hello = output.stdout;
 /// ```
+#[stable(feature = "process", since = "1.0.0")]
 pub struct Command {
     inner: CommandImp,
 
@@ -137,6 +146,7 @@ impl Command {
     ///
     /// Builder methods are provided to change these defaults and
     /// otherwise configure the process.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn new<S: AsOsStr + ?Sized>(program: &S) -> Command {
         Command {
             inner: CommandImp::new(program.as_os_str()),
@@ -147,12 +157,14 @@ impl Command {
     }
 
     /// Add an argument to pass to the program.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn arg<S: AsOsStr + ?Sized>(&mut self, arg: &S) -> &mut Command {
         self.inner.arg(arg.as_os_str());
         self
     }
 
     /// Add multiple arguments to pass to the program.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn args<S: AsOsStr>(&mut self, args: &[S]) -> &mut Command {
         self.inner.args(args.iter().map(AsOsStr::as_os_str));
         self
@@ -162,26 +174,30 @@ impl Command {
     ///
     /// Note that environment variable names are case-insensitive (but case-preserving) on Windows,
     /// and case-sensitive on all other platforms.
-    pub fn env<S: ?Sized, T: ?Sized>(&mut self, key: &S, val: &T) -> &mut Command where
-        S: AsOsStr, T: AsOsStr
+    #[stable(feature = "process", since = "1.0.0")]
+    pub fn env<K: ?Sized, V: ?Sized>(&mut self, key: &K, val: &V) -> &mut Command
+        where K: AsOsStr, V: AsOsStr
     {
         self.inner.env(key.as_os_str(), val.as_os_str());
         self
     }
 
     /// Removes an environment variable mapping.
-    pub fn env_remove<S: ?Sized + AsOsStr>(&mut self, key: &S) -> &mut Command {
+    #[stable(feature = "process", since = "1.0.0")]
+    pub fn env_remove<K: ?Sized + AsOsStr>(&mut self, key: &K) -> &mut Command {
         self.inner.env_remove(key.as_os_str());
         self
     }
 
     /// Clears the entire environment map for the child process.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn env_clear(&mut self) -> &mut Command {
         self.inner.env_clear();
         self
     }
 
     /// Set the working directory for the child process.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn current_dir<P: AsPath + ?Sized>(&mut self, dir: &P) -> &mut Command {
         self.inner.cwd(dir.as_path().as_os_str());
         self
@@ -189,6 +205,7 @@ impl Command {
 
     /// Configuration for the child process's stdin handle (file descriptor 0).
     /// Defaults to `CreatePipe(true, false)` so the input can be written to.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn stdin(&mut self, cfg: Stdio) -> &mut Command {
         self.stdin = Some(cfg.0);
         self
@@ -196,6 +213,7 @@ impl Command {
 
     /// Configuration for the child process's stdout handle (file descriptor 1).
     /// Defaults to `CreatePipe(false, true)` so the output can be collected.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn stdout(&mut self, cfg: Stdio) -> &mut Command {
         self.stdout = Some(cfg.0);
         self
@@ -203,6 +221,7 @@ impl Command {
 
     /// Configuration for the child process's stderr handle (file descriptor 2).
     /// Defaults to `CreatePipe(false, true)` so the output can be collected.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn stderr(&mut self, cfg: Stdio) -> &mut Command {
         self.stderr = Some(cfg.0);
         self
@@ -234,6 +253,7 @@ impl Command {
     /// Executes the command as a child process, returning a handle to it.
     ///
     /// By default, stdin, stdout and stderr are inherited by the parent.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn spawn(&mut self) -> io::Result<Child> {
         self.spawn_inner(StdioImp::Inherit)
     }
@@ -258,8 +278,9 @@ impl Command {
     /// println!("stdout: {}", String::from_utf8_lossy(output.stdout.as_slice()));
     /// println!("stderr: {}", String::from_utf8_lossy(output.stderr.as_slice()));
     /// ```
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn output(&mut self) -> io::Result<Output> {
-        self.spawn_inner(StdioImp::Capture).and_then(|p| p.wait_with_output())
+        self.spawn_inner(StdioImp::Piped).and_then(|p| p.wait_with_output())
     }
 
     /// Executes a command as a child process, waiting for it to finish and
@@ -279,6 +300,7 @@ impl Command {
     ///
     /// println!("process exited with: {}", status);
     /// ```
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn status(&mut self) -> io::Result<ExitStatus> {
         self.spawn().and_then(|mut p| p.wait())
     }
@@ -317,7 +339,7 @@ fn setup_io(io: &StdioImp, fd: libc::c_int, readable: bool)
         Inherit => {
             (Some(AnonPipe::from_fd(fd)), None)
         }
-        Capture => {
+        Piped => {
             let (reader, writer) = try!(unsafe { pipe2::anon_pipe() });
             if readable {
                 (Some(reader), Some(writer))
@@ -330,45 +352,60 @@ fn setup_io(io: &StdioImp, fd: libc::c_int, readable: bool)
 
 /// The output of a finished process.
 #[derive(PartialEq, Eq, Clone)]
+#[stable(feature = "process", since = "1.0.0")]
 pub struct Output {
     /// The status (exit code) of the process.
+    #[stable(feature = "process", since = "1.0.0")]
     pub status: ExitStatus,
     /// The data that the process wrote to stdout.
+    #[stable(feature = "process", since = "1.0.0")]
     pub stdout: Vec<u8>,
     /// The data that the process wrote to stderr.
+    #[stable(feature = "process", since = "1.0.0")]
     pub stderr: Vec<u8>,
 }
 
 /// Describes what to do with a standard io stream for a child process.
+#[stable(feature = "process", since = "1.0.0")]
 pub struct Stdio(StdioImp);
 
 // The internal enum for stdio setup; see below for descriptions.
 #[derive(Clone)]
 enum StdioImp {
-    Capture,
+    Piped,
     Inherit,
     Null,
 }
 
 impl Stdio {
     /// A new pipe should be arranged to connect the parent and child processes.
-    pub fn capture() -> Stdio { Stdio(StdioImp::Capture) }
+    #[unstable(feature = "process_capture")]
+    #[deprecated(since = "1.0.0", reason = "renamed to `Stdio::piped`")]
+    pub fn capture() -> Stdio { Stdio::piped() }
+
+    /// A new pipe should be arranged to connect the parent and child processes.
+    #[stable(feature = "process", since = "1.0.0")]
+    pub fn piped() -> Stdio { Stdio(StdioImp::Piped) }
 
     /// The child inherits from the corresponding parent descriptor.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn inherit() -> Stdio { Stdio(StdioImp::Inherit) }
 
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn null() -> Stdio { Stdio(StdioImp::Null) }
 }
 
 /// Describes the result of a process after it has terminated.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[stable(feature = "process", since = "1.0.0")]
 pub struct ExitStatus(ExitStatusImp);
 
 impl ExitStatus {
     /// Was termination successful? Signal termination not considered a success,
     /// and success is defined as a zero exit status.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn success(&self) -> bool {
         self.0.success()
     }
@@ -378,6 +415,7 @@ impl ExitStatus {
     /// On Unix, this will return `None` if the process was terminated
     /// by a signal; `std::os::unix` provides an extension trait for
     /// extracting the signal and other details from the `ExitStatus`.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn code(&self) -> Option<i32> {
         self.0.code()
     }
@@ -387,6 +425,7 @@ impl AsInner<ExitStatusImp> for ExitStatus {
     fn as_inner(&self) -> &ExitStatusImp { &self.0 }
 }
 
+#[stable(feature = "process", since = "1.0.0")]
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.0.fmt(f)
@@ -396,6 +435,7 @@ impl fmt::Display for ExitStatus {
 impl Child {
     /// Forces the child to exit. This is equivalent to sending a
     /// SIGKILL on unix platforms.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn kill(&mut self) -> io::Result<()> {
         #[cfg(unix)] fn collect_status(p: &mut Child) {
             // On Linux (and possibly other unices), a process that has exited will
@@ -436,6 +476,7 @@ impl Child {
     /// before waiting. This helps avoid deadlock: it ensures that the
     /// child does not block waiting for input from the parent, while
     /// the parent waits for the child to exit.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
         drop(self.stdin.take());
         match self.status {
@@ -456,6 +497,7 @@ impl Child {
     /// before waiting. This helps avoid deadlock: it ensures that the
     /// child does not block waiting for input from the parent, while
     /// the parent waits for the child to exit.
+    #[stable(feature = "process", since = "1.0.0")]
     pub fn wait_with_output(mut self) -> io::Result<Output> {
         drop(self.stdin.take());
         fn read<T: Read + Send + 'static>(stream: Option<T>) -> Receiver<io::Result<Vec<u8>>> {
@@ -557,7 +599,7 @@ mod tests {
     #[test]
     fn stdout_works() {
         let mut cmd = Command::new("echo");
-        cmd.arg("foobar").stdout(Stdio::capture());
+        cmd.arg("foobar").stdout(Stdio::piped());
         assert_eq!(run_output(cmd), "foobar\n");
     }
 
@@ -567,7 +609,7 @@ mod tests {
         let mut cmd = Command::new("/bin/sh");
         cmd.arg("-c").arg("pwd")
            .current_dir("/")
-           .stdout(Stdio::capture());
+           .stdout(Stdio::piped());
         assert_eq!(run_output(cmd), "/\n");
     }
 
@@ -576,8 +618,8 @@ mod tests {
     fn stdin_works() {
         let mut p = Command::new("/bin/sh")
                             .arg("-c").arg("read line; echo $line")
-                            .stdin(Stdio::capture())
-                            .stdout(Stdio::capture())
+                            .stdin(Stdio::piped())
+                            .stdout(Stdio::piped())
                             .spawn().unwrap();
         p.stdin.as_mut().unwrap().write("foobar".as_bytes()).unwrap();
         drop(p.stdin.take());
@@ -675,7 +717,7 @@ mod tests {
     #[cfg(not(target_os="android"))]
     #[test]
     fn test_wait_with_output_once() {
-        let prog = Command::new("echo").arg("hello").stdout(Stdio::capture())
+        let prog = Command::new("echo").arg("hello").stdout(Stdio::piped())
             .spawn().unwrap();
         let Output {status, stdout, stderr} = prog.wait_with_output().unwrap();
         let output_str = str::from_utf8(stdout.as_slice()).unwrap();
