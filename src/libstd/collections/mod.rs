@@ -89,7 +89,8 @@
 //!
 //! Choosing the right collection for the job requires an understanding of what each collection
 //! is good at. Here we briefly summarize the performance of different collections for certain
-//! important operations. For further details, see each type's documentation.
+//! important operations. For further details, see each type's documentation, and note that the
+//! names of actual methods may differ from the tables below on certain collections.
 //!
 //! Throughout the documentation, we will follow a few conventions. For all operations,
 //! the collection's size is denoted by n. If another collection is involved in the operation, it
