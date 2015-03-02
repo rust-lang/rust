@@ -176,7 +176,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
         let mut ip = unsafe {
             uw::_Unwind_GetIPInfo(ctx, &mut ip_before_insn) as *mut libc::c_void
         };
-        if ip_before_insn == 0 {
+        if !ip.is_null() && ip_before_insn == 0 {
             // this is a non-signaling frame, so `ip` refers to the address
             // after the calling instruction. account for that.
             ip = (ip as usize - 1) as *mut _;
