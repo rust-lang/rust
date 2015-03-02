@@ -422,11 +422,11 @@ In this case, we say `x` is a `u32` explicitly, so Rust is able to properly
 tell `random()` what to generate. In a similar fashion, both of these work:
 
 ```{rust,ignore}
-let input_num = "5".parse::<u32>(); // input_num: Option<u32>
-let input_num: Result<u32, _> = "5".parse(); // input_num: Result<u32, <u32 as FromStr>::Err>
+let input_num_option = "5".parse::<u32>().ok(); // input_num: Option<u32>
+let input_num_result: Result<u32, _> = "5".parse(); // input_num: Result<u32, <u32 as FromStr>::Err>
 ```
 
-Here we're converting the `Result` returned by `parse` to an `Option` by using
+Above, we're converting the `Result` returned by `parse` to an `Option` by using
 the `ok` method as well.  Anyway, with us now converting our input to a number,
 our code looks like this:
 
@@ -470,14 +470,14 @@ Let's try it out!
 ```bash
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-src/main.rs:22:15: 22:24 error: mismatched types: expected `u32` but found `core::option::Option<u32>` (expected u32 but found enum core::option::Option)
-src/main.rs:22     match cmp(input_num, secret_number) {
+src/main.rs:21:15: 21:24 error: mismatched types: expected `u32`, found `core::result::Result<u32, core::num::ParseIntError>` (expected u32, found enum `core::result::Result`) [E0308]
+src/main.rs:21     match cmp(input_num, secret_number) {
                              ^~~~~~~~~
 error: aborting due to previous error
 ```
 
-Oh yeah! Our `input_num` has the type `Option<u32>`, rather than `u32`. We
-need to unwrap the Option. If you remember from before, `match` is a great way
+Oh yeah! Our `input_num` has the type `Result<u32, <some error>>`, rather than `u32`. We
+need to unwrap the Result. If you remember from before, `match` is a great way
 to do that. Try this code:
 
 ```{rust,no_run}
@@ -500,7 +500,7 @@ fn main() {
     let input_num: Result<u32, _> = input.parse();
 
     let num = match input_num {
-        Ok(num) => num,
+        Ok(n) => n,
         Err(_) => {
             println!("Please input a number!");
             return;
@@ -524,7 +524,7 @@ fn cmp(a: u32, b: u32) -> Ordering {
 }
 ```
 
-We use a `match` to either give us the `u32` inside of the `Option`, or else
+We use a `match` to either give us the `u32` inside of the `Result`, or else
 print an error message and return. Let's give this a shot:
 
 ```bash

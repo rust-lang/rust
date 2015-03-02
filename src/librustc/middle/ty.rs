@@ -1367,7 +1367,7 @@ pub enum sty<'tcx> {
     ty_trait(Box<TyTrait<'tcx>>),
     ty_struct(DefId, &'tcx Substs<'tcx>),
 
-    ty_closure(DefId, &'tcx Region, &'tcx Substs<'tcx>),
+    ty_closure(DefId, &'tcx Substs<'tcx>),
 
     ty_tup(Vec<Ty<'tcx>>),
 
@@ -2658,8 +2658,7 @@ impl FlagComputation {
                 }
             }
 
-            &ty_closure(_, region, substs) => {
-                self.add_region(*region);
+            &ty_closure(_, substs) => {
                 self.add_substs(substs);
             }
 
@@ -2927,10 +2926,9 @@ pub fn mk_struct<'tcx>(cx: &ctxt<'tcx>, struct_id: ast::DefId,
     mk_t(cx, ty_struct(struct_id, substs))
 }
 
-pub fn mk_closure<'tcx>(cx: &ctxt<'tcx>, closure_id: ast::DefId,
-                        region: &'tcx Region, substs: &'tcx Substs<'tcx>)
+pub fn mk_closure<'tcx>(cx: &ctxt<'tcx>, closure_id: ast::DefId, substs: &'tcx Substs<'tcx>)
                         -> Ty<'tcx> {
-    mk_t(cx, ty_closure(closure_id, region, substs))
+    mk_t(cx, ty_closure(closure_id, substs))
 }
 
 pub fn mk_var<'tcx>(cx: &ctxt<'tcx>, v: TyVid) -> Ty<'tcx> {
@@ -3513,13 +3511,11 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 apply_lang_items(cx, did, res)
             }
 
-            ty_closure(did, r, substs) => {
+            ty_closure(did, substs) => {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut` closure.
                 let param_env = ty::empty_parameter_environment(cx);
                 let upvars = closure_upvars(&param_env, did, substs).unwrap();
-                TypeContents::union(&upvars,
-                                    |f| tc_ty(cx, &f.ty, cache))
-                    | borrowed_contents(*r, MutMutable)
+                TypeContents::union(&upvars, |f| tc_ty(cx, &f.ty, cache))
             }
 
             ty_tup(ref tys) => {
@@ -5175,7 +5171,7 @@ pub fn ty_to_def_id(ty: Ty) -> Option<ast::DefId> {
             Some(tt.principal_def_id()),
         ty_struct(id, _) |
         ty_enum(id, _) |
-        ty_closure(id, _, _) =>
+        ty_closure(id, _) =>
             Some(id),
         _ =>
             None
@@ -6301,10 +6297,9 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                 }
                 ty_infer(_) => unreachable!(),
                 ty_err => byte!(21),
-                ty_closure(d, r, _) => {
+                ty_closure(d, _) => {
                     byte!(22);
                     did(state, d);
-                    region(state, *r);
                 }
                 ty_projection(ref data) => {
                     byte!(23);
@@ -6618,8 +6613,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_struct(_, substs) => {
                 accum_substs(accumulator, substs);
             }
-            ty_closure(_, region, substs) => {
-                accumulator.push(*region);
+            ty_closure(_, substs) => {
                 accum_substs(accumulator, substs);
             }
             ty_bool |

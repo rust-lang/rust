@@ -87,12 +87,11 @@ use check::dropck;
 use check::FnCtxt;
 use check::implicator;
 use check::vtable;
-use middle::def;
 use middle::mem_categorization as mc;
 use middle::region::CodeExtent;
+use middle::subst::Substs;
 use middle::traits;
-use middle::ty::{ReScope};
-use middle::ty::{self, Ty, MethodCall};
+use middle::ty::{self, ClosureTyper, ReScope, Ty, MethodCall};
 use middle::infer::{self, GenericKind};
 use middle::pat_util;
 use util::ppaux::{ty_to_string, Repr};
@@ -177,20 +176,6 @@ pub struct Rcx<'a, 'tcx: 'a> {
     // id of AST node being analyzed (the subject of the analysis).
     subject: SubjectNode,
 
-}
-
-/// Returns the validity region of `def` -- that is, how long is `def` valid?
-fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
-    let tcx = fcx.tcx();
-    match def {
-        def::DefLocal(node_id) | def::DefUpvar(node_id, _) => {
-            tcx.region_maps.var_region(node_id)
-        }
-        _ => {
-            tcx.sess.bug(&format!("unexpected def in region_of_def: {:?}",
-                                 def))
-        }
-    }
 }
 
 struct RepeatingScope(ast::NodeId);
@@ -368,7 +353,15 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                                                              ty::ReInfer(ty::ReVar(vid_b))) => {
                         self.fcx.inh.infcx.add_given(free_a, vid_b);
                     }
-                    implicator::Implication::RegionSubRegion(..) => {
+                    implicator::Implication::RegionSubGeneric(_, r_a, ref generic_b) => {
+                        debug!("RegionSubGeneric: {} <= {}",
+                               r_a.repr(tcx), generic_b.repr(tcx));
+
+                        self.region_bound_pairs.push((r_a, generic_b.clone()));
+                    }
+                    implicator::Implication::RegionSubRegion(..) |
+                    implicator::Implication::RegionSubClosure(..) |
+                    implicator::Implication::Predicate(..) => {
                         // In principle, we could record (and take
                         // advantage of) every relationship here, but
                         // we are also free not to -- it simply means
@@ -379,13 +372,6 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                         // relationship that arises here, but
                         // presently we do not.)
                     }
-                    implicator::Implication::RegionSubGeneric(_, r_a, ref generic_b) => {
-                        debug!("RegionSubGeneric: {} <= {}",
-                               r_a.repr(tcx), generic_b.repr(tcx));
-
-                        self.region_bound_pairs.push((r_a, generic_b.clone()));
-                    }
-                    implicator::Implication::Predicate(..) => { }
                 }
             }
         }
@@ -792,124 +778,9 @@ fn constrain_cast(rcx: &mut Rcx,
 fn check_expr_fn_block(rcx: &mut Rcx,
                        expr: &ast::Expr,
                        body: &ast::Block) {
-    let tcx = rcx.fcx.tcx();
-    let function_type = rcx.resolve_node_type(expr.id);
-
-    match function_type.sty {
-        ty::ty_closure(_, region, _) => {
-            ty::with_freevars(tcx, expr.id, |freevars| {
-                constrain_captured_variables(rcx, *region, expr, freevars);
-            })
-        }
-        _ => { }
-    }
-
     let repeating_scope = rcx.set_repeating_scope(body.id);
     visit::walk_expr(rcx, expr);
     rcx.set_repeating_scope(repeating_scope);
-
-    match function_type.sty {
-        ty::ty_closure(_, region, _) => {
-            ty::with_freevars(tcx, expr.id, |freevars| {
-                let bounds = ty::region_existential_bound(*region);
-                ensure_free_variable_types_outlive_closure_bound(rcx, &bounds, expr, freevars);
-            })
-        }
-        _ => {}
-    }
-
-    /// Make sure that the type of all free variables referenced inside a closure/proc outlive the
-    /// closure/proc's lifetime bound. This is just a special case of the usual rules about closed
-    /// over values outliving the object's lifetime bound.
-    fn ensure_free_variable_types_outlive_closure_bound(
-        rcx: &mut Rcx,
-        bounds: &ty::ExistentialBounds,
-        expr: &ast::Expr,
-        freevars: &[ty::Freevar])
-    {
-        let tcx = rcx.fcx.ccx.tcx;
-
-        debug!("ensure_free_variable_types_outlive_closure_bound({}, {})",
-               bounds.region_bound.repr(tcx), expr.repr(tcx));
-
-        for freevar in freevars {
-            let var_node_id = {
-                let def_id = freevar.def.def_id();
-                assert!(def_id.krate == ast::LOCAL_CRATE);
-                def_id.node
-            };
-
-            // Compute the type of the field in the environment that
-            // represents `var_node_id`.  For a by-value closure, this
-            // will be the same as the type of the variable.  For a
-            // by-reference closure, this will be `&T` where `T` is
-            // the type of the variable.
-            let raw_var_ty = rcx.resolve_node_type(var_node_id);
-            let upvar_id = ty::UpvarId { var_id: var_node_id,
-                                         closure_expr_id: expr.id };
-            let var_ty = match rcx.fcx.inh.upvar_capture_map.borrow()[upvar_id] {
-                ty::UpvarCapture::ByRef(ref upvar_borrow) => {
-                    ty::mk_rptr(rcx.tcx(),
-                                rcx.tcx().mk_region(upvar_borrow.region),
-                                ty::mt { mutbl: upvar_borrow.kind.to_mutbl_lossy(),
-                                         ty: raw_var_ty })
-                }
-                ty::UpvarCapture::ByValue => raw_var_ty,
-            };
-
-            // Check that the type meets the criteria of the existential bounds:
-            for builtin_bound in &bounds.builtin_bounds {
-                let code = traits::ClosureCapture(var_node_id, expr.span, builtin_bound);
-                let cause = traits::ObligationCause::new(freevar.span, rcx.fcx.body_id, code);
-                rcx.fcx.register_builtin_bound(var_ty, builtin_bound, cause);
-            }
-
-            type_must_outlive(
-                rcx, infer::FreeVariable(expr.span, var_node_id),
-                var_ty, bounds.region_bound);
-        }
-    }
-
-    /// Make sure that all free variables referenced inside the closure outlive the closure's
-    /// lifetime bound. Also, create an entry in the upvar_borrows map with a region.
-    fn constrain_captured_variables(
-        rcx: &mut Rcx,
-        region_bound: ty::Region,
-        expr: &ast::Expr,
-        freevars: &[ty::Freevar])
-    {
-        let tcx = rcx.fcx.ccx.tcx;
-        debug!("constrain_captured_variables({}, {})",
-               region_bound.repr(tcx), expr.repr(tcx));
-        for freevar in freevars {
-            debug!("constrain_captured_variables: freevar.def={:?}", freevar.def);
-
-            // Identify the variable being closed over and its node-id.
-            let def = freevar.def;
-            let var_node_id = {
-                let def_id = def.def_id();
-                assert!(def_id.krate == ast::LOCAL_CRATE);
-                def_id.node
-            };
-            let upvar_id = ty::UpvarId { var_id: var_node_id,
-                                         closure_expr_id: expr.id };
-
-            match rcx.fcx.inh.upvar_capture_map.borrow()[upvar_id] {
-                ty::UpvarCapture::ByValue => { }
-                ty::UpvarCapture::ByRef(upvar_borrow) => {
-                    rcx.fcx.mk_subr(infer::FreeVariable(freevar.span, var_node_id),
-                                    region_bound, upvar_borrow.region);
-
-                    // Guarantee that the closure does not outlive the variable itself.
-                    let enclosing_region = region_of_def(rcx.fcx, def);
-                    debug!("constrain_captured_variables: enclosing_region = {}",
-                           enclosing_region.repr(tcx));
-                    rcx.fcx.mk_subr(infer::FreeVariable(freevar.span, var_node_id),
-                                    region_bound, enclosing_region);
-                }
-            }
-        }
-    }
 }
 
 fn constrain_callee(rcx: &mut Rcx,
@@ -1538,6 +1409,9 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
                 generic_must_outlive(rcx, o1, r_a, generic_b);
             }
+            implicator::Implication::RegionSubClosure(_, r_a, def_id, substs) => {
+                closure_must_outlive(rcx, origin.clone(), r_a, def_id, substs);
+            }
             implicator::Implication::Predicate(def_id, predicate) => {
                 let cause = traits::ObligationCause::new(origin.span(),
                                                          rcx.body_id,
@@ -1546,6 +1420,23 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 rcx.fcx.register_predicate(obligation);
             }
         }
+    }
+}
+
+fn closure_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
+                                  origin: infer::SubregionOrigin<'tcx>,
+                                  region: ty::Region,
+                                  def_id: ast::DefId,
+                                  substs: &'tcx Substs<'tcx>) {
+    debug!("closure_must_outlive(region={}, def_id={}, substs={})",
+           region.repr(rcx.tcx()), def_id.repr(rcx.tcx()), substs.repr(rcx.tcx()));
+
+    let upvars = rcx.fcx.closure_upvars(def_id, substs).unwrap();
+    for upvar in upvars {
+        let var_id = upvar.def.def_id().local_id();
+        type_must_outlive(
+            rcx, infer::FreeVariable(origin.span(), var_id),
+            upvar.ty, region);
     }
 }
 

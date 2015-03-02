@@ -397,7 +397,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             match self_type.ty.sty {
                 ty::ty_enum(type_def_id, _) |
                 ty::ty_struct(type_def_id, _) |
-                ty::ty_closure(type_def_id, _, _) => {
+                ty::ty_closure(type_def_id, _) => {
                     tcx.destructor_for_type
                        .borrow_mut()
                        .insert(type_def_id, method_def_id.def_id());

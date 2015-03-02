@@ -13,9 +13,10 @@ use std::thread;
 fn main() {
     let bad = {
         let x = 1;
-        let y = &x;
+        let y = &x; //~ ERROR `x` does not live long enough
 
-        thread::scoped(|| { //~ ERROR cannot infer an appropriate lifetime
+        thread::scoped(|| {
+            //~^ ERROR `y` does not live long enough
             let _z = y;
         })
     };

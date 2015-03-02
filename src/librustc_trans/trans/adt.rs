@@ -169,7 +169,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             Univariant(mk_struct(cx, &ftys[..], packed, t), dtor)
         }
-        ty::ty_closure(def_id, _, substs) => {
+        ty::ty_closure(def_id, substs) => {
             let typer = NormalizingClosureTyper::new(cx.tcx());
             let upvars = typer.closure_upvars(def_id, substs).unwrap();
             let upvar_types = upvars.iter().map(|u| u.ty).collect::<Vec<_>>();
