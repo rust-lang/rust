@@ -313,8 +313,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      ty::mk_nil(bcx.tcx()));
         let (_, variant_cx) = invoke(variant_cx, dtor_addr, &args[..], dtor_ty, DebugLoc::None);
 
-        variant_cx.fcx.pop_and_trans_custom_cleanup_scope(variant_cx, field_scope);
-        variant_cx
+        variant_cx.fcx.pop_and_trans_custom_cleanup_scope(variant_cx, field_scope)
     })
 }
 
