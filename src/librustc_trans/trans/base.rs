@@ -3089,7 +3089,7 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     let check_overflow = if let Some(v) = tcx.sess.opts.debugging_opts.force_overflow_checks {
         v
     } else {
-        !attr::contains_name(&krate.config, "ndebug")
+        tcx.sess.opts.debug_assertions
     };
 
     // Before we touch LLVM, make sure that multithreading is enabled.
