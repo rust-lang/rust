@@ -281,10 +281,14 @@ string via iteration rather than recursively using `quote` macros. The
 string is then parsed as a type, returning an ast fragment.
 
 ```rust
-// convert a u64 to a string representation of a type-level binary natural, e.g.,
-//     nat_str(1024)
-//         ==> (((((((((_1, _0), _0), _0), _0), _0), _0), _0), _0), _0)
-fn nat_str(mut num: u64) -> String {
+// Convert a u64 to a string representation of a type-level binary natural, e.g.,
+//     ast_as_str(1024)
+//         ==> "(((((((((_1, _0), _0), _0), _0), _0), _0), _0), _0), _0)"
+fn ast_as_str<'cx>(
+        ecx: &'cx base::ExtCtxt,
+    mut num: u64,
+       mode: Mode,
+) -> String {
     let path = "_";
     let mut res: String;
     if num < 2 {
@@ -306,17 +310,18 @@ fn nat_str(mut num: u64) -> String {
             res.push_str(")");
         }
     }
-    return res;
+    res
 }
 
-// Generate a parser with the nat string for `num` as input
-fn nat_str_parser<'cx>(
-    ecx: &'cx mut base::ExtCtxt,
+// Generate a parser which uses the nat's ast-as-string as its input
+fn ast_parser<'cx>(
+    ecx: &'cx base::ExtCtxt,
     num: u64,
+   mode: Mode,
 ) -> parse::parser::Parser<'cx> {
     let filemap = ecx
         .codemap()
-        .new_filemap(String::from_str("<nat!>"), nat_str(num));
+        .new_filemap(String::from_str("<nat!>"), ast_as_str(ecx, num, mode));
     let reader  = lexer::StringReader::new(
         &ecx.parse_sess().span_diagnostic,
         filemap);
@@ -326,16 +331,16 @@ fn nat_str_parser<'cx>(
         Box::new(reader))
 }
 
-// Try to parse an integer literal and return a new parser for its nat
-// string; this is used to create both a type-level `Nat!` with
-// `nat_ty_expand` and term-level `nat!` macro with `nat_tm_expand`
-pub fn nat_lit_parser<'cx>(
-     ecx: &'cx mut base::ExtCtxt,
+// Try to parse an integer literal and return a new parser which uses
+// the nat's ast-as-string as its input
+pub fn lit_parser<'cx>(
+     ecx: &'cx base::ExtCtxt,
     args: &[ast::TokenTree],
+    mode: Mode,
 ) -> Option<parse::parser::Parser<'cx>> {
-    let mut litp = ecx.new_parser_from_tts(args);
-    if let ast::Lit_::LitInt(lit, _) = litp.parse_lit().node {
-        Some(nat_str_parser(ecx, lit))
+    let mut lit_parser = ecx.new_parser_from_tts(args);
+    if let ast::Lit_::LitInt(lit, _) = lit_parser.parse_lit().node {
+        Some(ast_parser(ecx, lit, mode))
     } else {
         None
     }
@@ -344,15 +349,15 @@ pub fn nat_lit_parser<'cx>(
 // Expand Nat!(n) to a type-level binary nat where n is an int literal, e.g.,
 //     Nat!(1024)
 //         ==> (((((((((_1, _0), _0), _0), _0), _0), _0), _0), _0), _0)
-pub fn nat_ty_expand<'cx>(
+pub fn expand_ty<'cx>(
      ecx: &'cx mut base::ExtCtxt,
     span: codemap::Span,
     args: &[ast::TokenTree],
 ) -> Box<base::MacResult + 'cx> {
     {
-        nat_lit_parser(ecx, args)
-    }.and_then(|mut natp| {
-        Some(base::MacTy::new(natp.parse_ty()))
+        lit_parser(ecx, args, Mode::Ty)
+    }.and_then(|mut ast_parser| {
+        Some(base::MacEager::ty(ast_parser.parse_ty()))
     }).unwrap_or_else(|| {
         ecx.span_err(span, "Nat!: expected an integer literal argument");
         base::DummyResult::any(span)
@@ -362,15 +367,15 @@ pub fn nat_ty_expand<'cx>(
 // Expand nat!(n) to a term-level binary nat where n is an int literal, e.g.,
 //     nat!(1024)
 //         ==> (((((((((_1, _0), _0), _0), _0), _0), _0), _0), _0), _0)
-pub fn nat_tm_expand<'cx>(
+pub fn expand_tm<'cx>(
      ecx: &'cx mut base::ExtCtxt,
     span: codemap::Span,
     args: &[ast::TokenTree],
 ) -> Box<base::MacResult + 'cx> {
     {
-        nat_lit_parser(ecx, args)
-    }.and_then(|mut natp| {
-        Some(base::MacExpr::new(natp.parse_expr()))
+        lit_parser(ecx, args, Mode::Tm)
+    }.and_then(|mut ast_parser| {
+        Some(base::MacEager::expr(ast_parser.parse_expr()))
     }).unwrap_or_else(|| {
         ecx.span_err(span, "nat!: expected an integer literal argument");
         base::DummyResult::any(span)
@@ -487,7 +492,7 @@ fn invoke_for_seq_upto_expand<'cx>(
         }
 
         // splice the impl fragments into the ast
-        Some(base::MacItems::new(items.into_iter()))
+        Some(base::MacEager::items(SmallVector::many(items)))
 
     }).unwrap_or_else(|| {
         ecx.span_err(span, "invoke_for_seq_upto!: expected an integer literal argument");
