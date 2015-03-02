@@ -339,6 +339,12 @@ impl DirEntry {
     /// The full path is created by joining the original path to `read_dir` or
     /// `walk_dir` with the filename of this entry.
     pub fn path(&self) -> PathBuf { self.0.path() }
+
+    /// Returns the relative path to the file that this entry represents.
+    ///
+    /// The relative path is created by joining the parent path to `read_dir` or
+    /// `walk_dir` with the filename of this entry.
+    pub fn relative_path(&self) -> PathBuf { self.0.path() }
 }
 
 /// Remove a file from the underlying filesystem.

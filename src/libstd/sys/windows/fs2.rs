@@ -30,9 +30,13 @@ pub struct ReadDir {
     handle: libc::HANDLE,
     root: PathBuf,
     first: Option<libc::WIN32_FIND_DATAW>,
+    relative: PathBuf
 }
 
-pub struct DirEntry { path: PathBuf }
+pub struct DirEntry {
+    path: PathBuf,
+    parent: PathBuf
+}
 
 #[derive(Clone, Default)]
 pub struct OpenOptions {
@@ -95,11 +99,19 @@ impl DirEntry {
 
         let filename = super::truncate_utf16_at_nul(&wfd.cFileName);
         let filename: OsString = OsStringExt::from_wide(filename);
-        Some(DirEntry { path: root.join(&filename) })
+
+        let p : Vec<&str> = filename.split('/').collect();
+        let parent = p.pop();
+
+        Some(DirEntry { path: root.join(&filename), parent: if parent.is_none() { PathBuf::new(".") } else { PathBuf::new(parent.unwrap()) } })
     }
 
     pub fn path(&self) -> PathBuf {
         self.path.clone()
+    }
+
+    pub fn relative_path() -> PathBuf {
+        self.parent.clone()
     }
 }
 

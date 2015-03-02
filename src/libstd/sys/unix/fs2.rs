@@ -39,6 +39,7 @@ pub struct DirEntry {
     buf: Vec<u8>,
     dirent: *mut libc::dirent_t,
     root: Rc<PathBuf>,
+    parent: Rc<PathBuf>
 }
 
 #[derive(Clone)]
@@ -116,10 +117,15 @@ impl Iterator for ReadDir {
                 return None
             }
 
+            let p : Vec<&str> = match self.root.to_str() {
+                Some(path) => path.split('/').collect(),
+                None => Vec::new()
+            };
             let entry = DirEntry {
                 buf: buf,
                 dirent: entry_ptr,
-                root: self.root.clone()
+                root: self.root.clone(),
+                parent: Rc::new(if p.len() > 0 { PathBuf::new(p[p.len() - 1]) } else { PathBuf::new(".") })
             };
             if entry.name_bytes() == b"." || entry.name_bytes() == b".." {
                 buf = entry.buf;
@@ -140,6 +146,10 @@ impl Drop for ReadDir {
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
         self.root.join(<OsStr as OsStrExt>::from_bytes(self.name_bytes()))
+    }
+
+    pub fn relative_path(&self) -> PathBuf {
+        self.parent.join(<OsStr as OsStrExt>::from_bytes(self.name_bytes()))
     }
 
     fn name_bytes(&self) -> &[u8] {
