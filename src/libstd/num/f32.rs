@@ -716,7 +716,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_abs() {
+    fn test_abs() {
         assert_eq!(INFINITY.abs(), INFINITY);
         assert_eq!(1f32.abs(), 1f32);
         assert_eq!(0f32.abs(), 0f32);
