@@ -8,12 +8,108 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Really Bad Markup Language (rbml) is a temporary measure until we migrate
-//! the rust object metadata to a better serialization format. It is not
-//! intended to be used by users.
+//! Really Bad Markup Language (rbml) is an internal serialization format of rustc.
+//! This is not intended to be used by users.
 //!
-//! It is loosely based on the Extensible Binary Markup Language (ebml):
-//!     http://www.matroska.org/technical/specs/rfc/index.html
+//! Originally based on the Extensible Binary Markup Language
+//! (ebml; http://www.matroska.org/technical/specs/rfc/index.html),
+//! it is now a separate format tuned for the rust object metadata.
+//!
+//! # Encoding
+//!
+//! RBML document consists of the tag, length and data.
+//! The encoded data can contain multiple RBML documents concatenated.
+//!
+//! **Tags** are a hint for the following data.
+//! Tags are a number from 0x000 to 0xfff, where 0xf0 through 0xff is reserved.
+//! Tags less than 0xf0 are encoded in one literal byte.
+//! Tags greater than 0xff are encoded in two big-endian bytes,
+//! where the tag number is ORed with 0xf000. (E.g. tag 0x123 = `f1 23`)
+//!
+//! **Lengths** encode the length of the following data.
+//! It is a variable-length unsigned int, and one of the following forms:
+//!
+//! - `80` through `fe` for lengths up to 0x7e;
+//! - `40 ff` through `7f ff` for lengths up to 0x3fff;
+//! - `20 40 00` through `3f ff ff` for lengths up to 0x1fffff;
+//! - `10 20 00 00` through `1f ff ff ff` for lengths up to 0xfffffff.
+//!
+//! The "overlong" form is allowed so that the length can be encoded
+//! without the prior knowledge of the encoded data.
+//! For example, the length 0 can be represented either by `80`, `40 00`,
+//! `20 00 00` or `10 00 00 00`.
+//! The encoder tries to minimize the length if possible.
+//! Also, some predefined tags listed below are so commonly used that
+//! their lengths are omitted ("implicit length").
+//!
+//! **Data** can be either binary bytes or zero or more nested RBML documents.
+//! Nested documents cannot overflow, and should be entirely contained
+//! within a parent document.
+//!
+//! # Predefined Tags
+//!
+//! Most RBML tags are defined by the application.
+//! (For the rust object metadata, see also `rustc::metadata::common`.)
+//! RBML itself does define a set of predefined tags however,
+//! intended for the auto-serialization implementation.
+//!
+//! Predefined tags with an implicit length:
+//!
+//! - `U64` (`00`): 8-byte big endian unsigned integer.
+//! - `U32` (`01`): 4-byte big endian unsigned integer.
+//! - `U16` (`02`): 2-byte big endian unsigned integer.
+//! - `U8`  (`03`): 1-byte unsigned integer.
+//!   Any of `U*` tags can be used to encode primitive unsigned integer types,
+//!   as long as it is no greater than the actual size.
+//!   For example, `u8` can only be represented via the `U8` tag.
+//!
+//! - `I64` (`04`): 8-byte big endian signed integer.
+//! - `I32` (`05`): 4-byte big endian signed integer.
+//! - `I16` (`06`): 2-byte big endian signed integer.
+//! - `I8`  (`07`): 1-byte signed integer.
+//!   Similar to `U*` tags. Always uses two's complement encoding.
+//!
+//! - `Bool` (`08`): 1-byte boolean value, `00` for false and `01` for true.
+//!
+//! - `Char` (`09`): 4-byte big endian Unicode scalar value.
+//!   Surrogate pairs or out-of-bound values are invalid.
+//!
+//! - `F64` (`0a`): 8-byte big endian unsigned integer representing
+//!   IEEE 754 binary64 floating-point format.
+//! - `F32` (`0b`): 4-byte big endian unsigned integer representing
+//!   IEEE 754 binary32 floating-point format.
+//!
+//! - `Sub8`  (`0c`): 1-byte unsigned integer for supplementary information.
+//! - `Sub32` (`0d`): 4-byte unsigned integer for supplementary information.
+//!   Those two tags normally occur as the first subdocument of certain tags,
+//!   namely `Enum`, `Vec` and `Map`, to provide a variant or size information.
+//!   They can be used interchangably.
+//!
+//! Predefined tags with an explicit length:
+//!
+//! - `Str` (`0e`): A UTF-8-encoded string.
+//!
+//! - `Enum` (`0f`): An enum.
+//!   The first subdocument should be `Sub*` tags with a variant ID.
+//!   Subsequent subdocuments, if any, encode variant arguments.
+//!
+//! - `Vec` (`10`): A vector (sequence).
+//! - `VecElt` (`11`): A vector element.
+//!   The first subdocument should be `Sub*` tags with the number of elements.
+//!   Subsequent subdocuments should be `VecElt` tag per each element.
+//!
+//! - `Map` (`12`): A map (associated array).
+//! - `MapKey` (`13`): A key part of the map entry.
+//! - `MapVal` (`14`): A value part of the map entry.
+//!   The first subdocument should be `Sub*` tags with the number of entries.
+//!   Subsequent subdocuments should be an alternating sequence of
+//!   `MapKey` and `MapVal` tags per each entry.
+//!
+//! - `Opaque` (`15`): An opaque, custom-format tag.
+//!   Used to wrap ordinary custom tags or data in the auto-serialized context.
+//!   Rustc typically uses this to encode type informations.
+//!
+//! First 0x20 tags are reserved by RBML; custom tags start at 0x20.
 
 #![crate_name = "rbml"]
 #![unstable(feature = "rustc_private")]
