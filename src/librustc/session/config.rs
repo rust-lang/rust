@@ -81,6 +81,7 @@ pub struct Options {
 
     pub gc: bool,
     pub optimize: OptLevel,
+    pub debug_assertions: bool,
     pub debuginfo: DebugInfoLevel,
     pub lint_opts: Vec<(String, lint::Level)>,
     pub describe_lints: bool,
@@ -238,7 +239,8 @@ pub fn basic_options() -> Options {
         crate_name: None,
         alt_std_name: None,
         libs: Vec::new(),
-        unstable_features: UnstableFeatures::Disallow
+        unstable_features: UnstableFeatures::Disallow,
+        debug_assertions: true,
     }
 }
 
@@ -528,6 +530,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
          2 = full debug info with variable and type information"),
     opt_level: Option<uint> = (None, parse_opt_uint,
         "Optimize with possible levels 0-3"),
+    debug_assertions: Option<bool> = (None, parse_opt_bool,
+        "explicitly enable the cfg(debug_assertions) directive"),
 }
 
 
@@ -621,7 +625,7 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
     };
 
     let mk = attr::mk_name_value_item_str;
-    return vec!(// Target bindings.
+    let mut ret = vec![ // Target bindings.
          attr::mk_word_item(fam.clone()),
          mk(InternedString::new("target_os"), intern(os)),
          mk(InternedString::new("target_family"), fam),
@@ -629,7 +633,11 @@ pub fn default_configuration(sess: &Session) -> ast::CrateConfig {
          mk(InternedString::new("target_endian"), intern(end)),
          mk(InternedString::new("target_pointer_width"),
             intern(wordsz))
-    );
+    ];
+    if sess.opts.debug_assertions {
+        ret.push(attr::mk_word_item(InternedString::new("debug_assertions")));
+    }
+    return ret;
 }
 
 pub fn append_configuration(cfg: &mut ast::CrateConfig,
@@ -923,6 +931,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             }
         }
     };
+    let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == No);
     let gc = debugging_opts.gc;
     let debuginfo = if matches.opt_present("g") {
         if cg.debuginfo.is_some() {
@@ -1064,6 +1073,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         alt_std_name: None,
         libs: libs,
         unstable_features: get_unstable_features_setting(),
+        debug_assertions: debug_assertions,
     }
 }
 

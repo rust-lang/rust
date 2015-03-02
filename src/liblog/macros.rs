@@ -157,7 +157,7 @@ macro_rules! info {
 /// ```
 #[macro_export]
 macro_rules! debug {
-    ($($arg:tt)*) => (if cfg!(not(ndebug)) { log!(::log::DEBUG, $($arg)*) })
+    ($($arg:tt)*) => (if cfg!(debug_assertions) { log!(::log::DEBUG, $($arg)*) })
 }
 
 /// A macro to test whether a log level is enabled for the current module.
@@ -192,7 +192,7 @@ macro_rules! debug {
 macro_rules! log_enabled {
     ($lvl:expr) => ({
         let lvl = $lvl;
-        (lvl != ::log::DEBUG || cfg!(not(ndebug))) &&
+        (lvl != ::log::DEBUG || cfg!(debug_assertions)) &&
         lvl <= ::log::log_level() &&
         ::log::mod_enabled(lvl, module_path!())
     })
