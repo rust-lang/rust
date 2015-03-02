@@ -127,8 +127,7 @@ pub enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_id_range = 0x52,
 
     tag_table = 0x53,
-    tag_table_id = 0x54,
-    tag_table_val = 0x55,
+    // GAP 0x54, 0x55
     tag_table_def = 0x56,
     tag_table_node_type = 0x57,
     tag_table_item_subst = 0x58,
