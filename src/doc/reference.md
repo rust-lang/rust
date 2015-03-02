@@ -2495,6 +2495,12 @@ The currently implemented features of the reference compiler are:
 
 * `staged_api` - Allows usage of stability markers and `#![staged_api]` in a crate
 
+* `static_assert` - The `#[static_assert]` functionality is experimental and
+                    unstable. The attribute can be attached to a `static` of
+                    type `bool` and the compiler will error if the `bool` is
+                    `false` at compile time. This version of this functionality
+                    is unintuitive and suboptimal.
+
 * `start` - Allows use of the `#[start]` attribute, which changes the entry point
             into a Rust program. This capabiilty, especially the signature for the
             annotated function, is subject to change.
