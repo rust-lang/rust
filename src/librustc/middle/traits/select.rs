@@ -293,7 +293,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // lifetimes can appear inside the self-type.
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
         let (closure_def_id, substs) = match self_ty.sty {
-            ty::ty_closure(id, _, ref substs) => (id, substs.clone()),
+            ty::ty_closure(id, ref substs) => (id, substs.clone()),
             _ => { return; }
         };
         assert!(!substs.has_escaping_regions());
@@ -1054,7 +1054,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
         let (closure_def_id, substs) = match self_ty.sty {
-            ty::ty_closure(id, _, ref substs) => (id, substs.clone()),
+            ty::ty_closure(id, ref substs) => (id, substs.clone()),
             ty::ty_infer(ty::TyVar(_)) => {
                 debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
@@ -1533,7 +1533,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
             ty::ty_tup(ref tys) => Ok(If(tys.clone())),
 
-            ty::ty_closure(def_id, _, substs) => {
+            ty::ty_closure(def_id, substs) => {
                 // FIXME -- This case is tricky. In the case of by-ref
                 // closures particularly, we need the results of
                 // inference to decide how to reflect the type of each
@@ -1687,7 +1687,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Some(tys.clone())
             }
 
-            ty::ty_closure(def_id, _, substs) => {
+            ty::ty_closure(def_id, substs) => {
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
 
                 match self.closure_typer.closure_upvars(def_id, substs) {

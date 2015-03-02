@@ -503,15 +503,14 @@ pub fn super_tys<'tcx, C>(this: &C,
             Ok(ty::mk_struct(tcx, a_id, tcx.mk_substs(substs)))
         }
 
-        (&ty::ty_closure(a_id, a_region, a_substs),
-         &ty::ty_closure(b_id, b_region, b_substs))
+        (&ty::ty_closure(a_id, a_substs),
+         &ty::ty_closure(b_id, b_substs))
           if a_id == b_id => {
             // All ty_closure types with the same id represent
             // the (anonymous) type of the same closure expression. So
             // all of their regions should be equated.
-            let region = try!(this.equate().regions(*a_region, *b_region));
             let substs = try!(this.substs_variances(None, a_substs, b_substs));
-            Ok(ty::mk_closure(tcx, a_id, tcx.mk_region(region), tcx.mk_substs(substs)))
+            Ok(ty::mk_closure(tcx, a_id, tcx.mk_substs(substs)))
         }
 
         (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) => {
