@@ -5755,26 +5755,30 @@ pub fn closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
     }
 }
 
-pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool {
+pub fn is_builtin_binop<'tcx>(cx: &ctxt<'tcx>,
+                              lhs: Ty<'tcx>,
+                              rhs: Ty<'tcx>,
+                              op: ast::BinOp)
+                              -> bool {
     #![allow(non_upper_case_globals)]
-    static tycat_other: int = 0;
-    static tycat_bool: int = 1;
-    static tycat_char: int = 2;
-    static tycat_int: int = 3;
-    static tycat_float: int = 4;
-    static tycat_raw_ptr: int = 6;
+    const tycat_other: usize = 0;
+    const tycat_bool: usize = 1;
+    const tycat_char: usize = 2;
+    const tycat_int: usize = 3;
+    const tycat_float: usize = 4;
+    const tycat_raw_ptr: usize = 5;
 
-    static opcat_add: int = 0;
-    static opcat_sub: int = 1;
-    static opcat_mult: int = 2;
-    static opcat_shift: int = 3;
-    static opcat_rel: int = 4;
-    static opcat_eq: int = 5;
-    static opcat_bit: int = 6;
-    static opcat_logic: int = 7;
-    static opcat_mod: int = 8;
+    const opcat_add: usize = 0;
+    const opcat_sub: usize = 1;
+    const opcat_mult: usize = 2;
+    const opcat_shift: usize = 3;
+    const opcat_rel: usize = 4;
+    const opcat_eq: usize = 5;
+    const opcat_bit: usize = 6;
+    const opcat_logic: usize = 7;
+    const opcat_mod: usize = 8;
 
-    fn opcat(op: ast::BinOp) -> int {
+    fn opcat(op: ast::BinOp) -> usize {
         match op.node {
           ast::BiAdd => opcat_add,
           ast::BiSub => opcat_sub,
@@ -5797,7 +5801,7 @@ pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool
         }
     }
 
-    fn tycat<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> int {
+    fn tycat<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> usize {
         if type_is_simd(cx, ty) {
             return tycat(cx, simd_type(cx, ty))
         }
@@ -5811,8 +5815,8 @@ pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool
         }
     }
 
-    static t: bool = true;
-    static f: bool = false;
+    const t: bool = true;
+    const f: bool = false;
 
     let tbl = [
     //           +, -, *, shift, rel, ==, bit, logic, mod
@@ -5821,10 +5825,16 @@ pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool
     /*char*/    [f, f, f, f,     t,   t,  f,   f,     f],
     /*int*/     [t, t, t, t,     t,   t,  t,   f,     t],
     /*float*/   [t, t, t, f,     t,   t,  f,   f,     f],
-    /*bot*/     [t, t, t, t,     t,   t,  t,   t,     t],
     /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f,     f]];
 
-    return tbl[tycat(cx, ty) as uint ][opcat(op) as uint];
+    let lhs_cat = tycat(cx, lhs);
+    let rhs_cat = tycat(cx, rhs);
+
+    if lhs_cat == rhs_cat {
+        tbl[lhs_cat][opcat(op)]
+    } else {
+        false
+    }
 }
 
 // Returns the repeat count for a repeating vector expression.
