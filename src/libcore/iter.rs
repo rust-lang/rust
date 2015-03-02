@@ -611,7 +611,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// assert!(a.iter().fold(0, |a, &b| a + b) == 15);
+    /// assert!(a.iter().fold(0, |acc, &item| acc + item) == 15);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
