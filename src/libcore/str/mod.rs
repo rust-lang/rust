@@ -134,10 +134,19 @@ impl FromStr for bool {
 
     /// Parse a `bool` from a string.
     ///
-    /// Yields an `Option<bool>`, because `s` may or may not actually be
-    /// parseable.
+    /// Yields a `Result<bool, ParseBoolError>`, because `s` may or may not
+    /// actually be parseable.
     ///
     /// # Examples
+    ///
+    /// ```rust
+    /// assert_eq!(from_str::<bool>("true"), OK(true));
+    /// assert_eq!(from_str::<bool>("false"), OK(false));
+    /// assert!(from_str::<bool>("not even a boolean").is_err());
+    /// ```
+    ///
+    /// Note, in many cases, the StrExt::parse() which is based on
+    /// this FromStr::from_str() is proper.
     ///
     /// ```rust
     /// assert_eq!("true".parse(), Ok(true));
