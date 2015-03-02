@@ -154,7 +154,7 @@ fn consider_unification_despite_ambiguity<'cx,'tcx>(selcx: &mut SelectionContext
     debug!("consider_unification_despite_ambiguity: self_ty.sty={:?}",
            self_ty.sty);
     match self_ty.sty {
-        ty::ty_closure(closure_def_id, _, substs) => {
+        ty::ty_closure(closure_def_id, substs) => {
             let closure_typer = selcx.closure_typer();
             let closure_type = closure_typer.closure_type(closure_def_id, substs);
             let ty::Binder((_, ret_type)) =

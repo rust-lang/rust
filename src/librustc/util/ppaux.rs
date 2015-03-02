@@ -406,7 +406,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                     data.item_name.user_string(cx))
         }
         ty_str => "str".to_string(),
-        ty_closure(ref did, _, substs) => {
+        ty_closure(ref did, substs) => {
             let closure_tys = cx.closure_tys.borrow();
             closure_tys.get(did).map(|closure_type| {
                 closure_to_string(cx, &closure_type.subst(cx, substs))
