@@ -78,7 +78,7 @@
 //! * You want a bit vector.
 //!
 //! ### Use a `BitSet` when:
-//! * You want a `VecSet`.
+//! * You want a `BitVec`, but want `Set` properties
 //!
 //! ### Use a `BinaryHeap` when:
 //! * You want to store a bunch of elements, but only ever want to process the "biggest"
@@ -280,16 +280,16 @@
 //! a variant of the `Entry` enum.
 //!
 //! If a `Vacant(entry)` is yielded, then the key *was not* found. In this case the
-//! only valid operation is to `set` the value of the entry. When this is done,
+//! only valid operation is to `insert` a value into the entry. When this is done,
 //! the vacant entry is consumed and converted into a mutable reference to the
 //! the value that was inserted. This allows for further manipulation of the value
 //! beyond the lifetime of the search itself. This is useful if complex logic needs to
 //! be performed on the value regardless of whether the value was just inserted.
 //!
 //! If an `Occupied(entry)` is yielded, then the key *was* found. In this case, the user
-//! has several options: they can `get`, `set`, or `take` the value of the occupied
+//! has several options: they can `get`, `insert`, or `remove` the value of the occupied
 //! entry. Additionally, they can convert the occupied entry into a mutable reference
-//! to its value, providing symmetry to the vacant `set` case.
+//! to its value, providing symmetry to the vacant `insert` case.
 //!
 //! ### Examples
 //!
@@ -329,7 +329,7 @@
 //! use std::collections::btree_map::{BTreeMap, Entry};
 //!
 //! // A client of the bar. They have an id and a blood alcohol level.
-//! struct Person { id: u32, blood_alcohol: f32 };
+//! struct Person { id: u32, blood_alcohol: f32 }
 //!
 //! // All the orders made to the bar, by client id.
 //! let orders = vec![1,2,1,2,3,4,1,2,2,3,4,1,1,1];
