@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -43,13 +43,14 @@ use std::old_io::Seek;
 use std::num::FromPrimitive;
 use std::rc::Rc;
 
-use rbml::io::SeekableMemWriter;
-use rbml::{reader, writer};
+use rbml::reader;
+use rbml::writer::Encoder;
 use rbml;
 use serialize;
 use serialize::{Decodable, Decoder, DecoderHelpers, Encodable};
 use serialize::{EncoderHelpers};
 
+#[cfg(test)] use rbml::io::SeekableMemWriter;
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::print::pprust;
 
@@ -67,8 +68,6 @@ trait tr {
 trait tr_intern {
     fn tr_intern(&self, dcx: &DecodeContext) -> ast::DefId;
 }
-
-pub type Encoder<'a> = writer::Encoder<'a, SeekableMemWriter>;
 
 // ______________________________________________________________________
 // Top-level methods.
@@ -911,7 +910,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     fn emit_type_param_def<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                                type_param_def: &ty::TypeParameterDef<'tcx>) {
         self.emit_opaque(|this| {
-            Ok(tyencode::enc_type_param_def(this.writer,
+            Ok(tyencode::enc_type_param_def(this,
                                          &ecx.ty_str_ctxt(),
                                          type_param_def))
         });
@@ -920,7 +919,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     fn emit_predicate<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                           predicate: &ty::Predicate<'tcx>) {
         self.emit_opaque(|this| {
-            Ok(tyencode::enc_predicate(this.writer,
+            Ok(tyencode::enc_predicate(this,
                                        &ecx.ty_str_ctxt(),
                                        predicate))
         });
@@ -954,20 +953,20 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_existential_bounds<'b>(&mut self, ecx: &e::EncodeContext<'b,'tcx>,
                                    bounds: &ty::ExistentialBounds<'tcx>) {
-        self.emit_opaque(|this| Ok(tyencode::enc_existential_bounds(this.writer,
+        self.emit_opaque(|this| Ok(tyencode::enc_existential_bounds(this,
                                                                     &ecx.ty_str_ctxt(),
                                                                     bounds)));
     }
 
     fn emit_builtin_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::BuiltinBounds) {
-        self.emit_opaque(|this| Ok(tyencode::enc_builtin_bounds(this.writer,
+        self.emit_opaque(|this| Ok(tyencode::enc_builtin_bounds(this,
                                                                 &ecx.ty_str_ctxt(),
                                                                 bounds)));
     }
 
     fn emit_substs<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                        substs: &subst::Substs<'tcx>) {
-        self.emit_opaque(|this| Ok(tyencode::enc_substs(this.writer,
+        self.emit_opaque(|this| Ok(tyencode::enc_substs(this,
                                                            &ecx.ty_str_ctxt(),
                                                            substs)));
     }
@@ -1995,7 +1994,7 @@ fn mk_ctxt() -> parse::ParseSess {
 fn roundtrip(in_item: Option<P<ast::Item>>) {
     let in_item = in_item.unwrap();
     let mut wr = SeekableMemWriter::new();
-    encode_item_ast(&mut writer::Encoder::new(&mut wr), &*in_item);
+    encode_item_ast(&mut Encoder::new(&mut wr), &*in_item);
     let rbml_doc = rbml::Doc::new(wr.get_ref());
     let out_item = decode_item_ast(rbml_doc);
 
