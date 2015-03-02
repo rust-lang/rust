@@ -64,6 +64,10 @@ impl<'doc> Doc<'doc> {
         reader::get_doc(*self, tag)
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.start == self.end
+    }
+
     pub fn as_str_slice<'a>(&'a self) -> &'a str {
         str::from_utf8(&self.data[self.start..self.end]).unwrap()
     }
@@ -462,6 +466,11 @@ pub mod reader {
         }
 
         fn _next_sub(&mut self) -> DecodeResult<uint> {
+            // empty vector/map optimization
+            if self.parent.is_empty() {
+                return Ok(0);
+            }
+
             let (big, doc) = try!(self.next_doc2(EsSub8, EsSub32));
             let r = if big {
                 doc_as_u32(doc) as uint
@@ -1148,6 +1157,10 @@ pub mod writer {
         fn emit_seq<F>(&mut self, len: uint, f: F) -> EncodeResult where
             F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
         {
+            if len == 0 {
+                // empty vector optimization
+                return self.wr_tagged_bytes(EsVec as uint, &[]);
+            }
 
             try!(self.start_tag(EsVec as uint));
             try!(self._emit_tagged_sub(len));
@@ -1167,6 +1180,10 @@ pub mod writer {
         fn emit_map<F>(&mut self, len: uint, f: F) -> EncodeResult where
             F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
         {
+            if len == 0 {
+                // empty map optimization
+                return self.wr_tagged_bytes(EsMap as uint, &[]);
+            }
 
             try!(self.start_tag(EsMap as uint));
             try!(self._emit_tagged_sub(len));
