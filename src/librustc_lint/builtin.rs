@@ -28,8 +28,6 @@
 //! Use the former for unit-like structs and the latter for structs with
 //! a `pub fn new()`.
 
-use self::MethodContext::*;
-
 use metadata::{csearch, decoder};
 use middle::def::*;
 use middle::subst::Substs;
@@ -228,7 +226,9 @@ impl LintPass for TypeLimits {
                             ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => {
                                 let int_type = if let ast::TyIs(_) = t {
                                     cx.sess().target.int_type
-                                } else { t };
+                                } else {
+                                    t
+                                };
                                 let (min, max) = int_ty_range(int_type);
                                 let negative = self.negated_expr_id == e.id;
 
@@ -245,14 +245,16 @@ impl LintPass for TypeLimits {
                     ty::ty_uint(t) => {
                         let uint_type = if let ast::TyUs(_) = t {
                             cx.sess().target.uint_type
-                        } else { t };
+                        } else {
+                            t
+                        };
                         let (min, max) = uint_ty_range(uint_type);
                         let lit_val: u64 = match lit.node {
                             ast::LitByte(_v) => return,  // _v is u8, within range by definition
                             ast::LitInt(v, _) => v,
                             _ => panic!()
                         };
-                        if  lit_val < min || lit_val > max {
+                        if lit_val < min || lit_val > max {
                             cx.span_lint(OVERFLOWING_LITERALS, e.span,
                                          &*format!("literal out of range for {:?}", t));
                         }
@@ -262,9 +264,9 @@ impl LintPass for TypeLimits {
                         let lit_val: f64 = match lit.node {
                             ast::LitFloat(ref v, _) |
                             ast::LitFloatUnsuffixed(ref v) => {
-                                match v.parse().ok() {
-                                    Some(f) => f,
-                                    None => return
+                                match v.parse() {
+                                    Ok(f) => f,
+                                    Err(_) => return
                                 }
                             }
                             _ => panic!()
@@ -302,52 +304,52 @@ impl LintPass for TypeLimits {
             })
         }
 
-        // for int & uint, be conservative with the warnings, so that the
+        // for isize & usize, be conservative with the warnings, so that the
         // warnings are consistent between 32- and 64-bit platforms
         fn int_ty_range(int_ty: ast::IntTy) -> (i64, i64) {
             match int_ty {
-                ast::TyIs(_) =>    (i64::MIN,        i64::MAX),
-                ast::TyI8 =>   (i8::MIN  as i64, i8::MAX  as i64),
-                ast::TyI16 =>  (i16::MIN as i64, i16::MAX as i64),
-                ast::TyI32 =>  (i32::MIN as i64, i32::MAX as i64),
-                ast::TyI64 =>  (i64::MIN,        i64::MAX)
+                ast::TyIs(_) => (i64::MIN,        i64::MAX),
+                ast::TyI8 =>    (i8::MIN  as i64, i8::MAX  as i64),
+                ast::TyI16 =>   (i16::MIN as i64, i16::MAX as i64),
+                ast::TyI32 =>   (i32::MIN as i64, i32::MAX as i64),
+                ast::TyI64 =>   (i64::MIN,        i64::MAX)
             }
         }
 
         fn uint_ty_range(uint_ty: ast::UintTy) -> (u64, u64) {
             match uint_ty {
-                ast::TyUs(_) =>   (u64::MIN,         u64::MAX),
-                ast::TyU8 =>  (u8::MIN   as u64, u8::MAX   as u64),
-                ast::TyU16 => (u16::MIN  as u64, u16::MAX  as u64),
-                ast::TyU32 => (u32::MIN  as u64, u32::MAX  as u64),
-                ast::TyU64 => (u64::MIN,         u64::MAX)
+                ast::TyUs(_) => (u64::MIN,         u64::MAX),
+                ast::TyU8 =>    (u8::MIN   as u64, u8::MAX   as u64),
+                ast::TyU16 =>   (u16::MIN  as u64, u16::MAX  as u64),
+                ast::TyU32 =>   (u32::MIN  as u64, u32::MAX  as u64),
+                ast::TyU64 =>   (u64::MIN,         u64::MAX)
             }
         }
 
         fn float_ty_range(float_ty: ast::FloatTy) -> (f64, f64) {
             match float_ty {
-                ast::TyF32  => (f32::MIN as f64, f32::MAX as f64),
-                ast::TyF64  => (f64::MIN,        f64::MAX)
+                ast::TyF32 => (f32::MIN as f64, f32::MAX as f64),
+                ast::TyF64 => (f64::MIN,        f64::MAX)
             }
         }
 
         fn int_ty_bits(int_ty: ast::IntTy, target_int_ty: ast::IntTy) -> u64 {
             match int_ty {
-                ast::TyIs(_) =>    int_ty_bits(target_int_ty, target_int_ty),
-                ast::TyI8 =>   i8::BITS  as u64,
-                ast::TyI16 =>  i16::BITS as u64,
-                ast::TyI32 =>  i32::BITS as u64,
-                ast::TyI64 =>  i64::BITS as u64
+                ast::TyIs(_) => int_ty_bits(target_int_ty, target_int_ty),
+                ast::TyI8 =>    i8::BITS  as u64,
+                ast::TyI16 =>   i16::BITS as u64,
+                ast::TyI32 =>   i32::BITS as u64,
+                ast::TyI64 =>   i64::BITS as u64
             }
         }
 
         fn uint_ty_bits(uint_ty: ast::UintTy, target_uint_ty: ast::UintTy) -> u64 {
             match uint_ty {
-                ast::TyUs(_) =>    uint_ty_bits(target_uint_ty, target_uint_ty),
-                ast::TyU8 =>   u8::BITS  as u64,
-                ast::TyU16 =>  u16::BITS as u64,
-                ast::TyU32 =>  u32::BITS as u64,
-                ast::TyU64 =>  u64::BITS as u64
+                ast::TyUs(_) => uint_ty_bits(target_uint_ty, target_uint_ty),
+                ast::TyU8 =>    u8::BITS  as u64,
+                ast::TyU16 =>   u16::BITS as u64,
+                ast::TyU32 =>   u32::BITS as u64,
+                ast::TyU64 =>   u64::BITS as u64
             }
         }
 
@@ -360,7 +362,11 @@ impl LintPass for TypeLimits {
             };
             // Normalize the binop so that the literal is always on the RHS in
             // the comparison
-            let norm_binop = if swap { rev_binop(binop) } else { binop };
+            let norm_binop = if swap {
+                rev_binop(binop)
+            } else {
+                binop
+            };
             match ty::expr_ty(tcx, expr).sty {
                 ty::ty_int(int_ty) => {
                     let (min, max) = int_ty_range(int_ty);
@@ -432,9 +438,9 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                 if !ty::is_ffi_safe(self.cx.tcx, tty) {
                     self.cx.span_lint(IMPROPER_CTYPES, sp,
-                                      "found type without foreign-function-safe
-                                      representation annotation in foreign module, consider \
-                                      adding a #[repr(...)] attribute to the type");
+                                      "found type without foreign-function-safe \
+                                       representation annotation in foreign module, consider \
+                                       adding a #[repr(...)] attribute to the type");
                 }
             }
             _ => ()
@@ -595,7 +601,7 @@ impl LintPass for RawPointerDerive {
 
     fn check_item(&mut self, cx: &Context, item: &ast::Item) {
         if !attr::contains_name(&item.attrs, "automatically_derived") {
-            return
+            return;
         }
         let did = match item.node {
             ast::ItemImpl(_, _, _, ref t_ref_opt, _, _) => {
@@ -603,7 +609,7 @@ impl LintPass for RawPointerDerive {
                 if let &Some(ref trait_ref) = t_ref_opt {
                     let def_id = ty::trait_ref_to_def_id(cx.tcx, trait_ref);
                     if Some(def_id) == cx.tcx.lang_items.copy_trait() {
-                        return
+                        return;
                     }
                 }
 
@@ -615,12 +621,16 @@ impl LintPass for RawPointerDerive {
             }
             _ => return,
         };
-        if !ast_util::is_local(did) { return }
+        if !ast_util::is_local(did) {
+            return;
+        }
         let item = match cx.tcx.map.find(did.node) {
             Some(ast_map::NodeItem(item)) => item,
             _ => return,
         };
-        if !self.checked_raw_pointers.insert(item.id) { return }
+        if !self.checked_raw_pointers.insert(item.id) {
+            return;
+        }
         match item.node {
             ast::ItemStruct(..) | ast::ItemEnum(..) => {
                 let mut visitor = RawPtrDeriveVisitor { cx: cx };
@@ -646,6 +656,7 @@ impl LintPass for UnusedAttributes {
     }
 
     fn check_attribute(&mut self, cx: &Context, attr: &ast::Attribute) {
+        // Note that check_name() marks the attribute as used if it matches.
         for &(ref name, ty) in KNOWN_ATTRIBUTES {
             match ty {
                 AttributeType::Whitelisted
@@ -730,23 +741,24 @@ impl LintPass for UnusedResults {
         }
 
         let t = ty::expr_ty(cx.tcx, expr);
-        let mut warned = false;
-        match t.sty {
+        let warned = match t.sty {
             ty::ty_tup(ref tys) if tys.is_empty() => return,
             ty::ty_bool => return,
             ty::ty_struct(did, _) |
             ty::ty_enum(did, _) => {
                 if ast_util::is_local(did) {
                     if let ast_map::NodeItem(it) = cx.tcx.map.get(did.node) {
-                        warned |= check_must_use(cx, &it.attrs, s.span);
+                        check_must_use(cx, &it.attrs, s.span)
+                    } else {
+                        false
                     }
                 } else {
                     let attrs = csearch::get_item_attrs(&cx.sess().cstore, did);
-                    warned |= check_must_use(cx, &attrs[..], s.span);
+                    check_must_use(cx, &attrs[..], s.span)
                 }
             }
-            _ => {}
-        }
+            _ => false,
+        };
         if !warned {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
@@ -785,7 +797,9 @@ impl NonCamelCaseTypes {
     fn check_case(&self, cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
         fn is_camel_case(ident: ast::Ident) -> bool {
             let ident = token::get_ident(ident);
-            if ident.is_empty() { return true; }
+            if ident.is_empty() {
+                return true;
+            }
             let ident = ident.trim_matches('_');
 
             // start with a non-lowercase letter rather than non-uppercase
@@ -795,8 +809,11 @@ impl NonCamelCaseTypes {
 
         fn to_camel_case(s: &str) -> String {
             s.split('_').flat_map(|word| word.chars().enumerate().map(|(i, c)|
-                if i == 0 { c.to_uppercase() }
-                else { c }
+                if i == 0 {
+                    c.to_uppercase()
+                } else {
+                    c
+                }
             )).collect()
         }
 
@@ -820,11 +837,13 @@ impl LintPass for NonCamelCaseTypes {
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
-        let has_extern_repr = it.attrs.iter().map(|attr| {
+        let has_extern_repr = it.attrs.iter().any(|attr| {
             attr::find_repr_attrs(cx.tcx.sess.diagnostic(), attr).iter()
                 .any(|r| r == &attr::ReprExtern)
-        }).any(|x| x);
-        if has_extern_repr { return }
+        });
+        if has_extern_repr {
+            return;
+        }
 
         match it.node {
             ast::ItemTy(..) | ast::ItemStruct(..) => {
@@ -834,7 +853,9 @@ impl LintPass for NonCamelCaseTypes {
                 self.check_case(cx, "trait", it.ident, it.span)
             }
             ast::ItemEnum(ref enum_definition, _) => {
-                if has_extern_repr { return }
+                if has_extern_repr {
+                    return;
+                }
                 self.check_case(cx, "type", it.ident, it.span);
                 for variant in &enum_definition.variants {
                     self.check_case(cx, "variant", variant.node.name, variant.span);
@@ -866,32 +887,28 @@ fn method_context(cx: &Context, m: &ast::Method) -> MethodContext {
 
     match cx.tcx.impl_or_trait_items.borrow().get(&did).cloned() {
         None => cx.sess().span_bug(m.span, "missing method descriptor?!"),
-        Some(md) => {
-            match md {
-                ty::MethodTraitItem(md) => {
-                    match md.container {
-                        ty::TraitContainer(..) => TraitDefaultImpl,
-                        ty::ImplContainer(cid) => {
-                            match ty::impl_trait_ref(cx.tcx, cid) {
-                                Some(..) => TraitImpl,
-                                None => PlainImpl
-                            }
-                        }
-                    }
-                }
-                ty::TypeTraitItem(typedef) => {
-                    match typedef.container {
-                        ty::TraitContainer(..) => TraitDefaultImpl,
-                        ty::ImplContainer(cid) => {
-                            match ty::impl_trait_ref(cx.tcx, cid) {
-                                Some(..) => TraitImpl,
-                                None => PlainImpl
-                            }
-                        }
+        Some(ty::MethodTraitItem(md)) => {
+            match md.container {
+                ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
+                ty::ImplContainer(cid) => {
+                    match ty::impl_trait_ref(cx.tcx, cid) {
+                        Some(..) => MethodContext::TraitImpl,
+                        None => MethodContext::PlainImpl
                     }
                 }
             }
-        }
+        },
+        Some(ty::TypeTraitItem(typedef)) => {
+            match typedef.container {
+                ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
+                ty::ImplContainer(cid) => {
+                    match ty::impl_trait_ref(cx.tcx, cid) {
+                        Some(..) => MethodContext::TraitImpl,
+                        None => MethodContext::PlainImpl
+                    }
+                }
+            }
+        },
     }
 }
 
@@ -912,12 +929,16 @@ impl NonSnakeCase {
             if c == '_' {
                 words.push(String::new());
                 true
-            } else { false }
+            } else {
+                false
+            }
         });
         for s in str.split('_') {
             let mut last_upper = false;
             let mut buf = String::new();
-            if s.is_empty() { continue; }
+            if s.is_empty() {
+                continue;
+            }
             for ch in s.chars() {
                 if !buf.is_empty() && buf != "'"
                                    && ch.is_uppercase()
@@ -936,7 +957,9 @@ impl NonSnakeCase {
     fn check_snake_case(&self, cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
         fn is_snake_case(ident: ast::Ident) -> bool {
             let ident = token::get_ident(ident);
-            if ident.is_empty() { return true; }
+            if ident.is_empty() {
+                return true;
+            }
             let ident = ident.trim_left_matches('\'');
             let ident = ident.trim_matches('_');
 
@@ -979,14 +1002,17 @@ impl LintPass for NonSnakeCase {
                 _: &ast::Block, span: Span, _: ast::NodeId) {
         match fk {
             visit::FkMethod(ident, _, m) => match method_context(cx, m) {
-                PlainImpl
-                    => self.check_snake_case(cx, "method", ident, span),
-                TraitDefaultImpl
-                    => self.check_snake_case(cx, "trait method", ident, span),
+                MethodContext::PlainImpl => {
+                    self.check_snake_case(cx, "method", ident, span)
+                },
+                MethodContext::TraitDefaultImpl => {
+                    self.check_snake_case(cx, "trait method", ident, span)
+                },
                 _ => (),
             },
-            visit::FkItemFn(ident, _, _, _)
-                => self.check_snake_case(cx, "function", ident, span),
+            visit::FkItemFn(ident, _, _, _) => {
+                self.check_snake_case(cx, "function", ident, span)
+            },
             _ => (),
         }
     }
@@ -1015,7 +1041,7 @@ impl LintPass for NonSnakeCase {
     }
 
     fn check_struct_def(&mut self, cx: &Context, s: &ast::StructDef,
-            _: ast::Ident, _: &ast::Generics, _: ast::NodeId) {
+                        _: ast::Ident, _: &ast::Generics, _: ast::NodeId) {
         for sf in &s.fields {
             if let ast::StructField_ { kind: ast::NamedField(ident, _), .. } = sf.node {
                 self.check_snake_case(cx, "structure field", ident, sf.span);
@@ -1094,13 +1120,12 @@ pub struct UnusedParens;
 
 impl UnusedParens {
     fn check_unused_parens_core(&self, cx: &Context, value: &ast::Expr, msg: &str,
-                                     struct_lit_needs_parens: bool) {
+                                struct_lit_needs_parens: bool) {
         if let ast::ExprParen(ref inner) = value.node {
             let necessary = struct_lit_needs_parens && contains_exterior_struct_lit(&**inner);
             if !necessary {
                 cx.span_lint(UNUSED_PARENS, value.span,
-                             &format!("unnecessary parentheses around {}",
-                                     msg))
+                             &format!("unnecessary parentheses around {}", msg))
             }
         }
 
@@ -1193,26 +1218,17 @@ impl LintPass for UnusedImportBraces {
     }
 
     fn check_item(&mut self, cx: &Context, item: &ast::Item) {
-        match item.node {
-            ast::ItemUse(ref view_path) => {
-                match view_path.node {
-                    ast::ViewPathList(_, ref items) => {
-                        if items.len() == 1 {
-                            match items[0].node {
-                                ast::PathListIdent {ref name, ..} => {
-                                    let m = format!("braces around {} is unnecessary",
-                                                    &token::get_ident(*name));
-                                    cx.span_lint(UNUSED_IMPORT_BRACES, item.span,
-                                                 &m[..]);
-                                },
-                                _ => ()
-                            }
-                        }
+        if let ast::ItemUse(ref view_path) = item.node {
+            if let ast::ViewPathList(_, ref items) = view_path.node {
+                if items.len() == 1 {
+                    if let ast::PathListIdent {ref name, ..} = items[0].node {
+                        let m = format!("braces around {} is unnecessary",
+                                        &token::get_ident(*name));
+                        cx.span_lint(UNUSED_IMPORT_BRACES, item.span,
+                                     &m[..]);
                     }
-                    _ => ()
                 }
-            },
-            _ => ()
+            }
         }
     }
 }
@@ -1234,9 +1250,10 @@ impl LintPass for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &Context, pat: &ast::Pat) {
         let def_map = cx.tcx.def_map.borrow();
         if let ast::PatStruct(_, ref v, _) = pat.node {
-            let field_pats = v.iter()
-                              .filter(|fieldpat| !fieldpat.node.is_shorthand)
-                              .filter(|fieldpat| {
+            let field_pats = v.iter().filter(|fieldpat| {
+                if fieldpat.node.is_shorthand {
+                    return false;
+                }
                 let def = def_map.get(&fieldpat.node.pat.id).map(|d| d.full_def());
                 def == Some(def::DefLocal(fieldpat.node.pat.id))
             });
@@ -1482,10 +1499,14 @@ impl MissingDoc {
                                desc: &'static str) {
         // If we're building a test harness, then warning about
         // documentation is probably not really relevant right now.
-        if cx.sess().opts.test { return }
+        if cx.sess().opts.test {
+            return;
+        }
 
         // `#[doc(hidden)]` disables missing_docs check.
-        if self.doc_hidden() { return }
+        if self.doc_hidden() {
+            return;
+        }
 
         // Only check publicly-visible items, using the result from the privacy pass.
         // It's an option so the crate root can also use this function (it doesn't
@@ -1504,7 +1525,7 @@ impl MissingDoc {
         });
         if !has_doc {
             cx.span_lint(MISSING_DOCS, sp,
-                &format!("missing documentation for {}", desc));
+                         &format!("missing documentation for {}", desc));
         }
     }
 }
@@ -1528,20 +1549,19 @@ impl LintPass for MissingDoc {
         self.doc_hidden_stack.pop().expect("empty doc_hidden_stack");
     }
 
-    fn check_struct_def(&mut self, _: &Context,
-        _: &ast::StructDef, _: ast::Ident, _: &ast::Generics, id: ast::NodeId) {
+    fn check_struct_def(&mut self, _: &Context, _: &ast::StructDef,
+                        _: ast::Ident, _: &ast::Generics, id: ast::NodeId) {
         self.struct_def_stack.push(id);
     }
 
-    fn check_struct_def_post(&mut self, _: &Context,
-        _: &ast::StructDef, _: ast::Ident, _: &ast::Generics, id: ast::NodeId) {
+    fn check_struct_def_post(&mut self, _: &Context, _: &ast::StructDef,
+                             _: ast::Ident, _: &ast::Generics, id: ast::NodeId) {
         let popped = self.struct_def_stack.pop().expect("empty struct_def_stack");
         assert!(popped == id);
     }
 
     fn check_crate(&mut self, cx: &Context, krate: &ast::Crate) {
-        self.check_missing_docs_attrs(cx, None, &krate.attrs,
-                                     krate.span, "crate");
+        self.check_missing_docs_attrs(cx, None, &krate.attrs, krate.span, "crate");
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
@@ -1554,30 +1574,28 @@ impl LintPass for MissingDoc {
             ast::ItemTy(..) => "a type alias",
             _ => return
         };
-        self.check_missing_docs_attrs(cx, Some(it.id), &it.attrs,
-                                     it.span, desc);
+        self.check_missing_docs_attrs(cx, Some(it.id), &it.attrs, it.span, desc);
     }
 
-    fn check_fn(&mut self, cx: &Context,
-            fk: visit::FnKind, _: &ast::FnDecl,
-            _: &ast::Block, _: Span, _: ast::NodeId) {
+    fn check_fn(&mut self, cx: &Context, fk: visit::FnKind, _: &ast::FnDecl,
+                _: &ast::Block, _: Span, _: ast::NodeId) {
         if let visit::FkMethod(_, _, m) = fk {
             // If the method is an impl for a trait, don't doc.
-            if method_context(cx, m) == TraitImpl { return; }
+            if method_context(cx, m) == MethodContext::TraitImpl {
+                return;
+            }
 
             // Otherwise, doc according to privacy. This will also check
             // doc for default methods defined on traits.
-            self.check_missing_docs_attrs(cx, Some(m.id), &m.attrs,
-                                          m.span, "a method");
+            self.check_missing_docs_attrs(cx, Some(m.id), &m.attrs, m.span, "a method");
         }
     }
 
     fn check_ty_method(&mut self, cx: &Context, tm: &ast::TypeMethod) {
-        self.check_missing_docs_attrs(cx, Some(tm.id), &tm.attrs,
-                                     tm.span, "a type method");
+        self.check_missing_docs_attrs(cx, Some(tm.id), &tm.attrs, tm.span, "a type method");
     }
 
-    fn check_trait_method(&mut self, cx: &Context, it: &ast::TraitItem) {
+    fn check_trait_item(&mut self, cx: &Context, it: &ast::TraitItem) {
         if let ast::TraitItem::TypeTraitItem(ref ty) = *it {
             let assoc_ty = &ty.ty_param;
             self.check_missing_docs_attrs(cx, Some(assoc_ty.id), &ty.attrs,
@@ -1598,8 +1616,7 @@ impl LintPass for MissingDoc {
     }
 
     fn check_variant(&mut self, cx: &Context, v: &ast::Variant, _: &ast::Generics) {
-        self.check_missing_docs_attrs(cx, Some(v.node.id), &v.node.attrs,
-                                     v.span, "a variant");
+        self.check_missing_docs_attrs(cx, Some(v.node.id), &v.node.attrs, v.span, "a variant");
         assert!(!self.in_variant);
         self.in_variant = true;
     }
@@ -1626,18 +1643,18 @@ impl LintPass for MissingCopyImplementations {
 
     fn check_item(&mut self, cx: &Context, item: &ast::Item) {
         if !cx.exported_items.contains(&item.id) {
-            return
+            return;
         }
         if cx.tcx
              .destructor_for_type
              .borrow()
              .contains_key(&ast_util::local_def(item.id)) {
-            return
+            return;
         }
         let ty = match item.node {
             ast::ItemStruct(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
-                    return
+                    return;
                 }
                 ty::mk_struct(cx.tcx,
                               ast_util::local_def(item.id),
@@ -1645,7 +1662,7 @@ impl LintPass for MissingCopyImplementations {
             }
             ast::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
-                    return
+                    return;
                 }
                 ty::mk_enum(cx.tcx,
                             ast_util::local_def(item.id),
@@ -1655,7 +1672,7 @@ impl LintPass for MissingCopyImplementations {
         };
         let parameter_environment = ty::empty_parameter_environment(cx.tcx);
         if !ty::type_moves_by_default(&parameter_environment, item.span, ty) {
-            return
+            return;
         }
         if ty::can_type_implement_copy(&parameter_environment, item.span, ty).is_ok() {
             cx.span_lint(MISSING_COPY_IMPLEMENTATIONS,
@@ -1709,10 +1726,10 @@ impl LintPass for MissingDebugImplementations {
             let impls = match impls.get(&debug) {
                 Some(impls) => {
                     impls.borrow().iter()
-                        .filter(|d| d.krate == ast::LOCAL_CRATE)
-                        .filter_map(|d| ty::ty_to_def_id(ty::node_id_to_type(cx.tcx, d.node)))
-                        .map(|d| d.node)
-                        .collect()
+                         .filter(|d| d.krate == ast::LOCAL_CRATE)
+                         .filter_map(|d| ty::ty_to_def_id(ty::node_id_to_type(cx.tcx, d.node)))
+                         .map(|d| d.node)
+                         .collect()
                 }
                 None => NodeSet(),
             };
@@ -1741,8 +1758,7 @@ pub struct Stability;
 
 impl Stability {
     fn lint(&self, cx: &Context, _id: ast::DefId, span: Span, stability: &Option<attr::Stability>) {
-
-        // deprecated attributes apply in-crate and cross-crate
+        // Deprecated attributes apply in-crate and cross-crate.
         let (lint, label) = match *stability {
             Some(attr::Stability { deprecated_since: Some(_), .. }) =>
                 (DEPRECATED, "deprecated"),
@@ -1857,25 +1873,27 @@ impl LintPass for UnconditionalRecursion {
         let mut visited = BitSet::new();
 
         while let Some(idx) = work_queue.pop() {
-            let cfg_id = idx.node_id();
             if idx == cfg.exit {
                 // found a path!
                 reached_exit_without_self_call = true;
-                break
-            } else if visited.contains(&cfg_id) {
+                break;
+            }
+
+            let cfg_id = idx.node_id();
+            if visited.contains(&cfg_id) {
                 // already done
-                continue
+                continue;
             }
             visited.insert(cfg_id);
+
             let node_id = cfg.graph.node_data(idx).id();
 
             // is this a recursive call?
             if node_id != ast::DUMMY_NODE_ID && checker(cx.tcx, impl_node_id, id, name, node_id) {
-
                 self_call_spans.push(cx.tcx.map.span(node_id));
                 // this is a self call, so we shouldn't explore past
                 // this node in the CFG.
-                continue
+                continue;
             }
             // add the successors of this node to explore the graph further.
             cfg.graph.each_outgoing_edge(idx, |_, edge| {
@@ -1888,7 +1906,7 @@ impl LintPass for UnconditionalRecursion {
             });
         }
 
-        // check the number of sell calls because a function that
+        // Check the number of self calls because a function that
         // doesn't return (e.g. calls a `-> !` function or `loop { /*
         // no break */ }`) shouldn't be linted unless it actually
         // recurs.
@@ -1920,7 +1938,7 @@ impl LintPass for UnconditionalRecursion {
                                       _: ast::Ident,
                                       id: ast::NodeId) -> bool {
             tcx.def_map.borrow().get(&id)
-                .map_or(false, |def| def.def_id() == ast_util::local_def(fn_id))
+               .map_or(false, |def| def.def_id() == ast_util::local_def(fn_id))
         }
 
         // check if the method call `id` refers to method `method_id`
@@ -1962,7 +1980,7 @@ impl LintPass for UnconditionalRecursion {
                                 tcx.map.span(id),
                                 "non-method call expr behaving like a method call?")
                         };
-                        // it matches if it comes from the same impl,
+                        // It matches if it comes from the same impl,
                         // and has the same method name.
                         return ast_util::is_local(impl_def_id)
                             && impl_def_id.node == impl_id
@@ -2013,7 +2031,7 @@ impl LintPass for PluginAsLibrary {
 
         if decoder::get_plugin_registrar_fn(md.data()).is_some() {
             cx.span_lint(PLUGIN_AS_LIBRARY, it.span,
-                "compiler plugin used as an ordinary library");
+                         "compiler plugin used as an ordinary library");
         }
     }
 }
@@ -2069,7 +2087,7 @@ impl LintPass for InvalidNoMangleItems {
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
                     let msg = "const items should never be #[no_mangle], consider instead using \
-                        `pub static`";
+                               `pub static`";
                     cx.span_lint(NO_MANGLE_CONST_ITEMS, it.span, msg);
                 }
             }
@@ -2082,15 +2100,17 @@ impl LintPass for InvalidNoMangleItems {
 #[derive(Copy)]
 pub struct UnstableFeatures;
 
-declare_lint!(UNSTABLE_FEATURES, Allow,
-              "enabling unstable features");
+declare_lint! {
+    UNSTABLE_FEATURES,
+    Allow,
+    "enabling unstable features"
+}
 
 impl LintPass for UnstableFeatures {
     fn get_lints(&self) -> LintArray {
         lint_array!(UNSTABLE_FEATURES)
     }
     fn check_attribute(&mut self, ctx: &Context, attr: &ast::Attribute) {
-        use syntax::attr;
         if attr::contains_name(&[attr.node.value.clone()], "feature") {
             ctx.span_lint(UNSTABLE_FEATURES, attr.span, "unstable feature");
         }
