@@ -28,25 +28,25 @@
 //! a thread will unwind the stack, running destructors and freeing
 //! owned resources. Thread panic is unrecoverable from within
 //! the panicking thread (i.e. there is no 'try/catch' in Rust), but
-//! panic may optionally be detected from a different thread. If
-//! the main thread panics the application will exit with a non-zero
+//! the panic may optionally be detected from a different thread. If
+//! the main thread panics, the application will exit with a non-zero
 //! exit code.
 //!
 //! When the main thread of a Rust program terminates, the entire program shuts
 //! down, even if other threads are still running. However, this module provides
 //! convenient facilities for automatically waiting for the termination of a
-//! child thread (i.e., join), described below.
+//! child thread (i.e., join).
 //!
 //! ## The `Thread` type
 //!
-//! Already-running threads are represented via the `Thread` type, which you can
+//! Threads are represented via the `Thread` type, which you can
 //! get in one of two ways:
 //!
-//! * By spawning a new thread, e.g. using the `thread::spawn` constructor;
+//! * By spawning a new thread, e.g. using the `thread::spawn` function.
 //! * By requesting the current thread, using the `thread::current` function.
 //!
 //! Threads can be named, and provide some built-in support for low-level
-//! synchronization described below.
+//! synchronization (described below).
 //!
 //! The `thread::current()` function is available even for threads not spawned
 //! by the APIs of this module.
@@ -59,29 +59,27 @@
 //! use std::thread;
 //!
 //! thread::spawn(move || {
-//!     println!("Hello, World!");
-//!     // some computation here
+//!     // some work here
 //! });
 //! ```
 //!
 //! In this example, the spawned thread is "detached" from the current
-//! thread, meaning that it can outlive the thread that spawned
-//! it. (Note, however, that when the main thread terminates all
-//! detached threads are terminated as well.)
+//! thread. This means that it can outlive its parent (the thread that spawned
+//! it), unless this parent is the main thread.
 //!
 //! ## Scoped threads
 //!
 //! Often a parent thread uses a child thread to perform some particular task,
 //! and at some point must wait for the child to complete before continuing.
-//! For this scenario, use the `scoped` constructor:
+//! For this scenario, use the `thread::scoped` function:
 //!
 //! ```rust
 //! use std::thread;
 //!
 //! let guard = thread::scoped(move || {
-//!     println!("Hello, World!");
-//!     // some computation here
+//!     // some work here
 //! });
+//!
 //! // do some other work in the meantime
 //! let output = guard.join();
 //! ```
@@ -92,11 +90,7 @@
 //! terminates) when it is dropped. You can join the child thread in
 //! advance by calling the `join` method on the guard, which will also
 //! return the result produced by the thread.  A handle to the thread
-//! itself is available via the `thread` method on the join guard.
-//!
-//! (Note: eventually, the `scoped` constructor will allow the parent and child
-//! threads to data that lives on the parent thread's stack, but some language
-//! changes are needed before this is possible.)
+//! itself is available via the `thread` method of the join guard.
 //!
 //! ## Configuring threads
 //!
@@ -108,7 +102,7 @@
 //! use std::thread;
 //!
 //! thread::Builder::new().name("child1".to_string()).spawn(move || {
-//!     println!("Hello, world!")
+//!     println!("Hello, world!");
 //! });
 //! ```
 //!
@@ -121,7 +115,7 @@
 //! initially not present:
 //!
 //! * The `thread::park()` function blocks the current thread unless or until
-//!   the token is available for its thread handle, at which point It atomically
+//!   the token is available for its thread handle, at which point it atomically
 //!   consumes the token. It may also return *spuriously*, without consuming the
 //!   token. `thread::park_timeout()` does the same, but allows specifying a
 //!   maximum time to block the thread for.
@@ -143,7 +137,7 @@
 //! * It avoids the need to allocate mutexes and condvars when building new
 //!   synchronization primitives; the threads already provide basic blocking/signaling.
 //!
-//! * It can be implemented highly efficiently on many platforms.
+//! * It can be implemented very efficiently on many platforms.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
