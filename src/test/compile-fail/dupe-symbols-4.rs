@@ -27,5 +27,5 @@ impl A for B {
 impl A for C {
     #[no_mangle]
     fn fail(self) {}
-    //~^ symbol `fail` already exists
+    //~^ symbol `fail` is already defined
 }

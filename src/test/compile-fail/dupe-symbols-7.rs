@@ -8,14 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
-#![crate_type="rlib"]
+// error-pattern: entry symbol `main` defined multiple times
 #![allow(warnings)]
 
-extern {
-    fn fail();
-}
-
-#[export_name="fail"]
-pub fn a() {
-//~^ symbol `fail` already exists
-}
+#[no_mangle]
+fn main(){}

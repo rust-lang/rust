@@ -20,6 +20,6 @@ mod a {
 mod b {
     #[no_mangle]
     pub extern fn fail() {
-    //~^ symbol `fail` already exists
+    //~^ symbol `fail` is already defined
     }
 }

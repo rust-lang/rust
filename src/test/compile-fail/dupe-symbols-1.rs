@@ -17,5 +17,5 @@ pub fn a() {
 
 #[export_name="fail"]
 pub fn b() {
-//~^ symbol `fail` already exists
+//~^ symbol `fail` is already defined
 }
