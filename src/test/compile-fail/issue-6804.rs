@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rustc_attrs)]
 #![allow(dead_code)]
 
 // Matching against NaN should result in a warning
 
 use std::f64::NAN;
 
-fn main() {
+#[rustc_error]
+fn main() { //~ ERROR compilation successful
     let x = NAN;
     match x {
         NAN => {},
@@ -27,7 +29,3 @@ fn main() {
     };
     //~^^^ WARNING unmatchable NaN in pattern, use the is_nan method in a guard instead
 }
-
-// At least one error is needed so that compilation fails
-#[static_assert]
-static B: bool = false; //~ ERROR static assertion failed
