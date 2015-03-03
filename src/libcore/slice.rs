@@ -1167,11 +1167,21 @@ forward_iterator! { SplitNMut: T, &'a mut [T] }
 forward_iterator! { RSplitNMut: T, &'a mut [T] }
 
 /// An iterator over overlapping subslices of length `size`.
-#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Windows<'a, T:'a> {
     v: &'a [T],
     size: usize
+}
+
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, T> Clone for Windows<'a, T> {
+    fn clone(&self) -> Windows<'a, T> {
+        Windows {
+            v: self.v,
+            size: self.size,
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1239,11 +1249,21 @@ impl<'a, T> RandomAccessIterator for Windows<'a, T> {
 ///
 /// When the slice len is not evenly divided by the chunk size, the last slice
 /// of the iteration will be the remainder.
-#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chunks<'a, T:'a> {
     v: &'a [T],
     size: usize
+}
+
+// FIXME(#19839) Remove in favor of `#[derive(Clone)]`
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, T> Clone for Chunks<'a, T> {
+    fn clone(&self) -> Chunks<'a, T> {
+        Chunks {
+            v: self.v,
+            size: self.size,
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
