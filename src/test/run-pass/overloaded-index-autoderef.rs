@@ -55,7 +55,7 @@ impl Int for int {
 }
 
 fn main() {
-    let mut f = box Foo {
+    let mut f: Box<_> = box Foo {
         x: 1,
         y: 2,
     };

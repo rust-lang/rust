@@ -144,7 +144,7 @@ fn main() {
     let _ = stack.self_by_ref(-1, 2_u16);
     let _ = stack.self_by_val(-3, -4_i16);
 
-    let owned = box Struct { x: 879 };
+    let owned: Box<_> = box Struct { x: 879 };
     let _ = owned.self_by_ref(-5, -6_i32);
     let _ = owned.self_by_val(-7, -8_i64);
     let _ = owned.self_owned(-9, -10.5_f32);

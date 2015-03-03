@@ -15,7 +15,7 @@ fn call_f<F:FnOnce() -> isize>(f: F) -> isize {
 }
 
 fn main() {
-    let t = box 3;
+    let t: Box<_> = box 3;
 
     call_f(move|| { *t + 1 });
     call_f(move|| { *t + 1 }); //~ ERROR capture of moved value

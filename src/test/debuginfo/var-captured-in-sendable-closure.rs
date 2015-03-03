@@ -58,7 +58,7 @@ fn main() {
         c: 4
     };
 
-    let owned = box 5;
+    let owned: Box<_> = box 5;
 
     let closure = move || {
         zzz(); // #break

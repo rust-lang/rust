@@ -17,12 +17,21 @@ use std::fmt::Debug;
 // rvalue expressions to be unsized. See #20169 for more information.
 
 pub fn main() {
-    let _: Box<[int]> = box { [1, 2, 3] };
-    let _: Box<[int]> = box if true { [1, 2, 3] } else { [1, 3, 4] };
-    let _: Box<[int]> = box match true { true => [1, 2, 3], false => [1, 3, 4] };
-    let _: Box<Fn(int) -> _> = box { |x| (x as u8) };
-    let _: Box<Debug> = box if true { false } else { true };
-    let _: Box<Debug> = box match true { true => 'a', false => 'b' };
+    // FIXME #22405: We cannot infer the type `Box<[int; k]>` for
+    // the r-value expression from the context `Box<[int]>`, and
+    // therefore the `box EXPR` desugaring breaks down.
+    //
+    // One could reasonably claim that the `box EXPR` desugaring is
+    // effectively regressing half of Issue #20169. Hopefully we will
+    // eventually fix that, at which point the `Box::new` calls below
+    // should be replaced wth uses of `box`.
+
+    let _: Box<[int]> = Box::new({ [1, 2, 3] });
+    let _: Box<[int]> = Box::new(if true { [1, 2, 3] } else { [1, 3, 4] });
+    let _: Box<[int]> = Box::new(match true { true => [1, 2, 3], false => [1, 3, 4] });
+    let _: Box<Fn(int) -> _> = Box::new({ |x| (x as u8) });
+    let _: Box<Debug> = Box::new(if true { false } else { true });
+    let _: Box<Debug> = Box::new(match true { true => 'a', false => 'b' });
 
     let _: &[int] = &{ [1, 2, 3] };
     let _: &[int] = &if true { [1, 2, 3] } else { [1, 3, 4] };
@@ -36,6 +45,6 @@ pub fn main() {
 
     let _: Vec<Box<Fn(int) -> _>> = vec![
         Box::new(|x| (x as u8)),
-        box |x| (x as i16 as u8),
+        Box::new(|x| (x as i16 as u8)),
     ];
 }

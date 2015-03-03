@@ -18,6 +18,6 @@ fn f<T>(t: T) -> T {
 }
 
 pub fn main() {
-    let t = f(box 100);
+    let t = f::<Box<_>>(box 100);
     assert_eq!(t, box 100);
 }

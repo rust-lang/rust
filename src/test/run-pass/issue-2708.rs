@@ -31,5 +31,5 @@ fn Font() -> Font {
 }
 
 pub fn main() {
-    let _f = box Font();
+    let _f: Box<_> = box Font();
 }

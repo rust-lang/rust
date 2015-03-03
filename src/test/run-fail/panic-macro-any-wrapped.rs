@@ -10,9 +10,6 @@
 
 // error-pattern:panicked at 'Box<Any>'
 
-#![allow(unknown_features)]
-#![feature(box_syntax)]
-
 fn main() {
-    panic!(box 612_i64);
+    panic!(Box::new(612_i64));
 }

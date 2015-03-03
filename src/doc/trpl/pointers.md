@@ -709,7 +709,7 @@ fn main() {
         one_hundred: 100,
     });
 
-    let y = box foo(x);
+    let y: Box<BigStruct> = box foo(x);
 }
 ```
 

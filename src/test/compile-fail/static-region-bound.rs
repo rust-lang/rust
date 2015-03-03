@@ -13,7 +13,7 @@
 fn f<T:'static>(_: T) {}
 
 fn main() {
-    let x = box 3;
+    let x: Box<_> = box 3;
     f(x);
     let x = &3; //~ ERROR borrowed value does not live long enough
     f(x);

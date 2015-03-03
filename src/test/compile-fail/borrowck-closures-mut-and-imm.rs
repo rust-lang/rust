@@ -52,7 +52,7 @@ fn e() {
 }
 
 fn f() {
-    let mut x = box 3;
+    let mut x: Box<_> = box 3;
     let c1 = || get(&*x);
     *x = 5; //~ ERROR cannot assign
 }
@@ -62,7 +62,7 @@ fn g() {
         f: Box<isize>
     }
 
-    let mut x = box Foo { f: box 3 };
+    let mut x: Box<_> = box Foo { f: box 3 };
     let c1 = || get(&*x.f);
     *x.f = 5; //~ ERROR cannot assign to `*x.f`
 }
@@ -72,7 +72,7 @@ fn h() {
         f: Box<isize>
     }
 
-    let mut x = box Foo { f: box 3 };
+    let mut x: Box<_> = box Foo { f: box 3 };
     let c1 = || get(&*x.f);
     let c2 = || *x.f = 5; //~ ERROR cannot borrow `x` as mutable
 }

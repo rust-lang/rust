@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![allow(unknown_features)]
-#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 // Test that `Fn(int) -> int + 'static` parses as `(Fn(int) -> int) +
@@ -17,7 +16,8 @@
 // cause a compilation error. Issue #18772.
 
 fn adder(y: int) -> Box<Fn(int) -> int + 'static> {
-    box move |x| y + x
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    Box::new(move |x| y + x)
 }
 
 fn main() {}

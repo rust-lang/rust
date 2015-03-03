@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unknown_features)]
-#![feature(box_syntax)]
-
 enum Either<T, U> { Left(T), Right(U) }
 
 pub fn main() {
-    match Either::Left(box 17) {
+    match Either::Left(Box::new(17)) {
         Either::Right(()) => {}
         _ => {}
     }

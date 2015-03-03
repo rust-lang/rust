@@ -33,14 +33,16 @@ fn foo(mut a: Box<Writer>) {
     a.write(b"Hello\n");
 }
 
+// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+
 pub fn main() {
     let a = Struct { x: 1, y: 2 };
-    let b: Box<Trait> = box a;
+    let b: Box<Trait> = Box::new(a);
     b.f();
     let c: &Trait = &a;
     c.f();
 
     let out = old_io::stdout();
-    foo(box out);
+    foo(Box::new(out));
 }
 

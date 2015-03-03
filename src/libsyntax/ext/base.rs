@@ -465,7 +465,7 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
                                         -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_expander(f: MacroExpanderFn) -> SyntaxExtension {
-        NormalTT(box f, None)
+        NormalTT(Box::new(f), None)
     }
 
     let mut syntax_expanders = SyntaxEnv::new();
@@ -489,9 +489,9 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
                             builtin_normal_expander(
                                     ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(intern("derive"),
-                            Decorator(box ext::deriving::expand_meta_derive));
+                            Decorator(Box::new(ext::deriving::expand_meta_derive)));
     syntax_expanders.insert(intern("deriving"),
-                            Decorator(box ext::deriving::expand_deprecated_deriving));
+                            Decorator(Box::new(ext::deriving::expand_deprecated_deriving)));
 
     if ecfg.enable_quotes() {
         // Quasi-quoting expanders

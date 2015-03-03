@@ -46,11 +46,11 @@ impl<T> Bar<T> {
 }
 
 fn main() {
-    let foo = box Foo {
+    let foo: Box<_> = box Foo {
         f: 1,
     };
     println!("{} {} {}", foo.foo(2), foo.bar(2), foo.baz(2));
-    let bar = box Bar {
+    let bar: Box<_> = box Bar {
         f: 1,
     };
     println!("{} {} {}", bar.foo(2), bar.bar(2), bar.baz(2));

@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
-
 use std::cell::RefCell;
+
+// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
 
 fn main() {
     let mut y = 1_usize;
     let c = RefCell::new(vec![]);
-    c.push(box || y = 0);
-    c.push(box || y = 0);
+    c.push(Box::new(|| y = 0));
+    c.push(Box::new(|| y = 0));
 //~^ ERROR cannot borrow `y` as mutable more than once at a time
 }
 
@@ -24,8 +24,8 @@ fn ufcs() {
     let mut y = 1_usize;
     let c = RefCell::new(vec![]);
 
-    Push::push(&c, box || y = 0);
-    Push::push(&c, box || y = 0);
+    Push::push(&c, Box::new(|| y = 0));
+    Push::push(&c, Box::new(|| y = 0));
 //~^ ERROR cannot borrow `y` as mutable more than once at a time
 }
 

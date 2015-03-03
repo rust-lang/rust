@@ -36,10 +36,12 @@ pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("identity", expand_identity);
     reg.register_syntax_extension(
         token::intern("into_foo"),
-        Modifier(box expand_into_foo));
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+        Modifier(Box::new(expand_into_foo)));
     reg.register_syntax_extension(
         token::intern("into_multi_foo"),
-        MultiModifier(box expand_into_foo_multi));
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+        MultiModifier(Box::new(expand_into_foo_multi)));
 }
 
 fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])

@@ -40,7 +40,7 @@ pub fn expand_deriving_eq<F>(cx: &mut ExtCtxt,
                 cx.expr_binary(span, ast::BiAnd, subexpr, eq)
             },
             cx.expr_bool(span, true),
-            box |cx, span, _, _| cx.expr_bool(span, false),
+            Box::new(|cx, span, _, _| cx.expr_bool(span, false)),
             cx, span, substr)
     }
     fn cs_ne(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
@@ -57,7 +57,7 @@ pub fn expand_deriving_eq<F>(cx: &mut ExtCtxt,
                 cx.expr_binary(span, ast::BiOr, subexpr, eq)
             },
             cx.expr_bool(span, false),
-            box |cx, span, _, _| cx.expr_bool(span, true),
+            Box::new(|cx, span, _, _| cx.expr_bool(span, true)),
             cx, span, substr)
     }
 
@@ -72,9 +72,9 @@ pub fn expand_deriving_eq<F>(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(path_local!(bool)),
                 attributes: attrs,
-                combine_substructure: combine_substructure(box |a, b, c| {
+                combine_substructure: combine_substructure(Box::new(|a, b, c| {
                     $f(a, b, c)
-                })
+                }))
             }
         } }
     }

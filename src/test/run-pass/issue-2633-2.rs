@@ -17,6 +17,6 @@ fn a_val(x: Box<int>, y: Box<int>) -> int {
 }
 
 pub fn main() {
-    let z = box 22;
+    let z: Box<_> = box 22;
     a_val(z.clone(), z.clone());
 }

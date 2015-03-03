@@ -35,5 +35,5 @@ fn main() {
     assert_eq!(get_it(&1_u32), 1_u32);
     assert_eq!(get_it(&1_u16), 1_u16);
     assert_eq!(get_it(&Some(1_u16)), Some(1_u16));
-    assert_eq!(get_it(&box 1), box 1);
+    assert_eq!(get_it(&Box::new(1)), Box::new(1));
 }

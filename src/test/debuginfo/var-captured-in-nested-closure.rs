@@ -98,7 +98,7 @@ fn main() {
     };
 
     let struct_ref = &a_struct;
-    let owned = box 6;
+    let owned: Box<_> = box 6;
 
     let mut closure = || {
         let closure_local = 8;

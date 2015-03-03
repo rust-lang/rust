@@ -22,9 +22,10 @@ struct Point {
 }
 
 pub fn main() {
-    let box_5 = box 5_usize;
+    let box_5: Box<_> = box 5_usize;
     assert_eq!(Rc::new(5_usize).to_uint(), Some(5));
-    assert_eq!((box &box &Rc::new(box box &box_5)).to_uint(), Some(5));
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    assert_eq!((Box::new(&Box::new(&Rc::new(Box::new(Box::new(&box_5)))))).to_uint(), Some(5));
     let point = Rc::new(Point {x: 2, y: 4});
     assert_eq!(point.x, 2);
     assert_eq!(point.y, 4);

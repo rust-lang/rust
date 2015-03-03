@@ -50,7 +50,7 @@ fn g() {
         f: Box<isize>
     }
 
-    let mut x = box Foo { f: box 3 };
+    let mut x: Box<_> = box Foo { f: box 3 };
     let c1 = to_fn_mut(|| set(&mut *x.f));
     let c2 = to_fn_mut(|| set(&mut *x.f));
     //~^ ERROR cannot borrow `x` as mutable more than once

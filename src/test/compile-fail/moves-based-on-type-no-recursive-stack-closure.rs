@@ -12,7 +12,6 @@
 // bound must be noncopyable. For details see
 // http://smallcultfollowing.com/babysteps/blog/2013/04/30/the-case-of-the-recurring-closure/
 
-#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 struct R<'a> {
@@ -41,7 +40,8 @@ fn innocent_looking_victim() {
 }
 
 fn conspirator<F>(mut f: F) where F: FnMut(&mut R, bool) {
-    let mut r = R {c: box f};
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let mut r = R {c: Box::new(f)};
     f(&mut r, false) //~ ERROR use of moved value
 }
 

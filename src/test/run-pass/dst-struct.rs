@@ -115,7 +115,7 @@ pub fn main() {
     foo3(f5);
 
     // Box.
-    let f1 = box [1, 2, 3];
+    let f1 = Box::new([1, 2, 3]);
     assert!((*f1)[1] == 2);
     let f2: Box<[int]> = f1;
     assert!((*f2)[1] == 2);
@@ -125,6 +125,9 @@ pub fn main() {
     foo(&*f1);
     let f2 : Box<Fat<[int]>> = f1;
     foo(&*f2);
-    let f3 : Box<Fat<[int]>> = box Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] };
+
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let f3 : Box<Fat<[int]>> =
+        Box::<Fat<[_; 3]>>::new(Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] });
     foo(&*f3);
 }

@@ -10,8 +10,6 @@
 
 // Forbid assignment into a dynamically sized type.
 
-#![feature(box_syntax)]
-
 struct Fat<T: ?Sized> {
     f1: isize,
     f2: &'static str,
@@ -43,7 +41,8 @@ impl ToBar for Bar1 {
 pub fn main() {
     // Assignment.
     let f5: &mut Fat<ToBar> = &mut Fat { f1: 5, f2: "some str", ptr: Bar1 {f :42} };
-    let z: Box<ToBar> = box Bar1 {f: 36};
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let z: Box<ToBar> = Box::new(Bar1 {f: 36});
     f5.ptr = *z;
     //~^ ERROR the trait `core::marker::Sized` is not implemented
 }

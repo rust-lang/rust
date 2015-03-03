@@ -11,14 +11,13 @@
 // Test that cross-borrowing (implicitly converting from `Box<T>` to `&T`) is
 // forbidden when `T` is a trait.
 
-#![feature(box_syntax)]
-
 struct Foo;
 trait Trait { fn foo(&self) {} }
 impl Trait for Foo {}
 
 pub fn main() {
-    let x: Box<Trait> = box Foo;
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let x: Box<Trait> = Box::new(Foo);
     let _y: &Trait = x; //~  ERROR mismatched types
                         //~| expected `&Trait`
                         //~| found `Box<Trait>`

@@ -15,10 +15,11 @@
 #![feature(unboxed_closures)]
 
 fn main() {
-    let task: Box<Fn(int) -> int> = box |x| x;
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let task: Box<Fn(int) -> int> = Box::new(|x| x);
     task.call((0, ));
 
-    let mut task: Box<FnMut(int) -> int> = box |x| x;
+    let mut task: Box<FnMut(int) -> int> = Box::new(|x| x);
     task(0);
 
     call(|x| x, 22);
