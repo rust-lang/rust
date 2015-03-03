@@ -210,11 +210,11 @@ impl<T: Float + FromPrimitive> Stats<T> for [T] {
 
     fn mean(&self) -> T {
         assert!(self.len() != 0);
-        self.sum() / FromPrimitive::from_uint(self.len()).unwrap()
+        self.sum() / FromPrimitive::from_usize(self.len()).unwrap()
     }
 
     fn median(&self) -> T {
-        self.percentile(FromPrimitive::from_uint(50).unwrap())
+        self.percentile(FromPrimitive::from_usize(50).unwrap())
     }
 
     fn var(&self) -> T {
@@ -230,7 +230,7 @@ impl<T: Float + FromPrimitive> Stats<T> for [T] {
             // NB: this is _supposed to be_ len-1, not len. If you
             // change it back to len, you will be calculating a
             // population variance, not a sample variance.
-            let denom = FromPrimitive::from_uint(self.len()-1).unwrap();
+            let denom = FromPrimitive::from_usize(self.len()-1).unwrap();
             v/denom
         }
     }
@@ -240,7 +240,7 @@ impl<T: Float + FromPrimitive> Stats<T> for [T] {
     }
 
     fn std_dev_pct(&self) -> T {
-        let hundred = FromPrimitive::from_uint(100).unwrap();
+        let hundred = FromPrimitive::from_usize(100).unwrap();
         (self.std_dev() / self.mean()) * hundred
     }
 
@@ -254,7 +254,7 @@ impl<T: Float + FromPrimitive> Stats<T> for [T] {
     }
 
     fn median_abs_dev_pct(&self) -> T {
-        let hundred = FromPrimitive::from_uint(100).unwrap();
+        let hundred = FromPrimitive::from_usize(100).unwrap();
         (self.median_abs_dev() / self.median()) * hundred
     }
 
@@ -267,11 +267,11 @@ impl<T: Float + FromPrimitive> Stats<T> for [T] {
     fn quartiles(&self) -> (T,T,T) {
         let mut tmp = self.to_vec();
         local_sort(&mut tmp);
-        let first = FromPrimitive::from_uint(25).unwrap();
+        let first = FromPrimitive::from_usize(25).unwrap();
         let a = percentile_of_sorted(&tmp, first);
-        let secound = FromPrimitive::from_uint(50).unwrap();
+        let secound = FromPrimitive::from_usize(50).unwrap();
         let b = percentile_of_sorted(&tmp, secound);
-        let third = FromPrimitive::from_uint(75).unwrap();
+        let third = FromPrimitive::from_usize(75).unwrap();
         let c = percentile_of_sorted(&tmp, third);
         (a,b,c)
     }
@@ -293,16 +293,16 @@ fn percentile_of_sorted<T: Float + FromPrimitive>(sorted_samples: &[T],
     }
     let zero: T = Float::zero();
     assert!(zero <= pct);
-    let hundred = FromPrimitive::from_uint(100).unwrap();
+    let hundred = FromPrimitive::from_usize(100).unwrap();
     assert!(pct <= hundred);
     if pct == hundred {
         return sorted_samples[sorted_samples.len() - 1];
     }
-    let length = FromPrimitive::from_uint(sorted_samples.len() - 1).unwrap();
+    let length = FromPrimitive::from_usize(sorted_samples.len() - 1).unwrap();
     let rank = (pct / hundred) * length;
     let lrank = rank.floor();
     let d = rank - lrank;
-    let n = lrank.to_uint().unwrap();
+    let n = lrank.to_usize().unwrap();
     let lo = sorted_samples[n];
     let hi = sorted_samples[n+1];
     lo + (hi - lo) * d
@@ -319,7 +319,7 @@ pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
     let mut tmp = samples.to_vec();
     local_sort(&mut tmp);
     let lo = percentile_of_sorted(&tmp, pct);
-    let hundred: T = FromPrimitive::from_uint(100).unwrap();
+    let hundred: T = FromPrimitive::from_usize(100).unwrap();
     let hi = percentile_of_sorted(&tmp, hundred-pct);
     for samp in samples {
         if *samp > hi {

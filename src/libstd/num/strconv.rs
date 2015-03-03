@@ -253,7 +253,7 @@ pub fn float_to_str_bytes_common<T: Float>(
         deccum = deccum / radix_gen;
         deccum = deccum.trunc();
 
-        buf.push(char::from_digit(current_digit.to_int().unwrap() as u32, radix)
+        buf.push(char::from_digit(current_digit.to_isize().unwrap() as u32, radix)
              .unwrap() as u8);
 
         // No more digits to calculate for the non-fractional part -> break
@@ -310,7 +310,7 @@ pub fn float_to_str_bytes_common<T: Float>(
             let current_digit = deccum.trunc().abs();
 
             buf.push(char::from_digit(
-                current_digit.to_int().unwrap() as u32, radix).unwrap() as u8);
+                current_digit.to_isize().unwrap() as u32, radix).unwrap() as u8);
 
             // Decrease the deccumulator one fractional digit at a time
             deccum = deccum.fract();
