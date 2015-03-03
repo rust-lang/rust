@@ -118,11 +118,11 @@ fn match_words <'a,'b>(a: &'a BitVec, b: &'b BitVec) -> (MatchWords<'a>, MatchWo
 
     // have to uselessly pretend to pad the longer one for type matching
     if a_len < b_len {
-        (a.blocks().enumerate().chain(iter::repeat(0u32).enumerate().take(b_len).skip(a_len)),
-         b.blocks().enumerate().chain(iter::repeat(0u32).enumerate().take(0).skip(0)))
+        (a.blocks().enumerate().chain(iter::repeat(0).enumerate().take(b_len).skip(a_len)),
+         b.blocks().enumerate().chain(iter::repeat(0).enumerate().take(0).skip(0)))
     } else {
-        (a.blocks().enumerate().chain(iter::repeat(0u32).enumerate().take(0).skip(0)),
-         b.blocks().enumerate().chain(iter::repeat(0u32).enumerate().take(a_len).skip(b_len)))
+        (a.blocks().enumerate().chain(iter::repeat(0).enumerate().take(0).skip(0)),
+         b.blocks().enumerate().chain(iter::repeat(0).enumerate().take(a_len).skip(b_len)))
     }
 }
 
@@ -199,7 +199,7 @@ fn blocks_for_bits(bits: usize) -> usize {
 /// Computes the bitmask for the final word of the vector
 fn mask_for_bits(bits: usize) -> u32 {
     // Note especially that a perfect multiple of u32::BITS should mask all 1s.
-    !0u32 >> (u32::BITS as usize - bits % u32::BITS as usize) % u32::BITS as usize
+    !0 >> (u32::BITS as usize - bits % u32::BITS as usize) % u32::BITS as usize
 }
 
 impl BitVec {
@@ -275,7 +275,7 @@ impl BitVec {
     pub fn from_elem(nbits: usize, bit: bool) -> BitVec {
         let nblocks = blocks_for_bits(nbits);
         let mut bit_vec = BitVec {
-            storage: repeat(if bit { !0u32 } else { 0u32 }).take(nblocks).collect(),
+            storage: repeat(if bit { !0 } else { 0 }).take(nblocks).collect(),
             nbits: nbits
         };
         bit_vec.fix_last_block();
@@ -330,7 +330,7 @@ impl BitVec {
         }
 
         if extra_bytes > 0 {
-            let mut last_word = 0u32;
+            let mut last_word = 0;
             for (i, &byte) in bytes[complete_words*4..].iter().enumerate() {
                 last_word |= (reverse_bits(byte) as u32) << (i * 8);
             }
@@ -431,7 +431,7 @@ impl BitVec {
     /// ```
     #[inline]
     pub fn set_all(&mut self) {
-        for w in &mut self.storage { *w = !0u32; }
+        for w in &mut self.storage { *w = !0; }
         self.fix_last_block();
     }
 
@@ -566,12 +566,12 @@ impl BitVec {
     /// assert_eq!(bv.all(), false);
     /// ```
     pub fn all(&self) -> bool {
-        let mut last_word = !0u32;
+        let mut last_word = !0;
         // Check that every block but the last is all-ones...
         self.blocks().all(|elem| {
             let tmp = last_word;
             last_word = elem;
-            tmp == !0u32
+            tmp == !0
         // and then check the last one has enough ones
         }) && (last_word == mask_for_bits(self.nbits))
     }
@@ -912,7 +912,7 @@ impl BitVec {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
-        for w in &mut self.storage { *w = 0u32; }
+        for w in &mut self.storage { *w = 0; }
     }
 }
 
@@ -2313,7 +2313,7 @@ mod tests {
 
         assert_eq!(bit_vec.iter().collect::<Vec<bool>>(), bools);
 
-        let long: Vec<_> = (0i32..10000).map(|i| i % 2 == 0).collect();
+        let long: Vec<_> = (0..10000).map(|i| i % 2 == 0).collect();
         let bit_vec: BitVec = long.iter().map(|n| *n).collect();
         assert_eq!(bit_vec.iter().collect::<Vec<bool>>(), long)
     }

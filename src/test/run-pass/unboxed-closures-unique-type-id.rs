@@ -12,8 +12,8 @@
 //
 //    error: internal compiler error: get_unique_type_id_of_type() -
 //    unexpected type: closure,
-//    ty_closure(syntax::ast::DefId{krate: 0u32, node: 66u32},
-//    ReScope(63u32))
+//    ty_closure(syntax::ast::DefId{krate: 0, node: 66},
+//    ReScope(63))
 //
 // This is a regression test for issue #17021.
 //
@@ -28,8 +28,8 @@ pub fn replace_map<'a, T, F>(src: &mut T, prod: F) where F: FnOnce(T) -> T {
 }
 
 pub fn main() {
-    let mut a = 7_usize;
+    let mut a = 7;
     let b = &mut a;
     replace_map(b, |x: uint| x * 2);
-    assert_eq!(*b, 14_usize);
+    assert_eq!(*b, 14);
 }

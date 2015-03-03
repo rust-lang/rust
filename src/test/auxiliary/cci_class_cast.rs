@@ -26,8 +26,8 @@ pub mod kitty {
     impl cat {
         fn meow(&mut self) {
             println!("Meow");
-            self.meows += 1_usize;
-            if self.meows % 5_usize == 0_usize {
+            self.meows += 1;
+            if self.meows % 5 == 0 {
                 self.how_hungry += 1;
             }
         }

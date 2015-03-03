@@ -131,19 +131,19 @@ enum Quark<T> {
 enum CLike { A, B, C }
 
 pub fn main() {
-    let a = &Plus(@Minus(@Val(3_usize), @Val(10_usize)), @Plus(@Val(22_usize), @Val(5_usize)));
+    let a = &Plus(@Minus(@Val(3), @Val(10)), @Plus(@Val(22), @Val(5)));
     test_rbml(a);
 
-    let a = &Spanned {lo: 0_usize, hi: 5_usize, node: 22_usize};
+    let a = &Spanned {lo: 0, hi: 5, node: 22};
     test_rbml(a);
 
-    let a = &Point {x: 3_usize, y: 5_usize};
+    let a = &Point {x: 3, y: 5};
     test_rbml(a);
 
-    let a = &Top(22_usize);
+    let a = &Top(22);
     test_rbml(a);
 
-    let a = &Bottom(222_usize);
+    let a = &Bottom(222);
     test_rbml(a);
 
     let a = &A;

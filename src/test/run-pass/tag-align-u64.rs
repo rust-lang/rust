@@ -23,12 +23,12 @@ struct Rec {
 }
 
 fn mk_rec() -> Rec {
-    return Rec { c8:0u8, t:Tag::TagInner(0u64) };
+    return Rec { c8:0, t:Tag::TagInner(0) };
 }
 
 fn is_8_byte_aligned(u: &Tag) -> bool {
     let p: uint = unsafe { mem::transmute(u) };
-    return (p & 7_usize) == 0_usize;
+    return (p & 7) == 0;
 }
 
 pub fn main() {

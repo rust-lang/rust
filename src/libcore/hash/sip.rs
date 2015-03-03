@@ -60,7 +60,7 @@ macro_rules! u8to64_le {
     ($buf:expr, $i:expr, $len:expr) =>
     ({
         let mut t = 0;
-        let mut out = 0u64;
+        let mut out = 0;
         while t < $len {
             out |= ($buf[t+$i] as u64) << t*8;
             t += 1;

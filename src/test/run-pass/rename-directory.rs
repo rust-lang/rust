@@ -34,7 +34,7 @@ fn rename_directory() {
         let fromp = CString::new(test_file.as_vec()).unwrap();
         let modebuf = CString::new(b"w+b").unwrap();
         let ostream = libc::fopen(fromp.as_ptr(), modebuf.as_ptr());
-        assert!((ostream as uint != 0_usize));
+        assert!((ostream as uint != 0));
         let s = "hello".to_string();
         let buf = CString::new(b"hello").unwrap();
         let write_len = libc::fwrite(buf.as_ptr() as *mut _,

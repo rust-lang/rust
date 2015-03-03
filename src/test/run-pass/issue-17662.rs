@@ -17,7 +17,7 @@ use std::marker;
 struct Bar<'a> { m: marker::PhantomData<&'a ()> }
 
 impl<'a> i::Foo<'a, uint> for Bar<'a> {
-    fn foo(&self) -> uint { 5_usize }
+    fn foo(&self) -> uint { 5 }
 }
 
 pub fn main() {

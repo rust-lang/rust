@@ -15,18 +15,18 @@ struct dog {
 impl dog {
     pub fn chase_cat(&mut self) {
         let p: &'static mut usize = &mut self.cats_chased; //~ ERROR cannot infer
-        *p += 1_usize;
+        *p += 1;
     }
 
     pub fn chase_cat_2(&mut self) {
         let p: &mut usize = &mut self.cats_chased;
-        *p += 1_usize;
+        *p += 1;
     }
 }
 
 fn dog() -> dog {
     dog {
-        cats_chased: 0_usize
+        cats_chased: 0
     }
 }
 

@@ -159,10 +159,10 @@ pub fn int_ty_to_string(t: IntTy, val: Option<i64>) -> String {
 
 pub fn int_ty_max(t: IntTy) -> u64 {
     match t {
-        TyI8 => 0x80u64,
-        TyI16 => 0x8000u64,
-        TyIs(_) | TyI32 => 0x80000000u64, // actually ni about TyIs
-        TyI64 => 0x8000000000000000u64
+        TyI8 => 0x80,
+        TyI16 => 0x8000,
+        TyIs(_) | TyI32 => 0x80000000, // actually ni about TyIs
+        TyI64 => 0x8000000000000000
     }
 }
 
@@ -185,10 +185,10 @@ pub fn uint_ty_to_string(t: UintTy, val: Option<u64>) -> String {
 
 pub fn uint_ty_max(t: UintTy) -> u64 {
     match t {
-        TyU8 => 0xffu64,
-        TyU16 => 0xffffu64,
-        TyUs(_) | TyU32 => 0xffffffffu64, // actually ni about TyUs
-        TyU64 => 0xffffffffffffffffu64
+        TyU8 => 0xff,
+        TyU16 => 0xffff,
+        TyUs(_) | TyU32 => 0xffffffff, // actually ni about TyUs
+        TyU64 => 0xffffffffffffffff
     }
 }
 

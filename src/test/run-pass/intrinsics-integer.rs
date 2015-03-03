@@ -37,83 +37,83 @@ pub fn main() {
     unsafe {
         use rusti::*;
 
-        assert_eq!(ctpop8(0u8), 0u8);
-        assert_eq!(ctpop16(0u16), 0u16);
-        assert_eq!(ctpop32(0u32), 0u32);
-        assert_eq!(ctpop64(0u64), 0u64);
+        assert_eq!(ctpop8(0), 0);
+        assert_eq!(ctpop16(0), 0);
+        assert_eq!(ctpop32(0), 0);
+        assert_eq!(ctpop64(0), 0);
 
-        assert_eq!(ctpop8(1u8), 1u8);
-        assert_eq!(ctpop16(1u16), 1u16);
-        assert_eq!(ctpop32(1u32), 1u32);
-        assert_eq!(ctpop64(1u64), 1u64);
+        assert_eq!(ctpop8(1), 1);
+        assert_eq!(ctpop16(1), 1);
+        assert_eq!(ctpop32(1), 1);
+        assert_eq!(ctpop64(1), 1);
 
-        assert_eq!(ctpop8(10u8), 2u8);
-        assert_eq!(ctpop16(10u16), 2u16);
-        assert_eq!(ctpop32(10u32), 2u32);
-        assert_eq!(ctpop64(10u64), 2u64);
+        assert_eq!(ctpop8(10), 2);
+        assert_eq!(ctpop16(10), 2);
+        assert_eq!(ctpop32(10), 2);
+        assert_eq!(ctpop64(10), 2);
 
-        assert_eq!(ctpop8(100u8), 3u8);
-        assert_eq!(ctpop16(100u16), 3u16);
-        assert_eq!(ctpop32(100u32), 3u32);
-        assert_eq!(ctpop64(100u64), 3u64);
+        assert_eq!(ctpop8(100), 3);
+        assert_eq!(ctpop16(100), 3);
+        assert_eq!(ctpop32(100), 3);
+        assert_eq!(ctpop64(100), 3);
 
-        assert_eq!(ctpop8(-1u8), 8u8);
-        assert_eq!(ctpop16(-1u16), 16u16);
-        assert_eq!(ctpop32(-1u32), 32u32);
-        assert_eq!(ctpop64(-1u64), 64u64);
+        assert_eq!(ctpop8(-1), 8);
+        assert_eq!(ctpop16(-1), 16);
+        assert_eq!(ctpop32(-1), 32);
+        assert_eq!(ctpop64(-1), 64);
 
-        assert_eq!(ctlz8(0u8), 8u8);
-        assert_eq!(ctlz16(0u16), 16u16);
-        assert_eq!(ctlz32(0u32), 32u32);
-        assert_eq!(ctlz64(0u64), 64u64);
+        assert_eq!(ctlz8(0), 8);
+        assert_eq!(ctlz16(0), 16);
+        assert_eq!(ctlz32(0), 32);
+        assert_eq!(ctlz64(0), 64);
 
-        assert_eq!(ctlz8(1u8), 7u8);
-        assert_eq!(ctlz16(1u16), 15u16);
-        assert_eq!(ctlz32(1u32), 31u32);
-        assert_eq!(ctlz64(1u64), 63u64);
+        assert_eq!(ctlz8(1), 7);
+        assert_eq!(ctlz16(1), 15);
+        assert_eq!(ctlz32(1), 31);
+        assert_eq!(ctlz64(1), 63);
 
-        assert_eq!(ctlz8(10u8), 4u8);
-        assert_eq!(ctlz16(10u16), 12u16);
-        assert_eq!(ctlz32(10u32), 28u32);
-        assert_eq!(ctlz64(10u64), 60u64);
+        assert_eq!(ctlz8(10), 4);
+        assert_eq!(ctlz16(10), 12);
+        assert_eq!(ctlz32(10), 28);
+        assert_eq!(ctlz64(10), 60);
 
-        assert_eq!(ctlz8(100u8), 1u8);
-        assert_eq!(ctlz16(100u16), 9u16);
-        assert_eq!(ctlz32(100u32), 25u32);
-        assert_eq!(ctlz64(100u64), 57u64);
+        assert_eq!(ctlz8(100), 1);
+        assert_eq!(ctlz16(100), 9);
+        assert_eq!(ctlz32(100), 25);
+        assert_eq!(ctlz64(100), 57);
 
-        assert_eq!(cttz8(-1u8), 0u8);
-        assert_eq!(cttz16(-1u16), 0u16);
-        assert_eq!(cttz32(-1u32), 0u32);
-        assert_eq!(cttz64(-1u64), 0u64);
+        assert_eq!(cttz8(-1), 0);
+        assert_eq!(cttz16(-1), 0);
+        assert_eq!(cttz32(-1), 0);
+        assert_eq!(cttz64(-1), 0);
 
-        assert_eq!(cttz8(0u8), 8u8);
-        assert_eq!(cttz16(0u16), 16u16);
-        assert_eq!(cttz32(0u32), 32u32);
-        assert_eq!(cttz64(0u64), 64u64);
+        assert_eq!(cttz8(0), 8);
+        assert_eq!(cttz16(0), 16);
+        assert_eq!(cttz32(0), 32);
+        assert_eq!(cttz64(0), 64);
 
-        assert_eq!(cttz8(1u8), 0u8);
-        assert_eq!(cttz16(1u16), 0u16);
-        assert_eq!(cttz32(1u32), 0u32);
-        assert_eq!(cttz64(1u64), 0u64);
+        assert_eq!(cttz8(1), 0);
+        assert_eq!(cttz16(1), 0);
+        assert_eq!(cttz32(1), 0);
+        assert_eq!(cttz64(1), 0);
 
-        assert_eq!(cttz8(10u8), 1u8);
-        assert_eq!(cttz16(10u16), 1u16);
-        assert_eq!(cttz32(10u32), 1u32);
-        assert_eq!(cttz64(10u64), 1u64);
+        assert_eq!(cttz8(10), 1);
+        assert_eq!(cttz16(10), 1);
+        assert_eq!(cttz32(10), 1);
+        assert_eq!(cttz64(10), 1);
 
-        assert_eq!(cttz8(100u8), 2u8);
-        assert_eq!(cttz16(100u16), 2u16);
-        assert_eq!(cttz32(100u32), 2u32);
-        assert_eq!(cttz64(100u64), 2u64);
+        assert_eq!(cttz8(100), 2);
+        assert_eq!(cttz16(100), 2);
+        assert_eq!(cttz32(100), 2);
+        assert_eq!(cttz64(100), 2);
 
-        assert_eq!(cttz8(-1u8), 0u8);
-        assert_eq!(cttz16(-1u16), 0u16);
-        assert_eq!(cttz32(-1u32), 0u32);
-        assert_eq!(cttz64(-1u64), 0u64);
+        assert_eq!(cttz8(-1), 0);
+        assert_eq!(cttz16(-1), 0);
+        assert_eq!(cttz32(-1), 0);
+        assert_eq!(cttz64(-1), 0);
 
-        assert_eq!(bswap16(0x0A0Bu16), 0x0B0Au16);
-        assert_eq!(bswap32(0x0ABBCC0Du32), 0x0DCCBB0Au32);
-        assert_eq!(bswap64(0x0122334455667708u64), 0x0877665544332201u64);
+        assert_eq!(bswap16(0x0A0B), 0x0B0A);
+        assert_eq!(bswap32(0x0ABBCC0D), 0x0DCCBB0A);
+        assert_eq!(bswap64(0x0122334455667708), 0x0877665544332201);
     }
 }

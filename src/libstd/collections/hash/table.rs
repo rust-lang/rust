@@ -28,7 +28,7 @@ use ptr::{self, PtrExt, Unique};
 use rt::heap::{allocate, deallocate, EMPTY};
 use collections::hash_state::HashState;
 
-const EMPTY_BUCKET: u64 = 0u64;
+const EMPTY_BUCKET: u64 = 0;
 
 /// The raw hashtable, providing safe-ish access to the unzipped and highly
 /// optimized arrays of hashes, keys, and values.
@@ -149,7 +149,7 @@ pub fn make_hash<T: ?Sized, S>(hash_state: &S, t: &T) -> SafeHash
 {
     let mut state = hash_state.hasher();
     t.hash(&mut state);
-    // We need to avoid 0u64 in order to prevent collisions with
+    // We need to avoid 0 in order to prevent collisions with
     // EMPTY_HASH. We can maintain our precious uniform distribution
     // of initial indexes by unconditionally setting the MSB,
     // effectively reducing 64-bits hashes to 63 bits.

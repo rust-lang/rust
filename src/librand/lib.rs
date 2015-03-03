@@ -149,7 +149,7 @@ pub trait Rng : Sized {
     /// ```rust
     /// use std::rand::{thread_rng, Rng};
     ///
-    /// let mut v = [0u8; 13579];
+    /// let mut v = [0; 13579];
     /// thread_rng().fill_bytes(&mut v);
     /// println!("{:?}", v.as_slice());
     /// ```

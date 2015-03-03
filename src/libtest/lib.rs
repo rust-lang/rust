@@ -1011,7 +1011,7 @@ impl Bencher {
     pub fn iter<T, F>(&mut self, mut inner: F) where F: FnMut() -> T {
         self.dur = Duration::span(|| {
             let k = self.iterations;
-            for _ in 0u64..k {
+            for _ in 0..k {
                 black_box(inner());
             }
         });
@@ -1037,7 +1037,7 @@ impl Bencher {
     // This is a more statistics-driven benchmark algorithm
     pub fn auto_bench<F>(&mut self, mut f: F) -> stats::Summary<f64> where F: FnMut(&mut Bencher) {
         // Initial bench run to get ballpark figure.
-        let mut n = 1_u64;
+        let mut n = 1;
         self.bench_n(n, |x| f(x));
 
         // Try to estimate iter count for 1ms falling back to 1m

@@ -15,6 +15,6 @@
 use std::fmt;
 
 fn main() {
-    let a: &fmt::Debug = &1_i32;
+    let a: &fmt::Debug = &1;
     format!("{:?}", a);
 }

@@ -1653,7 +1653,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
 
     fn decode_hex_escape(&mut self) -> Result<u16, ParserError> {
         let mut i = 0;
-        let mut n = 0u16;
+        let mut n = 0;
         while i < 4 && !self.eof() {
             self.bump();
             n = match self.ch_or_null() {

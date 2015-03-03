@@ -383,7 +383,7 @@ macro_rules! utf8_first_byte {
 
 // return the value of $ch updated with continuation byte $byte
 macro_rules! utf8_acc_cont_byte {
-    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as u32)
+    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63) as u32)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2300,8 +2300,8 @@ mod tests {
 
     #[test]
     fn test_chars_decoding() {
-        let mut bytes = [0u8; 4];
-        for c in (0u32..0x110000).filter_map(|c| ::core::char::from_u32(c)) {
+        let mut bytes = [0; 4];
+        for c in (0..0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(&mut bytes).unwrap_or(0);
             let s = ::core::str::from_utf8(&bytes[..len]).unwrap();
             if Some(c) != s.chars().next() {
@@ -2312,8 +2312,8 @@ mod tests {
 
     #[test]
     fn test_chars_rev_decoding() {
-        let mut bytes = [0u8; 4];
-        for c in (0u32..0x110000).filter_map(|c| ::core::char::from_u32(c)) {
+        let mut bytes = [0; 4];
+        for c in (0..0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(&mut bytes).unwrap_or(0);
             let s = ::core::str::from_utf8(&bytes[..len]).unwrap();
             if Some(c) != s.chars().rev().next() {

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let foo = &mut 1i32;
+    let foo = &mut 1;
 
     // (separate lines to ensure the spans are accurate)
 
@@ -20,7 +20,7 @@ fn main() {
         = foo;
     let &mut _ = foo;
 
-    let bar = &1i32;
+    let bar = &1;
     let &_ = bar;
     let &mut _ //~  ERROR mismatched types
                //~| expected `&i32`

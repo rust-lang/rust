@@ -1162,7 +1162,7 @@ mod test {
                 tx.send(TcpStream::connect(addr).unwrap()).unwrap();
             });
             let _l = rx.recv().unwrap();
-            for i in 0i32..1001 {
+            for i in 0..1001 {
                 match a.accept() {
                     Ok(..) => break,
                     Err(ref e) if e.kind == TimedOut => {}
@@ -1262,7 +1262,7 @@ mod test {
         assert_eq!(s.read(&mut [0]).err().unwrap().kind, TimedOut);
 
         s.set_timeout(Some(20));
-        for i in 0i32..1001 {
+        for i in 0..1001 {
             match s.write(&[0; 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
@@ -1320,7 +1320,7 @@ mod test {
 
         let mut s = a.accept().unwrap();
         s.set_write_timeout(Some(20));
-        for i in 0i32..1001 {
+        for i in 0..1001 {
             match s.write(&[0; 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,

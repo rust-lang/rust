@@ -14,7 +14,7 @@
 // reference cannot escape the region of that variable.
 fn main() {
     let _f = {
-        let x = 0_usize;
+        let x = 0;
         || x //~ ERROR `x` does not live long enough
     };
 }

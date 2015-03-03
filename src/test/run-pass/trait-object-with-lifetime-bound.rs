@@ -36,7 +36,7 @@ fn extension<'e>(x: &'e E<'e>) -> Box<M+'e> {
 }
 
 fn main() {
-    let w = E { f: &10u8 };
+    let w = E { f: &10 };
     let o = extension(&w);
-    assert_eq!(o.n(), 10u8);
+    assert_eq!(o.n(), 10);
 }

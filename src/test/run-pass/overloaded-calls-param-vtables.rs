@@ -28,5 +28,5 @@ impl<'a, A: Add<i32, Output=i32>> Fn<(A,)> for G<A> {
 
 fn main() {
     // ICE trigger
-    (G(PhantomData))(1_i32);
+    (G(PhantomData))(1);
 }

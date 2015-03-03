@@ -23,7 +23,7 @@ fn main() {
         _ => ()
     }
 
-    match &Some(42i32) {
+    match &Some(42) {
         Some(x) => (),
         //~^ ERROR mismatched types
         //~| expected `&core::option::Option<i32>`

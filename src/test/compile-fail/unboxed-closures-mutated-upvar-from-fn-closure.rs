@@ -16,7 +16,7 @@ fn call<F>(f: F) where F : Fn() {
 }
 
 fn main() {
-    let mut counter = 0_u32;
+    let mut counter = 0;
     call(|| {
         counter += 1;
         //~^ ERROR cannot assign to data in a captured outer variable in an `Fn` closure
