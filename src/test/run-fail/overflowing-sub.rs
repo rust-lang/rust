@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::num::Int;
+// error-pattern:thread '<main>' panicked at 'arithmetic operation overflowed'
 
-extern "C" fn foo<T: WrappingOps>(a: T, b: T) -> T { a.wrapping_add(b) }
+// (Work around constant-evaluation)
+fn value() -> u8 { 42 }
 
 fn main() {
-    assert_eq!(99u8, foo(255u8, 100u8));
-    assert_eq!(99u16, foo(65535u16, 100u16));
+    let _x = value() - (value() + 1);
 }

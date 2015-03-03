@@ -307,8 +307,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                             match const_eval::eval_const_expr_partial(self.tcx, ex, None) {
                                 Ok(_) => {}
                                 Err(msg) => {
-                                    span_err!(self.tcx.sess, ex.span, E0020,
-                                              "{} in a constant expression", msg)
+                                    span_err!(self.tcx.sess, msg.span, E0020,
+                                              "{} in a constant expression",
+                                              msg.description())
                                 }
                             }
                         }

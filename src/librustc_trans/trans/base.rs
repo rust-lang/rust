@@ -3086,6 +3086,12 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     let ty::CrateAnalysis { ty_cx: tcx, export_map, reachable, name, .. } = analysis;
     let krate = tcx.map.krate();
 
+    let check_overflow = if let Some(v) = tcx.sess.opts.debugging_opts.force_overflow_checks {
+        v
+    } else {
+        !attr::contains_name(&krate.config, "ndebug")
+    };
+
     // Before we touch LLVM, make sure that multithreading is enabled.
     unsafe {
         use std::sync::{Once, ONCE_INIT};
@@ -3113,7 +3119,8 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
                                              export_map,
                                              Sha256::new(),
                                              link_meta.clone(),
-                                             reachable);
+                                             reachable,
+                                             check_overflow);
 
     {
         let ccx = shared_ccx.get_ccx(0);

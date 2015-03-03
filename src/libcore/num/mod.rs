@@ -15,6 +15,8 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
+use self::wrapping::{OverflowingOps, WrappingOps};
+
 use char::CharExt;
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord};
@@ -29,6 +31,9 @@ use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
 use str::{FromStr, StrExt};
+
+#[unstable(feature = "core", reason = "may be removed or relocated")]
+pub mod wrapping;
 
 /// A built-in signed or unsigned integer.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -48,6 +53,8 @@ pub trait Int
     + BitXor<Output=Self>
     + Shl<uint, Output=Self>
     + Shr<uint, Output=Self>
+    + WrappingOps
+    + OverflowingOps
 {
     /// Returns the `0` value of this integer type.
     // FIXME (#5527): Should be an associated constant
@@ -376,11 +383,23 @@ pub trait Int
         let mut base = self;
         let mut acc: Self = Int::one();
 
+        let mut prev_base = self;
+        let mut base_oflo = false;
         while exp > 0 {
             if (exp & 1) == 1 {
-                acc = acc * base;
+                if base_oflo {
+                    // ensure overflow occurs in the same manner it
+                    // would have otherwise (i.e. signal any exception
+                    // it would have otherwise).
+                    acc = acc * (prev_base * prev_base);
+                } else {
+                    acc = acc * base;
+                }
             }
-            base = base * base;
+            prev_base = base;
+            let (new_base, new_base_oflo) = base.overflowing_mul(base);
+            base = new_base;
+            base_oflo = new_base_oflo;
             exp /= 2;
         }
         acc
@@ -691,12 +710,12 @@ signed_int_impl! { int }
 
 /// A built-in unsigned integer.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait UnsignedInt: Int {
+pub trait UnsignedInt: Int + WrappingOps {
     /// Returns `true` iff `self == 2^k` for some `k`.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn is_power_of_two(self) -> bool {
-        (self - Int::one()) & self == Int::zero() && !(self == Int::zero())
+        (self.wrapping_sub(Int::one())) & self == Int::zero() && !(self == Int::zero())
     }
 
     /// Returns the smallest power of two greater than or equal to `self`.
@@ -706,7 +725,7 @@ pub trait UnsignedInt: Int {
     fn next_power_of_two(self) -> Self {
         let bits = size_of::<Self>() * 8;
         let one: Self = Int::one();
-        one << ((bits - (self - one).leading_zeros() as usize) % bits)
+        one << ((bits - self.wrapping_sub(one).leading_zeros() as usize) % bits)
     }
 
     /// Returns the smallest power of two greater than or equal to `n`. If the

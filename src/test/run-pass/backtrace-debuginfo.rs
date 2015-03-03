@@ -68,7 +68,7 @@ fn dump_filelines(filelines: &[Pos]) {
 }
 
 #[inline(never)]
-fn inner(counter: &mut u32, main_pos: Pos, outer_pos: Pos) {
+fn inner(counter: &mut i32, main_pos: Pos, outer_pos: Pos) {
     check!(counter; main_pos, outer_pos);
     check!(counter; main_pos, outer_pos);
     let inner_pos = pos!(); aux::callback(|aux_pos| {
@@ -80,12 +80,12 @@ fn inner(counter: &mut u32, main_pos: Pos, outer_pos: Pos) {
 }
 
 #[inline(always)]
-fn inner_inlined(counter: &mut u32, main_pos: Pos, outer_pos: Pos) {
+fn inner_inlined(counter: &mut i32, main_pos: Pos, outer_pos: Pos) {
     check!(counter; main_pos, outer_pos);
     check!(counter; main_pos, outer_pos);
 
     #[inline(always)]
-    fn inner_further_inlined(counter: &mut u32, main_pos: Pos, outer_pos: Pos, inner_pos: Pos) {
+    fn inner_further_inlined(counter: &mut i32, main_pos: Pos, outer_pos: Pos, inner_pos: Pos) {
         check!(counter; main_pos, outer_pos, inner_pos);
     }
     inner_further_inlined(counter, main_pos, outer_pos, pos!());
@@ -103,7 +103,7 @@ fn inner_inlined(counter: &mut u32, main_pos: Pos, outer_pos: Pos) {
 }
 
 #[inline(never)]
-fn outer(mut counter: u32, main_pos: Pos) {
+fn outer(mut counter: i32, main_pos: Pos) {
     inner(&mut counter, main_pos, pos!());
     inner_inlined(&mut counter, main_pos, pos!());
 }

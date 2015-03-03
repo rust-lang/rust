@@ -20,6 +20,7 @@ use marker::{Copy, Send, Sync, Sized, self};
 use mem::{min_align_of, size_of};
 use mem;
 use num::{Int, UnsignedInt};
+use num::wrapping::{OverflowingOps, WrappingOps};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{Some, None};
@@ -224,6 +225,9 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> Bucket<K, V, M> {
     }
 
     pub fn at_index(table: M, ib_index: usize) -> Bucket<K, V, M> {
+        // if capacity is 0, then the RawBucket will be populated with bogus pointers.
+        // This is an uncommon case though, so avoid it in release builds.
+        debug_assert!(table.capacity() > 0, "Table should have capacity at this point");
         let ib_index = ib_index & (table.capacity() - 1);
         Bucket {
             raw: unsafe {
@@ -371,7 +375,7 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> FullBucket<K, V, M> {
         // Calculates the distance one has to travel when going from
         // `hash mod capacity` onwards to `idx mod capacity`, wrapping around
         // if the destination is not reached before the end of the table.
-        (self.idx - self.hash().inspect() as usize) & (self.table.capacity() - 1)
+        (self.idx.wrapping_sub(self.hash().inspect() as usize)) & (self.table.capacity() - 1)
     }
 
     #[inline]
@@ -524,13 +528,13 @@ fn test_rounding() {
 fn calculate_offsets(hashes_size: usize,
                      keys_size: usize, keys_align: usize,
                      vals_align: usize)
-                     -> (usize, usize) {
+                     -> (usize, usize, bool) {
     let keys_offset = round_up_to_next(hashes_size, keys_align);
-    let end_of_keys = keys_offset + keys_size;
+    let (end_of_keys, oflo) = keys_offset.overflowing_add(keys_size);
 
     let vals_offset = round_up_to_next(end_of_keys, vals_align);
 
-    (keys_offset, vals_offset)
+    (keys_offset, vals_offset, oflo)
 }
 
 // Returns a tuple of (minimum required malloc alignment, hash_offset,
@@ -538,26 +542,26 @@ fn calculate_offsets(hashes_size: usize,
 fn calculate_allocation(hash_size: usize, hash_align: usize,
                         keys_size: usize, keys_align: usize,
                         vals_size: usize, vals_align: usize)
-                        -> (usize, usize, usize) {
+                        -> (usize, usize, usize, bool) {
     let hash_offset = 0;
-    let (_, vals_offset) = calculate_offsets(hash_size,
-                                             keys_size, keys_align,
-                                                        vals_align);
-    let end_of_vals = vals_offset + vals_size;
+    let (_, vals_offset, oflo) = calculate_offsets(hash_size,
+                                                   keys_size, keys_align,
+                                                              vals_align);
+    let (end_of_vals, oflo2) = vals_offset.overflowing_add(vals_size);
 
     let min_align = cmp::max(hash_align, cmp::max(keys_align, vals_align));
 
-    (min_align, hash_offset, end_of_vals)
+    (min_align, hash_offset, end_of_vals, oflo || oflo2)
 }
 
 #[test]
 fn test_offset_calculation() {
-    assert_eq!(calculate_allocation(128, 8, 15, 1, 4,  4), (8, 0, 148));
-    assert_eq!(calculate_allocation(3,   1, 2,  1, 1,  1), (1, 0, 6));
-    assert_eq!(calculate_allocation(6,   2, 12, 4, 24, 8), (8, 0, 48));
-    assert_eq!(calculate_offsets(128, 15, 1, 4), (128, 144));
-    assert_eq!(calculate_offsets(3,   2,  1, 1), (3,   5));
-    assert_eq!(calculate_offsets(6,   12, 4, 8), (8,   24));
+    assert_eq!(calculate_allocation(128, 8, 15, 1, 4,  4), (8, 0, 148, false));
+    assert_eq!(calculate_allocation(3,   1, 2,  1, 1,  1), (1, 0, 6, false));
+    assert_eq!(calculate_allocation(6,   2, 12, 4, 24, 8), (8, 0, 48, false));
+    assert_eq!(calculate_offsets(128, 15, 1, 4), (128, 144, false));
+    assert_eq!(calculate_offsets(3,   2,  1, 1), (3,   5, false));
+    assert_eq!(calculate_offsets(6,   12, 4, 8), (8,   24, false));
 }
 
 impl<K, V> RawTable<K, V> {
@@ -587,11 +591,13 @@ impl<K, V> RawTable<K, V> {
         // This is great in theory, but in practice getting the alignment
         // right is a little subtle. Therefore, calculating offsets has been
         // factored out into a different function.
-        let (malloc_alignment, hash_offset, size) =
+        let (malloc_alignment, hash_offset, size, oflo) =
             calculate_allocation(
                 hashes_size, min_align_of::<u64>(),
                 keys_size,   min_align_of::< K >(),
                 vals_size,   min_align_of::< V >());
+
+        assert!(!oflo, "capacity overflow");
 
         // One check for overflow that covers calculation and rounding of size.
         let size_of_bucket = size_of::<u64>().checked_add(size_of::<K>()).unwrap()
@@ -618,10 +624,11 @@ impl<K, V> RawTable<K, V> {
         let keys_size = self.capacity * size_of::<K>();
 
         let buffer = *self.hashes as *mut u8;
-        let (keys_offset, vals_offset) = calculate_offsets(hashes_size,
-                                                           keys_size, min_align_of::<K>(),
-                                                           min_align_of::<V>());
-
+        let (keys_offset, vals_offset, oflo) =
+            calculate_offsets(hashes_size,
+                              keys_size, min_align_of::<K>(),
+                              min_align_of::<V>());
+        debug_assert!(!oflo, "capacity overflow");
         unsafe {
             RawBucket {
                 hash: *self.hashes,
@@ -995,9 +1002,12 @@ impl<K, V> Drop for RawTable<K, V> {
         let hashes_size = self.capacity * size_of::<u64>();
         let keys_size = self.capacity * size_of::<K>();
         let vals_size = self.capacity * size_of::<V>();
-        let (align, _, size) = calculate_allocation(hashes_size, min_align_of::<u64>(),
-                                                    keys_size, min_align_of::<K>(),
-                                                    vals_size, min_align_of::<V>());
+        let (align, _, size, oflo) =
+            calculate_allocation(hashes_size, min_align_of::<u64>(),
+                                 keys_size, min_align_of::<K>(),
+                                 vals_size, min_align_of::<V>());
+
+        debug_assert!(!oflo, "should be impossible");
 
         unsafe {
             deallocate(*self.hashes as *mut u8, size, align);

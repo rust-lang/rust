@@ -12,6 +12,7 @@
 
 use core::prelude::*;
 use core::num::Int;
+use core::num::wrapping::WrappingOps;
 use {Rng, SeedableRng, Rand};
 
 const KEY_WORDS    : uint =  8; // 8 words for the 256-bit key
@@ -43,10 +44,10 @@ static EMPTY: ChaChaRng = ChaChaRng {
 
 macro_rules! quarter_round{
     ($a: expr, $b: expr, $c: expr, $d: expr) => {{
-        $a += $b; $d ^= $a; $d = $d.rotate_left(16);
-        $c += $d; $b ^= $c; $b = $b.rotate_left(12);
-        $a += $b; $d ^= $a; $d = $d.rotate_left( 8);
-        $c += $d; $b ^= $c; $b = $b.rotate_left( 7);
+        $a = $a.wrapping_add($b); $d = $d ^ $a; $d = $d.rotate_left(16);
+        $c = $c.wrapping_add($d); $b = $b ^ $c; $b = $b.rotate_left(12);
+        $a = $a.wrapping_add($b); $d = $d ^ $a; $d = $d.rotate_left( 8);
+        $c = $c.wrapping_add($d); $b = $b ^ $c; $b = $b.rotate_left( 7);
     }}
 }
 
@@ -74,7 +75,7 @@ fn core(output: &mut [u32; STATE_WORDS], input: &[u32; STATE_WORDS]) {
     }
 
     for i in 0..STATE_WORDS {
-        output[i] += input[i];
+        output[i] = output[i].wrapping_add(input[i]);
     }
 }
 

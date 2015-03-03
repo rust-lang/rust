@@ -462,9 +462,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
           ast::ExprIndex(ref base, ref index) => {
               let (bv, bt) = const_expr(cx, &**base, param_substs);
-              let iv = match const_eval::eval_const_expr(cx.tcx(), &**index) {
-                  const_eval::const_int(i) => i as u64,
-                  const_eval::const_uint(u) => u,
+              let iv = match const_eval::eval_const_expr_partial(cx.tcx(), &**index, None) {
+                  Ok(const_eval::const_int(i)) => i as u64,
+                  Ok(const_eval::const_uint(u)) => u,
                   _ => cx.sess().span_bug(index.span,
                                           "index is not an integer-constant expression")
               };
@@ -650,9 +650,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           ast::ExprRepeat(ref elem, ref count) => {
             let unit_ty = ty::sequence_element_type(cx.tcx(), ety);
             let llunitty = type_of::type_of(cx, unit_ty);
-            let n = match const_eval::eval_const_expr(cx.tcx(), &**count) {
-                const_eval::const_int(i)  => i as uint,
-                const_eval::const_uint(i) => i as uint,
+            let n = match const_eval::eval_const_expr_partial(cx.tcx(), &**count, None) {
+                Ok(const_eval::const_int(i))  => i as uint,
+                Ok(const_eval::const_uint(i)) => i as uint,
                 _ => cx.sess().span_bug(count.span, "count must be integral const expression.")
             };
             let unit_val = const_expr(cx, &**elem, param_substs).0;

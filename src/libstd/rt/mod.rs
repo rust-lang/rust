@@ -27,6 +27,7 @@ use marker::Send;
 use ops::FnOnce;
 use sys;
 use thunk::Thunk;
+use usize;
 
 // Reexport some of our utilities which are expected by other crates.
 pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
@@ -78,7 +79,20 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
     // FIXME #11359 we just assume that this thread has a stack of a
     // certain size, and estimate that there's at most 20KB of stack
     // frames above our current position.
-    let my_stack_bottom = my_stack_top + 20000 - OS_DEFAULT_STACK_ESTIMATE;
+    const TWENTY_KB: uint = 20000;
+
+    // saturating-add to sidestep overflow
+    let top_plus_spill = if usize::MAX - TWENTY_KB < my_stack_top {
+        usize::MAX
+    } else {
+        my_stack_top + TWENTY_KB
+    };
+    // saturating-sub to sidestep underflow
+    let my_stack_bottom = if top_plus_spill < OS_DEFAULT_STACK_ESTIMATE {
+        0
+    } else {
+        top_plus_spill - OS_DEFAULT_STACK_ESTIMATE
+    };
 
     let failed = unsafe {
         // First, make sure we don't trigger any __morestack overflow checks,

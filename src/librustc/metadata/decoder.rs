@@ -783,7 +783,7 @@ pub fn get_enum_variants<'tcx>(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::Nod
             _         => { /* empty */ }
         }
         let old_disr_val = disr_val;
-        disr_val += 1;
+        disr_val = disr_val.wrapping_add(1);
         Rc::new(ty::VariantInfo {
             args: arg_tys,
             arg_names: arg_names,

@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that non-constant exprs do fail as count in fixed length vec type
+// Check that an constant-evaluation underflow highlights the correct
+// spot (where the underflow occurred), while also providing the
+// overall context for what caused the evaluation.
+
+const ONE: usize = 1;
+const TWO: usize = 2;
+const LEN: usize = ONE - TWO;
+//~^ ERROR array length constant evaluation error: attempted to sub with overflow [E0250]
 
 fn main() {
-    fn bar(n: isize) {
-        let _x: [isize; n];
-        //~^ ERROR no type for local variable
-        //~| ERROR array length constant evaluation error: non-constant path in constant expr
-    }
+    let a: [i8; LEN] = unimplemented!();
+    //~^ NOTE for array length here
 }

@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::num::Int;
+// Check that an constant-evaluation underflow highlights the correct
+// spot (where the underflow occurred).
 
-extern "C" fn foo<T: WrappingOps>(a: T, b: T) -> T { a.wrapping_add(b) }
+const ONE: usize = 1;
+const TWO: usize = 2;
 
 fn main() {
-    assert_eq!(99u8, foo(255u8, 100u8));
-    assert_eq!(99u16, foo(65535u16, 100u16));
+    let a: [i8; ONE - TWO] = unimplemented!();
+    //~^ ERROR array length constant evaluation error: attempted to sub with overflow [E0250]
 }

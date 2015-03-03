@@ -660,6 +660,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                     llargs[0],
                                     llargs[1],
                                     call_debug_location),
+
+        (_, "overflowing_add") => Add(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "overflowing_sub") => Sub(bcx, llargs[0], llargs[1], call_debug_location),
+        (_, "overflowing_mul") => Mul(bcx, llargs[0], llargs[1], call_debug_location),
+
         (_, "return_address") => {
             if !fcx.caller_expects_out_pointer {
                 tcx.sess.span_err(call_info.span,

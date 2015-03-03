@@ -205,9 +205,9 @@ pub fn opt_ast_region_to_region<'tcx>(
 
                                 if len == 2 && i == 0 {
                                     m.push_str(" or ");
-                                } else if i == len - 2 {
+                                } else if i + 2 == len {
                                     m.push_str(", or ");
-                                } else if i != len - 1 {
+                                } else if i + 1 != len {
                                     m.push_str(", ");
                                 }
                             }
@@ -1233,17 +1233,18 @@ pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             if segments.is_empty() {
                 opt_self_ty.expect("missing T in <T>::a::b::c")
             } else {
-                tcx.sess.span_bug(span,
-                                  &format!("found module name used as a type: {}",
-                                           tcx.map.node_to_string(id.node)));
+                span_err!(tcx.sess, span, E0247, "found module name used as a type: {}",
+                          tcx.map.node_to_string(id.node));
+                return this.tcx().types.err;
             }
         }
         def::DefPrimTy(prim_ty) => {
             prim_ty_to_ty(tcx, segments, prim_ty)
         }
         _ => {
-            span_fatal!(tcx.sess, span, E0248,
-                        "found value name used as a type: {:?}", *def);
+            span_err!(tcx.sess, span, E0248,
+                      "found value name used as a type: {:?}", *def);
+            return this.tcx().types.err;
         }
     };
 
@@ -1278,10 +1279,11 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
     match ast_ty_to_ty_cache.get(&ast_ty.id) {
         Some(&ty::atttce_resolved(ty)) => return ty,
         Some(&ty::atttce_unresolved) => {
-            span_fatal!(tcx.sess, ast_ty.span, E0246,
+            span_err!(tcx.sess, ast_ty.span, E0246,
                                 "illegal recursive type; insert an enum \
                                  or struct in the cycle, if this is \
                                  desired");
+            return this.tcx().types.err;
         }
         None => { /* go on */ }
     }
@@ -1388,14 +1390,22 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                             ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &**ty),
                                         Some(i as uint)),
                         _ => {
-                            span_fatal!(tcx.sess, ast_ty.span, E0249,
-                                        "expected constant expr for array length");
+                            span_err!(tcx.sess, ast_ty.span, E0249,
+                                      "expected constant expr for array length");
+                            this.tcx().types.err
                         }
                     }
                 }
-                Err(r) => {
-                    span_fatal!(tcx.sess, ast_ty.span, E0250,
-                                "expected constant expr for array length: {}", r);
+                Err(ref r) => {
+                    let subspan  =
+                        ast_ty.span.lo <= r.span.lo && r.span.hi <= ast_ty.span.hi;
+                    span_err!(tcx.sess, r.span, E0250,
+                              "array length constant evaluation error: {}",
+                              r.description().as_slice());
+                    if !subspan {
+                        span_note!(tcx.sess, ast_ty.span, "for array length here")
+                    }
+                    this.tcx().types.err
                 }
             }
         }

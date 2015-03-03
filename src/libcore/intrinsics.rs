@@ -546,3 +546,14 @@ extern "rust-intrinsic" {
     /// Performs checked `u64` multiplication.
     pub fn u64_mul_with_overflow(x: u64, y: u64) -> (u64, bool);
 }
+
+// SNAP 880fb89
+#[cfg(not(stage0))]
+extern "rust-intrinsic" {
+    /// Returns (a + b) mod 2^N, where N is the width of N in bits.
+    pub fn overflowing_add<T>(a: T, b: T) -> T;
+    /// Returns (a - b) mod 2^N, where N is the width of N in bits.
+    pub fn overflowing_sub<T>(a: T, b: T) -> T;
+    /// Returns (a * b) mod 2^N, where N is the width of N in bits.
+    pub fn overflowing_mul<T>(a: T, b: T) -> T;
+}
