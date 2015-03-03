@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -43,13 +43,14 @@ use std::old_io::Seek;
 use std::num::FromPrimitive;
 use std::rc::Rc;
 
-use rbml::io::SeekableMemWriter;
-use rbml::{reader, writer};
+use rbml::reader;
+use rbml::writer::Encoder;
 use rbml;
 use serialize;
 use serialize::{Decodable, Decoder, DecoderHelpers, Encodable};
 use serialize::{EncoderHelpers};
 
+#[cfg(test)] use rbml::io::SeekableMemWriter;
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::print::pprust;
 
@@ -67,8 +68,6 @@ trait tr {
 trait tr_intern {
     fn tr_intern(&self, dcx: &DecodeContext) -> ast::DefId;
 }
-
-pub type Encoder<'a> = writer::Encoder<'a, SeekableMemWriter>;
 
 // ______________________________________________________________________
 // Top-level methods.
@@ -414,9 +413,8 @@ fn decode_ast(par_doc: rbml::Doc) -> ast::InlinedItem {
 // ______________________________________________________________________
 // Encoding and decoding of ast::def
 
-fn decode_def(dcx: &DecodeContext, doc: rbml::Doc) -> def::Def {
-    let mut dsr = reader::Decoder::new(doc);
-    let def: def::Def = Decodable::decode(&mut dsr).unwrap();
+fn decode_def(dcx: &DecodeContext, dsr: &mut reader::Decoder) -> def::Def {
+    let def: def::Def = Decodable::decode(dsr).unwrap();
     def.tr(dcx)
 }
 
@@ -911,7 +909,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     fn emit_type_param_def<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                                type_param_def: &ty::TypeParameterDef<'tcx>) {
         self.emit_opaque(|this| {
-            Ok(tyencode::enc_type_param_def(this.writer,
+            Ok(tyencode::enc_type_param_def(this,
                                          &ecx.ty_str_ctxt(),
                                          type_param_def))
         });
@@ -920,7 +918,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     fn emit_predicate<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                           predicate: &ty::Predicate<'tcx>) {
         self.emit_opaque(|this| {
-            Ok(tyencode::enc_predicate(this.writer,
+            Ok(tyencode::enc_predicate(this,
                                        &ecx.ty_str_ctxt(),
                                        predicate))
         });
@@ -954,20 +952,20 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
     fn emit_existential_bounds<'b>(&mut self, ecx: &e::EncodeContext<'b,'tcx>,
                                    bounds: &ty::ExistentialBounds<'tcx>) {
-        self.emit_opaque(|this| Ok(tyencode::enc_existential_bounds(this.writer,
+        self.emit_opaque(|this| Ok(tyencode::enc_existential_bounds(this,
                                                                     &ecx.ty_str_ctxt(),
                                                                     bounds)));
     }
 
     fn emit_builtin_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::BuiltinBounds) {
-        self.emit_opaque(|this| Ok(tyencode::enc_builtin_bounds(this.writer,
+        self.emit_opaque(|this| Ok(tyencode::enc_builtin_bounds(this,
                                                                 &ecx.ty_str_ctxt(),
                                                                 bounds)));
     }
 
     fn emit_substs<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
                        substs: &subst::Substs<'tcx>) {
-        self.emit_opaque(|this| Ok(tyencode::enc_substs(this.writer,
+        self.emit_opaque(|this| Ok(tyencode::enc_substs(this,
                                                            &ecx.ty_str_ctxt(),
                                                            substs)));
     }
@@ -1115,7 +1113,7 @@ impl<'a> write_tag_and_id for Encoder<'a> {
     }
 
     fn id(&mut self, id: ast::NodeId) {
-        self.wr_tagged_u64(c::tag_table_id as uint, id as u64);
+        id.encode(self).unwrap();
     }
 }
 
@@ -1152,51 +1150,44 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     if let Some(def) = tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
         rbml_w.tag(c::tag_table_def, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| def.encode(rbml_w).unwrap());
+            def.encode(rbml_w).unwrap();
         })
     }
 
     if let Some(ty) = tcx.node_types.borrow().get(&id) {
         rbml_w.tag(c::tag_table_node_type, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_ty(ecx, *ty);
-            })
+            rbml_w.emit_ty(ecx, *ty);
         })
     }
 
     if let Some(item_substs) = tcx.item_substs.borrow().get(&id) {
         rbml_w.tag(c::tag_table_item_subst, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_substs(ecx, &item_substs.substs);
-            })
+            rbml_w.emit_substs(ecx, &item_substs.substs);
         })
     }
 
     if let Some(fv) = tcx.freevars.borrow().get(&id) {
         rbml_w.tag(c::tag_table_freevars, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_from_vec(fv, |rbml_w, fv_entry| {
-                    Ok(encode_freevar_entry(rbml_w, fv_entry))
-                });
-            })
+            rbml_w.emit_from_vec(fv, |rbml_w, fv_entry| {
+                Ok(encode_freevar_entry(rbml_w, fv_entry))
+            });
         });
 
         for freevar in fv {
             rbml_w.tag(c::tag_table_upvar_capture_map, |rbml_w| {
                 rbml_w.id(id);
-                rbml_w.tag(c::tag_table_val, |rbml_w| {
-                    let var_id = freevar.def.def_id().node;
-                    let upvar_id = ty::UpvarId {
-                        var_id: var_id,
-                        closure_expr_id: id
-                    };
-                    let upvar_capture = tcx.upvar_capture_map.borrow()[upvar_id].clone();
-                    var_id.encode(rbml_w);
-                    upvar_capture.encode(rbml_w);
-                })
+
+                let var_id = freevar.def.def_id().node;
+                let upvar_id = ty::UpvarId {
+                    var_id: var_id,
+                    closure_expr_id: id
+                };
+                let upvar_capture = tcx.upvar_capture_map.borrow()[upvar_id].clone();
+                var_id.encode(rbml_w);
+                upvar_capture.encode(rbml_w);
             })
         }
     }
@@ -1205,18 +1196,14 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     if let Some(type_scheme) = tcx.tcache.borrow().get(&lid) {
         rbml_w.tag(c::tag_table_tcache, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_type_scheme(ecx, type_scheme.clone());
-            })
+            rbml_w.emit_type_scheme(ecx, type_scheme.clone());
         })
     }
 
     if let Some(type_param_def) = tcx.ty_param_defs.borrow().get(&id) {
         rbml_w.tag(c::tag_table_param_defs, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_type_param_def(ecx, type_param_def)
-            })
+            rbml_w.emit_type_param_def(ecx, type_param_def)
         })
     }
 
@@ -1224,18 +1211,14 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     if let Some(method) = tcx.method_map.borrow().get(&method_call) {
         rbml_w.tag(c::tag_table_method_map, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| {
-                encode_method_callee(ecx, rbml_w, method_call.adjustment, method)
-            })
+            encode_method_callee(ecx, rbml_w, method_call.adjustment, method)
         })
     }
 
     if let Some(trait_ref) = tcx.object_cast_map.borrow().get(&id) {
         rbml_w.tag(c::tag_table_object_cast_map, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_trait_ref(ecx, &*trait_ref.0);
-            })
+            rbml_w.emit_trait_ref(ecx, &*trait_ref.0);
         })
     }
 
@@ -1246,9 +1229,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                 if let Some(method) = tcx.method_map.borrow().get(&method_call) {
                     rbml_w.tag(c::tag_table_method_map, |rbml_w| {
                         rbml_w.id(id);
-                        rbml_w.tag(c::tag_table_val, |rbml_w| {
-                            encode_method_callee(ecx, rbml_w, method_call.adjustment, method)
-                        })
+                        encode_method_callee(ecx, rbml_w, method_call.adjustment, method)
                     })
                 }
             }
@@ -1259,10 +1240,8 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                     if let Some(method) = tcx.method_map.borrow().get(&method_call) {
                         rbml_w.tag(c::tag_table_method_map, |rbml_w| {
                             rbml_w.id(id);
-                            rbml_w.tag(c::tag_table_val, |rbml_w| {
-                                encode_method_callee(ecx, rbml_w,
-                                                     method_call.adjustment, method)
-                            })
+                            encode_method_callee(ecx, rbml_w,
+                                                 method_call.adjustment, method)
                         })
                     }
                 }
@@ -1274,36 +1253,28 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
         rbml_w.tag(c::tag_table_adjustments, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_auto_adjustment(ecx, adjustment);
-            })
+            rbml_w.emit_auto_adjustment(ecx, adjustment);
         })
     }
 
     if let Some(closure_type) = tcx.closure_tys.borrow().get(&ast_util::local_def(id)) {
         rbml_w.tag(c::tag_table_closure_tys, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_closure_type(ecx, closure_type);
-            })
+            rbml_w.emit_closure_type(ecx, closure_type);
         })
     }
 
     if let Some(closure_kind) = tcx.closure_kinds.borrow().get(&ast_util::local_def(id)) {
         rbml_w.tag(c::tag_table_closure_kinds, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| {
-                encode_closure_kind(rbml_w, *closure_kind)
-            })
+            encode_closure_kind(rbml_w, *closure_kind)
         })
     }
 
     for &qualif in tcx.const_qualif_map.borrow().get(&id).iter() {
         rbml_w.tag(c::tag_table_const_qualif, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| {
-                qualif.encode(rbml_w).unwrap()
-            })
+            qualif.encode(rbml_w).unwrap()
         })
     }
 }
@@ -1831,8 +1802,9 @@ fn decode_side_tables(dcx: &DecodeContext,
                       ast_doc: rbml::Doc) {
     let tbl_doc = ast_doc.get(c::tag_table as uint);
     reader::docs(tbl_doc, |tag, entry_doc| {
-        let id0 = entry_doc.get(c::tag_table_id as uint).as_int();
-        let id = dcx.tr_id(id0 as ast::NodeId);
+        let mut entry_dsr = reader::Decoder::new(entry_doc);
+        let id0: ast::NodeId = Decodable::decode(&mut entry_dsr).unwrap();
+        let id = dcx.tr_id(id0);
 
         debug!(">> Side table document with tag 0x{:x} \
                 found for id {} (orig {})",
@@ -1845,13 +1817,11 @@ fn decode_side_tables(dcx: &DecodeContext,
                             tag));
             }
             Some(value) => {
-                let val_doc = entry_doc.get(c::tag_table_val as uint);
-                let mut val_dsr = reader::Decoder::new(val_doc);
-                let val_dsr = &mut val_dsr;
+                let val_dsr = &mut entry_dsr;
 
                 match value {
                     c::tag_table_def => {
-                        let def = decode_def(dcx, val_doc);
+                        let def = decode_def(dcx, val_dsr);
                         dcx.tcx.def_map.borrow_mut().insert(id, def::PathResolution {
                             base_def: def,
                             // This doesn't matter cross-crate.
@@ -1995,7 +1965,7 @@ fn mk_ctxt() -> parse::ParseSess {
 fn roundtrip(in_item: Option<P<ast::Item>>) {
     let in_item = in_item.unwrap();
     let mut wr = SeekableMemWriter::new();
-    encode_item_ast(&mut writer::Encoder::new(&mut wr), &*in_item);
+    encode_item_ast(&mut Encoder::new(&mut wr), &*in_item);
     let rbml_doc = rbml::Doc::new(wr.get_ref());
     let out_item = decode_item_ast(rbml_doc);
 
