@@ -11,7 +11,7 @@
 #![feature(box_syntax)]
 
 fn main() {
-    let x = box 1;
+    let x: Box<_> = box 1;
 
     let v = (1, 2);
 

@@ -16,7 +16,7 @@ struct Foo(Box<isize>, isize);
 struct Bar(isize, isize);
 
 fn main() {
-    let x = (box 1, 2);
+    let x: (Box<_>, _) = (box 1, 2);
     let r = &x.0;
     let y = x; //~ ERROR cannot move out of `x` because it is borrowed
 

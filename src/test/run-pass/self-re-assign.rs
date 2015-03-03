@@ -17,7 +17,7 @@
 use std::rc::Rc;
 
 pub fn main() {
-   let mut x = box 3;
+   let mut x: Box<_> = box 3;
    x = x;
    assert!(*x == 3);
 

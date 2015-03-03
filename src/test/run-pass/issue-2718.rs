@@ -11,8 +11,6 @@
 //
 // ignore-lexer-test FIXME #15883
 
-#![allow(unknown_features)]
-#![feature(box_syntax)]
 #![feature(unsafe_destructor)]
 
 pub type Task = int;
@@ -52,11 +50,11 @@ pub mod pipes {
 
     pub fn packet<T:Send>() -> *const packet<T> {
         unsafe {
-            let p: *const packet<T> = mem::transmute(box Stuff{
+            let p: *const packet<T> = mem::transmute(Box::new(Stuff{
                 state: empty,
                 blocked_task: None::<Task>,
                 payload: None::<T>
-            });
+            }));
             p
         }
     }

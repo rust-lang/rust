@@ -10,8 +10,6 @@
 
 #![feature(unsafe_destructor)]
 
-#![feature(box_syntax)]
-
 use std::cell::Cell;
 
 #[derive(Debug)]
@@ -36,8 +34,9 @@ fn clone<T: Clone>(t: &T) -> T { t.clone() }
 fn main() {
     let i1 = &Cell::new(0);
     let i2 = &Cell::new(1);
-    let r1 = vec!(box r { i: i1 });
-    let r2 = vec!(box r { i: i2 });
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let r1 = vec!(Box::new(r { i: i1 }));
+    let r2 = vec!(Box::new(r { i: i2 }));
     f(clone(&r1), clone(&r2));
     //~^ ERROR the trait `core::clone::Clone` is not implemented for the type
     //~^^ ERROR the trait `core::clone::Clone` is not implemented for the type

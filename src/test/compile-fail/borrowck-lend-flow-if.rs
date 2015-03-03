@@ -30,7 +30,7 @@ fn pre_freeze_cond() {
     // In this instance, the freeze is conditional and starts before
     // the mut borrow.
 
-    let mut v = box 3;
+    let mut v: Box<_> = box 3;
     let _w;
     if cond() {
         _w = &v;
@@ -42,7 +42,7 @@ fn pre_freeze_else() {
     // In this instance, the freeze and mut borrow are on separate sides
     // of the if.
 
-    let mut v = box 3;
+    let mut v: Box<_> = box 3;
     let _w;
     if cond() {
         _w = &v;

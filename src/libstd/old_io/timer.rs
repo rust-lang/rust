@@ -15,6 +15,7 @@
 
 // FIXME: These functions take Durations but only pass ms to the backend impls.
 
+use boxed::Box;
 use sync::mpsc::{Receiver, Sender, channel};
 use time::Duration;
 use old_io::IoResult;
@@ -143,7 +144,7 @@ impl Timer {
         let (tx, rx) = channel();
         // Short-circuit the timer backend for 0 duration
         if in_ms_u64(duration) != 0 {
-            self.inner.oneshot(in_ms_u64(duration), box TimerCallback { tx: tx });
+            self.inner.oneshot(in_ms_u64(duration), Box::new(TimerCallback { tx: tx }));
         } else {
             tx.send(()).unwrap();
         }
@@ -204,7 +205,7 @@ impl Timer {
         // not clear what use a 0ms period is anyway...
         let ms = if ms == 0 { 1 } else { ms };
         let (tx, rx) = channel();
-        self.inner.period(ms, box TimerCallback { tx: tx });
+        self.inner.period(ms, Box::new(TimerCallback { tx: tx }));
         return rx
     }
 }

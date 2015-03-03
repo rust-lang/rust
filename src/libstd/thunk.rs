@@ -33,7 +33,7 @@ impl<'a,A,R> Thunk<'a,A,R> {
         where F : FnOnce(A) -> R, F : Send + 'a
     {
         Thunk {
-            invoke: box func
+            invoke: Box::<F>::new(func)
         }
     }
 

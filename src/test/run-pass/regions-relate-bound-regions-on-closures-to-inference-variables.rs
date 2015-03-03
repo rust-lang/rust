@@ -30,7 +30,8 @@ struct Foo<'a,'tcx:'a> {
 
 impl<'a,'tcx> Foo<'a,'tcx> {
     fn bother(&mut self) -> int {
-        self.elaborate_bounds(box |this| {
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+        self.elaborate_bounds(Box::new(|this| {
             // (*) Here: type of `this` is `&'f0 Foo<&'f1, '_2>`,
             // where `'f0` and `'f1` are fresh, free regions that
             // result from the bound regions on the closure, and `'2`
@@ -44,7 +45,7 @@ impl<'a,'tcx> Foo<'a,'tcx> {
             // `region_inference.rs` file (and the `givens` field, in
             // particular) for more details.
             this.foo()
-        })
+        }))
     }
 
     fn foo(&mut self) -> int {

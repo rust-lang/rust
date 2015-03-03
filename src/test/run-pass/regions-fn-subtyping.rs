@@ -13,7 +13,8 @@
 #![allow(dead_assignment)]
 #![allow(unused_variable)]
 #![allow(unknown_features)]
-#![feature(box_syntax)]
+
+// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
 
 // Should pass region checking.
 fn ok(f: Box<FnMut(&uint)>) {
@@ -23,14 +24,14 @@ fn ok(f: Box<FnMut(&uint)>) {
     // f's type should be a subtype of g's type), because f can be
     // used in any context that expects g's type.  But this currently
     // fails.
-    let mut g: Box<for<'r> FnMut(&'r uint)> = box |x| { };
+    let mut g: Box<for<'r> FnMut(&'r uint)> = Box::new(|x| { });
     g = f;
 }
 
 // This version is the same as above, except that here, g's type is
 // inferred.
 fn ok_inferred(f: Box<FnMut(&uint)>) {
-    let mut g: Box<for<'r> FnMut(&'r uint)> = box |_| {};
+    let mut g: Box<for<'r> FnMut(&'r uint)> = Box::new(|_| {});
     g = f;
 }
 

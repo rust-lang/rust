@@ -25,7 +25,7 @@ impl Drop for Foo {
 }
 
 fn main() {
-  let mut ptr = box Foo { x: 0 };
+  let mut ptr: Box<_> = box Foo { x: 0 };
   let mut test = |foo: &Foo| {
     ptr = box Foo { x: ptr.x + 1 };
   };

@@ -40,7 +40,7 @@ pub fn main() {
     let new_x = x.change();
     assert_eq!(new_x.a, 55);
 
-    let x = box new_x;
+    let x: Box<_> = box new_x;
     let new_x = x.change_again();
     assert_eq!(new_x.a, 45);
 }

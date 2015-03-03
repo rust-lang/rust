@@ -32,13 +32,13 @@ fn r(i:int) -> r {
 pub fn main() {
     p_foo(r(10));
 
-    p_foo(box r(10));
-    p_foo(box 10);
+    p_foo::<Box<_>>(box r(10));
+    p_foo::<Box<_>>(box 10);
     p_foo(10);
 
-    s_foo(box 10);
+    s_foo::<Box<_>>(box 10);
     s_foo(10);
 
-    u_foo(box 10);
+    u_foo::<Box<_>>(box 10);
     u_foo(10);
 }

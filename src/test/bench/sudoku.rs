@@ -124,7 +124,7 @@ impl Sudoku {
     fn next_color(&mut self, row: u8, col: u8, start_color: u8) -> bool {
         if start_color < 10u8 {
             // colors not yet used
-            let mut avail = box Colors::new(start_color);
+            let mut avail: Box<_> = box Colors::new(start_color);
 
             // drop colors already in use in neighbourhood
             self.drop_colors(&mut *avail, row, col);

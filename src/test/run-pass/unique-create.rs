@@ -12,7 +12,7 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    box 100;
+    let _: Box<_> = box 100;
 }
 
 fn vec() {

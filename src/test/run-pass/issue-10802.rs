@@ -42,13 +42,13 @@ impl  Whatever {
 
 fn main() {
     {
-        let f = box DroppableStruct;
+        let f: Box<_> = box DroppableStruct;
         let _a = Whatever::new(box f as Box<MyTrait>);
     }
     assert!(unsafe { DROPPED });
     unsafe { DROPPED = false; }
     {
-        let f = box DroppableEnum::DroppableVariant1;
+        let f: Box<_> = box DroppableEnum::DroppableVariant1;
         let _a = Whatever::new(box f as Box<MyTrait>);
     }
     assert!(unsafe { DROPPED });

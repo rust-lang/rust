@@ -404,7 +404,8 @@ fn test_collect() {
 
 #[test]
 fn test_all() {
-    let v: Box<[int]> = box [1, 2, 3, 4, 5];
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let v: Box<[int]> = Box::new([1, 2, 3, 4, 5]);
     assert!(v.iter().all(|&x| x < 10));
     assert!(!v.iter().all(|&x| x % 2 == 0));
     assert!(!v.iter().all(|&x| x > 100));
@@ -413,7 +414,8 @@ fn test_all() {
 
 #[test]
 fn test_any() {
-    let v: Box<[int]> = box [1, 2, 3, 4, 5];
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let v: Box<[int]> = Box::new([1, 2, 3, 4, 5]);
     assert!(v.iter().any(|&x| x < 10));
     assert!(v.iter().any(|&x| x % 2 == 0));
     assert!(!v.iter().any(|&x| x > 100));
@@ -581,8 +583,9 @@ fn test_rposition() {
 #[test]
 #[should_fail]
 fn test_rposition_panic() {
-    let v = [(box 0, box 0), (box 0, box 0),
-             (box 0, box 0), (box 0, box 0)];
+    let v: [(Box<_>, Box<_>); 4] =
+        [(box 0, box 0), (box 0, box 0),
+         (box 0, box 0), (box 0, box 0)];
     let mut i = 0;
     v.iter().rposition(|_elt| {
         if i == 2 {

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
-
 struct Struct {
     person: &'static str
 }
@@ -27,6 +25,7 @@ impl Trait<&'static str> for Struct {
 fn main() {
     let person = "Fred".to_string();
     let person: &str = &person;  //~ ERROR `person` does not live long enough
-    let s: Box<Trait<&'static str>> = box Struct { person: person };
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let s: Box<Trait<&'static str>> = Box::new(Struct { person: person });
 }
 

@@ -804,7 +804,7 @@ mod test {
     fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Thunk<'static>) {
         let (tx, rx) = channel();
 
-        let x = box 1;
+        let x: Box<_> = box 1;
         let x_in_parent = (&*x) as *const i32 as usize;
 
         spawnfn(Thunk::new(move|| {

@@ -12,7 +12,7 @@
 #![feature(box_syntax)]
 
 fn f() {
-    let a = box 1;
+    let a: Box<_> = box 1;
     let b: &int = &*a;
     println!("{}", b);
 }

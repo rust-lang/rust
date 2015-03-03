@@ -14,7 +14,7 @@
 use std::thread;
 
 fn f() {
-    let _a = box 0;
+    let _a: Box<_> = box 0;
     panic!();
 }
 

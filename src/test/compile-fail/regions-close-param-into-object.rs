@@ -8,32 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
+// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
 
 trait X { fn foo(&self) {} }
 
 fn p1<T>(v: T) -> Box<X+'static>
     where T : X
 {
-    box v //~ ERROR parameter type `T` may not live long enough
+    Box::new(v) //~ ERROR parameter type `T` may not live long enough
 }
 
 fn p2<T>(v: Box<T>) -> Box<X+'static>
     where Box<T> : X
 {
-    box v //~ ERROR parameter type `T` may not live long enough
+    Box::new(v) //~ ERROR parameter type `T` may not live long enough
 }
 
 fn p3<'a,T>(v: T) -> Box<X+'a>
     where T : X
 {
-    box v //~ ERROR parameter type `T` may not live long enough
+    Box::new(v) //~ ERROR parameter type `T` may not live long enough
 }
 
 fn p4<'a,T>(v: Box<T>) -> Box<X+'a>
     where Box<T> : X
 {
-    box v //~ ERROR parameter type `T` may not live long enough
+    Box::new(v) //~ ERROR parameter type `T` may not live long enough
 }
 
 fn main() {}

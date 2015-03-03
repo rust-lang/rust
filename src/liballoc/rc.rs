@@ -795,6 +795,7 @@ impl<T> RcBoxPtr<T> for Weak<T> {
 #[cfg(test)]
 mod tests {
     use super::{Rc, Weak, weak_count, strong_count};
+    use std::boxed::Box;
     use std::cell::RefCell;
     use std::option::Option;
     use std::option::Option::{Some, None};
@@ -826,7 +827,7 @@ mod tests {
 
     #[test]
     fn test_destructor() {
-        let x = Rc::new(box 5);
+        let x: Rc<Box<_>> = Rc::new(box 5);
         assert_eq!(**x, 5);
     }
 

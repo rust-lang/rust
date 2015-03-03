@@ -27,7 +27,7 @@ impl Changer for X {
 }
 
 pub fn main() {
-    let x = box X { a: 32 };
+    let x: Box<_> = box X { a: 32 };
     let new_x = x.change();
     assert_eq!(new_x.a, 55);
 }

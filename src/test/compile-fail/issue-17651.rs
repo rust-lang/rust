@@ -11,10 +11,8 @@
 // Test that moves of unsized values within closures are caught
 // and rejected.
 
-#![feature(box_syntax)]
-
 fn main() {
-    (|| box *[0_usize].as_slice())();
-    //~^ ERROR cannot move out of borrowed content
-    //~^^ ERROR cannot move a value of type [usize]
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    (|| Box::new(*[0_usize].as_slice()))();
+    //~^ ERROR the trait `core::marker::Sized` is not implemented for the type `[usize]`
 }

@@ -13,6 +13,6 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    let y = box 1;
+    let y: Box<_> = box 1;
     y;
 }

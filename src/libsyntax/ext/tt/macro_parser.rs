@@ -479,7 +479,7 @@ pub fn parse(sess: &ParseSess,
                 }
                 rdr.next_token();
             } else /* bb_eis.len() == 1 */ {
-                let mut rust_parser = Parser::new(sess, cfg.clone(), box rdr.clone());
+                let mut rust_parser = Parser::new(sess, cfg.clone(), Box::new(rdr.clone()));
 
                 let mut ei = bb_eis.pop().unwrap();
                 match ei.top_elts.get_tt(ei.idx) {

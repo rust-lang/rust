@@ -16,8 +16,8 @@ extern crate collections;
 use std::collections::BitVec;
 
 fn bitv_test() {
-    let mut v1 = box BitVec::from_elem(31, false);
-    let v2 = box BitVec::from_elem(31, true);
+    let mut v1: Box<_> = box BitVec::from_elem(31, false);
+    let v2: Box<_> = box BitVec::from_elem(31, true);
     v1.union(&*v2);
 }
 

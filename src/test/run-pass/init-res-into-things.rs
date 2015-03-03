@@ -67,7 +67,7 @@ fn test_tup() {
 fn test_unique() {
     let i = &Cell::new(0);
     {
-        let _a = box r(i);
+        let _a: Box<_> = box r(i);
     }
     assert_eq!(i.get(), 1);
 }
@@ -75,7 +75,7 @@ fn test_unique() {
 fn test_unique_rec() {
     let i = &Cell::new(0);
     {
-        let _a = box BoxR {
+        let _a: Box<_> = box BoxR {
             x: r(i)
         };
     }

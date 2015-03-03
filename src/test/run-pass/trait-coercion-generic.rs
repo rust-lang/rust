@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unknown_features)]
-#![feature(box_syntax)]
-
 trait Trait<T> {
     fn f(&self, x: T);
 }
@@ -29,7 +26,8 @@ impl Trait<&'static str> for Struct {
 
 pub fn main() {
     let a = Struct { x: 1, y: 2 };
-    let b: Box<Trait<&'static str>> = box a;
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let b: Box<Trait<&'static str>> = Box::new(a);
     b.f("Mary");
     let c: &Trait<&'static str> = &a;
     c.f("Joe");

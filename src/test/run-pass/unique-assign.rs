@@ -12,7 +12,7 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    let mut i;
+    let mut i: Box<_>;
     i = box 1;
     assert_eq!(*i, 1);
 }

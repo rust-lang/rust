@@ -14,7 +14,7 @@
 #![feature(box_syntax)]
 
 fn main() {
-    let a = box box 2;
+    let a: Box<Box<_>> = box box 2;
     let b = &a;
 
     let z = *a; //~ ERROR: cannot move out of `*a` because it is borrowed

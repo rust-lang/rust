@@ -1509,6 +1509,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
 
 #[cfg(test)]
 mod tests {
+    use alloc::boxed::Box;
     use core::cmp::Ordering::{Greater, Less, Equal};
     use core::prelude::{Some, None, Clone};
     use core::prelude::{Iterator, IteratorExt};
@@ -1799,7 +1800,7 @@ mod tests {
     #[test]
     fn test_swap_remove_noncopyable() {
         // Tests that we don't accidentally run destructors twice.
-        let mut v = Vec::new();
+        let mut v: Vec<Box<_>> = Vec::new();
         v.push(box 0u8);
         v.push(box 0u8);
         v.push(box 0u8);
@@ -1828,7 +1829,7 @@ mod tests {
 
     #[test]
     fn test_truncate() {
-        let mut v = vec![box 6,box 5,box 4];
+        let mut v: Vec<Box<_>> = vec![box 6,box 5,box 4];
         v.truncate(1);
         let v = v;
         assert_eq!(v.len(), 1);
@@ -1838,7 +1839,7 @@ mod tests {
 
     #[test]
     fn test_clear() {
-        let mut v = vec![box 6,box 5,box 4];
+        let mut v: Vec<Box<_>> = vec![box 6,box 5,box 4];
         v.clear();
         assert_eq!(v.len(), 0);
         // If the unsafe block didn't drop things properly, we blow up here.
@@ -1863,11 +1864,11 @@ mod tests {
 
     #[test]
     fn test_dedup_unique() {
-        let mut v0 = vec![box 1, box 1, box 2, box 3];
+        let mut v0: Vec<Box<_>> = vec![box 1, box 1, box 2, box 3];
         v0.dedup();
-        let mut v1 = vec![box 1, box 2, box 2, box 3];
+        let mut v1: Vec<Box<_>> = vec![box 1, box 2, box 2, box 3];
         v1.dedup();
-        let mut v2 = vec![box 1, box 2, box 3, box 3];
+        let mut v2: Vec<Box<_>> = vec![box 1, box 2, box 3, box 3];
         v2.dedup();
         /*
          * If the boxed pointers were leaked or otherwise misused, valgrind
@@ -1877,11 +1878,11 @@ mod tests {
 
     #[test]
     fn test_dedup_shared() {
-        let mut v0 = vec![box 1, box 1, box 2, box 3];
+        let mut v0: Vec<Box<_>> = vec![box 1, box 1, box 2, box 3];
         v0.dedup();
-        let mut v1 = vec![box 1, box 2, box 2, box 3];
+        let mut v1: Vec<Box<_>> = vec![box 1, box 2, box 2, box 3];
         v1.dedup();
-        let mut v2 = vec![box 1, box 2, box 3, box 3];
+        let mut v2: Vec<Box<_>> = vec![box 1, box 2, box 3, box 3];
         v2.dedup();
         /*
          * If the pointers were leaked or otherwise misused, valgrind and/or
@@ -2254,8 +2255,9 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_permute_fail() {
-        let v = [(box 0, Rc::new(0)), (box 0, Rc::new(0)),
-                 (box 0, Rc::new(0)), (box 0, Rc::new(0))];
+        let v: [(Box<_>, Rc<_>); 4] =
+            [(box 0, Rc::new(0)), (box 0, Rc::new(0)),
+             (box 0, Rc::new(0)), (box 0, Rc::new(0))];
         let mut i = 0;
         for _ in v.permutations() {
             if i == 2 {
@@ -2849,7 +2851,7 @@ mod tests {
 
     #[test]
     fn test_to_vec() {
-        let xs = box [1, 2, 3];
+        let xs: Box<_> = box [1, 2, 3];
         let ys = xs.to_vec();
         assert_eq!(ys, [1, 2, 3]);
     }

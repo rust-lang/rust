@@ -11,13 +11,12 @@
 // All 3 expressions should work in that the argument gets
 // coerced to a trait object
 
-#![allow(unknown_features)]
-#![feature(box_syntax)]
+// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
 
 fn main() {
-    send::<Box<Foo>>(box Output(0));
-    Test::<Box<Foo>>::foo(box Output(0));
-    Test::<Box<Foo>>::new().send(box Output(0));
+    send::<Box<Foo>>(Box::new(Output(0)));
+    Test::<Box<Foo>>::foo(Box::new(Output(0)));
+    Test::<Box<Foo>>::new().send(Box::new(Output(0)));
 }
 
 fn send<T>(_: T) {}

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 // Tests that we can't move out of an unboxed closure environment
@@ -19,31 +18,33 @@ fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
 fn to_fn_mut<A,F:FnMut<A>>(f: F) -> F { f }
 fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
 
+// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+
 fn main() {
     // By-ref cases
     {
-        let x = box 0_usize;
+        let x = Box::new(0_usize);
         let f = to_fn(|| drop(x)); //~ ERROR cannot move
     }
     {
-        let x = box 0_usize;
+        let x = Box::new(0_usize);
         let f = to_fn_mut(|| drop(x)); //~ ERROR cannot move
     }
     {
-        let x = box 0_usize;
+        let x = Box::new(0_usize);
         let f = to_fn_once(|| drop(x)); // OK -- FnOnce
     }
     // By-value cases
     {
-        let x = box 0_usize;
+        let x = Box::new(0_usize);
         let f = to_fn(move || drop(x)); //~ ERROR cannot move
     }
     {
-        let x = box 0_usize;
+        let x = Box::new(0_usize);
         let f = to_fn_mut(move || drop(x)); //~ ERROR cannot move
     }
     {
-        let x = box 0_usize;
+        let x = Box::new(0_usize);
         let f = to_fn_once(move || drop(x)); // this one is ok
     }
 }

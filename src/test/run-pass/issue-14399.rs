@@ -23,6 +23,6 @@ trait A { fn foo(&self) {} }
 impl A for B1 {}
 
 fn main() {
-    let v = box B1;
+    let v: Box<_> = box B1;
     let _c: Box<A> = v.clone();
 }
