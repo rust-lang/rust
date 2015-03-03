@@ -195,24 +195,18 @@ pub fn immediate_rvalue_bcx<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 /// Allocates temporary space on the stack using alloca() and returns a by-ref Datum pointing to
 /// it. The memory will be dropped upon exit from `scope`. The callback `populate` should
-/// initialize the memory. If `zero` is true, the space will be zeroed when it is allocated; this
-/// is not necessary unless `bcx` does not dominate the end of `scope`.
+/// initialize the memory.
 pub fn lvalue_scratch_datum<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
                                               ty: Ty<'tcx>,
                                               name: &str,
-                                              zero: bool,
                                               scope: cleanup::ScopeId,
                                               arg: A,
                                               populate: F)
                                               -> DatumBlock<'blk, 'tcx, Lvalue> where
     F: FnOnce(A, Block<'blk, 'tcx>, ValueRef) -> Block<'blk, 'tcx>,
 {
-    let scratch = if zero {
-        alloca_zeroed(bcx, ty, name)
-    } else {
-        let llty = type_of::type_of(bcx.ccx(), ty);
-        alloca(bcx, llty, name)
-    };
+    let llty = type_of::type_of(bcx.ccx(), ty);
+    let scratch = alloca(bcx, llty, name);
 
     // Subtle. Populate the scratch memory *before* scheduling cleanup.
     let bcx = populate(arg, bcx, scratch);
@@ -383,7 +377,7 @@ impl<'tcx> Datum<'tcx, Rvalue> {
 
             ByValue => {
                 lvalue_scratch_datum(
-                    bcx, self.ty, name, false, scope, self,
+                    bcx, self.ty, name, scope, self,
                     |this, bcx, llval| this.store_to(bcx, llval))
             }
         }
