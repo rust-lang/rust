@@ -8,10 +8,34 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(static_assert)]
-#![allow(dead_code)]
+pub struct PublicType;
+struct PrivateType;
 
-#[static_assert]
-static E: i32 = 1; //~ ERROR can only have static_assert on a static with type `bool`
+pub trait PublicTrait {
+    type Item;
+}
+
+trait PrivateTrait {
+    type Item;
+}
+
+impl PublicTrait for PublicType {
+    type Item = PrivateType;  //~ ERROR private type in exported type signature
+}
+
+// OK
+impl PublicTrait for PrivateType {
+    type Item = PrivateType;
+}
+
+// OK
+impl PrivateTrait for PublicType {
+    type Item = PrivateType;
+}
+
+// OK
+impl PrivateTrait for PrivateType {
+    type Item = PrivateType;
+}
 
 fn main() {}

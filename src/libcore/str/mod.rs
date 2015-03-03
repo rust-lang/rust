@@ -134,10 +134,21 @@ impl FromStr for bool {
 
     /// Parse a `bool` from a string.
     ///
-    /// Yields an `Option<bool>`, because `s` may or may not actually be
-    /// parseable.
+    /// Yields a `Result<bool, ParseBoolError>`, because `s` may or may not
+    /// actually be parseable.
     ///
     /// # Examples
+    ///
+    /// ```rust
+    /// use std::str::FromStr;
+    ///
+    /// assert_eq!(FromStr::from_str("true"), Ok(true));
+    /// assert_eq!(FromStr::from_str("false"), Ok(false));
+    /// assert!(<bool as FromStr>::from_str("not even a boolean").is_err());
+    /// ```
+    ///
+    /// Note, in many cases, the StrExt::parse() which is based on
+    /// this FromStr::from_str() is more proper.
     ///
     /// ```rust
     /// assert_eq!("true".parse(), Ok(true));
@@ -935,6 +946,7 @@ impl<'a, P: Pattern<'a>> Iterator for MatchIndices<'a, P> {
 #[unstable(feature = "core")]
 #[deprecated(since = "1.0.0", reason = "use `Split` with a `&str`")]
 pub struct SplitStr<'a, P: Pattern<'a>>(Split<'a, P>);
+#[allow(deprecated)]
 impl<'a, P: Pattern<'a>> Iterator for SplitStr<'a, P> {
     type Item = &'a str;
 
@@ -1325,6 +1337,7 @@ pub trait StrExt {
     fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P>;
     fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>;
     fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P>;
+    #[allow(deprecated) /* for SplitStr */]
     fn split_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitStr<'a, P>;
     fn lines<'a>(&'a self) -> Lines<'a>;
     fn lines_any<'a>(&'a self) -> LinesAny<'a>;

@@ -571,7 +571,7 @@ struct RawPtrDeriveVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for RawPtrDeriveVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
-        static MSG: &'static str = "use of `#[derive]` with a raw pointer";
+        const MSG: &'static str = "use of `#[derive]` with a raw pointer";
         if let ast::TyPtr(..) = ty.node {
             self.cx.span_lint(RAW_POINTER_DERIVE, ty.span, MSG);
         }

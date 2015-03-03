@@ -167,7 +167,7 @@ mod imp {
     use std::os;
     use std::ptr;
 
-    static LOCKFILE_EXCLUSIVE_LOCK: libc::DWORD = 0x00000002;
+    const LOCKFILE_EXCLUSIVE_LOCK: libc::DWORD = 0x00000002;
 
     #[allow(non_snake_case)]
     extern "system" {

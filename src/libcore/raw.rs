@@ -70,6 +70,7 @@ impl<T> Copy for Slice<T> {}
 #[deprecated(reason = "unboxed new closures do not have a universal representation; \
                        `&Fn` (etc) trait objects should use `TraitObject` instead",
              since= "1.0.0")]
+#[allow(deprecated) /* for deriving Copy impl */]
 pub struct Closure {
     pub code: *mut (),
     pub env: *mut (),

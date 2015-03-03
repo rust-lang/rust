@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(static_assert)]
+
 #[static_assert]
 static b: bool = true;
 

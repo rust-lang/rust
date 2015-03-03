@@ -24,7 +24,7 @@ pub trait ToHex {
     fn to_hex(&self) -> String;
 }
 
-static CHARS: &'static[u8] = b"0123456789abcdef";
+const CHARS: &'static [u8] = b"0123456789abcdef";
 
 impl ToHex for [u8] {
     /// Turn a vector of `u8` bytes into a hexadecimal string.

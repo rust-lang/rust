@@ -93,7 +93,7 @@ pub mod driver;
 pub mod pretty;
 
 
-static BUG_REPORT_URL: &'static str =
+const BUG_REPORT_URL: &'static str =
     "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports";
 
 
@@ -770,7 +770,7 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
 pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
-    static STACK_SIZE: uint = 8 * 1024 * 1024; // 8MB
+    const STACK_SIZE: uint = 8 * 1024 * 1024; // 8MB
 
     let (tx, rx) = channel();
     let w = old_io::ChanWriter::new(tx);

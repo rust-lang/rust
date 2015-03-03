@@ -76,7 +76,7 @@ use std::hash::{Hash, SipHasher, Hasher};
 use std::mem;
 use std::ops;
 use std::rc::Rc;
-use std::vec::{CowVec, IntoIter};
+use std::vec::IntoIter;
 use collections::enum_set::{EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
@@ -5580,7 +5580,7 @@ pub fn predicates<'tcx>(
 
 /// Get the attributes of a definition.
 pub fn get_attrs<'tcx>(tcx: &'tcx ctxt, did: DefId)
-                       -> CowVec<'tcx, ast::Attribute> {
+                       -> Cow<'tcx, [ast::Attribute]> {
     if is_local(did) {
         let item = tcx.map.expect_item(did.node);
         Cow::Borrowed(&item.attrs)
@@ -5753,22 +5753,22 @@ pub fn closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
 
 pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool {
     #![allow(non_upper_case_globals)]
-    static tycat_other: int = 0;
-    static tycat_bool: int = 1;
-    static tycat_char: int = 2;
-    static tycat_int: int = 3;
-    static tycat_float: int = 4;
-    static tycat_raw_ptr: int = 6;
+    const tycat_other: int = 0;
+    const tycat_bool: int = 1;
+    const tycat_char: int = 2;
+    const tycat_int: int = 3;
+    const tycat_float: int = 4;
+    const tycat_raw_ptr: int = 6;
 
-    static opcat_add: int = 0;
-    static opcat_sub: int = 1;
-    static opcat_mult: int = 2;
-    static opcat_shift: int = 3;
-    static opcat_rel: int = 4;
-    static opcat_eq: int = 5;
-    static opcat_bit: int = 6;
-    static opcat_logic: int = 7;
-    static opcat_mod: int = 8;
+    const opcat_add: int = 0;
+    const opcat_sub: int = 1;
+    const opcat_mult: int = 2;
+    const opcat_shift: int = 3;
+    const opcat_rel: int = 4;
+    const opcat_eq: int = 5;
+    const opcat_bit: int = 6;
+    const opcat_logic: int = 7;
+    const opcat_mod: int = 8;
 
     fn opcat(op: ast::BinOp) -> int {
         match op.node {
@@ -5807,8 +5807,8 @@ pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool
         }
     }
 
-    static t: bool = true;
-    static f: bool = false;
+    const t: bool = true;
+    const f: bool = false;
 
     let tbl = [
     //           +, -, *, shift, rel, ==, bit, logic, mod

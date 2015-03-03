@@ -127,7 +127,7 @@ impl IsaacRng {
         let mut a = self.a;
         let mut b = self.b + self.c;
 
-        static MIDPOINT: uint = (RAND_SIZE / 2) as uint;
+        const MIDPOINT: uint = (RAND_SIZE / 2) as uint;
 
         macro_rules! ind {
             ($x:expr) => ( self.mem[(($x >> 2) as uint & ((RAND_SIZE - 1) as uint))] )
