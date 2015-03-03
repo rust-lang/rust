@@ -504,12 +504,12 @@ maintained then a thread always has an "infinite stack" and this function
 shouldn't get triggered.
 
 The second of these three functions, `eh_personality`, is used by the
-failure mechanisms of the compiler. This is often mapped to GCC's
+panic mechanisms of the compiler. This is often mapped to GCC's
 personality function (see the
 [libstd implementation](../std/rt/unwind/index.html) for more
 information), but crates which do not trigger a panic can be assured
 that this function is never called. The final function, `panic_fmt`, is
-also used by the failure mechanisms of the compiler.
+also used by the panic mechanisms of the compiler.
 
 ## Using libcore
 
@@ -703,8 +703,8 @@ Other features provided by lang items include:
   `==`, `<`, dereferencing (`*`) and `+` (etc.) operators are all
   marked with lang items; those specific four are `eq`, `ord`,
   `deref`, and `add` respectively.
-- stack unwinding and general failure; the `eh_personality`, `fail`
-  and `fail_bounds_checks` lang items.
+- stack unwinding and panic; the `eh_personality`, `panic`
+  and `panic_bounds_checks` lang items.
 - the traits in `std::marker` used to indicate types of
   various kinds; lang items `send`, `sync` and `copy`.
 - the marker types and variance indicators found in

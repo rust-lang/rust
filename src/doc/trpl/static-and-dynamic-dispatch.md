@@ -138,15 +138,15 @@ These trait object coercions and casts also work for pointers like `&mut T` to
 `&mut Foo` and `Box<T>` to `Box<Foo>`, but that's all at the moment. Coercions
 and casts are identical.
 
-This operation can be seen as "erasing" the compiler's knowledge about the
-specific type of the pointer, and hence trait objects are sometimes referred to
-"type erasure".
+This operation can be seen as "erasing" the compiler's knowledge about
+the specific type of the pointer, and hence trait objects are said to
+employ "type erasure".
 
 ### Representation
 
 Let's start simple, with the runtime representation of a trait object. The
 `std::raw` module contains structs with layouts that are the same as the
-complicated build-in types, [including trait objects][stdraw]:
+several built-in types, [including trait objects][stdraw]:
 
 ```rust
 # mod foo {
