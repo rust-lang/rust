@@ -159,7 +159,7 @@ pub struct PrintStackElem {
     pbreak: PrintStackBreak
 }
 
-static SIZE_INFINITY: isize = 0xffff;
+const SIZE_INFINITY: isize = 0xffff;
 
 pub fn mk_printer(out: Box<old_io::Writer+'static>, linewidth: usize) -> Printer {
     // Yes 3, it makes the ring buffers big enough to never

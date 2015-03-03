@@ -2544,7 +2544,7 @@ mod bit_vec_bench {
 
     use super::BitVec;
 
-    static BENCH_BITS : usize = 1 << 14;
+    const BENCH_BITS : usize = 1 << 14;
 
     fn rng() -> rand::IsaacRng {
         let seed: &[_] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
@@ -3039,7 +3039,7 @@ mod bit_set_bench {
 
     use super::{BitVec, BitSet};
 
-    static BENCH_BITS : usize = 1 << 14;
+    const BENCH_BITS : usize = 1 << 14;
 
     fn rng() -> rand::IsaacRng {
         let seed: &[_] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 0];

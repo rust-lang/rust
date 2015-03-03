@@ -39,8 +39,8 @@ use alloc::heap;
 #[unstable(feature = "collections")]
 pub use VecDeque as RingBuf;
 
-static INITIAL_CAPACITY: usize = 7; // 2^3 - 1
-static MINIMUM_CAPACITY: usize = 1; // 2 - 1
+const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
+const MINIMUM_CAPACITY: usize = 1; // 2 - 1
 
 /// `VecDeque` is a growable ring buffer, which can be used as a
 /// double-ended queue efficiently.

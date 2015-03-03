@@ -223,7 +223,7 @@ fn ziggurat<R: Rng, P, Z>(
             mut pdf: P,
             mut zero_case: Z)
             -> f64 where P: FnMut(f64) -> f64, Z: FnMut(&mut R, f64) -> f64 {
-    static SCALE: f64 = (1u64 << 53) as f64;
+    const SCALE: f64 = (1u64 << 53) as f64;
     loop {
         // reimplement the f64 generation as an optimisation suggested
         // by the Doornik paper: we have a lot of precision-space

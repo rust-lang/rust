@@ -281,9 +281,9 @@ mod imp {
         hcryptprov: HCRYPTPROV
     }
 
-    static PROV_RSA_FULL: DWORD = 1;
-    static CRYPT_SILENT: DWORD = 64;
-    static CRYPT_VERIFYCONTEXT: DWORD = 0xF0000000;
+    const PROV_RSA_FULL: DWORD = 1;
+    const CRYPT_SILENT: DWORD = 64;
+    const CRYPT_VERIFYCONTEXT: DWORD = 0xF0000000;
 
     #[allow(non_snake_case)]
     extern "system" {

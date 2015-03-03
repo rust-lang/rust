@@ -13,7 +13,7 @@ use std::old_io;
 use std::slice;
 use std::iter::repeat;
 
-static BUF_CAPACITY: uint = 128;
+const BUF_CAPACITY: uint = 128;
 
 fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> {
     // compute offset as signed and clamp to prevent overflow

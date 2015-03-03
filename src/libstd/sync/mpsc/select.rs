@@ -473,7 +473,7 @@ mod test {
 
     #[test]
     fn stress() {
-        static AMT: i32 = 10000;
+        const AMT: i32 = 10000;
         let (tx1, rx1) = channel::<i32>();
         let (tx2, rx2) = channel::<i32>();
         let (tx3, rx3) = channel::<()>();

@@ -45,7 +45,7 @@ use syntax::ast_util::PostExpansionMethod;
 use syntax::codemap::DUMMY_SP;
 
 // drop_glue pointer, size, align.
-static VTABLE_OFFSET: uint = 3;
+const VTABLE_OFFSET: uint = 3;
 
 /// The main "translation" pass for methods.  Generates code
 /// for non-monomorphized methods only.  Other methods will

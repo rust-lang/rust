@@ -390,8 +390,8 @@ mod test {
     fn lots_and_lots() {
         static M: StaticMutex = MUTEX_INIT;
         static mut CNT: u32 = 0;
-        static J: u32 = 1000;
-        static K: u32 = 3;
+        const J: u32 = 1000;
+        const K: u32 = 3;
 
         fn inc() {
             for _ in 0..J {

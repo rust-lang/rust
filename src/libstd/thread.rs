@@ -847,7 +847,7 @@ mod test {
         // climbing the task tree to dereference each ancestor. (See #1789)
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
-        static GENERATIONS: usize = 16;
+        const GENERATIONS: usize = 16;
         fn child_no(x: usize) -> Thunk<'static> {
             return Thunk::new(move|| {
                 if x < GENERATIONS {
