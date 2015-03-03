@@ -38,9 +38,10 @@ endif
 # the stamp in the source dir.
 $$(LLVM_STAMP_$(1)): $(S)src/rustllvm/llvm-auto-clean-trigger
 	@$$(call E, make: cleaning llvm)
+	$(Q)touch $$@.start_time
 	$(Q)$(MAKE) clean-llvm$(1)
 	@$$(call E, make: done cleaning llvm)
-	touch $$@
+	touch -r $$@.start_time $$@ && rm $$@.start_time
 
 ifeq ($$(CFG_ENABLE_LLVM_STATIC_STDCPP),1)
 LLVM_STDCPP_LOCATION_$(1) = $$(shell $$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
