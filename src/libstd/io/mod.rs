@@ -237,11 +237,13 @@ pub trait Read {
 
 /// Extension methods for all instances of `Read`, typically imported through
 /// `std::io::prelude::*`.
+#[unstable(feature = "io", reason = "may merge into the Read trait")]
 pub trait ReadExt: Read + Sized {
     /// Create a "by reference" adaptor for this instance of `Read`.
     ///
     /// The returned adaptor also implements `Read` and will simply borrow this
     /// current reader.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn by_ref(&mut self) -> &mut Self { self }
 
     /// Transform this `Read` instance to an `Iterator` over its bytes.
@@ -250,6 +252,7 @@ pub trait ReadExt: Read + Sized {
     /// R::Err>`.  The yielded item is `Ok` if a byte was successfully read and
     /// `Err` otherwise for I/O errors. EOF is mapped to returning `None` from
     /// this iterator.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn bytes(self) -> Bytes<Self> {
         Bytes { inner: self }
     }
@@ -264,6 +267,9 @@ pub trait ReadExt: Read + Sized {
     ///
     /// Currently this adaptor will discard intermediate data read, and should
     /// be avoided if this is not desired.
+    #[unstable(feature = "io", reason = "the semantics of a partial read/write \
+                                         of where errors happen is currently \
+                                         unclear and may change")]
     fn chars(self) -> Chars<Self> {
         Chars { inner: self }
     }
@@ -273,6 +279,7 @@ pub trait ReadExt: Read + Sized {
     /// The returned `Read` instance will first read all bytes from this object
     /// until EOF is encountered. Afterwards the output is equivalent to the
     /// output of `next`.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn chain<R: Read>(self, next: R) -> Chain<Self, R> {
         Chain { first: self, second: next, done_first: false }
     }
@@ -283,6 +290,7 @@ pub trait ReadExt: Read + Sized {
     /// `limit` bytes, after which it will always return EOF (`Ok(0)`). Any
     /// read errors will not count towards the number of bytes read and future
     /// calls to `read` may succeed.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn take(self, limit: u64) -> Take<Self> {
         Take { inner: self, limit: limit }
     }
@@ -293,6 +301,9 @@ pub trait ReadExt: Read + Sized {
     /// Whenever the returned `Read` instance is read it will write the read
     /// data to `out`. The current semantics of this implementation imply that
     /// a `write` error will not report how much data was initially read.
+    #[unstable(feature = "io", reason = "the semantics of a partial read/write \
+                                         of where errors happen is currently \
+                                         unclear and may change")]
     fn tee<W: Write>(self, out: W) -> Tee<Self, W> {
         Tee { reader: self, writer: out }
     }
@@ -415,11 +426,13 @@ pub trait Write {
 
 /// Extension methods for all instances of `Write`, typically imported through
 /// `std::io::prelude::*`.
+#[unstable(feature = "io", reason = "may merge into the Read trait")]
 pub trait WriteExt: Write + Sized {
     /// Create a "by reference" adaptor for this instance of `Write`.
     ///
     /// The returned adaptor also implements `Write` and will simply borrow this
     /// current writer.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn by_ref(&mut self) -> &mut Self { self }
 
     /// Creates a new writer which will write all data to both this writer and
@@ -430,11 +443,15 @@ pub trait WriteExt: Write + Sized {
     /// implementation do not precisely track where errors happen. For example
     /// an error on the second call to `write` will not report that the first
     /// call to `write` succeeded.
+    #[unstable(feature = "io", reason = "the semantics of a partial read/write \
+                                         of where errors happen is currently \
+                                         unclear and may change")]
     fn broadcast<W: Write>(self, other: W) -> Broadcast<Self, W> {
         Broadcast { first: self, second: other }
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Write> WriteExt for T {}
 
 /// An object implementing `Seek` internally has some form of cursor which can
@@ -592,6 +609,8 @@ pub trait BufReadExt: BufRead + Sized {
     ///
     /// This function will yield errors whenever `read_until` would have also
     /// yielded an error.
+    #[unstable(feature = "io", reason = "may be renamed to not conflict with \
+                                         SliceExt::split")]
     fn split(self, byte: u8) -> Split<Self> {
         Split { buf: self, delim: byte }
     }
@@ -604,11 +623,13 @@ pub trait BufReadExt: BufRead + Sized {
     ///
     /// This function will yield errors whenever `read_string` would have also
     /// yielded an error.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn lines(self) -> Lines<Self> {
         Lines { buf: self }
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: BufRead> BufReadExt for T {}
 
 /// A `Write` adaptor which will write data to multiple locations.
@@ -635,12 +656,14 @@ impl<T: Write, U: Write> Write for Broadcast<T, U> {
 /// Adaptor to chain together two instances of `Read`.
 ///
 /// For more information, see `ReadExt::chain`.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chain<T, U> {
     first: T,
     second: U,
     done_first: bool,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Read, U: Read> Read for Chain<T, U> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         if !self.done_first {
@@ -656,11 +679,13 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
 /// Reader adaptor which limits the bytes read from an underlying reader.
 ///
 /// For more information, see `ReadExt::take`.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Take<T> {
     inner: T,
     limit: u64,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Take<T> {
     /// Returns the number of bytes that can be read before this instance will
     /// return EOF.
@@ -669,9 +694,11 @@ impl<T> Take<T> {
     ///
     /// This instance may reach EOF after reading fewer bytes than indicated by
     /// this method if the underlying `Read` instance reaches EOF.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn limit(&self) -> u64 { self.limit }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Read> Read for Take<T> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         // Don't call into inner reader at all at EOF because it may still block
@@ -686,6 +713,7 @@ impl<T: Read> Read for Take<T> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: BufRead> BufRead for Take<T> {
     fn fill_buf(&mut self) -> Result<&[u8]> {
         let buf = try!(self.inner.fill_buf());
@@ -721,10 +749,12 @@ impl<R: Read, W: Write> Read for Tee<R, W> {
 /// A bridge from implementations of `Read` to an `Iterator` of `u8`.
 ///
 /// See `ReadExt::bytes` for more information.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Bytes<R> {
     inner: R,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<R: Read> Iterator for Bytes<R> {
     type Item = Result<u8>;
 
@@ -845,10 +875,12 @@ impl<B: BufRead> Iterator for Split<B> {
 /// byte.
 ///
 /// See `BufReadExt::lines` for more information.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Lines<B> {
     buf: B,
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<B: BufRead> Iterator for Lines<B> {
     type Item = Result<String>;
 
