@@ -8,5 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test FIXME(japaric) remove test?
+
 fn wsucc(n: int) -> int { 0 + { return n + 1 } }
 pub fn main() { }

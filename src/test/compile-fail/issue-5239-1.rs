@@ -8,9 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME(japaric) the error message seems a bit weird
+
 // Regression test for issue #5239
 
 fn main() {
-    let x = |ref x: isize| -> isize { x += 1; };
-    //~^ ERROR binary assignment operation `+=` cannot be applied to type `&isize`
+    let x = |ref x: isize| -> isize {  //~ ERROR
+        x
+        =
+        1  //~  ERROR mismatched types
+        ;  //~| expected `&isize`
+           //~| found `_`
+    };
 }

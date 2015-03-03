@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
 // Test that we can do shifts by any integral type.
 
 struct Panolpy {
@@ -17,19 +18,24 @@ struct Panolpy {
 
 fn foo(p: &Panolpy) {
     22 >> p.char;
-    //~^ ERROR right-hand-side of a shift operation must have integral type
+    //~^ ERROR the trait `core::ops::Shr<char>` is not implemented for the type `_`
+    //~| ERROR
+    // FIXME(#21528) error should be reported once, not twice
 
     22 >> p.str;
-    //~^ ERROR right-hand-side of a shift operation must have integral type
+    //~^ ERROR the trait `core::ops::Shr<&str>` is not implemented for the type `_`
+    //~| ERROR
+    // FIXME(#21528) error should be reported once, not twice
 
     22 >> p;
-    //~^ ERROR right-hand-side of a shift operation must have integral type
+    //~^ ERROR the trait `core::ops::Shr<&Panolpy>` is not implemented for the type `_`
+    //~| ERROR
+    // FIXME(#21528) error should be reported once, not twice
 
     // We could be more accepting in the case of a type not yet inferred, but not
     // known to be an integer, but meh.
     let x;
     22 >> x;
-    //~^ ERROR the type of this value must be known in this context
 
     22 >> 1;
     // Integer literal types are OK

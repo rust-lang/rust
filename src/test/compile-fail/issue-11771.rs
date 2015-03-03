@@ -10,20 +10,12 @@
 
 fn main() {
     let x = ();
-    1 +
-    x //~  ERROR mismatched types
-      //~| expected `_`
-      //~| found `()`
-      //~| expected integral variable
-      //~| found ()
-    ;
+    1 + //~  ERROR the trait `core::ops::Add<()>` is not implemented for the type `_`
+    x   //~| ERROR
+    ;   // FIXME(#21528) error should be reported once, not twice
 
     let x: () = ();
-    1 +
-    x //~  ERROR mismatched types
-      //~| expected `_`
-      //~| found `()`
-      //~| expected integral variable
-      //~| found ()
-    ;
+    1 + //~  ERROR the trait `core::ops::Add<()>` is not implemented for the type `_`
+    x   //~| ERROR
+    ;   // FIXME(#21528) error should be reported once, not twice
 }

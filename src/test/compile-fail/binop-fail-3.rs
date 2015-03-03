@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test FIXME(japaric) remove test?
+
 fn foo() -> ! { panic!("quux"); }
 fn main() {
     foo() //~ ERROR the type of this value must be known in this context

@@ -1146,7 +1146,8 @@ pub trait AdditiveIterator<A> {
     ///
     /// let a = [1i32, 2, 3, 4, 5];
     /// let mut it = a.iter().cloned();
-    /// assert!(it.sum() == 15);
+    /// let sum: i32 = it.sum();
+    /// assert!(sum == 15);
     /// ```
     fn sum(self) -> A;
 }
