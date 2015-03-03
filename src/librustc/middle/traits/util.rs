@@ -359,19 +359,15 @@ pub fn predicate_for_builtin_bound<'tcx>(
 pub fn upcast<'tcx>(tcx: &ty::ctxt<'tcx>,
                     source_trait_ref: ty::PolyTraitRef<'tcx>,
                     target_trait_def_id: ast::DefId)
-                    -> Option<ty::PolyTraitRef<'tcx>>
+                    -> Vec<ty::PolyTraitRef<'tcx>>
 {
     if source_trait_ref.def_id() == target_trait_def_id {
-        return Some(source_trait_ref); // shorcut the most common case
+        return vec![source_trait_ref]; // shorcut the most common case
     }
 
-    for super_trait_ref in supertraits(tcx, source_trait_ref) {
-        if super_trait_ref.def_id() == target_trait_def_id {
-            return Some(super_trait_ref);
-        }
-    }
-
-    None
+    supertraits(tcx, source_trait_ref)
+        .filter(|r| r.def_id() == target_trait_def_id)
+        .collect()
 }
 
 /// Given an object of type `object_trait_ref`, returns the index of
