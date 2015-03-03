@@ -35,5 +35,7 @@ trait Add<RHS=Self> {
 fn ice<A>(a: A) {
     let r = loop {};
     r = r + a;
-    //~^ ERROR binary operation `+` cannot be applied to type `A`
+    //~^ ERROR the trait `Add<A>` is not implemented for the type `()`
+    //~| ERROR
+    // FIXME(#21528) the error should be reported once, not twice
 }

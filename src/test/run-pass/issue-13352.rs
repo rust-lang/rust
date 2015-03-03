@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test FIXME(japaric) remove test?
+
 extern crate libc;
 
 use std::thunk::Thunk;

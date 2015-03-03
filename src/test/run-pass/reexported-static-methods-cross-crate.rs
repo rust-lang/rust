@@ -17,8 +17,8 @@ use reexported_static_methods::Boz;
 use reexported_static_methods::Bort;
 
 pub fn main() {
-    assert_eq!(42, Foo::foo());
-    assert_eq!(84, Baz::bar());
+    assert_eq!(42, int::foo());
+    assert_eq!(84, int::bar());
     assert!(Boz::boz(1));
     assert_eq!("bort()".to_string(), Bort::bort());
 }

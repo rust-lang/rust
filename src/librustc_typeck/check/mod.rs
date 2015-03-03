@@ -2683,8 +2683,14 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                         unifier: F) where
     F: FnOnce(),
 {
-    debug!(">> typechecking: expr={} expected={}",
-           expr.repr(fcx.tcx()), expected.repr(fcx.tcx()));
+    if fcx.inh.node_types.borrow().get(&expr.id).is_some() {
+        debug!(">> already checked, skipping expr={}", expr.repr(fcx.tcx()));
+
+        return unifier();
+    } else {
+        debug!(">> typechecking: expr={} expected={}",
+               expr.repr(fcx.tcx()), expected.repr(fcx.tcx()));
+    }
 
     // Checks a method call.
     fn check_method_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -2881,46 +2887,21 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             SimpleBinop => NoPreference
         };
         check_expr_with_lvalue_pref(fcx, lhs, lvalue_pref);
+        check_expr(fcx, rhs);
 
-        // Callee does bot / err checking
-        let lhs_t =
-            structurally_resolve_type_or_else(fcx, lhs.span, fcx.expr_ty(lhs), || {
-                if ast_util::is_symmetric_binop(op.node) {
-                    // Try RHS first
-                    check_expr(fcx, &**rhs);
-                    fcx.expr_ty(&**rhs)
-                } else {
-                    fcx.tcx().types.err
+        let lhs_t = fcx.resolve_type_vars_if_possible(fcx.expr_ty(lhs));
+        let rhs_t = fcx.resolve_type_vars_if_possible(fcx.expr_ty(rhs));
+
+        if ty::is_builtin_binop(tcx, lhs_t, rhs_t, op) {
+            match op.node {
+                ast::BiShl | ast::BiShr => {
+                    // NB most built-in binops are restricted to arguments of the same type, `>>`
+                    // and `<<` are the exception.
+                },
+                _ => {
+                    demand::suptype(fcx, rhs.span, rhs_t, lhs_t);
                 }
-            });
-
-        if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op.node) {
-            // Shift is a special case: rhs must be uint, no matter what lhs is
-            check_expr(fcx, &**rhs);
-            let rhs_ty = fcx.expr_ty(&**rhs);
-            let rhs_ty = structurally_resolved_type(fcx, rhs.span, rhs_ty);
-            if ty::type_is_integral(rhs_ty) {
-                fcx.write_ty(expr.id, lhs_t);
-            } else {
-                fcx.type_error_message(
-                    expr.span,
-                    |actual| {
-                        format!(
-                            "right-hand-side of a shift operation must have integral type, \
-                             not `{}`",
-                            actual)
-                    },
-                    rhs_ty,
-                    None);
-                fcx.write_ty(expr.id, fcx.tcx().types.err);
             }
-            return;
-        }
-
-        if ty::is_binopable(tcx, lhs_t, op) {
-            let tvar = fcx.infcx().next_ty_var();
-            demand::suptype(fcx, expr.span, tvar, lhs_t);
-            check_expr_has_type(fcx, &**rhs, tvar);
 
             let result_t = match op.node {
                 ast::BiEq | ast::BiNe | ast::BiLt | ast::BiLe | ast::BiGe |
@@ -2955,25 +2936,49 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         if op.node == ast::BiOr || op.node == ast::BiAnd {
-            // This is an error; one of the operands must have the wrong
-            // type
-            fcx.write_error(expr.id);
-            fcx.write_error(rhs.id);
-            fcx.type_error_message(expr.span,
-                                   |actual| {
-                    format!("binary operation `{}` cannot be applied \
-                             to type `{}`",
-                            ast_util::binop_to_string(op.node),
-                            actual)
-                },
-                lhs_t,
-                None)
+            if ty::type_is_bool(lhs_t) {
+                demand::suptype(fcx, rhs.span, rhs_t, lhs_t);
+                fcx.write_ty(expr.id, lhs_t);
+                return
+            } else if ty::type_is_bool(rhs_t) {
+                demand::suptype(fcx, lhs.span, lhs_t, rhs_t);
+                fcx.write_ty(expr.id, rhs_t);
+                return
+            } else {
+                // This is an error; one of the operands must have the wrong
+                // type
+                fcx.write_error(expr.id);
+                fcx.write_error(rhs.id);
+                fcx.type_error_message(expr.span,
+                                       |actual| {
+                        format!("binary operation `{}` cannot be applied \
+                                 to type `{}`",
+                                ast_util::binop_to_string(op.node),
+                                actual)
+                    },
+                    lhs_t,
+                    None)
+            }
         }
 
         // Check for overloaded operators if not an assignment.
         let result_t = if is_binop_assignment == SimpleBinop {
             check_user_binop(fcx, expr, lhs, lhs_t, op, rhs)
         } else {
+            // NB currently, `lhs += rhs` is only valid if `lhs` and `rhs` have the same type. This
+            // won't be true once the `OpAssign` traits land as they'll allow overloading the RHS
+            if ty::is_builtin_binop(tcx, lhs_t, lhs_t, op) {
+                demand::suptype(fcx, rhs.span, rhs_t, lhs_t);
+
+                fcx.write_ty(expr.id, lhs_t);
+                return
+            } else if ty::is_builtin_binop(tcx, rhs_t, rhs_t, op) {
+                demand::suptype(fcx, lhs.span, lhs_t, rhs_t);
+
+                fcx.write_ty(expr.id, rhs_t);
+                return
+            }
+
             fcx.type_error_message(expr.span,
                                    |actual| {
                                         format!("binary assignment \
@@ -2985,7 +2990,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                    },
                                    lhs_t,
                                    None);
-            check_expr(fcx, &**rhs);
             fcx.tcx().types.err
         };
 
@@ -3021,7 +3025,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             ast::BiEq => ("eq", lang.eq_trait()),
             ast::BiNe => ("ne", lang.eq_trait()),
             ast::BiAnd | ast::BiOr => {
-                check_expr(fcx, &**rhs);
                 return tcx.types.err;
             }
         };

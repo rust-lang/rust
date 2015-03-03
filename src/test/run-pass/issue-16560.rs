@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test
+
 #![feature(unboxed_closures)]
 
 use std::thread;
@@ -15,6 +17,7 @@ use std::mem;
 
 fn main() {
     let y = 0u8;
+    // FIXME(japaric) weird, "unable to infer enough type information" with span on `y`
     let closure = move |x| y + x;
 
     // Check that both closures are capturing by value

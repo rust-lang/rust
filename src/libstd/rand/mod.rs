@@ -386,7 +386,7 @@ impl Rng for ThreadRng {
 /// ```
 /// use std::rand;
 ///
-/// let x = rand::random();
+/// let x = rand::random::<u8>();
 /// println!("{}", 2u8 * x);
 ///
 /// let y = rand::random::<f64>();

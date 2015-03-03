@@ -16,7 +16,9 @@ impl<A> vec_monad<A> for Vec<A> {
     fn bind<B, F>(&self, mut f: F) where F: FnMut(A) -> Vec<B> {
         let mut r = panic!();
         for elt in self { r = r + f(*elt); }
-        //~^ ERROR binary operation `+` cannot be applied to type `collections::vec::Vec<B>`
+        //~^ ERROR the trait `core::ops::Add<collections::vec::Vec<B>>` is not implemented
+        //~| ERROR
+        // FIXME(#21528) error should be reported once, not twice
    }
 }
 fn main() {

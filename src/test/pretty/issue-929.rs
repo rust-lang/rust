@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-test FIXME(japaric) remove test?
+
 fn f() { if (1 == panic!()) { } else { } }
 
 fn main() { }

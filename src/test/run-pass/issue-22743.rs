@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test FIXME(japaric) remove test?
+use std::ops::Mul;
 
-fn foo() -> ! { panic!("quux"); }
-fn main() {
-    foo() //~ ERROR the type of this value must be known in this context
-    ==
-    foo();
+pub struct Foo {
+    x: f64,
+}
+
+impl Mul<Foo> for f64 {
+    type Output = Foo;
+
+    fn mul(self, rhs: Foo) -> Foo {
+        println!("Multiplying!");
+        rhs
+    }
+}
+
+pub fn main() {
+    let f: Foo = Foo { x: 5.0 };
+    let val: f64 = 3.0;
+    let f2: Foo = val * f;
 }
