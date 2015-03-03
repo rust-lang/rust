@@ -75,6 +75,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
 		$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, rustc: $$(@D)/lib$(4))
+	@touch $$@.start_time
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES, \
 	    $$(dir $$@)$$(call CFG_LIB_GLOB_$(2),$(4)))
 	$$(call REMOVE_ALL_OLD_GLOB_MATCHES, \
@@ -89,7 +90,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
 		--out-dir $$(@D) \
 		-C extra-filename=-$$(CFG_FILENAME_EXTRA) \
 		$$<
-	@touch $$@
+	@touch -r $$@.start_time $$@ && rm $$@.start_time
 	$$(call LIST_ALL_OLD_GLOB_MATCHES, \
 	    $$(dir $$@)$$(call CFG_LIB_GLOB_$(2),$(4)))
 	$$(call LIST_ALL_OLD_GLOB_MATCHES, \
