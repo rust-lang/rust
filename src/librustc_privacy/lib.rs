@@ -1376,10 +1376,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                             }
                         }
                         Some(ref tr) => {
-                            // Any private types in a trait impl fall into two
+                            // Any private types in a trait impl fall into three
                             // categories.
                             // 1. mentioned in the trait definition
                             // 2. mentioned in the type params/generics
+                            // 3. mentioned in the associated types of the impl
                             //
                             // Those in 1. can only occur if the trait is in
                             // this crate and will've been warned about on the
@@ -1389,6 +1390,16 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                             // Those in 2. are warned via walk_generics and this
                             // call here.
                             visit::walk_path(self, &tr.path);
+
+                            // Those in 3. are warned with this call.
+                            for impl_item in impl_items {
+                                match *impl_item {
+                                    ast::MethodImplItem(..) => {},
+                                    ast::TypeImplItem(ref typedef) => {
+                                        self.visit_ty(&typedef.typ);
+                                    }
+                                }
+                            }
                         }
                     }
                 } else if trait_ref.is_none() && self_is_public_path {
