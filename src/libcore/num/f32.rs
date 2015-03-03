@@ -23,12 +23,12 @@ use num::FpCategory as Fp;
 use option::Option;
 
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const RADIX: uint = 2;
+pub const RADIX: u32 = 2;
 
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const MANTISSA_DIGITS: uint = 24;
+pub const MANTISSA_DIGITS: u32 = 24;
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const DIGITS: uint = 6;
+pub const DIGITS: u32 = 6;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const EPSILON: f32 = 1.19209290e-07_f32;
@@ -57,14 +57,14 @@ pub const MIN_POSITIVE: f32 = 1.17549435e-38_f32;
 pub const MAX: f32 = 3.40282347e+38_f32;
 
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const MIN_EXP: int = -125;
+pub const MIN_EXP: i32 = -125;
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const MAX_EXP: int = 128;
+pub const MAX_EXP: i32 = 128;
 
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const MIN_10_EXP: int = -37;
+pub const MIN_10_EXP: i32 = -37;
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const MAX_10_EXP: int = 38;
+pub const MAX_10_EXP: i32 = 38;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NAN: f32 = 0.0_f32/0.0_f32;
@@ -193,12 +193,12 @@ impl Float for f32 {
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn mantissa_digits(_: Option<f32>) -> uint { MANTISSA_DIGITS }
+    fn mantissa_digits(_: Option<f32>) -> uint { MANTISSA_DIGITS as uint }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn digits(_: Option<f32>) -> uint { DIGITS }
+    fn digits(_: Option<f32>) -> uint { DIGITS as uint }
 
     #[inline]
     #[unstable(feature = "core")]
@@ -208,22 +208,22 @@ impl Float for f32 {
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn min_exp(_: Option<f32>) -> int { MIN_EXP }
+    fn min_exp(_: Option<f32>) -> int { MIN_EXP as int }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn max_exp(_: Option<f32>) -> int { MAX_EXP }
+    fn max_exp(_: Option<f32>) -> int { MAX_EXP as int }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn min_10_exp(_: Option<f32>) -> int { MIN_10_EXP }
+    fn min_10_exp(_: Option<f32>) -> int { MIN_10_EXP as int }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn max_10_exp(_: Option<f32>) -> int { MAX_10_EXP }
+    fn max_10_exp(_: Option<f32>) -> int { MAX_10_EXP as int }
 
     #[inline]
     #[unstable(feature = "core")]

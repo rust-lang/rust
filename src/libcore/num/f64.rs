@@ -27,11 +27,11 @@ use option::Option;
 // members of `Bounded` and `Float`.
 
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const RADIX: uint = 2;
+pub const RADIX: u32 = 2;
 
-pub const MANTISSA_DIGITS: uint = 53;
+pub const MANTISSA_DIGITS: u32 = 53;
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const DIGITS: uint = 15;
+pub const DIGITS: u32 = 15;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
@@ -60,14 +60,14 @@ pub const MIN_POSITIVE: f64 = 2.2250738585072014e-308_f64;
 pub const MAX: f64 = 1.7976931348623157e+308_f64;
 
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const MIN_EXP: int = -1021;
+pub const MIN_EXP: i32 = -1021;
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const MAX_EXP: int = 1024;
+pub const MAX_EXP: i32 = 1024;
 
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const MIN_10_EXP: int = -307;
+pub const MIN_10_EXP: i32 = -307;
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const MAX_10_EXP: int = 308;
+pub const MAX_10_EXP: i32 = 308;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NAN: f64 = 0.0_f64/0.0_f64;
@@ -200,12 +200,12 @@ impl Float for f64 {
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn mantissa_digits(_: Option<f64>) -> uint { MANTISSA_DIGITS }
+    fn mantissa_digits(_: Option<f64>) -> uint { MANTISSA_DIGITS as uint }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn digits(_: Option<f64>) -> uint { DIGITS }
+    fn digits(_: Option<f64>) -> uint { DIGITS as uint }
 
     #[inline]
     #[unstable(feature = "core")]
@@ -215,22 +215,22 @@ impl Float for f64 {
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn min_exp(_: Option<f64>) -> int { MIN_EXP }
+    fn min_exp(_: Option<f64>) -> int { MIN_EXP as int }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn max_exp(_: Option<f64>) -> int { MAX_EXP }
+    fn max_exp(_: Option<f64>) -> int { MAX_EXP as int }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn min_10_exp(_: Option<f64>) -> int { MIN_10_EXP }
+    fn min_10_exp(_: Option<f64>) -> int { MIN_10_EXP as int }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn max_10_exp(_: Option<f64>) -> int { MAX_10_EXP }
+    fn max_10_exp(_: Option<f64>) -> int { MAX_10_EXP as int }
 
     #[inline]
     #[unstable(feature = "core")]

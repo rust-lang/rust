@@ -78,7 +78,7 @@ pub trait CLike {
 fn bit<E:CLike>(e: &E) -> usize {
     use core::usize;
     let value = e.to_usize();
-    assert!(value < usize::BITS,
+    assert!(value < usize::BITS as usize,
             "EnumSet only supports up to {} variants.", usize::BITS - 1);
     1 << value
 }
@@ -95,7 +95,7 @@ impl<E:CLike> EnumSet<E> {
     #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn len(&self) -> usize {
-        self.bits.count_ones()
+        self.bits.count_ones() as usize
     }
 
     /// Returns true if the `EnumSet` is empty.
@@ -250,7 +250,7 @@ impl<E:CLike> Iterator for Iter<E> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let exact = self.bits.count_ones();
+        let exact = self.bits.count_ones() as usize;
         (exact, Some(exact))
     }
 }
