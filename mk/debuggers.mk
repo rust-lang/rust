@@ -56,29 +56,32 @@ define DEF_INSTALL_DEBUGGER_SCRIPTS_HOST
 tmp/install-debugger-scripts$(1)_H_$(2)-gdb.done: \
   $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB_ABS) \
   $$(DEBUGGER_BIN_SCRIPTS_GDB_ABS)
+	$(Q)touch $$@.start_time
 	$(Q)mkdir -p $$(HBIN$(1)_H_$(2))
 	$(Q)mkdir -p $$(HLIB$(1)_H_$(2))/rustlib/etc
 	$(Q)install $$(DEBUGGER_BIN_SCRIPTS_GDB_ABS) $$(HBIN$(1)_H_$(2))
 	$(Q)install $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB_ABS) $$(HLIB$(1)_H_$(2))/rustlib/etc
-	$(Q)touch $$@
+	$(Q)touch -r $$@.start_time $$@ && rm $$@.start_time
 
 tmp/install-debugger-scripts$(1)_H_$(2)-lldb.done: \
   $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB_ABS) \
   $$(DEBUGGER_BIN_SCRIPTS_LLDB_ABS)
+	$(Q)touch $$@.start_time
 	$(Q)mkdir -p $$(HBIN$(1)_H_$(2))
 	$(Q)mkdir -p $$(HLIB$(1)_H_$(2))/rustlib/etc
 	$(Q)install $$(DEBUGGER_BIN_SCRIPTS_LLDB_ABS) $$(HBIN$(1)_H_$(2))
 	$(Q)install $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB_ABS) $$(HLIB$(1)_H_$(2))/rustlib/etc
-	$(Q)touch $$@
+	$(Q)touch -r $$@.start_time $$@ && rm $$@.start_time
 
 tmp/install-debugger-scripts$(1)_H_$(2)-all.done: \
   $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ALL_ABS) \
   $$(DEBUGGER_BIN_SCRIPTS_ALL_ABS)
+	$(Q)touch $$@.start_time
 	$(Q)mkdir -p $$(HBIN$(1)_H_$(2))
 	$(Q)mkdir -p $$(HLIB$(1)_H_$(2))/rustlib/etc
 	$(Q)install $$(DEBUGGER_BIN_SCRIPTS_ALL_ABS) $$(HBIN$(1)_H_$(2))
 	$(Q)install $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ALL_ABS) $$(HLIB$(1)_H_$(2))/rustlib/etc
-	$(Q)touch $$@
+	$(Q)touch -r $$@.start_time $$@ && rm $$@.start_time
 
 tmp/install-debugger-scripts$(1)_H_$(2)-none.done:
 	$(Q)touch $$@
@@ -98,29 +101,32 @@ define DEF_INSTALL_DEBUGGER_SCRIPTS_TARGET
 tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3)-gdb.done: \
   $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB_ABS) \
   $$(DEBUGGER_BIN_SCRIPTS_GDB_ABS)
+	$(Q)touch $$@.start_time
 	$(Q)mkdir -p $$(TBIN$(1)_T_$(2)_H_$(3))
 	$(Q)mkdir -p $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
 	$(Q)install $(DEBUGGER_BIN_SCRIPTS_GDB_ABS) $$(TBIN$(1)_T_$(2)_H_$(3))
 	$(Q)install $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_GDB_ABS) $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
-	$(Q)touch $$@
+	$(Q)touch -r $$@.start_time $$@ && rm $$@.start_time
 
 tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3)-lldb.done: \
   $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB_ABS) \
   $$(DEBUGGER_BIN_SCRIPTS_LLDB_ABS)
+	$(Q)touch $$@.start_time
 	$(Q)mkdir -p $$(TBIN$(1)_T_$(2)_H_$(3))
 	$(Q)mkdir -p $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
 	$(Q)install $(DEBUGGER_BIN_SCRIPTS_LLDB_ABS) $$(TBIN$(1)_T_$(2)_H_$(3))
 	$(Q)install $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_LLDB_ABS) $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
-	$(Q)touch $$@
+	$(Q)touch -r $$@.start_time $$@ && rm $$@.start_time
 
 tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3)-all.done: \
   $$(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ALL_ABS) \
   $$(DEBUGGER_BIN_SCRIPTS_ALL_ABS)
+	$(Q)touch $$@.start_time
 	$(Q)mkdir -p $$(TBIN$(1)_T_$(2)_H_$(3))
 	$(Q)mkdir -p $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
 	$(Q)install $(DEBUGGER_BIN_SCRIPTS_ALL_ABS) $$(TBIN$(1)_T_$(2)_H_$(3))
 	$(Q)install $(DEBUGGER_RUSTLIB_ETC_SCRIPTS_ALL_ABS) $$(TLIB$(1)_T_$(2)_H_$(3))/rustlib/etc
-	$(Q)touch $$@
+	$(Q)touch -r $$@.start_time $$@ && rm $$@.start_time
 
 tmp/install-debugger-scripts$(1)_T_$(2)_H_$(3)-none.done:
 	$(Q)touch $$@
