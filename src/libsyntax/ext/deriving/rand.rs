@@ -17,13 +17,11 @@ use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use ptr::P;
 
-pub fn expand_deriving_rand<F>(cx: &mut ExtCtxt,
-                               span: Span,
-                               mitem: &MetaItem,
-                               item: &Item,
-                               push: F) where
-    F: FnOnce(P<Item>),
-{
+pub fn expand_deriving_rand(cx: &mut ExtCtxt,
+                            span: Span,
+                            mitem: &MetaItem,
+                            item: &Item,
+                            push: &mut FnMut(P<Item>)) {
     cx.span_warn(span,
                  "`#[derive(Rand)]` is deprecated in favour of `#[derive_Rand]` from \
                   `rand_macros` on crates.io");
@@ -38,6 +36,7 @@ pub fn expand_deriving_rand<F>(cx: &mut ExtCtxt,
         span: span,
         attributes: Vec::new(),
         path: path!(std::rand::Rand),
+        bound_self: true,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(
