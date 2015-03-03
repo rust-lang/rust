@@ -19,9 +19,10 @@ use middle::traits;
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use trans::attributes;
 use trans::base::{trans_enum_variant, push_ctxt, get_item_val};
-use trans::base::{trans_fn, decl_internal_rust_fn};
+use trans::base::trans_fn;
 use trans::base;
 use trans::common::*;
+use trans::declare;
 use trans::foreign;
 use middle::ty::{self, HasProjectionTypes, Ty};
 use util::ppaux::Repr;
@@ -143,7 +144,10 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let lldecl = if abi != abi::Rust {
             foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, &s[..])
         } else {
-            decl_internal_rust_fn(ccx, mono_ty, &s[..])
+            // FIXME(nagisa): perhaps needs a more fine grained selection? See setup_lldecl below.
+            declare::define_internal_rust_fn(ccx, &s[..], mono_ty).unwrap_or_else(||{
+                ccx.sess().bug(&format!("symbol `{}` already defined", s));
+            })
         };
 
         ccx.monomorphized().borrow_mut().insert(hash_id.take().unwrap(), lldecl);

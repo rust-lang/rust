@@ -43,6 +43,7 @@ mod context;
 mod controlflow;
 mod datum;
 mod debuginfo;
+mod declare;
 mod expr;
 mod foreign;
 mod glue;

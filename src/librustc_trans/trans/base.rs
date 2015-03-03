@@ -64,6 +64,7 @@ use trans::context::SharedCrateContext;
 use trans::controlflow;
 use trans::datum;
 use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
+use trans::declare;
 use trans::expr;
 use trans::foreign;
 use trans::glue;
@@ -179,44 +180,6 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
     }
 }
 
-// only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
-pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
-               ty: Type, output: ty::FnOutput) -> ValueRef {
-
-    let buf = CString::new(name).unwrap();
-    let llfn: ValueRef = unsafe {
-        llvm::LLVMGetOrInsertFunction(ccx.llmod(), buf.as_ptr(), ty.to_ref())
-    };
-
-    // diverging functions may unwind, but can never return normally
-    if output == ty::FnDiverging {
-        llvm::SetFunctionAttribute(llfn, llvm::NoReturnAttribute);
-    }
-
-    if ccx.tcx().sess.opts.cg.no_redzone
-        .unwrap_or(ccx.tcx().sess.target.target.options.disable_redzone) {
-        llvm::SetFunctionAttribute(llfn, llvm::NoRedZoneAttribute)
-    }
-
-    llvm::SetFunctionCallConv(llfn, cc);
-    // Function addresses in Rust are never significant, allowing functions to be merged.
-    llvm::SetUnnamedAddr(llfn, true);
-
-    if ccx.is_split_stack_supported() && !ccx.sess().opts.cg.no_stack_check {
-        attributes::split_stack(llfn, true);
-    }
-
-    llfn
-}
-
-// only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
-pub fn decl_cdecl_fn(ccx: &CrateContext,
-                     name: &str,
-                     ty: Type,
-                     output: Ty) -> ValueRef {
-    decl_fn(ccx, name, llvm::CCallConv, ty, ty::FnConverging(output))
-}
-
 fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>,
                                 name: &str, did: ast::DefId) -> ValueRef {
     match ccx.externs().borrow().get(name) {
@@ -224,7 +187,7 @@ fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>,
         None => ()
     }
 
-    let f = decl_rust_fn(ccx, fn_ty, name);
+    let f = declare::declare_rust_fn(ccx, name, fn_ty);
 
     let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
     attributes::from_fn_attrs(ccx, &attrs[..], f);
@@ -254,63 +217,6 @@ pub fn kind_for_closure(ccx: &CrateContext, closure_id: ast::DefId) -> ty::Closu
     *ccx.tcx().closure_kinds.borrow().get(&closure_id).unwrap()
 }
 
-pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                              fn_ty: Ty<'tcx>, name: &str) -> ValueRef {
-    debug!("decl_rust_fn(fn_ty={}, name={:?})",
-           fn_ty.repr(ccx.tcx()),
-           name);
-
-    let fn_ty = monomorphize::normalize_associated_type(ccx.tcx(), &fn_ty);
-
-    debug!("decl_rust_fn: fn_ty={} (after normalized associated types)",
-           fn_ty.repr(ccx.tcx()));
-
-    let function_type; // placeholder so that the memory ownership works out ok
-
-    let (sig, abi, env) = match fn_ty.sty {
-        ty::ty_bare_fn(_, ref f) => {
-            (&f.sig, f.abi, None)
-        }
-        ty::ty_closure(closure_did, substs) => {
-            let typer = common::NormalizingClosureTyper::new(ccx.tcx());
-            function_type = typer.closure_type(closure_did, substs);
-            let self_type = self_type_for_closure(ccx, closure_did, fn_ty);
-            let llenvironment_type = type_of_explicit_arg(ccx, self_type);
-            debug!("decl_rust_fn: function_type={} self_type={}",
-                   function_type.repr(ccx.tcx()),
-                   self_type.repr(ccx.tcx()));
-            (&function_type.sig, RustCall, Some(llenvironment_type))
-        }
-        _ => ccx.sess().bug("expected closure or fn")
-    };
-
-    let sig = ty::erase_late_bound_regions(ccx.tcx(), sig);
-    let sig = ty::Binder(sig);
-
-    debug!("decl_rust_fn: sig={} (after erasing regions)",
-           sig.repr(ccx.tcx()));
-
-    let llfty = type_of_rust_fn(ccx, env, &sig, abi);
-
-    debug!("decl_rust_fn: llfty={}",
-           ccx.tn().type_to_string(llfty));
-
-    let llfn = decl_fn(ccx, name, llvm::CCallConv, llfty, sig.0.output /* (1) */);
-    let attrs = get_fn_llvm_attributes(ccx, fn_ty);
-    attrs.apply_llfn(llfn);
-
-    // (1) it's ok to directly access sig.0.output because we erased all late-bound-regions above
-
-    llfn
-}
-
-pub fn decl_internal_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                       fn_ty: Ty<'tcx>, name: &str) -> ValueRef {
-    let llfn = decl_rust_fn(ccx, fn_ty, name);
-    llvm::SetLinkage(llfn, llvm::InternalLinkage);
-    llfn
-}
-
 pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
                                   t: Ty<'tcx>) -> ValueRef {
     let name = csearch::get_symbol(&ccx.sess().cstore, did);
@@ -319,23 +225,22 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
         Some(n) => return *n,
         None => ()
     }
-    unsafe {
-        let buf = CString::new(name.clone()).unwrap();
-        let c = llvm::LLVMAddGlobal(ccx.llmod(), ty.to_ref(), buf.as_ptr());
-        // Thread-local statics in some other crate need to *always* be linked
-        // against in a thread-local fashion, so we need to be sure to apply the
-        // thread-local attribute locally if it was present remotely. If we
-        // don't do this then linker errors can be generated where the linker
-        // complains that one object files has a thread local version of the
-        // symbol and another one doesn't.
-        for attr in &*ty::get_attrs(ccx.tcx(), did) {
-            if attr.check_name("thread_local") {
-                llvm::set_thread_local(c, true);
-            }
+    // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
+    // FIXME(nagisa): investigate whether it can be changed into define_global
+    let c = declare::declare_global(ccx, &name[..], ty);
+    // Thread-local statics in some other crate need to *always* be linked
+    // against in a thread-local fashion, so we need to be sure to apply the
+    // thread-local attribute locally if it was present remotely. If we
+    // don't do this then linker errors can be generated where the linker
+    // complains that one object files has a thread local version of the
+    // symbol and another one doesn't.
+    for attr in &*ty::get_attrs(ccx.tcx(), did) {
+        if attr.check_name("thread_local") {
+            llvm::set_thread_local(c, true);
         }
-        ccx.externs().borrow_mut().insert(name.to_string(), c);
-        return c;
     }
+    ccx.externs().borrow_mut().insert(name.to_string(), c);
+    return c;
 }
 
 fn require_alloc_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -372,15 +277,6 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
 }
 
-
-// Double-check that we never ask LLVM to declare the same symbol twice. It
-// silently mangles such symbols, breaking our linkage model.
-pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: String) {
-    if ccx.all_llvm_symbols().borrow().contains(&sym) {
-        ccx.sess().bug(&format!("duplicate LLVM symbol: {}", sym));
-    }
-    ccx.all_llvm_symbols().borrow_mut().insert(sym);
-}
 
 pub fn bin_op_to_icmp_predicate(ccx: &CrateContext, op: ast::BinOp_, signed: bool)
                                 -> llvm::IntPredicate {
@@ -1713,15 +1609,7 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let fn_ty = ty::node_id_to_type(ccx.tcx(), id);
     let output_type = ty::erase_late_bound_regions(ccx.tcx(), &ty::ty_fn_ret(fn_ty));
     let abi = ty::ty_fn_abi(fn_ty);
-    trans_closure(ccx,
-                  decl,
-                  body,
-                  llfndecl,
-                  param_substs,
-                  id,
-                  attrs,
-                  output_type,
-                  abi,
+    trans_closure(ccx, decl, body, llfndecl, param_substs, id, attrs, output_type, abi,
                   closure::ClosureEnv::NotClosure);
 }
 
@@ -2066,27 +1954,24 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                 let llfn = get_item_val(ccx, item.id);
                 let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
                 if abi != Rust {
-                    foreign::trans_rust_fn_with_foreign_abi(ccx,
-                                                            &**decl,
-                                                            &**body,
-                                                            &item.attrs,
-                                                            llfn,
-                                                            empty_substs,
-                                                            item.id,
-                                                            None);
+                    foreign::trans_rust_fn_with_foreign_abi(ccx, &**decl, &**body, &item.attrs,
+                                                            llfn, empty_substs, item.id, None);
                 } else {
-                    trans_fn(ccx,
-                             &**decl,
-                             &**body,
-                             llfn,
-                             empty_substs,
-                             item.id,
-                             &item.attrs);
+                    trans_fn(ccx, &**decl, &**body, llfn, empty_substs, item.id, &item.attrs);
                 }
-                update_linkage(ccx,
-                               llfn,
-                               Some(item.id),
+                update_linkage(ccx, llfn, Some(item.id),
                                if is_origin { OriginalTranslation } else { InlinedCopy });
+
+                if is_entry_fn(ccx.sess(), item.id) {
+                    create_entry_wrapper(ccx, item.span, llfn);
+                    // check for the #[rustc_error] annotation, which forces an
+                    // error in trans. This is used to write compile-fail tests
+                    // that actually test that compilation succeeds without
+                    // reporting an error.
+                    if ty::has_attr(ccx.tcx(), local_def(item.id), "rustc_error") {
+                        ccx.tcx().sess.span_fatal(item.span, "compilation successful");
+                    }
+                }
             }
         }
 
@@ -2122,8 +2007,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
           let mut v = TransItemVisitor{ ccx: ccx };
           v.visit_expr(&**expr);
 
-          consts::trans_static(ccx, m, item.id);
-          let g = get_item_val(ccx, item.id);
+          let g = consts::trans_static(ccx, m, item.id);
           update_linkage(ccx, g, Some(item.id), OriginalTranslation);
 
           // Do static_assert checking. It can't really be done much earlier
@@ -2175,7 +2059,25 @@ pub fn trans_mod(ccx: &CrateContext, m: &ast::Mod) {
     }
 }
 
-fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: String, node_id: ast::NodeId,
+
+// only use this for foreign function ABIs and glue, use `register_fn` for Rust functions
+pub fn register_fn_llvmty(ccx: &CrateContext,
+                          sp: Span,
+                          sym: String,
+                          node_id: ast::NodeId,
+                      cc: llvm::CallConv,
+                          llfty: Type) -> ValueRef {
+    debug!("register_fn_llvmty id={} sym={}", node_id, sym);
+
+    let llfn = declare::define_fn(ccx, &sym[..], cc, llfty,
+                                   ty::FnConverging(ty::mk_nil(ccx.tcx()))).unwrap_or_else(||{
+        ccx.sess().span_fatal(sp, &format!("symbol `{}` is already defined", sym));
+    });
+    finish_register_fn(ccx, sym, node_id, llfn);
+    llfn
+}
+
+fn finish_register_fn(ccx: &CrateContext, sym: String, node_id: ast::NodeId,
                       llfn: ValueRef) {
     ccx.item_symbols().borrow_mut().insert(node_id, sym);
 
@@ -2189,19 +2091,6 @@ fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: String, node_id: ast::N
     }
     if ccx.tcx().lang_items.eh_personality() == Some(def) {
         llvm::SetLinkage(llfn, llvm::ExternalLinkage);
-    }
-
-
-    if is_entry_fn(ccx.sess(), node_id) {
-        // check for the #[rustc_error] annotation, which forces an
-        // error in trans. This is used to write compile-fail tests
-        // that actually test that compilation succeeds without
-        // reporting an error.
-        if ty::has_attr(ccx.tcx(), local_def(node_id), "rustc_error") {
-            ccx.tcx().sess.span_fatal(sp, "compilation successful");
-        }
-
-        create_entry_wrapper(ccx, sp, llfn);
     }
 }
 
@@ -2221,26 +2110,10 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ccx.sess().span_bug(sp, "expected bare rust function")
     }
 
-    let llfn = decl_rust_fn(ccx, node_type, &sym[..]);
-    finish_register_fn(ccx, sp, sym, node_id, llfn);
-    llfn
-}
-
-// only use this for foreign function ABIs and glue, use `register_fn` for Rust functions
-pub fn register_fn_llvmty(ccx: &CrateContext,
-                          sp: Span,
-                          sym: String,
-                          node_id: ast::NodeId,
-                          cc: llvm::CallConv,
-                          llfty: Type) -> ValueRef {
-    debug!("register_fn_llvmty id={} sym={}", node_id, sym);
-
-    let llfn = decl_fn(ccx,
-                       &sym[..],
-                       cc,
-                       llfty,
-                       ty::FnConverging(ty::mk_nil(ccx.tcx())));
-    finish_register_fn(ccx, sp, sym, node_id, llfn);
+    let llfn = declare::define_rust_fn(ccx, &sym[..], node_type).unwrap_or_else(||{
+        ccx.sess().span_fatal(sp, &format!("symbol `{}` is already defined", sym));
+    });
+    finish_register_fn(ccx, sym, node_id, llfn);
     llfn
 }
 
@@ -2251,27 +2124,36 @@ pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
     }
 }
 
-// Create a _rust_main(args: ~[str]) function which will be called from the
-// runtime rust_start function
+/// Create the `main` function which will initialise the rust runtime and call users’ main
+/// function.
 pub fn create_entry_wrapper(ccx: &CrateContext,
                            _sp: Span,
                            main_llfn: ValueRef) {
     let et = ccx.sess().entry_type.get().unwrap();
     match et {
         config::EntryMain => {
-            create_entry_fn(ccx, main_llfn, true);
+            create_entry_fn(ccx, _sp, main_llfn, true);
         }
-        config::EntryStart => create_entry_fn(ccx, main_llfn, false),
+        config::EntryStart => create_entry_fn(ccx, _sp, main_llfn, false),
         config::EntryNone => {}    // Do nothing.
     }
 
+    #[inline(never)]
     fn create_entry_fn(ccx: &CrateContext,
+                       _sp: Span,
                        rust_main: ValueRef,
                        use_start_lang_item: bool) {
         let llfty = Type::func(&[ccx.int_type(), Type::i8p(ccx).ptr_to()],
                                &ccx.int_type());
 
-        let llfn = decl_cdecl_fn(ccx, "main", llfty, ty::mk_nil(ccx.tcx()));
+        let llfn = declare::define_cfn(ccx, "main", llfty,
+                                       ty::mk_nil(ccx.tcx())).unwrap_or_else(||{
+            ccx.sess().span_err(_sp, "entry symbol `main` defined multiple times");
+            // FIXME: We should be smart and show a better diagnostic here.
+            ccx.sess().help("did you use #[no_mangle] on `fn main`? Use #[start] instead");
+            ccx.sess().abort_if_errors();
+            panic!();
+        });
 
         // FIXME: #16581: Marking a symbol in the executable with `dllexport`
         // linkage forces MinGW's linker to output a `.reloc` section for ASLR
@@ -2407,14 +2289,15 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                         } else {
                             llvm::LLVMTypeOf(v)
                         };
-                        if contains_null(&sym[..]) {
-                            ccx.sess().fatal(
-                                &format!("Illegal null byte in export_name \
-                                         value: `{}`", sym));
-                        }
-                        let buf = CString::new(sym.clone()).unwrap();
-                        let g = llvm::LLVMAddGlobal(ccx.llmod(), llty,
-                                                    buf.as_ptr());
+
+                        // FIXME(nagisa): probably should be declare_global, because no definition
+                        // is happening here, but we depend on it being defined here from
+                        // const::trans_static. This all logic should be replaced.
+                        let g = declare::define_global(ccx, &sym[..],
+                                                       Type::from_ref(llty)).unwrap_or_else(||{
+                            ccx.sess().span_fatal(i.span, &format!("symbol `{}` is already defined",
+                                                                   sym))
+                        });
 
                         if attr::contains_name(&i.attrs,
                                                "thread_local") {
@@ -2430,10 +2313,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     let llfn = if abi == Rust {
                         register_fn(ccx, i.span, sym, i.id, ty)
                     } else {
-                        foreign::register_rust_fn_with_foreign_abi(ccx,
-                                                                   i.span,
-                                                                   sym,
-                                                                   i.id)
+                        foreign::register_rust_fn_with_foreign_abi(ccx, i.span, sym, i.id)
                     };
                     attributes::from_fn_attrs(ccx, &i.attrs, llfn);
                     llfn

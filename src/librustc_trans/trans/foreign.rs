@@ -20,6 +20,7 @@ use trans::build::*;
 use trans::cabi;
 use trans::common::*;
 use trans::debuginfo::DebugLoc;
+use trans::declare;
 use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
@@ -28,7 +29,6 @@ use trans::type_of;
 use middle::ty::{self, Ty};
 use middle::subst::Substs;
 
-use std::ffi::CString;
 use std::cmp;
 use libc::c_uint;
 use syntax::abi::{Cdecl, Aapcs, C, Win64, Abi};
@@ -136,9 +136,7 @@ pub fn register_static(ccx: &CrateContext,
             };
             unsafe {
                 // Declare a symbol `foo` with the desired linkage.
-                let buf = CString::new(ident.as_bytes()).unwrap();
-                let g1 = llvm::LLVMAddGlobal(ccx.llmod(), llty2.to_ref(),
-                                             buf.as_ptr());
+                let g1 = declare::declare_global(ccx, &ident[..], llty2);
                 llvm::SetLinkage(g1, linkage);
 
                 // Declare an internal global `extern_with_linkage_foo` which
@@ -149,19 +147,17 @@ pub fn register_static(ccx: &CrateContext,
                 // zero.
                 let mut real_name = "_rust_extern_with_linkage_".to_string();
                 real_name.push_str(&ident);
-                let real_name = CString::new(real_name).unwrap();
-                let g2 = llvm::LLVMAddGlobal(ccx.llmod(), llty.to_ref(),
-                                             real_name.as_ptr());
+                let g2 = declare::define_global(ccx, &real_name[..], llty).unwrap_or_else(||{
+                    ccx.sess().span_fatal(foreign_item.span,
+                                          &format!("symbol `{}` is already defined", ident))
+                });
                 llvm::SetLinkage(g2, llvm::InternalLinkage);
                 llvm::LLVMSetInitializer(g2, g1);
                 g2
             }
         }
-        None => unsafe {
-            // Generate an external declaration.
-            let buf = CString::new(ident.as_bytes()).unwrap();
-            llvm::LLVMAddGlobal(ccx.llmod(), llty.to_ref(), buf.as_ptr())
-        }
+        None => // Generate an external declaration.
+            declare::declare_global(ccx, &ident[..], llty),
     }
 }
 
@@ -177,7 +173,7 @@ pub fn get_extern_fn(ccx: &CrateContext,
         Some(n) => return *n,
         None => {}
     }
-    let f = base::decl_fn(ccx, name, cc, ty, ty::FnConverging(output));
+    let f = declare::declare_fn(ccx, name, cc, ty, ty::FnConverging(output));
     externs.insert(name.to_string(), f);
     f
 }
@@ -534,7 +530,8 @@ pub fn decl_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         _ => panic!("expected bare fn in decl_rust_fn_with_foreign_abi")
     };
-    let llfn = base::decl_fn(ccx, name, cconv, llfn_ty, ty::FnConverging(ty::mk_nil(ccx.tcx())));
+    let llfn = declare::declare_fn(ccx, name, cconv, llfn_ty,
+                                   ty::FnConverging(ty::mk_nil(ccx.tcx())));
     add_argument_attributes(&tys, llfn);
     debug!("decl_rust_fn_with_foreign_abi(llfn_ty={}, llfn={})",
            ccx.tn().type_to_string(llfn_ty), ccx.tn().val_to_string(llfn));
@@ -623,7 +620,9 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                ccx.tcx().map.path_to_string(id),
                id, t.repr(tcx));
 
-        let llfn = base::decl_internal_rust_fn(ccx, t, &ps[..]);
+        let llfn = declare::define_internal_rust_fn(ccx, &ps[..], t).unwrap_or_else(||{
+            ccx.sess().bug(&format!("symbol `{}` already defined", ps));
+        });
         attributes::from_fn_attrs(ccx, attrs, llfn);
         base::trans_fn(ccx, decl, body, llfn, param_substs, id, &[]);
         llfn
