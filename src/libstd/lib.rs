@@ -123,6 +123,7 @@
 #![feature(unsafe_no_drop_flag)]
 #![feature(macro_reexport)]
 #![feature(hash)]
+#![feature(int_uint)]
 #![feature(unique)]
 #![cfg_attr(test, feature(test, rustc_private, env))]
 
