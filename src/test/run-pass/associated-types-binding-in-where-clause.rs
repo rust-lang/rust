@@ -16,7 +16,7 @@ pub trait Foo {
 }
 
 #[derive(PartialEq)]
-struct Bar;
+pub struct Bar;
 
 impl Foo for int {
     type A = uint;

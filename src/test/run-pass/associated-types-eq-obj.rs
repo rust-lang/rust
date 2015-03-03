@@ -15,7 +15,7 @@ pub trait Foo {
     fn boo(&self) -> <Self as Foo>::A;
 }
 
-struct Bar;
+pub struct Bar;
 
 impl Foo for char {
     type A = Bar;
