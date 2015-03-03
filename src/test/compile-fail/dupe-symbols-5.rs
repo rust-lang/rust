@@ -16,5 +16,5 @@ static HELLO: u8 = 0;
 
 #[export_name="fail"]
 pub fn b() {
-//~^ symbol `fail` already exists
+//~^ symbol `fail` is already defined
 }
