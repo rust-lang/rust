@@ -1000,7 +1000,7 @@ pub fn trans_drop_flag_ptr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>, r: &Repr<'tcx
             let fcx = bcx.fcx;
             let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
             let scratch = unpack_datum!(bcx, datum::lvalue_scratch_datum(
-                bcx, tcx.types.bool, "drop_flag", false,
+                bcx, tcx.types.bool, "drop_flag",
                 cleanup::CustomScope(custom_cleanup_scope), (), |_, bcx, _| bcx
             ));
             bcx = fold_variants(bcx, r, val, |variant_cx, st, value| {
