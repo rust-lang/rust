@@ -185,6 +185,7 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
 // only use this for foreign function ABIs and glue, use `decl_rust_fn` for Rust functions
 pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
                ty: Type, output: ty::FnOutput) -> ValueRef {
+    ccx.assert_unique_symbol(name.to_string());
 
     let buf = CString::new(name).unwrap();
     let llfn: ValueRef = unsafe {
@@ -481,16 +482,6 @@ pub fn unset_split_stack(f: ValueRef) {
                                            "split-stack\0".as_ptr() as *const _);
     }
 }
-
-// Double-check that we never ask LLVM to declare the same symbol twice. It
-// silently mangles such symbols, breaking our linkage model.
-pub fn note_unique_llvm_symbol(ccx: &CrateContext, sym: String) {
-    if ccx.all_llvm_symbols().borrow().contains(&sym) {
-        ccx.sess().bug(&format!("duplicate LLVM symbol: {}", sym));
-    }
-    ccx.all_llvm_symbols().borrow_mut().insert(sym);
-}
-
 
 pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               did: ast::DefId,
@@ -1735,9 +1726,9 @@ pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
     }
 }
 
-// trans_closure: Builds an LLVM function out of a source function.
-// If the function closes over its environment a closure will be
-// returned.
+/// Builds an LLVM function out of a source function.
+///
+/// If the function closes over its environment a closure will be returned.
 pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                    decl: &ast::FnDecl,
                                    body: &ast::Block,
@@ -1885,8 +1876,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     finish_fn(&fcx, bcx, output_type, ret_debug_loc);
 }
 
-// trans_fn: creates an LLVM function corresponding to a source language
-// function.
+/// Creates an LLVM function corresponding to a source language function.
 pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                           decl: &ast::FnDecl,
                           body: &ast::Block,
@@ -2703,10 +2693,9 @@ fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, id: ast::NodeId,
         None => {}
     }
 
-    match attr::first_attr_value_str_by_name(attrs, "export_name") {
+    match attr::find_export_name_attr(ccx.sess().diagnostic(), attrs) {
         // Use provided name
         Some(name) => name.to_string(),
-
         _ => ccx.tcx().map.with_path(id, |path| {
             if attr::contains_name(attrs, "no_mangle") {
                 // Don't mangle
@@ -2745,15 +2734,28 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
             let v = match i.node {
                 ast::ItemStatic(_, _, ref expr) => {
-                    // If this static came from an external crate, then
-                    // we need to get the symbol from csearch instead of
-                    // using the current crate's name/version
-                    // information in the hash of the symbol
+                    // If this static came from an external crate, then we need to get the symbol
+                    // from csearch instead of using the current crate's name/version information
+                    // in the hash of the symbol
                     let sym = sym();
-                    debug!("making {}", sym);
+                    debug!("making static {}", sym);
 
-                    // We need the translated value here, because for enums the
-                    // LLVM type is not fully determined by the Rust type.
+                    // Check whether there’s no symbols with the same name yet. In case there are
+                    // any, we will suffer from the *extern declaration* being renamed if we
+                    // register this static with the same name too.
+                    // FIXME: this doesn’t work reliably anyway.
+                    if ccx.symbol_value(sym.to_string()).is_some() {
+                        ccx.sess().span_fatal(i.span, &format!("symbol {} is already declared",
+                                                               sym));
+                    } else if contains_null(&sym[..]) {
+                        // TODO: Should it be a bug? Sounds like prime example for checking
+                        // in parser and attribute getters.
+                        ccx.sess().span_fatal(i.span, &format!("Illegal null byte in export_name \
+                                                               value: `{}`", sym));
+                    }
+
+                    // We need the translated value here, because for enums the LLVM type is not
+                    // fully determined by the Rust type.
                     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
                     let (v, ty) = consts::const_expr(ccx, &**expr, empty_substs);
                     ccx.static_values().borrow_mut().insert(id, v);
@@ -2765,11 +2767,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                         } else {
                             llvm::LLVMTypeOf(v)
                         };
-                        if contains_null(&sym[..]) {
-                            ccx.sess().fatal(
-                                &format!("Illegal null byte in export_name \
-                                         value: `{}`", sym));
-                        }
+
                         let buf = CString::new(sym.clone()).unwrap();
                         let g = llvm::LLVMAddGlobal(ccx.llmod(), llty,
                                                     buf.as_ptr());
@@ -2785,6 +2783,11 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 
                 ast::ItemFn(_, _, abi, _, _) => {
                     let sym = sym();
+                    if ccx.symbol_value(sym.to_string()).is_some() {
+                        ccx.sess().span_fatal(i.span, &format!("symbol {} is already declared",
+                                                               sym));
+                    }
+
                     let llfn = if abi == Rust {
                         register_fn(ccx, i.span, sym, i.id, ty)
                     } else {
@@ -2929,6 +2932,10 @@ fn register_method(ccx: &CrateContext, id: ast::NodeId,
     let mty = ty::node_id_to_type(ccx.tcx(), id);
 
     let sym = exported_name(ccx, id, mty, &m.attrs);
+    if ccx.symbol_value(sym.to_string()).is_some() {
+        ccx.sess().span_fatal(m.span, &format!("symbol {} is already declared", sym));
+    }
+
 
     if let ty::ty_bare_fn(_, ref f) = mty.sty {
         let llfn = if f.abi == Rust || f.abi == RustCall {

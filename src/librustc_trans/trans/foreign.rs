@@ -111,6 +111,7 @@ pub fn register_static(ccx: &CrateContext,
     let llty = type_of::type_of(ccx, ty);
 
     let ident = link_name(foreign_item);
+    ccx.assert_unique_symbol(ident.to_string());
     match attr::first_attr_value_str_by_name(&foreign_item.attrs,
                                              "linkage") {
         // If this is a static with a linkage specified, then we need to handle
@@ -622,6 +623,11 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                       llwrapfn: ValueRef,
                                       tys: &ForeignTypes<'tcx>,
                                       t: Ty<'tcx>) {
+        if llvm::LLVMCountBasicBlocks(llwrapfn) != 0 {
+            ccx.sess().bug("wrapping a function inside non-empty wrapper, most likely cause is \
+                           multiple functions being wrapped");
+        }
+
         let _icx = push_ctxt(
             "foreign::trans_rust_fn_with_foreign_abi::build_wrap_fn");
         let tcx = ccx.tcx();
@@ -641,7 +647,6 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         //         foo0(&r, NULL, i);
         //         return r;
         //     }
-
         let ptr = "the block\0".as_ptr();
         let the_block = llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llwrapfn,
                                                             ptr as *const _);
