@@ -277,7 +277,7 @@ impl Builder {
         // address at which our stack started).
         let main = move || {
             let something_around_the_top_of_the_stack = 1;
-            let addr = &something_around_the_top_of_the_stack as *const isize;
+            let addr = &something_around_the_top_of_the_stack as *const i32;
             let my_stack_top = addr as usize;
             let my_stack_bottom = my_stack_top - stack_size + 1024;
             unsafe {
@@ -802,13 +802,13 @@ mod test {
     }
 
     fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Thunk<'static>) {
-        let (tx, rx) = channel::<u32>();
+        let (tx, rx) = channel();
 
         let x = box 1;
-        let x_in_parent = (&*x) as *const isize as u32;
+        let x_in_parent = (&*x) as *const i32 as usize;
 
         spawnfn(Thunk::new(move|| {
-            let x_in_child = (&*x) as *const isize as u32;
+            let x_in_child = (&*x) as *const i32 as usize;
             tx.send(x_in_child).unwrap();
         }));
 
@@ -847,8 +847,8 @@ mod test {
         // climbing the task tree to dereference each ancestor. (See #1789)
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
-        const GENERATIONS: usize = 16;
-        fn child_no(x: usize) -> Thunk<'static> {
+        const GENERATIONS: u32 = 16;
+        fn child_no(x: u32) -> Thunk<'static> {
             return Thunk::new(move|| {
                 if x < GENERATIONS {
                     thread::spawn(move|| child_no(x+1).invoke(()));
