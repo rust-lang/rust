@@ -227,7 +227,7 @@ fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>,
     let f = decl_rust_fn(ccx, fn_ty, name);
 
     let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
-    attributes::convert_fn_attrs_to_llvm(ccx, &attrs[..], f);
+    attributes::from_fn_attrs(ccx, &attrs[..], f);
 
     ccx.externs().borrow_mut().insert(name.to_string(), f);
     f
@@ -770,7 +770,7 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 _ => {
                     let llfn = foreign::register_foreign_item_fn(ccx, fn_ty.abi, t, &name[..]);
                     let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
-                    attributes::convert_fn_attrs_to_llvm(ccx, &attrs, llfn);
+                    attributes::from_fn_attrs(ccx, &attrs, llfn);
                     llfn
                 }
             }
@@ -792,7 +792,7 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         return (C_null(Type::i8(bcx.ccx())), bcx);
     }
 
-    let attributes = get_fn_llvm_attributes(bcx.ccx(), fn_ty);
+    let attributes = attributes::from_fn_type(bcx.ccx(), fn_ty);
 
     match bcx.opt_node_id {
         None => {
@@ -2226,176 +2226,6 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     llfn
 }
 
-pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>)
-                                        -> llvm::AttrBuilder
-{
-    use middle::ty::{BrAnon, ReLateBound};
-
-    let function_type;
-    let (fn_sig, abi, env_ty) = match fn_ty.sty {
-        ty::ty_bare_fn(_, ref f) => (&f.sig, f.abi, None),
-        ty::ty_closure(closure_did, substs) => {
-            let typer = common::NormalizingClosureTyper::new(ccx.tcx());
-            function_type = typer.closure_type(closure_did, substs);
-            let self_type = self_type_for_closure(ccx, closure_did, fn_ty);
-            (&function_type.sig, RustCall, Some(self_type))
-        }
-        _ => ccx.sess().bug("expected closure or function.")
-    };
-
-    let fn_sig = ty::erase_late_bound_regions(ccx.tcx(), fn_sig);
-
-    let mut attrs = llvm::AttrBuilder::new();
-    let ret_ty = fn_sig.output;
-
-    // These have an odd calling convention, so we need to manually
-    // unpack the input ty's
-    let input_tys = match fn_ty.sty {
-        ty::ty_closure(..) => {
-            assert!(abi == RustCall);
-
-            match fn_sig.inputs[0].sty {
-                ty::ty_tup(ref inputs) => {
-                    let mut full_inputs = vec![env_ty.expect("Missing closure environment")];
-                    full_inputs.push_all(inputs);
-                    full_inputs
-                }
-                _ => ccx.sess().bug("expected tuple'd inputs")
-            }
-        },
-        ty::ty_bare_fn(..) if abi == RustCall => {
-            let mut inputs = vec![fn_sig.inputs[0]];
-
-            match fn_sig.inputs[1].sty {
-                ty::ty_tup(ref t_in) => {
-                    inputs.push_all(&t_in[..]);
-                    inputs
-                }
-                _ => ccx.sess().bug("expected tuple'd inputs")
-            }
-        }
-        _ => fn_sig.inputs.clone()
-    };
-
-    // Index 0 is the return value of the llvm func, so we start at 1
-    let mut first_arg_offset = 1;
-    if let ty::FnConverging(ret_ty) = ret_ty {
-        // A function pointer is called without the declaration
-        // available, so we have to apply any attributes with ABI
-        // implications directly to the call instruction. Right now,
-        // the only attribute we need to worry about is `sret`.
-        if type_of::return_uses_outptr(ccx, ret_ty) {
-            let llret_sz = llsize_of_real(ccx, type_of::type_of(ccx, ret_ty));
-
-            // The outptr can be noalias and nocapture because it's entirely
-            // invisible to the program. We also know it's nonnull as well
-            // as how many bytes we can dereference
-            attrs.arg(1, llvm::StructRetAttribute)
-                 .arg(1, llvm::NoAliasAttribute)
-                 .arg(1, llvm::NoCaptureAttribute)
-                 .arg(1, llvm::DereferenceableAttribute(llret_sz));
-
-            // Add one more since there's an outptr
-            first_arg_offset += 1;
-        } else {
-            // The `noalias` attribute on the return value is useful to a
-            // function ptr caller.
-            match ret_ty.sty {
-                // `~` pointer return values never alias because ownership
-                // is transferred
-                ty::ty_uniq(it) if !common::type_is_sized(ccx.tcx(), it) => {}
-                ty::ty_uniq(_) => {
-                    attrs.ret(llvm::NoAliasAttribute);
-                }
-                _ => {}
-            }
-
-            // We can also mark the return value as `dereferenceable` in certain cases
-            match ret_ty.sty {
-                // These are not really pointers but pairs, (pointer, len)
-                ty::ty_uniq(it) |
-                ty::ty_rptr(_, ty::mt { ty: it, .. }) if !common::type_is_sized(ccx.tcx(), it) => {}
-                ty::ty_uniq(inner) | ty::ty_rptr(_, ty::mt { ty: inner, .. }) => {
-                    let llret_sz = llsize_of_real(ccx, type_of::type_of(ccx, inner));
-                    attrs.ret(llvm::DereferenceableAttribute(llret_sz));
-                }
-                _ => {}
-            }
-
-            if let ty::ty_bool = ret_ty.sty {
-                attrs.ret(llvm::ZExtAttribute);
-            }
-        }
-    }
-
-    for (idx, &t) in input_tys.iter().enumerate().map(|(i, v)| (i + first_arg_offset, v)) {
-        match t.sty {
-            // this needs to be first to prevent fat pointers from falling through
-            _ if !type_is_immediate(ccx, t) => {
-                let llarg_sz = llsize_of_real(ccx, type_of::type_of(ccx, t));
-
-                // For non-immediate arguments the callee gets its own copy of
-                // the value on the stack, so there are no aliases. It's also
-                // program-invisible so can't possibly capture
-                attrs.arg(idx, llvm::NoAliasAttribute)
-                     .arg(idx, llvm::NoCaptureAttribute)
-                     .arg(idx, llvm::DereferenceableAttribute(llarg_sz));
-            }
-
-            ty::ty_bool => {
-                attrs.arg(idx, llvm::ZExtAttribute);
-            }
-
-            // `~` pointer parameters never alias because ownership is transferred
-            ty::ty_uniq(inner) => {
-                let llsz = llsize_of_real(ccx, type_of::type_of(ccx, inner));
-
-                attrs.arg(idx, llvm::NoAliasAttribute)
-                     .arg(idx, llvm::DereferenceableAttribute(llsz));
-            }
-
-            // `&mut` pointer parameters never alias other parameters, or mutable global data
-            //
-            // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as both
-            // `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely on
-            // memory dependencies rather than pointer equality
-            ty::ty_rptr(b, mt) if mt.mutbl == ast::MutMutable ||
-                                  !ty::type_contents(ccx.tcx(), mt.ty).interior_unsafe() => {
-
-                let llsz = llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
-                attrs.arg(idx, llvm::NoAliasAttribute)
-                     .arg(idx, llvm::DereferenceableAttribute(llsz));
-
-                if mt.mutbl == ast::MutImmutable {
-                    attrs.arg(idx, llvm::ReadOnlyAttribute);
-                }
-
-                if let ReLateBound(_, BrAnon(_)) = *b {
-                    attrs.arg(idx, llvm::NoCaptureAttribute);
-                }
-            }
-
-            // When a reference in an argument has no named lifetime, it's impossible for that
-            // reference to escape this function (returned or stored beyond the call by a closure).
-            ty::ty_rptr(&ReLateBound(_, BrAnon(_)), mt) => {
-                let llsz = llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
-                attrs.arg(idx, llvm::NoCaptureAttribute)
-                     .arg(idx, llvm::DereferenceableAttribute(llsz));
-            }
-
-            // & pointer parameters are also never null and we know exactly how
-            // many bytes we can dereference
-            ty::ty_rptr(_, mt) => {
-                let llsz = llsize_of_real(ccx, type_of::type_of(ccx, mt.ty));
-                attrs.arg(idx, llvm::DereferenceableAttribute(llsz));
-            }
-            _ => ()
-        }
-    }
-
-    attrs
-}
-
 // only use this for foreign function ABIs and glue, use `register_fn` for Rust functions
 pub fn register_fn_llvmty(ccx: &CrateContext,
                           sp: Span,
@@ -2605,7 +2435,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                                                    sym,
                                                                    i.id)
                     };
-                    attributes::convert_fn_attrs_to_llvm(ccx, &i.attrs, llfn);
+                    attributes::from_fn_attrs(ccx, &i.attrs, llfn);
                     llfn
                 }
 
@@ -2666,7 +2496,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     let ty = ty::node_id_to_type(ccx.tcx(), ni.id);
                     let name = foreign::link_name(&*ni);
                     let llfn = foreign::register_foreign_item_fn(ccx, abi, ty, &name);
-                    attributes::convert_fn_attrs_to_llvm(ccx, &ni.attrs, llfn);
+                    attributes::from_fn_attrs(ccx, &ni.attrs, llfn);
                     llfn
                 }
                 ast::ForeignItemStatic(..) => {
@@ -2698,7 +2528,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                 }
                 _ => ccx.sess().bug("NodeVariant, shouldn't happen")
             };
-            attributes::inline(llfn, attributes::InlineHint);
+            attributes::inline(llfn, attributes::InlineAttr::Hint);
             llfn
         }
 
@@ -2720,7 +2550,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                     &struct_item.attrs);
             let llfn = register_fn(ccx, struct_item.span,
                                    sym, ctor_id, ty);
-            attributes::inline(llfn, attributes::InlineHint);
+            attributes::inline(llfn, attributes::InlineAttr::Hint);
             llfn
         }
 
@@ -2755,7 +2585,7 @@ fn register_method(ccx: &CrateContext, id: ast::NodeId,
         } else {
             foreign::register_rust_fn_with_foreign_abi(ccx, span, sym, id)
         };
-        attributes::convert_fn_attrs_to_llvm(ccx, &attrs, llfn);
+        attributes::from_fn_attrs(ccx, &attrs, llfn);
         return llfn;
     } else {
         ccx.sess().span_bug(span, "expected bare rust function");

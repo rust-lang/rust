@@ -151,7 +151,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     };
     let setup_lldecl = |lldecl, attrs: &[ast::Attribute]| {
         base::update_linkage(ccx, lldecl, None, base::OriginalTranslation);
-        attributes::convert_fn_attrs_to_llvm(ccx, attrs, lldecl);
+        attributes::from_fn_attrs(ccx, attrs, lldecl);
 
         let is_first = !ccx.available_monomorphizations().borrow().contains(&s);
         if is_first {
@@ -200,7 +200,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let tvs = ty::enum_variants(ccx.tcx(), local_def(parent));
             let this_tv = tvs.iter().find(|tv| { tv.id.node == fn_id.node}).unwrap();
             let d = mk_lldecl(abi::Rust);
-            attributes::inline(d, attributes::InlineHint);
+            attributes::inline(d, attributes::InlineAttr::Hint);
             match v.node.kind {
                 ast::TupleVariantKind(ref args) => {
                     trans_enum_variant(ccx,
@@ -259,7 +259,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         ast_map::NodeStructCtor(struct_def) => {
             let d = mk_lldecl(abi::Rust);
-            attributes::inline(d, attributes::InlineHint);
+            attributes::inline(d, attributes::InlineAttr::Hint);
             base::trans_tuple_struct(ccx,
                                      &struct_def.fields,
                                      struct_def.ctor_id.expect("ast-mapped tuple struct \
