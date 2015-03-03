@@ -89,6 +89,12 @@ extern "C" LLVMValueRef LLVMGetOrInsertFunction(LLVMModuleRef M,
                                              unwrap<FunctionType>(FunctionTy)));
 }
 
+extern "C" LLVMValueRef LLVMGetOrInsertGlobal(LLVMModuleRef M,
+                                              const char* Name,
+                                              LLVMTypeRef Ty) {
+  return wrap(unwrap(M)->getOrInsertGlobal(Name, unwrap(Ty)));
+}
+
 extern "C" LLVMTypeRef LLVMMetadataTypeInContext(LLVMContextRef C) {
   return wrap(Type::getMetadataTy(*unwrap(C)));
 }
