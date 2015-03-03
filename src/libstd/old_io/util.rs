@@ -10,6 +10,8 @@
 
 //! Utility implementations of Reader and Writer
 
+#![allow(deprecated)]
+
 use prelude::v1::*;
 use cmp;
 use old_io;
@@ -17,13 +19,19 @@ use slice::bytes::MutableByteVector;
 
 /// Wraps a `Reader`, limiting the number of bytes that can be read from it.
 #[derive(Debug)]
+#[deprecated(since = "1.0.0", reason = "use std::io::Take")]
+#[unstable(feature = "old_io")]
 pub struct LimitReader<R> {
     limit: uint,
     inner: R
 }
 
+#[deprecated(since = "1.0.0", reason = "use std::io::Take")]
+#[unstable(feature = "old_io")]
 impl<R: Reader> LimitReader<R> {
     /// Creates a new `LimitReader`
+    #[deprecated(since = "1.0.0", reason = "use std::io's take method instead")]
+    #[unstable(feature = "old_io")]
     pub fn new(r: R, limit: uint) -> LimitReader<R> {
         LimitReader { limit: limit, inner: r }
     }
@@ -41,6 +49,8 @@ impl<R: Reader> LimitReader<R> {
     pub fn limit(&self) -> uint { self.limit }
 }
 
+#[deprecated(since = "1.0.0", reason = "use std::io's take method instead")]
+#[unstable(feature = "old_io")]
 impl<R: Reader> Reader for LimitReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
         if self.limit == 0 {
@@ -57,6 +67,8 @@ impl<R: Reader> Reader for LimitReader<R> {
     }
 }
 
+#[deprecated(since = "1.0.0", reason = "use std::io's take method instead")]
+#[unstable(feature = "old_io")]
 impl<R: Buffer> Buffer for LimitReader<R> {
     fn fill_buf<'a>(&'a mut self) -> old_io::IoResult<&'a [u8]> {
         let amt = try!(self.inner.fill_buf());
@@ -79,8 +91,12 @@ impl<R: Buffer> Buffer for LimitReader<R> {
 
 /// A `Writer` which ignores bytes written to it, like /dev/null.
 #[derive(Copy, Debug)]
+#[deprecated(since = "1.0.0", reason = "use std::io::sink() instead")]
+#[unstable(feature = "old_io")]
 pub struct NullWriter;
 
+#[deprecated(since = "1.0.0", reason = "use std::io::sink() instead")]
+#[unstable(feature = "old_io")]
 impl Writer for NullWriter {
     #[inline]
     fn write_all(&mut self, _buf: &[u8]) -> old_io::IoResult<()> { Ok(()) }
@@ -88,8 +104,12 @@ impl Writer for NullWriter {
 
 /// A `Reader` which returns an infinite stream of 0 bytes, like /dev/zero.
 #[derive(Copy, Debug)]
+#[deprecated(since = "1.0.0", reason = "use std::io::repeat(0) instead")]
+#[unstable(feature = "old_io")]
 pub struct ZeroReader;
 
+#[deprecated(since = "1.0.0", reason = "use std::io::repeat(0) instead")]
+#[unstable(feature = "old_io")]
 impl Reader for ZeroReader {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
@@ -98,6 +118,8 @@ impl Reader for ZeroReader {
     }
 }
 
+#[deprecated(since = "1.0.0", reason = "use std::io::repeat(0) instead")]
+#[unstable(feature = "old_io")]
 impl Buffer for ZeroReader {
     fn fill_buf<'a>(&'a mut self) -> old_io::IoResult<&'a [u8]> {
         static DATA: [u8; 64] = [0; 64];
@@ -109,8 +131,12 @@ impl Buffer for ZeroReader {
 
 /// A `Reader` which is always at EOF, like /dev/null.
 #[derive(Copy, Debug)]
+#[deprecated(since = "1.0.0", reason = "use std::io::empty() instead")]
+#[unstable(feature = "old_io")]
 pub struct NullReader;
 
+#[deprecated(since = "1.0.0", reason = "use std::io::empty() instead")]
+#[unstable(feature = "old_io")]
 impl Reader for NullReader {
     #[inline]
     fn read(&mut self, _buf: &mut [u8]) -> old_io::IoResult<uint> {
@@ -118,6 +144,8 @@ impl Reader for NullReader {
     }
 }
 
+#[deprecated(since = "1.0.0", reason = "use std::io::empty() instead")]
+#[unstable(feature = "old_io")]
 impl Buffer for NullReader {
     fn fill_buf<'a>(&'a mut self) -> old_io::IoResult<&'a [u8]> {
         Err(old_io::standard_error(old_io::EndOfFile))
@@ -130,17 +158,23 @@ impl Buffer for NullReader {
 /// The `Writer`s are delegated to in order. If any `Writer` returns an error,
 /// that error is returned immediately and remaining `Writer`s are not called.
 #[derive(Debug)]
+#[deprecated(since = "1.0.0", reason = "use std::io::Broadcast instead")]
+#[unstable(feature = "old_io")]
 pub struct MultiWriter<W> {
     writers: Vec<W>
 }
 
 impl<W> MultiWriter<W> where W: Writer {
     /// Creates a new `MultiWriter`
+    #[deprecated(since = "1.0.0", reason = "use std::io's broadcast method instead")]
+    #[unstable(feature = "old_io")]
     pub fn new(writers: Vec<W>) -> MultiWriter<W> {
         MultiWriter { writers: writers }
     }
 }
 
+#[deprecated(since = "1.0.0", reason = "use std::io::Broadcast instead")]
+#[unstable(feature = "old_io")]
 impl<W> Writer for MultiWriter<W> where W: Writer {
     #[inline]
     fn write_all(&mut self, buf: &[u8]) -> old_io::IoResult<()> {
@@ -162,6 +196,8 @@ impl<W> Writer for MultiWriter<W> where W: Writer {
 /// A `Reader` which chains input from multiple `Reader`s, reading each to
 /// completion before moving onto the next.
 #[derive(Clone, Debug)]
+#[deprecated(since = "1.0.0", reason = "use std::io::Chain instead")]
+#[unstable(feature = "old_io")]
 pub struct ChainedReader<I, R> {
     readers: I,
     cur_reader: Option<R>,
@@ -169,12 +205,16 @@ pub struct ChainedReader<I, R> {
 
 impl<R: Reader, I: Iterator<Item=R>> ChainedReader<I, R> {
     /// Creates a new `ChainedReader`
+    #[deprecated(since = "1.0.0", reason = "use std::io's chain method instead")]
+    #[unstable(feature = "old_io")]
     pub fn new(mut readers: I) -> ChainedReader<I, R> {
         let r = readers.next();
         ChainedReader { readers: readers, cur_reader: r }
     }
 }
 
+#[deprecated(since = "1.0.0", reason = "use std::io::Chain instead")]
+#[unstable(feature = "old_io")]
 impl<R: Reader, I: Iterator<Item=R>> Reader for ChainedReader<I, R> {
     fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
         loop {
@@ -201,13 +241,19 @@ impl<R: Reader, I: Iterator<Item=R>> Reader for ChainedReader<I, R> {
 /// A `Reader` which forwards input from another `Reader`, passing it along to
 /// a `Writer` as well. Similar to the `tee(1)` command.
 #[derive(Debug)]
+#[deprecated(since = "1.0.0", reason = "use std::io::Tee instead")]
+#[unstable(feature = "old_io")]
 pub struct TeeReader<R, W> {
     reader: R,
     writer: W,
 }
 
+#[deprecated(since = "1.0.0", reason = "use std::io::Tee instead")]
+#[unstable(feature = "old_io")]
 impl<R: Reader, W: Writer> TeeReader<R, W> {
     /// Creates a new `TeeReader`
+    #[deprecated(since = "1.0.0", reason = "use std::io's tee method instead")]
+    #[unstable(feature = "old_io")]
     pub fn new(r: R, w: W) -> TeeReader<R, W> {
         TeeReader { reader: r, writer: w }
     }
@@ -220,6 +266,8 @@ impl<R: Reader, W: Writer> TeeReader<R, W> {
     }
 }
 
+#[deprecated(since = "1.0.0", reason = "use std::io::Tee instead")]
+#[unstable(feature = "old_io")]
 impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
     fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
         self.reader.read(buf).and_then(|len| {
@@ -229,6 +277,8 @@ impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
 }
 
 /// Copies all data from a `Reader` to a `Writer`.
+#[deprecated(since = "1.0.0", reason = "use std::io's copy function instead")]
+#[unstable(feature = "old_io")]
 pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> old_io::IoResult<()> {
     let mut buf = [0; super::DEFAULT_BUF_SIZE];
     loop {
