@@ -33,6 +33,7 @@ use trans::common::*;
 use trans::consts;
 use trans::datum;
 use trans::debuginfo::DebugLoc;
+use trans::declare;
 use trans::expr;
 use trans::foreign;
 use trans::inline;
@@ -184,7 +185,7 @@ pub fn get_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Val
     // To avoid infinite recursion, don't `make_drop_glue` until after we've
     // added the entry to the `drop_glues` cache.
     if let Some(old_sym) = ccx.available_drop_glues().borrow().get(&t) {
-        let llfn = decl_cdecl_fn(ccx, &old_sym, llfnty, ty::mk_nil(ccx.tcx()));
+        let llfn = declare::declare_cfn(ccx, &old_sym, llfnty, ty::mk_nil(ccx.tcx()));
         ccx.drop_glues().borrow_mut().insert(t, llfn);
         return llfn;
     };
@@ -294,12 +295,8 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      did,
                                      &[get_drop_glue_type(ccx, t)],
                                      ty::mk_nil(ccx.tcx()));
-        foreign::get_extern_fn(ccx,
-                      &mut *ccx.externs().borrow_mut(),
-                      &name[..],
-                      llvm::CCallConv,
-                      llty,
-                      dtor_ty)
+        foreign::get_extern_fn(ccx, &mut *ccx.externs().borrow_mut(), &name[..], llvm::CCallConv,
+                               llty, dtor_ty)
     }
 }
 

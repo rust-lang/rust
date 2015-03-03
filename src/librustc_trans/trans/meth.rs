@@ -28,6 +28,7 @@ use trans::common::*;
 use trans::consts;
 use trans::datum::*;
 use trans::debuginfo::DebugLoc;
+use trans::declare;
 use trans::expr::SaveIn;
 use trans::expr;
 use trans::glue;
@@ -590,10 +591,10 @@ pub fn trans_object_shim<'a, 'tcx>(
     //
     let shim_fn_ty = ty::mk_bare_fn(tcx, None, fty);
     let method_bare_fn_ty = ty::mk_bare_fn(tcx, None, method_ty);
-    let function_name =
-        link::mangle_internal_name_by_type_and_seq(ccx, shim_fn_ty, "object_shim");
-    let llfn =
-        decl_internal_rust_fn(ccx, shim_fn_ty, &function_name);
+    let function_name = link::mangle_internal_name_by_type_and_seq(ccx, shim_fn_ty, "object_shim");
+    let llfn = declare::define_internal_rust_fn(ccx, &function_name, shim_fn_ty).unwrap_or_else(||{
+        ccx.sess().bug(&format!("symbol `{}` already defined", function_name));
+    });
 
     let sig = ty::erase_late_bound_regions(ccx.tcx(), &fty.sig);
 
@@ -756,8 +757,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         C_uint(ccx, align)
     ].into_iter().chain(methods).collect();
 
-    let vtable = consts::addr_of(ccx, C_struct(ccx, &components, false),
-                                 "vtable", trait_ref.def_id().node);
+    let vtable = consts::addr_of(ccx, C_struct(ccx, &components, false), "vtable");
 
     ccx.vtables().borrow_mut().insert(trait_ref, vtable);
     vtable
