@@ -84,8 +84,8 @@ def fetch(f):
         sys.stderr.write("cannot load %s" % f)
         exit(1)
 
-def is_valid_unicode(n):
-    return 0 <= n <= 0xD7FF or 0xE000 <= n <= 0x10FFFF
+def is_surrogate(n):
+    return 0xD800 <= n <= 0xDFFF
 
 def load_unicode_data(f):
     fetch(f)
@@ -96,19 +96,28 @@ def load_unicode_data(f):
     canon_decomp = {}
     compat_decomp = {}
 
+    udict = {};
+    range_start = -1;
     for line in fileinput.input(f):
-        fields = line.split(";")
-        if len(fields) != 15:
+        data = line.split(';');
+        if len(data) != 15:
             continue
-        [code, name, gencat, combine, bidi,
+        cp = int(data[0], 16);
+        if is_surrogate(cp):
+            continue
+        if range_start >= 0:
+            for i in xrange(range_start, cp):
+                udict[i] = data;
+            range_start = -1;
+        if data[1].endswith(", First>"):
+            range_start = cp;
+            continue;
+        udict[cp] = data;
+
+    for code in udict:
+        [code_org, name, gencat, combine, bidi,
          decomp, deci, digit, num, mirror,
-         old, iso, upcase, lowcase, titlecase ] = fields
-
-        code_org = code
-        code     = int(code, 16)
-
-        if not is_valid_unicode(code):
-            continue
+         old, iso, upcase, lowcase, titlecase ] = udict[code];
 
         # generate char to char direct common and simple conversions
         # uppercase to lowercase
