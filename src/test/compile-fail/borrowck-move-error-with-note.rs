@@ -17,7 +17,7 @@ enum Foo {
 }
 
 fn blah() {
-    let f = &Foo::Foo1(box 1u32, box 2u32);
+    let f = &Foo::Foo1(box 1, box 2);
     match *f {             //~ ERROR cannot move out of
         Foo::Foo1(num1,         //~ NOTE attempting to move value to here
                   num2) => (),  //~ NOTE and here

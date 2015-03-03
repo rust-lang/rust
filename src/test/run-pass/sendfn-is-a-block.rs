@@ -10,10 +10,10 @@
 
 
 fn test<F>(f: F) -> uint where F: FnOnce(uint) -> uint {
-    return f(22_usize);
+    return f(22);
 }
 
 pub fn main() {
-    let y = test(|x| 4_usize * x);
-    assert_eq!(y, 88_usize);
+    let y = test(|x| 4 * x);
+    assert_eq!(y, 88);
 }

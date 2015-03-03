@@ -60,7 +60,7 @@ impl Sudoku {
         reader.read_line(&mut s).unwrap();
         assert_eq!(s, "9,9\n");
 
-        let mut g = repeat(vec![0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8])
+        let mut g = repeat(vec![0, 0, 0, 0, 0, 0, 0, 0, 0])
                           .take(10).collect::<Vec<_>>();
         for line in reader.lines() {
             let line = line.unwrap();
@@ -94,10 +94,10 @@ impl Sudoku {
     // solve sudoku grid
     pub fn solve(&mut self) {
         let mut work: Vec<(u8, u8)> = Vec::new(); /* queue of uncolored fields */
-        for row in 0u8..9u8 {
-            for col in 0u8..9u8 {
+        for row in 0..9 {
+            for col in 0..9 {
                 let color = self.grid[row as usize][col as usize];
-                if color == 0u8 {
+                if color == 0 {
                     work.push((row, col));
                 }
             }
@@ -122,7 +122,7 @@ impl Sudoku {
     }
 
     fn next_color(&mut self, row: u8, col: u8, start_color: u8) -> bool {
-        if start_color < 10u8 {
+        if start_color < 10 {
             // colors not yet used
             let mut avail: Box<_> = box Colors::new(start_color);
 
@@ -132,15 +132,15 @@ impl Sudoku {
             // find first remaining color that is available
             let next = avail.next();
             self.grid[row as usize][col as usize] = next;
-            return 0u8 != next;
+            return 0 != next;
         }
-        self.grid[row as usize][col as usize] = 0u8;
+        self.grid[row as usize][col as usize] = 0;
         return false;
     }
 
     // find colors available in neighbourhood of (row, col)
     fn drop_colors(&mut self, avail: &mut Colors, row: u8, col: u8) {
-        for idx in 0u8..9u8 {
+        for idx in 0..9 {
             /* check same column fields */
             avail.remove(self.grid[idx as usize][col as usize]);
             /* check same row fields */
@@ -148,10 +148,10 @@ impl Sudoku {
         }
 
         // check same block fields
-        let row0 = (row / 3u8) * 3u8;
-        let col0 = (col / 3u8) * 3u8;
-        for alt_row in row0..row0 + 3u8 {
-            for alt_col in col0..col0 + 3u8 {
+        let row0 = (row / 3) * 3;
+        let col0 = (col / 3) * 3;
+        for alt_row in row0..row0 + 3 {
+            for alt_col in col0..col0 + 3 {
                 avail.remove(self.grid[alt_row as usize][alt_col as usize]);
             }
         }
@@ -161,29 +161,29 @@ impl Sudoku {
 // Stores available colors as simple bitfield, bit 0 is always unset
 struct Colors(u16);
 
-static HEADS: u16 = (1u16 << 10) - 1; /* bits 9..0 */
+static HEADS: u16 = (1 << 10) - 1; /* bits 9..0 */
 
 impl Colors {
     fn new(start_color: u8) -> Colors {
         // Sets bits 9..start_color
-        let tails = !0u16 << start_color as usize;
+        let tails = !0 << start_color as usize;
         return Colors(HEADS & tails);
     }
 
     fn next(&self) -> u8 {
         let Colors(c) = *self;
         let val = c & HEADS;
-        if 0u16 == val {
-            return 0u8;
+        if 0 == val {
+            return 0;
         } else {
             return val.trailing_zeros() as u8
         }
     }
 
     fn remove(&mut self, color: u8) {
-        if color != 0u8 {
+        if color != 0 {
             let Colors(val) = *self;
-            let mask = !(1u16 << color as usize);
+            let mask = !(1 << color as usize);
             *self    = Colors(val & mask);
         }
     }
@@ -191,57 +191,57 @@ impl Colors {
 
 static DEFAULT_SUDOKU: [[u8;9];9] = [
          /* 0    1    2    3    4    5    6    7    8    */
-  /* 0 */  [0u8, 4u8, 0u8, 6u8, 0u8, 0u8, 0u8, 3u8, 2u8],
-  /* 1 */  [0u8, 0u8, 8u8, 0u8, 2u8, 0u8, 0u8, 0u8, 0u8],
-  /* 2 */  [7u8, 0u8, 0u8, 8u8, 0u8, 0u8, 0u8, 0u8, 0u8],
-  /* 3 */  [0u8, 0u8, 0u8, 5u8, 0u8, 0u8, 0u8, 0u8, 0u8],
-  /* 4 */  [0u8, 5u8, 0u8, 0u8, 0u8, 3u8, 6u8, 0u8, 0u8],
-  /* 5 */  [6u8, 8u8, 0u8, 0u8, 0u8, 0u8, 0u8, 9u8, 0u8],
-  /* 6 */  [0u8, 9u8, 5u8, 0u8, 0u8, 6u8, 0u8, 7u8, 0u8],
-  /* 7 */  [0u8, 0u8, 0u8, 0u8, 4u8, 0u8, 0u8, 6u8, 0u8],
-  /* 8 */  [4u8, 0u8, 0u8, 0u8, 0u8, 7u8, 2u8, 0u8, 3u8]
+  /* 0 */  [0, 4, 0, 6, 0, 0, 0, 3, 2],
+  /* 1 */  [0, 0, 8, 0, 2, 0, 0, 0, 0],
+  /* 2 */  [7, 0, 0, 8, 0, 0, 0, 0, 0],
+  /* 3 */  [0, 0, 0, 5, 0, 0, 0, 0, 0],
+  /* 4 */  [0, 5, 0, 0, 0, 3, 6, 0, 0],
+  /* 5 */  [6, 8, 0, 0, 0, 0, 0, 9, 0],
+  /* 6 */  [0, 9, 5, 0, 0, 6, 0, 7, 0],
+  /* 7 */  [0, 0, 0, 0, 4, 0, 0, 6, 0],
+  /* 8 */  [4, 0, 0, 0, 0, 7, 2, 0, 3]
 ];
 
 #[cfg(test)]
 static DEFAULT_SOLUTION: [[u8;9];9] = [
          /* 0    1    2    3    4    5    6    7    8    */
-  /* 0 */  [1u8, 4u8, 9u8, 6u8, 7u8, 5u8, 8u8, 3u8, 2u8],
-  /* 1 */  [5u8, 3u8, 8u8, 1u8, 2u8, 9u8, 7u8, 4u8, 6u8],
-  /* 2 */  [7u8, 2u8, 6u8, 8u8, 3u8, 4u8, 1u8, 5u8, 9u8],
-  /* 3 */  [9u8, 1u8, 4u8, 5u8, 6u8, 8u8, 3u8, 2u8, 7u8],
-  /* 4 */  [2u8, 5u8, 7u8, 4u8, 9u8, 3u8, 6u8, 1u8, 8u8],
-  /* 5 */  [6u8, 8u8, 3u8, 7u8, 1u8, 2u8, 5u8, 9u8, 4u8],
-  /* 6 */  [3u8, 9u8, 5u8, 2u8, 8u8, 6u8, 4u8, 7u8, 1u8],
-  /* 7 */  [8u8, 7u8, 2u8, 3u8, 4u8, 1u8, 9u8, 6u8, 5u8],
-  /* 8 */  [4u8, 6u8, 1u8, 9u8, 5u8, 7u8, 2u8, 8u8, 3u8]
+  /* 0 */  [1, 4, 9, 6, 7, 5, 8, 3, 2],
+  /* 1 */  [5, 3, 8, 1, 2, 9, 7, 4, 6],
+  /* 2 */  [7, 2, 6, 8, 3, 4, 1, 5, 9],
+  /* 3 */  [9, 1, 4, 5, 6, 8, 3, 2, 7],
+  /* 4 */  [2, 5, 7, 4, 9, 3, 6, 1, 8],
+  /* 5 */  [6, 8, 3, 7, 1, 2, 5, 9, 4],
+  /* 6 */  [3, 9, 5, 2, 8, 6, 4, 7, 1],
+  /* 7 */  [8, 7, 2, 3, 4, 1, 9, 6, 5],
+  /* 8 */  [4, 6, 1, 9, 5, 7, 2, 8, 3]
 ];
 
 #[test]
 fn colors_new_works() {
-    assert_eq!(*Colors::new(1), 1022u16);
-    assert_eq!(*Colors::new(2), 1020u16);
-    assert_eq!(*Colors::new(3), 1016u16);
-    assert_eq!(*Colors::new(4), 1008u16);
-    assert_eq!(*Colors::new(5), 992u16);
-    assert_eq!(*Colors::new(6), 960u16);
-    assert_eq!(*Colors::new(7), 896u16);
-    assert_eq!(*Colors::new(8), 768u16);
-    assert_eq!(*Colors::new(9), 512u16);
+    assert_eq!(*Colors::new(1), 1022);
+    assert_eq!(*Colors::new(2), 1020);
+    assert_eq!(*Colors::new(3), 1016);
+    assert_eq!(*Colors::new(4), 1008);
+    assert_eq!(*Colors::new(5), 992);
+    assert_eq!(*Colors::new(6), 960);
+    assert_eq!(*Colors::new(7), 896);
+    assert_eq!(*Colors::new(8), 768);
+    assert_eq!(*Colors::new(9), 512);
 }
 
 #[test]
 fn colors_next_works() {
-    assert_eq!(Colors(0).next(), 0u8);
-    assert_eq!(Colors(2).next(), 1u8);
-    assert_eq!(Colors(4).next(), 2u8);
-    assert_eq!(Colors(8).next(), 3u8);
-    assert_eq!(Colors(16).next(), 4u8);
-    assert_eq!(Colors(32).next(), 5u8);
-    assert_eq!(Colors(64).next(), 6u8);
-    assert_eq!(Colors(128).next(), 7u8);
-    assert_eq!(Colors(256).next(), 8u8);
-    assert_eq!(Colors(512).next(), 9u8);
-    assert_eq!(Colors(1024).next(), 0u8);
+    assert_eq!(Colors(0).next(), 0);
+    assert_eq!(Colors(2).next(), 1);
+    assert_eq!(Colors(4).next(), 2);
+    assert_eq!(Colors(8).next(), 3);
+    assert_eq!(Colors(16).next(), 4);
+    assert_eq!(Colors(32).next(), 5);
+    assert_eq!(Colors(64).next(), 6);
+    assert_eq!(Colors(128).next(), 7);
+    assert_eq!(Colors(256).next(), 8);
+    assert_eq!(Colors(512).next(), 9);
+    assert_eq!(Colors(1024).next(), 0);
 }
 
 #[test]
@@ -253,7 +253,7 @@ fn colors_remove_works() {
     colors.remove(1);
 
     // THEN
-    assert_eq!(colors.next(), 2u8);
+    assert_eq!(colors.next(), 2);
 }
 
 #[test]

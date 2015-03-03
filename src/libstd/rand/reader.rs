@@ -84,28 +84,28 @@ mod test {
     #[test]
     fn test_reader_rng_u64() {
         // transmute from the target to avoid endianness concerns.
-        let v = vec![0u8, 0, 0, 0, 0, 0, 0, 1,
+        let v = vec![0, 0, 0, 0, 0, 0, 0, 1,
                      0  , 0, 0, 0, 0, 0, 0, 2,
                      0,   0, 0, 0, 0, 0, 0, 3];
         let mut rng = ReaderRng::new(MemReader::new(v));
 
-        assert_eq!(rng.next_u64(), 1_u64.to_be());
-        assert_eq!(rng.next_u64(), 2_u64.to_be());
-        assert_eq!(rng.next_u64(), 3_u64.to_be());
+        assert_eq!(rng.next_u64(), 1.to_be());
+        assert_eq!(rng.next_u64(), 2.to_be());
+        assert_eq!(rng.next_u64(), 3.to_be());
     }
     #[test]
     fn test_reader_rng_u32() {
-        let v = vec![0u8, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3];
+        let v = vec![0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3];
         let mut rng = ReaderRng::new(MemReader::new(v));
 
-        assert_eq!(rng.next_u32(), 1_u32.to_be());
-        assert_eq!(rng.next_u32(), 2_u32.to_be());
-        assert_eq!(rng.next_u32(), 3_u32.to_be());
+        assert_eq!(rng.next_u32(), 1.to_be());
+        assert_eq!(rng.next_u32(), 2.to_be());
+        assert_eq!(rng.next_u32(), 3.to_be());
     }
     #[test]
     fn test_reader_rng_fill_bytes() {
-        let v = [1u8, 2, 3, 4, 5, 6, 7, 8];
-        let mut w = [0u8; 8];
+        let v = [1, 2, 3, 4, 5, 6, 7, 8];
+        let mut w = [0; 8];
 
         let mut rng = ReaderRng::new(MemReader::new(v.to_vec()));
         rng.fill_bytes(&mut w);
@@ -117,7 +117,7 @@ mod test {
     #[should_fail]
     fn test_reader_rng_insufficient_bytes() {
         let mut rng = ReaderRng::new(MemReader::new(vec!()));
-        let mut v = [0u8; 3];
+        let mut v = [0; 3];
         rng.fill_bytes(&mut v);
     }
 }

@@ -78,11 +78,11 @@ impl Code {
     }
 
     fn rotate(&self, c: u8, frame: usize) -> Code {
-        Code(self.push_char(c).hash() & ((1u64 << (2 * frame)) - 1))
+        Code(self.push_char(c).hash() & ((1 << (2 * frame)) - 1))
     }
 
     fn pack(string: &str) -> Code {
-        string.bytes().fold(Code(0u64), |a, b| a.push_char(b))
+        string.bytes().fold(Code(0), |a, b| a.push_char(b))
     }
 
     fn unpack(&self, frame: usize) -> String {

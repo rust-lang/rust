@@ -16,10 +16,10 @@ trait double {
 }
 
 impl double for uint {
-    fn double(self: Box<uint>) -> uint { *self * 2_usize }
+    fn double(self: Box<uint>) -> uint { *self * 2 }
 }
 
 pub fn main() {
-    let x: Box<_> = box() (box 3_usize as Box<double>);
-    assert_eq!(x.double(), 6_usize);
+    let x: Box<_> = box() (box 3 as Box<double>);
+    assert_eq!(x.double(), 6);
 }

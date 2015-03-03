@@ -2639,7 +2639,7 @@ mod tests {
     #[test]
     fn test_bytes_set_memory() {
         use slice::bytes::MutableByteVector;
-        let mut values = [1u8,2,3,4,5];
+        let mut values = [1,2,3,4,5];
         values[0..5].set_memory(0xAB);
         assert!(values == [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
         values[2..4].set_memory(0xFF);
@@ -2809,26 +2809,26 @@ mod tests {
     fn test_mut_chunks() {
         use core::iter::ExactSizeIterator;
 
-        let mut v = [0u8, 1, 2, 3, 4, 5, 6];
+        let mut v = [0, 1, 2, 3, 4, 5, 6];
         assert_eq!(v.chunks_mut(2).len(), 4);
         for (i, chunk) in v.chunks_mut(3).enumerate() {
             for x in chunk {
                 *x = i as u8;
             }
         }
-        let result = [0u8, 0, 0, 1, 1, 1, 2];
+        let result = [0, 0, 0, 1, 1, 1, 2];
         assert!(v == result);
     }
 
     #[test]
     fn test_mut_chunks_rev() {
-        let mut v = [0u8, 1, 2, 3, 4, 5, 6];
+        let mut v = [0, 1, 2, 3, 4, 5, 6];
         for (i, chunk) in v.chunks_mut(3).rev().enumerate() {
             for x in chunk {
                 *x = i as u8;
             }
         }
-        let result = [2u8, 2, 2, 1, 1, 1, 0];
+        let result = [2, 2, 2, 1, 1, 1, 0];
         assert!(v == result);
     }
 

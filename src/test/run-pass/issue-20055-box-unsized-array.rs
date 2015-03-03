@@ -29,10 +29,10 @@ pub fn foo(box_1: fn () -> Box<[i8; 1]>,
 }
 
 pub fn main() {
-    fn box_1() -> Box<[i8; 1]> { Box::new( [1i8] ) }
-    fn box_2() -> Box<[i8; 20]> { Box::new( [1i8; 20] ) }
-    fn box_3() -> Box<[i8; 300]> { Box::new( [1i8; 300] ) }
-    fn box_4() -> Box<[i8; 4000]> { Box::new( [1i8; 4000] ) }
+    fn box_1() -> Box<[i8; 1]> { Box::new( [1] ) }
+    fn box_2() -> Box<[i8; 20]> { Box::new( [1; 20] ) }
+    fn box_3() -> Box<[i8; 300]> { Box::new( [1; 300] ) }
+    fn box_4() -> Box<[i8; 4000]> { Box::new( [1; 4000] ) }
 
     foo(box_1, box_2, box_3, box_4);
 }

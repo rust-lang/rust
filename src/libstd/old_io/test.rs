@@ -73,8 +73,8 @@ it is running in and assigns a port range based on it.
 */
 fn base_port() -> u16 {
 
-    let base = 9600u16;
-    let range = 1000u16;
+    let base = 9600;
+    let range = 1000;
 
     let bases = [
         ("32-opt", base + range * 1),

@@ -55,7 +55,7 @@ fn foo2<T>(x: &T)
 }
 
 fn main() {
-    let x = 42u32;
+    let x = 42;
     foo1(&x);
     foo2(&x);
     unsafe {

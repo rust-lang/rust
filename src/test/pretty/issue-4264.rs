@@ -20,9 +20,9 @@ pub fn bar() {
     const FOO: usize = 5 - 4;
     let _: [(); FOO] = [()];
 
-    let _ : [(); 1usize] = [()];
+    let _ : [(); 1] = [()];
 
-    let _ = &([1,2,3]) as *const _ as *const [i32; 3usize];
+    let _ = &([1,2,3]) as *const _ as *const [i32; 3];
 
     format!("test");
 }

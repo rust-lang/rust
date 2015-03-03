@@ -15,7 +15,7 @@ fn main() {
     let y = match x {
         [] => None,
 //~^ ERROR mismatched types
-//~| expected `[_#0i; 2]`
+//~| expected `[_#0; 2]`
 //~| found `[_#7t; 0]`
 //~| expected an array with a fixed size of 2 elements
 //~| found one with 0 elements

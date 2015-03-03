@@ -1053,7 +1053,7 @@ mod tests {
             check!(w.write(msg));
         }
         let files = check!(fs::read_dir(dir));
-        let mut mem = [0u8; 4];
+        let mut mem = [0; 4];
         for f in files {
             let f = f.unwrap().path();
             {
@@ -1083,7 +1083,7 @@ mod tests {
         check!(File::create(&dir2.join("14")));
 
         let files = check!(fs::walk_dir(dir));
-        let mut cur = [0u8; 2];
+        let mut cur = [0; 2];
         for f in files {
             let f = f.unwrap().path();
             let stem = f.file_stem().unwrap().to_str().unwrap();

@@ -24,7 +24,7 @@ fn check<'r, I: Iterator<Item=usize>, T: Itble<'r, usize, I>>(cont: &T) -> bool
 {
     let cont_iter = cont.iter();
 //~^ ERROR cannot infer an appropriate lifetime for autoref due to conflicting requirements
-    let result = cont_iter.fold(Some(0u16), |state, val| {
+    let result = cont_iter.fold(Some(0), |state, val| {
         state.map_or(None, |mask| {
             let bit = 1 << val;
             if mask & bit == 0 {Some(mask|bit)} else {None}
@@ -34,7 +34,7 @@ fn check<'r, I: Iterator<Item=usize>, T: Itble<'r, usize, I>>(cont: &T) -> bool
 }
 
 fn main() {
-    check((3_usize, 5_usize));
+    check((3, 5));
 //~^ ERROR mismatched types
 //~| expected `&_`
 //~| found `(usize, usize)`

@@ -16,12 +16,12 @@ fn test_rec() {
     struct R {val0: int, val1: u8, val2: char}
 
     let (tx, rx) = channel();
-    let r0: R = R {val0: 0, val1: 1u8, val2: '2'};
+    let r0: R = R {val0: 0, val1: 1, val2: '2'};
     tx.send(r0).unwrap();
     let mut r1: R;
     r1 = rx.recv().unwrap();
     assert_eq!(r1.val0, 0);
-    assert_eq!(r1.val1, 1u8);
+    assert_eq!(r1.val1, 1);
     assert_eq!(r1.val2, '2');
 }
 
@@ -84,14 +84,14 @@ fn test_tag() {
     let (tx, rx) = channel();
     tx.send(t::tag1).unwrap();
     tx.send(t::tag2(10)).unwrap();
-    tx.send(t::tag3(10, 11u8, 'A')).unwrap();
+    tx.send(t::tag3(10, 11, 'A')).unwrap();
     let mut t1: t;
     t1 = rx.recv().unwrap();
     assert_eq!(t1, t::tag1);
     t1 = rx.recv().unwrap();
     assert_eq!(t1, t::tag2(10));
     t1 = rx.recv().unwrap();
-    assert_eq!(t1, t::tag3(10, 11u8, 'A'));
+    assert_eq!(t1, t::tag3(10, 11, 'A'));
 }
 
 fn test_chan() {

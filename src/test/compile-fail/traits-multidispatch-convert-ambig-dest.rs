@@ -33,7 +33,7 @@ where T : Convert<U>
 }
 
 fn a() {
-    test(22_i32, std::default::Default::default()); //~ ERROR type annotations required
+    test(22, std::default::Default::default()); //~ ERROR type annotations required
 }
 
 fn main() {}

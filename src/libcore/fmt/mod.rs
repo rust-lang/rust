@@ -565,7 +565,7 @@ impl<'a> Formatter<'a> {
             Alignment::Center => (padding / 2, (padding + 1) / 2),
         };
 
-        let mut fill = [0u8; 4];
+        let mut fill = [0; 4];
         let len = self.fill.encode_utf8(&mut fill).unwrap_or(0);
         let fill = unsafe { str::from_utf8_unchecked(&fill[..len]) };
 
@@ -689,7 +689,7 @@ impl Debug for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        let mut utf8 = [0u8; 4];
+        let mut utf8 = [0; 4];
         let amt = self.encode_utf8(&mut utf8).unwrap_or(0);
         let s: &str = unsafe { mem::transmute(&utf8[..amt]) };
         Display::fmt(s, f)
