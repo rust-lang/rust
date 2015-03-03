@@ -77,11 +77,11 @@ pub enum AbiArchitecture {
 }
 
 #[allow(non_upper_case_globals)]
-static AbiDatas: &'static [AbiData] = &[
+const AbiDatas: &'static [AbiData] = &[
     // Platform-specific ABIs
     AbiData {abi: Cdecl, name: "cdecl" },
     AbiData {abi: Stdcall, name: "stdcall" },
-    AbiData {abi: Fastcall, name:"fastcall" },
+    AbiData {abi: Fastcall, name: "fastcall" },
     AbiData {abi: Aapcs, name: "aapcs" },
     AbiData {abi: Win64, name: "win64" },
 

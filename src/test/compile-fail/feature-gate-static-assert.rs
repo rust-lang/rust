@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: too big for the current
-#![allow(exceeding_bitshifts)]
+#[static_assert] //~ ERROR `#[static_assert]` is an experimental feature
+static X: bool = true;
 
-fn main() {
-   let fat : [u8; (1<<61)+(1<<31)] = [0; (1u64<<61) as usize +(1u64<<31) as usize];
-}
+fn main() {}

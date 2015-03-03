@@ -44,7 +44,7 @@ struct RH<'a> {
     sub: &'a [RH<'a>]
 }
 
-static EMPTY_SOURCE_STR: &'static str = "#![feature(no_std)] #![no_std]";
+const EMPTY_SOURCE_STR: &'static str = "#![feature(no_std)] #![no_std]";
 
 struct ExpectErrorEmitter {
     messages: Vec<String>

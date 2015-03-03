@@ -45,7 +45,7 @@ impl State {
     }
 }
 
-static OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
+const OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
 pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                        -> Box<base::MacResult+'cx> {

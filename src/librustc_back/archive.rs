@@ -18,7 +18,7 @@ use std::os;
 use std::str;
 use syntax::diagnostic::Handler as ErrorHandler;
 
-pub static METADATA_FILENAME: &'static str = "rust.metadata.bin";
+pub const METADATA_FILENAME: &'static str = "rust.metadata.bin";
 
 pub struct ArchiveConfig<'a> {
     pub handler: &'a ErrorHandler,
@@ -242,7 +242,7 @@ impl<'a> ArchiveBuilder<'a> {
         // Don't allow the total size of `args` to grow beyond 32,000 bytes.
         // Windows will raise an error if the argument string is longer than
         // 32,768, and we leave a bit of extra space for the program name.
-        static ARG_LENGTH_LIMIT: uint = 32000;
+        const ARG_LENGTH_LIMIT: uint = 32_000;
 
         for member_name in &self.members {
             let len = member_name.as_vec().len();

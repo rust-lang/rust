@@ -422,8 +422,8 @@ pub fn float_to_str_common<T: Float>(
 
 // Some constants for from_str_bytes_common's input validation,
 // they define minimum radix values for which the character is a valid digit.
-static DIGIT_P_RADIX: u32 = ('p' as u32) - ('a' as u32) + 11;
-static DIGIT_E_RADIX: u32 = ('e' as u32) - ('a' as u32) + 11;
+const DIGIT_P_RADIX: u32 = ('p' as u32) - ('a' as u32) + 11;
+const DIGIT_E_RADIX: u32 = ('e' as u32) - ('a' as u32) + 11;
 
 #[cfg(test)]
 mod tests {

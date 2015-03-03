@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: too big for the current
-#![allow(exceeding_bitshifts)]
+// aux-build:lint_for_crate.rs
+// ignore-stage1
+// compile-flags: -D crate-not-okay
 
-fn main() {
-   let fat : [u8; (1<<61)+(1<<31)] = [0; (1u64<<61) as usize +(1u64<<31) as usize];
-}
+#![feature(plugin, custom_attribute)] //~ ERROR crate is not marked with #![crate_okay]
+#![plugin(lint_for_crate)]
+
+pub fn main() { }

@@ -124,8 +124,8 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
     }
 
     // one-line comments lose their prefix
-    static ONLINERS: &'static [&'static str] = &["///!", "///", "//!", "//"];
-    for prefix in ONLINERS {
+    const ONELINERS: &'static [&'static str] = &["///!", "///", "//!", "//"];
+    for prefix in ONELINERS {
         if comment.starts_with(*prefix) {
             return (&comment[prefix.len()..]).to_string();
         }

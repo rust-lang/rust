@@ -2061,6 +2061,7 @@ pub struct Scan<I, St, F> {
     f: F,
 
     /// The current internal state to be passed to the closure next.
+    #[unstable(feature = "core")]
     pub state: St,
 }
 
@@ -2338,6 +2339,7 @@ impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
 pub struct Unfold<St, F> {
     f: F,
     /// Internal state that will be passed to the closure on the next iteration
+    #[unstable(feature = "core")]
     pub state: St,
 }
 

@@ -141,7 +141,7 @@ impl Rand for char {
     #[inline]
     fn rand<R: Rng>(rng: &mut R) -> char {
         // a char is 21 bits
-        static CHAR_MASK: u32 = 0x001f_ffff;
+        const CHAR_MASK: u32 = 0x001f_ffff;
         loop {
             // Rejection sampling. About 0.2% of numbers with at most
             // 21-bits are invalid codepoints (surrogates), so this
