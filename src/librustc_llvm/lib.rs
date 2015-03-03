@@ -912,6 +912,7 @@ extern {
                                        AddressSpace: c_uint)
                                        -> ValueRef;
     pub fn LLVMGetNamedGlobal(M: ModuleRef, Name: *const c_char) -> ValueRef;
+    pub fn LLVMGetOrInsertGlobal(M: ModuleRef, Name: *const c_char, T: TypeRef) -> ValueRef;
     pub fn LLVMGetFirstGlobal(M: ModuleRef) -> ValueRef;
     pub fn LLVMGetLastGlobal(M: ModuleRef) -> ValueRef;
     pub fn LLVMGetNextGlobal(GlobalVar: ValueRef) -> ValueRef;
