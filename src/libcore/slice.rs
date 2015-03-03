@@ -351,6 +351,7 @@ impl<T> SliceExt for [T] {
         ChunksMut { v: self, chunk_size: chunk_size }
     }
 
+    #[inline]
     fn swap(&mut self, a: usize, b: usize) {
         unsafe {
             // Can't take two mutable loans from one vector, so instead just cast
