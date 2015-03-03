@@ -14,6 +14,7 @@
 
 use core::prelude::{PartialOrd};
 use core::num::Int;
+use core::num::wrapping::WrappingOps;
 
 use Rng;
 use distributions::{Sample, IndependentSample};
@@ -97,7 +98,7 @@ macro_rules! integer_impl {
             // bijection.
 
             fn construct_range(low: $ty, high: $ty) -> Range<$ty> {
-                let range = high as $unsigned - low as $unsigned;
+                let range = (high as $unsigned).wrapping_sub(low as $unsigned);
                 let unsigned_max: $unsigned = Int::max_value();
 
                 // this is the largest number that fits into $unsigned
@@ -122,7 +123,7 @@ macro_rules! integer_impl {
                     // be uniformly distributed)
                     if v < r.accept_zone as $unsigned {
                         // and return it, with some adjustments
-                        return r.low + (v % r.range as $unsigned) as $ty;
+                        return r.low.wrapping_add((v % r.range as $unsigned) as $ty);
                     }
                 }
             }

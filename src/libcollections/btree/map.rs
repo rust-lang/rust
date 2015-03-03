@@ -25,7 +25,7 @@ use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{Map, FromIterator, IntoIterator};
 use core::ops::{Index, IndexMut};
-use core::{iter, fmt, mem};
+use core::{iter, fmt, mem, usize};
 use Bound::{self, Included, Excluded, Unbounded};
 
 use borrow::Borrow;
@@ -1467,7 +1467,7 @@ macro_rules! range_impl {
             $Range {
                 inner: AbsIter {
                     traversals: traversals,
-                    size: 0, // unused
+                    size: usize::MAX, // unused
                 }
             }
         }

@@ -841,6 +841,7 @@ impl TwoWaySearcher {
     #[inline]
     #[allow(dead_code)]
     fn maximal_suffix(arr: &[u8], reversed: bool) -> (usize, usize) {
+        use num::wrapping::WrappingOps;
         let mut left = -1; // Corresponds to i in the paper
         let mut right = 0; // Corresponds to j in the paper
         let mut offset = 1; // Corresponds to k in the paper
@@ -850,17 +851,17 @@ impl TwoWaySearcher {
             let a;
             let b;
             if reversed {
-                a = arr[left + offset];
+                a = arr[left.wrapping_add(offset)];
                 b = arr[right + offset];
             } else {
                 a = arr[right + offset];
-                b = arr[left + offset];
+                b = arr[left.wrapping_add(offset)];
             }
             if a < b {
                 // Suffix is smaller, period is entire prefix so far.
                 right += offset;
                 offset = 1;
-                period = right - left;
+                period = right.wrapping_sub(left);
             } else if a == b {
                 // Advance through repetition of the current period.
                 if offset == period {
@@ -877,7 +878,7 @@ impl TwoWaySearcher {
                 period = 1;
             }
         }
-        (left + 1, period)
+        (left.wrapping_add(1), period)
     }
 }
 

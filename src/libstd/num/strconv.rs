@@ -427,6 +427,7 @@ const DIGIT_E_RADIX: u32 = ('e' as u32) - ('a' as u32) + 11;
 
 #[cfg(test)]
 mod tests {
+    use core::num::wrapping::WrappingOps;
     use string::ToString;
 
     #[test]
@@ -434,25 +435,25 @@ mod tests {
         let mut i8_val: i8 = 127_i8;
         assert_eq!(i8_val.to_string(), "127");
 
-        i8_val += 1 as i8;
+        i8_val = i8_val.wrapping_add(1);
         assert_eq!(i8_val.to_string(), "-128");
 
         let mut i16_val: i16 = 32_767_i16;
         assert_eq!(i16_val.to_string(), "32767");
 
-        i16_val += 1 as i16;
+        i16_val = i16_val.wrapping_add(1);
         assert_eq!(i16_val.to_string(), "-32768");
 
         let mut i32_val: i32 = 2_147_483_647_i32;
         assert_eq!(i32_val.to_string(), "2147483647");
 
-        i32_val += 1 as i32;
+        i32_val = i32_val.wrapping_add(1);
         assert_eq!(i32_val.to_string(), "-2147483648");
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
         assert_eq!(i64_val.to_string(), "9223372036854775807");
 
-        i64_val += 1 as i64;
+        i64_val = i64_val.wrapping_add(1);
         assert_eq!(i64_val.to_string(), "-9223372036854775808");
     }
 }

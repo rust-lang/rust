@@ -13,7 +13,8 @@ use self::Usefulness::*;
 use self::WitnessPreference::*;
 
 use middle::const_eval::{compare_const_vals, const_bool, const_float, const_val};
-use middle::const_eval::{const_expr_to_pat, eval_const_expr, lookup_const_by_id};
+use middle::const_eval::{eval_const_expr, eval_const_expr_partial};
+use middle::const_eval::{const_expr_to_pat, lookup_const_by_id};
 use middle::def::*;
 use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Init};
 use middle::expr_use_visitor::{JustWrite, LoanCause, MutateMode};
@@ -229,13 +230,6 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
     }
 }
 
-fn is_expr_const_nan(tcx: &ty::ctxt, expr: &ast::Expr) -> bool {
-    match eval_const_expr(tcx, expr) {
-        const_float(f) => f.is_nan(),
-        _ => false
-    }
-}
-
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat) {
     ast_util::walk_pat(pat, |p| {
         match p.node {
@@ -269,13 +263,26 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
 // Check that we do not match against a static NaN (#6804)
 fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
     ast_util::walk_pat(pat, |p| {
-        match p.node {
-            ast::PatLit(ref expr) if is_expr_const_nan(cx.tcx, &**expr) => {
-                span_warn!(cx.tcx.sess, p.span, E0003,
-                    "unmatchable NaN in pattern, \
-                        use the is_nan method in a guard instead");
+        if let ast::PatLit(ref expr) = p.node {
+            match eval_const_expr_partial(cx.tcx, &**expr, None) {
+                Ok(const_float(f)) if f.is_nan() => {
+                    span_warn!(cx.tcx.sess, p.span, E0003,
+                               "unmatchable NaN in pattern, \
+                                use the is_nan method in a guard instead");
+                }
+                Ok(_) => {}
+
+                Err(err) => {
+                    let subspan = p.span.lo <= err.span.lo && err.span.hi <= p.span.hi;
+                    cx.tcx.sess.span_err(err.span,
+                                         &format!("constant evaluation error: {}",
+                                                  err.description().as_slice()));
+                    if !subspan {
+                        cx.tcx.sess.span_note(p.span,
+                                              "in pattern here")
+                    }
+                }
             }
-            _ => ()
         }
         true
     });

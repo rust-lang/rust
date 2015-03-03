@@ -1215,7 +1215,8 @@ impl<K, V> Node<K, V> {
         ptr::copy(
             self.edges_mut().as_mut_ptr().offset(index as isize),
             self.edges().as_ptr().offset(index as isize + 1),
-            self.len() - index + 1
+            // index can be == len+1, so do the +1 first to avoid underflow.
+            (self.len() + 1) - index
         );
 
         edge

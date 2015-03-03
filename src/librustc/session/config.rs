@@ -259,7 +259,6 @@ pub enum CrateType {
     CrateTypeStaticlib,
 }
 
-
 #[derive(Clone)]
 pub enum Passes {
     SomePasses(Vec<String>),
@@ -349,7 +348,8 @@ macro_rules! options {
     #[allow(non_upper_case_globals, dead_code)]
     mod $mod_desc {
         pub const parse_bool: Option<&'static str> = None;
-        pub const parse_opt_bool: Option<&'static str> = None;
+        pub const parse_opt_bool: Option<&'static str> =
+            Some("one of: `y`, `yes`, `on`, `n`, `no`, or `off`");
         pub const parse_string: Option<&'static str> = Some("a string");
         pub const parse_opt_string: Option<&'static str> = Some("a string");
         pub const parse_list: Option<&'static str> = Some("a space-separated list of strings");
@@ -380,7 +380,19 @@ macro_rules! options {
 
         fn parse_opt_bool(slot: &mut Option<bool>, v: Option<&str>) -> bool {
             match v {
-                Some(..) => false,
+                Some(s) => {
+                    match s {
+                        "n" | "no" | "off" => {
+                            *slot = Some(false);
+                        }
+                        "y" | "yes" | "on" => {
+                            *slot = Some(true);
+                        }
+                        _ => { return false; }
+                    }
+
+                    true
+                },
                 None => { *slot = Some(true); true }
             }
         }
@@ -585,6 +597,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "Adds unstable command line options to rustc interface"),
     print_enum_sizes: bool = (false, parse_bool,
           "Print the size of enums and their variants"),
+    force_overflow_checks: Option<bool> = (None, parse_opt_bool,
+          "Force overflow checks on or off"),
 }
 
 pub fn default_lib_output() -> CrateType {
