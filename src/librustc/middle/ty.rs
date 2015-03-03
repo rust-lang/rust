@@ -76,7 +76,7 @@ use std::hash::{Hash, SipHasher, Hasher};
 use std::mem;
 use std::ops;
 use std::rc::Rc;
-use std::vec::{CowVec, IntoIter};
+use std::vec::IntoIter;
 use collections::enum_set::{EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
@@ -5580,7 +5580,7 @@ pub fn predicates<'tcx>(
 
 /// Get the attributes of a definition.
 pub fn get_attrs<'tcx>(tcx: &'tcx ctxt, did: DefId)
-                       -> CowVec<'tcx, ast::Attribute> {
+                       -> Cow<'tcx, [ast::Attribute]> {
     if is_local(did) {
         let item = tcx.map.expect_item(did.node);
         Cow::Borrowed(&item.attrs)

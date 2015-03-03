@@ -13,11 +13,12 @@
 
 use core::prelude::*;
 
+use borrow::Cow;
 use fmt::{self, Debug};
 use vec::Vec;
 use slice::SliceExt as StdSliceExt;
 use str;
-use string::{String, CowString};
+use string::String;
 use mem;
 
 #[derive(Clone, Hash)]
@@ -76,7 +77,7 @@ impl Slice {
         str::from_utf8(&self.inner).ok()
     }
 
-    pub fn to_string_lossy(&self) -> CowString {
+    pub fn to_string_lossy(&self) -> Cow<str> {
         String::from_utf8_lossy(&self.inner)
     }
 

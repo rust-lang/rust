@@ -756,6 +756,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[unstable(feature = "collections")]
     #[deprecated(since = "1.0.0", reason = "use `split()` with a `&str`")]
+    #[allow(deprecated) /* for SplitStr */]
     fn split_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitStr<'a, P> {
         core_str::StrExt::split_str(&self[..], pat)
     }
