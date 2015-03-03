@@ -317,7 +317,7 @@ pub fn mangle_exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, path: PathEl
     // e.g. `fn foo() { { fn a() {} } { fn a() {} } }`, so we
     // generate unique characters from the node id. For now
     // hopefully 3 characters is enough to avoid collisions.
-    static EXTRA_CHARS: &'static str =
+    const EXTRA_CHARS: &'static str =
         "abcdefghijklmnopqrstuvwxyz\
          ABCDEFGHIJKLMNOPQRSTUVWXYZ\
          0123456789";

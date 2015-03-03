@@ -91,8 +91,7 @@ impl Clone for MovePathIndex {
 }
 
 #[allow(non_upper_case_globals)]
-static InvalidMovePathIndex: MovePathIndex =
-    MovePathIndex(usize::MAX);
+const InvalidMovePathIndex: MovePathIndex = MovePathIndex(usize::MAX);
 
 /// Index into `MoveData.moves`, used like a pointer
 #[derive(Copy, PartialEq)]
@@ -105,8 +104,7 @@ impl MoveIndex {
 }
 
 #[allow(non_upper_case_globals)]
-static InvalidMoveIndex: MoveIndex =
-    MoveIndex(usize::MAX);
+const InvalidMoveIndex: MoveIndex = MoveIndex(usize::MAX);
 
 pub struct MovePath<'tcx> {
     /// Loan path corresponding to this move path

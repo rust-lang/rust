@@ -27,7 +27,7 @@ fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
 }
 
 pub mod general_category {
-    pub static C_table: &'static [(char, char)] = &[
+    pub const C_table: &'static [(char, char)] = &[
         ('\u{0}', '\u{1f}'), ('\u{7f}', '\u{9f}'), ('\u{ad}', '\u{ad}'), ('\u{378}', '\u{379}'),
         ('\u{380}', '\u{383}'), ('\u{38b}', '\u{38b}'), ('\u{38d}', '\u{38d}'), ('\u{3a2}',
         '\u{3a2}'), ('\u{530}', '\u{530}'), ('\u{557}', '\u{558}'), ('\u{560}', '\u{560}'),
@@ -216,7 +216,7 @@ pub mod general_category {
         ('\u{e01f0}', '\u{10ffff}')
     ];
 
-    pub static Cc_table: &'static [(char, char)] = &[
+    pub const Cc_table: &'static [(char, char)] = &[
         ('\u{0}', '\u{1f}'), ('\u{7f}', '\u{9f}')
     ];
 
@@ -224,7 +224,7 @@ pub mod general_category {
         super::bsearch_range_table(c, Cc_table)
     }
 
-    pub static Cf_table: &'static [(char, char)] = &[
+    pub const Cf_table: &'static [(char, char)] = &[
         ('\u{ad}', '\u{ad}'), ('\u{600}', '\u{605}'), ('\u{61c}', '\u{61c}'), ('\u{6dd}',
         '\u{6dd}'), ('\u{70f}', '\u{70f}'), ('\u{180e}', '\u{180e}'), ('\u{200b}', '\u{200f}'),
         ('\u{202a}', '\u{202e}'), ('\u{2060}', '\u{2064}'), ('\u{2066}', '\u{206f}'), ('\u{feff}',
@@ -233,7 +233,7 @@ pub mod general_category {
         '\u{e007f}')
     ];
 
-    pub static Cn_table: &'static [(char, char)] = &[
+    pub const Cn_table: &'static [(char, char)] = &[
         ('\u{378}', '\u{379}'), ('\u{380}', '\u{383}'), ('\u{38b}', '\u{38b}'), ('\u{38d}',
         '\u{38d}'), ('\u{3a2}', '\u{3a2}'), ('\u{530}', '\u{530}'), ('\u{557}', '\u{558}'),
         ('\u{560}', '\u{560}'), ('\u{588}', '\u{588}'), ('\u{58b}', '\u{58c}'), ('\u{590}',
@@ -422,12 +422,12 @@ pub mod general_category {
         ('\u{10fffe}', '\u{10ffff}')
     ];
 
-    pub static Co_table: &'static [(char, char)] = &[
+    pub const Co_table: &'static [(char, char)] = &[
         ('\u{e000}', '\u{e000}'), ('\u{f8ff}', '\u{f8ff}'), ('\u{f0000}', '\u{f0000}'),
         ('\u{ffffd}', '\u{ffffd}'), ('\u{100000}', '\u{100000}'), ('\u{10fffd}', '\u{10fffd}')
     ];
 
-    pub static L_table: &'static [(char, char)] = &[
+    pub const L_table: &'static [(char, char)] = &[
         ('\u{41}', '\u{5a}'), ('\u{61}', '\u{7a}'), ('\u{aa}', '\u{aa}'), ('\u{b5}', '\u{b5}'),
         ('\u{ba}', '\u{ba}'), ('\u{c0}', '\u{d6}'), ('\u{d8}', '\u{f6}'), ('\u{f8}', '\u{2c1}'),
         ('\u{2c6}', '\u{2d1}'), ('\u{2e0}', '\u{2e4}'), ('\u{2ec}', '\u{2ec}'), ('\u{2ee}',
@@ -593,7 +593,7 @@ pub mod general_category {
         ('\u{2b81d}', '\u{2b81d}'), ('\u{2f800}', '\u{2fa1d}')
     ];
 
-    pub static LC_table: &'static [(char, char)] = &[
+    pub const LC_table: &'static [(char, char)] = &[
         ('\u{41}', '\u{5a}'), ('\u{61}', '\u{7a}'), ('\u{b5}', '\u{b5}'), ('\u{c0}', '\u{d6}'),
         ('\u{d8}', '\u{f6}'), ('\u{f8}', '\u{1ba}'), ('\u{1bc}', '\u{1bf}'), ('\u{1c4}', '\u{293}'),
         ('\u{295}', '\u{2af}'), ('\u{370}', '\u{373}'), ('\u{376}', '\u{377}'), ('\u{37b}',
@@ -631,7 +631,7 @@ pub mod general_category {
         ('\u{1d7aa}', '\u{1d7c2}'), ('\u{1d7c4}', '\u{1d7cb}')
     ];
 
-    pub static Ll_table: &'static [(char, char)] = &[
+    pub const Ll_table: &'static [(char, char)] = &[
         ('\u{61}', '\u{7a}'), ('\u{b5}', '\u{b5}'), ('\u{df}', '\u{f6}'), ('\u{f8}', '\u{ff}'),
         ('\u{101}', '\u{101}'), ('\u{103}', '\u{103}'), ('\u{105}', '\u{105}'), ('\u{107}',
         '\u{107}'), ('\u{109}', '\u{109}'), ('\u{10b}', '\u{10b}'), ('\u{10d}', '\u{10d}'),
@@ -814,7 +814,7 @@ pub mod general_category {
         '\u{1d7c2}'), ('\u{1d7c4}', '\u{1d7c9}'), ('\u{1d7cb}', '\u{1d7cb}')
     ];
 
-    pub static Lm_table: &'static [(char, char)] = &[
+    pub const Lm_table: &'static [(char, char)] = &[
         ('\u{2b0}', '\u{2c1}'), ('\u{2c6}', '\u{2d1}'), ('\u{2e0}', '\u{2e4}'), ('\u{2ec}',
         '\u{2ec}'), ('\u{2ee}', '\u{2ee}'), ('\u{374}', '\u{374}'), ('\u{37a}', '\u{37a}'),
         ('\u{559}', '\u{559}'), ('\u{640}', '\u{640}'), ('\u{6e5}', '\u{6e6}'), ('\u{7f4}',
@@ -834,7 +834,7 @@ pub mod general_category {
         '\u{16f9f}')
     ];
 
-    pub static Lo_table: &'static [(char, char)] = &[
+    pub const Lo_table: &'static [(char, char)] = &[
         ('\u{aa}', '\u{aa}'), ('\u{ba}', '\u{ba}'), ('\u{1bb}', '\u{1bb}'), ('\u{1c0}', '\u{1c3}'),
         ('\u{294}', '\u{294}'), ('\u{5d0}', '\u{5ea}'), ('\u{5f0}', '\u{5f2}'), ('\u{620}',
         '\u{63f}'), ('\u{641}', '\u{64a}'), ('\u{66e}', '\u{66f}'), ('\u{671}', '\u{6d3}'),
@@ -964,13 +964,13 @@ pub mod general_category {
         ('\u{2b740}', '\u{2b740}'), ('\u{2b81d}', '\u{2b81d}'), ('\u{2f800}', '\u{2fa1d}')
     ];
 
-    pub static Lt_table: &'static [(char, char)] = &[
+    pub const Lt_table: &'static [(char, char)] = &[
         ('\u{1c5}', '\u{1c5}'), ('\u{1c8}', '\u{1c8}'), ('\u{1cb}', '\u{1cb}'), ('\u{1f2}',
         '\u{1f2}'), ('\u{1f88}', '\u{1f8f}'), ('\u{1f98}', '\u{1f9f}'), ('\u{1fa8}', '\u{1faf}'),
         ('\u{1fbc}', '\u{1fbc}'), ('\u{1fcc}', '\u{1fcc}'), ('\u{1ffc}', '\u{1ffc}')
     ];
 
-    pub static Lu_table: &'static [(char, char)] = &[
+    pub const Lu_table: &'static [(char, char)] = &[
         ('\u{41}', '\u{5a}'), ('\u{c0}', '\u{d6}'), ('\u{d8}', '\u{de}'), ('\u{100}', '\u{100}'),
         ('\u{102}', '\u{102}'), ('\u{104}', '\u{104}'), ('\u{106}', '\u{106}'), ('\u{108}',
         '\u{108}'), ('\u{10a}', '\u{10a}'), ('\u{10c}', '\u{10c}'), ('\u{10e}', '\u{10e}'),
@@ -1153,7 +1153,7 @@ pub mod general_category {
         '\u{1d7ca}')
     ];
 
-    pub static M_table: &'static [(char, char)] = &[
+    pub const M_table: &'static [(char, char)] = &[
         ('\u{300}', '\u{36f}'), ('\u{483}', '\u{489}'), ('\u{591}', '\u{5bd}'), ('\u{5bf}',
         '\u{5bf}'), ('\u{5c1}', '\u{5c2}'), ('\u{5c4}', '\u{5c5}'), ('\u{5c7}', '\u{5c7}'),
         ('\u{610}', '\u{61a}'), ('\u{64b}', '\u{65f}'), ('\u{670}', '\u{670}'), ('\u{6d6}',
@@ -1224,7 +1224,7 @@ pub mod general_category {
         ('\u{1e8d0}', '\u{1e8d6}'), ('\u{e0100}', '\u{e01ef}')
     ];
 
-    pub static Mc_table: &'static [(char, char)] = &[
+    pub const Mc_table: &'static [(char, char)] = &[
         ('\u{903}', '\u{903}'), ('\u{93b}', '\u{93b}'), ('\u{93e}', '\u{940}'), ('\u{949}',
         '\u{94c}'), ('\u{94e}', '\u{94f}'), ('\u{982}', '\u{983}'), ('\u{9be}', '\u{9c0}'),
         ('\u{9c7}', '\u{9c8}'), ('\u{9cb}', '\u{9cc}'), ('\u{9d7}', '\u{9d7}'), ('\u{a03}',
@@ -1271,12 +1271,12 @@ pub mod general_category {
         ('\u{1d165}', '\u{1d166}'), ('\u{1d16d}', '\u{1d172}')
     ];
 
-    pub static Me_table: &'static [(char, char)] = &[
+    pub const Me_table: &'static [(char, char)] = &[
         ('\u{488}', '\u{489}'), ('\u{1abe}', '\u{1abe}'), ('\u{20dd}', '\u{20e0}'), ('\u{20e2}',
         '\u{20e4}'), ('\u{a670}', '\u{a672}')
     ];
 
-    pub static Mn_table: &'static [(char, char)] = &[
+    pub const Mn_table: &'static [(char, char)] = &[
         ('\u{300}', '\u{36f}'), ('\u{483}', '\u{487}'), ('\u{591}', '\u{5bd}'), ('\u{5bf}',
         '\u{5bf}'), ('\u{5c1}', '\u{5c2}'), ('\u{5c4}', '\u{5c5}'), ('\u{5c7}', '\u{5c7}'),
         ('\u{610}', '\u{61a}'), ('\u{64b}', '\u{65f}'), ('\u{670}', '\u{670}'), ('\u{6d6}',
@@ -1355,7 +1355,7 @@ pub mod general_category {
         '\u{1e8d6}'), ('\u{e0100}', '\u{e01ef}')
     ];
 
-    pub static N_table: &'static [(char, char)] = &[
+    pub const N_table: &'static [(char, char)] = &[
         ('\u{30}', '\u{39}'), ('\u{660}', '\u{669}'), ('\u{6f0}', '\u{6f9}'), ('\u{7c0}',
         '\u{7c9}'), ('\u{966}', '\u{96f}'), ('\u{9e6}', '\u{9ef}'), ('\u{a66}', '\u{a6f}'),
         ('\u{ae6}', '\u{aef}'), ('\u{b66}', '\u{b6f}'), ('\u{be6}', '\u{bef}'), ('\u{c66}',
@@ -1381,7 +1381,7 @@ pub mod general_category {
         super::bsearch_range_table(c, N_table)
     }
 
-    pub static Nd_table: &'static [(char, char)] = &[
+    pub const Nd_table: &'static [(char, char)] = &[
         ('\u{30}', '\u{39}'), ('\u{660}', '\u{669}'), ('\u{6f0}', '\u{6f9}'), ('\u{7c0}',
         '\u{7c9}'), ('\u{966}', '\u{96f}'), ('\u{9e6}', '\u{9ef}'), ('\u{a66}', '\u{a6f}'),
         ('\u{ae6}', '\u{aef}'), ('\u{b66}', '\u{b6f}'), ('\u{be6}', '\u{bef}'), ('\u{c66}',
@@ -1399,14 +1399,14 @@ pub mod general_category {
         ('\u{16a60}', '\u{16a69}'), ('\u{16b50}', '\u{16b59}'), ('\u{1d7ce}', '\u{1d7ff}')
     ];
 
-    pub static Nl_table: &'static [(char, char)] = &[
+    pub const Nl_table: &'static [(char, char)] = &[
         ('\u{16ee}', '\u{16f0}'), ('\u{2160}', '\u{2182}'), ('\u{2185}', '\u{2188}'), ('\u{3007}',
         '\u{3007}'), ('\u{3021}', '\u{3029}'), ('\u{3038}', '\u{303a}'), ('\u{a6e6}', '\u{a6ef}'),
         ('\u{10140}', '\u{10174}'), ('\u{10341}', '\u{10341}'), ('\u{1034a}', '\u{1034a}'),
         ('\u{103d1}', '\u{103d5}'), ('\u{12400}', '\u{1246e}')
     ];
 
-    pub static No_table: &'static [(char, char)] = &[
+    pub const No_table: &'static [(char, char)] = &[
         ('\u{b2}', '\u{b3}'), ('\u{b9}', '\u{b9}'), ('\u{bc}', '\u{be}'), ('\u{9f4}', '\u{9f9}'),
         ('\u{b72}', '\u{b77}'), ('\u{bf0}', '\u{bf2}'), ('\u{c78}', '\u{c7e}'), ('\u{d70}',
         '\u{d75}'), ('\u{f2a}', '\u{f33}'), ('\u{1369}', '\u{137c}'), ('\u{17f0}', '\u{17f9}'),
@@ -1425,7 +1425,7 @@ pub mod general_category {
         '\u{1d371}'), ('\u{1e8c7}', '\u{1e8cf}'), ('\u{1f100}', '\u{1f10c}')
     ];
 
-    pub static P_table: &'static [(char, char)] = &[
+    pub const P_table: &'static [(char, char)] = &[
         ('\u{21}', '\u{23}'), ('\u{25}', '\u{2a}'), ('\u{2c}', '\u{2f}'), ('\u{3a}', '\u{3b}'),
         ('\u{3f}', '\u{40}'), ('\u{5b}', '\u{5d}'), ('\u{5f}', '\u{5f}'), ('\u{7b}', '\u{7b}'),
         ('\u{7d}', '\u{7d}'), ('\u{a1}', '\u{a1}'), ('\u{a7}', '\u{a7}'), ('\u{ab}', '\u{ab}'),
@@ -1474,12 +1474,12 @@ pub mod general_category {
         '\u{1bc9f}')
     ];
 
-    pub static Pc_table: &'static [(char, char)] = &[
+    pub const Pc_table: &'static [(char, char)] = &[
         ('\u{5f}', '\u{5f}'), ('\u{203f}', '\u{2040}'), ('\u{2054}', '\u{2054}'), ('\u{fe33}',
         '\u{fe34}'), ('\u{fe4d}', '\u{fe4f}'), ('\u{ff3f}', '\u{ff3f}')
     ];
 
-    pub static Pd_table: &'static [(char, char)] = &[
+    pub const Pd_table: &'static [(char, char)] = &[
         ('\u{2d}', '\u{2d}'), ('\u{58a}', '\u{58a}'), ('\u{5be}', '\u{5be}'), ('\u{1400}',
         '\u{1400}'), ('\u{1806}', '\u{1806}'), ('\u{2010}', '\u{2015}'), ('\u{2e17}', '\u{2e17}'),
         ('\u{2e1a}', '\u{2e1a}'), ('\u{2e3a}', '\u{2e3b}'), ('\u{2e40}', '\u{2e40}'), ('\u{301c}',
@@ -1487,7 +1487,7 @@ pub mod general_category {
         ('\u{fe58}', '\u{fe58}'), ('\u{fe63}', '\u{fe63}'), ('\u{ff0d}', '\u{ff0d}')
     ];
 
-    pub static Pe_table: &'static [(char, char)] = &[
+    pub const Pe_table: &'static [(char, char)] = &[
         ('\u{29}', '\u{29}'), ('\u{5d}', '\u{5d}'), ('\u{7d}', '\u{7d}'), ('\u{f3b}', '\u{f3b}'),
         ('\u{f3d}', '\u{f3d}'), ('\u{169c}', '\u{169c}'), ('\u{2046}', '\u{2046}'), ('\u{207e}',
         '\u{207e}'), ('\u{208e}', '\u{208e}'), ('\u{2309}', '\u{2309}'), ('\u{230b}', '\u{230b}'),
@@ -1511,20 +1511,20 @@ pub mod general_category {
         '\u{ff60}'), ('\u{ff63}', '\u{ff63}')
     ];
 
-    pub static Pf_table: &'static [(char, char)] = &[
+    pub const Pf_table: &'static [(char, char)] = &[
         ('\u{bb}', '\u{bb}'), ('\u{2019}', '\u{2019}'), ('\u{201d}', '\u{201d}'), ('\u{203a}',
         '\u{203a}'), ('\u{2e03}', '\u{2e03}'), ('\u{2e05}', '\u{2e05}'), ('\u{2e0a}', '\u{2e0a}'),
         ('\u{2e0d}', '\u{2e0d}'), ('\u{2e1d}', '\u{2e1d}'), ('\u{2e21}', '\u{2e21}')
     ];
 
-    pub static Pi_table: &'static [(char, char)] = &[
+    pub const Pi_table: &'static [(char, char)] = &[
         ('\u{ab}', '\u{ab}'), ('\u{2018}', '\u{2018}'), ('\u{201b}', '\u{201c}'), ('\u{201f}',
         '\u{201f}'), ('\u{2039}', '\u{2039}'), ('\u{2e02}', '\u{2e02}'), ('\u{2e04}', '\u{2e04}'),
         ('\u{2e09}', '\u{2e09}'), ('\u{2e0c}', '\u{2e0c}'), ('\u{2e1c}', '\u{2e1c}'), ('\u{2e20}',
         '\u{2e20}')
     ];
 
-    pub static Po_table: &'static [(char, char)] = &[
+    pub const Po_table: &'static [(char, char)] = &[
         ('\u{21}', '\u{23}'), ('\u{25}', '\u{27}'), ('\u{2a}', '\u{2a}'), ('\u{2c}', '\u{2c}'),
         ('\u{2e}', '\u{2f}'), ('\u{3a}', '\u{3b}'), ('\u{3f}', '\u{40}'), ('\u{5c}', '\u{5c}'),
         ('\u{a1}', '\u{a1}'), ('\u{a7}', '\u{a7}'), ('\u{b6}', '\u{b7}'), ('\u{bf}', '\u{bf}'),
@@ -1572,7 +1572,7 @@ pub mod general_category {
         '\u{1bc9f}')
     ];
 
-    pub static Ps_table: &'static [(char, char)] = &[
+    pub const Ps_table: &'static [(char, char)] = &[
         ('\u{28}', '\u{28}'), ('\u{5b}', '\u{5b}'), ('\u{7b}', '\u{7b}'), ('\u{f3a}', '\u{f3a}'),
         ('\u{f3c}', '\u{f3c}'), ('\u{169b}', '\u{169b}'), ('\u{201a}', '\u{201a}'), ('\u{201e}',
         '\u{201e}'), ('\u{2045}', '\u{2045}'), ('\u{207d}', '\u{207d}'), ('\u{208d}', '\u{208d}'),
@@ -1597,7 +1597,7 @@ pub mod general_category {
         ('\u{ff62}', '\u{ff62}')
     ];
 
-    pub static S_table: &'static [(char, char)] = &[
+    pub const S_table: &'static [(char, char)] = &[
         ('\u{24}', '\u{24}'), ('\u{2b}', '\u{2b}'), ('\u{3c}', '\u{3e}'), ('\u{5e}', '\u{5e}'),
         ('\u{60}', '\u{60}'), ('\u{7c}', '\u{7c}'), ('\u{7e}', '\u{7e}'), ('\u{a2}', '\u{a6}'),
         ('\u{a8}', '\u{a9}'), ('\u{ac}', '\u{ac}'), ('\u{ae}', '\u{b1}'), ('\u{b4}', '\u{b4}'),
@@ -1663,7 +1663,7 @@ pub mod general_category {
         '\u{1f887}'), ('\u{1f890}', '\u{1f8ad}')
     ];
 
-    pub static Sc_table: &'static [(char, char)] = &[
+    pub const Sc_table: &'static [(char, char)] = &[
         ('\u{24}', '\u{24}'), ('\u{a2}', '\u{a5}'), ('\u{58f}', '\u{58f}'), ('\u{60b}', '\u{60b}'),
         ('\u{9f2}', '\u{9f3}'), ('\u{9fb}', '\u{9fb}'), ('\u{af1}', '\u{af1}'), ('\u{bf9}',
         '\u{bf9}'), ('\u{e3f}', '\u{e3f}'), ('\u{17db}', '\u{17db}'), ('\u{20a0}', '\u{20bd}'),
@@ -1671,7 +1671,7 @@ pub mod general_category {
         '\u{ff04}'), ('\u{ffe0}', '\u{ffe1}'), ('\u{ffe5}', '\u{ffe6}')
     ];
 
-    pub static Sk_table: &'static [(char, char)] = &[
+    pub const Sk_table: &'static [(char, char)] = &[
         ('\u{5e}', '\u{5e}'), ('\u{60}', '\u{60}'), ('\u{a8}', '\u{a8}'), ('\u{af}', '\u{af}'),
         ('\u{b4}', '\u{b4}'), ('\u{b8}', '\u{b8}'), ('\u{2c2}', '\u{2c5}'), ('\u{2d2}', '\u{2df}'),
         ('\u{2e5}', '\u{2eb}'), ('\u{2ed}', '\u{2ed}'), ('\u{2ef}', '\u{2ff}'), ('\u{375}',
@@ -1682,7 +1682,7 @@ pub mod general_category {
         '\u{ff3e}'), ('\u{ff40}', '\u{ff40}'), ('\u{ffe3}', '\u{ffe3}')
     ];
 
-    pub static Sm_table: &'static [(char, char)] = &[
+    pub const Sm_table: &'static [(char, char)] = &[
         ('\u{2b}', '\u{2b}'), ('\u{3c}', '\u{3e}'), ('\u{7c}', '\u{7c}'), ('\u{7e}', '\u{7e}'),
         ('\u{ac}', '\u{ac}'), ('\u{b1}', '\u{b1}'), ('\u{d7}', '\u{d7}'), ('\u{f7}', '\u{f7}'),
         ('\u{3f6}', '\u{3f6}'), ('\u{606}', '\u{608}'), ('\u{2044}', '\u{2044}'), ('\u{2052}',
@@ -1704,7 +1704,7 @@ pub mod general_category {
         '\u{1d7c3}'), ('\u{1eef0}', '\u{1eef1}')
     ];
 
-    pub static So_table: &'static [(char, char)] = &[
+    pub const So_table: &'static [(char, char)] = &[
         ('\u{a6}', '\u{a6}'), ('\u{a9}', '\u{a9}'), ('\u{ae}', '\u{ae}'), ('\u{b0}', '\u{b0}'),
         ('\u{482}', '\u{482}'), ('\u{58d}', '\u{58e}'), ('\u{60e}', '\u{60f}'), ('\u{6de}',
         '\u{6de}'), ('\u{6e9}', '\u{6e9}'), ('\u{6fd}', '\u{6fe}'), ('\u{7f6}', '\u{7f6}'),
@@ -1757,21 +1757,21 @@ pub mod general_category {
         '\u{1f887}'), ('\u{1f890}', '\u{1f8ad}')
     ];
 
-    pub static Z_table: &'static [(char, char)] = &[
+    pub const Z_table: &'static [(char, char)] = &[
         ('\u{20}', '\u{20}'), ('\u{a0}', '\u{a0}'), ('\u{1680}', '\u{1680}'), ('\u{2000}',
         '\u{200a}'), ('\u{2028}', '\u{2029}'), ('\u{202f}', '\u{202f}'), ('\u{205f}', '\u{205f}'),
         ('\u{3000}', '\u{3000}')
     ];
 
-    pub static Zl_table: &'static [(char, char)] = &[
+    pub const Zl_table: &'static [(char, char)] = &[
         ('\u{2028}', '\u{2028}')
     ];
 
-    pub static Zp_table: &'static [(char, char)] = &[
+    pub const Zp_table: &'static [(char, char)] = &[
         ('\u{2029}', '\u{2029}')
     ];
 
-    pub static Zs_table: &'static [(char, char)] = &[
+    pub const Zs_table: &'static [(char, char)] = &[
         ('\u{20}', '\u{20}'), ('\u{a0}', '\u{a0}'), ('\u{1680}', '\u{1680}'), ('\u{2000}',
         '\u{200a}'), ('\u{202f}', '\u{202f}'), ('\u{205f}', '\u{205f}'), ('\u{3000}', '\u{3000}')
     ];
@@ -1779,7 +1779,7 @@ pub mod general_category {
 }
 
 pub mod derived_property {
-    pub static Alphabetic_table: &'static [(char, char)] = &[
+    pub const Alphabetic_table: &'static [(char, char)] = &[
         ('\u{41}', '\u{5a}'), ('\u{61}', '\u{7a}'), ('\u{aa}', '\u{aa}'), ('\u{b5}', '\u{b5}'),
         ('\u{ba}', '\u{ba}'), ('\u{c0}', '\u{d6}'), ('\u{d8}', '\u{f6}'), ('\u{f8}', '\u{1ba}'),
         ('\u{1bb}', '\u{1bb}'), ('\u{1bc}', '\u{1bf}'), ('\u{1c0}', '\u{1c3}'), ('\u{1c4}',
@@ -2057,7 +2057,7 @@ pub mod derived_property {
         super::bsearch_range_table(c, Alphabetic_table)
     }
 
-    pub static Default_Ignorable_Code_Point_table: &'static [(char, char)] = &[
+    pub const Default_Ignorable_Code_Point_table: &'static [(char, char)] = &[
         ('\u{ad}', '\u{ad}'), ('\u{34f}', '\u{34f}'), ('\u{61c}', '\u{61c}'), ('\u{115f}',
         '\u{1160}'), ('\u{17b4}', '\u{17b5}'), ('\u{180b}', '\u{180d}'), ('\u{180e}', '\u{180e}'),
         ('\u{200b}', '\u{200f}'), ('\u{202a}', '\u{202e}'), ('\u{2060}', '\u{2064}'), ('\u{2065}',
@@ -2068,7 +2068,7 @@ pub mod derived_property {
         '\u{e00ff}'), ('\u{e0100}', '\u{e01ef}'), ('\u{e01f0}', '\u{e0fff}')
     ];
 
-    pub static Lowercase_table: &'static [(char, char)] = &[
+    pub const Lowercase_table: &'static [(char, char)] = &[
         ('\u{61}', '\u{7a}'), ('\u{aa}', '\u{aa}'), ('\u{b5}', '\u{b5}'), ('\u{ba}', '\u{ba}'),
         ('\u{df}', '\u{f6}'), ('\u{f8}', '\u{ff}'), ('\u{101}', '\u{101}'), ('\u{103}', '\u{103}'),
         ('\u{105}', '\u{105}'), ('\u{107}', '\u{107}'), ('\u{109}', '\u{109}'), ('\u{10b}',
@@ -2261,7 +2261,7 @@ pub mod derived_property {
         super::bsearch_range_table(c, Lowercase_table)
     }
 
-    pub static Uppercase_table: &'static [(char, char)] = &[
+    pub const Uppercase_table: &'static [(char, char)] = &[
         ('\u{41}', '\u{5a}'), ('\u{c0}', '\u{d6}'), ('\u{d8}', '\u{de}'), ('\u{100}', '\u{100}'),
         ('\u{102}', '\u{102}'), ('\u{104}', '\u{104}'), ('\u{106}', '\u{106}'), ('\u{108}',
         '\u{108}'), ('\u{10a}', '\u{10a}'), ('\u{10c}', '\u{10c}'), ('\u{10e}', '\u{10e}'),
@@ -2449,7 +2449,7 @@ pub mod derived_property {
         super::bsearch_range_table(c, Uppercase_table)
     }
 
-    pub static XID_Continue_table: &'static [(char, char)] = &[
+    pub const XID_Continue_table: &'static [(char, char)] = &[
         ('\u{30}', '\u{39}'), ('\u{41}', '\u{5a}'), ('\u{5f}', '\u{5f}'), ('\u{61}', '\u{7a}'),
         ('\u{aa}', '\u{aa}'), ('\u{b5}', '\u{b5}'), ('\u{b7}', '\u{b7}'), ('\u{ba}', '\u{ba}'),
         ('\u{c0}', '\u{d6}'), ('\u{d8}', '\u{f6}'), ('\u{f8}', '\u{1ba}'), ('\u{1bb}', '\u{1bb}'),
@@ -2775,7 +2775,7 @@ pub mod derived_property {
         super::bsearch_range_table(c, XID_Continue_table)
     }
 
-    pub static XID_Start_table: &'static [(char, char)] = &[
+    pub const XID_Start_table: &'static [(char, char)] = &[
         ('\u{41}', '\u{5a}'), ('\u{61}', '\u{7a}'), ('\u{aa}', '\u{aa}'), ('\u{b5}', '\u{b5}'),
         ('\u{ba}', '\u{ba}'), ('\u{c0}', '\u{d6}'), ('\u{d8}', '\u{f6}'), ('\u{f8}', '\u{1ba}'),
         ('\u{1bb}', '\u{1bb}'), ('\u{1bc}', '\u{1bf}'), ('\u{1c0}', '\u{1c3}'), ('\u{1c4}',
@@ -2967,7 +2967,7 @@ pub mod derived_property {
 }
 
 pub mod script {
-    pub static Arabic_table: &'static [(char, char)] = &[
+    pub const Arabic_table: &'static [(char, char)] = &[
         ('\u{600}', '\u{604}'), ('\u{606}', '\u{608}'), ('\u{609}', '\u{60a}'), ('\u{60b}',
         '\u{60b}'), ('\u{60d}', '\u{60d}'), ('\u{60e}', '\u{60f}'), ('\u{610}', '\u{61a}'),
         ('\u{61e}', '\u{61e}'), ('\u{620}', '\u{63f}'), ('\u{641}', '\u{64a}'), ('\u{656}',
@@ -2994,17 +2994,17 @@ pub mod script {
         ('\u{1eef0}', '\u{1eef1}')
     ];
 
-    pub static Armenian_table: &'static [(char, char)] = &[
+    pub const Armenian_table: &'static [(char, char)] = &[
         ('\u{531}', '\u{556}'), ('\u{559}', '\u{559}'), ('\u{55a}', '\u{55f}'), ('\u{561}',
         '\u{587}'), ('\u{58a}', '\u{58a}'), ('\u{58d}', '\u{58e}'), ('\u{58f}', '\u{58f}'),
         ('\u{fb13}', '\u{fb17}')
     ];
 
-    pub static Avestan_table: &'static [(char, char)] = &[
+    pub const Avestan_table: &'static [(char, char)] = &[
         ('\u{10b00}', '\u{10b35}'), ('\u{10b39}', '\u{10b3f}')
     ];
 
-    pub static Balinese_table: &'static [(char, char)] = &[
+    pub const Balinese_table: &'static [(char, char)] = &[
         ('\u{1b00}', '\u{1b03}'), ('\u{1b04}', '\u{1b04}'), ('\u{1b05}', '\u{1b33}'), ('\u{1b34}',
         '\u{1b34}'), ('\u{1b35}', '\u{1b35}'), ('\u{1b36}', '\u{1b3a}'), ('\u{1b3b}', '\u{1b3b}'),
         ('\u{1b3c}', '\u{1b3c}'), ('\u{1b3d}', '\u{1b41}'), ('\u{1b42}', '\u{1b42}'), ('\u{1b43}',
@@ -3012,22 +3012,22 @@ pub mod script {
         ('\u{1b61}', '\u{1b6a}'), ('\u{1b6b}', '\u{1b73}'), ('\u{1b74}', '\u{1b7c}')
     ];
 
-    pub static Bamum_table: &'static [(char, char)] = &[
+    pub const Bamum_table: &'static [(char, char)] = &[
         ('\u{a6a0}', '\u{a6e5}'), ('\u{a6e6}', '\u{a6ef}'), ('\u{a6f0}', '\u{a6f1}'), ('\u{a6f2}',
         '\u{a6f7}'), ('\u{16800}', '\u{16a38}')
     ];
 
-    pub static Bassa_Vah_table: &'static [(char, char)] = &[
+    pub const Bassa_Vah_table: &'static [(char, char)] = &[
         ('\u{16ad0}', '\u{16aed}'), ('\u{16af0}', '\u{16af4}'), ('\u{16af5}', '\u{16af5}')
     ];
 
-    pub static Batak_table: &'static [(char, char)] = &[
+    pub const Batak_table: &'static [(char, char)] = &[
         ('\u{1bc0}', '\u{1be5}'), ('\u{1be6}', '\u{1be6}'), ('\u{1be7}', '\u{1be7}'), ('\u{1be8}',
         '\u{1be9}'), ('\u{1bea}', '\u{1bec}'), ('\u{1bed}', '\u{1bed}'), ('\u{1bee}', '\u{1bee}'),
         ('\u{1bef}', '\u{1bf1}'), ('\u{1bf2}', '\u{1bf3}'), ('\u{1bfc}', '\u{1bff}')
     ];
 
-    pub static Bengali_table: &'static [(char, char)] = &[
+    pub const Bengali_table: &'static [(char, char)] = &[
         ('\u{980}', '\u{980}'), ('\u{981}', '\u{981}'), ('\u{982}', '\u{983}'), ('\u{985}',
         '\u{98c}'), ('\u{98f}', '\u{990}'), ('\u{993}', '\u{9a8}'), ('\u{9aa}', '\u{9b0}'),
         ('\u{9b2}', '\u{9b2}'), ('\u{9b6}', '\u{9b9}'), ('\u{9bc}', '\u{9bc}'), ('\u{9bd}',
@@ -3038,60 +3038,60 @@ pub mod script {
         '\u{9f9}'), ('\u{9fa}', '\u{9fa}'), ('\u{9fb}', '\u{9fb}')
     ];
 
-    pub static Bopomofo_table: &'static [(char, char)] = &[
+    pub const Bopomofo_table: &'static [(char, char)] = &[
         ('\u{2ea}', '\u{2eb}'), ('\u{3105}', '\u{312d}'), ('\u{31a0}', '\u{31ba}')
     ];
 
-    pub static Brahmi_table: &'static [(char, char)] = &[
+    pub const Brahmi_table: &'static [(char, char)] = &[
         ('\u{11000}', '\u{11000}'), ('\u{11001}', '\u{11001}'), ('\u{11002}', '\u{11002}'),
         ('\u{11003}', '\u{11037}'), ('\u{11038}', '\u{11046}'), ('\u{11047}', '\u{1104d}'),
         ('\u{11052}', '\u{11065}'), ('\u{11066}', '\u{1106f}'), ('\u{1107f}', '\u{1107f}')
     ];
 
-    pub static Braille_table: &'static [(char, char)] = &[
+    pub const Braille_table: &'static [(char, char)] = &[
         ('\u{2800}', '\u{28ff}')
     ];
 
-    pub static Buginese_table: &'static [(char, char)] = &[
+    pub const Buginese_table: &'static [(char, char)] = &[
         ('\u{1a00}', '\u{1a16}'), ('\u{1a17}', '\u{1a18}'), ('\u{1a19}', '\u{1a1a}'), ('\u{1a1b}',
         '\u{1a1b}'), ('\u{1a1e}', '\u{1a1f}')
     ];
 
-    pub static Buhid_table: &'static [(char, char)] = &[
+    pub const Buhid_table: &'static [(char, char)] = &[
         ('\u{1740}', '\u{1751}'), ('\u{1752}', '\u{1753}')
     ];
 
-    pub static Canadian_Aboriginal_table: &'static [(char, char)] = &[
+    pub const Canadian_Aboriginal_table: &'static [(char, char)] = &[
         ('\u{1400}', '\u{1400}'), ('\u{1401}', '\u{166c}'), ('\u{166d}', '\u{166e}'), ('\u{166f}',
         '\u{167f}'), ('\u{18b0}', '\u{18f5}')
     ];
 
-    pub static Carian_table: &'static [(char, char)] = &[
+    pub const Carian_table: &'static [(char, char)] = &[
         ('\u{102a0}', '\u{102d0}')
     ];
 
-    pub static Caucasian_Albanian_table: &'static [(char, char)] = &[
+    pub const Caucasian_Albanian_table: &'static [(char, char)] = &[
         ('\u{10530}', '\u{10563}'), ('\u{1056f}', '\u{1056f}')
     ];
 
-    pub static Chakma_table: &'static [(char, char)] = &[
+    pub const Chakma_table: &'static [(char, char)] = &[
         ('\u{11100}', '\u{11102}'), ('\u{11103}', '\u{11126}'), ('\u{11127}', '\u{1112b}'),
         ('\u{1112c}', '\u{1112c}'), ('\u{1112d}', '\u{11134}'), ('\u{11136}', '\u{1113f}'),
         ('\u{11140}', '\u{11143}')
     ];
 
-    pub static Cham_table: &'static [(char, char)] = &[
+    pub const Cham_table: &'static [(char, char)] = &[
         ('\u{aa00}', '\u{aa28}'), ('\u{aa29}', '\u{aa2e}'), ('\u{aa2f}', '\u{aa30}'), ('\u{aa31}',
         '\u{aa32}'), ('\u{aa33}', '\u{aa34}'), ('\u{aa35}', '\u{aa36}'), ('\u{aa40}', '\u{aa42}'),
         ('\u{aa43}', '\u{aa43}'), ('\u{aa44}', '\u{aa4b}'), ('\u{aa4c}', '\u{aa4c}'), ('\u{aa4d}',
         '\u{aa4d}'), ('\u{aa50}', '\u{aa59}'), ('\u{aa5c}', '\u{aa5f}')
     ];
 
-    pub static Cherokee_table: &'static [(char, char)] = &[
+    pub const Cherokee_table: &'static [(char, char)] = &[
         ('\u{13a0}', '\u{13f4}')
     ];
 
-    pub static Common_table: &'static [(char, char)] = &[
+    pub const Common_table: &'static [(char, char)] = &[
         ('\u{0}', '\u{1f}'), ('\u{20}', '\u{20}'), ('\u{21}', '\u{23}'), ('\u{24}', '\u{24}'),
         ('\u{25}', '\u{27}'), ('\u{28}', '\u{28}'), ('\u{29}', '\u{29}'), ('\u{2a}', '\u{2a}'),
         ('\u{2b}', '\u{2b}'), ('\u{2c}', '\u{2c}'), ('\u{2d}', '\u{2d}'), ('\u{2e}', '\u{2f}'),
@@ -3261,22 +3261,22 @@ pub mod script {
         ('\u{1f890}', '\u{1f8ad}'), ('\u{e0001}', '\u{e0001}'), ('\u{e0020}', '\u{e007f}')
     ];
 
-    pub static Coptic_table: &'static [(char, char)] = &[
+    pub const Coptic_table: &'static [(char, char)] = &[
         ('\u{3e2}', '\u{3ef}'), ('\u{2c80}', '\u{2ce4}'), ('\u{2ce5}', '\u{2cea}'), ('\u{2ceb}',
         '\u{2cee}'), ('\u{2cef}', '\u{2cf1}'), ('\u{2cf2}', '\u{2cf3}'), ('\u{2cf9}', '\u{2cfc}'),
         ('\u{2cfd}', '\u{2cfd}'), ('\u{2cfe}', '\u{2cff}')
     ];
 
-    pub static Cuneiform_table: &'static [(char, char)] = &[
+    pub const Cuneiform_table: &'static [(char, char)] = &[
         ('\u{12000}', '\u{12398}'), ('\u{12400}', '\u{1246e}'), ('\u{12470}', '\u{12474}')
     ];
 
-    pub static Cypriot_table: &'static [(char, char)] = &[
+    pub const Cypriot_table: &'static [(char, char)] = &[
         ('\u{10800}', '\u{10805}'), ('\u{10808}', '\u{10808}'), ('\u{1080a}', '\u{10835}'),
         ('\u{10837}', '\u{10838}'), ('\u{1083c}', '\u{1083c}'), ('\u{1083f}', '\u{1083f}')
     ];
 
-    pub static Cyrillic_table: &'static [(char, char)] = &[
+    pub const Cyrillic_table: &'static [(char, char)] = &[
         ('\u{400}', '\u{481}'), ('\u{482}', '\u{482}'), ('\u{483}', '\u{484}'), ('\u{487}',
         '\u{487}'), ('\u{488}', '\u{489}'), ('\u{48a}', '\u{52f}'), ('\u{1d2b}', '\u{1d2b}'),
         ('\u{1d78}', '\u{1d78}'), ('\u{2de0}', '\u{2dff}'), ('\u{a640}', '\u{a66d}'), ('\u{a66e}',
@@ -3285,11 +3285,11 @@ pub mod script {
         '\u{a69b}'), ('\u{a69c}', '\u{a69d}'), ('\u{a69f}', '\u{a69f}')
     ];
 
-    pub static Deseret_table: &'static [(char, char)] = &[
+    pub const Deseret_table: &'static [(char, char)] = &[
         ('\u{10400}', '\u{1044f}')
     ];
 
-    pub static Devanagari_table: &'static [(char, char)] = &[
+    pub const Devanagari_table: &'static [(char, char)] = &[
         ('\u{900}', '\u{902}'), ('\u{903}', '\u{903}'), ('\u{904}', '\u{939}'), ('\u{93a}',
         '\u{93a}'), ('\u{93b}', '\u{93b}'), ('\u{93c}', '\u{93c}'), ('\u{93d}', '\u{93d}'),
         ('\u{93e}', '\u{940}'), ('\u{941}', '\u{948}'), ('\u{949}', '\u{94c}'), ('\u{94d}',
@@ -3299,21 +3299,21 @@ pub mod script {
         ('\u{a8f2}', '\u{a8f7}'), ('\u{a8f8}', '\u{a8fa}'), ('\u{a8fb}', '\u{a8fb}')
     ];
 
-    pub static Duployan_table: &'static [(char, char)] = &[
+    pub const Duployan_table: &'static [(char, char)] = &[
         ('\u{1bc00}', '\u{1bc6a}'), ('\u{1bc70}', '\u{1bc7c}'), ('\u{1bc80}', '\u{1bc88}'),
         ('\u{1bc90}', '\u{1bc99}'), ('\u{1bc9c}', '\u{1bc9c}'), ('\u{1bc9d}', '\u{1bc9e}'),
         ('\u{1bc9f}', '\u{1bc9f}')
     ];
 
-    pub static Egyptian_Hieroglyphs_table: &'static [(char, char)] = &[
+    pub const Egyptian_Hieroglyphs_table: &'static [(char, char)] = &[
         ('\u{13000}', '\u{1342e}')
     ];
 
-    pub static Elbasan_table: &'static [(char, char)] = &[
+    pub const Elbasan_table: &'static [(char, char)] = &[
         ('\u{10500}', '\u{10527}')
     ];
 
-    pub static Ethiopic_table: &'static [(char, char)] = &[
+    pub const Ethiopic_table: &'static [(char, char)] = &[
         ('\u{1200}', '\u{1248}'), ('\u{124a}', '\u{124d}'), ('\u{1250}', '\u{1256}'), ('\u{1258}',
         '\u{1258}'), ('\u{125a}', '\u{125d}'), ('\u{1260}', '\u{1288}'), ('\u{128a}', '\u{128d}'),
         ('\u{1290}', '\u{12b0}'), ('\u{12b2}', '\u{12b5}'), ('\u{12b8}', '\u{12be}'), ('\u{12c0}',
@@ -3326,22 +3326,22 @@ pub mod script {
         '\u{ab0e}'), ('\u{ab11}', '\u{ab16}'), ('\u{ab20}', '\u{ab26}'), ('\u{ab28}', '\u{ab2e}')
     ];
 
-    pub static Georgian_table: &'static [(char, char)] = &[
+    pub const Georgian_table: &'static [(char, char)] = &[
         ('\u{10a0}', '\u{10c5}'), ('\u{10c7}', '\u{10c7}'), ('\u{10cd}', '\u{10cd}'), ('\u{10d0}',
         '\u{10fa}'), ('\u{10fc}', '\u{10fc}'), ('\u{10fd}', '\u{10ff}'), ('\u{2d00}', '\u{2d25}'),
         ('\u{2d27}', '\u{2d27}'), ('\u{2d2d}', '\u{2d2d}')
     ];
 
-    pub static Glagolitic_table: &'static [(char, char)] = &[
+    pub const Glagolitic_table: &'static [(char, char)] = &[
         ('\u{2c00}', '\u{2c2e}'), ('\u{2c30}', '\u{2c5e}')
     ];
 
-    pub static Gothic_table: &'static [(char, char)] = &[
+    pub const Gothic_table: &'static [(char, char)] = &[
         ('\u{10330}', '\u{10340}'), ('\u{10341}', '\u{10341}'), ('\u{10342}', '\u{10349}'),
         ('\u{1034a}', '\u{1034a}')
     ];
 
-    pub static Grantha_table: &'static [(char, char)] = &[
+    pub const Grantha_table: &'static [(char, char)] = &[
         ('\u{11301}', '\u{11301}'), ('\u{11302}', '\u{11303}'), ('\u{11305}', '\u{1130c}'),
         ('\u{1130f}', '\u{11310}'), ('\u{11313}', '\u{11328}'), ('\u{1132a}', '\u{11330}'),
         ('\u{11332}', '\u{11333}'), ('\u{11335}', '\u{11339}'), ('\u{1133c}', '\u{1133c}'),
@@ -3351,7 +3351,7 @@ pub mod script {
         ('\u{11366}', '\u{1136c}'), ('\u{11370}', '\u{11374}')
     ];
 
-    pub static Greek_table: &'static [(char, char)] = &[
+    pub const Greek_table: &'static [(char, char)] = &[
         ('\u{370}', '\u{373}'), ('\u{375}', '\u{375}'), ('\u{376}', '\u{377}'), ('\u{37a}',
         '\u{37a}'), ('\u{37b}', '\u{37d}'), ('\u{37f}', '\u{37f}'), ('\u{384}', '\u{384}'),
         ('\u{386}', '\u{386}'), ('\u{388}', '\u{38a}'), ('\u{38c}', '\u{38c}'), ('\u{38e}',
@@ -3371,7 +3371,7 @@ pub mod script {
         '\u{1d245}')
     ];
 
-    pub static Gujarati_table: &'static [(char, char)] = &[
+    pub const Gujarati_table: &'static [(char, char)] = &[
         ('\u{a81}', '\u{a82}'), ('\u{a83}', '\u{a83}'), ('\u{a85}', '\u{a8d}'), ('\u{a8f}',
         '\u{a91}'), ('\u{a93}', '\u{aa8}'), ('\u{aaa}', '\u{ab0}'), ('\u{ab2}', '\u{ab3}'),
         ('\u{ab5}', '\u{ab9}'), ('\u{abc}', '\u{abc}'), ('\u{abd}', '\u{abd}'), ('\u{abe}',
@@ -3381,7 +3381,7 @@ pub mod script {
         ('\u{af1}', '\u{af1}')
     ];
 
-    pub static Gurmukhi_table: &'static [(char, char)] = &[
+    pub const Gurmukhi_table: &'static [(char, char)] = &[
         ('\u{a01}', '\u{a02}'), ('\u{a03}', '\u{a03}'), ('\u{a05}', '\u{a0a}'), ('\u{a0f}',
         '\u{a10}'), ('\u{a13}', '\u{a28}'), ('\u{a2a}', '\u{a30}'), ('\u{a32}', '\u{a33}'),
         ('\u{a35}', '\u{a36}'), ('\u{a38}', '\u{a39}'), ('\u{a3c}', '\u{a3c}'), ('\u{a3e}',
@@ -3390,7 +3390,7 @@ pub mod script {
         '\u{a6f}'), ('\u{a70}', '\u{a71}'), ('\u{a72}', '\u{a74}'), ('\u{a75}', '\u{a75}')
     ];
 
-    pub static Han_table: &'static [(char, char)] = &[
+    pub const Han_table: &'static [(char, char)] = &[
         ('\u{2e80}', '\u{2e99}'), ('\u{2e9b}', '\u{2ef3}'), ('\u{2f00}', '\u{2fd5}'), ('\u{3005}',
         '\u{3005}'), ('\u{3007}', '\u{3007}'), ('\u{3021}', '\u{3029}'), ('\u{3038}', '\u{303a}'),
         ('\u{303b}', '\u{303b}'), ('\u{3400}', '\u{4db5}'), ('\u{4e00}', '\u{9fcc}'), ('\u{f900}',
@@ -3398,18 +3398,18 @@ pub mod script {
         '\u{2b734}'), ('\u{2b740}', '\u{2b81d}'), ('\u{2f800}', '\u{2fa1d}')
     ];
 
-    pub static Hangul_table: &'static [(char, char)] = &[
+    pub const Hangul_table: &'static [(char, char)] = &[
         ('\u{1100}', '\u{11ff}'), ('\u{302e}', '\u{302f}'), ('\u{3131}', '\u{318e}'), ('\u{3200}',
         '\u{321e}'), ('\u{3260}', '\u{327e}'), ('\u{a960}', '\u{a97c}'), ('\u{ac00}', '\u{d7a3}'),
         ('\u{d7b0}', '\u{d7c6}'), ('\u{d7cb}', '\u{d7fb}'), ('\u{ffa0}', '\u{ffbe}'), ('\u{ffc2}',
         '\u{ffc7}'), ('\u{ffca}', '\u{ffcf}'), ('\u{ffd2}', '\u{ffd7}'), ('\u{ffda}', '\u{ffdc}')
     ];
 
-    pub static Hanunoo_table: &'static [(char, char)] = &[
+    pub const Hanunoo_table: &'static [(char, char)] = &[
         ('\u{1720}', '\u{1731}'), ('\u{1732}', '\u{1734}')
     ];
 
-    pub static Hebrew_table: &'static [(char, char)] = &[
+    pub const Hebrew_table: &'static [(char, char)] = &[
         ('\u{591}', '\u{5bd}'), ('\u{5be}', '\u{5be}'), ('\u{5bf}', '\u{5bf}'), ('\u{5c0}',
         '\u{5c0}'), ('\u{5c1}', '\u{5c2}'), ('\u{5c3}', '\u{5c3}'), ('\u{5c4}', '\u{5c5}'),
         ('\u{5c6}', '\u{5c6}'), ('\u{5c7}', '\u{5c7}'), ('\u{5d0}', '\u{5ea}'), ('\u{5f0}',
@@ -3419,16 +3419,16 @@ pub mod script {
         ('\u{fb46}', '\u{fb4f}')
     ];
 
-    pub static Hiragana_table: &'static [(char, char)] = &[
+    pub const Hiragana_table: &'static [(char, char)] = &[
         ('\u{3041}', '\u{3096}'), ('\u{309d}', '\u{309e}'), ('\u{309f}', '\u{309f}'), ('\u{1b001}',
         '\u{1b001}'), ('\u{1f200}', '\u{1f200}')
     ];
 
-    pub static Imperial_Aramaic_table: &'static [(char, char)] = &[
+    pub const Imperial_Aramaic_table: &'static [(char, char)] = &[
         ('\u{10840}', '\u{10855}'), ('\u{10857}', '\u{10857}'), ('\u{10858}', '\u{1085f}')
     ];
 
-    pub static Inherited_table: &'static [(char, char)] = &[
+    pub const Inherited_table: &'static [(char, char)] = &[
         ('\u{300}', '\u{36f}'), ('\u{485}', '\u{486}'), ('\u{64b}', '\u{655}'), ('\u{670}',
         '\u{670}'), ('\u{951}', '\u{952}'), ('\u{1ab0}', '\u{1abd}'), ('\u{1abe}', '\u{1abe}'),
         ('\u{1cd0}', '\u{1cd2}'), ('\u{1cd4}', '\u{1ce0}'), ('\u{1ce2}', '\u{1ce8}'), ('\u{1ced}',
@@ -3441,29 +3441,29 @@ pub mod script {
         '\u{1d1ad}'), ('\u{e0100}', '\u{e01ef}')
     ];
 
-    pub static Inscriptional_Pahlavi_table: &'static [(char, char)] = &[
+    pub const Inscriptional_Pahlavi_table: &'static [(char, char)] = &[
         ('\u{10b60}', '\u{10b72}'), ('\u{10b78}', '\u{10b7f}')
     ];
 
-    pub static Inscriptional_Parthian_table: &'static [(char, char)] = &[
+    pub const Inscriptional_Parthian_table: &'static [(char, char)] = &[
         ('\u{10b40}', '\u{10b55}'), ('\u{10b58}', '\u{10b5f}')
     ];
 
-    pub static Javanese_table: &'static [(char, char)] = &[
+    pub const Javanese_table: &'static [(char, char)] = &[
         ('\u{a980}', '\u{a982}'), ('\u{a983}', '\u{a983}'), ('\u{a984}', '\u{a9b2}'), ('\u{a9b3}',
         '\u{a9b3}'), ('\u{a9b4}', '\u{a9b5}'), ('\u{a9b6}', '\u{a9b9}'), ('\u{a9ba}', '\u{a9bb}'),
         ('\u{a9bc}', '\u{a9bc}'), ('\u{a9bd}', '\u{a9c0}'), ('\u{a9c1}', '\u{a9cd}'), ('\u{a9d0}',
         '\u{a9d9}'), ('\u{a9de}', '\u{a9df}')
     ];
 
-    pub static Kaithi_table: &'static [(char, char)] = &[
+    pub const Kaithi_table: &'static [(char, char)] = &[
         ('\u{11080}', '\u{11081}'), ('\u{11082}', '\u{11082}'), ('\u{11083}', '\u{110af}'),
         ('\u{110b0}', '\u{110b2}'), ('\u{110b3}', '\u{110b6}'), ('\u{110b7}', '\u{110b8}'),
         ('\u{110b9}', '\u{110ba}'), ('\u{110bb}', '\u{110bc}'), ('\u{110bd}', '\u{110bd}'),
         ('\u{110be}', '\u{110c1}')
     ];
 
-    pub static Kannada_table: &'static [(char, char)] = &[
+    pub const Kannada_table: &'static [(char, char)] = &[
         ('\u{c81}', '\u{c81}'), ('\u{c82}', '\u{c83}'), ('\u{c85}', '\u{c8c}'), ('\u{c8e}',
         '\u{c90}'), ('\u{c92}', '\u{ca8}'), ('\u{caa}', '\u{cb3}'), ('\u{cb5}', '\u{cb9}'),
         ('\u{cbc}', '\u{cbc}'), ('\u{cbd}', '\u{cbd}'), ('\u{cbe}', '\u{cbe}'), ('\u{cbf}',
@@ -3473,25 +3473,25 @@ pub mod script {
         ('\u{cf1}', '\u{cf2}')
     ];
 
-    pub static Katakana_table: &'static [(char, char)] = &[
+    pub const Katakana_table: &'static [(char, char)] = &[
         ('\u{30a1}', '\u{30fa}'), ('\u{30fd}', '\u{30fe}'), ('\u{30ff}', '\u{30ff}'), ('\u{31f0}',
         '\u{31ff}'), ('\u{32d0}', '\u{32fe}'), ('\u{3300}', '\u{3357}'), ('\u{ff66}', '\u{ff6f}'),
         ('\u{ff71}', '\u{ff9d}'), ('\u{1b000}', '\u{1b000}')
     ];
 
-    pub static Kayah_Li_table: &'static [(char, char)] = &[
+    pub const Kayah_Li_table: &'static [(char, char)] = &[
         ('\u{a900}', '\u{a909}'), ('\u{a90a}', '\u{a925}'), ('\u{a926}', '\u{a92d}'), ('\u{a92f}',
         '\u{a92f}')
     ];
 
-    pub static Kharoshthi_table: &'static [(char, char)] = &[
+    pub const Kharoshthi_table: &'static [(char, char)] = &[
         ('\u{10a00}', '\u{10a00}'), ('\u{10a01}', '\u{10a03}'), ('\u{10a05}', '\u{10a06}'),
         ('\u{10a0c}', '\u{10a0f}'), ('\u{10a10}', '\u{10a13}'), ('\u{10a15}', '\u{10a17}'),
         ('\u{10a19}', '\u{10a33}'), ('\u{10a38}', '\u{10a3a}'), ('\u{10a3f}', '\u{10a3f}'),
         ('\u{10a40}', '\u{10a47}'), ('\u{10a50}', '\u{10a58}')
     ];
 
-    pub static Khmer_table: &'static [(char, char)] = &[
+    pub const Khmer_table: &'static [(char, char)] = &[
         ('\u{1780}', '\u{17b3}'), ('\u{17b4}', '\u{17b5}'), ('\u{17b6}', '\u{17b6}'), ('\u{17b7}',
         '\u{17bd}'), ('\u{17be}', '\u{17c5}'), ('\u{17c6}', '\u{17c6}'), ('\u{17c7}', '\u{17c8}'),
         ('\u{17c9}', '\u{17d3}'), ('\u{17d4}', '\u{17d6}'), ('\u{17d7}', '\u{17d7}'), ('\u{17d8}',
@@ -3499,18 +3499,18 @@ pub mod script {
         ('\u{17e0}', '\u{17e9}'), ('\u{17f0}', '\u{17f9}'), ('\u{19e0}', '\u{19ff}')
     ];
 
-    pub static Khojki_table: &'static [(char, char)] = &[
+    pub const Khojki_table: &'static [(char, char)] = &[
         ('\u{11200}', '\u{11211}'), ('\u{11213}', '\u{1122b}'), ('\u{1122c}', '\u{1122e}'),
         ('\u{1122f}', '\u{11231}'), ('\u{11232}', '\u{11233}'), ('\u{11234}', '\u{11234}'),
         ('\u{11235}', '\u{11235}'), ('\u{11236}', '\u{11237}'), ('\u{11238}', '\u{1123d}')
     ];
 
-    pub static Khudawadi_table: &'static [(char, char)] = &[
+    pub const Khudawadi_table: &'static [(char, char)] = &[
         ('\u{112b0}', '\u{112de}'), ('\u{112df}', '\u{112df}'), ('\u{112e0}', '\u{112e2}'),
         ('\u{112e3}', '\u{112ea}'), ('\u{112f0}', '\u{112f9}')
     ];
 
-    pub static Lao_table: &'static [(char, char)] = &[
+    pub const Lao_table: &'static [(char, char)] = &[
         ('\u{e81}', '\u{e82}'), ('\u{e84}', '\u{e84}'), ('\u{e87}', '\u{e88}'), ('\u{e8a}',
         '\u{e8a}'), ('\u{e8d}', '\u{e8d}'), ('\u{e94}', '\u{e97}'), ('\u{e99}', '\u{e9f}'),
         ('\u{ea1}', '\u{ea3}'), ('\u{ea5}', '\u{ea5}'), ('\u{ea7}', '\u{ea7}'), ('\u{eaa}',
@@ -3520,7 +3520,7 @@ pub mod script {
         ('\u{edc}', '\u{edf}')
     ];
 
-    pub static Latin_table: &'static [(char, char)] = &[
+    pub const Latin_table: &'static [(char, char)] = &[
         ('\u{41}', '\u{5a}'), ('\u{61}', '\u{7a}'), ('\u{aa}', '\u{aa}'), ('\u{ba}', '\u{ba}'),
         ('\u{c0}', '\u{d6}'), ('\u{d8}', '\u{f6}'), ('\u{f8}', '\u{1ba}'), ('\u{1bb}', '\u{1bb}'),
         ('\u{1bc}', '\u{1bf}'), ('\u{1c0}', '\u{1c3}'), ('\u{1c4}', '\u{293}'), ('\u{294}',
@@ -3537,47 +3537,47 @@ pub mod script {
         '\u{ab64}'), ('\u{fb00}', '\u{fb06}'), ('\u{ff21}', '\u{ff3a}'), ('\u{ff41}', '\u{ff5a}')
     ];
 
-    pub static Lepcha_table: &'static [(char, char)] = &[
+    pub const Lepcha_table: &'static [(char, char)] = &[
         ('\u{1c00}', '\u{1c23}'), ('\u{1c24}', '\u{1c2b}'), ('\u{1c2c}', '\u{1c33}'), ('\u{1c34}',
         '\u{1c35}'), ('\u{1c36}', '\u{1c37}'), ('\u{1c3b}', '\u{1c3f}'), ('\u{1c40}', '\u{1c49}'),
         ('\u{1c4d}', '\u{1c4f}')
     ];
 
-    pub static Limbu_table: &'static [(char, char)] = &[
+    pub const Limbu_table: &'static [(char, char)] = &[
         ('\u{1900}', '\u{191e}'), ('\u{1920}', '\u{1922}'), ('\u{1923}', '\u{1926}'), ('\u{1927}',
         '\u{1928}'), ('\u{1929}', '\u{192b}'), ('\u{1930}', '\u{1931}'), ('\u{1932}', '\u{1932}'),
         ('\u{1933}', '\u{1938}'), ('\u{1939}', '\u{193b}'), ('\u{1940}', '\u{1940}'), ('\u{1944}',
         '\u{1945}'), ('\u{1946}', '\u{194f}')
     ];
 
-    pub static Linear_A_table: &'static [(char, char)] = &[
+    pub const Linear_A_table: &'static [(char, char)] = &[
         ('\u{10600}', '\u{10736}'), ('\u{10740}', '\u{10755}'), ('\u{10760}', '\u{10767}')
     ];
 
-    pub static Linear_B_table: &'static [(char, char)] = &[
+    pub const Linear_B_table: &'static [(char, char)] = &[
         ('\u{10000}', '\u{1000b}'), ('\u{1000d}', '\u{10026}'), ('\u{10028}', '\u{1003a}'),
         ('\u{1003c}', '\u{1003d}'), ('\u{1003f}', '\u{1004d}'), ('\u{10050}', '\u{1005d}'),
         ('\u{10080}', '\u{100fa}')
     ];
 
-    pub static Lisu_table: &'static [(char, char)] = &[
+    pub const Lisu_table: &'static [(char, char)] = &[
         ('\u{a4d0}', '\u{a4f7}'), ('\u{a4f8}', '\u{a4fd}'), ('\u{a4fe}', '\u{a4ff}')
     ];
 
-    pub static Lycian_table: &'static [(char, char)] = &[
+    pub const Lycian_table: &'static [(char, char)] = &[
         ('\u{10280}', '\u{1029c}')
     ];
 
-    pub static Lydian_table: &'static [(char, char)] = &[
+    pub const Lydian_table: &'static [(char, char)] = &[
         ('\u{10920}', '\u{10939}'), ('\u{1093f}', '\u{1093f}')
     ];
 
-    pub static Mahajani_table: &'static [(char, char)] = &[
+    pub const Mahajani_table: &'static [(char, char)] = &[
         ('\u{11150}', '\u{11172}'), ('\u{11173}', '\u{11173}'), ('\u{11174}', '\u{11175}'),
         ('\u{11176}', '\u{11176}')
     ];
 
-    pub static Malayalam_table: &'static [(char, char)] = &[
+    pub const Malayalam_table: &'static [(char, char)] = &[
         ('\u{d01}', '\u{d01}'), ('\u{d02}', '\u{d03}'), ('\u{d05}', '\u{d0c}'), ('\u{d0e}',
         '\u{d10}'), ('\u{d12}', '\u{d3a}'), ('\u{d3d}', '\u{d3d}'), ('\u{d3e}', '\u{d40}'),
         ('\u{d41}', '\u{d44}'), ('\u{d46}', '\u{d48}'), ('\u{d4a}', '\u{d4c}'), ('\u{d4d}',
@@ -3586,16 +3586,16 @@ pub mod script {
         '\u{d79}'), ('\u{d7a}', '\u{d7f}')
     ];
 
-    pub static Mandaic_table: &'static [(char, char)] = &[
+    pub const Mandaic_table: &'static [(char, char)] = &[
         ('\u{840}', '\u{858}'), ('\u{859}', '\u{85b}'), ('\u{85e}', '\u{85e}')
     ];
 
-    pub static Manichaean_table: &'static [(char, char)] = &[
+    pub const Manichaean_table: &'static [(char, char)] = &[
         ('\u{10ac0}', '\u{10ac7}'), ('\u{10ac8}', '\u{10ac8}'), ('\u{10ac9}', '\u{10ae4}'),
         ('\u{10ae5}', '\u{10ae6}'), ('\u{10aeb}', '\u{10aef}'), ('\u{10af0}', '\u{10af6}')
     ];
 
-    pub static Meetei_Mayek_table: &'static [(char, char)] = &[
+    pub const Meetei_Mayek_table: &'static [(char, char)] = &[
         ('\u{aae0}', '\u{aaea}'), ('\u{aaeb}', '\u{aaeb}'), ('\u{aaec}', '\u{aaed}'), ('\u{aaee}',
         '\u{aaef}'), ('\u{aaf0}', '\u{aaf1}'), ('\u{aaf2}', '\u{aaf2}'), ('\u{aaf3}', '\u{aaf4}'),
         ('\u{aaf5}', '\u{aaf5}'), ('\u{aaf6}', '\u{aaf6}'), ('\u{abc0}', '\u{abe2}'), ('\u{abe3}',
@@ -3604,42 +3604,42 @@ pub mod script {
         '\u{abed}'), ('\u{abf0}', '\u{abf9}')
     ];
 
-    pub static Mende_Kikakui_table: &'static [(char, char)] = &[
+    pub const Mende_Kikakui_table: &'static [(char, char)] = &[
         ('\u{1e800}', '\u{1e8c4}'), ('\u{1e8c7}', '\u{1e8cf}'), ('\u{1e8d0}', '\u{1e8d6}')
     ];
 
-    pub static Meroitic_Cursive_table: &'static [(char, char)] = &[
+    pub const Meroitic_Cursive_table: &'static [(char, char)] = &[
         ('\u{109a0}', '\u{109b7}'), ('\u{109be}', '\u{109bf}')
     ];
 
-    pub static Meroitic_Hieroglyphs_table: &'static [(char, char)] = &[
+    pub const Meroitic_Hieroglyphs_table: &'static [(char, char)] = &[
         ('\u{10980}', '\u{1099f}')
     ];
 
-    pub static Miao_table: &'static [(char, char)] = &[
+    pub const Miao_table: &'static [(char, char)] = &[
         ('\u{16f00}', '\u{16f44}'), ('\u{16f50}', '\u{16f50}'), ('\u{16f51}', '\u{16f7e}'),
         ('\u{16f8f}', '\u{16f92}'), ('\u{16f93}', '\u{16f9f}')
     ];
 
-    pub static Modi_table: &'static [(char, char)] = &[
+    pub const Modi_table: &'static [(char, char)] = &[
         ('\u{11600}', '\u{1162f}'), ('\u{11630}', '\u{11632}'), ('\u{11633}', '\u{1163a}'),
         ('\u{1163b}', '\u{1163c}'), ('\u{1163d}', '\u{1163d}'), ('\u{1163e}', '\u{1163e}'),
         ('\u{1163f}', '\u{11640}'), ('\u{11641}', '\u{11643}'), ('\u{11644}', '\u{11644}'),
         ('\u{11650}', '\u{11659}')
     ];
 
-    pub static Mongolian_table: &'static [(char, char)] = &[
+    pub const Mongolian_table: &'static [(char, char)] = &[
         ('\u{1800}', '\u{1801}'), ('\u{1804}', '\u{1804}'), ('\u{1806}', '\u{1806}'), ('\u{1807}',
         '\u{180a}'), ('\u{180b}', '\u{180d}'), ('\u{180e}', '\u{180e}'), ('\u{1810}', '\u{1819}'),
         ('\u{1820}', '\u{1842}'), ('\u{1843}', '\u{1843}'), ('\u{1844}', '\u{1877}'), ('\u{1880}',
         '\u{18a8}'), ('\u{18a9}', '\u{18a9}'), ('\u{18aa}', '\u{18aa}')
     ];
 
-    pub static Mro_table: &'static [(char, char)] = &[
+    pub const Mro_table: &'static [(char, char)] = &[
         ('\u{16a40}', '\u{16a5e}'), ('\u{16a60}', '\u{16a69}'), ('\u{16a6e}', '\u{16a6f}')
     ];
 
-    pub static Myanmar_table: &'static [(char, char)] = &[
+    pub const Myanmar_table: &'static [(char, char)] = &[
         ('\u{1000}', '\u{102a}'), ('\u{102b}', '\u{102c}'), ('\u{102d}', '\u{1030}'), ('\u{1031}',
         '\u{1031}'), ('\u{1032}', '\u{1037}'), ('\u{1038}', '\u{1038}'), ('\u{1039}', '\u{103a}'),
         ('\u{103b}', '\u{103c}'), ('\u{103d}', '\u{103e}'), ('\u{103f}', '\u{103f}'), ('\u{1040}',
@@ -3657,56 +3657,56 @@ pub mod script {
         ('\u{aa7e}', '\u{aa7f}')
     ];
 
-    pub static Nabataean_table: &'static [(char, char)] = &[
+    pub const Nabataean_table: &'static [(char, char)] = &[
         ('\u{10880}', '\u{1089e}'), ('\u{108a7}', '\u{108af}')
     ];
 
-    pub static New_Tai_Lue_table: &'static [(char, char)] = &[
+    pub const New_Tai_Lue_table: &'static [(char, char)] = &[
         ('\u{1980}', '\u{19ab}'), ('\u{19b0}', '\u{19c0}'), ('\u{19c1}', '\u{19c7}'), ('\u{19c8}',
         '\u{19c9}'), ('\u{19d0}', '\u{19d9}'), ('\u{19da}', '\u{19da}'), ('\u{19de}', '\u{19df}')
     ];
 
-    pub static Nko_table: &'static [(char, char)] = &[
+    pub const Nko_table: &'static [(char, char)] = &[
         ('\u{7c0}', '\u{7c9}'), ('\u{7ca}', '\u{7ea}'), ('\u{7eb}', '\u{7f3}'), ('\u{7f4}',
         '\u{7f5}'), ('\u{7f6}', '\u{7f6}'), ('\u{7f7}', '\u{7f9}'), ('\u{7fa}', '\u{7fa}')
     ];
 
-    pub static Ogham_table: &'static [(char, char)] = &[
+    pub const Ogham_table: &'static [(char, char)] = &[
         ('\u{1680}', '\u{1680}'), ('\u{1681}', '\u{169a}'), ('\u{169b}', '\u{169b}'), ('\u{169c}',
         '\u{169c}')
     ];
 
-    pub static Ol_Chiki_table: &'static [(char, char)] = &[
+    pub const Ol_Chiki_table: &'static [(char, char)] = &[
         ('\u{1c50}', '\u{1c59}'), ('\u{1c5a}', '\u{1c77}'), ('\u{1c78}', '\u{1c7d}'), ('\u{1c7e}',
         '\u{1c7f}')
     ];
 
-    pub static Old_Italic_table: &'static [(char, char)] = &[
+    pub const Old_Italic_table: &'static [(char, char)] = &[
         ('\u{10300}', '\u{1031f}'), ('\u{10320}', '\u{10323}')
     ];
 
-    pub static Old_North_Arabian_table: &'static [(char, char)] = &[
+    pub const Old_North_Arabian_table: &'static [(char, char)] = &[
         ('\u{10a80}', '\u{10a9c}'), ('\u{10a9d}', '\u{10a9f}')
     ];
 
-    pub static Old_Permic_table: &'static [(char, char)] = &[
+    pub const Old_Permic_table: &'static [(char, char)] = &[
         ('\u{10350}', '\u{10375}'), ('\u{10376}', '\u{1037a}')
     ];
 
-    pub static Old_Persian_table: &'static [(char, char)] = &[
+    pub const Old_Persian_table: &'static [(char, char)] = &[
         ('\u{103a0}', '\u{103c3}'), ('\u{103c8}', '\u{103cf}'), ('\u{103d0}', '\u{103d0}'),
         ('\u{103d1}', '\u{103d5}')
     ];
 
-    pub static Old_South_Arabian_table: &'static [(char, char)] = &[
+    pub const Old_South_Arabian_table: &'static [(char, char)] = &[
         ('\u{10a60}', '\u{10a7c}'), ('\u{10a7d}', '\u{10a7e}'), ('\u{10a7f}', '\u{10a7f}')
     ];
 
-    pub static Old_Turkic_table: &'static [(char, char)] = &[
+    pub const Old_Turkic_table: &'static [(char, char)] = &[
         ('\u{10c00}', '\u{10c48}')
     ];
 
-    pub static Oriya_table: &'static [(char, char)] = &[
+    pub const Oriya_table: &'static [(char, char)] = &[
         ('\u{b01}', '\u{b01}'), ('\u{b02}', '\u{b03}'), ('\u{b05}', '\u{b0c}'), ('\u{b0f}',
         '\u{b10}'), ('\u{b13}', '\u{b28}'), ('\u{b2a}', '\u{b30}'), ('\u{b32}', '\u{b33}'),
         ('\u{b35}', '\u{b39}'), ('\u{b3c}', '\u{b3c}'), ('\u{b3d}', '\u{b3d}'), ('\u{b3e}',
@@ -3717,75 +3717,75 @@ pub mod script {
         '\u{b71}'), ('\u{b72}', '\u{b77}')
     ];
 
-    pub static Osmanya_table: &'static [(char, char)] = &[
+    pub const Osmanya_table: &'static [(char, char)] = &[
         ('\u{10480}', '\u{1049d}'), ('\u{104a0}', '\u{104a9}')
     ];
 
-    pub static Pahawh_Hmong_table: &'static [(char, char)] = &[
+    pub const Pahawh_Hmong_table: &'static [(char, char)] = &[
         ('\u{16b00}', '\u{16b2f}'), ('\u{16b30}', '\u{16b36}'), ('\u{16b37}', '\u{16b3b}'),
         ('\u{16b3c}', '\u{16b3f}'), ('\u{16b40}', '\u{16b43}'), ('\u{16b44}', '\u{16b44}'),
         ('\u{16b45}', '\u{16b45}'), ('\u{16b50}', '\u{16b59}'), ('\u{16b5b}', '\u{16b61}'),
         ('\u{16b63}', '\u{16b77}'), ('\u{16b7d}', '\u{16b8f}')
     ];
 
-    pub static Palmyrene_table: &'static [(char, char)] = &[
+    pub const Palmyrene_table: &'static [(char, char)] = &[
         ('\u{10860}', '\u{10876}'), ('\u{10877}', '\u{10878}'), ('\u{10879}', '\u{1087f}')
     ];
 
-    pub static Pau_Cin_Hau_table: &'static [(char, char)] = &[
+    pub const Pau_Cin_Hau_table: &'static [(char, char)] = &[
         ('\u{11ac0}', '\u{11af8}')
     ];
 
-    pub static Phags_Pa_table: &'static [(char, char)] = &[
+    pub const Phags_Pa_table: &'static [(char, char)] = &[
         ('\u{a840}', '\u{a873}'), ('\u{a874}', '\u{a877}')
     ];
 
-    pub static Phoenician_table: &'static [(char, char)] = &[
+    pub const Phoenician_table: &'static [(char, char)] = &[
         ('\u{10900}', '\u{10915}'), ('\u{10916}', '\u{1091b}'), ('\u{1091f}', '\u{1091f}')
     ];
 
-    pub static Psalter_Pahlavi_table: &'static [(char, char)] = &[
+    pub const Psalter_Pahlavi_table: &'static [(char, char)] = &[
         ('\u{10b80}', '\u{10b91}'), ('\u{10b99}', '\u{10b9c}'), ('\u{10ba9}', '\u{10baf}')
     ];
 
-    pub static Rejang_table: &'static [(char, char)] = &[
+    pub const Rejang_table: &'static [(char, char)] = &[
         ('\u{a930}', '\u{a946}'), ('\u{a947}', '\u{a951}'), ('\u{a952}', '\u{a953}'), ('\u{a95f}',
         '\u{a95f}')
     ];
 
-    pub static Runic_table: &'static [(char, char)] = &[
+    pub const Runic_table: &'static [(char, char)] = &[
         ('\u{16a0}', '\u{16ea}'), ('\u{16ee}', '\u{16f0}'), ('\u{16f1}', '\u{16f8}')
     ];
 
-    pub static Samaritan_table: &'static [(char, char)] = &[
+    pub const Samaritan_table: &'static [(char, char)] = &[
         ('\u{800}', '\u{815}'), ('\u{816}', '\u{819}'), ('\u{81a}', '\u{81a}'), ('\u{81b}',
         '\u{823}'), ('\u{824}', '\u{824}'), ('\u{825}', '\u{827}'), ('\u{828}', '\u{828}'),
         ('\u{829}', '\u{82d}'), ('\u{830}', '\u{83e}')
     ];
 
-    pub static Saurashtra_table: &'static [(char, char)] = &[
+    pub const Saurashtra_table: &'static [(char, char)] = &[
         ('\u{a880}', '\u{a881}'), ('\u{a882}', '\u{a8b3}'), ('\u{a8b4}', '\u{a8c3}'), ('\u{a8c4}',
         '\u{a8c4}'), ('\u{a8ce}', '\u{a8cf}'), ('\u{a8d0}', '\u{a8d9}')
     ];
 
-    pub static Sharada_table: &'static [(char, char)] = &[
+    pub const Sharada_table: &'static [(char, char)] = &[
         ('\u{11180}', '\u{11181}'), ('\u{11182}', '\u{11182}'), ('\u{11183}', '\u{111b2}'),
         ('\u{111b3}', '\u{111b5}'), ('\u{111b6}', '\u{111be}'), ('\u{111bf}', '\u{111c0}'),
         ('\u{111c1}', '\u{111c4}'), ('\u{111c5}', '\u{111c8}'), ('\u{111cd}', '\u{111cd}'),
         ('\u{111d0}', '\u{111d9}'), ('\u{111da}', '\u{111da}')
     ];
 
-    pub static Shavian_table: &'static [(char, char)] = &[
+    pub const Shavian_table: &'static [(char, char)] = &[
         ('\u{10450}', '\u{1047f}')
     ];
 
-    pub static Siddham_table: &'static [(char, char)] = &[
+    pub const Siddham_table: &'static [(char, char)] = &[
         ('\u{11580}', '\u{115ae}'), ('\u{115af}', '\u{115b1}'), ('\u{115b2}', '\u{115b5}'),
         ('\u{115b8}', '\u{115bb}'), ('\u{115bc}', '\u{115bd}'), ('\u{115be}', '\u{115be}'),
         ('\u{115bf}', '\u{115c0}'), ('\u{115c1}', '\u{115c9}')
     ];
 
-    pub static Sinhala_table: &'static [(char, char)] = &[
+    pub const Sinhala_table: &'static [(char, char)] = &[
         ('\u{d82}', '\u{d83}'), ('\u{d85}', '\u{d96}'), ('\u{d9a}', '\u{db1}'), ('\u{db3}',
         '\u{dbb}'), ('\u{dbd}', '\u{dbd}'), ('\u{dc0}', '\u{dc6}'), ('\u{dca}', '\u{dca}'),
         ('\u{dcf}', '\u{dd1}'), ('\u{dd2}', '\u{dd4}'), ('\u{dd6}', '\u{dd6}'), ('\u{dd8}',
@@ -3793,42 +3793,42 @@ pub mod script {
         ('\u{111e1}', '\u{111f4}')
     ];
 
-    pub static Sora_Sompeng_table: &'static [(char, char)] = &[
+    pub const Sora_Sompeng_table: &'static [(char, char)] = &[
         ('\u{110d0}', '\u{110e8}'), ('\u{110f0}', '\u{110f9}')
     ];
 
-    pub static Sundanese_table: &'static [(char, char)] = &[
+    pub const Sundanese_table: &'static [(char, char)] = &[
         ('\u{1b80}', '\u{1b81}'), ('\u{1b82}', '\u{1b82}'), ('\u{1b83}', '\u{1ba0}'), ('\u{1ba1}',
         '\u{1ba1}'), ('\u{1ba2}', '\u{1ba5}'), ('\u{1ba6}', '\u{1ba7}'), ('\u{1ba8}', '\u{1ba9}'),
         ('\u{1baa}', '\u{1baa}'), ('\u{1bab}', '\u{1bad}'), ('\u{1bae}', '\u{1baf}'), ('\u{1bb0}',
         '\u{1bb9}'), ('\u{1bba}', '\u{1bbf}'), ('\u{1cc0}', '\u{1cc7}')
     ];
 
-    pub static Syloti_Nagri_table: &'static [(char, char)] = &[
+    pub const Syloti_Nagri_table: &'static [(char, char)] = &[
         ('\u{a800}', '\u{a801}'), ('\u{a802}', '\u{a802}'), ('\u{a803}', '\u{a805}'), ('\u{a806}',
         '\u{a806}'), ('\u{a807}', '\u{a80a}'), ('\u{a80b}', '\u{a80b}'), ('\u{a80c}', '\u{a822}'),
         ('\u{a823}', '\u{a824}'), ('\u{a825}', '\u{a826}'), ('\u{a827}', '\u{a827}'), ('\u{a828}',
         '\u{a82b}')
     ];
 
-    pub static Syriac_table: &'static [(char, char)] = &[
+    pub const Syriac_table: &'static [(char, char)] = &[
         ('\u{700}', '\u{70d}'), ('\u{70f}', '\u{70f}'), ('\u{710}', '\u{710}'), ('\u{711}',
         '\u{711}'), ('\u{712}', '\u{72f}'), ('\u{730}', '\u{74a}'), ('\u{74d}', '\u{74f}')
     ];
 
-    pub static Tagalog_table: &'static [(char, char)] = &[
+    pub const Tagalog_table: &'static [(char, char)] = &[
         ('\u{1700}', '\u{170c}'), ('\u{170e}', '\u{1711}'), ('\u{1712}', '\u{1714}')
     ];
 
-    pub static Tagbanwa_table: &'static [(char, char)] = &[
+    pub const Tagbanwa_table: &'static [(char, char)] = &[
         ('\u{1760}', '\u{176c}'), ('\u{176e}', '\u{1770}'), ('\u{1772}', '\u{1773}')
     ];
 
-    pub static Tai_Le_table: &'static [(char, char)] = &[
+    pub const Tai_Le_table: &'static [(char, char)] = &[
         ('\u{1950}', '\u{196d}'), ('\u{1970}', '\u{1974}')
     ];
 
-    pub static Tai_Tham_table: &'static [(char, char)] = &[
+    pub const Tai_Tham_table: &'static [(char, char)] = &[
         ('\u{1a20}', '\u{1a54}'), ('\u{1a55}', '\u{1a55}'), ('\u{1a56}', '\u{1a56}'), ('\u{1a57}',
         '\u{1a57}'), ('\u{1a58}', '\u{1a5e}'), ('\u{1a60}', '\u{1a60}'), ('\u{1a61}', '\u{1a61}'),
         ('\u{1a62}', '\u{1a62}'), ('\u{1a63}', '\u{1a64}'), ('\u{1a65}', '\u{1a6c}'), ('\u{1a6d}',
@@ -3837,20 +3837,20 @@ pub mod script {
         '\u{1aad}')
     ];
 
-    pub static Tai_Viet_table: &'static [(char, char)] = &[
+    pub const Tai_Viet_table: &'static [(char, char)] = &[
         ('\u{aa80}', '\u{aaaf}'), ('\u{aab0}', '\u{aab0}'), ('\u{aab1}', '\u{aab1}'), ('\u{aab2}',
         '\u{aab4}'), ('\u{aab5}', '\u{aab6}'), ('\u{aab7}', '\u{aab8}'), ('\u{aab9}', '\u{aabd}'),
         ('\u{aabe}', '\u{aabf}'), ('\u{aac0}', '\u{aac0}'), ('\u{aac1}', '\u{aac1}'), ('\u{aac2}',
         '\u{aac2}'), ('\u{aadb}', '\u{aadc}'), ('\u{aadd}', '\u{aadd}'), ('\u{aade}', '\u{aadf}')
     ];
 
-    pub static Takri_table: &'static [(char, char)] = &[
+    pub const Takri_table: &'static [(char, char)] = &[
         ('\u{11680}', '\u{116aa}'), ('\u{116ab}', '\u{116ab}'), ('\u{116ac}', '\u{116ac}'),
         ('\u{116ad}', '\u{116ad}'), ('\u{116ae}', '\u{116af}'), ('\u{116b0}', '\u{116b5}'),
         ('\u{116b6}', '\u{116b6}'), ('\u{116b7}', '\u{116b7}'), ('\u{116c0}', '\u{116c9}')
     ];
 
-    pub static Tamil_table: &'static [(char, char)] = &[
+    pub const Tamil_table: &'static [(char, char)] = &[
         ('\u{b82}', '\u{b82}'), ('\u{b83}', '\u{b83}'), ('\u{b85}', '\u{b8a}'), ('\u{b8e}',
         '\u{b90}'), ('\u{b92}', '\u{b95}'), ('\u{b99}', '\u{b9a}'), ('\u{b9c}', '\u{b9c}'),
         ('\u{b9e}', '\u{b9f}'), ('\u{ba3}', '\u{ba4}'), ('\u{ba8}', '\u{baa}'), ('\u{bae}',
@@ -3860,7 +3860,7 @@ pub mod script {
         ('\u{bf3}', '\u{bf8}'), ('\u{bf9}', '\u{bf9}'), ('\u{bfa}', '\u{bfa}')
     ];
 
-    pub static Telugu_table: &'static [(char, char)] = &[
+    pub const Telugu_table: &'static [(char, char)] = &[
         ('\u{c00}', '\u{c00}'), ('\u{c01}', '\u{c03}'), ('\u{c05}', '\u{c0c}'), ('\u{c0e}',
         '\u{c10}'), ('\u{c12}', '\u{c28}'), ('\u{c2a}', '\u{c39}'), ('\u{c3d}', '\u{c3d}'),
         ('\u{c3e}', '\u{c40}'), ('\u{c41}', '\u{c44}'), ('\u{c46}', '\u{c48}'), ('\u{c4a}',
@@ -3869,17 +3869,17 @@ pub mod script {
         '\u{c7f}')
     ];
 
-    pub static Thaana_table: &'static [(char, char)] = &[
+    pub const Thaana_table: &'static [(char, char)] = &[
         ('\u{780}', '\u{7a5}'), ('\u{7a6}', '\u{7b0}'), ('\u{7b1}', '\u{7b1}')
     ];
 
-    pub static Thai_table: &'static [(char, char)] = &[
+    pub const Thai_table: &'static [(char, char)] = &[
         ('\u{e01}', '\u{e30}'), ('\u{e31}', '\u{e31}'), ('\u{e32}', '\u{e33}'), ('\u{e34}',
         '\u{e3a}'), ('\u{e40}', '\u{e45}'), ('\u{e46}', '\u{e46}'), ('\u{e47}', '\u{e4e}'),
         ('\u{e4f}', '\u{e4f}'), ('\u{e50}', '\u{e59}'), ('\u{e5a}', '\u{e5b}')
     ];
 
-    pub static Tibetan_table: &'static [(char, char)] = &[
+    pub const Tibetan_table: &'static [(char, char)] = &[
         ('\u{f00}', '\u{f00}'), ('\u{f01}', '\u{f03}'), ('\u{f04}', '\u{f12}'), ('\u{f13}',
         '\u{f13}'), ('\u{f14}', '\u{f14}'), ('\u{f15}', '\u{f17}'), ('\u{f18}', '\u{f19}'),
         ('\u{f1a}', '\u{f1f}'), ('\u{f20}', '\u{f29}'), ('\u{f2a}', '\u{f33}'), ('\u{f34}',
@@ -3893,12 +3893,12 @@ pub mod script {
         ('\u{fd0}', '\u{fd4}'), ('\u{fd9}', '\u{fda}')
     ];
 
-    pub static Tifinagh_table: &'static [(char, char)] = &[
+    pub const Tifinagh_table: &'static [(char, char)] = &[
         ('\u{2d30}', '\u{2d67}'), ('\u{2d6f}', '\u{2d6f}'), ('\u{2d70}', '\u{2d70}'), ('\u{2d7f}',
         '\u{2d7f}')
     ];
 
-    pub static Tirhuta_table: &'static [(char, char)] = &[
+    pub const Tirhuta_table: &'static [(char, char)] = &[
         ('\u{11480}', '\u{114af}'), ('\u{114b0}', '\u{114b2}'), ('\u{114b3}', '\u{114b8}'),
         ('\u{114b9}', '\u{114b9}'), ('\u{114ba}', '\u{114ba}'), ('\u{114bb}', '\u{114be}'),
         ('\u{114bf}', '\u{114c0}'), ('\u{114c1}', '\u{114c1}'), ('\u{114c2}', '\u{114c3}'),
@@ -3906,21 +3906,21 @@ pub mod script {
         ('\u{114d0}', '\u{114d9}')
     ];
 
-    pub static Ugaritic_table: &'static [(char, char)] = &[
+    pub const Ugaritic_table: &'static [(char, char)] = &[
         ('\u{10380}', '\u{1039d}'), ('\u{1039f}', '\u{1039f}')
     ];
 
-    pub static Vai_table: &'static [(char, char)] = &[
+    pub const Vai_table: &'static [(char, char)] = &[
         ('\u{a500}', '\u{a60b}'), ('\u{a60c}', '\u{a60c}'), ('\u{a60d}', '\u{a60f}'), ('\u{a610}',
         '\u{a61f}'), ('\u{a620}', '\u{a629}'), ('\u{a62a}', '\u{a62b}')
     ];
 
-    pub static Warang_Citi_table: &'static [(char, char)] = &[
+    pub const Warang_Citi_table: &'static [(char, char)] = &[
         ('\u{118a0}', '\u{118df}'), ('\u{118e0}', '\u{118e9}'), ('\u{118ea}', '\u{118f2}'),
         ('\u{118ff}', '\u{118ff}')
     ];
 
-    pub static Yi_table: &'static [(char, char)] = &[
+    pub const Yi_table: &'static [(char, char)] = &[
         ('\u{a000}', '\u{a014}'), ('\u{a015}', '\u{a015}'), ('\u{a016}', '\u{a48c}'), ('\u{a490}',
         '\u{a4c6}')
     ];
@@ -3928,11 +3928,11 @@ pub mod script {
 }
 
 pub mod property {
-    pub static Join_Control_table: &'static [(char, char)] = &[
+    pub const Join_Control_table: &'static [(char, char)] = &[
         ('\u{200c}', '\u{200d}')
     ];
 
-    pub static Noncharacter_Code_Point_table: &'static [(char, char)] = &[
+    pub const Noncharacter_Code_Point_table: &'static [(char, char)] = &[
         ('\u{fdd0}', '\u{fdef}'), ('\u{fffe}', '\u{ffff}'), ('\u{1fffe}', '\u{1ffff}'),
         ('\u{2fffe}', '\u{2ffff}'), ('\u{3fffe}', '\u{3ffff}'), ('\u{4fffe}', '\u{4ffff}'),
         ('\u{5fffe}', '\u{5ffff}'), ('\u{6fffe}', '\u{6ffff}'), ('\u{7fffe}', '\u{7ffff}'),
@@ -3941,7 +3941,7 @@ pub mod property {
         ('\u{efffe}', '\u{effff}'), ('\u{ffffe}', '\u{fffff}')
     ];
 
-    pub static White_Space_table: &'static [(char, char)] = &[
+    pub const White_Space_table: &'static [(char, char)] = &[
         ('\u{9}', '\u{d}'), ('\u{20}', '\u{20}'), ('\u{85}', '\u{85}'), ('\u{a0}', '\u{a0}'),
         ('\u{1680}', '\u{1680}'), ('\u{2000}', '\u{200a}'), ('\u{2028}', '\u{2028}'), ('\u{2029}',
         '\u{2029}'), ('\u{202f}', '\u{202f}'), ('\u{205f}', '\u{205f}'), ('\u{3000}', '\u{3000}')
@@ -3954,111 +3954,110 @@ pub mod property {
 }
 
 pub mod regex {
-    pub static UNICODE_CLASSES: &'static [(&'static str, &'static &'static [(char, char)])] = &[
-        ("Alphabetic", &super::derived_property::Alphabetic_table), ("Arabic",
-        &super::script::Arabic_table), ("Armenian", &super::script::Armenian_table), ("Avestan",
-        &super::script::Avestan_table), ("Balinese", &super::script::Balinese_table), ("Bamum",
-        &super::script::Bamum_table), ("Bassa_Vah", &super::script::Bassa_Vah_table), ("Batak",
-        &super::script::Batak_table), ("Bengali", &super::script::Bengali_table), ("Bopomofo",
-        &super::script::Bopomofo_table), ("Brahmi", &super::script::Brahmi_table), ("Braille",
-        &super::script::Braille_table), ("Buginese", &super::script::Buginese_table), ("Buhid",
-        &super::script::Buhid_table), ("C", &super::general_category::C_table),
-        ("Canadian_Aboriginal", &super::script::Canadian_Aboriginal_table), ("Carian",
-        &super::script::Carian_table), ("Caucasian_Albanian",
-        &super::script::Caucasian_Albanian_table), ("Cc", &super::general_category::Cc_table),
-        ("Cf", &super::general_category::Cf_table), ("Chakma", &super::script::Chakma_table),
-        ("Cham", &super::script::Cham_table), ("Cherokee", &super::script::Cherokee_table), ("Cn",
-        &super::general_category::Cn_table), ("Co", &super::general_category::Co_table), ("Common",
-        &super::script::Common_table), ("Coptic", &super::script::Coptic_table), ("Cuneiform",
-        &super::script::Cuneiform_table), ("Cypriot", &super::script::Cypriot_table), ("Cyrillic",
-        &super::script::Cyrillic_table), ("Default_Ignorable_Code_Point",
-        &super::derived_property::Default_Ignorable_Code_Point_table), ("Deseret",
-        &super::script::Deseret_table), ("Devanagari", &super::script::Devanagari_table),
-        ("Duployan", &super::script::Duployan_table), ("Egyptian_Hieroglyphs",
-        &super::script::Egyptian_Hieroglyphs_table), ("Elbasan", &super::script::Elbasan_table),
-        ("Ethiopic", &super::script::Ethiopic_table), ("Georgian", &super::script::Georgian_table),
-        ("Glagolitic", &super::script::Glagolitic_table), ("Gothic", &super::script::Gothic_table),
-        ("Grantha", &super::script::Grantha_table), ("Greek", &super::script::Greek_table),
-        ("Gujarati", &super::script::Gujarati_table), ("Gurmukhi", &super::script::Gurmukhi_table),
-        ("Han", &super::script::Han_table), ("Hangul", &super::script::Hangul_table), ("Hanunoo",
-        &super::script::Hanunoo_table), ("Hebrew", &super::script::Hebrew_table), ("Hiragana",
-        &super::script::Hiragana_table), ("Imperial_Aramaic",
-        &super::script::Imperial_Aramaic_table), ("Inherited", &super::script::Inherited_table),
-        ("Inscriptional_Pahlavi", &super::script::Inscriptional_Pahlavi_table),
-        ("Inscriptional_Parthian", &super::script::Inscriptional_Parthian_table), ("Javanese",
-        &super::script::Javanese_table), ("Join_Control", &super::property::Join_Control_table),
-        ("Kaithi", &super::script::Kaithi_table), ("Kannada", &super::script::Kannada_table),
-        ("Katakana", &super::script::Katakana_table), ("Kayah_Li", &super::script::Kayah_Li_table),
-        ("Kharoshthi", &super::script::Kharoshthi_table), ("Khmer", &super::script::Khmer_table),
-        ("Khojki", &super::script::Khojki_table), ("Khudawadi", &super::script::Khudawadi_table),
-        ("L", &super::general_category::L_table), ("LC", &super::general_category::LC_table),
-        ("Lao", &super::script::Lao_table), ("Latin", &super::script::Latin_table), ("Lepcha",
-        &super::script::Lepcha_table), ("Limbu", &super::script::Limbu_table), ("Linear_A",
-        &super::script::Linear_A_table), ("Linear_B", &super::script::Linear_B_table), ("Lisu",
-        &super::script::Lisu_table), ("Ll", &super::general_category::Ll_table), ("Lm",
-        &super::general_category::Lm_table), ("Lo", &super::general_category::Lo_table),
-        ("Lowercase", &super::derived_property::Lowercase_table), ("Lt",
-        &super::general_category::Lt_table), ("Lu", &super::general_category::Lu_table), ("Lycian",
-        &super::script::Lycian_table), ("Lydian", &super::script::Lydian_table), ("M",
-        &super::general_category::M_table), ("Mahajani", &super::script::Mahajani_table),
-        ("Malayalam", &super::script::Malayalam_table), ("Mandaic", &super::script::Mandaic_table),
-        ("Manichaean", &super::script::Manichaean_table), ("Mc",
-        &super::general_category::Mc_table), ("Me", &super::general_category::Me_table),
-        ("Meetei_Mayek", &super::script::Meetei_Mayek_table), ("Mende_Kikakui",
-        &super::script::Mende_Kikakui_table), ("Meroitic_Cursive",
-        &super::script::Meroitic_Cursive_table), ("Meroitic_Hieroglyphs",
-        &super::script::Meroitic_Hieroglyphs_table), ("Miao", &super::script::Miao_table), ("Mn",
-        &super::general_category::Mn_table), ("Modi", &super::script::Modi_table), ("Mongolian",
-        &super::script::Mongolian_table), ("Mro", &super::script::Mro_table), ("Myanmar",
-        &super::script::Myanmar_table), ("N", &super::general_category::N_table), ("Nabataean",
-        &super::script::Nabataean_table), ("Nd", &super::general_category::Nd_table),
-        ("New_Tai_Lue", &super::script::New_Tai_Lue_table), ("Nko", &super::script::Nko_table),
-        ("Nl", &super::general_category::Nl_table), ("No", &super::general_category::No_table),
-        ("Noncharacter_Code_Point", &super::property::Noncharacter_Code_Point_table), ("Ogham",
-        &super::script::Ogham_table), ("Ol_Chiki", &super::script::Ol_Chiki_table), ("Old_Italic",
-        &super::script::Old_Italic_table), ("Old_North_Arabian",
-        &super::script::Old_North_Arabian_table), ("Old_Permic", &super::script::Old_Permic_table),
-        ("Old_Persian", &super::script::Old_Persian_table), ("Old_South_Arabian",
-        &super::script::Old_South_Arabian_table), ("Old_Turkic", &super::script::Old_Turkic_table),
-        ("Oriya", &super::script::Oriya_table), ("Osmanya", &super::script::Osmanya_table), ("P",
-        &super::general_category::P_table), ("Pahawh_Hmong", &super::script::Pahawh_Hmong_table),
-        ("Palmyrene", &super::script::Palmyrene_table), ("Pau_Cin_Hau",
-        &super::script::Pau_Cin_Hau_table), ("Pc", &super::general_category::Pc_table), ("Pd",
-        &super::general_category::Pd_table), ("Pe", &super::general_category::Pe_table), ("Pf",
-        &super::general_category::Pf_table), ("Phags_Pa", &super::script::Phags_Pa_table),
-        ("Phoenician", &super::script::Phoenician_table), ("Pi",
-        &super::general_category::Pi_table), ("Po", &super::general_category::Po_table), ("Ps",
-        &super::general_category::Ps_table), ("Psalter_Pahlavi",
-        &super::script::Psalter_Pahlavi_table), ("Rejang", &super::script::Rejang_table), ("Runic",
-        &super::script::Runic_table), ("S", &super::general_category::S_table), ("Samaritan",
-        &super::script::Samaritan_table), ("Saurashtra", &super::script::Saurashtra_table), ("Sc",
-        &super::general_category::Sc_table), ("Sharada", &super::script::Sharada_table), ("Shavian",
-        &super::script::Shavian_table), ("Siddham", &super::script::Siddham_table), ("Sinhala",
-        &super::script::Sinhala_table), ("Sk", &super::general_category::Sk_table), ("Sm",
-        &super::general_category::Sm_table), ("So", &super::general_category::So_table),
-        ("Sora_Sompeng", &super::script::Sora_Sompeng_table), ("Sundanese",
-        &super::script::Sundanese_table), ("Syloti_Nagri", &super::script::Syloti_Nagri_table),
-        ("Syriac", &super::script::Syriac_table), ("Tagalog", &super::script::Tagalog_table),
-        ("Tagbanwa", &super::script::Tagbanwa_table), ("Tai_Le", &super::script::Tai_Le_table),
-        ("Tai_Tham", &super::script::Tai_Tham_table), ("Tai_Viet", &super::script::Tai_Viet_table),
-        ("Takri", &super::script::Takri_table), ("Tamil", &super::script::Tamil_table), ("Telugu",
-        &super::script::Telugu_table), ("Thaana", &super::script::Thaana_table), ("Thai",
-        &super::script::Thai_table), ("Tibetan", &super::script::Tibetan_table), ("Tifinagh",
-        &super::script::Tifinagh_table), ("Tirhuta", &super::script::Tirhuta_table), ("Ugaritic",
-        &super::script::Ugaritic_table), ("Uppercase", &super::derived_property::Uppercase_table),
-        ("Vai", &super::script::Vai_table), ("Warang_Citi", &super::script::Warang_Citi_table),
-        ("White_Space", &super::property::White_Space_table), ("XID_Continue",
-        &super::derived_property::XID_Continue_table), ("XID_Start",
-        &super::derived_property::XID_Start_table), ("Yi", &super::script::Yi_table), ("Z",
-        &super::general_category::Z_table), ("Zl", &super::general_category::Zl_table), ("Zp",
-        &super::general_category::Zp_table), ("Zs", &super::general_category::Zs_table)
+    pub const UNICODE_CLASSES: &'static [(&'static str, &'static [(char, char)])] = &[
+        ("Alphabetic", super::derived_property::Alphabetic_table), ("Arabic",
+        super::script::Arabic_table), ("Armenian", super::script::Armenian_table), ("Avestan",
+        super::script::Avestan_table), ("Balinese", super::script::Balinese_table), ("Bamum",
+        super::script::Bamum_table), ("Bassa_Vah", super::script::Bassa_Vah_table), ("Batak",
+        super::script::Batak_table), ("Bengali", super::script::Bengali_table), ("Bopomofo",
+        super::script::Bopomofo_table), ("Brahmi", super::script::Brahmi_table), ("Braille",
+        super::script::Braille_table), ("Buginese", super::script::Buginese_table), ("Buhid",
+        super::script::Buhid_table), ("C", super::general_category::C_table),
+        ("Canadian_Aboriginal", super::script::Canadian_Aboriginal_table), ("Carian",
+        super::script::Carian_table), ("Caucasian_Albanian",
+        super::script::Caucasian_Albanian_table), ("Cc", super::general_category::Cc_table), ("Cf",
+        super::general_category::Cf_table), ("Chakma", super::script::Chakma_table), ("Cham",
+        super::script::Cham_table), ("Cherokee", super::script::Cherokee_table), ("Cn",
+        super::general_category::Cn_table), ("Co", super::general_category::Co_table), ("Common",
+        super::script::Common_table), ("Coptic", super::script::Coptic_table), ("Cuneiform",
+        super::script::Cuneiform_table), ("Cypriot", super::script::Cypriot_table), ("Cyrillic",
+        super::script::Cyrillic_table), ("Default_Ignorable_Code_Point",
+        super::derived_property::Default_Ignorable_Code_Point_table), ("Deseret",
+        super::script::Deseret_table), ("Devanagari", super::script::Devanagari_table), ("Duployan",
+        super::script::Duployan_table), ("Egyptian_Hieroglyphs",
+        super::script::Egyptian_Hieroglyphs_table), ("Elbasan", super::script::Elbasan_table),
+        ("Ethiopic", super::script::Ethiopic_table), ("Georgian", super::script::Georgian_table),
+        ("Glagolitic", super::script::Glagolitic_table), ("Gothic", super::script::Gothic_table),
+        ("Grantha", super::script::Grantha_table), ("Greek", super::script::Greek_table),
+        ("Gujarati", super::script::Gujarati_table), ("Gurmukhi", super::script::Gurmukhi_table),
+        ("Han", super::script::Han_table), ("Hangul", super::script::Hangul_table), ("Hanunoo",
+        super::script::Hanunoo_table), ("Hebrew", super::script::Hebrew_table), ("Hiragana",
+        super::script::Hiragana_table), ("Imperial_Aramaic", super::script::Imperial_Aramaic_table),
+        ("Inherited", super::script::Inherited_table), ("Inscriptional_Pahlavi",
+        super::script::Inscriptional_Pahlavi_table), ("Inscriptional_Parthian",
+        super::script::Inscriptional_Parthian_table), ("Javanese", super::script::Javanese_table),
+        ("Join_Control", super::property::Join_Control_table), ("Kaithi",
+        super::script::Kaithi_table), ("Kannada", super::script::Kannada_table), ("Katakana",
+        super::script::Katakana_table), ("Kayah_Li", super::script::Kayah_Li_table), ("Kharoshthi",
+        super::script::Kharoshthi_table), ("Khmer", super::script::Khmer_table), ("Khojki",
+        super::script::Khojki_table), ("Khudawadi", super::script::Khudawadi_table), ("L",
+        super::general_category::L_table), ("LC", super::general_category::LC_table), ("Lao",
+        super::script::Lao_table), ("Latin", super::script::Latin_table), ("Lepcha",
+        super::script::Lepcha_table), ("Limbu", super::script::Limbu_table), ("Linear_A",
+        super::script::Linear_A_table), ("Linear_B", super::script::Linear_B_table), ("Lisu",
+        super::script::Lisu_table), ("Ll", super::general_category::Ll_table), ("Lm",
+        super::general_category::Lm_table), ("Lo", super::general_category::Lo_table), ("Lowercase",
+        super::derived_property::Lowercase_table), ("Lt", super::general_category::Lt_table), ("Lu",
+        super::general_category::Lu_table), ("Lycian", super::script::Lycian_table), ("Lydian",
+        super::script::Lydian_table), ("M", super::general_category::M_table), ("Mahajani",
+        super::script::Mahajani_table), ("Malayalam", super::script::Malayalam_table), ("Mandaic",
+        super::script::Mandaic_table), ("Manichaean", super::script::Manichaean_table), ("Mc",
+        super::general_category::Mc_table), ("Me", super::general_category::Me_table),
+        ("Meetei_Mayek", super::script::Meetei_Mayek_table), ("Mende_Kikakui",
+        super::script::Mende_Kikakui_table), ("Meroitic_Cursive",
+        super::script::Meroitic_Cursive_table), ("Meroitic_Hieroglyphs",
+        super::script::Meroitic_Hieroglyphs_table), ("Miao", super::script::Miao_table), ("Mn",
+        super::general_category::Mn_table), ("Modi", super::script::Modi_table), ("Mongolian",
+        super::script::Mongolian_table), ("Mro", super::script::Mro_table), ("Myanmar",
+        super::script::Myanmar_table), ("N", super::general_category::N_table), ("Nabataean",
+        super::script::Nabataean_table), ("Nd", super::general_category::Nd_table), ("New_Tai_Lue",
+        super::script::New_Tai_Lue_table), ("Nko", super::script::Nko_table), ("Nl",
+        super::general_category::Nl_table), ("No", super::general_category::No_table),
+        ("Noncharacter_Code_Point", super::property::Noncharacter_Code_Point_table), ("Ogham",
+        super::script::Ogham_table), ("Ol_Chiki", super::script::Ol_Chiki_table), ("Old_Italic",
+        super::script::Old_Italic_table), ("Old_North_Arabian",
+        super::script::Old_North_Arabian_table), ("Old_Permic", super::script::Old_Permic_table),
+        ("Old_Persian", super::script::Old_Persian_table), ("Old_South_Arabian",
+        super::script::Old_South_Arabian_table), ("Old_Turkic", super::script::Old_Turkic_table),
+        ("Oriya", super::script::Oriya_table), ("Osmanya", super::script::Osmanya_table), ("P",
+        super::general_category::P_table), ("Pahawh_Hmong", super::script::Pahawh_Hmong_table),
+        ("Palmyrene", super::script::Palmyrene_table), ("Pau_Cin_Hau",
+        super::script::Pau_Cin_Hau_table), ("Pc", super::general_category::Pc_table), ("Pd",
+        super::general_category::Pd_table), ("Pe", super::general_category::Pe_table), ("Pf",
+        super::general_category::Pf_table), ("Phags_Pa", super::script::Phags_Pa_table),
+        ("Phoenician", super::script::Phoenician_table), ("Pi", super::general_category::Pi_table),
+        ("Po", super::general_category::Po_table), ("Ps", super::general_category::Ps_table),
+        ("Psalter_Pahlavi", super::script::Psalter_Pahlavi_table), ("Rejang",
+        super::script::Rejang_table), ("Runic", super::script::Runic_table), ("S",
+        super::general_category::S_table), ("Samaritan", super::script::Samaritan_table),
+        ("Saurashtra", super::script::Saurashtra_table), ("Sc", super::general_category::Sc_table),
+        ("Sharada", super::script::Sharada_table), ("Shavian", super::script::Shavian_table),
+        ("Siddham", super::script::Siddham_table), ("Sinhala", super::script::Sinhala_table), ("Sk",
+        super::general_category::Sk_table), ("Sm", super::general_category::Sm_table), ("So",
+        super::general_category::So_table), ("Sora_Sompeng", super::script::Sora_Sompeng_table),
+        ("Sundanese", super::script::Sundanese_table), ("Syloti_Nagri",
+        super::script::Syloti_Nagri_table), ("Syriac", super::script::Syriac_table), ("Tagalog",
+        super::script::Tagalog_table), ("Tagbanwa", super::script::Tagbanwa_table), ("Tai_Le",
+        super::script::Tai_Le_table), ("Tai_Tham", super::script::Tai_Tham_table), ("Tai_Viet",
+        super::script::Tai_Viet_table), ("Takri", super::script::Takri_table), ("Tamil",
+        super::script::Tamil_table), ("Telugu", super::script::Telugu_table), ("Thaana",
+        super::script::Thaana_table), ("Thai", super::script::Thai_table), ("Tibetan",
+        super::script::Tibetan_table), ("Tifinagh", super::script::Tifinagh_table), ("Tirhuta",
+        super::script::Tirhuta_table), ("Ugaritic", super::script::Ugaritic_table), ("Uppercase",
+        super::derived_property::Uppercase_table), ("Vai", super::script::Vai_table),
+        ("Warang_Citi", super::script::Warang_Citi_table), ("White_Space",
+        super::property::White_Space_table), ("XID_Continue",
+        super::derived_property::XID_Continue_table), ("XID_Start",
+        super::derived_property::XID_Start_table), ("Yi", super::script::Yi_table), ("Z",
+        super::general_category::Z_table), ("Zl", super::general_category::Zl_table), ("Zp",
+        super::general_category::Zp_table), ("Zs", super::general_category::Zs_table)
     ];
 
-    pub static PERLD: &'static &'static [(char, char)] = &super::general_category::Nd_table;
+    pub const PERLD: &'static [(char, char)] = super::general_category::Nd_table;
 
-    pub static PERLS: &'static &'static [(char, char)] = &super::property::White_Space_table;
+    pub const PERLS: &'static [(char, char)] = super::property::White_Space_table;
 
-    pub static PERLW: &'static [(char, char)] = &[
+    pub const PERLW: &'static [(char, char)] = &[
         ('\u{30}', '\u{39}'), ('\u{41}', '\u{5a}'), ('\u{5f}', '\u{5f}'), ('\u{61}', '\u{7a}'),
         ('\u{aa}', '\u{aa}'), ('\u{b5}', '\u{b5}'), ('\u{ba}', '\u{ba}'), ('\u{c0}', '\u{d6}'),
         ('\u{d8}', '\u{f6}'), ('\u{f8}', '\u{2c1}'), ('\u{2c6}', '\u{2d1}'), ('\u{2e0}', '\u{2e4}'),
@@ -4254,7 +4253,7 @@ pub mod regex {
 
 pub mod normalization {
     // Canonical decompositions
-    pub static canonical_table: &'static [(char, &'static [char])] = &[
+    pub const canonical_table: &'static [(char, &'static [char])] = &[
         ('\u{c0}', &['\u{41}', '\u{300}']), ('\u{c1}', &['\u{41}', '\u{301}']), ('\u{c2}',
         &['\u{41}', '\u{302}']), ('\u{c3}', &['\u{41}', '\u{303}']), ('\u{c4}', &['\u{41}',
         '\u{308}']), ('\u{c5}', &['\u{41}', '\u{30a}']), ('\u{c7}', &['\u{43}', '\u{327}']),
@@ -5056,7 +5055,7 @@ pub mod normalization {
     ];
 
     // Compatibility decompositions
-    pub static compatibility_table: &'static [(char, &'static [char])] = &[
+    pub const compatibility_table: &'static [(char, &'static [char])] = &[
         ('\u{a0}', &['\u{20}']), ('\u{a8}', &['\u{20}', '\u{308}']), ('\u{aa}', &['\u{61}']),
         ('\u{af}', &['\u{20}', '\u{304}']), ('\u{b2}', &['\u{32}']), ('\u{b3}', &['\u{33}']),
         ('\u{b4}', &['\u{20}', '\u{301}']), ('\u{b5}', &['\u{3bc}']), ('\u{b8}', &['\u{20}',
@@ -6480,7 +6479,7 @@ pub mod normalization {
     ];
 
     // Canonical compositions
-    pub static composition_table: &'static [(char, &'static [(char, char)])] = &[
+    pub const composition_table: &'static [(char, &'static [(char, char)])] = &[
         ('\u{3c}', &[('\u{338}', '\u{226e}')]), ('\u{3d}', &[('\u{338}', '\u{2260}')]), ('\u{3e}',
         &[('\u{338}', '\u{226f}')]), ('\u{41}', &[('\u{300}', '\u{c0}'), ('\u{301}', '\u{c1}'),
         ('\u{302}', '\u{c2}'), ('\u{303}', '\u{c3}'), ('\u{304}', '\u{100}'), ('\u{306}',
@@ -6840,7 +6839,7 @@ pub mod normalization {
         }
     }
 
-    static combining_class_table: &'static [(char, char, u8)] = &[
+    const combining_class_table: &'static [(char, char, u8)] = &[
         ('\u{300}', '\u{314}', 230), ('\u{315}', '\u{315}', 232), ('\u{316}', '\u{319}', 220),
         ('\u{31a}', '\u{31a}', 232), ('\u{31b}', '\u{31b}', 216), ('\u{31c}', '\u{320}', 220),
         ('\u{321}', '\u{322}', 202), ('\u{323}', '\u{326}', 220), ('\u{327}', '\u{328}', 202),
@@ -6988,7 +6987,7 @@ pub mod conversions {
         }
     }
 
-    static LuLl_table: &'static [(char, char)] = &[
+    const LuLl_table: &'static [(char, char)] = &[
         ('\u{41}', '\u{61}'), ('\u{42}', '\u{62}'), ('\u{43}', '\u{63}'), ('\u{44}', '\u{64}'),
         ('\u{45}', '\u{65}'), ('\u{46}', '\u{66}'), ('\u{47}', '\u{67}'), ('\u{48}', '\u{68}'),
         ('\u{49}', '\u{69}'), ('\u{4a}', '\u{6a}'), ('\u{4b}', '\u{6b}'), ('\u{4c}', '\u{6c}'),
@@ -7284,7 +7283,7 @@ pub mod conversions {
         ('\u{118be}', '\u{118de}'), ('\u{118bf}', '\u{118df}')
     ];
 
-    static LlLu_table: &'static [(char, char)] = &[
+    const LlLu_table: &'static [(char, char)] = &[
         ('\u{61}', '\u{41}'), ('\u{62}', '\u{42}'), ('\u{63}', '\u{43}'), ('\u{64}', '\u{44}'),
         ('\u{65}', '\u{45}'), ('\u{66}', '\u{46}'), ('\u{67}', '\u{47}'), ('\u{68}', '\u{48}'),
         ('\u{69}', '\u{49}'), ('\u{6a}', '\u{4a}'), ('\u{6b}', '\u{4b}'), ('\u{6c}', '\u{4c}'),
@@ -7625,7 +7624,7 @@ pub mod charwidth {
 
     // character width table. Based on Markus Kuhn's free wcwidth() implementation,
     //     http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c
-    static charwidth_table: &'static [(char, char, u8, u8)] = &[
+    const charwidth_table: &'static [(char, char, u8, u8)] = &[
         ('\u{a1}', '\u{a1}', 1, 2), ('\u{a4}', '\u{a4}', 1, 2), ('\u{a7}', '\u{a8}', 1, 2),
         ('\u{aa}', '\u{aa}', 1, 2), ('\u{ae}', '\u{ae}', 1, 2), ('\u{b0}', '\u{b4}', 1, 2),
         ('\u{b6}', '\u{ba}', 1, 2), ('\u{bc}', '\u{bf}', 1, 2), ('\u{c6}', '\u{c6}', 1, 2),
@@ -7839,7 +7838,7 @@ pub mod grapheme {
         bsearch_range_value_table(c, grapheme_cat_table)
     }
 
-    static grapheme_cat_table: &'static [(char, char, GraphemeCat)] = &[
+    const grapheme_cat_table: &'static [(char, char, GraphemeCat)] = &[
         ('\u{0}', '\u{1f}', GC_Control), ('\u{7f}', '\u{9f}', GC_Control), ('\u{ad}', '\u{ad}',
         GC_Control), ('\u{300}', '\u{36f}', GC_Extend), ('\u{483}', '\u{487}', GC_Extend),
         ('\u{488}', '\u{489}', GC_Extend), ('\u{591}', '\u{5bd}', GC_Extend), ('\u{5bf}', '\u{5bf}',

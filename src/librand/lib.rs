@@ -52,7 +52,7 @@ use distributions::{Range, IndependentSample};
 use distributions::range::SampleRange;
 
 #[cfg(test)]
-static RAND_BENCH_N: u64 = 100;
+const RAND_BENCH_N: u64 = 100;
 
 pub mod distributions;
 pub mod isaac;
@@ -342,7 +342,7 @@ impl<'a, R: Rng> Iterator for AsciiGenerator<'a, R> {
     type Item = char;
 
     fn next(&mut self) -> Option<char> {
-        static GEN_ASCII_STR_CHARSET: &'static [u8] =
+        const GEN_ASCII_STR_CHARSET: &'static [u8] =
             b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
               abcdefghijklmnopqrstuvwxyz\
               0123456789";

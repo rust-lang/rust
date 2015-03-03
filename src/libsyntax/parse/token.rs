@@ -425,10 +425,10 @@ macro_rules! declare_special_idents_and_keywords {(
         $( ($rk_name:expr, $rk_variant:ident, $rk_str:expr); )*
     }
 ) => {
-    static STRICT_KEYWORD_START: ast::Name = first!($( ast::Name($sk_name), )*);
-    static STRICT_KEYWORD_FINAL: ast::Name = last!($( ast::Name($sk_name), )*);
-    static RESERVED_KEYWORD_START: ast::Name = first!($( ast::Name($rk_name), )*);
-    static RESERVED_KEYWORD_FINAL: ast::Name = last!($( ast::Name($rk_name), )*);
+    const STRICT_KEYWORD_START: ast::Name = first!($( ast::Name($sk_name), )*);
+    const STRICT_KEYWORD_FINAL: ast::Name = last!($( ast::Name($sk_name), )*);
+    const RESERVED_KEYWORD_START: ast::Name = first!($( ast::Name($rk_name), )*);
+    const RESERVED_KEYWORD_FINAL: ast::Name = last!($( ast::Name($rk_name), )*);
 
     pub mod special_idents {
         use ast;
