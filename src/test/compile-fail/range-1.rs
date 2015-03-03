@@ -20,7 +20,7 @@ pub fn main() {
     //~^ ERROR the trait `core::num::Int` is not implemented for the type `f32`
 
     // Unsized type.
-    let arr: &[_] = &[1u32, 2, 3];
+    let arr: &[_] = &[1, 2, 3];
     let range = *arr..;
     //~^ ERROR the trait `core::marker::Sized` is not implemented
 }

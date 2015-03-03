@@ -12,5 +12,5 @@
 extern crate issue2170lib;
 
 pub fn main() {
-   // let _ = issue2170lib::rsrc(2i32);
+   // let _ = issue2170lib::rsrc(2);
 }

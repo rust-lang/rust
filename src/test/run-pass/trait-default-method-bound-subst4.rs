@@ -21,6 +21,6 @@ fn f<T, V: A<T>>(i: V, j: uint) -> uint {
 }
 
 pub fn main () {
-    assert_eq!(f::<f64, int>(0, 2_usize), 2_usize);
-    assert_eq!(f::<uint, int>(0, 2_usize), 2_usize);
+    assert_eq!(f::<f64, int>(0, 2), 2);
+    assert_eq!(f::<uint, int>(0, 2), 2);
 }

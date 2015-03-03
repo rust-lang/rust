@@ -20,6 +20,6 @@ impl Foo for i32 {
 }
 
 fn main() {
-    let a: &Foo = &22_i32;
+    let a: &Foo = &22;
     assert_eq!(Foo::test(a), 22);
 }

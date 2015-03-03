@@ -198,7 +198,7 @@ impl<'a> Parser<'a> {
     }
 
     fn read_number_impl(&mut self, radix: u8, max_digits: u32, upto: u32) -> Option<u32> {
-        let mut r = 0u32;
+        let mut r = 0;
         let mut digit_count = 0;
         loop {
             match self.read_digit(radix) {
@@ -226,7 +226,7 @@ impl<'a> Parser<'a> {
     }
 
     fn read_ipv4_addr_impl(&mut self) -> Option<IpAddr> {
-        let mut bs = [0u8; 4];
+        let mut bs = [0; 4];
         let mut i = 0;
         while i < 4 {
             if i != 0 && self.read_given_char('.').is_none() {
@@ -251,7 +251,7 @@ impl<'a> Parser<'a> {
     fn read_ipv6_addr_impl(&mut self) -> Option<IpAddr> {
         fn ipv6_addr_from_head_tail(head: &[u16], tail: &[u16]) -> IpAddr {
             assert!(head.len() + tail.len() <= 8);
-            let mut gs = [0u16; 8];
+            let mut gs = [0; 8];
             gs.clone_from_slice(head);
             gs[(8 - tail.len()) .. 8].clone_from_slice(tail);
             Ipv6Addr(gs[0], gs[1], gs[2], gs[3], gs[4], gs[5], gs[6], gs[7])
@@ -294,7 +294,7 @@ impl<'a> Parser<'a> {
             (i, false)
         }
 
-        let mut head = [0u16; 8];
+        let mut head = [0; 8];
         let (head_size, head_ipv4) = read_groups(self, &mut head, 8);
 
         if head_size == 8 {
@@ -313,7 +313,7 @@ impl<'a> Parser<'a> {
             return None;
         }
 
-        let mut tail = [0u16; 8];
+        let mut tail = [0; 8];
         let (tail_size, _) = read_groups(self, &mut tail, 8 - head_size);
         Some(ipv6_addr_from_head_tail(&head[..head_size], &tail[..tail_size]))
     }
@@ -425,17 +425,17 @@ pub struct ParseError;
 ///     // The following lines are equivalent modulo possible "localhost" name resolution
 ///     // differences
 ///     let tcp_s = TcpStream::connect(SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 12345 });
-///     let tcp_s = TcpStream::connect((Ipv4Addr(127, 0, 0, 1), 12345u16));
-///     let tcp_s = TcpStream::connect(("127.0.0.1", 12345u16));
-///     let tcp_s = TcpStream::connect(("localhost", 12345u16));
+///     let tcp_s = TcpStream::connect((Ipv4Addr(127, 0, 0, 1), 12345));
+///     let tcp_s = TcpStream::connect(("127.0.0.1", 12345));
+///     let tcp_s = TcpStream::connect(("localhost", 12345));
 ///     let tcp_s = TcpStream::connect("127.0.0.1:12345");
 ///     let tcp_s = TcpStream::connect("localhost:12345");
 ///
 ///     // TcpListener::bind(), UdpSocket::bind() and UdpSocket::send_to() behave similarly
 ///     let tcp_l = TcpListener::bind("localhost:12345");
 ///
-///     let mut udp_s = UdpSocket::bind(("127.0.0.1", 23451u16)).unwrap();
-///     udp_s.send_to([7u8, 7u8, 7u8].as_slice(), (Ipv4Addr(127, 0, 0, 1), 23451u16));
+///     let mut udp_s = UdpSocket::bind(("127.0.0.1", 23451)).unwrap();
+///     udp_s.send_to([7, 7, 7].as_slice(), (Ipv4Addr(127, 0, 0, 1), 23451));
 /// }
 /// ```
 pub trait ToSocketAddr {
@@ -674,7 +674,7 @@ mod test {
     #[test]
     fn to_socket_addr_ipaddr_u16() {
         let a = Ipv4Addr(77, 88, 21, 11);
-        let p = 12345u16;
+        let p = 12345;
         let e = SocketAddr { ip: a, port: p };
         assert_eq!(Ok(e), (a, p).to_socket_addr());
         assert_eq!(Ok(vec![e]), (a, p).to_socket_addr_all());
@@ -683,15 +683,15 @@ mod test {
     #[test]
     fn to_socket_addr_str_u16() {
         let a = SocketAddr { ip: Ipv4Addr(77, 88, 21, 11), port: 24352 };
-        assert_eq!(Ok(a), ("77.88.21.11", 24352u16).to_socket_addr());
-        assert_eq!(Ok(vec![a]), ("77.88.21.11", 24352u16).to_socket_addr_all());
+        assert_eq!(Ok(a), ("77.88.21.11", 24352).to_socket_addr());
+        assert_eq!(Ok(vec![a]), ("77.88.21.11", 24352).to_socket_addr_all());
 
         let a = SocketAddr { ip: Ipv6Addr(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), port: 53 };
         assert_eq!(Ok(a), ("2a02:6b8:0:1::1", 53).to_socket_addr());
         assert_eq!(Ok(vec![a]), ("2a02:6b8:0:1::1", 53).to_socket_addr_all());
 
         let a = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 23924 };
-        assert!(("localhost", 23924u16).to_socket_addr_all().unwrap().contains(&a));
+        assert!(("localhost", 23924).to_socket_addr_all().unwrap().contains(&a));
     }
 
     #[test]

@@ -9,10 +9,10 @@
 // except according to those terms.
 
 pub fn main() {
-    assert_eq!(0xffffffffu32, (-1 as u32));
-    assert_eq!(4294967295u32, (-1 as u32));
-    assert_eq!(0xffffffffffffffffu64, (-1 as u64));
-    assert_eq!(18446744073709551615u64, (-1 as u64));
+    assert_eq!(0xffffffff, (-1 as u32));
+    assert_eq!(4294967295, (-1 as u32));
+    assert_eq!(0xffffffffffffffff, (-1 as u64));
+    assert_eq!(18446744073709551615, (-1 as u64));
 
-    assert_eq!(-2147483648i32 - 1i32, 2147483647i32);
+    assert_eq!(-2147483648 - 1, 2147483647);
 }

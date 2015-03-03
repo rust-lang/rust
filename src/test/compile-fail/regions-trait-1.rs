@@ -34,7 +34,7 @@ fn get_v(gc: Box<get_ctxt>) -> usize {
 }
 
 fn main() {
-    let ctxt = ctxt { v: 22_usize };
+    let ctxt = ctxt { v: 22 };
     let hc = has_ctxt { c: &ctxt };
-    assert_eq!(get_v(box hc as Box<get_ctxt>), 22_usize);
+    assert_eq!(get_v(box hc as Box<get_ctxt>), 22);
 }

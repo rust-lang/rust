@@ -20,7 +20,7 @@ pub fn main() {
     foo("hi".to_string());
     foo(~[1, 2, 3]);
     foo(F{field: 42});
-    foo((1, 2_usize));
+    foo((1, 2));
     foo(@1);*/
     foo(Box::new(1));
 }

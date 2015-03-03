@@ -833,11 +833,11 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
 
     let (is_zero, is_signed) = match rhs_t.sty {
         ty::ty_int(t) => {
-            let zero = C_integral(Type::int_from_ty(cx.ccx(), t), 0u64, false);
+            let zero = C_integral(Type::int_from_ty(cx.ccx(), t), 0, false);
             (ICmp(cx, llvm::IntEQ, rhs, zero, debug_loc), true)
         }
         ty::ty_uint(t) => {
-            let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0u64, false);
+            let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0, false);
             (ICmp(cx, llvm::IntEQ, rhs, zero, debug_loc), false)
         }
         _ => {

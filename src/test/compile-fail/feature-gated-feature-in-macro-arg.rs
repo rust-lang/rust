@@ -21,7 +21,7 @@
 // test. Not ideal, but oh well :(
 
 fn main() {
-    let a = &[1i32, 2, 3];
+    let a = &[1, 2, 3];
     println!("{}", {
         extern "rust-intrinsic" { //~ ERROR intrinsics are subject to change
             fn atomic_fence();

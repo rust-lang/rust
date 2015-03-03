@@ -12,9 +12,9 @@
 
 
 pub fn main() {
-    let mut x: i8 = -12i8;
-    let y: i8 = -12i8;
-    x = x + 1i8;
-    x = x - 1i8;
+    let mut x: i8 = -12;
+    let y: i8 = -12;
+    x = x + 1;
+    x = x - 1;
     assert_eq!(x, y);
 }

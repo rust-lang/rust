@@ -101,7 +101,7 @@ pub fn u64_to_le_bytes<T, F>(n: u64, size: uint, f: F) -> T where
         let mut i = size;
         let mut n = n;
         while i > 0 {
-            bytes.push((n & 255_u64) as u8);
+            bytes.push((n & 255) as u8);
             n >>= 8;
             i -= 1;
         }
@@ -170,7 +170,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
         panic!("index out of bounds");
     }
 
-    let mut buf = [0u8; 8];
+    let mut buf = [0; 8];
     unsafe {
         let ptr = data.as_ptr().offset(start as int);
         let out = buf.as_mut_ptr();
@@ -522,8 +522,8 @@ mod bench {
         ({
             use super::u64_from_be_bytes;
 
-            let data = (0u8..$stride*100+$start_index).collect::<Vec<_>>();
-            let mut sum = 0u64;
+            let data = (0..$stride*100+$start_index).collect::<Vec<_>>();
+            let mut sum = 0;
             $b.iter(|| {
                 let mut i = $start_index;
                 while i < data.len() {

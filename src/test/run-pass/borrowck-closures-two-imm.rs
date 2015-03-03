@@ -15,7 +15,7 @@
 // the closures are in scope. Issue #6801.
 
 fn a() -> i32 {
-    let mut x = 3i32;
+    let mut x = 3;
     x += 1;
     let c1 = || x * 4;
     let c2 = || x * 5;
@@ -27,7 +27,7 @@ fn get(x: &i32) -> i32 {
 }
 
 fn b() -> i32 {
-    let mut x = 3i32;
+    let mut x = 3;
     x += 1;
     let c1 = || get(&x);
     let c2 = || get(&x);
@@ -35,7 +35,7 @@ fn b() -> i32 {
 }
 
 fn c() -> i32 {
-    let mut x = 3i32;
+    let mut x = 3;
     x += 1;
     let c1 = || x * 5;
     let c2 = || get(&x);

@@ -121,7 +121,7 @@ impl<'a, W: Writer> RepeatFasta<'a, W> {
 
     fn make(&mut self, n: usize) -> IoResult<()> {
         let alu_len = self.alu.len();
-        let mut buf = repeat(0u8).take(alu_len + LINE_LEN).collect::<Vec<_>>();
+        let mut buf = repeat(0).take(alu_len + LINE_LEN).collect::<Vec<_>>();
         let alu: &[u8] = self.alu.as_bytes();
 
         copy_memory(&mut buf, alu);

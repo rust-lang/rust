@@ -23,8 +23,8 @@ use distributions::{Sample, IndependentSample};
 ///
 /// This gives a uniform distribution (assuming the RNG used to sample
 /// it is itself uniform & the `SampleRange` implementation for the
-/// given type is correct), even for edge cases like `low = 0u8`,
-/// `high = 170u8`, for which a naive modulo operation would return
+/// given type is correct), even for edge cases like `low = 0`,
+/// `high = 170`, for which a naive modulo operation would return
 /// numbers less than 85 with double the probability to those greater
 /// than 85.
 ///

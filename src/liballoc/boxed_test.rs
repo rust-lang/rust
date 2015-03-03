@@ -72,13 +72,13 @@ fn test_show() {
 #[test]
 fn deref() {
     fn homura<T: Deref<Target=i32>>(_: T) { }
-    homura(Box::new(765i32));
+    homura(Box::new(765));
 }
 
 #[test]
 fn raw_sized() {
     unsafe {
-        let x = Box::new(17i32);
+        let x = Box::new(17);
         let p = boxed::into_raw(x);
         assert_eq!(17, *p);
         *p = 19;
