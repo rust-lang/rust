@@ -55,18 +55,18 @@
 //!
 //! Predefined tags with an implicit length:
 //!
-//! - `U64` (`00`): 8-byte big endian unsigned integer.
-//! - `U32` (`01`): 4-byte big endian unsigned integer.
-//! - `U16` (`02`): 2-byte big endian unsigned integer.
-//! - `U8`  (`03`): 1-byte unsigned integer.
+//! - `U8`  (`00`): 1-byte unsigned integer.
+//! - `U16` (`01`): 2-byte big endian unsigned integer.
+//! - `U32` (`02`): 4-byte big endian unsigned integer.
+//! - `U64` (`03`): 8-byte big endian unsigned integer.
 //!   Any of `U*` tags can be used to encode primitive unsigned integer types,
 //!   as long as it is no greater than the actual size.
 //!   For example, `u8` can only be represented via the `U8` tag.
 //!
-//! - `I64` (`04`): 8-byte big endian signed integer.
-//! - `I32` (`05`): 4-byte big endian signed integer.
-//! - `I16` (`06`): 2-byte big endian signed integer.
-//! - `I8`  (`07`): 1-byte signed integer.
+//! - `I8`  (`04`): 1-byte signed integer.
+//! - `I16` (`05`): 2-byte big endian signed integer.
+//! - `I32` (`06`): 4-byte big endian signed integer.
+//! - `I64` (`07`): 8-byte big endian signed integer.
 //!   Similar to `U*` tags. Always uses two's complement encoding.
 //!
 //! - `Bool` (`08`): 1-byte boolean value, `00` for false and `01` for true.
@@ -74,10 +74,10 @@
 //! - `Char` (`09`): 4-byte big endian Unicode scalar value.
 //!   Surrogate pairs or out-of-bound values are invalid.
 //!
-//! - `F64` (`0a`): 8-byte big endian unsigned integer representing
-//!   IEEE 754 binary64 floating-point format.
-//! - `F32` (`0b`): 4-byte big endian unsigned integer representing
+//! - `F32` (`0a`): 4-byte big endian unsigned integer representing
 //!   IEEE 754 binary32 floating-point format.
+//! - `F64` (`0b`): 8-byte big endian unsigned integer representing
+//!   IEEE 754 binary64 floating-point format.
 //!
 //! - `Sub8`  (`0c`): 1-byte unsigned integer for supplementary information.
 //! - `Sub32` (`0d`): 4-byte unsigned integer for supplementary information.
@@ -87,25 +87,25 @@
 //!
 //! Predefined tags with an explicit length:
 //!
-//! - `Str` (`0e`): A UTF-8-encoded string.
+//! - `Str` (`10`): A UTF-8-encoded string.
 //!
-//! - `Enum` (`0f`): An enum.
+//! - `Enum` (`11`): An enum.
 //!   The first subdocument should be `Sub*` tags with a variant ID.
 //!   Subsequent subdocuments, if any, encode variant arguments.
 //!
-//! - `Vec` (`10`): A vector (sequence).
-//! - `VecElt` (`11`): A vector element.
+//! - `Vec` (`12`): A vector (sequence).
+//! - `VecElt` (`13`): A vector element.
 //!   The first subdocument should be `Sub*` tags with the number of elements.
 //!   Subsequent subdocuments should be `VecElt` tag per each element.
 //!
-//! - `Map` (`12`): A map (associated array).
-//! - `MapKey` (`13`): A key part of the map entry.
-//! - `MapVal` (`14`): A value part of the map entry.
+//! - `Map` (`14`): A map (associated array).
+//! - `MapKey` (`15`): A key part of the map entry.
+//! - `MapVal` (`16`): A value part of the map entry.
 //!   The first subdocument should be `Sub*` tags with the number of entries.
 //!   Subsequent subdocuments should be an alternating sequence of
 //!   `MapKey` and `MapVal` tags per each entry.
 //!
-//! - `Opaque` (`15`): An opaque, custom-format tag.
+//! - `Opaque` (`17`): An opaque, custom-format tag.
 //!   Used to wrap ordinary custom tags or data in the auto-serialized context.
 //!   Rustc typically uses this to encode type informations.
 //!
@@ -183,40 +183,41 @@ pub enum EbmlEncoderTag {
     // tags 00..1f are reserved for auto-serialization.
     // first NUM_IMPLICIT_TAGS tags are implicitly sized and lengths are not encoded.
 
-    EsU64      = 0x00, // + 8 bytes
-    EsU32      = 0x01, // + 4 bytes
-    EsU16      = 0x02, // + 2 bytes
-    EsU8       = 0x03, // + 1 byte
-    EsI64      = 0x04, // + 8 bytes
-    EsI32      = 0x05, // + 4 bytes
-    EsI16      = 0x06, // + 2 bytes
-    EsI8       = 0x07, // + 1 byte
+    EsU8       = 0x00, // + 1 byte
+    EsU16      = 0x01, // + 2 bytes
+    EsU32      = 0x02, // + 4 bytes
+    EsU64      = 0x03, // + 8 bytes
+    EsI8       = 0x04, // + 1 byte
+    EsI16      = 0x05, // + 2 bytes
+    EsI32      = 0x06, // + 4 bytes
+    EsI64      = 0x07, // + 8 bytes
     EsBool     = 0x08, // + 1 byte
     EsChar     = 0x09, // + 4 bytes
-    EsF64      = 0x0a, // + 8 bytes
-    EsF32      = 0x0b, // + 4 bytes
+    EsF32      = 0x0a, // + 4 bytes
+    EsF64      = 0x0b, // + 8 bytes
     EsSub8     = 0x0c, // + 1 byte
     EsSub32    = 0x0d, // + 4 bytes
+    // 0x0e and 0x0f are reserved
 
-    EsStr      = 0x0e,
-    EsEnum     = 0x0f, // encodes the variant id as the first EsSub*
-    EsVec      = 0x10, // encodes the # of elements as the first EsSub*
-    EsVecElt   = 0x11,
-    EsMap      = 0x12, // encodes the # of pairs as the first EsSub*
-    EsMapKey   = 0x13,
-    EsMapVal   = 0x14,
-    EsOpaque   = 0x15,
+    EsStr      = 0x10,
+    EsEnum     = 0x11, // encodes the variant id as the first EsSub*
+    EsVec      = 0x12, // encodes the # of elements as the first EsSub*
+    EsVecElt   = 0x13,
+    EsMap      = 0x14, // encodes the # of pairs as the first EsSub*
+    EsMapKey   = 0x15,
+    EsMapVal   = 0x16,
+    EsOpaque   = 0x17,
 }
 
 const NUM_TAGS: uint = 0x1000;
 const NUM_IMPLICIT_TAGS: uint = 0x0e;
 
 static TAG_IMPLICIT_LEN: [i8; NUM_IMPLICIT_TAGS] = [
-    8, 4, 2, 1, // EsU*
-    8, 4, 2, 1, // ESI*
+    1, 2, 4, 8, // EsU*
+    1, 2, 4, 8, // ESI*
     1, // EsBool
     4, // EsChar
-    8, 4, // EsF*
+    4, 8, // EsF*
     1, 4, // EsSub*
 ];
 
@@ -554,7 +555,10 @@ pub mod reader {
             Ok(r)
         }
 
-        // variable-length unsigned integer with different tags
+        // variable-length unsigned integer with different tags.
+        // `first_tag` should be a tag for u8 or i8.
+        // `last_tag` should be the largest allowed integer tag with the matching signedness.
+        // all tags between them should be valid, in the order of u8, u16, u32 and u64.
         fn _next_int(&mut self,
                      first_tag: EbmlEncoderTag,
                      last_tag: EbmlEncoderTag) -> DecodeResult<u64> {
@@ -566,7 +570,7 @@ pub mod reader {
             let TaggedDoc { tag: r_tag, doc: r_doc } =
                 try!(doc_at(self.parent.data, self.pos));
             let r = if first_tag as uint <= r_tag && r_tag <= last_tag as uint {
-                match last_tag as uint - r_tag {
+                match r_tag - first_tag as uint {
                     0 => doc_as_u8(r_doc) as u64,
                     1 => doc_as_u16(r_doc) as u64,
                     2 => doc_as_u32(r_doc) as u64,
@@ -608,12 +612,12 @@ pub mod reader {
         type Error = Error;
         fn read_nil(&mut self) -> DecodeResult<()> { Ok(()) }
 
-        fn read_u64(&mut self) -> DecodeResult<u64> { self._next_int(EsU64, EsU8) }
-        fn read_u32(&mut self) -> DecodeResult<u32> { Ok(try!(self._next_int(EsU32, EsU8)) as u32) }
-        fn read_u16(&mut self) -> DecodeResult<u16> { Ok(try!(self._next_int(EsU16, EsU8)) as u16) }
+        fn read_u64(&mut self) -> DecodeResult<u64> { self._next_int(EsU8, EsU64) }
+        fn read_u32(&mut self) -> DecodeResult<u32> { Ok(try!(self._next_int(EsU8, EsU32)) as u32) }
+        fn read_u16(&mut self) -> DecodeResult<u16> { Ok(try!(self._next_int(EsU8, EsU16)) as u16) }
         fn read_u8(&mut self) -> DecodeResult<u8> { Ok(doc_as_u8(try!(self.next_doc(EsU8)))) }
         fn read_uint(&mut self) -> DecodeResult<uint> {
-            let v = try!(self._next_int(EsU64, EsU8));
+            let v = try!(self._next_int(EsU8, EsU64));
             if v > (::std::usize::MAX as u64) {
                 Err(IntTooBig(v as uint))
             } else {
@@ -621,12 +625,12 @@ pub mod reader {
             }
         }
 
-        fn read_i64(&mut self) -> DecodeResult<i64> { Ok(try!(self._next_int(EsI64, EsI8)) as i64) }
-        fn read_i32(&mut self) -> DecodeResult<i32> { Ok(try!(self._next_int(EsI32, EsI8)) as i32) }
-        fn read_i16(&mut self) -> DecodeResult<i16> { Ok(try!(self._next_int(EsI16, EsI8)) as i16) }
+        fn read_i64(&mut self) -> DecodeResult<i64> { Ok(try!(self._next_int(EsI8, EsI64)) as i64) }
+        fn read_i32(&mut self) -> DecodeResult<i32> { Ok(try!(self._next_int(EsI8, EsI32)) as i32) }
+        fn read_i16(&mut self) -> DecodeResult<i16> { Ok(try!(self._next_int(EsI8, EsI16)) as i16) }
         fn read_i8(&mut self) -> DecodeResult<i8> { Ok(doc_as_u8(try!(self.next_doc(EsI8))) as i8) }
         fn read_int(&mut self) -> DecodeResult<int> {
-            let v = try!(self._next_int(EsI64, EsI8)) as i64;
+            let v = try!(self._next_int(EsI8, EsI64)) as i64;
             if v > (isize::MAX as i64) || v < (isize::MIN as i64) {
                 debug!("FIXME \\#6122: Removing this makes this function miscompile");
                 Err(IntTooBig(v as uint))
