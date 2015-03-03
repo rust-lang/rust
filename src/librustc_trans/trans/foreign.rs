@@ -209,7 +209,6 @@ pub fn register_foreign_item_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let llfn = get_extern_fn(ccx, &mut *ccx.externs().borrow_mut(), name, cc, llfn_ty, fty);
     add_argument_attributes(&tys, llfn);
-
     llfn
 }
 
@@ -484,7 +483,7 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
                     }
 
                     let llfn = register_foreign_item_fn(ccx, abi, ty, &lname);
-                    base::set_llvm_fn_attrs(ccx, &foreign_item.attrs, llfn);
+                    attributes::from_fn_attrs(ccx, &foreign_item.attrs, llfn);
                     // Unlike for other items, we shouldn't call
                     // `base::update_linkage` here.  Foreign items have
                     // special linkage requirements, which are handled
@@ -625,7 +624,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                id, t.repr(tcx));
 
         let llfn = base::decl_internal_rust_fn(ccx, t, &ps[..]);
-        attributes::convert_fn_attrs_to_llvm(ccx, attrs, llfn);
+        attributes::from_fn_attrs(ccx, attrs, llfn);
         base::trans_fn(ccx, decl, body, llfn, param_substs, id, &[]);
         llfn
     }
@@ -818,7 +817,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Perform the call itself
         debug!("calling llrustfn = {}, t = {}",
                ccx.tn().val_to_string(llrustfn), t.repr(ccx.tcx()));
-        let attributes = base::get_fn_llvm_attributes(ccx, t);
+        let attributes = attributes::from_fn_type(ccx, t);
         let llrust_ret_val = builder.call(llrustfn, &llrust_args, Some(attributes));
 
         // Get the return value where the foreign fn expects it.

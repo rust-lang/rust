@@ -165,7 +165,7 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
     let llfn = decl_internal_rust_fn(ccx, function_type, &symbol[..]);
 
     // set an inline hint for all closures
-    attributes::inline(llfn, attributes::InlineHint);
+    attributes::inline(llfn, attributes::InlineAttr::Hint);
 
     debug!("get_or_create_declaration_if_closure(): inserting new \
             closure {:?} (type {})",
