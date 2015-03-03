@@ -1067,6 +1067,7 @@ pub struct AtomicInt {
     v: UnsafeCell<int>,
 }
 
+#[allow(deprecated)]
 unsafe impl Sync for AtomicInt {}
 
 #[unstable(feature = "core")]
@@ -1077,6 +1078,7 @@ pub struct AtomicUint {
     v: UnsafeCell<uint>,
 }
 
+#[allow(deprecated)]
 unsafe impl Sync for AtomicUint {}
 
 #[unstable(feature = "core")]

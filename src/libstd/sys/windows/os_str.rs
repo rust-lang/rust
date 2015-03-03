@@ -11,9 +11,10 @@
 /// The underlying OsString/OsStr implementation on Windows is a
 /// wrapper around the "WTF-8" encoding; see the `wtf8` module for more.
 
+use borrow::Cow;
 use fmt::{self, Debug};
 use sys_common::wtf8::{Wtf8, Wtf8Buf};
-use string::{String, CowString};
+use string::String;
 use result::Result;
 use option::Option;
 use mem;
@@ -70,7 +71,7 @@ impl Slice {
         self.inner.as_str()
     }
 
-    pub fn to_string_lossy(&self) -> CowString {
+    pub fn to_string_lossy(&self) -> Cow<str> {
         self.inner.to_string_lossy()
     }
 

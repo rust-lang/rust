@@ -935,6 +935,7 @@ impl<'a, P: Pattern<'a>> Iterator for MatchIndices<'a, P> {
 #[unstable(feature = "core")]
 #[deprecated(since = "1.0.0", reason = "use `Split` with a `&str`")]
 pub struct SplitStr<'a, P: Pattern<'a>>(Split<'a, P>);
+#[allow(deprecated)]
 impl<'a, P: Pattern<'a>> Iterator for SplitStr<'a, P> {
     type Item = &'a str;
 
@@ -1325,6 +1326,7 @@ pub trait StrExt {
     fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P>;
     fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>;
     fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P>;
+    #[allow(deprecated) /* for SplitStr */]
     fn split_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitStr<'a, P>;
     fn lines<'a>(&'a self) -> Lines<'a>;
     fn lines_any<'a>(&'a self) -> LinesAny<'a>;
