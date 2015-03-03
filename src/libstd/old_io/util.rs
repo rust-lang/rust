@@ -418,7 +418,7 @@ mod test {
 
     #[test]
     fn test_iter_reader() {
-        let mut r = IterReader::new(0u8..8);
+        let mut r = IterReader::new(0..8);
         let mut buf = [0, 0, 0];
         let len = r.read(&mut buf).unwrap();
         assert_eq!(len, 3);
@@ -437,7 +437,7 @@ mod test {
 
     #[test]
     fn iter_reader_zero_length() {
-        let mut r = IterReader::new(0u8..8);
+        let mut r = IterReader::new(0..8);
         let mut buf = [];
         assert_eq!(Ok(0), r.read(&mut buf));
     }

@@ -17,6 +17,6 @@ fn main() {
                                            //~| found `i32`
                                            //~| expected ()
                                            //~| found i32
-        765i32
+        765
     };
 }

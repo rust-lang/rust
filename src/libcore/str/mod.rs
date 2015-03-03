@@ -1119,9 +1119,9 @@ pub struct CharRange {
 }
 
 /// Mask of the value bits of a continuation byte
-const CONT_MASK: u8 = 0b0011_1111u8;
+const CONT_MASK: u8 = 0b0011_1111;
 /// Value of the tag bits (tag mask is !CONT_MASK) of a continuation byte
-const TAG_CONT_U8: u8 = 0b1000_0000u8;
+const TAG_CONT_U8: u8 = 0b1000_0000;
 
 /*
 Section: Trait implementations
@@ -1568,7 +1568,7 @@ impl StrExt for str {
         if index == self.len() { return true; }
         match self.as_bytes().get(index) {
             None => false,
-            Some(&b) => b < 128u8 || b >= 192u8,
+            Some(&b) => b < 128 || b >= 192,
         }
     }
 
@@ -1680,7 +1680,7 @@ impl StrExt for str {
 #[inline]
 #[unstable(feature = "core")]
 pub fn char_range_at_raw(bytes: &[u8], i: usize) -> (u32, usize) {
-    if bytes[i] < 128u8 {
+    if bytes[i] < 128 {
         return (bytes[i] as u32, i + 1);
     }
 

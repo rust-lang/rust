@@ -1110,7 +1110,7 @@ mod test {
             check!(w.write(msg));
         }
         let files = check!(readdir(dir));
-        let mut mem = [0u8; 4];
+        let mut mem = [0; 4];
         for f in &files {
             {
                 let n = f.filestem_str();
@@ -1142,7 +1142,7 @@ mod test {
         check!(File::create(&dir2.join("14")));
 
         let mut files = check!(walk_dir(dir));
-        let mut cur = [0u8; 2];
+        let mut cur = [0; 2];
         for f in files {
             let stem = f.filestem_str().unwrap();
             let root = stem.as_bytes()[0] - b'0';

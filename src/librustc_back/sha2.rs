@@ -119,7 +119,7 @@ impl FixedBuffer64 {
     /// Create a new FixedBuffer64
     fn new() -> FixedBuffer64 {
         return FixedBuffer64 {
-            buffer: [0u8; 64],
+            buffer: [0; 64],
             buffer_idx: 0
         };
     }
@@ -258,7 +258,7 @@ pub trait Digest {
     /// Convenience function that retrieves the result of a digest as a
     /// newly allocated vec of bytes.
     fn result_bytes(&mut self) -> Vec<u8> {
-        let mut buf: Vec<u8> = repeat(0u8).take((self.output_bits()+7)/8).collect();
+        let mut buf: Vec<u8> = repeat(0).take((self.output_bits()+7)/8).collect();
         self.result(&mut buf);
         buf
     }
@@ -342,7 +342,7 @@ impl Engine256State {
         let mut g = self.h6;
         let mut h = self.h7;
 
-        let mut w = [0u32; 64];
+        let mut w = [0; 64];
 
         // Sha-512 and Sha-256 use basically the same calculations which are implemented
         // by these macros. Inlining the calculations seems to result in better generated code.
@@ -660,7 +660,7 @@ mod bench {
     #[bench]
     pub fn sha256_10(b: &mut Bencher) {
         let mut sh = Sha256::new();
-        let bytes = [1u8; 10];
+        let bytes = [1; 10];
         b.iter(|| {
             sh.input(&bytes);
         });
@@ -670,7 +670,7 @@ mod bench {
     #[bench]
     pub fn sha256_1k(b: &mut Bencher) {
         let mut sh = Sha256::new();
-        let bytes = [1u8; 1024];
+        let bytes = [1; 1024];
         b.iter(|| {
             sh.input(&bytes);
         });
@@ -680,7 +680,7 @@ mod bench {
     #[bench]
     pub fn sha256_64k(b: &mut Bencher) {
         let mut sh = Sha256::new();
-        let bytes = [1u8; 65536];
+        let bytes = [1; 65536];
         b.iter(|| {
             sh.input(&bytes);
         });

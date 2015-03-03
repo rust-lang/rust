@@ -13,7 +13,7 @@ use std::cell::RefCell;
 // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
 
 fn main() {
-    let mut y = 1_usize;
+    let mut y = 1;
     let c = RefCell::new(vec![]);
     c.push(Box::new(|| y = 0));
     c.push(Box::new(|| y = 0));
@@ -21,7 +21,7 @@ fn main() {
 }
 
 fn ufcs() {
-    let mut y = 1_usize;
+    let mut y = 1;
     let c = RefCell::new(vec![]);
 
     Push::push(&c, Box::new(|| y = 0));

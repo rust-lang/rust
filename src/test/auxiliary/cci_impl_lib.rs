@@ -20,7 +20,7 @@ impl uint_helpers for uint {
         let mut i = *self;
         while i < v {
             f(i);
-            i += 1_usize;
+            i += 1;
         }
     }
 }

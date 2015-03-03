@@ -41,10 +41,10 @@ pub fn foo(box_1: fn () -> Box<[i8; 1]>,
 }
 
 pub fn main() {
-    fn box_1() -> Box<[i8; 1]> { Box::new( [1i8; 1] ) }
-    fn box_2() -> Box<[i8; 2]> { Box::new( [1i8; 2] ) }
-    fn box_3() -> Box<[i8; 3]> { Box::new( [1i8; 3] ) }
-    fn box_4() -> Box<[i8; 4]> { Box::new( [1i8; 4] ) }
+    fn box_1() -> Box<[i8; 1]> { Box::new( [1; 1] ) }
+    fn box_2() -> Box<[i8; 2]> { Box::new( [1; 2] ) }
+    fn box_3() -> Box<[i8; 3]> { Box::new( [1; 3] ) }
+    fn box_4() -> Box<[i8; 4]> { Box::new( [1; 4] ) }
 
     foo(box_1, box_2, box_3, box_4);
 }

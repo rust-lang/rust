@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    let a0 = 0u8;
-    let f = 1u8;
+    let a0 = 0;
+    let f = 1;
     let mut a1 = &a0;
     match (&a1,) {
         (&ref b0,) => {

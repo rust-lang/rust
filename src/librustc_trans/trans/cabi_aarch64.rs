@@ -117,7 +117,7 @@ fn classify_arg_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     let size = ty_size(ty);
     if size <= 16 {
         let llty = if size == 0 {
-            Type::array(&Type::i64(ccx), 0u64)
+            Type::array(&Type::i64(ccx), 0)
         } else if size == 1 {
             Type::i8(ccx)
         } else if size == 2 {

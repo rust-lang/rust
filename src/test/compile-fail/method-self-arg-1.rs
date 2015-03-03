@@ -23,7 +23,7 @@ fn main() {
                  //~| found `Foo`
                  //~| expected &-ptr
                  //~| found struct `Foo`
-    Foo::bar(&42i32); //~  ERROR mismatched types
+    Foo::bar(&42); //~  ERROR mismatched types
                       //~| expected `&Foo`
                       //~| found `&i32`
                       //~| expected struct `Foo`

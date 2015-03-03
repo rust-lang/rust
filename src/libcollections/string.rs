@@ -153,7 +153,7 @@ impl String {
             }
         }
 
-        const TAG_CONT_U8: u8 = 128u8;
+        const TAG_CONT_U8: u8 = 128;
         const REPLACEMENT: &'static [u8] = b"\xEF\xBF\xBD"; // U+FFFD in UTF-8
         let total = v.len();
         fn unsafe_get(xs: &[u8], i: usize) -> u8 {
@@ -195,14 +195,14 @@ impl String {
                 }
             })}
 
-            if byte < 128u8 {
+            if byte < 128 {
                 // subseqidx handles this
             } else {
                 let w = unicode_str::utf8_char_width(byte);
 
                 match w {
                     2 => {
-                        if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
+                        if safe_get(v, i, total) & 192 != TAG_CONT_U8 {
                             error!();
                             continue;
                         }
@@ -220,7 +220,7 @@ impl String {
                             }
                         }
                         i += 1;
-                        if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
+                        if safe_get(v, i, total) & 192 != TAG_CONT_U8 {
                             error!();
                             continue;
                         }
@@ -237,12 +237,12 @@ impl String {
                             }
                         }
                         i += 1;
-                        if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
+                        if safe_get(v, i, total) & 192 != TAG_CONT_U8 {
                             error!();
                             continue;
                         }
                         i += 1;
-                        if safe_get(v, i, total) & 192u8 != TAG_CONT_U8 {
+                        if safe_get(v, i, total) & 192 != TAG_CONT_U8 {
                             error!();
                             continue;
                         }
@@ -1084,40 +1084,40 @@ mod tests {
     fn test_from_utf16() {
         let pairs =
             [(String::from_str("𐍅𐌿𐌻𐍆𐌹𐌻𐌰\n"),
-              vec![0xd800_u16, 0xdf45_u16, 0xd800_u16, 0xdf3f_u16,
-                0xd800_u16, 0xdf3b_u16, 0xd800_u16, 0xdf46_u16,
-                0xd800_u16, 0xdf39_u16, 0xd800_u16, 0xdf3b_u16,
-                0xd800_u16, 0xdf30_u16, 0x000a_u16]),
+              vec![0xd800, 0xdf45, 0xd800, 0xdf3f,
+                0xd800, 0xdf3b, 0xd800, 0xdf46,
+                0xd800, 0xdf39, 0xd800, 0xdf3b,
+                0xd800, 0xdf30, 0x000a]),
 
              (String::from_str("𐐒𐑉𐐮𐑀𐐲𐑋 𐐏𐐲𐑍\n"),
-              vec![0xd801_u16, 0xdc12_u16, 0xd801_u16,
-                0xdc49_u16, 0xd801_u16, 0xdc2e_u16, 0xd801_u16,
-                0xdc40_u16, 0xd801_u16, 0xdc32_u16, 0xd801_u16,
-                0xdc4b_u16, 0x0020_u16, 0xd801_u16, 0xdc0f_u16,
-                0xd801_u16, 0xdc32_u16, 0xd801_u16, 0xdc4d_u16,
-                0x000a_u16]),
+              vec![0xd801, 0xdc12, 0xd801,
+                0xdc49, 0xd801, 0xdc2e, 0xd801,
+                0xdc40, 0xd801, 0xdc32, 0xd801,
+                0xdc4b, 0x0020, 0xd801, 0xdc0f,
+                0xd801, 0xdc32, 0xd801, 0xdc4d,
+                0x000a]),
 
              (String::from_str("𐌀𐌖𐌋𐌄𐌑𐌉·𐌌𐌄𐌕𐌄𐌋𐌉𐌑\n"),
-              vec![0xd800_u16, 0xdf00_u16, 0xd800_u16, 0xdf16_u16,
-                0xd800_u16, 0xdf0b_u16, 0xd800_u16, 0xdf04_u16,
-                0xd800_u16, 0xdf11_u16, 0xd800_u16, 0xdf09_u16,
-                0x00b7_u16, 0xd800_u16, 0xdf0c_u16, 0xd800_u16,
-                0xdf04_u16, 0xd800_u16, 0xdf15_u16, 0xd800_u16,
-                0xdf04_u16, 0xd800_u16, 0xdf0b_u16, 0xd800_u16,
-                0xdf09_u16, 0xd800_u16, 0xdf11_u16, 0x000a_u16 ]),
+              vec![0xd800, 0xdf00, 0xd800, 0xdf16,
+                0xd800, 0xdf0b, 0xd800, 0xdf04,
+                0xd800, 0xdf11, 0xd800, 0xdf09,
+                0x00b7, 0xd800, 0xdf0c, 0xd800,
+                0xdf04, 0xd800, 0xdf15, 0xd800,
+                0xdf04, 0xd800, 0xdf0b, 0xd800,
+                0xdf09, 0xd800, 0xdf11, 0x000a ]),
 
              (String::from_str("𐒋𐒘𐒈𐒑𐒛𐒒 𐒕𐒓 𐒈𐒚𐒍 𐒏𐒜𐒒𐒖𐒆 𐒕𐒆\n"),
-              vec![0xd801_u16, 0xdc8b_u16, 0xd801_u16, 0xdc98_u16,
-                0xd801_u16, 0xdc88_u16, 0xd801_u16, 0xdc91_u16,
-                0xd801_u16, 0xdc9b_u16, 0xd801_u16, 0xdc92_u16,
-                0x0020_u16, 0xd801_u16, 0xdc95_u16, 0xd801_u16,
-                0xdc93_u16, 0x0020_u16, 0xd801_u16, 0xdc88_u16,
-                0xd801_u16, 0xdc9a_u16, 0xd801_u16, 0xdc8d_u16,
-                0x0020_u16, 0xd801_u16, 0xdc8f_u16, 0xd801_u16,
-                0xdc9c_u16, 0xd801_u16, 0xdc92_u16, 0xd801_u16,
-                0xdc96_u16, 0xd801_u16, 0xdc86_u16, 0x0020_u16,
-                0xd801_u16, 0xdc95_u16, 0xd801_u16, 0xdc86_u16,
-                0x000a_u16 ]),
+              vec![0xd801, 0xdc8b, 0xd801, 0xdc98,
+                0xd801, 0xdc88, 0xd801, 0xdc91,
+                0xd801, 0xdc9b, 0xd801, 0xdc92,
+                0x0020, 0xd801, 0xdc95, 0xd801,
+                0xdc93, 0x0020, 0xd801, 0xdc88,
+                0xd801, 0xdc9a, 0xd801, 0xdc8d,
+                0x0020, 0xd801, 0xdc8f, 0xd801,
+                0xdc9c, 0xd801, 0xdc92, 0xd801,
+                0xdc96, 0xd801, 0xdc86, 0x0020,
+                0xd801, 0xdc95, 0xd801, 0xdc86,
+                0x000a ]),
              // Issue #12318, even-numbered non-BMP planes
              (String::from_str("\u{20000}"),
               vec![0xD840, 0xDC00])];
@@ -1303,7 +1303,7 @@ mod tests {
         assert_eq!(1.to_string(), "1");
         assert_eq!((-1).to_string(), "-1");
         assert_eq!(200.to_string(), "200");
-        assert_eq!(2u8.to_string(), "2");
+        assert_eq!(2.to_string(), "2");
         assert_eq!(true.to_string(), "true");
         assert_eq!(false.to_string(), "false");
         assert_eq!(("hi".to_string()).to_string(), "hi");
@@ -1421,7 +1421,7 @@ mod tests {
 
     #[bench]
     fn from_utf8_lossy_100_invalid(b: &mut Bencher) {
-        let s = repeat(0xf5u8).take(100).collect::<Vec<_>>();
+        let s = repeat(0xf5).take(100).collect::<Vec<_>>();
         b.iter(|| {
             let _ = String::from_utf8_lossy(&s);
         });

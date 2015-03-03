@@ -16,7 +16,7 @@ fn _create_render(_: &()) ->
     AbstractRenderer
 //~^ ERROR: the trait `core::marker::Sized` is not implemented
 {
-    match 0_usize {
+    match 0 {
         _ => unimplemented!()
     }
 }

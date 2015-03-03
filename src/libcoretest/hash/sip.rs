@@ -100,8 +100,8 @@ fn test_siphash() {
         [ 0x72, 0x45, 0x06, 0xeb, 0x4c, 0x32, 0x8a, 0x95, ]
     ];
 
-    let k0 = 0x_07_06_05_04_03_02_01_00_u64;
-    let k1 = 0x_0f_0e_0d_0c_0b_0a_09_08_u64;
+    let k0 = 0x_07_06_05_04_03_02_01_00;
+    let k1 = 0x_0f_0e_0d_0c_0b_0a_09_08;
     let mut buf = Vec::new();
     let mut t = 0;
     let mut state_inc = SipState::new_with_keys(k0, k1);
@@ -230,8 +230,8 @@ fn test_hash_no_concat_alias() {
     assert!(s != t && t != u);
     assert!(hash(&s) != hash(&t) && hash(&s) != hash(&u));
 
-    let v: (&[u8], &[u8], &[u8]) = (&[1u8], &[0u8, 0], &[0u8]);
-    let w: (&[u8], &[u8], &[u8]) = (&[1u8, 0, 0, 0], &[], &[]);
+    let v: (&[u8], &[u8], &[u8]) = (&[1], &[0, 0], &[0]);
+    let w: (&[u8], &[u8], &[u8]) = (&[1, 0, 0, 0], &[], &[]);
 
     assert!(v != w);
     assert!(hash(&v) != hash(&w));

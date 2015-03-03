@@ -26,7 +26,7 @@ impl<'a> get_ctxt for has_ctxt<'a> {
 }
 
 fn make_gc() -> @get_ctxt  {
-    let ctxt = ctxt { v: 22us };
+    let ctxt = ctxt { v: 22 };
     let hc = has_ctxt { c: &ctxt };
     return @hc as @get_ctxt;
     //~^ ERROR source contains reference

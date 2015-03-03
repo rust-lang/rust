@@ -55,7 +55,7 @@ macro_rules! check_fancy {
         check_fancy!($e, $T, |ptr| assert!(*ptr == $e));
     }};
     ($e:expr, $T:ty, |$v:ident| $chk:expr) => {{
-        assert!(E::Nothing::<$T>((), ((), ()), [23i8; 0]).is_none());
+        assert!(E::Nothing::<$T>((), ((), ()), [23; 0]).is_none());
         let e = $e;
         let t_ = E::Thing::<$T>(23, e);
         match t_.get_ref() {

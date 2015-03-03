@@ -23,7 +23,7 @@ trait BrokenAdd: Int {
 impl<T: Int> BrokenAdd for T {}
 
 pub fn main() {
-    let foo: u8 = 0u8;
+    let foo: u8 = 0;
     let x: u8 = foo.broken_add("hello darkness my old friend".to_string());
     println!("{}", x);
 }

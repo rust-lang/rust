@@ -20,21 +20,21 @@ fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
 fn to_fn_mut<A,F:FnMut<A>>(f: F) -> F { f }
 
 fn a() {
-    let n = 0u8;
+    let n = 0;
     let mut f = to_fn_mut(|| { //~ ERROR closure cannot assign
         n += 1;
     });
 }
 
 fn b() {
-    let mut n = 0u8;
+    let mut n = 0;
     let mut f = to_fn_mut(|| {
         n += 1; // OK
     });
 }
 
 fn c() {
-    let n = 0u8;
+    let n = 0;
     let mut f = to_fn_mut(move || {
         // If we just did a straight-forward desugaring, this would
         // compile, but we do something a bit more subtle, and hence
@@ -44,21 +44,21 @@ fn c() {
 }
 
 fn d() {
-    let mut n = 0u8;
+    let mut n = 0;
     let mut f = to_fn_mut(move || {
         n += 1; // OK
     });
 }
 
 fn e() {
-    let n = 0u8;
+    let n = 0;
     let mut f = to_fn(move || {
         n += 1; //~ ERROR cannot assign
     });
 }
 
 fn f() {
-    let mut n = 0u8;
+    let mut n = 0;
     let mut f = to_fn(move || {
         n += 1; //~ ERROR cannot assign
     });

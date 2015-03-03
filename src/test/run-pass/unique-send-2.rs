@@ -20,9 +20,9 @@ fn child(tx: &Sender<Box<uint>>, i: uint) {
 
 pub fn main() {
     let (tx, rx) = channel();
-    let n = 100_usize;
-    let mut expected = 0_usize;
-    let _t = (0_usize..n).map(|i| {
+    let n = 100;
+    let mut expected = 0;
+    let _t = (0..n).map(|i| {
         expected += i;
         let tx = tx.clone();
         thread::spawn(move|| {
@@ -30,8 +30,8 @@ pub fn main() {
         })
     }).collect::<Vec<_>>();
 
-    let mut actual = 0_usize;
-    for _ in 0_usize..n {
+    let mut actual = 0;
+    for _ in 0..n {
         let j = rx.recv().unwrap();
         actual += *j;
     }
