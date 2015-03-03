@@ -266,7 +266,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 }
             }
 
-            if fcx.tcx().lang_items.copy_trait() == Some(trait_ref.def_id) {
+            if fcx.tcx().lang_items.pod_trait() == Some(trait_ref.def_id) {
                 // This is checked in coherence.
                 return
             }

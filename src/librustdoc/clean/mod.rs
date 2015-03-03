@@ -597,6 +597,9 @@ impl Clean<TyParamBound> for ty::BuiltinBound {
             ty::BoundCopy =>
                 (tcx.lang_items.copy_trait().unwrap(),
                  external_path(cx, "Copy", None, vec![], &empty)),
+            ty::BoundPod =>
+                (tcx.lang_items.pod_trait().unwrap(),
+                 external_path(cx, "Pod", None, vec![], &empty)),
             ty::BoundSync =>
                 (tcx.lang_items.sync_trait().unwrap(),
                  external_path(cx, "Sync", None, vec![], &empty)),

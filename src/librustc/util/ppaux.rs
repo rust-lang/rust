@@ -789,6 +789,7 @@ impl<'tcx> Repr<'tcx> for ty::BuiltinBounds {
                 ty::BoundSend => "Send".to_string(),
                 ty::BoundSized => "Sized".to_string(),
                 ty::BoundCopy => "Copy".to_string(),
+                ty::BoundPod => "Pod".to_string(),
                 ty::BoundSync => "Sync".to_string(),
             });
         }
@@ -1181,6 +1182,7 @@ impl<'tcx> UserString<'tcx> for ty::BuiltinBound {
             ty::BoundSend => "Send".to_string(),
             ty::BoundSized => "Sized".to_string(),
             ty::BoundCopy => "Copy".to_string(),
+            ty::BoundPod => "Pod".to_string(),
             ty::BoundSync => "Sync".to_string(),
         }
     }

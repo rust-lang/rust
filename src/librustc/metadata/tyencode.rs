@@ -365,7 +365,8 @@ pub fn enc_builtin_bounds(w: &mut Encoder, _cx: &ctxt, bs: &ty::BuiltinBounds) {
         match bound {
             ty::BoundSend => mywrite!(w, "S"),
             ty::BoundSized => mywrite!(w, "Z"),
-            ty::BoundCopy => mywrite!(w, "P"),
+            ty::BoundCopy => mywrite!(w, "C"),
+            ty::BoundPod => mywrite!(w, "P"),
             ty::BoundSync => mywrite!(w, "T"),
         }
     }
