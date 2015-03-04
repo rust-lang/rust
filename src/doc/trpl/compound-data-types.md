@@ -6,8 +6,8 @@ strings, but next, let's talk about some more complicated ways of storing data.
 
 ## Tuples
 
-The first compound data type we're going to talk about are called *tuples*.
-Tuples are an ordered list of a fixed size. Like this:
+The first compound data type we're going to talk about is called the *tuple*.
+A tuple is an ordered list of fixed size. Like this:
 
 ```rust
 let x = (1, "hello");
@@ -229,7 +229,7 @@ enum Character {
 ```
 
 An `enum` variant can be defined as most normal types. Below are some example
-types have been listed which also would be allowed in an `enum`.
+types which also would be allowed in an `enum`.
 
 ```rust
 struct Empty;
