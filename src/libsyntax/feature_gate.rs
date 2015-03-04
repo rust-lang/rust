@@ -349,6 +349,7 @@ struct Context<'a> {
     features: Vec<&'static str>,
     span_handler: &'a SpanHandler,
     cm: &'a CodeMap,
+    do_warnings: bool,
 }
 
 impl<'a> Context<'a> {
@@ -361,7 +362,7 @@ impl<'a> Context<'a> {
     }
 
     fn warn_feature(&self, feature: &str, span: Span, explain: &str) {
-        if !self.has_feature(feature) {
+        if !self.has_feature(feature) && self.do_warnings {
             emit_feature_warn(self.span_handler, feature, span, explain);
         }
     }
@@ -700,6 +701,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 }
 
 fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate,
+                        do_warnings: bool,
                         check: F)
                        -> Features
     where F: FnOnce(&mut Context, &ast::Crate)
@@ -707,6 +709,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
     let mut cx = Context {
         features: Vec::new(),
         span_handler: span_handler,
+        do_warnings: do_warnings,
         cm: cm,
     };
 
@@ -786,13 +789,14 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
 
 pub fn check_crate_macros(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
 -> Features {
-    check_crate_inner(cm, span_handler, krate,
+    check_crate_inner(cm, span_handler, krate, true,
                       |ctx, krate| visit::walk_crate(&mut MacroVisitor { context: ctx }, krate))
 }
 
-pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
--> Features {
-    check_crate_inner(cm, span_handler, krate,
+pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate,
+                   do_warnings: bool) -> Features
+{
+    check_crate_inner(cm, span_handler, krate, do_warnings,
                       |ctx, krate| visit::walk_crate(&mut PostExpansionVisitor { context: ctx },
                                                      krate))
 }
