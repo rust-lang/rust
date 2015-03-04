@@ -1288,6 +1288,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         let trait_predicates = ty::lookup_predicates(tcx, def_id);
         encode_unsafety(rbml_w, trait_def.unsafety);
         encode_paren_sugar(rbml_w, trait_def.paren_sugar);
+        encode_defaulted(rbml_w, ty::trait_has_default_impl(tcx, def_id));
         encode_associated_type_names(rbml_w, &trait_def.associated_type_names);
         encode_generics(rbml_w, ecx, &trait_def.generics, &trait_predicates, tag_item_generics);
         encode_predicates(rbml_w, ecx, &ty::lookup_super_predicates(tcx, def_id),
@@ -1658,6 +1659,11 @@ fn encode_unsafety(rbml_w: &mut Encoder, unsafety: ast::Unsafety) {
 fn encode_paren_sugar(rbml_w: &mut Encoder, paren_sugar: bool) {
     let byte: u8 = if paren_sugar {1} else {0};
     rbml_w.wr_tagged_u8(tag_paren_sugar, byte);
+}
+
+fn encode_defaulted(rbml_w: &mut Encoder, is_defaulted: bool) {
+    let byte: u8 = if is_defaulted {1} else {0};
+    rbml_w.wr_tagged_u8(tag_defaulted_trait, byte);
 }
 
 fn encode_associated_type_names(rbml_w: &mut Encoder, names: &[ast::Name]) {
