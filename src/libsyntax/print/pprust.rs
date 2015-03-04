@@ -2253,7 +2253,7 @@ impl<'a> State<'a> {
         self.ann.post(self, NodePat(pat))
     }
 
-    pub fn print_pats(&mut self, pats: &[ast::Pat]) -> IoResult<()> {
+    pub fn print_pats(&mut self, pats: &[P<ast::Pat>]) -> IoResult<()> {
         let mut first = true;
         for ref p in pats {
             if first {
@@ -2264,6 +2264,7 @@ impl<'a> State<'a> {
             }
             try!(self.print_pat(&**p));
         }
+        Ok(())
     }
 
     fn print_arm(&mut self, arm: &ast::Arm) -> IoResult<()> {
