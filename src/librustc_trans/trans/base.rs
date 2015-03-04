@@ -2127,20 +2127,19 @@ pub fn is_entry_fn(sess: &Session, node_id: ast::NodeId) -> bool {
 /// Create the `main` function which will initialise the rust runtime and call users’ main
 /// function.
 pub fn create_entry_wrapper(ccx: &CrateContext,
-                           _sp: Span,
+                           sp: Span,
                            main_llfn: ValueRef) {
     let et = ccx.sess().entry_type.get().unwrap();
     match et {
         config::EntryMain => {
-            create_entry_fn(ccx, _sp, main_llfn, true);
+            create_entry_fn(ccx, sp, main_llfn, true);
         }
-        config::EntryStart => create_entry_fn(ccx, _sp, main_llfn, false),
+        config::EntryStart => create_entry_fn(ccx, sp, main_llfn, false),
         config::EntryNone => {}    // Do nothing.
     }
 
-    #[inline(never)]
     fn create_entry_fn(ccx: &CrateContext,
-                       _sp: Span,
+                       sp: Span,
                        rust_main: ValueRef,
                        use_start_lang_item: bool) {
         let llfty = Type::func(&[ccx.int_type(), Type::i8p(ccx).ptr_to()],
@@ -2148,7 +2147,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
 
         let llfn = declare::define_cfn(ccx, "main", llfty,
                                        ty::mk_nil(ccx.tcx())).unwrap_or_else(||{
-            ccx.sess().span_err(_sp, "entry symbol `main` defined multiple times");
+            ccx.sess().span_err(sp, "entry symbol `main` defined multiple times");
             // FIXME: We should be smart and show a better diagnostic here.
             ccx.sess().help("did you use #[no_mangle] on `fn main`? Use #[start] instead");
             ccx.sess().abort_if_errors();

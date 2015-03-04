@@ -19,8 +19,6 @@
 //! ValueRef they return.
 //! * Use define_* family of methods when you might be defining the ValueRef.
 //! * When in doubt, define.
-#![allow(dead_code)]
-
 use llvm::{self, ValueRef};
 use middle::ty::{self, ClosureTyper};
 use syntax::abi;
