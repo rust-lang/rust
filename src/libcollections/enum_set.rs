@@ -31,6 +31,8 @@ pub struct EnumSet<E> {
     marker: marker::PhantomData<E>,
 }
 
+#[cfg(not(stage0))]
+impl<E> marker::Pod for EnumSet<E> {}
 impl<E> Copy for EnumSet<E> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]

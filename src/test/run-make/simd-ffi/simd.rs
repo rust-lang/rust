@@ -75,6 +75,9 @@ pub trait Sized : PhantomFn<Self> {}
 #[lang = "copy"]
 pub trait Copy : PhantomFn<Self> {}
 
+#[lang = "pod"]
+pub trait Pod : PhantomFn<Self> {}
+
 #[lang="phantom_fn"]
 pub trait PhantomFn<A:?Sized,R:?Sized=()> { }
 impl<A:?Sized, R:?Sized, U:?Sized> PhantomFn<A,R> for U { }
@@ -82,5 +85,6 @@ impl<A:?Sized, R:?Sized, U:?Sized> PhantomFn<A,R> for U { }
 mod core {
     pub mod marker {
         pub use Copy;
+        pub use Pod;
     }
 }

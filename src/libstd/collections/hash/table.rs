@@ -17,6 +17,8 @@ use cmp;
 use hash::{Hash, Hasher};
 use iter::{Iterator, IteratorExt, ExactSizeIterator, count};
 use marker::{Copy, Send, Sync, Sized, self};
+#[cfg(not(stage0))]
+use marker::Pod;
 use mem::{min_align_of, size_of};
 use mem;
 use num::{Int, UnsignedInt};
@@ -87,6 +89,8 @@ struct RawBucket<K, V> {
     _marker: marker::PhantomData<(K,V)>,
 }
 
+#[cfg(not(stage0))]
+impl<K,V> Pod for RawBucket<K,V> {}
 impl<K,V> Copy for RawBucket<K,V> {}
 
 pub struct Bucket<K, V, M> {
@@ -95,6 +99,9 @@ pub struct Bucket<K, V, M> {
     table: M
 }
 
+// XXX(japaric) needs auditing
+#[cfg(not(stage0))]
+impl<K,V,M:Copy> Pod for Bucket<K,V,M> {}
 impl<K,V,M:Copy> Copy for Bucket<K,V,M> {}
 
 pub struct EmptyBucket<K, V, M> {

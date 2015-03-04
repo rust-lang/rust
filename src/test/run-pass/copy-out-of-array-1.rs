@@ -12,8 +12,11 @@
 //
 // (Compare with compile-fail/move-out-of-array-1.rs)
 
+use std::marker::Pod;
+
 struct C { _x: u8 }
 
+impl Pod for C { }
 impl Copy for C { }
 
 fn main() {

@@ -19,6 +19,8 @@
 //! Their definition should always match the ABI defined in `rustc::back::abi`.
 
 use marker::Copy;
+#[cfg(not(stage0))]
+use marker::Pod;
 use mem;
 
 /// The representation of a slice like `&[T]`.
@@ -62,6 +64,8 @@ pub struct Slice<T> {
 }
 
 impl<T> Copy for Slice<T> {}
+#[cfg(not(stage0))]
+impl<T> Pod for Slice<T> {}
 
 /// The representation of an old closure.
 #[repr(C)]

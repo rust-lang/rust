@@ -273,6 +273,8 @@ macro_rules! impls{
             }
         }
 
+        #[cfg(not(stage0))]
+        impl<T:?Sized> Pod for $t<T> { }
         impl<T:?Sized> Copy for $t<T> { }
 
         impl<T:?Sized> Clone for $t<T> {

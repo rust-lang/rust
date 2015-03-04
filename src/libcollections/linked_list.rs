@@ -31,6 +31,8 @@ use core::hash::{Hasher, Hash};
 use core::iter::{self, FromIterator, IntoIterator};
 use core::mem;
 use core::ptr;
+#[cfg(not(stage0))]
+use core::marker::Pod;
 
 #[deprecated(since = "1.0.0", reason = "renamed to LinkedList")]
 #[unstable(feature = "collections")]
@@ -50,6 +52,8 @@ struct Rawlink<T> {
     p: *mut T,
 }
 
+#[cfg(not(stage0))]
+impl<T> Pod for Rawlink<T> {}
 impl<T> Copy for Rawlink<T> {}
 unsafe impl<T:Send> Send for Rawlink<T> {}
 unsafe impl<T:Sync> Sync for Rawlink<T> {}

@@ -86,6 +86,8 @@ use syntax::print::pprust;
 use syntax::parse::token;
 
 use std::cell::RefCell;
+#[cfg(not(stage0))]
+use std::marker::Pod;
 use std::rc::Rc;
 
 #[derive(Clone, PartialEq, Debug)]
@@ -260,6 +262,8 @@ pub struct MemCategorizationContext<'t,TYPER:'t> {
     typer: &'t TYPER
 }
 
+#[cfg(not(stage0))]
+impl<'t,TYPER:'t> Pod for MemCategorizationContext<'t,TYPER> {}
 impl<'t,TYPER:'t> Copy for MemCategorizationContext<'t,TYPER> {}
 
 pub type McResult<T> = Result<T, ()>;
