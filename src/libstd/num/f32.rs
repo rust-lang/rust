@@ -31,6 +31,8 @@ pub use core::f32::consts;
 #[allow(dead_code)]
 mod cmath {
     use libc::{c_float, c_int};
+    #[cfg(windows)]
+    use libc::c_double;
 
     #[link_name = "m"]
     extern {
@@ -44,13 +46,10 @@ mod cmath {
         pub fn erfcf(n: c_float) -> c_float;
         pub fn expm1f(n: c_float) -> c_float;
         pub fn fdimf(a: c_float, b: c_float) -> c_float;
-        pub fn frexpf(n: c_float, value: &mut c_int) -> c_float;
         pub fn fmaxf(a: c_float, b: c_float) -> c_float;
         pub fn fminf(a: c_float, b: c_float) -> c_float;
         pub fn fmodf(a: c_float, b: c_float) -> c_float;
         pub fn nextafterf(x: c_float, y: c_float) -> c_float;
-        pub fn hypotf(x: c_float, y: c_float) -> c_float;
-        pub fn ldexpf(x: c_float, n: c_int) -> c_float;
         pub fn logbf(n: c_float) -> c_float;
         pub fn log1pf(n: c_float) -> c_float;
         pub fn ilogbf(n: c_float) -> c_int;
@@ -62,11 +61,33 @@ mod cmath {
 
         #[cfg(unix)]
         pub fn lgammaf_r(n: c_float, sign: &mut c_int) -> c_float;
+        #[cfg(unix)]
+        pub fn hypotf(x: c_float, y: c_float) -> c_float;
+        #[cfg(unix)]
+        pub fn frexpf(n: c_float, value: &mut c_int) -> c_float;
+        #[cfg(unix)]
+        pub fn ldexpf(x: c_float, n: c_int) -> c_float;
 
         #[cfg(windows)]
         #[link_name="__lgammaf_r"]
         pub fn lgammaf_r(n: c_float, sign: &mut c_int) -> c_float;
+
+        #[cfg(windows)]
+        #[link_name="_hypotf"]
+        pub fn hypotf(x: c_float, y: c_float) -> c_float;
+
+        #[cfg(windows)]
+        fn frexp(n: c_double, value: &mut c_int) -> c_double;
+
+        #[cfg(windows)]
+        fn ldexp(x: c_double, n: c_int) -> c_double;
     }
+
+    #[cfg(windows)]
+    pub unsafe fn ldexpf(x: c_float, n: c_int) -> c_float { return ldexp(x as c_double, n) as c_float; }
+
+    #[cfg(windows)]
+    pub unsafe fn frexpf(x: c_float, value: &mut c_int) -> c_float { return frexp(x as c_double, value) as c_float; }
 }
 
 #[cfg(not(test))]

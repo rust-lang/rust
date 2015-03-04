@@ -863,6 +863,14 @@ pub fn trans_static(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) -> 
         };
         llvm::LLVMSetInitializer(g, v);
 
+        // TODO: This should be conditionaly set based on whether we're producing a
+        //       dynamic library or not to follow the conventions on Windows. (ricky26)
+        
+        if ccx.sess().target.target.options.is_like_msvc {
+            llvm::SetDLLStorageClass(g, llvm::DLLExportStorageClass);
+            llvm::SetLinkage(g, llvm::ExternalLinkage);
+        }
+
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
         if m != ast::MutMutable {

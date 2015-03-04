@@ -8,22 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::archive::{Archive, ArchiveBuilder, ArchiveConfig, METADATA_FILENAME};
-use super::archive;
-use super::rpath;
-use super::rpath::RPathConfig;
+use super::archive::{ArchiveBuilder, ArchiveConfig, METADATA_FILENAME};
 use super::svh::Svh;
+
+use super::link_gnu;
+use super::link_msvc;
+
 use session::config;
-use session::config::NoDebugInfo;
 use session::config::{OutputFilenames, Input, OutputTypeBitcode, OutputTypeExe, OutputTypeObject};
 use session::search_paths::PathKind;
 use session::Session;
 use metadata::common::LinkMeta;
-use metadata::{encoder, cstore, filesearch, csearch, creader};
+use metadata::{encoder, cstore, csearch, creader};
 use metadata::filesearch::FileDoesntMatch;
 use trans::{CrateContext, CrateTranslation, gensym_name};
 use middle::ty::{self, Ty};
-use util::common::time;
 use util::ppaux;
 use util::sha2::{Digest, Sha256};
 use util::fs::fix_windows_verbatim_for_gcc;

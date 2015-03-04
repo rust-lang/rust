@@ -5,6 +5,7 @@ ifneq ($(findstring darwin,$(CFG_OSTYPE)),)
 CFG_IOS_SDK_aarch64-apple-ios := $(shell xcrun --show-sdk-path -sdk iphoneos 2>/dev/null)
 CFG_IOS_SDK_FLAGS_aarch64-apple-ios := -target aarch64-apple-darwin -isysroot $(CFG_IOS_SDK_aarch64-apple-ios) -mios-version-min=7.0 -arch arm64
 CC_aarch64-apple-ios = $(shell xcrun -find -sdk iphoneos clang)
+LINK_aarch64-apple-ios = $(shell xcrun -find -sdk iphoneos clang)
 CXX_aarch64-apple-ios = $(shell xcrun -find -sdk iphoneos clang++)
 CPP_aarch64-apple-ios = $(shell xcrun -find -sdk iphoneos clang++)
 AR_aarch64-apple-ios = $(shell xcrun -find -sdk iphoneos ar)
