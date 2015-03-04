@@ -69,7 +69,8 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
             ast::ItemImpl(_, _, _, Some(_), _, _) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: trait impl {}", item.repr(self.tcx));
-                let trait_def_id = ty::impl_trait_ref(self.tcx, def_id).unwrap().def_id;
+                let trait_ref = ty::impl_trait_ref(self.tcx, def_id).unwrap();
+                let trait_def_id = trait_ref.def_id;
                 match traits::orphan_check(self.tcx, def_id) {
                     Ok(()) => { }
                     Err(traits::OrphanCheckErr::NoLocalInputType) => {
@@ -89,6 +90,40 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                                      some local type (e.g. `MyStruct<T>`); only traits defined in \
                                      the current crate can be implemented for a type parameter",
                                     param_ty.user_string(self.tcx));
+                        }
+                    }
+                }
+
+                // Impls of a defaulted trait face additional rules.
+                debug!("trait_ref={} trait_def_id={} trait_has_default_impl={}",
+                       trait_ref.repr(self.tcx),
+                       trait_def_id.repr(self.tcx),
+                       ty::trait_has_default_impl(self.tcx, trait_def_id));
+                if
+                    ty::trait_has_default_impl(self.tcx, trait_def_id) &&
+                    trait_def_id.krate != ast::LOCAL_CRATE
+                {
+                    let self_ty = trait_ref.self_ty();
+                    match self_ty.sty {
+                        ty::ty_struct(self_def_id, _) | ty::ty_enum(self_def_id, _) => {
+                            // The orphan check often rules this out,
+                            // but not always. For example, the orphan
+                            // check would accept `impl Send for
+                            // Box<SomethingLocal>`, but we want to
+                            // forbid that.
+                            if self_def_id.krate != ast::LOCAL_CRATE {
+                                self.tcx.sess.span_err(
+                                    item.span,
+                                    "cross-crate traits with a default impl \
+                                     can only be implemented for a struct/enum type \
+                                     defined in the current crate");
+                            }
+                        }
+                        _ => {
+                            self.tcx.sess.span_err(
+                                item.span,
+                                "cross-crate traits with a default impl \
+                                 can only be implemented for a struct or enum type");
                         }
                     }
                 }
