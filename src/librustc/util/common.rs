@@ -30,11 +30,11 @@ pub const FN_OUTPUT_NAME: &'static str = "Output";
 #[derive(Clone, Copy, Debug)]
 pub struct ErrorReported;
 
-pub fn time<T, U, F>(do_it: bool, what: &str, u: U, f: F) -> T where
-    F: FnOnce(U) -> T,
+pub fn time<T, F>(do_it: bool, what: &str, f: F) -> T where
+    F: FnOnce() -> T,
 {
     thread_local!(static DEPTH: Cell<uint> = Cell::new(0));
-    if !do_it { return f(u); }
+    if !do_it { return f(); }
 
     let old = DEPTH.with(|slot| {
         let r = slot.get();
@@ -42,15 +42,10 @@ pub fn time<T, U, F>(do_it: bool, what: &str, u: U, f: F) -> T where
         r
     });
 
-    let mut u = Some(u);
     let mut rv = None;
-    let dur = {
-        let ref mut rvp = rv;
-
-        Duration::span(move || {
-            *rvp = Some(f(u.take().unwrap()))
-        })
-    };
+    let dur = Duration::span(|| {
+        rv = Some(f());
+    });
     let rv = rv.unwrap();
 
     println!("{}time: {}.{:03} \t{}", repeat("  ").take(old).collect::<String>(),

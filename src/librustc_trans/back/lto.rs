@@ -65,11 +65,8 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         for i in iter::count(0, 1) {
             let bc_encoded = time(sess.time_passes(),
                                   &format!("check for {}.{}.bytecode.deflate", name, i),
-                                  (),
-                                  |_| {
-                                      archive.read(&format!("{}.{}.bytecode.deflate",
-                                                           file, i))
-                                  });
+                                  || archive.read(&format!("{}.{}.bytecode.deflate",
+                                                           file, i)));
             let bc_encoded = match bc_encoded {
                 Some(data) => data,
                 None => {
@@ -84,7 +81,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             };
 
             let bc_decoded = if is_versioned_bytecode_format(bc_encoded) {
-                time(sess.time_passes(), &format!("decode {}.{}.bc", file, i), (), |_| {
+                time(sess.time_passes(), &format!("decode {}.{}.bc", file, i), || {
                     // Read the version
                     let version = extract_bytecode_format_version(bc_encoded);
 
@@ -108,7 +105,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                     }
                 })
             } else {
-                time(sess.time_passes(), &format!("decode {}.{}.bc", file, i), (), |_| {
+                time(sess.time_passes(), &format!("decode {}.{}.bc", file, i), || {
                 // the object must be in the old, pre-versioning format, so simply
                 // inflate everything and let LLVM decide if it can make sense of it
                     match flate::inflate_bytes(bc_encoded) {
@@ -125,8 +122,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
             debug!("linking {}, part {}", name, i);
             time(sess.time_passes(),
                  &format!("ll link {}.{}", name, i),
-                 (),
-                 |()| unsafe {
+                 || unsafe {
                 if !llvm::LLVMRustLinkInExternalBitcode(llmod,
                                                         ptr as *const libc::c_char,
                                                         bc_decoded.len() as libc::size_t) {
@@ -183,7 +179,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
 
         llvm::LLVMRustAddPass(pm, "verify\0".as_ptr() as *const _);
 
-        time(sess.time_passes(), "LTO passes", (), |()|
+        time(sess.time_passes(), "LTO passes", ||
              llvm::LLVMRunPassManager(pm, llmod));
 
         llvm::LLVMDisposePassManager(pm);

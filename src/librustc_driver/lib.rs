@@ -98,7 +98,7 @@ const BUG_REPORT_URL: &'static str =
 
 
 pub fn run(args: Vec<String>) -> int {
-    monitor(move || run_compiler(&args, &mut RustcDefaultCalls));
+    monitor(move || run_compiler(&args, &mut RustcDefaultCalls::new()));
     0
 }
 
@@ -141,17 +141,6 @@ pub fn run_compiler<'a>(args: &[String],
     let cfg = config::build_configuration(&sess);
 
     do_or_return!(callbacks.late_callback(&matches, &sess, &input, &odir, &ofile));
-
-    // It is somewhat unfortunate that this is hardwired in - this is forced by
-    // the fact that pretty_print_input requires the session by value.
-    let pretty = callbacks.parse_pretty(&sess, &matches);
-    match pretty {
-        Some((ppm, opt_uii)) => {
-            pretty::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile);
-            return;
-        }
-        None => {/* continue */ }
-    }
 
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
     let control = callbacks.build_controller(&sess);
@@ -239,33 +228,15 @@ pub trait CompilerCalls<'a> {
                 &diagnostics::registry::Registry)
                 -> Option<(Input, Option<Path>)>;
 
-    // Parse pretty printing information from the arguments. The implementer can
-    // choose to ignore this (the default will return None) which will skip pretty
-    // printing. If you do want to pretty print, it is recommended to use the
-    // implementation of this method from RustcDefaultCalls.
-    // FIXME, this is a terrible bit of API. Parsing of pretty printing stuff
-    // should be done as part of the framework and the implementor should customise
-    // handling of it. However, that is not possible atm because pretty printing
-    // essentially goes off and takes another path through the compiler which
-    // means the session is either moved or not depending on what parse_pretty
-    // returns (we could fix this by cloning, but it's another hack). The proper
-    // solution is to handle pretty printing as if it were a compiler extension,
-    // extending CompileController to make this work (see for example the treatment
-    // of save-analysis in RustcDefaultCalls::build_controller).
-    fn parse_pretty(&mut self,
-                    _sess: &Session,
-                    _matches: &getopts::Matches)
-                    -> Option<(PpMode, Option<UserIdentifiedItem>)> {
-        None
-    }
-
     // Create a CompilController struct for controlling the behaviour of compilation.
     fn build_controller(&mut self, &Session) -> CompileController<'a>;
 }
 
 // CompilerCalls instance for a regular rustc build.
-#[derive(Copy)]
-pub struct RustcDefaultCalls;
+pub struct RustcDefaultCalls {
+    save_analysis: bool,
+    pretty_print: Option<(PpMode, Option<UserIdentifiedItem>)>
+}
 
 impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn early_callback(&mut self,
@@ -320,28 +291,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         None
     }
 
-    fn parse_pretty(&mut self,
-                    sess: &Session,
-                    matches: &getopts::Matches)
-                    -> Option<(PpMode, Option<UserIdentifiedItem>)> {
-        let pretty = if sess.opts.debugging_opts.unstable_options {
-            matches.opt_default("pretty", "normal").map(|a| {
-                // stable pretty-print variants only
-                pretty::parse_pretty(sess, &a, false)
-            })
-        } else {
-            None
-        };
-        if pretty.is_none() && sess.unstable_options() {
-            matches.opt_str("xpretty").map(|a| {
-                // extended with unstable pretty-print variants
-                pretty::parse_pretty(sess, &a, true)
-            })
-        } else {
-            pretty
-        }
-    }
-
     fn late_callback(&mut self,
                      matches: &getopts::Matches,
                      sess: &Session,
@@ -349,6 +298,18 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                      odir: &Option<Path>,
                      ofile: &Option<Path>)
                      -> Compilation {
+        self.save_analysis = sess.opts.debugging_opts.save_analysis;
+
+        if sess.unstable_options() {
+            self.pretty_print = matches.opt_default("pretty", "normal").map(|a| {
+                // stable pretty-print variants only
+                pretty::parse_pretty(&a, false).unwrap_or_else(|e| sess.fatal(&e))
+            }).or_else(|| matches.opt_str("xpretty").map(|a| {
+                // extended with unstable pretty-print variants
+                pretty::parse_pretty(&a, true).unwrap_or_else(|e| sess.fatal(&e))
+            }));
+        }
+
         RustcDefaultCalls::print_crate_info(sess, Some(input), odir, ofile).and_then(
             || RustcDefaultCalls::list_metadata(sess, matches, input))
     }
@@ -374,15 +335,20 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             control.after_llvm.stop = Compilation::Stop;
         }
 
-        if sess.opts.debugging_opts.save_analysis {
+        pretty::setup_controller(&mut control,
+                                 self.pretty_print.take(),
+                                 sess.opts.debugging_opts.pretty_dump_dir
+                                                         .as_ref().map(|s| &s[..]),
+                                 sess.opts.debugging_opts.pretty_keep_going);
+
+        if self.save_analysis {
             control.after_analysis.callback = box |state| {
                 time(state.session.time_passes(),
-                     "save analysis",
-                     state.expanded_crate.unwrap(),
-                     |krate| save::process_crate(state.session,
-                                                 krate,
-                                                 state.analysis.unwrap(),
-                                                 state.out_dir));
+                     "save analysis", ||
+                     save::process_crate(state.session,
+                                         state.expanded_crate.unwrap(),
+                                         state.analysis.unwrap(),
+                                         state.out_dir));
             };
             control.make_glob_map = resolve::MakeGlobMap::Yes;
         }
@@ -392,6 +358,13 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 }
 
 impl RustcDefaultCalls {
+    pub fn new() -> RustcDefaultCalls {
+        RustcDefaultCalls {
+            save_analysis: false,
+            pretty_print: None
+        }
+    }
+
     pub fn list_metadata(sess: &Session,
                          matches: &getopts::Matches,
                          input: &Input)

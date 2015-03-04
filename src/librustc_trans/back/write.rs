@@ -460,9 +460,9 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
             }
 
             // Finally, run the actual optimization passes
-            time(config.time_passes, "llvm function passes", (), |()|
+            time(config.time_passes, "llvm function passes", ||
                  llvm::LLVMRustRunFunctionPassManager(fpm, llmod));
-            time(config.time_passes, "llvm module passes", (), |()|
+            time(config.time_passes, "llvm module passes", ||
                  llvm::LLVMRunPassManager(mpm, llmod));
 
             // Deallocate managers that we're now done with
@@ -471,7 +471,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
             match cgcx.lto_ctxt {
                 Some((sess, reachable)) if sess.lto() =>  {
-                    time(sess.time_passes(), "all lto passes", (), |()|
+                    time(sess.time_passes(), "all lto passes", ||
                          lto::run(sess, llmod, tm, reachable));
 
                     if config.emit_lto_bc {
@@ -515,7 +515,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
     }
 
-    time(config.time_passes, "codegen passes", (), |()| {
+    time(config.time_passes, "codegen passes", || {
         if config.emit_ir {
             let ext = format!("{}.ll", name_extra);
             let out = output_names.with_extension(&ext);

@@ -24,7 +24,7 @@ use rustc_lint;
 use rustc::session::{self, config};
 use rustc::session::config::get_unstable_features_setting;
 use rustc::session::search_paths::{SearchPaths, PathKind};
-use rustc_driver::{driver, Compilation};
+use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls};
 use syntax::codemap::CodeMap;
 use syntax::diagnostic;
 
@@ -117,8 +117,8 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     let sessopts = config::Options {
         maybe_sysroot: Some(os::self_exe_name().unwrap().dir_path().dir_path()),
         search_paths: libs,
-        crate_types: vec!(config::CrateTypeExecutable),
-        output_types: vec!(config::OutputTypeExe),
+        crate_types: vec![config::CrateTypeExecutable],
+        output_types: vec![config::OutputTypeExe],
         externs: externs,
         cg: config::CodegenOptions {
             prefer_dynamic: true,
@@ -126,6 +126,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
         },
         test: as_test_harness,
         unstable_features: get_unstable_features_setting(),
+        no_trans: no_run,
         ..config::basic_options().clone()
     };
 
@@ -173,10 +174,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     let out = Some(outdir.path().clone());
     let cfg = config::build_configuration(&sess);
     let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
-    let mut control = driver::CompileController::basic();
-    if no_run {
-        control.after_analysis.stop = Compilation::Stop;
-    }
+    let control = RustcDefaultCalls::new().build_controller(&sess);
     driver::compile_input(sess, cfg, &input, &out, &None, None, control);
 
     if no_run { return }

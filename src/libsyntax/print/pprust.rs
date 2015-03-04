@@ -30,6 +30,7 @@ use ptr::P;
 use std_inject;
 
 use std::{ascii, mem};
+use std::borrow::{Cow, IntoCow};
 use std::old_io::{self, IoResult};
 use std::iter;
 
@@ -45,6 +46,9 @@ pub enum AnnNode<'a> {
 pub trait PpAnn {
     fn pre(&self, _state: &mut State, _node: AnnNode) -> IoResult<()> { Ok(()) }
     fn post(&self, _state: &mut State, _node: AnnNode) -> IoResult<()> { Ok(()) }
+    fn literal_to_string<'a>(&self, state: &mut State, lit: &'a ast::Lit) -> Cow<'a, str> {
+        state.literal_to_string(lit)
+    }
 }
 
 #[derive(Copy)]
@@ -309,6 +313,73 @@ pub fn token_to_string(tok: &Token) -> String {
     }
 }
 
+fn string_lit_to_string(st: &str, style: ast::StrStyle) -> String {
+    match style {
+        ast::CookedStr => {
+            format!("\"{}\"", st.escape_default())
+        }
+        ast::RawStr(n) => {
+            format!("r{delim}\"{string}\"{delim}",
+                    delim=repeat("#", n),
+                    string=st)
+        }
+    }
+}
+
+pub fn lit_to_string<'a>(lit: &'a ast::Lit) -> Cow<'a, str> {
+    match lit.node {
+        ast::LitStr(ref st, style) => {
+            string_lit_to_string(&st, style).into_cow()
+        }
+        ast::LitByte(byte) => {
+            let mut res = String::from_str("b'");
+            res.extend(ascii::escape_default(byte).map(|c| c as char));
+            res.push('\'');
+            res.into_cow()
+        }
+        ast::LitChar(ch) => {
+            let mut res = String::from_str("'");
+            res.extend(ch.escape_default());
+            res.push('\'');
+            res.into_cow()
+        }
+        ast::LitInt(i, t) => {
+            match t {
+                ast::SignedIntLit(st, ast::Plus) => {
+                    ast_util::int_ty_to_string(st, Some(i as i64))
+                }
+                ast::SignedIntLit(st, ast::Minus) => {
+                    let istr = ast_util::int_ty_to_string(st, Some(-(i as i64)));
+                    format!("-{}", istr)
+                }
+                ast::UnsignedIntLit(ut) => {
+                    ast_util::uint_ty_to_string(ut, Some(i))
+                }
+                ast::UnsuffixedIntLit(ast::Plus) => {
+                    format!("{}", i)
+                }
+                ast::UnsuffixedIntLit(ast::Minus) => {
+                    format!("-{}", i)
+                }
+            }.into_cow()
+        }
+        ast::LitFloat(ref f, t) => {
+            format!("{}{}", f, &ast_util::float_ty_to_string(t)).into_cow()
+        }
+        ast::LitFloatUnsuffixed(ref f) => f.into_cow(),
+        ast::LitBool(val) => {
+            if val { "true" } else { "false" }.into_cow()
+        }
+        ast::LitBinary(ref v) => {
+            let mut escaped: String = String::new();
+            for &ch in &**v {
+                escaped.extend(ascii::escape_default(ch as u8).map(|c| c as char));
+            }
+            format!("b\"{}\"", escaped).into_cow()
+        }
+    }
+}
+
 // FIXME (Issue #16472): the thing_to_string_impls macro should go away
 // after we revise the syntax::ext::quote::ToToken impls to go directly
 // to token-trees instead of thing -> string -> token-trees.
@@ -407,10 +478,6 @@ pub fn meta_item_to_string(mi: &ast::MetaItem) -> String {
 
 pub fn attribute_to_string(attr: &ast::Attribute) -> String {
     $to_string(|s| s.print_attribute(attr))
-}
-
-pub fn lit_to_string(l: &ast::Lit) -> String {
-    $to_string(|s| s.print_literal(l))
 }
 
 pub fn explicit_self_to_string(explicit_self: &ast::ExplicitSelf_) -> String {
@@ -1710,7 +1777,8 @@ impl<'a> State<'a> {
                 try!(self.print_expr_addr_of(m, &**expr));
             }
             ast::ExprLit(ref lit) => {
-                try!(self.print_literal(&**lit));
+                let s = self.ann.literal_to_string(self, lit);
+                try!(word(&mut self.s, &s));
             }
             ast::ExprCast(ref expr, ref ty) => {
                 try!(self.print_expr(&**expr));
@@ -2582,7 +2650,8 @@ impl<'a> State<'a> {
             ast::MetaNameValue(ref name, ref value) => {
                 try!(self.word_space(&name[..]));
                 try!(self.word_space("="));
-                try!(self.print_literal(value));
+                let s = self.literal_to_string(value);
+                try!(word(&mut self.s, &s));
             }
             ast::MetaList(ref name, ref items) => {
                 try!(word(&mut self.s, &name));
@@ -2767,69 +2836,11 @@ impl<'a> State<'a> {
         Ok(())
     }
 
-    pub fn print_literal(&mut self, lit: &ast::Lit) -> IoResult<()> {
-        try!(self.maybe_print_comment(lit.span.lo));
-        match self.next_lit(lit.span.lo) {
-            Some(ref ltrl) => {
-                return word(&mut self.s, &(*ltrl).lit);
-            }
-            _ => ()
-        }
-        match lit.node {
-            ast::LitStr(ref st, style) => self.print_string(&st, style),
-            ast::LitByte(byte) => {
-                let mut res = String::from_str("b'");
-                res.extend(ascii::escape_default(byte).map(|c| c as char));
-                res.push('\'');
-                word(&mut self.s, &res[..])
-            }
-            ast::LitChar(ch) => {
-                let mut res = String::from_str("'");
-                res.extend(ch.escape_default());
-                res.push('\'');
-                word(&mut self.s, &res[..])
-            }
-            ast::LitInt(i, t) => {
-                match t {
-                    ast::SignedIntLit(st, ast::Plus) => {
-                        word(&mut self.s,
-                             &ast_util::int_ty_to_string(st, Some(i as i64)))
-                    }
-                    ast::SignedIntLit(st, ast::Minus) => {
-                        let istr = ast_util::int_ty_to_string(st, Some(-(i as i64)));
-                        word(&mut self.s,
-                             &format!("-{}", istr))
-                    }
-                    ast::UnsignedIntLit(ut) => {
-                        word(&mut self.s, &ast_util::uint_ty_to_string(ut, Some(i)))
-                    }
-                    ast::UnsuffixedIntLit(ast::Plus) => {
-                        word(&mut self.s, &format!("{}", i))
-                    }
-                    ast::UnsuffixedIntLit(ast::Minus) => {
-                        word(&mut self.s, &format!("-{}", i))
-                    }
-                }
-            }
-            ast::LitFloat(ref f, t) => {
-                word(&mut self.s,
-                     &format!(
-                         "{}{}",
-                         &f,
-                         &ast_util::float_ty_to_string(t)))
-            }
-            ast::LitFloatUnsuffixed(ref f) => word(&mut self.s, &f[..]),
-            ast::LitBool(val) => {
-                if val { word(&mut self.s, "true") } else { word(&mut self.s, "false") }
-            }
-            ast::LitBinary(ref v) => {
-                let mut escaped: String = String::new();
-                for &ch in &**v {
-                    escaped.extend(ascii::escape_default(ch as u8)
-                                         .map(|c| c as char));
-                }
-                word(&mut self.s, &format!("b\"{}\"", escaped))
-            }
+    pub fn literal_to_string<'b>(&mut self, lit: &'b ast::Lit) -> Cow<'b, str> {
+        if let Some(ltrl) = self.next_lit(lit.span.lo) {
+            ltrl.lit.into_cow()
+        } else {
+            lit_to_string(lit)
         }
     }
 
@@ -2916,17 +2927,7 @@ impl<'a> State<'a> {
 
     pub fn print_string(&mut self, st: &str,
                         style: ast::StrStyle) -> IoResult<()> {
-        let st = match style {
-            ast::CookedStr => {
-                (format!("\"{}\"", st.escape_default()))
-            }
-            ast::RawStr(n) => {
-                (format!("r{delim}\"{string}\"{delim}",
-                         delim=repeat("#", n),
-                         string=st))
-            }
-        };
-        word(&mut self.s, &st[..])
+        word(&mut self.s, &string_lit_to_string(st, style))
     }
 
     pub fn next_comment(&mut self) -> Option<comments::Comment> {
