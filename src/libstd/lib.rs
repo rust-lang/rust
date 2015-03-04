@@ -125,7 +125,7 @@
 #![feature(hash)]
 #![feature(int_uint)]
 #![feature(unique)]
-#![cfg_attr(test, feature(test, rustc_private, env))]
+#![cfg_attr(test, feature(test, rustc_private))]
 
 // Don't link to std. We are std.
 #![feature(no_std)]
