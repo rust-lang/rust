@@ -22,6 +22,7 @@ use syntax::ast;
 use syntax::codemap::Span;
 
 use util::common::ErrorReported;
+use util::nodemap::FnvHashSet;
 use util::ppaux::Repr;
 
 // Helper functions related to manipulating region types.
@@ -40,6 +41,7 @@ struct Implicator<'a, 'tcx: 'a> {
     stack: Vec<(ty::Region, Option<Ty<'tcx>>)>,
     span: Span,
     out: Vec<Implication<'tcx>>,
+    visited: FnvHashSet<Ty<'tcx>>,
 }
 
 /// This routine computes the well-formedness constraints that must hold for the type `ty` to
@@ -65,7 +67,8 @@ pub fn implications<'a,'tcx>(
                               body_id: body_id,
                               span: span,
                               stack: stack,
-                              out: Vec::new() };
+                              out: Vec::new(),
+                              visited: FnvHashSet() };
     wf.accumulate_from_ty(ty);
     debug!("implications: out={}", wf.out.repr(closure_typer.tcx()));
     wf.out
@@ -79,6 +82,12 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
     fn accumulate_from_ty(&mut self, ty: Ty<'tcx>) {
         debug!("accumulate_from_ty(ty={})",
                ty.repr(self.tcx()));
+
+        // When expanding out associated types, we can visit a cyclic
+        // set of types. Issue #23003.
+        if !self.visited.insert(ty) {
+            return;
+        }
 
         match ty.sty {
             ty::ty_bool |
