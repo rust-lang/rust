@@ -15,7 +15,7 @@
 //! operations. Extra platform-specific functionality can be found in the
 //! extension traits of `std::os::$platform`.
 
-#![unstable(feature = "fs")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use core::prelude::*;
 
@@ -25,6 +25,7 @@ use sys::fs2 as fs_imp;
 use sys_common::{AsInnerMut, FromInner, AsInner};
 use vec::Vec;
 
+#[allow(deprecated)]
 pub use self::tempdir::TempDir;
 
 mod tempdir;
@@ -52,6 +53,7 @@ mod tempdir;
 /// # Ok(())
 /// # }
 /// ```
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
     path: PathBuf,
@@ -62,6 +64,7 @@ pub struct File {
 /// This structure is returned from the `metadata` function or method and
 /// represents known metadata about a file such as its permissions, size,
 /// modification times, etc.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Metadata(fs_imp::FileAttr);
 
 /// Iterator over the entries in a directory.
@@ -70,6 +73,7 @@ pub struct Metadata(fs_imp::FileAttr);
 /// will yield instances of `io::Result<DirEntry>`. Through a `DirEntry`
 /// information like the entry's path and possibly other metadata can be
 /// learned.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct ReadDir(fs_imp::ReadDir);
 
 /// Entries returned by the `ReadDir` iterator.
@@ -77,9 +81,14 @@ pub struct ReadDir(fs_imp::ReadDir);
 /// An instance of `DirEntry` represents an entry inside of a directory on the
 /// filesystem. Each entry can be inspected via methods to learn about the full
 /// path or possibly other metadata through per-platform extension traits.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct DirEntry(fs_imp::DirEntry);
 
 /// An iterator that recursively walks over the contents of a directory.
+#[unstable(feature = "fs_walk",
+           reason = "the precise semantics and defaults for a recursive walk \
+                     may change and this may end up accounting for files such \
+                     as symlinks differently")]
 pub struct WalkDir {
     cur: Option<ReadDir>,
     stack: Vec<io::Result<ReadDir>>,
@@ -92,6 +101,7 @@ pub struct WalkDir {
 /// `File::create` methods are aliases for commonly used options using this
 /// builder.
 #[derive(Clone)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct OpenOptions(fs_imp::OpenOptions);
 
 /// Representation of the various permissions on a file.
@@ -101,6 +111,7 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 /// functionality, such as mode bits, is available through the
 /// `os::unix::PermissionsExt` trait.
 #[derive(Clone, PartialEq, Eq, Debug)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Permissions(fs_imp::FilePermissions);
 
 impl File {
@@ -112,6 +123,7 @@ impl File {
     ///
     /// This function will return an error if `path` does not already exist.
     /// Other errors may also be returned according to `OpenOptions::open`.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn open<P: AsPath + ?Sized>(path: &P) -> io::Result<File> {
         OpenOptions::new().read(true).open(path)
     }
@@ -122,11 +134,15 @@ impl File {
     /// and will truncate it if it does.
     ///
     /// See the `OpenOptions::open` function for more details.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn create<P: AsPath + ?Sized>(path: &P) -> io::Result<File> {
         OpenOptions::new().write(true).create(true).truncate(true).open(path)
     }
 
     /// Returns the original path that was used to open this file.
+    #[unstable(feature = "file_path",
+               reason = "this abstraction is imposed by this library instead \
+                         of the underlying OS and may be removed")]
     pub fn path(&self) -> Option<&Path> {
         Some(&self.path)
     }
@@ -135,6 +151,7 @@ impl File {
     ///
     /// This function will attempt to ensure that all in-core data reaches the
     /// filesystem before returning.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn sync_all(&self) -> io::Result<()> {
         self.inner.fsync()
     }
@@ -148,6 +165,7 @@ impl File {
     ///
     /// Note that some platforms may simply implement this in terms of
     /// `sync_all`.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn sync_data(&self) -> io::Result<()> {
         self.inner.datasync()
     }
@@ -159,11 +177,13 @@ impl File {
     /// be shrunk. If it is greater than the current file's size, then the file
     /// will be extended to `size` and have all of the intermediate data filled
     /// in with 0s.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_len(&self, size: u64) -> io::Result<()> {
         self.inner.truncate(size)
     }
 
-    /// Queries information about the underlying file.
+    /// Queries metadata about the underlying file.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn metadata(&self) -> io::Result<Metadata> {
         self.inner.file_attr().map(Metadata)
     }
@@ -172,33 +192,39 @@ impl File {
 impl AsInner<fs_imp::File> for File {
     fn as_inner(&self) -> &fs_imp::File { &self.inner }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Read for File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Write for File {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
     }
     fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Seek for File {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         self.inner.seek(pos)
     }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Read for &'a File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for &'a File {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(buf)
     }
     fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Seek for &'a File {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         self.inner.seek(pos)
@@ -209,6 +235,7 @@ impl OpenOptions {
     /// Creates a blank net set of options ready for configuration.
     ///
     /// All options are initially set to `false`.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> OpenOptions {
         OpenOptions(fs_imp::OpenOptions::new())
     }
@@ -217,6 +244,7 @@ impl OpenOptions {
     ///
     /// This option, when true, will indicate that the file should be
     /// `read`-able if opened.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn read(&mut self, read: bool) -> &mut OpenOptions {
         self.0.read(read); self
     }
@@ -225,6 +253,7 @@ impl OpenOptions {
     ///
     /// This option, when true, will indicate that the file should be
     /// `write`-able if opened.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write(&mut self, write: bool) -> &mut OpenOptions {
         self.0.write(write); self
     }
@@ -233,6 +262,7 @@ impl OpenOptions {
     ///
     /// This option, when true, means that writes will append to a file instead
     /// of overwriting previous contents.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn append(&mut self, append: bool) -> &mut OpenOptions {
         self.0.append(append); self
     }
@@ -241,6 +271,7 @@ impl OpenOptions {
     ///
     /// If a file is successfully opened with this option set it will truncate
     /// the file to 0 length if it already exists.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, truncate: bool) -> &mut OpenOptions {
         self.0.truncate(truncate); self
     }
@@ -249,6 +280,7 @@ impl OpenOptions {
     ///
     /// This option indicates whether a new file will be created if the file
     /// does not yet already exist.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn create(&mut self, create: bool) -> &mut OpenOptions {
         self.0.create(create); self
     }
@@ -264,37 +296,33 @@ impl OpenOptions {
     /// * Attempting to open a file with access that the user lacks
     ///   permissions for
     /// * Filesystem-level errors (full disk, etc)
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn open<P: AsPath + ?Sized>(&self, path: &P) -> io::Result<File> {
         let path = path.as_path();
         let inner = try!(fs_imp::File::open(path, &self.0));
-
-        // On *BSD systems, we can open a directory as a file and read from
-        // it: fd=open("/tmp", O_RDONLY); read(fd, buf, N); due to an old
-        // tradition before the introduction of opendir(3).  We explicitly
-        // reject it because there are few use cases.
-        if cfg!(not(any(target_os = "linux", target_os = "android"))) &&
-           try!(inner.file_attr()).is_dir() {
-            Err(Error::new(ErrorKind::InvalidInput, "is a directory", None))
-        } else {
-            Ok(File { path: path.to_path_buf(), inner: inner })
-        }
+        Ok(File { path: path.to_path_buf(), inner: inner })
     }
 }
+
 impl AsInnerMut<fs_imp::OpenOptions> for OpenOptions {
     fn as_inner_mut(&mut self) -> &mut fs_imp::OpenOptions { &mut self.0 }
 }
 
 impl Metadata {
     /// Returns whether this metadata is for a directory.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_dir(&self) -> bool { self.0.is_dir() }
 
     /// Returns whether this metadata is for a regular file.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_file(&self) -> bool { self.0.is_file() }
 
     /// Returns the size of the file, in bytes, this metadata is for.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> u64 { self.0.size() }
 
     /// Returns the permissions of the file this metadata is for.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn permissions(&self) -> Permissions {
         Permissions(self.0.perm())
     }
@@ -302,22 +330,32 @@ impl Metadata {
     /// Returns the most recent access time for a file.
     ///
     /// The return value is in milliseconds since the epoch.
+    #[unstable(feature = "fs_time",
+               reason = "the return type of u64 is not quite appropriate for \
+                         this method and may change if the standard library \
+                         gains a type to represent a moment in time")]
     pub fn accessed(&self) -> u64 { self.0.accessed() }
 
     /// Returns the most recent modification time for a file.
     ///
     /// The return value is in milliseconds since the epoch.
+    #[unstable(feature = "fs_time",
+               reason = "the return type of u64 is not quite appropriate for \
+                         this method and may change if the standard library \
+                         gains a type to represent a moment in time")]
     pub fn modified(&self) -> u64 { self.0.modified() }
 }
 
 impl Permissions {
     /// Returns whether these permissions describe a readonly file.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn readonly(&self) -> bool { self.0.readonly() }
 
     /// Modify the readonly flag for this set of permissions.
     ///
     /// This operation does **not** modify the filesystem. To modify the
     /// filesystem use the `fs::set_permissions` function.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_readonly(&mut self, readonly: bool) {
         self.0.set_readonly(readonly)
     }
@@ -333,6 +371,7 @@ impl AsInner<fs_imp::FilePermissions> for Permissions {
     fn as_inner(&self) -> &fs_imp::FilePermissions { &self.0 }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
@@ -341,11 +380,13 @@ impl Iterator for ReadDir {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl DirEntry {
     /// Returns the full path to the file that this entry represents.
     ///
     /// The full path is created by joining the original path to `read_dir` or
     /// `walk_dir` with the filename of this entry.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn path(&self) -> PathBuf { self.0.path() }
 }
 
@@ -368,31 +409,9 @@ impl DirEntry {
 /// This function will return an error if `path` points to a directory, if the
 /// user lacks permissions to remove the file, or if some other filesystem-level
 /// error occurs.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_file<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
-    let path = path.as_path();
-    let e = match fs_imp::unlink(path) {
-        Ok(()) => return Ok(()),
-        Err(e) => e,
-    };
-    if !cfg!(windows) { return Err(e) }
-
-    // On unix, a readonly file can be successfully removed. On windows,
-    // however, it cannot. To keep the two platforms in line with
-    // respect to their behavior, catch this case on windows, attempt to
-    // change it to read-write, and then remove the file.
-    if e.kind() != ErrorKind::PermissionDenied { return Err(e) }
-
-    let attr = match metadata(path) { Ok(a) => a, Err(..) => return Err(e) };
-    let mut perms = attr.permissions();
-    if !perms.readonly() { return Err(e) }
-    perms.set_readonly(false);
-
-    if set_permissions(path, perms).is_err() { return Err(e) }
-    if fs_imp::unlink(path).is_ok() { return Ok(()) }
-
-    // Oops, try to put things back the way we found it
-    let _ = set_permissions(path, attr.permissions());
-    Err(e)
+    fs_imp::unlink(path.as_path())
 }
 
 /// Given a path, query the file system to get information about a file,
@@ -418,6 +437,7 @@ pub fn remove_file<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
 /// This function will return an error if the user lacks the requisite
 /// permissions to perform a `metadata` call on the given `path` or if there
 /// is no entry in the filesystem at the provided path.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn metadata<P: AsPath + ?Sized>(path: &P) -> io::Result<Metadata> {
     fs_imp::stat(path.as_path()).map(Metadata)
 }
@@ -438,6 +458,7 @@ pub fn metadata<P: AsPath + ?Sized>(path: &P) -> io::Result<Metadata> {
 /// the process lacks permissions to view the contents, if `from` and `to`
 /// reside on separate filesystems, or if some other intermittent I/O error
 /// occurs.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn rename<P: AsPath + ?Sized, Q: AsPath + ?Sized>(from: &P, to: &Q)
                                                       -> io::Result<()> {
     fs_imp::rename(from.as_path(), to.as_path())
@@ -468,6 +489,7 @@ pub fn rename<P: AsPath + ?Sized, Q: AsPath + ?Sized>(from: &P, to: &Q)
 /// * The `from` file does not exist
 /// * The current process does not have the permission rights to access
 ///   `from` or write `to`
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn copy<P: AsPath + ?Sized, Q: AsPath + ?Sized>(from: &P, to: &Q)
                                                     -> io::Result<u64> {
     let from = from.as_path();
@@ -490,6 +512,7 @@ pub fn copy<P: AsPath + ?Sized, Q: AsPath + ?Sized>(from: &P, to: &Q)
 ///
 /// The `dst` path will be a link pointing to the `src` path. Note that systems
 /// often require these two paths to both be located on the same filesystem.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn hard_link<P: AsPath + ?Sized, Q: AsPath + ?Sized>(src: &P, dst: &Q)
                                                          -> io::Result<()> {
     fs_imp::link(src.as_path(), dst.as_path())
@@ -498,6 +521,7 @@ pub fn hard_link<P: AsPath + ?Sized, Q: AsPath + ?Sized>(src: &P, dst: &Q)
 /// Creates a new soft link on the filesystem.
 ///
 /// The `dst` path will be a soft link pointing to the `src` path.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn soft_link<P: AsPath + ?Sized, Q: AsPath + ?Sized>(src: &P, dst: &Q)
                                                          -> io::Result<()> {
     fs_imp::symlink(src.as_path(), dst.as_path())
@@ -510,6 +534,7 @@ pub fn soft_link<P: AsPath + ?Sized, Q: AsPath + ?Sized>(src: &P, dst: &Q)
 /// This function will return an error on failure. Failure conditions include
 /// reading a file that does not exist or reading a file that is not a soft
 /// link.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn read_link<P: AsPath + ?Sized>(path: &P) -> io::Result<PathBuf> {
     fs_imp::readlink(path.as_path())
 }
@@ -528,6 +553,7 @@ pub fn read_link<P: AsPath + ?Sized>(path: &P) -> io::Result<PathBuf> {
 ///
 /// This function will return an error if the user lacks permissions to make a
 /// new directory at the provided `path`, or if the directory already exists.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn create_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
     fs_imp::mkdir(path.as_path())
 }
@@ -541,6 +567,7 @@ pub fn create_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
 /// does not already exist and it could not be created otherwise. The specific
 /// error conditions for when a directory is being created (after it is
 /// determined to not exist) are outlined by `fs::create_dir`.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn create_dir_all<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
     let path = path.as_path();
     if path.is_dir() { return Ok(()) }
@@ -572,6 +599,7 @@ pub fn create_dir_all<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
 ///
 /// This function will return an error if the user lacks permissions to remove
 /// the directory at the provided `path`, or if the directory isn't empty.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
     fs_imp::rmdir(path.as_path())
 }
@@ -585,6 +613,7 @@ pub fn remove_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
 /// # Errors
 ///
 /// See `file::remove_file` and `fs::remove_dir`
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn remove_dir_all<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
     let path = path.as_path();
     for child in try!(read_dir(path)) {
@@ -637,6 +666,7 @@ pub fn remove_dir_all<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
 /// This function will return an error if the provided `path` doesn't exist, if
 /// the process lacks permissions to view the contents or if the `path` points
 /// at a non-directory file
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn read_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<ReadDir> {
     fs_imp::readdir(path.as_path()).map(ReadDir)
 }
@@ -649,11 +679,16 @@ pub fn read_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<ReadDir> {
 ///
 /// The iterator will yield instances of `io::Result<DirEntry>`. New errors may
 /// be encountered after an iterator is initially constructed.
+#[unstable(feature = "fs_walk",
+           reason = "the precise semantics and defaults for a recursive walk \
+                     may change and this may end up accounting for files such \
+                     as symlinks differently")]
 pub fn walk_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<WalkDir> {
     let start = try!(read_dir(path));
     Ok(WalkDir { cur: Some(start), stack: Vec::new() })
 }
 
+#[unstable(feature = "fs_walk")]
 impl Iterator for WalkDir {
     type Item = io::Result<DirEntry>;
 
@@ -683,6 +718,9 @@ impl Iterator for WalkDir {
 }
 
 /// Utility methods for paths.
+#[unstable(feature = "path_ext",
+           reason = "the precise set of methods exposed on this trait may \
+                     change and some methods may be removed")]
 pub trait PathExt {
     /// Get information on the file, directory, etc at this path.
     ///
@@ -727,6 +765,10 @@ impl PathExt for Path {
 /// The file at the path specified will have its last access time set to
 /// `atime` and its modification time set to `mtime`. The times specified should
 /// be in milliseconds.
+#[unstable(feature = "fs_time",
+           reason = "the argument type of u64 is not quite appropriate for \
+                     this function and may change if the standard library \
+                     gains a type to represent a moment in time")]
 pub fn set_file_times<P: AsPath + ?Sized>(path: &P, accessed: u64,
                                           modified: u64) -> io::Result<()> {
     fs_imp::utimes(path.as_path(), accessed, modified)
@@ -752,6 +794,10 @@ pub fn set_file_times<P: AsPath + ?Sized>(path: &P, accessed: u64,
 /// This function will return an error if the provided `path` doesn't exist, if
 /// the process lacks permissions to change the attributes of the file, or if
 /// some other I/O error is encountered.
+#[unstable(feature = "fs",
+           reason = "a more granual ability to set specific permissions may \
+                     be exposed on the Permissions structure itself and this \
+                     method may not always exist")]
 pub fn set_permissions<P: AsPath + ?Sized>(path: &P, perm: Permissions)
                                            -> io::Result<()> {
     fs_imp::set_perm(path.as_path(), perm.0)

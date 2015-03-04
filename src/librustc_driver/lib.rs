@@ -39,7 +39,6 @@
 #![feature(exit_status)]
 #![feature(path)]
 #![feature(io)]
-#![feature(fs)]
 
 extern crate arena;
 extern crate flate;

@@ -40,8 +40,8 @@
 #![feature(std_misc)]
 #![feature(os)]
 #![feature(path)]
-#![feature(fs)]
 #![feature(io)]
+#![feature(path_ext)]
 #![cfg_attr(test, feature(test))]
 
 extern crate arena;

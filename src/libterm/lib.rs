@@ -52,7 +52,6 @@
 
 #![feature(box_syntax)]
 #![feature(collections)]
-#![feature(fs)]
 #![feature(int_uint)]
 #![feature(io)]
 #![feature(old_io)]
@@ -61,6 +60,7 @@
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(unicode)]
+#![feature(path_ext)]
 #![cfg_attr(windows, feature(libc))]
 
 #[macro_use] extern crate log;
