@@ -141,10 +141,18 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+// TODO(japaric) update docs
+
 use clone::Clone;
 use cmp::PartialEq;
 use default::Default;
-use marker::{Copy, Send, Sync};
+#[cfg(not(stage0))]
+use mem;
+#[cfg(stage0)]
+use marker::Copy;
+use marker::{Send, Sync};
+#[cfg(not(stage0))]
+use marker::Pod;
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{None, Some};
@@ -157,6 +165,7 @@ pub struct Cell<T> {
     value: UnsafeCell<T>,
 }
 
+#[cfg(stage0)]
 impl<T:Copy> Cell<T> {
     /// Creates a new `Cell` containing the given value.
     ///
@@ -232,9 +241,88 @@ impl<T:Copy> Cell<T> {
     }
 }
 
+#[cfg(not(stage0))]
+impl<T:Pod> Cell<T> {
+    /// Creates a new `Cell` containing the given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn new(value: T) -> Cell<T> {
+        Cell {
+            value: UnsafeCell::new(value),
+        }
+    }
+
+    /// Returns a copy of the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    ///
+    /// let five = c.get();
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn get(&self) -> T {
+        unsafe {
+            mem::transmute_copy(mem::transmute::<_, &T>(self.value.get()))
+        }
+    }
+
+    /// Sets the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    ///
+    /// c.set(10);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn set(&self, value: T) {
+        unsafe {
+            *self.value.get() = value;
+        }
+    }
+
+    /// Get a reference to the underlying `UnsafeCell`.
+    ///
+    /// # Unsafety
+    ///
+    /// This function is `unsafe` because `UnsafeCell`'s field is public.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    ///
+    /// let uc = unsafe { c.as_unsafe_cell() };
+    /// ```
+    #[inline]
+    #[unstable(feature = "core")]
+    pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
+        &self.value
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T> Send for Cell<T> where T: Send {}
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Copy> Clone for Cell<T> {
     fn clone(&self) -> Cell<T> {
@@ -242,6 +330,15 @@ impl<T:Copy> Clone for Cell<T> {
     }
 }
 
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T:Pod> Clone for Cell<T> {
+    fn clone(&self) -> Cell<T> {
+        Cell::new(self.get())
+    }
+}
+
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Default + Copy> Default for Cell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -250,8 +347,26 @@ impl<T:Default + Copy> Default for Cell<T> {
     }
 }
 
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T:Default + Pod> Default for Cell<T> {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn default() -> Cell<T> {
+        Cell::new(Default::default())
+    }
+}
+
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:PartialEq + Copy> PartialEq for Cell<T> {
+    fn eq(&self, other: &Cell<T>) -> bool {
+        self.get() == other.get()
+    }
+}
+
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T:PartialEq + Pod> PartialEq for Cell<T> {
     fn eq(&self, other: &Cell<T>) -> bool {
         self.get() == other.get()
     }
