@@ -5592,8 +5592,7 @@ pub fn predicates<'tcx>(
 pub fn get_attrs<'tcx>(tcx: &'tcx ctxt, did: DefId)
                        -> Cow<'tcx, [ast::Attribute]> {
     if is_local(did) {
-        let item = tcx.map.expect_item(did.node);
-        Cow::Borrowed(&item.attrs)
+        Cow::Borrowed(tcx.map.attrs(did.node))
     } else {
         Cow::Owned(csearch::get_item_attrs(&tcx.sess.cstore, did))
     }
