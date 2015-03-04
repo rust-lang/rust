@@ -1,4 +1,5 @@
 # arm-linux-androideabi configuration
+LINK_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-gcc
 CC_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-gcc
 CXX_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-g++
 CPP_arm-linux-androideabi=$(CFG_ANDROID_CROSS_PATH)/bin/arm-linux-androideabi-gcc -E

@@ -610,7 +610,7 @@ CFG_TARGET=$(to_llvm_triple $CFG_TARGET)
 # there's no rpath. This is where the build system itself puts libraries;
 # --libdir is used to configure the installation directory.
 # FIXME: This needs to parameterized over target triples. Do it in platform.mk
-if [ "$CFG_OSTYPE" = "pc-windows-gnu" ]
+if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ]
 then
     CFG_LIBDIR_RELATIVE=bin
 else
@@ -628,7 +628,8 @@ esac
 
 CFG_LIBDIR_RELATIVE=`echo ${CFG_LIBDIR} | cut -c$((${#CFG_PREFIX}+${CAT_INC}))-`
 
-if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] && [ "$CFG_LIBDIR_RELATIVE" != "bin" ]; then
+if ( [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ] ) \
+	&& [ "$CFG_LIBDIR_RELATIVE" != "bin" ]; then
     err "libdir on windows should be set to 'bin'"
 fi
 
@@ -803,7 +804,7 @@ then
 fi
 
 BIN_SUF=
-if [ "$CFG_OSTYPE" = "pc-windows-gnu" ]
+if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ]
 then
     BIN_SUF=.exe
 fi
@@ -1311,7 +1312,7 @@ do
         # (llvm's configure tries to find pthread first, so we have to disable it explicitly.)
         # Also note that pthreads works badly on mingw-w64 systems: #8996
         case "$CFG_BUILD" in
-            (*-windows-*)
+            (*-windows-gnu)
             LLVM_OPTS="$LLVM_OPTS --disable-pthreads"
             ;;
         esac

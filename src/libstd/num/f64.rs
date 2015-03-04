@@ -48,7 +48,6 @@ mod cmath {
         pub fn fmod(a: c_double, b: c_double) -> c_double;
         pub fn nextafter(x: c_double, y: c_double) -> c_double;
         pub fn frexp(n: c_double, value: &mut c_int) -> c_double;
-        pub fn hypot(x: c_double, y: c_double) -> c_double;
         pub fn ldexp(x: c_double, n: c_int) -> c_double;
         pub fn logb(n: c_double) -> c_double;
         pub fn log1p(n: c_double) -> c_double;
@@ -74,6 +73,13 @@ mod cmath {
         #[cfg(windows)]
         #[link_name="__lgamma_r"]
         pub fn lgamma_r(n: c_double, sign: &mut c_int) -> c_double;
+
+        #[cfg(unix)]
+        pub fn hypot(x: c_double, y: c_double) -> c_double;
+
+        #[cfg(windows)]
+        #[link_name="_hypot"]
+        pub fn hypot(x: c_double, y: c_double) -> c_double;
     }
 }
 

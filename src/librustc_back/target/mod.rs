@@ -145,6 +145,7 @@ pub struct TargetOptions {
     /// only really used for figuring out how to find libraries, since Windows uses its own
     /// library naming convention. Defaults to false.
     pub is_like_windows: bool,
+    pub is_like_msvc: bool,
     /// Whether the target toolchain is like Android's. Only useful for compiling against Android.
     /// Defaults to false.
     pub is_like_android: bool,
@@ -188,6 +189,7 @@ impl Default for TargetOptions {
             is_like_osx: false,
             is_like_windows: false,
             is_like_android: false,
+            is_like_msvc: false,
             linker_is_gnu: false,
             has_rpath: false,
             no_compiler_rt: false,
@@ -371,7 +373,9 @@ impl Target {
             armv7s_apple_ios,
 
             x86_64_pc_windows_gnu,
-            i686_pc_windows_gnu
+            i686_pc_windows_gnu,
+
+            x86_64_pc_windows_msvc
         );
 
 

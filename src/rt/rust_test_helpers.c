@@ -191,9 +191,7 @@ rust_dbg_abi_2(struct floats f) {
 }
 
 int
-rust_dbg_static_mut;
-
-int rust_dbg_static_mut = 3;
+rust_dbg_static_mut = 3;
 
 void
 rust_dbg_static_mut_check_four() {
