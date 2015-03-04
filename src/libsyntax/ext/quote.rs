@@ -676,9 +676,10 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         token::FatArrow     => "FatArrow",
         token::Pound        => "Pound",
         token::Dollar       => "Dollar",
+        token::Question     => "Question",
         token::Underscore   => "Underscore",
         token::Eof          => "Eof",
-        _                   => panic!(),
+        _                   => panic!("unhandled token in quote!"),
     };
     mk_token_path(cx, sp, name)
 }
