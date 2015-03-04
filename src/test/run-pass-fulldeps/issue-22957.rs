@@ -19,7 +19,7 @@ use syntax::ext::base::ExtCtxt;
 #[allow(dead_code)]
 fn create_item(context: &mut ExtCtxt) {
     quote_item!(context,
-      fn foo<T: ?Sized>() { }
+        fn foo<T: ?Sized>() { }
     );
 }
 
