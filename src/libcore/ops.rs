@@ -913,6 +913,7 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Index<Idx: ?Sized> {
     /// The returned type after indexing
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Output: ?Sized;
 
     /// The method for the indexing (`Foo[Bar]`) operation
