@@ -444,7 +444,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 // Does the required lifetime have a nice name we can print?
                 span_err!(self.tcx.sess, origin.span(), E0309,
                     "{} may not live long enough", labeled_user_string);
-                self.tcx.sess.span_help(
+                self.tcx.sess.fileline_help(
                     origin.span(),
                     &format!(
                         "consider adding an explicit lifetime bound `{}: {}`...",
@@ -456,7 +456,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 // Does the required lifetime have a nice name we can print?
                 span_err!(self.tcx.sess, origin.span(), E0310,
                     "{} may not live long enough", labeled_user_string);
-                self.tcx.sess.span_help(
+                self.tcx.sess.fileline_help(
                     origin.span(),
                     &format!(
                         "consider adding an explicit lifetime bound `{}: 'static`...",
@@ -468,7 +468,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 span_err!(self.tcx.sess, origin.span(), E0311,
                         "{} may not live long enough",
                         labeled_user_string);
-                self.tcx.sess.span_help(
+                self.tcx.sess.fileline_help(
                     origin.span(),
                     &format!(
                         "consider adding an explicit lifetime bound for `{}`",
