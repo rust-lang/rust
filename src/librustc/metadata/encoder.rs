@@ -1751,6 +1751,28 @@ fn encode_plugin_registrar_fn(ecx: &EncodeContext, rbml_w: &mut Encoder) {
     }
 }
 
+fn encode_codemap(ecx: &EncodeContext, rbml_w: &mut Encoder) {
+    rbml_w.start_tag(tag_codemap);
+    let codemap = ecx.tcx.sess.codemap();
+
+    for filemap in &codemap.files.borrow()[..] {
+
+        if filemap.lines.borrow().len() == 0 || filemap.is_imported() {
+            // No need to export empty filemaps, as they can't contain spans
+            // that need translation.
+            // Also no need to re-export imported filemaps, as any downstream
+            // crate will import them from their original source.
+            continue;
+        }
+
+        rbml_w.start_tag(tag_codemap_filemap);
+        filemap.encode(rbml_w);
+        rbml_w.end_tag();
+    }
+
+    rbml_w.end_tag();
+}
+
 /// Serialize the text of the exported macros
 fn encode_macro_defs(rbml_w: &mut Encoder,
                      krate: &ast::Crate) {
@@ -1968,6 +1990,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
         lang_item_bytes: u64,
         native_lib_bytes: u64,
         plugin_registrar_fn_bytes: u64,
+        codemap_bytes: u64,
         macro_defs_bytes: u64,
         impl_bytes: u64,
         misc_bytes: u64,
@@ -1982,6 +2005,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
         lang_item_bytes: 0,
         native_lib_bytes: 0,
         plugin_registrar_fn_bytes: 0,
+        codemap_bytes: 0,
         macro_defs_bytes: 0,
         impl_bytes: 0,
         misc_bytes: 0,
@@ -2047,6 +2071,11 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
     encode_plugin_registrar_fn(&ecx, &mut rbml_w);
     stats.plugin_registrar_fn_bytes = rbml_w.writer.tell().unwrap() - i;
 
+    // Encode codemap
+    i = rbml_w.writer.tell().unwrap();
+    encode_codemap(&ecx, &mut rbml_w);
+    stats.codemap_bytes = rbml_w.writer.tell().unwrap() - i;
+
     // Encode macro definitions
     i = rbml_w.writer.tell().unwrap();
     encode_macro_defs(&mut rbml_w, krate);
@@ -2091,6 +2120,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
         println!("       lang item bytes: {}", stats.lang_item_bytes);
         println!("          native bytes: {}", stats.native_lib_bytes);
         println!("plugin registrar bytes: {}", stats.plugin_registrar_fn_bytes);
+        println!("         codemap bytes: {}", stats.codemap_bytes);
         println!("       macro def bytes: {}", stats.macro_defs_bytes);
         println!("            impl bytes: {}", stats.impl_bytes);
         println!("            misc bytes: {}", stats.misc_bytes);

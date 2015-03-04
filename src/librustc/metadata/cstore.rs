@@ -27,7 +27,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use flate::Bytes;
 use syntax::ast;
-use syntax::codemap::Span;
+use syntax::codemap;
 use syntax::parse::token::IdentInterner;
 
 // A map from external crate numbers (as decoded from some crate file) to
@@ -41,12 +41,24 @@ pub enum MetadataBlob {
     MetadataArchive(loader::ArchiveMetadata),
 }
 
+/// Holds information about a codemap::FileMap imported from another crate.
+/// See creader::import_codemap() for more information.
+pub struct ImportedFileMap {
+    /// This FileMap's byte-offset within the codemap of its original crate
+    pub original_start_pos: codemap::BytePos,
+    /// The end of this FileMap within the codemap of its original crate
+    pub original_end_pos: codemap::BytePos,
+    /// The imported FileMap's representation within the local codemap
+    pub translated_filemap: Rc<codemap::FileMap>
+}
+
 pub struct crate_metadata {
     pub name: String,
     pub data: MetadataBlob,
     pub cnum_map: cnum_map,
     pub cnum: ast::CrateNum,
-    pub span: Span,
+    pub codemap_import_info: Vec<ImportedFileMap>,
+    pub span: codemap::Span,
 }
 
 #[derive(Copy, Debug, PartialEq, Clone)]
