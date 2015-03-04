@@ -285,7 +285,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("recursion_limit", CrateLevel),
 ];
 
-#[derive(PartialEq, Copy)]
+#[derive(PartialEq, Copy, Debug)]
 pub enum AttributeType {
     /// Normal, builtin attribute that is consumed
     /// by the compiler before the unused_attribute check
@@ -353,7 +353,9 @@ struct Context<'a> {
 
 impl<'a> Context<'a> {
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
-        if !self.has_feature(feature) {
+        let has_feature = self.has_feature(feature);
+        debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", feature, span, has_feature);
+        if !has_feature {
             emit_feature_err(self.span_handler, feature, span, explain);
         }
     }
@@ -634,12 +636,14 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
+        debug!("visit_attribute(attr = {:?})", attr);
         let name = &*attr.name();
         for &(n, ty) in KNOWN_ATTRIBUTES {
             if n == name {
                 if let Gated(gate, desc) = ty {
                     self.gate_feature(gate, attr.span, desc);
                 }
+                debug!("visit_attribute: {:?} is known, {:?}", name, ty);
                 return;
             }
         }
