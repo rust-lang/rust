@@ -10,12 +10,15 @@
 //
 // ignore-lexer-test FIXME #15679
 
-//! Unicode string manipulation (the `str` type).
+//! Unicode string manipulation (the [`str`](../primitive.str.html) type).
 //!
-//! Rust's `str` type is one of the core primitive types of the language. `&str` is the borrowed
-//! string type. This type of string can only be created from other strings, unless it is a static
-//! string (see below). As the word "borrowed" implies, this type of string is owned elsewhere, and
-//! this string cannot be moved out of.
+//! Rust's [`str`](../primitive.str.html) type is one of the core primitive types of the
+//! language. `&str` is the borrowed string type. This type of string can only be created
+//! from other strings, unless it is a `&'static str` (see below). It is not possible to
+//! move out of borrowed strings because they are owned elsewhere.
+//!
+//! Basic operations are implemented directly by the compiler, but more advanced operations are
+//! defined on the [`StrExt`](trait.StrExt.html) trait.
 //!
 //! # Examples
 //!
