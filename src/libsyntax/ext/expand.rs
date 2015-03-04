@@ -92,7 +92,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
 
         // Desugar ExprWhileLet
         // From: `[opt_ident]: while let <pat> = <expr> <body>`
-        ast::ExprWhileLet(pat, expr, body, opt_ident) => {
+        ast::ExprWhileLet(pats, expr, body, opt_ident) => {
             // to:
             //
             //   [opt_ident]: loop {
@@ -105,7 +105,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             // `<pat> => <body>`
             let pat_arm = {
                 let body_expr = fld.cx.expr_block(body);
-                fld.cx.arm(pat.span, vec![pat], body_expr)
+                fld.cx.arm(span, pats, body_expr)
             };
 
             // `_ => break`

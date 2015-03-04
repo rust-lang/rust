@@ -1734,13 +1734,13 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.print_block(&**blk));
             }
-            ast::ExprWhileLet(ref pat, ref expr, ref blk, opt_ident) => {
+            ast::ExprWhileLet(ref pats, ref expr, ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
                     try!(self.print_ident(ident));
                     try!(self.word_space(":"));
                 }
                 try!(self.head("while let"));
-                try!(self.print_pat(&**pat));
+                try!(self.print_pats(pats));
                 try!(space(&mut self.s));
                 try!(self.word_space("="));
                 try!(self.print_expr(&**expr));
