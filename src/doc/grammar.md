@@ -661,7 +661,7 @@ match_pat : pat [ '|' pat ] * [ "if" expr ] ? ;
 ### If let expressions
 
 ```antlr
-if_let_expr : "if" "let" pat '=' expr '{' block '}'
+if_let_expr : "if" "let" pat [ '|' pat ] * '=' expr '{' block '}'
                else_tail ? ;
 else_tail : "else" [ if_expr | if_let_expr | '{' block '}' ] ;
 ```
@@ -669,7 +669,7 @@ else_tail : "else" [ if_expr | if_let_expr | '{' block '}' ] ;
 ### While let loops
 
 ```antlr
-while_let_expr : "while" "let" pat '=' expr '{' block '}' ;
+while_let_expr : "while" "let" pat [ '|' pat ] * '=' expr '{' block '}' ;
 ```
 
 ### Return expressions
