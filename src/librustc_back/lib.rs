@@ -34,7 +34,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(old_fs)]
-#![feature(fs)]
 #![feature(hash)]
 #![feature(int_uint)]
 #![feature(io)]
@@ -44,7 +43,8 @@
 #![feature(path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(tempdir)]
+#![feature(rand)]
+#![feature(path_ext)]
 
 extern crate syntax;
 extern crate serialize;
@@ -52,6 +52,7 @@ extern crate serialize;
 
 pub mod abi;
 pub mod archive;
+pub mod tempdir;
 pub mod arm;
 pub mod fs;
 pub mod mips;

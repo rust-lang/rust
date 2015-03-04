@@ -8,18 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable(feature = "tempdir", reason = "needs an RFC before stabilization")]
-#![deprecated(since = "1.0.0",
-              reason = "use the `tempdir` crate from crates.io instead")]
-#![allow(deprecated)]
-
-use prelude::v1::*;
-
-use env;
-use io::{self, Error, ErrorKind};
-use fs;
-use path::{self, PathBuf, AsPath};
-use rand::{thread_rng, Rng};
+use std::env;
+use std::io::{self, Error, ErrorKind};
+use std::fs;
+use std::path::{self, PathBuf, AsPath};
+use std::rand::{thread_rng, Rng};
 
 /// A wrapper for a path to temporary directory implementing automatic
 /// scope-based deletion.

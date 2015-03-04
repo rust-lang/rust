@@ -12,14 +12,14 @@
 
 #![feature(core)]
 #![feature(exit_status)]
-#![feature(fs)]
 #![feature(io)]
 #![feature(old_io)]
 #![feature(path)]
 #![feature(rustdoc)]
-#![feature(tempdir)]
+#![feature(rustc_private)]
 
 extern crate rustdoc;
+extern crate rustc_back;
 
 use std::env;
 use std::error::Error;
