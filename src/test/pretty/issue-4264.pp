@@ -26,12 +26,12 @@ pub fn bar() {
     const FOO: usize = ((5 as usize) - (4 as usize) as usize);
     let _: [(); (FOO as usize)] = ([(() as ())] as [(); 1]);
 
-    let _: [(); (1usize as usize)] = ([(() as ())] as [(); 1]);
+    let _: [(); (1 as usize)] = ([(() as ())] as [(); 1]);
 
     let _ =
         (((&((([(1 as i32), (2 as i32), (3 as i32)] as [i32; 3])) as [i32; 3])
               as &[i32; 3]) as *const _ as *const [i32; 3]) as
-            *const [i32; (3usize as usize)] as *const [i32; 3]);
+            *const [i32; (3 as usize)] as *const [i32; 3]);
 
 
 

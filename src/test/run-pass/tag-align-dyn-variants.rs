@@ -26,12 +26,12 @@ struct Rec<A,B> {
 }
 
 fn mk_rec<A,B>(a: A, b: B) -> Rec<A,B> {
-    Rec { chA:0u8, tA:Tag::VarA(a), chB:1u8, tB:Tag::VarB(b) }
+    Rec { chA:0, tA:Tag::VarA(a), chB:1, tB:Tag::VarB(b) }
 }
 
 fn is_aligned<A>(amnt: uint, u: &A) -> bool {
     let p: uint = unsafe { mem::transmute(u) };
-    return (p & (amnt-1_usize)) == 0_usize;
+    return (p & (amnt-1)) == 0;
 }
 
 fn variant_data_is_aligned<A,B>(amnt: uint, u: &Tag<A,B>) -> bool {
@@ -42,33 +42,33 @@ fn variant_data_is_aligned<A,B>(amnt: uint, u: &Tag<A,B>) -> bool {
 }
 
 pub fn main() {
-    let x = mk_rec(22u64, 23u64);
-    assert!(is_aligned(8_usize, &x.tA));
-    assert!(variant_data_is_aligned(8_usize, &x.tA));
-    assert!(is_aligned(8_usize, &x.tB));
-    assert!(variant_data_is_aligned(8_usize, &x.tB));
+    let x = mk_rec(22, 23);
+    assert!(is_aligned(8, &x.tA));
+    assert!(variant_data_is_aligned(8, &x.tA));
+    assert!(is_aligned(8, &x.tB));
+    assert!(variant_data_is_aligned(8, &x.tB));
 
-    let x = mk_rec(22u64, 23u32);
-    assert!(is_aligned(8_usize, &x.tA));
-    assert!(variant_data_is_aligned(8_usize, &x.tA));
-    assert!(is_aligned(8_usize, &x.tB));
-    assert!(variant_data_is_aligned(4_usize, &x.tB));
+    let x = mk_rec(22, 23);
+    assert!(is_aligned(8, &x.tA));
+    assert!(variant_data_is_aligned(8, &x.tA));
+    assert!(is_aligned(8, &x.tB));
+    assert!(variant_data_is_aligned(4, &x.tB));
 
-    let x = mk_rec(22u32, 23u64);
-    assert!(is_aligned(8_usize, &x.tA));
-    assert!(variant_data_is_aligned(4_usize, &x.tA));
-    assert!(is_aligned(8_usize, &x.tB));
-    assert!(variant_data_is_aligned(8_usize, &x.tB));
+    let x = mk_rec(22, 23);
+    assert!(is_aligned(8, &x.tA));
+    assert!(variant_data_is_aligned(4, &x.tA));
+    assert!(is_aligned(8, &x.tB));
+    assert!(variant_data_is_aligned(8, &x.tB));
 
-    let x = mk_rec(22u32, 23u32);
-    assert!(is_aligned(4_usize, &x.tA));
-    assert!(variant_data_is_aligned(4_usize, &x.tA));
-    assert!(is_aligned(4_usize, &x.tB));
-    assert!(variant_data_is_aligned(4_usize, &x.tB));
+    let x = mk_rec(22, 23);
+    assert!(is_aligned(4, &x.tA));
+    assert!(variant_data_is_aligned(4, &x.tA));
+    assert!(is_aligned(4, &x.tB));
+    assert!(variant_data_is_aligned(4, &x.tB));
 
     let x = mk_rec(22f64, 23f64);
-    assert!(is_aligned(8_usize, &x.tA));
-    assert!(variant_data_is_aligned(8_usize, &x.tA));
-    assert!(is_aligned(8_usize, &x.tB));
-    assert!(variant_data_is_aligned(8_usize, &x.tB));
+    assert!(is_aligned(8, &x.tA));
+    assert!(variant_data_is_aligned(8, &x.tA));
+    assert!(is_aligned(8, &x.tB));
+    assert!(variant_data_is_aligned(8, &x.tB));
 }

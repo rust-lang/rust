@@ -901,7 +901,7 @@ mod test {
                 assert!(e.is::<T>());
                 let any = e.downcast::<T>().ok().unwrap();
                 assert!(any.is::<u16>());
-                assert_eq!(*any.downcast::<u16>().ok().unwrap(), 413u16);
+                assert_eq!(*any.downcast::<u16>().ok().unwrap(), 413);
             }
             Ok(()) => panic!()
         }

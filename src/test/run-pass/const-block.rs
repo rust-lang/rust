@@ -58,6 +58,6 @@ pub fn main() {
     assert_eq!(BLOCK_FN(300), 300);
     assert_eq!(BLOCK_ENUM_CONSTRUCTOR(200), Some(200));
     // FIXME #13972
-    // assert_eq!(BLOCK_UNSAFE_SAFE_PTR as *const isize as usize, 0xdeadbeef_us);
-    // assert_eq!(BLOCK_UNSAFE_SAFE_PTR_2 as *const isize as usize, 0xdeadbeef_us);
+    // assert_eq!(BLOCK_UNSAFE_SAFE_PTR as *const isize as usize, 0xdeadbeef);
+    // assert_eq!(BLOCK_UNSAFE_SAFE_PTR_2 as *const isize as usize, 0xdeadbeef);
 }

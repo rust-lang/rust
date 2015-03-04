@@ -714,7 +714,7 @@ pub fn is_code_point_boundary(slice: &Wtf8, index: uint) -> bool {
     if index == slice.len() { return true; }
     match slice.bytes.get(index) {
         None => false,
-        Some(&b) => b < 128u8 || b >= 192u8,
+        Some(&b) => b < 128 || b >= 192,
     }
 }
 
@@ -776,7 +776,7 @@ impl<'a> Iterator for EncodeWide<'a> {
             return Some(tmp);
         }
 
-        let mut buf = [0u16; 2];
+        let mut buf = [0; 2];
         self.code_points.next().map(|code_point| {
             let n = encode_utf16_raw(code_point.value, &mut buf)
                 .unwrap_or(0);

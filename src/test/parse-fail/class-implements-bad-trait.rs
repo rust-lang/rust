@@ -15,5 +15,5 @@ class cat : nonexistent {
 }
 
 fn main() {
-  let nyan = cat(0us);
+  let nyan = cat(0);
 }

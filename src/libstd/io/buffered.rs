@@ -616,14 +616,14 @@ mod tests {
 
     #[test]
     fn read_char_buffered() {
-        let buf = [195u8, 159u8];
+        let buf = [195, 159];
         let reader = BufReader::with_capacity(1, &buf[..]);
         assert_eq!(reader.chars().next(), Some(Ok('ß')));
     }
 
     #[test]
     fn test_chars() {
-        let buf = [195u8, 159u8, b'a'];
+        let buf = [195, 159, b'a'];
         let reader = BufReader::with_capacity(1, &buf[..]);
         let mut it = reader.chars();
         assert_eq!(it.next(), Some(Ok('ß')));

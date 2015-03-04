@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub static X: usize = 1_usize;
+pub static X: usize = 1;
 
 fn main() {
-    match 1_usize {
+    match 1 {
         self::X => { },
         //~^ ERROR static variables cannot be referenced in a pattern, use a `const` instead
         _       => { },

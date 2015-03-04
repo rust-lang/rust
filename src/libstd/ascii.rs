@@ -186,7 +186,7 @@ impl OwnedAsciiExt for Vec<u8> {
 impl AsciiExt for u8 {
     type Owned = u8;
     #[inline]
-    fn is_ascii(&self) -> bool { *self & 128 == 0u8 }
+    fn is_ascii(&self) -> bool { *self & 128 == 0 }
     #[inline]
     fn to_ascii_uppercase(&self) -> u8 { ASCII_UPPERCASE_MAP[*self as usize] }
     #[inline]
@@ -398,7 +398,7 @@ mod tests {
         assert_eq!("url()URL()uRl()ürl".to_ascii_uppercase(), "URL()URL()URL()üRL");
         assert_eq!("hıKß".to_ascii_uppercase(), "HıKß");
 
-        for i in 0u32..501 {
+        for i in 0..501 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
             assert_eq!((from_u32(i).unwrap()).to_string().to_ascii_uppercase(),
@@ -412,7 +412,7 @@ mod tests {
         // Dotted capital I, Kelvin sign, Sharp S.
         assert_eq!("HİKß".to_ascii_lowercase(), "hİKß");
 
-        for i in 0u32..501 {
+        for i in 0..501 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
             assert_eq!((from_u32(i).unwrap()).to_string().to_ascii_lowercase(),
@@ -426,7 +426,7 @@ mod tests {
                    "URL()URL()URL()üRL".to_string());
         assert_eq!(("hıKß".to_string()).into_ascii_uppercase(), "HıKß");
 
-        for i in 0u32..501 {
+        for i in 0..501 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
             assert_eq!((from_u32(i).unwrap()).to_string().into_ascii_uppercase(),
@@ -441,7 +441,7 @@ mod tests {
         // Dotted capital I, Kelvin sign, Sharp S.
         assert_eq!(("HİKß".to_string()).into_ascii_lowercase(), "hİKß");
 
-        for i in 0u32..501 {
+        for i in 0..501 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
             assert_eq!((from_u32(i).unwrap()).to_string().into_ascii_lowercase(),
@@ -459,7 +459,7 @@ mod tests {
         assert!(!"K".eq_ignore_ascii_case("k"));
         assert!(!"ß".eq_ignore_ascii_case("s"));
 
-        for i in 0u32..501 {
+        for i in 0..501 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
             assert!((from_u32(i).unwrap()).to_string().eq_ignore_ascii_case(

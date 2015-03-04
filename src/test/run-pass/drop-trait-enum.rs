@@ -62,7 +62,7 @@ pub fn main() {
 
     let (sender, receiver) = channel();
     {
-        let v = Foo::NestedVariant(box 42_usize, SendOnDrop { sender: sender.clone() }, sender);
+        let v = Foo::NestedVariant(box 42, SendOnDrop { sender: sender.clone() }, sender);
     }
     assert_eq!(receiver.recv().unwrap(), Message::DestructorRan);
     assert_eq!(receiver.recv().unwrap(), Message::Dropped);
@@ -79,10 +79,10 @@ pub fn main() {
     let (sender, receiver) = channel();
     let t = {
         thread::spawn(move|| {
-            let mut v = Foo::NestedVariant(box 42usize, SendOnDrop {
+            let mut v = Foo::NestedVariant(box 42, SendOnDrop {
                 sender: sender.clone()
             }, sender.clone());
-            v = Foo::NestedVariant(box 42_usize,
+            v = Foo::NestedVariant(box 42,
                                    SendOnDrop { sender: sender.clone() },
                                    sender.clone());
             v = Foo::SimpleVariant(sender.clone());
