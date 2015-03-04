@@ -76,6 +76,10 @@ pub struct StringReader<'a> {
     // are revised to go directly to token-trees.
     /// Is \x00<name>,<ctxt>\x00 is interpreted as encoded ast::Ident?
     read_embedded_ident: bool,
+
+    // cache a direct reference to the source text, so that we don't have to
+    // retrieve it via `self.filemap.src.as_ref().unwrap()` all the time.
+    source_text: Rc<String>
 }
 
 impl<'a> Reader for StringReader<'a> {
@@ -141,7 +145,14 @@ pub fn make_reader_with_embedded_idents<'b>(span_diagnostic: &'b SpanHandler,
 impl<'a> StringReader<'a> {
     /// For comments.rs, which hackily pokes into pos and curr
     pub fn new_raw<'b>(span_diagnostic: &'b SpanHandler,
-                   filemap: Rc<codemap::FileMap>) -> StringReader<'b> {
+                       filemap: Rc<codemap::FileMap>) -> StringReader<'b> {
+        if filemap.src.is_none() {
+            span_diagnostic.handler.bug(&format!("Cannot lex filemap without source: {}",
+                                                 filemap.name)[..]);
+        }
+
+        let source_text = (*filemap.src.as_ref().unwrap()).clone();
+
         let mut sr = StringReader {
             span_diagnostic: span_diagnostic,
             pos: filemap.start_pos,
@@ -153,6 +164,7 @@ impl<'a> StringReader<'a> {
             peek_tok: token::Eof,
             peek_span: codemap::DUMMY_SP,
             read_embedded_ident: false,
+            source_text: source_text
         };
         sr.bump();
         sr
@@ -213,7 +225,7 @@ impl<'a> StringReader<'a> {
         m.push_str(": ");
         let from = self.byte_offset(from_pos).to_usize();
         let to = self.byte_offset(to_pos).to_usize();
-        m.push_str(&self.filemap.src[from..to]);
+        m.push_str(&self.source_text[from..to]);
         self.fatal_span_(from_pos, to_pos, &m[..]);
     }
 
@@ -270,9 +282,8 @@ impl<'a> StringReader<'a> {
     fn with_str_from_to<T, F>(&self, start: BytePos, end: BytePos, f: F) -> T where
         F: FnOnce(&str) -> T,
     {
-        f(&self.filemap.src[
-                self.byte_offset(start).to_usize()..
-                self.byte_offset(end).to_usize()])
+        f(&self.source_text[self.byte_offset(start).to_usize()..
+                            self.byte_offset(end).to_usize()])
     }
 
     /// Converts CRLF to LF in the given string, raising an error on bare CR.
@@ -321,12 +332,10 @@ impl<'a> StringReader<'a> {
     pub fn bump(&mut self) {
         self.last_pos = self.pos;
         let current_byte_offset = self.byte_offset(self.pos).to_usize();
-        if current_byte_offset < self.filemap.src.len() {
+        if current_byte_offset < self.source_text.len() {
             assert!(self.curr.is_some());
             let last_char = self.curr.unwrap();
-            let next = self.filemap
-                          .src
-                          .char_range_at(current_byte_offset);
+            let next = self.source_text.char_range_at(current_byte_offset);
             let byte_offset_diff = next.next - current_byte_offset;
             self.pos = self.pos + Pos::from_usize(byte_offset_diff);
             self.curr = Some(next.ch);
@@ -346,8 +355,8 @@ impl<'a> StringReader<'a> {
 
     pub fn nextch(&self) -> Option<char> {
         let offset = self.byte_offset(self.pos).to_usize();
-        if offset < self.filemap.src.len() {
-            Some(self.filemap.src.char_at(offset))
+        if offset < self.source_text.len() {
+            Some(self.source_text.char_at(offset))
         } else {
             None
         }
@@ -359,7 +368,7 @@ impl<'a> StringReader<'a> {
 
     pub fn nextnextch(&self) -> Option<char> {
         let offset = self.byte_offset(self.pos).to_usize();
-        let s = &*self.filemap.src;
+        let s = &self.source_text[..];
         if offset >= s.len() { return None }
         let str::CharRange { next, .. } = s.char_range_at(offset);
         if next < s.len() {

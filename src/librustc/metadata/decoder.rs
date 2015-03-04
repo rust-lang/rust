@@ -1561,11 +1561,26 @@ pub fn is_associated_type(cdata: Cmd, id: ast::NodeId) -> bool {
     }
 }
 
-
 pub fn is_default_trait<'tcx>(cdata: Cmd, id: ast::NodeId) -> bool {
     let item_doc = lookup_item(id, cdata.data());
     match item_family(item_doc) {
         Family::DefaultImpl => true,
         _ => false
     }
+}
+
+pub fn get_imported_filemaps(metadata: &[u8]) -> Vec<codemap::FileMap> {
+    let crate_doc = rbml::Doc::new(metadata);
+    let cm_doc = reader::get_doc(crate_doc, tag_codemap);
+
+    let mut filemaps = vec![];
+
+    reader::tagged_docs(cm_doc, tag_codemap_filemap, |filemap_doc| {
+        let mut decoder = reader::Decoder::new(filemap_doc);
+        let filemap: codemap::FileMap = Decodable::decode(&mut decoder).unwrap();
+        filemaps.push(filemap);
+        true
+    });
+
+    return filemaps;
 }
