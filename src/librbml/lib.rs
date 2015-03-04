@@ -290,22 +290,22 @@ pub mod reader {
     #[inline(never)]
     fn vuint_at_slow(data: &[u8], start: uint) -> DecodeResult<Res> {
         let a = data[start];
-        if a & 0x80u8 != 0u8 {
-            return Ok(Res {val: (a & 0x7fu8) as uint, next: start + 1});
+        if a & 0x80 != 0 {
+            return Ok(Res {val: (a & 0x7f) as uint, next: start + 1});
         }
-        if a & 0x40u8 != 0u8 {
-            return Ok(Res {val: ((a & 0x3fu8) as uint) << 8 |
+        if a & 0x40 != 0 {
+            return Ok(Res {val: ((a & 0x3f) as uint) << 8 |
                         (data[start + 1] as uint),
                     next: start + 2});
         }
-        if a & 0x20u8 != 0u8 {
-            return Ok(Res {val: ((a & 0x1fu8) as uint) << 16 |
+        if a & 0x20 != 0 {
+            return Ok(Res {val: ((a & 0x1f) as uint) << 16 |
                         (data[start + 1] as uint) << 8 |
                         (data[start + 2] as uint),
                     next: start + 3});
         }
-        if a & 0x10u8 != 0u8 {
-            return Ok(Res {val: ((a & 0x0fu8) as uint) << 24 |
+        if a & 0x10 != 0 {
+            return Ok(Res {val: ((a & 0x0f) as uint) << 24 |
                         (data[start + 1] as uint) << 16 |
                         (data[start + 2] as uint) << 8 |
                         (data[start + 3] as uint),
@@ -877,11 +877,11 @@ pub mod writer {
 
     fn write_sized_vuint<W: Writer>(w: &mut W, n: uint, size: uint) -> EncodeResult {
         match size {
-            1 => w.write_all(&[0x80u8 | (n as u8)]),
-            2 => w.write_all(&[0x40u8 | ((n >> 8) as u8), n as u8]),
-            3 => w.write_all(&[0x20u8 | ((n >> 16) as u8), (n >> 8) as u8,
+            1 => w.write_all(&[0x80 | (n as u8)]),
+            2 => w.write_all(&[0x40 | ((n >> 8) as u8), n as u8]),
+            3 => w.write_all(&[0x20 | ((n >> 16) as u8), (n >> 8) as u8,
                             n as u8]),
-            4 => w.write_all(&[0x10u8 | ((n >> 24) as u8), (n >> 16) as u8,
+            4 => w.write_all(&[0x10 | ((n >> 24) as u8), (n >> 16) as u8,
                             (n >> 8) as u8, n as u8]),
             _ => Err(old_io::IoError {
                 kind: old_io::OtherIoError,
@@ -930,7 +930,7 @@ pub mod writer {
 
             // Write a placeholder four-byte size.
             self.size_positions.push(try!(self.writer.tell()) as uint);
-            let zeroes: &[u8] = &[0u8, 0u8, 0u8, 0u8];
+            let zeroes: &[u8] = &[0, 0, 0, 0];
             self.writer.write_all(zeroes)
         }
 
@@ -1422,9 +1422,9 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_A_aligned(b: &mut Bencher) {
-        let data = (0i32..4*100).map(|i| {
+        let data = (0..4*100).map(|i| {
             match i % 2 {
-              0 => 0x80u8,
+              0 => 0x80,
               _ => i as u8,
             }
         }).collect::<Vec<_>>();
@@ -1440,9 +1440,9 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_A_unaligned(b: &mut Bencher) {
-        let data = (0i32..4*100+1).map(|i| {
+        let data = (0..4*100+1).map(|i| {
             match i % 2 {
-              1 => 0x80u8,
+              1 => 0x80,
               _ => i as u8
             }
         }).collect::<Vec<_>>();
@@ -1458,11 +1458,11 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_D_aligned(b: &mut Bencher) {
-        let data = (0i32..4*100).map(|i| {
+        let data = (0..4*100).map(|i| {
             match i % 4 {
-              0 => 0x10u8,
+              0 => 0x10,
               3 => i as u8,
-              _ => 0u8
+              _ => 0
             }
         }).collect::<Vec<_>>();
         let mut sum = 0;
@@ -1477,11 +1477,11 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_D_unaligned(b: &mut Bencher) {
-        let data = (0i32..4*100+1).map(|i| {
+        let data = (0..4*100+1).map(|i| {
             match i % 4 {
-              1 => 0x10u8,
+              1 => 0x10,
               0 => i as u8,
-              _ => 0u8
+              _ => 0
             }
         }).collect::<Vec<_>>();
         let mut sum = 0;

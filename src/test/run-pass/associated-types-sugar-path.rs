@@ -41,5 +41,5 @@ impl<T: Foo> C for B<T> {
 }
 
 pub fn main() {
-    let z: uint = bar(2, 4_usize);
+    let z: uint = bar(2, 4);
 }

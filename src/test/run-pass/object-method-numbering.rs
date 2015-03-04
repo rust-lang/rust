@@ -29,7 +29,7 @@ impl SomeTrait for i32 {
 }
 
 fn main() {
-    let x = 22_i32;
+    let x = 22;
     let x1: &SomeTrait<SomeType=i32> = &x;
     let y = get_int(x1);
     assert_eq!(x, y);

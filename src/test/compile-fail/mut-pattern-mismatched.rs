@@ -9,21 +9,21 @@
 // except according to those terms.
 
 fn main() {
-    let foo = &mut 1i32;
+    let foo = &mut 1;
 
     // (separate lines to ensure the spans are accurate)
 
      let &_ //~  ERROR mismatched types
-            //~| expected `&mut i32`
+            //~| expected `&mut _`
             //~| found `&_`
             //~| values differ in mutability
         = foo;
     let &mut _ = foo;
 
-    let bar = &1i32;
+    let bar = &1;
     let &_ = bar;
     let &mut _ //~  ERROR mismatched types
-               //~| expected `&i32`
+               //~| expected `&_`
                //~| found `&mut _`
                //~| values differ in mutability
          = bar;

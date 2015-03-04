@@ -38,7 +38,7 @@ impl<'a> MyWriter for &'a mut [u8] {
 }
 
 fn main() {
-    let mut buf = [0_u8; 6];
+    let mut buf = [0; 6];
 
     {
         let mut writer: &mut [_] = &mut buf;

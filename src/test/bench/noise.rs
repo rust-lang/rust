@@ -49,7 +49,7 @@ impl Noise2DContext {
             *x = random_gradient(&mut rng);
         }
 
-        let mut permutations = [0i32; 256];
+        let mut permutations = [0; 256];
         for (i, x) in permutations.iter_mut().enumerate() {
             *x = i as i32;
         }

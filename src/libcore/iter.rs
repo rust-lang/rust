@@ -1149,7 +1149,7 @@ pub trait AdditiveIterator<A> {
     /// ```
     /// use std::iter::AdditiveIterator;
     ///
-    /// let a = [1i32, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().cloned();
     /// assert!(it.sum() == 15);
     /// ```

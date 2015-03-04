@@ -18,26 +18,26 @@ pub fn main() {
     let s: String = chs.iter().cloned().collect();
     let schs: Vec<char> = s.chars().collect();
 
-    assert!(s.len() == 10_usize);
-    assert!(s.chars().count() == 4_usize);
-    assert!(schs.len() == 4_usize);
+    assert!(s.len() == 10);
+    assert!(s.chars().count() == 4);
+    assert!(schs.len() == 4);
     assert!(schs.iter().cloned().collect::<String>() == s);
-    assert!(s.char_at(0_usize) == 'e');
-    assert!(s.char_at(1_usize) == 'é');
+    assert!(s.char_at(0) == 'e');
+    assert!(s.char_at(1) == 'é');
 
     assert!((str::from_utf8(s.as_bytes()).is_ok()));
     // invalid prefix
-    assert!((!str::from_utf8(&[0x80_u8]).is_ok()));
+    assert!((!str::from_utf8(&[0x80]).is_ok()));
     // invalid 2 byte prefix
-    assert!((!str::from_utf8(&[0xc0_u8]).is_ok()));
-    assert!((!str::from_utf8(&[0xc0_u8, 0x10_u8]).is_ok()));
+    assert!((!str::from_utf8(&[0xc0]).is_ok()));
+    assert!((!str::from_utf8(&[0xc0, 0x10]).is_ok()));
     // invalid 3 byte prefix
-    assert!((!str::from_utf8(&[0xe0_u8]).is_ok()));
-    assert!((!str::from_utf8(&[0xe0_u8, 0x10_u8]).is_ok()));
-    assert!((!str::from_utf8(&[0xe0_u8, 0xff_u8, 0x10_u8]).is_ok()));
+    assert!((!str::from_utf8(&[0xe0]).is_ok()));
+    assert!((!str::from_utf8(&[0xe0, 0x10]).is_ok()));
+    assert!((!str::from_utf8(&[0xe0, 0xff, 0x10]).is_ok()));
     // invalid 4 byte prefix
-    assert!((!str::from_utf8(&[0xf0_u8]).is_ok()));
-    assert!((!str::from_utf8(&[0xf0_u8, 0x10_u8]).is_ok()));
-    assert!((!str::from_utf8(&[0xf0_u8, 0xff_u8, 0x10_u8]).is_ok()));
-    assert!((!str::from_utf8(&[0xf0_u8, 0xff_u8, 0xff_u8, 0x10_u8]).is_ok()));
+    assert!((!str::from_utf8(&[0xf0]).is_ok()));
+    assert!((!str::from_utf8(&[0xf0, 0x10]).is_ok()));
+    assert!((!str::from_utf8(&[0xf0, 0xff, 0x10]).is_ok()));
+    assert!((!str::from_utf8(&[0xf0, 0xff, 0xff, 0x10]).is_ok()));
 }

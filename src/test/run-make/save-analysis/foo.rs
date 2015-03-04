@@ -39,17 +39,17 @@ static bob: Option<&'static [isize]> = None;
 // buglink test - see issue #1337.
 
 fn test_alias<I: Iterator>(i: Option<<I as Iterator>::Item>) {
-    let s = sub_struct{ field2: 45u32, };
+    let s = sub_struct{ field2: 45, };
 
     // import tests
     fn foo(x: &Float) {}
     let _: Option<u8> = from_i32(45);
 
-    let x = 42_usize;
+    let x = 42;
 
     myflate::deflate_bytes(&[]);
 
-    let x = (3, 4_usize);
+    let x = (3, 4);
     let y = x.1;
 }
 

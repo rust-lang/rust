@@ -17,6 +17,6 @@ extern {
 
 pub fn main() {
     unsafe {
-        assert_eq!(22_u8, rust_dbg_extern_identity_u8(22_u8));
+        assert_eq!(22, rust_dbg_extern_identity_u8(22));
     }
 }

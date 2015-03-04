@@ -32,17 +32,17 @@ trait UnusedTrait : MarkerTrait {
 
 impl CtxtFn for usize {
     fn f8(self, i: usize) -> usize {
-        i * 4_usize
+        i * 4
     }
 
     fn f9(i: usize) -> usize {
-        i * 4_usize
+        i * 4
     }
 }
 
 impl OtherTrait for usize {
     fn f9(i: usize) -> usize {
-        i * 8_usize
+        i * 8
     }
 }
 

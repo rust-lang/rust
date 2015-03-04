@@ -128,7 +128,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                             // if c is 0, use 0200 (128) for ncurses compatibility
                             Number(c) => {
                                 output.push(if c == 0 {
-                                    128u8
+                                    128
                                 } else {
                                     c as u8
                                 })
@@ -647,7 +647,7 @@ mod test {
 
     #[test]
     fn test_comparison_ops() {
-        let v = [('<', [1u8, 0u8, 0u8]), ('=', [0u8, 1u8, 0u8]), ('>', [0u8, 0u8, 1u8])];
+        let v = [('<', [1, 0, 0]), ('=', [0, 1, 0]), ('>', [0, 0, 1])];
         for &(op, bs) in &v {
             let s = format!("%{{1}}%{{2}}%{}%d", op);
             let res = expand(s.as_bytes(), &[], &mut Variables::new());
