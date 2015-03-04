@@ -616,6 +616,9 @@ mod os {
 mod os {
     pub const FAMILY: &'static str = "unix";
     pub const OS: &'static str = "ios";
+    pub const DLL_PREFIX: &'static str = "lib";
+    pub const DLL_SUFFIX: &'static str = ".dylib";
+    pub const DLL_EXTENSION: &'static str = "dylib";
     pub const EXE_SUFFIX: &'static str = "";
     pub const EXE_EXTENSION: &'static str = "";
 }
