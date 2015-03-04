@@ -386,7 +386,8 @@ pub mod types {
                       target_arch = "mips",
                       target_arch = "mipsel",
                       target_arch = "powerpc",
-                      target_arch = "le32"))]
+                      target_arch = "le32",
+                      all(target_arch = "arm", not(target_os = "android"))))]
             pub mod posix88 {
                 pub type off_t = i32;
                 pub type dev_t = u64;
@@ -398,7 +399,7 @@ pub mod types {
                 pub type mode_t = u32;
                 pub type ssize_t = i32;
             }
-            #[cfg(target_arch = "arm")]
+            #[cfg(all(target_arch = "arm", target_os = "android"))]
             pub mod posix88 {
                 pub type off_t = i32;
                 pub type dev_t = u32;
@@ -412,7 +413,8 @@ pub mod types {
             }
             #[cfg(any(target_arch = "x86",
                       target_arch = "le32",
-                      target_arch = "powerpc"))]
+                      target_arch = "powerpc",
+                      all(target_arch = "arm", not(target_os = "android"))))]
             pub mod posix01 {
                 use types::os::arch::c95::{c_short, c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t, ino_t};
@@ -458,7 +460,7 @@ pub mod types {
                     pub __size: [u32; 9]
                 }
             }
-            #[cfg(target_arch = "arm")]
+            #[cfg(all(target_arch = "arm", target_os = "android"))]
             pub mod posix01 {
                 use types::os::arch::c95::{c_uchar, c_uint, c_ulong, time_t};
                 use types::os::arch::c99::{c_longlong, c_ulonglong};
