@@ -358,27 +358,27 @@ pub trait PhantomFn<A:?Sized,R:?Sized=()> { }
 /// the method implementations, although the struct doesn't actually
 /// contain values of the resource type.
 ///
-```
-struct ExternalResource<R> {
-   resource_handle: *mut (),
-   resource_type: PhantomData<R>,
-}
-
-impl<R: ResType> ExternalResource<R> {
-    fn new() -> ExternalResource<R> {
-        let size_of_res = mem::size_of::<R>();
-        ExternalResource {
-            resource_handle: foreign_lib::new(size_of_res),
-            resource_type: PhantomData,
-        }
-    }
-
-    fn do_stuff(&self, param: ParamType) {
-        let foreign_params = convert_params::<R>(param);
-        foreign_lib::do_stuff(self.resource_handle, foreign_params);
-    }
-}
-```
+///```
+///struct ExternalResource<R> {
+///   resource_handle: *mut (),
+///   resource_type: PhantomData<R>,
+///}
+///
+///impl<R: ResType> ExternalResource<R> {
+///    fn new() -> ExternalResource<R> {
+///        let size_of_res = mem::size_of::<R>();
+///        ExternalResource {
+///            resource_handle: foreign_lib::new(size_of_res),
+///            resource_type: PhantomData,
+///        }
+///    }
+///
+///    fn do_stuff(&self, param: ParamType) {
+///        let foreign_params = convert_params::<R>(param);
+///        foreign_lib::do_stuff(self.resource_handle, foreign_params);
+///    }
+///}
+///```
 ///
 /// Another example: embedding a `PhantomData<T>` will inform the compiler
 /// that one or more instances of the type `T` could be dropped when
