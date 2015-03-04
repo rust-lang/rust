@@ -25,7 +25,7 @@ fn main() {
                  //~| found struct `Foo`
     Foo::bar(&42); //~  ERROR mismatched types
                       //~| expected `&Foo`
-                      //~| found `&i32`
+                      //~| found `&_`
                       //~| expected struct `Foo`
-                      //~| found i32
+                      //~| found integral variable
 }

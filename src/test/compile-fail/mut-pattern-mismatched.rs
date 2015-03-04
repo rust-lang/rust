@@ -14,7 +14,7 @@ fn main() {
     // (separate lines to ensure the spans are accurate)
 
      let &_ //~  ERROR mismatched types
-            //~| expected `&mut i32`
+            //~| expected `&mut _`
             //~| found `&_`
             //~| values differ in mutability
         = foo;
@@ -23,7 +23,7 @@ fn main() {
     let bar = &1;
     let &_ = bar;
     let &mut _ //~  ERROR mismatched types
-               //~| expected `&i32`
+               //~| expected `&_`
                //~| found `&mut _`
                //~| values differ in mutability
          = bar;

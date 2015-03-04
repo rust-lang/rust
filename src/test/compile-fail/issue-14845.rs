@@ -26,7 +26,7 @@ fn main() {
     let _v = &local as *mut u8;
     //~^ ERROR mismatched types
     //~| expected `*mut u8`
-    //~| found `&[u8; 1]`
+    //~| found `&[_; 1]`
     //~| expected u8,
     //~| found array of 1 elements
 }

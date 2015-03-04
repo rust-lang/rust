@@ -11,7 +11,7 @@
 static i: String = 10;
 //~^ ERROR mismatched types
 //~| expected `collections::string::String`
-//~| found `i32`
+//~| found `_`
 //~| expected struct `collections::string::String`
-//~| found i32
+//~| found integral variable
 fn main() { println!("{}", i); }
