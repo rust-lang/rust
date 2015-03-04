@@ -13,7 +13,7 @@ import fileinput
 import subprocess
 import re
 import os
-from licenseck import *
+from licenseck import check_license
 import snapshot
 
 err = 0
@@ -22,13 +22,8 @@ cr_flag = "ignore-tidy-cr"
 tab_flag = "ignore-tidy-tab"
 linelength_flag = "ignore-tidy-linelength"
 
-# Be careful to support Python 2.4, 2.6, and 3.x here!
-config_proc = subprocess.Popen(["git", "config", "core.autocrlf"],
-                               stdout=subprocess.PIPE)
-result = config_proc.communicate()[0]
-
-true = "true".encode('utf8')
-autocrlf = result.strip() == true if result is not None else False
+interesting_files = ['.rs', '.py', '.js', '.sh', '.c', '.h']
+uninteresting_files = ['miniz.c', 'jquery', 'rust_android_dummy']
 
 
 def report_error_name_no(name, no, s):
@@ -51,6 +46,34 @@ def do_license_check(name, contents):
     if not check_license(name, contents):
         report_error_name_no(name, 1, "incorrect license")
 
+
+def update_counts(current_name):
+    global file_counts
+    global count_other_linted_files
+
+    _, ext = os.path.splitext(current_name)
+
+    if ext in interesting_files:
+        file_counts[ext] += 1
+    else:
+        count_other_linted_files += 1
+
+
+def interesting_file(f):
+    if any(x in f for x in uninteresting_files):
+        return False
+
+    return any(os.path.splitext(f)[1] == ext for ext in interesting_files)
+
+
+# Be careful to support Python 2.4, 2.6, and 3.x here!
+config_proc = subprocess.Popen(["git", "config", "core.autocrlf"],
+                               stdout=subprocess.PIPE)
+result = config_proc.communicate()[0]
+
+true = "true".encode('utf8')
+autocrlf = result.strip() == true if result is not None else False
+
 current_name = ""
 current_contents = ""
 check_tab = True
@@ -63,28 +86,16 @@ if len(sys.argv) < 2:
 
 src_dir = sys.argv[1]
 
+count_lines = 0
+count_non_blank_lines = 0
+count_other_linted_files = 0
+
+file_counts = {ext: 0 for ext in interesting_files}
+
+all_paths = set()
+
 try:
-    count_lines = 0
-    count_non_blank_lines = 0
-
-    interesting_files = ['.rs', '.py', '.js', '.sh', '.c', '.h']
-
-    file_counts = {ext: 0 for ext in interesting_files}
-    file_counts['other'] = 0
-
-    def update_counts(current_name):
-        global file_counts
-        _, ext = os.path.splitext(current_name)
-
-        if ext in file_counts:
-            file_counts[ext] += 1
-        else:
-            file_counts['other'] += 1
-
-    all_paths = set()
-
     for (dirpath, dirnames, filenames) in os.walk(src_dir):
-
         # Skip some third-party directories
         skippable_dirs = {
             'src/jemalloc',
@@ -102,14 +113,6 @@ try:
 
         if any(d in dirpath for d in skippable_dirs):
             continue
-
-        def interesting_file(f):
-            if "miniz.c" in f \
-            or "jquery" in f \
-            or "rust_android_dummy" in f:
-                return False
-
-            return any(os.path.splitext(f)[1] == ext for ext in interesting_files)
 
         file_names = [os.path.join(dirpath, f) for f in filenames
                       if interesting_file(f)
@@ -196,10 +199,11 @@ except UnicodeDecodeError as e:
     report_err("UTF-8 decoding error " + str(e))
 
 print
-for ext in file_counts:
-    print "* linted " + str(file_counts[ext]) + " " + ext + " files"
-print "* total lines of code: " + str(count_lines)
-print "* total non-blank lines of code: " + str(count_non_blank_lines)
+for ext in sorted(file_counts, key=file_counts.get, reverse=True):
+    print "* linted {} {} files".format(file_counts[ext], ext)
+print "* linted {} other files".format(count_other_linted_files)
+print "* total lines of code: {}".format(count_lines)
+print "* total non-blank lines of code: {}".format(count_non_blank_lines)
 print
 
 sys.exit(err)
