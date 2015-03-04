@@ -3065,7 +3065,7 @@ impl<'a> Parser<'a> {
     pub fn parse_if_let_expr(&mut self) -> P<Expr> {
         let lo = self.last_span.lo;
         self.expect_keyword(keywords::Let);
-        let pat = self.parse_pat();
+        let pats = self.parse_pats();
         self.expect(&token::Eq);
         let expr = self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL);
         let thn = self.parse_block();
@@ -3075,7 +3075,7 @@ impl<'a> Parser<'a> {
         } else {
             (thn.span.hi, None)
         };
-        self.mk_expr(lo, hi, ExprIfLet(pat, expr, thn, els))
+        self.mk_expr(lo, hi, ExprIfLet(pats, expr, thn, els))
     }
 
     // `|args| expr`

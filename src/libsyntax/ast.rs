@@ -732,7 +732,7 @@ pub enum Expr_ {
     ExprLit(P<Lit>),
     ExprCast(P<Expr>, P<Ty>),
     ExprIf(P<Expr>, P<Block>, Option<P<Expr>>),
-    ExprIfLet(P<Pat>, P<Expr>, P<Block>, Option<P<Expr>>),
+    ExprIfLet(Vec<P<Pat>>, P<Expr>, P<Block>, Option<P<Expr>>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprWhile(P<Expr>, P<Block>, Option<Ident>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
