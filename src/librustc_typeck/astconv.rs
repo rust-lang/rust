@@ -82,6 +82,9 @@ pub trait AstConv<'tcx> {
     fn get_type_parameter_bounds(&self, span: Span, def_id: ast::NodeId)
                                  -> Result<Vec<ty::PolyTraitRef<'tcx>>, ErrorReported>;
 
+    fn trait_defines_associated_type_named(&self, trait_def_id: ast::DefId, name: ast::Name)
+                                           -> bool;
+
     /// Return an (optional) substitution to convert bound type parameters that
     /// are in scope into free ones. This function should only return Some
     /// within a fn body.
@@ -783,7 +786,7 @@ fn ast_type_binding_to_projection_predicate<'tcx>(
     // We want to produce `<B as SuperTrait<int>>::T == foo`.
 
     // Simple case: X is defined in the current trait.
-    if trait_defines_associated_type_named(this, trait_ref.def_id, binding.item_name) {
+    if this.trait_defines_associated_type_named(trait_ref.def_id, binding.item_name) {
         return Ok(ty::ProjectionPredicate {
             projection_ty: ty::ProjectionTy {
                 trait_ref: trait_ref,
@@ -812,7 +815,7 @@ fn ast_type_binding_to_projection_predicate<'tcx>(
 
     let mut candidates: Vec<ty::PolyTraitRef> =
         traits::supertraits(tcx, trait_ref.to_poly_trait_ref())
-        .filter(|r| trait_defines_associated_type_named(this, r.def_id(), binding.item_name))
+        .filter(|r| this.trait_defines_associated_type_named(r.def_id(), binding.item_name))
         .collect();
 
     // If converting for an object type, then remove the dummy-ty from `Self` now.
@@ -1036,7 +1039,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
 
     let mut suitable_bounds: Vec<_> =
         traits::transitive_bounds(tcx, &bounds)
-        .filter(|b| trait_defines_associated_type_named(this, b.def_id(), assoc_name))
+        .filter(|b| this.trait_defines_associated_type_named(b.def_id(), assoc_name))
         .collect();
 
     if suitable_bounds.len() == 0 {
@@ -1088,16 +1091,6 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         item.expect("missing associated type").def_id()
     };
     (ty, def::DefAssociatedTy(trait_did, item_did))
-}
-
-fn trait_defines_associated_type_named(this: &AstConv,
-                                       trait_def_id: ast::DefId,
-                                       assoc_name: ast::Name)
-                                       -> bool
-{
-    let tcx = this.tcx();
-    let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
-    trait_def.associated_type_names.contains(&assoc_name)
 }
 
 fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
