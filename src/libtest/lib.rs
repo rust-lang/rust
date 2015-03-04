@@ -732,8 +732,8 @@ fn should_sort_failures_before_printing_them() {
         Pretty(_) => unreachable!()
     };
 
-    let apos = s.find_str("a").unwrap();
-    let bpos = s.find_str("b").unwrap();
+    let apos = s.find("a").unwrap();
+    let bpos = s.find("b").unwrap();
     assert!(apos < bpos);
 }
 

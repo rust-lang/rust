@@ -188,15 +188,13 @@ fn trim_ws() {
 
 mod pattern {
     use std::str::Pattern;
-    use std::str::{Searcher, ReverseSearcher, DoubleEndedSearcher};
+    use std::str::{Searcher, ReverseSearcher};
     use std::str::SearchStep::{self, Match, Reject, Done};
 
     macro_rules! make_test {
         ($name:ident, $p:expr, $h:expr, [$($e:expr,)*]) => {
             mod $name {
-                use std::str::Pattern;
-                use std::str::{Searcher, ReverseSearcher, DoubleEndedSearcher};
-                use std::str::SearchStep::{self, Match, Reject, Done};
+                use std::str::SearchStep::{Match, Reject};
                 use super::{cmp_search_to_vec};
                 #[test]
                 fn fwd() {
