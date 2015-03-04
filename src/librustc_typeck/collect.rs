@@ -364,6 +364,19 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
         })
     }
 
+    fn trait_defines_associated_type_named(&self,
+                                           trait_def_id: ast::DefId,
+                                           assoc_name: ast::Name)
+                                           -> bool
+    {
+        if trait_def_id.krate == ast::LOCAL_CRATE {
+            trait_defines_associated_type_named(self.ccx, trait_def_id.node, assoc_name)
+        } else {
+            let trait_def = ty::lookup_trait_def(self.tcx(), trait_def_id);
+            trait_def.associated_type_names.contains(&assoc_name)
+        }
+    }
+
     fn ty_infer(&self, span: Span) -> Ty<'tcx> {
         span_err!(self.tcx().sess, span, E0121,
                   "the type placeholder `_` is not allowed within types on item signatures");
@@ -1294,6 +1307,30 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
         Substs::new_trait(types, regions, self_ty)
     }
+}
+
+fn trait_defines_associated_type_named(ccx: &CrateCtxt,
+                                       trait_node_id: ast::NodeId,
+                                       assoc_name: ast::Name)
+                                       -> bool
+{
+    let item = match ccx.tcx.map.get(trait_node_id) {
+        ast_map::NodeItem(item) => item,
+        _ => ccx.tcx.sess.bug(&format!("trait_node_id {} is not an item", trait_node_id))
+    };
+
+    let trait_items = match item.node {
+        ast::ItemTrait(_, _, _, ref trait_items) => trait_items,
+        _ => ccx.tcx.sess.bug(&format!("trait_node_id {} is not a trait", trait_node_id))
+    };
+
+    trait_items.iter()
+               .any(|trait_item| {
+                   match *trait_item {
+                       ast::TypeTraitItem(ref t) => t.ty_param.ident.name == assoc_name,
+                       ast::RequiredMethod(..) | ast::ProvidedMethod(..) => false,
+                   }
+               })
 }
 
 fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item) {
