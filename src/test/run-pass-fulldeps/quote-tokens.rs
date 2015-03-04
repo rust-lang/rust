@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -43,6 +43,8 @@ fn syntax_extension(cx: &ExtCtxt) {
 
     let _m: Vec<syntax::ast::TokenTree> = quote_matcher!(cx, $($foo:tt,)* bar);
     let _n: syntax::ast::Attribute = quote_attr!(cx, #![cfg(foo, bar = "baz")]);
+
+    let _o: Option<P<syntax::ast::Item>> = quote_item!(cx, fn foo<T: ?Sized>() {});
 }
 
 fn main() {
