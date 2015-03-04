@@ -26,7 +26,7 @@ fn main() {
     let pt = PointF {
         //~^ ERROR structure constructor specifies a structure of type
         //~| expected f32
-        //~| found i32
+        //~| found integral variable
         x: 1,
         y: 2,
     };
@@ -34,7 +34,7 @@ fn main() {
     let pt2 = Point::<f32> {
         //~^ ERROR structure constructor specifies a structure of type
         //~| expected f32
-        //~| found i32
+        //~| found integral variable
         x: 3,
         y: 4,
     };
@@ -42,7 +42,7 @@ fn main() {
     let pair = PairF {
         //~^ ERROR structure constructor specifies a structure of type
         //~| expected f32
-        //~| found i32
+        //~| found integral variable
         x: 5,
         y: 6,
     };
@@ -50,7 +50,7 @@ fn main() {
     let pair2 = PairF::<i32> {
         //~^ ERROR structure constructor specifies a structure of type
         //~| expected f32
-        //~| found i32
+        //~| found integral variable
         x: 7,
         y: 8,
     };

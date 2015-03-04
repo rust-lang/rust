@@ -37,7 +37,7 @@ fn main() {
     check((3, 5));
 //~^ ERROR mismatched types
 //~| expected `&_`
-//~| found `(usize, usize)`
+//~| found `(_, _)`
 //~| expected &-ptr
 //~| found tuple
 }

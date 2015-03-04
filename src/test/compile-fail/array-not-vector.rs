@@ -12,7 +12,7 @@ fn main() {
     let _x: i32 = [1, 2, 3];
     //~^ ERROR mismatched types
     //~| expected `i32`
-    //~| found `[i32; 3]`
+    //~| found `[_; 3]`
     //~| expected i32
     //~| found array of 3 elements
 

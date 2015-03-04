@@ -13,9 +13,9 @@
 fn main() { let a: bool = 1; let b: i32 = true; }
 //~^ ERROR mismatched types
 //~| expected `bool`
-//~| found `i32`
+//~| found `_`
 //~| expected bool
-//~| found i32
+//~| found integral variable
 //~| ERROR mismatched types
 //~| expected `i32`
 //~| found `bool`
