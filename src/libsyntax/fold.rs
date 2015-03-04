@@ -1311,6 +1311,9 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                             folder.fold_block(body),
                             opt_ident.map(|i| folder.fold_ident(i)))
             }
+            ExprQuestion(e) => {
+                ExprQuestion(folder.fold_expr(e))
+            }
             ExprLoop(body, opt_ident) => {
                 ExprLoop(folder.fold_block(body),
                         opt_ident.map(|i| folder.fold_ident(i)))

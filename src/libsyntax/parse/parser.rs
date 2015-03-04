@@ -26,7 +26,7 @@ use ast::{ExprBreak, ExprCall, ExprCast};
 use ast::{ExprField, ExprTupField, ExprClosure, ExprIf, ExprIfLet, ExprIndex};
 use ast::{ExprLit, ExprLoop, ExprMac, ExprRange};
 use ast::{ExprMethodCall, ExprParen, ExprPath};
-use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
+use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary, ExprQuestion};
 use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod, FunctionRetTy};
 use ast::{Ident, Inherited, ImplItem, Item, Item_, ItemStatic};
@@ -2059,6 +2059,10 @@ impl<'a> Parser<'a> {
         })
     }
 
+    pub fn mk_question(&mut self, expr: P<Expr>) -> ast::Expr_ {
+        ExprQuestion(expr)
+    }
+
     pub fn mk_unary(&mut self, unop: ast::UnOp, expr: P<Expr>) -> ast::Expr_ {
         ExprUnary(unop, expr)
     }
@@ -2481,7 +2485,17 @@ impl<'a> Parser<'a> {
                             es.insert(0, e);
                             let id = spanned(dot, hi, i);
                             let nd = self.mk_method_call(id, tys, es);
-                            e = self.mk_expr(lo, hi, nd);
+                            let expr = self.mk_expr(lo, hi, nd);
+
+                            // expr.f()?
+                            if self.eat(&token::Question) {
+                                hi = self.last_span.hi;
+
+                                let nd = self.mk_question(expr);
+                                e = self.mk_expr(lo, hi, nd);
+                            } else {
+                                e = expr;
+                            }
                         }
                         _ => {
                             if !tys.is_empty() {
@@ -2556,7 +2570,17 @@ impl<'a> Parser<'a> {
                 hi = self.last_span.hi;
 
                 let nd = self.mk_call(e, es);
-                e = self.mk_expr(lo, hi, nd);
+                let expr = self.mk_expr(lo, hi, nd);
+
+                // expr(...)?
+                if self.eat(&token::Question) {
+                    hi = self.last_span.hi;
+
+                    let nd = self.mk_question(expr);
+                    e = self.mk_expr(lo, hi, nd);
+                } else {
+                    e = expr;
+                }
               }
 
               // expr[...]

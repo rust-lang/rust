@@ -539,6 +539,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 self.tcx().sess.span_bug(expr.span, "non-desugared ExprForLoop");
             }
 
+            ast::ExprQuestion(..) => {
+                self.tcx().sess.span_bug(expr.span, "non-desugared ExprQuestion");
+            }
+
             ast::ExprUnary(op, ref lhs) => {
                 let pass_args = if ast_util::is_by_value_unop(op) {
                     PassArgs::ByValue

@@ -561,6 +561,9 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           ast::ExprForLoop(..) => {
             self.tcx().sess.span_bug(expr.span, "non-desugared ExprForLoop");
           }
+          ast::ExprQuestion(..) => {
+            self.tcx().sess.span_bug(expr.span, "non-desugared ExprQuestion");
+          }
         }
     }
 

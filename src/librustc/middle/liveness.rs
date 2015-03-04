@@ -491,6 +491,9 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       ast::ExprForLoop(..) => {
           ir.tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
       }
+      ast::ExprQuestion(..) => {
+          ir.tcx.sess.span_bug(expr.span, "non-desugared ExprQuestion");
+      }
       ast::ExprBinary(op, _, _) if ast_util::lazy_binop(op.node) => {
         ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
         visit::walk_expr(ir, expr);
@@ -1025,6 +1028,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               self.ir.tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
           }
 
+          ast::ExprQuestion(..) => {
+              self.ir.tcx.sess.span_bug(expr.span, "non-desugared ExprQuestion");
+          }
+
           // Note that labels have been resolved, so we don't need to look
           // at the label ident
           ast::ExprLoop(ref blk, _) => {
@@ -1479,6 +1486,9 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       }
       ast::ExprForLoop(..) => {
         this.ir.tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
+      }
+      ast::ExprQuestion(..) => {
+        this.ir.tcx.sess.span_bug(expr.span, "non-desugared ExprQuestion");
       }
     }
 }

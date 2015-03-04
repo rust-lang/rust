@@ -1760,6 +1760,10 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.print_block(&**blk));
             }
+            ast::ExprQuestion(ref expr) => {
+                try!(self.print_expr(&**expr));
+                try!(word(&mut self.s, "?"))
+            }
             ast::ExprLoop(ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
                     try!(self.print_ident(ident));

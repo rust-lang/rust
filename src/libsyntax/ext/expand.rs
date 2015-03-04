@@ -336,6 +336,62 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                     Some(fld.cx.expr_ident(span, result_ident))))
         }
 
+        // Desugar `expr?`
+        // From: `<expr>?`
+        ast::ExprQuestion(expr) => {
+            // to:
+            //
+            //   {
+            //      match <expr> {
+            //          Ok(val) => val,
+            //          Err(err) => {
+            //              return Err(FromError::from_error(err));
+            //          }
+            //      }
+            //   }
+
+            // expand <expr>
+            let expr = fld.fold_expr(expr);
+
+            // Ok(val) => val,
+            let ok_arm = {
+                let val = fld.cx.ident_of("val");
+                let ok_pat = fld.cx.pat_ok(span, fld.cx.pat_ident(span, val));
+
+                fld.cx.arm(span, vec![ok_pat], fld.cx.expr_ident(span, val))
+            };
+
+            // Err(err) => return Err(FromError::from_error(err)),
+            let err_arm = {
+                let err = fld.cx.ident_of("err");
+                let from_error_expr = {
+                    let path = {
+                        let strs = vec![
+                            fld.cx.ident_of_std("core"),
+                            fld.cx.ident_of("error"),
+                            fld.cx.ident_of("FromError"),
+                            fld.cx.ident_of("from_error"),
+                        ];
+
+                        fld.cx.expr_path(fld.cx.path_global(span, strs))
+                    };
+                    let args = vec![fld.cx.expr_ident(span, err)];
+
+                    fld.cx.expr_call(span, path, args)
+                };
+                let err_expr = fld.cx.expr_err(span, from_error_expr);
+
+                let err_pat = fld.cx.pat_err(span, fld.cx.pat_ident(span, err));
+
+                let ret_expr = fld.cx.expr(span, ast::ExprRet(Some(err_expr)));
+
+                fld.cx.arm(span, vec![err_pat], ret_expr)
+            };
+
+            // match <expr> { .. }
+            fld.cx.expr_match(span, expr, vec![err_arm, ok_arm])
+        }
+
         ast::ExprClosure(capture_clause, fn_decl, block) => {
             let (rewritten_fn_decl, rewritten_block)
                 = expand_and_rename_fn_decl_and_block(fn_decl, block, fld);

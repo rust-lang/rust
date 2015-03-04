@@ -4646,6 +4646,10 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
         }
 
+        ast::ExprQuestion(..) => {
+            tcx.sess.span_bug(expr.span, "non-desugared ExprQuestion");
+        }
+
         ast::ExprLit(ref lit) if lit_is_str(&**lit) => {
             RvalueDpsExpr
         }

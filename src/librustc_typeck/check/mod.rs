@@ -3775,6 +3775,9 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       ast::ExprForLoop(..) => {
         tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
       }
+      ast::ExprQuestion(..) => {
+        tcx.sess.span_bug(expr.span, "non-desugared ExprQuestion");
+      }
       ast::ExprLoop(ref body, _) => {
         check_block_no_value(fcx, &**body);
         if !may_break(tcx, expr.id, &**body) {

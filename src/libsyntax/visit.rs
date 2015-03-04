@@ -821,6 +821,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(&**subexpression);
             visitor.visit_block(&**block)
         }
+        ExprQuestion(ref expr) => {
+            visitor.visit_expr(&**expr);
+        }
         ExprLoop(ref block, _) => visitor.visit_block(&**block),
         ExprMatch(ref subexpression, ref arms, _) => {
             visitor.visit_expr(&**subexpression);

@@ -3586,6 +3586,11 @@ fn create_scope_map(cx: &CrateContext,
                                               Found unexpanded macro.");
             }
 
+            ast::ExprQuestion(..) => {
+                cx.sess().span_bug(exp.span, "debuginfo::create_scope_map() - \
+                                              Found unexpanded `expr?`.");
+            }
+
             ast::ExprLoop(ref block, _) |
             ast::ExprBlock(ref block)   => {
                 with_new_scope(cx,
