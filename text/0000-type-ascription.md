@@ -1,6 +1,7 @@
 - Start Date: 2015-2-3
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
+- Feature: `ascription`
 
 # Summary
 
@@ -113,6 +114,8 @@ expression are exactly those of the implicit coercion.
 @eddyb has implemented the expressions part of this RFC,
 [PR](https://github.com/rust-lang/rust/pull/21836).
 
+This feature should land behind the `ascription` feature gate.
+
 
 ### coercion and `as` vs `:`
 
@@ -126,23 +129,19 @@ confusing for users, since there is no reason to use type ascription rather than
 as the default whether or not it is required, then it loses its function as a
 warning sign for programmers to beware of.
 
-To address this I propose three lints which check for: trivial casts, coercible
-casts, and trivial numeric casts. Other than these lints we stick with the
-proposal from #401 that unnecessary casts will no longer be an error.
+To address this I propose two lints which check for: trivial casts and trivial
+numeric casts. Other than these lints we stick with the proposal from #401 that
+unnecessary casts will no longer be an error.
 
-A trivial cast is a cast `x as T` where `x` has type `U` and `U` is a subtype of
-`T` (note that subtyping includes reflexivity).
-
-A coercible cast is a cast `x as T` where `x` has type `U` and `x` can be
-implicitly coerced to `T`, but `U` is not a subtype of `T`.
+A trivial cast is a cast `x as T` where `x` has type `U` and `x` can be
+implicitly coerced to `T` or is already a subtype of `T`.
 
 A trivial numeric cast is a cast `x as T` where `x` has type `U` and `x` is
 implicitly coercible to `T` or `U` is a subtype of `T`, and both `U` and `T` are
 numeric types.
 
-Like any lints, these can be customised per-crate by the programmer. The trivial
-cast lint is 'deny' by default (i.e., causes an error); the coercible cast and
-trivial numeric cast lints are 'warn' by default.
+Like any lints, these can be customised per-crate by the programmer. Both lints
+are 'warn' by default.
 
 Although this is a somewhat complex scheme, it allows code that works today to
 work with only minor adjustment, it allows for a backwards compatible path to
