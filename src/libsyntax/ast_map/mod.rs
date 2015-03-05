@@ -14,12 +14,11 @@ use self::MapEntry::*;
 
 use abi;
 use ast::*;
-use ast_util;
+use ast_util::{self, PostExpansionMethod};
 use codemap::{DUMMY_SP, Span, Spanned};
 use fold::Folder;
 use parse::token;
 use print::pprust;
-use ptr::P;
 use visit::{self, Visitor};
 
 use arena::TypedArena;
@@ -741,14 +740,11 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         match i.node {
             ItemImpl(_, _, _, _, _, ref impl_items) => {
                 for impl_item in impl_items {
-                    match *impl_item {
-                        MethodImplItem(ref m) => {
-                            self.insert(m.id, NodeImplItem(impl_item));
-                        }
-                        TypeImplItem(ref t) => {
-                            self.insert(t.id, NodeImplItem(impl_item));
-                        }
-                    }
+                    let id = match **impl_item {
+                        MethodImplItem(ref m) => m.id,
+                        TypeImplItem(ref t) => t.id,
+                    };
+                    self.insert(id, NodeImplItem(impl_item));
                 }
             }
             ItemEnum(ref enum_definition, _) => {
@@ -778,17 +774,12 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                 }
 
                 for tm in trait_items {
-                    match *tm {
-                        RequiredMethod(ref m) => {
-                            self.insert(m.id, NodeTraitItem(tm));
-                        }
-                        ProvidedMethod(ref m) => {
-                            self.insert(m.id, NodeTraitItem(tm));
-                        }
-                        TypeTraitItem(ref typ) => {
-                            self.insert(typ.ty_param.id, NodeTraitItem(tm));
-                        }
-                    }
+                    let id = match **tm {
+                        RequiredMethod(ref m) => m.id,
+                        ProvidedMethod(ref m) => m.id,
+                        TypeTraitItem(ref typ) => typ.ty_param.id,
+                    };
+                    self.insert(id, NodeTraitItem(tm));
                 }
             }
             _ => {}
@@ -933,7 +924,7 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
             TypeTraitItem(at) => {
                 IITraitItem(
                     fld.fold_ops.new_def_id(d),
-                    TypeTraitItem(P(fld.fold_associated_type((*at).clone()))))
+                    TypeTraitItem(fld.fold_associated_type(at)))
             }
         },
         IIImplItem(d, m) => match m {
@@ -944,7 +935,7 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
             }
             TypeImplItem(t) => {
                 IIImplItem(fld.fold_ops.new_def_id(d),
-                           TypeImplItem(P(fld.fold_typedef((*t).clone()))))
+                           TypeImplItem(fld.fold_typedef(t)))
             }
         },
         IIForeign(i) => IIForeign(fld.fold_foreign_item(i))
@@ -1064,7 +1055,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                     }
                 }
                 TypeImplItem(ref t) => {
-                    format!("typedef {} in {}{}",
+                    format!("assoc type {} in {}{}",
                             token::get_ident(t.ident),
                             map.path_to_string(id),
                             id_str)
@@ -1073,15 +1064,20 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeTraitItem(ref tm)) => {
             match **tm {
-                RequiredMethod(_) | ProvidedMethod(_) => {
-                    let m = ast_util::trait_item_to_ty_method(&**tm);
-                    format!("method {} in {}{}",
+                RequiredMethod(ref m) => {
+                    format!("required method {} in {}{}",
                             token::get_ident(m.ident),
                             map.path_to_string(id),
                             id_str)
                 }
+                ProvidedMethod(ref m) => {
+                    format!("provided method {} in {}{}",
+                            token::get_ident(m.pe_ident()),
+                            map.path_to_string(id),
+                            id_str)
+                }
                 TypeTraitItem(ref t) => {
-                    format!("type item {} in {}{}",
+                    format!("assoc type {} in {}{}",
                             token::get_ident(t.ty_param.ident),
                             map.path_to_string(id),
                             id_str)

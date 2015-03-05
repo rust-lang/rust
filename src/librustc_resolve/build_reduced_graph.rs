@@ -48,7 +48,7 @@ use syntax::ast::UnnamedField;
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ast::{Visibility};
 use syntax::ast;
-use syntax::ast_util::{self, local_def};
+use syntax::ast_util::{self, local_def, PostExpansionMethod};
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::{self, special_idents};
 use syntax::codemap::{Span, DUMMY_SP};
@@ -525,28 +525,32 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 // Add the names of all the items to the trait info.
                 for trait_item in items {
-                    let (name, trait_item_id) = match *trait_item {
+                    let (name, trait_item_id) = match **trait_item {
                         ast::RequiredMethod(_) |
                         ast::ProvidedMethod(_) => {
-                            let ty_m = ast_util::trait_item_to_ty_method(trait_item);
-
-                            let name = ty_m.ident.name;
+                            let (id, name, span) = match **trait_item {
+                                ast::RequiredMethod(ref m) => {
+                                    (m.id, m.ident.name, m.span)
+                                }
+                                ast::ProvidedMethod(ref m) => {
+                                    (m.id, m.pe_ident().name, m.span)
+                                }
+                                _ => unreachable!()
+                            };
 
                             // Add it as a name in the trait module.
-                            let def = DefMethod(local_def(ty_m.id),
+                            let def = DefMethod(local_def(id),
                                                 FromTrait(local_def(item.id)));
 
                             let method_name_bindings =
                                 self.add_child(name,
                                                &module_parent,
                                                ForbidDuplicateTypesAndValues,
-                                               ty_m.span);
+                                               span);
                             // NB: not IMPORTABLE
-                            method_name_bindings.define_value(def,
-                                                              ty_m.span,
-                                                              PUBLIC);
+                            method_name_bindings.define_value(def, span, PUBLIC);
 
-                            (name, local_def(ty_m.id))
+                            (name, local_def(id))
                         }
                         ast::TypeTraitItem(ref associated_type) => {
                             let def = DefAssociatedTy(local_def(item.id),

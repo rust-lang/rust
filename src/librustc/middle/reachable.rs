@@ -315,7 +315,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 match *impl_item {
                     ast::MethodImplItem(ref method) => {
                         let did = self.tcx.map.get_parent_did(search_item);
-                        if method_might_be_inlined(self.tcx, &**method, did) {
+                        if method_might_be_inlined(self.tcx, method, did) {
                             visit::walk_block(self, method.pe_body())
                         }
                     }

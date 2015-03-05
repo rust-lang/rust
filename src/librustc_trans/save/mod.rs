@@ -656,7 +656,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     type_parameters: &ast::Generics,
                     trait_ref: &Option<ast::TraitRef>,
                     typ: &ast::Ty,
-                    impl_items: &Vec<ast::ImplItem>) {
+                    impl_items: &[P<ast::ImplItem>]) {
         let trait_id = trait_ref.as_ref().and_then(|tr| self.lookup_type_ref(tr.ref_id));
         match typ.node {
             // Common case impl for a struct or something basic.
@@ -698,9 +698,9 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
         self.process_generic_params(type_parameters, item.span, "", item.id);
         for impl_item in impl_items {
-            match *impl_item {
+            match **impl_item {
                 ast::MethodImplItem(ref method) => {
-                    visit::walk_method_helper(self, &**method)
+                    visit::walk_method_helper(self, method)
                 }
                 ast::TypeImplItem(ref typedef) => {
                     visit::walk_ty(self, &*typedef.typ)
@@ -713,7 +713,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                      item: &ast::Item,
                      generics: &ast::Generics,
                      trait_refs: &OwnedSlice<ast::TyParamBound>,
-                     methods: &Vec<ast::TraitItem>) {
+                     methods: &[P<ast::TraitItem>]) {
         let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
         let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Trait);
@@ -1296,7 +1296,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                             qualname,
                                             method_type.id);
             }
-            ast::ProvidedMethod(ref method) => self.process_method(&**method),
+            ast::ProvidedMethod(ref method) => self.process_method(method),
             ast::TypeTraitItem(_) => {}
         }
     }

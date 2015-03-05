@@ -206,12 +206,12 @@ impl<'a> FnLikeNode<'a> {
                 _ => panic!("item FnLikeNode that is not fn-like"),
             },
             ast_map::NodeTraitItem(t) => match *t {
-                ast::ProvidedMethod(ref m) => method(&**m),
+                ast::ProvidedMethod(ref m) => method(m),
                 _ => panic!("trait method FnLikeNode that is not fn-like"),
             },
             ast_map::NodeImplItem(ii) => {
                 match *ii {
-                    ast::MethodImplItem(ref m) => method(&**m),
+                    ast::MethodImplItem(ref m) => method(m),
                     ast::TypeImplItem(_) => {
                         panic!("impl method FnLikeNode that is not fn-like")
                     }

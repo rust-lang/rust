@@ -1081,14 +1081,14 @@ pub struct TypeMethod {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum TraitItem {
     RequiredMethod(TypeMethod),
-    ProvidedMethod(P<Method>),
-    TypeTraitItem(P<AssociatedType>),
+    ProvidedMethod(Method),
+    TypeTraitItem(AssociatedType),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ImplItem {
-    MethodImplItem(P<Method>),
-    TypeImplItem(P<Typedef>),
+    MethodImplItem(Method),
+    TypeImplItem(Typedef),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -1659,7 +1659,7 @@ pub enum Item_ {
     ItemTrait(Unsafety,
               Generics,
               TyParamBounds,
-              Vec<TraitItem>),
+              Vec<P<TraitItem>>),
 
     // Default trait implementations
     // `impl Trait for ..`
@@ -1669,7 +1669,7 @@ pub enum Item_ {
              Generics,
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
-             Vec<ImplItem>),
+             Vec<P<ImplItem>>),
     /// A macro invocation (which includes macro definition)
     ItemMac(Mac),
 }

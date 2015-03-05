@@ -86,6 +86,7 @@ use syntax::ast_util::{PostExpansionMethod, local_def, walk_pat};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;
 use syntax::parse::token::{self, special_names, special_idents};
+use syntax::ptr::P;
 use syntax::codemap::{self, Span, Pos};
 use syntax::visit::{self, Visitor};
 
@@ -2812,7 +2813,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         //
                         // FIXME #4951: Do we need a node ID here?
 
-                        let type_parameters = match *trait_item {
+                        let type_parameters = match **trait_item {
                             ast::RequiredMethod(ref ty_m) => {
                                 HasTypeParameters(&ty_m.generics,
                                                   FnSpace,
@@ -3049,7 +3050,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                               generics: &Generics,
                               opt_trait_reference: &Option<TraitRef>,
                               self_type: &Ty,
-                              impl_items: &[ImplItem]) {
+                              impl_items: &[P<ImplItem>]) {
         // If applicable, create a rib for the type parameters.
         self.with_type_parameter_rib(HasTypeParameters(generics,
                                                        TypeSpace,
@@ -3065,7 +3066,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 this.with_current_self_type(self_type, |this| {
                     for impl_item in impl_items {
-                        match *impl_item {
+                        match **impl_item {
                             MethodImplItem(ref method) => {
                                 // If this is a trait impl, ensure the method
                                 // exists in trait
@@ -3079,7 +3080,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                       FnSpace,
                                                       MethodRibKind);
                                 this.with_type_parameter_rib(type_parameters, |this| {
-                                    visit::walk_method_helper(this, &**method);
+                                    visit::walk_method_helper(this, method);
                                 });
                             }
                             TypeImplItem(ref typedef) => {
