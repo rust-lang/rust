@@ -357,7 +357,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
             }
             ast::ItemImpl(_, _, _, Some(ref _trait_ref), _, ref impl_items) => {
                 for impl_item in impl_items {
-                    match *impl_item {
+                    match **impl_item {
                         ast::MethodImplItem(ref method) => {
                             self.worklist.push(method.id);
                         }
@@ -586,7 +586,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
             ast::ProvidedMethod(ref method) => {
                 visit::walk_block(self, &*method.pe_body())
             }
-            ast::RequiredMethod(_) => {}
+            ast::RequiredMethod(_) |
             ast::TypeTraitItem(_) => {}
         }
     }

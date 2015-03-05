@@ -22,8 +22,7 @@ use syntax::codemap::{Span, DUMMY_SP};
 use syntax::{attr, visit};
 use syntax::ast;
 use syntax::ast::{Attribute, Block, Crate, DefId, FnDecl, NodeId, Variant};
-use syntax::ast::{Item, RequiredMethod, ProvidedMethod, TraitItem};
-use syntax::ast::{TypeMethod, Method, Generics, StructField, TypeTraitItem};
+use syntax::ast::{Item, TypeMethod, Method, Generics, StructField};
 use syntax::ast_util::is_local;
 use syntax::attr::{Stability, AttrMetaMethods};
 use syntax::visit::{FnKind, FkMethod, Visitor};
@@ -134,19 +133,20 @@ impl<'a, 'v> Visitor<'v> for Annotator<'a> {
         // a stability attribute, so we don't recurse.
     }
 
-    fn visit_trait_item(&mut self, t: &TraitItem) {
+    fn visit_trait_item(&mut self, t: &ast::TraitItem) {
         let (id, attrs, sp) = match *t {
-            RequiredMethod(TypeMethod {id, ref attrs, span, ..}) => (id, attrs, span),
+            ast::RequiredMethod(TypeMethod {id, ref attrs, span, ..}) => (id, attrs, span),
 
             // work around lack of pattern matching for @ types
-            ProvidedMethod(ref method) => {
-                match **method {
+            ast::ProvidedMethod(ref method) => {
+                match *method {
                     Method {ref attrs, id, span, ..} => (id, attrs, span),
                 }
             }
 
-            TypeTraitItem(ref typedef) => (typedef.ty_param.id, &typedef.attrs,
-                                           typedef.ty_param.span),
+            ast::TypeTraitItem(ref typedef) => {
+                (typedef.ty_param.id, &typedef.attrs, typedef.ty_param.span)
+            }
         };
         self.annotate(id, true, attrs, sp, |v| visit::walk_trait_item(v, t), true);
     }
@@ -335,7 +335,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
             let trait_items = ty::trait_items(tcx, trait_did);
 
             for impl_item in impl_items {
-                let (ident, span) = match *impl_item {
+                let (ident, span) = match **impl_item {
                     ast::MethodImplItem(ref method) => {
                         (match method.node {
                             ast::MethDecl(ident, _, _, _, _, _, _, _) => ident,

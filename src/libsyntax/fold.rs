@@ -98,11 +98,11 @@ pub trait Folder : Sized {
         noop_fold_item_underscore(i, self)
     }
 
-    fn fold_trait_item(&mut self, i: TraitItem) -> SmallVector<TraitItem> {
+    fn fold_trait_item(&mut self, i: P<TraitItem>) -> SmallVector<P<TraitItem>> {
         noop_fold_trait_item(i, self)
     }
 
-    fn fold_impl_item(&mut self, i: ImplItem) -> SmallVector<ImplItem> {
+    fn fold_impl_item(&mut self, i: P<ImplItem>) -> SmallVector<P<ImplItem>> {
         noop_fold_impl_item(i, self)
     }
 
@@ -114,7 +114,7 @@ pub trait Folder : Sized {
         noop_fold_type_method(m, self)
     }
 
-    fn fold_method(&mut self, m: P<Method>) -> SmallVector<P<Method>> {
+    fn fold_method(&mut self, m: Method) -> SmallVector<Method> {
         noop_fold_method(m, self)
     }
 
@@ -1018,34 +1018,30 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
     }
 }
 
-pub fn noop_fold_trait_item<T: Folder>(i: TraitItem, folder: &mut T) -> SmallVector<TraitItem> {
-    match i {
-        RequiredMethod(m) => {
-                SmallVector::one(RequiredMethod(
-                        folder.fold_type_method(m)))
-        }
+pub fn noop_fold_trait_item<T: Folder>(i: P<TraitItem>, folder: &mut T)
+                                       -> SmallVector<P<TraitItem>> {
+    i.map(|i| SmallVector::one(P(match i {
+        RequiredMethod(m) => RequiredMethod(folder.fold_type_method(m)),
         ProvidedMethod(method) => {
-            folder.fold_method(method).into_iter()
-                .map(|m| ProvidedMethod(m)).collect()
+            return folder.fold_method(method).into_iter()
+                         .map(|m| P(ProvidedMethod(m))).collect();
         }
         TypeTraitItem(at) => {
-            SmallVector::one(TypeTraitItem(P(
-                        folder.fold_associated_type(
-                            (*at).clone()))))
+            TypeTraitItem(folder.fold_associated_type(at))
         }
-    }
+    })))
 }
 
-pub fn noop_fold_impl_item<T: Folder>(i: ImplItem, folder: &mut T) -> SmallVector<ImplItem> {
-    match i {
-        MethodImplItem(ref x) => {
-            folder.fold_method((*x).clone()).into_iter().map(|m| MethodImplItem(m)).collect()
+pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T)
+                                      -> SmallVector<P<ImplItem>> {
+    i.and_then(|i| match i {
+        MethodImplItem(x) => {
+            folder.fold_method(x).into_iter().map(|m| P(MethodImplItem(m))).collect()
         }
-        TypeImplItem(ref t) => {
-            SmallVector::one(TypeImplItem(
-                    P(folder.fold_typedef((**t).clone()))))
+        TypeImplItem(t) => {
+            SmallVector::one(TypeImplItem(folder.fold_typedef(t)))
         }
-    }
+    })
 }
 
 pub fn noop_fold_type_method<T: Folder>(m: TypeMethod, fld: &mut T) -> TypeMethod {
@@ -1173,8 +1169,9 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: P<ForeignItem>, folder: &mut T) -> 
 
 // Default fold over a method.
 // Invariant: produces exactly one method.
-pub fn noop_fold_method<T: Folder>(m: P<Method>, folder: &mut T) -> SmallVector<P<Method>> {
-    SmallVector::one(m.map(|Method {id, attrs, node, span}| Method {
+pub fn noop_fold_method<T: Folder>(Method {id, attrs, node, span}: Method, folder: &mut T)
+                                   -> SmallVector<Method> {
+    SmallVector::one(Method {
         id: folder.new_id(id),
         attrs: fold_attrs(attrs, folder),
         node: match node {
@@ -1198,7 +1195,7 @@ pub fn noop_fold_method<T: Folder>(m: P<Method>, folder: &mut T) -> SmallVector<
             MethMac(mac) => MethMac(folder.fold_mac(mac)),
         },
         span: folder.new_span(span)
-    }))
+    })
 }
 
 pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {

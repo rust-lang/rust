@@ -631,17 +631,16 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             // For each method, construct a suitable ty::Method and
             // store it into the `tcx.impl_or_trait_items` table:
             for trait_item in trait_items {
-                match *trait_item {
+                match **trait_item {
                     ast::RequiredMethod(_) |
                     ast::ProvidedMethod(_) => {
-                        let ty_method = Rc::new(match *trait_item {
+                        let ty_method = Rc::new(match **trait_item {
                             ast::RequiredMethod(ref m) => {
                                 ty_method_of_trait_method(
                                     ccx,
                                     trait_id,
                                     &trait_def.generics,
                                     &trait_predicates,
-                                    &trait_items[..],
                                     &m.id,
                                     &m.ident.name,
                                     &m.explicit_self,
@@ -656,7 +655,6 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                     trait_id,
                                     &trait_def.generics,
                                     &trait_predicates,
-                                    &trait_items[..],
                                     &m.id,
                                     &m.pe_ident().name,
                                     m.pe_explicit_self(),
@@ -702,7 +700,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             // Add an entry mapping
             let trait_item_def_ids =
                 Rc::new(trait_items.iter().map(|ti| {
-                    match *ti {
+                    match **ti {
                         ast::RequiredMethod(ref ty_method) => {
                             ty::MethodTraitItemId(local_def(ty_method.id))
                         }
@@ -736,7 +734,6 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                            trait_id: ast::NodeId,
                                            trait_generics: &ty::Generics<'tcx>,
                                            trait_bounds: &ty::GenericPredicates<'tcx>,
-                                           _trait_items: &[ast::TraitItem],
                                            m_id: &ast::NodeId,
                                            m_name: &ast::Name,
                                            m_explicit_self: &ast::ExplicitSelf,
@@ -1016,9 +1013,9 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
 
             let mut methods = Vec::new();
             for impl_item in impl_items {
-                match *impl_item {
+                match **impl_item {
                     ast::MethodImplItem(ref method) => {
-                        methods.push(&**method);
+                        methods.push(method);
                     }
                     ast::TypeImplItem(ref typedef) => {
                         if opt_trait_ref.is_none() {
@@ -1059,7 +1056,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                             parent_visibility);
 
             for impl_item in impl_items {
-                match *impl_item {
+                match **impl_item {
                     ast::MethodImplItem(ref method) => {
                         let body_id = method.pe_body().id;
                         check_method_self_type(ccx,
@@ -1099,9 +1096,9 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             let untransformed_rcvr_ty = ty::mk_self_type(tcx);
             convert_methods(ccx,
                             TraitContainer(local_def(it.id)),
-                            trait_items.iter().filter_map(|m| match *m {
+                            trait_items.iter().filter_map(|m| match **m {
                                 ast::RequiredMethod(_) => None,
-                                ast::ProvidedMethod(ref m) => Some(&**m),
+                                ast::ProvidedMethod(ref m) => Some(m),
                                 ast::TypeTraitItem(_) => None,
                             }),
                             untransformed_rcvr_ty,
@@ -1118,7 +1115,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             // we have a method type stored for every method.
             for trait_item in trait_items {
                 let self_type = ty::mk_self_type(tcx);
-                match *trait_item {
+                match **trait_item {
                     ast::RequiredMethod(ref type_method) => {
                         let rscope = BindingRscope::new();
                         check_method_self_type(ccx,
@@ -1139,7 +1136,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                     ast::TypeTraitItem(ref associated_type) => {
                         convert_associated_type(ccx,
                                                 &*trait_def,
-                                                &**associated_type);
+                                                associated_type);
                     }
                 }
             }
@@ -1354,7 +1351,7 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let associated_type_names: Vec<_> =
         items.iter()
              .filter_map(|item| {
-                 match *item {
+                 match **item {
                      ast::RequiredMethod(_) | ast::ProvidedMethod(_) => None,
                      ast::TypeTraitItem(ref data) => Some(data.ty_param.ident.name),
                  }
@@ -1484,13 +1481,13 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
                                                  ast_generics: &ast::Generics,
                                                  trait_predicates: &ty::GenericPredicates<'tcx>,
                                                  self_trait_ref: &Rc<ty::TraitRef<'tcx>>,
-                                                 trait_items: &[ast::TraitItem])
+                                                 trait_items: &[P<ast::TraitItem>])
                                                  -> Vec<ty::Predicate<'tcx>>
     {
         trait_items
             .iter()
             .flat_map(|trait_item| {
-                let assoc_type_def = match *trait_item {
+                let assoc_type_def = match **trait_item {
                     ast::TypeTraitItem(ref assoc_type) => &assoc_type.ty_param,
                     ast::RequiredMethod(..) | ast::ProvidedMethod(..) => {
                         return vec!().into_iter();

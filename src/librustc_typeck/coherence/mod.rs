@@ -279,7 +279,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 let mut items: Vec<ImplOrTraitItemId> =
                         ast_items.iter()
                                  .map(|ast_item| {
-                            match *ast_item {
+                            match **ast_item {
                                 ast::MethodImplItem(ref ast_method) => {
                                     MethodTraitItemId(
                                         local_def(ast_method.id))

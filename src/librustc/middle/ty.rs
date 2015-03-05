@@ -5080,39 +5080,23 @@ pub fn provided_source(cx: &ctxt, id: ast::DefId) -> Option<ast::DefId> {
 pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                     -> Vec<Rc<Method<'tcx>>> {
     if is_local(id) {
-        match cx.map.find(id.node) {
-            Some(ast_map::NodeItem(item)) => {
-                match item.node {
-                    ItemTrait(_, _, _, ref ms) => {
-                        let (_, p) =
-                            ast_util::split_trait_methods(&ms[..]);
-                        p.iter()
-                         .map(|m| {
-                            match impl_or_trait_item(
-                                    cx,
-                                    ast_util::local_def(m.id)) {
-                                MethodTraitItem(m) => m,
-                                TypeTraitItem(_) => {
-                                    cx.sess.bug("provided_trait_methods(): \
-                                                 split_trait_methods() put \
-                                                 associated types in the \
-                                                 provided method bucket?!")
-                                }
-                            }
-                         }).collect()
+        if let ItemTrait(_, _, _, ref ms) = cx.map.expect_item(id.node).node {
+            ms.iter().filter_map(|ti| {
+                if let ast::ProvidedMethod(ref m) = **ti {
+                    match impl_or_trait_item(cx, ast_util::local_def(m.id)) {
+                        MethodTraitItem(m) => Some(m),
+                        TypeTraitItem(_) => {
+                            cx.sess.bug("provided_trait_methods(): \
+                                         associated type found from \
+                                         looking up ProvidedMethod?!")
+                        }
                     }
-                    _ => {
-                        cx.sess.bug(&format!("provided_trait_methods: `{:?}` is \
-                                             not a trait",
-                                            id))
-                    }
+                } else {
+                    None
                 }
-            }
-            _ => {
-                cx.sess.bug(&format!("provided_trait_methods: `{:?}` is not a \
-                                     trait",
-                                    id))
-            }
+            }).collect()
+        } else {
+            cx.sess.bug(&format!("provided_trait_methods: `{:?}` is not a trait", id))
         }
     } else {
         csearch::get_provided_trait_methods(cx, id)

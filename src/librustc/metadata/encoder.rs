@@ -851,7 +851,7 @@ fn encode_info_for_associated_type(ecx: &EncodeContext,
                                    associated_type: &ty::AssociatedType,
                                    impl_path: PathElems,
                                    parent_id: NodeId,
-                                   typedef_opt: Option<P<ast::Typedef>>) {
+                                   typedef_opt: Option<&ast::Typedef>) {
     debug!("encode_info_for_associated_type({:?},{:?})",
            associated_type.def_id,
            token::get_name(associated_type.name));
@@ -873,13 +873,9 @@ fn encode_info_for_associated_type(ecx: &EncodeContext,
     let elem = ast_map::PathName(associated_type.name);
     encode_path(rbml_w, impl_path.chain(Some(elem).into_iter()));
 
-    match typedef_opt {
-        None => {}
-        Some(typedef) => {
-            encode_attributes(rbml_w, &typedef.attrs);
-            encode_type(ecx, rbml_w, ty::node_id_to_type(ecx.tcx,
-                                                         typedef.id));
-        }
+    if let Some(typedef) = typedef_opt {
+        encode_attributes(rbml_w, &typedef.attrs);
+        encode_type(ecx, rbml_w, ty::node_id_to_type(ecx.tcx, typedef.id));
     }
 
     rbml_w.end_tag();
@@ -1226,7 +1222,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         let num_implemented_methods = ast_items.len();
         for (i, &trait_item_def_id) in items.iter().enumerate() {
             let ast_item = if i < num_implemented_methods {
-                Some(&ast_items[i])
+                Some(&*ast_items[i])
             } else {
                 None
             };
@@ -1265,7 +1261,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                                     &**associated_type,
                                                     path.clone(),
                                                     item.id,
-                                                    Some((*typedef).clone()))
+                                                    Some(typedef))
                 }
                 (ty::TypeTraitItem(ref associated_type), _) => {
                     encode_info_for_associated_type(ecx,
@@ -1387,7 +1383,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
 
             encode_parent_sort(rbml_w, 't');
 
-            let trait_item = &ms[i];
+            let trait_item = &*ms[i];
             let encode_trait_item = |rbml_w: &mut Encoder| {
                 // If this is a static method, we've already
                 // encoded this.
@@ -1397,15 +1393,15 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     encode_bounds_and_type_for_item(rbml_w, ecx, item_def_id.def_id().local_id());
                 }
             };
-            match trait_item {
-                &ast::RequiredMethod(ref m) => {
+            match *trait_item {
+                ast::RequiredMethod(ref m) => {
                     encode_attributes(rbml_w, &m.attrs);
                     encode_trait_item(rbml_w);
                     encode_item_sort(rbml_w, 'r');
                     encode_method_argument_names(rbml_w, &*m.decl);
                 }
 
-                &ast::ProvidedMethod(ref m) => {
+                ast::ProvidedMethod(ref m) => {
                     encode_attributes(rbml_w, &m.attrs);
                     encode_trait_item(rbml_w);
                     encode_item_sort(rbml_w, 'p');
@@ -1413,7 +1409,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     encode_method_argument_names(rbml_w, &*m.pe_fn_decl());
                 }
 
-                &ast::TypeTraitItem(ref associated_type) => {
+                ast::TypeTraitItem(ref associated_type) => {
                     encode_attributes(rbml_w,
                                       &associated_type.attrs);
                     encode_item_sort(rbml_w, 't');

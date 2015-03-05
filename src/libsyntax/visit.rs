@@ -144,7 +144,7 @@ pub fn walk_inlined_item<'v,V>(visitor: &mut V, item: &'v InlinedItem)
         IIForeign(ref i) => visitor.visit_foreign_item(&**i),
         IITraitItem(_, ref ti) => visitor.visit_trait_item(ti),
         IIImplItem(_, MethodImplItem(ref m)) => {
-            walk_method_helper(visitor, &**m)
+            walk_method_helper(visitor, m)
         }
         IIImplItem(_, TypeImplItem(ref typedef)) => {
             visitor.visit_ident(typedef.span, typedef.ident);
@@ -294,9 +294,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             }
             visitor.visit_ty(&**typ);
             for impl_item in impl_items {
-                match *impl_item {
+                match **impl_item {
                     MethodImplItem(ref method) => {
-                        walk_method_helper(visitor, &**method)
+                        walk_method_helper(visitor, method)
                     }
                     TypeImplItem(ref typedef) => {
                         visitor.visit_ident(typedef.span, typedef.ident);
@@ -678,7 +678,7 @@ pub fn walk_ty_method<'v, V: Visitor<'v>>(visitor: &mut V, method_type: &'v Type
 pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_method: &'v TraitItem) {
     match *trait_method {
         RequiredMethod(ref method_type) => visitor.visit_ty_method(method_type),
-        ProvidedMethod(ref method) => walk_method_helper(visitor, &**method),
+        ProvidedMethod(ref method) => walk_method_helper(visitor, method),
         TypeTraitItem(ref associated_type) => {
             walk_ty_param(visitor, &associated_type.ty_param);
         }

@@ -739,9 +739,9 @@ pub fn check_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
           }
 
         for impl_item in impl_items {
-            match *impl_item {
+            match **impl_item {
                 ast::MethodImplItem(ref m) => {
-                    check_method_body(ccx, &impl_pty.generics, &**m);
+                    check_method_body(ccx, &impl_pty.generics, m);
                 }
                 ast::TypeImplItem(_) => {
                     // Nothing to do here.
@@ -754,13 +754,13 @@ pub fn check_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
         check_trait_on_unimplemented(ccx, generics, it);
         let trait_def = ty::lookup_trait_def(ccx.tcx, local_def(it.id));
         for trait_method in trait_methods {
-            match *trait_method {
+            match **trait_method {
                 RequiredMethod(..) => {
                     // Nothing to do, since required methods don't have
                     // bodies to check.
                 }
                 ProvidedMethod(ref m) => {
-                    check_method_body(ccx, &trait_def.generics, &**m);
+                    check_method_body(ccx, &trait_def.generics, m);
                 }
                 TypeTraitItem(_) => {
                     // Nothing to do.
@@ -876,7 +876,7 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                             impl_span: Span,
                                             impl_trait_ref: &ty::TraitRef<'tcx>,
-                                            impl_items: &[ast::ImplItem]) {
+                                            impl_items: &[P<ast::ImplItem>]) {
     // Locate trait methods
     let tcx = ccx.tcx;
     let trait_items = ty::trait_items(tcx, impl_trait_ref.def_id);
@@ -884,7 +884,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // Check existing impl methods to see if they are both present in trait
     // and compatible with trait signature
     for impl_item in impl_items {
-        match *impl_item {
+        match **impl_item {
             ast::MethodImplItem(ref impl_method) => {
                 let impl_method_def_id = local_def(impl_method.id);
                 let impl_item_ty = ty::impl_or_trait_item(ccx.tcx,
@@ -978,7 +978,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             ty::MethodTraitItem(ref trait_method) => {
                 let is_implemented =
                     impl_items.iter().any(|ii| {
-                        match *ii {
+                        match **ii {
                             ast::MethodImplItem(ref m) => {
                                 m.pe_ident().name == trait_method.name
                             }
@@ -993,7 +993,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             }
             ty::TypeTraitItem(ref associated_type) => {
                 let is_implemented = impl_items.iter().any(|ii| {
-                    match *ii {
+                    match **ii {
                         ast::TypeImplItem(ref typedef) => {
                             typedef.ident.name == associated_type.name
                         }

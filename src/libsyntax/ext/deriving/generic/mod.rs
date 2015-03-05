@@ -386,12 +386,12 @@ impl<'a> TraitDef<'a> {
                            cx: &mut ExtCtxt,
                            type_ident: Ident,
                            generics: &Generics,
-                           methods: Vec<P<ast::Method>>) -> P<ast::Item> {
+                           methods: Vec<ast::Method>) -> P<ast::Item> {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
         // Transform associated types from `deriving::ty::Ty` into `ast::Typedef`
         let associated_types = self.associated_types.iter().map(|&(ident, ref type_def)| {
-            P(ast::Typedef {
+            ast::Typedef {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
                 ident: ident,
@@ -402,7 +402,7 @@ impl<'a> TraitDef<'a> {
                     type_ident,
                     generics
                 ),
-            })
+            }
         });
 
         let Generics { mut lifetimes, ty_params, mut where_clause } =
@@ -517,7 +517,7 @@ impl<'a> TraitDef<'a> {
                                      associated_types.map(|type_| {
                                          ast::TypeImplItem(type_)
                                      })
-                                 ).collect()))
+                                 ).map(P).collect()))
     }
 
     fn expand_struct_def(&self,
@@ -702,7 +702,7 @@ impl<'a> MethodDef<'a> {
                      abi: Abi,
                      explicit_self: ast::ExplicitSelf,
                      arg_types: Vec<(Ident, P<ast::Ty>)> ,
-                     body: P<Expr>) -> P<ast::Method> {
+                     body: P<Expr>) -> ast::Method {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
 
@@ -725,7 +725,7 @@ impl<'a> MethodDef<'a> {
         let body_block = cx.block_expr(body);
 
         // Create the method.
-        P(ast::Method {
+        ast::Method {
             attrs: self.attributes.clone(),
             id: ast::DUMMY_NODE_ID,
             span: trait_.span,
@@ -737,7 +737,7 @@ impl<'a> MethodDef<'a> {
                                 fn_decl,
                                 body_block,
                                 ast::Inherited)
-        })
+        }
     }
 
     /// ```

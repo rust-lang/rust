@@ -501,7 +501,7 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     fn visit_trait_item(&mut self, t: &'v ast::TraitItem) {
         match t {
             &ast::TraitItem::ProvidedMethod(_) |
-            &ast::TraitItem::TypeTraitItem(_) => {},
+            &ast::TraitItem::TypeTraitItem(_) => {}
             &ast::TraitItem::RequiredMethod(ref method) => {
                 match ty::impl_or_trait_item(self.tcx(), local_def(method.id)) {
                     ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {

@@ -1307,7 +1307,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse the items in a trait declaration
-    pub fn parse_trait_items(&mut self) -> Vec<TraitItem> {
+    pub fn parse_trait_items(&mut self) -> Vec<P<TraitItem>> {
         self.parse_unspanned_seq(
             &token::OpenDelim(token::Brace),
             &token::CloseDelim(token::Brace),
@@ -1316,7 +1316,7 @@ impl<'a> Parser<'a> {
             let attrs = p.parse_outer_attributes();
 
             if p.eat_keyword(keywords::Type) {
-                TypeTraitItem(P(p.parse_associated_type(attrs)))
+                P(TypeTraitItem(p.parse_associated_type(attrs)))
             } else {
                 let lo = p.span.lo;
 
@@ -1346,7 +1346,7 @@ impl<'a> Parser<'a> {
                   token::Semi => {
                     p.bump();
                     debug!("parse_trait_methods(): parsing required method");
-                    RequiredMethod(TypeMethod {
+                    P(RequiredMethod(TypeMethod {
                         ident: ident,
                         attrs: attrs,
                         unsafety: style,
@@ -1357,7 +1357,7 @@ impl<'a> Parser<'a> {
                         id: ast::DUMMY_NODE_ID,
                         span: mk_sp(lo, hi),
                         vis: vis,
-                    })
+                    }))
                   }
                   token::OpenDelim(token::Brace) => {
                     debug!("parse_trait_methods(): parsing provided method");
@@ -1365,7 +1365,7 @@ impl<'a> Parser<'a> {
                         p.parse_inner_attrs_and_block();
                     let mut attrs = attrs;
                     attrs.push_all(&inner_attrs[..]);
-                    ProvidedMethod(P(ast::Method {
+                    P(ProvidedMethod(ast::Method {
                         attrs: attrs,
                         id: ast::DUMMY_NODE_ID,
                         span: mk_sp(lo, hi),
@@ -4692,7 +4692,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a method in a trait impl
-    pub fn parse_method_with_outer_attributes(&mut self) -> P<Method> {
+    pub fn parse_method_with_outer_attributes(&mut self) -> Method {
         let attrs = self.parse_outer_attributes();
         let visa = self.parse_visibility();
         self.parse_method(attrs, visa)
@@ -4713,7 +4713,7 @@ impl<'a> Parser<'a> {
     pub fn parse_method(&mut self,
                         attrs: Vec<Attribute>,
                         visa: Visibility)
-                        -> P<Method> {
+                        -> Method {
         let lo = self.span.lo;
 
         // code copied from parse_macro_use_or_failure... abstraction!
@@ -4772,12 +4772,12 @@ impl<'a> Parser<'a> {
                  body_span.hi, new_attrs)
             }
         };
-        P(ast::Method {
+        ast::Method {
             attrs: new_attrs,
             id: ast::DUMMY_NODE_ID,
             span: mk_sp(lo, hi),
             node: method_,
-        })
+        }
     }
 
     /// Parse trait Foo { ... }
@@ -4808,7 +4808,7 @@ impl<'a> Parser<'a> {
         (ident, ItemTrait(unsafety, tps, bounds, meths), None)
     }
 
-    fn parse_impl_items(&mut self) -> (Vec<ImplItem>, Vec<Attribute>) {
+    fn parse_impl_items(&mut self) -> (Vec<P<ImplItem>>, Vec<Attribute>) {
         let mut impl_items = Vec::new();
         self.expect(&token::OpenDelim(token::Brace));
         let (inner_attrs, mut method_attrs) =
@@ -4821,13 +4821,13 @@ impl<'a> Parser<'a> {
 
             let vis = self.parse_visibility();
             if self.eat_keyword(keywords::Type) {
-                impl_items.push(TypeImplItem(P(self.parse_typedef(
+                impl_items.push(P(TypeImplItem(self.parse_typedef(
                             method_attrs,
                             vis))))
             } else {
-                impl_items.push(MethodImplItem(self.parse_method(
+                impl_items.push(P(MethodImplItem(self.parse_method(
                             method_attrs,
-                            vis)));
+                            vis))));
             }
             method_attrs = vec![];
         }

@@ -12,8 +12,7 @@ pub use self::AnnNode::*;
 
 use abi;
 use ast;
-use ast::{MethodImplItem, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
-use ast::{RequiredMethod, ProvidedMethod, TypeImplItem, TypeTraitItem};
+use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast_util;
 use attr;
 use owned_slice::OwnedSlice;
@@ -977,12 +976,12 @@ impl<'a> State<'a> {
                 try!(self.bopen());
                 try!(self.print_inner_attributes(&item.attrs));
                 for impl_item in impl_items {
-                    match *impl_item {
+                    match **impl_item {
                         ast::MethodImplItem(ref meth) => {
-                            try!(self.print_method(&**meth));
+                            try!(self.print_method(meth));
                         }
                         ast::TypeImplItem(ref typ) => {
-                            try!(self.print_typedef(&**typ));
+                            try!(self.print_typedef(typ));
                         }
                     }
                 }
@@ -1258,16 +1257,16 @@ impl<'a> State<'a> {
     pub fn print_trait_method(&mut self,
                               m: &ast::TraitItem) -> io::Result<()> {
         match *m {
-            RequiredMethod(ref ty_m) => self.print_ty_method(ty_m),
-            ProvidedMethod(ref m) => self.print_method(&**m),
-            TypeTraitItem(ref t) => self.print_associated_type(&**t),
+            ast::RequiredMethod(ref ty_m) => self.print_ty_method(ty_m),
+            ast::ProvidedMethod(ref m) => self.print_method(m),
+            ast::TypeTraitItem(ref t) => self.print_associated_type(t),
         }
     }
 
     pub fn print_impl_item(&mut self, ii: &ast::ImplItem) -> io::Result<()> {
         match *ii {
-            MethodImplItem(ref m) => self.print_method(&**m),
-            TypeImplItem(ref td) => self.print_typedef(&**td),
+            ast::MethodImplItem(ref m) => self.print_method(m),
+            ast::TypeImplItem(ref td) => self.print_typedef(td),
         }
     }
 

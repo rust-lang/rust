@@ -129,56 +129,54 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
              with a non-item parent");
         }
         csearch::FoundAst::Found(&ast::IITraitItem(_, ref trait_item)) => {
-            match *trait_item {
+            let id = match *trait_item {
+                ast::ProvidedMethod(ref mth) => mth.id,
                 ast::RequiredMethod(_) => ccx.sess().bug("found RequiredMethod IITraitItem"),
-                ast::ProvidedMethod(ref mth) => {
-                    ccx.external().borrow_mut().insert(fn_id, Some(mth.id));
-                    ccx.external_srcs().borrow_mut().insert(mth.id, fn_id);
+                ast::TypeTraitItem(_) => ccx.sess().bug("found TypeTraitItem IITraitItem"),
+            };
+            ccx.external().borrow_mut().insert(fn_id, Some(id));
+            ccx.external_srcs().borrow_mut().insert(id, fn_id);
 
-                    ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
+            ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
 
-                    // If this is a default method, we can't look up the
-                    // impl type. But we aren't going to translate anyways, so
-                    // don't.
-                    local_def(mth.id)
-                }
-                ast::TypeTraitItem(_) => {
-                    ccx.sess().bug("found TypeTraitItem IITraitItem")
-                }
-            }
+            // If this is a default method, we can't look up the
+            // impl type. But we aren't going to translate anyways, so
+            // don't.
+            local_def(id)
         }
         csearch::FoundAst::Found(&ast::IIImplItem(impl_did, ref impl_item)) => {
-            match *impl_item {
+            let (id, monomorphic_method) = match *impl_item {
                 ast::MethodImplItem(ref mth) => {
-                    ccx.external().borrow_mut().insert(fn_id, Some(mth.id));
-                    ccx.external_srcs().borrow_mut().insert(mth.id, fn_id);
-
-                    ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
-
                     let impl_tpt = ty::lookup_item_type(ccx.tcx(), impl_did);
                     let unparameterized = impl_tpt.generics.types.is_empty() &&
                             mth.pe_generics().ty_params.is_empty();
 
-                    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-                    if unparameterized {
-                        let llfn = get_item_val(ccx, mth.id);
-                        trans_fn(ccx,
-                                 &*mth.pe_fn_decl(),
-                                 &*mth.pe_body(),
-                                 llfn,
-                                 empty_substs,
-                                 mth.id,
-                                 &[]);
-                        // Use InternalLinkage so LLVM can optimize more
-                        // aggressively.
-                        SetLinkage(llfn, InternalLinkage);
-                    }
-                    local_def(mth.id)
+                    (mth.id, if unparameterized { Some(mth) } else { None })
                 }
                 ast::TypeImplItem(_) => {
                     ccx.sess().bug("found TypeImplItem IIImplItem")
                 }
+            };
+
+            ccx.external().borrow_mut().insert(fn_id, Some(id));
+            ccx.external_srcs().borrow_mut().insert(id, fn_id);
+
+            ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
+
+            if let Some(mth) = monomorphic_method {
+                let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
+                let llfn = get_item_val(ccx, mth.id);
+                trans_fn(ccx,
+                         &*mth.pe_fn_decl(),
+                         &*mth.pe_body(),
+                         llfn,
+                         empty_substs,
+                         mth.id,
+                         &[]);
+                // Use InternalLinkage so LLVM can optimize more aggressively.
+                SetLinkage(llfn, InternalLinkage);
             }
+            local_def(id)
         }
     };
 

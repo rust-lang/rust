@@ -82,7 +82,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         Some(ret)
     }
 
-    fn make_methods(self: Box<ParserAnyMacro<'a>>) -> Option<SmallVector<P<ast::Method>>> {
+    fn make_methods(self: Box<ParserAnyMacro<'a>>) -> Option<SmallVector<ast::Method>> {
         let mut ret = SmallVector::zero();
         loop {
             let mut parser = self.parser.borrow_mut();

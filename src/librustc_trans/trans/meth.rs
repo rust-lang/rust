@@ -43,6 +43,7 @@ use syntax::parse::token;
 use syntax::{ast, ast_map, attr, visit};
 use syntax::ast_util::PostExpansionMethod;
 use syntax::codemap::DUMMY_SP;
+use syntax::ptr::P;
 
 // drop_glue pointer, size, align.
 const VTABLE_OFFSET: uint = 3;
@@ -53,7 +54,7 @@ const VTABLE_OFFSET: uint = 3;
 /// see `trans::base::lval_static_fn()` or `trans::base::monomorphic_fn()`.
 pub fn trans_impl(ccx: &CrateContext,
                   name: ast::Ident,
-                  impl_items: &[ast::ImplItem],
+                  impl_items: &[P<ast::ImplItem>],
                   generics: &ast::Generics,
                   id: ast::NodeId) {
     let _icx = push_ctxt("meth::trans_impl");
@@ -66,9 +67,9 @@ pub fn trans_impl(ccx: &CrateContext,
     if !generics.ty_params.is_empty() {
         let mut v = TransItemVisitor{ ccx: ccx };
         for impl_item in impl_items {
-            match *impl_item {
+            match **impl_item {
                 ast::MethodImplItem(ref method) => {
-                    visit::walk_method_helper(&mut v, &**method);
+                    visit::walk_method_helper(&mut v, method);
                 }
                 ast::TypeImplItem(_) => {}
             }
@@ -76,7 +77,7 @@ pub fn trans_impl(ccx: &CrateContext,
         return;
     }
     for impl_item in impl_items {
-        match *impl_item {
+        match **impl_item {
             ast::MethodImplItem(ref method) => {
                 if method.pe_generics().ty_params.len() == 0 {
                     let trans_everywhere = attr::requests_inline(&method.attrs);
@@ -99,7 +100,7 @@ pub fn trans_impl(ccx: &CrateContext,
                 let mut v = TransItemVisitor {
                     ccx: ccx,
                 };
-                visit::walk_method_helper(&mut v, &**method);
+                visit::walk_method_helper(&mut v, method);
             }
             ast::TypeImplItem(_) => {}
         }

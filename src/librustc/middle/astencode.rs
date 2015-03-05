@@ -425,9 +425,9 @@ fn simplify_ast(ii: e::InlinedItemRef) -> ast::InlinedItem {
                 }
                 ast::TypeTraitItem(ref associated_type) => {
                     ast::TypeTraitItem(
-                        P(fold::noop_fold_associated_type(
-                            (**associated_type).clone(),
-                            &mut fld)))
+                        fold::noop_fold_associated_type(
+                            (*associated_type).clone(),
+                            &mut fld))
                 }
             })
         }
@@ -441,7 +441,7 @@ fn simplify_ast(ii: e::InlinedItemRef) -> ast::InlinedItem {
                 }
                 ast::TypeImplItem(ref td) => {
                     ast::TypeImplItem(
-                        P(fold::noop_fold_typedef((**td).clone(), &mut fld)))
+                        fold::noop_fold_typedef((*td).clone(), &mut fld))
                 }
             })
         }

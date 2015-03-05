@@ -1096,7 +1096,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         match this.tcx().map.expect_item(trait_did.node).node {
             ast::ItemTrait(_, _, _, ref trait_items) => {
                 trait_items.iter().filter_map(|i| {
-                    if let ast::TypeTraitItem(ref assoc) = *i {
+                    if let ast::TypeTraitItem(ref assoc) = **i {
                         if assoc.ty_param.ident.name == assoc_name {
                             return Some(ast_util::local_def(assoc.ty_param.id));
                         }

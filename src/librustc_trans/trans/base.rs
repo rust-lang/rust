@@ -1283,7 +1283,7 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
                                   in has_nested_returns")
                 }
                 ast::TypeTraitItem(_) => {
-                    tcx.sess.bug("unexpected variant: type trait item in \
+                    tcx.sess.bug("unexpected variant: associated type trait item in \
                                   has_nested_returns")
                 }
             }
@@ -1299,7 +1299,7 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
                     }
                 }
                 ast::TypeImplItem(_) => {
-                    tcx.sess.bug("unexpected variant: type impl item in \
+                    tcx.sess.bug("unexpected variant: associated type impl item in \
                                   has_nested_returns")
                 }
             }
@@ -2826,18 +2826,18 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                     method in get_item_val()");
                 }
                 ast::ProvidedMethod(ref m) => {
-                    register_method(ccx, id, &**m)
+                    register_method(ccx, id, m)
                 }
             }
         }
 
         ast_map::NodeImplItem(ii) => {
             match *ii {
-                ast::MethodImplItem(ref m) => register_method(ccx, id, &**m),
+                ast::MethodImplItem(ref m) => register_method(ccx, id, m),
                 ast::TypeImplItem(ref typedef) => {
                     ccx.sess().span_bug(typedef.span,
-                                        "unexpected variant: required impl \
-                                         method in get_item_val()")
+                                        "unexpected variant: associated type \
+                                        in get_item_val()")
                 }
             }
         }
