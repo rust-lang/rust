@@ -94,5 +94,13 @@ fn main() {
 
     all_sync_send!(VecMap::<usize>::new(), iter, iter_mut, drain, into_iter, keys, values);
 
-    all_sync_send!(Vec::<usize>::new(), into_iter, drain);
+    all_sync_send!(Vec::<usize>::new(), into_iter);
+
+    let mut vec = Vec::<usize>::new();
+    is_send(vec.drain(..));
+    is_sync(vec.drain(..));
+
+    let mut string = String::new();
+    is_send(string.drain(..));
+    is_sync(string.drain(..));
 }
