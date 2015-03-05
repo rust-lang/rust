@@ -13,6 +13,6 @@ fn asBlock<F>(f: F) -> uint where F: FnOnce() -> uint {
 }
 
 pub fn main() {
-   let x = asBlock(|| 22_usize);
-   assert_eq!(x, 22_usize);
+   let x = asBlock(|| 22);
+   assert_eq!(x, 22);
 }

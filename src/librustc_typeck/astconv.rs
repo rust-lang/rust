@@ -229,18 +229,18 @@ pub fn opt_ast_region_to_region<'tcx>(
                                 }
                             }
                             if len == 1 {
-                                span_help!(this.tcx().sess, default_span,
+                                fileline_help!(this.tcx().sess, default_span,
                                     "this function's return type contains a borrowed value, but \
                                      the signature does not say which {} it is borrowed from",
                                     m);
                             } else if len == 0 {
-                                span_help!(this.tcx().sess, default_span,
+                                fileline_help!(this.tcx().sess, default_span,
                                     "this function's return type contains a borrowed value, but \
                                      there is no value for it to be borrowed from");
-                                span_help!(this.tcx().sess, default_span,
+                                fileline_help!(this.tcx().sess, default_span,
                                     "consider giving it a 'static lifetime");
                             } else {
-                                span_help!(this.tcx().sess, default_span,
+                                fileline_help!(this.tcx().sess, default_span,
                                     "this function's return type contains a borrowed value, but \
                                      the signature does not say whether it is borrowed from {}",
                                     m);
@@ -722,7 +722,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
                 span_err!(this.tcx().sess, span, E0215,
                                          "angle-bracket notation is not stable when \
                                          used with the `Fn` family of traits, use parentheses");
-                span_help!(this.tcx().sess, span,
+                fileline_help!(this.tcx().sess, span,
                            "add `#![feature(unboxed_closures)]` to \
                             the crate attributes to enable");
             }
@@ -736,7 +736,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
                 span_err!(this.tcx().sess, span, E0216,
                                          "parenthetical notation is only stable when \
                                          used with the `Fn` family of traits");
-                span_help!(this.tcx().sess, span,
+                fileline_help!(this.tcx().sess, span,
                            "add `#![feature(unboxed_closures)]` to \
                             the crate attributes to enable");
             }
@@ -963,14 +963,14 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
                       pprust::ty_to_string(ty));
             match ty.node {
                 ast::TyRptr(None, ref mut_ty) => {
-                    span_help!(this.tcx().sess, ty.span,
+                    fileline_help!(this.tcx().sess, ty.span,
                                "perhaps you meant `&{}({} +{})`? (per RFC 438)",
                                ppaux::mutability_to_string(mut_ty.mutbl),
                                pprust::ty_to_string(&*mut_ty.ty),
                                pprust::bounds_to_string(bounds));
                 }
                ast::TyRptr(Some(ref lt), ref mut_ty) => {
-                    span_help!(this.tcx().sess, ty.span,
+                    fileline_help!(this.tcx().sess, ty.span,
                                "perhaps you meant `&{} {}({} +{})`? (per RFC 438)",
                                pprust::lifetime_to_string(lt),
                                ppaux::mutability_to_string(mut_ty.mutbl),
@@ -979,7 +979,7 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
                 }
 
                 _ => {
-                    span_help!(this.tcx().sess, ty.span,
+                    fileline_help!(this.tcx().sess, ty.span,
                                "perhaps you forgot parentheses? (per RFC 438)");
                 }
             }

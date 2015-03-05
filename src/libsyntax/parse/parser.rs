@@ -974,7 +974,7 @@ impl<'a> Parser<'a> {
     }
     pub fn span_fatal_help(&self, sp: Span, m: &str, help: &str) -> ! {
         self.span_err(sp, m);
-        self.span_help(sp, help);
+        self.fileline_help(sp, help);
         panic!(diagnostic::FatalError);
     }
     pub fn span_note(&self, sp: Span, m: &str) {
@@ -982,6 +982,9 @@ impl<'a> Parser<'a> {
     }
     pub fn span_help(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_help(sp, m)
+    }
+    pub fn fileline_help(&self, sp: Span, m: &str) {
+        self.sess.span_diagnostic.fileline_help(sp, m)
     }
     pub fn bug(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(self.span, m)
@@ -2532,7 +2535,7 @@ impl<'a> Parser<'a> {
                             Some(f) => f,
                             None => continue,
                         };
-                        self.span_help(last_span,
+                        self.fileline_help(last_span,
                             &format!("try parenthesizing the first index; e.g., `(foo.{}){}`",
                                     float.trunc() as usize,
                                     &float.fract().to_string()[1..]));
@@ -2943,7 +2946,7 @@ impl<'a> Parser<'a> {
                 self.span_err(op_span,
                     "chained comparison operators require parentheses");
                 if op.node == BiLt && outer_op == BiGt {
-                    self.span_help(op_span,
+                    self.fileline_help(op_span,
                         "use `::<...>` instead of `<...>` if you meant to specify type arguments");
                 }
             }
@@ -4699,7 +4702,7 @@ impl<'a> Parser<'a> {
         match visa {
             Public => {
                 self.span_err(span, "can't qualify macro invocation with `pub`");
-                self.span_help(span, "try adjusting the macro to put `pub` inside \
+                self.fileline_help(span, "try adjusting the macro to put `pub` inside \
                                       the invocation");
             }
             Inherited => (),
@@ -5445,7 +5448,7 @@ impl<'a> Parser<'a> {
                     if self.token.is_ident() { self.bump(); }
 
                     self.span_err(span, "expected `;`, found `as`");
-                    self.span_help(span,
+                    self.fileline_help(span,
                                    &format!("perhaps you meant to enclose the crate name `{}` in \
                                            a string?",
                                           the_ident.as_str()));
@@ -5756,7 +5759,7 @@ impl<'a> Parser<'a> {
             if self.eat_keyword(keywords::Mut) {
                 let last_span = self.last_span;
                 self.span_err(last_span, "const globals cannot be mutable");
-                self.span_help(last_span, "did you mean to declare a static?");
+                self.fileline_help(last_span, "did you mean to declare a static?");
             }
             let (ident, item_, extra_attrs) = self.parse_item_const(None);
             let last_span = self.last_span;

@@ -72,17 +72,17 @@ fn range(lo: uint, hi: uint, it: |uint|) {
     let mut i = lo;
     while i < hi {
         it(i);
-        i += 1_usize;
+        i += 1;
     }
 }
 
 pub fn main() {
-    let range: 'static ||uint|| = |a| range(0_usize, 1000_usize, a);
+    let range: 'static ||uint|| = |a| range(0, 1000, a);
     let filt: 'static ||v: uint|| = |a| filter(
         range,
-        |&&n: uint| n % 3_usize != 0_usize && n % 5_usize != 0_usize,
+        |&&n: uint| n % 3 != 0 && n % 5 != 0,
         a);
-    let sum = foldl(filt, 0_usize, |accum, &&n: uint| accum + n );
+    let sum = foldl(filt, 0, |accum, &&n: uint| accum + n );
 
     println!("{}", sum);
 }

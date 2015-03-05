@@ -11,10 +11,10 @@
 use m::{START, END};
 
 fn main() {
-    match 42u32 {
+    match 42 {
         m::START...m::END => {},
-        0u32...m::END => {},
-        m::START...59u32 => {},
+        0...m::END => {},
+        m::START...59 => {},
         _  => {},
     }
 }

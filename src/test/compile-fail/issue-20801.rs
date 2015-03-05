@@ -25,11 +25,11 @@ fn mut_ref() -> &'static mut T {
 }
 
 fn mut_ptr() -> *mut T {
-    unsafe { 0u8 as *mut T }
+    unsafe { 0 as *mut T }
 }
 
 fn const_ptr() -> *const T {
-    unsafe { 0u8 as *const T }
+    unsafe { 0 as *const T }
 }
 
 pub fn main() {

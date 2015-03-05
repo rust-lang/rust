@@ -10,7 +10,7 @@
 
 
 fn f(p: *const u8) {
-    *p = 0u8; //~ ERROR dereference of unsafe pointer requires unsafe function or block
+    *p = 0; //~ ERROR dereference of unsafe pointer requires unsafe function or block
     return;
 }
 

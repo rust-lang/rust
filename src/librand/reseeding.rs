@@ -215,7 +215,7 @@ mod test {
     const FILL_BYTES_V_LEN: uint = 13579;
     #[test]
     fn test_rng_fill_bytes() {
-        let mut v = repeat(0u8).take(FILL_BYTES_V_LEN).collect::<Vec<_>>();
+        let mut v = repeat(0).take(FILL_BYTES_V_LEN).collect::<Vec<_>>();
         ::test::rng().fill_bytes(&mut v);
 
         // Sanity test: if we've gotten here, `fill_bytes` has not infinitely

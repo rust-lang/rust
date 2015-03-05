@@ -22,5 +22,5 @@ fn f<T>(_x: T) {
 }
 
 pub fn main() {
-    f(C(1_usize));
+    f(C(1));
 }

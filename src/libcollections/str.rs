@@ -10,12 +10,15 @@
 //
 // ignore-lexer-test FIXME #15679
 
-//! Unicode string manipulation (the `str` type).
+//! Unicode string manipulation (the [`str`](../primitive.str.html) type).
 //!
-//! Rust's `str` type is one of the core primitive types of the language. `&str` is the borrowed
-//! string type. This type of string can only be created from other strings, unless it is a static
-//! string (see below). As the word "borrowed" implies, this type of string is owned elsewhere, and
-//! this string cannot be moved out of.
+//! Rust's [`str`](../primitive.str.html) type is one of the core primitive types of the
+//! language. `&str` is the borrowed string type. This type of string can only be created
+//! from other strings, unless it is a `&'static str` (see below). It is not possible to
+//! move out of borrowed strings because they are owned elsewhere.
+//!
+//! Basic operations are implemented directly by the compiler, but more advanced operations are
+//! defined on the [`StrExt`](trait.StrExt.html) trait.
 //!
 //! # Examples
 //!
@@ -383,7 +386,7 @@ macro_rules! utf8_first_byte {
 
 // return the value of $ch updated with continuation byte $byte
 macro_rules! utf8_acc_cont_byte {
-    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as u32)
+    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63) as u32)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2300,8 +2303,8 @@ mod tests {
 
     #[test]
     fn test_chars_decoding() {
-        let mut bytes = [0u8; 4];
-        for c in (0u32..0x110000).filter_map(|c| ::core::char::from_u32(c)) {
+        let mut bytes = [0; 4];
+        for c in (0..0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(&mut bytes).unwrap_or(0);
             let s = ::core::str::from_utf8(&bytes[..len]).unwrap();
             if Some(c) != s.chars().next() {
@@ -2312,8 +2315,8 @@ mod tests {
 
     #[test]
     fn test_chars_rev_decoding() {
-        let mut bytes = [0u8; 4];
-        for c in (0u32..0x110000).filter_map(|c| ::core::char::from_u32(c)) {
+        let mut bytes = [0; 4];
+        for c in (0..0x110000).filter_map(|c| ::core::char::from_u32(c)) {
             let len = c.encode_utf8(&mut bytes).unwrap_or(0);
             let s = ::core::str::from_utf8(&bytes[..len]).unwrap();
             if Some(c) != s.chars().rev().next() {

@@ -80,13 +80,13 @@ mod imp {
     }
 
     fn getrandom_next_u32() -> u32 {
-        let mut buf: [u8; 4] = [0u8; 4];
+        let mut buf: [u8; 4] = [0; 4];
         getrandom_fill_bytes(&mut buf);
         unsafe { mem::transmute::<[u8; 4], u32>(buf) }
     }
 
     fn getrandom_next_u64() -> u64 {
-        let mut buf: [u8; 8] = [0u8; 8];
+        let mut buf: [u8; 8] = [0; 8];
         getrandom_fill_bytes(&mut buf);
         unsafe { mem::transmute::<[u8; 8], u64>(buf) }
     }
@@ -231,12 +231,12 @@ mod imp {
 
     impl Rng for OsRng {
         fn next_u32(&mut self) -> u32 {
-            let mut v = [0u8; 4];
+            let mut v = [0; 4];
             self.fill_bytes(&mut v);
             unsafe { mem::transmute(v) }
         }
         fn next_u64(&mut self) -> u64 {
-            let mut v = [0u8; 8];
+            let mut v = [0; 8];
             self.fill_bytes(&mut v);
             unsafe { mem::transmute(v) }
         }
@@ -318,12 +318,12 @@ mod imp {
 
     impl Rng for OsRng {
         fn next_u32(&mut self) -> u32 {
-            let mut v = [0u8; 4];
+            let mut v = [0; 4];
             self.fill_bytes(&mut v);
             unsafe { mem::transmute(v) }
         }
         fn next_u64(&mut self) -> u64 {
-            let mut v = [0u8; 8];
+            let mut v = [0; 8];
             self.fill_bytes(&mut v);
             unsafe { mem::transmute(v) }
         }
@@ -366,7 +366,7 @@ mod test {
         r.next_u32();
         r.next_u64();
 
-        let mut v = [0u8; 1000];
+        let mut v = [0; 1000];
         r.fill_bytes(&mut v);
     }
 
@@ -386,7 +386,7 @@ mod test {
                 // as possible (XXX: is this a good test?)
                 let mut r = OsRng::new().unwrap();
                 thread::yield_now();
-                let mut v = [0u8; 1000];
+                let mut v = [0; 1000];
 
                 for _ in 0..100 {
                     r.next_u32();

@@ -53,7 +53,7 @@
 //! assert!(b == c);
 //!
 //! let d : (u32, f32) = Default::default();
-//! assert_eq!(d, (0u32, 0.0f32));
+//! assert_eq!(d, (0, 0.0f32));
 //! ```
 
 #![doc(primitive = "tuple")]

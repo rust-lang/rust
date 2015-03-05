@@ -246,7 +246,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                                 "pattern binding `{}` is named the same as one \
                                  of the variants of the type `{}`",
                                 &token::get_ident(ident.node), ty_to_string(cx.tcx, pat_ty));
-                            span_help!(cx.tcx.sess, p.span,
+                            fileline_help!(cx.tcx.sess, p.span,
                                 "if you meant to match on a variant, \
                                  consider making the path in the pattern qualified: `{}::{}`",
                                 ty_to_string(cx.tcx, pat_ty), &token::get_ident(ident.node));

@@ -643,7 +643,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             ol,
                             moved_lp_msg,
                             pat_ty.user_string(self.tcx)));
-                self.tcx.sess.span_help(span,
+                self.tcx.sess.fileline_help(span,
                     "use `ref` to override");
             }
 
@@ -675,7 +675,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             moved_lp_msg,
                             expr_ty.user_string(self.tcx),
                             suggestion));
-                self.tcx.sess.span_help(expr_span, help);
+                self.tcx.sess.fileline_help(expr_span, help);
             }
         }
 
@@ -739,6 +739,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
     pub fn span_help(&self, s: Span, m: &str) {
         self.tcx.sess.span_help(s, m);
+    }
+
+    pub fn fileline_help(&self, s: Span, m: &str) {
+        self.tcx.sess.fileline_help(s, m);
     }
 
     pub fn bckerr_to_string(&self, err: &BckError<'tcx>) -> String {
@@ -870,7 +874,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
 
         if is_closure {
-            self.tcx.sess.span_help(
+            self.tcx.sess.fileline_help(
                 span,
                 "closures behind references must be called via `&mut`");
         }

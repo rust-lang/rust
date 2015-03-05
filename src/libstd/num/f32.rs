@@ -824,14 +824,14 @@ mod tests {
 
     #[test]
     fn test_integer_decode() {
-        assert_eq!(3.14159265359f32.integer_decode(), (13176795u64, -22i16, 1i8));
-        assert_eq!((-8573.5918555f32).integer_decode(), (8779358u64, -10i16, -1i8));
-        assert_eq!(2f32.powf(100.0).integer_decode(), (8388608u64, 77i16, 1i8));
-        assert_eq!(0f32.integer_decode(), (0u64, -150i16, 1i8));
-        assert_eq!((-0f32).integer_decode(), (0u64, -150i16, -1i8));
-        assert_eq!(INFINITY.integer_decode(), (8388608u64, 105i16, 1i8));
-        assert_eq!(NEG_INFINITY.integer_decode(), (8388608u64, 105i16, -1i8));
-        assert_eq!(NAN.integer_decode(), (12582912u64, 105i16, 1i8));
+        assert_eq!(3.14159265359f32.integer_decode(), (13176795, -22, 1));
+        assert_eq!((-8573.5918555f32).integer_decode(), (8779358, -10, -1));
+        assert_eq!(2f32.powf(100.0).integer_decode(), (8388608, 77, 1));
+        assert_eq!(0f32.integer_decode(), (0, -150, 1));
+        assert_eq!((-0f32).integer_decode(), (0, -150, -1));
+        assert_eq!(INFINITY.integer_decode(), (8388608, 105, 1));
+        assert_eq!(NEG_INFINITY.integer_decode(), (8388608, 105, -1));
+        assert_eq!(NAN.integer_decode(), (12582912, 105, 1));
     }
 
     #[test]

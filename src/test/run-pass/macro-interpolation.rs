@@ -24,6 +24,6 @@ macro_rules! overly_complicated {
 
 pub fn main() {
     assert!(overly_complicated!(f, x, Option<uint>, { return Some(x); },
-                               Some(8_usize), Some(y), y) == 8_usize)
+                               Some(8), Some(y), y) == 8)
 
 }

@@ -32,13 +32,13 @@ impl<T:Clone> ToOpt for Option<T> {
 }
 
 fn function<T:ToOpt + Clone>(counter: usize, t: T) {
-    if counter > 0_usize {
-        function(counter - 1_usize, t.to_option());
+    if counter > 0 {
+        function(counter - 1, t.to_option());
         // FIXME(#4287) Error message should be here. It should be
         // a type error to instantiate `test` at a type other than T.
     }
 }
 
 fn main() {
-    function(22_usize, 22_usize);
+    function(22, 22);
 }

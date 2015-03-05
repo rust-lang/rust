@@ -43,15 +43,15 @@ fn start(argc: int, argv: *const *const u8) -> int {
     };
     let me = &*args[0];
 
-    let x: &[u8] = &[1u8];
+    let x: &[u8] = &[1];
     pass(Command::new(me).arg(x).output().unwrap());
-    let x: &[u8] = &[2u8];
+    let x: &[u8] = &[2];
     pass(Command::new(me).arg(x).output().unwrap());
-    let x: &[u8] = &[3u8];
+    let x: &[u8] = &[3];
     pass(Command::new(me).arg(x).output().unwrap());
-    let x: &[u8] = &[4u8];
+    let x: &[u8] = &[4];
     pass(Command::new(me).arg(x).output().unwrap());
-    let x: &[u8] = &[5u8];
+    let x: &[u8] = &[5];
     pass(Command::new(me).arg(x).output().unwrap());
 
     0

@@ -139,12 +139,12 @@ fn test_ptr_addition() {
 fn test_ptr_subtraction() {
     unsafe {
         let xs = vec![0,1,2,3,4,5,6,7,8,9];
-        let mut idx = 9i8;
+        let mut idx = 9;
         let ptr = xs.as_ptr();
 
-        while idx >= 0i8 {
+        while idx >= 0 {
             assert_eq!(*(ptr.offset(idx as int)), idx as int);
-            idx = idx - 1i8;
+            idx = idx - 1;
         }
 
         let mut xs_mut = xs;

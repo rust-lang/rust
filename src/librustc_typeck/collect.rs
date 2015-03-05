@@ -1342,7 +1342,7 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             it.span,
             "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling \
              which traits can use parenthetical notation");
-        span_help!(ccx.tcx.sess, it.span,
+        fileline_help!(ccx.tcx.sess, it.span,
                    "add `#![feature(unboxed_closures)]` to \
                     the crate attributes to use it");
     }
