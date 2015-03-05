@@ -45,6 +45,7 @@ the direction the language is evolving in.
 * [0560-integer-overflow.md](text/0560-integer-overflow.md)
 * [0563-remove-ndebug.md](text/0563-remove-ndebug.md)
 * [0572-rustc-attribute.md](text/0572-rustc-attribute.md)
+* [0640-debug-improvements.md](0640-debug-improvements.md)
 * [0702-rangefull-expression.md](text/0702-rangefull-expression.md)
 * [0738-variance.md](text/0738-variance.md)
 * [0769-sound-generic-drop.md](text/0769-sound-generic-drop.md)
