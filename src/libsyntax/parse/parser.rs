@@ -1152,7 +1152,8 @@ impl<'a> Parser<'a> {
             &token::OpenDelim(token::Brace),
             &token::CloseDelim(token::Brace),
             seq_sep_none(),
-            |p| {
+            |p| -> PResult<P<TraitItem>> {
+            maybe_whole!(no_clone p, NtTraitItem);
             let mut attrs = p.parse_outer_attributes();
             let lo = p.span.lo;
 
@@ -2943,6 +2944,8 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_arm_nopanic(&mut self) -> PResult<Arm> {
+        maybe_whole!(no_clone self, NtArm);
+
         let attrs = self.parse_outer_attributes();
         let pats = try!(self.parse_pats());
         let mut guard = None;
@@ -4335,6 +4338,8 @@ impl<'a> Parser<'a> {
 
     /// Parse an impl item.
     pub fn parse_impl_item(&mut self) -> PResult<P<ImplItem>> {
+        maybe_whole!(no_clone self, NtImplItem);
+
         let mut attrs = self.parse_outer_attributes();
         let lo = self.span.lo;
         let vis = try!(self.parse_visibility());

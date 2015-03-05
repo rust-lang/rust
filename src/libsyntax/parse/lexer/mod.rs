@@ -19,7 +19,6 @@ use str::char_at;
 
 use std::borrow::Cow;
 use std::char;
-use std::fmt;
 use std::mem::replace;
 use std::rc::Rc;
 
@@ -70,11 +69,6 @@ pub struct StringReader<'a> {
     /* cached: */
     pub peek_tok: token::Token,
     pub peek_span: Span,
-
-    // FIXME (Issue #16472): This field should go away after ToToken impls
-    // are revised to go directly to token-trees.
-    /// Is \x00<name>,<ctxt>\x00 is interpreted as encoded ast::Ident?
-    read_embedded_ident: bool,
 
     // cache a direct reference to the source text, so that we don't have to
     // retrieve it via `self.filemap.src.as_ref().unwrap()` all the time.
@@ -130,17 +124,6 @@ impl<'a> Reader for TtReader<'a> {
     }
 }
 
-// FIXME (Issue #16472): This function should go away after
-// ToToken impls are revised to go directly to token-trees.
-pub fn make_reader_with_embedded_idents<'b>(span_diagnostic: &'b SpanHandler,
-                                            filemap: Rc<codemap::FileMap>)
-                                            -> StringReader<'b> {
-    let mut sr = StringReader::new_raw(span_diagnostic, filemap);
-    sr.read_embedded_ident = true;
-    sr.advance_token();
-    sr
-}
-
 impl<'a> StringReader<'a> {
     /// For comments.rs, which hackily pokes into pos and curr
     pub fn new_raw<'b>(span_diagnostic: &'b SpanHandler,
@@ -162,7 +145,6 @@ impl<'a> StringReader<'a> {
             /* dummy values; not read */
             peek_tok: token::Eof,
             peek_span: codemap::DUMMY_SP,
-            read_embedded_ident: false,
             source_text: source_text
         };
         sr.bump();
@@ -578,81 +560,6 @@ impl<'a> StringReader<'a> {
         })
     }
 
-    // FIXME (Issue #16472): The scan_embedded_hygienic_ident function
-    // should go away after we revise the syntax::ext::quote::ToToken
-    // impls to go directly to token-trees instead of thing -> string
-    // -> token-trees.  (The function is currently used to resolve
-    // Issues #15750 and #15962.)
-    //
-    // Since this function is only used for certain internal macros,
-    // and the functionality it provides is not exposed to end user
-    // programs, pnkfelix deliberately chose to write it in a way that
-    // favors rustc debugging effectiveness over runtime efficiency.
-
-    /// Scan through input of form \x00name_NNNNNN,ctxt_CCCCCCC\x00
-    /// whence: `NNNNNN` is a string of characters forming an integer
-    /// (the name) and `CCCCCCC` is a string of characters forming an
-    /// integer (the ctxt), separate by a comma and delimited by a
-    /// `\x00` marker.
-    #[inline(never)]
-    fn scan_embedded_hygienic_ident(&mut self) -> ast::Ident {
-        fn bump_expecting_char<'a,D:fmt::Debug>(r: &mut StringReader<'a>,
-                                                c: char,
-                                                described_c: D,
-                                                whence: &str) {
-            match r.curr {
-                Some(r_c) if r_c == c => r.bump(),
-                Some(r_c) => panic!("expected {:?}, hit {:?}, {}", described_c, r_c, whence),
-                None      => panic!("expected {:?}, hit EOF, {}", described_c, whence),
-            }
-        }
-
-        let whence = "while scanning embedded hygienic ident";
-
-        // skip over the leading `\x00`
-        bump_expecting_char(self, '\x00', "nul-byte", whence);
-
-        // skip over the "name_"
-        for c in "name_".chars() {
-            bump_expecting_char(self, c, c, whence);
-        }
-
-        let start_bpos = self.last_pos;
-        let base = 10;
-
-        // find the integer representing the name
-        self.scan_digits(base, base);
-        let encoded_name : u32 = self.with_str_from(start_bpos, |s| {
-            u32::from_str_radix(s, 10).unwrap_or_else(|_| {
-                panic!("expected digits representing a name, got {:?}, {}, range [{:?},{:?}]",
-                      s, whence, start_bpos, self.last_pos);
-            })
-        });
-
-        // skip over the `,`
-        bump_expecting_char(self, ',', "comma", whence);
-
-        // skip over the "ctxt_"
-        for c in "ctxt_".chars() {
-            bump_expecting_char(self, c, c, whence);
-        }
-
-        // find the integer representing the ctxt
-        let start_bpos = self.last_pos;
-        self.scan_digits(base, base);
-        let encoded_ctxt : ast::SyntaxContext = self.with_str_from(start_bpos, |s| {
-            u32::from_str_radix(s, 10).unwrap_or_else(|_| {
-                panic!("expected digits representing a ctxt, got {:?}, {}", s, whence);
-            })
-        });
-
-        // skip over the `\x00`
-        bump_expecting_char(self, '\x00', "nul-byte", whence);
-
-        ast::Ident { name: ast::Name(encoded_name),
-                     ctxt: encoded_ctxt, }
-    }
-
     /// Scan through any digits (base `scan_radix`) or underscores,
     /// and return how many digits there were.
     ///
@@ -1018,20 +925,6 @@ impl<'a> StringReader<'a> {
             let suffix = self.scan_optional_raw_name();
             debug!("next_token_inner: scanned number {:?}, {:?}", num, suffix);
             return token::Literal(num, suffix)
-        }
-
-        if self.read_embedded_ident {
-            match (c.unwrap(), self.nextch(), self.nextnextch()) {
-                ('\x00', Some('n'), Some('a')) => {
-                    let ast_ident = self.scan_embedded_hygienic_ident();
-                    return if self.curr_is(':') && self.nextch_is(':') {
-                        token::Ident(ast_ident, token::ModName)
-                    } else {
-                        token::Ident(ast_ident, token::Plain)
-                    };
-                }
-                _ => {}
-            }
         }
 
         match c.expect("next_token_inner called at EOF") {
