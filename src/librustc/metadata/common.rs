@@ -84,7 +84,6 @@ pub const tag_mod_impl: uint = 0x38;
 pub const tag_item_trait_item: uint = 0x39;
 
 pub const tag_item_trait_ref: uint = 0x3a;
-pub const tag_item_super_trait_ref: uint = 0x3b;
 
 // discriminator value for variants
 pub const tag_disr_val: uint = 0x3c;
@@ -221,8 +220,6 @@ pub const tag_struct_field_id: uint = 0x8b;
 
 pub const tag_attribute_is_sugared_doc: uint = 0x8c;
 
-pub const tag_trait_def_bounds: uint = 0x8d;
-
 pub const tag_items_data_region: uint = 0x8e;
 
 pub const tag_region_param_def: uint = 0x8f;
@@ -255,3 +252,5 @@ pub const tag_paren_sugar: uint = 0xa0;
 
 pub const tag_codemap: uint = 0xa1;
 pub const tag_codemap_filemap: uint = 0xa2;
+
+pub const tag_item_super_predicates: uint = 0xa3;

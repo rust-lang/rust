@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: illegal recursive type
-
-
 type x = Vec<x>;
+//~^ ERROR unsupported cyclic reference
 
 fn main() { let b: x = Vec::new(); }

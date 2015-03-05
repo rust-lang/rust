@@ -175,14 +175,6 @@ pub fn get_provided_trait_methods<'tcx>(tcx: &ty::ctxt<'tcx>,
     decoder::get_provided_trait_methods(cstore.intr.clone(), &*cdata, def.node, tcx)
 }
 
-pub fn get_supertraits<'tcx>(tcx: &ty::ctxt<'tcx>,
-                             def: ast::DefId)
-                             -> Vec<Rc<ty::TraitRef<'tcx>>> {
-    let cstore = &tcx.sess.cstore;
-    let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_supertraits(&*cdata, def.node, tcx)
-}
-
 pub fn get_type_name_if_impl(cstore: &cstore::CStore, def: ast::DefId)
                           -> Option<ast::Name> {
     let cdata = cstore.get_crate_data(def.krate);
@@ -236,6 +228,14 @@ pub fn get_predicates<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId)
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_predicates(&*cdata, def.node, tcx)
+}
+
+pub fn get_super_predicates<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId)
+                                  -> ty::GenericPredicates<'tcx>
+{
+    let cstore = &tcx.sess.cstore;
+    let cdata = cstore.get_crate_data(def.krate);
+    decoder::get_super_predicates(&*cdata, def.node, tcx)
 }
 
 pub fn get_field_type<'tcx>(tcx: &ty::ctxt<'tcx>, class_id: ast::DefId,

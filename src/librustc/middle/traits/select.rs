@@ -1260,19 +1260,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                poly_trait_ref.repr(self.tcx()));
 
         // see whether the object trait can be upcast to the trait we are looking for
-        let obligation_def_id = obligation.predicate.def_id();
-        let upcast_trait_ref = match util::upcast(self.tcx(), poly_trait_ref, obligation_def_id) {
-            Some(r) => r,
-            None => { return; }
-        };
-
-        debug!("assemble_candidates_from_object_ty: upcast_trait_ref={}",
-               upcast_trait_ref.repr(self.tcx()));
-
-        // check whether the upcast version of the trait-ref matches what we are looking for
-        if let Ok(()) = self.infcx.probe(|_| self.match_poly_trait_ref(obligation,
-                                                                       upcast_trait_ref.clone())) {
-            debug!("assemble_candidates_from_object_ty: matched, pushing candidate");
+        let upcast_trait_refs = self.upcast(poly_trait_ref, obligation);
+        if upcast_trait_refs.len() > 1 {
+            // can be upcast in many ways; need more type information
+            candidates.ambiguous = true;
+        } else if upcast_trait_refs.len() == 1 {
             candidates.vec.push(ObjectCandidate);
         }
     }
@@ -1455,9 +1447,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             let principal =
                                 data.principal_trait_ref_with_self_ty(self.tcx(),
                                                                       self.tcx().types.err);
+                            let desired_def_id = obligation.predicate.def_id();
                             for tr in util::supertraits(self.tcx(), principal) {
-                                let td = ty::lookup_trait_def(self.tcx(), tr.def_id());
-                                if td.bounds.builtin_bounds.contains(&bound) {
+                                if tr.def_id() == desired_def_id {
                                     return Ok(If(Vec::new()))
                                 }
                             }
@@ -2063,20 +2055,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         };
 
-        let obligation_def_id = obligation.predicate.def_id();
-        let upcast_trait_ref = match util::upcast(self.tcx(),
-                                                  poly_trait_ref.clone(),
-                                                  obligation_def_id) {
-            Some(r) => r,
-            None => {
-                self.tcx().sess.span_bug(obligation.cause.span,
-                                         &format!("unable to upcast from {} to {}",
-                                                  poly_trait_ref.repr(self.tcx()),
-                                                  obligation_def_id.repr(self.tcx())));
-            }
-        };
+        // Upcast the object type to the obligation type. There must
+        // be exactly one applicable trait-reference; if this were not
+        // the case, we would have reported an ambiguity error rather
+        // than successfully selecting one of the candidates.
+        let upcast_trait_refs = self.upcast(poly_trait_ref.clone(), obligation);
+        assert_eq!(upcast_trait_refs.len(), 1);
+        let upcast_trait_ref = upcast_trait_refs.into_iter().next().unwrap();
 
-        match self.match_poly_trait_ref(obligation, upcast_trait_ref) {
+        match self.match_poly_trait_ref(obligation, upcast_trait_ref.clone()) {
             Ok(()) => { }
             Err(()) => {
                 self.tcx().sess.span_bug(obligation.cause.span,
@@ -2084,7 +2071,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         }
 
-        VtableObjectData { object_ty: self_ty }
+        VtableObjectData { object_ty: self_ty,
+                           upcast_trait_ref: upcast_trait_ref }
     }
 
     fn confirm_fn_pointer_candidate(&mut self,
@@ -2500,6 +2488,32 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         } else {
             obligation.cause.clone()
         }
+    }
+
+    /// Upcasts an object trait-reference into those that match the obligation.
+    fn upcast(&mut self, obj_trait_ref: ty::PolyTraitRef<'tcx>, obligation: &TraitObligation<'tcx>)
+              -> Vec<ty::PolyTraitRef<'tcx>>
+    {
+        debug!("upcast(obj_trait_ref={}, obligation={})",
+               obj_trait_ref.repr(self.tcx()),
+               obligation.repr(self.tcx()));
+
+        let obligation_def_id = obligation.predicate.def_id();
+        let mut upcast_trait_refs = util::upcast(self.tcx(), obj_trait_ref, obligation_def_id);
+
+        // Retain only those upcast versions that match the trait-ref
+        // we are looking for.  In particular, we know that all of
+        // `upcast_trait_refs` apply to the correct trait, but
+        // possibly with incorrect type parameters. For example, we
+        // may be trying to upcast `Foo` to `Bar<i32>`, but `Foo` is
+        // declared as `trait Foo : Bar<u32>`.
+        upcast_trait_refs.retain(|upcast_trait_ref| {
+            let upcast_trait_ref = upcast_trait_ref.clone();
+            self.infcx.probe(|_| self.match_poly_trait_ref(obligation, upcast_trait_ref)).is_ok()
+        });
+
+        debug!("upcast: upcast_trait_refs={}", upcast_trait_refs.repr(self.tcx()));
+        upcast_trait_refs
     }
 }
 
