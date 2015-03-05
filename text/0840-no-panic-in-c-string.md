@@ -85,6 +85,9 @@ reason for that exists; composition is preferred to adding function variants.
 Longer function names, together with a less convenient return value, may deter
 people from using the safer functions.
 
+The panicky functions could also be renamed to `unpack_slice` and `unpack_vec`,
+respectively, to highlight their conceptual proximity to `unpack`.
+
 If the panicky behavior is preserved, plentiful possibilities for DoS attacks
 and other unforeseen failures in the field may be introduced by code oblivious
 to the input constraints.
