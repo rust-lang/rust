@@ -15,7 +15,7 @@
     if (window.playgroundUrl) {
         $('pre.rust').hover(function() {
             var a = $('<a>').text('⇱').attr('class', 'test-arrow');
-            var code = $(this).siblings(".rusttest").text();
+            var code = $(this).prev(".rusttest").text();
             a.attr('href', window.playgroundUrl + '?code=' +
                            encodeURIComponent(code));
             a.attr('target', '_blank');
