@@ -233,13 +233,13 @@ mod tests {
         }
     }
 
-    // FIXME #11530 this fails on android because tests are run as root
-    #[cfg_attr(any(windows, target_os = "android"), ignore)]
     #[test]
     fn bind_error() {
-        match TcpListener::bind("0.0.0.0:1") {
+        match TcpListener::bind("1.1.1.1:9999") {
             Ok(..) => panic!(),
-            Err(e) => assert_eq!(e.kind(), ErrorKind::PermissionDenied),
+            Err(e) =>
+                // EADDRNOTAVAIL is mapped to ConnectionRefused
+                assert_eq!(e.kind(), ErrorKind::ConnectionRefused),
         }
     }
 
