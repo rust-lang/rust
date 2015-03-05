@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-linux #7340 fails on 32-bit Linux
-// ignore-macos #7340 fails on 32-bit macos
-
 use std::mem;
 
 enum Tag<A,B> {
@@ -42,33 +39,34 @@ fn variant_data_is_aligned<A,B>(amnt: uint, u: &Tag<A,B>) -> bool {
 }
 
 pub fn main() {
-    let x = mk_rec(22, 23);
-    assert!(is_aligned(8, &x.tA));
-    assert!(variant_data_is_aligned(8, &x.tA));
-    assert!(is_aligned(8, &x.tB));
-    assert!(variant_data_is_aligned(8, &x.tB));
+    let u64_align = std::mem::min_align_of::<u64>();
+    let x = mk_rec(22u64, 23u64);
+    assert!(is_aligned(u64_align, &x.tA));
+    assert!(variant_data_is_aligned(u64_align, &x.tA));
+    assert!(is_aligned(u64_align, &x.tB));
+    assert!(variant_data_is_aligned(u64_align, &x.tB));
 
-    let x = mk_rec(22, 23);
-    assert!(is_aligned(8, &x.tA));
-    assert!(variant_data_is_aligned(8, &x.tA));
-    assert!(is_aligned(8, &x.tB));
+    let x = mk_rec(22u64, 23u32);
+    assert!(is_aligned(u64_align, &x.tA));
+    assert!(variant_data_is_aligned(u64_align, &x.tA));
+    assert!(is_aligned(u64_align, &x.tB));
     assert!(variant_data_is_aligned(4, &x.tB));
 
-    let x = mk_rec(22, 23);
-    assert!(is_aligned(8, &x.tA));
+    let x = mk_rec(22u32, 23u64);
+    assert!(is_aligned(u64_align, &x.tA));
     assert!(variant_data_is_aligned(4, &x.tA));
-    assert!(is_aligned(8, &x.tB));
-    assert!(variant_data_is_aligned(8, &x.tB));
+    assert!(is_aligned(u64_align, &x.tB));
+    assert!(variant_data_is_aligned(u64_align, &x.tB));
 
-    let x = mk_rec(22, 23);
+    let x = mk_rec(22u32, 23u32);
     assert!(is_aligned(4, &x.tA));
     assert!(variant_data_is_aligned(4, &x.tA));
     assert!(is_aligned(4, &x.tB));
     assert!(variant_data_is_aligned(4, &x.tB));
 
     let x = mk_rec(22f64, 23f64);
-    assert!(is_aligned(8, &x.tA));
-    assert!(variant_data_is_aligned(8, &x.tA));
-    assert!(is_aligned(8, &x.tB));
-    assert!(variant_data_is_aligned(8, &x.tB));
+    assert!(is_aligned(u64_align, &x.tA));
+    assert!(variant_data_is_aligned(u64_align, &x.tA));
+    assert!(is_aligned(u64_align, &x.tB));
+    assert!(variant_data_is_aligned(u64_align, &x.tB));
 }
