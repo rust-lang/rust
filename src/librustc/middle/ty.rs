@@ -1510,7 +1510,7 @@ impl<T> Binder<T> {
     ///
     /// Some examples where `skip_binder` is reasonable:
     /// - extracting the def-id from a PolyTraitRef;
-    /// - compariing the self type of a PolyTraitRef to see if it is equal to
+    /// - comparing the self type of a PolyTraitRef to see if it is equal to
     ///   a type parameter `X`, since the type `X`  does not reference any regions
     pub fn skip_binder(&self) -> &T {
         &self.0

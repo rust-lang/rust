@@ -110,8 +110,8 @@ pub fn elaborate_predicates<'cx, 'tcx>(
 }
 
 impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
-    pub fn filter_to_traits(self) -> JustTraits<Elaborator<'cx, 'tcx>> {
-        JustTraits::new(self)
+    pub fn filter_to_traits(self) -> FilterToTraits<Elaborator<'cx, 'tcx>> {
+        FilterToTraits::new(self)
     }
 
     fn push(&mut self, predicate: &ty::Predicate<'tcx>) {
@@ -193,7 +193,7 @@ impl<'cx, 'tcx> Iterator for Elaborator<'cx, 'tcx> {
 // Supertrait iterator
 ///////////////////////////////////////////////////////////////////////////
 
-pub type Supertraits<'cx, 'tcx> = JustTraits<Elaborator<'cx, 'tcx>>;
+pub type Supertraits<'cx, 'tcx> = FilterToTraits<Elaborator<'cx, 'tcx>>;
 
 pub fn supertraits<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
                               trait_ref: ty::PolyTraitRef<'tcx>)
@@ -215,17 +215,17 @@ pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
 
 /// A filter around an iterator of predicates that makes it yield up
 /// just trait references.
-pub struct JustTraits<I> {
+pub struct FilterToTraits<I> {
     base_iterator: I
 }
 
-impl<I> JustTraits<I> {
-    fn new(base: I) -> JustTraits<I> {
-        JustTraits { base_iterator: base }
+impl<I> FilterToTraits<I> {
+    fn new(base: I) -> FilterToTraits<I> {
+        FilterToTraits { base_iterator: base }
     }
 }
 
-impl<'tcx,I:Iterator<Item=ty::Predicate<'tcx>>> Iterator for JustTraits<I> {
+impl<'tcx,I:Iterator<Item=ty::Predicate<'tcx>>> Iterator for FilterToTraits<I> {
     type Item = ty::PolyTraitRef<'tcx>;
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {

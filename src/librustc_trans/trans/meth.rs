@@ -300,7 +300,9 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   .position(|item| item.def_id() == method_id)
                                   .unwrap();
             let (llfn, ty) =
-                trans_object_shim(ccx, data.object_ty, data.upcast_trait_ref.clone(),
+                trans_object_shim(ccx,
+                                  data.object_ty,
+                                  data.upcast_trait_ref.clone(),
                                   method_offset_in_trait);
             immediate_rvalue(llfn, ty)
         }
@@ -387,8 +389,10 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             Callee { bcx: bcx, data: Fn(llfn) }
         }
         traits::VtableObject(ref data) => {
-            let (llfn, _) = trans_object_shim(bcx.ccx(), data.object_ty,
-                                              data.upcast_trait_ref.clone(), n_method);
+            let (llfn, _) = trans_object_shim(bcx.ccx(),
+                                              data.object_ty,
+                                              data.upcast_trait_ref.clone(),
+                                              n_method);
             Callee { bcx: bcx, data: Fn(llfn) }
         }
         traits::VtableBuiltin(..) |
