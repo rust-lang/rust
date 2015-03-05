@@ -18,11 +18,13 @@ use parse::parser::Parser;
 use ptr::P;
 
 use std::cell::{Cell, RefCell};
-use std::old_io::File;
-use std::rc::Rc;
-use std::num::Int;
-use std::str;
+use std::fs::File;
+use std::io::Read;
 use std::iter;
+use std::num::Int;
+use std::path::{Path, PathBuf};
+use std::rc::Rc;
+use std::str;
 
 #[macro_use]
 pub mod parser;
@@ -39,7 +41,7 @@ pub mod obsolete;
 pub struct ParseSess {
     pub span_diagnostic: SpanHandler, // better be the same as the one in the reader!
     /// Used to determine and report recursive mod inclusions
-    included_mod_stack: RefCell<Vec<Path>>,
+    included_mod_stack: RefCell<Vec<PathBuf>>,
     pub node_id: Cell<ast::NodeId>,
 }
 
@@ -250,24 +252,24 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
             None => sess.span_diagnostic.handler().fatal(msg),
         }
     };
-    let bytes = match File::open(path).read_to_end() {
-        Ok(bytes) => bytes,
+    let mut bytes = Vec::new();
+    match File::open(path).and_then(|mut f| f.read_to_end(&mut bytes)) {
+        Ok(..) => {}
         Err(e) => {
-            err(&format!("couldn't read {:?}: {}",
-                        path.display(), e));
-            unreachable!()
+            err(&format!("couldn't read {:?}: {}", path.display(), e));
+            unreachable!();
         }
     };
     match str::from_utf8(&bytes[..]).ok() {
         Some(s) => {
-            return string_to_filemap(sess, s.to_string(),
-                                     path.as_str().unwrap().to_string())
+            string_to_filemap(sess, s.to_string(),
+                              path.to_str().unwrap().to_string())
         }
         None => {
-            err(&format!("{:?} is not UTF-8 encoded", path.display()))
+            err(&format!("{:?} is not UTF-8 encoded", path.display()));
+            unreachable!();
         }
     }
-    unreachable!()
 }
 
 /// Given a session and a string, add the string to
@@ -751,6 +753,7 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::rc::Rc;
     use serialize::json;
     use codemap::{Span, BytePos, Pos, Spanned, NO_EXPANSION};
     use owned_slice::OwnedSlice;
@@ -855,117 +858,50 @@ mod test {
     }
 
     #[test]
-    fn string_to_tts_1 () {
+    fn string_to_tts_1() {
         let tts = string_to_tts("fn a (b : i32) { b; }".to_string());
-        assert_eq!(json::encode(&tts).unwrap(),
-        "[\
-    {\
-        \"variant\":\"TtToken\",\
-        \"fields\":[\
-            null,\
-            {\
-                \"variant\":\"Ident\",\
-                \"fields\":[\
-                    \"fn\",\
-                    \"Plain\"\
-                ]\
-            }\
-        ]\
-    },\
-    {\
-        \"variant\":\"TtToken\",\
-        \"fields\":[\
-            null,\
-            {\
-                \"variant\":\"Ident\",\
-                \"fields\":[\
-                    \"a\",\
-                    \"Plain\"\
-                ]\
-            }\
-        ]\
-    },\
-    {\
-        \"variant\":\"TtDelimited\",\
-        \"fields\":[\
-            null,\
-            {\
-                \"delim\":\"Paren\",\
-                \"open_span\":null,\
-                \"tts\":[\
-                    {\
-                        \"variant\":\"TtToken\",\
-                        \"fields\":[\
-                            null,\
-                            {\
-                                \"variant\":\"Ident\",\
-                                \"fields\":[\
-                                    \"b\",\
-                                    \"Plain\"\
-                                ]\
-                            }\
-                        ]\
-                    },\
-                    {\
-                        \"variant\":\"TtToken\",\
-                        \"fields\":[\
-                            null,\
-                            \"Colon\"\
-                        ]\
-                    },\
-                    {\
-                        \"variant\":\"TtToken\",\
-                        \"fields\":[\
-                            null,\
-                            {\
-                                \"variant\":\"Ident\",\
-                                \"fields\":[\
-                                    \"i32\",\
-                                    \"Plain\"\
-                                ]\
-                            }\
-                        ]\
-                    }\
-                ],\
-                \"close_span\":null\
-            }\
-        ]\
-    },\
-    {\
-        \"variant\":\"TtDelimited\",\
-        \"fields\":[\
-            null,\
-            {\
-                \"delim\":\"Brace\",\
-                \"open_span\":null,\
-                \"tts\":[\
-                    {\
-                        \"variant\":\"TtToken\",\
-                        \"fields\":[\
-                            null,\
-                            {\
-                                \"variant\":\"Ident\",\
-                                \"fields\":[\
-                                    \"b\",\
-                                    \"Plain\"\
-                                ]\
-                            }\
-                        ]\
-                    },\
-                    {\
-                        \"variant\":\"TtToken\",\
-                        \"fields\":[\
-                            null,\
-                            \"Semi\"\
-                        ]\
-                    }\
-                ],\
-                \"close_span\":null\
-            }\
-        ]\
-    }\
-]"
-        );
+
+        let expected = vec![
+            ast::TtToken(sp(0, 2),
+                         token::Ident(str_to_ident("fn"),
+                         token::IdentStyle::Plain)),
+            ast::TtToken(sp(3, 4),
+                         token::Ident(str_to_ident("a"),
+                         token::IdentStyle::Plain)),
+            ast::TtDelimited(
+                sp(5, 14),
+                Rc::new(ast::Delimited {
+                    delim: token::DelimToken::Paren,
+                    open_span: sp(5, 6),
+                    tts: vec![
+                        ast::TtToken(sp(6, 7),
+                                     token::Ident(str_to_ident("b"),
+                                     token::IdentStyle::Plain)),
+                        ast::TtToken(sp(8, 9),
+                                     token::Colon),
+                        ast::TtToken(sp(10, 13),
+                                     token::Ident(str_to_ident("i32"),
+                                     token::IdentStyle::Plain)),
+                    ],
+                    close_span: sp(13, 14),
+                })),
+            ast::TtDelimited(
+                sp(15, 21),
+                Rc::new(ast::Delimited {
+                    delim: token::DelimToken::Brace,
+                    open_span: sp(15, 16),
+                    tts: vec![
+                        ast::TtToken(sp(17, 18),
+                                     token::Ident(str_to_ident("b"),
+                                     token::IdentStyle::Plain)),
+                        ast::TtToken(sp(18, 19),
+                                     token::Semi)
+                    ],
+                    close_span: sp(20, 21),
+                }))
+        ];
+
+        assert_eq!(tts, expected);
     }
 
     #[test] fn ret_expr() {

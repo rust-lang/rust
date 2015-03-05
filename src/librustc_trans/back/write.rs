@@ -18,17 +18,19 @@ use llvm::{ModuleRef, TargetMachineRef, PassManagerRef, DiagnosticInfoRef, Conte
 use llvm::SMDiagnosticRef;
 use trans::{CrateTranslation, ModuleTranslation};
 use util::common::time;
+use util::common::path2cstr;
 use syntax::codemap;
 use syntax::diagnostic;
 use syntax::diagnostic::{Emitter, Handler, Level, mk_handler};
 
 use std::ffi::{CStr, CString};
-use std::old_io::Command;
-use std::old_io::fs;
+use std::fs;
 use std::iter::Unfold;
+use std::mem;
+use std::path::Path;
+use std::process::{Command, Stdio};
 use std::ptr;
 use std::str;
-use std::mem;
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc::channel;
 use std::thread;
@@ -67,7 +69,7 @@ pub fn write_output_file(
         output: &Path,
         file_type: llvm::FileType) {
     unsafe {
-        let output_c = CString::new(output.as_vec()).unwrap();
+        let output_c = path2cstr(output);
         let result = llvm::LLVMRustWriteOutputFile(
                 target, pm, m, output_c.as_ptr(), file_type);
         if !result {
@@ -424,7 +426,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     if config.emit_no_opt_bc {
         let ext = format!("{}.no-opt.bc", name_extra);
         let out = output_names.with_extension(&ext);
-        let out = CString::new(out.as_vec()).unwrap();
+        let out = path2cstr(&out);
         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
     }
 
@@ -477,7 +479,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                     if config.emit_lto_bc {
                         let name = format!("{}.lto.bc", name_extra);
                         let out = output_names.with_extension(&name);
-                        let out = CString::new(out.as_vec()).unwrap();
+                        let out = path2cstr(&out);
                         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
                     }
                 },
@@ -511,7 +513,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     if config.emit_bc {
         let ext = format!("{}.bc", name_extra);
         let out = output_names.with_extension(&ext);
-        let out = CString::new(out.as_vec()).unwrap();
+        let out = path2cstr(&out);
         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
     }
 
@@ -519,7 +521,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         if config.emit_ir {
             let ext = format!("{}.ll", name_extra);
             let out = output_names.with_extension(&ext);
-            let out = CString::new(out.as_vec()).unwrap();
+            let out = path2cstr(&out);
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 llvm::LLVMRustPrintModule(cpm, llmod, out.as_ptr());
             })
@@ -717,12 +719,11 @@ pub fn run_passes(sess: &Session,
         cmd.arg("-nostdlib");
 
         for index in 0..trans.modules.len() {
-            cmd.arg(crate_output.with_extension(&format!("{}.o", index)));
+            cmd.arg(&crate_output.with_extension(&format!("{}.o", index)));
         }
 
-        cmd.arg("-r")
-           .arg("-o")
-           .arg(windows_output_path.as_ref().unwrap_or(output_path));
+        cmd.arg("-r").arg("-o")
+           .arg(windows_output_path.as_ref().map(|s| &**s).unwrap_or(output_path));
 
         cmd.args(&sess.target.target.options.post_link_args);
 
@@ -730,9 +731,7 @@ pub fn run_passes(sess: &Session,
             println!("{:?}", &cmd);
         }
 
-        cmd.stdin(::std::old_io::process::Ignored)
-           .stdout(::std::old_io::process::InheritFd(1))
-           .stderr(::std::old_io::process::InheritFd(2));
+        cmd.stdin(Stdio::null());
         match cmd.status() {
             Ok(status) => {
                 if !status.success() {
@@ -964,9 +963,9 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
     let pname = get_cc_prog(sess);
     let mut cmd = Command::new(&pname[..]);
 
-    cmd.arg("-c").arg("-o").arg(outputs.path(config::OutputTypeObject))
-                           .arg(outputs.temp_path(config::OutputTypeAssembly));
-    debug!("{:?}", &cmd);
+    cmd.arg("-c").arg("-o").arg(&outputs.path(config::OutputTypeObject))
+                           .arg(&outputs.temp_path(config::OutputTypeAssembly));
+    debug!("{:?}", cmd);
 
     match cmd.output() {
         Ok(prog) => {
@@ -975,8 +974,8 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
                                  pname,
                                  prog.status));
                 sess.note(&format!("{:?}", &cmd));
-                let mut note = prog.error.clone();
-                note.push_all(&prog.output);
+                let mut note = prog.stderr.clone();
+                note.push_all(&prog.stdout);
                 sess.note(str::from_utf8(&note[..]).unwrap());
                 sess.abort_if_errors();
             }

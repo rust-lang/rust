@@ -20,7 +20,9 @@ use print::pprust;
 use ptr::P;
 use util::small_vector::SmallVector;
 
-use std::old_io::File;
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 
 // These macros all relate to the file system; they either return
@@ -97,7 +99,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree
                                         cx.cfg(),
                                         &res_rel_file(cx,
                                                       sp,
-                                                      &Path::new(file)),
+                                                      Path::new(&file)),
                                         true,
                                         None,
                                         sp);
@@ -136,8 +138,10 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Some(f) => f,
         None => return DummyResult::expr(sp)
     };
-    let file = res_rel_file(cx, sp, &Path::new(file));
-    let bytes = match File::open(&file).read_to_end() {
+    let file = res_rel_file(cx, sp, Path::new(&file));
+    let mut bytes = Vec::new();
+    match File::open(&file).and_then(|mut f| f.read_to_end(&mut bytes)) {
+        Ok(..) => {}
         Err(e) => {
             cx.span_err(sp,
                         &format!("couldn't read {}: {}",
@@ -145,7 +149,6 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                                 e));
             return DummyResult::expr(sp);
         }
-        Ok(bytes) => bytes,
     };
     match String::from_utf8(bytes) {
         Ok(src) => {
@@ -172,15 +175,15 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Some(f) => f,
         None => return DummyResult::expr(sp)
     };
-    let file = res_rel_file(cx, sp, &Path::new(file));
-    match File::open(&file).read_to_end() {
+    let file = res_rel_file(cx, sp, Path::new(&file));
+    let mut bytes = Vec::new();
+    match File::open(&file).and_then(|mut f| f.read_to_end(&mut bytes)) {
         Err(e) => {
             cx.span_err(sp,
                         &format!("couldn't read {}: {}", file.display(), e));
             return DummyResult::expr(sp);
         }
-        Ok(bytes) => {
-            let bytes = bytes.iter().cloned().collect();
+        Ok(..) => {
             base::MacEager::expr(cx.expr_lit(sp, ast::LitBinary(Rc::new(bytes))))
         }
     }
@@ -188,14 +191,18 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
 // resolve a file-system path to an absolute file-system path (if it
 // isn't already)
-fn res_rel_file(cx: &mut ExtCtxt, sp: codemap::Span, arg: &Path) -> Path {
+fn res_rel_file(cx: &mut ExtCtxt, sp: codemap::Span, arg: &Path) -> PathBuf {
     // NB: relative paths are resolved relative to the compilation unit
     if !arg.is_absolute() {
-        let mut cu = Path::new(cx.codemap().span_to_filename(sp));
-        cu.pop();
+        let mut cu = PathBuf::new(&cx.codemap().span_to_filename(sp));
+        if cu.parent().is_some() {
+            cu.pop();
+        } else {
+            cu = PathBuf::new("");
+        }
         cu.push(arg);
         cu
     } else {
-        arg.clone()
+        arg.to_path_buf()
     }
 }

@@ -48,7 +48,7 @@
 use serialize::json::Json;
 use syntax::{diagnostic, abi};
 use std::default::Default;
-use std::old_io::fs::PathExtensions;
+use std::io::prelude::*;
 
 mod windows_base;
 mod linux_base;
@@ -302,23 +302,26 @@ impl Target {
         base
     }
 
-    /// Search RUST_TARGET_PATH for a JSON file specifying the given target triple. Note that it
-    /// could also just be a bare filename already, so also check for that. If one of the hardcoded
-    /// targets we know about, just return it directly.
+    /// Search RUST_TARGET_PATH for a JSON file specifying the given target
+    /// triple. Note that it could also just be a bare filename already, so also
+    /// check for that. If one of the hardcoded targets we know about, just
+    /// return it directly.
     ///
-    /// The error string could come from any of the APIs called, including filesystem access and
-    /// JSON decoding.
+    /// The error string could come from any of the APIs called, including
+    /// filesystem access and JSON decoding.
     pub fn search(target: &str) -> Result<Target, String> {
         use std::env;
-        use std::os;
         use std::ffi::OsString;
-        use std::old_io::File;
-        use std::old_path::Path;
+        use std::fs::File;
+        use std::path::{Path, PathBuf};
         use serialize::json;
 
         fn load_file(path: &Path) -> Result<Target, String> {
-            let mut f = try!(File::open(path).map_err(|e| format!("{:?}", e)));
-            let obj = try!(json::from_reader(&mut f).map_err(|e| format!("{:?}", e)));
+            let mut f = try!(File::open(path).map_err(|e| e.to_string()));
+            let mut contents = Vec::new();
+            try!(f.read_to_end(&mut contents).map_err(|e| e.to_string()));
+            let obj = try!(json::from_reader(&mut &contents[..])
+                                .map_err(|e| e.to_string()));
             Ok(Target::from_json(obj))
         }
 
@@ -390,15 +393,16 @@ impl Target {
         let path = {
             let mut target = target.to_string();
             target.push_str(".json");
-            Path::new(target)
+            PathBuf::new(&target)
         };
 
-        let target_path = env::var_os("RUST_TARGET_PATH").unwrap_or(OsString::from_str(""));
+        let target_path = env::var_os("RUST_TARGET_PATH")
+                              .unwrap_or(OsString::from_str(""));
 
         // FIXME 16351: add a sane default search path?
 
-        for dir in os::split_paths(target_path.to_str().unwrap()).iter() {
-            let p =  dir.join(path.clone());
+        for dir in env::split_paths(&target_path) {
+            let p =  dir.join(&path);
             if p.is_file() {
                 return load_file(&p);
             }

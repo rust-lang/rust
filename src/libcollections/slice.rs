@@ -2176,8 +2176,8 @@ mod tests {
     fn test_connect() {
         let v: [Vec<i32>; 0] = [];
         assert_eq!(v.connect(&0), []);
-        assert_eq!([vec![1i], vec![2, 3]].connect(&0), [1, 0, 2, 3]);
-        assert_eq!([vec![1i], vec![2], vec![3]].connect(&0), [1, 0, 2, 0, 3]);
+        assert_eq!([vec![1], vec![2, 3]].connect(&0), [1, 0, 2, 3]);
+        assert_eq!([vec![1], vec![2], vec![3]].connect(&0), [1, 0, 2, 0, 3]);
 
         let v: [&[_]; 2] = [&[1], &[2, 3]];
         assert_eq!(v.connect(&0), [1, 0, 2, 3]);

@@ -19,7 +19,7 @@ pub use self::EntryOrExit::*;
 use middle::cfg;
 use middle::cfg::CFGIndex;
 use middle::ty;
-use std::old_io;
+use std::io;
 use std::usize;
 use std::iter::repeat;
 use syntax::ast;
@@ -103,7 +103,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O> {
     fn pre(&self,
            ps: &mut pprust::State,
-           node: pprust::AnnNode) -> old_io::IoResult<()> {
+           node: pprust::AnnNode) -> io::Result<()> {
         let id = match node {
             pprust::NodeIdent(_) | pprust::NodeName(_) => 0,
             pprust::NodeExpr(expr) => expr.id,
@@ -485,13 +485,15 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
 
         debug!("Dataflow result for {}:", self.analysis_name);
         debug!("{}", {
-            self.pretty_print_to(box old_io::stderr(), blk).unwrap();
+            let mut v = Vec::new();
+            self.pretty_print_to(box &mut v, blk).unwrap();
+            println!("{}", String::from_utf8(v).unwrap());
             ""
         });
     }
 
-    fn pretty_print_to(&self, wr: Box<old_io::Writer+'static>,
-                       blk: &ast::Block) -> old_io::IoResult<()> {
+    fn pretty_print_to<'b>(&self, wr: Box<io::Write + 'b>,
+                           blk: &ast::Block) -> io::Result<()> {
         let mut ps = pprust::rust_printer_annotated(wr, self);
         try!(ps.cbox(pprust::indent_unit));
         try!(ps.ibox(0));

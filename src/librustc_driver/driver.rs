@@ -32,10 +32,10 @@ use super::Compilation;
 use serialize::json;
 
 use std::env;
-use std::os;
 use std::ffi::OsString;
-use std::old_io::fs;
-use std::old_io;
+use std::fs;
+use std::io::{self, Write};
+use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::attr;
@@ -48,8 +48,8 @@ use syntax;
 pub fn compile_input(sess: Session,
                      cfg: ast::CrateConfig,
                      input: &Input,
-                     outdir: &Option<Path>,
-                     output: &Option<Path>,
+                     outdir: &Option<PathBuf>,
+                     output: &Option<PathBuf>,
                      addl_plugins: Option<Vec<String>>,
                      control: CompileController) {
     macro_rules! controller_entry_point{($point: ident, $make_state: expr) => ({
@@ -166,7 +166,7 @@ pub fn anon_src() -> String {
 pub fn source_name(input: &Input) -> String {
     match *input {
         // FIXME (#9639): This needs to handle non-utf8 paths
-        Input::File(ref ifile) => ifile.as_str().unwrap().to_string(),
+        Input::File(ref ifile) => ifile.to_str().unwrap().to_string(),
         Input::Str(_) => anon_src()
     }
 }
@@ -243,12 +243,12 @@ pub struct CompileState<'a, 'ast: 'a, 'tcx: 'a> {
 impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     fn empty(input: &'a Input,
              session: &'a Session,
-             out_dir: &'a Option<Path>)
+             out_dir: &'a Option<PathBuf>)
              -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             input: input,
             session: session,
-            out_dir: out_dir.as_ref(),
+            out_dir: out_dir.as_ref().map(|s| &**s),
             cfg: None,
             krate: None,
             crate_name: None,
@@ -263,7 +263,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
 
     fn state_after_parse(input: &'a Input,
                          session: &'a Session,
-                         out_dir: &'a Option<Path>,
+                         out_dir: &'a Option<PathBuf>,
                          krate: &'a ast::Crate)
                          -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
@@ -274,7 +274,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
 
     fn state_after_expand(input: &'a Input,
                           session: &'a Session,
-                          out_dir: &'a Option<Path>,
+                          out_dir: &'a Option<PathBuf>,
                           expanded_crate: &'a ast::Crate,
                           crate_name: &'a str)
                           -> CompileState<'a, 'ast, 'tcx> {
@@ -287,7 +287,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
 
     fn state_after_write_deps(input: &'a Input,
                               session: &'a Session,
-                              out_dir: &'a Option<Path>,
+                              out_dir: &'a Option<PathBuf>,
                               ast_map: &'a ast_map::Map<'ast>,
                               expanded_crate: &'a ast::Crate,
                               crate_name: &'a str)
@@ -302,7 +302,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
 
     fn state_after_analysis(input: &'a Input,
                             session: &'a Session,
-                            out_dir: &'a Option<Path>,
+                            out_dir: &'a Option<PathBuf>,
                             expanded_crate: &'a ast::Crate,
                             analysis: &'a ty::CrateAnalysis<'tcx>,
                             tcx: &'a ty::ctxt<'tcx>)
@@ -318,7 +318,7 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
 
     fn state_after_llvm(input: &'a Input,
                         session: &'a Session,
-                        out_dir: &'a Option<Path>,
+                        out_dir: &'a Option<PathBuf>,
                         trans: &'a trans::CrateTranslation)
                         -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
@@ -472,7 +472,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             if cfg!(windows) {
                 _old_path = env::var_os("PATH").unwrap_or(_old_path);
                 let mut new_path = sess.host_filesearch(PathKind::All).get_dylib_search_paths();
-                new_path.extend(os::split_paths(_old_path.to_str().unwrap()).into_iter());
+                new_path.extend(env::split_paths(&_old_path));
                 env::set_var("PATH", &env::join_paths(new_path.iter()).unwrap());
             }
             let features = sess.features.borrow();
@@ -717,7 +717,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 
         // Remove assembly source, unless --save-temps was specified
         if !sess.opts.cg.save_temps {
-            fs::unlink(&outputs.temp_path(config::OutputTypeAssembly)).unwrap();
+            fs::remove_file(&outputs.temp_path(config::OutputTypeAssembly)).unwrap();
         }
     } else {
         time(sess.time_passes(), "LLVM passes", (), |_|
@@ -737,7 +737,7 @@ pub fn phase_6_link_output(sess: &Session,
                            outputs: &OutputFilenames) {
     let old_path = env::var_os("PATH").unwrap_or(OsString::from_str(""));
     let mut new_path = sess.host_filesearch(PathKind::All).get_tools_search_paths();
-    new_path.extend(os::split_paths(old_path.to_str().unwrap()).into_iter());
+    new_path.extend(env::split_paths(&old_path));
     env::set_var("PATH", &env::join_paths(new_path.iter()).unwrap());
 
     time(sess.time_passes(), "linking", (), |_|
@@ -793,17 +793,17 @@ fn write_out_deps(sess: &Session,
         _ => return,
     };
 
-    let result = (|| -> old_io::IoResult<()> {
+    let result = (|| -> io::Result<()> {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
         let files: Vec<String> = sess.codemap().files.borrow()
                                    .iter().filter(|fmap| fmap.is_real_file())
                                    .map(|fmap| escape_dep_filename(&fmap.name))
                                    .collect();
-        let mut file = try!(old_io::File::create(&deps_filename));
+        let mut file = try!(fs::File::create(&deps_filename));
         for path in &out_filenames {
-            try!(write!(&mut file as &mut Writer,
-                          "{}: {}\n\n", path.display(), files.connect(" ")));
+            try!(write!(&mut file,
+                        "{}: {}\n\n", path.display(), files.connect(" ")));
         }
         Ok(())
     })();
@@ -896,8 +896,8 @@ pub fn collect_crate_metadata(session: &Session,
 }
 
 pub fn build_output_filenames(input: &Input,
-                              odir: &Option<Path>,
-                              ofile: &Option<Path>,
+                              odir: &Option<PathBuf>,
+                              ofile: &Option<PathBuf>,
                               attrs: &[ast::Attribute],
                               sess: &Session)
                            -> OutputFilenames {
@@ -908,7 +908,7 @@ pub fn build_output_filenames(input: &Input,
             // We want to toss everything after the final '.'
             let dirpath = match *odir {
                 Some(ref d) => d.clone(),
-                None => Path::new(".")
+                None => PathBuf::new(".")
             };
 
             // If a crate name is present, we use it as the link name
@@ -936,8 +936,9 @@ pub fn build_output_filenames(input: &Input,
                 sess.warn("ignoring --out-dir flag due to -o flag.");
             }
             OutputFilenames {
-                out_directory: out_file.dir_path(),
-                out_filestem: out_file.filestem_str().unwrap().to_string(),
+                out_directory: out_file.parent().unwrap().to_path_buf(),
+                out_filestem: out_file.file_stem().unwrap()
+                                      .to_str().unwrap().to_string(),
                 single_output_file: ofile,
                 extra: sess.opts.cg.extra_filename.clone(),
             }

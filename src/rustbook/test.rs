@@ -11,19 +11,19 @@
 //! Implementation of the `test` subcommand. Just a stub for now.
 
 use subcommand::Subcommand;
-use error::CliResult;
-use error::CommandResult;
-use error::Error;
+use error::{err, CliResult, CommandResult};
 use term::Term;
 use book;
-use std::old_io::{Command, File};
-use std::os;
+
+use std::fs::File;
+use std::env;
+use std::process::Command;
 
 struct Test;
 
 pub fn parse_cmd(name: &str) -> Option<Box<Subcommand>> {
     if name == "test" {
-        Some(box Test as Box<Subcommand>)
+        Some(Box::new(Test))
     } else {
         None
     }
@@ -35,11 +35,11 @@ impl Subcommand for Test {
     }
     fn usage(&self) {}
     fn execute(&mut self, term: &mut Term) -> CommandResult<()> {
-        let cwd = os::getcwd().unwrap();
+        let cwd = env::current_dir().unwrap();
         let src = cwd.clone();
 
-        let summary = File::open(&src.join("SUMMARY.md"));
-        match book::parse_summary(summary, &src) {
+        let mut summary = try!(File::open(&src.join("SUMMARY.md")));
+        match book::parse_summary(&mut summary, &src) {
             Ok(book) => {
                 for (_, item) in book.iter() {
                     let output_result = Command::new("rustdoc")
@@ -50,15 +50,15 @@ impl Subcommand for Test {
                         Ok(output) => {
                             if !output.status.success() {
                                 term.err(&format!("{}\n{}",
-                                         String::from_utf8_lossy(&output.output[..]),
-                                         String::from_utf8_lossy(&output.error[..]))[..]);
-                                return Err(box "Some tests failed." as Box<Error>);
+                                         String::from_utf8_lossy(&output.stdout),
+                                         String::from_utf8_lossy(&output.stderr)));
+                                return Err(err("some tests failed"));
                             }
 
                         }
                         Err(e) => {
-                            let message = format!("Could not execute `rustdoc`: {}", e);
-                            return Err(box message as Box<Error>);
+                            let message = format!("could not execute `rustdoc`: {}", e);
+                            return Err(err(&message))
                         }
                     }
                 }
@@ -67,7 +67,7 @@ impl Subcommand for Test {
                 for err in errors {
                     term.err(&err[..]);
                 }
-                return Err(box "There was an error." as Box<Error>);
+                return Err(err("there was an error"))
             }
         }
         Ok(()) // lol

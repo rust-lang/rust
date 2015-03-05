@@ -975,7 +975,7 @@ mod tests {
         struct R;
 
         impl Read for R {
-            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
                 Err(io::Error::new(io::ErrorKind::Other, "", None))
             }
         }

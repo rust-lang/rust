@@ -13,7 +13,8 @@
 //! ncurses-compatible compiled terminfo format parsing (term(5))
 
 use std::collections::HashMap;
-use std::old_io;
+use std::io::prelude::*;
+use std::io;
 use super::super::TermInfo;
 
 // These are the orders ncurses uses in its compiled format (as of 5.9). Not sure if portable.
@@ -158,7 +159,7 @@ pub static stringnames: &'static[&'static str] = &[ "cbt", "_", "cr", "csr", "tb
     "box1"];
 
 /// Parse a compiled terminfo entry, using long capability names if `longnames` is true
-pub fn parse(file: &mut old_io::Reader, longnames: bool)
+pub fn parse(file: &mut Read, longnames: bool)
              -> Result<Box<TermInfo>, String> {
     macro_rules! try { ($e:expr) => (
         match $e {
@@ -182,17 +183,17 @@ pub fn parse(file: &mut old_io::Reader, longnames: bool)
     }
 
     // Check magic number
-    let magic = try!(file.read_le_u16());
+    let magic = try!(read_le_u16(file));
     if magic != 0x011A {
         return Err(format!("invalid magic number: expected {:x}, found {:x}",
                            0x011A as usize, magic as usize));
     }
 
-    let names_bytes          = try!(file.read_le_i16()) as int;
-    let bools_bytes          = try!(file.read_le_i16()) as int;
-    let numbers_count        = try!(file.read_le_i16()) as int;
-    let string_offsets_count = try!(file.read_le_i16()) as int;
-    let string_table_bytes   = try!(file.read_le_i16()) as int;
+    let names_bytes          = try!(read_le_u16(file)) as int;
+    let bools_bytes          = try!(read_le_u16(file)) as int;
+    let numbers_count        = try!(read_le_u16(file)) as int;
+    let string_offsets_count = try!(read_le_u16(file)) as int;
+    let string_table_bytes   = try!(read_le_u16(file)) as int;
 
     assert!(names_bytes          > 0);
 
@@ -212,7 +213,7 @@ pub fn parse(file: &mut old_io::Reader, longnames: bool)
     }
 
     // don't read NUL
-    let bytes = try!(file.read_exact(names_bytes as uint - 1));
+    let bytes = try!(read_exact(file, names_bytes as uint - 1));
     let names_str = match String::from_utf8(bytes) {
         Ok(s)  => s,
         Err(_) => return Err("input not utf-8".to_string()),
@@ -222,12 +223,12 @@ pub fn parse(file: &mut old_io::Reader, longnames: bool)
                                            .map(|s| s.to_string())
                                            .collect();
 
-    try!(file.read_byte()); // consume NUL
+    try!(read_byte(file)); // consume NUL
 
     let mut bools_map = HashMap::new();
     if bools_bytes != 0 {
         for i in 0..bools_bytes {
-            let b = try!(file.read_byte());
+            let b = try!(read_byte(file));
             if b == 1 {
                 bools_map.insert(bnames[i as uint].to_string(), true);
             }
@@ -235,13 +236,13 @@ pub fn parse(file: &mut old_io::Reader, longnames: bool)
     }
 
     if (bools_bytes + names_bytes) % 2 == 1 {
-        try!(file.read_byte()); // compensate for padding
+        try!(read_byte(file)); // compensate for padding
     }
 
     let mut numbers_map = HashMap::new();
     if numbers_count != 0 {
         for i in 0..numbers_count {
-            let n = try!(file.read_le_u16());
+            let n = try!(read_le_u16(file));
             if n != 0xFFFF {
                 numbers_map.insert(nnames[i as uint].to_string(), n);
             }
@@ -253,10 +254,10 @@ pub fn parse(file: &mut old_io::Reader, longnames: bool)
     if string_offsets_count != 0 {
         let mut string_offsets = Vec::with_capacity(10);
         for _ in 0..string_offsets_count {
-            string_offsets.push(try!(file.read_le_u16()));
+            string_offsets.push(try!(read_le_u16(file)));
         }
 
-        let string_table = try!(file.read_exact(string_table_bytes as uint));
+        let string_table = try!(read_exact(file, string_table_bytes as usize));
 
         if string_table.len() != string_table_bytes as uint {
             return Err("error: hit EOF before end of string \
@@ -307,6 +308,25 @@ pub fn parse(file: &mut old_io::Reader, longnames: bool)
         numbers: numbers_map,
         strings: string_map
     })
+}
+
+fn read_le_u16<R: Read + ?Sized>(r: &mut R) -> io::Result<u16> {
+    let mut b = [0; 2];
+    assert_eq!(try!(r.read(&mut b)), 2);
+    Ok((b[0] as u16) | ((b[1] as u16) << 8))
+}
+
+fn read_byte<R: Read + ?Sized>(r: &mut R) -> io::Result<u8> {
+    let mut b = [0; 1];
+    assert_eq!(try!(r.read(&mut b)), 1);
+    Ok(b[0])
+}
+
+fn read_exact<R: Read + ?Sized>(r: &mut R, sz: usize) -> io::Result<Vec<u8>> {
+    let mut v = Vec::with_capacity(sz);
+    try!(r.take(sz as u64).read_to_end(&mut v));
+    assert_eq!(v.len(), sz);
+    Ok(v)
 }
 
 /// Create a dummy TermInfo struct for msys terminals

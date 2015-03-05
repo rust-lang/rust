@@ -29,9 +29,7 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(int_uint)]
-#![feature(old_io)]
 #![feature(libc)]
-#![feature(old_path)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -39,6 +37,11 @@
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(unicode)]
+#![feature(io)]
+#![feature(fs)]
+#![feature(path)]
+#![feature(os)]
+#![feature(tempdir)]
 
 extern crate arena;
 extern crate flate;

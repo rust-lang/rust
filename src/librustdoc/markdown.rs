@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fs::File;
+use std::io::Write;
 use std::old_io;
+use std::path::{PathBuf, Path};
 
 use core;
 use getopts;
@@ -40,10 +43,10 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
 
 /// Render `input` (e.g. "foo.md") into an HTML file in `output`
 /// (e.g. output = "bar" => "bar/foo.html").
-pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
+pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
               external_html: &ExternalHtml, include_toc: bool) -> int {
     let input_p = Path::new(input);
-    output.push(input_p.filestem().unwrap());
+    output.push(input_p.file_stem().unwrap());
     output.set_extension("html");
 
     let mut css = String::new();
@@ -59,7 +62,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
     }
     let playground = playground.unwrap_or("".to_string());
 
-    let mut out = match old_io::File::create(&output) {
+    let mut out = match File::create(&output) {
         Err(e) => {
             let _ = writeln!(&mut old_io::stderr(),
                              "error opening `{}` for writing: {}",

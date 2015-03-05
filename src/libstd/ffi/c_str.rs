@@ -422,15 +422,14 @@ mod tests {
     use prelude::v1::*;
     use super::*;
     use libc;
-    use mem;
 
     #[test]
     fn c_to_rust() {
         let data = b"123\0";
         let ptr = data.as_ptr() as *const libc::c_char;
         unsafe {
-            assert_eq!(c_str_to_bytes(&ptr), b"123");
-            assert_eq!(c_str_to_bytes_with_nul(&ptr), b"123\0");
+            assert_eq!(CStr::from_ptr(ptr).to_bytes(), b"123");
+            assert_eq!(CStr::from_ptr(ptr).to_bytes_with_nul(), b"123\0");
         }
     }
 

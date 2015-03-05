@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[path = "circular_modules_hello.rs"]
-mod circular_modules_hello; //~ ERROR: circular modules
+#![crate_type = "rlib"]
+#![omit_gdb_pretty_printer_section]
 
-pub fn hi_str() -> String {
-    "Hi!".to_string()
+// no-prefer-dynamic
+// compile-flags:-g
+
+pub fn generic_function<T: Clone>(val: T) -> (T, T) {
+    let result = (val.clone(), val.clone());
+    let a_variable: u32 = 123456789;
+    let another_variable: f64 = 123456789.5;
+    zzz();
+    result
 }
 
-fn main() {
-    circular_modules_hello::say_hello();
-}
+#[inline(never)]
+fn zzz() {()}
