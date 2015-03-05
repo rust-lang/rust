@@ -670,7 +670,7 @@ pub trait Reader {
     fn read_le_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
         assert!(nbytes > 0 && nbytes <= 8);
 
-        let mut val = 0u64;
+        let mut val = 0;
         let mut pos = 0;
         let mut i = nbytes;
         while i > 0 {
@@ -694,7 +694,7 @@ pub trait Reader {
     fn read_be_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
         assert!(nbytes > 0 && nbytes <= 8);
 
-        let mut val = 0u64;
+        let mut val = 0;
         let mut i = nbytes;
         while i > 0 {
             i -= 1;
@@ -1078,7 +1078,7 @@ pub trait Writer {
     /// Write a single char, encoded as UTF-8.
     #[inline]
     fn write_char(&mut self, c: char) -> IoResult<()> {
-        let mut buf = [0u8; 4];
+        let mut buf = [0; 4];
         let n = c.encode_utf8(&mut buf).unwrap_or(0);
         self.write_all(&buf[..n])
     }
@@ -1896,7 +1896,7 @@ mod tests {
     fn test_read_at_least() {
         let mut r = BadReader::new(MemReader::new(b"hello, world!".to_vec()),
                                    vec![GoodBehavior(usize::MAX)]);
-        let buf = &mut [0u8; 5];
+        let buf = &mut [0; 5];
         assert!(r.read_at_least(1, buf).unwrap() >= 1);
         assert!(r.read_exact(5).unwrap().len() == 5); // read_exact uses read_at_least
         assert!(r.read_at_least(0, buf).is_ok());

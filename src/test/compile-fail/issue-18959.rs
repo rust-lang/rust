@@ -19,7 +19,7 @@ impl Foo for Thing {
 
 #[inline(never)]
 fn foo(b: &Bar) {
-    b.foo(&0usize)
+    b.foo(&0)
     //~^ ERROR the trait `Foo` is not implemented for the type `Bar`
 }
 

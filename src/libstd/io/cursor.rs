@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn test_mem_reader() {
-        let mut reader = Cursor::new(vec!(0u8, 1, 2, 3, 4, 5, 6, 7));
+        let mut reader = Cursor::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
         let mut buf = [];
         assert_eq!(reader.read(&mut buf), Ok(0));
         assert_eq!(reader.position(), 0);
@@ -259,7 +259,7 @@ mod tests {
 
     #[test]
     fn read_to_end() {
-        let mut reader = Cursor::new(vec!(0u8, 1, 2, 3, 4, 5, 6, 7));
+        let mut reader = Cursor::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
         let mut v = Vec::new();
         reader.read_to_end(&mut v).ok().unwrap();
         assert_eq!(v, [0, 1, 2, 3, 4, 5, 6, 7]);
@@ -267,7 +267,7 @@ mod tests {
 
     #[test]
     fn test_slice_reader() {
-        let in_buf = vec![0u8, 1, 2, 3, 4, 5, 6, 7];
+        let in_buf = vec![0, 1, 2, 3, 4, 5, 6, 7];
         let mut reader = &mut in_buf.as_slice();
         let mut buf = [];
         assert_eq!(reader.read(&mut buf), Ok(0));
@@ -289,7 +289,7 @@ mod tests {
 
     #[test]
     fn test_buf_reader() {
-        let in_buf = vec![0u8, 1, 2, 3, 4, 5, 6, 7];
+        let in_buf = vec![0, 1, 2, 3, 4, 5, 6, 7];
         let mut reader = Cursor::new(in_buf.as_slice());
         let mut buf = [];
         assert_eq!(reader.read(&mut buf), Ok(0));
@@ -335,7 +335,7 @@ mod tests {
         assert_eq!(r.seek(SeekFrom::Start(10)), Ok(10));
         assert_eq!(r.read(&mut [0]), Ok(0));
 
-        let mut r = Cursor::new(vec!(10u8));
+        let mut r = Cursor::new(vec!(10));
         assert_eq!(r.seek(SeekFrom::Start(10)), Ok(10));
         assert_eq!(r.read(&mut [0]), Ok(0));
 
@@ -347,11 +347,11 @@ mod tests {
 
     #[test]
     fn seek_before_0() {
-        let buf = [0xff_u8];
+        let buf = [0xff];
         let mut r = Cursor::new(&buf[..]);
         assert!(r.seek(SeekFrom::End(-2)).is_err());
 
-        let mut r = Cursor::new(vec!(10u8));
+        let mut r = Cursor::new(vec!(10));
         assert!(r.seek(SeekFrom::End(-2)).is_err());
 
         let mut buf = [0];

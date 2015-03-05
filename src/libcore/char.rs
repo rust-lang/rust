@@ -22,13 +22,13 @@ use option::Option;
 use slice::SliceExt;
 
 // UTF-8 ranges and tags for encoding characters
-const TAG_CONT: u8    = 0b1000_0000u8;
-const TAG_TWO_B: u8   = 0b1100_0000u8;
-const TAG_THREE_B: u8 = 0b1110_0000u8;
-const TAG_FOUR_B: u8  = 0b1111_0000u8;
-const MAX_ONE_B: u32   =     0x80u32;
-const MAX_TWO_B: u32   =    0x800u32;
-const MAX_THREE_B: u32 =  0x10000u32;
+const TAG_CONT: u8    = 0b1000_0000;
+const TAG_TWO_B: u8   = 0b1100_0000;
+const TAG_THREE_B: u8 = 0b1110_0000;
+const TAG_FOUR_B: u8  = 0b1111_0000;
+const MAX_ONE_B: u32   =     0x80;
+const MAX_TWO_B: u32   =    0x800;
+const MAX_THREE_B: u32 =  0x10000;
 
 /*
     Lu  Uppercase_Letter        an uppercase letter
@@ -413,7 +413,7 @@ impl CharExt for char {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf16(self) -> usize {
         let ch = self as u32;
-        if (ch & 0xFFFF_u32) == ch { 1 } else { 2 }
+        if (ch & 0xFFFF) == ch { 1 } else { 2 }
     }
 
     #[inline]
@@ -444,19 +444,19 @@ pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> Option<usize> {
         dst[0] = code as u8;
         Some(1)
     } else if code < MAX_TWO_B && dst.len() >= 2 {
-        dst[0] = (code >> 6 & 0x1F_u32) as u8 | TAG_TWO_B;
-        dst[1] = (code & 0x3F_u32) as u8 | TAG_CONT;
+        dst[0] = (code >> 6 & 0x1F) as u8 | TAG_TWO_B;
+        dst[1] = (code & 0x3F) as u8 | TAG_CONT;
         Some(2)
     } else if code < MAX_THREE_B && dst.len() >= 3  {
-        dst[0] = (code >> 12 & 0x0F_u32) as u8 | TAG_THREE_B;
-        dst[1] = (code >>  6 & 0x3F_u32) as u8 | TAG_CONT;
-        dst[2] = (code & 0x3F_u32) as u8 | TAG_CONT;
+        dst[0] = (code >> 12 & 0x0F) as u8 | TAG_THREE_B;
+        dst[1] = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+        dst[2] = (code & 0x3F) as u8 | TAG_CONT;
         Some(3)
     } else if dst.len() >= 4 {
-        dst[0] = (code >> 18 & 0x07_u32) as u8 | TAG_FOUR_B;
-        dst[1] = (code >> 12 & 0x3F_u32) as u8 | TAG_CONT;
-        dst[2] = (code >>  6 & 0x3F_u32) as u8 | TAG_CONT;
-        dst[3] = (code & 0x3F_u32) as u8 | TAG_CONT;
+        dst[0] = (code >> 18 & 0x07) as u8 | TAG_FOUR_B;
+        dst[1] = (code >> 12 & 0x3F) as u8 | TAG_CONT;
+        dst[2] = (code >>  6 & 0x3F) as u8 | TAG_CONT;
+        dst[3] = (code & 0x3F) as u8 | TAG_CONT;
         Some(4)
     } else {
         None
@@ -472,15 +472,15 @@ pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> Option<usize> {
 #[unstable(feature = "core")]
 pub fn encode_utf16_raw(mut ch: u32, dst: &mut [u16]) -> Option<usize> {
     // Marked #[inline] to allow llvm optimizing it away
-    if (ch & 0xFFFF_u32) == ch  && dst.len() >= 1 {
+    if (ch & 0xFFFF) == ch  && dst.len() >= 1 {
         // The BMP falls through (assuming non-surrogate, as it should)
         dst[0] = ch as u16;
         Some(1)
     } else if dst.len() >= 2 {
         // Supplementary planes break into surrogates.
-        ch -= 0x1_0000_u32;
-        dst[0] = 0xD800_u16 | ((ch >> 10) as u16);
-        dst[1] = 0xDC00_u16 | ((ch as u16) & 0x3FF_u16);
+        ch -= 0x1_0000;
+        dst[0] = 0xD800 | ((ch >> 10) as u16);
+        dst[1] = 0xDC00 | ((ch as u16) & 0x3FF);
         Some(2)
     } else {
         None

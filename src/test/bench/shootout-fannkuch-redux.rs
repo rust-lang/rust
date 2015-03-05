@@ -91,7 +91,7 @@ impl Perm {
     }
 
     fn get(&mut self, mut idx: i32) -> P {
-        let mut pp = [0u8; 16];
+        let mut pp = [0; 16];
         self.permcount = idx as u32;
         for (i, place) in self.perm.p.iter_mut().enumerate() {
             *place = i as i32 + 1;
@@ -183,7 +183,7 @@ fn main() {
     let n = std::env::args()
         .nth(1)
         .and_then(|arg| arg.parse().ok())
-        .unwrap_or(2i32);
+        .unwrap_or(2);
 
     let (checksum, maxflips) = fannkuch(n);
     println!("{}\nPfannkuchen({}) = {}", checksum, n, maxflips);

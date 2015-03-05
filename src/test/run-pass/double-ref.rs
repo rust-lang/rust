@@ -9,23 +9,23 @@
 // except according to those terms.
 
 fn check_expr() {
-    let _:         & uint =     &1_usize;
-    let _:       & & uint =    &&1_usize;
-    let _:     & & & uint =   &&&1_usize;
-    let _:     & & & uint =  & &&1_usize;
-    let _:   & & & & uint =  &&&&1_usize;
-    let _:   & & & & uint = & &&&1_usize;
-    let _: & & & & & uint = &&&&&1_usize;
+    let _:         & uint =     &1;
+    let _:       & & uint =    &&1;
+    let _:     & & & uint =   &&&1;
+    let _:     & & & uint =  & &&1;
+    let _:   & & & & uint =  &&&&1;
+    let _:   & & & & uint = & &&&1;
+    let _: & & & & & uint = &&&&&1;
 }
 
 fn check_ty() {
-    let _:     &uint =         & 1_usize;
-    let _:    &&uint =       & & 1_usize;
-    let _:   &&&uint =     & & & 1_usize;
-    let _:  & &&uint =     & & & 1_usize;
-    let _:  &&&&uint =   & & & & 1_usize;
-    let _: & &&&uint =   & & & & 1_usize;
-    let _: &&&&&uint = & & & & & 1_usize;
+    let _:     &uint =         & 1;
+    let _:    &&uint =       & & 1;
+    let _:   &&&uint =     & & & 1;
+    let _:  & &&uint =     & & & 1;
+    let _:  &&&&uint =   & & & & 1;
+    let _: & &&&uint =   & & & & 1;
+    let _: &&&&&uint = & & & & & 1;
 }
 
 fn check_pat() {

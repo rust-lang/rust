@@ -781,7 +781,7 @@ impl<'a> StringReader<'a> {
         self.span_diagnostic
             .span_warn(sp, "\\U00ABCD12 and \\uABCD escapes are deprecated");
         self.span_diagnostic
-            .span_help(sp, "use \\u{ABCD12} escapes instead");
+            .fileline_help(sp, "use \\u{ABCD12} escapes instead");
     }
 
     /// Scan for a single (possibly escaped) byte or char

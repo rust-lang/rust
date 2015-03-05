@@ -14,9 +14,9 @@
 fn main() {
     if let Some(homura) = Some("madoka") { //~  ERROR missing an else clause
                                            //~| expected `()`
-                                           //~| found `i32`
+                                           //~| found `_`
                                            //~| expected ()
-                                           //~| found i32
-        765i32
+                                           //~| found integral variable
+        765
     };
 }

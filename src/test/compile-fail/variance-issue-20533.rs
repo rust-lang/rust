@@ -33,19 +33,19 @@ struct AffineU32(u32);
 
 fn main() {
     {
-        let a = AffineU32(1_u32);
+        let a = AffineU32(1);
         let x = foo(&a);
         drop(a); //~ ERROR cannot move out of `a`
         drop(x);
     }
     {
-        let a = AffineU32(1_u32);
+        let a = AffineU32(1);
         let x = bar(&a);
         drop(a); //~ ERROR cannot move out of `a`
         drop(x);
     }
     {
-        let a = AffineU32(1_u32);
+        let a = AffineU32(1);
         let x = baz(&a);
         drop(a); //~ ERROR cannot move out of `a`
         drop(x);

@@ -354,7 +354,7 @@ impl<'a> Context<'a> {
             }
         }
         if self.rejected_via_kind.len() > 0 {
-            self.sess.span_help(self.span, "please recompile this crate using \
+            self.sess.fileline_help(self.span, "please recompile this crate using \
                                             --crate-type lib");
             let mismatches = self.rejected_via_kind.iter();
             for (i, &CrateMismatch { ref path, .. }) in mismatches.enumerate() {

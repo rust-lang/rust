@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-linux #7340 fails on 32-bit Linux
-// ignore-macos #7340 fails on 32-bit macos
-
 use std::mem;
 
 enum Tag {
@@ -23,15 +20,16 @@ struct Rec {
 }
 
 fn mk_rec() -> Rec {
-    return Rec { c8:0u8, t:Tag::TagInner(0u64) };
+    return Rec { c8:0, t:Tag::TagInner(0) };
 }
 
-fn is_8_byte_aligned(u: &Tag) -> bool {
+fn is_u64_aligned(u: &Tag) -> bool {
     let p: uint = unsafe { mem::transmute(u) };
-    return (p & 7_usize) == 0_usize;
+    let u64_align = std::mem::min_align_of::<u64>();
+    return (p & (u64_align - 1)) == 0;
 }
 
 pub fn main() {
     let x = mk_rec();
-    assert!(is_8_byte_aligned(&x.t));
+    assert!(is_u64_aligned(&x.t));
 }

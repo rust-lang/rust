@@ -30,7 +30,7 @@ use vec::Vec;
 /// # drop(tx);
 /// let mut reader = ChanReader::new(rx);
 ///
-/// let mut buf = [0u8; 100];
+/// let mut buf = [0; 100];
 /// match reader.read(&mut buf) {
 ///     Ok(nread) => println!("Read {} bytes", nread),
 ///     Err(e) => println!("read error: {}", e),
@@ -167,15 +167,15 @@ mod test {
     fn test_rx_reader() {
         let (tx, rx) = channel();
         thread::spawn(move|| {
-          tx.send(vec![1u8, 2u8]).unwrap();
+          tx.send(vec![1, 2]).unwrap();
           tx.send(vec![]).unwrap();
-          tx.send(vec![3u8, 4u8]).unwrap();
-          tx.send(vec![5u8, 6u8]).unwrap();
-          tx.send(vec![7u8, 8u8]).unwrap();
+          tx.send(vec![3, 4]).unwrap();
+          tx.send(vec![5, 6]).unwrap();
+          tx.send(vec![7, 8]).unwrap();
         });
 
         let mut reader = ChanReader::new(rx);
-        let mut buf = [0u8; 3];
+        let mut buf = [0; 3];
 
         assert_eq!(Ok(0), reader.read(&mut []));
 
@@ -233,7 +233,7 @@ mod test {
         let mut writer = ChanWriter::new(tx);
         writer.write_be_u32(42).unwrap();
 
-        let wanted = vec![0u8, 0u8, 0u8, 42u8];
+        let wanted = vec![0, 0, 0, 42];
         let got = thread::scoped(move|| { rx.recv().unwrap() }).join();
         assert_eq!(wanted, got);
 

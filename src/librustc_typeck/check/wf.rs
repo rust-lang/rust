@@ -401,7 +401,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
         match suggested_marker_id {
             Some(def_id) => {
-                self.tcx().sess.span_help(
+                self.tcx().sess.fileline_help(
                     span,
                     format!("consider removing `{}` or using a marker such as `{}`",
                             param_name.user_string(self.tcx()),

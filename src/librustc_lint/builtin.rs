@@ -1921,7 +1921,8 @@ impl LintPass for UnconditionalRecursion {
                 for call in &self_call_spans {
                     sess.span_note(*call, "recursive call site")
                 }
-                sess.span_help(sp, "a `loop` may express intention better if this is on purpose")
+                sess.fileline_help(sp, "a `loop` may express intention \
+                                        better if this is on purpose")
             }
         }
 

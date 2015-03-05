@@ -724,7 +724,7 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
                                               &suf[1..]));
                 } else {
                     sd.span_err(sp, &*format!("illegal suffix `{}` for numeric literal", suf));
-                    sd.span_help(sp, "the suffix must be one of the integral types \
+                    sd.fileline_help(sp, "the suffix must be one of the integral types \
                                       (`u32`, `isize`, etc)");
                 }
 

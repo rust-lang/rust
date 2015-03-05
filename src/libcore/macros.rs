@@ -227,7 +227,7 @@ macro_rules! writeln {
 ///
 /// ```rust
 /// fn divide_by_three(x: u32) -> u32 { // one of the poorest implementations of x/3
-///     for i in std::iter::count(0_u32, 1) {
+///     for i in std::iter::count(0, 1) {
 ///         if 3*i < i { panic!("u32 overflow"); }
 ///         if x < 3*i { return i-1; }
 ///     }
