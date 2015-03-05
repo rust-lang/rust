@@ -147,7 +147,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 ast::ExprPath(..) => {
                     match bcx.def(expr.id) {
                         def::DefConst(did) => {
-                            let expr = consts::get_const_expr(bcx.ccx(), did, expr);
+                            let const_expr = consts::get_const_expr(bcx.ccx(), did, expr);
                             // Temporarily get cleanup scopes out of the way,
                             // as they require sub-expressions to be contained
                             // inside the current AST scope.
@@ -155,7 +155,13 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                             // can't have destructors.
                             let scopes = mem::replace(&mut *bcx.fcx.scopes.borrow_mut(),
                                                       vec![]);
-                            bcx = trans_into(bcx, expr, dest);
+                            // Lock emitted debug locations to the location of
+                            // the constant reference expression.
+                            debuginfo::with_source_location_override(bcx.fcx,
+                                                                     expr.debug_loc(),
+                                                                     || {
+                                bcx = trans_into(bcx, const_expr, dest)
+                            });
                             let scopes = mem::replace(&mut *bcx.fcx.scopes.borrow_mut(),
                                                       scopes);
                             assert!(scopes.is_empty());

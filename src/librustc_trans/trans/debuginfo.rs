@@ -695,6 +695,7 @@ struct FunctionDebugContextData {
     fn_metadata: DISubprogram,
     argument_counter: Cell<uint>,
     source_locations_enabled: Cell<bool>,
+    source_location_override: Cell<bool>,
 }
 
 enum VariableAccess<'a> {
@@ -1174,6 +1175,12 @@ pub fn set_source_location(fcx: &FunctionContext,
             return;
         }
         FunctionDebugContext::RegularContext(box ref function_debug_context) => {
+            if function_debug_context.source_location_override.get() {
+                // Just ignore any attempts to set a new debug location while
+                // the override is active.
+                return;
+            }
+
             let cx = fcx.ccx;
 
             debug!("set_source_location: {}", cx.sess().codemap().span_to_string(span));
@@ -1187,6 +1194,35 @@ pub fn set_source_location(fcx: &FunctionContext,
                                                                   loc.col.to_usize()));
             } else {
                 set_debug_location(cx, UnknownLocation);
+            }
+        }
+    }
+}
+
+/// This function makes sure that all debug locations emitted while executing
+/// `wrapped_function` are set to the given `debug_loc`.
+pub fn with_source_location_override<F, R>(fcx: &FunctionContext,
+                                           debug_loc: DebugLoc,
+                                           wrapped_function: F) -> R
+    where F: FnOnce() -> R
+{
+    match fcx.debug_context {
+        FunctionDebugContext::DebugInfoDisabled => {
+            wrapped_function()
+        }
+        FunctionDebugContext::FunctionWithoutDebugInfo => {
+            set_debug_location(fcx.ccx, UnknownLocation);
+            wrapped_function()
+        }
+        FunctionDebugContext::RegularContext(box ref function_debug_context) => {
+            if function_debug_context.source_location_override.get() {
+                wrapped_function()
+            } else {
+                debug_loc.apply(fcx);
+                function_debug_context.source_location_override.set(true);
+                let result = wrapped_function();
+                function_debug_context.source_location_override.set(false);
+                result
             }
         }
     }
@@ -1412,6 +1448,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         fn_metadata: fn_metadata,
         argument_counter: Cell::new(1),
         source_locations_enabled: Cell::new(false),
+        source_location_override: Cell::new(false),
     };
 
 
