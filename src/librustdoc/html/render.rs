@@ -2209,7 +2209,14 @@ impl<'a> fmt::Display for Sidebar<'a> {
         let it = self.item;
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
 
-        // this is not rendered via JS, as that would hamper the accessibility
+        // the sidebar is designed to display sibling functions, modules and
+        // other miscellaneous informations. since there are lots of sibling
+        // items (and that causes quadratic growth in large modules),
+        // we refactor common parts into a shared JavaScript file per module.
+        // still, we don't move everything into JS because we want to preserve
+        // as much HTML as possible in order to allow non-JS-enabled browsers
+        // to navigate the documentation (though slightly inefficiently).
+
         try!(write!(fmt, "<p class='location'>"));
         for (i, name) in cx.current.iter().take(parentlen).enumerate() {
             if i > 0 {
