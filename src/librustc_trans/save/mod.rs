@@ -33,8 +33,9 @@ use middle::def;
 use middle::ty::{self, Ty};
 
 use std::cell::Cell;
-use std::old_io::{self, File, fs};
 use std::env;
+use std::fs::{self, File};
+use std::path::{Path, PathBuf};
 
 use syntax::ast_util::{self, PostExpansionMethod};
 use syntax::ast::{self, NodeId, DefId};
@@ -1537,6 +1538,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
     }
 }
 
+#[allow(deprecated)]
 pub fn process_crate(sess: &Session,
                      krate: &ast::Crate,
                      analysis: &ty::CrateAnalysis,
@@ -1557,15 +1559,15 @@ pub fn process_crate(sess: &Session,
     info!("Dumping crate {}", cratename);
 
     // find a path to dump our data to
-    let mut root_path = match env::var("DXR_RUST_TEMP_FOLDER") {
-        Ok(val) => Path::new(val),
-        Err(..) => match odir {
+    let mut root_path = match env::var_os("DXR_RUST_TEMP_FOLDER") {
+        Some(val) => PathBuf::new(&val),
+        None => match odir {
             Some(val) => val.join("dxr"),
-            None => Path::new("dxr-temp"),
+            None => PathBuf::new("dxr-temp"),
         },
     };
 
-    match fs::mkdir_recursive(&root_path, old_io::USER_RWX) {
+    match fs::create_dir_all(&root_path) {
         Err(e) => sess.err(&format!("Could not create directory {}: {}",
                            root_path.display(), e)),
         _ => (),
@@ -1579,7 +1581,7 @@ pub fn process_crate(sess: &Session,
     // Create output file.
     let mut out_name = cratename.clone();
     out_name.push_str(".csv");
-    root_path.push(out_name);
+    root_path.push(&out_name);
     let output_file = match File::create(&root_path) {
         Ok(f) => box f,
         Err(e) => {
@@ -1595,7 +1597,7 @@ pub fn process_crate(sess: &Session,
         collected_paths: vec!(),
         collecting: false,
         fmt: FmtStrs::new(box Recorder {
-                            out: output_file as Box<Writer+'static>,
+                            out: output_file,
                             dump_spans: false,
                         },
                         SpanUtils {

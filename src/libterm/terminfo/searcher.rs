@@ -12,26 +12,27 @@
 //!
 //! Does not support hashed database, only filesystem!
 
-use std::old_io::File;
-use std::old_io::fs::PathExtensions;
 use std::env;
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::PathBuf;
 
 /// Return path to database entry for `term`
 #[allow(deprecated)]
-pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
+pub fn get_dbpath_for_term(term: &str) -> Option<Box<PathBuf>> {
     if term.len() == 0 {
         return None;
     }
 
-    let homedir = ::std::os::homedir();
+    let homedir = env::home_dir();
 
     let mut dirs_to_search = Vec::new();
     let first_char = term.char_at(0);
 
     // Find search directory
-    match env::var("TERMINFO") {
-        Ok(dir) => dirs_to_search.push(Path::new(dir)),
-        Err(..) => {
+    match env::var_os("TERMINFO") {
+        Some(dir) => dirs_to_search.push(PathBuf::new(&dir)),
+        None => {
             if homedir.is_some() {
                 // ncurses compatibility;
                 dirs_to_search.push(homedir.unwrap().join(".terminfo"))
@@ -39,9 +40,9 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
             match env::var("TERMINFO_DIRS") {
                 Ok(dirs) => for i in dirs.split(':') {
                     if i == "" {
-                        dirs_to_search.push(Path::new("/usr/share/terminfo"));
+                        dirs_to_search.push(PathBuf::new("/usr/share/terminfo"));
                     } else {
-                        dirs_to_search.push(Path::new(i));
+                        dirs_to_search.push(PathBuf::new(i));
                     }
                 },
                 // Found nothing in TERMINFO_DIRS, use the default paths:
@@ -49,9 +50,9 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
                 // ~/.terminfo, ncurses will search /etc/terminfo, then
                 // /lib/terminfo, and eventually /usr/share/terminfo.
                 Err(..) => {
-                    dirs_to_search.push(Path::new("/etc/terminfo"));
-                    dirs_to_search.push(Path::new("/lib/terminfo"));
-                    dirs_to_search.push(Path::new("/usr/share/terminfo"));
+                    dirs_to_search.push(PathBuf::new("/etc/terminfo"));
+                    dirs_to_search.push(PathBuf::new("/lib/terminfo"));
+                    dirs_to_search.push(PathBuf::new("/usr/share/terminfo"));
                 }
             }
         }
@@ -61,13 +62,13 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
     for p in &dirs_to_search {
         if p.exists() {
             let f = first_char.to_string();
-            let newp = p.join_many(&[&f[..], term]);
+            let newp = p.join(&f).join(term);
             if newp.exists() {
                 return Some(box newp);
             }
             // on some installations the dir is named after the hex of the char (e.g. OS X)
             let f = format!("{:x}", first_char as uint);
-            let newp = p.join_many(&[&f[..], term]);
+            let newp = p.join(&f).join(term);
             if newp.exists() {
                 return Some(box newp);
             }
@@ -100,7 +101,7 @@ fn test_get_dbpath_for_term() {
     // FIXME (#9639): This needs to handle non-utf8 paths
     fn x(t: &str) -> String {
         let p = get_dbpath_for_term(t).expect("no terminfo entry found");
-        p.as_str().unwrap().to_string()
+        p.to_str().unwrap().to_string()
     };
     assert!(x("screen") == "/usr/share/terminfo/s/screen");
     assert!(get_dbpath_for_term("") == None);

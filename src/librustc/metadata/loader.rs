@@ -226,13 +226,14 @@ use metadata::filesearch::{FileSearch, FileMatches, FileDoesntMatch};
 use syntax::codemap::Span;
 use syntax::diagnostic::SpanHandler;
 use util::fs;
+use util::common;
 use rustc_back::target::Target;
 
-use std::ffi::CString;
 use std::cmp;
 use std::collections::HashMap;
-use std::old_io::fs::PathExtensions;
-use std::old_io;
+use std::io::prelude::*;
+use std::io;
+use std::path::{Path, PathBuf};
 use std::ptr;
 use std::slice;
 use std::time::Duration;
@@ -240,7 +241,7 @@ use std::time::Duration;
 use flate;
 
 pub struct CrateMismatch {
-    path: Path,
+    path: PathBuf,
     got: String,
 }
 
@@ -262,8 +263,8 @@ pub struct Context<'a> {
 }
 
 pub struct Library {
-    pub dylib: Option<(Path, PathKind)>,
-    pub rlib: Option<(Path, PathKind)>,
+    pub dylib: Option<(PathBuf, PathKind)>,
+    pub rlib: Option<(PathBuf, PathKind)>,
     pub metadata: MetadataBlob,
 }
 
@@ -275,12 +276,12 @@ pub struct ArchiveMetadata {
 
 pub struct CratePaths {
     pub ident: String,
-    pub dylib: Option<Path>,
-    pub rlib: Option<Path>
+    pub dylib: Option<PathBuf>,
+    pub rlib: Option<PathBuf>
 }
 
 impl CratePaths {
-    fn paths(&self) -> Vec<Path> {
+    fn paths(&self) -> Vec<PathBuf> {
         match (&self.dylib, &self.rlib) {
             (&None,    &None)              => vec!(),
             (&Some(ref p), &None) |
@@ -400,7 +401,7 @@ impl<'a> Context<'a> {
         //
         // The goal of this step is to look at as little metadata as possible.
         self.filesearch.search(|path, kind| {
-            let file = match path.filename_str() {
+            let file = match path.file_name().and_then(|s| s.to_str()) {
                 None => return FileDoesntMatch,
                 Some(file) => file,
             };
@@ -416,7 +417,7 @@ impl<'a> Context<'a> {
                 if file.starts_with(&staticlib_prefix[..]) &&
                    file.ends_with(".a") {
                     staticlibs.push(CrateMismatch {
-                        path: path.clone(),
+                        path: path.to_path_buf(),
                         got: "static".to_string()
                     });
                 }
@@ -506,9 +507,9 @@ impl<'a> Context<'a> {
     // read the metadata from it if `*slot` is `None`. If the metadata couldn't
     // be read, it is assumed that the file isn't a valid rust library (no
     // errors are emitted).
-    fn extract_one(&mut self, m: HashMap<Path, PathKind>, flavor: &str,
-                   slot: &mut Option<MetadataBlob>) -> Option<(Path, PathKind)> {
-        let mut ret = None::<(Path, PathKind)>;
+    fn extract_one(&mut self, m: HashMap<PathBuf, PathKind>, flavor: &str,
+                   slot: &mut Option<MetadataBlob>) -> Option<(PathBuf, PathKind)> {
+        let mut ret = None::<(PathBuf, PathKind)>;
         let mut error = 0;
 
         if slot.is_some() {
@@ -587,7 +588,7 @@ impl<'a> Context<'a> {
         if triple != self.triple {
             info!("Rejecting via crate triple: expected {} got {}", self.triple, triple);
             self.rejected_via_triple.push(CrateMismatch {
-                path: libpath.clone(),
+                path: libpath.to_path_buf(),
                 got: triple.to_string()
             });
             return false;
@@ -599,7 +600,7 @@ impl<'a> Context<'a> {
                 if *myhash != hash {
                     info!("Rejecting via hash: expected {} got {}", *myhash, hash);
                     self.rejected_via_hash.push(CrateMismatch {
-                        path: libpath.clone(),
+                        path: libpath.to_path_buf(),
                         got: myhash.as_str().to_string()
                     });
                     false
@@ -627,13 +628,13 @@ impl<'a> Context<'a> {
         let mut rlibs = HashMap::new();
         let mut dylibs = HashMap::new();
         {
-            let locs = locs.iter().map(|l| Path::new(&l[..])).filter(|loc| {
+            let locs = locs.iter().map(|l| PathBuf::new(&l[..])).filter(|loc| {
                 if !loc.exists() {
                     sess.err(&format!("extern location for {} does not exist: {}",
                                      self.crate_name, loc.display()));
                     return false;
                 }
-                let file = match loc.filename_str() {
+                let file = match loc.file_name().and_then(|s| s.to_str()) {
                     Some(file) => file,
                     None => {
                         sess.err(&format!("extern location for {} is not a file: {}",
@@ -658,7 +659,7 @@ impl<'a> Context<'a> {
             // Now that we have an iterator of good candidates, make sure
             // there's at most one rlib and at most one dylib.
             for loc in locs {
-                if loc.filename_str().unwrap().ends_with(".rlib") {
+                if loc.file_name().unwrap().to_str().unwrap().ends_with(".rlib") {
                     rlibs.insert(fs::realpath(&loc).unwrap(),
                                  PathKind::ExternFlag);
                 } else {
@@ -714,7 +715,7 @@ fn get_metadata_section(is_osx: bool, filename: &Path) -> Result<MetadataBlob, S
     let dur = Duration::span(|| {
         ret = Some(get_metadata_section_imp(is_osx, filename));
     });
-    info!("reading {} => {}ms", filename.filename_display(),
+    info!("reading {:?} => {}ms", filename.file_name().unwrap(),
           dur.num_milliseconds());
     return ret.unwrap();;
 }
@@ -723,7 +724,7 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
     if !filename.exists() {
         return Err(format!("no such file: '{}'", filename.display()));
     }
-    if filename.filename_str().unwrap().ends_with(".rlib") {
+    if filename.file_name().unwrap().to_str().unwrap().ends_with(".rlib") {
         // Use ArchiveRO for speed here, it's backed by LLVM and uses mmap
         // internally to read the file. We also avoid even using a memcpy by
         // just keeping the archive along while the metadata is in use.
@@ -742,7 +743,7 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
         };
     }
     unsafe {
-        let buf = CString::new(filename.as_vec()).unwrap();
+        let buf = common::path2cstr(filename);
         let mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf.as_ptr());
         if mb as int == 0 {
             return Err(format!("error reading library: '{}'",
@@ -811,7 +812,7 @@ pub fn read_meta_section_name(is_osx: bool) -> &'static str {
 
 // A diagnostic function for dumping crate metadata to an output stream
 pub fn list_file_metadata(is_osx: bool, path: &Path,
-                          out: &mut old_io::Writer) -> old_io::IoResult<()> {
+                          out: &mut io::Write) -> io::Result<()> {
     match get_metadata_section(is_osx, path) {
         Ok(bytes) => decoder::list_crate_metadata(bytes.as_slice(), out),
         Err(msg) => {

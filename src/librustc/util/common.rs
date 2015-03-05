@@ -12,11 +12,13 @@
 
 use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
+use std::collections::hash_state::HashState;
+use std::ffi::CString;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::repeat;
+use std::path::Path;
 use std::time::Duration;
-use std::collections::hash_state::HashState;
 
 use syntax::ast;
 use syntax::visit;
@@ -221,4 +223,15 @@ pub fn memoized<T, U, S, F>(cache: &RefCell<HashMap<T, U, S>>, arg: T, f: F) -> 
             result
         }
     }
+}
+
+#[cfg(unix)]
+pub fn path2cstr(p: &Path) -> CString {
+    use std::os::unix::prelude::*;
+    use std::ffi::AsOsStr;
+    CString::new(p.as_os_str().as_bytes()).unwrap()
+}
+#[cfg(windows)]
+pub fn path2cstr(p: &Path) -> CString {
+    CString::new(p.to_str().unwrap()).unwrap()
 }

@@ -9,6 +9,10 @@
 // except according to those terms.
 
 use std::env;
+use std::fs::File;
+use std::io::BufReader;
+use std::io::prelude::*;
+use std::path::{Path, PathBuf};
 
 use common::Config;
 use common;
@@ -23,7 +27,7 @@ pub struct TestProps {
     pub run_flags: Option<String>,
     // If present, the name of a file that this test should match when
     // pretty-printed
-    pub pp_exact: Option<Path>,
+    pub pp_exact: Option<PathBuf>,
     // Modules from aux directory that should be compiled
     pub aux_builds: Vec<String> ,
     // Environment settings to use during execution
@@ -62,7 +66,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut pretty_mode = None;
     let mut pretty_compare_only = false;
     let mut forbid_output = Vec::new();
-    iter_header(testfile, |ln| {
+    iter_header(testfile, &mut |ln| {
         match parse_error_pattern(ln) {
           Some(ep) => error_patterns.push(ep),
           None => ()
@@ -219,7 +223,7 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
         }
     }
 
-    let val = iter_header(testfile, |ln| {
+    let val = iter_header(testfile, &mut |ln| {
         !parse_name_directive(ln, "ignore-test") &&
         !parse_name_directive(ln, &ignore_target(config)) &&
         !parse_name_directive(ln, &ignore_stage(config)) &&
@@ -232,12 +236,8 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
     !val
 }
 
-fn iter_header<F>(testfile: &Path, mut it: F) -> bool where
-    F: FnMut(&str) -> bool,
-{
-    use std::old_io::{BufferedReader, File};
-
-    let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
+fn iter_header(testfile: &Path, it: &mut FnMut(&str) -> bool) -> bool {
+    let rdr = BufReader::new(File::open(testfile).unwrap());
     for ln in rdr.lines() {
         // Assume that any directives will be found before the first
         // module or function. This doesn't seem to be an optimization
@@ -322,12 +322,12 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
     })
 }
 
-fn parse_pp_exact(line: &str, testfile: &Path) -> Option<Path> {
+fn parse_pp_exact(line: &str, testfile: &Path) -> Option<PathBuf> {
     match parse_name_value_directive(line, "pp-exact") {
-      Some(s) => Some(Path::new(s)),
+      Some(s) => Some(PathBuf::new(&s)),
       None => {
         if parse_name_directive(line, "pp-exact") {
-            testfile.filename().map(|s| Path::new(s))
+            testfile.file_name().map(|s| PathBuf::new(s))
         } else {
             None
         }

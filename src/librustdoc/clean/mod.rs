@@ -49,7 +49,7 @@ use rustc::middle::stability;
 
 use std::rc::Rc;
 use std::u32;
-use std::old_path::Path as FsPath; // Conflicts with Path struct
+use std::path::PathBuf;
 
 use core::DocContext;
 use doctree;
@@ -118,7 +118,7 @@ impl<T: Clean<U>, U> Clean<Vec<U>> for syntax::owned_slice::OwnedSlice<T> {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
     pub name: String,
-    pub src: FsPath,
+    pub src: PathBuf,
     pub module: Option<Item>,
     pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
     pub primitives: Vec<PrimitiveType>,
@@ -191,7 +191,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         let src = match cx.input {
             Input::File(ref path) => path.clone(),
-            Input::Str(_) => FsPath::new("") // FIXME: this is wrong
+            Input::Str(_) => PathBuf::new("") // FIXME: this is wrong
         };
 
         Crate {

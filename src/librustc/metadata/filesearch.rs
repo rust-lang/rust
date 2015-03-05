@@ -14,9 +14,9 @@ pub use self::FileMatch::*;
 
 use std::collections::HashSet;
 use std::env;
-use std::os;
-use std::old_io::fs::PathExtensions;
-use std::old_io::fs;
+use std::fs;
+use std::io::prelude::*;
+use std::path::{Path, PathBuf};
 
 use util::fs as myfs;
 use session::search_paths::{SearchPaths, PathKind};
@@ -50,20 +50,20 @@ impl<'a> FileSearch<'a> {
                 FileMatches => found = true,
                 FileDoesntMatch => ()
             }
-            visited_dirs.insert(path.as_vec().to_vec());
+            visited_dirs.insert(path.to_path_buf());
         }
 
         debug!("filesearch: searching lib path");
         let tlib_path = make_target_lib_path(self.sysroot,
                                              self.triple);
-        if !visited_dirs.contains(tlib_path.as_vec()) {
+        if !visited_dirs.contains(&tlib_path) {
             match f(&tlib_path, PathKind::All) {
                 FileMatches => found = true,
                 FileDoesntMatch => ()
             }
         }
 
-        visited_dirs.insert(tlib_path.as_vec().to_vec());
+        visited_dirs.insert(tlib_path);
         // Try RUST_PATH
         if !found {
             let rustpath = rust_path();
@@ -71,10 +71,10 @@ impl<'a> FileSearch<'a> {
                 let tlib_path = make_rustpkg_lib_path(
                     self.sysroot, path, self.triple);
                 debug!("is {} in visited_dirs? {}", tlib_path.display(),
-                        visited_dirs.contains(&tlib_path.as_vec().to_vec()));
+                        visited_dirs.contains(&tlib_path));
 
-                if !visited_dirs.contains(tlib_path.as_vec()) {
-                    visited_dirs.insert(tlib_path.as_vec().to_vec());
+                if !visited_dirs.contains(&tlib_path) {
+                    visited_dirs.insert(tlib_path.clone());
                     // Don't keep searching the RUST_PATH if one match turns up --
                     // if we did, we'd get a "multiple matching crates" error
                     match f(&tlib_path, PathKind::All) {
@@ -88,7 +88,7 @@ impl<'a> FileSearch<'a> {
         }
     }
 
-    pub fn get_lib_path(&self) -> Path {
+    pub fn get_lib_path(&self) -> PathBuf {
         make_target_lib_path(self.sysroot, self.triple)
     }
 
@@ -97,11 +97,13 @@ impl<'a> FileSearch<'a> {
     {
         self.for_each_lib_search_path(|lib_search_path, kind| {
             debug!("searching {}", lib_search_path.display());
-            match fs::readdir(lib_search_path) {
+            match fs::read_dir(lib_search_path) {
                 Ok(files) => {
+                    let files = files.filter_map(|p| p.ok().map(|s| s.path()))
+                                     .collect::<Vec<_>>();
                     let mut rslt = FileDoesntMatch;
-                    fn is_rlib(p: & &Path) -> bool {
-                        p.extension_str() == Some("rlib")
+                    fn is_rlib(p: &Path) -> bool {
+                        p.extension().and_then(|s| s.to_str()) == Some("rlib")
                     }
                     // Reading metadata out of rlibs is faster, and if we find both
                     // an rlib and a dylib we only read one of the files of
@@ -143,59 +145,60 @@ impl<'a> FileSearch<'a> {
     }
 
     // Returns a list of directories where target-specific dylibs might be located.
-    pub fn get_dylib_search_paths(&self) -> Vec<Path> {
+    pub fn get_dylib_search_paths(&self) -> Vec<PathBuf> {
         let mut paths = Vec::new();
         self.for_each_lib_search_path(|lib_search_path, _| {
-            paths.push(lib_search_path.clone());
+            paths.push(lib_search_path.to_path_buf());
             FileDoesntMatch
         });
         paths
     }
 
     // Returns a list of directories where target-specific tool binaries are located.
-    pub fn get_tools_search_paths(&self) -> Vec<Path> {
-        let mut p = Path::new(self.sysroot);
-        p.push(find_libdir(self.sysroot));
-        p.push(rustlibdir());
-        p.push(self.triple);
+    pub fn get_tools_search_paths(&self) -> Vec<PathBuf> {
+        let mut p = PathBuf::new(self.sysroot);
+        p.push(&find_libdir(self.sysroot));
+        p.push(&rustlibdir());
+        p.push(&self.triple);
         p.push("bin");
         vec![p]
     }
 }
 
-pub fn relative_target_lib_path(sysroot: &Path, target_triple: &str) -> Path {
-    let mut p = Path::new(find_libdir(sysroot));
+pub fn relative_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
+    let mut p = PathBuf::new(&find_libdir(sysroot));
     assert!(p.is_relative());
-    p.push(rustlibdir());
+    p.push(&rustlibdir());
     p.push(target_triple);
     p.push("lib");
     p
 }
 
 fn make_target_lib_path(sysroot: &Path,
-                        target_triple: &str) -> Path {
+                        target_triple: &str) -> PathBuf {
     sysroot.join(&relative_target_lib_path(sysroot, target_triple))
 }
 
 fn make_rustpkg_lib_path(sysroot: &Path,
                          dir: &Path,
-                         triple: &str) -> Path {
-    let mut p = dir.join(find_libdir(sysroot));
+                         triple: &str) -> PathBuf {
+    let mut p = dir.join(&find_libdir(sysroot));
     p.push(triple);
     p
 }
 
-pub fn get_or_default_sysroot() -> Path {
+pub fn get_or_default_sysroot() -> PathBuf {
     // Follow symlinks.  If the resolved path is relative, make it absolute.
-    fn canonicalize(path: Option<Path>) -> Option<Path> {
-        path.and_then(|path|
+    fn canonicalize(path: Option<PathBuf>) -> Option<PathBuf> {
+        path.and_then(|path| {
             match myfs::realpath(&path) {
                 Ok(canon) => Some(canon),
                 Err(e) => panic!("failed to get realpath: {}", e),
-            })
+            }
+        })
     }
 
-    match canonicalize(os::self_exe_name()) {
+    match canonicalize(env::current_exe().ok()) {
         Some(mut p) => { p.pop(); p.pop(); p }
         None => panic!("can't determine value for sysroot")
     }
@@ -216,16 +219,16 @@ pub fn get_rust_path() -> Option<String> {
 /// $HOME/.rust
 /// DIR/.rust for any DIR that's the current working directory
 /// or an ancestor of it
-pub fn rust_path() -> Vec<Path> {
-    let mut env_rust_path: Vec<Path> = match get_rust_path() {
+pub fn rust_path() -> Vec<PathBuf> {
+    let mut env_rust_path: Vec<PathBuf> = match get_rust_path() {
         Some(env_path) => {
             let env_path_components =
                 env_path.split(PATH_ENTRY_SEPARATOR);
-            env_path_components.map(|s| Path::new(s)).collect()
+            env_path_components.map(|s| PathBuf::new(s)).collect()
         }
         None => Vec::new()
     };
-    let mut cwd = os::getcwd().unwrap();
+    let cwd = env::current_dir().unwrap();
     // now add in default entries
     let cwd_dot_rust = cwd.join(".rust");
     if !env_rust_path.contains(&cwd_dot_rust) {
@@ -234,17 +237,15 @@ pub fn rust_path() -> Vec<Path> {
     if !env_rust_path.contains(&cwd) {
         env_rust_path.push(cwd.clone());
     }
-    loop {
-        if { let f = cwd.filename(); f.is_none() || f.unwrap() == b".." } {
-            break
+    let mut cur = &*cwd;
+    while let Some(parent) = cur.parent() {
+        let candidate = parent.join(".rust");
+        if !env_rust_path.contains(&candidate) && candidate.exists() {
+            env_rust_path.push(candidate.clone());
         }
-        cwd.set_filename(".rust");
-        if !env_rust_path.contains(&cwd) && cwd.exists() {
-            env_rust_path.push(cwd.clone());
-        }
-        cwd.pop();
+        cur = parent;
     }
-    if let Some(h) = os::homedir() {
+    if let Some(h) = env::home_dir() {
         let p = h.join(".rust");
         if !env_rust_path.contains(&p) && p.exists() {
             env_rust_path.push(p);
@@ -267,7 +268,7 @@ fn find_libdir(sysroot: &Path) -> String {
 
     match option_env!("CFG_LIBDIR_RELATIVE") {
         Some(libdir) if libdir != "lib" => return libdir.to_string(),
-        _ => if sysroot.join(primary_libdir_name()).join(rustlibdir()).exists() {
+        _ => if sysroot.join(&primary_libdir_name()).join(&rustlibdir()).exists() {
             return primary_libdir_name();
         } else {
             return secondary_libdir_name();
