@@ -19,6 +19,8 @@
 //! arena but can only hold objects of a single type, and `Arena`, which is a
 //! more complex, slower arena which can hold objects of any type.
 
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "arena"]
 #![unstable(feature = "rustc_private")]
 #![staged_api]
