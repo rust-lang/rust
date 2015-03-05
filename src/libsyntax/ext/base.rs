@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -519,6 +519,12 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
         syntax_expanders.insert(intern("quote_stmt"),
                            builtin_normal_expander(
                                 ext::quote::expand_quote_stmt));
+        syntax_expanders.insert(intern("quote_matcher"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_matcher));
+        syntax_expanders.insert(intern("quote_attr"),
+                           builtin_normal_expander(
+                                ext::quote::expand_quote_attr));
     }
 
     syntax_expanders.insert(intern("line"),
