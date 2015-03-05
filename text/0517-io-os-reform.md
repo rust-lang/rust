@@ -1244,6 +1244,10 @@ standard primitives listed above:
 #### Raw stdio
 [Raw stdio]: #raw-stdio
 
+> **Note**: This section is intended to be a sketch of possible raw stdio
+>           support, but it is not planned to implement or stabilize this
+>           implementation at this time.
+
 The above standard input/output handles all involve some form of locking or
 buffering (or both). This cost is not always wanted, and hence raw variants will
 be provided. Due to platform differences across unix/windows, the following
