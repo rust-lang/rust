@@ -65,7 +65,7 @@ use default::Default;
 use marker;
 use mem;
 use num::{ToPrimitive, Int};
-use ops::{Add, Deref, FnMut};
+use ops::{Add, Deref, Fn, FnMut};
 use option::Option;
 use option::Option::{Some, None};
 use marker::Sized;
@@ -537,7 +537,7 @@ pub trait IteratorExt: Iterator + Sized {
     fn inspect<F>(self, f: F) -> Inspect<Self, F> where
         F: FnMut(&Self::Item),
     {
-        Inspect{iter: self, f: f}
+        Inspect{iter: self, f: DoInspect{f: f}}
     }
 
     /// Creates a wrapper around a mutable reference to the iterator.
@@ -983,7 +983,7 @@ pub trait IteratorExt: Iterator + Sized {
         Self::Item: Deref,
         <Self::Item as Deref>::Target: Clone,
     {
-        Cloned { it: self }
+        Cloned { iter: self, f: DoClone }
     }
 
     /// Repeats an iterator endlessly
@@ -1086,10 +1086,6 @@ impl<'a, I: ExactSizeIterator + ?Sized> ExactSizeIterator for &'a mut I {}
 // Adaptors that may overflow in `size_hint` are not, i.e. `Chain`.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Enumerate<I> where I: ExactSizeIterator {}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I: ExactSizeIterator, F> ExactSizeIterator for Inspect<I, F> where
-    F: FnMut(&I::Item),
-{}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Rev<I> where I: ExactSizeIterator + DoubleEndedIterator {}
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1273,60 +1269,21 @@ impl<T: Clone> MinMaxResult<T> {
 /// An iterator that clones the elements of an underlying iterator
 #[unstable(feature = "core", reason = "recent addition")]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
+pub type Cloned<I> = Map<I, DoClone>;
+
+/// clone an element
 #[derive(Clone)]
-pub struct Cloned<I> {
-    it: I,
-}
+pub struct DoClone;
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T, D, I> Iterator for Cloned<I> where
-    T: Clone,
-    D: Deref<Target=T>,
-    I: Iterator<Item=D>,
+#[unstable(feature = "core", reason = "recent addition")]
+impl<D> Fn<(D,)> for DoClone where
+    D: Deref,
+    <D as Deref>::Target: Clone,
 {
-    type Item = T;
+    type Output = <D as Deref>::Target;
 
-    fn next(&mut self) -> Option<T> {
-        self.it.next().cloned()
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.it.size_hint()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T, D, I> DoubleEndedIterator for Cloned<I> where
-    T: Clone,
-    D: Deref<Target=T>,
-    I: DoubleEndedIterator<Item=D>,
-{
-    fn next_back(&mut self) -> Option<T> {
-        self.it.next_back().cloned()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T, D, I> ExactSizeIterator for Cloned<I> where
-    T: Clone,
-    D: Deref<Target=T>,
-    I: ExactSizeIterator<Item=D>,
-{}
-
-#[unstable(feature = "core", reason = "trait is experimental")]
-impl<T, D, I> RandomAccessIterator for Cloned<I> where
-    T: Clone,
-    D: Deref<Target=T>,
-    I: RandomAccessIterator<Item=D>
-{
-    #[inline]
-    fn indexable(&self) -> usize {
-        self.it.indexable()
-    }
-
-    #[inline]
-    fn idx(&mut self, index: usize) -> Option<T> {
-        self.it.idx(index).cloned()
+    extern "rust-call" fn call(&self, (a,): (D,)) -> <D as Deref>::Target {
+        a.deref().clone()
     }
 }
 
@@ -2231,64 +2188,20 @@ impl<I> Fuse<I> {
 /// element before yielding it.
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
+pub type Inspect<I, F> = Map<I, DoInspect<F>>;
+
+/// Inspect a element and return it
 #[derive(Clone)]
-pub struct Inspect<I, F> {
-    iter: I,
-    f: F,
-}
+pub struct DoInspect<F> { f: F, }
 
-impl<I: Iterator, F> Inspect<I, F> where F: FnMut(&I::Item) {
-    #[inline]
-    fn do_inspect(&mut self, elt: Option<I::Item>) -> Option<I::Item> {
-        match elt {
-            Some(ref a) => (self.f)(a),
-            None => ()
-        }
-
-        elt
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator, F> Iterator for Inspect<I, F> where F: FnMut(&I::Item) {
-    type Item = I::Item;
-
-    #[inline]
-    fn next(&mut self) -> Option<I::Item> {
-        let next = self.iter.next();
-        self.do_inspect(next)
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.iter.size_hint()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I: DoubleEndedIterator, F> DoubleEndedIterator for Inspect<I, F>
-    where F: FnMut(&I::Item),
+#[unstable(feature = "core", reason = "recent addition")]
+impl<D, F: FnMut(&D)> FnMut<(D,)> for DoInspect<F>
 {
-    #[inline]
-    fn next_back(&mut self) -> Option<I::Item> {
-        let next = self.iter.next_back();
-        self.do_inspect(next)
-    }
-}
+    type Output = D;
 
-#[unstable(feature = "core", reason = "trait is experimental")]
-impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
-    where F: FnMut(&I::Item),
-{
-    #[inline]
-    fn indexable(&self) -> usize {
-        self.iter.indexable()
-    }
-
-    #[inline]
-    fn idx(&mut self, index: usize) -> Option<I::Item> {
-        let element = self.iter.idx(index);
-        self.do_inspect(element)
+    extern "rust-call" fn call_mut(&mut self, (a,): (D,)) -> D {
+        (self.f)(&a);
+        a
     }
 }
 
