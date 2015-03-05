@@ -1251,6 +1251,11 @@ fn ensure_super_predicates_step(ccx: &CrateCtxt,
     debug!("ensure_super_predicates_step(trait_def_id={})", trait_def_id.repr(tcx));
 
     if trait_def_id.krate != ast::LOCAL_CRATE {
+        // If this trait comes from an external crate, then all of the
+        // supertraits it may depend on also must come from external
+        // crates, and hence all of them already have their
+        // super-predicates "converted" (and available from crate
+        // meta-data), so there is no need to transitively test them.
         return Vec::new();
     }
 
@@ -2111,8 +2116,11 @@ fn compute_bounds<'tcx>(astconv: &AstConv<'tcx>,
     param_bounds
 }
 
-/// Converts a specific TyParamBound from the AST into the
-/// appropriate poly-trait-reference.
+/// Converts a specific TyParamBound from the AST into a set of
+/// predicates that apply to the self-type. A vector is returned
+/// because this can be anywhere from 0 predicates (`T:?Sized` adds no
+/// predicates) to 1 (`T:Foo`) to many (`T:Bar<X=i32>` adds `T:Bar`
+/// and `<T as Bar>::X == i32`).
 fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx>,
                                param_ty: Ty<'tcx>,
                                bound: &ast::TyParamBound)

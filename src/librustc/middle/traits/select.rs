@@ -2501,7 +2501,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let obligation_def_id = obligation.predicate.def_id();
         let mut upcast_trait_refs = util::upcast(self.tcx(), obj_trait_ref, obligation_def_id);
 
-        // retain only those upcast versions that match the trait-ref we are looking for
+        // Retain only those upcast versions that match the trait-ref
+        // we are looking for.  In particular, we know that all of
+        // `upcast_trait_refs` apply to the correct trait, but
+        // possibly with incorrect type parameters. For example, we
+        // may be trying to upcast `Foo` to `Bar<i32>`, but `Foo` is
+        // declared as `trait Foo : Bar<u32>`.
         upcast_trait_refs.retain(|upcast_trait_ref| {
             let upcast_trait_ref = upcast_trait_ref.clone();
             self.infcx.probe(|_| self.match_poly_trait_ref(obligation, upcast_trait_ref)).is_ok()
