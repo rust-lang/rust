@@ -15,6 +15,8 @@
 //! It is loosely based on the Extensible Binary Markup Language (ebml):
 //!     http://www.matroska.org/technical/specs/rfc/index.html
 
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "rbml"]
 #![unstable(feature = "rustc_private")]
 #![staged_api]

@@ -20,6 +20,8 @@
 //! provide for basic string-related manipulations. This crate does not
 //! (yet) aim to provide a full set of Unicode tables.
 
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "unicode"]
 #![unstable(feature = "unicode")]
 #![feature(staged_api)]

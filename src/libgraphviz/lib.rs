@@ -264,6 +264,8 @@
 //!
 //! * [DOT language](http://www.graphviz.org/doc/info/lang.html)
 
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "graphviz"]
 #![unstable(feature = "rustc_private")]
 #![feature(staged_api)]

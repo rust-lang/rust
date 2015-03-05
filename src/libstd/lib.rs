@@ -94,7 +94,8 @@
 //! to all code by default. [`macros`](macros/index.html) contains
 //! all the standard macros, such as `assert!`, `panic!`, `println!`,
 //! and `format!`, also available to all Rust code.
-
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "std"]
 #![stable(feature = "rust1", since = "1.0.0")]
 #![staged_api]

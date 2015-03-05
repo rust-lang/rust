@@ -14,6 +14,8 @@
 //! [def]: https://en.wikipedia.org/wiki/DEFLATE
 //! [mz]: https://code.google.com/p/miniz/
 
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "flate"]
 #![unstable(feature = "rustc_private")]
 #![staged_api]
