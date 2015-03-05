@@ -262,7 +262,9 @@ pub struct RegionMaps {
     /// fn, if any. Thus the map structures the fn bodies into a
     /// hierarchy based on their lexical mapping. This is used to
     /// handle the relationships between regions in a fn and in a
-    /// closure defined by that fn.
+    /// closure defined by that fn. See the "Modeling closures"
+    /// section of the README in middle::infer::region_inference for
+    /// more details.
     fn_tree: RefCell<NodeMap<ast::NodeId>>,
 }
 
@@ -337,7 +339,9 @@ pub struct Context {
     /// the root of the current region tree. This is typically the id
     /// of the innermost fn body. Each fn forms its own disjoint tree
     /// in the region hierarchy. These fn bodies are themselves
-    /// arranged into a tree.
+    /// arranged into a tree. See the "Modeling closures" section of
+    /// the README in middle::infer::region_inference for more
+    /// details.
     root_id: Option<ast::NodeId>,
 
     /// the scope that contains any new variables declared
@@ -411,7 +415,18 @@ impl RegionMaps {
         assert!(previous.is_none());
     }
 
-    fn record_encl_scope(&self, sub: CodeExtent, sup: CodeExtent) {
+    fn fn_is_enclosed_by(&self, mut sub_fn: ast::NodeId, sup_fn: ast::NodeId) -> bool {
+        let fn_tree = self.fn_tree.borrow();
+        loop {
+            if sub_fn == sup_fn { return true; }
+            match fn_tree.get(&sub_fn) {
+                Some(&s) => { sub_fn = s; }
+                None => { return false; }
+            }
+        }
+    }
+
+    pub fn record_encl_scope(&self, sub: CodeExtent, sup: CodeExtent) {
         debug!("record_encl_scope(sub={:?}, sup={:?})", sub, sup);
         assert!(sub != sup);
         self.scope_map.borrow_mut().insert(sub, sup);
@@ -600,7 +615,7 @@ impl RegionMaps {
         let mut a_index = a_ancestors.len() - 1;
         let mut b_index = b_ancestors.len() - 1;
 
-        // Here, ~[ab]_ancestors is a vector going from narrow to broad.
+        // Here, [ab]_ancestors is a vector going from narrow to broad.
         // The end of each vector will be the item where the scope is
         // defined; if there are any common ancestors, then the tails of
         // the vector will be the same.  So basically we want to walk
@@ -609,7 +624,32 @@ impl RegionMaps {
         // then the corresponding scope is a superscope of the other.
 
         if a_ancestors[a_index] != b_ancestors[b_index] {
-            return None;
+            // In this case, the two regions belong to completely
+            // different functions.  Compare those fn for lexical
+            // nesting. The reasoning behind this is subtle.  See the
+            // "Modeling closures" section of the README in
+            // middle::infer::region_inference for more details.
+            let a_root_scope = a_ancestors[a_index];
+            let b_root_scope = a_ancestors[a_index];
+            return match (a_root_scope, b_root_scope) {
+                (CodeExtent::DestructionScope(a_root_id),
+                 CodeExtent::DestructionScope(b_root_id)) => {
+                    if self.fn_is_enclosed_by(a_root_id, b_root_id) {
+                        // `a` is enclosed by `b`, hence `b` is the ancestor of everything in `a`
+                        Some(scope_b)
+                    } else if self.fn_is_enclosed_by(b_root_id, a_root_id) {
+                        // `b` is enclosed by `a`, hence `a` is the ancestor of everything in `b`
+                        Some(scope_a)
+                    } else {
+                        // neither fn encloses the other
+                        None
+                    }
+                }
+                _ => {
+                    // root ids are always Misc right now
+                    unreachable!()
+                }
+            };
         }
 
         loop {
@@ -675,6 +715,7 @@ fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &ast::Block) {
     let prev_cx = visitor.cx;
 
     let blk_scope = CodeExtent::Misc(blk.id);
+
     // If block was previously marked as a terminating scope during
     // the recursive visit of its parent node in the AST, then we need
     // to account for the destruction scope representing the extent of
@@ -1144,7 +1185,7 @@ fn resolve_item(visitor: &mut RegionResolutionVisitor, item: &ast::Item) {
 }
 
 fn resolve_fn(visitor: &mut RegionResolutionVisitor,
-              fk: FnKind,
+              _: FnKind,
               decl: &ast::FnDecl,
               body: &ast::Block,
               sp: Span,
@@ -1180,32 +1221,13 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
     };
     visit::walk_fn_decl(visitor, decl);
 
-    // The body of the fn itself is either a root scope (top-level fn)
-    // or it continues with the inherited scope (closures).
-    match fk {
-        visit::FkItemFn(..) | visit::FkMethod(..) => {
-            visitor.cx = Context {
-                root_id: Some(body.id),
-                parent: InnermostEnclosingExpr::None,
-                var_parent: InnermostDeclaringBlock::None
-            };
-            visitor.visit_block(body);
-        }
-        visit::FkFnBlock(..) => {
-            // FIXME(#3696) -- at present we are place the closure body
-            // within the region hierarchy exactly where it appears lexically.
-            // This is wrong because the closure may live longer
-            // than the enclosing expression. We should probably fix this,
-            // but the correct fix is a bit subtle, and I am also not sure
-            // that the present approach is unsound -- it may not permit
-            // any illegal programs. See issue for more details.
-            visitor.cx = Context {
-                root_id: Some(body.id),
-                ..outer_cx
-            };
-            visitor.visit_block(body);
-        }
-    }
+    // The body of the every fn is a root scope.
+    visitor.cx = Context {
+        root_id: Some(body.id),
+        parent: InnermostEnclosingExpr::None,
+        var_parent: InnermostDeclaringBlock::None
+    };
+    visitor.visit_block(body);
 
     // Restore context we had at the start.
     visitor.cx = outer_cx;
