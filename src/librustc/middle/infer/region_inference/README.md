@@ -249,114 +249,61 @@ there is a reference created whose lifetime does not enclose
 the borrow expression, we must issue sufficient restrictions to ensure
 that the pointee remains valid.
 
-## Adding closures
+## Modeling closures
 
-The other significant complication to the region hierarchy is
-closures. I will describe here how closures should work, though some
-of the work to implement this model is ongoing at the time of this
-writing.
+Integrating closures properly into the model is a bit of
+work-in-progress. In an ideal world, we would model closures as
+closely as possible after their desugared equivalents. That is, a
+closure type would be modeled as a struct, and the region hierarchy of
+different closure bodies would be completely distinct from all other
+fns. We are generally moving in that direction but there are
+complications in terms of the implementation.
 
-The body of closures are type-checked along with the function that
-creates them. However, unlike other expressions that appear within the
-function body, it is not entirely obvious when a closure body executes
-with respect to the other expressions. This is because the closure
-body will execute whenever the closure is called; however, we can
-never know precisely when the closure will be called, especially
-without some sort of alias analysis.
+In practice what we currently do is somewhat different. The basis for
+the current approach is the observation that the only time that
+regions from distinct fn bodies interact with one another is through
+an upvar or the type of a fn parameter (since closures live in the fn
+body namespace, they can in fact have fn parameters whose types
+include regions from the surrounding fn body). For these cases, there
+are separate mechanisms which ensure that the regions that appear in
+upvars/parameters outlive the dynamic extent of each call to the
+closure:
 
-However, we can place some sort of limits on when the closure
-executes.  In particular, the type of every closure `fn:'r K` includes
-a region bound `'r`. This bound indicates the maximum lifetime of that
-closure; once we exit that region, the closure cannot be called
-anymore. Therefore, we say that the lifetime of the closure body is a
-sublifetime of the closure bound, but the closure body itself is unordered
-with respect to other parts of the code.
+1. Types must outlive the region of any expression where they are used.
+   For a closure type `C` to outlive a region `'r`, that implies that the
+   types of all its upvars must outlive `'r`.
+2. Parameters must outlive the region of any fn that they are passed to.
 
-For example, consider the following fragment of code:
+Therefore, we can -- sort of -- assume that when we are asked to
+compare a region `'a` from a closure with a region `'b` from the fn
+that encloses it, in fact `'b` is the larger region. And that is
+precisely what we do: when building the region hierarchy, each region
+lives in its own distinct subtree, but if we are asked to compute the
+`LUB(r1, r2)` of two regions, and those regions are in disjoint
+subtrees, we compare the lexical nesting of the two regions.
 
-    'a: {
-         let closure: fn:'a() = || 'b: {
-             'c: ...
-         };
-         'd: ...
-    }
-
-Here we have four lifetimes, `'a`, `'b`, `'c`, and `'d`. The closure
-`closure` is bounded by the lifetime `'a`. The lifetime `'b` is the
-lifetime of the closure body, and `'c` is some statement within the
-closure body. Finally, `'d` is a statement within the outer block that
-created the closure.
-
-We can say that the closure body `'b` is a sublifetime of `'a` due to
-the closure bound. By the usual lexical scoping conventions, the
-statement `'c` is clearly a sublifetime of `'b`, and `'d` is a
-sublifetime of `'d`. However, there is no ordering between `'c` and
-`'d` per se (this kind of ordering between statements is actually only
-an issue for dataflow; passes like the borrow checker must assume that
-closures could execute at any time from the moment they are created
-until they go out of scope).
-
-### Complications due to closure bound inference
-
-There is only one problem with the above model: in general, we do not
-actually *know* the closure bounds during region inference! In fact,
-closure bounds are almost always region variables! This is very tricky
-because the inference system implicitly assumes that we can do things
-like compute the LUB of two scoped lifetimes without needing to know
-the values of any variables.
-
-Here is an example to illustrate the problem:
-
-    fn identify<T>(x: T) -> T { x }
-
-    fn foo() { // 'foo is the function body
-      'a: {
-           let closure = identity(|| 'b: {
-               'c: ...
-           });
-           'd: closure();
-      }
-      'e: ...;
-    }
-
-In this example, the closure bound is not explicit. At compile time,
-we will create a region variable (let's call it `V0`) to represent the
-closure bound.
-
-The primary difficulty arises during the constraint propagation phase.
-Imagine there is some variable with incoming edges from `'c` and `'d`.
-This means that the value of the variable must be `LUB('c,
-'d)`. However, without knowing what the closure bound `V0` is, we
-can't compute the LUB of `'c` and `'d`! Any we don't know the closure
-bound until inference is done.
-
-The solution is to rely on the fixed point nature of inference.
-Basically, when we must compute `LUB('c, 'd)`, we just use the current
-value for `V0` as the closure's bound. If `V0`'s binding should
-change, then we will do another round of inference, and the result of
-`LUB('c, 'd)` will change.
-
-One minor implication of this is that the graph does not in fact track
-the full set of dependencies between edges. We cannot easily know
-whether the result of a LUB computation will change, since there may
-be indirect dependencies on other variables that are not reflected on
-the graph. Therefore, we must *always* iterate over all edges when
-doing the fixed point calculation, not just those adjacent to nodes
-whose values have changed.
-
-Were it not for this requirement, we could in fact avoid fixed-point
-iteration altogether. In that universe, we could instead first
-identify and remove strongly connected components (SCC) in the graph.
-Note that such components must consist solely of region variables; all
-of these variables can effectively be unified into a single variable.
-Once SCCs are removed, we are left with a DAG.  At this point, we
-could walk the DAG in topological order once to compute the expanding
-nodes, and again in reverse topological order to compute the
-contracting nodes. However, as I said, this does not work given the
-current treatment of closure bounds, but perhaps in the future we can
-address this problem somehow and make region inference somewhat more
-efficient. Note that this is solely a matter of performance, not
-expressiveness.
+*Ideas for improving the situation:* The correct argument here is
+subtle and a bit hand-wavy. The ideal, as stated earlier, would be to
+model things in such a way that it corresponds more closely to the
+desugared code. The best approach for doing this is a bit unclear: it
+may in fact be possible to *actually* desugar before we start, but I
+don't think so. The main option that I've been thinking through is
+imposing a "view shift" as we enter the fn body, so that regions
+appearing in the types of fn parameters and upvars are translated from
+being regions in the outer fn into free region parameters, just as
+they would be if we applied the desugaring. The challenge here is that
+type inference may not have fully run, so the types may not be fully
+known: we could probably do this translation lazilly, as type
+variables are instantiated. We would also have to apply a kind of
+inverse translation to the return value. This would be a good idea
+anyway, as right now it is possible for free regions instantiated
+within the closure to leak into the parent: this currently leads to
+type errors, since those regions cannot outlive any expressions within
+the parent hierarchy. Much like the current handling of closures,
+there are no known cases where this leads to a type-checking accepting
+incorrect code (though it sometimes rejects what might be considered
+correct code; see rust-lang/rust#22557), but it still doesn't feel
+like the right approach.
 
 ### Skolemization
 
