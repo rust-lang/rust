@@ -243,11 +243,14 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
     ret_val
 }
 
-pub enum ParseResult {
-    Success(HashMap<Ident, Rc<NamedMatch>>),
+pub enum ParseResult<T> {
+    Success(T),
     Failure(codemap::Span, String),
     Error(codemap::Span, String)
 }
+
+pub type NamedParseResult = ParseResult<HashMap<Ident, Rc<NamedMatch>>>;
+pub type PositionalParseResult = ParseResult<Vec<Rc<NamedMatch>>>;
 
 pub fn parse_or_else(sess: &ParseSess,
                      cfg: ast::CrateConfig,
@@ -280,7 +283,7 @@ pub fn parse(sess: &ParseSess,
              cfg: ast::CrateConfig,
              mut rdr: TtReader,
              ms: &[TokenTree])
-             -> ParseResult {
+             -> NamedParseResult {
     let mut cur_eis = Vec::new();
     cur_eis.push(initial_matcher_pos(Rc::new(ms.iter()
                                                 .cloned()
