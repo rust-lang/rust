@@ -1318,13 +1318,11 @@ interface.
 
 [gh22607]: https://github.com/rust-lang/rust/issues/22607
 
-The `set_stdout` and `set_stderr` functions will be moved to a new
-`std::fmt::output` module and renamed to `set_print` and `set_panic`,
-respectively. These new names reflect what they actually do, removing a
-longstanding confusion. The current `stdio::flush` function will also move to
-this module and be renamed to `flush_print`.
-
-The entire `std::fmt::output` module will remain `#[unstable]` for now, however.
+The `set_stdout` and `set_stderr` functions will be removed with no replacement
+for now. It's unclear whether these functions should indeed control a thread
+local handle instead of a global handle as whether they're justified in the
+first place. It is a backwards-compatible extension to allow this sort of output
+to be redirected and can be considered if the need arises.
 
 ### `std::env`
 [std::env]: #stdenv
