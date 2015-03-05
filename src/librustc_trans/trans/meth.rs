@@ -300,7 +300,10 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   .position(|item| item.def_id() == method_id)
                                   .unwrap();
             let (llfn, ty) =
-                trans_object_shim(ccx, data.object_ty, trait_id, method_offset_in_trait);
+                trans_object_shim(ccx,
+                                  data.object_ty,
+                                  data.upcast_trait_ref.clone(),
+                                  method_offset_in_trait);
             immediate_rvalue(llfn, ty)
         }
         _ => {
@@ -386,7 +389,10 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             Callee { bcx: bcx, data: Fn(llfn) }
         }
         traits::VtableObject(ref data) => {
-            let (llfn, _) = trans_object_shim(bcx.ccx(), data.object_ty, trait_id, n_method);
+            let (llfn, _) = trans_object_shim(bcx.ccx(),
+                                              data.object_ty,
+                                              data.upcast_trait_ref.clone(),
+                                              n_method);
             Callee { bcx: bcx, data: Fn(llfn) }
         }
         traits::VtableBuiltin(..) |
@@ -551,16 +557,17 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn trans_object_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
     object_ty: Ty<'tcx>,
-    trait_id: ast::DefId,
+    upcast_trait_ref: ty::PolyTraitRef<'tcx>,
     method_offset_in_trait: uint)
     -> (ValueRef, Ty<'tcx>)
 {
     let _icx = push_ctxt("trans_object_shim");
     let tcx = ccx.tcx();
+    let trait_id = upcast_trait_ref.def_id();
 
-    debug!("trans_object_shim(object_ty={}, trait_id={}, method_offset_in_trait={})",
+    debug!("trans_object_shim(object_ty={}, upcast_trait_ref={}, method_offset_in_trait={})",
            object_ty.repr(tcx),
-           trait_id.repr(tcx),
+           upcast_trait_ref.repr(tcx),
            method_offset_in_trait);
 
     let object_trait_ref =
@@ -575,7 +582,6 @@ pub fn trans_object_shim<'a, 'tcx>(
         };
 
     // Upcast to the trait in question and extract out the substitutions.
-    let upcast_trait_ref = traits::upcast(ccx.tcx(), object_trait_ref.clone(), trait_id).unwrap();
     let upcast_trait_ref = ty::erase_late_bound_regions(tcx, &upcast_trait_ref);
     let object_substs = upcast_trait_ref.substs.clone().erase_regions();
     debug!("trans_object_shim: object_substs={}", object_substs.repr(tcx));

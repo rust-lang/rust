@@ -165,14 +165,12 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
             _ => unreachable!()
         }
     });
-    let trait_def = ty::lookup_trait_def(tcx, did);
     let predicates = ty::lookup_predicates(tcx, did);
-    let bounds = trait_def.bounds.clean(cx);
     clean::Trait {
         unsafety: def.unsafety,
         generics: (&def.generics, &predicates, subst::TypeSpace).clean(cx),
         items: items.collect(),
-        bounds: bounds,
+        bounds: vec![], // supertraits can be found in the list of predicates
     }
 }
 

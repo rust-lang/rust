@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that bounds are sized-compatible.
+// Test a cycle where a type parameter on a trait has a default that
+// again references the trait.
 
-trait T : Sized {}
-fn f<Y: ?Sized + T>() {
-//~^ERROR incompatible bounds on `Y`, bound `T` does not allow unsized type
+trait Foo<X = Box<Foo>> {
+    //~^ ERROR unsupported cyclic reference
 }
 
-pub fn main() {
-}
+fn main() { }

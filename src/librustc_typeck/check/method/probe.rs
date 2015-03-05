@@ -456,13 +456,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         debug!("elaborate_bounds(bounds={})", bounds.repr(self.tcx()));
 
         let tcx = self.tcx();
-        let mut cache = HashSet::new();
         for bound_trait_ref in traits::transitive_bounds(tcx, bounds) {
-            // Already visited this trait, skip it.
-            if !cache.insert(bound_trait_ref.def_id()) {
-                continue;
-            }
-
             let (pos, method) = match trait_method(tcx,
                                                    bound_trait_ref.def_id(),
                                                    self.method_name) {
@@ -1269,9 +1263,11 @@ impl<'tcx> Candidate<'tcx> {
 
     fn to_trait_data(&self) -> Option<(ast::DefId,MethodIndex)> {
         match self.kind {
-            InherentImplCandidate(..) |
-            ObjectCandidate(..) => {
+            InherentImplCandidate(..) => {
                 None
+            }
+            ObjectCandidate(trait_def_id, method_num, _) => {
+                Some((trait_def_id, method_num))
             }
             ClosureCandidate(trait_def_id, method_num) => {
                 Some((trait_def_id, method_num))

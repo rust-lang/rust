@@ -281,12 +281,13 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
             // Find the supertrait bounds. This will add `int:Bar`.
             let poly_trait_ref = ty::Binder(trait_ref);
-            let predicates = ty::predicates_for_trait_ref(fcx.tcx(), &poly_trait_ref);
+            let predicates = ty::lookup_super_predicates(fcx.tcx(), poly_trait_ref.def_id());
+            let predicates = predicates.instantiate_supertrait(fcx.tcx(), &poly_trait_ref);
             let predicates = {
                 let selcx = &mut traits::SelectionContext::new(fcx.infcx(), fcx);
                 traits::normalize(selcx, cause.clone(), &predicates)
             };
-            for predicate in predicates.value {
+            for predicate in predicates.value.predicates {
                 fcx.register_predicate(traits::Obligation::new(cause.clone(), predicate));
             }
             for obligation in predicates.obligations {

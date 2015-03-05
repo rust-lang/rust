@@ -22,9 +22,8 @@ use metadata::csearch::MethodInfo;
 use metadata::csearch;
 use metadata::cstore;
 use metadata::tydecode::{parse_ty_data, parse_region_data, parse_def_id,
-                         parse_type_param_def_data, parse_bounds_data,
-                         parse_bare_fn_ty_data, parse_trait_ref_data,
-                         parse_predicate_data};
+                         parse_type_param_def_data, parse_bare_fn_ty_data,
+                         parse_trait_ref_data, parse_predicate_data};
 use middle::def;
 use middle::lang_items;
 use middle::subst;
@@ -260,18 +259,6 @@ fn item_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
     doc_trait_ref(tp, tcx, cdata)
 }
 
-fn doc_bounds<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
-                    -> ty::ParamBounds<'tcx> {
-    parse_bounds_data(doc.data, cdata.cnum, doc.start, tcx,
-                      |_, did| translate_def_id(cdata, did))
-}
-
-fn trait_def_bounds<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
-                          -> ty::ParamBounds<'tcx> {
-    let d = reader::get_doc(doc, tag_trait_def_bounds);
-    doc_bounds(d, tcx, cdata)
-}
-
 fn enum_variant_ids(item: rbml::Doc, cdata: Cmd) -> Vec<ast::DefId> {
     let mut ids: Vec<ast::DefId> = Vec::new();
     let v = tag_items_data_item_variant;
@@ -406,7 +393,6 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
 {
     let item_doc = lookup_item(item_id, cdata.data());
     let generics = doc_generics(item_doc, tcx, cdata, tag_item_generics);
-    let bounds = trait_def_bounds(item_doc, tcx, cdata);
     let unsafety = parse_unsafety(item_doc);
     let associated_type_names = parse_associated_type_names(item_doc);
     let paren_sugar = parse_paren_sugar(item_doc);
@@ -415,7 +401,6 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
         paren_sugar: paren_sugar,
         unsafety: unsafety,
         generics: generics,
-        bounds: bounds,
         trait_ref: item_trait_ref(item_doc, tcx, cdata),
         associated_type_names: associated_type_names,
     }
@@ -428,6 +413,15 @@ pub fn get_predicates<'tcx>(cdata: Cmd,
 {
     let item_doc = lookup_item(item_id, cdata.data());
     doc_predicates(item_doc, tcx, cdata, tag_item_generics)
+}
+
+pub fn get_super_predicates<'tcx>(cdata: Cmd,
+                                  item_id: ast::NodeId,
+                                  tcx: &ty::ctxt<'tcx>)
+                                  -> ty::GenericPredicates<'tcx>
+{
+    let item_doc = lookup_item(item_id, cdata.data());
+    doc_predicates(item_doc, tcx, cdata, tag_item_super_predicates)
 }
 
 pub fn get_type<'tcx>(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt<'tcx>)
@@ -969,24 +963,6 @@ pub fn get_provided_trait_methods<'tcx>(intr: Rc<IdentInterner>,
     });
 
     return result;
-}
-
-/// Returns the supertraits of the given trait.
-pub fn get_supertraits<'tcx>(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt<'tcx>)
-                             -> Vec<Rc<ty::TraitRef<'tcx>>> {
-    let mut results = Vec::new();
-    let item_doc = lookup_item(id, cdata.data());
-    reader::tagged_docs(item_doc, tag_item_super_trait_ref, |trait_doc| {
-        // NB. Only reads the ones that *aren't* builtin-bounds. See also
-        // get_trait_def() for collecting the builtin bounds.
-        // FIXME(#8559): The builtin bounds shouldn't be encoded in the first place.
-        let trait_ref = doc_trait_ref(trait_doc, tcx, cdata);
-        if tcx.lang_items.to_builtin_kind(trait_ref.def_id).is_none() {
-            results.push(trait_ref);
-        }
-        true
-    });
-    return results;
 }
 
 pub fn get_type_name_if_impl(cdata: Cmd,
