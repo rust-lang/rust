@@ -25,6 +25,7 @@ use util::nodemap::{FnvHashMap, NodeMap};
 
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::path::PathBuf;
 use flate::Bytes;
 use syntax::ast;
 use syntax::codemap;
@@ -78,8 +79,8 @@ pub enum NativeLibraryKind {
 // must be non-None.
 #[derive(PartialEq, Clone)]
 pub struct CrateSource {
-    pub dylib: Option<(Path, PathKind)>,
-    pub rlib: Option<(Path, PathKind)>,
+    pub dylib: Option<(PathBuf, PathKind)>,
+    pub rlib: Option<(PathBuf, PathKind)>,
     pub cnum: ast::CrateNum,
 }
 
@@ -172,7 +173,7 @@ impl CStore {
     // topological sort of all crates putting the leaves at the right-most
     // positions.
     pub fn get_used_crates(&self, prefer: LinkagePreference)
-                           -> Vec<(ast::CrateNum, Option<Path>)> {
+                           -> Vec<(ast::CrateNum, Option<PathBuf>)> {
         let mut ordering = Vec::new();
         fn visit(cstore: &CStore, cnum: ast::CrateNum,
                  ordering: &mut Vec<ast::CrateNum>) {

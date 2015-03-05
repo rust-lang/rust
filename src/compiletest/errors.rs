@@ -9,7 +9,10 @@
 // except according to those terms.
 use self::WhichLine::*;
 
-use std::old_io::{BufferedReader, File};
+use std::fs::File;
+use std::io::BufReader;
+use std::io::prelude::*;
+use std::path::Path;
 
 pub struct ExpectedError {
     pub line: uint,
@@ -29,7 +32,7 @@ enum WhichLine { ThisLine, FollowPrevious(uint), AdjustBackward(uint) }
 ///          //~| ERROR message two for that same line.
 // Load any test directives embedded in the file
 pub fn load_errors(testfile: &Path) -> Vec<ExpectedError> {
-    let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
+    let rdr = BufReader::new(File::open(testfile).unwrap());
 
     // `last_nonfollow_error` tracks the most recently seen
     // line with an error template that did not use the

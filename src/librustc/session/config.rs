@@ -38,6 +38,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::env;
 use std::fmt;
+use std::path::PathBuf;
 
 use llvm;
 
@@ -89,7 +90,7 @@ pub struct Options {
     // this.
     pub search_paths: SearchPaths,
     pub libs: Vec<(String, cstore::NativeLibraryKind)>,
-    pub maybe_sysroot: Option<Path>,
+    pub maybe_sysroot: Option<PathBuf>,
     pub target_triple: String,
     // User-specified cfg meta items. The compiler itself will add additional
     // items to the crate config, and during parsing the entire crate config
@@ -103,7 +104,7 @@ pub struct Options {
     pub no_analysis: bool,
     pub debugging_opts: DebuggingOptions,
     /// Whether to write dependency files. It's (enabled, optional filename).
-    pub write_dependency_info: (bool, Option<Path>),
+    pub write_dependency_info: (bool, Option<PathBuf>),
     pub prints: Vec<PrintRequest>,
     pub cg: CodegenOptions,
     pub color: ColorConfig,
@@ -142,7 +143,7 @@ pub enum PrintRequest {
 
 pub enum Input {
     /// Load source from file
-    File(Path),
+    File(PathBuf),
     /// The string is the source
     Str(String)
 }
@@ -150,7 +151,8 @@ pub enum Input {
 impl Input {
     pub fn filestem(&self) -> String {
         match *self {
-            Input::File(ref ifile) => ifile.filestem_str().unwrap().to_string(),
+            Input::File(ref ifile) => ifile.file_stem().unwrap()
+                                           .to_str().unwrap().to_string(),
             Input::Str(_) => "rust_out".to_string(),
         }
     }
@@ -158,14 +160,14 @@ impl Input {
 
 #[derive(Clone)]
 pub struct OutputFilenames {
-    pub out_directory: Path,
+    pub out_directory: PathBuf,
     pub out_filestem: String,
-    pub single_output_file: Option<Path>,
+    pub single_output_file: Option<PathBuf>,
     pub extra: String,
 }
 
 impl OutputFilenames {
-    pub fn path(&self, flavor: OutputType) -> Path {
+    pub fn path(&self, flavor: OutputType) -> PathBuf {
         match self.single_output_file {
             Some(ref path) => return path.clone(),
             None => {}
@@ -173,8 +175,8 @@ impl OutputFilenames {
         self.temp_path(flavor)
     }
 
-    pub fn temp_path(&self, flavor: OutputType) -> Path {
-        let base = self.out_directory.join(self.filestem());
+    pub fn temp_path(&self, flavor: OutputType) -> PathBuf {
+        let base = self.out_directory.join(&self.filestem());
         match flavor {
             OutputTypeBitcode => base.with_extension("bc"),
             OutputTypeAssembly => base.with_extension("s"),
@@ -185,8 +187,8 @@ impl OutputFilenames {
         }
     }
 
-    pub fn with_extension(&self, extension: &str) -> Path {
-        self.out_directory.join(self.filestem()).with_extension(extension)
+    pub fn with_extension(&self, extension: &str) -> PathBuf {
+        self.out_directory.join(&self.filestem()).with_extension(extension)
     }
 
     pub fn filestem(&self) -> String {
@@ -897,7 +899,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let cg = build_codegen_options(matches);
 
-    let sysroot_opt = matches.opt_str("sysroot").map(|m| Path::new(m));
+    let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::new(&m));
     let target = matches.opt_str("target").unwrap_or(
         host_triple().to_string());
     let opt_level = {

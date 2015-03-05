@@ -17,7 +17,7 @@ use hash::Hash;
 use libc::{pid_t, c_void};
 use libc;
 use mem;
-use old_io::fs::PathExtensions;
+#[allow(deprecated)] use old_io::fs::PathExtensions;
 use old_io::process::{ProcessExit, ExitStatus};
 use old_io::{IoResult, IoError};
 use old_io;

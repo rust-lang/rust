@@ -19,9 +19,8 @@ use parse::lexer::is_block_doc_comment;
 use parse::lexer;
 use print::pprust;
 
-use std::old_io;
+use std::io::Read;
 use std::str;
-use std::string::String;
 use std::usize;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -337,9 +336,10 @@ pub struct Literal {
 // probably not a good thing.
 pub fn gather_comments_and_literals(span_diagnostic: &diagnostic::SpanHandler,
                                     path: String,
-                                    srdr: &mut old_io::Reader)
+                                    srdr: &mut Read)
                                  -> (Vec<Comment>, Vec<Literal>) {
-    let src = srdr.read_to_end().unwrap();
+    let mut src = Vec::new();
+    srdr.read_to_end(&mut src).unwrap();
     let src = String::from_utf8(src).unwrap();
     let cm = CodeMap::new();
     let filemap = cm.new_filemap(path, src);

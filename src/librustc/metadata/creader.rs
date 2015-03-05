@@ -21,6 +21,7 @@ use metadata::decoder;
 use metadata::loader;
 use metadata::loader::CratePaths;
 
+use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use syntax::ast;
 use syntax::abi;
@@ -126,7 +127,7 @@ fn register_native_lib(sess: &Session,
 // Extra info about a crate loaded for plugins or exported macros.
 struct ExtensionCrate {
     metadata: PMDSource,
-    dylib: Option<Path>,
+    dylib: Option<PathBuf>,
     target_only: bool,
 }
 
@@ -551,7 +552,8 @@ impl<'a> CrateReader<'a> {
     }
 
     /// Look for a plugin registrar. Returns library path and symbol name.
-    pub fn find_plugin_registrar(&mut self, span: Span, name: &str) -> Option<(Path, String)> {
+    pub fn find_plugin_registrar(&mut self, span: Span, name: &str)
+                                 -> Option<(PathBuf, String)> {
         let ekrate = self.read_extension_crate(span, &CrateInfo {
              name: name.to_string(),
              ident: name.to_string(),
@@ -574,7 +576,7 @@ impl<'a> CrateReader<'a> {
             .map(|id| decoder::get_symbol(ekrate.metadata.as_slice(), id));
 
         match (ekrate.dylib.as_ref(), registrar) {
-            (Some(dylib), Some(reg)) => Some((dylib.clone(), reg)),
+            (Some(dylib), Some(reg)) => Some((dylib.to_path_buf(), reg)),
             (None, Some(_)) => {
                 let message = format!("plugin `{}` only found in rlib format, \
                                        but must be available in dylib format",

@@ -11,6 +11,7 @@ pub use self::Mode::*;
 
 use std::fmt;
 use std::str::FromStr;
+use std::path::PathBuf;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
@@ -68,13 +69,13 @@ pub struct Config {
     pub run_lib_path: String,
 
     // The rustc executable
-    pub rustc_path: Path,
+    pub rustc_path: PathBuf,
 
     // The clang executable
-    pub clang_path: Option<Path>,
+    pub clang_path: Option<PathBuf>,
 
     // The llvm binaries path
-    pub llvm_bin_path: Option<Path>,
+    pub llvm_bin_path: Option<PathBuf>,
 
     // The valgrind path
     pub valgrind_path: Option<String>,
@@ -84,13 +85,13 @@ pub struct Config {
     pub force_valgrind: bool,
 
     // The directory containing the tests to run
-    pub src_base: Path,
+    pub src_base: PathBuf,
 
     // The directory where programs should be built
-    pub build_base: Path,
+    pub build_base: PathBuf,
 
     // Directory for auxiliary libraries
-    pub aux_base: Path,
+    pub aux_base: PathBuf,
 
     // The name of the stage being built (stage1, etc)
     pub stage_id: String,
@@ -105,7 +106,7 @@ pub struct Config {
     pub filter: Option<String>,
 
     // Write out a parseable log of tests that were run
-    pub logfile: Option<Path>,
+    pub logfile: Option<PathBuf>,
 
     // A command line to prefix program execution with,
     // for running under valgrind
@@ -133,7 +134,7 @@ pub struct Config {
     pub lldb_version: Option<String>,
 
     // Path to the android tools
-    pub android_cross_path: Path,
+    pub android_cross_path: PathBuf,
 
     // Extra parameter to run adb on arm-linux-androideabi
     pub adb_path: String,

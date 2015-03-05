@@ -39,6 +39,7 @@ pub trait AsRawHandle {
     fn as_raw_handle(&self) -> Handle;
 }
 
+#[allow(deprecated)]
 impl AsRawHandle for old_io::fs::File {
     fn as_raw_handle(&self) -> Handle {
         self.as_inner().handle()

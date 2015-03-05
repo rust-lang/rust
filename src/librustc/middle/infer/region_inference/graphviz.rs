@@ -28,8 +28,10 @@ use util::ppaux::Repr;
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry::Vacant;
-use std::old_io::{self, File};
 use std::env;
+use std::fs::File;
+use std::io;
+use std::io::prelude::*;
 use std::sync::atomic::{AtomicBool, Ordering, ATOMIC_BOOL_INIT};
 use syntax::ast;
 
@@ -256,10 +258,11 @@ pub type ConstraintMap<'tcx> = FnvHashMap<Constraint, SubregionOrigin<'tcx>>;
 
 fn dump_region_constraints_to<'a, 'tcx:'a >(tcx: &'a ty::ctxt<'tcx>,
                                             map: &ConstraintMap<'tcx>,
-                                            path: &str) -> old_io::IoResult<()> {
+                                            path: &str) -> io::Result<()> {
     debug!("dump_region_constraints map (len: {}) path: {}", map.len(), path);
     let g = ConstraintGraph::new(tcx, format!("region_constraints"), map);
-    let mut f = File::create(&Path::new(path));
     debug!("dump_region_constraints calling render");
-    dot::render(&g, &mut f)
+    let mut v = Vec::new();
+    dot::render(&g, &mut v).unwrap();
+    File::create(path).and_then(|mut f| f.write_all(&v))
 }

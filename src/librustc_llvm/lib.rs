@@ -28,9 +28,9 @@
 #![feature(int_uint)]
 #![feature(libc)]
 #![feature(link_args)]
-#![feature(old_path)]
 #![feature(staged_api)]
 #![feature(std_misc)]
+#![feature(path)]
 
 extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;

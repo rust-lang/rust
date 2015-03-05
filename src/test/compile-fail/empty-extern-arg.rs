@@ -9,6 +9,6 @@
 // except according to those terms.
 
 // compile-flags: --extern std=
-// error-pattern: is not a file
+// error-pattern: can't find crate for `std`
 
 fn main() {}
