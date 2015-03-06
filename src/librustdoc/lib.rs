@@ -35,9 +35,8 @@
 #![feature(unicode)]
 #![feature(str_words)]
 #![feature(io)]
-#![feature(fs)]
 #![feature(path)]
-#![feature(tempdir)]
+#![feature(path_ext)]
 
 extern crate arena;
 extern crate getopts;
@@ -47,6 +46,7 @@ extern crate rustc_trans;
 extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;
+extern crate rustc_back;
 extern crate serialize;
 extern crate syntax;
 extern crate "test" as testing;

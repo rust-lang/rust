@@ -38,10 +38,10 @@
 #![feature(std_misc)]
 #![feature(unicode)]
 #![feature(io)]
-#![feature(fs)]
 #![feature(path)]
 #![feature(os)]
-#![feature(tempdir)]
+#![feature(path_ext)]
+#![feature(fs)]
 
 extern crate arena;
 extern crate flate;
