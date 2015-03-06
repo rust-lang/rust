@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable(feature = "std_misc")]
+
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use error::{Error, FromError};
 use fmt;
@@ -59,6 +61,7 @@ use vec::Vec;
 /// # }
 /// ```
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct CString {
     inner: Vec<u8>,
 }
@@ -110,13 +113,19 @@ pub struct CString {
 /// }
 /// ```
 #[derive(Hash)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct CStr {
+    // FIXME: this should not be represented with a DST slice but rather with
+    //        just a raw `libc::c_char` along with some form of marker to make
+    //        this an unsized type. Essentially `sizeof(&CStr)` should be the
+    //        same as `sizeof(&c_char)` but `CStr` should be an unsized type.
     inner: [libc::c_char]
 }
 
 /// An error returned from `CString::new` to indicate that a nul byte was found
 /// in the vector provided.
 #[derive(Clone, PartialEq, Debug)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct NulError(usize, Vec<u8>);
 
 /// A conversion trait used by the constructor of `CString` for types that can
@@ -153,6 +162,7 @@ impl CString {
     /// This function will return an error if the bytes yielded contain an
     /// internal 0 byte. The error returned will contain the bytes as well as
     /// the position of the nul byte.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<T: IntoBytes>(t: T) -> Result<CString, NulError> {
         let bytes = t.into_bytes();
         match bytes.iter().position(|x| *x == 0) {
@@ -216,6 +226,7 @@ impl CString {
     ///
     /// This method is equivalent to `from_vec` except that no runtime assertion
     /// is made that `v` contains no 0 bytes.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> CString {
         v.push(0);
         CString { inner: v }
@@ -225,17 +236,20 @@ impl CString {
     ///
     /// The returned slice does **not** contain the trailing nul separator and
     /// it is guaranteed to not have any interior nul bytes.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes(&self) -> &[u8] {
         &self.inner[..self.inner.len() - 1]
     }
 
     /// Equivalent to the `as_bytes` function except that the returned slice
     /// includes the trailing nul byte.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes_with_nul(&self) -> &[u8] {
         &self.inner
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Deref for CString {
     type Target = CStr;
 
@@ -254,23 +268,28 @@ impl fmt::Debug for CString {
 impl NulError {
     /// Returns the position of the nul byte in the slice that was provided to
     /// `CString::from_vec`.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn nul_position(&self) -> usize { self.0 }
 
     /// Consumes this error, returning the underlying vector of bytes which
     /// generated the error in the first place.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_vec(self) -> Vec<u8> { self.1 }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Error for NulError {
     fn description(&self) -> &str { "nul byte found in data" }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for NulError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "nul byte found in provided data at position: {}", self.0)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl FromError<NulError> for io::Error {
     fn from_error(_: NulError) -> io::Error {
         io::Error::new(io::ErrorKind::InvalidInput,
@@ -278,6 +297,7 @@ impl FromError<NulError> for io::Error {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl FromError<NulError> for old_io::IoError {
     fn from_error(_: NulError) -> old_io::IoError {
         old_io::IoError {
@@ -325,6 +345,7 @@ impl CStr {
     /// }
     /// # }
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_ptr<'a>(ptr: *const libc::c_char) -> &'a CStr {
         let len = libc::strlen(ptr);
         mem::transmute(slice::from_raw_parts(ptr, len as usize + 1))
@@ -335,6 +356,7 @@ impl CStr {
     /// The returned pointer will be valid for as long as `self` is and points
     /// to a contiguous region of memory terminated with a 0 byte to represent
     /// the end of the string.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_ptr(&self) -> *const libc::c_char {
         self.inner.as_ptr()
     }
@@ -351,6 +373,7 @@ impl CStr {
     /// > **Note**: This method is currently implemented as a 0-cost cast, but
     /// > it is planned to alter its definition in the future to perform the
     /// > length calculation whenever this method is called.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_bytes(&self) -> &[u8] {
         let bytes = self.to_bytes_with_nul();
         &bytes[..bytes.len() - 1]
@@ -364,22 +387,27 @@ impl CStr {
     /// > **Note**: This method is currently implemented as a 0-cost cast, but
     /// > it is planned to alter its definition in the future to perform the
     /// > length calculation whenever this method is called.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_bytes_with_nul(&self) -> &[u8] {
         unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.inner) }
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for CStr {
     fn eq(&self, other: &CStr) -> bool {
         self.to_bytes().eq(other.to_bytes())
     }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for CStr {}
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for CStr {
     fn partial_cmp(&self, other: &CStr) -> Option<Ordering> {
         self.to_bytes().partial_cmp(&other.to_bytes())
     }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for CStr {
     fn cmp(&self, other: &CStr) -> Ordering {
         self.to_bytes().cmp(&other.to_bytes())

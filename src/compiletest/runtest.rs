@@ -20,7 +20,6 @@ use procsrv;
 use util::logv;
 
 use std::env;
-use std::ffi::OsStr;
 use std::fmt;
 use std::fs::{self, File};
 use std::io::BufReader;
@@ -1323,7 +1322,7 @@ fn make_exe_name(config: &Config, testfile: &Path) -> PathBuf {
     let mut f = output_base_name(config, testfile);
     if !env::consts::EXE_SUFFIX.is_empty() {
         let mut fname = f.file_name().unwrap().to_os_string();
-        fname.push_os_str(OsStr::from_str(env::consts::EXE_SUFFIX));
+        fname.push(env::consts::EXE_SUFFIX);
         f.set_file_name(&fname);
     }
     f
@@ -1433,7 +1432,7 @@ fn make_out_name(config: &Config, testfile: &Path, extension: &str) -> PathBuf {
 fn aux_output_dir_name(config: &Config, testfile: &Path) -> PathBuf {
     let f = output_base_name(config, testfile);
     let mut fname = f.file_name().unwrap().to_os_string();
-    fname.push_os_str(OsStr::from_str("libaux"));
+    fname.push("libaux");
     f.with_file_name(&fname)
 }
 
@@ -1647,8 +1646,8 @@ fn append_suffix_to_stem(p: &Path, suffix: &str) -> PathBuf {
         p.to_path_buf()
     } else {
         let mut stem = p.file_stem().unwrap().to_os_string();
-        stem.push_os_str(OsStr::from_str("-"));
-        stem.push_os_str(OsStr::from_str(suffix));
+        stem.push("-");
+        stem.push(suffix);
         p.with_file_name(&stem)
     }
 }

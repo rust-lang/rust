@@ -22,7 +22,6 @@
 #![feature(unicode)]
 #![feature(core)]
 #![feature(path)]
-#![feature(os)]
 #![feature(io)]
 #![feature(net)]
 #![feature(path_ext)]
