@@ -814,7 +814,9 @@ fn write_out_deps(sess: &Session,
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
         let files: Vec<String> = sess.codemap().files.borrow()
-                                   .iter().filter(|fmap| fmap.is_real_file())
+                                   .iter()
+                                   .filter(|fmap| fmap.is_real_file())
+                                   .filter(|fmap| !fmap.is_imported())
                                    .map(|fmap| escape_dep_filename(&fmap.name))
                                    .collect();
         let mut file = try!(fs::File::create(&deps_filename));
