@@ -1086,7 +1086,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     ///
     /// let s = "中华Việt Nam";
     /// let mut i = s.len();
-    /// while i < 0 {
+    /// while i > 0 {
     ///     let CharRange {ch, next} = s.char_range_at_reverse(i);
     ///     println!("{}: {}", i, ch);
     ///     i = next;
