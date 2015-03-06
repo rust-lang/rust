@@ -11,8 +11,7 @@
 // Checks that the Fn trait hierarchy rules permit
 // any Fn trait to be used where Fn is implemented.
 
-#![feature(unboxed_closures)]
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, core)]
 
 use std::ops::{Fn,FnMut,FnOnce};
 

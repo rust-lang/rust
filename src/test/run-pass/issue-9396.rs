@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(old_io, std_misc)]
+
 use std::sync::mpsc::{TryRecvError, channel};
 use std::old_io::timer::Timer;
 use std::thread::Thread;

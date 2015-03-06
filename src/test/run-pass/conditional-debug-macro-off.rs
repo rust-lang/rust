@@ -11,6 +11,8 @@
 // compile-flags: -C debug-assertions=no
 // exec-env:RUST_LOG=conditional-debug-macro-off=4
 
+#![feature(rustc_private)]
+
 #[macro_use]
 extern crate log;
 

@@ -12,7 +12,7 @@
 
 // aux-build:check_static_recursion_foreign_helper.rs
 
-#![feature(custom_attribute)]
+#![feature(custom_attribute, libc)]
 
 extern crate check_static_recursion_foreign_helper;
 extern crate libc;

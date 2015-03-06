@@ -10,7 +10,7 @@
 
 // ignore-pretty very bad with line comments
 
-#![feature(box_syntax)]
+#![feature(box_syntax, core)]
 #![allow(non_snake_case)]
 
 use std::io::prelude::*;

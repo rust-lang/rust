@@ -13,10 +13,10 @@
 
 #![feature(foo)] //~ ERROR unused or unknown feature
 
-extern crate lint_output_format; //~ WARNING: use of unstable library feature
+extern crate lint_output_format; //~ ERROR use of unstable library feature
 use lint_output_format::{foo, bar};
 
 fn main() {
     let _x = foo(); //~ WARNING #[warn(deprecated)] on by default
-    let _y = bar(); //~ WARNING: use of unstable library feature
+    let _y = bar(); //~ ERROR use of unstable library feature
 }

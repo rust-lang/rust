@@ -18,6 +18,7 @@
 #![feature(no_std)]
 #![no_std]
 #![unstable(feature = "rustc_private")]
+#![cfg_attr(test, feature(hash))]
 
 //! A typesafe bitmask flag generator.
 

@@ -49,6 +49,7 @@
 #![feature(std_misc)]
 #![feature(path_relative_from)]
 #![feature(step_by)]
+#![cfg_attr(test, feature(test, rand))]
 
 extern crate syntax;
 extern crate serialize;

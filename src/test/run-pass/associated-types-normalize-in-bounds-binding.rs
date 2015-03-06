@@ -11,6 +11,7 @@
 // Test that we normalize associated types that appear in a bound that
 // contains a binding. Issue #21664.
 
+#![feature(core)]
 #![allow(dead_code)]
 
 use std::marker::MarkerTrait;

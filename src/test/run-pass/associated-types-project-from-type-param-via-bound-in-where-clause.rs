@@ -12,6 +12,8 @@
 // `Item` originates in a where-clause, not the declaration of
 // `T`. Issue #20300.
 
+#![feature(core)]
+
 use std::marker::{MarkerTrait, PhantomData};
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT};
 use std::sync::atomic::Ordering::SeqCst;

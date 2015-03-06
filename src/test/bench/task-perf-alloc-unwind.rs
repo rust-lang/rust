@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unsafe_destructor, box_syntax)]
+#![feature(unsafe_destructor, box_syntax, std_misc, collections)]
 
 use std::env;
 use std::thread;

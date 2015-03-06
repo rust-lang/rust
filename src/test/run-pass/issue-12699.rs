@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(old_io, std_misc)]
+
 use std::old_io::timer;
 use std::time::Duration;
 

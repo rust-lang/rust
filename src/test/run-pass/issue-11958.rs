@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![forbid(warnings)]
+#![feature(std_misc)]
 
 // Pretty printing tests complain about `use std::predule::*`
 #![allow(unused_imports)]

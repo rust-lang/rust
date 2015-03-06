@@ -18,6 +18,8 @@
 // no-pretty-expanded FIXME #15189
 // ignore-lexer-test FIXME #15679
 
+#![feature(std_misc)]
+
 use std::env;
 use std::sync::{Arc, Future, Mutex, Condvar};
 use std::time::Duration;

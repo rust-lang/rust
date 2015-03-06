@@ -653,6 +653,7 @@ impl char {
     /// In both of these examples, 'ß' takes two bytes to encode.
     ///
     /// ```
+    /// # #![feature(unicode)]
     /// let mut b = [0; 2];
     ///
     /// let result = 'ß'.encode_utf8(&mut b);
@@ -663,6 +664,7 @@ impl char {
     /// A buffer that's too small:
     ///
     /// ```
+    /// # #![feature(unicode)]
     /// let mut b = [0; 1];
     ///
     /// let result = 'ß'.encode_utf8(&mut b);
@@ -685,6 +687,7 @@ impl char {
     /// In both of these examples, 'ß' takes one `u16` to encode.
     ///
     /// ```
+    /// # #![feature(unicode)]
     /// let mut b = [0; 1];
     ///
     /// let result = 'ß'.encode_utf16(&mut b);
@@ -695,6 +698,7 @@ impl char {
     /// A buffer that's too small:
     ///
     /// ```
+    /// # #![feature(unicode)]
     /// let mut b = [0; 0];
     ///
     /// let result = 'ß'.encode_utf8(&mut b);

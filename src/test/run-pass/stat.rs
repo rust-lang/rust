@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(tempdir, path_ext)]
+
 use std::fs::{File, TempDir};
 use std::io::prelude::*;
 

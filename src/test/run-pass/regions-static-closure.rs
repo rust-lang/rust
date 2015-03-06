@@ -10,7 +10,7 @@
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, core)]
 
 struct closure_box<'a> {
     cl: Box<FnMut() + 'a>,

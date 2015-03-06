@@ -17,7 +17,7 @@
 // is force-fed a lifetime equal to that of the borrowed arena.
 
 #![allow(unstable)]
-#![feature(unsafe_destructor)]
+#![feature(unsafe_destructor, rustc_private)]
 
 extern crate arena;
 

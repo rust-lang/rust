@@ -19,6 +19,7 @@
 #![reexport_test_harness_main = "test_main"]
 
 #![allow(unused_imports)]
+#![feature(old_io, std_misc, io)]
 
 use std::old_io::*;
 use std::old_io::test::*;

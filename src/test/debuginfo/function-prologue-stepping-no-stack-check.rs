@@ -20,6 +20,8 @@
 
 // compile-flags:-g
 
+#![feature(old_io)]
+
 // === GDB TESTS ===================================================================================
 
 // gdb-command:rbreak immediate_args

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(std_misc)]
+
 // Issue #922
 
 // This test is specifically about spawning temporary closures.

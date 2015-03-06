@@ -11,7 +11,7 @@
 // aux-build:issue-3012-1.rs
 
 #![allow(unknown_features)]
-#![feature(box_syntax)]
+#![feature(box_syntax, libc)]
 
 extern crate socketlib;
 extern crate libc;

@@ -12,6 +12,8 @@
 // Issue #4036: Test for an issue that arose around fixing up type inference
 // byproducts in vtable records.
 
+#![feature(rustc_private)]
+
 extern crate serialize;
 
 use serialize::{json, Decodable};

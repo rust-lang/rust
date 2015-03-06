@@ -12,6 +12,8 @@
 // statics cannot. This ensures that there's some form of error if this is
 // attempted.
 
+#![feature(libc)]
+
 extern crate libc;
 
 #[link(name = "rust_test_helpers")]

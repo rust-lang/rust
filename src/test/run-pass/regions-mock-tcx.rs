@@ -15,6 +15,8 @@
 // - Multiple lifetime parameters
 // - Arenas
 
+#![feature(rustc_private, libc, collections)]
+
 extern crate arena;
 extern crate collections;
 extern crate libc;
