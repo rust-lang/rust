@@ -8,34 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static c: char =
-    '\u539_' //~ ERROR: illegal character in numeric character escape
-    //~^ WARNING: \uABCD escapes are deprecated
-;
-
-static c2: char =
-    '\Uffffffff' //~ ERROR: illegal numeric character escape
-    //~^ WARNING: \uABCD escapes are deprecated
-;
-
 static c3: char =
     '\x1' //~ ERROR: numeric character escape is too short
 ;
 
-static c4: char =
-    '\u23q' //~  ERROR: illegal character in numeric character escape
-    //~^ WARNING: \uABCD escapes are deprecated
-;
-//~^^^ ERROR: numeric character escape is too short
-
 static s: &'static str =
     "\x1" //~ ERROR: numeric character escape is too short
-;
-
-static s2: &'static str =
-    "\u23q" //~ ERROR: illegal character in numeric character escape
-    //~^ ERROR: numeric character escape is too short
-    //~^^ WARNING: \uABCD escapes are deprecated
 ;
 
 static c: char =
