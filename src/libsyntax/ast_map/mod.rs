@@ -457,35 +457,32 @@ impl<'ast> Map<'ast> {
         }
     }
 
-    /// Given a node ID and a closure, apply the closure to the array
-    /// of attributes associated with the AST corresponding to the Node ID
-    pub fn with_attrs<T, F>(&self, id: NodeId, f: F) -> T where
-        F: FnOnce(Option<&[Attribute]>) -> T,
-    {
-        let attrs = match self.get(id) {
-            NodeItem(i) => Some(&i.attrs[..]),
-            NodeForeignItem(fi) => Some(&fi.attrs[..]),
-            NodeTraitItem(ref tm) => match **tm {
+    /// Given a node ID, get a list of of attributes associated with the AST
+    /// corresponding to the Node ID
+    pub fn attrs(&self, id: NodeId) -> &[Attribute] {
+        let attrs = match self.find(id) {
+            Some(NodeItem(i)) => Some(&i.attrs[..]),
+            Some(NodeForeignItem(fi)) => Some(&fi.attrs[..]),
+            Some(NodeTraitItem(ref tm)) => match **tm {
                 RequiredMethod(ref type_m) => Some(&type_m.attrs[..]),
                 ProvidedMethod(ref m) => Some(&m.attrs[..]),
                 TypeTraitItem(ref typ) => Some(&typ.attrs[..]),
             },
-            NodeImplItem(ref ii) => {
+            Some(NodeImplItem(ref ii)) => {
                 match **ii {
                     MethodImplItem(ref m) => Some(&m.attrs[..]),
                     TypeImplItem(ref t) => Some(&t.attrs[..]),
                 }
             }
-            NodeVariant(ref v) => Some(&v.node.attrs[..]),
+            Some(NodeVariant(ref v)) => Some(&v.node.attrs[..]),
             // unit/tuple structs take the attributes straight from
             // the struct definition.
-            // FIXME(eddyb) make this work again (requires access to the map).
-            NodeStructCtor(_) => {
-                return self.with_attrs(self.get_parent(id), f);
+            Some(NodeStructCtor(_)) => {
+                return self.attrs(self.get_parent(id));
             }
             _ => None
         };
-        f(attrs)
+        attrs.unwrap_or(&[])
     }
 
     /// Returns an iterator that yields the node id's with paths that
