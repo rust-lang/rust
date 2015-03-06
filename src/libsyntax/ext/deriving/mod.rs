@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -13,9 +13,13 @@
 //! FIXME (#2810): hygiene. Search for "__" strings (in other files too). We also assume "extra" is
 //! the standard library, and "std" is the core library.
 
-use ast::{Item, MetaItem, MetaList, MetaNameValue, MetaWord};
-use ext::base::ExtCtxt;
+use ast::{Item, MetaItem, MetaWord};
+use attr::AttrMetaMethods;
+use ext::base::{ExtCtxt, SyntaxEnv, Decorator, ItemDecorator, Modifier};
+use ext::build::AstBuilder;
+use feature_gate;
 use codemap::Span;
+use parse::token::{intern, intern_and_get_ident};
 use ptr::P;
 
 macro_rules! pathvec {
@@ -74,101 +78,133 @@ pub mod totalord;
 
 pub mod generic;
 
-pub fn expand_deprecated_deriving(cx: &mut ExtCtxt,
-                                  span: Span,
-                                  _: &MetaItem,
-                                  _: &Item,
-                                  _: &mut FnMut(P<Item>)) {
+fn expand_deprecated_deriving(cx: &mut ExtCtxt,
+                              span: Span,
+                              _: &MetaItem,
+                              _: &Item,
+                              _: &mut FnMut(P<Item>)) {
     cx.span_err(span, "`deriving` has been renamed to `derive`");
 }
 
-pub fn expand_meta_derive(cx: &mut ExtCtxt,
-                          _span: Span,
-                          mitem: &MetaItem,
-                          item: &Item,
-                          push: &mut FnMut(P<Item>)) {
-    match mitem.node {
-        MetaNameValue(_, ref l) => {
-            cx.span_err(l.span, "unexpected value in `derive`");
+fn expand_derive(cx: &mut ExtCtxt,
+                 _: Span,
+                 mitem: &MetaItem,
+                 item: P<Item>) -> P<Item> {
+    item.map(|mut item| {
+        if mitem.value_str().is_some() {
+            cx.span_err(mitem.span, "unexpected value in `derive`");
         }
-        MetaWord(_) => {
+
+        let traits = mitem.meta_item_list().unwrap_or(&[]);
+        if traits.is_empty() {
             cx.span_warn(mitem.span, "empty trait list in `derive`");
         }
-        MetaList(_, ref titems) if titems.len() == 0 => {
-            cx.span_warn(mitem.span, "empty trait list in `derive`");
+
+        for titem in traits.iter().rev() {
+            let tname = match titem.node {
+                MetaWord(ref tname) => tname,
+                _ => {
+                    cx.span_err(titem.span, "malformed `derive` entry");
+                    continue;
+                }
+            };
+
+            if !(is_builtin_trait(tname) || cx.ecfg.enable_custom_derive()) {
+                feature_gate::emit_feature_err(&cx.parse_sess.span_diagnostic,
+                                               "custom_derive",
+                                               titem.span,
+                                               feature_gate::EXPLAIN_CUSTOM_DERIVE);
+                continue;
+            }
+
+            // #[derive(Foo, Bar)] expands to #[derive_Foo] #[derive_Bar]
+            item.attrs.push(cx.attribute(titem.span, cx.meta_word(titem.span,
+                intern_and_get_ident(&format!("derive_{}", tname)))));
         }
-        MetaList(_, ref titems) => {
-            for titem in titems.iter().rev() {
-                match titem.node {
-                    MetaNameValue(ref tname, _) |
-                    MetaList(ref tname, _) |
-                    MetaWord(ref tname) => {
-                        macro_rules! expand {
-                            ($func:path) => ($func(cx, titem.span, &**titem, item,
-                                                   |i| push(i)))
-                        }
 
-                        match &tname[..] {
-                            "Clone" => expand!(clone::expand_deriving_clone),
+        item
+    })
+}
 
-                            "Hash" => expand!(hash::expand_deriving_hash),
+macro_rules! derive_traits {
+    ($( $name:expr => $func:path, )*) => {
+        pub fn register_all(env: &mut SyntaxEnv) {
+            // Define the #[derive_*] extensions.
+            $({
+                struct DeriveExtension;
 
-                            "RustcEncodable" => {
-                                expand!(encodable::expand_deriving_rustc_encodable)
-                            }
-                            "RustcDecodable" => {
-                                expand!(decodable::expand_deriving_rustc_decodable)
-                            }
-                            "Encodable" => {
-                                cx.span_warn(titem.span,
-                                             "derive(Encodable) is deprecated \
-                                              in favor of derive(RustcEncodable)");
-
-                                expand!(encodable::expand_deriving_encodable)
-                            }
-                            "Decodable" => {
-                                cx.span_warn(titem.span,
-                                             "derive(Decodable) is deprecated \
-                                              in favor of derive(RustcDecodable)");
-
-                                expand!(decodable::expand_deriving_decodable)
-                            }
-
-                            "PartialEq" => expand!(eq::expand_deriving_eq),
-                            "Eq" => expand!(totaleq::expand_deriving_totaleq),
-                            "PartialOrd" => expand!(ord::expand_deriving_ord),
-                            "Ord" => expand!(totalord::expand_deriving_totalord),
-
-                            "Rand" => expand!(rand::expand_deriving_rand),
-
-                            "Show" => {
-                                cx.span_warn(titem.span,
-                                             "derive(Show) is deprecated \
-                                              in favor of derive(Debug)");
-
-                                expand!(show::expand_deriving_show)
-                            },
-
-                            "Debug" => expand!(show::expand_deriving_show),
-
-                            "Default" => expand!(default::expand_deriving_default),
-
-                            "FromPrimitive" => expand!(primitive::expand_deriving_from_primitive),
-
-                            "Send" => expand!(bounds::expand_deriving_bound),
-                            "Sync" => expand!(bounds::expand_deriving_bound),
-                            "Copy" => expand!(bounds::expand_deriving_bound),
-
-                            ref tname => {
-                                cx.span_err(titem.span,
-                                            &format!("unknown `derive` \
-                                                     trait: `{}`",
-                                                    *tname));
-                            }
-                        };
+                impl ItemDecorator for DeriveExtension {
+                    fn expand(&self,
+                              ecx: &mut ExtCtxt,
+                              sp: Span,
+                              mitem: &MetaItem,
+                              item: &Item,
+                              push: &mut FnMut(P<Item>)) {
+                        warn_if_deprecated(ecx, sp, $name);
+                        $func(ecx, sp, mitem, item, |i| push(i));
                     }
                 }
+
+                env.insert(intern(concat!("derive_", $name)),
+                           Decorator(Box::new(DeriveExtension)));
+            })*
+
+            env.insert(intern("derive"),
+                       Modifier(Box::new(expand_derive)));
+            env.insert(intern("deriving"),
+                       Decorator(Box::new(expand_deprecated_deriving)));
+        }
+
+        fn is_builtin_trait(name: &str) -> bool {
+            match name {
+                $( $name )|* => true,
+                _ => false,
             }
         }
+    }
+}
+
+derive_traits! {
+    "Clone" => clone::expand_deriving_clone,
+
+    "Hash" => hash::expand_deriving_hash,
+
+    "RustcEncodable" => encodable::expand_deriving_rustc_encodable,
+
+    "RustcDecodable" => decodable::expand_deriving_rustc_decodable,
+
+    "PartialEq" => eq::expand_deriving_eq,
+    "Eq" => totaleq::expand_deriving_totaleq,
+    "PartialOrd" => ord::expand_deriving_ord,
+    "Ord" => totalord::expand_deriving_totalord,
+
+    "Rand" => rand::expand_deriving_rand,
+
+    "Debug" => show::expand_deriving_show,
+
+    "Default" => default::expand_deriving_default,
+
+    "FromPrimitive" => primitive::expand_deriving_from_primitive,
+
+    "Send" => bounds::expand_deriving_unsafe_bound,
+    "Sync" => bounds::expand_deriving_unsafe_bound,
+    "Copy" => bounds::expand_deriving_copy,
+
+    // deprecated
+    "Show" => show::expand_deriving_show,
+    "Encodable" => encodable::expand_deriving_encodable,
+    "Decodable" => decodable::expand_deriving_decodable,
+}
+
+#[inline] // because `name` is a compile-time constant
+fn warn_if_deprecated(ecx: &mut ExtCtxt, sp: Span, name: &str) {
+    if let Some(replacement) = match name {
+        "Show" => Some("Debug"),
+        "Encodable" => Some("RustcEncodable"),
+        "Decodable" => Some("RustcDecodable"),
+        _ => None,
+    } {
+        ecx.span_warn(sp, &format!("derive({}) is deprecated in favor of derive({})",
+                                   name, replacement));
     }
 }

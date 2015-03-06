@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Send)]
-//~^ ERROR this unsafe trait should be implemented explicitly
-struct Test;
-
-#[derive(Sync)]
-//~^ ERROR this unsafe trait should be implemented explicitly
+#[derive(Copy(Bad))]
+//~^ ERROR malformed `derive` entry
 struct Test1;
 
-pub fn main() {}
+#[derive(Copy="bad")]
+//~^ ERROR malformed `derive` entry
+struct Test2;
+
+#[derive()]
+//~^ WARNING empty trait list
+struct Test3;
+
+#[derive]
+//~^ WARNING empty trait list
+struct Test4;
