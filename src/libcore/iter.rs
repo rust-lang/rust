@@ -1279,14 +1279,14 @@ pub struct Cloned<I> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, D, I> Iterator for Cloned<I> where
-    T: Clone,
-    D: Deref<Target=T>,
-    I: Iterator<Item=D>,
+impl<I> Iterator for Cloned<I> where
+    I: Iterator,
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Clone
 {
-    type Item = T;
+    type Item = <I::Item as Deref>::Target;
 
-    fn next(&mut self) -> Option<T> {
+    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
         self.it.next().cloned()
     }
 
@@ -1296,28 +1296,28 @@ impl<T, D, I> Iterator for Cloned<I> where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, D, I> DoubleEndedIterator for Cloned<I> where
-    T: Clone,
-    D: Deref<Target=T>,
-    I: DoubleEndedIterator<Item=D>,
+impl<I> DoubleEndedIterator for Cloned<I> where
+    I: DoubleEndedIterator,
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Clone
 {
-    fn next_back(&mut self) -> Option<T> {
+    fn next_back(&mut self) -> Option<<Self as Iterator>::Item> {
         self.it.next_back().cloned()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, D, I> ExactSizeIterator for Cloned<I> where
-    T: Clone,
-    D: Deref<Target=T>,
-    I: ExactSizeIterator<Item=D>,
+impl<I> ExactSizeIterator for Cloned<I> where
+    I: ExactSizeIterator,
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Clone
 {}
 
 #[unstable(feature = "core", reason = "trait is experimental")]
-impl<T, D, I> RandomAccessIterator for Cloned<I> where
-    T: Clone,
-    D: Deref<Target=T>,
-    I: RandomAccessIterator<Item=D>
+impl<I> RandomAccessIterator for Cloned<I> where
+    I: RandomAccessIterator,
+    I::Item: Deref,
+    <I::Item as Deref>::Target: Clone
 {
     #[inline]
     fn indexable(&self) -> usize {
@@ -1325,7 +1325,7 @@ impl<T, D, I> RandomAccessIterator for Cloned<I> where
     }
 
     #[inline]
-    fn idx(&mut self, index: usize) -> Option<T> {
+    fn idx(&mut self, index: usize) -> Option<<Self as Iterator>::Item> {
         self.it.idx(index).cloned()
     }
 }
@@ -1400,11 +1400,14 @@ pub struct Chain<A, B> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A, B> Iterator for Chain<A, B> where A: Iterator<Item=T>, B: Iterator<Item=T> {
-    type Item = T;
+impl<A, B> Iterator for Chain<A, B> where
+    A: Iterator,
+    B: Iterator<Item = A::Item>
+{
+    type Item = A::Item;
 
     #[inline]
-    fn next(&mut self) -> Option<T> {
+    fn next(&mut self) -> Option<A::Item> {
         if self.flag {
             self.b.next()
         } else {
@@ -1434,12 +1437,12 @@ impl<T, A, B> Iterator for Chain<A, B> where A: Iterator<Item=T>, B: Iterator<It
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, A, B> DoubleEndedIterator for Chain<A, B> where
-    A: DoubleEndedIterator<Item=T>,
-    B: DoubleEndedIterator<Item=T>,
+impl<A, B> DoubleEndedIterator for Chain<A, B> where
+    A: DoubleEndedIterator,
+    B: DoubleEndedIterator<Item=A::Item>,
 {
     #[inline]
-    fn next_back(&mut self) -> Option<T> {
+    fn next_back(&mut self) -> Option<A::Item> {
         match self.b.next_back() {
             Some(x) => Some(x),
             None => self.a.next_back()
@@ -1448,9 +1451,9 @@ impl<T, A, B> DoubleEndedIterator for Chain<A, B> where
 }
 
 #[unstable(feature = "core", reason = "trait is experimental")]
-impl<T, A, B> RandomAccessIterator for Chain<A, B> where
-    A: RandomAccessIterator<Item=T>,
-    B: RandomAccessIterator<Item=T>,
+impl<A, B> RandomAccessIterator for Chain<A, B> where
+    A: RandomAccessIterator,
+    B: RandomAccessIterator<Item = A::Item>,
 {
     #[inline]
     fn indexable(&self) -> usize {
@@ -1459,7 +1462,7 @@ impl<T, A, B> RandomAccessIterator for Chain<A, B> where
     }
 
     #[inline]
-    fn idx(&mut self, index: usize) -> Option<T> {
+    fn idx(&mut self, index: usize) -> Option<A::Item> {
         let len = self.a.indexable();
         if index < len {
             self.a.idx(index)
@@ -1479,14 +1482,12 @@ pub struct Zip<A, B> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, U, A, B> Iterator for Zip<A, B> where
-    A: Iterator<Item = T>,
-    B: Iterator<Item = U>,
+impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
 {
-    type Item = (T, U);
+    type Item = (A::Item, B::Item);
 
     #[inline]
-    fn next(&mut self) -> Option<(T, U)> {
+    fn next(&mut self) -> Option<(A::Item, B::Item)> {
         match self.a.next() {
             None => None,
             Some(x) => match self.b.next() {
@@ -1515,12 +1516,12 @@ impl<T, U, A, B> Iterator for Zip<A, B> where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, U, A, B> DoubleEndedIterator for Zip<A, B> where
-    A: DoubleEndedIterator + ExactSizeIterator<Item=T>,
-    B: DoubleEndedIterator + ExactSizeIterator<Item=U>,
+impl<A, B> DoubleEndedIterator for Zip<A, B> where
+    A: DoubleEndedIterator + ExactSizeIterator,
+    B: DoubleEndedIterator + ExactSizeIterator,
 {
     #[inline]
-    fn next_back(&mut self) -> Option<(T, U)> {
+    fn next_back(&mut self) -> Option<(A::Item, B::Item)> {
         let a_sz = self.a.len();
         let b_sz = self.b.len();
         if a_sz != b_sz {
@@ -1540,9 +1541,9 @@ impl<T, U, A, B> DoubleEndedIterator for Zip<A, B> where
 }
 
 #[unstable(feature = "core", reason = "trait is experimental")]
-impl<T, U, A, B> RandomAccessIterator for Zip<A, B> where
-    A: RandomAccessIterator<Item=T>,
-    B: RandomAccessIterator<Item=U>,
+impl<A, B> RandomAccessIterator for Zip<A, B> where
+    A: RandomAccessIterator,
+    B: RandomAccessIterator
 {
     #[inline]
     fn indexable(&self) -> usize {
@@ -1550,7 +1551,7 @@ impl<T, U, A, B> RandomAccessIterator for Zip<A, B> where
     }
 
     #[inline]
-    fn idx(&mut self, index: usize) -> Option<(T, U)> {
+    fn idx(&mut self, index: usize) -> Option<(A::Item, B::Item)> {
         match self.a.idx(index) {
             None => None,
             Some(x) => match self.b.idx(index) {
@@ -2058,8 +2059,9 @@ pub struct Scan<I, St, F> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A, B, I: Iterator<Item=A>, St, F> Iterator for Scan<I, St, F> where
-    F: FnMut(&mut St, A) -> Option<B>,
+impl<B, I, St, F> Iterator for Scan<I, St, F> where
+    I: Iterator,
+    F: FnMut(&mut St, I::Item) -> Option<B>,
 {
     type Item = B;
 
