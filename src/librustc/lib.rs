@@ -44,7 +44,9 @@
 #![feature(path)]
 #![feature(io)]
 #![feature(path_ext)]
+#![feature(str_words)]
 #![cfg_attr(test, feature(test))]
+
 extern crate arena;
 extern crate flate;
 extern crate fmt_macros;

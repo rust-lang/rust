@@ -44,6 +44,7 @@
 #![feature(os)]
 #![feature(path_ext)]
 #![feature(fs)]
+#![feature(hash)]
 
 extern crate arena;
 extern crate flate;

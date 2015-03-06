@@ -38,6 +38,7 @@
 #![feature(str_words)]
 #![feature(io)]
 #![feature(path)]
+#![feature(file_path)]
 #![feature(path_ext)]
 
 extern crate arena;
