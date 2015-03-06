@@ -470,6 +470,20 @@ mod tests {
     }
 
     #[test]
+    #[should_fail]
+    fn test_buffered_reader_overconsumed() {
+        let inner: &[u8] = &[1, 2, 3, 4];
+        let mut reader = BufReader::with_capacity(2, inner);
+        assert_eq!(reader.fill_buf().unwrap().len(), 2);
+        // If the debug assertion is disabled in consume(),
+        // the following assertions fail on unwanted outcomes.
+        reader.consume(3);
+        let mut buf = [0];
+        assert_eq!(reader.read(&mut buf), Ok(1));
+        assert_eq!(buf[0], 4);
+    }
+
+    #[test]
     fn test_buffered_writer() {
         let inner = Vec::new();
         let mut writer = BufWriter::with_capacity(2, inner);
