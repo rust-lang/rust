@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:privacy-tuple-struct.rs
-// ignore-fast
 
 extern crate "privacy-tuple-struct" as other;
 
