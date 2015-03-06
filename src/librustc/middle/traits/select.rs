@@ -1692,6 +1692,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
+            // for `PhantomData<T>`, we pass `T`
+            ty::ty_struct(def_id, substs)
+                if Some(def_id) == self.tcx().lang_items.phantom_data() =>
+            {
+                Some(substs.types.get_slice(TypeSpace).to_vec())
+            }
+
             ty::ty_struct(def_id, substs) => {
                 Some(ty::struct_fields(self.tcx(), def_id, substs).iter()
                      .map(|f| f.mt.ty)
