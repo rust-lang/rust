@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "libc"]
 #![crate_type = "rlib"]
 #![cfg_attr(not(feature = "cargo-build"), unstable(feature = "libc"))]
