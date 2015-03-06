@@ -1373,7 +1373,7 @@ elsewhere.
 #### InetAddr
 
 This structure will represent either a `sockaddr_in` or `sockaddr_in6` which is
-commonly just a pairing of an `IpAddr` and a port.
+commonly just a pairing of an IP address and a port.
 
 ```rust
 impl InetAddr {
@@ -1393,17 +1393,6 @@ impl InetV6Addr {
     fn port(&self) -> u16;
     fn flowinfo(&self) -> u32;
     fn scope_id(&self) -> u32;
-}
-```
-
-#### IpAddr
-
-Represents an IP address. It has the following interface:
-
-```rust
-impl IpAddr {
-    fn as_v4(&self) -> Option<&Ipv4Addr>;
-    fn as_v6(&self) -> Option<&Ipv6Addr>;
 }
 ```
 
