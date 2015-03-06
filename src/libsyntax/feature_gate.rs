@@ -142,6 +142,12 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows the use of `static_assert`
     ("static_assert", "1.0.0", Active),
+
+    // Allows the use of #[allow_internal_unstable]. This is an
+    // attribute on macro_rules! and can't use the attribute handling
+    // below (it has to be checked before expansion possibly makes
+    // macros disappear).
+    ("allow_internal_unstable", "1.0.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -279,7 +285,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("recursion_limit", CrateLevel),
 ];
 
-#[derive(PartialEq, Copy)]
+#[derive(PartialEq, Copy, Debug)]
 pub enum AttributeType {
     /// Normal, builtin attribute that is consumed
     /// by the compiler before the unused_attribute check
@@ -308,6 +314,7 @@ pub struct Features {
     pub allow_log_syntax: bool,
     pub allow_concat_idents: bool,
     pub allow_trace_macros: bool,
+    pub allow_internal_unstable: bool,
     pub old_orphan_check: bool,
     pub simd_ffi: bool,
     pub unmarked_api: bool,
@@ -328,6 +335,7 @@ impl Features {
             allow_log_syntax: false,
             allow_concat_idents: false,
             allow_trace_macros: false,
+            allow_internal_unstable: false,
             old_orphan_check: false,
             simd_ffi: false,
             unmarked_api: false,
@@ -341,17 +349,20 @@ struct Context<'a> {
     features: Vec<&'static str>,
     span_handler: &'a SpanHandler,
     cm: &'a CodeMap,
+    do_warnings: bool,
 }
 
 impl<'a> Context<'a> {
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
-        if !self.has_feature(feature) {
+        let has_feature = self.has_feature(feature);
+        debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", feature, span, has_feature);
+        if !has_feature {
             emit_feature_err(self.span_handler, feature, span, explain);
         }
     }
 
     fn warn_feature(&self, feature: &str, span: Span, explain: &str) {
-        if !self.has_feature(feature) {
+        if !self.has_feature(feature) && self.do_warnings {
             emit_feature_warn(self.span_handler, feature, span, explain);
         }
     }
@@ -387,6 +398,8 @@ pub const EXPLAIN_CONCAT_IDENTS: &'static str =
 
 pub const EXPLAIN_TRACE_MACROS: &'static str =
     "`trace_macros` is not stable enough for use and is subject to change";
+pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &'static str =
+    "allow_internal_unstable side-steps feature gating and stability checks";
 
 struct MacroVisitor<'a> {
     context: &'a Context<'a>
@@ -421,6 +434,13 @@ impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
             self.context.gate_feature("concat_idents", path.span, EXPLAIN_CONCAT_IDENTS);
         }
     }
+
+    fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
+        if attr.name() == "allow_internal_unstable" {
+            self.context.gate_feature("allow_internal_unstable", attr.span,
+                                      EXPLAIN_ALLOW_INTERNAL_UNSTABLE)
+        }
+    }
 }
 
 struct PostExpansionVisitor<'a> {
@@ -429,7 +449,7 @@ struct PostExpansionVisitor<'a> {
 
 impl<'a> PostExpansionVisitor<'a> {
     fn gate_feature(&self, feature: &str, span: Span, explain: &str) {
-        if !self.context.cm.span_is_internal(span) {
+        if !self.context.cm.span_allows_unstable(span) {
             self.context.gate_feature(feature, span, explain)
         }
     }
@@ -617,12 +637,14 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
+        debug!("visit_attribute(attr = {:?})", attr);
         let name = &*attr.name();
         for &(n, ty) in KNOWN_ATTRIBUTES {
             if n == name {
                 if let Gated(gate, desc) = ty {
                     self.gate_feature(gate, attr.span, desc);
                 }
+                debug!("visit_attribute: {:?} is known, {:?}", name, ty);
                 return;
             }
         }
@@ -679,6 +701,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 }
 
 fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate,
+                        do_warnings: bool,
                         check: F)
                        -> Features
     where F: FnOnce(&mut Context, &ast::Crate)
@@ -686,6 +709,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
     let mut cx = Context {
         features: Vec::new(),
         span_handler: span_handler,
+        do_warnings: do_warnings,
         cm: cm,
     };
 
@@ -754,6 +778,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
         allow_log_syntax: cx.has_feature("log_syntax"),
         allow_concat_idents: cx.has_feature("concat_idents"),
         allow_trace_macros: cx.has_feature("trace_macros"),
+        allow_internal_unstable: cx.has_feature("allow_internal_unstable"),
         old_orphan_check: cx.has_feature("old_orphan_check"),
         simd_ffi: cx.has_feature("simd_ffi"),
         unmarked_api: cx.has_feature("unmarked_api"),
@@ -764,13 +789,14 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
 
 pub fn check_crate_macros(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
 -> Features {
-    check_crate_inner(cm, span_handler, krate,
+    check_crate_inner(cm, span_handler, krate, true,
                       |ctx, krate| visit::walk_crate(&mut MacroVisitor { context: ctx }, krate))
 }
 
-pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
--> Features {
-    check_crate_inner(cm, span_handler, krate,
+pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate,
+                   do_warnings: bool) -> Features
+{
+    check_crate_inner(cm, span_handler, krate, do_warnings,
                       |ctx, krate| visit::walk_crate(&mut PostExpansionVisitor { context: ctx },
                                                      krate))
 }

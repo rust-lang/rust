@@ -2555,6 +2555,14 @@ The currently implemented features of the reference compiler are:
                             types, e.g. as the return type of a public function.
                             This capability may be removed in the future.
 
+* `allow_internal_unstable` - Allows `macro_rules!` macros to be tagged with the
+                              `#[allow_internal_unstable]` attribute, designed
+                              to allow `std` macros to call
+                              `#[unstable]`/feature-gated functionality
+                              internally without imposing on callers
+                              (i.e. making them behave like function calls in
+                              terms of encapsulation).
+
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about #[feature] directives which enabled
 the new feature (because the directive is no longer necessary). However, if a

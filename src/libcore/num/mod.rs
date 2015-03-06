@@ -1238,6 +1238,7 @@ pub fn from_f64<A: FromPrimitive>(n: f64) -> Option<A> {
 
 macro_rules! impl_from_primitive {
     ($T:ty, $to_ty:ident) => (
+        #[allow(deprecated)]
         impl FromPrimitive for $T {
             #[inline] fn from_int(n: int) -> Option<$T> { n.$to_ty() }
             #[inline] fn from_i8(n: i8) -> Option<$T> { n.$to_ty() }
@@ -1299,6 +1300,7 @@ macro_rules! impl_num_cast {
     ($T:ty, $conv:ident) => (
         impl NumCast for $T {
             #[inline]
+            #[allow(deprecated)]
             fn from<N: ToPrimitive>(n: N) -> Option<$T> {
                 // `$conv` could be generated using `concat_idents!`, but that
                 // macro seems to be broken at the moment

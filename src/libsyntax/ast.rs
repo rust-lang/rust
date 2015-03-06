@@ -1743,6 +1743,7 @@ pub struct MacroDef {
     pub imported_from: Option<Ident>,
     pub export: bool,
     pub use_locally: bool,
+    pub allow_internal_unstable: bool,
     pub body: Vec<TokenTree>,
 }
 
