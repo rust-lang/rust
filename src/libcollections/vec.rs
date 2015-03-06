@@ -1804,14 +1804,15 @@ impl DrainRange for usize {
 #[unsafe_no_drop_flag]
 #[unstable(feature = "collections",
            reason = "recently added as part of collections reform 2")]
-pub struct Drain<'a, T: 'a> {
+pub struct Drain<'a, T> {
     tail: usize,
     start: *const T,
     end:   *const T,
     left:  *const T,
     right: *const T,
     marker1: PhantomData<&'a ()>,
-    marker2: PhantomData<T>,
+    // Drain<T> contains functions to retrieve T but none to insert T.
+    marker2: PhantomData<Fn() -> T>,
 }
 
 unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
