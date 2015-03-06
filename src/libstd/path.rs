@@ -1193,7 +1193,7 @@ impl Path {
         iter_after(self.components(), base.as_path().components()).is_some()
     }
 
-    /// Determines whether `base` is a suffix of `self`.
+    /// Determines whether `child` is a suffix of `self`.
     pub fn ends_with<P: ?Sized>(&self, child: &P) -> bool where P: AsPath {
         iter_after(self.components().rev(), child.as_path().components().rev()).is_some()
     }
