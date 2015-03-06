@@ -92,8 +92,8 @@
 #![feature(collections)]
 #![feature(int_uint)]
 #![feature(staged_api)]
-#![feature(str_words)]
 #![feature(core)]
+#![feature(str_words)]
 #![cfg_attr(test, feature(rustc_private))]
 
 #[cfg(test)] #[macro_use] extern crate log;

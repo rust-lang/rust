@@ -26,9 +26,10 @@ use middle::ty::{self, Ty};
 use util::common::time;
 use util::ppaux;
 use util::sha2::{Digest, Sha256};
+use rustc_back::tempdir::TempDir;
 
 use std::ffi::{AsOsStr, OsString};
-use std::fs::{self, TempDir, PathExt};
+use std::fs::{self, PathExt};
 use std::io::{self, Read, Write};
 use std::mem;
 use std::path::{Path, PathBuf};
