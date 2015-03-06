@@ -10,6 +10,7 @@
 
 // ignore-windows
 // exec-env:RUST_LOG=debug
+// compile-flags:-C debug-assertions=y
 
 #[macro_use]
 extern crate log;
