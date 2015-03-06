@@ -157,9 +157,6 @@ impl Read for Stdin {
 
 impl<'a> Read for StdinLock<'a> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        // Flush stdout so that weird issues like a print!'d prompt not being
-        // shown until after the user hits enter.
-        drop(stdout().flush());
         self.inner.read(buf)
     }
 }
