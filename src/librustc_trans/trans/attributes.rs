@@ -189,8 +189,7 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
             match ret_ty.sty {
                 // `~` pointer return values never alias because ownership
                 // is transferred
-                ty::ty_uniq(it) if !common::type_is_sized(ccx.tcx(), it) => {}
-                ty::ty_uniq(_) => {
+                ty::ty_uniq(it) if common::type_is_sized(ccx.tcx(), it) => {
                     attrs.ret(llvm::NoAliasAttribute);
                 }
                 _ => {}
@@ -199,9 +198,8 @@ pub fn from_fn_type<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_type: ty::Ty<'tcx
             // We can also mark the return value as `dereferenceable` in certain cases
             match ret_ty.sty {
                 // These are not really pointers but pairs, (pointer, len)
-                ty::ty_uniq(it) |
-                ty::ty_rptr(_, ty::mt { ty: it, .. }) if !common::type_is_sized(ccx.tcx(), it) => {}
-                ty::ty_uniq(inner) | ty::ty_rptr(_, ty::mt { ty: inner, .. }) => {
+                ty::ty_rptr(_, ty::mt { ty: inner, .. })
+                | ty::ty_uniq(inner) if common::type_is_sized(ccx.tcx(), inner) => {
                     let llret_sz = machine::llsize_of_real(ccx, type_of::type_of(ccx, inner));
                     attrs.ret(llvm::DereferenceableAttribute(llret_sz));
                 }
