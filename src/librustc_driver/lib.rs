@@ -36,7 +36,6 @@
 #![feature(rustc_private)]
 #![feature(unsafe_destructor)]
 #![feature(staged_api)]
-#![feature(unicode)]
 #![feature(exit_status)]
 #![feature(path)]
 #![feature(io)]
@@ -618,8 +617,7 @@ Available lint options:
 
     let print_lint_groups = |lints: Vec<(&'static str, Vec<lint::LintId>)>| {
         for (name, to) in lints {
-            let name = name.chars().map(|x| x.to_lowercase())
-                           .collect::<String>().replace("_", "-");
+            let name = name.to_lowercase().replace("_", "-");
             let desc = to.into_iter().map(|x| x.as_str().replace("_", "-"))
                          .collect::<Vec<String>>().connect(", ");
             println!("    {}  {}",

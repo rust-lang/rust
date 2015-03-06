@@ -810,11 +810,11 @@ impl NonCamelCaseTypes {
         fn to_camel_case(s: &str) -> String {
             s.split('_').flat_map(|word| word.chars().enumerate().map(|(i, c)|
                 if i == 0 {
-                    c.to_uppercase()
+                    c.to_uppercase().collect::<String>()
                 } else {
-                    c
+                    c.to_string()
                 }
-            )).collect()
+            )).collect::<Vec<_>>().concat()
         }
 
         let s = token::get_ident(ident);
@@ -947,7 +947,7 @@ impl NonSnakeCase {
                     buf = String::new();
                 }
                 last_upper = ch.is_uppercase();
-                buf.push(ch.to_lowercase());
+                buf.extend(ch.to_lowercase());
             }
             words.push(buf);
         }
@@ -1064,8 +1064,7 @@ impl NonUpperCaseGlobals {
         let s = token::get_ident(ident);
 
         if s.chars().any(|c| c.is_lowercase()) {
-            let uc: String = NonSnakeCase::to_snake_case(&s).chars()
-                                           .map(|c| c.to_uppercase()).collect();
+            let uc = NonSnakeCase::to_snake_case(&s).to_uppercase();
             if uc != &s[..] {
                 cx.span_lint(NON_UPPER_CASE_GLOBALS, span,
                     &format!("{} `{}` should have an upper case name such as `{}`",

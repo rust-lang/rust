@@ -343,8 +343,7 @@ impl IoError {
     pub fn from_errno(errno: i32, detail: bool) -> IoError {
         let mut err = sys::decode_error(errno as i32);
         if detail && err.kind == OtherIoError {
-            err.detail = Some(os::error_string(errno).chars()
-                                 .map(|c| c.to_lowercase()).collect())
+            err.detail = Some(os::error_string(errno).to_lowercase());
         }
         err
     }

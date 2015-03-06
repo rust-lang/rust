@@ -41,7 +41,6 @@
 #![feature(unsafe_destructor)]
 #![feature(staged_api)]
 #![feature(std_misc)]
-#![feature(unicode)]
 #![cfg_attr(test, feature(test))]
 
 extern crate syntax;

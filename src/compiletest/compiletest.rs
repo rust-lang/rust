@@ -19,7 +19,6 @@
 #![feature(unboxed_closures)]
 #![feature(std_misc)]
 #![feature(test)]
-#![feature(unicode)]
 #![feature(core)]
 #![feature(path)]
 #![feature(io)]

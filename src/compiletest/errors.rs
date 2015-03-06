@@ -71,7 +71,7 @@ fn parse_expected(last_nonfollow_error: Option<uint>,
     let letters = line[kind_start..].chars();
     let kind = letters.skip_while(|c| c.is_whitespace())
                       .take_while(|c| !c.is_whitespace())
-                      .map(|c| c.to_lowercase())
+                      .flat_map(|c| c.to_lowercase())
                       .collect::<String>();
     let letters = line[kind_start..].chars();
     let msg = letters.skip_while(|c| c.is_whitespace())
