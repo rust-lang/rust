@@ -9,11 +9,25 @@
 // except according to those terms.
 
 #![feature(optin_builtin_traits)]
-#![crate_type = "rlib"]
 
-use std::marker::MarkerTrait;
+use std::marker::Copy;
 
-pub trait DefaultedTrait : MarkerTrait { }
-impl DefaultedTrait for .. { }
+enum TestE {
+  A
+}
 
-pub struct Something<T> { t: T }
+struct MyType;
+
+struct NotSync;
+impl !Sync for NotSync {}
+
+impl Sized for TestE {} //~ ERROR E0322
+impl Sized for MyType {} //~ ERROR E0322
+impl Sized for (MyType, MyType) {} //~ ERROR E0322
+impl Sized for &'static NotSync {} //~ ERROR E0322
+impl Sized for [MyType] {} //~ ERROR E0322
+//~^ ERROR E0277
+impl Sized for &'static [NotSync] {} //~ ERROR E0322
+
+fn main() {
+}

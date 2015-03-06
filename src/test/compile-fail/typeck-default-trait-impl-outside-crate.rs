@@ -13,6 +13,6 @@
 #![feature(optin_builtin_traits)]
 
 impl Copy for .. {}
-//~^ ERROR cannot create default implementations for traits outside the crate they're defined in; define a new trait instead.
+//~^ ERROR E0318
 
 fn main() {}

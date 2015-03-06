@@ -20,15 +20,15 @@ extern crate "typeck-default-trait-impl-cross-crate-coherence-lib" as lib;
 use lib::DefaultedTrait;
 
 struct A;
-impl DefaultedTrait for (A,) { }
-//~^ ERROR can only be implemented for a struct or enum type
+impl DefaultedTrait for (A,) { } //~ ERROR E0321
 
 struct B;
-impl !DefaultedTrait for (B,) { }
-//~^ ERROR can only be implemented for a struct or enum type
+impl !DefaultedTrait for (B,) { } //~ ERROR E0321
 
 struct C;
-impl DefaultedTrait for Box<C> { }
-//~^ ERROR can only be implemented for a struct or enum type
+struct D<T>(T);
+impl DefaultedTrait for Box<C> { } //~ ERROR E0321
+impl DefaultedTrait for lib::Something<C> { } //~ ERROR E0321
+impl DefaultedTrait for D<C> { } // OK
 
 fn main() { }

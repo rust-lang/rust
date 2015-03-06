@@ -175,7 +175,9 @@ register_diagnostics! {
     E0250, // expected constant expr for array length
     E0318, // can't create default impls for traits outside their crates
     E0319, // trait impls for defaulted traits allowed just for structs/enums
-    E0320  // recursive overflow during dropck
+    E0320, // recursive overflow during dropck
+    E0321, // extended coherence rules for defaulted traits violated
+    E0322  // cannot implement Sized explicitly
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }

@@ -10,7 +10,7 @@
 
 #![feature(optin_builtin_traits)]
 
-use std::marker::Send;
+use std::marker::Copy;
 
 enum TestE {
   A
@@ -24,20 +24,17 @@ impl !Sync for NotSync {}
 unsafe impl Send for TestE {}
 unsafe impl Send for MyType {}
 unsafe impl Send for (MyType, MyType) {}
-//~^ ERROR builtin traits can only be implemented on structs or enums
+//~^ ERROR E0321
 
 unsafe impl Send for &'static NotSync {}
-//~^ ERROR builtin traits can only be implemented on structs or enums
+//~^ ERROR E0321
 
 unsafe impl Send for [MyType] {}
-//~^ ERROR builtin traits can only be implemented on structs or enums
+//~^ ERROR E0321
 
 unsafe impl Send for &'static [NotSync] {}
-//~^ ERROR builtin traits can only be implemented on structs or enums
-//~^^ ERROR conflicting implementations for trait `core::marker::Send`
-
-fn is_send<T: Send>() {}
+//~^ ERROR E0321
+//~| ERROR conflicting implementations
 
 fn main() {
-    is_send::<(MyType, TestE)>();
 }
