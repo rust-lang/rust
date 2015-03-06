@@ -2,6 +2,8 @@
 - RFC PR: [rust-lang/rfcs#8](https://github.com/rust-lang/rfcs/pull/8)
 - Rust Issue: 
 
+** Note: this RFC was never implemented. **
+
 # Summary
 
 The way our intrinsics work forces them to be wrapped in order to

@@ -18,7 +18,6 @@ the direction the language is evolving in.
 ## Active RFC List
 [Active RFC List]: #active-rfc-list
 
-* [0008-new-intrinsics.md](text/0008-new-intrinsics.md)
 * [0016-more-attributes.md](text/0016-more-attributes.md)
 * [0019-opt-in-builtin-traits.md](text/0019-opt-in-builtin-traits.md)
 * [0066-better-temporary-lifetimes.md](text/0066-better-temporary-lifetimes.md)
