@@ -77,6 +77,9 @@
 //! }
 //! ```
 
+
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "getopts"]
 #![unstable(feature = "rustc_private",
             reason = "use the crates.io `getopts` library instead")]
