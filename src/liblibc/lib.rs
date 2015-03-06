@@ -4999,9 +4999,36 @@ pub mod funcs {
             use types::os::arch::c95::{c_char, c_int};
             use types::os::arch::posix88::mode_t;
 
+            mod open_shim {
+                extern {
+                    #[cfg(any(target_os = "macos",
+                              target_os = "ios"))]
+                    pub fn open(path: *const ::c_char, oflag: ::c_int, ...)
+                                -> ::c_int;
+
+                    #[cfg(not(any(target_os = "macos",
+                                  target_os = "ios")))]
+                    pub fn open(path: *const ::c_char, oflag: ::c_int, mode: ::mode_t)
+                                -> ::c_int;
+                }
+            }
+
+            #[cfg(any(target_os = "macos",
+                      target_os = "ios"))]
+            #[inline]
+            pub unsafe extern fn open(path: *const c_char, oflag: c_int, mode: mode_t) -> c_int {
+                use types::os::arch::c95::c_uint;
+                open_shim::open(path, oflag, mode as c_uint)
+            }
+
+            #[cfg(not(any(target_os = "macos",
+                          target_os = "ios")))]
+            #[inline]
+            pub unsafe extern fn open(path: *const c_char, oflag: c_int, mode: mode_t) -> c_int {
+                open_shim::open(path, oflag, mode)
+            }
+
             extern {
-                pub fn open(path: *const c_char, oflag: c_int, mode: mode_t)
-                            -> c_int;
                 pub fn creat(path: *const c_char, mode: mode_t) -> c_int;
                 pub fn fcntl(fd: c_int, cmd: c_int, ...) -> c_int;
             }
