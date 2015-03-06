@@ -293,7 +293,7 @@ impl ToSocketAddrs for str {
         }
 
         // split the string by ':' and convert the second part to u16
-        let mut parts_iter = self.rsplitn(2, ':');
+        let mut parts_iter = self.rsplitn(1, ':');
         let port_str = try_opt!(parts_iter.next(), "invalid socket address");
         let host = try_opt!(parts_iter.next(), "invalid socket address");
         let port: u16 = try_opt!(port_str.parse().ok(), "invalid port value");
@@ -589,5 +589,10 @@ mod tests {
 
         let a = SocketAddr::new(IpAddr::new_v4(127, 0, 0, 1), 23924);
         assert!(tsa("localhost:23924").unwrap().contains(&a));
+    }
+
+    #[test]
+    fn to_socket_addr_str_bad() {
+        assert!(tsa("1200::AB00:1234::2552:7777:1313:34300").is_err());
     }
 }
