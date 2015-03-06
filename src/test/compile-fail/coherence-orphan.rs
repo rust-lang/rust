@@ -19,13 +19,15 @@ use lib::TheTrait;
 
 struct TheType;
 
-impl TheTrait<usize> for isize { } //~ ERROR E0117
+impl TheTrait<usize> for isize { }
+//~^ ERROR E0117
 
 impl TheTrait<TheType> for isize { }
 
 impl TheTrait<isize> for TheType { }
 
-impl !Send for Vec<isize> { } //~ ERROR E0117
-//~^ ERROR conflicting
+impl !Send for Vec<isize> { }
+//~^ ERROR E0117
+//~| ERROR E0119
 
 fn main() { }
