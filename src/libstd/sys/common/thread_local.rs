@@ -55,6 +55,7 @@
 //! ```
 
 #![allow(non_camel_case_types)]
+#![unstable(feature = "thread_local_internals")]
 
 use prelude::v1::*;
 
@@ -84,17 +85,14 @@ use sys::thread_local as imp;
 ///     KEY.set(1 as *mut u8);
 /// }
 /// ```
-#[stable(feature = "rust1", since = "1.0.0")]
 pub struct StaticKey {
     /// Inner static TLS key (internals), created with by `INIT_INNER` in this
     /// module.
-    #[stable(feature = "rust1", since = "1.0.0")]
     pub inner: StaticKeyInner,
     /// Destructor for the TLS value.
     ///
     /// See `Key::new` for information about when the destructor runs and how
     /// it runs.
-    #[stable(feature = "rust1", since = "1.0.0")]
     pub dtor: Option<unsafe extern fn(*mut u8)>,
 }
 
@@ -131,7 +129,6 @@ pub struct Key {
 /// Constant initialization value for static TLS keys.
 ///
 /// This value specifies no destructor by default.
-#[stable(feature = "rust1", since = "1.0.0")]
 pub const INIT: StaticKey = StaticKey {
     inner: INIT_INNER,
     dtor: None,
@@ -140,7 +137,6 @@ pub const INIT: StaticKey = StaticKey {
 /// Constant initialization value for the inner part of static TLS keys.
 ///
 /// This value allows specific configuration of the destructor for a TLS key.
-#[stable(feature = "rust1", since = "1.0.0")]
 pub const INIT_INNER: StaticKeyInner = StaticKeyInner {
     key: atomic::ATOMIC_USIZE_INIT,
 };

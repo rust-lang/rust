@@ -542,6 +542,7 @@ impl<'a> CrateReader<'a> {
                     // overridden in plugin/load.rs
                     export: false,
                     use_locally: false,
+                    allow_internal_unstable: false,
 
                     body: body,
                 });

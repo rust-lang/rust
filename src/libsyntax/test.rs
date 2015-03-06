@@ -256,7 +256,8 @@ fn generate_test_harness(sess: &ParseSess,
         callee: NameAndSpan {
             name: "test".to_string(),
             format: MacroAttribute,
-            span: None
+            span: None,
+            allow_internal_unstable: false,
         }
     });
 
@@ -288,7 +289,8 @@ fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
         callee: NameAndSpan {
             name: "test".to_string(),
             format: MacroAttribute,
-            span: None
+            span: None,
+            allow_internal_unstable: true,
         }
     };
     let expn_id = cx.sess.span_diagnostic.cm.record_expansion(info);
