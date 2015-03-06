@@ -15,6 +15,27 @@
     "use strict";
     var resizeTimeout, interval;
 
+    // This mapping table should match the discriminants of
+    // `rustdoc::html::item_type::ItemType` type in Rust.
+    var itemTypes = ["mod",
+                     "externcrate",
+                     "import",
+                     "struct",
+                     "enum",
+                     "fn",
+                     "type",
+                     "static",
+                     "trait",
+                     "impl",
+                     "tymethod",
+                     "method",
+                     "structfield",
+                     "variant",
+                     "macro",
+                     "primitive",
+                     "associatedtype",
+                     "constant"];
+
     $('.js-only').removeClass('js-only');
 
     function getQueryStringParams() {
@@ -552,27 +573,6 @@
             showResults(results);
         }
 
-        // This mapping table should match the discriminants of
-        // `rustdoc::html::item_type::ItemType` type in Rust.
-        var itemTypes = ["mod",
-                         "externcrate",
-                         "import",
-                         "struct",
-                         "enum",
-                         "fn",
-                         "type",
-                         "static",
-                         "trait",
-                         "impl",
-                         "tymethod",
-                         "method",
-                         "structfield",
-                         "variant",
-                         "macro",
-                         "primitive",
-                         "associatedtype",
-                         "constant"];
-
         function itemTypeFromName(typename) {
             for (var i = 0; i < itemTypes.length; ++i) {
                 if (itemTypes[i] === typename) return i;
@@ -707,6 +707,50 @@
     }
 
     window.initSearch = initSearch;
+
+    // delayed sidebar rendering.
+    function initSidebarItems(items) {
+        var sidebar = $('.sidebar');
+        var current = window.sidebarCurrent;
+
+        function block(shortty, longty) {
+            var filtered = items[shortty];
+            if (!filtered) return;
+
+            var div = $('<div>').attr('class', 'block ' + shortty);
+            div.append($('<h2>').text(longty));
+
+            for (var i = 0; i < filtered.length; ++i) {
+                var item = filtered[i];
+                var name = item[0];
+                var desc = item[1]; // can be null
+
+                var klass = shortty;
+                if (name === current.name && shortty == current.ty) {
+                    klass += ' current';
+                }
+                var path;
+                if (shortty === 'mod') {
+                    path = name + '/index.html';
+                } else {
+                    path = shortty + '.' + name + '.html';
+                }
+                div.append($('<a>', {'href': current.relpath + path,
+                                     'title': desc,
+                                     'class': klass}).text(name));
+            }
+            sidebar.append(div);
+        }
+
+        block("mod", "Modules");
+        block("struct", "Structs");
+        block("enum", "Enums");
+        block("trait", "Traits");
+        block("fn", "Functions");
+        block("macro", "Macros");
+    }
+
+    window.initSidebarItems = initSidebarItems;
 
     window.register_implementors = function(imp) {
         var list = $('#implementors-list');
