@@ -1813,6 +1813,14 @@ pub struct Drain<'a, T> {
     marker1: PhantomData<&'a ()>,
     // Drain<T> contains functions to retrieve T but none to insert T.
     marker2: PhantomData<Fn() -> T>,
+
+    // The straightforward marker would be &'a mut Vec<T>. If we were writing this in safe
+    // code, that's what we would have after all. However, that would also induce
+    // invariance on T, which given that Drain only ever extracts values of T is stricter
+    // than necessary. Therefore, we use this more subtle formulation, which uses a &'a ()
+    // marker to bind the lifetime securing the vector, and which uses a second marker to
+    // express that we have a way of producing T instances that we are going to employ.
+    // This gives covariance in T.
 }
 
 unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
