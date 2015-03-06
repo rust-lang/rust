@@ -57,35 +57,47 @@ fn test_to_digit() {
 
 #[test]
 fn test_to_lowercase() {
-    assert_eq!('A'.to_lowercase(), 'a');
-    assert_eq!('Ö'.to_lowercase(), 'ö');
-    assert_eq!('ß'.to_lowercase(), 'ß');
-    assert_eq!('Ü'.to_lowercase(), 'ü');
-    assert_eq!('💩'.to_lowercase(), '💩');
-    assert_eq!('Σ'.to_lowercase(), 'σ');
-    assert_eq!('Τ'.to_lowercase(), 'τ');
-    assert_eq!('Ι'.to_lowercase(), 'ι');
-    assert_eq!('Γ'.to_lowercase(), 'γ');
-    assert_eq!('Μ'.to_lowercase(), 'μ');
-    assert_eq!('Α'.to_lowercase(), 'α');
-    assert_eq!('Σ'.to_lowercase(), 'σ');
+    fn lower(c: char) -> char {
+        let mut it = c.to_lowercase();
+        let c = it.next().unwrap();
+        assert!(it.next().is_none());
+        c
+    }
+    assert_eq!(lower('A'), 'a');
+    assert_eq!(lower('Ö'), 'ö');
+    assert_eq!(lower('ß'), 'ß');
+    assert_eq!(lower('Ü'), 'ü');
+    assert_eq!(lower('💩'), '💩');
+    assert_eq!(lower('Σ'), 'σ');
+    assert_eq!(lower('Τ'), 'τ');
+    assert_eq!(lower('Ι'), 'ι');
+    assert_eq!(lower('Γ'), 'γ');
+    assert_eq!(lower('Μ'), 'μ');
+    assert_eq!(lower('Α'), 'α');
+    assert_eq!(lower('Σ'), 'σ');
 }
 
 #[test]
 fn test_to_uppercase() {
-    assert_eq!('a'.to_uppercase(), 'A');
-    assert_eq!('ö'.to_uppercase(), 'Ö');
-    assert_eq!('ß'.to_uppercase(), 'ß'); // not ẞ: Latin capital letter sharp s
-    assert_eq!('ü'.to_uppercase(), 'Ü');
-    assert_eq!('💩'.to_uppercase(), '💩');
+    fn upper(c: char) -> char {
+        let mut it = c.to_uppercase();
+        let c = it.next().unwrap();
+        assert!(it.next().is_none());
+        c
+    }
+    assert_eq!(upper('a'), 'A');
+    assert_eq!(upper('ö'), 'Ö');
+    assert_eq!(upper('ß'), 'ß'); // not ẞ: Latin capital letter sharp s
+    assert_eq!(upper('ü'), 'Ü');
+    assert_eq!(upper('💩'), '💩');
 
-    assert_eq!('σ'.to_uppercase(), 'Σ');
-    assert_eq!('τ'.to_uppercase(), 'Τ');
-    assert_eq!('ι'.to_uppercase(), 'Ι');
-    assert_eq!('γ'.to_uppercase(), 'Γ');
-    assert_eq!('μ'.to_uppercase(), 'Μ');
-    assert_eq!('α'.to_uppercase(), 'Α');
-    assert_eq!('ς'.to_uppercase(), 'Σ');
+    assert_eq!(upper('σ'), 'Σ');
+    assert_eq!(upper('τ'), 'Τ');
+    assert_eq!(upper('ι'), 'Ι');
+    assert_eq!(upper('γ'), 'Γ');
+    assert_eq!(upper('μ'), 'Μ');
+    assert_eq!(upper('α'), 'Α');
+    assert_eq!(upper('ς'), 'Σ');
 }
 
 #[test]

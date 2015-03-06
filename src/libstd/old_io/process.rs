@@ -110,10 +110,11 @@ struct EnvKey(CString);
 #[cfg(windows)]
 impl hash::Hash for EnvKey {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        use ascii::AsciiExt;
         let &EnvKey(ref x) = self;
         match str::from_utf8(x.as_bytes()) {
             Ok(s) => for ch in s.chars() {
-                (ch as u8 as char).to_lowercase().hash(state);
+                ch.to_ascii_lowercase().hash(state);
             },
             Err(..) => x.hash(state)
         }
@@ -123,6 +124,7 @@ impl hash::Hash for EnvKey {
 #[cfg(windows)]
 impl PartialEq for EnvKey {
     fn eq(&self, other: &EnvKey) -> bool {
+        use ascii::AsciiExt;
         let &EnvKey(ref x) = self;
         let &EnvKey(ref y) = other;
         match (str::from_utf8(x.as_bytes()), str::from_utf8(y.as_bytes())) {
@@ -131,7 +133,7 @@ impl PartialEq for EnvKey {
                     return false
                 } else {
                     for (xch, ych) in xs.chars().zip(ys.chars()) {
-                        if xch.to_lowercase() != ych.to_lowercase() {
+                        if xch.to_ascii_lowercase() != ych.to_ascii_lowercase() {
                             return false;
                         }
                     }
