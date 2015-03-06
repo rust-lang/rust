@@ -1228,7 +1228,7 @@ impl Context {
                     {
                         let items = this.build_sidebar_items(&m);
                         let js_dst = this.dst.join("sidebar-items.js");
-                        let mut js_out = BufferedWriter::new(try!(File::create(&js_dst)));
+                        let mut js_out = BufWriter::new(try!(File::create(&js_dst)));
                         try!(write!(&mut js_out, "initSidebarItems({});",
                                     json::as_json(&items)));
                     }
