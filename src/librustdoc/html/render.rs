@@ -67,12 +67,10 @@ use html::item_type::ItemType;
 use html::layout;
 use html::markdown::Markdown;
 use html::markdown;
-use html::escape::Escape;
 use stability_summary;
 
 /// A pair of name and its optional document.
-#[derive(Clone, Eq, Ord, PartialEq, PartialOrd)]
-pub struct NameDoc(String, Option<String>);
+pub type NameDoc = (String, Option<String>);
 
 /// Major driving force in all rustdoc rendering. This contains information
 /// about where in the tree-like hierarchy rendering is occurring and controls
@@ -98,12 +96,6 @@ pub struct Context {
     /// This describes the layout of each page, and is not modified after
     /// creation of the context (contains info like the favicon and added html).
     pub layout: layout::Layout,
-    /// This map is a list of what should be displayed on the sidebar of the
-    /// current page. The key is the section header (traits, modules,
-    /// functions), and the value is the list of containers belonging to this
-    /// header. This map will change depending on the surrounding context of the
-    /// page.
-    pub sidebar: HashMap<String, Vec<NameDoc>>,
     /// This flag indicates whether [src] links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
@@ -271,7 +263,6 @@ pub fn run(mut krate: clean::Crate,
         passes: passes,
         current: Vec::new(),
         root_path: String::new(),
-        sidebar: HashMap::new(),
         layout: layout::Layout {
             logo: "".to_string(),
             favicon: "".to_string(),
@@ -1232,7 +1223,16 @@ impl Context {
                         clean::ModuleItem(m) => m,
                         _ => unreachable!()
                     };
-                    this.sidebar = this.build_sidebar(&m);
+
+                    // render sidebar-items.js used throughout this module
+                    {
+                        let items = this.build_sidebar_items(&m);
+                        let js_dst = this.dst.join("sidebar-items.js");
+                        let mut js_out = BufferedWriter::new(try!(File::create(&js_dst)));
+                        try!(write!(&mut js_out, "initSidebarItems({});",
+                                    json::as_json(&items)));
+                    }
+
                     for item in m.items {
                         f(this,item);
                     }
@@ -1252,14 +1252,10 @@ impl Context {
         }
     }
 
-    fn build_sidebar(&self, m: &clean::Module) -> HashMap<String, Vec<NameDoc>> {
+    fn build_sidebar_items(&self, m: &clean::Module) -> HashMap<String, Vec<NameDoc>> {
         let mut map = HashMap::new();
         for item in &m.items {
             if self.ignore_private_item(item) { continue }
-
-            // avoid putting foreign items to the sidebar.
-            if let &clean::ForeignFunctionItem(..) = &item.inner { continue }
-            if let &clean::ForeignStaticItem(..) = &item.inner { continue }
 
             let short = shortty(item).to_static_str();
             let myname = match item.name {
@@ -1269,7 +1265,7 @@ impl Context {
             let short = short.to_string();
             let v = map.entry(short).get().unwrap_or_else(
                 |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
-            v.push(NameDoc(myname, Some(shorter_line(item.doc_value()))));
+            v.push((myname, Some(shorter_line(item.doc_value()))));
         }
 
         for (_, items) in &mut map {
@@ -2216,9 +2212,18 @@ impl<'a> fmt::Display for Sidebar<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let cx = self.cx;
         let it = self.item;
+        let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
+
+        // the sidebar is designed to display sibling functions, modules and
+        // other miscellaneous informations. since there are lots of sibling
+        // items (and that causes quadratic growth in large modules),
+        // we refactor common parts into a shared JavaScript file per module.
+        // still, we don't move everything into JS because we want to preserve
+        // as much HTML as possible in order to allow non-JS-enabled browsers
+        // to navigate the documentation (though slightly inefficiently).
+
         try!(write!(fmt, "<p class='location'>"));
-        let len = cx.current.len() - if it.is_mod() {1} else {0};
-        for (i, name) in cx.current.iter().take(len).enumerate() {
+        for (i, name) in cx.current.iter().take(parentlen).enumerate() {
             if i > 0 {
                 try!(write!(fmt, "::<wbr>"));
             }
@@ -2228,40 +2233,25 @@ impl<'a> fmt::Display for Sidebar<'a> {
         }
         try!(write!(fmt, "</p>"));
 
-        fn block(w: &mut fmt::Formatter, short: &str, longty: &str,
-                 cur: &clean::Item, cx: &Context) -> fmt::Result {
-            let items = match cx.sidebar.get(short) {
-                Some(items) => items,
-                None => return Ok(())
-            };
-            try!(write!(w, "<div class='block {}'><h2>{}</h2>", short, longty));
-            for &NameDoc(ref name, ref doc) in items {
-                let curty = shortty(cur).to_static_str();
-                let class = if cur.name.as_ref().unwrap() == name &&
-                               short == curty { "current" } else { "" };
-                try!(write!(w, "<a class='{ty} {class}' href='{href}{path}' \
-                                title='{title}'>{name}</a>",
-                       ty = short,
-                       class = class,
-                       href = if curty == "mod" {"../"} else {""},
-                       path = if short == "mod" {
-                           format!("{}/index.html", name)
-                       } else {
-                           format!("{}.{}.html", short, name)
-                       },
-                       title = Escape(doc.as_ref().unwrap()),
-                       name = name));
-            }
-            try!(write!(w, "</div>"));
-            Ok(())
+        // sidebar refers to the enclosing module, not this module
+        let relpath = if shortty(it) == ItemType::Module { "../" } else { "" };
+        try!(write!(fmt,
+                    "<script>window.sidebarCurrent = {{\
+                        name: '{name}', \
+                        ty: '{ty}', \
+                        relpath: '{path}'\
+                     }};</script>",
+                    name = it.name.as_ref().map(|x| &x[..]).unwrap_or(""),
+                    ty = shortty(it).to_static_str(),
+                    path = relpath));
+        if parentlen == 0 {
+            // there is no sidebar-items.js beyond the crate root path
+            // FIXME maybe dynamic crate loading can be merged here
+        } else {
+            try!(write!(fmt, "<script async src=\"{path}sidebar-items.js\"></script>",
+                        path = relpath));
         }
 
-        try!(block(fmt, "mod", "Modules", it, cx));
-        try!(block(fmt, "struct", "Structs", it, cx));
-        try!(block(fmt, "enum", "Enums", it, cx));
-        try!(block(fmt, "trait", "Traits", it, cx));
-        try!(block(fmt, "fn", "Functions", it, cx));
-        try!(block(fmt, "macro", "Macros", it, cx));
         Ok(())
     }
 }
