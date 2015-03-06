@@ -493,12 +493,16 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
     );
 
-    // Needs to go *after* expansion to be able to check the results of macro expansion.
-    time(time_passes, "complete gated feature checking", (), |_| {
+    // Needs to go *after* expansion to be able to check the results
+    // of macro expansion.  This runs before #[cfg] to try to catch as
+    // much as possible (e.g. help the programmer avoid platform
+    // specific differences)
+    time(time_passes, "complete gated feature checking 1", (), |_| {
         let features =
             syntax::feature_gate::check_crate(sess.codemap(),
-                                          &sess.parse_sess.span_diagnostic,
-                                          &krate);
+                                              &sess.parse_sess.span_diagnostic,
+                                              &krate,
+                                              true);
         *sess.features.borrow_mut() = features;
         sess.abort_if_errors();
     });
@@ -520,6 +524,19 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     time(time_passes, "checking that all macro invocations are gone", &krate, |krate|
          syntax::ext::expand::check_for_macros(&sess.parse_sess, krate));
+
+    // One final feature gating of the true AST that gets compiled
+    // later, to make sure we've got everything (e.g. configuration
+    // can insert new attributes via `cfg_attr`)
+    time(time_passes, "complete gated feature checking 2", (), |_| {
+        let features =
+            syntax::feature_gate::check_crate(sess.codemap(),
+                                              &sess.parse_sess.span_diagnostic,
+                                              &krate,
+                                              false);
+        *sess.features.borrow_mut() = features;
+        sess.abort_if_errors();
+    });
 
     Some(krate)
 }

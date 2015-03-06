@@ -81,8 +81,12 @@ impl<'a> Registry<'a> {
     /// This is the most general hook into `libsyntax`'s expansion behavior.
     pub fn register_syntax_extension(&mut self, name: ast::Name, extension: SyntaxExtension) {
         self.syntax_exts.push((name, match extension {
-            NormalTT(ext, _) => NormalTT(ext, Some(self.krate_span)),
-            IdentTT(ext, _) => IdentTT(ext, Some(self.krate_span)),
+            NormalTT(ext, _, allow_internal_unstable) => {
+                NormalTT(ext, Some(self.krate_span), allow_internal_unstable)
+            }
+            IdentTT(ext, _, allow_internal_unstable) => {
+                IdentTT(ext, Some(self.krate_span), allow_internal_unstable)
+            }
             Decorator(ext) => Decorator(ext),
             Modifier(ext) => Modifier(ext),
             MultiModifier(ext) => MultiModifier(ext),
@@ -99,7 +103,8 @@ impl<'a> Registry<'a> {
     /// It builds for you a `NormalTT` that calls `expander`,
     /// and also takes care of interning the macro's name.
     pub fn register_macro(&mut self, name: &str, expander: MacroExpanderFn) {
-        self.register_syntax_extension(token::intern(name), NormalTT(Box::new(expander), None));
+        self.register_syntax_extension(token::intern(name),
+                                       NormalTT(Box::new(expander), None, false));
     }
 
     /// Register a compiler lint pass.

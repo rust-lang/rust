@@ -214,6 +214,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             name: "asm".to_string(),
             format: codemap::MacroBang,
             span: None,
+            allow_internal_unstable: false,
         },
     });
 
