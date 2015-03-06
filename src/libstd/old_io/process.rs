@@ -11,6 +11,9 @@
 //! Bindings for executing child processes
 
 #![allow(non_upper_case_globals)]
+#![unstable(feature = "old_io")]
+#![deprecated(since = "1.0.0",
+              reason = "replaced with the std::process module")]
 
 pub use self::StdioContainer::*;
 pub use self::ProcessExit::*;
