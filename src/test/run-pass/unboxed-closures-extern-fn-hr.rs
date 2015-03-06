@@ -10,7 +10,7 @@
 
 // Checks that higher-ranked extern fn pointers implement the full range of Fn traits.
 
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, core)]
 
 use std::ops::{Fn,FnMut,FnOnce};
 

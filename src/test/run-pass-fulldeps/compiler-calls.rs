@@ -12,7 +12,7 @@
 
 // ignore-android
 
-#![feature(rustc_private)]
+#![feature(rustc_private, path)]
 #![feature(core)]
 
 extern crate getopts;

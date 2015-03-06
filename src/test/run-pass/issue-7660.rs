@@ -11,6 +11,8 @@
 // Regression test for issue 7660
 // rvalue lifetime too short when equivalent `match` works
 
+#![feature(collections)]
+
 extern crate collections;
 
 use std::collections::HashMap;

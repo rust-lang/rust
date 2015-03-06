@@ -10,7 +10,7 @@
 
 // error-pattern:expected item
 
-#![feature(custom_attribute)]
+#![feature(custom_attribute, test)]
 
 #[foo = "bar"]
 extern crate test;

@@ -11,7 +11,7 @@
 // Test overloaded indexing combined with autoderef.
 
 #![allow(unknown_features)]
-#![feature(box_syntax)]
+#![feature(box_syntax, core)]
 
 use std::ops::{Index, IndexMut};
 

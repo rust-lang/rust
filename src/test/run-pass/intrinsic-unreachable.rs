@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(core)]
+
 use std::intrinsics;
 
 // See also src/test/run-make/intrinsic-unreachable.

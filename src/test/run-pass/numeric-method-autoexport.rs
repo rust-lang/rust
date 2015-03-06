@@ -15,6 +15,8 @@
 // necessary. Testing the methods of the impls is done within the source
 // file for each numeric type.
 
+#![feature(core)]
+
 use std::ops::Add;
 use std::num::ToPrimitive;
 

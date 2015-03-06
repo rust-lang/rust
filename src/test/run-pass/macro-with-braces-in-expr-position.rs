@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(std_misc)]
+
 use std::thread::Thread;
 
 macro_rules! expr { ($e: expr) => { $e } }

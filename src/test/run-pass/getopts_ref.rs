@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rustc_private)]
+
 extern crate getopts;
 
 use getopts::{optopt, getopts};

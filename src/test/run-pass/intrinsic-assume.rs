@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(core)]
+
 use std::intrinsics::assume;
 
 unsafe fn f(x: i32) -> i32 {

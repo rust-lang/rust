@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(core)]
+
 pub trait MyEq : ::std::marker::MarkerTrait { }
 
 pub trait MyNum : ::std::marker::MarkerTrait {

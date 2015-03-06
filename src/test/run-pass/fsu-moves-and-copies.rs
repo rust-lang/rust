@@ -12,7 +12,7 @@
 // correctly and moves rather than copy when appropriate.
 
 #![allow(unknown_features)]
-#![feature(box_syntax)]
+#![feature(box_syntax, core)]
 
 use std::marker::NoCopy as NP;
 

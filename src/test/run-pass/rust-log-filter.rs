@@ -11,7 +11,7 @@
 // exec-env:RUST_LOG=rust-log-filter/foo
 
 #![allow(unknown_features)]
-#![feature(box_syntax)]
+#![feature(box_syntax, std_misc, rustc_private)]
 
 #[macro_use]
 extern crate log;

@@ -16,13 +16,10 @@
 // aux-build:internal_unstable.rs
 // error-pattern:use of unstable library feature 'function'
 // error-pattern:use of unstable library feature 'struct_field'
-// error-pattern:compilation successful
-#![feature(rustc_attrs)]
 
 #[macro_use]
 extern crate internal_unstable;
 
-#[rustc_error]
 fn main() {
     call_unstable_noallow!();
 

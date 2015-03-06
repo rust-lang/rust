@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(libc, old_io)]
+
 extern crate libc;
 
 use std::old_io::process::Command;

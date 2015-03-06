@@ -10,7 +10,7 @@
 
 
 #![allow(unknown_features)]
-#![feature(box_syntax)]
+#![feature(box_syntax, libc)]
 
 extern crate libc;
 

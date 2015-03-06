@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+#![feature(libc)]
+
 extern crate libc;
 
 mod bar {
