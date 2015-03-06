@@ -196,6 +196,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("no_mangle", Normal),
     ("no_link", Normal),
     ("derive", Normal),
+    ("deriving", Normal), // deprecation err in expansion
     ("should_fail", Normal),
     ("should_panic", Normal),
     ("ignore", Normal),
@@ -234,6 +235,9 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("rustc_move_fragments", Gated("rustc_attrs",
                                    "the `#[rustc_move_fragments]` attribute \
                                     is an experimental feature")),
+
+    ("allow_internal_unstable", Gated("allow_internal_unstable",
+                                      EXPLAIN_ALLOW_INTERNAL_UNSTABLE)),
 
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     ("doc", Whitelisted),
@@ -369,6 +373,33 @@ impl<'a> Context<'a> {
     fn has_feature(&self, feature: &str) -> bool {
         self.features.iter().any(|&n| n == feature)
     }
+
+    fn check_attribute(&self, attr: &ast::Attribute) {
+        debug!("check_attribute(attr = {:?})", attr);
+        let name = &*attr.name();
+        for &(n, ty) in KNOWN_ATTRIBUTES {
+            if n == name {
+                if let Gated(gate, desc) = ty {
+                    self.gate_feature(gate, attr.span, desc);
+                }
+                debug!("check_attribute: {:?} is known, {:?}", name, ty);
+                return;
+            }
+        }
+        if name.starts_with("rustc_") {
+            self.gate_feature("rustc_attrs", attr.span,
+                              "unless otherwise specified, attributes \
+                               with the prefix `rustc_` \
+                               are reserved for internal compiler diagnostics");
+        } else {
+            self.gate_feature("custom_attribute", attr.span,
+                       format!("The attribute `{}` is currently \
+                                unknown to the the compiler and \
+                                may have meaning \
+                                added to it in the future",
+                                name).as_slice());
+        }
+    }
 }
 
 pub fn emit_feature_err(diag: &SpanHandler, feature: &str, span: Span, explain: &str) {
@@ -436,10 +467,7 @@ impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
     }
 
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
-        if attr.name() == "allow_internal_unstable" {
-            self.context.gate_feature("allow_internal_unstable", attr.span,
-                                      EXPLAIN_ALLOW_INTERNAL_UNSTABLE)
-        }
+        self.context.check_attribute(attr);
     }
 }
 
@@ -456,6 +484,12 @@ impl<'a> PostExpansionVisitor<'a> {
 }
 
 impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
+    fn visit_attribute(&mut self, attr: &ast::Attribute) {
+        if !self.context.cm.span_allows_unstable(attr.span) {
+            self.context.check_attribute(attr);
+        }
+    }
+
     fn visit_name(&mut self, sp: Span, name: ast::Name) {
         if !token::get_name(name).is_ascii() {
             self.gate_feature("non_ascii_idents", sp,
@@ -556,12 +590,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
-        if attr::contains_name(&i.attrs, "linkage") {
-            self.gate_feature("linkage", i.span,
-                              "the `linkage` attribute is experimental \
-                               and not portable across platforms")
-        }
-
         let links_to_llvm = match attr::first_attr_value_str_by_name(&i.attrs,
                                                                      "link_name") {
             Some(val) => val.starts_with("llvm."),
@@ -634,33 +662,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_expr(self, e);
-    }
-
-    fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        debug!("visit_attribute(attr = {:?})", attr);
-        let name = &*attr.name();
-        for &(n, ty) in KNOWN_ATTRIBUTES {
-            if n == name {
-                if let Gated(gate, desc) = ty {
-                    self.gate_feature(gate, attr.span, desc);
-                }
-                debug!("visit_attribute: {:?} is known, {:?}", name, ty);
-                return;
-            }
-        }
-        if name.starts_with("rustc_") {
-            self.gate_feature("rustc_attrs", attr.span,
-                              "unless otherwise specified, attributes \
-                               with the prefix `rustc_` \
-                               are reserved for internal compiler diagnostics");
-        } else {
-            self.gate_feature("custom_attribute", attr.span,
-                       format!("The attribute `{}` is currently \
-                                unknown to the the compiler and \
-                                may have meaning \
-                                added to it in the future",
-                                name).as_slice());
-        }
     }
 
     fn visit_pat(&mut self, pattern: &ast::Pat) {
