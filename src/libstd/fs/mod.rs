@@ -1552,6 +1552,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(windows))]
     fn unlink_readonly() {
         let tmpdir = tmpdir();
         let path = tmpdir.join("file");
