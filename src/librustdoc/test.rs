@@ -111,6 +111,7 @@ pub fn run(input: &str,
     0
 }
 
+#[allow(deprecated)]
 fn runtest(test: &str, cratename: &str, libs: SearchPaths,
            externs: core::Externs,
            should_fail: bool, no_run: bool, as_test_harness: bool) {
