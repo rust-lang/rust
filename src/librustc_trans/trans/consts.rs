@@ -173,7 +173,7 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         &**expr
     } else {
         ccx.sess().span_bug(ref_expr.span,
-                            &format!("get_const_val given non-constant item {}",
+                            &format!("get_const_expr given non-constant item {}",
                                      item.repr(ccx.tcx())));
     }
 }
