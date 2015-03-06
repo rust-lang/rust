@@ -166,6 +166,9 @@ impl<'a> MacroLoader<'a> {
                 Some(sel) => sel.contains_key(&name),
             };
             def.export = reexport.contains_key(&name);
+            def.allow_internal_unstable = attr::contains_name(&def.attrs,
+                                                              "allow_internal_unstable");
+            debug!("load_macros: loaded: {:?}", def);
             self.macros.push(def);
         }
 
