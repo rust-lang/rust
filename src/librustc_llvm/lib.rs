@@ -31,8 +31,8 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(staged_api)]
-#![feature(std_misc)]
 #![feature(path)]
+#![cfg_attr(unix, feature(std_misc))]
 
 extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;

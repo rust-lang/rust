@@ -40,11 +40,9 @@
 #![feature(unicode)]
 #![feature(io)]
 #![feature(path)]
-#![feature(os)]
 #![feature(path_ext)]
 #![feature(fs)]
 #![feature(hash)]
-#![feature(tempdir)]
 
 extern crate arena;
 extern crate flate;

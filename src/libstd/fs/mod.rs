@@ -1313,6 +1313,8 @@ mod tests {
         check!(fs::set_permissions(&input, p));
         check!(fs::copy(&input, &out));
         assert!(check!(out.metadata()).permissions().readonly());
+        check!(fs::set_permissions(&input, attr.permissions()));
+        check!(fs::set_permissions(&out, attr.permissions()));
     }
 
     #[cfg(not(windows))] // FIXME(#10264) operation not permitted?
@@ -1396,10 +1398,13 @@ mod tests {
         let attr = check!(fs::metadata(&file));
         assert!(attr.permissions().readonly());
 
-        match fs::set_permissions(&tmpdir.join("foo"), p) {
-            Ok(..) => panic!("wanted a panic"),
+        match fs::set_permissions(&tmpdir.join("foo"), p.clone()) {
+            Ok(..) => panic!("wanted an error"),
             Err(..) => {}
         }
+
+        p.set_readonly(false);
+        check!(fs::set_permissions(&file, p));
     }
 
     #[test]
