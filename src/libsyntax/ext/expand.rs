@@ -1476,6 +1476,7 @@ impl<'feat> ExpansionConfig<'feat> {
         fn enable_concat_idents = allow_concat_idents,
         fn enable_trace_macros = allow_trace_macros,
         fn enable_allow_internal_unstable = allow_internal_unstable,
+        fn enable_custom_derive = allow_custom_derive,
     }
 }
 

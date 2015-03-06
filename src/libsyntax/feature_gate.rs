@@ -137,6 +137,10 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // Allows the use of custom attributes; RFC 572
     ("custom_attribute", "1.0.0", Active),
 
+    // Allows the use of #[derive(Anything)] as sugar for
+    // #[derive_Anything].
+    ("custom_derive", "1.0.0", Active),
+
     // Allows the use of rustc_* attributes; RFC 572
     ("rustc_attrs", "1.0.0", Active),
 
@@ -319,6 +323,7 @@ pub struct Features {
     pub allow_concat_idents: bool,
     pub allow_trace_macros: bool,
     pub allow_internal_unstable: bool,
+    pub allow_custom_derive: bool,
     pub old_orphan_check: bool,
     pub simd_ffi: bool,
     pub unmarked_api: bool,
@@ -340,6 +345,7 @@ impl Features {
             allow_concat_idents: false,
             allow_trace_macros: false,
             allow_internal_unstable: false,
+            allow_custom_derive: false,
             old_orphan_check: false,
             simd_ffi: false,
             unmarked_api: false,
@@ -391,6 +397,10 @@ impl<'a> Context<'a> {
                               "unless otherwise specified, attributes \
                                with the prefix `rustc_` \
                                are reserved for internal compiler diagnostics");
+        } else if name.starts_with("derive_") {
+            self.gate_feature("custom_derive", attr.span,
+                              "attributes of the form `#[derive_*]` are reserved
+                               for the compiler");
         } else {
             self.gate_feature("custom_attribute", attr.span,
                        format!("The attribute `{}` is currently \
@@ -431,6 +441,9 @@ pub const EXPLAIN_TRACE_MACROS: &'static str =
     "`trace_macros` is not stable enough for use and is subject to change";
 pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &'static str =
     "allow_internal_unstable side-steps feature gating and stability checks";
+
+pub const EXPLAIN_CUSTOM_DERIVE: &'static str =
+    "`#[derive]` for custom traits is not stable enough for use and is subject to change";
 
 struct MacroVisitor<'a> {
     context: &'a Context<'a>
@@ -780,6 +793,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
         allow_concat_idents: cx.has_feature("concat_idents"),
         allow_trace_macros: cx.has_feature("trace_macros"),
         allow_internal_unstable: cx.has_feature("allow_internal_unstable"),
+        allow_custom_derive: cx.has_feature("custom_derive"),
         old_orphan_check: cx.has_feature("old_orphan_check"),
         simd_ffi: cx.has_feature("simd_ffi"),
         unmarked_api: cx.has_feature("unmarked_api"),
