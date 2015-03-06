@@ -1372,23 +1372,27 @@ elsewhere.
 
 #### InetAddr
 
-The composition of an `IpAddr` and a port. It has the following interface:
+This structure will represent either a `sockaddr_in` or `sockaddr_in6` which is
+commonly just a pairing of an `IpAddr` and a port.
 
 ```rust
 impl InetAddr {
-  /// Returns a new InetAddr composed of an unspecified v4 IP and a 0
-  /// port
-  fn any_v4() -> InetAddr;
+    fn as_v4(&self) -> Option<&InetV4Addr>;
+    fn as_v6(&self) -> Option<&InetV6Addr>;
+}
 
-  /// Returns a new InetAddr composed of an unspecified v6 IP and a 0
-  /// port
-  fn any_v6() -> InetAddr;
+impl InetV4Addr {
+    fn new(addr: Ipv4Addr, port: u16) -> InetV4Addr;
+    fn ip(&self) -> &Ipv4Addr;
+    fn port(&self) -> u16;
+}
 
-  fn ip(&self) -> IpAddr;
-  fn port(&self) -> u16;
-
-  /// Returns true if the IpAddr is unspecified and port == 0
-  fn is_unspecified(&self) -> bool;
+impl InetV6Addr {
+    fn new(addr: Ipv6Addr, port: u16, flowinfo: u32, scope_id: u32) -> InetV6Addr;
+    fn ip(&self) -> &Ipv6Addr;
+    fn port(&self) -> u16;
+    fn flowinfo(&self) -> u32;
+    fn scope_id(&self) -> u32;
 }
 ```
 
@@ -1398,18 +1402,8 @@ Represents an IP address. It has the following interface:
 
 ```rust
 impl IpAddr {
-  fn new_v4(a: u8, b: u8, c: u8, d: u8) -> IpAddr;
-  fn any_v4() -> IpAddr;
-
-  fn new_v6(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> IpAddr;
-  fn any_v6() -> IpAddr;
-
-  // The following functions proxy to the versioned IP address value
-  fn is_unspecified(&self) -> bool;
-  fn is_loopback(&self) -> bool;
-  fn is_global(&self) -> bool;
-  fn is_private(&self) -> bool;
-  fn is_multicast(&self) -> bool;
+    fn as_v4(&self) -> Option<&Ipv4Addr>;
+    fn as_v6(&self) -> Option<&Ipv6Addr>;
 }
 ```
 
@@ -1419,17 +1413,11 @@ Represents a version 4 IP address. It has the following interface:
 
 ```rust
 impl Ipv4Addr {
-  fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr;
-  fn any() -> Ipv4Addr;
-  fn octets(&self) -> [u8; 4];
-  fn is_unspecified(&self) -> bool;
-  fn is_loopback(&self) -> bool;
-  fn is_private(&self) -> bool;
-  fn is_link_local(&self) -> bool;
-  fn is_global(&self) -> bool;
-  fn is_multicast(&self) -> bool;
-  fn to_ipv6_compatible(&self) -> Ipv6Addr;
-  fn to_ipv6_mapped(&self) -> Ipv6Addr;
+    fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr;
+    fn any() -> Ipv4Addr;
+    fn octets(&self) -> [u8; 4];
+    fn to_ipv6_compatible(&self) -> Ipv6Addr;
+    fn to_ipv6_mapped(&self) -> Ipv6Addr;
 }
 ```
 
@@ -1439,19 +1427,10 @@ Represents a version 6 IP address. It has the following interface:
 
 ```rust
 impl Ipv6Addr {
-  fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> Ipv6Addr;
-  fn any() -> Ipv6Addr;
-  fn segments(&self) -> [u16; 8]
-  fn is_unspecified(&self) -> bool;
-  fn is_loopback(&self) -> bool;
-  fn is_global(&self) -> bool;
-  fn is_unique_local(&self) -> bool;
-  fn is_unicast_link_local(&self) -> bool;
-  fn is_unicast_site_local(&self) -> bool;
-  fn is_unicast_global(&self) -> bool;
-  fn multicast_scope(&self) -> Option<Ipv6MulticastScope>;
-  fn is_multicast(&self) -> bool;
-  fn to_ipv4(&self) -> Option<Ipv4Addr>;
+    fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> Ipv6Addr;
+    fn any() -> Ipv6Addr;
+    fn segments(&self) -> [u16; 8]
+    fn to_ipv4(&self) -> Option<Ipv4Addr>;
 }
 ```
 
@@ -1467,7 +1446,7 @@ following interface:
 impl TcpStream {
     fn connect<A: ToInetAddrs>(addr: &A) -> io::Result<TcpStream>;
     fn peer_addr(&self) -> io::Result<InetAddr>;
-    fn inet_addr(&self) -> io::Result<InetAddr>;
+    fn local_addr(&self) -> io::Result<InetAddr>;
     fn shutdown(&self, how: Shutdown) -> io::Result<()>;
     fn duplicate(&self) -> io::Result<TcpStream>;
 }
@@ -1506,7 +1485,7 @@ into the `TcpListener` structure. Specifically, this will be the resulting API:
 ```rust
 impl TcpListener {
     fn bind<A: ToInetAddrs>(addr: &A) -> io::Result<TcpListener>;
-    fn inet_addr(&self) -> io::Result<InetAddr>;
+    fn local_addr(&self) -> io::Result<InetAddr>;
     fn duplicate(&self) -> io::Result<TcpListener>;
     fn accept(&self) -> io::Result<(TcpStream, InetAddr)>;
     fn incoming(&self) -> Incoming;
@@ -1550,7 +1529,7 @@ impl UdpSocket {
     fn bind<A: ToInetAddrs>(addr: &A) -> io::Result<UdpSocket>;
     fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, InetAddr)>;
     fn send_to<A: ToInetAddrs>(&self, buf: &[u8], addr: &A) -> io::Result<usize>;
-    fn inet_addr(&self) -> io::Result<InetAddr>;
+    fn local_addr(&self) -> io::Result<InetAddr>;
     fn duplicate(&self) -> io::Result<UdpSocket>;
 }
 
@@ -1599,11 +1578,21 @@ For the current `addrinfo` module:
 
 For the current `ip` module:
 
-* The `ToInetAddr` trait should become `ToInetAddrs`
+* The `ToSocketAddr` trait should become `ToInetAddrs`
 * The default `to_socket_addr_all` method should be removed.
 
-The actual address structures could use some scrutiny, but any
-revisions there are left as an unresolved question.
+The following implementations of `ToInetAddrs` will be available:
+
+```rust
+impl ToInetAddrs for InetAddr { ... }
+impl ToInetAddrs for InetV4Addr { ... }
+impl ToInetAddrs for InetV6Addr { ... }
+impl ToInetAddrs for (Ipv4Addr, u16) { ... }
+impl ToInetAddrs for (Ipv6Addr, u16) { ... }
+impl ToInetAddrs for (&str, u16) { ... }
+impl ToInetAddrs for str { ... }
+impl<T: ToInetAddrs> ToInetAddrs for &T { ... }
+```
 
 ### `std::process`
 [std::process]: #stdprocess
