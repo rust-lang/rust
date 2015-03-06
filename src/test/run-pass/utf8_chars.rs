@@ -14,7 +14,7 @@ use std::str;
 
 pub fn main() {
     // Chars of 1, 2, 3, and 4 bytes
-    let chs: Vec<char> = vec!('e', 'é', '€', '\U00010000');
+    let chs: Vec<char> = vec!('e', 'é', '€', '\u{10000}');
     let s: String = chs.iter().cloned().collect();
     let schs: Vec<char> = s.chars().collect();
 
