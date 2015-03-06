@@ -90,7 +90,7 @@
 //! * Repeated separators are ignored: `a/b` and `a//b` both have components `a`
 //!   and `b`.
 //!
-//! * Paths ending in a separator are treated as if they has a current directory
+//! * Paths ending in a separator are treated as if they have a current directory
 //!   component at the end (or, in verbatim paths, an empty component).  For
 //!   example, while `a/b` has components `a` and `b`, the paths `a/b/` and
 //!   `a/b/.` both have components `a`, `b`, and `.` (current directory).  The
