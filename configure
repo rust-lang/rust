@@ -697,15 +697,17 @@ probe CFG_ADB        adb
 
 if [ ! -z "$CFG_PANDOC" ]
 then
-    PV_MAJOR_MINOR=$(pandoc --version | grep '^pandoc\(.exe\)\? ' |
-        # extract the first 2 version fields, ignore everything else
-        sed 's/pandoc\(.exe\)\? \([0-9]*\)\.\([0-9]*\).*/\2 \3/')
+    PV_MAJOR_MINOR=$(pandoc --version | grep '^pandoc' |
+        # Extract "MAJOR MINOR" from Pandoc's version number
+        sed -E 's/pandoc(.exe)? ([0-9]+)\.([0-9]+).*/\2 \3/')
 
     MIN_PV_MAJOR="1"
     MIN_PV_MINOR="9"
+
     # these patterns are shell globs, *not* regexps
     PV_MAJOR=${PV_MAJOR_MINOR% *}
     PV_MINOR=${PV_MAJOR_MINOR#* }
+
     if [ "$PV_MAJOR" -lt "$MIN_PV_MAJOR" ] || [ "$PV_MINOR" -lt "$MIN_PV_MINOR" ]
     then
         step_msg "pandoc $PV_MAJOR.$PV_MINOR is too old. Need at least $MIN_PV_MAJOR.$MIN_PV_MINOR. Disabling"
