@@ -592,6 +592,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(windows))]
     fn to_socket_addr_str_bad() {
         assert!(tsa("1200::AB00:1234::2552:7777:1313:34300").is_err());
     }
