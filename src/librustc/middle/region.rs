@@ -607,8 +607,8 @@ impl RegionMaps {
     pub fn nearest_common_ancestor(&self,
                                    scope_a: CodeExtent,
                                    scope_b: CodeExtent)
-                                   -> Option<CodeExtent> {
-        if scope_a == scope_b { return Some(scope_a); }
+                                   -> CodeExtent {
+        if scope_a == scope_b { return scope_a; }
 
         let a_ancestors = ancestors_of(self, scope_a);
         let b_ancestors = ancestors_of(self, scope_b);
@@ -636,13 +636,13 @@ impl RegionMaps {
                  CodeExtent::DestructionScope(b_root_id)) => {
                     if self.fn_is_enclosed_by(a_root_id, b_root_id) {
                         // `a` is enclosed by `b`, hence `b` is the ancestor of everything in `a`
-                        Some(scope_b)
+                        scope_b
                     } else if self.fn_is_enclosed_by(b_root_id, a_root_id) {
                         // `b` is enclosed by `a`, hence `a` is the ancestor of everything in `b`
-                        Some(scope_a)
+                        scope_a
                     } else {
                         // neither fn encloses the other
-                        None
+                        unreachable!()
                     }
                 }
                 _ => {
@@ -655,17 +655,16 @@ impl RegionMaps {
         loop {
             // Loop invariant: a_ancestors[a_index] == b_ancestors[b_index]
             // for all indices between a_index and the end of the array
-            if a_index == 0 { return Some(scope_a); }
-            if b_index == 0 { return Some(scope_b); }
+            if a_index == 0 { return scope_a; }
+            if b_index == 0 { return scope_b; }
             a_index -= 1;
             b_index -= 1;
             if a_ancestors[a_index] != b_ancestors[b_index] {
-                return Some(a_ancestors[a_index + 1]);
+                return a_ancestors[a_index + 1];
             }
         }
 
-        fn ancestors_of(this: &RegionMaps, scope: CodeExtent)
-            -> Vec<CodeExtent> {
+        fn ancestors_of(this: &RegionMaps, scope: CodeExtent) -> Vec<CodeExtent> {
             // debug!("ancestors_of(scope={:?})", scope);
             let mut result = vec!(scope);
             let mut scope = scope;
