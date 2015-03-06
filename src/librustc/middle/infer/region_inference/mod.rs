@@ -760,15 +760,17 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             // at least as big as the block fr.scope_id".  So, we can
             // reasonably compare free regions and scopes:
             let fr_scope = fr.scope.to_code_extent();
-            match self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id) {
+            let r_id = self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id);
+
+            if r_id == fr_scope {
               // if the free region's scope `fr.scope_id` is bigger than
               // the scope region `s_id`, then the LUB is the free
               // region itself:
-              Some(r_id) if r_id == fr_scope => f,
-
+              f
+            } else {
               // otherwise, we don't know what the free region is,
               // so we must conservatively say the LUB is static:
-              _ => ReStatic
+              ReStatic
             }
           }
 
@@ -776,10 +778,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             // The region corresponding to an outer block is a
             // subtype of the region corresponding to an inner
             // block.
-            match self.tcx.region_maps.nearest_common_ancestor(a_id, b_id) {
-              Some(r_id) => ReScope(r_id),
-              _ => ReStatic
-            }
+            ReScope(self.tcx.region_maps.nearest_common_ancestor(a_id, b_id))
           }
 
           (ReFree(ref a_fr), ReFree(ref b_fr)) => {
@@ -866,9 +865,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 // is the scope `s_id`.  Otherwise, as we do not know
                 // big the free region is precisely, the GLB is undefined.
                 let fr_scope = fr.scope.to_code_extent();
-                match self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id) {
-                    Some(r_id) if r_id == fr_scope => Ok(s),
-                    _ => Err(ty::terr_regions_no_overlap(b, a))
+                if self.tcx.region_maps.nearest_common_ancestor(fr_scope, s_id) == fr_scope {
+                    Ok(s)
+                } else {
+                    Err(ty::terr_regions_no_overlap(b, a))
                 }
             }
 
@@ -934,10 +934,13 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         // it. Otherwise fail.
         debug!("intersect_scopes(scope_a={:?}, scope_b={:?}, region_a={:?}, region_b={:?})",
                scope_a, scope_b, region_a, region_b);
-        match self.tcx.region_maps.nearest_common_ancestor(scope_a, scope_b) {
-            Some(r_id) if scope_a == r_id => Ok(ReScope(scope_b)),
-            Some(r_id) if scope_b == r_id => Ok(ReScope(scope_a)),
-            _ => Err(ty::terr_regions_no_overlap(region_a, region_b))
+        let r_id = self.tcx.region_maps.nearest_common_ancestor(scope_a, scope_b);
+        if r_id == scope_a {
+            Ok(ReScope(scope_b))
+        } else if r_id == scope_b {
+            Ok(ReScope(scope_a))
+        } else {
+            Err(ty::terr_regions_no_overlap(region_a, region_b))
         }
     }
 }
