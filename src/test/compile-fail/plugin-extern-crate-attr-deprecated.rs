@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(plugin)]
+
 #[plugin]  //~ ERROR #[plugin] on `extern crate` is deprecated
 //~^ HELP use a crate attribute instead, i.e. #![plugin(std)]
 extern crate std;

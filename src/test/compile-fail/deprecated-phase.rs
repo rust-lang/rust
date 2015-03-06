@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(custom_attribute)]
+
 #[phase(blah)]
 //~^ ERROR #[phase] is deprecated
 extern crate foo;
