@@ -1755,10 +1755,10 @@ impl DrainRange for Range<usize> {
         unsafe {
             let tail = vec.len() - self.end;
             vec.set_len(tail + self.start);
-            let ptr = vec.as_mut_ptr();
+            let ptr = vec.as_ptr();
             let (start, end) = if mem::size_of::<T>() == 0 {
                 // make sure that start is not null
-                ((self.start + 1) as *mut T, (self.end + 1) as *mut T)
+                ((self.start + 1) as *const T, (self.end + 1) as *const T)
             } else {
                 (ptr.offset(self.start as isize), ptr.offset(self.end as isize))
             };
@@ -1768,7 +1768,8 @@ impl DrainRange for Range<usize> {
                 end:   end,
                 left:  start,
                 right: end,
-                marker: PhantomData,
+                marker1: PhantomData,
+                marker2: PhantomData,
             }
         }
     }
@@ -1803,13 +1804,14 @@ impl DrainRange for usize {
 #[unsafe_no_drop_flag]
 #[unstable(feature = "collections",
            reason = "recently added as part of collections reform 2")]
-pub struct Drain<'a, T:'a> {
+pub struct Drain<'a, T: 'a> {
     tail: usize,
-    start: *mut T,
-    end:   *mut T,
-    left:  *mut T,
-    right: *mut T,
-    marker: PhantomData<&'a T>,
+    start: *const T,
+    end:   *const T,
+    left:  *const T,
+    right: *const T,
+    marker1: PhantomData<&'a ()>,
+    marker2: PhantomData<T>,
 }
 
 unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
@@ -1890,7 +1892,7 @@ impl<'a, T> Drop for Drain<'a, T> {
             for _x in self.by_ref() {}
 
             if mem::size_of::<T>() > 0 {
-                unsafe { ptr::copy(self.start, self.end, self.tail); }
+                unsafe { ptr::copy(self.start as *mut _, self.end, self.tail); }
             }
         }
     }

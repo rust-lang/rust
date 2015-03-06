@@ -553,7 +553,7 @@ impl<T: Ord> BinaryHeap<T> {
     #[inline]
     #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
-    pub fn drain<'a>(&'a mut self) -> Drain<'a, T> {
+    pub fn drain(&mut self) -> Drain<T> {
         Drain { iter: self.data.drain(..) }
     }
 
