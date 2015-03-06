@@ -465,29 +465,6 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
     }
 }
 
-// Check that trait with default impls (`impl Trait for ..`) contain no methods
-struct DefaultedTraitVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
-
-impl<'a, 'tcx> Visitor<'tcx> for DefaultedTraitVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, item: &ast::Item) {
-        let tcx = self.ccx.tcx;
-
-        match item.node {
-            ast::ItemTrait(_, _, _, ref trait_methods) => {
-                if ty::trait_has_default_impl(tcx, local_def(item.id)) &&
-                    !trait_methods.is_empty()
-                {
-                    tcx.sess.span_err(
-                        item.span,
-                        "traits with default impls (`e.g. impl Trait for ..`) must have no \
-                        methods")
-                }
-            },
-            _ => {},
-        }
-    }
-}
-
 pub fn check_item_types(ccx: &CrateCtxt) {
     let krate = ccx.tcx.map.krate();
     let mut visit = wf::CheckTypeWellFormedVisitor::new(ccx);
@@ -498,11 +475,6 @@ pub fn check_item_types(ccx: &CrateCtxt) {
     ccx.tcx.sess.abort_if_errors();
 
     let mut visit = CheckItemTypesVisitor { ccx: ccx };
-    visit::walk_crate(&mut visit, krate);
-
-    ccx.tcx.sess.abort_if_errors();
-
-    let mut visit = DefaultedTraitVisitor { ccx: ccx };
     visit::walk_crate(&mut visit, krate);
 
     ccx.tcx.sess.abort_if_errors();
