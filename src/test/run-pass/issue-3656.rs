@@ -12,6 +12,8 @@
 // Incorrect struct size computation in the FFI, because of not taking
 // the alignment of elements into account.
 
+#![feature(libc)]
+
 extern crate libc;
 use libc::{c_uint, uint32_t, c_void};
 

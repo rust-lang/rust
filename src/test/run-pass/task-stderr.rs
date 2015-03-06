@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(unknown_features)]
-#![feature(box_syntax)]
+#![feature(box_syntax, old_io, std_misc, io, set_panic, set_stdio)]
 
 use std::io::prelude::*;
 use std::io;

@@ -41,7 +41,7 @@
 // no-pretty-expanded FIXME #15189
 
 #![allow(non_snake_case)]
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, core, os)]
 
 use std::iter::{repeat, AdditiveIterator};
 use std::thread;

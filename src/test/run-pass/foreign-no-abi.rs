@@ -10,6 +10,8 @@
 
 // ABI is cdecl by default
 
+#![feature(libc)]
+
 mod rustrt {
     extern crate libc;
 

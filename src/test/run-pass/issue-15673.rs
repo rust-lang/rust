@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(core)]
+
 use std::iter::AdditiveIterator;
 fn main() {
     let x: [u64; 3] = [1, 2, 3];

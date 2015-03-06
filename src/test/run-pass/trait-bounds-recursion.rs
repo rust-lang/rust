@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(core)]
+
 trait I { fn i(&self) -> Self; }
 
 trait A<T:I> : ::std::marker::MarkerTrait {

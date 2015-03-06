@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-aarch64
+#![feature(std_misc, os)]
 
 #[cfg(unix)]
 fn main() {

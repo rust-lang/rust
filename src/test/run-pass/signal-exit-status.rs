@@ -10,6 +10,9 @@
 
 // ignore-windows
 
+#![feature(old_io)]
+#![feature(os)]
+
 use std::env;
 use std::old_io::process::{Command, ExitSignal, ExitStatus};
 

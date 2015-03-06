@@ -10,6 +10,8 @@
 
 // Microbenchmark for the smallintmap library
 
+#![feature(collections, std_misc)]
+
 use std::collections::VecMap;
 use std::env;
 use std::time::Duration;

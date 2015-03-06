@@ -10,6 +10,7 @@
 
 #![crate_name="socketlib"]
 #![crate_type = "lib"]
+#![feature(libc)]
 
 pub mod socket {
     extern crate libc;

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(test)]
+
 // compile-flags: --test
 // no-pretty-expanded
 extern crate test;

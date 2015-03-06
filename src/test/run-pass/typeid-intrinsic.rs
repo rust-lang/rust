@@ -11,6 +11,8 @@
 // aux-build:typeid-intrinsic.rs
 // aux-build:typeid-intrinsic2.rs
 
+#![feature(hash, core)]
+
 extern crate "typeid-intrinsic" as other1;
 extern crate "typeid-intrinsic2" as other2;
 

@@ -14,6 +14,7 @@
 // common intersection.
 
 #![allow(dead_code)]
+#![feature(core)]
 
 struct List<'l> {
     field1: &'l i32,

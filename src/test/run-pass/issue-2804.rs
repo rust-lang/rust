@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(collections)]
+#![feature(rustc_private)]
+
 extern crate collections;
 extern crate serialize;
 

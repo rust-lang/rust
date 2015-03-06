@@ -13,6 +13,8 @@
 // propagation yet, and so we just saw a type variable, yielding an
 // error.
 
+#![feature(core)]
+
 use std::u8;
 
 trait IntoIterator {

@@ -212,7 +212,7 @@ impl LintStore {
     fn maybe_stage_features(&mut self, sess: &Session) {
         let lvl = match sess.opts.unstable_features {
             UnstableFeatures::Default => return,
-            UnstableFeatures::Disallow => Warn,
+            UnstableFeatures::Disallow => Forbid,
             UnstableFeatures::Cheat => Allow
         };
         match self.by_name.get("unstable_features") {

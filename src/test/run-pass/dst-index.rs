@@ -11,6 +11,8 @@
 // Test that overloaded index expressions with DST result types
 // work and don't ICE.
 
+#![feature(core)]
+
 use std::ops::Index;
 use std::fmt::Debug;
 

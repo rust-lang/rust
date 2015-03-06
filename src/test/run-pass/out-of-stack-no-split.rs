@@ -15,7 +15,7 @@
 //ignore-dragonfly
 //ignore-bitrig
 
-#![feature(asm)]
+#![feature(asm, libc, std_misc, old_io, rustc_private)]
 
 use std::old_io::process::Command;
 use std::env;

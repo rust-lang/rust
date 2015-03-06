@@ -22,6 +22,8 @@
 // that are already linked in. Using WriterUtil allows us to use the write_line
 // method.
 
+#![feature(core)]
+
 use std::fmt;
 use std::iter::repeat;
 use std::slice;

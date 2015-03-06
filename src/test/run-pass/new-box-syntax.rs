@@ -12,7 +12,7 @@
  * http://creativecommons.org/publicdomain/zero/1.0/ */
 
 #![allow(unknown_features)]
-#![feature(box_syntax)]
+#![feature(box_syntax, alloc)]
 
 // Tests that the new `box` syntax works with unique pointers.
 

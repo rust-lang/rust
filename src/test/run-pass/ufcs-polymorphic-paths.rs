@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(macro_rules)]
+#![feature(collections, rand)]
 
 use std::borrow::{Cow, IntoCow};
 use std::collections::BitVec;

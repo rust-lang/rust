@@ -10,7 +10,7 @@
 
 #![ crate_name = "test" ]
 #![allow(unstable)]
-#![feature(box_syntax)]
+#![feature(box_syntax, old_io, rustc_private, core)]
 
 extern crate graphviz;
 // A simple rust project

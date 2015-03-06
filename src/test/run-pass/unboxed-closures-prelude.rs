@@ -12,7 +12,7 @@
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, core)]
 
 fn main() {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.

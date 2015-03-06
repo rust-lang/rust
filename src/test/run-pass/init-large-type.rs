@@ -12,7 +12,7 @@
 // Doing it incorrectly causes massive slowdown in LLVM during
 // optimisation.
 
-#![feature(intrinsics)]
+#![feature(intrinsics, std_misc)]
 
 use std::thread::Thread;
 

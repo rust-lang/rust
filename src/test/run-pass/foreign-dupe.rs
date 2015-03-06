@@ -10,6 +10,8 @@
 
 // calling pin_task and that's having weird side-effects.
 
+#![feature(libc)]
+
 mod rustrt1 {
     extern crate libc;
 

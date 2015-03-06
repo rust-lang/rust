@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(unknown_features)]
+#![feature(std_misc)]
 
 use std::thread::Thread;
 use std::sync::mpsc::Sender;

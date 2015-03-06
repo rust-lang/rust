@@ -11,7 +11,7 @@
 // Test that param substitutions from the correct environment are
 // used when translating unboxed closure calls.
 
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, core)]
 
 pub fn inside<F: Fn()>(c: F) {
     c.call(());

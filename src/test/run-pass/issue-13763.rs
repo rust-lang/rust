@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(core)]
+
 use std::u8;
 
 const NUM: uint = u8::BITS as uint;

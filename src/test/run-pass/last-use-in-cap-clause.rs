@@ -12,7 +12,7 @@
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, core)]
 
 struct A { a: Box<isize> }
 

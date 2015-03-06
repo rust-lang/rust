@@ -11,6 +11,8 @@
 // This test can't be a unit test in std,
 // because it needs TempDir, which is in extra
 
+#![feature(tempdir, path_ext)]
+
 use std::ffi::CString;
 use std::fs::{self, TempDir, File, PathExt};
 

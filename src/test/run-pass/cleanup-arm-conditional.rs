@@ -22,7 +22,7 @@
 // arm is confined to the match arm itself.
 
 #![allow(unknown_features)]
-#![feature(box_syntax)]
+#![feature(box_syntax, os)]
 
 use std::os;
 

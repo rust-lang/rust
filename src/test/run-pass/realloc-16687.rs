@@ -13,6 +13,8 @@
 // Ideally this would be revised to use no_std, but for now it serves
 // well enough to reproduce (and illustrate) the bug from #16687.
 
+#![feature(alloc)]
+
 extern crate alloc;
 
 use alloc::heap;

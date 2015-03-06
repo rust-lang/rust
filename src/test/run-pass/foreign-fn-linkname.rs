@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+#![feature(std_misc, libc)]
+
 extern crate libc;
 use std::ffi::CString;
 

@@ -10,6 +10,8 @@
 
 // exec-env:RUST_LOG=logging-enabled=info
 
+#![feature(rustc_private)]
+
 #[macro_use]
 extern crate log;
 

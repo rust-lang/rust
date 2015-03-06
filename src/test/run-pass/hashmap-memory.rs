@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(unknown_features)]
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, std_misc)]
 
 /**
    A somewhat reduced test case to expose some Valgrind issues.

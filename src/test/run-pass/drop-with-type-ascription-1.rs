@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(str_words)]
+
 fn main() {
     let foo = "hello".to_string();
     let foo: Vec<&str> = foo.words().collect();

@@ -10,6 +10,8 @@
 
 // Extending Num and using inherited static methods
 
+#![feature(core)]
+
 use std::cmp::PartialOrd;
 use std::num::NumCast;
 
