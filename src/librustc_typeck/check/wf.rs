@@ -118,7 +118,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
-            ast::ItemTrait(_, ref ast_generics, _, _) => {
+            ast::ItemTrait(_, ref ast_generics, _, ref items) => {
                 let trait_predicates =
                     ty::lookup_predicates(ccx.tcx, local_def(item.id));
                 reject_non_type_param_bounds(
@@ -127,6 +127,14 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                     &trait_predicates);
                 self.check_variances(item, ast_generics, &trait_predicates,
                                      self.tcx().lang_items.phantom_fn());
+                if ty::trait_has_default_impl(ccx.tcx, local_def(item.id)) {
+                    if !items.is_empty() {
+                        ccx.tcx.sess.span_err(
+                            item.span,
+                            "traits with default impls (`e.g. unsafe impl Trait for ..`) must \
+                            have no methods or associated items")
+                    }
+                }
             }
             _ => {}
         }
