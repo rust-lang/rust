@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // error-pattern:thread '<main>' panicked at 'arithmetic operation overflowed'
+// compile-flags: -C debug-assertions
 
 // (Work around constant-evaluation)
 fn value() -> u8 { 42 }

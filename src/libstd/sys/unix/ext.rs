@@ -73,42 +73,49 @@ impl AsRawFd for old_io::pipe::PipeStream {
     }
 }
 
+#[allow(deprecated)]
 impl AsRawFd for old_io::net::pipe::UnixStream {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
+#[allow(deprecated)]
 impl AsRawFd for old_io::net::pipe::UnixListener {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
+#[allow(deprecated)]
 impl AsRawFd for old_io::net::pipe::UnixAcceptor {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
+#[allow(deprecated)]
 impl AsRawFd for old_io::net::tcp::TcpStream {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
+#[allow(deprecated)]
 impl AsRawFd for old_io::net::tcp::TcpListener {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
+#[allow(deprecated)]
 impl AsRawFd for old_io::net::tcp::TcpAcceptor {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
+#[allow(deprecated)]
 impl AsRawFd for old_io::net::udp::UdpSocket {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()

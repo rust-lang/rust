@@ -90,7 +90,7 @@
 //! * Repeated separators are ignored: `a/b` and `a//b` both have components `a`
 //!   and `b`.
 //!
-//! * Paths ending in a separator are treated as if they has a current directory
+//! * Paths ending in a separator are treated as if they have a current directory
 //!   component at the end (or, in verbatim paths, an empty component).  For
 //!   example, while `a/b` has components `a` and `b`, the paths `a/b/` and
 //!   `a/b/.` both have components `a`, `b`, and `.` (current directory).  The
@@ -872,10 +872,10 @@ impl PathBuf {
 
         // `path` is a pure relative path
         } else if need_sep {
-            self.inner.push_os_str(OsStr::from_str(MAIN_SEP_STR));
+            self.inner.push(MAIN_SEP_STR);
         }
 
-        self.inner.push_os_str(path.as_os_str());
+        self.inner.push(path);
     }
 
     /// Truncate `self` to `self.parent()`.
@@ -937,8 +937,8 @@ impl PathBuf {
 
         let extension = extension.as_os_str();
         if os_str_as_u8_slice(extension).len() > 0 {
-            stem.push_os_str(OsStr::from_str("."));
-            stem.push_os_str(extension.as_os_str());
+            stem.push(".");
+            stem.push(extension);
         }
         self.set_file_name(&stem);
 
@@ -1193,7 +1193,7 @@ impl Path {
         iter_after(self.components(), base.as_path().components()).is_some()
     }
 
-    /// Determines whether `base` is a suffix of `self`.
+    /// Determines whether `child` is a suffix of `self`.
     pub fn ends_with<P: ?Sized>(&self, child: &P) -> bool where P: AsPath {
         iter_after(self.components().rev(), child.as_path().components().rev()).is_some()
     }

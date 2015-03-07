@@ -21,6 +21,8 @@
 //! one that doesn't; the one that doesn't might get decent parallel
 //! build speedups.
 
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "rustc_back"]
 #![unstable(feature = "rustc_private")]
 #![staged_api]
@@ -34,7 +36,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(old_fs)]
-#![feature(fs)]
 #![feature(hash)]
 #![feature(int_uint)]
 #![feature(io)]
@@ -44,7 +45,8 @@
 #![feature(path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(tempdir)]
+#![feature(rand)]
+#![feature(path_ext)]
 
 extern crate syntax;
 extern crate serialize;
@@ -52,6 +54,7 @@ extern crate serialize;
 
 pub mod abi;
 pub mod archive;
+pub mod tempdir;
 pub mod arm;
 pub mod fs;
 pub mod mips;

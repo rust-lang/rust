@@ -8,12 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:thread '<main>' panicked at 'arithmetic operation overflowed'
-// compile-flags: -C debug-assertions
+// ignore-tidy-linelength
 
-// (Work around constant-evaluation)
-fn value() -> u8 { 200 }
+#![feature(optin_builtin_traits)]
+
+use std::marker::MarkerTrait;
+
+unsafe trait Trait: MarkerTrait {
+//~^ error: traits with default impls (`e.g. unsafe impl Trait for ..`) must have no methods or associated items
+    type Output;
+}
+
+unsafe impl Trait for .. {}
+
+fn call_method<T: Trait>(x: T) {}
 
 fn main() {
-    let x = value() * 4;
+    // ICE
+    call_method(());
 }

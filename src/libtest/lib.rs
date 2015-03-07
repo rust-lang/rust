@@ -23,6 +23,8 @@
 // running tests while providing a base that other test frameworks may
 // build off of.
 
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "test"]
 #![unstable(feature = "test")]
 #![staged_api]
@@ -39,7 +41,6 @@
 #![feature(int_uint)]
 #![feature(old_io)]
 #![feature(path)]
-#![feature(fs)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(std_misc)]

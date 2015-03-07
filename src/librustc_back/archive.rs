@@ -11,13 +11,15 @@
 //! A helper class for dealing with static archives
 
 use std::env;
-use std::fs::{self, TempDir};
+use std::fs;
 use std::io::prelude::*;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::str;
 use syntax::diagnostic::Handler as ErrorHandler;
+
+use tempdir::TempDir;
 
 pub const METADATA_FILENAME: &'static str = "rust.metadata.bin";
 
