@@ -1447,6 +1447,19 @@ pub struct ExpansionConfig<'feat> {
     pub recursion_limit: usize,
 }
 
+macro_rules! feature_tests {
+    ($( fn $getter:ident = $field:ident, )*) => {
+        $(
+            pub fn $getter(&self) -> bool {
+                match self.features {
+                    Some(&Features { $field: true, .. }) => true,
+                    _ => false,
+                }
+            }
+        )*
+    }
+}
+
 impl<'feat> ExpansionConfig<'feat> {
     pub fn default(crate_name: String) -> ExpansionConfig<'static> {
         ExpansionConfig {
@@ -1456,46 +1469,14 @@ impl<'feat> ExpansionConfig<'feat> {
         }
     }
 
-    pub fn enable_quotes(&self) -> bool {
-        match self.features {
-            Some(&Features { allow_quote: true, .. }) => true,
-            _ => false,
-        }
-    }
-
-    pub fn enable_asm(&self) -> bool {
-        match self.features {
-            Some(&Features { allow_asm: true, .. }) => true,
-            _ => false,
-        }
-    }
-
-    pub fn enable_log_syntax(&self) -> bool {
-        match self.features {
-            Some(&Features { allow_log_syntax: true, .. }) => true,
-            _ => false,
-        }
-    }
-
-    pub fn enable_concat_idents(&self) -> bool {
-        match self.features {
-            Some(&Features { allow_concat_idents: true, .. }) => true,
-            _ => false,
-        }
-    }
-
-    pub fn enable_trace_macros(&self) -> bool {
-        match self.features {
-            Some(&Features { allow_trace_macros: true, .. }) => true,
-            _ => false,
-        }
-    }
-
-    pub fn enable_allow_internal_unstable(&self) -> bool {
-        match self.features {
-            Some(&Features { allow_internal_unstable: true, .. }) => true,
-            _ => false
-        }
+    feature_tests! {
+        fn enable_quotes = allow_quote,
+        fn enable_asm = allow_asm,
+        fn enable_log_syntax = allow_log_syntax,
+        fn enable_concat_idents = allow_concat_idents,
+        fn enable_trace_macros = allow_trace_macros,
+        fn enable_allow_internal_unstable = allow_internal_unstable,
+        fn enable_custom_derive = allow_custom_derive,
     }
 }
 

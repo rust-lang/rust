@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(plugin)]
-#![plugin(foo="bleh")] //~ ERROR malformed plugin attribute
+#[derive(Show)]
+//~^ WARNING derive(Show) is deprecated
+struct Test1;
 
-fn main() {}
+fn main() { }

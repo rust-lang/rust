@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(plugin)]
-#![plugin(foo="bleh")] //~ ERROR malformed plugin attribute
+#![feature(custom_derive)]
 
-fn main() {}
+#[derive_Clone]
+struct Test;
+
+pub fn main() {
+    Test.clone();
+}

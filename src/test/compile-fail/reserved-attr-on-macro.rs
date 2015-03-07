@@ -8,7 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(plugin)]
-#![plugin(foo="bleh")] //~ ERROR malformed plugin attribute
+#[rustc_attribute_should_be_reserved] //~ ERROR attributes with the prefix `rustc_` are reserved
+macro_rules! foo {
+    () => (());
+}
 
-fn main() {}
+fn main() {
+    foo!();
+}

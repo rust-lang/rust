@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Eqr)] //~ ERROR unknown `derive` trait: `Eqr`
+#[derive(Eqr)]
+//~^ ERROR `#[derive]` for custom traits is not stable enough for use and is subject to change
 struct Foo;
 
 pub fn main() {}

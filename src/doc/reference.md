@@ -2429,6 +2429,10 @@ The currently implemented features of the reference compiler are:
                        so that new attributes can be added in a bacwards compatible
                        manner (RFC 572).
 
+* `custom_derive` - Allows the use of `#[derive(Foo,Bar)]` as sugar for
+                    `#[derive_Foo] #[derive_Bar]`, which can be user-defined syntax
+                    extensions.
+
 * `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
                  are inherently unstable and no promise about them is made.
 

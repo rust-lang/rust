@@ -11,13 +11,5 @@
 #[lang="foo"]   //~ ERROR language items are subject to change
 trait Foo {}
 
-extern "rust-intrinsic" {   //~ ERROR intrinsics are subject to change
-    fn bar();
-}
-
-extern "rust-intrinsic" fn baz() {  //~ ERROR intrinsics are subject to change
-}
-
 fn main() {
 }
-

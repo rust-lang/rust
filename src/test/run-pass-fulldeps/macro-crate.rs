@@ -11,7 +11,7 @@
 // aux-build:macro_crate_test.rs
 // ignore-stage1
 
-#![feature(plugin)]
+#![feature(plugin, custom_attribute)]
 #![plugin(macro_crate_test)]
 
 #[macro_use] #[no_link]

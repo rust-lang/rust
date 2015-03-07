@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Copy(Bad))]
-//~^ ERROR unexpected value in deriving, expected a trait
+#[derive(Send)]
+//~^ ERROR this unsafe trait should be implemented explicitly
 struct Test;
 
 #[derive(Sync)]
-//~^ ERROR Sync is an unsafe trait and it should be implemented explicitly
+//~^ ERROR this unsafe trait should be implemented explicitly
 struct Test1;
 
 pub fn main() {}
