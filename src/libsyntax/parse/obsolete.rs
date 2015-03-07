@@ -59,12 +59,12 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             ),
             ObsoleteSyntax::ProcType => (
                 "the `proc` type",
-                "use unboxed closures instead",
+                "is not used for moment, use unboxed closures instead",
                 true,
             ),
             ObsoleteSyntax::ProcExpr => (
                 "`proc` expression",
-                "use a `move ||` expression instead",
+                "is not used for the moment, use a `move ||` expression instead",
                 true,
             ),
             ObsoleteSyntax::ClosureType => (

@@ -10,8 +10,8 @@
 
 // Test that we generate obsolete syntax errors around usages of `proc`.
 
-fn foo(p: proc()) { } //~ ERROR obsolete syntax: the `proc` type
+fn foo(p: proc()) { } //~ ERROR: the `proc` type isn't used for the moment
 
-fn bar() { proc() 1; } //~ ERROR obsolete syntax: `proc` expression
+fn bar() { proc() 1; } //~ ERROR: `proc` expression isn't used for the moment
 
 fn main() { }
