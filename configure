@@ -430,6 +430,10 @@ case $CFG_OSTYPE in
         CFG_CPUTYPE=x86_64
         ;;
 
+#   Win 8 # uname -s on 64-bit cygwin does not contain WOW64, so simply use uname -m to detect arch (works in my install)
+    CYGWIN_NT-6.3)
+    	CFG_OSTYPE=pc-windows-gnu
+    	;;
 # We do not detect other OS such as XP/2003 using 64 bit using uname.
 # If we want to in the future, we will need to use Cygwin - Chuck's csih helper in /usr/lib/csih/winProductName.exe or alternative.
     *)
