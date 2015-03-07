@@ -32,8 +32,11 @@ pub use self::num::radix;
 pub use self::num::Radix;
 pub use self::num::RadixFmt;
 
+pub use self::builders::{DebugStruct, DebugTuple, DebugSet, DebugMap};
+
 mod num;
 mod float;
+mod builders;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(hidden)]
@@ -425,7 +428,7 @@ impl<'a> Formatter<'a> {
     /// # Arguments
     ///
     /// * is_positive - whether the original integer was positive or not.
-    /// * prefix - if the '#' character (FlagAlternate) is provided, this
+    /// * prefix - if the '#' character (Alternate) is provided, this
     ///   is the prefix to put in front of the number.
     /// * buf - the byte array that the number has been formatted into
     ///
@@ -614,6 +617,119 @@ impl<'a> Formatter<'a> {
     /// Optionally specified precision for numeric types
     #[unstable(feature = "core", reason = "method was just created")]
     pub fn precision(&self) -> Option<usize> { self.precision }
+
+    /// Creates a `DebugStruct` builder designed to assist with creation of
+    /// `fmt::Debug` implementations for structs.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::fmt;
+    ///
+    /// struct Foo {
+    ///     bar: i32,
+    ///     baz: String,
+    /// }
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///         fmt.debug_struct("Foo")
+    ///             .field("bar", &self.bar)
+    ///             .field("baz", &self.baz)
+    ///             .finish()
+    ///     }
+    /// }
+    ///
+    /// // prints "Foo { bar: 10, baz: "Hello World" }"
+    /// println!("{:?}", Foo { bar: 10, baz: "Hello World".to_string() });
+    /// ```
+    #[unstable(feature = "core", reason = "method was just created")]
+    pub fn debug_struct<'b>(&'b mut self, name: &str) -> DebugStruct<'b, 'a> {
+        builders::debug_struct_new(self, name)
+    }
+
+    /// Creates a `DebugTuple` builder designed to assist with creation of
+    /// `fmt::Debug` implementations for tuple structs.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::fmt;
+    ///
+    /// struct Foo(i32, String);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///         fmt.debug_tuple("Foo")
+    ///             .field(&self.0)
+    ///             .field(&self.1)
+    ///             .finish()
+    ///     }
+    /// }
+    ///
+    /// // prints "Foo(10, "Hello World")"
+    /// println!("{:?}", Foo(10, "Hello World".to_string()));
+    /// ```
+    #[unstable(feature = "core", reason = "method was just created")]
+    pub fn debug_tuple<'b>(&'b mut self, name: &str) -> DebugTuple<'b, 'a> {
+        builders::debug_tuple_new(self, name)
+    }
+
+    /// Creates a `DebugSet` builder designed to assist with creation of
+    /// `fmt::Debug` implementations for set-like structures.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<i32>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///         let mut builder = fmt.debug_set("Foo");
+    ///         for i in &self.0 {
+    ///             builder = builder.entry(i);
+    ///         }
+    ///         builder.finish()
+    ///     }
+    /// }
+    ///
+    /// // prints "Foo { 10, 11 }"
+    /// println!("{:?}", Foo(vec![10, 11]));
+    /// ```
+    #[unstable(feature = "core", reason = "method was just created")]
+    pub fn debug_set<'b>(&'b mut self, name: &str) -> DebugSet<'b, 'a> {
+        builders::debug_set_new(self, name)
+    }
+
+    /// Creates a `DebugMap` builder designed to assist with creation of
+    /// `fmt::Debug` implementations for map-like structures.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::fmt;
+    ///
+    /// struct Foo(Vec<(String, i32)>);
+    ///
+    /// impl fmt::Debug for Foo {
+    ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+    ///         let mut builder = fmt.debug_map("Foo");
+    ///         for &(ref key, ref value) in &self.0 {
+    ///             builder = builder.entry(key, value);
+    ///         }
+    ///         builder.finish()
+    ///     }
+    /// }
+    ///
+    /// // prints "Foo { "A": 10, "B": 11 }"
+    /// println!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)));
+    /// ```
+    #[unstable(feature = "core", reason = "method was just created")]
+    pub fn debug_map<'b>(&'b mut self, name: &str) -> DebugMap<'b, 'a> {
+        builders::debug_map_new(self, name)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

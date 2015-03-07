@@ -9,6 +9,7 @@
 // except according to those terms.
 
 mod num;
+mod builders;
 
 #[test]
 fn test_format_flags() {
