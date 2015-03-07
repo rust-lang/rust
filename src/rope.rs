@@ -14,25 +14,31 @@
 // tests
 // pull out into its own crate
 // impl Default, Extend
-// impl DOubleEndedIter and ExactSizeIter for RopeChars
+// impl DoubleEndedIter and ExactSizeIter for RopeChars
 // better allocation
-// balancing
-// thread safety/parallisation
+// balancing?
 
 extern crate unicode;
 use std::fmt;
 use std::ops::Range;
+use std::num::{SignedInt, Int};
 
-// A Rope, based on an unbalanced binary tree.
-
+// A Rope, based on an unbalanced binary tree. The rope is somewhat special in
+// that it tracks positions in the source text. So when locating a position in
+// the rope, the user can use either a current position in the text or a
+// position in the source text, which the Rope will adjust to a current position
+// whilst searching.
 pub struct Rope {
     root: Node,
     len: usize,
     src_len: usize,
-    // FIXME: Allocation is very dumb at the moment, we always add another buffer for every inserted string and we never resuse or collect old memory
+    // FIXME: Allocation is very dumb at the moment, we always add another
+    // buffer for every inserted string and we never resuse or collect old
+    // memory
     storage: Vec<Vec<u8>>
 }
 
+// A view over a portion of a Rope. Analagous to string slices (`str`);
 pub struct RopeSlice<'rope> {
     // All nodes which make up the slice, in order.
     nodes: Vec<&'rope Lnode>,
@@ -42,6 +48,7 @@ pub struct RopeSlice<'rope> {
     len: usize,
 }
 
+// An iterator over the chars in a rope.
 pub struct RopeChars<'rope> {
     data: RopeSlice<'rope>,
     cur_node: usize,
@@ -49,8 +56,8 @@ pub struct RopeChars<'rope> {
     abs_byte: usize,
 }
 
-
 impl Rope {
+    // Create an empty rope.
     pub fn new() -> Rope {
         Rope {
             root: Node::empty_inner(),
@@ -62,7 +69,7 @@ impl Rope {
 
     // Uses text as initial storage.
     pub fn from_string(text: String) -> Rope {
-        // TODO should split large texts into segments as we insert
+        // TODO should split very large texts into segments as we insert
 
         let mut result = Rope::new();
         result.insert(0, text);
@@ -70,47 +77,41 @@ impl Rope {
         result
     }
 
+    // When initialising a rope, indicates that the rope is complete wrt the
+    // source text.
     fn fix_src(&mut self) {
         self.root.fix_src();
         self.src_len = self.len;
     }
 
+    // Length of the rope.
     pub fn len(&self) -> usize {
         self.len
     }
 
-    pub fn insert(&mut self, start: usize, text: String) {
-        if text.len() == 0 {
-            return;
-        }
-
-        debug_assert!(start <= self.len(), "insertion out of bounds of rope");
-
-        let len = text.len();
-        let storage = text.into_bytes();
-        let new_node = box Node::new_leaf(&storage[][0] as *const u8, len, 0);
-        self.storage.push(storage);
-
-        match self.root.insert(new_node, start, start) {
-            NodeAction::Change(n, adj) => {
-                assert!(adj as usize == len);
-                self.root = *n;
-            }
-            NodeAction::Adjust(adj) => {
-                assert!(adj as usize == len);
-            }
-            _ => panic!("Unexpected action")
-        }
-        self.len += len;
-    }
-
     pub fn insert_copy(&mut self, start: usize, text: &str) {
-        // If we did clever things with allocation, we could do better here
+        // FIXME If we did clever things with allocation, we could do better here.
         self.insert(start, text.to_string());
     }
 
+    pub fn insert(&mut self, start: usize, text: String) {
+        self.insert_inner(start,
+                          text,
+                          |this, node| this.root.insert(node, start, start))
+    }
+
     pub fn src_insert(&mut self, start: usize, text: String) {
-        // TODO refactor with insert
+        self.insert_inner(start,
+                          text,
+                          |this, node| this.root.src_insert(node, start, start))
+    }
+
+    fn insert_inner<F>(&mut self,
+                       start: usize,
+                       text: String,
+                       do_insert: F)
+        where F: Fn(&mut Rope, Box<Node>) -> NodeAction
+    {
         if text.len() == 0 {
             return;
         }
@@ -119,10 +120,10 @@ impl Rope {
 
         let len = text.len();
         let storage = text.into_bytes();
-        let new_node = box Node::new_leaf(&storage[][0] as *const u8, len, 0);
+        let new_node = box Node::new_leaf(&storage[..][0] as *const u8, len, 0);
         self.storage.push(storage);
 
-        match self.root.src_insert(new_node, start, start) {
+        match do_insert(self, new_node) {
             NodeAction::Change(n, adj) => {
                 assert!(adj as usize == len);
                 self.root = *n;
@@ -147,35 +148,25 @@ impl Rope {
     }
 
     pub fn remove(&mut self, start: usize, end: usize) {
-        assert!(end >= start);
-        if start == end {
-            return;
-        }
-
-        let action = self.root.remove(start, end, start);
-        match action {
-            NodeAction::None => {}
-            NodeAction::Remove => {
-                self.root = Node::empty_inner();
-                self.len = 0;
-            }
-            NodeAction::Adjust(adj) => self.len = (self.len as isize + adj) as usize,
-            NodeAction::Change(node, adj) => {
-                self.root = *node;
-                self.len = (self.len as isize + adj) as usize;
-            }
-        }
+        self.remove_inner(start, end, |this| this.root.remove(start, end, start))
     }
 
     pub fn src_remove(&mut self, start: usize, end: usize) {
-        // TODO refactor with remove
+        self.remove_inner(start, end, |this| this.root.src_remove(start, end, start))
+    }
+
+    fn remove_inner<F>(&mut self,
+                       start: usize,
+                       end: usize,
+                       do_remove: F)
+        where F: Fn(&mut Rope) -> NodeAction
+    {
         assert!(end >= start);
         if start == end {
             return;
         }
 
-        let action = self.root.src_remove(start, end, start);
-        match action {
+        match do_remove(self) {
             NodeAction::None => {}
             NodeAction::Remove => {
                 self.root = Node::empty_inner();
@@ -190,6 +181,7 @@ impl Rope {
     }
 
     // TODO src_replace
+    // TODO src_replace_str
 
     // This can go horribly wrong if you overwrite a grapheme of different size.
     // It is the callers responsibility to ensure that the grapheme at point start
@@ -200,7 +192,7 @@ impl Rope {
         // I think that is better than duplicating a bunch of code.
         // It should be possible to view a &char as a &[u8] somehow, and then
         // we can optimise this (FIXME).
-        self.replace_str(start, &new_char.to_string()[]);
+        self.replace_str(start, &new_char.to_string()[..]);
     }
 
     pub fn replace_str(&mut self, start: usize, new_str: &str) {
@@ -332,6 +324,10 @@ impl ::std::str::FromStr for Rope {
 
 impl<'a> fmt::Display for RopeSlice<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        if self.nodes.len() == 0 {
+            return Ok(());
+        }
+
         let last_idx = self.nodes.len() - 1;
         for (i, n) in self.nodes.iter().enumerate() {
             let mut ptr = n.text;
@@ -346,7 +342,7 @@ impl<'a> fmt::Display for RopeSlice<'a> {
             unsafe {
                 try!(write!(fmt,
                             "{}",
-                            ::std::str::from_utf8(::std::slice::from_raw_buf(&ptr, len)).unwrap()));
+                            ::std::str::from_utf8(::std::slice::from_raw_parts(ptr, len)).unwrap()));
             }
         }
         Ok(())
@@ -371,7 +367,7 @@ impl<'a> fmt::Debug for RopeSlice<'a> {
             unsafe {
                 try!(write!(fmt,
                             "\"{}\"",
-                            ::std::str::from_utf8(::std::slice::from_raw_buf(&ptr, len)).unwrap()));
+                            ::std::str::from_utf8(::std::slice::from_raw_parts(ptr, len)).unwrap()));
             }
         }
         Ok(())
@@ -408,7 +404,7 @@ impl fmt::Display for Node {
                 unsafe {
                     write!(fmt,
                            "{}",
-                           ::std::str::from_utf8(::std::slice::from_raw_buf(text, len)).unwrap())
+                           ::std::str::from_utf8(::std::slice::from_raw_parts(*text, len)).unwrap())
                 }
             }
         }
@@ -437,7 +433,7 @@ impl fmt::Debug for Node {
                 unsafe {
                     write!(fmt,
                            "(\"{}\"; {})",
-                           ::std::str::from_utf8(::std::slice::from_raw_buf(text, len)).unwrap(),
+                           ::std::str::from_utf8(::std::slice::from_raw_parts(*text, len)).unwrap(),
                            len)
                 }
             }
@@ -519,7 +515,7 @@ impl Node {
         }
     }
 
-    // All these methods are just doing dynamic dispatch, TODO use a macro
+    // Most of these methods are just doing dynamic dispatch, TODO use a macro
 
     // precond: start < end
     fn remove(&mut self, start: usize, end: usize, src_start: usize) -> NodeAction {
@@ -534,19 +530,9 @@ impl Node {
             Node::InnerNode(ref mut i) => i.src_remove(start, end, src_start),
             Node::LeafNode(ref mut l) => {
                 debug!("src_remove: pre-adjust {}-{}; {}", start, end, l.src_offset);
-                let mut start = start as isize + l.src_offset;
-                if start < 0 {
-                    start = 0;
-                }
-                let mut end = end as isize + l.src_offset;
-                if end < 0 {
-                    end = 0;
-                }
-                // TODO src_start?
-                let mut src_start = src_start as isize + l.src_offset;
-                if src_start < 0 {
-                    src_start = 0;
-                }
+                let start = minz(start as isize + l.src_offset);
+                let end = minz(end as isize + l.src_offset);
+                let src_start = minz(src_start as isize + l.src_offset);
                 debug!("src_remove: post-adjust {}-{}, {}", start, end, src_start);
                 if end > start {
                     l.remove(start as usize, end as usize, src_start as usize)
@@ -569,15 +555,8 @@ impl Node {
             Node::InnerNode(ref mut i) => i.src_insert(node, start, src_start),
             Node::LeafNode(ref mut l) => {
                 debug!("src_insert: pre-adjust {}, {}; {}", start, src_start, l.src_offset);
-                let mut start = start as isize + l.src_offset;
-                if start < 0 {
-                    start = 0;
-                }
-                // TODO src_start?
-                let mut src_start = src_start as isize + l.src_offset;
-                if src_start < 0 {
-                    src_start = 0;
-                }
+                let start = minz(start as isize + l.src_offset);
+                let src_start = minz(src_start as isize + l.src_offset);
                 debug!("src_insert: post-adjust {}, {}", start, src_start);
                 l.insert(node, start as usize, src_start as usize)
             }
@@ -596,14 +575,8 @@ impl Node {
             Node::InnerNode(ref i) => i.find_src_slice(start, end, slice),
             Node::LeafNode(ref l) => {
                 debug!("find_src_slice: pre-adjust {}-{}; {}", start, end, l.src_offset);
-                let mut start = start as isize + l.src_offset;
-                if start < 0 {
-                    start = 0;
-                }
-                let mut end = end as isize + l.src_offset;
-                if end < 0 {
-                    end = 0;
-                }
+                let start = minz(start as isize + l.src_offset);
+                let end = minz(end as isize + l.src_offset);
                 debug!("find_src_slice: post-adjust {}-{}", start, end);
                 if end > start {
                     l.find_slice(start as usize, end as usize, slice);
@@ -1117,21 +1090,14 @@ impl Lnode {
             i -= 1;
         }
 
-        let loc = if loc < 0 {
-            0
-        } else {
-            loc as usize
-        };
+        let loc = minz(loc) as usize;
         debug!("Lnode::col_for_src_loc, return Continue({})", loc);
         Search::Continue(loc)
     }
 
     fn find_last_char(&self, needle: char) -> Option<usize> {
         // FIXME due to multi-byte chars, this will give false positives
-        // I think we must search forwards from the start :-( Perhaps we could
-        // track unicode vs ascii or something (I don't think there is an efficient
-        // way to read unicode backwards, I might be wrong).
-        // std::str::GraphemeIndices can do this!
+        // FIXME use std::str::GraphemeIndices to do this!
         let mut loc = self.len as isize - 1;
         while loc >= 0 {
             unsafe {
@@ -1147,8 +1113,169 @@ impl Lnode {
     }
 }
 
-//TODO comment etc.
+// The state of searching through a rope.
 enum Search {
+    // TODO comment
     Continue(usize),
+    // TODO comment
     Done(usize)
+}
+
+fn minz<I: SignedInt>(x: I) -> I {
+    if x.is_negative() {
+        return I::zero();
+    }
+
+    x
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    // FIXME is this a Rust bug? Why is minz not imported by the glob import?
+    use super::minz;
+
+    #[test]
+    fn test_new() {
+        let r = Rope::new();
+        assert!(r.len() == 0);
+        assert!(r.to_string() == "");
+
+        let r = Rope::from_string("Hello world!".to_string());
+        assert!(r.len() == 12);
+        assert!(r.to_string() == "Hello world!");
+    }
+
+    #[test]
+    fn test_minz() {
+        let x: i32 = 0;
+        assert!(super::minz(x) == 0);
+        let x: i32 = 42;
+        assert!(minz(x) == 42);
+        let x: i32 = -42;
+        assert!(minz(x) == 0);
+        let x: isize = 0;
+        assert!(minz(x) == 0);
+        let x: isize = 42;
+        assert!(minz(x) == 42);
+        let x: isize = -42;
+        assert!(minz(x) == 0);
+    }
+
+    #[test]
+    fn test_from_string() {
+        let mut r: Rope = "Hello world!".parse().unwrap();
+        assert!(r.to_string() == "Hello world!");
+    }
+
+    #[test]
+    fn test_remove() {
+        let mut r: Rope = "Hello world!".parse().unwrap();
+        r.remove(0, 10);
+        assert!(r.to_string() == "d!");
+        assert!(r.src_slice(0..5).to_string() == "");
+        assert!(r.src_slice(10..12).to_string() == "d!");       
+
+        let mut r: Rope = "Hello world!".parse().unwrap();
+        r.remove(4, 12);
+        assert!(r.to_string() == "Hell");
+        // TODO
+        //assert!(r.src_slice(0..4).to_string() == "Hell");
+        //assert!(r.src_slice(10..12).to_string() == "");       
+
+        let mut r: Rope = "Hello world!".parse().unwrap();
+        r.remove(4, 10);
+        assert!(r.to_string() == "Helld!");
+        // TODO
+        //assert!(r.src_slice(1..5).to_string() == "ell");
+        assert!(r.src_slice(9..12).to_string() == "d!");
+    }
+
+    #[test]
+    fn test_insert_copy() {
+        let mut r: Rope = "Hello world!".parse().unwrap();
+        r.insert_copy(0, "foo");
+        assert!(r.to_string() == "fooHello world!");
+        assert!(r.slice(2..8).to_string() == "oHello");
+
+        let mut r: Rope = "Hello world!".parse().unwrap();
+        r.insert_copy(12, "foo");
+        assert!(r.to_string() == "Hello world!foo");
+        assert!(r.slice(2..8).to_string() == "llo wo");
+
+        let mut r: Rope = "Hello world!".parse().unwrap();
+        r.insert_copy(5, "foo");
+        assert!(r.to_string() == "Hellofoo world!");
+        assert!(r.slice(2..8).to_string() == "llofoo");
+    }
+
+    #[test]
+    fn test_push_copy() {
+        let mut r: Rope = "Hello world!".parse().unwrap();
+        r.push_copy("foo");
+        assert!(r.to_string() == "Hello world!foo");
+        assert!(r.slice(2..8).to_string() == "llo wo");
+    }
+
+    #[test]
+    fn test_insert_replace() {
+        let mut r: Rope = "hello worl\u{00bb0}!".parse().unwrap();
+        r.insert_copy(5, "bb");
+        assert!(r.to_string() == "hellobb worlர!");
+        r.replace(0, 'H');
+        r.replace(15, '~');
+        r.replace_str(5, "fo\u{00cb0}");
+        assert!(r.to_string() == "Hellofoರrlர~");
+        assert!(r.slice(0..10).to_string() == "Hellofoರ");
+        assert!(r.slice(5..10).to_string() == "foರ");
+        assert!(r.slice(10..15).to_string() == "rlர");
+
+        let expected = "Hellofoರrlர~";
+        let mut byte_pos = 0;
+        for ((c, b), e) in r.chars().zip(expected.chars()) {
+            assert!(c == e);
+            assert!(b == byte_pos);
+            byte_pos += e.len_utf8();
+        }
+    }
+
+    #[test]
+    fn test_src_insert_remove_col_for_src_loc() {
+        let mut r: Rope = "hello\n world!".parse().unwrap();
+        r.src_insert(4, "foo".to_string());
+        r.src_insert(5, "bar".to_string());
+        assert!(r.to_string() == "hellfooobar\n world!");
+
+        r.src_remove(2, 4);
+        r.src_remove(10, 12);
+        assert!(r.to_string() == "hefooobar\n wor!");
+
+        let expected = "hefooobar\n wor!";
+        let mut byte_pos = 0;
+        for ((c, b), e) in r.chars().zip(expected.chars()) {
+            assert!(c == e);
+            assert!(b == byte_pos);
+            byte_pos += e.len_utf8();
+        }
+
+        let expected = [0, 1, 2, 2, 5, 9, 0, 1, 2, 3, 4, 4, 4];
+        for i in 0..13 {
+            assert!(r.col_for_src_loc(i) == expected[i]);
+        }
+    }
+
+    #[test]
+    fn test_src_insert() {
+        let mut r: Rope = "Hello world!".parse().unwrap();
+        r.src_insert(4, "foo".to_string());
+        r.src_insert(0, "foo".to_string());
+        r.src_insert(12, "foo".to_string());
+        assert!(r.to_string() == "fooHellfooo world!foo");
+        r.src_insert(4, "bar".to_string());
+        r.src_insert(5, "bar".to_string());
+        r.src_insert(3, "bar".to_string());
+        r.src_insert(0, "bar".to_string());
+        r.src_insert(12, "bar".to_string());
+        assert!(r.to_string() == "barfooHelbarlbarfooobar world!barfoo");
+    }
 }
