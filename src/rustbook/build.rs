@@ -11,10 +11,11 @@
 //! Implementation of the `build` subcommand, used to compile a book.
 
 use std::env;
-use std::fs::{self, File, TempDir};
+use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
+use rustc_back::tempdir::TempDir;
 
 use subcommand::Subcommand;
 use term::Term;

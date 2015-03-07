@@ -38,6 +38,8 @@
 //! [win]: http://msdn.microsoft.com/en-us/library/windows/desktop/ms682010%28v=vs.85%29.aspx
 //! [ti]: https://en.wikipedia.org/wiki/Terminfo
 
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "term"]
 #![unstable(feature = "rustc_private",
             reason = "use the crates.io `term` library instead")]
@@ -52,7 +54,6 @@
 
 #![feature(box_syntax)]
 #![feature(collections)]
-#![feature(fs)]
 #![feature(int_uint)]
 #![feature(io)]
 #![feature(old_io)]
@@ -61,6 +62,7 @@
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(unicode)]
+#![feature(path_ext)]
 #![cfg_attr(windows, feature(libc))]
 
 #[macro_use] extern crate log;

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "rustdoc"]
 #![unstable(feature = "rustdoc")]
 #![staged_api]
@@ -35,9 +37,9 @@
 #![feature(unicode)]
 #![feature(str_words)]
 #![feature(io)]
-#![feature(fs)]
 #![feature(path)]
-#![feature(tempdir)]
+#![feature(file_path)]
+#![feature(path_ext)]
 
 extern crate arena;
 extern crate getopts;
@@ -47,6 +49,7 @@ extern crate rustc_trans;
 extern crate rustc_driver;
 extern crate rustc_resolve;
 extern crate rustc_lint;
+extern crate rustc_back;
 extern crate serialize;
 extern crate syntax;
 extern crate "test" as testing;

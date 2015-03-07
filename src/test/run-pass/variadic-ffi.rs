@@ -13,7 +13,6 @@ extern crate libc;
 use std::ffi::{self, CString};
 use libc::{c_char, c_int};
 
-// ignore-fast doesn't like extern crate
 
 extern {
     fn sprintf(s: *mut c_char, format: *const c_char, ...) -> c_int;

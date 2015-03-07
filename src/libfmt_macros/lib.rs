@@ -14,6 +14,8 @@
 //! Parsing does not happen at runtime: structures of `std::fmt::rt` are
 //! generated instead.
 
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "fmt_macros"]
 #![unstable(feature = "rustc_private")]
 #![staged_api]

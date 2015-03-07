@@ -60,6 +60,12 @@ let v = vec![1, 2, 3]; // v: Vec<i32>
 brackets `[]` with `vec!`. Rust allows you to use either in either situation,
 this is just convention.)
 
+There's an alternate form of `vec!` for repeating an initial value:
+
+```
+let v = vec![0; 10]; // ten zeroes
+```
+
 You can get the length of, iterate over, and subscript vectors just like
 arrays. In addition, (mutable) vectors can grow automatically:
 

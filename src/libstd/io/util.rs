@@ -12,7 +12,7 @@
 
 use prelude::v1::*;
 
-use io::{self, Read, Write, ErrorKind};
+use io::{self, Read, Write, ErrorKind, BufRead};
 
 /// Copies the entire contents of a reader into a writer.
 ///
@@ -27,6 +27,7 @@ use io::{self, Read, Write, ErrorKind};
 /// This function will return an error immediately if any call to `read` or
 /// `write` returns an error. All instances of `ErrorKind::Interrupted` are
 /// handled by this function and the underlying operation is retried.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn copy<R: Read, W: Write>(r: &mut R, w: &mut W) -> io::Result<u64> {
     let mut buf = [0; super::DEFAULT_BUF_SIZE];
     let mut written = 0;
@@ -43,26 +44,37 @@ pub fn copy<R: Read, W: Write>(r: &mut R, w: &mut W) -> io::Result<u64> {
 }
 
 /// A reader which is always at EOF.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Empty { _priv: () }
 
 /// Creates an instance of an empty reader.
 ///
 /// All reads from the returned reader will return `Ok(0)`.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn empty() -> Empty { Empty { _priv: () } }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Read for Empty {
     fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> { Ok(0) }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl BufRead for Empty {
+    fn fill_buf(&mut self) -> io::Result<&[u8]> { Ok(&[]) }
+    fn consume(&mut self, _n: usize) {}
+}
 
 /// A reader which infinitely yields one byte.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Repeat { byte: u8 }
 
 /// Creates an instance of a reader that infinitely repeats one byte.
 ///
 /// All reads from this reader will succeed by filling the specified buffer with
 /// the given byte.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn repeat(byte: u8) -> Repeat { Repeat { byte: byte } }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Read for Repeat {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         for slot in buf.iter_mut() {
@@ -73,14 +85,17 @@ impl Read for Repeat {
 }
 
 /// A writer which will move data into the void.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Sink { _priv: () }
 
 /// Creates an instance of a writer which will successfully consume all data.
 ///
 /// All calls to `write` on the returned instance will return `Ok(buf.len())`
 /// and the contents of the buffer will not be inspected.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn sink() -> Sink { Sink { _priv: () } }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Write for Sink {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { Ok(buf.len()) }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }

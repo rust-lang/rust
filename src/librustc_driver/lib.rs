@@ -14,6 +14,8 @@
 //!
 //! This API is completely unstable and subject to change.
 
+// Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
+#![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "rustc_driver"]
 #![unstable(feature = "rustc_private")]
 #![staged_api]
@@ -29,7 +31,6 @@
 #![feature(int_uint)]
 #![feature(old_io)]
 #![feature(libc)]
-#![feature(os)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -39,7 +40,6 @@
 #![feature(exit_status)]
 #![feature(path)]
 #![feature(io)]
-#![feature(fs)]
 
 extern crate arena;
 extern crate flate;
@@ -775,6 +775,7 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
+#[allow(deprecated)]
 pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
     const STACK_SIZE: uint = 8 * 1024 * 1024; // 8MB
 
