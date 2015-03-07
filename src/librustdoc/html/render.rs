@@ -2247,7 +2247,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
             // there is no sidebar-items.js beyond the crate root path
             // FIXME maybe dynamic crate loading can be merged here
         } else {
-            try!(write!(fmt, "<script async src=\"{path}sidebar-items.js\"></script>",
+            try!(write!(fmt, "<script defer src=\"{path}sidebar-items.js\"></script>",
                         path = relpath));
         }
 
