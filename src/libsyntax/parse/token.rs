@@ -561,11 +561,11 @@ declare_special_idents_and_keywords! {
         (39,                         Virtual,    "virtual");
         (40,                         While,      "while");
         (41,                         Continue,   "continue");
-        (42,                         Proc,       "proc");
-        (43,                         Box,        "box");
-        (44,                         Const,      "const");
-        (45,                         Where,      "where");
+        (42,                         Box,        "box");
+        (43,                         Const,      "const");
+        (44,                         Where,      "where");
         'reserved:
+        (45,                         Proc,       "proc");
         (46,                         Alignof,    "alignof");
         (47,                         Become,     "become");
         (48,                         Offsetof,   "offsetof");
