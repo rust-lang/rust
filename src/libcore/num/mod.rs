@@ -1517,7 +1517,7 @@ pub trait FromStrRadix {
     fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::Err>;
 }
 
-/// A utility function that just calls FromStrRadix::from_str_radix.
+/// A utility function that just calls `FromStrRadix::from_str_radix`.
 #[unstable(feature = "core", reason = "needs reevaluation")]
 pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: u32)
                                        -> Result<T, T::Err> {
