@@ -248,6 +248,16 @@ impl TcpListener {
                             1 as c_int));
         }
 
+        // `IPV6_V6ONLY` is false by default on Linux and OSX, and true
+        // by default on Windows. `TcpListener::bind` should work the
+        // same way on all platforms, so setting this option on Windows.
+        if cfg!(windows) {
+            if let IpAddr::V6(..) = addr.ip() {
+                try!(setsockopt(&sock, libc::IPPROTO_IPV6, libc::IPV6_V6ONLY,
+                                0 as c_int));
+            }
+        }
+
         // Bind our new socket
         let (addrp, len) = addr.into_inner();
         try!(cvt(unsafe { libc::bind(*sock.as_inner(), addrp, len) }));

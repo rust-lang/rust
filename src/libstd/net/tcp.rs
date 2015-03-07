@@ -215,7 +215,7 @@ mod tests {
     use io::ErrorKind;
     use io::prelude::*;
     use net::*;
-    use net::test::{next_test_ip4, next_test_ip6};
+    use net::test::{next_test_port, next_test_ip4, next_test_ip6};
     use sync::mpsc::channel;
     use thread;
 
@@ -241,6 +241,23 @@ mod tests {
                 // EADDRNOTAVAIL is mapped to ConnectionRefused
                 assert_eq!(e.kind(), ErrorKind::ConnectionRefused),
         }
+    }
+
+    #[test]
+    fn bind_ipv6_connect_ipv4() {
+        let port = next_test_port();
+
+        let acceptor = t!(TcpListener::bind(&("::", port)));
+
+        let _t = thread::spawn(move || {
+            let mut s = t!(acceptor.accept()).0;
+            t!(s.write(&[10]));
+        });
+
+        let mut buf = [0];
+        let mut c = t!(TcpStream::connect(&("127.0.0.1", port)));
+        t!(c.read(&mut buf));
+        assert!(buf[0] == 10);
     }
 
     #[test]
