@@ -8,7 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(plugin)]
-#![plugin(foo="bleh")] //~ ERROR malformed plugin attribute
+#[derive(Copy(Bad))]
+//~^ ERROR malformed `derive` entry
+struct Test1;
 
-fn main() {}
+#[derive(Copy="bad")]
+//~^ ERROR malformed `derive` entry
+struct Test2;
+
+#[derive()]
+//~^ WARNING empty trait list
+struct Test3;
+
+#[derive]
+//~^ WARNING empty trait list
+struct Test4;

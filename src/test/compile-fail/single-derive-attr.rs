@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(plugin)]
-#![plugin(foo="bleh")] //~ ERROR malformed plugin attribute
+#[derive_Clone]
+//~^ ERROR attributes of the form `#[derive_*]` are reserved
+struct Test;
 
-fn main() {}
+pub fn main() {}

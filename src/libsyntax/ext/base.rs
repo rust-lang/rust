@@ -491,10 +491,8 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
     syntax_expanders.insert(intern("log_syntax"),
                             builtin_normal_expander(
                                     ext::log_syntax::expand_syntax_ext));
-    syntax_expanders.insert(intern("derive"),
-                            Decorator(Box::new(ext::deriving::expand_meta_derive)));
-    syntax_expanders.insert(intern("deriving"),
-                            Decorator(Box::new(ext::deriving::expand_deprecated_deriving)));
+
+    ext::deriving::register_all(&mut syntax_expanders);
 
     if ecfg.enable_quotes() {
         // Quasi-quoting expanders
