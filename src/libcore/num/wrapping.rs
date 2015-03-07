@@ -11,7 +11,6 @@
 
 use ops::*;
 
-#[cfg(not(stage0))]
 use intrinsics::{overflowing_add, overflowing_sub, overflowing_mul};
 
 use intrinsics::{i8_add_with_overflow, u8_add_with_overflow};
@@ -40,7 +39,6 @@ pub trait OverflowingOps {
     fn overflowing_mul(self, rhs: Self) -> (Self, bool);
 }
 
-#[cfg(not(stage0))]
 macro_rules! wrapping_impl {
     ($($t:ty)*) => ($(
         impl WrappingOps for $t {
@@ -61,26 +59,6 @@ macro_rules! wrapping_impl {
                 unsafe {
                     overflowing_mul(self, rhs)
                 }
-            }
-        }
-    )*)
-}
-
-#[cfg(stage0)]
-macro_rules! wrapping_impl {
-    ($($t:ty)*) => ($(
-        impl WrappingOps for $t {
-            #[inline(always)]
-            fn wrapping_add(self, rhs: $t) -> $t {
-                self + rhs
-            }
-            #[inline(always)]
-            fn wrapping_sub(self, rhs: $t) -> $t {
-                self - rhs
-            }
-            #[inline(always)]
-            fn wrapping_mul(self, rhs: $t) -> $t {
-                self * rhs
             }
         }
     )*)
