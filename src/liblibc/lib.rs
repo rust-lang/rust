@@ -2318,6 +2318,7 @@ pub mod consts {
             pub const IP_DROP_MEMBERSHIP: c_int = 13;
             pub const IPV6_ADD_MEMBERSHIP: c_int = 5;
             pub const IPV6_DROP_MEMBERSHIP: c_int = 6;
+            pub const IPV6_V6ONLY: c_int = 27;
             pub const IP_TTL: c_int = 4;
             pub const IP_HDRINCL: c_int = 2;
 
@@ -3213,6 +3214,7 @@ pub mod consts {
             pub const IP_DROP_MEMBERSHIP: c_int = 36;
             pub const IPV6_ADD_MEMBERSHIP: c_int = 20;
             pub const IPV6_DROP_MEMBERSHIP: c_int = 21;
+            pub const IPV6_V6ONLY: c_int = 26;
 
             pub const TCP_NODELAY: c_int = 1;
             pub const SOL_SOCKET: c_int = 1;
@@ -3259,6 +3261,7 @@ pub mod consts {
             pub const IP_DROP_MEMBERSHIP: c_int = 36;
             pub const IPV6_ADD_MEMBERSHIP: c_int = 20;
             pub const IPV6_DROP_MEMBERSHIP: c_int = 21;
+            pub const IPV6_V6ONLY: c_int = 26;
 
             pub const TCP_NODELAY: c_int = 1;
             pub const SOL_SOCKET: c_int = 65535;
@@ -3749,6 +3752,7 @@ pub mod consts {
             pub const IP_DROP_MEMBERSHIP: c_int = 13;
             pub const IPV6_ADD_MEMBERSHIP: c_int = 12;
             pub const IPV6_DROP_MEMBERSHIP: c_int = 13;
+            pub const IPV6_V6ONLY: c_int = 27;
 
             pub const TCP_NODELAY: c_int = 1;
             pub const TCP_KEEPIDLE: c_int = 256;
@@ -4131,6 +4135,7 @@ pub mod consts {
             pub const IP_DROP_MEMBERSHIP: c_int = 13;
             pub const IPV6_ADD_MEMBERSHIP: c_int = 12; // don't exist
             pub const IPV6_DROP_MEMBERSHIP: c_int = 13; // don't exist
+            pub const IPV6_V6ONLY: c_int = 27;
 
             pub const TCP_NODELAY: c_int = 0x01;
             pub const SOL_SOCKET: c_int = 0xffff;
@@ -4528,6 +4533,7 @@ pub mod consts {
             pub const IP_DROP_MEMBERSHIP: c_int = 13;
             pub const IPV6_ADD_MEMBERSHIP: c_int = 12;
             pub const IPV6_DROP_MEMBERSHIP: c_int = 13;
+            pub const IPV6_V6ONLY: c_int = 27;
 
             pub const TCP_NODELAY: c_int = 0x01;
             pub const TCP_KEEPALIVE: c_int = 0x10;
