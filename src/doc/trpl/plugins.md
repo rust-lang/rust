@@ -63,7 +63,7 @@ that implements Roman numeral integer literals.
 
 ```ignore
 #![crate_type="dylib"]
-#![feature(plugin_registrar)]
+#![feature(plugin_registrar, rustc_private)]
 
 extern crate syntax;
 extern crate rustc;
@@ -92,13 +92,13 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         }
     };
 
-    let mut text = &text;
+    let mut text = &*text;
     let mut total = 0;
     while !text.is_empty() {
         match NUMERALS.iter().find(|&&(rn, _)| text.starts_with(rn)) {
             Some(&(rn, val)) => {
                 total += val;
-                text = text.slice_from(rn.len());
+                text = &text[rn.len()..];
             }
             None => {
                 cx.span_err(sp, "invalid Roman numeral");
@@ -107,7 +107,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         }
     }
 
-    MacEager::expr(cx.expr_usize(sp, total))
+    MacEager::expr(cx.expr_u32(sp, total))
 }
 
 #[plugin_registrar]
