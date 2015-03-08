@@ -1264,7 +1264,7 @@ pub struct BareFnTy {
 /// The different kinds of types recognized by the compiler
 pub enum Ty_ {
     TyVec(P<Ty>),
-    /// A fixed length array (`[T, ..n]`)
+    /// A fixed length array (`[T; n]`)
     TyFixedLengthVec(P<Ty>, P<Expr>),
     /// A raw pointer (`*const T` or `*mut T`)
     TyPtr(MutTy),
