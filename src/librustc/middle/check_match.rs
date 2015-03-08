@@ -276,7 +276,7 @@ fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
                     let subspan = p.span.lo <= err.span.lo && err.span.hi <= p.span.hi;
                     cx.tcx.sess.span_err(err.span,
                                          &format!("constant evaluation error: {}",
-                                                  err.description().as_slice()));
+                                                  err.description()));
                     if !subspan {
                         cx.tcx.sess.span_note(p.span,
                                               "in pattern here")

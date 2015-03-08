@@ -411,9 +411,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             Some(def_id) => {
                 self.tcx().sess.fileline_help(
                     span,
-                    format!("consider removing `{}` or using a marker such as `{}`",
-                            param_name.user_string(self.tcx()),
-                            ty::item_path_str(self.tcx(), def_id)).as_slice());
+                    &format!("consider removing `{}` or using a marker such as `{}`",
+                             param_name.user_string(self.tcx()),
+                             ty::item_path_str(self.tcx(), def_id)));
             }
             None => {
                 // no lang items, no help!

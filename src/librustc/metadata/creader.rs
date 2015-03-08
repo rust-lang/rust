@@ -493,7 +493,7 @@ impl<'a> CrateReader<'a> {
         };
 
         let dylib = library.dylib.clone();
-        let register = should_link && self.existing_match(info.name.as_slice(),
+        let register = should_link && self.existing_match(&info.name,
                                                           None,
                                                           PathKind::Crate).is_none();
         let metadata = if register {
