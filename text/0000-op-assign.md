@@ -50,6 +50,20 @@ Once we feel comfortable with the implementation we'll remove the feature gate
 and mark the traits as stable. This can be done after 1.0 as this change is
 backwards compatible.
 
+## RHS: By ref vs by value
+
+This RFC proposes that the assignment operations take the RHS always by ref;
+instead of by value like the "normal" binary operations (e.g. `Add`) do. The
+rationale is that, as far as the author has seen in practice [1], one never
+wants to mutate the RHS or consume it, or in other words an immutable view into
+the RHS is enough to perform the operation. Therefore, this RFC follows in the
+footsteps of the `Index` traits, where the same situation arises with the
+indexing value, and by ref was chosen over by value.
+
+[1] It could be possible that the author is not aware of use cases where taking
+RHS by value is necessary. Feedback on this matter would be appreciated. (See
+the first unresolved question)
+
 # Drawbacks
 
 None that I can think of.
