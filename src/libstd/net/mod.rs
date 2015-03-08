@@ -22,7 +22,7 @@ use io::{self, Error, ErrorKind};
 use num::Int;
 use sys_common::net2 as net_imp;
 
-pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
+pub use self::ip::{IpAddr, IpAddrFamily, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 pub use self::addr::{SocketAddr, ToSocketAddrs};
 pub use self::tcp::{TcpStream, TcpListener};
 pub use self::udp::UdpSocket;

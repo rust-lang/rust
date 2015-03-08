@@ -41,6 +41,15 @@ pub enum Ipv6MulticastScope {
     Global
 }
 
+/// IP address family: IPv4 or IPv6
+#[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
+pub enum IpAddrFamily {
+    /// IPv4
+    V4,
+    /// IPv6
+    V6
+}
+
 /// Enumeration of possible IP addresses
 #[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
 pub enum IpAddr {
@@ -64,6 +73,14 @@ impl IpAddr {
     pub fn new_v6(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16,
                   h: u16) -> IpAddr {
         IpAddr::V6(Ipv6Addr::new(a, b, c, d, e, f, g, h))
+    }
+
+    /// Get address family for the address.
+    pub fn family(&self) -> IpAddrFamily {
+        match *self {
+            IpAddr::V4(..) => IpAddrFamily::V4,
+            IpAddr::V6(..) => IpAddrFamily::V6,
+        }
     }
 }
 
@@ -447,5 +464,17 @@ impl AsInner<libc::in6_addr> for Ipv6Addr {
 impl FromInner<libc::in6_addr> for Ipv6Addr {
     fn from_inner(addr: libc::in6_addr) -> Ipv6Addr {
         Ipv6Addr { inner: addr }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use prelude::v1::*;
+    use net::*;
+
+    #[test]
+    fn ip_addr_get_family() {
+        assert_eq!(IpAddrFamily::V4, IpAddr::new_v4(10, 20, 30, 40).family());
+        assert_eq!(IpAddrFamily::V6, IpAddr::new_v6(10, 20, 30, 40, 50, 60, 70, 80).family());
     }
 }
