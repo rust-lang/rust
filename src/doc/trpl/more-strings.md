@@ -278,7 +278,18 @@ This will print:
 
 Many more bytes than graphemes!
 
-# Other Documentation
+# `Deref` coercions
 
-* [the `&str` API documentation](../std/str/index.html)
-* [the `String` API documentation](../std/string/index.html)
+References to `String`s will automatically coerce into `&str`s. Like this:
+
+```
+fn hello(s: &str) {
+   println!("Hello, {}!", s);
+}
+
+let slice = "Steve";
+let string = "Steve".to_string();
+
+hello(slice);
+hello(&string);
+```
