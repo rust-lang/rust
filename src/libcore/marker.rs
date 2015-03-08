@@ -193,14 +193,9 @@ pub trait Copy : MarkerTrait {
 /// the `sync` crate do ensure that any mutation cannot cause data
 /// races.  Hence these types are `Sync`.
 ///
-/// Users writing their own types with interior mutability (or anything
-/// else that is not thread-safe) should use the `NoSync` marker type
-/// (from `std::marker`) to ensure that the compiler doesn't
-/// consider the user-defined type to be `Sync`.  Any types with
-/// interior mutability must also use the `std::cell::UnsafeCell` wrapper
-/// around the value(s) which can be mutated when behind a `&`
-/// reference; not doing this is undefined behaviour (for example,
-/// `transmute`-ing from `&T` to `&mut T` is illegal).
+/// Any types with interior mutability must also use the `std::cell::UnsafeCell` wrapper around the
+/// value(s) which can be mutated when behind a `&` reference; not doing this is undefined
+/// behaviour (for example, `transmute`-ing from `&T` to `&mut T` is illegal).
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang="sync"]
 #[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
