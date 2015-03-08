@@ -435,3 +435,46 @@ println!("the inverse of {} is {:?}", 2.0f64, inverse(2.0f64));
 println!("the inverse of {} is {:?}", 0.0f32, inverse(0.0f32));
 println!("the inverse of {} is {:?}", 0.0f64, inverse(0.0f64));
 ```
+
+## Default methods
+
+There's one last feature of traits we should cover: default methods. It's
+easiest just to show an example:
+
+```rust
+trait Foo {
+    fn bar(&self);
+
+    fn baz(&self) { println!("We called baz."); }
+}
+```
+
+Implementors of the `Foo` trait need to implement `bar()`, but they don't
+need to implement `baz()`. They'll get this default behavior. They can
+override the default if they so choose:
+
+```rust
+# trait Foo {
+# fn bar(&self);
+# fn baz(&self) { println!("We called baz."); }
+# }
+struct UseDefault;
+
+impl Foo for UseDefault {
+    fn bar(&self) { println!("We called bar."); }
+}
+
+struct OverrideDefault;
+
+impl Foo for OverrideDefault {
+    fn bar(&self) { println!("We called bar."); }
+
+    fn baz(&self) { println!("Override baz!"); }
+}
+
+let default = UseDefault;
+default.baz(); // prints "We called bar."
+
+let over = OverrideDefault;
+over.baz(); // prints "Override baz!"
+```
