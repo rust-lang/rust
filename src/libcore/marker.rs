@@ -351,7 +351,36 @@ pub trait PhantomFn<A:?Sized,R:?Sized=()> { }
 /// instance, it will behave *as if* an instance of the type `T` were
 /// present for the purpose of various automatic analyses.
 ///
-/// For example, embedding a `PhantomData<T>` will inform the compiler
+/// # Examples
+///
+/// When handling external resources over a foreign function interface,
+/// `PhantomData<T>` can prevent mismatches by enforcing types in
+/// the method implementations, although the struct doesn't actually
+/// contain values of the resource type.
+///
+///```
+///struct ExternalResource<R> {
+///   resource_handle: *mut (),
+///   resource_type: PhantomData<R>,
+///}
+///
+///impl<R: ResType> ExternalResource<R> {
+///    fn new() -> ExternalResource<R> {
+///        let size_of_res = mem::size_of::<R>();
+///        ExternalResource {
+///            resource_handle: foreign_lib::new(size_of_res),
+///            resource_type: PhantomData,
+///        }
+///    }
+///
+///    fn do_stuff(&self, param: ParamType) {
+///        let foreign_params = convert_params::<R>(param);
+///        foreign_lib::do_stuff(self.resource_handle, foreign_params);
+///    }
+///}
+///```
+///
+/// Another example: embedding a `PhantomData<T>` will inform the compiler
 /// that one or more instances of the type `T` could be dropped when
 /// instances of the type itself is dropped, though that may not be
 /// apparent from the other structure of the type itself. This is
