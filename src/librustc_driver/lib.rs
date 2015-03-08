@@ -37,7 +37,7 @@
 #![feature(staged_api)]
 #![feature(exit_status)]
 #![feature(io)]
-#![feature(set_panic)]
+#![feature(set_stdio)]
 
 extern crate arena;
 extern crate flate;
