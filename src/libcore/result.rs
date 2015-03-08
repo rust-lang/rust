@@ -178,13 +178,13 @@
 //! fn write_info(info: &Info) -> Result<(), IoError> {
 //!     let mut file = File::open_mode(&Path::new("my_best_friends.txt"), Open, Write);
 //!     // Early return on error
-//!     if let Err(e) = file.write_line(format!("name: {}", info.name).as_slice()) {
+//!     if let Err(e) = file.write_line(&format!("name: {}", info.name)) {
 //!         return Err(e)
 //!     }
-//!     if let Err(e) = file.write_line(format!("age: {}", info.age).as_slice()) {
+//!     if let Err(e) = file.write_line(&format!("age: {}", info.age)) {
 //!         return Err(e)
 //!     }
-//!     return file.write_line(format!("rating: {}", info.rating).as_slice());
+//!     return file.write_line(&format!("rating: {}", info.rating));
 //! }
 //! ```
 //!
@@ -202,9 +202,9 @@
 //! fn write_info(info: &Info) -> Result<(), IoError> {
 //!     let mut file = File::open_mode(&Path::new("my_best_friends.txt"), Open, Write);
 //!     // Early return on error
-//!     try!(file.write_line(format!("name: {}", info.name).as_slice()));
-//!     try!(file.write_line(format!("age: {}", info.age).as_slice()));
-//!     try!(file.write_line(format!("rating: {}", info.rating).as_slice()));
+//!     try!(file.write_line(&format!("name: {}", info.name)));
+//!     try!(file.write_line(&format!("age: {}", info.age)));
+//!     try!(file.write_line(&format!("rating: {}", info.rating)));
 //!     return Ok(());
 //! }
 //! ```

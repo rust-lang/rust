@@ -139,7 +139,7 @@ impl String {
     /// ```rust
     /// let input = b"Hello \xF0\x90\x80World";
     /// let output = String::from_utf8_lossy(input);
-    /// assert_eq!(output.as_slice(), "Hello \u{FFFD}World");
+    /// assert_eq!(output, "Hello \u{FFFD}World");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> Cow<'a, str> {
@@ -355,7 +355,7 @@ impl String {
     /// ```
     /// let mut s = String::from_str("foo");
     /// s.push_str("bar");
-    /// assert_eq!(s.as_slice(), "foobar");
+    /// assert_eq!(s, "foobar");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -450,7 +450,7 @@ impl String {
     /// s.push('1');
     /// s.push('2');
     /// s.push('3');
-    /// assert_eq!(s.as_slice(), "abc123");
+    /// assert_eq!(s, "abc123");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -503,7 +503,7 @@ impl String {
     /// ```
     /// let mut s = String::from_str("hello");
     /// s.truncate(2);
-    /// assert_eq!(s.as_slice(), "he");
+    /// assert_eq!(s, "he");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -622,7 +622,7 @@ impl String {
     ///     assert!(vec == &[104, 101, 108, 108, 111]);
     ///     vec.reverse();
     /// }
-    /// assert_eq!(s.as_slice(), "olleh");
+    /// assert_eq!(s, "olleh");
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
