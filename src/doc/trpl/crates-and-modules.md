@@ -555,6 +555,13 @@ Here we have a `pub use` for each function we want to bring into the
 `japanese` scope. We could alternatively use the wildcard syntax to include
 everything from `greetings` into the current scope: `pub use self::greetings::*`. 
 
+What about the `self`? Well, by default, `use` declarations are absolute paths,
+starting from your crate root. `self` makes that path relative to your current
+place in the hierarchy instead. There's one more special form of `use`: you can
+`use super::` to reach one level up the tree from your current location. Some
+people like to think of `self` as `.` and `super` as `..`, from many shells'
+display for the current directory and the parent directory.
+
 Also, note that we `pub use`d before we declared our `mod`s. Rust requires that
 `use` declarations go first.
 
