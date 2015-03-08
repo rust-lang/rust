@@ -12,7 +12,7 @@ use prelude::v1::*;
 use io::prelude::*;
 
 use io;
-use net::{ToSocketAddrs, SocketAddr, Shutdown};
+use net::{IpAddr, ToSocketAddrs, SocketAddr, Shutdown};
 use sys_common::net2 as net_imp;
 use sys_common::AsInner;
 
@@ -164,6 +164,23 @@ impl TcpListener {
         super::each_addr(addr, net_imp::TcpListener::bind).map(TcpListener)
     }
 
+    /// Creates a new `TcpListener` that listens on all interfaces and
+    /// all available protocols (IPv4 and IPv6) on the specified port.
+    ///
+    /// The returned listener is ready for accepting connections.
+    ///
+    /// Binding with a port number of 0 will request that the OS assigns a port
+    /// to this listener. The port allocated can be queried via the
+    /// `socket_addr` function.
+    ///
+    /// Implementation detail: currently it just binds to `[::]:<port>`
+    /// and accepts IPv6 sockets. However, it is not guaranteed not to
+    /// be changed later. For example, on IPv4-only system it could bind
+    /// on `0.0.0.0:<port>`.
+    pub fn bind_to_port(port: u16) -> io::Result<TcpListener> {
+        TcpListener::bind(&(IpAddr::new_v6(0, 0, 0, 0, 0, 0, 0, 0), port))
+    }
+
     /// Returns the local socket address of this listener.
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         self.0.socket_addr()
@@ -215,7 +232,7 @@ mod tests {
     use io::ErrorKind;
     use io::prelude::*;
     use net::*;
-    use net::test::{next_test_ip4, next_test_ip6};
+    use net::test::{next_test_port, next_test_ip4, next_test_ip6};
     use sync::mpsc::channel;
     use thread;
 
@@ -241,6 +258,57 @@ mod tests {
                 // EADDRNOTAVAIL is mapped to ConnectionRefused
                 assert_eq!(e.kind(), ErrorKind::ConnectionRefused),
         }
+    }
+
+    #[test]
+    fn bind_ipv6_connect_ipv4() {
+        let port = next_test_port();
+
+        let acceptor = t!(TcpListener::bind(&("::", port)));
+
+        let _t = thread::spawn(move || {
+            let mut s = t!(acceptor.accept()).0;
+            t!(s.write(&[10]));
+        });
+
+        let mut buf = [0];
+        let mut c = t!(TcpStream::connect(&("127.0.0.1", port)));
+        t!(c.read(&mut buf));
+        assert!(buf[0] == 10);
+    }
+
+    #[test]
+    fn bind_to_port_connect_ipv4() {
+        let port = next_test_port();
+
+        let acceptor = t!(TcpListener::bind_to_port(port));
+
+        let _t = thread::spawn(move || {
+            let mut s = t!(acceptor.accept()).0;
+            t!(s.write(&[10]));
+        });
+
+        let mut buf = [0];
+        let mut c = t!(TcpStream::connect(&("127.0.0.1", port)));
+        t!(c.read(&mut buf));
+        assert!(buf[0] == 10);
+    }
+
+    #[test]
+    fn bind_to_port_connect_ipv6() {
+        let port = next_test_port();
+
+        let acceptor = t!(TcpListener::bind_to_port(port));
+
+        let _t = thread::spawn(move || {
+            let mut s = t!(acceptor.accept()).0;
+            t!(s.write(&[10]));
+        });
+
+        let mut buf = [0];
+        let mut c = t!(TcpStream::connect(&("::1", port)));
+        t!(c.read(&mut buf));
+        assert!(buf[0] == 10);
     }
 
     #[test]
