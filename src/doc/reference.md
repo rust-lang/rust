@@ -2847,7 +2847,7 @@ automatically dereferenced to make the field access possible.
 ### Array expressions
 
 ```{.ebnf .gram}
-array_expr : '[' "mut" ? vec_elems? ']' ;
+array_expr : '[' "mut" ? array_elems? ']' ;
 
 array_elems : [expr [',' expr]*] | [expr ';' expr] ;
 ```
