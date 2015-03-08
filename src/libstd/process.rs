@@ -264,7 +264,7 @@ impl Command {
     /// By default, stdin, stdout and stderr are captured (and used to
     /// provide the resulting output).
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # #![feature(process)]
@@ -275,8 +275,8 @@ impl Command {
     /// });
     ///
     /// println!("status: {}", output.status);
-    /// println!("stdout: {}", String::from_utf8_lossy(output.stdout.as_slice()));
-    /// println!("stderr: {}", String::from_utf8_lossy(output.stderr.as_slice()));
+    /// println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+    /// println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn output(&mut self) -> io::Result<Output> {
