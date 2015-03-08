@@ -1109,7 +1109,14 @@ impl Bencher {
                 return summ5;
             }
 
-            n *= 2;
+            // If we overflow here just return the results so far. We check a
+            // multiplier of 10 because we're about to multiply by 2 and the
+            // next iteration of the loop will also multiply by 5 (to calculate
+            // the summ5 result)
+            n = match n.checked_mul(10) {
+                Some(_) => n * 2,
+                None => return summ5,
+            };
         }
     }
 }
