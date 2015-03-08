@@ -32,7 +32,6 @@ macro_rules! unexported_macro { () => (3) }
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("make_a_1", expand_make_a_1);
-    reg.register_macro("forged_ident", expand_forged_ident);
     reg.register_macro("identity", expand_identity);
     reg.register_syntax_extension(
         token::intern("into_foo"),
@@ -102,31 +101,6 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
             })
         }
     }
-}
-
-fn expand_forged_ident(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult+'static> {
-    use syntax::ext::quote::rt::*;
-
-    if !tts.is_empty() {
-        cx.span_fatal(sp, "forged_ident takes no arguments");
-    }
-
-    // Most of this is modelled after the expansion of the `quote_expr!`
-    // macro ...
-    let parse_sess = cx.parse_sess();
-    let cfg = cx.cfg();
-
-    // ... except this is where we inject a forged identifier,
-    // and deliberately do not call `cx.parse_tts_with_hygiene`
-    // (because we are testing that this will be *rejected*
-    //  by the default parser).
-
-    let expr = {
-        let tt = cx.parse_tts("\x00name_2,ctxt_0\x00".to_string());
-        let mut parser = new_parser_from_tts(parse_sess, cfg, tt);
-        parser.parse_expr()
-    };
-    MacEager::expr(expr)
 }
 
 pub fn foo() {}
