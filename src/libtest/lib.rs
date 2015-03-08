@@ -39,13 +39,12 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(int_uint)]
-#![feature(old_io)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(io)]
 #![feature(libc)]
-#![feature(set_panic)]
+#![feature(set_stdio)]
 
 extern crate getopts;
 extern crate serialize;
@@ -909,7 +908,6 @@ pub fn run_test(opts: &TestOpts,
         return;
     }
 
-    #[allow(deprecated)] // set_stdout
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: Sender<MonitorMsg>,
                       nocapture: bool,
@@ -920,11 +918,6 @@ pub fn run_test(opts: &TestOpts,
                 Write::write(&mut *self.0.lock().unwrap(), data)
             }
             fn flush(&mut self) -> io::Result<()> { Ok(()) }
-        }
-        impl Writer for Sink {
-            fn write_all(&mut self, data: &[u8]) -> std::old_io::IoResult<()> {
-                Writer::write_all(&mut *self.0.lock().unwrap(), data)
-            }
         }
 
         thread::spawn(move || {
@@ -937,7 +930,7 @@ pub fn run_test(opts: &TestOpts,
 
             let result_guard = cfg.spawn(move || {
                 if !nocapture {
-                    std::old_io::stdio::set_stdout(box Sink(data2.clone()));
+                    io::set_print(box Sink(data2.clone()));
                     io::set_panic(box Sink(data2));
                 }
                 testfn.invoke(())

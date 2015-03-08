@@ -26,7 +26,7 @@
 #![feature(core)]
 #![feature(exit_status)]
 #![feature(int_uint)]
-#![feature(set_panic)]
+#![feature(set_stdio)]
 #![feature(libc)]
 #![feature(old_path)]
 #![feature(rustc_private)]
