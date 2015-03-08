@@ -223,15 +223,8 @@ method which has this signature:
 fn lock(&self) -> LockResult<MutexGuard<T>>
 ```
 
-If we [look at the code for MutexGuard](https://github.com/rust-lang/rust/blob/ca4b9674c26c1de07a2042cb68e6a062d7184cef/src/libstd/sync/mutex.rs#L172), we'll see
-this:
-
-```ignore
-__marker: marker::NoSend,
-```
-
-Because our guard is `NoSend`, it's not `Send`. Which means we can't actually
-transfer the guard across thread boundaries, which gives us our error.
+Because `Send` is not implemented for `MutexGuard<T>`, we can't transfer the
+guard across thread boundaries, which gives us our error.
 
 We can use `Arc<T>` to fix this. Here's the working version:
 
