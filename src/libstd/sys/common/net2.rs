@@ -387,6 +387,18 @@ impl UdpSocket {
         setsockopt(&self.inner, libc::IPPROTO_IP, libc::IP_TTL, ttl as c_int)
     }
 
+    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
+        use libc::consts::os::bsd44::SHUT_RDWR;
+
+        let how = match how {
+            Shutdown::Write => libc::SHUT_WR,
+            Shutdown::Read => libc::SHUT_RD,
+            Shutdown::Both => SHUT_RDWR,
+        };
+        try!(cvt(unsafe { libc::shutdown(*self.inner.as_inner(), how) }));
+        Ok(())
+    }
+
     pub fn duplicate(&self) -> io::Result<UdpSocket> {
         self.inner.duplicate().map(|s| UdpSocket { inner: s })
     }

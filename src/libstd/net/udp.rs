@@ -11,7 +11,7 @@
 use prelude::v1::*;
 
 use io::{self, Error, ErrorKind};
-use net::{ToSocketAddrs, SocketAddr, IpAddr};
+use net::{ToSocketAddrs, SocketAddr, IpAddr, Shutdown};
 use sys_common::net2 as net_imp;
 use sys_common::AsInner;
 
@@ -75,6 +75,15 @@ impl UdpSocket {
     /// Returns the socket address that this socket was created from.
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         self.0.socket_addr()
+    }
+
+    /// Shut down the read, write, or both halves of this connection.
+    ///
+    /// This function will cause all pending and future I/O on the specified
+    /// portions to return immediately with an appropriate value (see the
+    /// documentation of `Shutdown`).
+    pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
+        self.0.shutdown(how)
     }
 
     /// Create a new independently owned handle to the underlying socket.
