@@ -22,9 +22,9 @@ fn write_info(info: &Info) -> Result<(), IoError> {
     let mut file = File::open_mode(&Path::new("my_best_friends.txt"),
                                    Open, Write);
     // Early return on error
-    try!(file.write_line(format!("name: {}", info.name).as_slice()));
-    try!(file.write_line(format!("age: {}", info.age).as_slice()));
-    try!(file.write_line(format!("rating: {}", info.rating).as_slice()));
+    try!(file.write_line(&format!("name: {}", info.name)));
+    try!(file.write_line(&format!("age: {}", info.age)));
+    try!(file.write_line(&format!("rating: {}", info.rating)));
     return Ok(());
 }
 ```
@@ -44,15 +44,15 @@ fn write_info(info: &Info) -> Result<(), IoError> {
     let mut file = File::open_mode(&Path::new("my_best_friends.txt"),
                                    Open, Write);
     // Early return on error
-    match file.write_line(format!("name: {}", info.name).as_slice()) {
+    match file.write_line(&format!("name: {}", info.name)) {
         Ok(_) => (),
         Err(e) => return Err(e)
     }
-    match file.write_line(format!("age: {}", info.age).as_slice()) {
+    match file.write_line(&format!("age: {}", info.age)) {
         Ok(_) => (),
         Err(e) => return Err(e)
     }
-    return file.write_line(format!("rating: {}", info.rating).as_slice());
+    return file.write_line(&format!("rating: {}", info.rating));
 }
 ```
 
