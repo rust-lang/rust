@@ -50,7 +50,28 @@ You can think of this first parameter as being the `x` in `x.foo()`. The three
 variants correspond to the three kinds of thing `x` could be: `self` if it's
 just a value on the stack, `&self` if it's a reference, and `&mut self` if it's
 a mutable reference. We should default to using `&self`, as it's the most
-common.
+common. Here's an example of all three variants:
+
+```rust
+struct Circle {
+    x: f64,
+    y: f64,
+    radius: f64,
+}
+
+impl Circle {
+    fn reference(&self) {
+       println!("taking self by reference!"); 
+    }
+
+    fn mutable_reference(&mut self) {
+       println!("taking self by mutable reference!"); 
+    }
+
+    fn takes_ownership(self) {
+       println!("taking ownership of self!"); 
+    }
+```
 
 Finally, as you may remember, the value of the area of a circle is `π*r²`.
 Because we took the `&self` parameter to `area`, we can use it just like any
