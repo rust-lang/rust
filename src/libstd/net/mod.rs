@@ -97,3 +97,16 @@ impl Iterator for LookupHost {
 pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
     net_imp::lookup_host(host).map(LookupHost)
 }
+
+#[cfg(test)]
+mod test_of_this {
+    use prelude::v1::*;
+    use net;
+
+    #[test]
+    fn test_lookup_host() {
+        let mut addrs = net::lookup_host("localhost").unwrap();
+        assert!(addrs.any(|a| a.unwrap().ip() == net::IpAddr::new_v4(127, 0, 0, 1)));
+    }
+
+}
