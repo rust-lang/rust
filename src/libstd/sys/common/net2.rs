@@ -14,7 +14,7 @@ use ffi::CString;
 use io::{self, Error, ErrorKind};
 use libc::{self, c_int, c_char, c_void, socklen_t};
 use mem;
-use net::{IpAddr, SocketAddr, Shutdown};
+use net::{IpAddr, IpAddrFamily, SocketAddr, Shutdown};
 use num::Int;
 use sys::c;
 use sys::net::{cvt, cvt_r, cvt_gai, Socket, init, wrlen_t};
@@ -118,13 +118,35 @@ impl Drop for LookupHost {
     }
 }
 
-pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
+pub fn lookup_host(host: &str, family: Option<IpAddrFamily>) -> io::Result<LookupHost> {
     init();
 
     let c_host = try!(CString::new(host));
+
+    let mut hints: libc::addrinfo = unsafe { mem::zeroed() };
+
+    hints.ai_family = match family {
+        None => libc::AF_UNSPEC,
+        Some(IpAddrFamily::V4) => libc::AF_INET,
+        Some(IpAddrFamily::V6) => libc::AF_INET6,
+    };
+
+    let hints_ptr = match family {
+        Some(_) => &hints as *const _,
+
+        // Use nullptr instead of handwritten hints when addr family is
+        // not specified, because it is safer to rely on libc defaults
+        // rather than emulate them.
+        //
+        // For example, on Linux null hints means that `ai_flags` are
+        // `(AI_V4MAPPED | AI_ADDRCONFIG)`.
+        None => 0 as *const _,
+    };
+
     let mut res = 0 as *mut _;
+
     unsafe {
-        try!(cvt_gai(getaddrinfo(c_host.as_ptr(), 0 as *const _, 0 as *const _,
+        try!(cvt_gai(getaddrinfo(c_host.as_ptr(), 0 as *const _, hints_ptr,
                                  &mut res)));
         Ok(LookupHost { original: res, cur: res })
     }
