@@ -430,7 +430,7 @@ fn main() {
         thread::scoped(move || {
             numbers[i] += 1;
             println!("numbers[{}] is {}", i, numbers[i]);
-        });
+        })
     }).collect();
 }
 ```
@@ -442,7 +442,7 @@ It gives us this error:
 7     thread::scoped(move || {
 8       numbers[i] += 1;
 9       println!("numbers[{}] is {}", i, numbers[i]);
-10     });
+10     })
 error: aborting due to previous error
 ```
 
@@ -483,7 +483,7 @@ fn main() {
             let mut array = number.lock().unwrap();
             array[i] += 1;
             println!("numbers[{}] is {}", i, array[i]);
-        });
+        })
     }).collect();
 }
 ```
@@ -543,7 +543,7 @@ fn main() {
     let guards: Vec<_> = (0..3).map(|i| {
         thread::scoped(move || {
             println!("{}", numbers[i]);
-        });
+        })
     }).collect();
 }
 ```
