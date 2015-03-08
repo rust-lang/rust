@@ -1590,8 +1590,8 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         ast::ItemMac(..) => {
             tcx.sess.span_bug(
                 it.span,
-                format!("compute_type_scheme_of_item: unexpected item type: {:?}",
-                        it.node).as_slice());
+                &format!("compute_type_scheme_of_item: unexpected item type: {:?}",
+                         it.node));
         }
     }
 }

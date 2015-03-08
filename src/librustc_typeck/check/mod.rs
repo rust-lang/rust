@@ -4620,7 +4620,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                         Err(ref err) => {
                             span_err!(ccx.tcx.sess, err.span, E0080,
                                       "constant evaluation error: {}",
-                                      err.description().as_slice());
+                                      err.description());
                         }
                     }
                 },

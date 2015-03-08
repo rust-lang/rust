@@ -780,8 +780,8 @@ mod tests {
             i += 1;
         }
         let n = make_rand_name();
-        set_var(&n, s.as_slice());
-        eq(var_os(&n), Some(s.as_slice()));
+        set_var(&n, &s);
+        eq(var_os(&n), Some(&s));
     }
 
     #[test]
@@ -799,7 +799,7 @@ mod tests {
         let n = make_rand_name();
         let s = repeat("x").take(10000).collect::<String>();
         set_var(&n, &s);
-        eq(var_os(&n), Some(s.as_slice()));
+        eq(var_os(&n), Some(&s));
         remove_var(&n);
         eq(var_os(&n), None);
     }

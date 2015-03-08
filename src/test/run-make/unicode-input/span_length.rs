@@ -80,7 +80,7 @@ fn main() {
                          .arg(format!("{} {}",
                                       rustc,
                                       main_file.as_str()
-                                               .unwrap()).as_slice())
+                                               .unwrap()))
                          .output().unwrap();
 
     let err = String::from_utf8_lossy(result.error.as_slice());

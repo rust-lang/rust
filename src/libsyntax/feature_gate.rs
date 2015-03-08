@@ -403,11 +403,11 @@ impl<'a> Context<'a> {
                                for the compiler");
         } else {
             self.gate_feature("custom_attribute", attr.span,
-                       format!("The attribute `{}` is currently \
+                       &format!("The attribute `{}` is currently \
                                 unknown to the the compiler and \
                                 may have meaning \
                                 added to it in the future",
-                                name).as_slice());
+                                name));
         }
     }
 }

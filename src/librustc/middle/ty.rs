@@ -5485,7 +5485,7 @@ pub fn enum_variants<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                         Err(err) => {
                                             span_err!(cx.sess, err.span, E0305,
                                                       "constant evaluation error: {}",
-                                                      err.description().as_slice());
+                                                      err.description());
                                         }
                                     }
                                 } else {

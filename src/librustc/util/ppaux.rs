@@ -115,7 +115,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
             region::CodeExtent::Misc(_) => tag,
             region::CodeExtent::DestructionScope(_) => {
                 new_string = format!("destruction scope surrounding {}", tag);
-                new_string.as_slice()
+                &*new_string
             }
             region::CodeExtent::Remainder(r) => {
                 new_string = format!("block suffix following statement {}",
