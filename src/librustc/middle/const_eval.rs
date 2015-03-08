@@ -17,7 +17,7 @@ use metadata::csearch;
 use middle::{astencode, def};
 use middle::pat_util::def_to_path;
 use middle::ty::{self, Ty};
-use middle::astconv_util::{ast_ty_to_prim_ty};
+use middle::astconv_util::ast_ty_to_prim_ty;
 
 use syntax::ast::{self, Expr};
 use syntax::codemap::Span;
@@ -132,16 +132,16 @@ pub fn lookup_const_by_id<'a>(tcx: &'a ty::ctxt, def_id: ast::DefId)
     }
 }
 
-// FIXME (#33): this doesn't handle big integer/float literals correctly
-// (nor does the rest of our literal handling).
 #[derive(Clone, PartialEq)]
 pub enum const_val {
     const_float(f64),
     const_int(i64),
     const_uint(u64),
     const_str(InternedString),
-    const_binary(Rc<Vec<u8> >),
-    const_bool(bool)
+    const_binary(Rc<Vec<u8>>),
+    const_bool(bool),
+    Struct(ast::NodeId),
+    Tuple(ast::NodeId)
 }
 
 pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<ast::Pat> {
@@ -226,9 +226,13 @@ pub enum ErrKind {
     NegateOnString,
     NegateOnBoolean,
     NegateOnBinary,
+    NegateOnStruct,
+    NegateOnTuple,
     NotOnFloat,
     NotOnString,
     NotOnBinary,
+    NotOnStruct,
+    NotOnTuple,
 
     AddiWithOverflow(i64, i64),
     SubiWithOverflow(i64, i64),
@@ -242,7 +246,8 @@ pub enum ErrKind {
     ModuloWithOverflow,
     MissingStructField,
     NonConstPath,
-    NonConstStruct,
+    ExpectedConstTuple,
+    ExpectedConstStruct,
     TupleIndexOutOfBounds,
 
     MiscBinaryOp,
@@ -262,9 +267,13 @@ impl ConstEvalErr {
             NegateOnString => "negate on string".into_cow(),
             NegateOnBoolean => "negate on boolean".into_cow(),
             NegateOnBinary => "negate on binary literal".into_cow(),
+            NegateOnStruct => "negate on struct".into_cow(),
+            NegateOnTuple => "negate on tuple".into_cow(),
             NotOnFloat => "not on float or string".into_cow(),
             NotOnString => "not on float or string".into_cow(),
             NotOnBinary => "not on binary literal".into_cow(),
+            NotOnStruct => "not on struct".into_cow(),
+            NotOnTuple => "not on tuple".into_cow(),
 
             AddiWithOverflow(..) => "attempted to add with overflow".into_cow(),
             SubiWithOverflow(..) => "attempted to sub with overflow".into_cow(),
@@ -278,7 +287,8 @@ impl ConstEvalErr {
             ModuloWithOverflow   => "attempted remainder with overflow".into_cow(),
             MissingStructField  => "nonexistent struct field".into_cow(),
             NonConstPath        => "non-constant path in constant expr".into_cow(),
-            NonConstStruct      => "non-constant struct in constant expr".into_cow(),
+            ExpectedConstTuple => "expected constant tuple".into_cow(),
+            ExpectedConstStruct => "expected constant struct".into_cow(),
             TupleIndexOutOfBounds => "tuple index out of bounds".into_cow(),
 
             MiscBinaryOp => "bad operands for binary".into_cow(),
@@ -341,6 +351,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           const_str(_) => signal!(e, NegateOnString),
           const_bool(_) => signal!(e, NegateOnBoolean),
           const_binary(_) => signal!(e, NegateOnBinary),
+          const_val::Tuple(_) => signal!(e, NegateOnTuple),
+          const_val::Struct(..) => signal!(e, NegateOnStruct),
         }
       }
       ast::ExprUnary(ast::UnNot, ref inner) => {
@@ -351,6 +363,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           const_str(_) => signal!(e, NotOnString),
           const_float(_) => signal!(e, NotOnFloat),
           const_binary(_) => signal!(e, NotOnBinary),
+          const_val::Tuple(_) => signal!(e, NotOnTuple),
+          const_val::Struct(..) => signal!(e, NotOnStruct),
         }
       }
       ast::ExprBinary(op, ref a, ref b) => {
@@ -540,33 +554,52 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             None => const_int(0)
         }
       }
+      ast::ExprTup(_) => {
+        const_val::Tuple(e.id)
+      }
+      ast::ExprStruct(..) => {
+        const_val::Struct(e.id)
+      }
       ast::ExprTupField(ref base, index) => {
-        // Get the base tuple if it is constant
-        if let Some(&ast::ExprTup(ref fields)) = lookup_const(tcx, &**base).map(|s| &s.node) {
-            // Check that the given index is within bounds and evaluate its value
-            if fields.len() > index.node {
-                return eval_const_expr_partial(tcx, &*fields[index.node], None);
+        if let Ok(c) = eval_const_expr_partial(tcx, base, None) {
+            if let const_val::Tuple(tup_id) = c {
+                if let ast::ExprTup(ref fields) = tcx.map.expect_expr(tup_id).node {
+                    if index.node < fields.len() {
+                        return eval_const_expr_partial(tcx, &fields[index.node], None)
+                    } else {
+                        signal!(e, TupleIndexOutOfBounds);
+                    }
+                } else {
+                    unreachable!()
+                }
             } else {
-                signal!(e, TupleIndexOutOfBounds);
+                signal!(base, ExpectedConstTuple);
             }
+        } else {
+            signal!(base, NonConstPath)
         }
-
-        signal!(e, NonConstStruct);
       }
       ast::ExprField(ref base, field_name) => {
         // Get the base expression if it is a struct and it is constant
-        if let Some(&ast::ExprStruct(_, ref fields, _)) = lookup_const(tcx, &**base)
-                                                            .map(|s| &s.node) {
-            // Check that the given field exists and evaluate it
-            if let Some(f) = fields.iter().find(|f|
-                                           f.ident.node.as_str() == field_name.node.as_str()) {
-                return eval_const_expr_partial(tcx, &*f.expr, None);
+        if let Ok(c) = eval_const_expr_partial(tcx, base, None) {
+            if let const_val::Struct(struct_id) = c {
+                if let ast::ExprStruct(_, ref fields, _) = tcx.map.expect_expr(struct_id).node {
+                    // Check that the given field exists and evaluate it
+                    if let Some(f) = fields.iter().find(|f| f.ident.node.as_str()
+                                                         == field_name.node.as_str()) {
+                        return eval_const_expr_partial(tcx, &*f.expr, None)
+                    } else {
+                        signal!(e, MissingStructField);
+                    }
+                } else {
+                    unreachable!()
+                }
             } else {
-                signal!(e, MissingStructField);
+                signal!(base, ExpectedConstStruct);
             }
+        } else {
+            signal!(base, NonConstPath);
         }
-
-        signal!(e, NonConstStruct);
       }
       _ => signal!(e, MiscCatchAll)
     };
