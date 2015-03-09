@@ -5980,10 +5980,7 @@ pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
 
 pub fn trait_has_default_impl(tcx: &ctxt, trait_def_id: DefId) -> bool {
     populate_implementations_for_trait_if_necessary(tcx, trait_def_id);
-    match tcx.lang_items.to_builtin_kind(trait_def_id) {
-        Some(BoundSend) | Some(BoundSync) => true,
-        _ => tcx.traits_with_default_impls.borrow().contains_key(&trait_def_id),
-    }
+    tcx.traits_with_default_impls.borrow().contains_key(&trait_def_id)
 }
 
 /// Records a trait-to-implementation mapping.
