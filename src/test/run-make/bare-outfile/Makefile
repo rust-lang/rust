@@ -1,4 +1,4 @@
 -include ../tools.mk
 
 all:
-	rustc -o foo foo.rs
+	$(rustc) -o foo foo.rs
