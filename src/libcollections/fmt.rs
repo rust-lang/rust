@@ -198,7 +198,7 @@
 //!         // for details, and the function `pad` can be used to pad strings.
 //!         let decimals = f.precision().unwrap_or(3);
 //!         let string = f64::to_str_exact(magnitude, decimals);
-//!         f.pad_integral(true, "", string.as_slice())
+//!         f.pad_integral(true, "", &string)
 //!     }
 //! }
 //!

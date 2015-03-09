@@ -963,9 +963,9 @@ fn check_safety_of_rvalue_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 't
                     rcx.tcx()
                        .sess
                        .span_bug(span,
-                                 format!("unexpected rvalue region in rvalue \
-                                          destructor safety checking: `{}`",
-                                         region.repr(rcx.tcx())).as_slice());
+                                 &format!("unexpected rvalue region in rvalue \
+                                           destructor safety checking: `{}`",
+                                          region.repr(rcx.tcx())));
                 }
             }
         }

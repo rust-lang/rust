@@ -1404,7 +1404,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                         ast_ty.span.lo <= r.span.lo && r.span.hi <= ast_ty.span.hi;
                     span_err!(tcx.sess, r.span, E0250,
                               "array length constant evaluation error: {}",
-                              r.description().as_slice());
+                              r.description());
                     if !subspan {
                         span_note!(tcx.sess, ast_ty.span, "for array length here")
                     }

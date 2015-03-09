@@ -2080,7 +2080,7 @@ impl LintPass for InvalidNoMangleItems {
                        !cx.exported_items.contains(&it.id) {
                     let msg = format!("static {} is marked #[no_mangle], but not exported",
                                       it.ident);
-                    cx.span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg.as_slice());
+                    cx.span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, &msg);
                 }
             },
             ast::ItemConst(..) => {

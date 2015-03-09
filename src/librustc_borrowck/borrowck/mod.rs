@@ -704,9 +704,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.tcx
             .sess
             .span_err(span,
-                      (format!("partial reinitialization of uninitialized \
+                      &format!("partial reinitialization of uninitialized \
                                structure `{}`",
-                               self.loan_path_to_string(lp))).as_slice());
+                               self.loan_path_to_string(lp)));
     }
 
     pub fn report_reassigned_immutable_variable(&self,
