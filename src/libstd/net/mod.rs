@@ -22,7 +22,7 @@ use io::{self, Error, ErrorKind};
 use num::Int;
 use sys_common::net2 as net_imp;
 
-pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
+pub use self::ip::{IpAddr, IpAddrFamily, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 pub use self::addr::{SocketAddr, ToSocketAddrs};
 pub use self::tcp::{TcpStream, TcpListener};
 pub use self::udp::UdpSocket;
@@ -95,5 +95,45 @@ impl Iterator for LookupHost {
 /// # }
 /// ```
 pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
-    net_imp::lookup_host(host).map(LookupHost)
+    net_imp::lookup_host(host, None).map(LookupHost)
+}
+
+/// Resolve the host specified by `host` as a number of `SocketAddr`
+/// instances as the specified address `family`.
+///
+/// This method may perform a DNS query to resolve `host` and may also
+/// inspect system configuration to resolve the specified hostname.
+///
+/// # Example
+///
+/// ```no_run
+/// use std::net;
+///
+/// # fn foo() -> std::io::Result<()> {
+/// for host in try!(net::lookup_host_as_family("rust-lang.org", net::IpAddrFamily::V4)) {
+///     println!("found address: {}", try!(host));
+/// }
+/// # Ok(())
+/// # }
+/// ```
+pub fn lookup_host_as_family(host: &str, family: IpAddrFamily) -> io::Result<LookupHost> {
+    net_imp::lookup_host(host, Some(family)).map(LookupHost)
+}
+
+#[cfg(test)]
+mod test_of_this {
+    use prelude::v1::*;
+    use net;
+
+    #[test]
+    fn test_lookup_host() {
+        let mut addrs = net::lookup_host("localhost").unwrap();
+        assert!(addrs.any(|a| a.unwrap().ip() == net::IpAddr::new_v4(127, 0, 0, 1)));
+    }
+
+    #[test]
+    fn test_lookup_host_as_family() {
+        let mut addrs = net::lookup_host_as_family("localhost", net::IpAddrFamily::V4).unwrap();
+        assert!(addrs.any(|a| a.unwrap().ip() == net::IpAddr::new_v4(127, 0, 0, 1)));
+    }
 }

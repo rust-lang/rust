@@ -2304,6 +2304,7 @@ pub mod consts {
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
 
+            pub const AF_UNSPEC: c_int = 0;
             pub const AF_INET: c_int = 2;
             pub const AF_INET6: c_int = 23;
             pub const SOCK_STREAM: c_int = 1;
@@ -3196,6 +3197,7 @@ pub mod consts {
 
             pub const IFF_LOOPBACK: c_int = 0x8;
 
+            pub const AF_UNSPEC: c_int = 0;
             pub const AF_UNIX: c_int = 1;
             pub const AF_INET: c_int = 2;
             pub const AF_INET6: c_int = 10;
@@ -3242,6 +3244,7 @@ pub mod consts {
             pub const MADV_UNMERGEABLE : c_int = 13;
             pub const MADV_HWPOISON : c_int = 100;
 
+            pub const AF_UNSPEC: c_int = 0;
             pub const AF_UNIX: c_int = 1;
             pub const AF_INET: c_int = 2;
             pub const AF_INET6: c_int = 10;
@@ -3732,6 +3735,7 @@ pub mod consts {
             pub const MINCORE_MODIFIED_OTHER : c_int = 0x10;
             pub const MINCORE_SUPER : c_int = 0x20;
 
+            pub const AF_UNSPEC: c_int = 0;
             pub const AF_INET: c_int = 2;
             pub const AF_INET6: c_int = 28;
             pub const AF_UNIX: c_int = 1;
@@ -4114,6 +4118,7 @@ pub mod consts {
             pub const MADV_DONTNEED : c_int = 4;
             pub const MADV_FREE : c_int = 6;
 
+            pub const AF_UNSPEC: c_int = 0;
             pub const AF_UNIX: c_int = 1;
             pub const AF_INET: c_int = 2;
             pub const AF_INET6: c_int = 24;
@@ -4511,6 +4516,7 @@ pub mod consts {
             pub const MINCORE_REFERENCED_OTHER : c_int = 0x8;
             pub const MINCORE_MODIFIED_OTHER : c_int = 0x10;
 
+            pub const AF_UNSPEC: c_int = 0;
             pub const AF_UNIX: c_int = 1;
             pub const AF_INET: c_int = 2;
             pub const AF_INET6: c_int = 30;
