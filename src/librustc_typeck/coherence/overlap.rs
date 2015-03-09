@@ -20,10 +20,11 @@ use syntax::ast;
 use syntax::ast_util;
 use syntax::visit;
 use syntax::codemap::Span;
+use util::nodemap::DefIdMap;
 use util::ppaux::Repr;
 
 pub fn check(tcx: &ty::ctxt) {
-    let mut overlap = OverlapChecker { tcx: tcx };
+    let mut overlap = OverlapChecker { tcx: tcx, default_impls: DefIdMap() };
     overlap.check_for_overlapping_impls();
 
     // this secondary walk specifically checks for impls of defaulted
@@ -33,6 +34,9 @@ pub fn check(tcx: &ty::ctxt) {
 
 struct OverlapChecker<'cx, 'tcx:'cx> {
     tcx: &'cx ty::ctxt<'tcx>,
+
+    // maps from a trait def-id to an impl id
+    default_impls: DefIdMap<ast::NodeId>,
 }
 
 impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
@@ -134,24 +138,19 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &'v ast::Item) {
         match item.node {
             ast::ItemDefaultImpl(_, _) => {
+                // look for another default impl; note that due to the
+                // general orphan/coherence rules, it must always be
+                // in this crate.
                 let impl_def_id = ast_util::local_def(item.id);
-                match ty::impl_trait_ref(self.tcx, impl_def_id) {
-                    Some(ref trait_ref) => {
-                        match ty::trait_default_impl(self.tcx, trait_ref.def_id) {
-                            Some(other_impl) if other_impl != impl_def_id => {
-                                self.report_overlap_error(trait_ref.def_id,
-                                                          other_impl,
-                                                          impl_def_id);
-                            }
-                            Some(_) => {}
-                            None => {
-                                self.tcx.sess.bug(
-                                          &format!("no default implementation recorded for `{:?}`",
-                                          item));
-                            }
-                        }
+                let trait_ref = ty::impl_trait_ref(self.tcx, impl_def_id).unwrap();
+                let prev_default_impl = self.default_impls.insert(trait_ref.def_id, item.id);
+                match prev_default_impl {
+                    Some(prev_id) => {
+                        self.report_overlap_error(trait_ref.def_id,
+                                                  impl_def_id,
+                                                  ast_util::local_def(prev_id));
                     }
-                    _ => {}
+                    None => { }
                 }
             }
             _ => {}

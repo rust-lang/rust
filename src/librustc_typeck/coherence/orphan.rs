@@ -37,10 +37,13 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                        a trait or new type instead");
         }
     }
-}
 
-impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
-    fn visit_item(&mut self, item: &ast::Item) {
+    /// Checks exactly one impl for orphan rules and other such
+    /// restrictions.  In this fn, it can happen that multiple errors
+    /// apply to a specific impl, so just return after reporting one
+    /// to prevent inundating the user with a bunch of similar error
+    /// reports.
+    fn check_item(&self, item: &ast::Item) {
         let def_id = ast_util::local_def(item.id);
         match item.node {
             ast::ItemImpl(_, _, _, None, _, _) => {
@@ -63,13 +66,15 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                         span_err!(self.tcx.sess, item.span, E0118,
                                   "no base type found for inherent implementation; \
                                    implement a trait or new type instead");
+                        return;
                     }
                 }
             }
             ast::ItemImpl(_, _, _, Some(_), _, _) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: trait impl {}", item.repr(self.tcx));
-                let trait_def_id = ty::impl_trait_ref(self.tcx, def_id).unwrap().def_id;
+                let trait_ref = ty::impl_trait_ref(self.tcx, def_id).unwrap();
+                let trait_def_id = trait_ref.def_id;
                 match traits::orphan_check(self.tcx, def_id) {
                     Ok(()) => { }
                     Err(traits::OrphanCheckErr::NoLocalInputType) => {
@@ -80,6 +85,7 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                                  types defined in this crate; \
                                  only traits defined in the current crate can be \
                                  implemented for arbitrary types");
+                            return;
                         }
                     }
                     Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {
@@ -89,8 +95,99 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                                      some local type (e.g. `MyStruct<T>`); only traits defined in \
                                      the current crate can be implemented for a type parameter",
                                     param_ty.user_string(self.tcx));
+                            return;
                         }
                     }
+                }
+
+                // In addition to the above rules, we restrict impls of defaulted traits
+                // so that they can only be implemented on structs/enums. To see why this
+                // restriction exists, consider the following example (#22978). Imagine
+                // that crate A defines a defaulted trait `Foo` and a fn that operates
+                // on pairs of types:
+                //
+                // ```
+                // // Crate A
+                // trait Foo { }
+                // impl Foo for .. { }
+                // fn two_foos<A:Foo,B:Foo>(..) {
+                //     one_foo::<(A,B)>(..)
+                // }
+                // fn one_foo<T:Foo>(..) { .. }
+                // ```
+                //
+                // This type-checks fine; in particular the fn
+                // `two_foos` is able to conclude that `(A,B):Foo`
+                // because `A:Foo` and `B:Foo`.
+                //
+                // Now imagine that crate B comes along and does the following:
+                //
+                // ```
+                // struct A { }
+                // struct B { }
+                // impl Foo for A { }
+                // impl Foo for B { }
+                // impl !Send for (A, B) { }
+                // ```
+                //
+                // This final impl is legal according to the orpan
+                // rules, but it invalidates the reasoning from
+                // `two_foos` above.
+                debug!("trait_ref={} trait_def_id={} trait_has_default_impl={}",
+                       trait_ref.repr(self.tcx),
+                       trait_def_id.repr(self.tcx),
+                       ty::trait_has_default_impl(self.tcx, trait_def_id));
+                if
+                    ty::trait_has_default_impl(self.tcx, trait_def_id) &&
+                    trait_def_id.krate != ast::LOCAL_CRATE
+                {
+                    let self_ty = trait_ref.self_ty();
+                    let opt_self_def_id = match self_ty.sty {
+                        ty::ty_struct(self_def_id, _) | ty::ty_enum(self_def_id, _) =>
+                            Some(self_def_id),
+                        ty::ty_uniq(..) =>
+                            self.tcx.lang_items.owned_box(),
+                        _ =>
+                            None
+                    };
+
+                    let msg = match opt_self_def_id {
+                        // We only want to permit structs/enums, but not *all* structs/enums.
+                        // They must be local to the current crate, so that people
+                        // can't do `unsafe impl Send for Rc<SomethingLocal>` or
+                        // `impl !Send for Box<SomethingLocalAndSend>`.
+                        Some(self_def_id) => {
+                            if self_def_id.krate == ast::LOCAL_CRATE {
+                                None
+                            } else {
+                                Some(format!(
+                                    "cross-crate traits with a default impl, like `{}`, \
+                                     can only be implemented for a struct/enum type \
+                                     defined in the current crate",
+                                    ty::item_path_str(self.tcx, trait_def_id)))
+                            }
+                        }
+                        _ => {
+                            Some(format!(
+                                "cross-crate traits with a default impl, like `{}`, \
+                                 can only be implemented for a struct/enum type, \
+                                 not `{}`",
+                                ty::item_path_str(self.tcx, trait_def_id),
+                                self_ty.user_string(self.tcx)))
+                        }
+                    };
+
+                    if let Some(msg) = msg {
+                        span_err!(self.tcx.sess, item.span, E0321, "{}", msg);
+                        return;
+                    }
+                }
+
+                // Disallow *all* explicit impls of `Sized` for now.
+                if Some(trait_def_id) == self.tcx.lang_items.sized_trait() {
+                    span_err!(self.tcx.sess, item.span, E0322,
+                              "explicit impls for the `Sized` trait are not permitted");
+                    return;
                 }
             }
             ast::ItemDefaultImpl(..) => {
@@ -100,14 +197,20 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                 if trait_ref.def_id.krate != ast::LOCAL_CRATE {
                     span_err!(self.tcx.sess, item.span, E0318,
                               "cannot create default implementations for traits outside the \
-                               crate they're defined in; define a new trait instead.");
+                               crate they're defined in; define a new trait instead");
+                    return;
                 }
             }
             _ => {
                 // Not an impl
             }
         }
+    }
+}
 
+impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
+    fn visit_item(&mut self, item: &ast::Item) {
+        self.check_item(item);
         visit::walk_item(self, item);
     }
 }
