@@ -346,6 +346,7 @@ impl AsOsStr for String {
     }
 }
 
+#[allow(deprecated)]
 impl AsOsStr for Path {
     #[cfg(unix)]
     fn as_os_str(&self) -> &OsStr {

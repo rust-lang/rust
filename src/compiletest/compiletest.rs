@@ -20,7 +20,6 @@
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(core)]
-#![feature(path)]
 #![feature(io)]
 #![feature(net)]
 #![feature(path_ext)]

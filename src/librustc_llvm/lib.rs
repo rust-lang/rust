@@ -31,7 +31,6 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(staged_api)]
-#![feature(path)]
 #![cfg_attr(unix, feature(std_misc))]
 
 extern crate libc;

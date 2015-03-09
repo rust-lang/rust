@@ -195,11 +195,7 @@ fn res_rel_file(cx: &mut ExtCtxt, sp: codemap::Span, arg: &Path) -> PathBuf {
     // NB: relative paths are resolved relative to the compilation unit
     if !arg.is_absolute() {
         let mut cu = PathBuf::new(&cx.codemap().span_to_filename(sp));
-        if cu.parent().is_some() {
-            cu.pop();
-        } else {
-            cu = PathBuf::new("");
-        }
+        cu.pop();
         cu.push(arg);
         cu
     } else {

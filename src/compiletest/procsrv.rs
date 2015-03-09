@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(deprecated)] // for old path, for dynamic_lib
+
 use std::process::{ExitStatus, Command, Child, Output, Stdio};
 use std::io::prelude::*;
 use std::dynamic_lib::DynamicLibrary;
