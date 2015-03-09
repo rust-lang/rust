@@ -58,13 +58,12 @@ pub fn main() {
         _ => panic!(),
     }
 
-    // FIXME: There are no DST coercions &[T; N] -> &[T] in patterns
-    // let buf = vec!(97u8, 98, 99, 100);
-    // assert_eq!(match &buf[0..3] {
-    //      b"def" => 1_usize,
-    //      b"abc" => 2_usize,
-    //      _ => 3_usize
-    // }, 2);
+    let buf = vec!(97u8, 98, 99, 100);
+    assert_eq!(match &buf[0..3] {
+         b"def" => 1,
+         b"abc" => 2,
+         _ => 3
+    }, 2);
 
     let expected: &[_] = &[97u8, 92u8, 110u8];
     assert_eq!(BAZ, expected);

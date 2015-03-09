@@ -48,7 +48,23 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         ast::PatLit(ref lt) => {
             check_expr(fcx, &**lt);
             let expr_ty = fcx.expr_ty(&**lt);
-            fcx.write_ty(pat.id, expr_ty);
+
+            // Byte string patterns behave the same way as array patterns
+            // They can denote both statically and dynamically sized byte arrays
+            let mut pat_ty = expr_ty;
+            if let ast::ExprLit(ref lt) = lt.node {
+                if let ast::LitBinary(_) = lt.node {
+                    let expected_ty = structurally_resolved_type(fcx, pat.span, expected);
+                    if let ty::ty_rptr(_, mt) = expected_ty.sty {
+                        if let ty::ty_vec(_, None) = mt.ty.sty {
+                            pat_ty = ty::mk_slice(tcx, tcx.mk_region(ty::ReStatic),
+                                ty::mt{ ty: tcx.types.u8, mutbl: ast::MutImmutable })
+                        }
+                    }
+                }
+            }
+
+            fcx.write_ty(pat.id, pat_ty);
 
             // somewhat surprising: in this case, the subtyping
             // relation goes the opposite way as the other
@@ -62,7 +78,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             //     &'static str <: expected
             //
             // that's equivalent to there existing a LUB.
-            demand::suptype(fcx, pat.span, expected, expr_ty);
+            demand::suptype(fcx, pat.span, expected, pat_ty);
         }
         ast::PatRange(ref begin, ref end) => {
             check_expr(fcx, &**begin);
