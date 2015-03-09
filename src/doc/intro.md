@@ -389,11 +389,11 @@ safe concurrent programs.
 Here's an example of a concurrent Rust program:
 
 ```{rust}
-use std::thread::Thread;
+use std::thread;
 
 fn main() {
     let guards: Vec<_> = (0..10).map(|_| {
-        Thread::scoped(|| {
+        thread::scoped(|| {
             println!("Hello, world!");
         })
     }).collect();
@@ -421,16 +421,16 @@ problem.
 Let's see an example. This Rust code will not compile:
 
 ```{rust,ignore}
-use std::thread::Thread;
+use std::thread;
 
 fn main() {
     let mut numbers = vec![1, 2, 3];
 
     let guards: Vec<_> = (0..3).map(|i| {
-        Thread::scoped(move || {
+        thread::scoped(move || {
             numbers[i] += 1;
             println!("numbers[{}] is {}", i, numbers[i]);
-        });
+        })
     }).collect();
 }
 ```
@@ -439,10 +439,10 @@ It gives us this error:
 
 ```text
 7:25: 10:6 error: cannot move out of captured outer variable in an `FnMut` closure
-7     Thread::scoped(move || {
+7     thread::scoped(move || {
 8       numbers[i] += 1;
 9       println!("numbers[{}] is {}", i, numbers[i]);
-10     });
+10     })
 error: aborting due to previous error
 ```
 
@@ -471,7 +471,7 @@ mutation doesn't cause a data race.
 Here's what using an Arc with a Mutex looks like:
 
 ```{rust}
-use std::thread::Thread;
+use std::thread;
 use std::sync::{Arc,Mutex};
 
 fn main() {
@@ -479,11 +479,11 @@ fn main() {
 
     let guards: Vec<_> = (0..3).map(|i| {
         let number = numbers.clone();
-        Thread::scoped(move || {
+        thread::scoped(move || {
             let mut array = number.lock().unwrap();
             array[i] += 1;
             println!("numbers[{}] is {}", i, array[i]);
-        });
+        })
     }).collect();
 }
 ```
@@ -535,15 +535,15 @@ As an example, Rust's ownership system is _entirely_ at compile time. The
 safety check that makes this an error about moved values:
 
 ```{rust,ignore}
-use std::thread::Thread;
+use std::thread;
 
 fn main() {
     let numbers = vec![1, 2, 3];
 
     let guards: Vec<_> = (0..3).map(|i| {
-        Thread::scoped(move || {
+        thread::scoped(move || {
             println!("{}", numbers[i]);
-        });
+        })
     }).collect();
 }
 ```

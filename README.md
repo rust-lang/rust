@@ -115,7 +115,7 @@ The Rust community congregates in a few places:
 
 ## Contributing
 
-To contribute to Rust, please see [CONTRIBUTING.md](CONTRIBUTING.md).
+To contribute to Rust, please see [CONTRIBUTING](CONTRIBUTING.md).
 
 Rust has an [IRC] culture and most real-time collaboration happens in a
 variety of channels on Mozilla's IRC network, irc.mozilla.org. The
@@ -131,4 +131,4 @@ Rust is primarily distributed under the terms of both the MIT license
 and the Apache License (Version 2.0), with portions covered by various
 BSD-like licenses.
 
-See LICENSE-APACHE, LICENSE-MIT, and COPYRIGHT for details.
+See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and [COPYRIGHT](COPYRIGHT) for details.
