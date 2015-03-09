@@ -631,9 +631,6 @@ impl<'b, T> DerefMut for RefMut<'b, T> {
 ///
 /// Types like `Cell<T>` and `RefCell<T>` use this type to wrap their internal data.
 ///
-/// `UnsafeCell<T>` doesn't opt-out from any marker traits, instead, types with an `UnsafeCell<T>`
-/// interior are expected to opt-out from those traits themselves.
-///
 /// # Examples
 ///
 /// ```
