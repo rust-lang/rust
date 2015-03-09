@@ -49,7 +49,6 @@ use syntax::visit;
 use util::nodemap::{DefIdMap, FnvHashMap};
 use util::ppaux::Repr;
 
-mod impls;
 mod orphan;
 mod overlap;
 mod unsafety;
@@ -583,7 +582,6 @@ pub fn check_coherence(crate_context: &CrateCtxt) {
         inference_context: new_infer_ctxt(crate_context.tcx),
         inherent_impls: RefCell::new(FnvHashMap()),
     }.check(crate_context.tcx.map.krate());
-    impls::check(crate_context.tcx);
     unsafety::check(crate_context.tcx);
     orphan::check(crate_context.tcx);
     overlap::check(crate_context.tcx);

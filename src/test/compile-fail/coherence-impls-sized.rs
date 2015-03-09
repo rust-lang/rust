@@ -8,11 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
-
 #![feature(optin_builtin_traits)]
 
-impl Copy for .. {}
-//~^ ERROR E0318
+use std::marker::Copy;
 
-fn main() {}
+enum TestE {
+  A
+}
+
+struct MyType;
+
+struct NotSync;
+impl !Sync for NotSync {}
+
+impl Sized for TestE {} //~ ERROR E0322
+impl Sized for MyType {} //~ ERROR E0322
+impl Sized for (MyType, MyType) {} //~ ERROR E0322
+impl Sized for &'static NotSync {} //~ ERROR E0322
+impl Sized for [MyType] {} //~ ERROR E0322
+//~^ ERROR E0277
+impl Sized for &'static [NotSync] {} //~ ERROR E0322
+
+fn main() {
+}

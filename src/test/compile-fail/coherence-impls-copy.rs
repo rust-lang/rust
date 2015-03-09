@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,26 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
-// aux-build:coherence-orphan-lib.rs
-
 #![feature(optin_builtin_traits)]
 
-extern crate "coherence-orphan-lib" as lib;
+use std::marker::Copy;
 
-use lib::TheTrait;
+enum TestE {
+  A
+}
 
-struct TheType;
+struct MyType;
 
-impl TheTrait<usize> for isize { }
-//~^ ERROR E0117
+struct NotSync;
+impl !Sync for NotSync {}
 
-impl TheTrait<TheType> for isize { }
+impl Copy for TestE {}
+impl Copy for MyType {}
+impl Copy for (MyType, MyType) {}
+//~^ ERROR E0206
 
-impl TheTrait<isize> for TheType { }
+impl Copy for &'static NotSync {}
+//~^ ERROR E0206
 
-impl !Send for Vec<isize> { }
-//~^ ERROR E0117
-//~| ERROR E0119
+impl Copy for [MyType] {}
+//~^ ERROR E0206
 
-fn main() { }
+impl Copy for &'static [NotSync] {}
+//~^ ERROR E0206
+
+fn main() {
+}
