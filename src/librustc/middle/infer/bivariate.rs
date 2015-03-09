@@ -29,7 +29,7 @@ use middle::ty::BuiltinBounds;
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use middle::infer::combine::*;
-use middle::infer::cres;
+use middle::infer::CombineResult;
 use middle::infer::type_variable::BiTo;
 use util::ppaux::Repr;
 
@@ -47,7 +47,7 @@ impl<'f, 'tcx> Combine<'tcx> for Bivariate<'f, 'tcx> {
     fn fields<'a>(&'a self) -> &'a CombineFields<'a, 'tcx> { &self.fields }
 
     fn tys_with_variance(&self, v: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
-                         -> cres<'tcx, Ty<'tcx>>
+                         -> CombineResult<'tcx, Ty<'tcx>>
     {
         match v {
             ty::Invariant => self.equate().tys(a, b),
@@ -58,7 +58,7 @@ impl<'f, 'tcx> Combine<'tcx> for Bivariate<'f, 'tcx> {
     }
 
     fn regions_with_variance(&self, v: ty::Variance, a: ty::Region, b: ty::Region)
-                             -> cres<'tcx, ty::Region>
+                             -> CombineResult<'tcx, ty::Region>
     {
         match v {
             ty::Invariant => self.equate().regions(a, b),
@@ -68,14 +68,14 @@ impl<'f, 'tcx> Combine<'tcx> for Bivariate<'f, 'tcx> {
         }
     }
 
-    fn regions(&self, a: ty::Region, _: ty::Region) -> cres<'tcx, ty::Region> {
+    fn regions(&self, a: ty::Region, _: ty::Region) -> CombineResult<'tcx, ty::Region> {
         Ok(a)
     }
 
     fn builtin_bounds(&self,
                       a: BuiltinBounds,
                       b: BuiltinBounds)
-                      -> cres<'tcx, BuiltinBounds>
+                      -> CombineResult<'tcx, BuiltinBounds>
     {
         if a != b {
             Err(ty::terr_builtin_bounds(expected_found(self, a, b)))
@@ -84,7 +84,7 @@ impl<'f, 'tcx> Combine<'tcx> for Bivariate<'f, 'tcx> {
         }
     }
 
-    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
+    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CombineResult<'tcx, Ty<'tcx>> {
         debug!("{}.tys({}, {})", self.tag(),
                a.repr(self.fields.infcx.tcx), b.repr(self.fields.infcx.tcx));
         if a == b { return Ok(a); }
@@ -114,7 +114,7 @@ impl<'f, 'tcx> Combine<'tcx> for Bivariate<'f, 'tcx> {
         }
     }
 
-    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> cres<'tcx, ty::Binder<T>>
+    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> CombineResult<'tcx, ty::Binder<T>>
         where T : Combineable<'tcx>
     {
         let a1 = ty::erase_late_bound_regions(self.tcx(), a);

@@ -63,8 +63,8 @@ pub mod unify;
 
 pub type Bound<T> = Option<T>;
 
-pub type cres<'tcx, T> = Result<T,ty::type_err<'tcx>>; // "combine result"
-pub type ures<'tcx> = cres<'tcx, ()>; // "unify result"
+pub type CombineResult<'tcx, T> = Result<T,ty::type_err<'tcx>>; // "combine result"
+pub type UnitResult<'tcx> = CombineResult<'tcx, ()>; // "unify result"
 pub type fres<T> = Result<T, fixup_err>; // "fixup result"
 
 pub struct InferCtxt<'a, 'tcx: 'a> {
@@ -359,7 +359,7 @@ pub fn mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                           origin: TypeOrigin,
                           a: Ty<'tcx>,
                           b: Ty<'tcx>)
-                          -> ures<'tcx>
+                          -> UnitResult<'tcx>
 {
     debug!("mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
     cx.commit_if_ok(|| {
@@ -370,18 +370,18 @@ pub fn mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
 pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                               a: Ty<'tcx>,
                               b: Ty<'tcx>)
-                              -> ures<'tcx> {
+                              -> UnitResult<'tcx> {
     debug!("can_mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
     cx.probe(|_| {
         let trace = TypeTrace {
             origin: Misc(codemap::DUMMY_SP),
             values: Types(expected_found(true, a, b))
         };
-        cx.sub(true, trace).tys(a, b).to_ures()
+        cx.sub(true, trace).tys(a, b).map(|_| ())
     })
 }
 
-pub fn can_mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> ures<'tcx>
+pub fn can_mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> UnitResult<'tcx>
 {
     cx.can_equate(&a, &b)
 }
@@ -401,7 +401,7 @@ pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                          origin: TypeOrigin,
                          a: Ty<'tcx>,
                          b: Ty<'tcx>)
-                         -> ures<'tcx>
+                         -> UnitResult<'tcx>
 {
     debug!("mk_eqty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
     cx.commit_if_ok(
@@ -413,7 +413,7 @@ pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                                    origin: TypeOrigin,
                                    a: ty::PolyTraitRef<'tcx>,
                                    b: ty::PolyTraitRef<'tcx>)
-                                   -> ures<'tcx>
+                                   -> UnitResult<'tcx>
 {
     debug!("mk_sub_trait_refs({} <: {})",
            a.repr(cx.tcx), b.repr(cx.tcx));
@@ -431,57 +431,6 @@ fn expected_found<T>(a_is_expected: bool,
     } else {
         ty::expected_found {expected: b, found: a}
     }
-}
-
-trait then<'tcx> {
-    fn then<T, F>(&self, f: F) -> Result<T, ty::type_err<'tcx>> where
-        T: Clone,
-        F: FnOnce() -> Result<T, ty::type_err<'tcx>>;
-}
-
-impl<'tcx> then<'tcx> for ures<'tcx> {
-    fn then<T, F>(&self, f: F) -> Result<T, ty::type_err<'tcx>> where
-        T: Clone,
-        F: FnOnce() -> Result<T, ty::type_err<'tcx>>,
-    {
-        self.and_then(move |_| f())
-    }
-}
-
-trait ToUres<'tcx> {
-    fn to_ures(&self) -> ures<'tcx>;
-}
-
-impl<'tcx, T> ToUres<'tcx> for cres<'tcx, T> {
-    fn to_ures(&self) -> ures<'tcx> {
-        match *self {
-          Ok(ref _v) => Ok(()),
-          Err(ref e) => Err((*e))
-        }
-    }
-}
-
-trait CresCompare<'tcx, T> {
-    fn compare<F>(&self, t: T, f: F) -> cres<'tcx, T> where
-        F: FnOnce() -> ty::type_err<'tcx>;
-}
-
-impl<'tcx, T:Clone + PartialEq> CresCompare<'tcx, T> for cres<'tcx, T> {
-    fn compare<F>(&self, t: T, f: F) -> cres<'tcx, T> where
-        F: FnOnce() -> ty::type_err<'tcx>,
-    {
-        (*self).clone().and_then(move |s| {
-            if s == t {
-                (*self).clone()
-            } else {
-                Err(f())
-            }
-        })
-    }
-}
-
-pub fn uok<'tcx>() -> ures<'tcx> {
-    Ok(())
 }
 
 #[must_use = "once you start a snapshot, you should always consume it"]
@@ -691,12 +640,12 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                      origin: TypeOrigin,
                      a: Ty<'tcx>,
                      b: Ty<'tcx>)
-                     -> ures<'tcx>
+                     -> UnitResult<'tcx>
     {
         debug!("sub_types({} <: {})", a.repr(self.tcx), b.repr(self.tcx));
         self.commit_if_ok(|| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.sub(a_is_expected, trace).tys(a, b).to_ures()
+            self.sub(a_is_expected, trace).tys(a, b).map(|_| ())
         })
     }
 
@@ -705,11 +654,11 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     origin: TypeOrigin,
                     a: Ty<'tcx>,
                     b: Ty<'tcx>)
-                    -> ures<'tcx>
+                    -> UnitResult<'tcx>
     {
         self.commit_if_ok(|| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.equate(a_is_expected, trace).tys(a, b).to_ures()
+            self.equate(a_is_expected, trace).tys(a, b).map(|_| ())
         })
     }
 
@@ -718,7 +667,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                           origin: TypeOrigin,
                           a: Rc<ty::TraitRef<'tcx>>,
                           b: Rc<ty::TraitRef<'tcx>>)
-                          -> ures<'tcx>
+                          -> UnitResult<'tcx>
     {
         debug!("sub_trait_refs({} <: {})",
                a.repr(self.tcx),
@@ -728,7 +677,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace).trait_refs(&*a, &*b).to_ures()
+            self.sub(a_is_expected, trace).trait_refs(&*a, &*b).map(|_| ())
         })
     }
 
@@ -737,7 +686,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                origin: TypeOrigin,
                                a: ty::PolyTraitRef<'tcx>,
                                b: ty::PolyTraitRef<'tcx>)
-                               -> ures<'tcx>
+                               -> UnitResult<'tcx>
     {
         debug!("sub_poly_trait_refs({} <: {})",
                a.repr(self.tcx),
@@ -747,7 +696,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: PolyTraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace).binders(&a, &b).to_ures()
+            self.sub(a_is_expected, trace).binders(&a, &b).map(|_| ())
         })
     }
 
@@ -774,7 +723,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn leak_check(&self,
                       skol_map: &SkolemizationMap,
                       snapshot: &CombinedSnapshot)
-                      -> ures<'tcx>
+                      -> UnitResult<'tcx>
     {
         /*! See `higher_ranked::leak_check` */
 
@@ -799,7 +748,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn equality_predicate(&self,
                               span: Span,
                               predicate: &ty::PolyEquatePredicate<'tcx>)
-                              -> ures<'tcx> {
+                              -> UnitResult<'tcx> {
         self.try(|snapshot| {
             let (ty::EquatePredicate(a, b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
@@ -812,7 +761,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     pub fn region_outlives_predicate(&self,
                                      span: Span,
                                      predicate: &ty::PolyRegionOutlivesPredicate)
-                                     -> ures<'tcx> {
+                                     -> UnitResult<'tcx> {
         self.try(|snapshot| {
             let (ty::OutlivesPredicate(r_a, r_b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
@@ -1104,7 +1053,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.region_vars.verify_generic_bound(origin, kind, a, bs);
     }
 
-    pub fn can_equate<T>(&self, a: &T, b: &T) -> ures<'tcx>
+    pub fn can_equate<T>(&self, a: &T, b: &T) -> UnitResult<'tcx>
         where T : Combineable<'tcx> + Repr<'tcx>
     {
         debug!("can_equate({}, {})", a.repr(self.tcx), b.repr(self.tcx));
@@ -1118,7 +1067,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                     values: Types(expected_found(true, e, e)) };
             let eq = self.equate(true, trace);
             Combineable::combine(&eq, a, b)
-        }).to_ures()
+        }).map(|_| ())
     }
 }
 

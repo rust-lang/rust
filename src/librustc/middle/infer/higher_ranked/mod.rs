@@ -11,7 +11,7 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
-use super::{CombinedSnapshot, cres, InferCtxt, HigherRankedType, SkolemizationMap};
+use super::{CombinedSnapshot, CombineResult, InferCtxt, HigherRankedType, SkolemizationMap};
 use super::combine::{Combine, Combineable};
 
 use middle::subst;
@@ -22,13 +22,13 @@ use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::Repr;
 
 pub trait HigherRankedRelations<'tcx> {
-    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> cres<'tcx, Binder<T>>
+    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> CombineResult<'tcx, Binder<T>>
         where T : Combineable<'tcx>;
 
-    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> cres<'tcx, Binder<T>>
+    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> CombineResult<'tcx, Binder<T>>
         where T : Combineable<'tcx>;
 
-    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> cres<'tcx, Binder<T>>
+    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> CombineResult<'tcx, Binder<T>>
         where T : Combineable<'tcx>;
 }
 
@@ -44,7 +44,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
     where C : Combine<'tcx>
 {
     fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>)
-                            -> cres<'tcx, Binder<T>>
+                            -> CombineResult<'tcx, Binder<T>>
         where T : Combineable<'tcx>
     {
         debug!("higher_ranked_sub(a={}, b={})",
@@ -104,7 +104,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
         });
     }
 
-    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> cres<'tcx, Binder<T>>
+    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> CombineResult<'tcx, Binder<T>>
         where T : Combineable<'tcx>
     {
         // Start a snapshot so we can examine "all bindings that were
@@ -194,7 +194,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
         }
     }
 
-    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> cres<'tcx, Binder<T>>
+    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> CombineResult<'tcx, Binder<T>>
         where T : Combineable<'tcx>
     {
         debug!("{}.higher_ranked_glb({}, {})",

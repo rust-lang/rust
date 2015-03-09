@@ -18,7 +18,7 @@ pub use self::RegionResolutionError::*;
 pub use self::VarValue::*;
 use self::Classification::*;
 
-use super::cres;
+use super::CombineResult;
 use super::{RegionVariableOrigin, SubregionOrigin, TypeTrace, MiscVariable};
 
 use middle::region;
@@ -799,7 +799,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     /// regions are given as argument, in any order, a consistent result is returned.
     fn lub_free_regions(&self,
                         a: &FreeRegion,
-                        b: &FreeRegion) -> ty::Region
+                        b: &FreeRegion)
+                        -> ty::Region
     {
         return match a.cmp(b) {
             Less => helper(self, a, b),
@@ -824,7 +825,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     fn glb_concrete_regions(&self,
                             a: Region,
                             b: Region)
-                         -> cres<'tcx, Region> {
+                            -> CombineResult<'tcx, Region>
+    {
         debug!("glb_concrete_regions({:?}, {:?})", a, b);
         match (a, b) {
             (ReLateBound(..), _) |
@@ -898,7 +900,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     /// returned.
     fn glb_free_regions(&self,
                         a: &FreeRegion,
-                        b: &FreeRegion) -> cres<'tcx, ty::Region>
+                        b: &FreeRegion)
+                        -> CombineResult<'tcx, ty::Region>
     {
         return match a.cmp(b) {
             Less => helper(self, a, b),
@@ -908,7 +911,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         fn helper<'a, 'tcx>(this: &RegionVarBindings<'a, 'tcx>,
                             a: &FreeRegion,
-                            b: &FreeRegion) -> cres<'tcx, ty::Region>
+                            b: &FreeRegion) -> CombineResult<'tcx, ty::Region>
         {
             if this.tcx.region_maps.sub_free_region(*a, *b) {
                 Ok(ty::ReFree(*a))
@@ -926,7 +929,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                         region_a: ty::Region,
                         region_b: ty::Region,
                         scope_a: region::CodeExtent,
-                        scope_b: region::CodeExtent) -> cres<'tcx, Region>
+                        scope_b: region::CodeExtent)
+                        -> CombineResult<'tcx, Region>
     {
         // We want to generate the intersection of two
         // scopes or two free regions.  So, if one of

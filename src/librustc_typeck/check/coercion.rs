@@ -62,7 +62,7 @@
 
 use check::{autoderef, FnCtxt, NoPreference, PreferMutLvalue, UnresolvedTypeAction};
 
-use middle::infer::{self, cres, Coercion, TypeTrace};
+use middle::infer::{self, CombineResult, Coercion, TypeTrace};
 use middle::infer::combine::Combine;
 use middle::infer::sub::Sub;
 use middle::subst;
@@ -79,7 +79,7 @@ struct Coerce<'a, 'tcx: 'a> {
     trace: TypeTrace<'tcx>
 }
 
-type CoerceResult<'tcx> = cres<'tcx, Option<ty::AutoAdjustment<'tcx>>>;
+type CoerceResult<'tcx> = CombineResult<'tcx, Option<ty::AutoAdjustment<'tcx>>>;
 
 impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> {
@@ -534,7 +534,7 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              expr: &ast::Expr,
                              a: Ty<'tcx>,
                              b: Ty<'tcx>)
-                             -> cres<'tcx, ()> {
+                             -> CombineResult<'tcx, ()> {
     debug!("mk_assignty({} -> {})", a.repr(fcx.tcx()), b.repr(fcx.tcx()));
     let adjustment = try!(indent(|| {
         fcx.infcx().commit_if_ok(|| {

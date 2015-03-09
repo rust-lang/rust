@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use super::combine::*;
-use super::cres;
+use super::CombineResult;
 use super::higher_ranked::HigherRankedRelations;
 use super::Subtype;
 use super::type_variable::{SubtypeOf, SupertypeOf};
@@ -33,7 +33,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
     fn fields<'a>(&'a self) -> &'a CombineFields<'a, 'tcx> { &self.fields }
 
     fn tys_with_variance(&self, v: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
-                         -> cres<'tcx, Ty<'tcx>>
+                         -> CombineResult<'tcx, Ty<'tcx>>
     {
         match v {
             ty::Invariant => self.equate().tys(a, b),
@@ -44,7 +44,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
     }
 
     fn regions_with_variance(&self, v: ty::Variance, a: ty::Region, b: ty::Region)
-                             -> cres<'tcx, ty::Region>
+                             -> CombineResult<'tcx, ty::Region>
     {
         match v {
             ty::Invariant => self.equate().regions(a, b),
@@ -54,7 +54,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         }
     }
 
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region> {
+    fn regions(&self, a: ty::Region, b: ty::Region) -> CombineResult<'tcx, ty::Region> {
         debug!("{}.regions({}, {})",
                self.tag(),
                a.repr(self.tcx()),
@@ -63,7 +63,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         Ok(a)
     }
 
-    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
+    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CombineResult<'tcx, Ty<'tcx>> {
         debug!("{}.tys({}, {})", self.tag(),
                a.repr(self.tcx()), b.repr(self.tcx()));
         if a == b { return Ok(a); }
@@ -99,7 +99,7 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         }
     }
 
-    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> cres<'tcx, ty::Binder<T>>
+    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> CombineResult<'tcx, ty::Binder<T>>
         where T : Combineable<'tcx>
     {
         self.higher_ranked_sub(a, b)

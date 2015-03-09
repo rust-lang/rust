@@ -11,7 +11,7 @@
 use super::combine::*;
 use super::higher_ranked::HigherRankedRelations;
 use super::lattice::*;
-use super::cres;
+use super::CombineResult;
 use super::Subtype;
 
 use middle::ty::{self, Ty};
@@ -32,7 +32,7 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
     fn fields<'a>(&'a self) -> &'a CombineFields<'a, 'tcx> { &self.fields }
 
     fn tys_with_variance(&self, v: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
-                         -> cres<'tcx, Ty<'tcx>>
+                         -> CombineResult<'tcx, Ty<'tcx>>
     {
         match v {
             ty::Invariant => self.equate().tys(a, b),
@@ -43,7 +43,7 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
     }
 
     fn regions_with_variance(&self, v: ty::Variance, a: ty::Region, b: ty::Region)
-                             -> cres<'tcx, ty::Region>
+                             -> CombineResult<'tcx, ty::Region>
     {
         match v {
             ty::Invariant => self.equate().regions(a, b),
@@ -53,7 +53,7 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
         }
     }
 
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region> {
+    fn regions(&self, a: ty::Region, b: ty::Region) -> CombineResult<'tcx, ty::Region> {
         debug!("{}.regions({}, {})",
                self.tag(),
                a.repr(self.tcx()),
@@ -62,11 +62,11 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
         Ok(self.infcx().region_vars.lub_regions(Subtype(self.trace()), a, b))
     }
 
-    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
+    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CombineResult<'tcx, Ty<'tcx>> {
         super_lattice_tys(self, a, b)
     }
 
-    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> cres<'tcx, ty::Binder<T>>
+    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> CombineResult<'tcx, ty::Binder<T>>
         where T : Combineable<'tcx>
     {
         self.higher_ranked_lub(a, b)

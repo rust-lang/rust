@@ -14,7 +14,7 @@ use std::marker;
 
 use middle::ty::{expected_found, IntVarValue};
 use middle::ty::{self, Ty};
-use middle::infer::{uok, ures};
+use middle::infer::UnitResult;
 use middle::infer::InferCtxt;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -236,7 +236,7 @@ pub trait SimplyUnifiable<'tcx> : Clone + PartialEq + Debug {
 pub fn err<'tcx, V:SimplyUnifiable<'tcx>>(a_is_expected: bool,
                                           a_t: V,
                                           b_t: V)
-                                          -> ures<'tcx> {
+                                          -> UnitResult<'tcx> {
     if a_is_expected {
         Err(SimplyUnifiable::to_type_err(
             ty::expected_found {expected: a_t, found: b_t}))
@@ -255,12 +255,12 @@ pub trait InferCtxtMethodsForSimplyUnifiableTypes<'tcx,K,V>
                    a_is_expected: bool,
                    a_id: K,
                    b_id: K)
-                   -> ures<'tcx>;
+                   -> UnitResult<'tcx>;
     fn simple_var_t(&self,
                     a_is_expected: bool,
                     a_id: K,
                     b: V)
-                    -> ures<'tcx>;
+                    -> UnitResult<'tcx>;
     fn probe_var(&self, a_id: K) -> Option<Ty<'tcx>>;
 }
 
@@ -276,7 +276,7 @@ impl<'a,'tcx,V,K> InferCtxtMethodsForSimplyUnifiableTypes<'tcx,K,V> for InferCtx
                    a_is_expected: bool,
                    a_id: K,
                    b_id: K)
-                   -> ures<'tcx>
+                   -> UnitResult<'tcx>
     {
         let tcx = self.tcx;
         let table = UnifyKey::unification_table(self);
@@ -285,7 +285,7 @@ impl<'a,'tcx,V,K> InferCtxtMethodsForSimplyUnifiableTypes<'tcx,K,V> for InferCtx
         let a_id = node_a.key.clone();
         let b_id = node_b.key.clone();
 
-        if a_id == b_id { return uok(); }
+        if a_id == b_id { return Ok(()); }
 
         let combined = {
             match (&node_a.value, &node_b.value) {
@@ -317,7 +317,7 @@ impl<'a,'tcx,V,K> InferCtxtMethodsForSimplyUnifiableTypes<'tcx,K,V> for InferCtx
                     a_is_expected: bool,
                     a_id: K,
                     b: V)
-                    -> ures<'tcx>
+                    -> UnitResult<'tcx>
     {
         let tcx = self.tcx;
         let table = UnifyKey::unification_table(self);

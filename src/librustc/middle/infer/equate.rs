@@ -11,7 +11,7 @@
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use middle::infer::combine::*;
-use middle::infer::cres;
+use middle::infer::CombineResult;
 use middle::infer::Subtype;
 use middle::infer::type_variable::EqTo;
 use util::ppaux::Repr;
@@ -30,20 +30,20 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
     fn fields<'a>(&'a self) -> &'a CombineFields<'a, 'tcx> { &self.fields }
 
     fn tys_with_variance(&self, _: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
-                         -> cres<'tcx, Ty<'tcx>>
+                         -> CombineResult<'tcx, Ty<'tcx>>
     {
         // Once we're equating, it doesn't matter what the variance is.
         self.tys(a, b)
     }
 
     fn regions_with_variance(&self, _: ty::Variance, a: ty::Region, b: ty::Region)
-                             -> cres<'tcx, ty::Region>
+                             -> CombineResult<'tcx, ty::Region>
     {
         // Once we're equating, it doesn't matter what the variance is.
         self.regions(a, b)
     }
 
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region> {
+    fn regions(&self, a: ty::Region, b: ty::Region) -> CombineResult<'tcx, ty::Region> {
         debug!("{}.regions({}, {})",
                self.tag(),
                a.repr(self.fields.infcx.tcx),
@@ -52,7 +52,7 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
         Ok(a)
     }
 
-    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
+    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CombineResult<'tcx, Ty<'tcx>> {
         debug!("{}.tys({}, {})", self.tag(),
                a.repr(self.fields.infcx.tcx), b.repr(self.fields.infcx.tcx));
         if a == b { return Ok(a); }
@@ -82,7 +82,7 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
         }
     }
 
-    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> cres<'tcx, ty::Binder<T>>
+    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> CombineResult<'tcx, ty::Binder<T>>
         where T : Combineable<'tcx>
     {
         try!(self.sub().binders(a, b));
