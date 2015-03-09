@@ -15,7 +15,7 @@
 // Debug
 // docs
 // char iterator
-//   Chars -> CharsAndPos
+//   chars -> char_indices and flip order of char/index
 // Eq
 
 extern crate unicode;
@@ -74,6 +74,17 @@ impl StringBuffer {
         }
     }
 
+    // Returns the number of characters from start of the last line in the
+    // StringBuffer.
+    // Note that it is possible for this operation to take a long time in
+    // pathological cases (lots of nodes, few line breaks).
+    pub fn cur_offset(&self) -> usize {
+        unsafe {
+            let result = (&*self.last).cur_offset();
+            result.unwrap_or_else(|| panic!("Unimplemented cur_offset across node boundaries"))
+        }
+    }
+
     pub fn chars<'a>(&'a self) -> Chars<'a> {
         Chars::new(&self.first)
     }
@@ -107,6 +118,11 @@ impl StringNode {
             next.push_str(text);
             &mut **next
         }
+    }
+
+    // None if there is no new line in this node.
+    fn cur_offset(&self) -> Option<usize> {
+        self.data.rfind('\n').map(|i| self.data.len() - i - 1)
     }
 }
 
@@ -276,6 +292,7 @@ mod test {
 
     // TODO test unicode
 
+    // Helper methods.
     fn count_nodes(s: &StringBuffer) -> usize {
         count_nodes_from(&s.first)
     }

@@ -1164,7 +1164,7 @@ mod test {
 
     #[test]
     fn test_from_string() {
-        let mut r: Rope = "Hello world!".parse().unwrap();
+        let r: Rope = "Hello world!".parse().unwrap();
         assert!(r.to_string() == "Hello world!");
     }
 

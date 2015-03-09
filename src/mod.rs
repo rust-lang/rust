@@ -18,6 +18,9 @@
 #![feature(old_path)]
 #![feature(exit_status)]
 
+// TODO we're going to allocate a whole bunch of temp Strings, is it worth
+// keeping some scratch mem for this and running our own StrPool?
+
 #[macro_use]
 extern crate log;
 
@@ -30,29 +33,34 @@ use rustc::session::Session;
 use rustc::session::config::{self, Input};
 use rustc_driver::{driver, CompilerCalls, Compilation};
 
-use syntax::ast;
-use syntax::codemap::{self, CodeMap, Span, Pos};
+use syntax::{ast, ptr};
+use syntax::codemap::{self, CodeMap, Span, Pos, BytePos};
 use syntax::diagnostics;
 use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::visit;
 
-use std::mem;
+use std::slice::SliceConcatExt;
 
 use changes::ChangeSet;
 
 pub mod rope;
+pub mod string_buffer;
 mod changes;
 
 const IDEAL_WIDTH: usize = 80;
+const LEEWAY: usize = 5;
 const MAX_WIDTH: usize = 100;
 const MIN_STRING: usize = 10;
 
 // Formatting which depends on the AST.
 fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap) -> ChangeSet<'a> {
-    let mut visitor = FmtVisitor { codemap: codemap,
-                                   changes: ChangeSet::from_codemap(codemap) };
+    let mut visitor = FmtVisitor::from_codemap(codemap);
     visit::walk_crate(&mut visitor, krate);
+    let files = codemap.files.borrow();
+    if let Some(last) = files.last() {
+        visitor.format_missing(last.end_pos);
+    }
 
     visitor.changes
 }
@@ -69,7 +77,7 @@ fn fmt_lines(changes: &mut ChangeSet) {
             if c == '\n' { // TOOD test for \r too
                 // Check for (and record) trailing whitespace.
                 if let Some(lw) = last_wspace {
-                    trims.push((lw, b));
+                    trims.push((cur_line, lw, b));
                     line_len -= b - lw;
                 }
                 // Check for any line width errors we couldn't correct.
@@ -93,23 +101,9 @@ fn fmt_lines(changes: &mut ChangeSet) {
             }
         }
 
-        unsafe {
-            // Invariant: we only mutate a rope after we have searched it, then
-            // we will not search it again.
-            let mut_text: &mut rope::Rope = mem::transmute(text);
-            let mut_count: &mut u64 = mem::transmute(&changes.count);
-            let mut offset = 0;
-            // Get rid of any trailing whitespace we recorded earlier.
-            for &(s, e) in trims.iter() {
-                // Note that we change the underlying ropes directly, we don't
-                // go through the changeset because our change positions are
-                // relative to the newest text, not the original.
-                debug!("Stripping trailing whitespace {}:{}-{} \"{}\"",
-                       f, s, e, text.slice(s-offset..e-offset));
-                mut_text.remove(s-offset, e-offset);
-                *mut_count += 1;
-                offset += e - s;
-            }
+        for &(l, _, _) in trims.iter() {
+            // FIXME store the error rather than reporting immediately.
+            println!("Rustfmt left trailing whitespace at {}:{} (sorry)", f, l);
         }
     }
 }
@@ -117,21 +111,43 @@ fn fmt_lines(changes: &mut ChangeSet) {
 struct FmtVisitor<'a> {
     codemap: &'a CodeMap,
     changes: ChangeSet<'a>,
+    last_pos: BytePos,
+    block_indent: usize,
 }
 
 impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     fn visit_expr(&mut self, ex: &'v ast::Expr) {
-        match ex.node {
-            ast::Expr_::ExprLit(ref l) => match l.node {
-                ast::Lit_::LitStr(ref is, _) => {
-                    self.rewrite_string(&is, l.span);
-                }
-                _ => {}
-            },
-            _ => {}
+        self.format_missing(ex.span.lo);
+        let offset = self.changes.cur_offset_span(ex.span);
+        let new_str = self.rewrite_expr(ex, MAX_WIDTH - offset, offset);
+        self.changes.push_str_span(ex.span, &new_str);
+        self.last_pos = ex.span.hi;
+    }
+
+    fn visit_block(&mut self, b: &'v ast::Block) {
+        self.format_missing(b.span.lo);
+
+        self.changes.push_str_span(b.span, "{");
+        self.last_pos = self.last_pos + BytePos(1);
+        self.block_indent += 4;
+
+        for stmt in &b.stmts {
+            self.format_missing_with_indent(stmt.span.lo);
+            self.visit_stmt(&**stmt)
+        }
+        match b.expr {
+            Some(ref e) => {
+                self.format_missing_with_indent(e.span.lo);
+                self.visit_expr(e);
+            }
+            None => {}
         }
 
-        visit::walk_expr(self, ex)
+        self.block_indent -= 4;
+        // TODO we should compress any newlines here to just one
+        self.format_missing_with_indent(b.span.hi - BytePos(1));
+        self.changes.push_str_span(b.span, "}");
+        self.last_pos = b.span.hi;
     }
 
     fn visit_fn(&mut self,
@@ -140,32 +156,38 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 b: &'v ast::Block,
                 s: Span,
                 _: ast::NodeId) {
-        self.fix_formal_args(fd);
+        if let Some(new_str) = self.formal_args(fk, fd) {
+            self.changes.push_str_span(s, &new_str);            
+        }
         visit::walk_fn(self, fk, fd, b, s);
     }
 
     fn visit_item(&mut self, item: &'v ast::Item) {
-        // TODO check each item is on a new line and is correctly indented.
         match item.node {
             ast::Item_::ItemUse(ref vp) => {
                 match vp.node {
                     ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
+                        self.format_missing(item.span.lo);
                         let new_str = self.fix_use_list(path, path_list, vp.span);
-
-                        // TODO move these optimisations to ChangeSet
-                        if new_str != self.codemap.span_to_snippet(item.span).unwrap() {
-                            self.changes.change_span(item.span, new_str);
-                        }
+                        self.changes.push_str_span(item.span, &new_str);
+                        self.last_pos = item.span.hi;
                     }
                     ast::ViewPath_::ViewPathGlob(_) => {
                         // FIXME convert to list?
                     }
                     _ => {}
                 }
+                visit::walk_item(self, item);
             }
-            _ => {}
+            ast::Item_::ItemImpl(..) => {
+                self.block_indent += 4;
+                visit::walk_item(self, item);
+                self.block_indent -= 4;
+            }
+            _ => {
+                visit::walk_item(self, item);
+            }
         }
-        visit::walk_item(self, item);
     }
 }
 
@@ -178,8 +200,88 @@ fn make_indent(width: usize) -> String {
 }
 
 impl<'a> FmtVisitor<'a> {
+    fn from_codemap<'b>(codemap: &'b CodeMap) -> FmtVisitor<'b> {
+        FmtVisitor {
+            codemap: codemap,
+            changes: ChangeSet::from_codemap(codemap),
+            last_pos: BytePos(0),
+            block_indent: 0,
+        }
+    }
+
+    fn format_missing(&mut self, end: BytePos) {
+        self.format_missing_inner(end, |this, last_snippet, span, _| {
+            this.changes.push_str_span(span, last_snippet)
+        })
+    }
+
+    fn format_missing_with_indent(&mut self, end: BytePos) {
+        self.format_missing_inner(end, |this, last_snippet, span, snippet| {
+            if last_snippet == snippet {
+                // No new lines
+                this.changes.push_str_span(span, last_snippet);
+                this.changes.push_str_span(span, "\n");
+            } else {
+                this.changes.push_str_span(span, last_snippet.trim_right());
+            }
+            let indent = make_indent(this.block_indent);
+            this.changes.push_str_span(span, &indent);           
+        })
+    }
+
+    fn format_missing_inner<F: Fn(&mut FmtVisitor, &str, Span, &str)>(&mut self,
+                                                                      end: BytePos,
+                                                                      process_last_snippet: F)
+    {
+        let start = self.last_pos;
+        // TODO(#11) gets tricky if we're missing more than one file
+        assert!(self.codemap.lookup_char_pos(start).file.name == self.codemap.lookup_char_pos(end).file.name,
+                "not implemented: unformated span across files");
+
+        self.last_pos = end;
+        let span = codemap::mk_sp(start, end);
+        let snippet = self.snippet(span);
+
+        // Annoyingly, the library functions for splitting by lines etc. are not
+        // quite right, so we must do it ourselves.
+        let mut line_start = 0;
+        let mut last_wspace = None;
+        for (i, c) in snippet.char_indices() {
+            if c == '\n' {
+                if let Some(lw) = last_wspace {
+                    self.changes.push_str_span(span, &snippet[line_start..lw]);
+                    self.changes.push_str_span(span, "\n");
+                } else {
+                    self.changes.push_str_span(span, &snippet[line_start..i+1]);
+                }
+
+                line_start = i + 1;
+                last_wspace = None;
+            } else {
+                if c.is_whitespace() {
+                    if last_wspace.is_none() {
+                        last_wspace = Some(i);
+                    }
+                } else {
+                    last_wspace = None;
+                }
+            }
+        }
+        process_last_snippet(self, &snippet[line_start..], span, &snippet);
+    }
+
+    fn snippet(&self, span: Span) -> String {
+        match self.codemap.span_to_snippet(span) {
+            Ok(s) => s,
+            Err(_) => {
+                println!("Couldn't make snippet for span {:?}", span);
+                "".to_string()
+            }
+        }
+    }
+
     // TODO NEEDS TESTS
-    fn rewrite_string(&mut self, s: &str, span: Span) {
+    fn rewrite_string(&mut self, s: &str, span: Span, width: usize, offset: usize) -> String {
         // FIXME I bet this stomps unicode escapes in the source string
 
         // Check if there is anything to fix: we always try to fixup multi-line
@@ -187,21 +289,18 @@ impl<'a> FmtVisitor<'a> {
         let l_loc = self.codemap.lookup_char_pos(span.lo);
         let r_loc = self.codemap.lookup_char_pos(span.hi);
         if l_loc.line == r_loc.line && r_loc.col.to_usize() <= MAX_WIDTH {
-            return;
+            return self.snippet(span);
         }
 
         // TODO if lo.col > IDEAL - 10, start a new line (need cur indent for that)
 
         let s = s.escape_default();
 
-        // TODO use fixed value.
-        let l_loc = self.codemap.lookup_char_pos(span.lo);
-        let l_col = l_loc.col.to_usize();
-        
-        let indent = make_indent(l_col + 1);
+        let offset = offset + 1;
+        let indent = make_indent(offset);
         let indent = &indent;
 
-        let max_chars = MAX_WIDTH - (l_col + 1);
+        let max_chars = width - 1;
 
         let mut cur_start = 0;
         let mut result = String::new();
@@ -242,12 +341,7 @@ impl<'a> FmtVisitor<'a> {
         }
         result.push('"');
 
-        // Check that we actually changed something.
-        if result == self.codemap.span_to_snippet(span).unwrap() {
-            return;
-        }
-
-        self.changes.change_span(span, result);
+        result
     }
 
     // Basically just pretty prints a multi-item import.
@@ -314,55 +408,115 @@ impl<'a> FmtVisitor<'a> {
         new_str
     }
 
-    fn fix_formal_args<'v>(&mut self, fd: &'v ast::FnDecl) {
+    fn formal_args<'v>(&mut self, fk: visit::FnKind<'v>, fd: &'v ast::FnDecl) -> Option<String> {
         // For now, just check the arguments line up and make them per-row if the line is too long.
         let args = &fd.inputs;
-        if args.len() <= 1 {
-            return;
+
+        let ret_str = match fd.output {
+            ast::FunctionRetTy::DefaultReturn(_) => "".to_string(),
+            ast::FunctionRetTy::NoReturn(_) => " -> !".to_string(),
+            ast::FunctionRetTy::Return(ref ty) => pprust::ty_to_string(ty),
+        };
+
+        // TODO don't return, want to do the return type etc.
+        if args.len() == 0 {
+            return None;
         }
+
         // TODO not really using the hi positions
         let spans: Vec<_> = args.iter().map(|a| (a.pat.span.lo, a.ty.span.hi)).collect();
-        let locs: Vec<_> = spans.iter().map(|&(a, b)| (self.codemap.lookup_char_pos(a), self.codemap.lookup_char_pos(b))).collect();
-        let first_loc = &locs[0].0;
-        // TODO need to adjust for previous changes here.
-        let same_row = locs.iter().all(|&(ref l, _)| l.line == first_loc.line);
-        let same_col = locs.iter().all(|&(ref l, _)| l.col == first_loc.col);
+        let locs: Vec<_> = spans.iter().map(|&(a, b)| {
+            (self.codemap.lookup_char_pos(a), self.codemap.lookup_char_pos(b))
+        }).collect();
+        let first_col = locs[0].0.col.0;
 
-        if same_col {
-            // TODO Check one arg per line and no lines in between (except comments)
-            return;
-        }        
+        // Print up to the start of the args.
+        self.format_missing(spans[0].0);
+        self.last_pos = spans.last().unwrap().1;
 
-        if same_row { // TODO check line is < 100 && first_loc.line {
-            // TODO could also fix whitespace around punctuaton here
-            // TODO and could check that we're on the same line as the function call, if possible
-            return;
+        let arg_strs: Vec<_> = args.iter().map(|a| format!("{}: {}",
+                                                           pprust::pat_to_string(&a.pat),
+                                                           pprust::ty_to_string(&a.ty))).collect();
+
+        // Try putting everything on one row:
+        let mut len = arg_strs.iter().fold(0, |a, b| a + b.len());
+        // Account for punctuation and spacing.
+        len += 2 * arg_strs.len() + 2 * (arg_strs.len()-1);
+        // Return type.
+        len += ret_str.len();
+        // Opening brace if no where clause.
+        match fk {
+            visit::FnKind::FkItemFn(_, g, _, _) |
+            visit::FnKind::FkMethod(_, g, _)
+            if g.where_clause.predicates.len() > 0 => {}
+            _ => len += 2 // ` {`
+        }
+        len += first_col;
+
+        if len <= IDEAL_WIDTH + LEEWAY || args.len() == 1 {
+            // It should all fit on one line.
+            return Some(arg_strs.connect(", "));
+        } else {
+            // TODO multi-line
+            let mut indent = String::with_capacity(first_col + 2);
+            indent.push_str(",\n");
+            for _ in 0..first_col { indent.push(' '); }
+            return Some(arg_strs.connect(&indent));
+        }
+    }
+
+    fn rewrite_call(&mut self,
+                    callee: &ast::Expr,
+                    args: &[ptr::P<ast::Expr>],
+                    width: usize,
+                    offset: usize)
+        -> String
+    {
+        debug!("rewrite_call, width: {}, offset: {}", width, offset);
+
+        // TODO using byte lens instead of char lens (and probably all over the place too)
+        let callee_str = self.rewrite_expr(callee, width, offset);
+        debug!("rewrite_call, callee_str: `{}`", callee_str);
+        // 2 is for parens.
+        let remaining_width = width - callee_str.len() - 2;
+        let offset = callee_str.len() + 1 + offset;
+        let arg_count = args.len();
+        let args: Vec<_> = args.iter().map(|e| self.rewrite_expr(e,
+                                                                 remaining_width,
+                                                                 offset)).collect();
+        debug!("rewrite_call, args: `{}`", args.connect(","));
+
+        let multi_line = args.iter().any(|s| s.contains('\n'));
+        let args_width = args.iter().map(|s| s.len()).fold(0, |a, l| a + l);
+        let over_wide = args_width + (arg_count - 1) * 2 > remaining_width;
+        let args_str = if multi_line || over_wide {
+            args.connect(&(",\n".to_string() + &make_indent(offset)))
+        } else {
+            args.connect(", ")
+        };
+
+        format!("{}({})", callee_str, args_str)
+    }
+
+    fn rewrite_expr(&mut self, expr: &ast::Expr, width: usize, offset: usize) -> String {
+        match expr.node {
+            ast::Expr_::ExprLit(ref l) => {
+                match l.node {
+                    ast::Lit_::LitStr(ref is, _) => {
+                        return self.rewrite_string(&is, l.span, width, offset);
+                    }
+                    _ => {}
+                }
+            }
+            ast::Expr_::ExprCall(ref callee, ref args) => {
+                return self.rewrite_call(callee, args, width, offset);
+            }
+            _ => {}
         }
 
-        let col = self.changes.col(spans[0].0);
-        let mut indent = String::with_capacity(col);
-        indent.push('\n');
-        for _ in 0..col { indent.push(' '); }
-        let last_idx = spans.len() - 1;
-        for (i, s) in spans.iter().enumerate() {
-            // Take the span from lo to lo (or the last hi for the last arg), 
-            // trim, push on top of indent, then replace the old lo-lo span with it.
-            let mut new_text = if i == 0 {
-                "".to_string()
-            } else {
-                indent.clone()
-            };
-            let hi = if i == last_idx {
-                s.1
-            } else {
-                spans[i+1].0
-            };
-            // TODO need a version of slice taking locs, not a span
-            let snippet = self.changes.slice_span(Span{ lo: s.0, hi: hi, expn_id: codemap::NO_EXPANSION }).to_string();
-            let snippet = snippet.trim();
-            new_text.push_str(snippet);
-            self.changes.change(&first_loc.file.name, (s.0).0 as usize, hi.0 as usize, new_text);
-        }
+        let result = self.snippet(expr.span);
+        debug!("snippet: {}", result);
+        result
     }
 }
 
@@ -439,9 +593,11 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
             let mut changes = fmt_ast(krate, codemap);
             fmt_lines(&mut changes);
 
-            println!("Making {} changes", changes.count);
             println!("{}", changes);
             // FIXME(#5) Should be user specified whether to show or replace.
+
+            // TODO we stop before expansion, but we still seem to get expanded for loops which
+            // cause problems - probably a rustc bug
         };
 
         control
@@ -466,3 +622,5 @@ fn main() {
 // algorithm to keep the width under IDEAL_WIDTH. We should also convert multiline
 // /* ... */ comments to // and check doc comments are in the right place and of
 // the right kind.
+
+// Should also make sure comments have the right indent

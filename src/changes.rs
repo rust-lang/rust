@@ -10,20 +10,19 @@
 
 
 // TODO
-// print to files (maybe that shouldn't be here, but in mod)
+// print to files 
 // tests
 
-use rope::{Rope, RopeSlice};
+use string_buffer::StringBuffer;
 use std::collections::HashMap;
-use syntax::codemap::{CodeMap, Span, BytePos};
+use syntax::codemap::{CodeMap, Span};
 use std::fmt;
 
 // This is basically a wrapper around a bunch of Ropes which makes it convenient
 // to work with libsyntax. It is badly named.
 pub struct ChangeSet<'a> {
-    file_map: HashMap<String, Rope>,
+    file_map: HashMap<String, StringBuffer>,
     codemap: &'a CodeMap,
-    pub count: u64,
 }
 
 impl<'a> ChangeSet<'a> {
@@ -32,64 +31,35 @@ impl<'a> ChangeSet<'a> {
         let mut result = ChangeSet {
             file_map: HashMap::new(),
             codemap: codemap,
-            count: 0,
         };
 
         for f in codemap.files.borrow().iter() {
-            let contents = Rope::from_string((&**f.src.as_ref().unwrap()).clone());
-            result.file_map.insert(f.name.clone(), contents);
+            // Use the length of the file as a heuristic for how much space we
+            // need. I hope that at some stage someone rounds this up to the next
+            // power of two. TODO check that or do it here.
+            result.file_map.insert(f.name.clone(),
+                                   StringBuffer::with_capacity(f.src.as_ref().unwrap().len()));
         }
 
         result
     }
 
-    // Change a span of text in our stored text into the new text (`text`).
-    // The span of text to change is given in the coordinates of the original
-    // source text, not the current text,
-    pub fn change(&mut self, file_name: &str, start: usize, end: usize, text: String) {
-        println!("change: {}:{}-{} \"{}\"", file_name, start, end, text);
-
-        self.count += 1;
-
-        let file = &mut self.file_map[*file_name];
-
-        if end - start == text.len() {
-            // TODO src_replace_str would be much more efficient
-            //file.src_replace_str(start, &text);
-            file.src_remove(start, end);
-            file.src_insert(start, text);
-        } else {
-            // TODO if we do this in one op, could we get better change info?
-            file.src_remove(start, end);
-            file.src_insert(start, text);
-        }
+    pub fn push_str(&mut self, file_name: &str, text: &str) {
+        self.file_map[*file_name].push_str(text)
     }
 
-    // As for `change()`, but use a Span to indicate the text to change.
-    pub fn change_span(&mut self, span: Span, text: String) {
-        let l_loc = self.codemap.lookup_char_pos(span.lo);
-        let file_offset = l_loc.file.start_pos.0;
-        self.change(&l_loc.file.name,
-                    (span.lo.0 - file_offset) as usize,
-                    (span.hi.0 - file_offset) as usize,
-                    text)
+    pub fn push_str_span(&mut self, span: Span, text: &str) {
+        let file_name = self.codemap.span_to_filename(span);
+        self.push_str(&file_name, text)
     }
 
-    // Get a slice of the current text. Coordinates are relative to the source
-    // text. I.e., this method returns the text which has been changed from the
-    // indicated span.
-    pub fn slice(&self, file_name: &str, start: usize, end: usize) -> RopeSlice {
-        let file = &self.file_map[*file_name];
-        file.src_slice(start..end)
+    pub fn cur_offset(&mut self, file_name: &str) -> usize {
+        self.file_map[*file_name].cur_offset()
     }
 
-    // As for `slice()`, but use a Span to indicate the text to return.
-    pub fn slice_span(&self, span:Span) -> RopeSlice {
-        let l_loc = self.codemap.lookup_char_pos(span.lo);
-        let file_offset = l_loc.file.start_pos.0;
-        self.slice(&l_loc.file.name,
-                   (span.lo.0 - file_offset) as usize,
-                   (span.hi.0 - file_offset) as usize)
+    pub fn cur_offset_span(&mut self, span: Span) -> usize {
+        let file_name = self.codemap.span_to_filename(span);
+        self.cur_offset(&file_name)
     }
 
     // Return an iterator over the entire changed text.
@@ -101,13 +71,6 @@ impl<'a> ChangeSet<'a> {
         }
     }
 
-    // Get the current line-relative position of a position in the source text.
-    pub fn col(&self, loc: BytePos) -> usize {
-        let l_loc = self.codemap.lookup_char_pos(loc);
-        let file_offset = l_loc.file.start_pos.0;
-        let file = &self.file_map[l_loc.file.name[..]];
-        file.col_for_src_loc(loc.0 as usize - file_offset as usize)
-    }
 }
 
 // Iterates over each file in the ChangSet. Yields the filename and the changed
@@ -119,9 +82,9 @@ pub struct FileIterator<'c, 'a: 'c> {
 }
 
 impl<'c, 'a> Iterator for FileIterator<'c, 'a> {
-    type Item = (&'c str, &'c Rope);
+    type Item = (&'c str, &'c StringBuffer);
 
-    fn next(&mut self) -> Option<(&'c str, &'c Rope)> {
+    fn next(&mut self) -> Option<(&'c str, &'c StringBuffer)> {
         if self.cur_key >= self.keys.len() {
             return None;
         }
