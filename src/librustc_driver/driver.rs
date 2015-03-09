@@ -927,7 +927,7 @@ pub fn build_output_filenames(input: &Input,
             // We want to toss everything after the final '.'
             let dirpath = match *odir {
                 Some(ref d) => d.clone(),
-                None => PathBuf::new(".")
+                None => PathBuf::new("")
             };
 
             // If a crate name is present, we use it as the link name
