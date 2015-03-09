@@ -548,7 +548,7 @@ mod tests {
 
     // A simple failure case - adding 1 to the max value
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_add_bytes_to_bits_overflow() {
         super::add_bytes_to_bits::<u64>(Int::max_value(), 1);
     }

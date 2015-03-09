@@ -1030,14 +1030,14 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn wtf8buf_truncate_fail_code_point_boundary() {
         let mut string = Wtf8Buf::from_str("aé");
         string.truncate(2);
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn wtf8buf_truncate_fail_longer() {
         let mut string = Wtf8Buf::from_str("aé");
         string.truncate(4);
@@ -1133,7 +1133,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn wtf8_slice_not_code_point_boundary() {
         &Wtf8::from_str("aé 💩")[2.. 4];
     }
@@ -1144,7 +1144,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn wtf8_slice_from_not_code_point_boundary() {
         &Wtf8::from_str("aé 💩")[2..];
     }
@@ -1155,7 +1155,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn wtf8_slice_to_not_code_point_boundary() {
         &Wtf8::from_str("aé 💩")[5..];
     }

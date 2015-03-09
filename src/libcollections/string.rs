@@ -1232,14 +1232,14 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_str_truncate_invalid_len() {
         let mut s = String::from_str("12345");
         s.truncate(6);
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_str_truncate_split_codepoint() {
         let mut s = String::from_str("\u{FC}"); // ü
         s.truncate(1);
@@ -1272,7 +1272,7 @@ mod tests {
         assert_eq!(s, "ไทย中华Vit Nam; foobar");
     }
 
-    #[test] #[should_fail]
+    #[test] #[should_panic]
     fn remove_bad() {
         "ศ".to_string().remove(1);
     }
@@ -1286,8 +1286,8 @@ mod tests {
         assert_eq!(s, "ệfooยbar");
     }
 
-    #[test] #[should_fail] fn insert_bad1() { "".to_string().insert(1, 't'); }
-    #[test] #[should_fail] fn insert_bad2() { "ệ".to_string().insert(1, 't'); }
+    #[test] #[should_panic] fn insert_bad1() { "".to_string().insert(1, 't'); }
+    #[test] #[should_panic] fn insert_bad2() { "ệ".to_string().insert(1, 't'); }
 
     #[test]
     fn test_slicing() {

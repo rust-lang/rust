@@ -2242,7 +2242,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_vec_truncate_fail() {
         struct BadElem(i32);
         impl Drop for BadElem {
@@ -2265,49 +2265,49 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_index_out_of_bounds() {
         let vec = vec![1, 2, 3];
         let _ = vec[3];
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_slice_out_of_bounds_1() {
         let x = vec![1, 2, 3, 4, 5];
         &x[-1..];
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_slice_out_of_bounds_2() {
         let x = vec![1, 2, 3, 4, 5];
         &x[..6];
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_slice_out_of_bounds_3() {
         let x = vec![1, 2, 3, 4, 5];
         &x[-1..4];
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_slice_out_of_bounds_4() {
         let x = vec![1, 2, 3, 4, 5];
         &x[1..6];
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_slice_out_of_bounds_5() {
         let x = vec![1, 2, 3, 4, 5];
         &x[3..2];
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_swap_remove_empty() {
         let mut vec= Vec::<i32>::new();
         vec.swap_remove(0);
@@ -2326,7 +2326,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_map_in_place_incompatible_types_fail() {
         let v = vec![0, 1, 2];
         v.map_in_place(|_| ());

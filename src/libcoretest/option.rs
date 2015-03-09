@@ -80,7 +80,7 @@ fn test_option_dance() {
     assert!(y.is_none());
 }
 
-#[test] #[should_fail]
+#[test] #[should_panic]
 fn test_option_too_much_dance() {
     let mut y = Some(marker::NoCopy);
     let _y2 = y.take().unwrap();
@@ -139,14 +139,14 @@ fn test_unwrap() {
 }
 
 #[test]
-#[should_fail]
+#[should_panic]
 fn test_unwrap_panic1() {
     let x: Option<int> = None;
     x.unwrap();
 }
 
 #[test]
-#[should_fail]
+#[should_panic]
 fn test_unwrap_panic2() {
     let x: Option<String> = None;
     x.unwrap();

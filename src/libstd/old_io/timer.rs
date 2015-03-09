@@ -333,7 +333,7 @@ mod test {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn oneshot_fail() {
         let mut timer = Timer::new().unwrap();
         let _rx = timer.oneshot(Duration::milliseconds(1));
@@ -341,7 +341,7 @@ mod test {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn period_fail() {
         let mut timer = Timer::new().unwrap();
         let _rx = timer.periodic(Duration::milliseconds(1));
@@ -349,7 +349,7 @@ mod test {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn normal_fail() {
         let _timer = Timer::new().unwrap();
         panic!();
