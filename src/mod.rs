@@ -15,8 +15,8 @@
 #![feature(os)]
 #![feature(core)]
 #![feature(unicode)]
-#![feature(old_path)]
 #![feature(exit_status)]
+#![feature(path)]
 
 // TODO we're going to allocate a whole bunch of temp Strings, is it worth
 // keeping some scratch mem for this and running our own StrPool?
@@ -40,6 +40,7 @@ use syntax::parse::token;
 use syntax::print::pprust;
 use syntax::visit;
 
+use std::path::PathBuf;
 use std::slice::SliceConcatExt;
 
 use changes::ChangeSet;
@@ -542,7 +543,7 @@ fn next_char(s: &str, mut i: usize) -> usize {
 }
 
 struct RustFmtCalls {
-    input_path: Option<Path>,
+    input_path: Option<PathBuf>,
 }
 
 impl<'a> CompilerCalls<'a> for RustFmtCalls {
@@ -553,7 +554,7 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
         Compilation::Continue
     }
 
-    fn some_input(&mut self, input: Input, input_path: Option<Path>) -> (Input, Option<Path>) {
+    fn some_input(&mut self, input: Input, input_path: Option<PathBuf>) -> (Input, Option<PathBuf>) {
         match input_path {
             Some(ref ip) => self.input_path = Some(ip.clone()),
             _ => {
@@ -567,10 +568,10 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
     fn no_input(&mut self,
                 _: &getopts::Matches,
                 _: &config::Options,
-                _: &Option<Path>,
-                _: &Option<Path>,
+                _: &Option<PathBuf>,
+                _: &Option<PathBuf>,
                 _: &diagnostics::registry::Registry)
-                -> Option<(Input, Option<Path>)> {
+                -> Option<(Input, Option<PathBuf>)> {
         panic!("No input supplied to RustFmt");
     }
 
@@ -578,8 +579,8 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
                      _: &getopts::Matches,
                      _: &Session,
                      _: &Input,
-                     _: &Option<Path>,
-                     _: &Option<Path>)
+                     _: &Option<PathBuf>,
+                     _: &Option<PathBuf>)
                      -> Compilation {
         Compilation::Continue
     }
