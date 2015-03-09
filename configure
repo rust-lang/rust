@@ -701,8 +701,8 @@ probe CFG_ADB        adb
 
 if [ ! -z "$CFG_PANDOC" ]
 then
+    # Extract "MAJOR MINOR" from Pandoc's version number
     PV_MAJOR_MINOR=$(pandoc --version | grep '^pandoc' |
-        # Extract "MAJOR MINOR" from Pandoc's version number
         sed -E 's/pandoc(.exe)? ([0-9]+)\.([0-9]+).*/\2 \3/')
 
     MIN_PV_MAJOR="1"
