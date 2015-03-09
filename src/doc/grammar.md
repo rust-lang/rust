@@ -514,7 +514,7 @@ field_expr : expr '.' ident ;
 ### Array expressions
 
 ```antlr
-array_expr : '[' "mut" ? vec_elems? ']' ;
+array_expr : '[' "mut" ? array_elems? ']' ;
 
 array_elems : [expr [',' expr]*] | [expr ',' ".." expr] ;
 ```
