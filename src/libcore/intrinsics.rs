@@ -545,6 +545,11 @@ extern "rust-intrinsic" {
     pub fn u32_mul_with_overflow(x: u32, y: u32) -> (u32, bool);
     /// Performs checked `u64` multiplication.
     pub fn u64_mul_with_overflow(x: u64, y: u64) -> (u64, bool);
+
+    /// Returns the value of the discriminant for the variant in 'v'. If there is no discriminant
+    /// for the type, zero is returned
+    #[cfg(not(stage0))]
+    pub fn discriminant_value<T>(v: &T) -> u64;
 }
 
 // SNAP 880fb89
