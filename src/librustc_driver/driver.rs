@@ -954,8 +954,11 @@ pub fn build_output_filenames(input: &Input,
             if *odir != None {
                 sess.warn("ignoring --out-dir flag due to -o flag.");
             }
+
+            let cur_dir = Path::new("");
+
             OutputFilenames {
-                out_directory: out_file.parent().unwrap().to_path_buf(),
+                out_directory: out_file.parent().unwrap_or(cur_dir).to_path_buf(),
                 out_filestem: out_file.file_stem().unwrap()
                                       .to_str().unwrap().to_string(),
                 single_output_file: ofile,
