@@ -155,7 +155,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                         // We only want to permit structs/enums, but not *all* structs/enums.
                         // They must be local to the current crate, so that people
                         // can't do `unsafe impl Send for Rc<SomethingLocal>` or
-                        // `unsafe impl !Send for Box<SomethingLocalAndSend>`.
+                        // `impl !Send for Box<SomethingLocalAndSend>`.
                         Some(self_def_id) => {
                             if self_def_id.krate == ast::LOCAL_CRATE {
                                 None
