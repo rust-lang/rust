@@ -29,6 +29,7 @@
 #![allow(missing_docs)]
 #![allow(non_snake_case)]
 #![allow(unused_imports)]
+#![allow(deprecated)]
 
 use self::MemoryMapKind::*;
 use self::MapOption::*;

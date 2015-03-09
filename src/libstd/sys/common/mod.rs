@@ -16,7 +16,10 @@ use prelude::v1::*;
 use sys::{last_error, retry};
 use ffi::CString;
 use num::Int;
+
+#[allow(deprecated)]
 use old_path::BytesContainer;
+
 use collections;
 
 pub mod backtrace;
@@ -120,6 +123,7 @@ pub trait FromInner<Inner> {
 }
 
 #[doc(hidden)]
+#[allow(deprecated)]
 pub trait ProcessConfig<K: BytesContainer, V: BytesContainer> {
     fn program(&self) -> &CString;
     fn args(&self) -> &[CString];

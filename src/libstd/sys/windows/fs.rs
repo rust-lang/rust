@@ -10,6 +10,8 @@
 
 //! Blocking Windows-based file I/O
 
+#![allow(deprecated)] // this module itself is essentially deprecated
+
 use libc::{self, c_int};
 
 use mem;

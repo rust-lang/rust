@@ -40,7 +40,6 @@
 #![feature(unsafe_destructor)]
 #![feature(staged_api)]
 #![feature(std_misc)]
-#![feature(path)]
 #![feature(io)]
 #![feature(path_ext)]
 #![feature(str_words)]

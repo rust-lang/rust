@@ -18,6 +18,7 @@
 
 use prelude::v1::*;
 
+use iter::IntoIterator;
 use error::Error;
 use ffi::{OsString, AsOsStr};
 use fmt;
@@ -338,9 +339,9 @@ pub struct JoinPathsError {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
-    where I: Iterator<Item=T>, T: AsOsStr
+    where I: IntoIterator<Item=T>, T: AsOsStr
 {
-    os_imp::join_paths(paths).map_err(|e| {
+    os_imp::join_paths(paths.into_iter()).map_err(|e| {
         JoinPathsError { inner: e }
     })
 }

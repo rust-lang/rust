@@ -40,7 +40,6 @@
 #![feature(core)]
 #![feature(int_uint)]
 #![feature(old_io)]
-#![feature(path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(std_misc)]

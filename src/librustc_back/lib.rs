@@ -42,11 +42,12 @@
 #![feature(old_io)]
 #![feature(old_path)]
 #![feature(os)]
-#![feature(path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(rand)]
 #![feature(path_ext)]
+#![feature(std_misc)]
+#![feature(path_relative_from)]
 
 extern crate syntax;
 extern crate serialize;

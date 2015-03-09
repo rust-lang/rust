@@ -11,6 +11,7 @@
 use std::io;
 use std::old_io::fs;
 use std::old_io;
+#[allow(deprecated)]
 use std::old_path;
 use std::os;
 use std::path::{Path, PathBuf};

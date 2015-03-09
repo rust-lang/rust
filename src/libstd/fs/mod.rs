@@ -571,18 +571,8 @@ pub fn create_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
 pub fn create_dir_all<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
     let path = path.as_path();
     if path.is_dir() { return Ok(()) }
-    match path.parent() {
-        Some(p) if p != path => try!(create_dir_all(p)),
-        _ => {}
-    }
-    // If the file name of the given `path` is blank then the creation of the
-    // parent directory will have taken care of the whole path for us, so we're
-    // good to go.
-    if path.file_name().is_none() {
-        Ok(())
-    } else {
-        create_dir(path)
-    }
+    if let Some(p) = path.parent() { try!(create_dir_all(p)) }
+    create_dir(path)
 }
 
 /// Remove an existing, empty directory

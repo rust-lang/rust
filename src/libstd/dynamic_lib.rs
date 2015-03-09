@@ -14,6 +14,7 @@
 
 #![unstable(feature = "std_misc")]
 #![allow(missing_docs)]
+#![allow(deprecated)] // will be addressed by #23197
 
 use prelude::v1::*;
 
