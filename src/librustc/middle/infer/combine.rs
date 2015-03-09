@@ -38,7 +38,7 @@ use super::glb::Glb;
 use super::lub::Lub;
 use super::sub::Sub;
 use super::unify::InferCtxtMethodsForSimplyUnifiableTypes;
-use super::{InferCtxt, cres};
+use super::{InferCtxt, CombineResult};
 use super::{MiscVariable, TypeTrace};
 use super::type_variable::{RelationDir, BiTo, EqTo, SubtypeOf, SupertypeOf};
 
@@ -74,7 +74,7 @@ pub trait Combine<'tcx> : Sized {
     fn lub<'a>(&'a self) -> Lub<'a, 'tcx> { Lub(self.fields().clone()) }
     fn glb<'a>(&'a self) -> Glb<'a, 'tcx> { Glb(self.fields().clone()) }
 
-    fn mts(&self, a: &ty::mt<'tcx>, b: &ty::mt<'tcx>) -> cres<'tcx, ty::mt<'tcx>> {
+    fn mts(&self, a: &ty::mt<'tcx>, b: &ty::mt<'tcx>) -> CombineResult<'tcx, ty::mt<'tcx>> {
         debug!("{}.mts({}, {})",
                self.tag(),
                a.repr(self.tcx()),
@@ -94,20 +94,20 @@ pub trait Combine<'tcx> : Sized {
     }
 
     fn tys_with_variance(&self, variance: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
-                         -> cres<'tcx, Ty<'tcx>>;
+                         -> CombineResult<'tcx, Ty<'tcx>>;
 
-    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>>;
+    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CombineResult<'tcx, Ty<'tcx>>;
 
     fn regions_with_variance(&self, variance: ty::Variance, a: ty::Region, b: ty::Region)
-                             -> cres<'tcx, ty::Region>;
+                             -> CombineResult<'tcx, ty::Region>;
 
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region>;
+    fn regions(&self, a: ty::Region, b: ty::Region) -> CombineResult<'tcx, ty::Region>;
 
     fn substs(&self,
               item_def_id: ast::DefId,
               a_subst: &subst::Substs<'tcx>,
               b_subst: &subst::Substs<'tcx>)
-              -> cres<'tcx, subst::Substs<'tcx>>
+              -> CombineResult<'tcx, subst::Substs<'tcx>>
     {
         debug!("substs: item_def_id={} a_subst={} b_subst={}",
                item_def_id.repr(self.infcx().tcx),
@@ -126,7 +126,7 @@ pub trait Combine<'tcx> : Sized {
                         variances: Option<&ty::ItemVariances>,
                         a_subst: &subst::Substs<'tcx>,
                         b_subst: &subst::Substs<'tcx>)
-                        -> cres<'tcx, subst::Substs<'tcx>>
+                        -> CombineResult<'tcx, subst::Substs<'tcx>>
     {
         let mut substs = subst::Substs::empty();
 
@@ -163,7 +163,7 @@ pub trait Combine<'tcx> : Sized {
                                                       variances: Option<&[ty::Variance]>,
                                                       a_tys: &[Ty<'tcx>],
                                                       b_tys: &[Ty<'tcx>])
-                                                      -> cres<'tcx, Vec<Ty<'tcx>>>
+                                                      -> CombineResult<'tcx, Vec<Ty<'tcx>>>
         {
             if a_tys.len() != b_tys.len() {
                 return Err(ty::terr_ty_param_size(expected_found(this,
@@ -183,7 +183,7 @@ pub trait Combine<'tcx> : Sized {
                                                         variances: Option<&[ty::Variance]>,
                                                         a_rs: &[ty::Region],
                                                         b_rs: &[ty::Region])
-                                                        -> cres<'tcx, Vec<ty::Region>>
+                                                        -> CombineResult<'tcx, Vec<ty::Region>>
         {
             let tcx = this.infcx().tcx;
             let num_region_params = a_rs.len();
@@ -212,7 +212,7 @@ pub trait Combine<'tcx> : Sized {
     }
 
     fn bare_fn_tys(&self, a: &ty::BareFnTy<'tcx>,
-                   b: &ty::BareFnTy<'tcx>) -> cres<'tcx, ty::BareFnTy<'tcx>> {
+                   b: &ty::BareFnTy<'tcx>) -> CombineResult<'tcx, ty::BareFnTy<'tcx>> {
         let unsafety = try!(self.unsafeties(a.unsafety, b.unsafety));
         let abi = try!(self.abi(a.abi, b.abi));
         let sig = try!(self.binders(&a.sig, &b.sig));
@@ -221,7 +221,7 @@ pub trait Combine<'tcx> : Sized {
                          sig: sig})
     }
 
-    fn fn_sigs(&self, a: &ty::FnSig<'tcx>, b: &ty::FnSig<'tcx>) -> cres<'tcx, ty::FnSig<'tcx>> {
+    fn fn_sigs(&self, a: &ty::FnSig<'tcx>, b: &ty::FnSig<'tcx>) -> CombineResult<'tcx, ty::FnSig<'tcx>> {
         if a.variadic != b.variadic {
             return Err(ty::terr_variadic_mismatch(expected_found(self, a.variadic, b.variadic)));
         }
@@ -248,7 +248,7 @@ pub trait Combine<'tcx> : Sized {
         fn argvecs<'tcx, C>(combiner: &C,
                             a_args: &[Ty<'tcx>],
                             b_args: &[Ty<'tcx>])
-                            -> cres<'tcx, Vec<Ty<'tcx>>>
+                            -> CombineResult<'tcx, Vec<Ty<'tcx>>>
                             where C: Combine<'tcx> {
             if a_args.len() == b_args.len() {
                 a_args.iter().zip(b_args.iter())
@@ -259,11 +259,11 @@ pub trait Combine<'tcx> : Sized {
         }
     }
 
-    fn args(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
+    fn args(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CombineResult<'tcx, Ty<'tcx>> {
         self.tys_with_variance(ty::Contravariant, a, b).and_then(|t| Ok(t))
     }
 
-    fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
+    fn unsafeties(&self, a: Unsafety, b: Unsafety) -> CombineResult<'tcx, Unsafety> {
         if a != b {
             Err(ty::terr_unsafety_mismatch(expected_found(self, a, b)))
         } else {
@@ -271,7 +271,7 @@ pub trait Combine<'tcx> : Sized {
         }
     }
 
-    fn abi(&self, a: abi::Abi, b: abi::Abi) -> cres<'tcx, abi::Abi> {
+    fn abi(&self, a: abi::Abi, b: abi::Abi) -> CombineResult<'tcx, abi::Abi> {
         if a == b {
             Ok(a)
         } else {
@@ -282,7 +282,7 @@ pub trait Combine<'tcx> : Sized {
     fn projection_tys(&self,
                       a: &ty::ProjectionTy<'tcx>,
                       b: &ty::ProjectionTy<'tcx>)
-                      -> cres<'tcx, ty::ProjectionTy<'tcx>>
+                      -> CombineResult<'tcx, ty::ProjectionTy<'tcx>>
     {
         if a.item_name != b.item_name {
             Err(ty::terr_projection_name_mismatched(
@@ -296,7 +296,7 @@ pub trait Combine<'tcx> : Sized {
     fn projection_predicates(&self,
                              a: &ty::ProjectionPredicate<'tcx>,
                              b: &ty::ProjectionPredicate<'tcx>)
-                             -> cres<'tcx, ty::ProjectionPredicate<'tcx>>
+                             -> CombineResult<'tcx, ty::ProjectionPredicate<'tcx>>
     {
         let projection_ty = try!(self.projection_tys(&a.projection_ty, &b.projection_ty));
         let ty = try!(self.tys(a.ty, b.ty));
@@ -306,7 +306,7 @@ pub trait Combine<'tcx> : Sized {
     fn projection_bounds(&self,
                          a: &Vec<ty::PolyProjectionPredicate<'tcx>>,
                          b: &Vec<ty::PolyProjectionPredicate<'tcx>>)
-                         -> cres<'tcx, Vec<ty::PolyProjectionPredicate<'tcx>>>
+                         -> CombineResult<'tcx, Vec<ty::PolyProjectionPredicate<'tcx>>>
     {
         // To be compatible, `a` and `b` must be for precisely the
         // same set of traits and item names. We always require that
@@ -326,7 +326,7 @@ pub trait Combine<'tcx> : Sized {
     fn existential_bounds(&self,
                           a: &ty::ExistentialBounds<'tcx>,
                           b: &ty::ExistentialBounds<'tcx>)
-                          -> cres<'tcx, ty::ExistentialBounds<'tcx>>
+                          -> CombineResult<'tcx, ty::ExistentialBounds<'tcx>>
     {
         let r = try!(self.regions_with_variance(ty::Contravariant, a.region_bound, b.region_bound));
         let nb = try!(self.builtin_bounds(a.builtin_bounds, b.builtin_bounds));
@@ -339,7 +339,7 @@ pub trait Combine<'tcx> : Sized {
     fn builtin_bounds(&self,
                       a: BuiltinBounds,
                       b: BuiltinBounds)
-                      -> cres<'tcx, BuiltinBounds>
+                      -> CombineResult<'tcx, BuiltinBounds>
     {
         // Two sets of builtin bounds are only relatable if they are
         // precisely the same (but see the coercion code).
@@ -353,7 +353,7 @@ pub trait Combine<'tcx> : Sized {
     fn trait_refs(&self,
                   a: &ty::TraitRef<'tcx>,
                   b: &ty::TraitRef<'tcx>)
-                  -> cres<'tcx, ty::TraitRef<'tcx>>
+                  -> CombineResult<'tcx, ty::TraitRef<'tcx>>
     {
         // Different traits cannot be related
         if a.def_id != b.def_id {
@@ -364,14 +364,14 @@ pub trait Combine<'tcx> : Sized {
         }
     }
 
-    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> cres<'tcx, ty::Binder<T>>
+    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> CombineResult<'tcx, ty::Binder<T>>
         where T : Combineable<'tcx>;
     // this must be overridden to do correctly, so as to account for higher-ranked
     // behavior
 }
 
 pub trait Combineable<'tcx> : Repr<'tcx> + TypeFoldable<'tcx> {
-    fn combine<C:Combine<'tcx>>(combiner: &C, a: &Self, b: &Self) -> cres<'tcx, Self>;
+    fn combine<C:Combine<'tcx>>(combiner: &C, a: &Self, b: &Self) -> CombineResult<'tcx, Self>;
 }
 
 impl<'tcx,T> Combineable<'tcx> for Rc<T>
@@ -380,7 +380,7 @@ impl<'tcx,T> Combineable<'tcx> for Rc<T>
     fn combine<C>(combiner: &C,
                   a: &Rc<T>,
                   b: &Rc<T>)
-                  -> cres<'tcx, Rc<T>>
+                  -> CombineResult<'tcx, Rc<T>>
                   where C: Combine<'tcx> {
         Ok(Rc::new(try!(Combineable::combine(combiner, &**a, &**b))))
     }
@@ -390,7 +390,7 @@ impl<'tcx> Combineable<'tcx> for ty::TraitRef<'tcx> {
     fn combine<C>(combiner: &C,
                   a: &ty::TraitRef<'tcx>,
                   b: &ty::TraitRef<'tcx>)
-                  -> cres<'tcx, ty::TraitRef<'tcx>>
+                  -> CombineResult<'tcx, ty::TraitRef<'tcx>>
                   where C: Combine<'tcx> {
         combiner.trait_refs(a, b)
     }
@@ -400,7 +400,7 @@ impl<'tcx> Combineable<'tcx> for Ty<'tcx> {
     fn combine<C>(combiner: &C,
                   a: &Ty<'tcx>,
                   b: &Ty<'tcx>)
-                  -> cres<'tcx, Ty<'tcx>>
+                  -> CombineResult<'tcx, Ty<'tcx>>
                   where C: Combine<'tcx> {
         combiner.tys(*a, *b)
     }
@@ -410,7 +410,7 @@ impl<'tcx> Combineable<'tcx> for ty::ProjectionPredicate<'tcx> {
     fn combine<C>(combiner: &C,
                   a: &ty::ProjectionPredicate<'tcx>,
                   b: &ty::ProjectionPredicate<'tcx>)
-                  -> cres<'tcx, ty::ProjectionPredicate<'tcx>>
+                  -> CombineResult<'tcx, ty::ProjectionPredicate<'tcx>>
                   where C: Combine<'tcx> {
         combiner.projection_predicates(a, b)
     }
@@ -420,7 +420,7 @@ impl<'tcx> Combineable<'tcx> for ty::FnSig<'tcx> {
     fn combine<C>(combiner: &C,
                   a: &ty::FnSig<'tcx>,
                   b: &ty::FnSig<'tcx>)
-                  -> cres<'tcx, ty::FnSig<'tcx>>
+                  -> CombineResult<'tcx, ty::FnSig<'tcx>>
                   where C: Combine<'tcx> {
         combiner.fn_sigs(a, b)
     }
@@ -448,7 +448,7 @@ pub fn expected_found<'tcx, C, T>(this: &C,
 pub fn super_tys<'tcx, C>(this: &C,
                           a: Ty<'tcx>,
                           b: Ty<'tcx>)
-                          -> cres<'tcx, Ty<'tcx>>
+                          -> CombineResult<'tcx, Ty<'tcx>>
                           where C: Combine<'tcx> {
     let tcx = this.infcx().tcx;
     let a_sty = &a.sty;
@@ -616,7 +616,7 @@ pub fn super_tys<'tcx, C>(this: &C,
                                         vid_is_expected: bool,
                                         vid: ty::IntVid,
                                         val: ty::IntVarValue)
-                                        -> cres<'tcx, Ty<'tcx>>
+                                        -> CombineResult<'tcx, Ty<'tcx>>
                                         where C: Combine<'tcx> {
         try!(this.infcx().simple_var_t(vid_is_expected, vid, val));
         match val {
@@ -629,7 +629,7 @@ pub fn super_tys<'tcx, C>(this: &C,
                                      vid_is_expected: bool,
                                      vid: ty::FloatVid,
                                      val: ast::FloatTy)
-                                     -> cres<'tcx, Ty<'tcx>>
+                                     -> CombineResult<'tcx, Ty<'tcx>>
                                      where C: Combine<'tcx> {
         try!(this.infcx().simple_var_t(vid_is_expected, vid, val));
         Ok(ty::mk_mach_float(this.tcx(), val))
@@ -660,7 +660,7 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
                        a_ty: Ty<'tcx>,
                        dir: RelationDir,
                        b_vid: ty::TyVid)
-                       -> cres<'tcx, ()>
+                       -> CombineResult<'tcx, ()>
     {
         let tcx = self.infcx.tcx;
         let mut stack = Vec::new();
@@ -746,7 +746,7 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
                   ty: Ty<'tcx>,
                   for_vid: ty::TyVid,
                   make_region_vars: bool)
-                  -> cres<'tcx, Ty<'tcx>>
+                  -> CombineResult<'tcx, Ty<'tcx>>
     {
         let mut generalize = Generalizer {
             infcx: self.infcx,
@@ -839,3 +839,23 @@ impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
         self.infcx.next_region_var(MiscVariable(self.span))
     }
 }
+
+pub trait CombineResultCompare<'tcx, T> {
+    fn compare<F>(&self, t: T, f: F) -> CombineResult<'tcx, T> where
+        F: FnOnce() -> ty::type_err<'tcx>;
+}
+
+impl<'tcx, T:Clone + PartialEq> CombineResultCompare<'tcx, T> for CombineResult<'tcx, T> {
+    fn compare<F>(&self, t: T, f: F) -> CombineResult<'tcx, T> where
+        F: FnOnce() -> ty::type_err<'tcx>,
+    {
+        (*self).clone().and_then(|s| {
+            if s == t {
+                (*self).clone()
+            } else {
+                Err(f())
+            }
+        })
+    }
+}
+
