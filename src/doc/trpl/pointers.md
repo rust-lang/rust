@@ -634,8 +634,8 @@ use-case for boxes.
 ### Returning data
 
 This is important enough to have its own section entirely. The TL;DR is this:
-you don't generally want to return pointers, even when you might in a language
-like C or C++.
+you don't want to return pointers, even when you might in a language like C or
+C++.
 
 See [Returning Pointers](#returning-pointers) below for more.
 
