@@ -130,7 +130,7 @@ ifdef CFG_DISABLE_DEBUG
   CFG_RUSTC_FLAGS += --cfg ndebug
 else
   $(info cfg: enabling more debugging (CFG_ENABLE_DEBUG))
-  CFG_RUSTC_FLAGS += --cfg debug
+  CFG_RUSTC_FLAGS += --cfg debug -C debug-assertions=on
 endif
 
 ifdef SAVE_TEMPS
