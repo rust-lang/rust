@@ -1877,7 +1877,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_slice_fail() {
         "中华Việt Nam".slice(0, 2);
     }
@@ -2095,7 +2095,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_as_bytes_fail() {
         // Don't double free. (I'm not sure if this exercises the
         // original problem code path anymore.)
@@ -2132,7 +2132,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_subslice_offset_2() {
         let a = "alchemiter";
         let b = "cruxtruder";

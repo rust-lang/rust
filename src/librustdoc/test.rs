@@ -114,7 +114,7 @@ pub fn run(input: &str,
 #[allow(deprecated)]
 fn runtest(test: &str, cratename: &str, libs: SearchPaths,
            externs: core::Externs,
-           should_fail: bool, no_run: bool, as_test_harness: bool) {
+           should_panic: bool, no_run: bool, as_test_harness: bool) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
     let test = maketest(test, Some(cratename), true, as_test_harness);
@@ -210,9 +210,9 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
                             " - maybe your tempdir is mounted with noexec?"
                         } else { "" }),
         Ok(out) => {
-            if should_fail && out.status.success() {
+            if should_panic && out.status.success() {
                 panic!("test executable succeeded when it should have failed");
-            } else if !should_fail && !out.status.success() {
+            } else if !should_panic && !out.status.success() {
                 panic!("test executable failed:\n{:?}",
                       str::from_utf8(&out.stdout));
             }
@@ -279,7 +279,7 @@ impl Collector {
     }
 
     pub fn add_test(&mut self, test: String,
-                    should_fail: bool, no_run: bool, should_ignore: bool, as_test_harness: bool) {
+                    should_panic: bool, no_run: bool, should_ignore: bool, as_test_harness: bool) {
         let name = if self.use_headers {
             let s = self.current_header.as_ref().map(|s| &**s).unwrap_or("");
             format!("{}_{}", s, self.cnt)
@@ -295,14 +295,14 @@ impl Collector {
             desc: testing::TestDesc {
                 name: testing::DynTestName(name),
                 ignore: should_ignore,
-                should_fail: testing::ShouldFail::No, // compiler failures are test failures
+                should_panic: testing::ShouldPanic::No, // compiler failures are test failures
             },
             testfn: testing::DynTestFn(Thunk::new(move|| {
                 runtest(&test,
                         &cratename,
                         libs,
                         externs,
-                        should_fail,
+                        should_panic,
                         no_run,
                         as_test_harness);
             }))

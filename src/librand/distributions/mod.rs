@@ -351,16 +351,16 @@ mod tests {
            [50, 51, 52, 53, 54, 55, 56]);
     }
 
-    #[test] #[should_fail]
+    #[test] #[should_panic]
     fn test_weighted_choice_no_items() {
         WeightedChoice::<int>::new(&mut []);
     }
-    #[test] #[should_fail]
+    #[test] #[should_panic]
     fn test_weighted_choice_zero_weight() {
         WeightedChoice::new(&mut [Weighted { weight: 0, item: 0},
                                   Weighted { weight: 0, item: 1}]);
     }
-    #[test] #[should_fail]
+    #[test] #[should_panic]
     fn test_weighted_choice_weight_overflows() {
         let x = (-1) as uint / 2; // x + x + 2 is the overflow
         WeightedChoice::new(&mut [Weighted { weight: x, item: 0 },

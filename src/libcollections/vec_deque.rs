@@ -1884,7 +1884,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_index_out_of_bounds() {
         let mut deq = VecDeque::new();
         for i in 1..4 {

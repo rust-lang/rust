@@ -396,7 +396,7 @@ mod test {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn read_to_end_error() {
         let mut reader = ThreeChunkReader {
             count: 0,

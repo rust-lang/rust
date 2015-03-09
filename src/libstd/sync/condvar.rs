@@ -479,7 +479,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn two_mutexes() {
         static M1: StaticMutex = MUTEX_INIT;
         static M2: StaticMutex = MUTEX_INIT;
