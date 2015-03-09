@@ -3007,10 +3007,6 @@ A type cast expression is denoted with the binary operator `as`.
 Executing an `as` expression casts the value on the left-hand side to the type
 on the right-hand side.
 
-A numeric value can be cast to any numeric type. A raw pointer value can be
-cast to or from any integral type or raw pointer type. Any other cast is
-unsupported and will fail to compile.
-
 An example of an `as` expression:
 
 ```
