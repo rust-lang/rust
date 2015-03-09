@@ -71,6 +71,7 @@ impl Circle {
     fn takes_ownership(self) {
        println!("taking ownership of self!"); 
     }
+}
 ```
 
 Finally, as you may remember, the value of the area of a circle is `π*r²`.
