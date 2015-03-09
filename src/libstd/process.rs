@@ -812,7 +812,7 @@ mod tests {
         for (ref k, ref v) in env::vars() {
             // don't check windows magical empty-named variables
             assert!(k.is_empty() ||
-                    output.contains(format!("{}={}", *k, *v).as_slice()),
+                    output.contains(&format!("{}={}", *k, *v)),
                     "output doesn't contain `{}={}`\n{}",
                     k, v, output);
         }
@@ -830,12 +830,12 @@ mod tests {
         for &(ref k, ref v) in &r {
             // don't check android RANDOM variables
             if *k != "RANDOM".to_string() {
-                assert!(output.contains(format!("{}={}",
-                                                *k,
-                                                *v).as_slice()) ||
-                        output.contains(format!("{}=\'{}\'",
-                                                *k,
-                                                *v).as_slice()));
+                assert!(output.contains(&format!("{}={}",
+                                                 *k,
+                                                 *v)) ||
+                        output.contains(&format!("{}=\'{}\'",
+                                                 *k,
+                                                 *v)));
             }
         }
     }

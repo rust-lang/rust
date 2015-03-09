@@ -204,7 +204,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<ast::Pat>
 pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {
     match eval_const_expr_partial(tcx, e, None) {
         Ok(r) => r,
-        Err(s) => tcx.sess.span_fatal(s.span, s.description().as_slice())
+        Err(s) => tcx.sess.span_fatal(s.span, &s.description())
     }
 }
 
@@ -665,14 +665,14 @@ pub fn compare_lit_exprs<'tcx>(tcx: &ty::ctxt<'tcx>,
     let a = match eval_const_expr_partial(tcx, a, ty_hint) {
         Ok(a) => a,
         Err(e) => {
-            tcx.sess.span_err(a.span, e.description().as_slice());
+            tcx.sess.span_err(a.span, &e.description());
             return None;
         }
     };
     let b = match eval_const_expr_partial(tcx, b, ty_hint) {
         Ok(b) => b,
         Err(e) => {
-            tcx.sess.span_err(b.span, e.description().as_slice());
+            tcx.sess.span_err(b.span, &e.description());
             return None;
         }
     };

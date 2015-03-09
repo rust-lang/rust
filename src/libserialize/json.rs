@@ -188,7 +188,7 @@
 //!     let json_str: String = json_obj.to_string();
 //!
 //!     // Deserialize like before
-//!     let decoded: TestStruct = json::decode(json_str.as_slice()).unwrap();
+//!     let decoded: TestStruct = json::decode(json_str)).unwrap();
 //! }
 //! ```
 

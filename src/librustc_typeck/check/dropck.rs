@@ -298,8 +298,8 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                 match rcx.tcx().region_maps.opt_encl_scope(scope) {
                     Some(parent_scope) => ty::ReScope(parent_scope),
                     None => rcx.tcx().sess.span_bug(
-                        span, format!("no enclosing scope found for scope: {:?}",
-                                      scope).as_slice()),
+                        span, &format!("no enclosing scope found for scope: {:?}",
+                                       scope)),
                 };
 
             regionck::type_must_outlive(rcx, origin(), typ, parent_region);

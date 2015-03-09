@@ -828,7 +828,7 @@ mod tests {
     macro_rules! error { ($e:expr, $s:expr) => (
         match $e {
             Ok(_) => panic!("Unexpected success. Should've been: {:?}", $s),
-            Err(ref err) => assert!(err.to_string().contains($s.as_slice()),
+            Err(ref err) => assert!(err.to_string().contains($s),
                                     format!("`{}` did not contain `{}`", err, $s))
         }
     ) }
@@ -880,7 +880,7 @@ mod tests {
                 -1|0 => panic!("shouldn't happen"),
                 n => str::from_utf8(&read_buf[..n]).unwrap().to_string()
             };
-            assert_eq!(read_str.as_slice(), message);
+            assert_eq!(read_str, message);
         }
         check!(fs::remove_file(filename));
     }
@@ -1107,7 +1107,7 @@ mod tests {
                 check!(check!(File::open(&f)).read(&mut mem));
                 let read_str = str::from_utf8(&mem).unwrap();
                 let expected = format!("{}{}", prefix, n.to_str().unwrap());
-                assert_eq!(expected.as_slice(), read_str);
+                assert_eq!(expected, read_str);
             }
             check!(fs::remove_file(&f));
         }
