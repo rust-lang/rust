@@ -22,14 +22,14 @@ use core::fmt;
 use core::hash;
 use core::iter::{IntoIterator, FromIterator};
 use core::mem;
-use core::ops::{self, Deref, Add, Index};
+use core::ops::{self, Deref, Add, Index, Range, RangeTo, RangeFrom, RangeFull};
 use core::ptr;
 use core::raw::Slice as RawSlice;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
 
 use borrow::{Cow, IntoCow};
-use str::{self, CharRange, FromStr, Utf8Error};
+use str::{self, CharRange, FromStr, Utf8Error, Chars};
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
@@ -669,6 +669,123 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
         self.vec.clear()
+    }
+
+    /// Creates a draining iterator that clears the specified byte-range in the String
+    /// and iterates over the characters contained in the range, backshifting the
+    /// remaining bytes.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let mut s = "Hello Wörld!".to_string();
+    /// let s2: String = s.drain(6..12).collect();
+    /// assert_eq!(s, "Hello !");
+    /// assert_eq!(s2, "Wörld");
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if the range is decreasing, if the upper bound is larger than the
+    /// length of the String, or if the start and the end of the range don't lie on
+    /// character boundaries.
+    pub fn drain<'a, T: DrainRange>(&'a mut self, range: T) -> Drain<'a> {
+        range.drain(self)
+    }
+}
+
+/// A trait for draining a string.
+///
+/// See the documentation of `String::drain`.
+pub trait DrainRange {
+    fn drain<'a>(&self, s: &'a mut String) -> Drain<'a>;
+}
+
+impl DrainRange for Range<usize> {
+    fn drain<'a>(&self, s: &'a mut String) -> Drain<'a> {
+        assert!(self.start <= self.end, "Range not increasing");
+        assert!(self.end <= s.len(), "Range out of bounds");
+        unsafe {
+            let slice = mem::transmute::<&str, &'static str>(&s[self.start..self.end]);
+            let tail = s.len() - self.end;
+            s.as_mut_vec().set_len(tail + self.start);
+            let ptr = s.as_mut_vec().as_mut_ptr();
+            Drain {
+                tail: tail,
+                start: ptr.offset(self.start as isize),
+                end:   ptr.offset(self.end   as isize),
+                chars: slice.chars(),
+            }
+        }
+    }
+}
+
+impl DrainRange for RangeFrom<usize> {
+    fn drain<'a>(&self, s: &'a mut String) -> Drain<'a> {
+        assert!(self.start <= s.len(), "Range out of bounds");
+        (self.start..s.len()).drain(s)
+    }
+}
+
+impl DrainRange for RangeTo<usize> {
+    fn drain<'a>(&self, s: &'a mut String) -> Drain<'a> {
+        (0..self.end).drain(s)
+    }
+}
+
+impl DrainRange for RangeFull {
+    fn drain<'a>(&self, s: &'a mut String) -> Drain<'a> {
+        (0..s.len()).drain(s)
+    }
+}
+
+impl DrainRange for usize {
+    fn drain<'a>(&self, s: &'a mut String) -> Drain<'a> {
+        (*self..*self+1).drain(s)
+    }
+}
+
+/// An iterator that drains part of string.
+#[unsafe_no_drop_flag]
+pub struct Drain<'a> {
+    tail: usize,
+    start: *const u8,
+    end:   *const u8,
+    chars: Chars<'a>,
+}
+
+unsafe impl<'a> Sync for Drain<'a> {}
+unsafe impl<'a> Send for Drain<'a> {}
+
+impl<'a> Iterator for Drain<'a> {
+    type Item = char;
+
+    #[inline]
+    fn next(&mut self) -> Option<char> {
+        self.chars.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.chars.size_hint()
+    }
+}
+
+impl<'a> DoubleEndedIterator for Drain<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<char> {
+        self.chars.next_back()
+    }
+}
+
+#[unsafe_destructor]
+impl<'a> Drop for Drain<'a> {
+    fn drop(&mut self) {
+        // self.start == null if drop has already been called, so we can use
+        // #[unsafe_no_drop_flag].
+        if !self.start.is_null() {
+            unsafe { ptr::copy(self.start as *mut _, self.end, self.tail); }
+        }
     }
 }
 
@@ -1441,5 +1558,13 @@ mod tests {
             r.shrink_to_fit();
             r
         });
+    }
+
+    #[test]
+    fn test_drain() {
+        let mut s = "Hello Wörld!".to_string();
+        let s2: String = s.drain(6..12).collect();
+        assert_eq!(s, "Hello !");
+        assert_eq!(s2, "Wörld");
     }
 }

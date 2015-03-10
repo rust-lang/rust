@@ -60,9 +60,10 @@ use core::iter::{repeat, FromIterator, IntoIterator};
 use core::marker::PhantomData;
 use core::mem;
 use core::num::{Int, UnsignedInt};
-use core::ops::{Index, IndexMut, Deref, Add};
+use core::ops::{Index, IndexMut, Deref, Add, Range, RangeFrom, RangeFull, RangeTo};
 use core::ops;
 use core::ptr;
+use core::cmp;
 use core::ptr::Unique;
 use core::raw::Slice as RawSlice;
 use core::slice;
@@ -731,37 +732,29 @@ impl<T> Vec<T> {
         unsafe { other.set_len(0); }
     }
 
-    /// Creates a draining iterator that clears the `Vec` and iterates over
-    /// the removed items from start to end.
+    /// Creates a draining iterator that clears the specified range in the `Vec` and
+    /// iterates over the removed items from start to end.
     ///
     /// # Examples
     ///
     /// ```
-    /// let mut v = vec!["a".to_string(), "b".to_string()];
-    /// for s in v.drain() {
-    ///     // s has type String, not &String
+    /// let mut v = vec![0, 1, 2, 3, 4, 5, 6];
+    /// for d in v.drain(1..6) {
+    ///     // d has type i32, not &i32
     ///     println!("{}", s);
     /// }
-    /// assert!(v.is_empty());
+    /// assert_eq!(v, vec![0, 6]);
     /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if the range is decreasing or if the upper bound is larger than the
+    /// length of the vector.
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "matches collection reform specification, waiting for dust to settle")]
-    pub fn drain(&mut self) -> Drain<T> {
-        unsafe {
-            let begin = *self.ptr as *const T;
-            let end = if mem::size_of::<T>() == 0 {
-                (*self.ptr as usize + self.len()) as *const T
-            } else {
-                (*self.ptr).offset(self.len() as isize) as *const T
-            };
-            self.set_len(0);
-            Drain {
-                ptr: begin,
-                end: end,
-                marker: PhantomData,
-            }
-        }
+    #[unstable(feature = "collections", reason = "matches drain RFC,
+               waiting for dust to settle")]
+    pub fn drain<'a, U: DrainRange>(&'a mut self, range: U) -> Drain<'a, T> {
+        range.drain(self)
     }
 
     /// Clears the vector, removing all values.
@@ -1748,14 +1741,86 @@ impl<T> Drop for IntoIter<T> {
     }
 }
 
-/// An iterator that drains a vector.
+/// A trait for draining a vector.
+///
+/// See the documentation of `Vec::drain`.
+pub trait DrainRange {
+    fn drain<'a, T>(&self, vec: &'a mut Vec<T>) -> Drain<'a, T>;
+}
+
+impl DrainRange for Range<usize> {
+    fn drain<'a, T>(&self, vec: &'a mut Vec<T>) -> Drain<'a, T> {
+        assert!(self.start <= self.end, "Range not increasing");
+        assert!(self.end <= vec.len(), "Range out of bounds");
+        unsafe {
+            let tail = vec.len() - self.end;
+            vec.set_len(tail + self.start);
+            let ptr = vec.as_ptr();
+            let (start, end) = if mem::size_of::<T>() == 0 {
+                // make sure that start is not null
+                ((self.start + 1) as *const T, (self.end + 1) as *const T)
+            } else {
+                (ptr.offset(self.start as isize), ptr.offset(self.end as isize))
+            };
+            Drain {
+                tail:  tail,
+                start: start,
+                end:   end,
+                left:  start,
+                right: end,
+                marker1: PhantomData,
+                marker2: PhantomData,
+            }
+        }
+    }
+}
+
+impl DrainRange for RangeFrom<usize> {
+    fn drain<'a, T>(&self, vec: &'a mut Vec<T>) -> Drain<'a, T> {
+        assert!(self.start <= vec.len(), "Range out of bounds");
+        (self.start..vec.len()).drain(vec)
+    }
+}
+
+impl DrainRange for RangeTo<usize> {
+    fn drain<'a, T>(&self, vec: &'a mut Vec<T>) -> Drain<'a, T> {
+        (0..self.end).drain(vec)
+    }
+}
+
+impl DrainRange for RangeFull {
+    fn drain<'a, T>(&self, vec: &'a mut Vec<T>) -> Drain<'a, T> {
+        (0..vec.len()).drain(vec)
+    }
+}
+
+impl DrainRange for usize {
+    fn drain<'a, T>(&self, vec: &'a mut Vec<T>) -> Drain<'a, T> {
+        (*self..*self+1).drain(vec)
+    }
+}
+
+/// An iterator that drains part of a vector.
 #[unsafe_no_drop_flag]
 #[unstable(feature = "collections",
            reason = "recently added as part of collections reform 2")]
-pub struct Drain<'a, T:'a> {
-    ptr: *const T,
-    end: *const T,
-    marker: PhantomData<&'a T>,
+pub struct Drain<'a, T> {
+    tail: usize,
+    start: *const T,
+    end:   *const T,
+    left:  *const T,
+    right: *const T,
+    marker1: PhantomData<&'a ()>,
+    // Drain<T> contains functions to retrieve T but none to insert T.
+    marker2: PhantomData<Fn() -> T>,
+
+    // The straightforward marker would be &'a mut Vec<T>. If we were writing this in safe
+    // code, that's what we would have after all. However, that would also induce
+    // invariance on T, which given that Drain only ever extracts values of T is stricter
+    // than necessary. Therefore, we use this more subtle formulation, which uses a &'a ()
+    // marker to bind the lifetime securing the vector, and which uses a second marker to
+    // express that we have a way of producing T instances that we are going to employ.
+    // This gives covariance in T.
 }
 
 unsafe impl<'a, T: Sync> Sync for Drain<'a, T> {}
@@ -1768,20 +1833,20 @@ impl<'a, T> Iterator for Drain<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<T> {
         unsafe {
-            if self.ptr == self.end {
+            if self.left == self.right {
                 None
             } else {
                 if mem::size_of::<T>() == 0 {
                     // purposefully don't use 'ptr.offset' because for
                     // vectors with 0-size elements this would return the
                     // same pointer.
-                    self.ptr = mem::transmute(self.ptr as usize + 1);
+                    self.left = (self.left as usize + 1) as *mut T;
 
                     // Use a non-null pointer value
                     Some(ptr::read(EMPTY as *mut T))
                 } else {
-                    let old = self.ptr;
-                    self.ptr = self.ptr.offset(1);
+                    let old = self.left;
+                    self.left = self.left.offset(1);
 
                     Some(ptr::read(old))
                 }
@@ -1791,9 +1856,9 @@ impl<'a, T> Iterator for Drain<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let diff = (self.end as usize) - (self.ptr as usize);
-        let size = mem::size_of::<T>();
-        let exact = diff / (if size == 0 {1} else {size});
+        let diff = (self.right as usize) - (self.left as usize);
+        let size = cmp::max(mem::size_of::<T>(), 1);
+        let exact = diff / size;
         (exact, Some(exact))
     }
 }
@@ -1803,19 +1868,19 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         unsafe {
-            if self.end == self.ptr {
+            if self.left == self.right {
                 None
             } else {
                 if mem::size_of::<T>() == 0 {
                     // See above for why 'ptr.offset' isn't used
-                    self.end = mem::transmute(self.end as usize - 1);
+                    self.right = (self.right as usize - 1) as *mut T;
 
                     // Use a non-null pointer value
                     Some(ptr::read(EMPTY as *mut T))
                 } else {
-                    self.end = self.end.offset(-1);
+                    self.right = self.right.offset(-1);
 
-                    Some(ptr::read(self.end))
+                    Some(ptr::read(self.right))
                 }
             }
         }
@@ -1829,11 +1894,16 @@ impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
-        // self.ptr == self.end == null if drop has already been called,
-        // so we can use #[unsafe_no_drop_flag].
+        // self.start == null if drop has already been called, so we can use
+        // #[unsafe_no_drop_flag].
+        if !self.start.is_null() {
+            // destroy the remaining elements
+            for _x in self.by_ref() {}
 
-        // destroy the remaining elements
-        for _x in self.by_ref() {}
+            if mem::size_of::<T>() > 0 {
+                unsafe { ptr::copy(self.start as *mut _, self.end, self.tail); }
+            }
+        }
     }
 }
 
@@ -1958,6 +2028,7 @@ impl<T,U> Drop for PartialVecZeroSized<T,U> {
 mod tests {
     use prelude::*;
     use core::mem::size_of;
+    use core::atomic;
     use core::iter::repeat;
     use test::Bencher;
     use super::as_vec;
@@ -2406,35 +2477,56 @@ mod tests {
 
     #[test]
     fn test_drain_items() {
-        let mut vec = vec![1, 2, 3];
+        let mut vec = vec![0, 1, 2];
         let mut vec2 = vec![];
-        for i in vec.drain() {
+        for i in vec.drain(1..2) {
             vec2.push(i);
         }
-        assert_eq!(vec, []);
-        assert_eq!(vec2, [ 1, 2, 3 ]);
+        assert_eq!(vec, [0, 2]);
+        assert_eq!(vec2, [1]);
     }
 
     #[test]
     fn test_drain_items_reverse() {
-        let mut vec = vec![1, 2, 3];
+        let mut vec = vec![0, 1, 2];
         let mut vec2 = vec![];
-        for i in vec.drain().rev() {
+        for i in vec.drain(1..).rev() {
             vec2.push(i);
         }
-        assert_eq!(vec, []);
-        assert_eq!(vec2, [3, 2, 1]);
+        assert_eq!(vec, [0]);
+        assert_eq!(vec2, [2, 1]);
     }
 
     #[test]
     fn test_drain_items_zero_sized() {
         let mut vec = vec![(), (), ()];
         let mut vec2 = vec![];
-        for i in vec.drain() {
+        for i in vec.drain(..) {
             vec2.push(i);
         }
         assert_eq!(vec, []);
         assert_eq!(vec2, [(), (), ()]);
+    }
+
+    #[test]
+    fn test_drain_drop() {
+        // Assumes that every test is run only once.
+        static COUNTER: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
+
+        #[derive(Debug, PartialEq)]
+        struct X(u8);
+
+        impl Drop for X {
+            fn drop(&mut self) {
+                COUNTER.fetch_add(1, atomic::Ordering::SeqCst);
+            }
+        }
+
+        let mut vec = vec![X(0), X(1), X(2), X(3)];
+        vec.drain(1..3);
+        let vec2 = vec![X(0), X(3)];
+        assert_eq!(vec, vec2);
+        assert_eq!(COUNTER.load(atomic::Ordering::SeqCst), 2);
     }
 
     #[test]

@@ -554,7 +554,7 @@ impl<T: Ord> BinaryHeap<T> {
     #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain(&mut self) -> Drain<T> {
-        Drain { iter: self.data.drain() }
+        Drain { iter: self.data.drain(..) }
     }
 
     /// Drops all items from the binary heap.
