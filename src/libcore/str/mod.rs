@@ -335,21 +335,20 @@ pub struct Chars<'a> {
     iter: slice::Iter<'a, u8>
 }
 
-// Return the initial codepoint accumulator for the first byte.
-// The first byte is special, only want bottom 5 bits for width 2, 4 bits
-// for width 3, and 3 bits for width 4
-macro_rules! utf8_first_byte {
-    ($byte:expr, $width:expr) => (($byte & (0x7F >> $width)) as u32)
-}
+/// Return the initial codepoint accumulator for the first byte.
+/// The first byte is special, only want bottom 5 bits for width 2, 4 bits
+/// for width 3, and 3 bits for width 4.
+#[inline]
+fn utf8_first_byte(byte: u8, width: u32) -> u32 { (byte & (0x7F >> width)) as u32 }
 
-// return the value of $ch updated with continuation byte $byte
-macro_rules! utf8_acc_cont_byte {
-    ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & CONT_MASK) as u32)
-}
+/// Return the value of `ch` updated with continuation byte `byte`.
+#[inline]
+fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 { (ch << 6) | (byte & CONT_MASK) as u32 }
 
-macro_rules! utf8_is_cont_byte {
-    ($byte:expr) => (($byte & !CONT_MASK) == TAG_CONT_U8)
-}
+/// Checks whether the byte is a UTF-8 continuation byte (i.e. starts with the
+/// bits `10`).
+#[inline]
+fn utf8_is_cont_byte(byte: u8) -> bool { (byte & !CONT_MASK) == TAG_CONT_U8 }
 
 #[inline]
 fn unwrap_or_0(opt: Option<&u8>) -> u8 {
@@ -374,20 +373,20 @@ pub fn next_code_point(bytes: &mut slice::Iter<u8>) -> Option<u32> {
     // Multibyte case follows
     // Decode from a byte combination out of: [[[x y] z] w]
     // NOTE: Performance is sensitive to the exact formulation here
-    let init = utf8_first_byte!(x, 2);
+    let init = utf8_first_byte(x, 2);
     let y = unwrap_or_0(bytes.next());
-    let mut ch = utf8_acc_cont_byte!(init, y);
+    let mut ch = utf8_acc_cont_byte(init, y);
     if x >= 0xE0 {
         // [[x y z] w] case
         // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
         let z = unwrap_or_0(bytes.next());
-        let y_z = utf8_acc_cont_byte!((y & CONT_MASK) as u32, z);
+        let y_z = utf8_acc_cont_byte((y & CONT_MASK) as u32, z);
         ch = init << 12 | y_z;
         if x >= 0xF0 {
             // [x y z w] case
             // use only the lower 3 bits of `init`
             let w = unwrap_or_0(bytes.next());
-            ch = (init & 7) << 18 | utf8_acc_cont_byte!(y_z, w);
+            ch = (init & 7) << 18 | utf8_acc_cont_byte(y_z, w);
         }
     }
 
@@ -410,18 +409,18 @@ pub fn next_code_point_reverse(bytes: &mut slice::Iter<u8>) -> Option<u32> {
     // Decode from a byte combination out of: [x [y [z w]]]
     let mut ch;
     let z = unwrap_or_0(bytes.next_back());
-    ch = utf8_first_byte!(z, 2);
-    if utf8_is_cont_byte!(z) {
+    ch = utf8_first_byte(z, 2);
+    if utf8_is_cont_byte(z) {
         let y = unwrap_or_0(bytes.next_back());
-        ch = utf8_first_byte!(y, 3);
-        if utf8_is_cont_byte!(y) {
+        ch = utf8_first_byte(y, 3);
+        if utf8_is_cont_byte(y) {
             let x = unwrap_or_0(bytes.next_back());
-            ch = utf8_first_byte!(x, 4);
-            ch = utf8_acc_cont_byte!(ch, y);
+            ch = utf8_first_byte(x, 4);
+            ch = utf8_acc_cont_byte(ch, y);
         }
-        ch = utf8_acc_cont_byte!(ch, z);
+        ch = utf8_acc_cont_byte(ch, z);
     }
-    ch = utf8_acc_cont_byte!(ch, w);
+    ch = utf8_acc_cont_byte(ch, w);
 
     Some(ch)
 }
@@ -1040,7 +1039,7 @@ fn run_utf8_validation_iterator(iter: &mut slice::Iter<u8>)
         // ASCII characters are always valid, so only large
         // bytes need more examination.
         if first >= 128 {
-            let w = UTF8_CHAR_WIDTH[first as usize] as usize;
+            let w = UTF8_CHAR_WIDTH[first as usize];
             let second = next!();
             // 2-byte encoding is for codepoints  \u{0080} to  \u{07ff}
             //        first  C2 80        last DF BF
@@ -1594,14 +1593,14 @@ impl StrExt for str {
                 i -= 1;
             }
 
-            let mut val = s.as_bytes()[i] as u32;
-            let w = UTF8_CHAR_WIDTH[val as usize] as usize;
-            assert!((w != 0));
+            let first= s.as_bytes()[i];
+            let w = UTF8_CHAR_WIDTH[first as usize];
+            assert!(w != 0);
 
-            val = utf8_first_byte!(val, w);
-            val = utf8_acc_cont_byte!(val, s.as_bytes()[i + 1]);
-            if w > 2 { val = utf8_acc_cont_byte!(val, s.as_bytes()[i + 2]); }
-            if w > 3 { val = utf8_acc_cont_byte!(val, s.as_bytes()[i + 3]); }
+            let mut val = utf8_first_byte(first, w as u32);
+            val = utf8_acc_cont_byte(val, s.as_bytes()[i + 1]);
+            if w > 2 { val = utf8_acc_cont_byte(val, s.as_bytes()[i + 2]); }
+            if w > 3 { val = utf8_acc_cont_byte(val, s.as_bytes()[i + 3]); }
 
             return CharRange {ch: unsafe { mem::transmute(val) }, next: i};
         }
@@ -1686,16 +1685,16 @@ pub fn char_range_at_raw(bytes: &[u8], i: usize) -> (u32, usize) {
 
     // Multibyte case is a fn to allow char_range_at to inline cleanly
     fn multibyte_char_range_at(bytes: &[u8], i: usize) -> (u32, usize) {
-        let mut val = bytes[i] as u32;
-        let w = UTF8_CHAR_WIDTH[val as usize] as usize;
-        assert!((w != 0));
+        let first = bytes[i];
+        let w = UTF8_CHAR_WIDTH[first as usize];
+        assert!(w != 0);
 
-        val = utf8_first_byte!(val, w);
-        val = utf8_acc_cont_byte!(val, bytes[i + 1]);
-        if w > 2 { val = utf8_acc_cont_byte!(val, bytes[i + 2]); }
-        if w > 3 { val = utf8_acc_cont_byte!(val, bytes[i + 3]); }
+        let mut val = utf8_first_byte(first, w as u32);
+        val = utf8_acc_cont_byte(val, bytes[i + 1]);
+        if w > 2 { val = utf8_acc_cont_byte(val, bytes[i + 2]); }
+        if w > 3 { val = utf8_acc_cont_byte(val, bytes[i + 3]); }
 
-        return (val, i + w);
+        return (val, i + w as usize);
     }
 
     multibyte_char_range_at(bytes, i)
