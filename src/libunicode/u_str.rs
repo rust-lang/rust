@@ -26,7 +26,7 @@ use core::num::Int;
 use core::slice;
 use core::str::Split;
 
-use u_char::CharExt as UCharExt; // conflicts with core::prelude::CharExt
+use char::CharExt as UCharExt; // conflicts with core::prelude::CharExt
 use tables::grapheme::GraphemeCat;
 
 /// An iterator over the words of a string, separated by a sequence of whitespace
