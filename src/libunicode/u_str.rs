@@ -244,7 +244,7 @@ impl<'a> Iterator for Graphemes<'a> {
         }
 
         self.cat = if take_curr {
-            idx = self.string.char_range_at(idx).next;
+            idx = idx + len_utf8(self.string.char_at(idx));
             None
         } else {
             Some(cat)
@@ -255,6 +255,11 @@ impl<'a> Iterator for Graphemes<'a> {
         Some(retstr)
     }
 }
+
+#[cfg(stage0)]
+fn len_utf8(c: char) -> usize { UCharExt::len_utf8(c) }
+#[cfg(not(stage0))]
+fn len_utf8(c: char) -> usize { c.len_utf8() }
 
 impl<'a> DoubleEndedIterator for Graphemes<'a> {
     #[inline]
