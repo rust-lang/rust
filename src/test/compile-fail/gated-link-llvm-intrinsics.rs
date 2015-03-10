@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct S {
-    f0: String,
-    f1: String,
+extern {
+    #[link_name = "llvm.sqrt.f32"]
+    fn sqrt(x: f32) -> f32;
+    //~^ ERROR linking to LLVM intrinsics is experimental
+    //~| HELP add #![feature(link_llvm_intrinsics)] to the crate attributes
 }
 
-pub fn main() {
-    let s = "Hello, world!".to_string();
-    let s = S {
-        f1: s.to_string(),
-        f0: s
-    };
-    assert_eq!(s.f0, "Hello, world!");
+fn main(){
 }
