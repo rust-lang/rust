@@ -457,9 +457,11 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         self.operation.visit_id(node_id);
 
         match function_kind {
-            visit::FkItemFn(_, generics, _, _) |
-            visit::FkMethod(_, generics, _) => {
+            visit::FkItemFn(_, generics, _, _) => {
                 self.visit_generics_helper(generics)
+            }
+            visit::FkMethod(_, m) => {
+                self.visit_generics_helper(m.pe_generics())
             }
             visit::FkFnBlock => {}
         }
@@ -496,13 +498,14 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         visit::walk_struct_def(self, struct_def);
     }
 
-    fn visit_trait_item(&mut self, tm: &ast::TraitItem) {
-        match *tm {
-            ast::RequiredMethod(ref m) => self.operation.visit_id(m.id),
-            ast::ProvidedMethod(ref m) => self.operation.visit_id(m.id),
-            ast::TypeTraitItem(ref typ) => self.operation.visit_id(typ.ty_param.id),
-        }
-        visit::walk_trait_item(self, tm);
+    fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
+        self.operation.visit_id(ti.id);
+        visit::walk_trait_item(self, ti);
+    }
+
+    fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
+        self.operation.visit_id(ii.id);
+        visit::walk_impl_item(self, ii);
     }
 
     fn visit_lifetime_ref(&mut self, lifetime: &Lifetime) {
@@ -650,20 +653,18 @@ pub fn lit_is_str(lit: &Lit) -> bool {
 /// not a macro invocation. This check is guaranteed to succeed, assuming
 /// that the invocations are indeed gone.
 pub trait PostExpansionMethod {
-    fn pe_ident(&self) -> ast::Ident;
     fn pe_generics<'a>(&'a self) -> &'a ast::Generics;
     fn pe_abi(&self) -> Abi;
     fn pe_explicit_self<'a>(&'a self) -> &'a ast::ExplicitSelf;
     fn pe_unsafety(&self) -> ast::Unsafety;
     fn pe_fn_decl<'a>(&'a self) -> &'a ast::FnDecl;
     fn pe_body<'a>(&'a self) -> &'a ast::Block;
-    fn pe_vis(&self) -> ast::Visibility;
 }
 
 macro_rules! mf_method{
     ($meth_name:ident, $field_ty:ty, $field_pat:pat, $result:expr) => {
         fn $meth_name<'a>(&'a self) -> $field_ty {
-            match self.node {
+            match *self {
                 $field_pat => $result,
                 MethMac(_) => {
                     panic!("expected an AST without macro invocations");
@@ -675,20 +676,18 @@ macro_rules! mf_method{
 
 
 impl PostExpansionMethod for Method {
-    mf_method! { pe_ident,ast::Ident,MethDecl(ident,_,_,_,_,_,_,_),ident }
     mf_method! {
         pe_generics,&'a ast::Generics,
-        MethDecl(_,ref generics,_,_,_,_,_,_),generics
+        MethDecl(ref generics,_,_,_,_,_),generics
     }
-    mf_method! { pe_abi,Abi,MethDecl(_,_,abi,_,_,_,_,_),abi }
+    mf_method! { pe_abi,Abi,MethDecl(_,abi,_,_,_,_),abi }
     mf_method! {
         pe_explicit_self,&'a ast::ExplicitSelf,
-        MethDecl(_,_,_,ref explicit_self,_,_,_,_),explicit_self
+        MethDecl(_,_,ref explicit_self,_,_,_),explicit_self
     }
-    mf_method! { pe_unsafety,ast::Unsafety,MethDecl(_,_,_,_,unsafety,_,_,_),unsafety }
-    mf_method! { pe_fn_decl,&'a ast::FnDecl,MethDecl(_,_,_,_,_,ref decl,_,_),&**decl }
-    mf_method! { pe_body,&'a ast::Block,MethDecl(_,_,_,_,_,_,ref body,_),&**body }
-    mf_method! { pe_vis,ast::Visibility,MethDecl(_,_,_,_,_,_,_,vis),vis }
+    mf_method! { pe_unsafety,ast::Unsafety,MethDecl(_,_,_,unsafety,_,_),unsafety }
+    mf_method! { pe_fn_decl,&'a ast::FnDecl,MethDecl(_,_,_,_,ref decl,_),&**decl }
+    mf_method! { pe_body,&'a ast::Block,MethDecl(_,_,_,_,_,ref body),&**body }
 }
 
 #[cfg(test)]

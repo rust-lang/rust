@@ -77,23 +77,16 @@ impl<F> ItemModifier for F
 #[derive(Debug,Clone)]
 pub enum Annotatable {
     Item(P<ast::Item>),
-    TraitItem(ast::TraitItem),
-    ImplItem(ast::ImplItem),
+    TraitItem(P<ast::TraitItem>),
+    ImplItem(P<ast::ImplItem>),
 }
 
 impl Annotatable {
     pub fn attrs(&self) -> &[ast::Attribute] {
         match *self {
             Annotatable::Item(ref i) => &i.attrs,
-            Annotatable::TraitItem(ref i) => match *i {
-                ast::RequiredMethod(ref tm) => &tm.attrs,
-                ast::ProvidedMethod(ref m) => &m.attrs,
-                ast::TypeTraitItem(ref at) => &at.attrs,
-            },
-            Annotatable::ImplItem(ref i) => match *i {
-                ast::MethodImplItem(ref m) => &m.attrs,
-                ast::TypeImplItem(ref t) => &t.attrs,
-            }
+            Annotatable::TraitItem(ref ti) => &ti.attrs,
+            Annotatable::ImplItem(ref ii) => &ii.attrs,
         }
     }
 
@@ -103,20 +96,12 @@ impl Annotatable {
                 attrs: attrs,
                 ..i
             })),
-            Annotatable::TraitItem(i) => Annotatable::TraitItem(match i {
-                ast::RequiredMethod(tm) =>
-                    ast::RequiredMethod(ast::TypeMethod { attrs: attrs, ..tm }),
-                ast::ProvidedMethod(m) =>
-                    ast::ProvidedMethod(ast::Method { attrs: attrs, ..m }),
-                ast::TypeTraitItem(at) =>
-                    ast::TypeTraitItem(ast::AssociatedType { attrs: attrs, ..at }),
-            }),
-            Annotatable::ImplItem(i) => Annotatable::ImplItem(match i {
-                ast::MethodImplItem(m) =>
-                    ast::MethodImplItem(ast::Method { attrs: attrs, ..m }),
-                ast::TypeImplItem(t) =>
-                    ast::TypeImplItem(ast::Typedef { attrs: attrs, ..t }),
-            })
+            Annotatable::TraitItem(i) => Annotatable::TraitItem(i.map(|ti| {
+                ast::TraitItem { attrs: attrs, ..ti }
+            })),
+            Annotatable::ImplItem(i) => Annotatable::ImplItem(i.map(|ii| {
+                ast::ImplItem { attrs: attrs, ..ii }
+            })),
         }
     }
 
@@ -127,14 +112,14 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_trait_item(self) -> ast::TraitItem {
+    pub fn expect_trait_item(self) -> P<ast::TraitItem> {
         match self {
             Annotatable::TraitItem(i) => i,
             _ => panic!("expected Item")
         }
     }
 
-    pub fn expect_impl_item(self) -> ast::ImplItem {
+    pub fn expect_impl_item(self) -> P<ast::ImplItem> {
         match self {
             Annotatable::ImplItem(i) => i,
             _ => panic!("expected Item")
@@ -244,7 +229,7 @@ pub trait MacResult {
     }
 
     /// Create zero or more methods.
-    fn make_methods(self: Box<Self>) -> Option<SmallVector<ast::Method>> {
+    fn make_methods(self: Box<Self>) -> Option<SmallVector<P<ast::ImplItem>>> {
         None
     }
 
@@ -290,7 +275,7 @@ make_MacEager! {
     expr: P<ast::Expr>,
     pat: P<ast::Pat>,
     items: SmallVector<P<ast::Item>>,
-    methods: SmallVector<ast::Method>,
+    methods: SmallVector<P<ast::ImplItem>>,
     stmt: P<ast::Stmt>,
 }
 
@@ -303,7 +288,7 @@ impl MacResult for MacEager {
         self.items
     }
 
-    fn make_methods(self: Box<Self>) -> Option<SmallVector<ast::Method>> {
+    fn make_methods(self: Box<Self>) -> Option<SmallVector<P<ast::ImplItem>>> {
         self.methods
     }
 
@@ -392,7 +377,7 @@ impl MacResult for DummyResult {
             Some(SmallVector::zero())
         }
     }
-    fn make_methods(self: Box<DummyResult>) -> Option<SmallVector<ast::Method>> {
+    fn make_methods(self: Box<DummyResult>) -> Option<SmallVector<P<ast::ImplItem>>> {
         if self.expr_only {
             None
         } else {
@@ -500,9 +485,6 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
         syntax_expanders.insert(intern("quote_ty"),
                            builtin_normal_expander(
                                 ext::quote::expand_quote_ty));
-        syntax_expanders.insert(intern("quote_method"),
-                           builtin_normal_expander(
-                                ext::quote::expand_quote_method));
         syntax_expanders.insert(intern("quote_item"),
                            builtin_normal_expander(
                                 ext::quote::expand_quote_item));

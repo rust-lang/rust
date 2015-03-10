@@ -22,7 +22,7 @@ pub use self::Expr_::*;
 pub use self::FloatTy::*;
 pub use self::FunctionRetTy::*;
 pub use self::ForeignItem_::*;
-pub use self::ImplItem::*;
+pub use self::ImplItem_::*;
 pub use self::InlinedItem::*;
 pub use self::IntTy::*;
 pub use self::Item_::*;
@@ -33,7 +33,7 @@ pub use self::LocalSource::*;
 pub use self::Mac_::*;
 pub use self::MacStmtStyle::*;
 pub use self::MetaItem_::*;
-pub use self::Method_::*;
+pub use self::Method::*;
 pub use self::Mutability::*;
 pub use self::Pat_::*;
 pub use self::PathListItem_::*;
@@ -44,7 +44,7 @@ pub use self::Stmt_::*;
 pub use self::StrStyle::*;
 pub use self::StructFieldKind::*;
 pub use self::TokenTree::*;
-pub use self::TraitItem::*;
+pub use self::TraitItem_::*;
 pub use self::Ty_::*;
 pub use self::TyParamBound::*;
 pub use self::UintTy::*;
@@ -1062,16 +1062,11 @@ pub struct TypeField {
 /// one without a default implementation
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct TypeMethod {
-    pub ident: Ident,
-    pub attrs: Vec<Attribute>,
     pub unsafety: Unsafety,
     pub abi: Abi,
     pub decl: P<FnDecl>,
     pub generics: Generics,
     pub explicit_self: ExplicitSelf,
-    pub id: NodeId,
-    pub span: Span,
-    pub vis: Visibility,
 }
 
 /// Represents a method declaration in a trait declaration, possibly including
@@ -1079,32 +1074,35 @@ pub struct TypeMethod {
 /// doesn't have an implementation, just a signature) or provided (meaning it
 /// has a default implementation).
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum TraitItem {
+pub struct TraitItem {
+    pub id: NodeId,
+    pub ident: Ident,
+    pub attrs: Vec<Attribute>,
+    pub node: TraitItem_,
+    pub span: Span,
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum TraitItem_ {
     RequiredMethod(TypeMethod),
     ProvidedMethod(Method),
-    TypeTraitItem(AssociatedType),
+    TypeTraitItem(TyParamBounds, Option<P<Ty>>),
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum ImplItem {
-    MethodImplItem(Method),
-    TypeImplItem(Typedef),
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct AssociatedType {
-    pub attrs: Vec<Attribute>,
-    pub ty_param: TyParam,
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct Typedef {
+pub struct ImplItem {
     pub id: NodeId,
-    pub span: Span,
     pub ident: Ident,
     pub vis: Visibility,
     pub attrs: Vec<Attribute>,
-    pub typ: P<Ty>,
+    pub node: ImplItem_,
+    pub span: Span,
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum ImplItem_ {
+    MethodImplItem(Method),
+    TypeImplItem(P<Ty>),
 }
 
 #[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
@@ -1419,24 +1417,14 @@ pub enum ExplicitSelf_ {
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct Method {
-    pub attrs: Vec<Attribute>,
-    pub id: NodeId,
-    pub span: Span,
-    pub node: Method_,
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Method_ {
+pub enum Method {
     /// Represents a method declaration
-    MethDecl(Ident,
-             Generics,
+    MethDecl(Generics,
              Abi,
              ExplicitSelf,
              Unsafety,
              P<FnDecl>,
-             P<Block>,
-             Visibility),
+             P<Block>),
     /// Represents a macro in method position
     MethMac(Mac),
 }
@@ -1726,8 +1714,8 @@ impl ForeignItem_ {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum InlinedItem {
     IIItem(P<Item>),
-    IITraitItem(DefId /* impl id */, TraitItem),
-    IIImplItem(DefId /* impl id */, ImplItem),
+    IITraitItem(DefId /* impl id */, P<TraitItem>),
+    IIImplItem(DefId /* impl id */, P<ImplItem>),
     IIForeign(P<ForeignItem>),
 }
 

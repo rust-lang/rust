@@ -92,17 +92,9 @@ impl<'v> Visitor<'v> for ParentVisitor {
             // method to the root. In this case, if the trait is private, then
             // parent all the methods to the trait to indicate that they're
             // private.
-            ast::ItemTrait(_, _, _, ref methods) if item.vis != ast::Public => {
-                for m in methods {
-                    match **m {
-                        ast::ProvidedMethod(ref m) => {
-                            self.parents.insert(m.id, item.id);
-                        }
-                        ast::RequiredMethod(ref m) => {
-                            self.parents.insert(m.id, item.id);
-                        }
-                        ast::TypeTraitItem(_) => {}
-                    };
+            ast::ItemTrait(_, _, _, ref trait_items) if item.vis != ast::Public => {
+                for trait_item in trait_items {
+                    self.parents.insert(trait_item.id, item.id);
                 }
             }
 
@@ -280,15 +272,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
 
                 if public_ty || public_trait {
                     for impl_item in impl_items {
-                        match **impl_item {
+                        match impl_item.node {
                             ast::MethodImplItem(ref method) => {
                                 let meth_public =
                                     match method.pe_explicit_self().node {
                                         ast::SelfStatic => public_ty,
                                         _ => true,
-                                    } && method.pe_vis() == ast::Public;
+                                    } && impl_item.vis == ast::Public;
                                 if meth_public || tr.is_some() {
-                                    self.exported_items.insert(method.id);
+                                    self.exported_items.insert(impl_item.id);
                                 }
                             }
                             ast::TypeImplItem(_) => {}
@@ -299,22 +291,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
 
             // Default methods on traits are all public so long as the trait
             // is public
-            ast::ItemTrait(_, _, _, ref methods) if public_first => {
-                for method in methods {
-                    match **method {
-                        ast::ProvidedMethod(ref m) => {
-                            debug!("provided {}", m.id);
-                            self.exported_items.insert(m.id);
-                        }
-                        ast::RequiredMethod(ref m) => {
-                            debug!("required {}", m.id);
-                            self.exported_items.insert(m.id);
-                        }
-                        ast::TypeTraitItem(ref t) => {
-                            debug!("typedef {}", t.ty_param.id);
-                            self.exported_items.insert(t.ty_param.id);
-                        }
-                    }
+            ast::ItemTrait(_, _, _, ref trait_items) if public_first => {
+                for trait_item in trait_items {
+                    debug!("trait item {}", trait_item.id);
+                    self.exported_items.insert(trait_item.id);
                 }
             }
 
@@ -510,16 +490,16 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 // FIXME(#10573) is this the right behavior? Why not consider
                 //               where the method was defined?
                 Some(ast_map::NodeImplItem(ii)) => {
-                    match *ii {
-                        ast::MethodImplItem(ref m) => {
+                    match ii.node {
+                        ast::MethodImplItem(_) => {
                             let imp = self.tcx.map
                                           .get_parent_did(closest_private_id);
                             match ty::impl_trait_ref(self.tcx, imp) {
                                 Some(..) => return Allowable,
-                                _ if m.pe_vis() == ast::Public => {
+                                _ if ii.vis == ast::Public => {
                                     return Allowable
                                 }
-                                _ => m.pe_vis()
+                                _ => ii.vis
                             }
                         }
                         ast::TypeImplItem(_) => return Allowable,
@@ -1088,12 +1068,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                                 "visibility qualifiers have no effect on trait \
                                  impls");
                 for impl_item in impl_items {
-                    match **impl_item {
-                        ast::MethodImplItem(ref m) => {
-                            check_inherited(m.span, m.pe_vis(), "");
-                        }
-                        ast::TypeImplItem(_) => {}
-                    }
+                    check_inherited(impl_item.span, impl_item.vis, "");
                 }
             }
 
@@ -1121,23 +1096,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                 }
             }
 
-            ast::ItemTrait(_, _, _, ref methods) => {
-                for m in methods {
-                    match **m {
-                        ast::ProvidedMethod(ref m) => {
-                            check_inherited(m.span, m.pe_vis(),
-                                            "unnecessary visibility");
-                        }
-                        ast::RequiredMethod(ref m) => {
-                            check_inherited(m.span, m.vis,
-                                            "unnecessary visibility");
-                        }
-                        ast::TypeTraitItem(_) => {}
-                    }
-                }
-            }
-
-            ast::ItemDefaultImpl(..) |
+            ast::ItemTrait(..) | ast::ItemDefaultImpl(..) |
             ast::ItemConst(..) | ast::ItemStatic(..) | ast::ItemStruct(..) |
             ast::ItemFn(..) | ast::ItemMod(..) | ast::ItemTy(..) |
             ast::ItemExternCrate(_) | ast::ItemUse(_) | ast::ItemMac(..) => {}
@@ -1165,9 +1124,9 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
         match item.node {
             ast::ItemImpl(_, _, _, _, _, ref impl_items) => {
                 for impl_item in impl_items {
-                    match **impl_item {
-                        ast::MethodImplItem(ref m) => {
-                            check_inherited(tcx, m.span, m.pe_vis());
+                    match impl_item.node {
+                        ast::MethodImplItem(_) => {
+                            check_inherited(tcx, impl_item.span, impl_item.vis);
                         }
                         ast::TypeImplItem(_) => {}
                     }
@@ -1186,18 +1145,8 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
 
             ast::ItemStruct(ref def, _) => check_struct(&**def),
 
-            ast::ItemTrait(_, _, _, ref methods) => {
-                for m in methods {
-                    match **m {
-                        ast::RequiredMethod(..) => {}
-                        ast::ProvidedMethod(ref m) => check_inherited(tcx, m.span,
-                                                                m.pe_vis()),
-                        ast::TypeTraitItem(_) => {}
-                    }
-                }
-            }
-
-            ast::ItemDefaultImpl(..) | ast::ItemExternCrate(_) | ast::ItemUse(_) |
+            ast::ItemExternCrate(_) | ast::ItemUse(_) |
+            ast::ItemTrait(..) | ast::ItemDefaultImpl(..) |
             ast::ItemStatic(..) | ast::ItemConst(..) |
             ast::ItemFn(..) | ast::ItemMod(..) | ast::ItemTy(..) |
             ast::ItemMac(..) => {}
@@ -1352,9 +1301,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     trait_ref.is_some() ||
                     impl_items.iter()
                               .any(|impl_item| {
-                                  match **impl_item {
-                                      ast::MethodImplItem(ref m) => {
-                                          self.exported_items.contains(&m.id)
+                                  match impl_item.node {
+                                      ast::MethodImplItem(_) => {
+                                          self.exported_items.contains(&impl_item.id)
                                       }
                                       ast::TypeImplItem(_) => false,
                                   }
@@ -1369,12 +1318,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     match *trait_ref {
                         None => {
                             for impl_item in impl_items {
-                                match **impl_item {
-                                    ast::MethodImplItem(ref method) => {
-                                        visit::walk_method_helper(self, method)
-                                    }
-                                    ast::TypeImplItem(_) => {}
-                                }
+                                visit::walk_impl_item(self, impl_item);
                             }
                         }
                         Some(ref tr) => {
@@ -1395,10 +1339,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 
                             // Those in 3. are warned with this call.
                             for impl_item in impl_items {
-                                match **impl_item {
+                                match impl_item.node {
                                     ast::MethodImplItem(..) => {},
-                                    ast::TypeImplItem(ref typedef) => {
-                                        self.visit_ty(&typedef.typ);
+                                    ast::TypeImplItem(ref ty) => {
+                                        self.visit_ty(ty);
                                     }
                                 }
                             }
@@ -1409,14 +1353,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     // methods will be visible as `Public::foo`.
                     let mut found_pub_static = false;
                     for impl_item in impl_items {
-                        match **impl_item {
+                        match impl_item.node {
                             ast::MethodImplItem(ref method) => {
                                 if method.pe_explicit_self().node ==
                                         ast::SelfStatic &&
                                         self.exported_items
-                                            .contains(&method.id) {
+                                            .contains(&impl_item.id) {
                                     found_pub_static = true;
-                                    visit::walk_method_helper(self, method);
+                                    visit::walk_impl_item(self, impl_item);
                                 }
                             }
                             ast::TypeImplItem(_) => {}

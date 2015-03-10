@@ -359,14 +359,6 @@ pub fn generics_to_string(generics: &ast::Generics) -> String {
     $to_string(|s| s.print_generics(generics))
 }
 
-pub fn ty_method_to_string(p: &ast::TypeMethod) -> String {
-    $to_string(|s| s.print_ty_method(p))
-}
-
-pub fn method_to_string(p: &ast::Method) -> String {
-    $to_string(|s| s.print_method(p))
-}
-
 pub fn fn_block_to_string(p: &ast::FnDecl) -> String {
     $to_string(|s| s.print_fn_block_args(p))
 }
@@ -789,23 +781,24 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_associated_type(&mut self, typedef: &ast::AssociatedType)
-                             -> io::Result<()>
-    {
-        try!(self.print_outer_attributes(&typedef.attrs));
+    fn print_associated_type(&mut self,
+                             ident: ast::Ident,
+                             bounds: Option<&ast::TyParamBounds>,
+                             ty: Option<&ast::Ty>)
+                             -> io::Result<()> {
         try!(self.word_space("type"));
-        try!(self.print_ty_param(&typedef.ty_param));
+        try!(self.print_ident(ident));
+        if let Some(bounds) = bounds {
+            try!(self.print_bounds(":", bounds));
+        }
+        if let Some(ty) = ty {
+            try!(space(&mut self.s));
+            try!(self.word_space("="));
+            try!(self.print_type(ty));
+        }
         word(&mut self.s, ";")
     }
 
-    fn print_typedef(&mut self, typedef: &ast::Typedef) -> io::Result<()> {
-        try!(self.word_space("type"));
-        try!(self.print_ident(typedef.ident));
-        try!(space(&mut self.s));
-        try!(self.word_space("="));
-        try!(self.print_type(&*typedef.typ));
-        word(&mut self.s, ";")
-    }
 
     /// Pretty-print an item
     pub fn print_item(&mut self, item: &ast::Item) -> io::Result<()> {
@@ -976,18 +969,11 @@ impl<'a> State<'a> {
                 try!(self.bopen());
                 try!(self.print_inner_attributes(&item.attrs));
                 for impl_item in impl_items {
-                    match **impl_item {
-                        ast::MethodImplItem(ref meth) => {
-                            try!(self.print_method(meth));
-                        }
-                        ast::TypeImplItem(ref typ) => {
-                            try!(self.print_typedef(typ));
-                        }
-                    }
+                    try!(self.print_impl_item(impl_item));
                 }
                 try!(self.bclose(item.span));
             }
-            ast::ItemTrait(unsafety, ref generics, ref bounds, ref methods) => {
+            ast::ItemTrait(unsafety, ref generics, ref bounds, ref trait_items) => {
                 try!(self.head(""));
                 try!(self.print_visibility(item.vis));
                 try!(self.print_unsafety(unsafety));
@@ -1008,8 +994,8 @@ impl<'a> State<'a> {
                 try!(self.print_where_clause(generics));
                 try!(word(&mut self.s, " "));
                 try!(self.bopen());
-                for meth in methods {
-                    try!(self.print_trait_method(meth));
+                for trait_item in trait_items {
+                    try!(self.print_trait_item(trait_item));
                 }
                 try!(self.bclose(item.span));
             }
@@ -1241,48 +1227,65 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_ty_method(&mut self, m: &ast::TypeMethod) -> io::Result<()> {
-        try!(self.hardbreak_if_not_bol());
-        try!(self.maybe_print_comment(m.span.lo));
-        try!(self.print_outer_attributes(&m.attrs));
+    pub fn print_ty_method(&mut self,
+                           ident: ast::Ident,
+                           m: &ast::TypeMethod)
+                           -> io::Result<()> {
         try!(self.print_ty_fn(m.abi,
                               m.unsafety,
                               &*m.decl,
-                              Some(m.ident),
+                              Some(ident),
                               &m.generics,
                               Some(&m.explicit_self.node)));
         word(&mut self.s, ";")
     }
 
-    pub fn print_trait_method(&mut self,
-                              m: &ast::TraitItem) -> io::Result<()> {
-        match *m {
-            ast::RequiredMethod(ref ty_m) => self.print_ty_method(ty_m),
-            ast::ProvidedMethod(ref m) => self.print_method(m),
-            ast::TypeTraitItem(ref t) => self.print_associated_type(t),
+    pub fn print_trait_item(&mut self, ti: &ast::TraitItem)
+                            -> io::Result<()> {
+        try!(self.hardbreak_if_not_bol());
+        try!(self.maybe_print_comment(ti.span.lo));
+        try!(self.print_outer_attributes(&ti.attrs));
+        match ti.node {
+            ast::RequiredMethod(ref ty_m) => {
+                self.print_ty_method(ti.ident, ty_m)
+            }
+            ast::ProvidedMethod(ref m) => {
+                self.print_method(ti.ident, &ti.attrs, ast::Inherited, m)
+            }
+            ast::TypeTraitItem(ref bounds, ref default) => {
+                self.print_associated_type(ti.ident, Some(bounds),
+                                           default.as_ref().map(|ty| &**ty))
+            }
         }
     }
 
     pub fn print_impl_item(&mut self, ii: &ast::ImplItem) -> io::Result<()> {
-        match *ii {
-            ast::MethodImplItem(ref m) => self.print_method(m),
-            ast::TypeImplItem(ref td) => self.print_typedef(td),
+        try!(self.hardbreak_if_not_bol());
+        try!(self.maybe_print_comment(ii.span.lo));
+        try!(self.print_outer_attributes(&ii.attrs));
+        match ii.node {
+            ast::MethodImplItem(ref m) => {
+                self.print_method(ii.ident, &ii.attrs, ii.vis, m)
+            }
+            ast::TypeImplItem(ref ty) => {
+                self.print_associated_type(ii.ident, None, Some(ty))
+            }
         }
     }
 
-    pub fn print_method(&mut self, meth: &ast::Method) -> io::Result<()> {
-        try!(self.hardbreak_if_not_bol());
-        try!(self.maybe_print_comment(meth.span.lo));
-        try!(self.print_outer_attributes(&meth.attrs));
-        match meth.node {
-            ast::MethDecl(ident,
-                          ref generics,
+    pub fn print_method(&mut self,
+                        ident: ast::Ident,
+                        attrs: &[ast::Attribute],
+                        vis: ast::Visibility,
+                        meth: &ast::Method)
+                        -> io::Result<()> {
+        match *meth {
+            ast::MethDecl(ref generics,
                           abi,
                           ref explicit_self,
                           unsafety,
                           ref decl,
-                          ref body,
-                          vis) => {
+                          ref body) => {
                 try!(self.print_fn(&**decl,
                                    Some(unsafety),
                                    abi,
@@ -1291,7 +1294,7 @@ impl<'a> State<'a> {
                                    Some(&explicit_self.node),
                                    vis));
                 try!(word(&mut self.s, " "));
-                self.print_block_with_attrs(&**body, &meth.attrs)
+                self.print_block_with_attrs(&**body, attrs)
             },
             ast::MethMac(codemap::Spanned { node: ast::MacInvocTT(ref pth, ref tts, _),
                                             ..}) => {

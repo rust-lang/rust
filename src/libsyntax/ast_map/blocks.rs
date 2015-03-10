@@ -65,7 +65,7 @@ impl MaybeFnLike for ast::Item {
 
 impl MaybeFnLike for ast::TraitItem {
     fn is_fn_like(&self) -> bool {
-        match *self { ast::ProvidedMethod(_) => true, _ => false, }
+        match self.node { ast::ProvidedMethod(_) => true, _ => false, }
     }
 }
 
@@ -156,25 +156,25 @@ impl<'a> FnLikeNode<'a> {
 
     pub fn body(self) -> &'a Block {
         self.handle(|i: ItemFnParts<'a>|  &*i.body,
-                    |m: &'a ast::Method|  m.pe_body(),
+                    |_, _, m: &'a ast::Method, _|  m.pe_body(),
                     |c: ClosureParts<'a>| c.body)
     }
 
     pub fn decl(self) -> &'a FnDecl {
         self.handle(|i: ItemFnParts<'a>|  &*i.decl,
-                    |m: &'a ast::Method|  m.pe_fn_decl(),
+                    |_, _, m: &'a ast::Method, _|  m.pe_fn_decl(),
                     |c: ClosureParts<'a>| c.decl)
     }
 
     pub fn span(self) -> Span {
         self.handle(|i: ItemFnParts|     i.span,
-                    |m: &'a ast::Method| m.span,
+                    |_, _, _: &'a ast::Method, span| span,
                     |c: ClosureParts|    c.span)
     }
 
     pub fn id(self) -> NodeId {
         self.handle(|i: ItemFnParts|     i.id,
-                    |m: &'a ast::Method| m.id,
+                    |id, _, _: &'a ast::Method, _| id,
                     |c: ClosureParts|    c.id)
     }
 
@@ -185,15 +185,15 @@ impl<'a> FnLikeNode<'a> {
         let closure = |_: ClosureParts| {
             visit::FkFnBlock
         };
-        let method = |m: &'a ast::Method| {
-            visit::FkMethod(m.pe_ident(), m.pe_generics(), m)
+        let method = |_, ident, m: &'a ast::Method, _| {
+            visit::FkMethod(ident, m)
         };
         self.handle(item, method, closure)
     }
 
     fn handle<A, I, M, C>(self, item_fn: I, method: M, closure: C) -> A where
         I: FnOnce(ItemFnParts<'a>) -> A,
-        M: FnOnce(&'a ast::Method) -> A,
+        M: FnOnce(NodeId, ast::Ident, &'a ast::Method, Span) -> A,
         C: FnOnce(ClosureParts<'a>) -> A,
     {
         match self.node {
@@ -205,13 +205,13 @@ impl<'a> FnLikeNode<'a> {
                     }),
                 _ => panic!("item FnLikeNode that is not fn-like"),
             },
-            ast_map::NodeTraitItem(t) => match *t {
-                ast::ProvidedMethod(ref m) => method(m),
+            ast_map::NodeTraitItem(ti) => match ti.node {
+                ast::ProvidedMethod(ref m) => method(ti.id, ti.ident, m, ti.span),
                 _ => panic!("trait method FnLikeNode that is not fn-like"),
             },
             ast_map::NodeImplItem(ii) => {
-                match *ii {
-                    ast::MethodImplItem(ref m) => method(m),
+                match ii.node {
+                    ast::MethodImplItem(ref m) => method(ii.id, ii.ident, m, ii.span),
                     ast::TypeImplItem(_) => {
                         panic!("impl method FnLikeNode that is not fn-like")
                     }

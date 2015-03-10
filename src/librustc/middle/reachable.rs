@@ -54,8 +54,9 @@ fn item_might_be_inlined(item: &ast::Item) -> bool {
 }
 
 fn method_might_be_inlined(tcx: &ty::ctxt, method: &ast::Method,
+                           impl_item: &ast::ImplItem,
                            impl_src: ast::DefId) -> bool {
-    if attr::requests_inline(&method.attrs) ||
+    if attr::requests_inline(&impl_item.attrs) ||
         generics_require_inlining(method.pe_generics()) {
         return true
     }
@@ -66,13 +67,13 @@ fn method_might_be_inlined(tcx: &ty::ctxt, method: &ast::Method,
                     item_might_be_inlined(&*item)
                 }
                 Some(..) | None => {
-                    tcx.sess.span_bug(method.span, "impl did is not an item")
+                    tcx.sess.span_bug(impl_item.span, "impl did is not an item")
                 }
             }
         }
     } else {
-        tcx.sess.span_bug(method.span, "found a foreign impl as a parent of a \
-                                        local method")
+        tcx.sess.span_bug(impl_item.span, "found a foreign impl as a parent \
+                                           of a local method")
     }
 }
 
@@ -181,17 +182,17 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 }
             }
             Some(ast_map::NodeTraitItem(trait_method)) => {
-                match *trait_method {
+                match trait_method.node {
                     ast::RequiredMethod(_) => false,
                     ast::ProvidedMethod(_) => true,
-                    ast::TypeTraitItem(_) => false,
+                    ast::TypeTraitItem(..) => false,
                 }
             }
             Some(ast_map::NodeImplItem(impl_item)) => {
-                match *impl_item {
+                match impl_item.node {
                     ast::MethodImplItem(ref method) => {
                         if generics_require_inlining(method.pe_generics()) ||
-                                attr::requests_inline(&method.attrs) {
+                                attr::requests_inline(&impl_item.attrs) {
                             true
                         } else {
                             let impl_did = self.tcx
@@ -301,21 +302,21 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                 }
             }
             ast_map::NodeTraitItem(trait_method) => {
-                match *trait_method {
+                match trait_method.node {
                     ast::RequiredMethod(..) => {
                         // Keep going, nothing to get exported
                     }
                     ast::ProvidedMethod(ref method) => {
                         visit::walk_block(self, &*method.pe_body());
                     }
-                    ast::TypeTraitItem(_) => {}
+                    ast::TypeTraitItem(..) => {}
                 }
             }
             ast_map::NodeImplItem(impl_item) => {
-                match *impl_item {
+                match impl_item.node {
                     ast::MethodImplItem(ref method) => {
                         let did = self.tcx.map.get_parent_did(search_item);
-                        if method_might_be_inlined(self.tcx, method, did) {
+                        if method_might_be_inlined(self.tcx, method, impl_item, did) {
                             visit::walk_block(self, method.pe_body())
                         }
                     }

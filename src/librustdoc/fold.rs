@@ -40,37 +40,13 @@ pub trait DocFolder : Sized {
                 EnumItem(i)
             },
             TraitItem(mut i) => {
-                fn vtrm<T: DocFolder>(this: &mut T, trm: TraitMethod)
-                        -> Option<TraitMethod> {
-                    match trm {
-                        RequiredMethod(it) => {
-                            match this.fold_item(it) {
-                                Some(x) => return Some(RequiredMethod(x)),
-                                None => return None,
-                            }
-                        },
-                        ProvidedMethod(it) => {
-                            match this.fold_item(it) {
-                                Some(x) => return Some(ProvidedMethod(x)),
-                                None => return None,
-                            }
-                        },
-                        TypeTraitItem(it) => {
-                            match this.fold_item(it) {
-                                Some(x) => return Some(TypeTraitItem(x)),
-                                None => return None,
-                            }
-                        }
-                    }
-                }
                 let mut foo = Vec::new(); swap(&mut foo, &mut i.items);
-                i.items.extend(foo.into_iter().filter_map(|x| vtrm(self, x)));
+                i.items.extend(foo.into_iter().filter_map(|x| self.fold_item(x)));
                 TraitItem(i)
             },
             ImplItem(mut i) => {
                 let mut foo = Vec::new(); swap(&mut foo, &mut i.items);
-                i.items.extend(foo.into_iter()
-                                  .filter_map(|x| self.fold_item(x)));
+                i.items.extend(foo.into_iter().filter_map(|x| self.fold_item(x)));
                 ImplItem(i)
             },
             VariantItem(i) => {

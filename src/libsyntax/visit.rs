@@ -38,7 +38,7 @@ pub enum FnKind<'a> {
     FkItemFn(Ident, &'a Generics, Unsafety, Abi),
 
     /// fn foo(&self)
-    FkMethod(Ident, &'a Generics, &'a Method),
+    FkMethod(Ident, &'a Method),
 
     /// |x, y| ...
     /// proc(x, y) ...
@@ -77,8 +77,8 @@ pub trait Visitor<'v> : Sized {
     fn visit_fn(&mut self, fk: FnKind<'v>, fd: &'v FnDecl, b: &'v Block, s: Span, _: NodeId) {
         walk_fn(self, fk, fd, b, s)
     }
-    fn visit_ty_method(&mut self, t: &'v TypeMethod) { walk_ty_method(self, t) }
-    fn visit_trait_item(&mut self, t: &'v TraitItem) { walk_trait_item(self, t) }
+    fn visit_trait_item(&mut self, ti: &'v TraitItem) { walk_trait_item(self, ti) }
+    fn visit_impl_item(&mut self, ii: &'v ImplItem) { walk_impl_item(self, ii) }
     fn visit_trait_ref(&mut self, t: &'v TraitRef) { walk_trait_ref(self, t) }
     fn visit_ty_param_bound(&mut self, bounds: &'v TyParamBound) {
         walk_ty_param_bound(self, bounds)
@@ -143,13 +143,7 @@ pub fn walk_inlined_item<'v,V>(visitor: &mut V, item: &'v InlinedItem)
         IIItem(ref i) => visitor.visit_item(&**i),
         IIForeign(ref i) => visitor.visit_foreign_item(&**i),
         IITraitItem(_, ref ti) => visitor.visit_trait_item(ti),
-        IIImplItem(_, MethodImplItem(ref m)) => {
-            walk_method_helper(visitor, m)
-        }
-        IIImplItem(_, TypeImplItem(ref typedef)) => {
-            visitor.visit_ident(typedef.span, typedef.ident);
-            visitor.visit_ty(&*typedef.typ);
-        }
+        IIImplItem(_, ref ii) => visitor.visit_impl_item(ii),
     }
 }
 
@@ -202,8 +196,6 @@ pub fn walk_explicit_self<'v, V: Visitor<'v>>(visitor: &mut V,
     }
 }
 
-/// Like with walk_method_helper this doesn't correspond to a method
-/// in Visitor, and so it gets a _helper suffix.
 pub fn walk_poly_trait_ref<'v, V>(visitor: &mut V,
                                   trait_ref: &'v PolyTraitRef,
                                   _modifier: &'v TraitBoundModifier)
@@ -213,8 +205,6 @@ pub fn walk_poly_trait_ref<'v, V>(visitor: &mut V,
     visitor.visit_trait_ref(&trait_ref.trait_ref);
 }
 
-/// Like with walk_method_helper this doesn't correspond to a method
-/// in Visitor, and so it gets a _helper suffix.
 pub fn walk_trait_ref<'v,V>(visitor: &mut V,
                                    trait_ref: &'v TraitRef)
     where V: Visitor<'v>
@@ -294,15 +284,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             }
             visitor.visit_ty(&**typ);
             for impl_item in impl_items {
-                match **impl_item {
-                    MethodImplItem(ref method) => {
-                        walk_method_helper(visitor, method)
-                    }
-                    TypeImplItem(ref typedef) => {
-                        visitor.visit_ident(typedef.span, typedef.ident);
-                        visitor.visit_ty(&*typedef.typ);
-                    }
-                }
+                visitor.visit_impl_item(impl_item);
             }
         }
         ItemStruct(ref struct_definition, ref generics) => {
@@ -561,15 +543,11 @@ pub fn walk_ty_param_bound<'v, V: Visitor<'v>>(visitor: &mut V,
     }
 }
 
-pub fn walk_ty_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v TyParam) {
-    visitor.visit_ident(param.span, param.ident);
-    walk_ty_param_bounds_helper(visitor, &param.bounds);
-    walk_ty_opt(visitor, &param.default);
-}
-
 pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics) {
-    for type_parameter in &*generics.ty_params {
-        walk_ty_param(visitor, type_parameter);
+    for param in &*generics.ty_params {
+        visitor.visit_ident(param.span, param.ident);
+        walk_ty_param_bounds_helper(visitor, &param.bounds);
+        walk_ty_opt(visitor, &param.default);
     }
     walk_lifetime_decls_helper(visitor, &generics.lifetimes);
     for predicate in &generics.where_clause.predicates {
@@ -618,19 +596,19 @@ pub fn walk_fn_decl<'v, V: Visitor<'v>>(visitor: &mut V, function_declaration: &
 // visit_fn() and check for FkMethod().  I named this visit_method_helper()
 // because it is not a default impl of any method, though I doubt that really
 // clarifies anything. - Niko
-pub fn walk_method_helper<'v, V: Visitor<'v>>(visitor: &mut V, method: &'v Method) {
-    match method.node {
-        MethDecl(ident, ref generics, _, _, _, ref decl, ref body, _) => {
-            visitor.visit_ident(method.span, ident);
-            visitor.visit_fn(FkMethod(ident, generics, method),
+fn walk_method_helper<'v, V: Visitor<'v>>(visitor: &mut V,
+                                          id: NodeId,
+                                          ident: Ident,
+                                          span: Span,
+                                          method: &'v Method) {
+    match *method {
+        MethDecl(_, _, _, _, ref decl, ref body) => {
+            visitor.visit_ident(span, ident);
+            visitor.visit_fn(FkMethod(ident, method),
                              &**decl,
                              &**body,
-                             method.span,
-                             method.id);
-            for attr in &method.attrs {
-                visitor.visit_attribute(attr);
-            }
-
+                             span,
+                             id);
         },
         MethMac(ref mac) => visitor.visit_mac(mac)
     }
@@ -647,13 +625,13 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
         FkItemFn(_, generics, _, _) => {
             visitor.visit_generics(generics);
         }
-        FkMethod(_, generics, method) => {
-            visitor.visit_generics(generics);
-            match method.node {
-                MethDecl(_, _, _, ref explicit_self, _, _, _, _) =>
-                    visitor.visit_explicit_self(explicit_self),
-                MethMac(ref mac) =>
-                    visitor.visit_mac(mac)
+        FkMethod(_, method) => {
+            match *method {
+                MethDecl(ref generics, _, ref explicit_self, _, _, _) => {
+                    visitor.visit_generics(generics);
+                    visitor.visit_explicit_self(explicit_self);
+                }
+                MethMac(ref mac) => visitor.visit_mac(mac)
             }
         }
         FkFnBlock(..) => {}
@@ -662,25 +640,46 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
     visitor.visit_block(function_body)
 }
 
-pub fn walk_ty_method<'v, V: Visitor<'v>>(visitor: &mut V, method_type: &'v TypeMethod) {
-    visitor.visit_ident(method_type.span, method_type.ident);
-    visitor.visit_explicit_self(&method_type.explicit_self);
-    for argument_type in &method_type.decl.inputs {
-        visitor.visit_ty(&*argument_type.ty)
-    }
-    visitor.visit_generics(&method_type.generics);
-    walk_fn_ret_ty(visitor, &method_type.decl.output);
-    for attr in &method_type.attrs {
+pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v TraitItem) {
+    visitor.visit_ident(trait_item.span, trait_item.ident);
+    for attr in &trait_item.attrs {
         visitor.visit_attribute(attr);
+    }
+    match trait_item.node {
+        RequiredMethod(ref method_type) => {
+            visitor.visit_explicit_self(&method_type.explicit_self);
+            visitor.visit_generics(&method_type.generics);
+            walk_fn_decl(visitor, &method_type.decl);
+        }
+        ProvidedMethod(ref method) => {
+            walk_method_helper(visitor,
+                               trait_item.id,
+                               trait_item.ident,
+                               trait_item.span,
+                               method);
+        }
+        TypeTraitItem(ref bounds, ref default) => {
+            walk_ty_param_bounds_helper(visitor, bounds);
+            walk_ty_opt(visitor, default);
+        }
     }
 }
 
-pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_method: &'v TraitItem) {
-    match *trait_method {
-        RequiredMethod(ref method_type) => visitor.visit_ty_method(method_type),
-        ProvidedMethod(ref method) => walk_method_helper(visitor, method),
-        TypeTraitItem(ref associated_type) => {
-            walk_ty_param(visitor, &associated_type.ty_param);
+pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplItem) {
+    visitor.visit_ident(impl_item.span, impl_item.ident);
+    for attr in &impl_item.attrs {
+        visitor.visit_attribute(attr);
+    }
+    match impl_item.node {
+        MethodImplItem(ref method) => {
+            walk_method_helper(visitor,
+                               impl_item.id,
+                               impl_item.ident,
+                               impl_item.span,
+                               method);
+        }
+        TypeImplItem(ref ty) => {
+            visitor.visit_ty(ty);
         }
     }
 }

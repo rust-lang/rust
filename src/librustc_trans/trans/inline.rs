@@ -42,7 +42,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             ccx.tcx(), fn_id,
             Box::new(|a,b,c,d| astencode::decode_inlined_item(a, b, c, d)));
 
-    let inline_def = match csearch_result {
+    let inline_id = match csearch_result {
         csearch::FoundAst::NotFound => {
             ccx.external().borrow_mut().insert(fn_id, None);
             return None;
@@ -88,12 +88,12 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                 None => {}
             }
 
-            local_def(item.id)
+            item.id
         }
         csearch::FoundAst::Found(&ast::IIForeign(ref item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
-            local_def(item.id)
+            item.id
         }
         csearch::FoundAst::FoundParent(parent_id, &ast::IIItem(ref item)) => {
             ccx.external().borrow_mut().insert(parent_id, Some(item.id));
@@ -122,65 +122,53 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                                  non-enum, non-struct parent")
           }
           trans_item(ccx, &**item);
-          local_def(my_id)
+          my_id
         }
         csearch::FoundAst::FoundParent(_, _) => {
             ccx.sess().bug("maybe_get_item_ast returned a FoundParent \
              with a non-item parent");
         }
         csearch::FoundAst::Found(&ast::IITraitItem(_, ref trait_item)) => {
-            let id = match *trait_item {
-                ast::ProvidedMethod(ref mth) => mth.id,
-                ast::RequiredMethod(_) => ccx.sess().bug("found RequiredMethod IITraitItem"),
-                ast::TypeTraitItem(_) => ccx.sess().bug("found TypeTraitItem IITraitItem"),
-            };
-            ccx.external().borrow_mut().insert(fn_id, Some(id));
-            ccx.external_srcs().borrow_mut().insert(id, fn_id);
+            ccx.external().borrow_mut().insert(fn_id, Some(trait_item.id));
+            ccx.external_srcs().borrow_mut().insert(trait_item.id, fn_id);
 
             ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
 
             // If this is a default method, we can't look up the
             // impl type. But we aren't going to translate anyways, so
             // don't.
-            local_def(id)
+            trait_item.id
         }
         csearch::FoundAst::Found(&ast::IIImplItem(impl_did, ref impl_item)) => {
-            let (id, monomorphic_method) = match *impl_item {
-                ast::MethodImplItem(ref mth) => {
-                    let impl_tpt = ty::lookup_item_type(ccx.tcx(), impl_did);
-                    let unparameterized = impl_tpt.generics.types.is_empty() &&
-                            mth.pe_generics().ty_params.is_empty();
-
-                    (mth.id, if unparameterized { Some(mth) } else { None })
-                }
-                ast::TypeImplItem(_) => {
-                    ccx.sess().bug("found TypeImplItem IIImplItem")
-                }
-            };
-
-            ccx.external().borrow_mut().insert(fn_id, Some(id));
-            ccx.external_srcs().borrow_mut().insert(id, fn_id);
+            ccx.external().borrow_mut().insert(fn_id, Some(impl_item.id));
+            ccx.external_srcs().borrow_mut().insert(impl_item.id, fn_id);
 
             ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
 
-            if let Some(mth) = monomorphic_method {
-                let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-                let llfn = get_item_val(ccx, mth.id);
-                trans_fn(ccx,
-                         &*mth.pe_fn_decl(),
-                         &*mth.pe_body(),
-                         llfn,
-                         empty_substs,
-                         mth.id,
-                         &[]);
-                // Use InternalLinkage so LLVM can optimize more aggressively.
-                SetLinkage(llfn, InternalLinkage);
+            // Translate monomorphic impl methods immediately.
+            if let ast::MethodImplItem(ref mth) = impl_item.node {
+                let impl_tpt = ty::lookup_item_type(ccx.tcx(), impl_did);
+                if impl_tpt.generics.types.is_empty() &&
+                        mth.pe_generics().ty_params.is_empty() {
+                    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
+                    let llfn = get_item_val(ccx, impl_item.id);
+                    trans_fn(ccx,
+                            &*mth.pe_fn_decl(),
+                            &*mth.pe_body(),
+                            llfn,
+                            empty_substs,
+                            impl_item.id,
+                            &[]);
+                    // Use InternalLinkage so LLVM can optimize more aggressively.
+                    SetLinkage(llfn, InternalLinkage);
+                }
             }
-            local_def(id)
+
+            impl_item.id
         }
     };
 
-    return Some(inline_def);
+    Some(local_def(inline_id))
 }
 
 pub fn get_local_instance(ccx: &CrateContext, fn_id: ast::DefId)

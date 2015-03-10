@@ -846,28 +846,28 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                         _ => None
                     }
                 }
-                ast_map::NodeImplItem(ref item) => {
-                    match **item {
+                ast_map::NodeImplItem(item) => {
+                    match item.node {
                         ast::MethodImplItem(ref m) => {
                             Some((m.pe_fn_decl(),
                                   m.pe_generics(),
                                   m.pe_unsafety(),
-                                  m.pe_ident(),
+                                  item.ident,
                                   Some(&m.pe_explicit_self().node),
-                                  m.span))
+                                  item.span))
                         }
                         ast::TypeImplItem(_) => None,
                     }
                 },
-                ast_map::NodeTraitItem(ref item) => {
-                    match **item {
+                ast_map::NodeTraitItem(item) => {
+                    match item.node {
                         ast::ProvidedMethod(ref m) => {
                             Some((m.pe_fn_decl(),
                                   m.pe_generics(),
                                   m.pe_unsafety(),
-                                  m.pe_ident(),
+                                  item.ident,
                                   Some(&m.pe_explicit_self().node),
-                                  m.span))
+                                  item.span))
                         }
                         _ => None
                     }
@@ -1730,10 +1730,10 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
                 _ => None
             },
             ast_map::NodeImplItem(ii) => {
-                match *ii {
+                match ii.node {
                     ast::MethodImplItem(ref m) => {
                         taken.push_all(&m.pe_generics().lifetimes);
-                        Some(m.id)
+                        Some(ii.id)
                     }
                     ast::TypeImplItem(_) => None,
                 }

@@ -11,7 +11,6 @@
 //! This module contains the "cleaned" pieces of the AST, and the functions
 //! that clean them.
 
-pub use self::ImplMethod::*;
 pub use self::Type::*;
 pub use self::PrimitiveType::*;
 pub use self::TypeKind::*;
@@ -24,7 +23,6 @@ pub use self::Attribute::*;
 pub use self::TyParamBound::*;
 pub use self::SelfTy::*;
 pub use self::FunctionRetTy::*;
-pub use self::TraitMethod::*;
 
 use syntax;
 use syntax::abi;
@@ -70,7 +68,7 @@ pub trait Clean<T> {
     fn clean(&self, cx: &DocContext) -> T;
 }
 
-impl<T: Clean<U>, U> Clean<Vec<U>> for Vec<T> {
+impl<T: Clean<U>, U> Clean<Vec<U>> for [T] {
     fn clean(&self, cx: &DocContext) -> Vec<U> {
         self.iter().map(|x| x.clean(cx)).collect()
     }
@@ -339,7 +337,7 @@ pub enum ItemEnum {
     ForeignStaticItem(Static),
     MacroItem(Macro),
     PrimitiveItem(PrimitiveType),
-    AssociatedTypeItem(TyParam),
+    AssociatedTypeItem(Vec<TyParamBound>, Option<Type>),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -951,8 +949,8 @@ pub struct Method {
     pub abi: abi::Abi
 }
 
-impl Clean<Item> for ast::Method {
-    fn clean(&self, cx: &DocContext) -> Item {
+impl Clean<Method> for ast::Method {
+    fn clean(&self, cx: &DocContext) -> Method {
         let all_inputs = &self.pe_fn_decl().inputs;
         let inputs = match self.pe_explicit_self().node {
             ast::SelfStatic => &**all_inputs,
@@ -960,25 +958,17 @@ impl Clean<Item> for ast::Method {
         };
         let decl = FnDecl {
             inputs: Arguments {
-                values: inputs.iter().map(|x| x.clean(cx)).collect(),
+                values: inputs.clean(cx),
             },
             output: self.pe_fn_decl().output.clean(cx),
             attrs: Vec::new()
         };
-        Item {
-            name: Some(self.pe_ident().clean(cx)),
-            attrs: self.attrs.clean(cx),
-            source: self.span.clean(cx),
-            def_id: ast_util::local_def(self.id),
-            visibility: self.pe_vis().clean(cx),
-            stability: get_stability(cx, ast_util::local_def(self.id)),
-            inner: MethodItem(Method {
-                generics: self.pe_generics().clean(cx),
-                self_: self.pe_explicit_self().node.clean(cx),
-                unsafety: self.pe_unsafety().clone(),
-                decl: decl,
-                abi: self.pe_abi()
-            }),
+        Method {
+            generics: self.pe_generics().clean(cx),
+            self_: self.pe_explicit_self().node.clean(cx),
+            unsafety: self.pe_unsafety().clone(),
+            decl: decl,
+            abi: self.pe_abi()
         }
     }
 }
@@ -992,33 +982,25 @@ pub struct TyMethod {
     pub abi: abi::Abi
 }
 
-impl Clean<Item> for ast::TypeMethod {
-    fn clean(&self, cx: &DocContext) -> Item {
+impl Clean<TyMethod> for ast::TypeMethod {
+    fn clean(&self, cx: &DocContext) -> TyMethod {
         let inputs = match self.explicit_self.node {
             ast::SelfStatic => &*self.decl.inputs,
             _ => &self.decl.inputs[1..]
         };
         let decl = FnDecl {
             inputs: Arguments {
-                values: inputs.iter().map(|x| x.clean(cx)).collect(),
+                values: inputs.clean(cx),
             },
             output: self.decl.output.clean(cx),
             attrs: Vec::new()
         };
-        Item {
-            name: Some(self.ident.clean(cx)),
-            attrs: self.attrs.clean(cx),
-            source: self.span.clean(cx),
-            def_id: ast_util::local_def(self.id),
-            visibility: None,
-            stability: get_stability(cx, ast_util::local_def(self.id)),
-            inner: TyMethodItem(TyMethod {
-                unsafety: self.unsafety.clone(),
-                decl: decl,
-                self_: self.explicit_self.node.clean(cx),
-                generics: self.generics.clean(cx),
-                abi: self.abi
-            }),
+        TyMethod {
+            unsafety: self.unsafety.clone(),
+            decl: decl,
+            self_: self.explicit_self.node.clean(cx),
+            generics: self.generics.clean(cx),
+            abi: self.abi
         }
     }
 }
@@ -1166,7 +1148,7 @@ impl Clean<FunctionRetTy> for ast::FunctionRetTy {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Trait {
     pub unsafety: ast::Unsafety,
-    pub items: Vec<TraitMethod>,
+    pub items: Vec<Item>,
     pub generics: Generics,
     pub bounds: Vec<TyParamBound>,
 }
@@ -1205,64 +1187,48 @@ impl Clean<PolyTrait> for ast::PolyTraitRef {
     }
 }
 
-/// An item belonging to a trait, whether a method or associated. Could be named
-/// TraitItem except that's already taken by an exported enum variant.
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum TraitMethod {
-    RequiredMethod(Item),
-    ProvidedMethod(Item),
-    TypeTraitItem(Item), // an associated type
-}
-
-impl TraitMethod {
-    pub fn is_req(&self) -> bool {
-        match self {
-            &RequiredMethod(..) => true,
-            _ => false,
-        }
-    }
-    pub fn is_def(&self) -> bool {
-        match self {
-            &ProvidedMethod(..) => true,
-            _ => false,
-        }
-    }
-    pub fn is_type(&self) -> bool {
-        match self {
-            &TypeTraitItem(..) => true,
-            _ => false,
-        }
-    }
-    pub fn item<'a>(&'a self) -> &'a Item {
-        match *self {
-            RequiredMethod(ref item) => item,
-            ProvidedMethod(ref item) => item,
-            TypeTraitItem(ref item) => item,
+impl Clean<Item> for ast::TraitItem {
+    fn clean(&self, cx: &DocContext) -> Item {
+        let inner = match self.node {
+            ast::ProvidedMethod(ref m) => MethodItem(m.clean(cx)),
+            ast::RequiredMethod(ref m) => TyMethodItem(m.clean(cx)),
+            ast::TypeTraitItem(ref bounds, ref default) => {
+                AssociatedTypeItem(bounds.clean(cx), default.clean(cx))
+            }
+        };
+        Item {
+            name: Some(self.ident.clean(cx)),
+            attrs: self.attrs.clean(cx),
+            source: self.span.clean(cx),
+            def_id: ast_util::local_def(self.id),
+            visibility: None,
+            stability: get_stability(cx, ast_util::local_def(self.id)),
+            inner: inner
         }
     }
 }
 
-impl Clean<TraitMethod> for ast::TraitItem {
-    fn clean(&self, cx: &DocContext) -> TraitMethod {
-        match self {
-            &ast::RequiredMethod(ref t) => RequiredMethod(t.clean(cx)),
-            &ast::ProvidedMethod(ref t) => ProvidedMethod(t.clean(cx)),
-            &ast::TypeTraitItem(ref t) => TypeTraitItem(t.clean(cx)),
-        }
-    }
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
-pub enum ImplMethod {
-    MethodImplItem(Item),
-    TypeImplItem(Item),
-}
-
-impl Clean<ImplMethod> for ast::ImplItem {
-    fn clean(&self, cx: &DocContext) -> ImplMethod {
-        match self {
-            &ast::MethodImplItem(ref t) => MethodImplItem(t.clean(cx)),
-            &ast::TypeImplItem(ref t) => TypeImplItem(t.clean(cx)),
+impl Clean<Item> for ast::ImplItem {
+    fn clean(&self, cx: &DocContext) -> Item {
+        let inner = match self.node {
+            ast::MethodImplItem(ref m) => MethodItem(m.clean(cx)),
+            ast::TypeImplItem(ref ty) => TypedefItem(Typedef {
+                type_: ty.clean(cx),
+                generics: Generics {
+                    lifetimes: Vec::new(),
+                    type_params: Vec::new(),
+                    where_predicates: Vec::new()
+                },
+            }),
+        };
+        Item {
+            name: Some(self.ident.clean(cx)),
+            source: self.span.clean(cx),
+            attrs: self.attrs.clean(cx),
+            def_id: ast_util::local_def(self.id),
+            visibility: self.vis.clean(cx),
+            stability: get_stability(cx, ast_util::local_def(self.id)),
+            inner: inner
         }
     }
 }
@@ -2128,12 +2094,7 @@ impl Clean<Item> for doctree::Impl {
                 generics: self.generics.clean(cx),
                 trait_: self.trait_.clean(cx),
                 for_: self.for_.clean(cx),
-                items: self.items.clean(cx).into_iter().map(|ti| {
-                        match ti {
-                            MethodImplItem(i) => i,
-                            TypeImplItem(i) => i,
-                        }
-                    }).collect(),
+                items: self.items.clean(cx),
                 derived: detect_derived(&self.attrs),
                 polarity: Some(self.polarity.clean(cx)),
             }),
@@ -2500,60 +2461,17 @@ impl Clean<Stability> for attr::Stability {
     }
 }
 
-impl Clean<Item> for ast::AssociatedType {
-    fn clean(&self, cx: &DocContext) -> Item {
-        Item {
-            source: self.ty_param.span.clean(cx),
-            name: Some(self.ty_param.ident.clean(cx)),
-            attrs: self.attrs.clean(cx),
-            inner: AssociatedTypeItem(self.ty_param.clean(cx)),
-            visibility: None,
-            def_id: ast_util::local_def(self.ty_param.id),
-            stability: None,
-        }
-    }
-}
-
 impl Clean<Item> for ty::AssociatedType {
     fn clean(&self, cx: &DocContext) -> Item {
         Item {
             source: DUMMY_SP.clean(cx),
             name: Some(self.name.clean(cx)),
             attrs: Vec::new(),
-            inner: AssociatedTypeItem(TyParam {
-                name: self.name.clean(cx),
-                did: ast::DefId {
-                    krate: 0,
-                    node: ast::DUMMY_NODE_ID
-                },
-                // FIXME(#20727): bounds are missing and need to be filled in from the
-                // predicates on the trait itself
-                bounds: vec![],
-                default: None,
-            }),
+            // FIXME(#20727): bounds are missing and need to be filled in from the
+            // predicates on the trait itself
+            inner: AssociatedTypeItem(vec![], None),
             visibility: None,
             def_id: self.def_id,
-            stability: None,
-        }
-    }
-}
-
-impl Clean<Item> for ast::Typedef {
-    fn clean(&self, cx: &DocContext) -> Item {
-        Item {
-            source: self.span.clean(cx),
-            name: Some(self.ident.clean(cx)),
-            attrs: self.attrs.clean(cx),
-            inner: TypedefItem(Typedef {
-                type_: self.typ.clean(cx),
-                generics: Generics {
-                    lifetimes: Vec::new(),
-                    type_params: Vec::new(),
-                    where_predicates: Vec::new()
-                },
-            }),
-            visibility: None,
-            def_id: ast_util::local_def(self.id),
             stability: None,
         }
     }

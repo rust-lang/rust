@@ -498,28 +498,24 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         visit::walk_fn(self, fk, fd, b, span)
     }
 
-    fn visit_trait_item(&mut self, t: &'v ast::TraitItem) {
-        match t {
-            &ast::TraitItem::ProvidedMethod(_) |
-            &ast::TraitItem::TypeTraitItem(_) => {}
-            &ast::TraitItem::RequiredMethod(ref method) => {
-                match ty::impl_or_trait_item(self.tcx(), local_def(method.id)) {
-                    ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {
-                        reject_non_type_param_bounds(
-                            self.tcx(),
-                            method.span,
-                            &ty_method.predicates);
-                        reject_shadowing_type_parameters(
-                            self.tcx(),
-                            method.span,
-                            &ty_method.generics);
-                    }
-                    _ => {}
+    fn visit_trait_item(&mut self, trait_item: &'v ast::TraitItem) {
+        if let ast::RequiredMethod(_) = trait_item.node {
+            match ty::impl_or_trait_item(self.tcx(), local_def(trait_item.id)) {
+                ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {
+                    reject_non_type_param_bounds(
+                        self.tcx(),
+                        trait_item.span,
+                        &ty_method.predicates);
+                    reject_shadowing_type_parameters(
+                        self.tcx(),
+                        trait_item.span,
+                        &ty_method.generics);
                 }
+                _ => {}
             }
         }
 
-        visit::walk_trait_item(self, t)
+        visit::walk_trait_item(self, trait_item)
     }
 }
 
