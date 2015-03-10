@@ -60,7 +60,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
 
         // Start a snapshot so we can examine "all bindings that were
         // created as part of this type comparison".
-        return self.infcx().try(|snapshot| {
+        return self.infcx().commit_if_ok(|snapshot| {
             // First, we instantiate each bound region in the subtype with a fresh
             // region variable.
             let (a_prime, _) =
@@ -109,7 +109,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
     {
         // Start a snapshot so we can examine "all bindings that were
         // created as part of this type comparison".
-        return self.infcx().try(|snapshot| {
+        return self.infcx().commit_if_ok(|snapshot| {
             // Instantiate each bound region with a fresh region variable.
             let span = self.trace().origin.span();
             let (a_with_fresh, a_map) =
@@ -202,7 +202,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
 
         // Make a snapshot so we can examine "all bindings that were
         // created as part of this type comparison".
-        return self.infcx().try(|snapshot| {
+        return self.infcx().commit_if_ok(|snapshot| {
             // Instantiate each bound region with a fresh region variable.
             let (a_with_fresh, a_map) =
                 self.infcx().replace_late_bound_regions_with_fresh_var(
