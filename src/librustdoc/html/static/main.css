@@ -83,7 +83,7 @@ h2 {
 h3 {
     font-size: 1.3em;
 }
-h1, h2, h3:not(.impl):not(.method):not(.type), h4:not(.method):not(.type) {
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
     color: black;
     font-weight: 500;
     margin: 20px 0 15px 0;
@@ -93,7 +93,7 @@ h1.fqn {
     border-bottom: 1px dashed #D5D5D5;
     margin-top: 0;
 }
-h2, h3:not(.impl):not(.method):not(.type), h4:not(.method):not(.type) {
+h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
     border-bottom: 1px solid #DDDDDD;
 }
 h3.impl, h3.method, h4.method, h3.type, h4.type {
