@@ -118,13 +118,13 @@ fn fold_item_underscore<F>(cx: &mut Context<F>, item: ast::Item_) -> ast::Item_ 
     let item = match item {
         ast::ItemImpl(u, o, a, b, c, impl_items) => {
             let impl_items = impl_items.into_iter()
-                                       .filter(|ii| impl_item_in_cfg(cx, ii))
+                                       .filter(|ii| (cx.in_cfg)(&ii.attrs))
                                        .collect();
             ast::ItemImpl(u, o, a, b, c, impl_items)
         }
         ast::ItemTrait(u, a, b, methods) => {
             let methods = methods.into_iter()
-                                 .filter(|m| trait_method_in_cfg(cx, m))
+                                 .filter(|ti| (cx.in_cfg)(&ti.attrs))
                                  .collect();
             ast::ItemTrait(u, a, b, methods)
         }
@@ -244,25 +244,6 @@ fn foreign_item_in_cfg<F>(cx: &mut Context<F>, item: &ast::ForeignItem) -> bool 
     F: FnMut(&[ast::Attribute]) -> bool
 {
     return (cx.in_cfg)(&item.attrs);
-}
-
-fn trait_method_in_cfg<F>(cx: &mut Context<F>, meth: &ast::TraitItem) -> bool where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    match *meth {
-        ast::RequiredMethod(ref meth) => (cx.in_cfg)(&meth.attrs),
-        ast::ProvidedMethod(ref meth) => (cx.in_cfg)(&meth.attrs),
-        ast::TypeTraitItem(ref typ) => (cx.in_cfg)(&typ.attrs),
-    }
-}
-
-fn impl_item_in_cfg<F>(cx: &mut Context<F>, impl_item: &ast::ImplItem) -> bool where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    match *impl_item {
-        ast::MethodImplItem(ref meth) => (cx.in_cfg)(&meth.attrs),
-        ast::TypeImplItem(ref typ) => (cx.in_cfg)(&typ.attrs),
-    }
 }
 
 // Determine if an item should be translated in the current crate

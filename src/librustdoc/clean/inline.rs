@@ -147,29 +147,13 @@ pub fn record_extern_fqn(cx: &DocContext, did: ast::DefId, kind: clean::TypeKind
 
 pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
                             did: ast::DefId) -> clean::Trait {
-    use clean::TraitMethod;
-
     let def = ty::lookup_trait_def(tcx, did);
     let trait_items = ty::trait_items(tcx, did).clean(cx);
-    let provided = ty::provided_trait_methods(tcx, did);
-    let items = trait_items.into_iter().map(|trait_item| {
-        match trait_item.inner {
-            clean::TyMethodItem(_) => {
-                if provided.iter().any(|a| a.def_id == trait_item.def_id) {
-                    TraitMethod::ProvidedMethod(trait_item)
-                } else {
-                    TraitMethod::RequiredMethod(trait_item)
-                }
-            },
-            clean::AssociatedTypeItem(_) => TraitMethod::TypeTraitItem(trait_item),
-            _ => unreachable!()
-        }
-    });
     let predicates = ty::lookup_predicates(tcx, did);
     clean::Trait {
         unsafety: def.unsafety,
         generics: (&def.generics, &predicates, subst::TypeSpace).clean(cx),
-        items: items.collect(),
+        items: trait_items,
         bounds: vec![], // supertraits can be found in the list of predicates
     }
 }

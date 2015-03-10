@@ -275,20 +275,18 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
     // Converts an implementation in the AST to a vector of items.
     fn create_impl_from_item(&self, item: &Item) -> Vec<ImplOrTraitItemId> {
         match item.node {
-            ItemImpl(_, _, _, ref opt_trait, _, ref ast_items) => {
+            ItemImpl(_, _, _, ref opt_trait, _, ref impl_items) => {
                 let mut items: Vec<ImplOrTraitItemId> =
-                        ast_items.iter()
-                                 .map(|ast_item| {
-                            match **ast_item {
-                                ast::MethodImplItem(ref ast_method) => {
-                                    MethodTraitItemId(
-                                        local_def(ast_method.id))
-                                }
-                                ast::TypeImplItem(ref typedef) => {
-                                    TypeTraitItemId(local_def(typedef.id))
-                                }
-                            }
-                        }).collect();
+                        impl_items.iter().map(|impl_item| {
+                    match impl_item.node {
+                        ast::MethodImplItem(_) => {
+                            MethodTraitItemId(local_def(impl_item.id))
+                        }
+                        ast::TypeImplItem(_) => {
+                            TypeTraitItemId(local_def(impl_item.id))
+                        }
+                    }
+                }).collect();
 
                 if opt_trait.is_some() {
                     let trait_ref = ty::impl_id_to_trait_ref(self.crate_context.tcx,

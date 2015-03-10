@@ -242,8 +242,8 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                 self.visit_generics(generics);
                 ItemRibKind
             }
-            visit::FkMethod(_, generics, method) => {
-                self.visit_generics(generics);
+            visit::FkMethod(_, method) => {
+                self.visit_generics(method.pe_generics());
                 self.visit_explicit_self(method.pe_explicit_self());
                 MethodRibKind
             }
@@ -2807,13 +2807,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     this.visit_generics(generics);
                     visit::walk_ty_param_bounds_helper(this, bounds);
 
-                    for trait_item in &(*trait_items) {
+                    for trait_item in trait_items {
                         // Create a new rib for the trait_item-specific type
                         // parameters.
                         //
                         // FIXME #4951: Do we need a node ID here?
 
-                        let type_parameters = match **trait_item {
+                        let type_parameters = match trait_item.node {
                             ast::RequiredMethod(ref ty_m) => {
                                 HasTypeParameters(&ty_m.generics,
                                                   FnSpace,
@@ -2824,10 +2824,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                   FnSpace,
                                                   MethodRibKind)
                             }
-                            ast::TypeTraitItem(ref assoc_ty) => {
-                                let ty_param = &assoc_ty.ty_param;
-                                this.check_if_primitive_type_name(ty_param.ident.name,
-                                                                  ty_param.span);
+                            ast::TypeTraitItem(..) => {
+                                this.check_if_primitive_type_name(trait_item.ident.name,
+                                                                  trait_item.span);
                                 NoTypeParameters
                             }
                         };
@@ -3066,12 +3065,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 this.with_current_self_type(self_type, |this| {
                     for impl_item in impl_items {
-                        match **impl_item {
+                        match impl_item.node {
                             MethodImplItem(ref method) => {
                                 // If this is a trait impl, ensure the method
                                 // exists in trait
-                                this.check_trait_item(method.pe_ident().name,
-                                                      method.span);
+                                this.check_trait_item(impl_item.ident.name,
+                                                      impl_item.span);
 
                                 // We also need a new scope for the method-
                                 // specific type parameters.
@@ -3080,16 +3079,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                       FnSpace,
                                                       MethodRibKind);
                                 this.with_type_parameter_rib(type_parameters, |this| {
-                                    visit::walk_method_helper(this, method);
+                                    visit::walk_impl_item(this, impl_item);
                                 });
                             }
-                            TypeImplItem(ref typedef) => {
+                            TypeImplItem(ref ty) => {
                                 // If this is a trait impl, ensure the method
                                 // exists in trait
-                                this.check_trait_item(typedef.ident.name,
-                                                      typedef.span);
+                                this.check_trait_item(impl_item.ident.name,
+                                                      impl_item.span);
 
-                                this.visit_ty(&*typedef.typ);
+                                this.visit_ty(ty);
                             }
                         }
                     }
@@ -3955,12 +3954,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         fn is_static_method(this: &Resolver, did: DefId) -> bool {
             if did.krate == ast::LOCAL_CRATE {
                 let explicit_self = match this.ast_map.get(did.node) {
-                    ast_map::NodeTraitItem(m) => match *m {
+                    ast_map::NodeTraitItem(trait_item) => match trait_item.node {
                         ast::RequiredMethod(ref m) => &m.explicit_self,
                         ast::ProvidedMethod(ref m) => m.pe_explicit_self(),
                         _ => return false
                     },
-                    ast_map::NodeImplItem(m) => match *m {
+                    ast_map::NodeImplItem(impl_item) => match impl_item.node {
                         ast::MethodImplItem(ref m) => m.pe_explicit_self(),
                         _ => return false
                     },

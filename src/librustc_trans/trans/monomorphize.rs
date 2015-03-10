@@ -216,18 +216,18 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
             d
         }
-        ast_map::NodeImplItem(ii) => {
-            match *ii {
+        ast_map::NodeImplItem(impl_item) => {
+            match impl_item.node {
                 ast::MethodImplItem(ref mth) => {
                     let d = mk_lldecl(abi::Rust);
-                    let needs_body = setup_lldecl(d, &mth.attrs);
+                    let needs_body = setup_lldecl(d, &impl_item.attrs);
                     if needs_body {
                         trans_fn(ccx,
                                  mth.pe_fn_decl(),
                                  mth.pe_body(),
                                  d,
                                  psubsts,
-                                 mth.id,
+                                 impl_item.id,
                                  &[]);
                     }
                     d
@@ -237,14 +237,14 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
-        ast_map::NodeTraitItem(method) => {
-            match *method {
+        ast_map::NodeTraitItem(trait_item) => {
+            match trait_item.node {
                 ast::ProvidedMethod(ref mth) => {
                     let d = mk_lldecl(abi::Rust);
-                    let needs_body = setup_lldecl(d, &mth.attrs);
+                    let needs_body = setup_lldecl(d, &trait_item.attrs);
                     if needs_body {
                         trans_fn(ccx, mth.pe_fn_decl(), mth.pe_body(), d,
-                                 psubsts, mth.id, &[]);
+                                 psubsts, trait_item.id, &[]);
                     }
                     d
                 }

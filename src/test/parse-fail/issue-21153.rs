@@ -9,5 +9,5 @@
 // except according to those terms.
 
 trait MyTrait<T>: Iterator {
-    Item = T; //~ ERROR expected one of `extern`, `fn`, `pub`, `type`, or `unsafe`, found `Item`
+    Item = T; //~ ERROR expected one of `extern`, `fn`, `type`, or `unsafe`, found `Item`
 }

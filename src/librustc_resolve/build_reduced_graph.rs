@@ -48,7 +48,7 @@ use syntax::ast::UnnamedField;
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ast::{Visibility};
 use syntax::ast;
-use syntax::ast_util::{self, local_def, PostExpansionMethod};
+use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::{self, special_idents};
 use syntax::codemap::{Span, DUMMY_SP};
@@ -525,53 +525,29 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 // Add the names of all the items to the trait info.
                 for trait_item in items {
-                    let (name, trait_item_id) = match **trait_item {
+                    let name_bindings = self.add_child(trait_item.ident.name,
+                                        &module_parent,
+                                        ForbidDuplicateTypesAndValues,
+                                        trait_item.span);
+
+                    match trait_item.node {
                         ast::RequiredMethod(_) |
                         ast::ProvidedMethod(_) => {
-                            let (id, name, span) = match **trait_item {
-                                ast::RequiredMethod(ref m) => {
-                                    (m.id, m.ident.name, m.span)
-                                }
-                                ast::ProvidedMethod(ref m) => {
-                                    (m.id, m.pe_ident().name, m.span)
-                                }
-                                _ => unreachable!()
-                            };
-
-                            // Add it as a name in the trait module.
-                            let def = DefMethod(local_def(id),
+                            let def = DefMethod(local_def(trait_item.id),
                                                 FromTrait(local_def(item.id)));
-
-                            let method_name_bindings =
-                                self.add_child(name,
-                                               &module_parent,
-                                               ForbidDuplicateTypesAndValues,
-                                               span);
                             // NB: not IMPORTABLE
-                            method_name_bindings.define_value(def, span, PUBLIC);
-
-                            (name, local_def(id))
+                            name_bindings.define_value(def, trait_item.span, PUBLIC);
                         }
-                        ast::TypeTraitItem(ref associated_type) => {
+                        ast::TypeTraitItem(..) => {
                             let def = DefAssociatedTy(local_def(item.id),
-                                                      local_def(associated_type.ty_param.id));
-
-                            let name_bindings =
-                                self.add_child(associated_type.ty_param.ident.name,
-                                               &module_parent,
-                                               ForbidDuplicateTypesAndValues,
-                                               associated_type.ty_param.span);
+                                                      local_def(trait_item.id));
                             // NB: not IMPORTABLE
-                            name_bindings.define_type(def,
-                                                      associated_type.ty_param.span,
-                                                      PUBLIC);
-
-                            (associated_type.ty_param.ident.name,
-                             local_def(associated_type.ty_param.id))
+                            name_bindings.define_type(def, trait_item.span, PUBLIC);
                         }
-                    };
+                    }
 
-                    self.trait_item_map.insert((name, def_id), trait_item_id);
+                    self.trait_item_map.insert((trait_item.ident.name, def_id),
+                                               local_def(trait_item.id));
                 }
 
                 name_bindings.define_type(DefTrait(def_id), sp, modifiers);

@@ -20,8 +20,8 @@ use syntax::attr::{Unstable, Stable};
 use syntax::ast::Public;
 
 use clean::{Crate, Item, ModuleItem, Module, EnumItem, Enum};
-use clean::{ImplItem, Impl, Trait, TraitItem, TraitMethod, ProvidedMethod, RequiredMethod};
-use clean::{TypeTraitItem, ExternCrateItem, ImportItem, PrimitiveItem, Stability};
+use clean::{ImplItem, Impl, Trait, TraitItem};
+use clean::{ExternCrateItem, ImportItem, PrimitiveItem, Stability};
 
 use html::render::cache;
 
@@ -140,11 +140,11 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
     // considered to have no children.
     match item.inner {
         // Require explicit `pub` to be visible
-        ImplItem(Impl { items: ref subitems, trait_: None, .. }) => {
-            let subcounts = subitems.iter().filter(|i| visible(*i))
-                                           .map(summarize_item)
-                                           .map(|s| s.0)
-                                           .fold(Counts::zero(), |acc, x| acc + x);
+        ImplItem(Impl { ref items, trait_: None, .. }) => {
+            let subcounts = items.iter().filter(|i| visible(*i))
+                                        .map(summarize_item)
+                                        .map(|s| s.0)
+                                        .fold(Counts::zero(), |acc, x| acc + x);
             (subcounts, None)
         }
         // `pub` automatically
@@ -154,22 +154,10 @@ fn summarize_item(item: &Item) -> (Counts, Option<ModuleSummary>) {
                                            .fold(Counts::zero(), |acc, x| acc + x);
             (item_counts + subcounts, None)
         }
-        TraitItem(Trait {
-            items: ref trait_items,
-            ..
-        }) => {
-            fn extract_item<'a>(trait_item: &'a TraitMethod) -> &'a Item {
-                match *trait_item {
-                    ProvidedMethod(ref item) |
-                    RequiredMethod(ref item) |
-                    TypeTraitItem(ref item) => item
-                }
-            }
-            let subcounts = trait_items.iter()
-                                       .map(extract_item)
-                                       .map(summarize_item)
-                                       .map(|s| s.0)
-                                       .fold(Counts::zero(), |acc, x| acc + x);
+        TraitItem(Trait { ref items, .. }) => {
+            let subcounts = items.iter().map(summarize_item)
+                                        .map(|s| s.0)
+                                        .fold(Counts::zero(), |acc, x| acc + x);
             (item_counts + subcounts, None)
         }
         ModuleItem(Module { ref items, .. }) => {

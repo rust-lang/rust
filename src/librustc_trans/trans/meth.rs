@@ -62,14 +62,15 @@ pub fn trans_impl(ccx: &CrateContext,
 
     debug!("trans_impl(name={}, id={})", name.repr(tcx), id);
 
+    let mut v = TransItemVisitor { ccx: ccx };
+
     // Both here and below with generic methods, be sure to recurse and look for
     // items that we need to translate.
     if !generics.ty_params.is_empty() {
-        let mut v = TransItemVisitor{ ccx: ccx };
         for impl_item in impl_items {
-            match **impl_item {
-                ast::MethodImplItem(ref method) => {
-                    visit::walk_method_helper(&mut v, method);
+            match impl_item.node {
+                ast::MethodImplItem(_) => {
+                    visit::walk_impl_item(&mut v, impl_item);
                 }
                 ast::TypeImplItem(_) => {}
             }
@@ -77,30 +78,27 @@ pub fn trans_impl(ccx: &CrateContext,
         return;
     }
     for impl_item in impl_items {
-        match **impl_item {
+        match impl_item.node {
             ast::MethodImplItem(ref method) => {
                 if method.pe_generics().ty_params.len() == 0 {
-                    let trans_everywhere = attr::requests_inline(&method.attrs);
+                    let trans_everywhere = attr::requests_inline(&impl_item.attrs);
                     for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
-                        let llfn = get_item_val(ccx, method.id);
+                        let llfn = get_item_val(ccx, impl_item.id);
                         let empty_substs = tcx.mk_substs(Substs::trans_empty());
                         trans_fn(ccx,
                                  method.pe_fn_decl(),
                                  method.pe_body(),
                                  llfn,
                                  empty_substs,
-                                 method.id,
+                                 impl_item.id,
                                  &[]);
                         update_linkage(ccx,
                                        llfn,
-                                       Some(method.id),
+                                       Some(impl_item.id),
                                        if is_origin { OriginalTranslation } else { InlinedCopy });
                     }
                 }
-                let mut v = TransItemVisitor {
-                    ccx: ccx,
-                };
-                visit::walk_method_helper(&mut v, method);
+                visit::walk_impl_item(&mut v, impl_item);
             }
             ast::TypeImplItem(_) => {}
         }
@@ -190,17 +188,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let mname = if method_id.krate == ast::LOCAL_CRATE {
         match tcx.map.get(method_id.node) {
-            ast_map::NodeTraitItem(method) => {
-                let ident = match *method {
-                    ast::RequiredMethod(ref m) => m.ident,
-                    ast::ProvidedMethod(ref m) => m.pe_ident(),
-                    ast::TypeTraitItem(_) => {
-                        tcx.sess.bug("trans_static_method_callee() on \
-                                      an associated type?!")
-                    }
-                };
-                ident.name
-            }
+            ast_map::NodeTraitItem(trait_item) => trait_item.ident.name,
             _ => panic!("callee is not a trait method")
         }
     } else {

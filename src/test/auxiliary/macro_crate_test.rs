@@ -81,16 +81,7 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                 ..(*quote_item!(cx, enum Foo2 { Bar2, Baz2 }).unwrap()).clone()
             }))
         }
-        Annotatable::ImplItem(it) => {
-            Annotatable::ImplItem(ImplItem::MethodImplItem(
-                quote_method!(cx, fn foo(&self) -> i32 { 42 })
-            ))
-        }
-        Annotatable::TraitItem(it) => {
-            Annotatable::TraitItem(TraitItem::ProvidedMethod(
-                quote_method!(cx, fn foo(&self) -> i32 { 0 })
-            ))
-        }
+        it => it
     }
 }
 

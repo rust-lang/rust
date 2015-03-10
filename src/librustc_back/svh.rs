@@ -188,8 +188,8 @@ mod svh_visitor {
         SawTy,
         SawGenerics,
         SawFn,
-        SawTyMethod,
-        SawTraitMethod,
+        SawTraitItem,
+        SawImplItem,
         SawStructField,
         SawVariant,
         SawExplicitSelf,
@@ -463,12 +463,12 @@ mod svh_visitor {
             SawFn.hash(self.st); visit::walk_fn(self, fk, fd, b, s)
         }
 
-        fn visit_ty_method(&mut self, t: &TypeMethod) {
-            SawTyMethod.hash(self.st); visit::walk_ty_method(self, t)
+        fn visit_trait_item(&mut self, ti: &TraitItem) {
+            SawTraitItem.hash(self.st); visit::walk_trait_item(self, ti)
         }
 
-        fn visit_trait_item(&mut self, t: &TraitItem) {
-            SawTraitMethod.hash(self.st); visit::walk_trait_item(self, t)
+        fn visit_impl_item(&mut self, ii: &ImplItem) {
+            SawImplItem.hash(self.st); visit::walk_impl_item(self, ii)
         }
 
         fn visit_struct_field(&mut self, s: &StructField) {

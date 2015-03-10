@@ -14,7 +14,7 @@ use self::MapEntry::*;
 
 use abi;
 use ast::*;
-use ast_util::{self, PostExpansionMethod};
+use ast_util;
 use codemap::{DUMMY_SP, Span, Spanned};
 use fold::Folder;
 use parse::token;
@@ -374,35 +374,8 @@ impl<'ast> Map<'ast> {
                 }
             }
             NodeForeignItem(i) => PathName(i.ident.name),
-            NodeImplItem(ii) => {
-                match *ii {
-                    MethodImplItem(ref m) => {
-                        match m.node {
-                            MethDecl(ident, _, _, _, _, _, _, _) => {
-                                PathName(ident.name)
-                            }
-                            MethMac(_) => {
-                                panic!("no path elem for {:?}", node)
-                            }
-                        }
-                    }
-                    TypeImplItem(ref t) => PathName(t.ident.name),
-                }
-            },
-            NodeTraitItem(tm) => match *tm {
-                RequiredMethod(ref m) => PathName(m.ident.name),
-                ProvidedMethod(ref m) => {
-                    match m.node {
-                        MethDecl(ident, _, _, _, _, _, _, _) => {
-                            PathName(ident.name)
-                        }
-                        MethMac(_) => panic!("no path elem for {:?}", node),
-                    }
-                }
-                TypeTraitItem(ref m) => {
-                    PathName(m.ty_param.ident.name)
-                }
-            },
+            NodeImplItem(ii) => PathName(ii.ident.name),
+            NodeTraitItem(ti) => PathName(ti.ident.name),
             NodeVariant(v) => PathName(v.node.name.name),
             _ => panic!("no path elem for {:?}", node)
         }
@@ -458,21 +431,12 @@ impl<'ast> Map<'ast> {
 
     /// Given a node ID, get a list of of attributes associated with the AST
     /// corresponding to the Node ID
-    pub fn attrs(&self, id: NodeId) -> &[Attribute] {
+    pub fn attrs(&self, id: NodeId) -> &'ast [Attribute] {
         let attrs = match self.find(id) {
             Some(NodeItem(i)) => Some(&i.attrs[..]),
             Some(NodeForeignItem(fi)) => Some(&fi.attrs[..]),
-            Some(NodeTraitItem(ref tm)) => match **tm {
-                RequiredMethod(ref type_m) => Some(&type_m.attrs[..]),
-                ProvidedMethod(ref m) => Some(&m.attrs[..]),
-                TypeTraitItem(ref typ) => Some(&typ.attrs[..]),
-            },
-            Some(NodeImplItem(ref ii)) => {
-                match **ii {
-                    MethodImplItem(ref m) => Some(&m.attrs[..]),
-                    TypeImplItem(ref t) => Some(&t.attrs[..]),
-                }
-            }
+            Some(NodeTraitItem(ref ti)) => Some(&ti.attrs[..]),
+            Some(NodeImplItem(ref ii)) => Some(&ii.attrs[..]),
             Some(NodeVariant(ref v)) => Some(&v.node.attrs[..]),
             // unit/tuple structs take the attributes straight from
             // the struct definition.
@@ -505,19 +469,8 @@ impl<'ast> Map<'ast> {
         let sp = match self.find(id) {
             Some(NodeItem(item)) => item.span,
             Some(NodeForeignItem(foreign_item)) => foreign_item.span,
-            Some(NodeTraitItem(trait_method)) => {
-                match *trait_method {
-                    RequiredMethod(ref type_method) => type_method.span,
-                    ProvidedMethod(ref method) => method.span,
-                    TypeTraitItem(ref typedef) => typedef.ty_param.span,
-                }
-            }
-            Some(NodeImplItem(ref impl_item)) => {
-                match **impl_item {
-                    MethodImplItem(ref method) => method.span,
-                    TypeImplItem(ref typedef) => typedef.span,
-                }
-            }
+            Some(NodeTraitItem(trait_method)) => trait_method.span,
+            Some(NodeImplItem(ref impl_item)) => impl_item.span,
             Some(NodeVariant(variant)) => variant.span,
             Some(NodeExpr(expr)) => expr.span,
             Some(NodeStmt(stmt)) => stmt.span,
@@ -650,31 +603,8 @@ impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() }
 impl Named for Item { fn name(&self) -> Name { self.ident.name } }
 impl Named for ForeignItem { fn name(&self) -> Name { self.ident.name } }
 impl Named for Variant_ { fn name(&self) -> Name { self.name.name } }
-impl Named for TraitItem {
-    fn name(&self) -> Name {
-        match *self {
-            RequiredMethod(ref tm) => tm.ident.name,
-            ProvidedMethod(ref m) => m.name(),
-            TypeTraitItem(ref at) => at.ty_param.ident.name,
-        }
-    }
-}
-impl Named for ImplItem {
-    fn name(&self) -> Name {
-        match *self {
-            MethodImplItem(ref m) => m.name(),
-            TypeImplItem(ref td) => td.ident.name,
-        }
-    }
-}
-impl Named for Method {
-    fn name(&self) -> Name {
-        match self.node {
-            MethDecl(i, _, _, _, _, _, _, _) => i.name,
-            MethMac(_) => panic!("encountered unexpanded method macro."),
-        }
-    }
-}
+impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
+impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
 
 pub trait FoldOps {
     fn new_id(&self, id: NodeId) -> NodeId {
@@ -739,12 +669,8 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         self.parent = i.id;
         match i.node {
             ItemImpl(_, _, _, _, _, ref impl_items) => {
-                for impl_item in impl_items {
-                    let id = match **impl_item {
-                        MethodImplItem(ref m) => m.id,
-                        TypeImplItem(ref t) => t.id,
-                    };
-                    self.insert(id, NodeImplItem(impl_item));
+                for ii in impl_items {
+                    self.insert(ii.id, NodeImplItem(ii));
                 }
             }
             ItemEnum(ref enum_definition, _) => {
@@ -773,18 +699,27 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                     }
                 }
 
-                for tm in trait_items {
-                    let id = match **tm {
-                        RequiredMethod(ref m) => m.id,
-                        ProvidedMethod(ref m) => m.id,
-                        TypeTraitItem(ref typ) => typ.ty_param.id,
-                    };
-                    self.insert(id, NodeTraitItem(tm));
+                for ti in trait_items {
+                    self.insert(ti.id, NodeTraitItem(ti));
                 }
             }
             _ => {}
         }
         visit::walk_item(self, i);
+        self.parent = parent;
+    }
+
+    fn visit_trait_item(&mut self, ti: &'ast TraitItem) {
+        let parent = self.parent;
+        self.parent = ti.id;
+        visit::walk_trait_item(self, ti);
+        self.parent = parent;
+    }
+
+    fn visit_impl_item(&mut self, ii: &'ast ImplItem) {
+        let parent = self.parent;
+        self.parent = ii.id;
+        visit::walk_impl_item(self, ii);
         self.parent = parent;
     }
 
@@ -807,29 +742,10 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         visit::walk_stmt(self, stmt);
     }
 
-    fn visit_ty_method(&mut self, m: &'ast TypeMethod) {
-        let parent = self.parent;
-        self.parent = m.id;
-        self.visit_fn_decl(&*m.decl);
-        visit::walk_ty_method(self, m);
-        self.parent = parent;
-    }
-
     fn visit_fn(&mut self, fk: visit::FnKind<'ast>, fd: &'ast FnDecl,
-                b: &'ast Block, s: Span, id: NodeId) {
-        match fk {
-            visit::FkMethod(..) => {
-                let parent = self.parent;
-                self.parent = id;
-                self.visit_fn_decl(fd);
-                visit::walk_fn(self, fk, fd, b, s);
-                self.parent = parent;
-            }
-            _ => {
-                self.visit_fn_decl(fd);
-                visit::walk_fn(self, fk, fd, b, s);
-            }
-        }
+                b: &'ast Block, s: Span, _: NodeId) {
+        self.visit_fn_decl(fd);
+        visit::walk_fn(self, fk, fd, b, s);
     }
 
     fn visit_ty(&mut self, ty: &'ast Ty) {
@@ -911,33 +827,14 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
     let mut fld = IdAndSpanUpdater { fold_ops: fold_ops };
     let ii = match ii {
         IIItem(i) => IIItem(fld.fold_item(i).expect_one("expected one item")),
-        IITraitItem(d, ti) => match ti {
-            ProvidedMethod(m) => {
-                IITraitItem(fld.fold_ops.new_def_id(d),
-                            ProvidedMethod(fld.fold_method(m)
-                                              .expect_one("expected one method")))
-            }
-            RequiredMethod(ty_m) => {
-                IITraitItem(fld.fold_ops.new_def_id(d),
-                            RequiredMethod(fld.fold_type_method(ty_m)))
-            }
-            TypeTraitItem(at) => {
-                IITraitItem(
-                    fld.fold_ops.new_def_id(d),
-                    TypeTraitItem(fld.fold_associated_type(at)))
-            }
-        },
-        IIImplItem(d, m) => match m {
-            MethodImplItem(m) => {
-                IIImplItem(fld.fold_ops.new_def_id(d),
-                           MethodImplItem(fld.fold_method(m)
-                                             .expect_one("expected one method")))
-            }
-            TypeImplItem(t) => {
-                IIImplItem(fld.fold_ops.new_def_id(d),
-                           TypeImplItem(fld.fold_typedef(t)))
-            }
-        },
+        IITraitItem(d, ti) => {
+            IITraitItem(fld.fold_ops.new_def_id(d),
+                        fld.fold_trait_item(ti).expect_one("expected one trait item"))
+        }
+        IIImplItem(d, ii) => {
+            IIImplItem(fld.fold_ops.new_def_id(d),
+                       fld.fold_impl_item(ii).expect_one("expected one impl item"))
+        }
         IIForeign(i) => IIForeign(fld.fold_foreign_item(i))
     };
 
@@ -959,25 +856,14 @@ pub fn map_decoded_item<'ast, F: FoldOps>(map: &Map<'ast>,
     // add it to the table now. Likewise with foreign items.
     match ii_parent.ii {
         IIItem(_) => {}
-        IITraitItem(_, ref trait_item) => {
-            let trait_item_id = match *trait_item {
-                ProvidedMethod(ref m) => m.id,
-                RequiredMethod(ref m) => m.id,
-                TypeTraitItem(ref ty) => ty.ty_param.id,
-            };
-
-            collector.insert(trait_item_id, NodeTraitItem(trait_item));
+        IITraitItem(_, ref ti) => {
+            collector.insert(ti.id, NodeTraitItem(ti));
         }
-        IIImplItem(_, ref impl_item) => {
-            let impl_item_id = match *impl_item {
-                MethodImplItem(ref m) => m.id,
-                TypeImplItem(ref ti) => ti.id,
-            };
-
-            collector.insert(impl_item_id, NodeImplItem(impl_item));
+        IIImplItem(_, ref ii) => {
+            collector.insert(ii.id, NodeImplItem(ii));
         }
         IIForeign(ref i) => {
-            collector.insert(i.id, NodeForeignItem(&**i));
+            collector.insert(i.id, NodeForeignItem(i));
         }
     }
     *map.map.borrow_mut() = collector.map;
@@ -993,8 +879,8 @@ impl<'a> NodePrinter for pprust::State<'a> {
         match *node {
             NodeItem(a)        => self.print_item(&*a),
             NodeForeignItem(a) => self.print_foreign_item(&*a),
-            NodeTraitItem(a)   => self.print_trait_method(&*a),
-            NodeImplItem(a)    => self.print_impl_item(&*a),
+            NodeTraitItem(a)   => self.print_trait_item(a),
+            NodeImplItem(a)    => self.print_impl_item(a),
             NodeVariant(a)     => self.print_variant(&*a),
             NodeExpr(a)        => self.print_expr(&*a),
             NodeStmt(a)        => self.print_stmt(&*a),
@@ -1041,48 +927,39 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
             let path_str = map.path_to_str_with_ident(id, item.ident);
             format!("foreign item {}{}", path_str, id_str)
         }
-        Some(NodeImplItem(ref ii)) => {
-            match **ii {
+        Some(NodeImplItem(ii)) => {
+            match ii.node {
                 MethodImplItem(ref m) => {
-                    match m.node {
-                        MethDecl(ident, _, _, _, _, _, _, _) =>
+                    match *m {
+                        MethDecl(..) =>
                             format!("method {} in {}{}",
-                                    token::get_ident(ident),
+                                    token::get_ident(ii.ident),
                                     map.path_to_string(id), id_str),
                         MethMac(ref mac) =>
                             format!("method macro {}{}",
                                     pprust::mac_to_string(mac), id_str)
                     }
                 }
-                TypeImplItem(ref t) => {
+                TypeImplItem(_) => {
                     format!("assoc type {} in {}{}",
-                            token::get_ident(t.ident),
+                            token::get_ident(ii.ident),
                             map.path_to_string(id),
                             id_str)
                 }
             }
         }
-        Some(NodeTraitItem(ref tm)) => {
-            match **tm {
-                RequiredMethod(ref m) => {
-                    format!("required method {} in {}{}",
-                            token::get_ident(m.ident),
-                            map.path_to_string(id),
-                            id_str)
-                }
-                ProvidedMethod(ref m) => {
-                    format!("provided method {} in {}{}",
-                            token::get_ident(m.pe_ident()),
-                            map.path_to_string(id),
-                            id_str)
-                }
-                TypeTraitItem(ref t) => {
-                    format!("assoc type {} in {}{}",
-                            token::get_ident(t.ty_param.ident),
-                            map.path_to_string(id),
-                            id_str)
-                }
-            }
+        Some(NodeTraitItem(ti)) => {
+            let kind = match ti.node {
+                RequiredMethod(_) => "required method",
+                ProvidedMethod(_) => "provided method",
+                TypeTraitItem(..) => "assoc type",
+            };
+
+            format!("{} {} in {}{}",
+                    kind,
+                    token::get_ident(ti.ident),
+                    map.path_to_string(id),
+                    id_str)
         }
         Some(NodeVariant(ref variant)) => {
             format!("variant {} in {}{}",

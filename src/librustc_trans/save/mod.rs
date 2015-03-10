@@ -284,8 +284,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         }
     }
 
-    fn process_method(&mut self, method: &ast::Method) {
-        if generated_code(method.span) {
+    fn process_method(&mut self, method: &ast::Method,
+                      id: ast::NodeId, ident: ast::Ident,
+                      span: Span) {
+        if generated_code(span) {
             return;
         }
 
@@ -293,7 +295,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
         let qualname = match ty::impl_of_method(&self.analysis.ty_cx,
-                                                ast_util::local_def(method.id)) {
+                                                ast_util::local_def(id)) {
             Some(impl_id) => match self.analysis.ty_cx.map.get(impl_id.node) {
                 NodeItem(item) => {
                     scope_id = item.id;
@@ -303,7 +305,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                             result.push_str(&ty_to_string(&**ty));
 
                             match ty::trait_of_item(&self.analysis.ty_cx,
-                                                    ast_util::local_def(method.id)) {
+                                                    ast_util::local_def(id)) {
                                 Some(def_id) => {
                                     result.push_str(" as ");
                                     result.push_str(
@@ -315,23 +317,20 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                             result
                         }
                         _ => {
-                            self.sess.span_bug(method.span,
-                                               &format!("Container {} for method {} not an impl?",
-                                                       impl_id.node, method.id));
+                            self.sess.span_bug(span,
+                                &format!("Container {} for method {} not an impl?",
+                                         impl_id.node, id));
                         },
                     }
                 },
                 _ => {
-                    self.sess.span_bug(method.span,
-                                       &format!(
-                                           "Container {} for method {} is not a node item {:?}",
-                                           impl_id.node,
-                                           method.id,
-                                           self.analysis.ty_cx.map.get(impl_id.node)));
+                    self.sess.span_bug(span,
+                        &format!("Container {} for method {} is not a node item {:?}",
+                                 impl_id.node, id, self.analysis.ty_cx.map.get(impl_id.node)));
                 },
             },
             None => match ty::trait_of_item(&self.analysis.ty_cx,
-                                            ast_util::local_def(method.id)) {
+                                            ast_util::local_def(id)) {
                 Some(def_id) => {
                     scope_id = def_id.node;
                     match self.analysis.ty_cx.map.get(def_id.node) {
@@ -339,30 +338,29 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                             format!("::{}", ty::item_path_str(&self.analysis.ty_cx, def_id))
                         }
                         _ => {
-                            self.sess.span_bug(method.span,
-                                               &format!("Could not find container {} for method {}",
-                                                       def_id.node, method.id));
+                            self.sess.span_bug(span,
+                                &format!("Could not find container {} for method {}",
+                                         def_id.node, id));
                         }
                     }
                 },
                 None => {
-                    self.sess.span_bug(method.span,
-                                       &format!("Could not find container for method {}",
-                                               method.id));
+                    self.sess.span_bug(span,
+                        &format!("Could not find container for method {}", id));
                 },
             },
         };
 
-        let qualname = format!("{}::{}", qualname, &get_ident(method.pe_ident()));
+        let qualname = format!("{}::{}", qualname, &get_ident(ident));
         let qualname = &qualname[..];
 
         // record the decl for this def (if it has one)
         let decl_id = ty::trait_item_of_item(&self.analysis.ty_cx,
-                                             ast_util::local_def(method.id))
+                                             ast_util::local_def(id))
             .and_then(|def_id| {
                 if match def_id {
                     ty::MethodTraitItemId(def_id) => {
-                        def_id.node != 0 && def_id != ast_util::local_def(method.id)
+                        def_id.node != 0 && def_id != ast_util::local_def(id)
                     }
                     ty::TypeTraitItemId(_) => false,
                 } {
@@ -376,10 +374,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             Some(id) => Some(id.def_id()),
         };
 
-        let sub_span = self.span.sub_span_after_keyword(method.span, keywords::Fn);
-        self.fmt.method_str(method.span,
+        let sub_span = self.span.sub_span_after_keyword(span, keywords::Fn);
+        self.fmt.method_str(span,
                             sub_span,
-                            method.id,
+                            id,
                             qualname,
                             decl_id,
                             scope_id);
@@ -396,12 +394,12 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         }
 
         // walk the fn body
-        self.nest(method.id, |v| v.visit_block(&*method.pe_body()));
+        self.nest(id, |v| v.visit_block(&*method.pe_body()));
 
         self.process_generic_params(method.pe_generics(),
-                                    method.span,
+                                    span,
                                     qualname,
-                                    method.id);
+                                    id);
     }
 
     fn process_trait_ref(&mut self,
@@ -698,14 +696,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
         self.process_generic_params(type_parameters, item.span, "", item.id);
         for impl_item in impl_items {
-            match **impl_item {
-                ast::MethodImplItem(ref method) => {
-                    visit::walk_method_helper(self, method)
-                }
-                ast::TypeImplItem(ref typedef) => {
-                    visit::walk_ty(self, &*typedef.typ)
-                }
-            }
+            visit::walk_impl_item(self, impl_item);
         }
     }
 
@@ -1233,52 +1224,34 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         }
     }
 
-    // We don't actually index functions here, that is done in visit_item/ItemFn.
-    // Here we just visit methods.
-    fn visit_fn(&mut self,
-                fk: visit::FnKind<'v>,
-                fd: &'v ast::FnDecl,
-                b: &'v ast::Block,
-                s: Span,
-                _: ast::NodeId) {
-        if generated_code(s) {
-            return;
-        }
-
-        match fk {
-            visit::FkMethod(_, _, method) => self.process_method(method),
-            _ => visit::walk_fn(self, fk, fd, b, s),
-        }
-    }
-
-    fn visit_trait_item(&mut self, tm: &ast::TraitItem) {
-        match *tm {
+    fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
+        match trait_item.node {
             ast::RequiredMethod(ref method_type) => {
-                if generated_code(method_type.span) {
+                if generated_code(trait_item.span) {
                     return;
                 }
 
                 let mut scope_id;
                 let mut qualname = match ty::trait_of_item(&self.analysis.ty_cx,
-                                                           ast_util::local_def(method_type.id)) {
+                                                           ast_util::local_def(trait_item.id)) {
                     Some(def_id) => {
                         scope_id = def_id.node;
                         format!("::{}::", ty::item_path_str(&self.analysis.ty_cx, def_id))
                     },
                     None => {
-                        self.sess.span_bug(method_type.span,
+                        self.sess.span_bug(trait_item.span,
                                            &format!("Could not find trait for method {}",
-                                                   method_type.id));
+                                                   trait_item.id));
                     },
                 };
 
-                qualname.push_str(&get_ident(method_type.ident));
+                qualname.push_str(&get_ident(trait_item.ident));
                 let qualname = &qualname[..];
 
-                let sub_span = self.span.sub_span_after_keyword(method_type.span, keywords::Fn);
-                self.fmt.method_decl_str(method_type.span,
+                let sub_span = self.span.sub_span_after_keyword(trait_item.span, keywords::Fn);
+                self.fmt.method_decl_str(trait_item.span,
                                          sub_span,
-                                         method_type.id,
+                                         trait_item.id,
                                          qualname,
                                          scope_id);
 
@@ -1292,12 +1265,23 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 }
 
                 self.process_generic_params(&method_type.generics,
-                                            method_type.span,
+                                            trait_item.span,
                                             qualname,
-                                            method_type.id);
+                                            trait_item.id);
             }
-            ast::ProvidedMethod(ref method) => self.process_method(method),
-            ast::TypeTraitItem(_) => {}
+            ast::ProvidedMethod(ref method) => {
+                self.process_method(method, trait_item.id, trait_item.ident, trait_item.span);
+            }
+            ast::TypeTraitItem(..) => {}
+        }
+    }
+
+    fn visit_impl_item(&mut self, impl_item: &ast::ImplItem) {
+        match impl_item.node {
+            ast::MethodImplItem(ref method) => {
+                self.process_method(method, impl_item.id, impl_item.ident, impl_item.span);
+            }
+            ast::TypeImplItem(_) => {}
         }
     }
 

@@ -1300,22 +1300,22 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
-        ast_map::NodeImplItem(ref item) => {
-            match **item {
+        ast_map::NodeImplItem(impl_item) => {
+            match impl_item.node {
                 ast::MethodImplItem(ref method) => {
-                    if contains_nodebug_attribute(&method.attrs) {
+                    if contains_nodebug_attribute(&impl_item.attrs) {
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
-                    (method.pe_ident(),
+                    (impl_item.ident,
                      method.pe_fn_decl(),
                      method.pe_generics(),
                      method.pe_body(),
-                     method.span,
+                     impl_item.span,
                      true)
                 }
-                ast::TypeImplItem(ref typedef) => {
-                    cx.sess().span_bug(typedef.span,
+                ast::TypeImplItem(_) => {
+                    cx.sess().span_bug(impl_item.span,
                                        "create_function_debug_context() \
                                         called on associated type?!")
                 }
@@ -1339,18 +1339,18 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         "create_function_debug_context: expected an expr_fn_block here")
             }
         }
-        ast_map::NodeTraitItem(ref trait_method) => {
-            match **trait_method {
+        ast_map::NodeTraitItem(trait_item) => {
+            match trait_item.node {
                 ast::ProvidedMethod(ref method) => {
-                    if contains_nodebug_attribute(&method.attrs) {
+                    if contains_nodebug_attribute(&trait_item.attrs) {
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
-                    (method.pe_ident(),
+                    (trait_item.ident,
                      method.pe_fn_decl(),
                      method.pe_generics(),
                      method.pe_body(),
-                     method.span,
+                     trait_item.span,
                      true)
                 }
                 _ => {
