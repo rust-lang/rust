@@ -21,6 +21,10 @@
 //! nor can it decode WTF-8 from arbitrary bytes.
 //! WTF-8 strings can be obtained from UTF-8, UTF-16, or code points.
 
+// this module is imported from @SimonSapin's repo and has tons of dead code on
+// unix (it's mostly used on windows), so don't worry about dead code here.
+#![allow(dead_code)]
+
 use core::prelude::*;
 
 use core::char::{encode_utf8_raw, encode_utf16_raw};

@@ -20,15 +20,15 @@
 //! Other than that, the implementation is pretty straightforward in terms of
 //! the other two implementations of timers with nothing *that* new showing up.
 
-use self::Req::*;
 use prelude::v1::*;
+use self::Req::*;
 
 use libc;
 use ptr;
 
 use old_io::IoResult;
-use sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use sys_common::helper_thread::Helper;
+use sync::mpsc::{channel, TryRecvError, Sender, Receiver};
 
 helper_init! { static HELPER: Helper<Req> }
 

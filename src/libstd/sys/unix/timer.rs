@@ -100,7 +100,7 @@ pub fn now() -> u64 {
 fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
     let mut set: c::fd_set = unsafe { mem::zeroed() };
 
-    let mut fd = FileDesc::new(input, true);
+    let fd = FileDesc::new(input, true);
     let mut timeout: libc::timeval = unsafe { mem::zeroed() };
 
     // active timers are those which are able to be selected upon (and it's a

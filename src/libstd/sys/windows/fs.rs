@@ -18,7 +18,7 @@ use old_io;
 
 use prelude::v1::*;
 use sys;
-use sys_common::{mkerr_libc};
+use sys_common::{self, mkerr_libc};
 
 use old_io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
 use old_io::{IoResult, IoError, FileStat, SeekStyle};
@@ -434,7 +434,7 @@ pub fn stat(p: &Path) -> IoResult<FileStat> {
 // FIXME: move this to platform-specific modules (for now)?
 pub fn lstat(_p: &Path) -> IoResult<FileStat> {
     // FIXME: implementation is missing
-    Err(super::unimpl())
+    Err(sys_common::unimpl())
 }
 
 pub fn utime(p: &Path, atime: u64, mtime: u64) -> IoResult<()> {

@@ -14,18 +14,13 @@ use collections::HashMap;
 use env;
 use ffi::{OsString, OsStr, CString};
 use fmt;
-use hash::Hash;
 use io::{self, Error, ErrorKind};
 use libc::{self, pid_t, c_void, c_int, gid_t, uid_t};
 use mem;
-use old_io;
-use os;
 use os::unix::OsStrExt;
 use ptr;
-use sync::mpsc::{channel, Sender, Receiver};
 use sys::pipe2::AnonPipe;
-use sys::{self, retry, c, wouldblock, set_nonblocking, ms_to_timeval, cvt};
-use sys_common::AsInner;
+use sys::{self, retry, c, cvt};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -127,10 +122,6 @@ pub struct Process {
 const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
 impl Process {
-    pub fn id(&self) -> pid_t {
-        self.pid
-    }
-
     pub unsafe fn kill(&self) -> io::Result<()> {
         try!(cvt(libc::funcs::posix88::signal::kill(self.pid, libc::SIGKILL)));
         Ok(())

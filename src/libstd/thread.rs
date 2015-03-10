@@ -281,17 +281,13 @@ impl Builder {
             let my_stack_top = addr as usize;
             let my_stack_bottom = my_stack_top - stack_size + 1024;
             unsafe {
-                stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
+                if let Some(name) = their_thread.name() {
+                    imp::set_name(name);
+                }
+                stack::record_os_managed_stack_bounds(my_stack_bottom,
+                                                      my_stack_top);
+                thread_info::set(imp::guard::current(), their_thread);
             }
-            match their_thread.name() {
-                Some(name) => unsafe { imp::set_name(name); },
-                None => {}
-            }
-            thread_info::set(
-                (my_stack_bottom, my_stack_top),
-                unsafe { imp::guard::current() },
-                their_thread
-            );
 
             let mut output = None;
             let f: Thunk<(), T> = if stdout.is_some() || stderr.is_some() {
