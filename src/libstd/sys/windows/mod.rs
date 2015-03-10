@@ -24,17 +24,6 @@ use os::windows::{OsStrExt, OsStringExt};
 use path::PathBuf;
 use sync::{Once, ONCE_INIT};
 
-macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
-    static $name: Helper<$m> = Helper {
-        lock: ::sync::MUTEX_INIT,
-        cond: ::sync::CONDVAR_INIT,
-        chan: ::cell::UnsafeCell { value: 0 as *mut ::sync::mpsc::Sender<$m> },
-        signal: ::cell::UnsafeCell { value: 0 },
-        initialized: ::cell::UnsafeCell { value: false },
-        shutdown: ::cell::UnsafeCell { value: false },
-    };
-) }
-
 pub mod backtrace;
 pub mod c;
 pub mod condvar;
@@ -216,15 +205,7 @@ pub fn init_net() {
     }
 }
 
-pub fn unimpl() -> IoError {
-    IoError {
-        kind: old_io::IoUnavailable,
-        desc: "operation is not implemented",
-        detail: None,
-    }
-}
-
-fn to_utf16(s: Option<&str>) -> IoResult<Vec<u16>> {
+pub fn to_utf16(s: Option<&str>) -> IoResult<Vec<u16>> {
     match s {
         Some(s) => Ok(to_utf16_os(OsStr::from_str(s))),
         None => Err(IoError {

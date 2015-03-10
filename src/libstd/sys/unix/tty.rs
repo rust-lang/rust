@@ -11,7 +11,7 @@
 use prelude::v1::*;
 
 use sys::fs::FileDesc;
-use libc::{self, c_int, c_ulong, funcs};
+use libc::{self, c_int, c_ulong};
 use old_io::{self, IoResult, IoError};
 use sys::c;
 use sys_common;
@@ -86,6 +86,4 @@ impl TTY {
     pub fn get_winsize(&mut self) -> IoResult<(int, int)> {
         Err(sys_common::unimpl())
     }
-
-    pub fn isatty(&self) -> bool { false }
 }
