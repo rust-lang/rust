@@ -37,6 +37,7 @@ use middle::ty_fold::TypeFolder;
 use std::collections::hash_map::{self, Entry};
 
 use super::InferCtxt;
+use super::unify::ToType;
 
 pub struct TypeFreshener<'a, 'tcx:'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
@@ -115,14 +116,18 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
 
             ty::ty_infer(ty::IntVar(v)) => {
                 self.freshen(
-                    self.infcx.int_unification_table.borrow_mut().probe(tcx, v),
+                    self.infcx.int_unification_table.borrow_mut()
+                                                    .probe(v)
+                                                    .map(|v| v.to_type(tcx)),
                     ty::IntVar(v),
                     ty::FreshIntTy)
             }
 
             ty::ty_infer(ty::FloatVar(v)) => {
                 self.freshen(
-                    self.infcx.float_unification_table.borrow_mut().probe(tcx, v),
+                    self.infcx.float_unification_table.borrow_mut()
+                                                      .probe(v)
+                                                      .map(|v| v.to_type(tcx)),
                     ty::FloatVar(v),
                     ty::FreshIntTy)
             }
