@@ -139,10 +139,6 @@ impl TcpAcceptor {
         Err(sys_common::eof())
     }
 
-    pub fn socket_name(&mut self) -> IoResult<ip::SocketAddr> {
-        net::sockname(self.fd(), libc::getsockname)
-    }
-
     pub fn set_timeout(&mut self, timeout: Option<u64>) {
         self.deadline = timeout.map(|a| sys::timer::now() + a).unwrap_or(0);
     }

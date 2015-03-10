@@ -24,12 +24,6 @@ unsafe impl Sync for RWLock {}
 
 impl RWLock {
     #[inline]
-    pub unsafe fn new() -> RWLock {
-        // Might be moved and address is changing it is better to avoid
-        // initialization of potentially opaque OS data before it landed
-        RWLOCK_INIT
-    }
-    #[inline]
     pub unsafe fn read(&self) {
         let r = ffi::pthread_rwlock_rdlock(self.inner.get());
         debug_assert_eq!(r, 0);

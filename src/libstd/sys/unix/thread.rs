@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
+
 use core::prelude::*;
 
 use io;
@@ -262,15 +264,15 @@ pub unsafe fn set_name(name: &str) {
     // pthread_setname_np() since glibc 2.12
     // availability autodetected via weak linkage
     let cname = CString::new(name).unwrap();
-    type F = unsafe extern "C" fn(libc::pthread_t, *const libc::c_char) -> libc::c_int;
+    type F = unsafe extern "C" fn(libc::pthread_t, *const libc::c_char)
+                                  -> libc::c_int;
     extern {
         #[linkage = "extern_weak"]
         static pthread_setname_np: *const ();
     }
     if !pthread_setname_np.is_null() {
-        unsafe {
-            mem::transmute::<*const (), F>(pthread_setname_np)(pthread_self(), cname.as_ptr());
-        }
+        mem::transmute::<*const (), F>(pthread_setname_np)(pthread_self(),
+                                                           cname.as_ptr());
     }
 }
 
@@ -300,6 +302,7 @@ pub unsafe fn detach(native: rust_thread) {
 }
 
 pub unsafe fn yield_now() { assert_eq!(sched_yield(), 0); }
+
 // glibc >= 2.15 has a __pthread_get_minstack() function that returns
 // PTHREAD_STACK_MIN plus however many bytes are needed for thread-local
 // storage.  We need that information to avoid blowing up when a small stack

@@ -56,6 +56,7 @@
 
 #![allow(non_camel_case_types)]
 #![unstable(feature = "thread_local_internals")]
+#![allow(dead_code)] // sys isn't exported yet
 
 use prelude::v1::*;
 
