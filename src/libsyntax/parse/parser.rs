@@ -1119,35 +1119,6 @@ impl<'a> Parser<'a> {
         }))
     }
 
-    /// Parses a procedure type (`proc`). The initial `proc` keyword must
-    /// already have been parsed.
-    pub fn parse_proc_type(&mut self, lifetime_defs: Vec<ast::LifetimeDef>) -> Ty_ {
-        /*
-
-        proc <'lt> (S) [:Bounds] -> T
-        ^~~^ ^~~~^  ^  ^~~~~~~~^    ^
-         |     |    |      |        |
-         |     |    |      |      Return type
-         |     |    |    Bounds
-         |     |  Argument types
-         |   Legacy lifetimes
-        the `proc` keyword (already consumed)
-
-        */
-
-        let proc_span = self.last_span;
-
-        // To be helpful, parse the proc as ever
-        let _ = self.parse_legacy_lifetime_defs(lifetime_defs);
-        let _ = self.parse_fn_args(false, false);
-        let _ = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Bare);
-        let _ = self.parse_ret_ty();
-
-        self.obsolete(proc_span, ObsoleteSyntax::ProcType);
-
-        TyInfer
-    }
-
     /// Parses an obsolete closure kind (`&:`, `&mut:`, or `:`).
     pub fn parse_obsolete_closure_kind(&mut self) {
          let lo = self.span.lo;
