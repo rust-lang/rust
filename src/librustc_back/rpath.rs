@@ -99,29 +99,57 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig, lib: &Path) -> String 
     lib.pop();
     let mut output = (config.realpath)(&cwd.join(&config.out_filename)).unwrap();
     output.pop();
-    let relative = relativize(&lib, &output);
+    let relative = path_relative_from(&lib, &output)
+        .expect(&format!("couldn't create relative path from {:?} to {:?}", output, lib));
     // FIXME (#9639): This needs to handle non-utf8 paths
     format!("{}/{}", prefix,
             relative.to_str().expect("non-utf8 component in path"))
 }
 
-fn relativize(path: &Path, rel: &Path) -> PathBuf {
-    let mut res = PathBuf::new("");
-    let mut cur = rel;
-    while !path.starts_with(cur) {
-        res.push("..");
-        match cur.parent() {
-            Some(p) => cur = p,
-            None => panic!("can't create relative paths across filesystems"),
-        }
-    }
-    match path.relative_from(cur) {
-        Some(s) => { res.push(s); res }
-        None => panic!("couldn't create relative path from {:?} to {:?}",
-                       rel, path),
-    }
+// This routine is adapted from the *old* Path's `path_relative_from`
+// function, which works differently from the new `relative_from` function.
+// In particular, this handles the case on unix where both paths are
+// absolute but with only the root as the common directory.
+fn path_relative_from(path: &Path, base: &Path) -> Option<PathBuf> {
+    use std::path::Component;
 
+    if path.is_absolute() != base.is_absolute() {
+        if path.is_absolute() {
+            Some(PathBuf::new(path))
+        } else {
+            None
+        }
+    } else {
+        let mut ita = path.components();
+        let mut itb = base.components();
+        let mut comps: Vec<Component> = vec![];
+        loop {
+            match (ita.next(), itb.next()) {
+                (None, None) => break,
+                (Some(a), None) => {
+                    comps.push(a);
+                    comps.extend(ita.by_ref());
+                    break;
+                }
+                (None, _) => comps.push(Component::ParentDir),
+                (Some(a), Some(b)) if comps.is_empty() && a == b => (),
+                (Some(a), Some(b)) if b == Component::CurDir => comps.push(a),
+                (Some(_), Some(b)) if b == Component::ParentDir => return None,
+                (Some(a), Some(_)) => {
+                    comps.push(Component::ParentDir);
+                    for _ in itb {
+                        comps.push(Component::ParentDir);
+                    }
+                    comps.push(a);
+                    comps.extend(ita.by_ref());
+                    break;
+                }
+            }
+        }
+        Some(comps.iter().map(|c| c.as_os_str()).collect())
+    }
 }
+
 
 fn get_install_prefix_rpath(config: &mut RPathConfig) -> String {
     let path = (config.get_install_prefix_lib_path)();
