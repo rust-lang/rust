@@ -18,6 +18,7 @@
 
 use self::OldSearcher::{TwoWay, TwoWayLong};
 
+use char::CharExt;
 use clone::Clone;
 use cmp::{self, Eq};
 use default::Default;
@@ -1108,9 +1109,13 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 /// Struct that contains a `char` and the index of the first byte of
 /// the next `char` in a string.  This can be used as a data structure
 /// for iterating over the UTF-8 bytes of a string.
+#[allow(deprecated)]
 #[derive(Copy)]
 #[unstable(feature = "core",
            reason = "naming is uncertain with container conventions")]
+#[deprecated(since = "1.0.0",
+             reason = "replaced with other unicode functions such as \
+                       char_indices or len_utf8")]
 pub struct CharRange {
     /// Current `char`
     pub ch: char,
@@ -1354,7 +1359,9 @@ pub trait StrExt {
     fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
         where P::Searcher: ReverseSearcher<'a>;
     fn is_char_boundary(&self, index: usize) -> bool;
+    #[allow(deprecated)]
     fn char_range_at(&self, start: usize) -> CharRange;
+    #[allow(deprecated)]
     fn char_range_at_reverse(&self, start: usize) -> CharRange;
     fn char_at(&self, i: usize) -> char;
     fn char_at_reverse(&self, i: usize) -> char;
@@ -1573,12 +1580,14 @@ impl StrExt for str {
     }
 
     #[inline]
+    #[allow(deprecated)]
     fn char_range_at(&self, i: usize) -> CharRange {
         let (c, n) = char_range_at_raw(self.as_bytes(), i);
         CharRange { ch: unsafe { mem::transmute(c) }, next: n }
     }
 
     #[inline]
+    #[allow(deprecated)]
     fn char_range_at_reverse(&self, start: usize) -> CharRange {
         let mut prev = start;
 
@@ -1610,11 +1619,13 @@ impl StrExt for str {
     }
 
     #[inline]
+    #[allow(deprecated)]
     fn char_at(&self, i: usize) -> char {
         self.char_range_at(i).ch
     }
 
     #[inline]
+    #[allow(deprecated)]
     fn char_at_reverse(&self, i: usize) -> char {
         self.char_range_at_reverse(i).ch
     }
@@ -1643,8 +1654,8 @@ impl StrExt for str {
         if self.is_empty() {
             None
         } else {
-            let CharRange {ch, next} = self.char_range_at(0);
-            let next_s = unsafe { self.slice_unchecked(next, self.len()) };
+            let ch = self.char_at(0);
+            let next_s = unsafe { self.slice_unchecked(ch.len_utf8(), self.len()) };
             Some((ch, next_s))
         }
     }

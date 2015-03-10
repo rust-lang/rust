@@ -1061,6 +1061,10 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[unstable(feature = "collections",
                reason = "naming is uncertain with container conventions")]
+    #[deprecated(since = "1.0.0",
+                 reason = "replaced with other unicode functions such as \
+                           char_indices or len_utf8")]
+    #[allow(deprecated)]
     fn char_range_at(&self, start: usize) -> CharRange {
         core_str::StrExt::char_range_at(&self[..], start)
     }
@@ -1109,6 +1113,10 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[unstable(feature = "collections",
                reason = "naming is uncertain with container conventions")]
+    #[deprecated(since = "1.0.0",
+                 reason = "replaced with other unicode functions such as \
+                           char_indices or len_utf8")]
+    #[allow(deprecated)]
     fn char_range_at_reverse(&self, start: usize) -> CharRange {
         core_str::StrExt::char_range_at_reverse(&self[..], start)
     }

@@ -29,7 +29,7 @@ use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
 
 use borrow::{Cow, IntoCow};
-use str::{self, CharRange, FromStr, Utf8Error};
+use str::{self, FromStr, Utf8Error};
 use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
@@ -532,9 +532,9 @@ impl String {
             return None
         }
 
-        let CharRange {ch, next} = self.char_range_at_reverse(len);
+        let ch = self.char_at_reverse(len);
         unsafe {
-            self.vec.set_len(next);
+            self.vec.set_len(len - ch.len_utf8());
         }
         Some(ch)
     }
@@ -566,7 +566,8 @@ impl String {
         let len = self.len();
         assert!(idx <= len);
 
-        let CharRange { ch, next } = self.char_range_at(idx);
+        let ch = self.char_at(idx);
+        let next = idx + ch.len_utf8();
         unsafe {
             ptr::copy(self.vec.as_mut_ptr().offset(idx as isize),
                       self.vec.as_ptr().offset(next as isize),
