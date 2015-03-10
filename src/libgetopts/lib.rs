@@ -92,11 +92,10 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![deny(missing_docs)]
-#![feature(collections)]
 #![feature(int_uint)]
 #![feature(staged_api)]
-#![feature(core)]
 #![feature(str_words)]
+#![feature(str_char)]
 #![cfg_attr(test, feature(rustc_private))]
 
 #[cfg(test)] #[macro_use] extern crate log;
@@ -620,8 +619,8 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                 let mut j = 1;
                 names = Vec::new();
                 while j < curlen {
-                    let range = cur.char_range_at(j);
-                    let opt = Short(range.ch);
+                    let ch = cur.char_at(j);
+                    let opt = Short(ch);
 
                     /* In a series of potential options (eg. -aheJ), if we
                        see one which takes an argument, we assume all
@@ -642,12 +641,13 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                         No => false
                     };
 
-                    if arg_follows && range.next < curlen {
-                        i_arg = Some((&cur[range.next..curlen]).to_string());
+                    let next = j + ch.len_utf8();
+                    if arg_follows && next < curlen {
+                        i_arg = Some((&cur[next..curlen]).to_string());
                         break;
                     }
 
-                    j = range.next;
+                    j = next;
                 }
             }
             let mut name_pos = 0;

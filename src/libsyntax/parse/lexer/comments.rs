@@ -20,7 +20,6 @@ use parse::lexer;
 use print::pprust;
 
 use std::io::Read;
-use std::str;
 use std::usize;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -210,11 +209,11 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<usize> {
     let mut col = col.to_usize();
     let mut cursor: usize = 0;
     while col > 0 && cursor < len {
-        let r: str::CharRange = s.char_range_at(cursor);
-        if !r.ch.is_whitespace() {
+        let ch = s.char_at(cursor);
+        if !ch.is_whitespace() {
             return None;
         }
-        cursor = r.next;
+        cursor += ch.len_utf8();
         col -= 1;
     }
     return Some(cursor);

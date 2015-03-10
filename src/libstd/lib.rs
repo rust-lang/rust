@@ -127,6 +127,7 @@
 #![feature(int_uint)]
 #![feature(unique)]
 #![feature(allow_internal_unstable)]
+#![feature(str_char)]
 #![cfg_attr(test, feature(test, rustc_private))]
 
 // Don't link to std. We are std.

@@ -60,6 +60,7 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(std_misc)]
+#![feature(str_char)]
 #![feature(path_ext)]
 #![cfg_attr(windows, feature(libc))]
 

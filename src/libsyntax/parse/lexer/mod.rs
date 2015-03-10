@@ -22,7 +22,6 @@ use std::fmt;
 use std::mem::replace;
 use std::num;
 use std::rc::Rc;
-use std::str;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader, new_tt_reader_with_doc_flag};
 
@@ -291,7 +290,8 @@ impl<'a> StringReader<'a> {
                           s: &'b str, errmsg: &'b str) -> Cow<'b, str> {
         let mut i = 0;
         while i < s.len() {
-            let str::CharRange { ch, next } = s.char_range_at(i);
+            let ch = s.char_at(i);
+            let next = i + ch.len_utf8();
             if ch == '\r' {
                 if next < s.len() && s.char_at(next) == '\n' {
                     return translate_crlf_(self, start, s, errmsg, i).into_cow();
@@ -309,7 +309,8 @@ impl<'a> StringReader<'a> {
             let mut buf = String::with_capacity(s.len());
             let mut j = 0;
             while i < s.len() {
-                let str::CharRange { ch, next } = s.char_range_at(i);
+                let ch = s.char_at(i);
+                let next = i + ch.len_utf8();
                 if ch == '\r' {
                     if j < i { buf.push_str(&s[j..i]); }
                     j = next;
@@ -335,10 +336,11 @@ impl<'a> StringReader<'a> {
         if current_byte_offset < self.source_text.len() {
             assert!(self.curr.is_some());
             let last_char = self.curr.unwrap();
-            let next = self.source_text.char_range_at(current_byte_offset);
-            let byte_offset_diff = next.next - current_byte_offset;
+            let ch = self.source_text.char_at(current_byte_offset);
+            let next = current_byte_offset + ch.len_utf8();
+            let byte_offset_diff = next - current_byte_offset;
             self.pos = self.pos + Pos::from_usize(byte_offset_diff);
-            self.curr = Some(next.ch);
+            self.curr = Some(ch);
             self.col = self.col + CharPos(1);
             if last_char == '\n' {
                 self.filemap.next_line(self.last_pos);
@@ -370,7 +372,7 @@ impl<'a> StringReader<'a> {
         let offset = self.byte_offset(self.pos).to_usize();
         let s = &self.source_text[..];
         if offset >= s.len() { return None }
-        let str::CharRange { next, .. } = s.char_range_at(offset);
+        let next = offset + s.char_at(offset).len_utf8();
         if next < s.len() {
             Some(s.char_at(next))
         } else {

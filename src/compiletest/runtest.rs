@@ -1052,22 +1052,22 @@ fn scan_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
     if *idx >= haystack.len() {
         return false;
     }
-    let range = haystack.char_range_at(*idx);
-    if range.ch != needle {
+    let ch = haystack.char_at(*idx);
+    if ch != needle {
         return false;
     }
-    *idx = range.next;
+    *idx += ch.len_utf8();
     return true;
 }
 
 fn scan_integer(haystack: &str, idx: &mut uint) -> bool {
     let mut i = *idx;
     while i < haystack.len() {
-        let range = haystack.char_range_at(i);
-        if range.ch < '0' || '9' < range.ch {
+        let ch = haystack.char_at(i);
+        if ch < '0' || '9' < ch {
             break;
         }
-        i = range.next;
+        i += ch.len_utf8();
     }
     if i == *idx {
         return false;
@@ -1083,9 +1083,9 @@ fn scan_string(haystack: &str, needle: &str, idx: &mut uint) -> bool {
         if haystack_i >= haystack.len() {
             return false;
         }
-        let range = haystack.char_range_at(haystack_i);
-        haystack_i = range.next;
-        if !scan_char(needle, range.ch, &mut needle_i) {
+        let ch = haystack.char_at(haystack_i);
+        haystack_i += ch.len_utf8();
+        if !scan_char(needle, ch, &mut needle_i) {
             return false;
         }
     }
