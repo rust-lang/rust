@@ -8,15 +8,38 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Unicode-intensive `char` methods along with the `core` methods.
+//! Character manipulation (`char` type, Unicode Scalar Value)
 //!
-//! These methods implement functionality for `char` that requires knowledge of
-//! Unicode definitions, including normalization, categorization, and display information.
+//! This module provides the `CharExt` trait, as well as its
+//! implementation for the primitive `char` type, in order to allow
+//! basic character manipulation.
+//!
+//! A `char` actually represents a
+//! *[Unicode Scalar
+//! Value](http://www.unicode.org/glossary/#unicode_scalar_value)*, as it can
+//! contain any Unicode code point except high-surrogate and low-surrogate code
+//! points.
+//!
+//! As such, only values in the ranges \[0x0,0xD7FF\] and \[0xE000,0x10FFFF\]
+//! (inclusive) are allowed. A `char` can always be safely cast to a `u32`;
+//! however the converse is not always true due to the above range limits
+//! and, as such, should be performed via the `from_u32` function.
 
-use core::char;
+#![stable(feature = "rust1", since = "1.0.0")]
+#![doc(primitive = "char")]
+
 use core::char::CharExt as C;
-use core::option::Option;
+use core::option::Option::{self, Some};
+use core::iter::Iterator;
 use tables::{derived_property, property, general_category, conversions, charwidth};
+
+// stable reexports
+pub use core::char::{MAX, from_u32, from_digit, EscapeUnicode, EscapeDefault};
+
+// unstable reexports
+pub use normalize::{decompose_canonical, decompose_compatible, compose};
+pub use tables::normalization::canonical_combining_class;
+pub use tables::UNICODE_VERSION;
 
 /// Functionality for manipulating `char`.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -34,8 +57,17 @@ pub trait CharExt {
     /// # Panics
     ///
     /// Panics if given a radix > 36.
-    #[unstable(feature = "unicode",
-               reason = "pending integer conventions")]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let c = '1';
+    ///
+    /// assert!(c.is_digit(10));
+    ///
+    /// assert!('f'.is_digit(16));
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_digit(self, radix: u32) -> bool;
 
     /// Converts a character to the corresponding digit.
@@ -49,18 +81,56 @@ pub trait CharExt {
     /// # Panics
     ///
     /// Panics if given a radix outside the range [0..36].
-    #[unstable(feature = "unicode",
-               reason = "pending integer conventions")]
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let c = '1';
+    ///
+    /// assert_eq!(c.to_digit(10), Some(1));
+    ///
+    /// assert_eq!('f'.to_digit(16), Some(15));
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn to_digit(self, radix: u32) -> Option<u32>;
 
-    /// Returns an iterator that yields the hexadecimal Unicode escape
-    /// of a character, as `char`s.
+    /// Returns an iterator that yields the hexadecimal Unicode escape of a
+    /// character, as `char`s.
     ///
     /// All characters are escaped with Rust syntax of the form `\\u{NNNN}`
     /// where `NNNN` is the shortest hexadecimal representation of the code
     /// point.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// for i in '❤'.escape_unicode() {
+    ///     println!("{}", i);
+    /// }
+    /// ```
+    ///
+    /// This prints:
+    ///
+    /// ```text
+    /// \
+    /// u
+    /// {
+    /// 2
+    /// 7
+    /// 6
+    /// 4
+    /// }
+    /// ```
+    ///
+    /// Collecting into a `String`:
+    ///
+    /// ```
+    /// let heart: String = '❤'.escape_unicode().collect();
+    ///
+    /// assert_eq!(heart, r"\u{2764}");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn escape_unicode(self) -> char::EscapeUnicode;
+    fn escape_unicode(self) -> EscapeUnicode;
 
     /// Returns an iterator that yields the 'default' ASCII and
     /// C++11-like literal escape of a character, as `char`s.
@@ -74,33 +144,118 @@ pub trait CharExt {
     ///   escaped.
     /// * Any other chars in the range [0x20,0x7e] are not escaped.
     /// * Any other chars are given hex Unicode escapes; see `escape_unicode`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// for i in '"'.escape_default() {
+    ///     println!("{}", i);
+    /// }
+    /// ```
+    ///
+    /// This prints:
+    ///
+    /// ```text
+    /// \
+    /// "
+    /// ```
+    ///
+    /// Collecting into a `String`:
+    ///
+    /// ```
+    /// let quote: String = '"'.escape_default().collect();
+    ///
+    /// assert_eq!(quote, "\\\"");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn escape_default(self) -> char::EscapeDefault;
+    fn escape_default(self) -> EscapeDefault;
 
-    /// Returns the amount of bytes this character would need if encoded in
+    /// Returns the number of bytes this character would need if encoded in
     /// UTF-8.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let n = 'ß'.len_utf8();
+    ///
+    /// assert_eq!(n, 2);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf8(self) -> usize;
 
-    /// Returns the amount of bytes this character would need if encoded in
-    /// UTF-16.
+    /// Returns the number of 16-bit code units this character would need if
+    /// encoded in UTF-16.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let n = 'ß'.len_utf16();
+    ///
+    /// assert_eq!(n, 1);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf16(self) -> usize;
 
-    /// Encodes this character as UTF-8 into the provided byte buffer,
-    /// and then returns the number of bytes written.
+    /// Encodes this character as UTF-8 into the provided byte buffer, and then
+    /// returns the number of bytes written.
     ///
-    /// If the buffer is not large enough, nothing will be written into it
-    /// and a `None` will be returned.
+    /// If the buffer is not large enough, nothing will be written into it and a
+    /// `None` will be returned. A buffer of length four is large enough to
+    /// encode any `char`.
+    ///
+    /// # Examples
+    ///
+    /// In both of these examples, 'ß' takes two bytes to encode.
+    ///
+    /// ```
+    /// let mut b = [0; 2];
+    ///
+    /// let result = 'ß'.encode_utf8(&mut b);
+    ///
+    /// assert_eq!(result, Some(2));
+    /// ```
+    ///
+    /// A buffer that's too small:
+    ///
+    /// ```
+    /// let mut b = [0; 1];
+    ///
+    /// let result = 'ß'.encode_utf8(&mut b);
+    ///
+    /// assert_eq!(result, None);
+    /// ```
     #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf8(self, dst: &mut [u8]) -> Option<usize>;
 
-    /// Encodes this character as UTF-16 into the provided `u16` buffer,
-    /// and then returns the number of `u16`s written.
+    /// Encodes this character as UTF-16 into the provided `u16` buffer, and
+    /// then returns the number of `u16`s written.
     ///
-    /// If the buffer is not large enough, nothing will be written into it
-    /// and a `None` will be returned.
+    /// If the buffer is not large enough, nothing will be written into it and a
+    /// `None` will be returned. A buffer of length 2 is large enough to encode
+    /// any `char`.
+    ///
+    /// # Examples
+    ///
+    /// In both of these examples, 'ß' takes one `u16` to encode.
+    ///
+    /// ```
+    /// let mut b = [0; 1];
+    ///
+    /// let result = 'ß'.encode_utf16(&mut b);
+    ///
+    /// assert_eq!(result, Some(1));
+    /// ```
+    ///
+    /// A buffer that's too small:
+    ///
+    /// ```
+    /// let mut b = [0; 0];
+    ///
+    /// let result = 'ß'.encode_utf8(&mut b);
+    ///
+    /// assert_eq!(result, None);
+    /// ```
     #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf16(self, dst: &mut [u16]) -> Option<usize>;
@@ -175,35 +330,35 @@ pub trait CharExt {
     ///
     /// # Return value
     ///
-    /// Returns the lowercase equivalent of the character, or the character
-    /// itself if no conversion is possible.
-    #[unstable(feature = "unicode",
-               reason = "pending case transformation decisions")]
-    fn to_lowercase(self) -> char;
+    /// Returns an iterator which yields the characters corresponding to the
+    /// lowercase equivalent of the character. If no conversion is possible then
+    /// the input character is returned.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn to_lowercase(self) -> ToLowercase;
 
     /// Converts a character to its uppercase equivalent.
     ///
     /// The case-folding performed is the common or simple mapping: it maps
-    /// one Unicode codepoint (one character in Rust) to its uppercase
-    /// equivalent according to the Unicode database [1]. The additional
-    /// [`SpecialCasing.txt`] is not considered here, as it expands to multiple
-    /// codepoints in some cases.
+    /// one Unicode codepoint to its uppercase equivalent according to the
+    /// Unicode database [1]. The additional [`SpecialCasing.txt`] is not yet
+    /// considered here, but the iterator returned will soon support this form
+    /// of case folding.
     ///
     /// A full reference can be found here [2].
     ///
     /// # Return value
     ///
-    /// Returns the uppercase equivalent of the character, or the character
-    /// itself if no conversion was made.
+    /// Returns an iterator which yields the characters corresponding to the
+    /// uppercase equivalent of the character. If no conversion is possible then
+    /// the input character is returned.
     ///
     /// [1]: ftp://ftp.unicode.org/Public/UNIDATA/UnicodeData.txt
     ///
     /// [`SpecialCasing`.txt`]: ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
     ///
     /// [2]: http://www.unicode.org/versions/Unicode4.0.0/ch03.pdf#G33992
-    #[unstable(feature = "unicode",
-               reason = "pending case transformation decisions")]
-    fn to_uppercase(self) -> char;
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn to_uppercase(self) -> ToUppercase;
 
     /// Returns this character's displayed width in columns, or `None` if it is a
     /// control character other than `'\x00'`.
@@ -221,28 +376,15 @@ pub trait CharExt {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl CharExt for char {
-    #[unstable(feature = "unicode",
-               reason = "pending integer conventions")]
     fn is_digit(self, radix: u32) -> bool { C::is_digit(self, radix) }
-    #[unstable(feature = "unicode",
-               reason = "pending integer conventions")]
     fn to_digit(self, radix: u32) -> Option<u32> { C::to_digit(self, radix) }
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn escape_unicode(self) -> char::EscapeUnicode { C::escape_unicode(self) }
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn escape_default(self) -> char::EscapeDefault { C::escape_default(self) }
-    #[stable(feature = "rust1", since = "1.0.0")]
+    fn escape_unicode(self) -> EscapeUnicode { C::escape_unicode(self) }
+    fn escape_default(self) -> EscapeDefault { C::escape_default(self) }
     fn len_utf8(self) -> usize { C::len_utf8(self) }
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf16(self) -> usize { C::len_utf16(self) }
-    #[unstable(feature = "unicode",
-               reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf8(self, dst: &mut [u8]) -> Option<usize> { C::encode_utf8(self, dst) }
-    #[unstable(feature = "unicode",
-               reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf16(self, dst: &mut [u16]) -> Option<usize> { C::encode_utf16(self, dst) }
 
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_alphabetic(self) -> bool {
         match self {
             'a' ... 'z' | 'A' ... 'Z' => true,
@@ -251,15 +393,10 @@ impl CharExt for char {
         }
     }
 
-    #[unstable(feature = "unicode",
-               reason = "mainly needed for compiler internals")]
     fn is_xid_start(self) -> bool { derived_property::XID_Start(self) }
 
-    #[unstable(feature = "unicode",
-               reason = "mainly needed for compiler internals")]
     fn is_xid_continue(self) -> bool { derived_property::XID_Continue(self) }
 
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_lowercase(self) -> bool {
         match self {
             'a' ... 'z' => true,
@@ -268,7 +405,6 @@ impl CharExt for char {
         }
     }
 
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_uppercase(self) -> bool {
         match self {
             'A' ... 'Z' => true,
@@ -277,7 +413,6 @@ impl CharExt for char {
         }
     }
 
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_whitespace(self) -> bool {
         match self {
             ' ' | '\x09' ... '\x0d' => true,
@@ -286,15 +421,12 @@ impl CharExt for char {
         }
     }
 
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_alphanumeric(self) -> bool {
         self.is_alphabetic() || self.is_numeric()
     }
 
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_control(self) -> bool { general_category::Cc(self) }
 
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_numeric(self) -> bool {
         match self {
             '0' ... '9' => true,
@@ -303,15 +435,35 @@ impl CharExt for char {
         }
     }
 
-    #[unstable(feature = "unicode",
-               reason = "pending case transformation decisions")]
-    fn to_lowercase(self) -> char { conversions::to_lower(self) }
+    fn to_lowercase(self) -> ToLowercase {
+        ToLowercase(Some(conversions::to_lower(self)))
+    }
 
-    #[unstable(feature = "unicode",
-               reason = "pending case transformation decisions")]
-    fn to_uppercase(self) -> char { conversions::to_upper(self) }
+    fn to_uppercase(self) -> ToUppercase {
+        ToUppercase(Some(conversions::to_upper(self)))
+    }
 
-    #[unstable(feature = "unicode",
-               reason = "needs expert opinion. is_cjk flag stands out as ugly")]
     fn width(self, is_cjk: bool) -> Option<usize> { charwidth::width(self, is_cjk) }
+}
+
+/// An iterator over the lowercase mapping of a given character, returned from
+/// the `lowercase` method on characters.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct ToLowercase(Option<char>);
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Iterator for ToLowercase {
+    type Item = char;
+    fn next(&mut self) -> Option<char> { self.0.take() }
+}
+
+/// An iterator over the uppercase mapping of a given character, returned from
+/// the `uppercase` method on characters.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct ToUppercase(Option<char>);
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Iterator for ToUppercase {
+    type Item = char;
+    fn next(&mut self) -> Option<char> { self.0.take() }
 }
