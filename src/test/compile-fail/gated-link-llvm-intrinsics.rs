@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that `#[plugin_registrar]` attribute is gated by `plugin_registrar`
-// feature gate.
+extern {
+    #[link_name = "llvm.sqrt.f32"]
+    fn sqrt(x: f32) -> f32;
+    //~^ ERROR linking to LLVM intrinsics is experimental
+    //~| HELP add #![feature(link_llvm_intrinsics)] to the crate attributes
+}
 
-// the registration function isn't typechecked yet
-#[plugin_registrar]
-pub fn registrar() {}
-//~^ ERROR compiler plugins are experimental
-//~| HELP add #![feature(plugin_registrar)] to the crate attributes to enable
-fn main() {}
+fn main(){
+}
