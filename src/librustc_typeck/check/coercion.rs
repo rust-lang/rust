@@ -76,7 +76,7 @@ use syntax::ast;
 
 struct Coerce<'a, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,
-    trace: TypeTrace<'tcx>
+    origin: infer::TypeOrigin,
 }
 
 type CoerceResult<'tcx> = CombineResult<'tcx, Option<ty::AutoAdjustment<'tcx>>>;
@@ -87,14 +87,16 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     }
 
     fn subtype(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
-        let sub = Sub(self.fcx.infcx().combine_fields(false, self.trace.clone()));
-        try!(sub.tys(a, b));
+        try!(self.fcx.infcx().sub_types(false, self.origin.clone(), a, b));
         Ok(None) // No coercion required.
     }
 
-    fn outlives(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ()> {
-        let sub = Sub(self.fcx.infcx().combine_fields(false, self.trace.clone()));
-        try!(sub.regions(b, a));
+    fn outlives(&self,
+                origin: infer::SubregionOrigin<'tcx>,
+                a: ty::Region,
+                b: ty::Region)
+                -> RelateResult<'tcx, ()> {
+        infer::mk_subr(self.fcx.infcx(), origin, b, a);
         Ok(())
     }
 
@@ -190,7 +192,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             _ => return self.subtype(a, b)
         }
 
-        let coercion = Coercion(self.trace.clone());
+        let coercion = Coercion(self.origin.span());
         let r_borrow = self.fcx.infcx().next_region_var(coercion);
         let autoref = Some(AutoPtr(r_borrow, mutbl_b, None));
 
@@ -214,7 +216,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             let ty = ty::mk_rptr(self.tcx(), r_borrow,
                                  mt {ty: inner_ty, mutbl: mutbl_b});
-            if let Err(err) = self.fcx.infcx().try(|_| self.subtype(ty, b)) {
+            if let Err(err) = self.subtype(ty, b) {
                 if first_error.is_none() {
                     first_error = Some(err);
                 }
@@ -264,12 +266,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             return Err(ty::terr_mutability);
                         }
 
-                        let coercion = Coercion(self.trace.clone());
+                        let coercion = Coercion(self.origin.span());
                         let r_borrow = self.fcx.infcx().next_region_var(coercion);
                         let ty = ty::mk_rptr(self.tcx(),
                                              self.tcx().mk_region(r_borrow),
                                              ty::mt{ty: ty, mutbl: mt_b.mutbl});
-                        try!(self.fcx.infcx().try(|_| self.subtype(ty, b)));
+                        try!(self.subtype(ty, b));
                         debug!("Success, coerced with AutoDerefRef(1, \
                                 AutoPtr(AutoUnsize({:?})))", kind);
                         Ok(Some(AdjustDerefRef(AutoDerefRef {
@@ -290,7 +292,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                         let ty = ty::mk_ptr(self.tcx(),
                                              ty::mt{ty: ty, mutbl: mt_b.mutbl});
-                        try!(self.fcx.infcx().try(|_| self.subtype(ty, b)));
+                        try!(self.subtype(ty, b));
                         debug!("Success, coerced with AutoDerefRef(1, \
                                 AutoPtr(AutoUnsize({:?})))", kind);
                         Ok(Some(AdjustDerefRef(AutoDerefRef {
@@ -306,7 +308,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 match self.unsize_ty(t_a, t_b) {
                     Some((ty, kind)) => {
                         let ty = ty::mk_uniq(self.tcx(), ty);
-                        try!(self.fcx.infcx().try(|_| self.subtype(ty, b)));
+                        try!(self.subtype(ty, b));
                         debug!("Success, coerced with AutoDerefRef(1, \
                                 AutoUnsizeUniq({:?}))", kind);
                         Ok(Some(AdjustDerefRef(AutoDerefRef {
@@ -365,9 +367,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             let ty_a1 = ty::mk_trait(tcx, data_a.principal.clone(), bounds_a1);
 
                             // relate `a1` to `b`
-                            let result = self.fcx.infcx().try(|_| {
+                            let result = self.fcx.infcx().commit_if_ok(|_| {
                                 // it's ok to upcast from Foo+'a to Foo+'b so long as 'a : 'b
-                                try!(self.outlives(data_a.bounds.region_bound,
+                                try!(self.outlives(infer::RelateObjectBound(self.origin.span()),
+                                                   data_a.bounds.region_bound,
                                                    data_b.bounds.region_bound));
                                 self.subtype(ty_a1, ty_b)
                             });
@@ -399,7 +402,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         let mut result = None;
                         let tps = ty_substs_a.iter().zip(ty_substs_b.iter()).enumerate();
                         for (i, (tp_a, tp_b)) in tps {
-                            if self.fcx.infcx().try(|_| self.subtype(*tp_a, *tp_b)).is_ok() {
+                            if self.subtype(*tp_a, *tp_b).is_ok() {
                                 continue;
                             }
                             match self.unsize_ty(*tp_a, *tp_b) {
@@ -408,7 +411,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                     let mut new_substs = substs_a.clone();
                                     new_substs.types.get_mut_slice(subst::TypeSpace)[i] = new_tp;
                                     let ty = ty::mk_struct(tcx, did_a, tcx.mk_substs(new_substs));
-                                    if self.fcx.infcx().try(|_| self.subtype(ty, ty_b)).is_err() {
+                                    if self.subtype(ty, ty_b).is_err() {
                                         debug!("Unsized type parameter '{}', but still \
                                                 could not match types {} and {}",
                                                ppaux::ty_to_string(tcx, *tp_a),
@@ -537,11 +540,10 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              -> CombineResult<'tcx, ()> {
     debug!("mk_assignty({} -> {})", a.repr(fcx.tcx()), b.repr(fcx.tcx()));
     let adjustment = try!(indent(|| {
-        fcx.infcx().commit_if_ok(|| {
-            let origin = infer::ExprAssignable(expr.span);
+        fcx.infcx().commit_if_ok(|_| {
             Coerce {
                 fcx: fcx,
-                trace: infer::TypeTrace::types(origin, false, a, b)
+                origin: infer::ExprAssignable(expr.span),
             }.coerce(expr, a, b)
         })
     }));

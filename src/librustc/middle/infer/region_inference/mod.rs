@@ -115,7 +115,7 @@ pub enum RegionResolutionError<'tcx> {
     /// Could not infer a value for `v` because `sub_r <= v` (due to
     /// `sub_origin`) but `v <= sup_r` (due to `sup_origin`) and
     /// `sub_r <= sup_r` does not hold.
-    SubSupConflict(RegionVariableOrigin<'tcx>,
+    SubSupConflict(RegionVariableOrigin,
                    SubregionOrigin<'tcx>, Region,
                    SubregionOrigin<'tcx>, Region),
 
@@ -124,7 +124,7 @@ pub enum RegionResolutionError<'tcx> {
     /// Could not infer a value for `v` because `v <= r1` (due to
     /// `origin1`) and `v <= r2` (due to `origin2`) and
     /// `r1` and `r2` have no intersection.
-    SupSupConflict(RegionVariableOrigin<'tcx>,
+    SupSupConflict(RegionVariableOrigin,
                    SubregionOrigin<'tcx>, Region,
                    SubregionOrigin<'tcx>, Region),
 
@@ -132,7 +132,7 @@ pub enum RegionResolutionError<'tcx> {
     /// more specific errors message by suggesting to the user where they
     /// should put a lifetime. In those cases we process and put those errors
     /// into `ProcessedErrors` before we do any reporting.
-    ProcessedErrors(Vec<RegionVariableOrigin<'tcx>>,
+    ProcessedErrors(Vec<RegionVariableOrigin>,
                     Vec<(TypeTrace<'tcx>, ty::type_err<'tcx>)>,
                     Vec<SameRegions>),
 }
@@ -168,7 +168,7 @@ pub type CombineMap = FnvHashMap<TwoRegions, RegionVid>;
 
 pub struct RegionVarBindings<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    var_origins: RefCell<Vec<RegionVariableOrigin<'tcx>>>,
+    var_origins: RefCell<Vec<RegionVariableOrigin>>,
 
     // Constraints of the form `A <= B` introduced by the region
     // checker.  Here at least one of `A` and `B` must be a region
@@ -316,7 +316,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         len as u32
     }
 
-    pub fn new_region_var(&self, origin: RegionVariableOrigin<'tcx>) -> RegionVid {
+    pub fn new_region_var(&self, origin: RegionVariableOrigin) -> RegionVid {
         let id = self.num_vars();
         self.var_origins.borrow_mut().push(origin.clone());
         let vid = RegionVid { index: id };

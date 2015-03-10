@@ -1542,7 +1542,7 @@ fn projection_bounds<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
             debug!("projection_bounds: outlives={} (2)",
                    outlives.repr(tcx));
 
-            let region_result = infcx.try(|_| {
+            let region_result = infcx.commit_if_ok(|_| {
                 let (outlives, _) =
                     infcx.replace_late_bound_regions_with_fresh_var(
                         span,

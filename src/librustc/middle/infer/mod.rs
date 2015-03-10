@@ -265,7 +265,7 @@ pub enum LateBoundRegionConversionTime {
 ///
 /// See `error_reporting.rs` for more details
 #[derive(Clone, Debug)]
-pub enum RegionVariableOrigin<'tcx> {
+pub enum RegionVariableOrigin {
     // Region variables created for ill-categorized reasons,
     // mostly indicates places in need of refactoring
     MiscVariable(Span),
@@ -280,7 +280,7 @@ pub enum RegionVariableOrigin<'tcx> {
     Autoref(Span),
 
     // Regions created as part of an automatic coercion
-    Coercion(TypeTrace<'tcx>),
+    Coercion(Span),
 
     // Region variables created as the values for early-bound regions
     EarlyBoundRegion(Span, ast::Name),
@@ -343,8 +343,7 @@ pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
         values: Types(expected_found(a_is_expected, a, b))
     };
 
-    let result =
-        cx.commit_if_ok(|| cx.lub(a_is_expected, trace.clone()).tys(a, b));
+    let result = cx.commit_if_ok(|_| cx.lub(a_is_expected, trace.clone()).tys(a, b));
     match result {
         Ok(t) => t,
         Err(ref err) => {
@@ -362,9 +361,7 @@ pub fn mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                           -> UnitResult<'tcx>
 {
     debug!("mk_subty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
-    cx.commit_if_ok(|| {
-        cx.sub_types(a_is_expected, origin, a, b)
-    })
+    cx.sub_types(a_is_expected, origin, a, b)
 }
 
 pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
@@ -404,8 +401,7 @@ pub fn mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
                          -> UnitResult<'tcx>
 {
     debug!("mk_eqty({} <: {})", a.repr(cx.tcx), b.repr(cx.tcx));
-    cx.commit_if_ok(
-        || cx.eq_types(a_is_expected, origin, a, b))
+    cx.commit_if_ok(|_| cx.eq_types(a_is_expected, origin, a, b))
 }
 
 pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
@@ -417,8 +413,7 @@ pub fn mk_sub_poly_trait_refs<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
 {
     debug!("mk_sub_trait_refs({} <: {})",
            a.repr(cx.tcx), b.repr(cx.tcx));
-    cx.commit_if_ok(
-        || cx.sub_poly_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
+    cx.commit_if_ok(|_| cx.sub_poly_trait_refs(a_is_expected, origin, a.clone(), b.clone()))
 }
 
 fn expected_found<T>(a_is_expected: bool,
@@ -476,25 +471,25 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn combine_fields<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-                              -> CombineFields<'b, 'tcx> {
+    fn combine_fields<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+                          -> CombineFields<'b, 'tcx> {
         CombineFields {infcx: self,
                        a_is_expected: a_is_expected,
                        trace: trace}
     }
 
-    pub fn equate<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-                      -> Equate<'b, 'tcx> {
+    fn equate<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+                  -> Equate<'b, 'tcx> {
         Equate(self.combine_fields(a_is_expected, trace))
     }
 
-    pub fn sub<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-                   -> Sub<'b, 'tcx> {
+    fn sub<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+               -> Sub<'b, 'tcx> {
         Sub(self.combine_fields(a_is_expected, trace))
     }
 
-    pub fn lub<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-                   -> Lub<'b, 'tcx> {
+    fn lub<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+               -> Lub<'b, 'tcx> {
         Lub(self.combine_fields(a_is_expected, trace))
     }
 
@@ -558,11 +553,19 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         r
     }
 
-    /// Execute `f` and commit the bindings if successful
+    /// Execute `f` and commit the bindings if closure `f` returns `Ok(_)`
     pub fn commit_if_ok<T, E, F>(&self, f: F) -> Result<T, E> where
-        F: FnOnce() -> Result<T, E>
+        F: FnOnce(&CombinedSnapshot) -> Result<T, E>
     {
-        self.commit_unconditionally(move || self.try(move |_| f()))
+        debug!("commit_if_ok()");
+        let snapshot = self.start_snapshot();
+        let r = f(&snapshot);
+        debug!("commit_if_ok() -- r.is_ok() = {}", r.is_ok());
+        match r {
+            Ok(_) => { self.commit_from(snapshot); }
+            Err(_) => { self.rollback_to(snapshot); }
+        }
+        r
     }
 
     /// Execute `f` and commit only the region bindings if successful.
@@ -577,7 +580,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                float_snapshot,
                                region_vars_snapshot } = self.start_snapshot();
 
-        let r = self.try(move |_| f());
+        let r = self.commit_if_ok(|_| f());
 
         // Roll back any non-region bindings - they should be resolved
         // inside `f`, with, e.g. `resolve_type_vars_if_possible`.
@@ -595,25 +598,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.region_vars
             .commit(region_vars_snapshot);
 
-        r
-    }
-
-    /// Execute `f`, unroll bindings on panic
-    pub fn try<T, E, F>(&self, f: F) -> Result<T, E> where
-        F: FnOnce(&CombinedSnapshot) -> Result<T, E>
-    {
-        debug!("try()");
-        let snapshot = self.start_snapshot();
-        let r = f(&snapshot);
-        debug!("try() -- r.is_ok() = {}", r.is_ok());
-        match r {
-            Ok(_) => {
-                self.commit_from(snapshot);
-            }
-            Err(_) => {
-                self.rollback_to(snapshot);
-            }
-        }
         r
     }
 
@@ -643,7 +627,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                      -> UnitResult<'tcx>
     {
         debug!("sub_types({} <: {})", a.repr(self.tcx), b.repr(self.tcx));
-        self.commit_if_ok(|| {
+        self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
             self.sub(a_is_expected, trace).tys(a, b).map(|_| ())
         })
@@ -656,7 +640,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     b: Ty<'tcx>)
                     -> UnitResult<'tcx>
     {
-        self.commit_if_ok(|| {
+        self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
             self.equate(a_is_expected, trace).tys(a, b).map(|_| ())
         })
@@ -672,7 +656,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("sub_trait_refs({} <: {})",
                a.repr(self.tcx),
                b.repr(self.tcx));
-        self.commit_if_ok(|| {
+        self.commit_if_ok(|_| {
             let trace = TypeTrace {
                 origin: origin,
                 values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
@@ -691,7 +675,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("sub_poly_trait_refs({} <: {})",
                a.repr(self.tcx),
                b.repr(self.tcx));
-        self.commit_if_ok(|| {
+        self.commit_if_ok(|_| {
             let trace = TypeTrace {
                 origin: origin,
                 values: PolyTraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
@@ -749,7 +733,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                               span: Span,
                               predicate: &ty::PolyEquatePredicate<'tcx>)
                               -> UnitResult<'tcx> {
-        self.try(|snapshot| {
+        self.commit_if_ok(|snapshot| {
             let (ty::EquatePredicate(a, b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let origin = EquatePredicate(span);
@@ -762,7 +746,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                                      span: Span,
                                      predicate: &ty::PolyRegionOutlivesPredicate)
                                      -> UnitResult<'tcx> {
-        self.try(|snapshot| {
+        self.commit_if_ok(|snapshot| {
             let (ty::OutlivesPredicate(r_a, r_b), skol_map) =
                 self.skolemize_late_bound_regions(predicate, snapshot);
             let origin = RelateRegionParamBound(span);
@@ -801,7 +785,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             .new_key(None)
     }
 
-    pub fn next_region_var(&self, origin: RegionVariableOrigin<'tcx>) -> ty::Region {
+    pub fn next_region_var(&self, origin: RegionVariableOrigin) -> ty::Region {
         ty::ReInfer(ty::ReVar(self.region_vars.new_region_var(origin)))
     }
 
@@ -1253,14 +1237,14 @@ impl<'tcx> Repr<'tcx> for SubregionOrigin<'tcx> {
     }
 }
 
-impl<'tcx> RegionVariableOrigin<'tcx> {
+impl RegionVariableOrigin {
     pub fn span(&self) -> Span {
         match *self {
             MiscVariable(a) => a,
             PatternRegion(a) => a,
             AddrOfRegion(a) => a,
             Autoref(a) => a,
-            Coercion(ref a) => a.span(),
+            Coercion(a) => a,
             EarlyBoundRegion(a, _) => a,
             LateBoundRegion(a, _, _) => a,
             BoundRegionInCoherence(_) => codemap::DUMMY_SP,
@@ -1269,7 +1253,7 @@ impl<'tcx> RegionVariableOrigin<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for RegionVariableOrigin<'tcx> {
+impl<'tcx> Repr<'tcx> for RegionVariableOrigin {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
             MiscVariable(a) => {
@@ -1282,7 +1266,7 @@ impl<'tcx> Repr<'tcx> for RegionVariableOrigin<'tcx> {
                 format!("AddrOfRegion({})", a.repr(tcx))
             }
             Autoref(a) => format!("Autoref({})", a.repr(tcx)),
-            Coercion(ref a) => format!("Coercion({})", a.repr(tcx)),
+            Coercion(a) => format!("Coercion({})", a.repr(tcx)),
             EarlyBoundRegion(a, b) => {
                 format!("EarlyBoundRegion({},{})", a.repr(tcx), b.repr(tcx))
             }
