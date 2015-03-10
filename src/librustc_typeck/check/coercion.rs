@@ -62,9 +62,8 @@
 
 use check::{autoderef, FnCtxt, NoPreference, PreferMutLvalue, UnresolvedTypeAction};
 
-use middle::infer::{self, CombineResult, Coercion, TypeTrace};
+use middle::infer::{self, CombineResult, Coercion};
 use middle::infer::combine::Combine;
-use middle::infer::sub::Sub;
 use middle::subst;
 use middle::ty::{AutoPtr, AutoDerefRef, AdjustDerefRef, AutoUnsize, AutoUnsafe};
 use middle::ty::{self, mt, Ty};

@@ -43,7 +43,7 @@ use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::equate::Equate;
 use self::sub::Sub;
 use self::lub::Lub;
-use self::unify::UnificationTable;
+use self::unify::{ToType, UnificationTable};
 use self::error_reporting::ErrorReporting;
 
 pub mod bivariate;
@@ -885,14 +885,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             ty::ty_infer(ty::IntVar(v)) => {
                 self.int_unification_table
                     .borrow_mut()
-                    .probe(self.tcx, v)
+                    .probe(v)
+                    .map(|v| v.to_type(self.tcx))
                     .unwrap_or(typ)
             }
 
             ty::ty_infer(ty::FloatVar(v)) => {
                 self.float_unification_table
                     .borrow_mut()
-                    .probe(self.tcx, v)
+                    .probe(v)
+                    .map(|v| v.to_type(self.tcx))
                     .unwrap_or(typ)
             }
 

@@ -14,7 +14,6 @@ use std::marker;
 
 use middle::ty::{expected_found, IntVarValue};
 use middle::ty::{self, Ty};
-use middle::infer::{UnitResult};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use syntax::ast;
@@ -224,36 +223,15 @@ impl<K:UnifyKey> sv::SnapshotVecDelegate for Delegate<K> {
 // floats---anything that doesn't have a subtyping relationship we
 // need to worry about.
 
-/// Indicates a type that does not have any kind of subtyping
-/// relationship.
-pub trait SimplyUnifiable<'tcx> : Clone + PartialEq + Debug {
-    fn to_type(&self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx>;
-    fn to_type_err(expected_found<Self>) -> ty::type_err<'tcx>;
-}
-
-pub fn err<'tcx, V:SimplyUnifiable<'tcx>>(a_is_expected: bool,
-                                          a_t: V,
-                                          b_t: V)
-                                          -> UnitResult<'tcx> {
-    if a_is_expected {
-        Err(SimplyUnifiable::to_type_err(
-            ty::expected_found {expected: a_t, found: b_t}))
-    } else {
-        Err(SimplyUnifiable::to_type_err(
-            ty::expected_found {expected: b_t, found: a_t}))
-    }
-}
-
 impl<'tcx,K,V> UnificationTable<K>
-    where K : UnifyKey<Value=Option<V>>,
-          V : SimplyUnifiable<'tcx>,
-          Option<V> : UnifyValue,
+    where K: UnifyKey<Value=Option<V>>,
+          V: Clone+PartialEq,
+          Option<V>: UnifyValue,
 {
     pub fn unify_var_var(&mut self,
-                         a_is_expected: bool,
                          a_id: K,
                          b_id: K)
-                         -> UnitResult<'tcx>
+                         -> Result<(),(V,V)>
     {
         let node_a = self.get(a_id);
         let node_b = self.get(b_id);
@@ -268,13 +246,13 @@ impl<'tcx,K,V> UnificationTable<K>
                     None
                 }
                 (&Some(ref v), &None) | (&None, &Some(ref v)) => {
-                    Some((*v).clone())
+                    Some(v.clone())
                 }
                 (&Some(ref v1), &Some(ref v2)) => {
                     if *v1 != *v2 {
-                        return err(a_is_expected, (*v1).clone(), (*v2).clone())
+                        return Err((v1.clone(), v2.clone()));
                     }
-                    Some((*v1).clone())
+                    Some(v1.clone())
                 }
             }
         };
@@ -285,10 +263,9 @@ impl<'tcx,K,V> UnificationTable<K>
     /// Sets the value of the key `a_id` to `b`. Because simple keys do not have any subtyping
     /// relationships, if `a_id` already has a value, it must be the same as `b`.
     pub fn unify_var_value(&mut self,
-                           a_is_expected: bool,
                            a_id: K,
                            b: V)
-                           -> UnitResult<'tcx>
+                           -> Result<(),(V,V)>
     {
         let node_a = self.get(a_id);
         let a_id = node_a.key.clone();
@@ -303,7 +280,7 @@ impl<'tcx,K,V> UnificationTable<K>
                 if *a_t == b {
                     Ok(())
                 } else {
-                    err(a_is_expected, (*a_t).clone(), b)
+                    Err((a_t.clone(), b))
                 }
             }
         }
@@ -313,18 +290,18 @@ impl<'tcx,K,V> UnificationTable<K>
         self.get(id).value.is_some()
     }
 
-    pub fn probe(&mut self, tcx: &ty::ctxt<'tcx>, a_id: K) -> Option<Ty<'tcx>> {
-        let node_a = self.get(a_id);
-        match node_a.value {
-            None => None,
-            Some(ref a_t) => Some(a_t.to_type(tcx))
-        }
+    pub fn probe(&mut self, a_id: K) -> Option<V> {
+        self.get(a_id).value.clone()
     }
 }
 
 ///////////////////////////////////////////////////////////////////////////
 
 // Integral type keys
+
+pub trait ToType<'tcx> {
+    fn to_type(&self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx>;
+}
 
 impl UnifyKey for ty::IntVid {
     type Value = Option<IntVarValue>;
@@ -333,16 +310,12 @@ impl UnifyKey for ty::IntVid {
     fn tag(_: Option<ty::IntVid>) -> &'static str { "IntVid" }
 }
 
-impl<'tcx> SimplyUnifiable<'tcx> for IntVarValue {
+impl<'tcx> ToType<'tcx> for IntVarValue {
     fn to_type(&self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
         match *self {
             ty::IntType(i) => ty::mk_mach_int(tcx, i),
             ty::UintType(i) => ty::mk_mach_uint(tcx, i),
         }
-    }
-
-    fn to_type_err(err: expected_found<IntVarValue>) -> ty::type_err<'tcx> {
-        return ty::terr_int_mismatch(err);
     }
 }
 
@@ -360,12 +333,8 @@ impl UnifyKey for ty::FloatVid {
 impl UnifyValue for Option<ast::FloatTy> {
 }
 
-impl<'tcx> SimplyUnifiable<'tcx> for ast::FloatTy {
+impl<'tcx> ToType<'tcx> for ast::FloatTy {
     fn to_type(&self, tcx: &ty::ctxt<'tcx>) -> Ty<'tcx> {
         ty::mk_mach_float(tcx, *self)
-    }
-
-    fn to_type_err(err: expected_found<ast::FloatTy>) -> ty::type_err<'tcx> {
-        ty::terr_float_mismatch(err)
     }
 }

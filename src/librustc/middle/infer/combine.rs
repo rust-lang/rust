@@ -436,8 +436,17 @@ pub fn expected_found<'tcx, C, T>(this: &C,
                                   a: T,
                                   b: T)
                                   -> ty::expected_found<T>
-                                  where C: Combine<'tcx> {
-    if this.a_is_expected() {
+                                  where C: Combine<'tcx>
+{
+    expected_found_bool(this.a_is_expected(), a, b)
+}
+
+fn expected_found_bool<T>(a_is_expected: bool,
+                          a: T,
+                          b: T)
+                          -> ty::expected_found<T>
+{
+    if a_is_expected {
         ty::expected_found {expected: a, found: b}
     } else {
         ty::expected_found {expected: b, found: a}
@@ -469,7 +478,8 @@ pub fn super_tys<'tcx, C>(this: &C,
         (&ty::ty_infer(IntVar(a_id)), &ty::ty_infer(IntVar(b_id))) => {
             try!(this.infcx().int_unification_table
                              .borrow_mut()
-                             .unify_var_var(this.a_is_expected(), a_id, b_id));
+                             .unify_var_var(a_id, b_id)
+                             .map_err(|e| int_unification_error(this.a_is_expected(), e)));
             Ok(a)
         }
         (&ty::ty_infer(IntVar(v_id)), &ty::ty_int(v)) => {
@@ -489,7 +499,8 @@ pub fn super_tys<'tcx, C>(this: &C,
         (&ty::ty_infer(FloatVar(a_id)), &ty::ty_infer(FloatVar(b_id))) => {
             try!(this.infcx().float_unification_table
                              .borrow_mut()
-                             .unify_var_var(this.a_is_expected(), a_id, b_id));
+                             .unify_var_var(a_id, b_id)
+                             .map_err(|e| float_unification_error(this.a_is_expected(), e)));
             Ok(a)
         }
         (&ty::ty_infer(FloatVar(v_id)), &ty::ty_float(v)) => {
@@ -617,9 +628,11 @@ pub fn super_tys<'tcx, C>(this: &C,
                                         -> CombineResult<'tcx, Ty<'tcx>>
         where C: Combine<'tcx>
     {
-        try!(this.infcx().int_unification_table
-                         .borrow_mut()
-                         .unify_var_value(vid_is_expected, vid, val));
+        try!(this.infcx()
+                 .int_unification_table
+                 .borrow_mut()
+                 .unify_var_value(vid, val)
+                 .map_err(|e| int_unification_error(vid_is_expected, e)));
         match val {
             IntType(v) => Ok(ty::mk_mach_int(this.tcx(), v)),
             UintType(v) => Ok(ty::mk_mach_uint(this.tcx(), v)),
@@ -635,7 +648,8 @@ pub fn super_tys<'tcx, C>(this: &C,
     {
         try!(this.infcx().float_unification_table
                          .borrow_mut()
-                         .unify_var_value(vid_is_expected, vid, val));
+                         .unify_var_value(vid, val)
+                         .map_err(|e| float_unification_error(vid_is_expected, e)));
         Ok(ty::mk_mach_float(this.tcx(), val))
     }
 }
@@ -863,3 +877,17 @@ impl<'tcx, T:Clone + PartialEq> CombineResultCompare<'tcx, T> for CombineResult<
     }
 }
 
+fn int_unification_error<'tcx>(a_is_expected: bool, v: (ty::IntVarValue, ty::IntVarValue))
+                               -> ty::type_err<'tcx>
+{
+    let (a, b) = v;
+    ty::terr_int_mismatch(expected_found_bool(a_is_expected, a, b))
+}
+
+fn float_unification_error<'tcx>(a_is_expected: bool,
+                                 v: (ast::FloatTy, ast::FloatTy))
+                                 -> ty::type_err<'tcx>
+{
+    let (a, b) = v;
+    ty::terr_float_mismatch(expected_found_bool(a_is_expected, a, b))
+}
