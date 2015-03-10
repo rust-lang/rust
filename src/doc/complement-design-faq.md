@@ -174,3 +174,10 @@ bindings.
 See also [a long thread][alt] on renaming `let mut` to `var`.
 
 [alt]: https://mail.mozilla.org/pipermail/rust-dev/2014-January/008319.html
+
+## Why no `--x` or `x++`?
+
+Preincrement and postincrement, while convenient, are also fairly complex. They
+require knowledge of evaluation order, and often lead to subtle bugs and
+undefined behavior in C and C++. `x = x + 1` or `x += 1` is only slightly
+longer, but unambiguous.
