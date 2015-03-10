@@ -1264,7 +1264,7 @@ impl Context {
             let short = short.to_string();
             let v = map.entry(short).get().unwrap_or_else(
                 |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
-            v.push((myname, Some(shorter_line(item.doc_value()))));
+            v.push((myname, Some(plain_summary_line(item.doc_value()))));
         }
 
         for (_, items) in &mut map {
@@ -1478,8 +1478,9 @@ fn shorter<'a>(s: Option<&'a str>) -> &'a str {
 }
 
 #[inline]
-fn shorter_line(s: Option<&str>) -> String {
-    shorter(s).replace("\n", " ")
+fn plain_summary_line(s: Option<&str>) -> String {
+    let line = shorter(s).replace("\n", " ");
+    markdown::plain_summary_line(&line[..])
 }
 
 fn document(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
