@@ -1165,14 +1165,16 @@ pub fn stderr() -> Stderr;
 ```
 
 * `stdin` - returns a handle to a **globally shared** standard input of
-  the process which is buffered as well. All operations on this handle will
-  first require acquiring a lock to ensure access to the shared buffer is
-  synchronized. The handle can be explicitly locked for a critical section so
-  relocking is not necessary.
+  the process which is buffered as well. Due to the globally shared nature of
+  this handle, all operations on `Stdin` directly will acquire a lock internally
+  to ensure access to the shared buffer is synchronized. This implementation
+  detail is also exposed through a `lock` method where the handle can be
+  explicitly locked for a period of time so relocking is not necessary.
 
   The `Read` trait will be implemented directly on the returned `Stdin` handle
   but the `BufRead` trait will not be (due to synchronization concerns). The
-  locked version of `Stdin` will provide an implementation of `BufRead`.
+  locked version of `Stdin` (`StdinLock`) will provide an implementation of
+  `BufRead`.
 
   The design will largely be the same as is today with the `old_io` module.
 
