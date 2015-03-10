@@ -1500,31 +1500,14 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // panic occur before the ADT as a whole is ready.
     let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
 
-    // First we trans the base, if we have one, to the dest
-    if let Some(base) = optbase {
-        assert_eq!(discr, 0);
-
-        match ty::expr_kind(bcx.tcx(), &*base.expr) {
-            ty::RvalueDpsExpr | ty::RvalueDatumExpr if !bcx.fcx.type_needs_drop(ty) => {
-                bcx = trans_into(bcx, &*base.expr, SaveIn(addr));
-            },
-            ty::RvalueStmtExpr => bcx.tcx().sess.bug("unexpected expr kind for struct base expr"),
-            _ => {
-                let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
-                for &(i, t) in &base.fields {
-                    let datum = base_datum.get_element(
-                            bcx, t, |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, i));
-                    assert!(type_is_sized(bcx.tcx(), datum.ty));
-                    let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
-                    bcx = datum.store_to(bcx, dest);
-                }
-            }
-        }
-    }
-
-    debug_location.apply(bcx.fcx);
-
     if ty::type_is_simd(bcx.tcx(), ty) {
+        // Issue 23112: The original logic appeared vulnerable to same
+        // order-of-eval bug. But, SIMD values are tuple-structs;
+        // i.e. functional record update (FRU) syntax is unavailable.
+        //
+        // To be safe, double-check that we did not get here via FRU.
+        assert!(optbase.is_none());
+
         // This is the constructor of a SIMD type, such types are
         // always primitive machine types and so do not have a
         // destructor or require any clean-up.
@@ -1543,8 +1526,45 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             vec_val = InsertElement(bcx, vec_val, value, position);
         }
         Store(bcx, vec_val, addr);
+    } else if let Some(base) = optbase {
+        // Issue 23112: If there is a base, then order-of-eval
+        // requires field expressions eval'ed before base expression.
+
+        // First, trans field expressions to temporary scratch values.
+        let scratch_vals: Vec<_> = fields.iter().map(|&(i, ref e)| {
+            let datum = unpack_datum!(bcx, trans(bcx, &**e));
+            (i, datum)
+        }).collect();
+
+        debug_location.apply(bcx.fcx);
+
+        // Second, trans the base to the dest.
+        assert_eq!(discr, 0);
+
+        match ty::expr_kind(bcx.tcx(), &*base.expr) {
+            ty::RvalueDpsExpr | ty::RvalueDatumExpr if !bcx.fcx.type_needs_drop(ty) => {
+                bcx = trans_into(bcx, &*base.expr, SaveIn(addr));
+            },
+            ty::RvalueStmtExpr => bcx.tcx().sess.bug("unexpected expr kind for struct base expr"),
+            _ => {
+                let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
+                for &(i, t) in &base.fields {
+                    let datum = base_datum.get_element(
+                            bcx, t, |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, i));
+                    assert!(type_is_sized(bcx.tcx(), datum.ty));
+                    let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
+                    bcx = datum.store_to(bcx, dest);
+                }
+            }
+        }
+
+        // Finally, move scratch field values into actual field locations
+        for (i, datum) in scratch_vals.into_iter() {
+            let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
+            bcx = datum.store_to(bcx, dest);
+        }
     } else {
-        // Now, we just overwrite the fields we've explicitly specified
+        // No base means we can write all fields directly in place.
         for &(i, ref e) in fields {
             let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
             let e_ty = expr_ty_adjusted(bcx, &**e);
