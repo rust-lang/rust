@@ -43,6 +43,7 @@ use ops::{Deref, DerefMut, FnOnce};
 use ptr;
 use result::Result::{Ok, Err};
 use rt;
+#[cfg(stage0)]
 use slice::SliceExt;
 #[cfg(stage0)]
 use str::StrExt;

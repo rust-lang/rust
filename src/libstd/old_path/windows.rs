@@ -27,7 +27,10 @@ use iter::{Iterator, IteratorExt, Map, repeat};
 use mem;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
+#[cfg(stage0)]
 use slice::{SliceExt, SliceConcatExt};
+#[cfg(not(stage0))]
+use slice::SliceConcatExt;
 #[cfg(stage0)]
 use str::{SplitTerminator, FromStr, StrExt};
 #[cfg(not(stage0))]
