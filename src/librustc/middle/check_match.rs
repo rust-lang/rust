@@ -646,6 +646,7 @@ fn is_useful(cx: &MatchCheckCtxt,
     if rows[0].len() == 0 {
         return NotUseful;
     }
+    assert!(rows.iter().all(|r| r.len() == v.len()));
     let real_pat = match rows.iter().find(|r| (*r)[0].id != DUMMY_NODE_ID) {
         Some(r) => raw_pat(r[0]),
         None if v.len() == 0 => return NotUseful,
@@ -654,7 +655,12 @@ fn is_useful(cx: &MatchCheckCtxt,
     let left_ty = if real_pat.id == DUMMY_NODE_ID {
         ty::mk_nil(cx.tcx)
     } else {
-        ty::pat_ty(cx.tcx, &*real_pat)
+        let left_ty = ty::pat_ty(cx.tcx, &*real_pat);
+
+        match real_pat.node {
+            ast::PatIdent(ast::BindByRef(..), _, _) => ty::deref(left_ty, false).unwrap().ty,
+            _ => left_ty,
+        }
     };
 
     let max_slice_length = rows.iter().filter_map(|row| match row[0].node {
