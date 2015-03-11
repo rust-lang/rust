@@ -262,15 +262,15 @@ pub unsafe fn set_name(name: &str) {
     // pthread_setname_np() since glibc 2.12
     // availability autodetected via weak linkage
     let cname = CString::new(name).unwrap();
-    type F = unsafe extern "C" fn(libc::pthread_t, *const libc::c_char) -> libc::c_int;
+    type F = unsafe extern "C" fn(libc::pthread_t, *const libc::c_char)
+                                  -> libc::c_int;
     extern {
         #[linkage = "extern_weak"]
         static pthread_setname_np: *const ();
     }
     if !pthread_setname_np.is_null() {
-        unsafe {
-            mem::transmute::<*const (), F>(pthread_setname_np)(pthread_self(), cname.as_ptr());
-        }
+        mem::transmute::<*const (), F>(pthread_setname_np)(pthread_self(),
+                                                           cname.as_ptr());
     }
 }
 

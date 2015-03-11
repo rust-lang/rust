@@ -15,7 +15,6 @@ use io::{self, Error, ErrorKind};
 use libc::{self, c_int, c_char, c_void, socklen_t};
 use mem;
 use net::{IpAddr, SocketAddr, Shutdown};
-use num::Int;
 use sys::c;
 use sys::net::{cvt, cvt_r, cvt_gai, Socket, init, wrlen_t};
 use sys_common::{AsInner, FromInner, IntoInner};
@@ -23,9 +22,6 @@ use sys_common::{AsInner, FromInner, IntoInner};
 ////////////////////////////////////////////////////////////////////////////////
 // sockaddr and misc bindings
 ////////////////////////////////////////////////////////////////////////////////
-
-fn hton<I: Int>(i: I) -> I { i.to_be() }
-fn ntoh<I: Int>(i: I) -> I { Int::from_be(i) }
 
 fn setsockopt<T>(sock: &Socket, opt: c_int, val: c_int,
                      payload: T) -> io::Result<()> {
@@ -39,7 +35,7 @@ fn setsockopt<T>(sock: &Socket, opt: c_int, val: c_int,
 
 #[allow(dead_code)]
 fn getsockopt<T: Copy>(sock: &Socket, opt: c_int,
-                           val: c_int) -> io::Result<T> {
+                       val: c_int) -> io::Result<T> {
     unsafe {
         let mut slot: T = mem::zeroed();
         let mut len = mem::size_of::<T>() as socklen_t;

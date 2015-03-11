@@ -20,15 +20,15 @@
 //! Other than that, the implementation is pretty straightforward in terms of
 //! the other two implementations of timers with nothing *that* new showing up.
 
-use self::Req::*;
 use prelude::v1::*;
+use self::Req::*;
 
 use libc;
 use ptr;
 
 use old_io::IoResult;
-use sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use sys_common::helper_thread::Helper;
+use sync::mpsc::{channel, TryRecvError, Sender, Receiver};
 
 helper_init! { static HELPER: Helper<Req> }
 
@@ -78,9 +78,10 @@ fn helper(input: libc::HANDLE, messages: Receiver<Req>, _: ()) {
                             None => {}
                         }
                     }
+                    // See the comment in unix::timer for why we don't have any
+                    // asserts here and why we're likely just leaving timers on
+                    // the floor as we exit.
                     Err(TryRecvError::Disconnected) => {
-                        assert_eq!(objs.len(), 1);
-                        assert_eq!(chans.len(), 0);
                         break 'outer;
                     }
                     Err(..) => break
