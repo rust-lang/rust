@@ -18,28 +18,21 @@
 struct Foo;
 impl Fn<()> for Foo {
     //~^ ERROR angle-bracket notation is not stable when used with the `Fn` family of traits
-    type Output = ();
-
-    extern "rust-call" fn call(&self, args: ()) -> () {}
+    extern "rust-call" fn call(self, args: ()) -> () {}
 }
 struct Foo1;
-impl Fn() for Foo1 {
+impl FnOnce() for Foo1 {
     //~^ ERROR associated type bindings are not allowed here
-
-    extern "rust-call" fn call(&self, args: ()) -> () {}
+    extern "rust-call" fn call_once(self, args: ()) -> () {}
 }
 struct Bar;
 impl FnMut<()> for Bar {
     //~^ ERROR angle-bracket notation is not stable when used with the `Fn` family of traits
-    type Output = ();
-
     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
 }
 struct Baz;
 impl FnOnce<()> for Baz {
     //~^ ERROR angle-bracket notation is not stable when used with the `Fn` family of traits
-    type Output = ();
-
     extern "rust-call" fn call_once(&self, args: ()) -> () {}
 }
 
