@@ -39,7 +39,7 @@ pub unsafe trait Send : MarkerTrait {
     // empty.
 }
 
-impl Send for .. { }
+unsafe impl Send for .. { }
 
 impl<T> !Send for *const T { }
 impl<T> !Send for *mut T { }
@@ -205,7 +205,7 @@ pub unsafe trait Sync : MarkerTrait {
     // Empty
 }
 
-impl Sync for .. { }
+unsafe impl Sync for .. { }
 
 impl<T> !Sync for *const T { }
 impl<T> !Sync for *mut T { }
