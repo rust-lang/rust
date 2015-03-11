@@ -724,13 +724,13 @@ impl<'a> MethodDef<'a> {
             span: trait_.span,
             vis: ast::Inherited,
             ident: method_ident,
-            node: ast::MethodImplItem(
-                ast::MethDecl(fn_generics,
-                              abi,
-                              explicit_self,
-                              ast::Unsafety::Normal,
-                              fn_decl,
-                              body_block))
+            node: ast::MethodImplItem(ast::MethDecl(ast::MethodSig {
+                generics: fn_generics,
+                abi: abi,
+                explicit_self: explicit_self,
+                unsafety: ast::Unsafety::Normal,
+                decl: fn_decl
+            }, body_block))
         })
     }
 

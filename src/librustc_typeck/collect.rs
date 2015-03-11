@@ -621,152 +621,52 @@ fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn collect_trait_methods<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                   trait_id: ast::NodeId,
-                                   trait_def: &ty::TraitDef<'tcx>,
-                                   trait_predicates: &ty::GenericPredicates<'tcx>) {
-    let tcx = ccx.tcx;
-    if let ast_map::NodeItem(item) = tcx.map.get(trait_id) {
-        if let ast::ItemTrait(_, _, _, ref trait_items) = item.node {
-            // For each method, construct a suitable ty::Method and
-            // store it into the `tcx.impl_or_trait_items` table:
-            for trait_item in trait_items {
-                match trait_item.node {
-                    ast::RequiredMethod(_) |
-                    ast::ProvidedMethod(_) => {
-                        let ty_method = Rc::new(match trait_item.node {
-                            ast::RequiredMethod(ref m) => {
-                                ty_method_of_trait_method(
-                                    ccx,
-                                    trait_id,
-                                    &trait_def.generics,
-                                    &trait_predicates,
-                                    trait_item.id,
-                                    trait_item.ident,
-                                    &m.explicit_self,
-                                    m.abi,
-                                    &m.generics,
-                                    &m.unsafety,
-                                    &*m.decl)
-                            }
-                            ast::ProvidedMethod(ref m) => {
-                                ty_method_of_trait_method(
-                                    ccx,
-                                    trait_id,
-                                    &trait_def.generics,
-                                    &trait_predicates,
-                                    trait_item.id,
-                                    trait_item.ident,
-                                    m.pe_explicit_self(),
-                                    m.pe_abi(),
-                                    m.pe_generics(),
-                                    &m.pe_unsafety(),
-                                    &*m.pe_fn_decl())
-                            }
-                            ast::TypeTraitItem(..) => unreachable!()
-                        });
+fn convert_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                            container: ImplOrTraitItemContainer,
+                            sig: &ast::MethodSig,
+                            id: ast::NodeId,
+                            ident: ast::Ident,
+                            vis: ast::Visibility,
+                            untransformed_rcvr_ty: Ty<'tcx>,
+                            rcvr_ty_generics: &ty::Generics<'tcx>,
+                            rcvr_ty_predicates: &ty::GenericPredicates<'tcx>) {
+    let ty_generics = ty_generics_for_fn(ccx, &sig.generics, rcvr_ty_generics);
 
-                        debug!("ty_method_of_trait_method yielded {} for method {} of trait {}",
-                               ty_method.repr(ccx.tcx),
-                               trait_item.repr(ccx.tcx),
-                               local_def(trait_id).repr(ccx.tcx));
+    let ty_generic_predicates =
+        ty_generic_predicates_for_fn(ccx, &sig.generics, rcvr_ty_predicates);
 
-                        make_method_ty(ccx, &*ty_method);
+    let (fty, explicit_self_category) =
+        astconv::ty_of_method(&ccx.icx(&(rcvr_ty_predicates, &sig.generics)),
+                              sig, untransformed_rcvr_ty);
 
-                        tcx.impl_or_trait_items
-                            .borrow_mut()
-                            .insert(ty_method.def_id, ty::MethodTraitItem(ty_method));
-                    }
-                    ast::TypeTraitItem(..) => {
-                        let trait_did = local_def(trait_id);
-                        let associated_type = ty::AssociatedType {
-                            name: trait_item.ident.name,
-                            vis: ast::Public,
-                            def_id: local_def(trait_item.id),
-                            container: TraitContainer(trait_did),
-                        };
+    let def_id = local_def(id);
+    let ty_method = ty::Method::new(ident.name,
+                                    ty_generics,
+                                    ty_generic_predicates,
+                                    fty,
+                                    explicit_self_category,
+                                    vis,
+                                    def_id,
+                                    container,
+                                    None);
 
-                        let trait_item = ty::TypeTraitItem(Rc::new(associated_type));
-                        tcx.impl_or_trait_items
-                            .borrow_mut()
-                            .insert(associated_type.def_id, trait_item);
-                    }
-                }
-            }
+    let fty = ty::mk_bare_fn(ccx.tcx, Some(def_id),
+                             ccx.tcx.mk_bare_fn(ty_method.fty.clone()));
+    debug!("method {} (id {}) has type {}",
+            ident.repr(ccx.tcx), id, fty.repr(ccx.tcx));
+    ccx.tcx.tcache.borrow_mut().insert(def_id,TypeScheme {
+        generics: ty_method.generics.clone(),
+        ty: fty
+    });
+    ccx.tcx.predicates.borrow_mut().insert(def_id, ty_method.predicates.clone());
 
-            // Add an entry mapping
-            let trait_item_def_ids = Rc::new(trait_items.iter().map(|trait_item| {
-                let def_id = local_def(trait_item.id);
-                match trait_item.node {
-                    ast::RequiredMethod(_) |
-                    ast::ProvidedMethod(_) => {
-                        ty::MethodTraitItemId(def_id)
-                    }
-                    ast::TypeTraitItem(..) => {
-                        ty::TypeTraitItemId(def_id)
-                    }
-                }
-            }).collect());
+    write_ty_to_tcx(ccx.tcx, id, fty);
 
-            let trait_def_id = local_def(trait_id);
-            tcx.trait_item_def_ids.borrow_mut().insert(trait_def_id, trait_item_def_ids);
-        }
-    }
+    debug!("writing method type: def_id={:?} mty={}",
+            def_id, ty_method.repr(ccx.tcx));
 
-    fn make_method_ty<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, m: &ty::Method<'tcx>) {
-        ccx.tcx.tcache.borrow_mut().insert(
-            m.def_id,
-            TypeScheme {
-                generics: m.generics.clone(),
-                ty: ty::mk_bare_fn(ccx.tcx, Some(m.def_id), ccx.tcx.mk_bare_fn(m.fty.clone()))
-            });
-        ccx.tcx.predicates.borrow_mut().insert(
-            m.def_id,
-            m.predicates.clone());
-    }
-
-    fn ty_method_of_trait_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                           trait_id: ast::NodeId,
-                                           trait_generics: &ty::Generics<'tcx>,
-                                           trait_bounds: &ty::GenericPredicates<'tcx>,
-                                           m_id: ast::NodeId,
-                                           m_ident: ast::Ident,
-                                           m_explicit_self: &ast::ExplicitSelf,
-                                           m_abi: abi::Abi,
-                                           m_generics: &ast::Generics,
-                                           m_unsafety: &ast::Unsafety,
-                                           m_decl: &ast::FnDecl)
-                                           -> ty::Method<'tcx>
-    {
-        let ty_generics =
-            ty_generics_for_fn(ccx, m_generics, trait_generics);
-
-        let ty_generic_predicates =
-            ty_generic_predicates_for_fn(ccx, m_generics, trait_bounds);
-
-        let (fty, explicit_self_category) = {
-            let trait_self_ty = ty::mk_self_type(ccx.tcx);
-            astconv::ty_of_method(&ccx.icx(&(trait_bounds, m_generics)),
-                                  *m_unsafety,
-                                  trait_self_ty,
-                                  m_explicit_self,
-                                  m_decl,
-                                  m_abi)
-        };
-
-        ty::Method::new(
-            m_ident.name,
-            ty_generics,
-            ty_generic_predicates,
-            fty,
-            explicit_self_category,
-            // assume public, because this is only invoked on trait methods
-            ast::Public,
-            local_def(m_id),
-            TraitContainer(local_def(trait_id)),
-            None
-        )
-    }
+    ccx.tcx.impl_or_trait_items.borrow_mut().insert(def_id,
+        ty::MethodTraitItem(Rc::new(ty_method)));
 }
 
 fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -809,20 +709,19 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 }
 
 fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                     trait_def: &ty::TraitDef<'tcx>,
+                                     container: ImplOrTraitItemContainer,
                                      ident: ast::Ident,
-                                     id: ast::NodeId)
+                                     id: ast::NodeId,
+                                     vis: ast::Visibility)
 {
     let associated_type = Rc::new(ty::AssociatedType {
         name: ident.name,
-        vis: ast::Public,
+        vis: vis,
         def_id: local_def(id),
-        container: TraitContainer(trait_def.trait_ref.def_id),
+        container: container
     });
-    ccx.tcx
-       .impl_or_trait_items
-       .borrow_mut()
-       .insert(associated_type.def_id, ty::TypeTraitItem(associated_type));
+    ccx.tcx.impl_or_trait_items.borrow_mut()
+       .insert(local_def(id), ty::TypeTraitItem(associated_type));
 }
 
 fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -830,9 +729,8 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
                                  methods: I,
                                  untransformed_rcvr_ty: Ty<'tcx>,
                                  rcvr_ty_generics: &ty::Generics<'tcx>,
-                                 rcvr_ty_predicates: &ty::GenericPredicates<'tcx>,
-                                 rcvr_visibility: ast::Visibility)
-    where I: Iterator<Item=(&'i ast::Method, ast::NodeId, ast::Ident, ast::Visibility, Span)>
+                                 rcvr_ty_predicates: &ty::GenericPredicates<'tcx>)
+    where I: Iterator<Item=(&'i ast::MethodSig, ast::NodeId, ast::Ident, ast::Visibility, Span)>
 {
     debug!("convert_methods(untransformed_rcvr_ty={}, rcvr_ty_generics={}, rcvr_ty_predicates={})",
            untransformed_rcvr_ty.repr(ccx.tcx),
@@ -841,87 +739,20 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let tcx = ccx.tcx;
     let mut seen_methods = FnvHashSet();
-    for (m, id, ident, vis, span) in methods {
+    for (sig, id, ident, vis, span) in methods {
         if !seen_methods.insert(ident.name) {
-            span_err!(tcx.sess, span, E0201, "duplicate method in trait impl");
+            span_err!(tcx.sess, span, E0201, "duplicate method");
         }
 
-        let m_def_id = local_def(id);
-
-        let mty = Rc::new(ty_of_method(ccx,
-                                       container,
-                                       m,
-                                       id,
-                                       ident,
-                                       vis,
-                                       untransformed_rcvr_ty,
-                                       rcvr_ty_generics,
-                                       rcvr_ty_predicates,
-                                       rcvr_visibility));
-        let fty = ty::mk_bare_fn(tcx, Some(m_def_id), tcx.mk_bare_fn(mty.fty.clone()));
-        debug!("method {} (id {}) has type {}",
-                ident.repr(tcx),
-                id,
-                fty.repr(tcx));
-        tcx.tcache.borrow_mut().insert(
-            m_def_id,
-            TypeScheme {
-                generics: mty.generics.clone(),
-                ty: fty
-            });
-        tcx.predicates.borrow_mut().insert(m_def_id, mty.predicates.clone());
-
-        write_ty_to_tcx(tcx, id, fty);
-
-        debug!("writing method type: def_id={:?} mty={}",
-               mty.def_id, mty.repr(ccx.tcx));
-
-        tcx.impl_or_trait_items
-           .borrow_mut()
-           .insert(mty.def_id, ty::MethodTraitItem(mty));
-    }
-
-    fn ty_of_method<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                              container: ImplOrTraitItemContainer,
-                              m: &ast::Method,
-                              id: ast::NodeId,
-                              ident: ast::Ident,
-                              vis: ast::Visibility,
-                              untransformed_rcvr_ty: Ty<'tcx>,
-                              rcvr_ty_generics: &ty::Generics<'tcx>,
-                              rcvr_ty_predicates: &ty::GenericPredicates<'tcx>,
-                              rcvr_visibility: ast::Visibility)
-                              -> ty::Method<'tcx>
-    {
-        let m_ty_generics =
-            ty_generics_for_fn(ccx, m.pe_generics(), rcvr_ty_generics);
-
-        let m_ty_generic_predicates =
-            ty_generic_predicates_for_fn(ccx, m.pe_generics(), rcvr_ty_predicates);
-
-        let (fty, explicit_self_category) =
-            astconv::ty_of_method(&ccx.icx(&(rcvr_ty_predicates, m.pe_generics())),
-                                  m.pe_unsafety(),
-                                  untransformed_rcvr_ty,
-                                  m.pe_explicit_self(),
-                                  &*m.pe_fn_decl(),
-                                  m.pe_abi());
-
-        // if the method specifies a visibility, use that, otherwise
-        // inherit the visibility from the impl (so `foo` in `pub impl
-        // { fn foo(); }` is public, but private in `priv impl { fn
-        // foo(); }`).
-        let method_vis = vis.inherit_from(rcvr_visibility);
-
-        ty::Method::new(ident.name,
-                        m_ty_generics,
-                        m_ty_generic_predicates,
-                        fty,
-                        explicit_self_category,
-                        method_vis,
-                        local_def(id),
-                        container,
-                        None)
+        convert_method(ccx,
+                       container,
+                       sig,
+                       id,
+                       ident,
+                       vis,
+                       untransformed_rcvr_ty,
+                       rcvr_ty_generics,
+                       rcvr_ty_predicates);
     }
 }
 
@@ -1013,6 +844,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                 it.vis
             };
 
+            // Convert all the associated types.
             for impl_item in impl_items {
                 match impl_item.node {
                     ast::MethodImplItem(_) => {}
@@ -1021,6 +853,9 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                             span_err!(tcx.sess, impl_item.span, E0202,
                                               "associated items are not allowed in inherent impls");
                         }
+
+                        convert_associated_type(ccx, ImplContainer(local_def(it.id)),
+                                                impl_item.ident, impl_item.id, impl_item.vis);
 
                         let typ = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, ty);
                         tcx.tcache.borrow_mut().insert(local_def(impl_item.id),
@@ -1031,17 +866,6 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                         tcx.predicates.borrow_mut().insert(local_def(impl_item.id),
                                                            ty::GenericPredicates::empty());
                         write_ty_to_tcx(tcx, impl_item.id, typ);
-
-                        let associated_type = Rc::new(ty::AssociatedType {
-                            name: impl_item.ident.name,
-                            vis: impl_item.vis,
-                            def_id: local_def(impl_item.id),
-                            container: ty::ImplContainer(local_def(it.id)),
-                        });
-                        tcx.impl_or_trait_items
-                           .borrow_mut()
-                           .insert(local_def(impl_item.id),
-                                   ty::TypeTraitItem(associated_type));
                     }
                 }
             }
@@ -1049,7 +873,12 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             let methods = impl_items.iter().filter_map(|ii| {
                 match ii.node {
                     ast::MethodImplItem(ref m) => {
-                        Some((m, ii.id, ii.ident, ii.vis, ii.span))
+                        // if the method specifies a visibility, use that, otherwise
+                        // inherit the visibility from the impl (so `foo` in `pub impl
+                        // { fn foo(); }` is public, but private in `priv impl { fn
+                        // foo(); }`).
+                        let method_vis = ii.vis.inherit_from(parent_visibility);
+                        Some((m.pe_sig(), ii.id, ii.ident, method_vis, ii.span))
                     }
                     ast::TypeImplItem(_) => None
                 }
@@ -1059,8 +888,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                             methods,
                             selfty,
                             &ty_generics,
-                            &ty_predicates,
-                            parent_visibility);
+                            &ty_predicates);
 
             for impl_item in impl_items {
                 match impl_item.node {
@@ -1070,7 +898,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                                                &BindingRscope::new(),
                                                ccx.method_ty(impl_item.id),
                                                selfty,
-                                               method.pe_explicit_self(),
+                                               &method.pe_sig().explicit_self,
                                                body_id);
                     }
                     ast::TypeImplItem(_) => {}
@@ -1095,63 +923,68 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             let _: Result<(), ErrorReported> = // any error is already reported, can ignore
                 ccx.ensure_super_predicates(it.span, local_def(it.id));
             convert_trait_predicates(ccx, it);
-            let trait_predicates = ty::lookup_predicates(ccx.tcx, local_def(it.id));
+            let trait_predicates = ty::lookup_predicates(tcx, local_def(it.id));
 
             debug!("convert: trait_bounds={:?}", trait_predicates);
 
-            let methods = trait_items.iter().filter_map(|ti| {
-                match ti.node {
-                    ast::ProvidedMethod(ref m) => {
-                        Some((m, ti.id, ti.ident, ast::Inherited, ti.span))
-                    }
+            // Convert all the associated types.
+            for trait_item in trait_items {
+                match trait_item.node {
                     ast::RequiredMethod(_) |
-                    ast::TypeTraitItem(..) => None,
+                    ast::ProvidedMethod(_) => {}
+                    ast::TypeTraitItem(..) => {
+                        convert_associated_type(ccx, TraitContainer(local_def(it.id)),
+                                                trait_item.ident, trait_item.id, ast::Public);
+                    }
                 }
+            };
+
+            let methods = trait_items.iter().filter_map(|ti| {
+                let sig = match ti.node {
+                    ast::RequiredMethod(ref sig) => sig,
+                    ast::ProvidedMethod(ref m) => m.pe_sig(),
+                    ast::TypeTraitItem(..) => return None,
+                };
+                Some((sig, ti.id, ti.ident, ast::Inherited, ti.span))
             });
-            // Run convert_methods on the provided methods.
-            let untransformed_rcvr_ty = ty::mk_self_type(tcx);
+
+            // Run convert_methods on the trait methods.
             convert_methods(ccx,
                             TraitContainer(local_def(it.id)),
                             methods,
-                            untransformed_rcvr_ty,
+                            ty::mk_self_type(tcx),
                             &trait_def.generics,
-                            &trait_predicates,
-                            it.vis);
+                            &trait_predicates);
 
-            // We need to do this *after* converting methods, since
-            // convert_methods produces a tcache entry that is wrong for
-            // static trait methods. This is somewhat unfortunate.
-            collect_trait_methods(ccx, it.id, &*trait_def, &trait_predicates);
+            // Add an entry mapping
+            let trait_item_def_ids = Rc::new(trait_items.iter().map(|trait_item| {
+                let def_id = local_def(trait_item.id);
+                match trait_item.node {
+                    ast::RequiredMethod(_) |
+                    ast::ProvidedMethod(_) => {
+                        ty::MethodTraitItemId(def_id)
+                    }
+                    ast::TypeTraitItem(..) => {
+                        ty::TypeTraitItemId(def_id)
+                    }
+                }
+            }).collect());
+            tcx.trait_item_def_ids.borrow_mut().insert(local_def(it.id), trait_item_def_ids);
 
             // This must be done after `collect_trait_methods` so that
             // we have a method type stored for every method.
             for trait_item in trait_items {
-                let self_type = ty::mk_self_type(tcx);
-                match trait_item.node {
-                    ast::RequiredMethod(ref type_method) => {
-                        let rscope = BindingRscope::new();
-                        check_method_self_type(ccx,
-                                               &rscope,
-                                               ccx.method_ty(trait_item.id),
-                                               self_type,
-                                               &type_method.explicit_self,
-                                               it.id)
-                    }
-                    ast::ProvidedMethod(ref method) => {
-                        check_method_self_type(ccx,
-                                               &BindingRscope::new(),
-                                               ccx.method_ty(trait_item.id),
-                                               self_type,
-                                               method.pe_explicit_self(),
-                                               it.id)
-                    }
-                    ast::TypeTraitItem(..) => {
-                        convert_associated_type(ccx,
-                                                &*trait_def,
-                                                trait_item.ident,
-                                                trait_item.id);
-                    }
-                }
+                let sig = match trait_item.node {
+                    ast::RequiredMethod(ref sig) => sig,
+                    ast::ProvidedMethod(ref method) => method.pe_sig(),
+                    ast::TypeTraitItem(..) => continue
+                };
+                check_method_self_type(ccx,
+                                       &BindingRscope::new(),
+                                       ccx.method_ty(trait_item.id),
+                                       ty::mk_self_type(tcx),
+                                       &sig.explicit_self,
+                                       it.id)
             }
         },
         ast::ItemStruct(ref struct_def, _) => {

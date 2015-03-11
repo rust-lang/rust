@@ -91,7 +91,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
             visit::FkItemFn(_, _, fn_style, _) =>
                 (true, fn_style == ast::Unsafety::Unsafe),
             visit::FkMethod(_, method) =>
-                (true, method.pe_unsafety() == ast::Unsafety::Unsafe),
+                (true, method.pe_sig().unsafety == ast::Unsafety::Unsafe),
             _ => (false, false),
         };
 

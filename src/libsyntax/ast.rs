@@ -1058,10 +1058,10 @@ pub struct TypeField {
     pub span: Span,
 }
 
-/// Represents a required method in a trait declaration,
-/// one without a default implementation
+/// Represents a method's signature in a trait declaration,
+/// or in an implementation.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct TypeMethod {
+pub struct MethodSig {
     pub unsafety: Unsafety,
     pub abi: Abi,
     pub decl: P<FnDecl>,
@@ -1084,7 +1084,7 @@ pub struct TraitItem {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum TraitItem_ {
-    RequiredMethod(TypeMethod),
+    RequiredMethod(MethodSig),
     ProvidedMethod(Method),
     TypeTraitItem(TyParamBounds, Option<P<Ty>>),
 }
@@ -1419,12 +1419,7 @@ pub type ExplicitSelf = Spanned<ExplicitSelf_>;
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Method {
     /// Represents a method declaration
-    MethDecl(Generics,
-             Abi,
-             ExplicitSelf,
-             Unsafety,
-             P<FnDecl>,
-             P<Block>),
+    MethDecl(MethodSig, P<Block>),
     /// Represents a macro in method position
     MethMac(Mac),
 }

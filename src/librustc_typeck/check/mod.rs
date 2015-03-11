@@ -867,7 +867,7 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     debug!("check_method_body: fty={}", fty.repr(ccx.tcx));
 
     check_bare_fn(ccx,
-                  &*method.pe_fn_decl(),
+                  &*method.pe_sig().decl,
                   &*method.pe_body(),
                   id,
                   span,

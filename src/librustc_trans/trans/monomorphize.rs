@@ -223,7 +223,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     let needs_body = setup_lldecl(d, &impl_item.attrs);
                     if needs_body {
                         trans_fn(ccx,
-                                 mth.pe_fn_decl(),
+                                 &mth.pe_sig().decl,
                                  mth.pe_body(),
                                  d,
                                  psubsts,
@@ -243,7 +243,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     let d = mk_lldecl(abi::Rust);
                     let needs_body = setup_lldecl(d, &trait_item.attrs);
                     if needs_body {
-                        trans_fn(ccx, mth.pe_fn_decl(), mth.pe_body(), d,
+                        trans_fn(ccx, &mth.pe_sig().decl, mth.pe_body(), d,
                                  psubsts, trait_item.id, &[]);
                     }
                     d

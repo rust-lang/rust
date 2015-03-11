@@ -838,7 +838,7 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             if !any_types {
                 encode_symbol(ecx, rbml_w, m.def_id.node);
             }
-            encode_method_argument_names(rbml_w, ast_method.pe_fn_decl());
+            encode_method_argument_names(rbml_w, &ast_method.pe_sig().decl);
         }
     }
 
@@ -1383,7 +1383,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                     encode_trait_item(rbml_w);
                     encode_item_sort(rbml_w, 'p');
                     encode_inlined_item(ecx, rbml_w, IITraitItemRef(def_id, trait_item));
-                    encode_method_argument_names(rbml_w, &*m.pe_fn_decl());
+                    encode_method_argument_names(rbml_w, &*m.pe_sig().decl);
                 }
 
                 ast::TypeTraitItem(..) => {

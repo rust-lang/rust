@@ -382,21 +382,21 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                             decl_id,
                             scope_id);
 
-        self.process_formals(&method.pe_fn_decl().inputs, qualname);
+        self.process_formals(&method.pe_sig().decl.inputs, qualname);
 
         // walk arg and return types
-        for arg in &method.pe_fn_decl().inputs {
+        for arg in &method.pe_sig().decl.inputs {
             self.visit_ty(&*arg.ty);
         }
 
-        if let ast::Return(ref ret_ty) = method.pe_fn_decl().output {
+        if let ast::Return(ref ret_ty) = method.pe_sig().decl.output {
             self.visit_ty(&**ret_ty);
         }
 
         // walk the fn body
         self.nest(id, |v| v.visit_block(&*method.pe_body()));
 
-        self.process_generic_params(method.pe_generics(),
+        self.process_generic_params(&method.pe_sig().generics,
                                     span,
                                     qualname,
                                     id);

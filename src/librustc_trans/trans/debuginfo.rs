@@ -1292,7 +1292,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             match item.node {
                 ast::ItemFn(ref fn_decl, _, _, ref generics, ref top_level_block) => {
-                    (item.ident, &**fn_decl, generics, &**top_level_block, item.span, true)
+                    (item.ident, fn_decl, generics, &**top_level_block, item.span, true)
                 }
                 _ => {
                     cx.sess().span_bug(item.span,
@@ -1308,8 +1308,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     }
 
                     (impl_item.ident,
-                     method.pe_fn_decl(),
-                     method.pe_generics(),
+                     &method.pe_sig().decl,
+                     &method.pe_sig().generics,
                      method.pe_body(),
                      impl_item.span,
                      true)
@@ -1326,7 +1326,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 ast::ExprClosure(_, ref fn_decl, ref top_level_block) => {
                     let name = format!("fn{}", token::gensym("fn"));
                     let name = token::str_to_ident(&name[..]);
-                    (name, &**fn_decl,
+                    (name, fn_decl,
                         // This is not quite right. It should actually inherit
                         // the generics of the enclosing function.
                         &empty_generics,
@@ -1347,8 +1347,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     }
 
                     (trait_item.ident,
-                     method.pe_fn_decl(),
-                     method.pe_generics(),
+                     &method.pe_sig().decl,
+                     &method.pe_sig().generics,
                      method.pe_body(),
                      trait_item.span,
                      true)
