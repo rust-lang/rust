@@ -442,7 +442,10 @@ impl<'a> Iterator for Chars<'a> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (len, _) = self.iter.size_hint();
-        (len.saturating_add(3) / 4, Some(len))
+        // `(len + 3)` can't overflow, because we know that the `slice::Iter`
+        // belongs to a slice in memory which has a maximum length of
+        // `isize::MAX` (that's well below `usize::MAX`).
+        ((len + 3) / 4, Some(len))
     }
 }
 
