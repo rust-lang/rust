@@ -42,37 +42,8 @@ pub use tables::regex;
 
 mod normalize;
 mod tables;
-mod u_char;
 mod u_str;
-
-// re-export char so that std et al see it correctly
-/// Character manipulation (`char` type, Unicode Scalar Value)
-///
-/// This module provides the `CharExt` trait, as well as its
-/// implementation for the primitive `char` type, in order to allow
-/// basic character manipulation.
-///
-/// A `char` actually represents a
-/// *[Unicode Scalar Value](http://www.unicode.org/glossary/#unicode_scalar_value)*,
-/// as it can contain any Unicode code point except high-surrogate and
-/// low-surrogate code points.
-///
-/// As such, only values in the ranges \[0x0,0xD7FF\] and \[0xE000,0x10FFFF\]
-/// (inclusive) are allowed. A `char` can always be safely cast to a `u32`;
-/// however the converse is not always true due to the above range limits
-/// and, as such, should be performed via the `from_u32` function.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(primitive = "char")]
-pub mod char {
-    pub use core::char::{MAX, from_u32, from_digit};
-
-    pub use normalize::{decompose_canonical, decompose_compatible, compose};
-
-    pub use tables::normalization::canonical_combining_class;
-    pub use tables::UNICODE_VERSION;
-
-    pub use u_char::CharExt;
-}
+pub mod char;
 
 pub mod str {
     pub use u_str::{UnicodeStr, Words, Graphemes, GraphemeIndices};
