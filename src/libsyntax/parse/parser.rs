@@ -1051,9 +1051,7 @@ impl<'a> Parser<'a> {
         let lifetime_defs = self.parse_late_bound_lifetime_defs();
 
         // examine next token to decide to do
-        if self.eat_keyword_noexpect(keywords::Proc) {
-            self.parse_proc_type(lifetime_defs)
-        } else if self.token_is_bare_fn_keyword() || self.token_is_closure_keyword() {
+        if self.token_is_bare_fn_keyword() || self.token_is_closure_keyword() {
             self.parse_ty_bare_fn_or_ty_closure(lifetime_defs)
         } else if self.check(&token::ModSep) ||
                   self.token.is_ident() ||
@@ -1119,35 +1117,6 @@ impl<'a> Parser<'a> {
             lifetimes: lifetime_defs,
             decl: decl
         }))
-    }
-
-    /// Parses a procedure type (`proc`). The initial `proc` keyword must
-    /// already have been parsed.
-    pub fn parse_proc_type(&mut self, lifetime_defs: Vec<ast::LifetimeDef>) -> Ty_ {
-        /*
-
-        proc <'lt> (S) [:Bounds] -> T
-        ^~~^ ^~~~^  ^  ^~~~~~~~^    ^
-         |     |    |      |        |
-         |     |    |      |      Return type
-         |     |    |    Bounds
-         |     |  Argument types
-         |   Legacy lifetimes
-        the `proc` keyword (already consumed)
-
-        */
-
-        let proc_span = self.last_span;
-
-        // To be helpful, parse the proc as ever
-        let _ = self.parse_legacy_lifetime_defs(lifetime_defs);
-        let _ = self.parse_fn_args(false, false);
-        let _ = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Bare);
-        let _ = self.parse_ret_ty();
-
-        self.obsolete(proc_span, ObsoleteSyntax::ProcType);
-
-        TyInfer
     }
 
     /// Parses an obsolete closure kind (`&:`, `&mut:`, or `:`).
@@ -1522,8 +1491,6 @@ impl<'a> Parser<'a> {
             let e = self.parse_expr();
             self.expect(&token::CloseDelim(token::Paren));
             TyTypeof(e)
-        } else if self.eat_keyword_noexpect(keywords::Proc) {
-            self.parse_proc_type(Vec::new())
         } else if self.eat_lt() {
             // QUALIFIED PATH `<TYPE as TRAIT_REF>::item`
             let self_type = self.parse_ty_sum();
@@ -2284,12 +2251,6 @@ impl<'a> Parser<'a> {
                 }
                 if self.eat_keyword(keywords::Move) {
                     return self.parse_lambda_expr(CaptureByValue);
-                }
-                if self.eat_keyword_noexpect(keywords::Proc) {
-                    let span = self.last_span;
-                    let _ = self.parse_proc_decl();
-                    let _ = self.parse_expr();
-                    return self.obsolete_expr(span, ObsoleteSyntax::ProcExpr);
                 }
                 if self.eat_keyword(keywords::If) {
                     return self.parse_if_expr();
@@ -4640,23 +4601,6 @@ impl<'a> Parser<'a> {
 
         P(FnDecl {
             inputs: inputs_captures,
-            output: output,
-            variadic: false
-        })
-    }
-
-    /// Parses the `(arg, arg) -> return_type` header on a procedure.
-    fn parse_proc_decl(&mut self) -> P<FnDecl> {
-        let inputs =
-            self.parse_unspanned_seq(&token::OpenDelim(token::Paren),
-                                     &token::CloseDelim(token::Paren),
-                                     seq_sep_trailing_allowed(token::Comma),
-                                     |p| p.parse_fn_block_arg());
-
-        let output = self.parse_ret_ty();
-
-        P(FnDecl {
-            inputs: inputs,
             output: output,
             variadic: false
         })
