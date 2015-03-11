@@ -563,6 +563,13 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 }
             }
 
+            ast::ItemDefaultImpl(..) => {
+                self.gate_feature("optin_builtin_traits",
+                                  i.span,
+                                  "default trait implementations are experimental \
+                                   and possibly buggy");
+            }
+
             ast::ItemImpl(_, polarity, _, _, _, _) => {
                 match polarity {
                     ast::ImplPolarity::Negative => {
