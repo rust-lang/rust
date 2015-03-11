@@ -1853,7 +1853,7 @@ impl fmt::Display for FilePermission {
 mod tests {
     use self::BadReaderBehavior::*;
     use super::{IoResult, Reader, MemReader, NoProgress, InvalidInput, Writer};
-    use prelude::v1::{Ok, Vec, Buffer, SliceExt};
+    use prelude::v1::{Ok, Vec, Buffer};
     use usize;
 
     #[derive(Clone, PartialEq, Debug)]
