@@ -51,5 +51,6 @@ impl<H> Clone for DefaultState<H> {
 }
 
 impl<H> Default for DefaultState<H> {
+    /// Creates a new `DefaultState`
     fn default() -> DefaultState<H> { DefaultState(marker::PhantomData) }
 }

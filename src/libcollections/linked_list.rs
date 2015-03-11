@@ -212,6 +212,7 @@ impl<T> LinkedList<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for LinkedList<T> {
+    /// Creates a new `LinkedList` using `LinkedList::new`
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> LinkedList<T> { LinkedList::new() }

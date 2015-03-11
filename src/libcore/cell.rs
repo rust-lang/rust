@@ -244,6 +244,7 @@ impl<T:Copy> Clone for Cell<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Default + Copy> Default for Cell<T> {
+    /// Creates a new `Cell` using `Cell::new` with the `Default` value of `T`
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Cell<T> {
         Cell::new(Default::default())
@@ -482,6 +483,7 @@ impl<T: Clone> Clone for RefCell<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Default> Default for RefCell<T> {
+    /// Creates a new `RefCell` using `RefCell::new` with the `Default` value of `T`
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> RefCell<T> {
         RefCell::new(Default::default())

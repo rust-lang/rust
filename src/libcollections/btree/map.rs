@@ -863,6 +863,7 @@ impl<K: Hash, V: Hash> Hash for BTreeMap<K, V> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V> Default for BTreeMap<K, V> {
+    /// Creates a new `BTreeMap` using `BTreeMap::new`
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> BTreeMap<K, V> {
         BTreeMap::new()

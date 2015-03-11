@@ -622,6 +622,7 @@ impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a mut U {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Default for &'a [T] {
+    /// Creates a new empty slice
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> &'a [T] { &[] }
 }

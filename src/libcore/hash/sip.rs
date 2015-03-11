@@ -223,6 +223,7 @@ impl Clone for SipHasher {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for SipHasher {
+    /// Creates a new `SipHasher` using `SipHasher::new`
     fn default() -> SipHasher {
         SipHasher::new()
     }

@@ -1235,6 +1235,7 @@ impl<K, V, S> Default for HashMap<K, V, S>
     where K: Eq + Hash,
           S: HashState + Default,
 {
+    /// Creates a new `HashMap` using `HashMap::with_hash_state` with the `Default` value for `S`
     fn default() -> HashMap<K, V, S> {
         HashMap::with_hash_state(Default::default())
     }
@@ -1600,6 +1601,7 @@ impl HashState for RandomState {
            reason = "hashing an hash maps may be altered")]
 impl Default for RandomState {
     #[inline]
+    /// Creates a new `RandomState` using `RandomState::new`
     fn default() -> RandomState {
         RandomState::new()
     }

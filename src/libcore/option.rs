@@ -768,6 +768,7 @@ impl<T> AsSlice<T> for Option<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Option<T> {
+    /// Creates a new `Option` with value `None`
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Option<T> { None }

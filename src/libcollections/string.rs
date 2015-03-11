@@ -811,6 +811,7 @@ impl Str for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for String {
+    /// Creates a new `String` using `String::new`
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> String {

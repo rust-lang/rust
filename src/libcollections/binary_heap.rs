@@ -171,6 +171,7 @@ pub struct BinaryHeap<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Default for BinaryHeap<T> {
+    /// Creates a new `BinaryHeap` using `BinaryHeap::new`
     #[inline]
     fn default() -> BinaryHeap<T> { BinaryHeap::new() }
 }

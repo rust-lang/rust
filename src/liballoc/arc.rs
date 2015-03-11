@@ -606,6 +606,7 @@ impl<T: fmt::Debug> fmt::Debug for Arc<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default + Sync + Send> Default for Arc<T> {
+    /// Creates a new `Arc` using `Arc::new` with the `Default` value of `T`
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Arc<T> { Arc::new(Default::default()) }
 }

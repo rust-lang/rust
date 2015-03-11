@@ -150,12 +150,14 @@ pub unsafe fn into_raw<T : ?Sized>(b: Box<T>) -> *mut T {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Box<T> {
+    /// Creates a new `Box<T>` by `box`ing the `Default` value of `T`
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Box<T> { box Default::default() }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Box<[T]> {
+    /// Creates a new `Box<[T]>` by `box`ing an empty slice
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Box<[T]> { Box::<[T; 0]>::new([]) }
 }
