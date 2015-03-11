@@ -148,7 +148,6 @@ use cell::UnsafeCell;
 use fmt;
 use io;
 use marker::PhantomData;
-use old_io::stdio;
 use rt::{self, unwind};
 use sync::{Mutex, Condvar, Arc};
 use thunk::Thunk;
@@ -165,10 +164,6 @@ pub struct Builder {
     name: Option<String>,
     // The size of the stack for the spawned thread
     stack_size: Option<usize>,
-    // Thread-local stdout
-    stdout: Option<Box<Writer + Send + 'static>>,
-    // Thread-local stderr
-    stderr: Option<Box<Writer + Send + 'static>>,
 }
 
 impl Builder {
@@ -179,8 +174,6 @@ impl Builder {
         Builder {
             name: None,
             stack_size: None,
-            stdout: None,
-            stderr: None,
         }
     }
 
@@ -202,16 +195,22 @@ impl Builder {
     /// Redirect thread-local stdout.
     #[unstable(feature = "std_misc",
                reason = "Will likely go away after proc removal")]
-    pub fn stdout(mut self, stdout: Box<Writer + Send + 'static>) -> Builder {
-        self.stdout = Some(stdout);
+    #[deprecated(since = "1.0.0",
+                 reason = "the old I/O module is deprecated and this function \
+                           will be removed with no replacement")]
+    #[allow(deprecated)]
+    pub fn stdout(self, _stdout: Box<Writer + Send + 'static>) -> Builder {
         self
     }
 
     /// Redirect thread-local stderr.
     #[unstable(feature = "std_misc",
                reason = "Will likely go away after proc removal")]
-    pub fn stderr(mut self, stderr: Box<Writer + Send + 'static>) -> Builder {
-        self.stderr = Some(stderr);
+    #[deprecated(since = "1.0.0",
+                 reason = "the old I/O module is deprecated and this function \
+                           will be removed with no replacement")]
+    #[allow(deprecated)]
+    pub fn stderr(self, _stderr: Box<Writer + Send + 'static>) -> Builder {
         self
     }
 
@@ -259,7 +258,7 @@ impl Builder {
     }
 
     fn spawn_inner<T: Send>(self, f: Thunk<(), T>) -> io::Result<JoinInner<T>> {
-        let Builder { name, stack_size, stdout, stderr } = self;
+        let Builder { name, stack_size } = self;
 
         let stack_size = stack_size.unwrap_or(rt::min_stack());
 
@@ -290,16 +289,6 @@ impl Builder {
             }
 
             let mut output = None;
-            let f: Thunk<(), T> = if stdout.is_some() || stderr.is_some() {
-                Thunk::new(move || {
-                    let _ = stdout.map(stdio::set_stdout);
-                    let _ = stderr.map(stdio::set_stderr);
-                    f.invoke(())
-                })
-            } else {
-                f
-            };
-
             let try_result = {
                 let ptr = &mut output;
 

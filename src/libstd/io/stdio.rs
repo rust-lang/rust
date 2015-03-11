@@ -86,6 +86,7 @@ impl Write for StderrRaw {
 ///
 /// This handle implements the `Read` trait, but beware that concurrent reads
 /// of `Stdin` must be executed with care.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdin {
     inner: Arc<Mutex<BufReader<StdinRaw>>>,
 }
@@ -94,6 +95,7 @@ pub struct Stdin {
 ///
 /// This handle implements both the `Read` and `BufRead` traits and is
 /// constructed via the `lock` method on `Stdin`.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdinLock<'a> {
     inner: MutexGuard<'a, BufReader<StdinRaw>>,
 }
@@ -110,6 +112,7 @@ pub struct StdinLock<'a> {
 ///
 /// To avoid locking and buffering altogether, it is recommended to use the
 /// `stdin_raw` constructor.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdin() -> Stdin {
     static INSTANCE: Lazy<Mutex<BufReader<StdinRaw>>> = lazy_init!(stdin_init);
     return Stdin {
@@ -136,30 +139,41 @@ impl Stdin {
     /// The lock is released when the returned lock goes out of scope. The
     /// returned guard also implements the `Read` and `BufRead` traits for
     /// accessing the underlying data.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdinLock {
         StdinLock { inner: self.inner.lock().unwrap() }
     }
+
+    /// Locks this handle and reads a line of input into the specified buffer.
+    ///
+    /// For detailed semantics of this method, see the documentation on
+    /// `BufRead::read_line`.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
+        self.lock().read_line(buf)
+    }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.lock().read(buf)
     }
-
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<()> {
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         self.lock().read_to_end(buf)
     }
-
-    fn read_to_string(&mut self, buf: &mut String) -> io::Result<()> {
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
         self.lock().read_to_string(buf)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Read for StdinLock<'a> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> BufRead for StdinLock<'a> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
     fn consume(&mut self, n: usize) { self.inner.consume(n) }
@@ -186,6 +200,7 @@ const OUT_MAX: usize = ::usize::MAX;
 /// Each handle shares a global buffer of data to be written to the standard
 /// output stream. Access is also synchronized via a lock and explicit control
 /// over locking is available via the `lock` method.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
     //        stdout (tty or not). Note that if this is not line buffered it
@@ -197,6 +212,7 @@ pub struct Stdout {
 ///
 /// This handle implements the `Write` trait and is constructed via the `lock`
 /// method on `Stdout`.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdoutLock<'a> {
     inner: MutexGuard<'a, LineWriter<StdoutRaw>>,
 }
@@ -211,6 +227,7 @@ pub struct StdoutLock<'a> {
 ///
 /// To avoid locking and buffering altogether, it is recommended to use the
 /// `stdout_raw` constructor.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
     static INSTANCE: Lazy<Mutex<LineWriter<StdoutRaw>>> = lazy_init!(stdout_init);
     return Stdout {
@@ -228,11 +245,13 @@ impl Stdout {
     ///
     /// The lock is released when the returned lock goes out of scope. The
     /// returned guard also implements the `Write` trait for writing data.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdoutLock {
         StdoutLock { inner: self.inner.lock().unwrap() }
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.lock().write(buf)
@@ -247,6 +266,7 @@ impl Write for Stdout {
         self.lock().write_fmt(fmt)
     }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for StdoutLock<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(&buf[..cmp::min(buf.len(), OUT_MAX)])
@@ -257,6 +277,7 @@ impl<'a> Write for StdoutLock<'a> {
 /// A handle to the standard error stream of a process.
 ///
 /// For more information, see `stderr`
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
     inner: Arc<Mutex<StderrRaw>>,
 }
@@ -265,6 +286,7 @@ pub struct Stderr {
 ///
 /// This handle implements the `Write` trait and is constructed via the `lock`
 /// method on `Stderr`.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct StderrLock<'a> {
     inner: MutexGuard<'a, StderrRaw>,
 }
@@ -278,6 +300,7 @@ pub struct StderrLock<'a> {
 ///
 /// To avoid locking altogether, it is recommended to use the `stderr_raw`
 /// constructor.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
     static INSTANCE: Lazy<Mutex<StderrRaw>> = lazy_init!(stderr_init);
     return Stderr {
@@ -295,11 +318,13 @@ impl Stderr {
     ///
     /// The lock is released when the returned lock goes out of scope. The
     /// returned guard also implements the `Write` trait for writing data.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StderrLock {
         StderrLock { inner: self.inner.lock().unwrap() }
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.lock().write(buf)
@@ -314,6 +339,7 @@ impl Write for Stderr {
         self.lock().write_fmt(fmt)
     }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for StderrLock<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.write(&buf[..cmp::min(buf.len(), OUT_MAX)])

@@ -21,7 +21,9 @@
 //! `Write`, `ReadExt`, and `WriteExt`. Structures and functions are not
 //! contained in this module.
 
-pub use super::{Read, ReadExt, Write, WriteExt, BufRead, BufReadExt};
+#![stable(feature = "rust1", since = "1.0.0")]
+
+pub use super::{Read, Write, BufRead};
 pub use fs::PathExt;
 
 // FIXME: pub use as `Seek` when the name isn't in the actual prelude any more

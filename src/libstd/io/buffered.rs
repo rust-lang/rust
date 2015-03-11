@@ -16,8 +16,7 @@ use prelude::v1::*;
 use io::prelude::*;
 
 use cmp;
-use error::Error as StdError;
-use error::FromError;
+use error::{self, FromError};
 use fmt;
 use io::{self, Cursor, DEFAULT_BUF_SIZE, Error, ErrorKind};
 use ptr;
@@ -28,6 +27,7 @@ use ptr;
 /// For example, every call to `read` on `TcpStream` results in a system call.
 /// A `BufReader` performs large, infrequent reads on the underlying `Read`
 /// and maintains an in-memory buffer of the results.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufReader<R> {
     inner: R,
     buf: Cursor<Vec<u8>>,
@@ -35,11 +35,13 @@ pub struct BufReader<R> {
 
 impl<R: Read> BufReader<R> {
     /// Creates a new `BufReader` with a default buffer capacity
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: R) -> BufReader<R> {
         BufReader::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
     /// Creates a new `BufReader` with the specified buffer capacity
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(cap: usize, inner: R) -> BufReader<R> {
         BufReader {
             inner: inner,
@@ -48,6 +50,7 @@ impl<R: Read> BufReader<R> {
     }
 
     /// Gets a reference to the underlying reader.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_ref(&self) -> &R { &self.inner }
 
     /// Gets a mutable reference to the underlying reader.
@@ -55,14 +58,17 @@ impl<R: Read> BufReader<R> {
     /// # Warning
     ///
     /// It is inadvisable to directly read from the underlying reader.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut R { &mut self.inner }
 
     /// Unwraps this `BufReader`, returning the underlying reader.
     ///
     /// Note that any leftover data in the internal buffer is lost.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> R { self.inner }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<R: Read> Read for BufReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         // If we don't have any buffered data and we're doing a massive read
@@ -77,6 +83,7 @@ impl<R: Read> Read for BufReader<R> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<R: Read> BufRead for BufReader<R> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         // If we've reached the end of our internal buffer then we need to fetch
@@ -112,6 +119,7 @@ impl<R> fmt::Debug for BufReader<R> where R: fmt::Debug {
 /// underlying `Write` in large, infrequent batches.
 ///
 /// This writer will be flushed when it is dropped.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W> {
     inner: Option<W>,
     buf: Vec<u8>,
@@ -120,15 +128,18 @@ pub struct BufWriter<W> {
 /// An error returned by `into_inner` which indicates whether a flush error
 /// happened or not.
 #[derive(Debug)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoInnerError<W>(W, Error);
 
 impl<W: Write> BufWriter<W> {
     /// Creates a new `BufWriter` with a default buffer capacity
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: W) -> BufWriter<W> {
         BufWriter::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
     /// Creates a new `BufWriter` with the specified buffer capacity
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(cap: usize, inner: W) -> BufWriter<W> {
         BufWriter {
             inner: Some(inner),
@@ -165,6 +176,7 @@ impl<W: Write> BufWriter<W> {
     }
 
     /// Gets a reference to the underlying writer.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_ref(&self) -> &W { self.inner.as_ref().unwrap() }
 
     /// Gets a mutable reference to the underlying write.
@@ -172,11 +184,13 @@ impl<W: Write> BufWriter<W> {
     /// # Warning
     ///
     /// It is inadvisable to directly read from the underlying writer.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut W { self.inner.as_mut().unwrap() }
 
     /// Unwraps this `BufWriter`, returning the underlying writer.
     ///
     /// The buffer is flushed before returning the writer.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(mut self) -> Result<W, IntoInnerError<BufWriter<W>>> {
         match self.flush_buf() {
             Err(e) => Err(IntoInnerError(self, e)),
@@ -185,6 +199,7 @@ impl<W: Write> BufWriter<W> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write> Write for BufWriter<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         if self.buf.len() + buf.len() > self.buf.capacity() {
@@ -224,23 +239,30 @@ impl<W> IntoInnerError<W> {
     /// Returns the error which caused the call to `into_inner` to fail.
     ///
     /// This error was returned when attempting to flush the internal buffer.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn error(&self) -> &Error { &self.1 }
 
     /// Returns the underlying `BufWriter` instance which generated the error.
     ///
     /// The returned object can be used to retry a flush or re-inspect the
     /// buffer.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> W { self.0 }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<W> FromError<IntoInnerError<W>> for Error {
     fn from_error(iie: IntoInnerError<W>) -> Error { iie.1 }
 }
 
-impl<W> StdError for IntoInnerError<W> {
-    fn description(&self) -> &str { self.error().description() }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<W> error::Error for IntoInnerError<W> {
+    fn description(&self) -> &str {
+        error::Error::description(self.error())
+    }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<W> fmt::Display for IntoInnerError<W> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.error().fmt(f)
@@ -251,26 +273,41 @@ impl<W> fmt::Display for IntoInnerError<W> {
 /// (`0x0a`, `'\n'`) is detected.
 ///
 /// This writer will be flushed when it is dropped.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct LineWriter<W> {
     inner: BufWriter<W>,
 }
 
 impl<W: Write> LineWriter<W> {
     /// Creates a new `LineWriter`
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: W) -> LineWriter<W> {
         // Lines typically aren't that long, don't use a giant buffer
-        LineWriter { inner: BufWriter::with_capacity(1024, inner) }
+        LineWriter::with_capacity(1024, inner)
+    }
+
+    /// Creates a new `LineWriter` with a specified capacity for the internal
+    /// buffer.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn with_capacity(cap: usize, inner: W) -> LineWriter<W> {
+        LineWriter { inner: BufWriter::with_capacity(cap, inner) }
     }
 
     /// Gets a reference to the underlying writer.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn get_ref(&self) -> &W { self.inner.get_ref() }
+
+    /// Gets a mutable reference to the underlying writer.
     ///
-    /// This type does not expose the ability to get a mutable reference to the
-    /// underlying reader because that could possibly corrupt the buffer.
-    pub fn get_ref<'a>(&'a self) -> &'a W { self.inner.get_ref() }
+    /// Caution must be taken when calling methods on the mutable reference
+    /// returned as extra writes could corrupt the output stream.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn get_mut(&mut self) -> &mut W { self.inner.get_mut() }
 
     /// Unwraps this `LineWriter`, returning the underlying writer.
     ///
     /// The internal buffer is flushed before returning the writer.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> Result<W, IntoInnerError<LineWriter<W>>> {
         self.inner.into_inner().map_err(|IntoInnerError(buf, e)| {
             IntoInnerError(LineWriter { inner: buf }, e)
@@ -278,6 +315,7 @@ impl<W: Write> LineWriter<W> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<W: Write> Write for LineWriter<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match buf.rposition_elem(&b'\n') {
@@ -320,12 +358,13 @@ impl<W: Read> Read for InternalBufWriter<W> {
 
 /// Wraps a Stream and buffers input and output to and from it.
 ///
-/// It can be excessively inefficient to work directly with a `Stream`. For
+/// It can be excessively inefficient to work directly with a `Read+Write`. For
 /// example, every call to `read` or `write` on `TcpStream` results in a system
 /// call. A `BufStream` keeps in memory buffers of data, making large,
-/// infrequent calls to `read` and `write` on the underlying `Stream`.
+/// infrequent calls to `read` and `write` on the underlying `Read+Write`.
 ///
 /// The output half will be flushed when this stream is dropped.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufStream<S> {
     inner: BufReader<InternalBufWriter<S>>
 }
@@ -333,6 +372,7 @@ pub struct BufStream<S> {
 impl<S: Read + Write> BufStream<S> {
     /// Creates a new buffered stream with explicitly listed capacities for the
     /// reader/writer buffer.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacities(reader_cap: usize, writer_cap: usize, inner: S)
                            -> BufStream<S> {
         let writer = BufWriter::with_capacity(writer_cap, inner);
@@ -343,11 +383,13 @@ impl<S: Read + Write> BufStream<S> {
 
     /// Creates a new buffered stream with the default reader/writer buffer
     /// capacities.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: S) -> BufStream<S> {
         BufStream::with_capacities(DEFAULT_BUF_SIZE, DEFAULT_BUF_SIZE, inner)
     }
 
     /// Gets a reference to the underlying stream.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_ref(&self) -> &S {
         let InternalBufWriter(ref w) = self.inner.inner;
         w.get_ref()
@@ -359,6 +401,7 @@ impl<S: Read + Write> BufStream<S> {
     ///
     /// It is inadvisable to read directly from or write directly to the
     /// underlying stream.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut S {
         let InternalBufWriter(ref mut w) = self.inner.inner;
         w.get_mut()
@@ -368,6 +411,7 @@ impl<S: Read + Write> BufStream<S> {
     ///
     /// The internal buffer is flushed before returning the stream. Any leftover
     /// data in the read buffer is lost.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> Result<S, IntoInnerError<BufStream<S>>> {
         let BufReader { inner: InternalBufWriter(w), buf } = self.inner;
         w.into_inner().map_err(|IntoInnerError(w, e)| {
@@ -378,17 +422,20 @@ impl<S: Read + Write> BufStream<S> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<S: Read + Write> BufRead for BufStream<S> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
     fn consume(&mut self, amt: uint) { self.inner.consume(amt) }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<S: Read + Write> Read for BufStream<S> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<S: Read + Write> Write for BufStream<S> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         self.inner.inner.get_mut().write(buf)
