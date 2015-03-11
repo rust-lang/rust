@@ -19,7 +19,11 @@
 DEPS_coretest :=
 $(eval $(call RUST_CRATE,coretest))
 
-TEST_TARGET_CRATES = $(filter-out core unicode,$(TARGET_CRATES)) coretest
+DEPS_collectionstest :=
+$(eval $(call RUST_CRATE,collectionstest))
+
+TEST_TARGET_CRATES = $(filter-out collections core unicode,$(TARGET_CRATES)) \
+										 collectionstest coretest
 TEST_DOC_CRATES = $(DOC_CRATES)
 TEST_HOST_CRATES = $(filter-out rustc_typeck rustc_borrowck rustc_resolve rustc_trans rustc_lint,\
                      $(HOST_CRATES))

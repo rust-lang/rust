@@ -434,15 +434,3 @@ pub fn format(args: Arguments) -> string::String {
     let _ = write!(&mut output, "{}", args);
     output
 }
-
-#[cfg(test)]
-mod tests {
-    use prelude::*;
-    use fmt;
-
-    #[test]
-    fn test_format() {
-        let s = fmt::format(format_args!("Hello, {}!", "world"));
-        assert_eq!(s.as_slice(), "Hello, world!");
-    }
-}

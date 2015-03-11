@@ -53,6 +53,7 @@ PKG_FILES := \
       driver                                   \
       etc                                      \
       $(foreach crate,$(CRATES),lib$(crate))   \
+      libcollectionstest                       \
       libcoretest                              \
       libbacktrace                             \
       rt                                       \
