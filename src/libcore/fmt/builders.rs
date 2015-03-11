@@ -73,14 +73,7 @@ pub fn debug_struct_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str)
 impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// Adds a new field to the generated struct output.
     #[unstable(feature = "core", reason = "method was just created")]
-    #[inline]
     pub fn field(mut self, name: &str, value: &fmt::Debug) -> DebugStruct<'a, 'b> {
-        self.field_inner(name, value);
-        self
-    }
-
-    #[inline(never)]
-    fn field_inner(&mut self, name: &str, value: &fmt::Debug) {
         self.result = self.result.and_then(|_| {
             let prefix = if self.has_fields {
                 ","
@@ -97,19 +90,13 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
         });
 
         self.has_fields = true;
+        self
     }
 
     /// Consumes the `DebugStruct`, finishing output and returning any error
     /// encountered.
     #[unstable(feature = "core", reason = "method was just created")]
-    #[inline]
     pub fn finish(mut self) -> fmt::Result {
-        self.finish_inner();
-        self.result
-    }
-
-    #[inline(never)]
-    fn finish_inner(&mut self) {
         if self.has_fields {
             self.result = self.result.and_then(|_| {
                 if self.is_pretty() {
@@ -119,6 +106,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
                 }
             });
         }
+        self.result
     }
 
     fn is_pretty(&self) -> bool {
@@ -148,14 +136,7 @@ pub fn debug_tuple_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> D
 impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// Adds a new field to the generated tuple struct output.
     #[unstable(feature = "core", reason = "method was just created")]
-    #[inline]
     pub fn field(mut self, value: &fmt::Debug) -> DebugTuple<'a, 'b> {
-        self.field_inner(value);
-        self
-    }
-
-    #[inline(never)]
-    fn field_inner(&mut self, value: &fmt::Debug) {
         self.result = self.result.and_then(|_| {
             let (prefix, space) = if self.has_fields {
                 (",", " ")
@@ -172,19 +153,13 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
         });
 
         self.has_fields = true;
+        self
     }
 
     /// Consumes the `DebugTuple`, finishing output and returning any error
     /// encountered.
     #[unstable(feature = "core", reason = "method was just created")]
-    #[inline]
     pub fn finish(mut self) -> fmt::Result {
-        self.finish_inner();
-        self.result
-    }
-
-    #[inline(never)]
-    fn finish_inner(&mut self) {
         if self.has_fields {
             self.result = self.result.and_then(|_| {
                 if self.is_pretty() {
@@ -194,6 +169,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
                 }
             });
         }
+        self.result
     }
 
     fn is_pretty(&self) -> bool {
@@ -223,14 +199,7 @@ pub fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> Deb
 impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// Adds a new entry to the set output.
     #[unstable(feature = "core", reason = "method was just created")]
-    #[inline]
     pub fn entry(mut self, entry: &fmt::Debug) -> DebugSet<'a, 'b> {
-        self.entry_inner(entry);
-        self
-    }
-
-    #[inline(never)]
-    fn entry_inner(&mut self, entry: &fmt::Debug) {
         self.result = self.result.and_then(|_| {
             let prefix = if self.has_fields {
                 ","
@@ -247,27 +216,21 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
         });
 
         self.has_fields = true;
+        self
     }
 
     /// Consumes the `DebugSet`, finishing output and returning any error
     /// encountered.
     #[unstable(feature = "core", reason = "method was just created")]
-    #[inline]
     pub fn finish(mut self) -> fmt::Result {
-        self.finish_inner();
-        self.result
-    }
-
-    #[inline(never)]
-    fn finish_inner(&mut self) {
-        self.result = self.result.and_then(|_| {
+        self.result.and_then(|_| {
             let end = match (self.has_fields, self.is_pretty()) {
                 (false, _) => "}",
                 (true, false) => " }",
                 (true, true) => "\n}",
             };
             self.fmt.write_str(end)
-        });
+        })
     }
 
     fn is_pretty(&self) -> bool {
@@ -297,14 +260,7 @@ pub fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> Deb
 impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// Adds a new entry to the map output.
     #[unstable(feature = "core", reason = "method was just created")]
-    #[inline]
     pub fn entry(mut self, key: &fmt::Debug, value: &fmt::Debug) -> DebugMap<'a, 'b> {
-        self.entry_inner(key, value);
-        self
-    }
-
-    #[inline(never)]
-    fn entry_inner(&mut self, key: &fmt::Debug, value: &fmt::Debug) {
         self.result = self.result.and_then(|_| {
             let prefix = if self.has_fields {
                 ","
@@ -321,27 +277,22 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
         });
 
         self.has_fields = true;
+
+        self
     }
 
     /// Consumes the `DebugMap`, finishing output and returning any error
     /// encountered.
     #[unstable(feature = "core", reason = "method was just created")]
-    #[inline]
     pub fn finish(mut self) -> fmt::Result {
-        self.finish_inner();
-        self.result
-    }
-
-    #[inline(never)]
-    fn finish_inner(&mut self) {
-        self.result = self.result.and_then(|_| {
+        self.result.and_then(|_| {
             let end = match (self.has_fields, self.is_pretty()) {
                 (false, _) => "}",
                 (true, false) => " }",
                 (true, true) => "\n}",
             };
             self.fmt.write_str(end)
-        });
+        })
     }
 
     fn is_pretty(&self) -> bool {
