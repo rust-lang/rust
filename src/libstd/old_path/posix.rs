@@ -21,7 +21,10 @@ use marker::Sized;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
 use slice::{AsSlice, Split, SliceExt, SliceConcatExt};
+#[cfg(stage0)]
 use str::{self, FromStr, StrExt};
+#[cfg(not(stage0))]
+use str::{self, FromStr};
 use vec::Vec;
 
 use super::{BytesContainer, GenericPath, GenericPathUnsafe};
@@ -448,7 +451,7 @@ mod tests {
     use option::Option::{self, Some, None};
     use old_path::GenericPath;
     use slice::{AsSlice, SliceExt};
-    use str::{self, Str, StrExt};
+    use str::{self, Str};
     use string::ToString;
     use vec::Vec;
 

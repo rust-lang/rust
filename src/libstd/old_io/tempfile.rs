@@ -21,6 +21,7 @@ use option::Option;
 use old_path::{Path, GenericPath};
 use rand::{Rng, thread_rng};
 use result::Result::{Ok, Err};
+#[cfg(stage0)]
 use str::StrExt;
 use string::String;
 

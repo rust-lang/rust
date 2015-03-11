@@ -46,8 +46,12 @@
 #[doc(no_inline)] pub use result::Result::{self, Ok, Err};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use slice::{SliceExt, SliceConcatExt, AsSlice};
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use str::{Str, StrExt};
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[doc(no_inline)] pub use str::Str;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use string::{String, ToString};
 #[stable(feature = "rust1", since = "1.0.0")]

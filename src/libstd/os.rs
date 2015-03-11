@@ -57,7 +57,10 @@ use ptr;
 use result::Result::{Err, Ok};
 use result::Result;
 use slice::{AsSlice, SliceExt};
+#[cfg(stage0)]
 use str::{Str, StrExt};
+#[cfg(not(stage0))]
+use str::Str;
 use str;
 use string::{String, ToString};
 use sync::atomic::{AtomicIsize, ATOMIC_ISIZE_INIT, Ordering};

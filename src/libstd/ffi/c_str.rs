@@ -23,6 +23,7 @@ use ops::Deref;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
 use slice::{self, SliceExt};
+#[cfg(stage0)]
 use str::StrExt;
 use string::String;
 use vec::Vec;

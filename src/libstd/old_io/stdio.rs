@@ -44,6 +44,7 @@ use ptr;
 use result::Result::{Ok, Err};
 use rt;
 use slice::SliceExt;
+#[cfg(stage0)]
 use str::StrExt;
 use string::String;
 use sys::{fs, tty};
