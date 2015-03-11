@@ -1243,6 +1243,9 @@ impl Path {
     }
 
     /// Returns a path that, when joined onto `base`, yields `self`.
+    ///
+    /// If `base` is not a prefix of `self` (i.e. `starts_with`
+    /// returns false), then `relative_from` returns `None`.
     #[unstable(feature = "path_relative_from", reason = "see #23284")]
     pub fn relative_from<'a, P: ?Sized>(&'a self, base: &'a P) -> Option<&Path> where
         P: AsPath
