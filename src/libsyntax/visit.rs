@@ -602,11 +602,11 @@ fn walk_method_helper<'v, V: Visitor<'v>>(visitor: &mut V,
                                           span: Span,
                                           method: &'v Method) {
     match *method {
-        MethDecl(_, _, _, _, ref decl, ref body) => {
+        MethDecl(ref sig, ref body) => {
             visitor.visit_ident(span, ident);
             visitor.visit_fn(FkMethod(ident, method),
-                             &**decl,
-                             &**body,
+                             &sig.decl,
+                             body,
                              span,
                              id);
         },
@@ -627,9 +627,9 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
         }
         FkMethod(_, method) => {
             match *method {
-                MethDecl(ref generics, _, ref explicit_self, _, _, _) => {
-                    visitor.visit_generics(generics);
-                    visitor.visit_explicit_self(explicit_self);
+                MethDecl(ref sig, _) => {
+                    visitor.visit_generics(&sig.generics);
+                    visitor.visit_explicit_self(&sig.explicit_self);
                 }
                 MethMac(ref mac) => visitor.visit_mac(mac)
             }
@@ -646,10 +646,10 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
         visitor.visit_attribute(attr);
     }
     match trait_item.node {
-        RequiredMethod(ref method_type) => {
-            visitor.visit_explicit_self(&method_type.explicit_self);
-            visitor.visit_generics(&method_type.generics);
-            walk_fn_decl(visitor, &method_type.decl);
+        RequiredMethod(ref sig) => {
+            visitor.visit_explicit_self(&sig.explicit_self);
+            visitor.visit_generics(&sig.generics);
+            walk_fn_decl(visitor, &sig.decl);
         }
         ProvidedMethod(ref method) => {
             walk_method_helper(visitor,

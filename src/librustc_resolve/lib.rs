@@ -243,8 +243,8 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                 ItemRibKind
             }
             visit::FkMethod(_, method) => {
-                self.visit_generics(method.pe_generics());
-                self.visit_explicit_self(method.pe_explicit_self());
+                self.visit_generics(&method.pe_sig().generics);
+                self.visit_explicit_self(&method.pe_sig().explicit_self);
                 MethodRibKind
             }
             visit::FkFnBlock(..) => ClosureRibKind(node_id)
@@ -2814,13 +2814,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // FIXME #4951: Do we need a node ID here?
 
                         let type_parameters = match trait_item.node {
-                            ast::RequiredMethod(ref ty_m) => {
-                                HasTypeParameters(&ty_m.generics,
+                            ast::RequiredMethod(ref sig) => {
+                                HasTypeParameters(&sig.generics,
                                                   FnSpace,
                                                   MethodRibKind)
                             }
                             ast::ProvidedMethod(ref m) => {
-                                HasTypeParameters(m.pe_generics(),
+                                HasTypeParameters(&m.pe_sig().generics,
                                                   FnSpace,
                                                   MethodRibKind)
                             }
@@ -3075,7 +3075,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 // We also need a new scope for the method-
                                 // specific type parameters.
                                 let type_parameters =
-                                    HasTypeParameters(method.pe_generics(),
+                                    HasTypeParameters(&method.pe_sig().generics,
                                                       FnSpace,
                                                       MethodRibKind);
                                 this.with_type_parameter_rib(type_parameters, |this| {
@@ -3956,11 +3956,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let explicit_self = match this.ast_map.get(did.node) {
                     ast_map::NodeTraitItem(trait_item) => match trait_item.node {
                         ast::RequiredMethod(ref m) => &m.explicit_self,
-                        ast::ProvidedMethod(ref m) => m.pe_explicit_self(),
+                        ast::ProvidedMethod(ref m) => &m.pe_sig().explicit_self,
                         _ => return false
                     },
                     ast_map::NodeImplItem(impl_item) => match impl_item.node {
-                        ast::MethodImplItem(ref m) => m.pe_explicit_self(),
+                        ast::MethodImplItem(ref m) => &m.pe_sig().explicit_self,
                         _ => return false
                     },
                     _ => return false

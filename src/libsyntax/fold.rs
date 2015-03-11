@@ -977,15 +977,7 @@ pub fn noop_fold_trait_item<T: Folder>(i: P<TraitItem>, folder: &mut T)
         ident: folder.fold_ident(ident),
         attrs: fold_attrs(attrs, folder),
         node: match node {
-            RequiredMethod(TypeMethod { unsafety, abi, decl, generics, explicit_self }) => {
-                RequiredMethod(TypeMethod {
-                    unsafety: unsafety,
-                    abi: abi,
-                    decl: folder.fold_fn_decl(decl),
-                    generics: folder.fold_generics(generics),
-                    explicit_self: folder.fold_explicit_self(explicit_self)
-                })
-            }
+            RequiredMethod(sig) => RequiredMethod(noop_fold_method_sig(sig, folder)),
             ProvidedMethod(m) => ProvidedMethod(folder.fold_method(m)),
             TypeTraitItem(bounds, default) => {
                 TypeTraitItem(folder.fold_bounds(bounds),
@@ -1110,20 +1102,21 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: P<ForeignItem>, folder: &mut T) -> 
 // Default fold over a method.
 pub fn noop_fold_method<T: Folder>(method: Method, folder: &mut T) -> Method {
     match method {
-        MethDecl(generics,
-                 abi,
-                 explicit_self,
-                 unsafety,
-                 decl,
-                 body) => {
-            MethDecl(folder.fold_generics(generics),
-                     abi,
-                     folder.fold_explicit_self(explicit_self),
-                     unsafety,
-                     folder.fold_fn_decl(decl),
+        MethDecl(sig, body) => {
+            MethDecl(noop_fold_method_sig(sig, folder),
                      folder.fold_block(body))
         },
         MethMac(mac) => MethMac(folder.fold_mac(mac))
+    }
+}
+
+pub fn noop_fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> MethodSig {
+    MethodSig {
+        generics: folder.fold_generics(sig.generics),
+        abi: sig.abi,
+        explicit_self: folder.fold_explicit_self(sig.explicit_self),
+        unsafety: sig.unsafety,
+        decl: folder.fold_fn_decl(sig.decl)
     }
 }
 

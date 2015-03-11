@@ -1393,15 +1393,16 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn fold_method(&mut self, m: ast::Method) -> ast::Method {
         match m {
-            ast::MethDecl(generics, abi, explicit_self, fn_style, decl, body) => {
+            ast::MethDecl(sig, body) => {
                 let (rewritten_fn_decl, rewritten_body)
-                    = expand_and_rename_fn_decl_and_block(decl, body, self);
-                ast::MethDecl(self.fold_generics(generics),
-                              abi,
-                              self.fold_explicit_self(explicit_self),
-                              fn_style,
-                              rewritten_fn_decl,
-                              rewritten_body)
+                    = expand_and_rename_fn_decl_and_block(sig.decl, body, self);
+                ast::MethDecl(ast::MethodSig {
+                    generics: self.fold_generics(sig.generics),
+                    abi: sig.abi,
+                    explicit_self: self.fold_explicit_self(sig.explicit_self),
+                    unsafety: sig.unsafety,
+                    decl: rewritten_fn_decl
+                }, rewritten_body)
             }
             ast::MethMac(mac) => ast::MethMac(mac)
         }

@@ -375,8 +375,9 @@ pub fn fun_to_string(decl: &ast::FnDecl, unsafety: ast::Unsafety, name: ast::Ide
                   opt_explicit_self: Option<&ast::ExplicitSelf_>,
                   generics: &ast::Generics) -> String {
     $to_string(|s| {
-        try!(s.print_fn(decl, Some(unsafety), abi::Rust,
-                        name, generics, opt_explicit_self, ast::Inherited));
+        try!(s.head(""));
+        try!(s.print_fn(decl, unsafety, abi::Rust, Some(name),
+                        generics, opt_explicit_self, ast::Inherited));
         try!(s.end()); // Close the head box
         s.end() // Close the outer box
     })
@@ -759,8 +760,10 @@ impl<'a> State<'a> {
         try!(self.print_outer_attributes(&item.attrs));
         match item.node {
             ast::ForeignItemFn(ref decl, ref generics) => {
-                try!(self.print_fn(&**decl, None, abi::Rust, item.ident, generics,
-                                   None, item.vis));
+                try!(self.head(""));
+                try!(self.print_fn(&**decl, ast::Unsafety::Normal,
+                                   abi::Rust, Some(item.ident),
+                                   generics, None, item.vis));
                 try!(self.end()); // end head-ibox
                 try!(word(&mut self.s, ";"));
                 self.end() // end the outer fn box
@@ -861,11 +864,12 @@ impl<'a> State<'a> {
                 try!(self.end()); // end the outer cbox
             }
             ast::ItemFn(ref decl, unsafety, abi, ref typarams, ref body) => {
+                try!(self.head(""));
                 try!(self.print_fn(
-                    &**decl,
-                    Some(unsafety),
+                    decl,
+                    unsafety,
                     abi,
-                    item.ident,
+                    Some(item.ident),
                     typarams,
                     None,
                     item.vis
@@ -1227,17 +1231,18 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_ty_method(&mut self,
-                           ident: ast::Ident,
-                           m: &ast::TypeMethod)
-                           -> io::Result<()> {
-        try!(self.print_ty_fn(m.abi,
-                              m.unsafety,
-                              &*m.decl,
-                              Some(ident),
-                              &m.generics,
-                              Some(&m.explicit_self.node)));
-        word(&mut self.s, ";")
+    pub fn print_method_sig(&mut self,
+                            ident: ast::Ident,
+                            m: &ast::MethodSig,
+                            vis: ast::Visibility)
+                            -> io::Result<()> {
+        self.print_fn(&m.decl,
+                      m.unsafety,
+                      m.abi,
+                      Some(ident),
+                      &m.generics,
+                      Some(&m.explicit_self.node),
+                      vis)
     }
 
     pub fn print_trait_item(&mut self, ti: &ast::TraitItem)
@@ -1246,8 +1251,9 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ti.span.lo));
         try!(self.print_outer_attributes(&ti.attrs));
         match ti.node {
-            ast::RequiredMethod(ref ty_m) => {
-                self.print_ty_method(ti.ident, ty_m)
+            ast::RequiredMethod(ref sig) => {
+                try!(self.print_method_sig(ti.ident, sig, ast::Inherited));
+                word(&mut self.s, ";")
             }
             ast::ProvidedMethod(ref m) => {
                 self.print_method(ti.ident, &ti.attrs, ast::Inherited, m)
@@ -1280,20 +1286,10 @@ impl<'a> State<'a> {
                         meth: &ast::Method)
                         -> io::Result<()> {
         match *meth {
-            ast::MethDecl(ref generics,
-                          abi,
-                          ref explicit_self,
-                          unsafety,
-                          ref decl,
-                          ref body) => {
-                try!(self.print_fn(&**decl,
-                                   Some(unsafety),
-                                   abi,
-                                   ident,
-                                   generics,
-                                   Some(&explicit_self.node),
-                                   vis));
-                try!(word(&mut self.s, " "));
+            ast::MethDecl(ref sig, ref body) => {
+                try!(self.head(""));
+                try!(self.print_method_sig(ident, sig, vis));
+                try!(self.nbsp());
                 self.print_block_with_attrs(&**body, attrs)
             },
             ast::MethMac(codemap::Spanned { node: ast::MacInvocTT(ref pth, ref tts, _),
@@ -2328,16 +2324,18 @@ impl<'a> State<'a> {
 
     pub fn print_fn(&mut self,
                     decl: &ast::FnDecl,
-                    unsafety: Option<ast::Unsafety>,
+                    unsafety: ast::Unsafety,
                     abi: abi::Abi,
-                    name: ast::Ident,
+                    name: Option<ast::Ident>,
                     generics: &ast::Generics,
                     opt_explicit_self: Option<&ast::ExplicitSelf_>,
                     vis: ast::Visibility) -> io::Result<()> {
-        try!(self.head(""));
         try!(self.print_fn_header_info(unsafety, abi, vis));
-        try!(self.nbsp());
-        try!(self.print_ident(name));
+
+        if let Some(name) = name {
+            try!(self.nbsp());
+            try!(self.print_ident(name));
+        }
         try!(self.print_generics(generics));
         try!(self.print_fn_args_and_ret(decl, opt_explicit_self));
         self.print_where_clause(generics)
@@ -2704,25 +2702,14 @@ impl<'a> State<'a> {
                        abi: abi::Abi,
                        unsafety: ast::Unsafety,
                        decl: &ast::FnDecl,
-                       id: Option<ast::Ident>,
+                       name: Option<ast::Ident>,
                        generics: &ast::Generics,
                        opt_explicit_self: Option<&ast::ExplicitSelf_>)
                        -> io::Result<()> {
         try!(self.ibox(indent_unit));
-        try!(self.print_fn_header_info(Some(unsafety), abi, ast::Inherited));
-
-        match id {
-            Some(id) => {
-                try!(word(&mut self.s, " "));
-                try!(self.print_ident(id));
-            }
-            _ => ()
-        }
-
-        try!(self.print_generics(generics));
-        try!(zerobreak(&mut self.s));
-        try!(self.print_fn_args_and_ret(decl, opt_explicit_self));
-        try!(self.print_where_clause(generics));
+        try!(self.print_fn(decl, unsafety, abi, name,
+                           generics, opt_explicit_self,
+                           ast::Inherited));
         self.end()
     }
 
@@ -2944,14 +2931,6 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_opt_unsafety(&mut self,
-                            opt_unsafety: Option<ast::Unsafety>) -> io::Result<()> {
-        match opt_unsafety {
-            Some(unsafety) => self.print_unsafety(unsafety),
-            None => Ok(())
-        }
-    }
-
     pub fn print_opt_abi_and_extern_if_nondefault(&mut self,
                                                   opt_abi: Option<abi::Abi>)
         -> io::Result<()> {
@@ -2977,11 +2956,11 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_header_info(&mut self,
-                                opt_unsafety: Option<ast::Unsafety>,
+                                unsafety: ast::Unsafety,
                                 abi: abi::Abi,
                                 vis: ast::Visibility) -> io::Result<()> {
         try!(word(&mut self.s, &visibility_qualified(vis, "")));
-        try!(self.print_opt_unsafety(opt_unsafety));
+        try!(self.print_unsafety(unsafety));
 
         if abi != abi::Rust {
             try!(self.word_nbsp("extern"));

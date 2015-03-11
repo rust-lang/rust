@@ -275,7 +275,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                         match impl_item.node {
                             ast::MethodImplItem(ref method) => {
                                 let meth_public =
-                                    match method.pe_explicit_self().node {
+                                    match method.pe_sig().explicit_self.node {
                                         ast::SelfStatic => public_ty,
                                         _ => true,
                                     } && impl_item.vis == ast::Public;
@@ -1355,7 +1355,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     for impl_item in impl_items {
                         match impl_item.node {
                             ast::MethodImplItem(ref method) => {
-                                if method.pe_explicit_self().node ==
+                                if method.pe_sig().explicit_self.node ==
                                         ast::SelfStatic &&
                                         self.exported_items
                                             .contains(&impl_item.id) {

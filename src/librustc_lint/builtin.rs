@@ -46,7 +46,7 @@ use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
 use syntax::{abi, ast, ast_map};
-use syntax::ast_util::{self, is_shift_binop, local_def};
+use syntax::ast_util::{self, is_shift_binop, local_def, PostExpansionMethod};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
@@ -1319,7 +1319,7 @@ impl LintPass for UnsafeCode {
                 cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function"),
 
             visit::FkMethod(_, m) => {
-                if let ast::MethDecl(_, _, _, ast::Unsafety::Unsafe, _, _) = *m {
+                if m.pe_sig().unsafety == ast::Unsafety::Unsafe {
                     cx.span_lint(UNSAFE_CODE, span, "implementation of an `unsafe` method")
                 }
             },

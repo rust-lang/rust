@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::Abi;
 use ast::*;
 use ast;
 use ast_util;
@@ -461,7 +460,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
                 self.visit_generics_helper(generics)
             }
             visit::FkMethod(_, m) => {
-                self.visit_generics_helper(m.pe_generics())
+                self.visit_generics_helper(&m.pe_sig().generics)
             }
             visit::FkFnBlock => {}
         }
@@ -653,11 +652,7 @@ pub fn lit_is_str(lit: &Lit) -> bool {
 /// not a macro invocation. This check is guaranteed to succeed, assuming
 /// that the invocations are indeed gone.
 pub trait PostExpansionMethod {
-    fn pe_generics<'a>(&'a self) -> &'a ast::Generics;
-    fn pe_abi(&self) -> Abi;
-    fn pe_explicit_self<'a>(&'a self) -> &'a ast::ExplicitSelf;
-    fn pe_unsafety(&self) -> ast::Unsafety;
-    fn pe_fn_decl<'a>(&'a self) -> &'a ast::FnDecl;
+    fn pe_sig<'a>(&'a self) -> &'a ast::MethodSig;
     fn pe_body<'a>(&'a self) -> &'a ast::Block;
 }
 
@@ -676,18 +671,8 @@ macro_rules! mf_method{
 
 
 impl PostExpansionMethod for Method {
-    mf_method! {
-        pe_generics,&'a ast::Generics,
-        MethDecl(ref generics,_,_,_,_,_),generics
-    }
-    mf_method! { pe_abi,Abi,MethDecl(_,abi,_,_,_,_),abi }
-    mf_method! {
-        pe_explicit_self,&'a ast::ExplicitSelf,
-        MethDecl(_,_,ref explicit_self,_,_,_),explicit_self
-    }
-    mf_method! { pe_unsafety,ast::Unsafety,MethDecl(_,_,_,unsafety,_,_),unsafety }
-    mf_method! { pe_fn_decl,&'a ast::FnDecl,MethDecl(_,_,_,_,ref decl,_),&**decl }
-    mf_method! { pe_body,&'a ast::Block,MethDecl(_,_,_,_,_,ref body),&**body }
+    mf_method! { pe_sig, &'a ast::MethodSig,MethDecl(ref sig, _), sig }
+    mf_method! { pe_body, &'a ast::Block,MethDecl(_, ref body), body }
 }
 
 #[cfg(test)]

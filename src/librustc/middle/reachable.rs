@@ -57,7 +57,7 @@ fn method_might_be_inlined(tcx: &ty::ctxt, method: &ast::Method,
                            impl_item: &ast::ImplItem,
                            impl_src: ast::DefId) -> bool {
     if attr::requests_inline(&impl_item.attrs) ||
-        generics_require_inlining(method.pe_generics()) {
+        generics_require_inlining(&method.pe_sig().generics) {
         return true
     }
     if is_local(impl_src) {
@@ -191,7 +191,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             Some(ast_map::NodeImplItem(impl_item)) => {
                 match impl_item.node {
                     ast::MethodImplItem(ref method) => {
-                        if generics_require_inlining(method.pe_generics()) ||
+                        if generics_require_inlining(&method.pe_sig().generics) ||
                                 attr::requests_inline(&impl_item.attrs) {
                             true
                         } else {

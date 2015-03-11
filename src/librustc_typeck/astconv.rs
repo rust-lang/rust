@@ -1442,22 +1442,19 @@ struct SelfInfo<'a, 'tcx> {
 }
 
 pub fn ty_of_method<'tcx>(this: &AstConv<'tcx>,
-                          unsafety: ast::Unsafety,
-                          untransformed_self_ty: Ty<'tcx>,
-                          explicit_self: &ast::ExplicitSelf,
-                          decl: &ast::FnDecl,
-                          abi: abi::Abi)
+                          sig: &ast::MethodSig,
+                          untransformed_self_ty: Ty<'tcx>)
                           -> (ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory) {
     let self_info = Some(SelfInfo {
         untransformed_self_ty: untransformed_self_ty,
-        explicit_self: explicit_self,
+        explicit_self: &sig.explicit_self,
     });
     let (bare_fn_ty, optional_explicit_self_category) =
         ty_of_method_or_bare_fn(this,
-                                unsafety,
-                                abi,
+                                sig.unsafety,
+                                sig.abi,
                                 self_info,
-                                decl);
+                                &sig.decl);
     (bare_fn_ty, optional_explicit_self_category.unwrap())
 }
 

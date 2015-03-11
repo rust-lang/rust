@@ -951,8 +951,8 @@ pub struct Method {
 
 impl Clean<Method> for ast::Method {
     fn clean(&self, cx: &DocContext) -> Method {
-        let all_inputs = &self.pe_fn_decl().inputs;
-        let inputs = match self.pe_explicit_self().node {
+        let all_inputs = &self.pe_sig().decl.inputs;
+        let inputs = match self.pe_sig().explicit_self.node {
             ast::SelfStatic => &**all_inputs,
             _ => &all_inputs[1..]
         };
@@ -960,15 +960,15 @@ impl Clean<Method> for ast::Method {
             inputs: Arguments {
                 values: inputs.clean(cx),
             },
-            output: self.pe_fn_decl().output.clean(cx),
+            output: self.pe_sig().decl.output.clean(cx),
             attrs: Vec::new()
         };
         Method {
-            generics: self.pe_generics().clean(cx),
-            self_: self.pe_explicit_self().node.clean(cx),
-            unsafety: self.pe_unsafety().clone(),
+            generics: self.pe_sig().generics.clean(cx),
+            self_: self.pe_sig().explicit_self.node.clean(cx),
+            unsafety: self.pe_sig().unsafety.clone(),
             decl: decl,
-            abi: self.pe_abi()
+            abi: self.pe_sig().abi
         }
     }
 }
@@ -982,7 +982,7 @@ pub struct TyMethod {
     pub abi: abi::Abi
 }
 
-impl Clean<TyMethod> for ast::TypeMethod {
+impl Clean<TyMethod> for ast::MethodSig {
     fn clean(&self, cx: &DocContext) -> TyMethod {
         let inputs = match self.explicit_self.node {
             ast::SelfStatic => &*self.decl.inputs,

@@ -51,8 +51,7 @@ use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{TtDelimited, TtSequence, TtToken};
 use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
-use ast::{TyFixedLengthVec, TyBareFn};
-use ast::{TyTypeof, TyInfer, TypeMethod};
+use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr};
 use ast::{TyRptr, TyTup, TyU32, TyVec, UnUniq};
 use ast::{TypeImplItem, TypeTraitItem};
@@ -1341,31 +1340,27 @@ impl<'a> Parser<'a> {
                 });
 
                 p.parse_where_clause(&mut generics);
+                let sig = ast::MethodSig {
+                    unsafety: style,
+                    decl: d,
+                    generics: generics,
+                    abi: abi,
+                    explicit_self: explicit_self,
+                };
 
                 let hi = p.last_span.hi;
                 let node = match p.token {
                   token::Semi => {
                     p.bump();
                     debug!("parse_trait_methods(): parsing required method");
-                    RequiredMethod(TypeMethod {
-                        unsafety: style,
-                        decl: d,
-                        generics: generics,
-                        abi: abi,
-                        explicit_self: explicit_self,
-                    })
+                    RequiredMethod(sig)
                   }
                   token::OpenDelim(token::Brace) => {
                     debug!("parse_trait_methods(): parsing provided method");
                     let (inner_attrs, body) =
                         p.parse_inner_attrs_and_block();
                     attrs.push_all(&inner_attrs[..]);
-                    ProvidedMethod(ast::MethDecl(generics,
-                                                 abi,
-                                                 explicit_self,
-                                                 style,
-                                                 d,
-                                                 body))
+                    ProvidedMethod(ast::MethDecl(sig, body))
                   }
 
                   _ => {
@@ -4758,13 +4753,13 @@ impl<'a> Parser<'a> {
                 let body_span = body.span;
                 let mut new_attrs = attrs;
                 new_attrs.push_all(&inner_attrs[..]);
-                (ast::MethDecl(generics,
-                               abi,
-                               explicit_self,
-                               unsafety,
-                               decl,
-                               body),
-                 body_span.hi, new_attrs, ident)
+                (ast::MethDecl(ast::MethodSig {
+                    generics: generics,
+                    abi: abi,
+                    explicit_self: explicit_self,
+                    unsafety: unsafety,
+                    decl: decl
+                 }, body), body_span.hi, new_attrs, ident)
             }
         };
         P(ImplItem {

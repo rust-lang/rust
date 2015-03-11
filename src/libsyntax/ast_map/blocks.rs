@@ -162,7 +162,7 @@ impl<'a> FnLikeNode<'a> {
 
     pub fn decl(self) -> &'a FnDecl {
         self.handle(|i: ItemFnParts<'a>|  &*i.decl,
-                    |_, _, m: &'a ast::Method, _|  m.pe_fn_decl(),
+                    |_, _, m: &'a ast::Method, _|  &m.pe_sig().decl,
                     |c: ClosureParts<'a>| c.decl)
     }
 

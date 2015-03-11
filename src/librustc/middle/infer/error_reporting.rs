@@ -841,7 +841,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 ast_map::NodeItem(ref item) => {
                     match item.node {
                         ast::ItemFn(ref fn_decl, pur, _, ref gen, _) => {
-                            Some((&**fn_decl, gen, pur, item.ident, None, item.span))
+                            Some((fn_decl, gen, pur, item.ident, None, item.span))
                         },
                         _ => None
                     }
@@ -849,11 +849,11 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 ast_map::NodeImplItem(item) => {
                     match item.node {
                         ast::MethodImplItem(ref m) => {
-                            Some((m.pe_fn_decl(),
-                                  m.pe_generics(),
-                                  m.pe_unsafety(),
+                            Some((&m.pe_sig().decl,
+                                  &m.pe_sig().generics,
+                                  m.pe_sig().unsafety,
                                   item.ident,
-                                  Some(&m.pe_explicit_self().node),
+                                  Some(&m.pe_sig().explicit_self.node),
                                   item.span))
                         }
                         ast::TypeImplItem(_) => None,
@@ -862,11 +862,11 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 ast_map::NodeTraitItem(item) => {
                     match item.node {
                         ast::ProvidedMethod(ref m) => {
-                            Some((m.pe_fn_decl(),
-                                  m.pe_generics(),
-                                  m.pe_unsafety(),
+                            Some((&m.pe_sig().decl,
+                                  &m.pe_sig().generics,
+                                  m.pe_sig().unsafety,
                                   item.ident,
-                                  Some(&m.pe_explicit_self().node),
+                                  Some(&m.pe_sig().explicit_self.node),
                                   item.span))
                         }
                         _ => None
@@ -1732,7 +1732,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
             ast_map::NodeImplItem(ii) => {
                 match ii.node {
                     ast::MethodImplItem(ref m) => {
-                        taken.push_all(&m.pe_generics().lifetimes);
+                        taken.push_all(&m.pe_sig().generics.lifetimes);
                         Some(ii.id)
                     }
                     ast::TypeImplItem(_) => None,

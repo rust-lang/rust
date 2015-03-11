@@ -149,7 +149,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                 })
             }
             visit::FkMethod(_, m) => {
-                self.visit_early_late(subst::FnSpace, m.pe_generics(), |this| {
+                self.visit_early_late(subst::FnSpace, &m.pe_sig().generics, |this| {
                     visit::walk_fn(this, fk, fd, b, s)
                 })
             }
