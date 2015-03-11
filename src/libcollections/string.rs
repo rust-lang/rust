@@ -314,6 +314,7 @@ impl String {
     /// Creates a new `String` from a length, capacity, and pointer.
     ///
     /// This is unsafe because:
+    ///
     /// * We call `Vec::from_raw_parts` to get a `Vec<u8>`;
     /// * We assume that the `Vec` contains valid UTF-8.
     #[inline]
