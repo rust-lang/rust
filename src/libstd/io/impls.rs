@@ -27,10 +27,10 @@ impl<'a, R: Read + ?Sized> Read for &'a mut R {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
     }
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<()> {
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         (**self).read_to_end(buf)
     }
-    fn read_to_string(&mut self, buf: &mut String) -> io::Result<()> {
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
         (**self).read_to_string(buf)
     }
 }
@@ -53,10 +53,10 @@ impl<'a, S: Seek + ?Sized> Seek for &'a mut S {
 impl<'a, B: BufRead + ?Sized> BufRead for &'a mut B {
     fn fill_buf(&mut self) -> io::Result<&[u8]> { (**self).fill_buf() }
     fn consume(&mut self, amt: usize) { (**self).consume(amt) }
-    fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> io::Result<()> {
+    fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> io::Result<usize> {
         (**self).read_until(byte, buf)
     }
-    fn read_line(&mut self, buf: &mut String) -> io::Result<()> {
+    fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
         (**self).read_line(buf)
     }
 }
@@ -66,10 +66,10 @@ impl<R: Read + ?Sized> Read for Box<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         (**self).read(buf)
     }
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<()> {
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         (**self).read_to_end(buf)
     }
-    fn read_to_string(&mut self, buf: &mut String) -> io::Result<()> {
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
         (**self).read_to_string(buf)
     }
 }
@@ -92,10 +92,10 @@ impl<S: Seek + ?Sized> Seek for Box<S> {
 impl<B: BufRead + ?Sized> BufRead for Box<B> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> { (**self).fill_buf() }
     fn consume(&mut self, amt: usize) { (**self).consume(amt) }
-    fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> io::Result<()> {
+    fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> io::Result<usize> {
         (**self).read_until(byte, buf)
     }
-    fn read_line(&mut self, buf: &mut String) -> io::Result<()> {
+    fn read_line(&mut self, buf: &mut String) -> io::Result<usize> {
         (**self).read_line(buf)
     }
 }
