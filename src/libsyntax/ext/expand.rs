@@ -25,7 +25,6 @@ use ext::base::*;
 use feature_gate::{self, Features};
 use fold;
 use fold::*;
-use owned_slice::OwnedSlice;
 use parse;
 use parse::token::{fresh_mark, fresh_name, intern};
 use parse::token;
@@ -1175,42 +1174,26 @@ fn expand_annotatable(a: Annotatable,
                 noop_fold_item(it, fld).into_iter().map(|i| Annotatable::Item(i)).collect()
             }
         },
+
         Annotatable::TraitItem(it) => match it.node {
-            ast::ProvidedMethod(ast::MethMac(_)) => {
-                // HACK(eddyb): Expand method macros in a trait as if they were in an impl.
-                let ii = it.and_then(|ti| match ti.node {
-                    ast::ProvidedMethod(m) => P(ast::ImplItem {
-                        id: ti.id,
-                        ident: ti.ident,
-                        attrs: ti.attrs,
-                        vis: ast::Inherited,
-                        node: ast::MethodImplItem(m),
-                        span: ti.span
-                    }),
+            ast::MethodTraitItem(_, Some(_)) => SmallVector::one(it.map(|ti| ast::TraitItem {
+                id: ti.id,
+                ident: ti.ident,
+                attrs: ti.attrs,
+                node: match ti.node  {
+                    ast::MethodTraitItem(sig, Some(body)) => {
+                        let (sig, body) = expand_and_rename_method(sig, body, fld);
+                        ast::MethodTraitItem(sig, Some(body))
+                    }
                     _ => unreachable!()
-                });
-                expand_method(ii, fld).into_iter().map(|ii| {
-                    Annotatable::TraitItem(ii.and_then(|ii| P(ast::TraitItem {
-                        id: ii.id,
-                        ident: ii.ident,
-                        attrs: ii.attrs,
-                        node: match ii.node {
-                            ast::MethodImplItem(m) => ast::ProvidedMethod(m),
-                            ast::TypeImplItem(ty) => {
-                                ast::TypeTraitItem(OwnedSlice::empty(), Some(ty))
-                            }
-                        },
-                        span: ii.span
-                    })))
-                }).collect()
-            }
-            _ => {
-                fold::noop_fold_trait_item(it, fld).into_iter()
-                    .map(|ti| Annotatable::TraitItem(ti)).collect()
-            }
-        },
+                },
+                span: fld.new_span(ti.span)
+            })),
+            _ => fold::noop_fold_trait_item(it, fld)
+        }.into_iter().map(Annotatable::TraitItem).collect(),
+
         Annotatable::ImplItem(ii) => {
-            expand_method(ii, fld).into_iter().map(Annotatable::ImplItem).collect()
+            expand_impl_item(ii, fld).into_iter().map(Annotatable::ImplItem).collect()
         }
     };
 
@@ -1291,35 +1274,47 @@ fn expand_item_multi_modifier(mut it: Annotatable,
     expand_item_multi_modifier(it, fld)
 }
 
-// expand an impl item if it's a method macro
-fn expand_method(ii: P<ast::ImplItem>, fld: &mut MacroExpander)
+fn expand_impl_item(ii: P<ast::ImplItem>, fld: &mut MacroExpander)
                  -> SmallVector<P<ast::ImplItem>> {
-    let ii = fold::noop_fold_impl_item(ii, fld).expect_one("expected one impl item");
     match ii.node {
-        ast::MethodImplItem(ast::MethMac(_)) => {
+        ast::MethodImplItem(..) => SmallVector::one(ii.map(|ii| ast::ImplItem {
+            id: ii.id,
+            ident: ii.ident,
+            attrs: ii.attrs,
+            vis: ii.vis,
+            node: match ii.node  {
+                ast::MethodImplItem(sig, body) => {
+                    let (sig, body) = expand_and_rename_method(sig, body, fld);
+                    ast::MethodImplItem(sig, body)
+                }
+                _ => unreachable!()
+            },
+            span: fld.new_span(ii.span)
+        })),
+        ast::MacImplItem(_) => {
             let (span, mac) = ii.and_then(|ii| match ii.node {
-                ast::MethodImplItem(ast::MethMac(mac)) => (ii.span, mac),
+                ast::MacImplItem(mac) => (ii.span, mac),
                 _ => unreachable!()
             });
-            let maybe_new_methods =
+            let maybe_new_items =
                 expand_mac_invoc(mac, span,
-                                 |r| r.make_methods(),
-                                 |meths, mark| meths.move_map(|m| mark_method(m, mark)),
+                                 |r| r.make_impl_items(),
+                                 |meths, mark| meths.move_map(|m| mark_impl_item(m, mark)),
                                  fld);
 
-            match maybe_new_methods {
-                Some(methods) => {
+            match maybe_new_items {
+                Some(impl_items) => {
                     // expand again if necessary
-                    let new_methods = methods.into_iter()
-                                             .flat_map(|m| expand_method(m, fld).into_iter())
-                                             .collect();
+                    let new_items = impl_items.into_iter().flat_map(|ii| {
+                        expand_impl_item(ii, fld).into_iter()
+                    }).collect();
                     fld.cx.bt_pop();
-                    new_methods
+                    new_items
                 }
                 None => SmallVector::zero()
             }
         }
-        _ => SmallVector::one(ii)
+        _ => fold::noop_fold_impl_item(ii, fld)
     }
 }
 
@@ -1328,7 +1323,7 @@ fn expand_method(ii: P<ast::ImplItem>, fld: &mut MacroExpander)
 /// the block, returning both the new FnDecl and the new Block.
 fn expand_and_rename_fn_decl_and_block(fn_decl: P<ast::FnDecl>, block: P<ast::Block>,
                                        fld: &mut MacroExpander)
-    -> (P<ast::FnDecl>, P<ast::Block>) {
+                                       -> (P<ast::FnDecl>, P<ast::Block>) {
     let expanded_decl = fld.fold_fn_decl(fn_decl);
     let idents = fn_decl_arg_bindings(&*expanded_decl);
     let renames =
@@ -1340,6 +1335,20 @@ fn expand_and_rename_fn_decl_and_block(fn_decl: P<ast::FnDecl>, block: P<ast::Bl
     let mut rename_fld = IdentRenamer{renames: &renames};
     let rewritten_body = fld.fold_block(rename_fld.fold_block(block));
     (rewritten_fn_decl,rewritten_body)
+}
+
+fn expand_and_rename_method(sig: ast::MethodSig, body: P<ast::Block>,
+                            fld: &mut MacroExpander)
+                            -> (ast::MethodSig, P<ast::Block>) {
+    let (rewritten_fn_decl, rewritten_body)
+        = expand_and_rename_fn_decl_and_block(sig.decl, body, fld);
+    (ast::MethodSig {
+        generics: fld.fold_generics(sig.generics),
+        abi: sig.abi,
+        explicit_self: fld.fold_explicit_self(sig.explicit_self),
+        unsafety: sig.unsafety,
+        decl: rewritten_fn_decl
+    }, rewritten_body)
 }
 
 /// A tree-folder that performs macro expansion
@@ -1389,23 +1398,6 @@ impl<'a, 'b> Folder for MacroExpander<'a, 'b> {
 
     fn fold_arm(&mut self, arm: ast::Arm) -> ast::Arm {
         expand_arm(arm, self)
-    }
-
-    fn fold_method(&mut self, m: ast::Method) -> ast::Method {
-        match m {
-            ast::MethDecl(sig, body) => {
-                let (rewritten_fn_decl, rewritten_body)
-                    = expand_and_rename_fn_decl_and_block(sig.decl, body, self);
-                ast::MethDecl(ast::MethodSig {
-                    generics: self.fold_generics(sig.generics),
-                    abi: sig.abi,
-                    explicit_self: self.fold_explicit_self(sig.explicit_self),
-                    unsafety: sig.unsafety,
-                    decl: rewritten_fn_decl
-                }, rewritten_body)
-            }
-            ast::MethMac(mac) => ast::MethMac(mac)
-        }
     }
 
     fn fold_trait_item(&mut self, i: P<ast::TraitItem>) -> SmallVector<P<ast::TraitItem>> {
@@ -1561,9 +1553,9 @@ fn mark_item(expr: P<ast::Item>, m: Mrk) -> P<ast::Item> {
 }
 
 // apply a given mark to the given item. Used following the expansion of a macro.
-fn mark_method(ii: P<ast::ImplItem>, m: Mrk) -> P<ast::ImplItem> {
+fn mark_impl_item(ii: P<ast::ImplItem>, m: Mrk) -> P<ast::ImplItem> {
     Marker{mark:m}.fold_impl_item(ii)
-        .expect_one("marking an impl item didn't return exactly one method")
+        .expect_one("marking an impl item didn't return exactly one impl item")
 }
 
 /// Check that there are no macro invocations left in the AST:

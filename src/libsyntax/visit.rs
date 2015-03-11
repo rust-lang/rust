@@ -38,7 +38,7 @@ pub enum FnKind<'a> {
     FkItemFn(Ident, &'a Generics, Unsafety, Abi),
 
     /// fn foo(&self)
-    FkMethod(Ident, &'a Method),
+    FkMethod(Ident, &'a MethodSig),
 
     /// |x, y| ...
     /// proc(x, y) ...
@@ -592,28 +592,6 @@ pub fn walk_fn_decl<'v, V: Visitor<'v>>(visitor: &mut V, function_declaration: &
     walk_fn_ret_ty(visitor, &function_declaration.output)
 }
 
-// Note: there is no visit_method() method in the visitor, instead override
-// visit_fn() and check for FkMethod().  I named this visit_method_helper()
-// because it is not a default impl of any method, though I doubt that really
-// clarifies anything. - Niko
-fn walk_method_helper<'v, V: Visitor<'v>>(visitor: &mut V,
-                                          id: NodeId,
-                                          ident: Ident,
-                                          span: Span,
-                                          method: &'v Method) {
-    match *method {
-        MethDecl(ref sig, ref body) => {
-            visitor.visit_ident(span, ident);
-            visitor.visit_fn(FkMethod(ident, method),
-                             &sig.decl,
-                             body,
-                             span,
-                             id);
-        },
-        MethMac(ref mac) => visitor.visit_mac(mac)
-    }
-}
-
 pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
                                    function_kind: FnKind<'v>,
                                    function_declaration: &'v FnDecl,
@@ -625,14 +603,9 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
         FkItemFn(_, generics, _, _) => {
             visitor.visit_generics(generics);
         }
-        FkMethod(_, method) => {
-            match *method {
-                MethDecl(ref sig, _) => {
-                    visitor.visit_generics(&sig.generics);
-                    visitor.visit_explicit_self(&sig.explicit_self);
-                }
-                MethMac(ref mac) => visitor.visit_mac(mac)
-            }
+        FkMethod(_, sig) => {
+            visitor.visit_generics(&sig.generics);
+            visitor.visit_explicit_self(&sig.explicit_self);
         }
         FkFnBlock(..) => {}
     }
@@ -646,17 +619,14 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
         visitor.visit_attribute(attr);
     }
     match trait_item.node {
-        RequiredMethod(ref sig) => {
+        MethodTraitItem(ref sig, None) => {
             visitor.visit_explicit_self(&sig.explicit_self);
             visitor.visit_generics(&sig.generics);
             walk_fn_decl(visitor, &sig.decl);
         }
-        ProvidedMethod(ref method) => {
-            walk_method_helper(visitor,
-                               trait_item.id,
-                               trait_item.ident,
-                               trait_item.span,
-                               method);
+        MethodTraitItem(ref sig, Some(ref body)) => {
+            visitor.visit_fn(FkMethod(trait_item.ident, sig), &sig.decl,
+                             body, trait_item.span, trait_item.id);
         }
         TypeTraitItem(ref bounds, ref default) => {
             walk_ty_param_bounds_helper(visitor, bounds);
@@ -671,15 +641,15 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
         visitor.visit_attribute(attr);
     }
     match impl_item.node {
-        MethodImplItem(ref method) => {
-            walk_method_helper(visitor,
-                               impl_item.id,
-                               impl_item.ident,
-                               impl_item.span,
-                               method);
+        MethodImplItem(ref sig, ref body) => {
+            visitor.visit_fn(FkMethod(impl_item.ident, sig), &sig.decl,
+                             body, impl_item.span, impl_item.id);
         }
         TypeImplItem(ref ty) => {
             visitor.visit_ty(ty);
+        }
+        MacImplItem(ref mac) => {
+            visitor.visit_mac(mac);
         }
     }
 }

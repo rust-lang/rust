@@ -83,7 +83,7 @@ use std::rc::Rc;
 use std::string::String;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{name_to_dummy_lifetime, PostExpansionMethod};
+use syntax::ast_util::name_to_dummy_lifetime;
 use syntax::owned_slice::OwnedSlice;
 use syntax::codemap;
 use syntax::parse::token;
@@ -848,25 +848,26 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 }
                 ast_map::NodeImplItem(item) => {
                     match item.node {
-                        ast::MethodImplItem(ref m) => {
-                            Some((&m.pe_sig().decl,
-                                  &m.pe_sig().generics,
-                                  m.pe_sig().unsafety,
+                        ast::MethodImplItem(ref sig, _) => {
+                            Some((&sig.decl,
+                                  &sig.generics,
+                                  sig.unsafety,
                                   item.ident,
-                                  Some(&m.pe_sig().explicit_self.node),
+                                  Some(&sig.explicit_self.node),
                                   item.span))
                         }
                         ast::TypeImplItem(_) => None,
+                        ast::MacImplItem(_) => self.tcx.sess.bug("unexpanded macro")
                     }
                 },
                 ast_map::NodeTraitItem(item) => {
                     match item.node {
-                        ast::ProvidedMethod(ref m) => {
-                            Some((&m.pe_sig().decl,
-                                  &m.pe_sig().generics,
-                                  m.pe_sig().unsafety,
+                        ast::MethodTraitItem(ref sig, Some(_)) => {
+                            Some((&sig.decl,
+                                  &sig.generics,
+                                  sig.unsafety,
                                   item.ident,
-                                  Some(&m.pe_sig().explicit_self.node),
+                                  Some(&sig.explicit_self.node),
                                   item.span))
                         }
                         _ => None
@@ -1731,11 +1732,12 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
             },
             ast_map::NodeImplItem(ii) => {
                 match ii.node {
-                    ast::MethodImplItem(ref m) => {
-                        taken.push_all(&m.pe_sig().generics.lifetimes);
+                    ast::MethodImplItem(ref sig, _) => {
+                        taken.push_all(&sig.generics.lifetimes);
                         Some(ii.id)
                     }
                     ast::TypeImplItem(_) => None,
+                    ast::MacImplItem(_) => tcx.sess.bug("unexpanded macro")
                 }
             }
             _ => None

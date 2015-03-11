@@ -25,7 +25,6 @@ use middle::subst;
 use middle::ty;
 use std::fmt;
 use syntax::ast;
-use syntax::ast_util::PostExpansionMethod;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
@@ -148,8 +147,8 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     visit::walk_fn(this, fk, fd, b, s)
                 })
             }
-            visit::FkMethod(_, m) => {
-                self.visit_early_late(subst::FnSpace, &m.pe_sig().generics, |this| {
+            visit::FkMethod(_, sig) => {
+                self.visit_early_late(subst::FnSpace, &sig.generics, |this| {
                     visit::walk_fn(this, fk, fd, b, s)
                 })
             }
@@ -191,9 +190,9 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
-        if let ast::RequiredMethod(ref m) = trait_item.node {
+        if let ast::MethodTraitItem(ref sig, None) = trait_item.node {
             self.visit_early_late(
-                subst::FnSpace, &m.generics,
+                subst::FnSpace, &sig.generics,
                 |this| visit::walk_trait_item(this, trait_item))
         } else {
             visit::walk_trait_item(self, trait_item);

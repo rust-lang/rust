@@ -18,7 +18,6 @@ use middle::ty::MethodCall;
 use util::ppaux;
 
 use syntax::ast;
-use syntax::ast_util::PostExpansionMethod;
 use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
@@ -90,8 +89,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EffectCheckVisitor<'a, 'tcx> {
         let (is_item_fn, is_unsafe_fn) = match fn_kind {
             visit::FkItemFn(_, _, fn_style, _) =>
                 (true, fn_style == ast::Unsafety::Unsafe),
-            visit::FkMethod(_, method) =>
-                (true, method.pe_sig().unsafety == ast::Unsafety::Unsafe),
+            visit::FkMethod(_, sig) =>
+                (true, sig.unsafety == ast::Unsafety::Unsafe),
             _ => (false, false),
         };
 

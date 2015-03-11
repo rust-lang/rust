@@ -829,8 +829,7 @@ impl<'tcx> Repr<'tcx> for ty::TraitDef<'tcx> {
 impl<'tcx> Repr<'tcx> for ast::TraitItem {
     fn repr(&self, _tcx: &ctxt) -> String {
         let kind = match self.node {
-            ast::RequiredMethod(_) => "RequiredMethod",
-            ast::ProvidedMethod(_) => "ProvidedMethod",
+            ast::MethodTraitItem(..) => "MethodTraitItem",
             ast::TypeTraitItem(..) => "TypeTraitItem",
         };
         format!("{}({}, id={})", kind, self.ident, self.id)

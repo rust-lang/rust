@@ -531,8 +531,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                         trait_item.span);
 
                     match trait_item.node {
-                        ast::RequiredMethod(_) |
-                        ast::ProvidedMethod(_) => {
+                        ast::MethodTraitItem(..) => {
                             let def = DefMethod(local_def(trait_item.id),
                                                 FromTrait(local_def(item.id)));
                             // NB: not IMPORTABLE

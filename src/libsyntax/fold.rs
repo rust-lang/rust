@@ -110,10 +110,6 @@ pub trait Folder : Sized {
         noop_fold_fn_decl(d, self)
     }
 
-    fn fold_method(&mut self, m: Method) -> Method {
-        noop_fold_method(m, self)
-    }
-
     fn fold_block(&mut self, b: P<Block>) -> P<Block> {
         noop_fold_block(b, self)
     }
@@ -977,8 +973,10 @@ pub fn noop_fold_trait_item<T: Folder>(i: P<TraitItem>, folder: &mut T)
         ident: folder.fold_ident(ident),
         attrs: fold_attrs(attrs, folder),
         node: match node {
-            RequiredMethod(sig) => RequiredMethod(noop_fold_method_sig(sig, folder)),
-            ProvidedMethod(m) => ProvidedMethod(folder.fold_method(m)),
+            MethodTraitItem(sig, body) => {
+                MethodTraitItem(noop_fold_method_sig(sig, folder),
+                                body.map(|x| folder.fold_block(x)))
+            }
             TypeTraitItem(bounds, default) => {
                 TypeTraitItem(folder.fold_bounds(bounds),
                               default.map(|x| folder.fold_ty(x)))
@@ -996,8 +994,12 @@ pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T)
         attrs: fold_attrs(attrs, folder),
         vis: vis,
         node: match node  {
-            MethodImplItem(m) => MethodImplItem(folder.fold_method(m)),
-            TypeImplItem(ty) => TypeImplItem(folder.fold_ty(ty))
+            MethodImplItem(sig, body) => {
+                MethodImplItem(noop_fold_method_sig(sig, folder),
+                               folder.fold_block(body))
+            }
+            TypeImplItem(ty) => TypeImplItem(folder.fold_ty(ty)),
+            MacImplItem(mac) => MacImplItem(folder.fold_mac(mac))
         },
         span: folder.new_span(span)
     }))
@@ -1097,17 +1099,6 @@ pub fn noop_fold_foreign_item<T: Folder>(ni: P<ForeignItem>, folder: &mut T) -> 
         vis: vis,
         span: folder.new_span(span)
     })
-}
-
-// Default fold over a method.
-pub fn noop_fold_method<T: Folder>(method: Method, folder: &mut T) -> Method {
-    match method {
-        MethDecl(sig, body) => {
-            MethDecl(noop_fold_method_sig(sig, folder),
-                     folder.fold_block(body))
-        },
-        MethMac(mac) => MethMac(folder.fold_mac(mac))
-    }
 }
 
 pub fn noop_fold_method_sig<T: Folder>(sig: MethodSig, folder: &mut T) -> MethodSig {

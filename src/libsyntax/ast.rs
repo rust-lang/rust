@@ -33,7 +33,6 @@ pub use self::LocalSource::*;
 pub use self::Mac_::*;
 pub use self::MacStmtStyle::*;
 pub use self::MetaItem_::*;
-pub use self::Method::*;
 pub use self::Mutability::*;
 pub use self::Pat_::*;
 pub use self::PathListItem_::*;
@@ -1084,8 +1083,7 @@ pub struct TraitItem {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum TraitItem_ {
-    RequiredMethod(MethodSig),
-    ProvidedMethod(Method),
+    MethodTraitItem(MethodSig, Option<P<Block>>),
     TypeTraitItem(TyParamBounds, Option<P<Ty>>),
 }
 
@@ -1101,8 +1099,9 @@ pub struct ImplItem {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ImplItem_ {
-    MethodImplItem(Method),
+    MethodImplItem(MethodSig, P<Block>),
     TypeImplItem(P<Ty>),
+    MacImplItem(Mac),
 }
 
 #[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
@@ -1415,14 +1414,6 @@ pub enum ExplicitSelf_ {
 }
 
 pub type ExplicitSelf = Spanned<ExplicitSelf_>;
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum Method {
-    /// Represents a method declaration
-    MethDecl(MethodSig, P<Block>),
-    /// Represents a macro in method position
-    MethMac(Mac),
-}
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Mod {

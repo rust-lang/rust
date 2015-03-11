@@ -217,7 +217,6 @@ use std::rc::{Rc, Weak};
 use syntax::util::interner::Interner;
 use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap, ast_util, ast_map, attr};
-use syntax::ast_util::PostExpansionMethod;
 use syntax::parse::token::{self, special_idents};
 
 const DW_LANG_RUST: c_uint = 0x9000;
@@ -1292,7 +1291,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             match item.node {
                 ast::ItemFn(ref fn_decl, _, _, ref generics, ref top_level_block) => {
-                    (item.ident, fn_decl, generics, &**top_level_block, item.span, true)
+                    (item.ident, fn_decl, generics, top_level_block, item.span, true)
                 }
                 _ => {
                     cx.sess().span_bug(item.span,
@@ -1302,15 +1301,15 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         ast_map::NodeImplItem(impl_item) => {
             match impl_item.node {
-                ast::MethodImplItem(ref method) => {
+                ast::MethodImplItem(ref sig, ref body) => {
                     if contains_nodebug_attribute(&impl_item.attrs) {
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
                     (impl_item.ident,
-                     &method.pe_sig().decl,
-                     &method.pe_sig().generics,
-                     method.pe_body(),
+                     &sig.decl,
+                     &sig.generics,
+                     body,
                      impl_item.span,
                      true)
                 }
@@ -1318,6 +1317,11 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     cx.sess().span_bug(impl_item.span,
                                        "create_function_debug_context() \
                                         called on associated type?!")
+                }
+                ast::MacImplItem(_) => {
+                    cx.sess().span_bug(impl_item.span,
+                                       "create_function_debug_context() \
+                                        called on unexpanded macro?!")
                 }
             }
         }
@@ -1330,7 +1334,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         // This is not quite right. It should actually inherit
                         // the generics of the enclosing function.
                         &empty_generics,
-                        &**top_level_block,
+                        top_level_block,
                         expr.span,
                         // Don't try to lookup the item path:
                         false)
@@ -1341,15 +1345,15 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         ast_map::NodeTraitItem(trait_item) => {
             match trait_item.node {
-                ast::ProvidedMethod(ref method) => {
+                ast::MethodTraitItem(ref sig, Some(ref body)) => {
                     if contains_nodebug_attribute(&trait_item.attrs) {
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
                     (trait_item.ident,
-                     &method.pe_sig().decl,
-                     &method.pe_sig().generics,
-                     method.pe_body(),
+                     &sig.decl,
+                     &sig.generics,
+                     body,
                      trait_item.span,
                      true)
                 }

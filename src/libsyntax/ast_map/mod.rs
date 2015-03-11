@@ -929,16 +929,10 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         }
         Some(NodeImplItem(ii)) => {
             match ii.node {
-                MethodImplItem(ref m) => {
-                    match *m {
-                        MethDecl(..) =>
-                            format!("method {} in {}{}",
-                                    token::get_ident(ii.ident),
-                                    map.path_to_string(id), id_str),
-                        MethMac(ref mac) =>
-                            format!("method macro {}{}",
-                                    pprust::mac_to_string(mac), id_str)
-                    }
+                MethodImplItem(..) => {
+                    format!("method {} in {}{}",
+                            token::get_ident(ii.ident),
+                            map.path_to_string(id), id_str)
                 }
                 TypeImplItem(_) => {
                     format!("assoc type {} in {}{}",
@@ -946,13 +940,17 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                             map.path_to_string(id),
                             id_str)
                 }
+                MacImplItem(ref mac) => {
+                    format!("method macro {}{}",
+                            pprust::mac_to_string(mac), id_str)
+                }
             }
         }
         Some(NodeTraitItem(ti)) => {
             let kind = match ti.node {
-                RequiredMethod(_) => "required method",
-                ProvidedMethod(_) => "provided method",
+                MethodTraitItem(..) => "trait method",
                 TypeTraitItem(..) => "assoc type",
+//                 ConstTraitItem(..) => "assoc constant"
             };
 
             format!("{} {} in {}{}",

@@ -16,7 +16,7 @@
 extern crate syntax;
 extern crate rustc;
 
-use syntax::ast::{TokenTree, Item, MetaItem, ImplItem, TraitItem, Method};
+use syntax::ast::{self, TokenTree, Item, MetaItem};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
 use syntax::parse::token;
@@ -81,7 +81,26 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                 ..(*quote_item!(cx, enum Foo2 { Bar2, Baz2 }).unwrap()).clone()
             }))
         }
-        it => it
+        Annotatable::ImplItem(it) => {
+            quote_item!(cx, impl X { fn foo(&self) -> i32 { 42 } }).unwrap().and_then(|i| {
+                match i.node {
+                    ast::ItemImpl(_, _, _, _, _, mut items) => {
+                        Annotatable::ImplItem(items.pop().expect("impl method not found"))
+                    }
+                    _ => unreachable!("impl parsed to something other than impl")
+                }
+            })
+        }
+        Annotatable::TraitItem(it) => {
+            quote_item!(cx, trait X { fn foo(&self) -> i32 { 0 } }).unwrap().and_then(|i| {
+                match i.node {
+                    ast::ItemTrait(_, _, _, mut items) => {
+                        Annotatable::TraitItem(items.pop().expect("trait method not found"))
+                    }
+                    _ => unreachable!("trait parsed to something other than trait")
+                }
+            })
+        }
     }
 }
 

@@ -48,7 +48,7 @@ use rustc::middle::ty::{self, Ty};
 use rustc::util::nodemap::{NodeMap, NodeSet};
 
 use syntax::{ast, ast_map};
-use syntax::ast_util::{is_local, local_def, PostExpansionMethod};
+use syntax::ast_util::{is_local, local_def};
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::visit::{self, Visitor};
@@ -273,17 +273,17 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 if public_ty || public_trait {
                     for impl_item in impl_items {
                         match impl_item.node {
-                            ast::MethodImplItem(ref method) => {
-                                let meth_public =
-                                    match method.pe_sig().explicit_self.node {
-                                        ast::SelfStatic => public_ty,
-                                        _ => true,
-                                    } && impl_item.vis == ast::Public;
+                            ast::MethodImplItem(ref sig, _) => {
+                                let meth_public = match sig.explicit_self.node {
+                                    ast::SelfStatic => public_ty,
+                                    _ => true,
+                                } && impl_item.vis == ast::Public;
                                 if meth_public || tr.is_some() {
                                     self.exported_items.insert(impl_item.id);
                                 }
                             }
-                            ast::TypeImplItem(_) => {}
+                            ast::TypeImplItem(_) |
+                            ast::MacImplItem(_) => {}
                         }
                     }
                 }
@@ -491,7 +491,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 //               where the method was defined?
                 Some(ast_map::NodeImplItem(ii)) => {
                     match ii.node {
-                        ast::MethodImplItem(_) => {
+                        ast::MethodImplItem(..) => {
                             let imp = self.tcx.map
                                           .get_parent_did(closest_private_id);
                             match ty::impl_trait_ref(self.tcx, imp) {
@@ -502,7 +502,8 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                                 _ => ii.vis
                             }
                         }
-                        ast::TypeImplItem(_) => return Allowable,
+                        ast::TypeImplItem(_) |
+                        ast::MacImplItem(_) => return Allowable,
                     }
                 }
                 Some(ast_map::NodeTraitItem(_)) => {
@@ -1125,10 +1126,11 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
             ast::ItemImpl(_, _, _, _, _, ref impl_items) => {
                 for impl_item in impl_items {
                     match impl_item.node {
-                        ast::MethodImplItem(_) => {
+                        ast::MethodImplItem(..) => {
                             check_inherited(tcx, impl_item.span, impl_item.vis);
                         }
-                        ast::TypeImplItem(_) => {}
+                        ast::TypeImplItem(_) |
+                        ast::MacImplItem(_) => {}
                     }
                 }
             }
@@ -1302,10 +1304,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     impl_items.iter()
                               .any(|impl_item| {
                                   match impl_item.node {
-                                      ast::MethodImplItem(_) => {
+                                      ast::MethodImplItem(..) => {
                                           self.exported_items.contains(&impl_item.id)
                                       }
-                                      ast::TypeImplItem(_) => false,
+                                      ast::TypeImplItem(_) |
+                                      ast::MacImplItem(_) => false,
                                   }
                               });
 
@@ -1340,10 +1343,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                             // Those in 3. are warned with this call.
                             for impl_item in impl_items {
                                 match impl_item.node {
-                                    ast::MethodImplItem(..) => {},
                                     ast::TypeImplItem(ref ty) => {
                                         self.visit_ty(ty);
                                     }
+                                    ast::MethodImplItem(..) |
+                                    ast::MacImplItem(_) => {},
                                 }
                             }
                         }
@@ -1354,16 +1358,15 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     let mut found_pub_static = false;
                     for impl_item in impl_items {
                         match impl_item.node {
-                            ast::MethodImplItem(ref method) => {
-                                if method.pe_sig().explicit_self.node ==
-                                        ast::SelfStatic &&
-                                        self.exported_items
-                                            .contains(&impl_item.id) {
+                            ast::MethodImplItem(ref sig, _) => {
+                                if sig.explicit_self.node == ast::SelfStatic &&
+                                   self.exported_items.contains(&impl_item.id) {
                                     found_pub_static = true;
                                     visit::walk_impl_item(self, impl_item);
                                 }
                             }
-                            ast::TypeImplItem(_) => {}
+                            ast::TypeImplItem(_) |
+                            ast::MacImplItem(_) => {}
                         }
                     }
                     if found_pub_static {

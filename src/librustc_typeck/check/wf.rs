@@ -499,7 +499,7 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &'v ast::TraitItem) {
-        if let ast::RequiredMethod(_) = trait_item.node {
+        if let ast::MethodTraitItem(_, None) = trait_item.node {
             match ty::impl_or_trait_item(self.tcx(), local_def(trait_item.id)) {
                 ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {
                     reject_non_type_param_bounds(

@@ -279,11 +279,15 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 let mut items: Vec<ImplOrTraitItemId> =
                         impl_items.iter().map(|impl_item| {
                     match impl_item.node {
-                        ast::MethodImplItem(_) => {
+                        ast::MethodImplItem(..) => {
                             MethodTraitItemId(local_def(impl_item.id))
                         }
                         ast::TypeImplItem(_) => {
                             TypeTraitItemId(local_def(impl_item.id))
+                        }
+                        ast::MacImplItem(_) => {
+                            self.crate_context.tcx.sess.span_bug(impl_item.span,
+                                                                 "unexpanded macro");
                         }
                     }
                 }).collect();

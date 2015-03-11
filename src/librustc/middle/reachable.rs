@@ -25,7 +25,7 @@ use std::collections::HashSet;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{is_local, PostExpansionMethod};
+use syntax::ast_util::is_local;
 use syntax::attr;
 use syntax::visit::Visitor;
 use syntax::visit;
@@ -53,11 +53,11 @@ fn item_might_be_inlined(item: &ast::Item) -> bool {
     }
 }
 
-fn method_might_be_inlined(tcx: &ty::ctxt, method: &ast::Method,
+fn method_might_be_inlined(tcx: &ty::ctxt, sig: &ast::MethodSig,
                            impl_item: &ast::ImplItem,
                            impl_src: ast::DefId) -> bool {
     if attr::requests_inline(&impl_item.attrs) ||
-        generics_require_inlining(&method.pe_sig().generics) {
+        generics_require_inlining(&sig.generics) {
         return true
     }
     if is_local(impl_src) {
@@ -183,15 +183,14 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             }
             Some(ast_map::NodeTraitItem(trait_method)) => {
                 match trait_method.node {
-                    ast::RequiredMethod(_) => false,
-                    ast::ProvidedMethod(_) => true,
+                    ast::MethodTraitItem(_, ref body) => body.is_some(),
                     ast::TypeTraitItem(..) => false,
                 }
             }
             Some(ast_map::NodeImplItem(impl_item)) => {
                 match impl_item.node {
-                    ast::MethodImplItem(ref method) => {
-                        if generics_require_inlining(&method.pe_sig().generics) ||
+                    ast::MethodImplItem(ref sig, _) => {
+                        if generics_require_inlining(&sig.generics) ||
                                 attr::requests_inline(&impl_item.attrs) {
                             true
                         } else {
@@ -214,6 +213,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                         }
                     }
                     ast::TypeImplItem(_) => false,
+                    ast::MacImplItem(_) => self.tcx.sess.bug("unexpanded macro")
                 }
             }
             Some(_) => false,
@@ -303,24 +303,25 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             }
             ast_map::NodeTraitItem(trait_method) => {
                 match trait_method.node {
-                    ast::RequiredMethod(..) => {
+                    ast::MethodTraitItem(_, None) => {
                         // Keep going, nothing to get exported
                     }
-                    ast::ProvidedMethod(ref method) => {
-                        visit::walk_block(self, &*method.pe_body());
+                    ast::MethodTraitItem(_, Some(ref body)) => {
+                        visit::walk_block(self, body);
                     }
                     ast::TypeTraitItem(..) => {}
                 }
             }
             ast_map::NodeImplItem(impl_item) => {
                 match impl_item.node {
-                    ast::MethodImplItem(ref method) => {
+                    ast::MethodImplItem(ref sig, ref body) => {
                         let did = self.tcx.map.get_parent_did(search_item);
-                        if method_might_be_inlined(self.tcx, method, impl_item, did) {
-                            visit::walk_block(self, method.pe_body())
+                        if method_might_be_inlined(self.tcx, sig, impl_item, did) {
+                            visit::walk_block(self, body)
                         }
                     }
                     ast::TypeImplItem(_) => {}
+                    ast::MacImplItem(_) => self.tcx.sess.bug("unexpanded macro")
                 }
             }
             // Nothing to recurse on for these

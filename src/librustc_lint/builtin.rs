@@ -46,7 +46,7 @@ use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
 use syntax::{abi, ast, ast_map};
-use syntax::ast_util::{self, is_shift_binop, local_def, PostExpansionMethod};
+use syntax::ast_util::{self, is_shift_binop, local_def};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
@@ -1005,7 +1005,7 @@ impl LintPass for NonSnakeCase {
     }
 
     fn check_trait_item(&mut self, cx: &Context, trait_item: &ast::TraitItem) {
-        if let ast::RequiredMethod(_) = trait_item.node {
+        if let ast::MethodTraitItem(_, None) = trait_item.node {
             self.check_snake_case(cx, "trait method", trait_item.ident, trait_item.span);
         }
     }
@@ -1318,8 +1318,8 @@ impl LintPass for UnsafeCode {
             visit::FkItemFn(_, _, ast::Unsafety::Unsafe, _) =>
                 cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function"),
 
-            visit::FkMethod(_, m) => {
-                if m.pe_sig().unsafety == ast::Unsafety::Unsafe {
+            visit::FkMethod(_, sig) => {
+                if sig.unsafety == ast::Unsafety::Unsafe {
                     cx.span_lint(UNSAFE_CODE, span, "implementation of an `unsafe` method")
                 }
             },
@@ -1329,8 +1329,8 @@ impl LintPass for UnsafeCode {
     }
 
     fn check_trait_item(&mut self, cx: &Context, trait_item: &ast::TraitItem) {
-        if let ast::RequiredMethod(ref m) = trait_item.node {
-            if m.unsafety == ast::Unsafety::Unsafe {
+        if let ast::MethodTraitItem(ref sig, None) = trait_item.node {
+            if sig.unsafety == ast::Unsafety::Unsafe {
                 cx.span_lint(UNSAFE_CODE, trait_item.span,
                              "declaration of an `unsafe` method")
             }
@@ -1564,8 +1564,7 @@ impl LintPass for MissingDoc {
 
     fn check_trait_item(&mut self, cx: &Context, trait_item: &ast::TraitItem) {
         let desc = match trait_item.node {
-            ast::ProvidedMethod(_) => "a default method",
-            ast::RequiredMethod(_) => "a trait method",
+            ast::MethodTraitItem(..) => "a trait method",
             ast::TypeTraitItem(..) => "an associated type"
         };
         self.check_missing_docs_attrs(cx, Some(trait_item.id),
@@ -1580,8 +1579,9 @@ impl LintPass for MissingDoc {
         }
 
         let desc = match impl_item.node {
-            ast::MethodImplItem(_) => "a method",
-            ast::TypeImplItem(_) => "an associated type"
+            ast::MethodImplItem(..) => "a method",
+            ast::TypeImplItem(_) => "an associated type",
+            ast::MacImplItem(_) => "an impl item macro"
         };
         self.check_missing_docs_attrs(cx, Some(impl_item.id),
                                       &impl_item.attrs,
