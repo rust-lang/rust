@@ -175,6 +175,7 @@ mod prelude {
 }
 
 /// An endpoint of a range of keys.
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Bound<T> {
     /// An inclusive bound.
     Included(T),
