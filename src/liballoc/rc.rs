@@ -159,7 +159,10 @@ use core::nonzero::NonZero;
 use core::ops::{Deref, Drop};
 use core::option::Option;
 use core::option::Option::{Some, None};
+#[cfg(stage0)]
 use core::ptr::{self, PtrExt};
+#[cfg(not(stage0))]
+use core::ptr;
 use core::result::Result;
 use core::result::Result::{Ok, Err};
 use core::intrinsics::assume;

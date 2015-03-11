@@ -24,7 +24,10 @@ use num::wrapping::{OverflowingOps, WrappingOps};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{Some, None};
+#[cfg(stage0)]
 use ptr::{self, PtrExt, Unique};
+#[cfg(not(stage0))]
+use ptr::{self, Unique};
 use rt::heap::{allocate, deallocate, EMPTY};
 use collections::hash_state::HashState;
 

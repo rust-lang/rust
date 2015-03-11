@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(stage0)]
 #[cfg(not(test))]
 use core::ptr::PtrExt;
 

@@ -52,6 +52,7 @@ use option::Option::{Some, None};
 use option::Option;
 use old_path::{Path, GenericPath, BytesContainer};
 use path::{self, PathBuf};
+#[cfg(stage0)]
 use ptr::PtrExt;
 use ptr;
 use result::Result::{Err, Ok};
