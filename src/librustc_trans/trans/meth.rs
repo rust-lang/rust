@@ -41,7 +41,6 @@ use std::rc::Rc;
 use syntax::abi::{Rust, RustCall};
 use syntax::parse::token;
 use syntax::{ast, ast_map, attr, visit};
-use syntax::ast_util::PostExpansionMethod;
 use syntax::codemap::DUMMY_SP;
 use syntax::ptr::P;
 
@@ -69,29 +68,25 @@ pub fn trans_impl(ccx: &CrateContext,
     if !generics.ty_params.is_empty() {
         for impl_item in impl_items {
             match impl_item.node {
-                ast::MethodImplItem(_) => {
+                ast::MethodImplItem(..) => {
                     visit::walk_impl_item(&mut v, impl_item);
                 }
-                ast::TypeImplItem(_) => {}
+                ast::TypeImplItem(_) |
+                ast::MacImplItem(_) => {}
             }
         }
         return;
     }
     for impl_item in impl_items {
         match impl_item.node {
-            ast::MethodImplItem(ref method) => {
-                if method.pe_sig().generics.ty_params.len() == 0 {
+            ast::MethodImplItem(ref sig, ref body) => {
+                if sig.generics.ty_params.len() == 0 {
                     let trans_everywhere = attr::requests_inline(&impl_item.attrs);
                     for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
                         let llfn = get_item_val(ccx, impl_item.id);
                         let empty_substs = tcx.mk_substs(Substs::trans_empty());
-                        trans_fn(ccx,
-                                 &method.pe_sig().decl,
-                                 method.pe_body(),
-                                 llfn,
-                                 empty_substs,
-                                 impl_item.id,
-                                 &[]);
+                        trans_fn(ccx, &sig.decl, body, llfn,
+                                 empty_substs, impl_item.id, &[]);
                         update_linkage(ccx,
                                        llfn,
                                        Some(impl_item.id),
@@ -100,7 +95,8 @@ pub fn trans_impl(ccx: &CrateContext,
                 }
                 visit::walk_impl_item(&mut v, impl_item);
             }
-            ast::TypeImplItem(_) => {}
+            ast::TypeImplItem(_) |
+            ast::MacImplItem(_) => {}
         }
     }
 }

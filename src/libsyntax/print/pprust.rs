@@ -1251,12 +1251,17 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ti.span.lo));
         try!(self.print_outer_attributes(&ti.attrs));
         match ti.node {
-            ast::RequiredMethod(ref sig) => {
+            ast::MethodTraitItem(ref sig, ref body) => {
+                if body.is_some() {
+                    try!(self.head(""));
+                }
                 try!(self.print_method_sig(ti.ident, sig, ast::Inherited));
-                word(&mut self.s, ";")
-            }
-            ast::ProvidedMethod(ref m) => {
-                self.print_method(ti.ident, &ti.attrs, ast::Inherited, m)
+                if let Some(ref body) = *body {
+                    try!(self.nbsp());
+                    self.print_block_with_attrs(body, &ti.attrs)
+                } else {
+                    word(&mut self.s, ";")
+                }
             }
             ast::TypeTraitItem(ref bounds, ref default) => {
                 self.print_associated_type(ti.ident, Some(bounds),
@@ -1270,30 +1275,17 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ii.span.lo));
         try!(self.print_outer_attributes(&ii.attrs));
         match ii.node {
-            ast::MethodImplItem(ref m) => {
-                self.print_method(ii.ident, &ii.attrs, ii.vis, m)
+            ast::MethodImplItem(ref sig, ref body) => {
+                try!(self.head(""));
+                try!(self.print_method_sig(ii.ident, sig, ii.vis));
+                try!(self.nbsp());
+                self.print_block_with_attrs(body, &ii.attrs)
             }
             ast::TypeImplItem(ref ty) => {
                 self.print_associated_type(ii.ident, None, Some(ty))
             }
-        }
-    }
-
-    pub fn print_method(&mut self,
-                        ident: ast::Ident,
-                        attrs: &[ast::Attribute],
-                        vis: ast::Visibility,
-                        meth: &ast::Method)
-                        -> io::Result<()> {
-        match *meth {
-            ast::MethDecl(ref sig, ref body) => {
-                try!(self.head(""));
-                try!(self.print_method_sig(ident, sig, vis));
-                try!(self.nbsp());
-                self.print_block_with_attrs(&**body, attrs)
-            },
-            ast::MethMac(codemap::Spanned { node: ast::MacInvocTT(ref pth, ref tts, _),
-                                            ..}) => {
+            ast::MacImplItem(codemap::Spanned { node: ast::MacInvocTT(ref pth, ref tts, _),
+                                                ..}) => {
                 // code copied from ItemMac:
                 try!(self.print_path(pth, false, 0));
                 try!(word(&mut self.s, "! "));

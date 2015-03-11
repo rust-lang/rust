@@ -82,7 +82,7 @@ use syntax::abi;
 use syntax::ast::{CrateNum, DefId, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{StmtExpr, StmtSemi, StructField, UnnamedField, Visibility};
-use syntax::ast_util::{self, is_local, lit_is_str, local_def, PostExpansionMethod};
+use syntax::ast_util::{self, is_local, lit_is_str, local_def};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
 use syntax::parse::token::{self, InternedString, special_idents};
@@ -2287,7 +2287,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
         match cx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
                 match impl_item.node {
-                    ast::MethodImplItem(ref method) => {
+                    ast::MethodImplItem(_, ref body) => {
                         let method_def_id = ast_util::local_def(id);
                         match ty::impl_or_trait_item(cx, method_def_id) {
                             MethodTraitItem(ref method_ty) => {
@@ -2298,7 +2298,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                     impl_item.span,
                                     method_generics,
                                     method_bounds,
-                                    method.pe_body().id)
+                                    body.id)
                             }
                             TypeTraitItem(_) => {
                                 cx.sess
@@ -2313,18 +2313,19 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                      can't create a parameter environment \
                                      for type impl items")
                     }
+                    ast::MacImplItem(_) => cx.sess.bug("unexpanded macro")
                 }
             }
             Some(ast_map::NodeTraitItem(trait_item)) => {
                 match trait_item.node {
-                    ast::RequiredMethod(_) => {
+                    ast::MethodTraitItem(_, None) => {
                         cx.sess.span_bug(trait_item.span,
                                          "ParameterEnvironment::for_item():
                                           can't create a parameter \
                                           environment for required trait \
                                           methods")
                     }
-                    ast::ProvidedMethod(ref method) => {
+                    ast::MethodTraitItem(_, Some(ref body)) => {
                         let method_def_id = ast_util::local_def(id);
                         match ty::impl_or_trait_item(cx, method_def_id) {
                             MethodTraitItem(ref method_ty) => {
@@ -2335,7 +2336,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                     trait_item.span,
                                     method_generics,
                                     method_bounds,
-                                    method.pe_body().id)
+                                    body.id)
                             }
                             TypeTraitItem(_) => {
                                 cx.sess
@@ -5082,7 +5083,7 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
     if is_local(id) {
         if let ItemTrait(_, _, _, ref ms) = cx.map.expect_item(id.node).node {
             ms.iter().filter_map(|ti| {
-                if let ast::ProvidedMethod(_) = ti.node {
+                if let ast::MethodTraitItem(_, Some(_)) = ti.node {
                     match impl_or_trait_item(cx, ast_util::local_def(ti.id)) {
                         MethodTraitItem(m) => Some(m),
                         TypeTraitItem(_) => {

@@ -17,7 +17,7 @@ use trans::common::*;
 use middle::ty;
 
 use syntax::ast;
-use syntax::ast_util::{local_def, PostExpansionMethod};
+use syntax::ast_util::local_def;
 
 fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
     -> Option<ast::DefId> {
@@ -146,19 +146,19 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
 
             // Translate monomorphic impl methods immediately.
-            if let ast::MethodImplItem(ref mth) = impl_item.node {
+            if let ast::MethodImplItem(ref sig, ref body) = impl_item.node {
                 let impl_tpt = ty::lookup_item_type(ccx.tcx(), impl_did);
                 if impl_tpt.generics.types.is_empty() &&
-                        mth.pe_sig().generics.ty_params.is_empty() {
+                        sig.generics.ty_params.is_empty() {
                     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
                     let llfn = get_item_val(ccx, impl_item.id);
                     trans_fn(ccx,
-                            &*mth.pe_sig().decl,
-                            &*mth.pe_body(),
-                            llfn,
-                            empty_substs,
-                            impl_item.id,
-                            &[]);
+                             &sig.decl,
+                             body,
+                             llfn,
+                             empty_substs,
+                             impl_item.id,
+                             &[]);
                     // Use InternalLinkage so LLVM can optimize more aggressively.
                     SetLinkage(llfn, InternalLinkage);
                 }

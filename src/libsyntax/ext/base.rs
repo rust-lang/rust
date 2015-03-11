@@ -228,8 +228,8 @@ pub trait MacResult {
         None
     }
 
-    /// Create zero or more methods.
-    fn make_methods(self: Box<Self>) -> Option<SmallVector<P<ast::ImplItem>>> {
+    /// Create zero or more impl items.
+    fn make_impl_items(self: Box<Self>) -> Option<SmallVector<P<ast::ImplItem>>> {
         None
     }
 
@@ -275,7 +275,7 @@ make_MacEager! {
     expr: P<ast::Expr>,
     pat: P<ast::Pat>,
     items: SmallVector<P<ast::Item>>,
-    methods: SmallVector<P<ast::ImplItem>>,
+    impl_items: SmallVector<P<ast::ImplItem>>,
     stmt: P<ast::Stmt>,
 }
 
@@ -288,8 +288,8 @@ impl MacResult for MacEager {
         self.items
     }
 
-    fn make_methods(self: Box<Self>) -> Option<SmallVector<P<ast::ImplItem>>> {
-        self.methods
+    fn make_impl_items(self: Box<Self>) -> Option<SmallVector<P<ast::ImplItem>>> {
+        self.impl_items
     }
 
     fn make_stmt(self: Box<Self>) -> Option<P<ast::Stmt>> {
@@ -377,7 +377,7 @@ impl MacResult for DummyResult {
             Some(SmallVector::zero())
         }
     }
-    fn make_methods(self: Box<DummyResult>) -> Option<SmallVector<P<ast::ImplItem>>> {
+    fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVector<P<ast::ImplItem>>> {
         if self.expr_only {
             None
         } else {

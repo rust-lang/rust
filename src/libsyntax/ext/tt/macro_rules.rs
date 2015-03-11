@@ -71,7 +71,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         loop {
             let mut parser = self.parser.borrow_mut();
             // so... do outer attributes attached to the macro invocation
-            // just disappear? This question applies to make_methods, as
+            // just disappear? This question applies to make_impl_items, as
             // well.
             match parser.parse_item_with_outer_attributes() {
                 Some(item) => ret.push(item),
@@ -82,16 +82,14 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         Some(ret)
     }
 
-    fn make_methods(self: Box<ParserAnyMacro<'a>>)
-                    -> Option<SmallVector<P<ast::ImplItem>>> {
+    fn make_impl_items(self: Box<ParserAnyMacro<'a>>)
+                       -> Option<SmallVector<P<ast::ImplItem>>> {
         let mut ret = SmallVector::zero();
         loop {
             let mut parser = self.parser.borrow_mut();
             match parser.token {
                 token::Eof => break,
-                _ => {
-                    ret.push(parser.parse_method_with_outer_attributes());
-                }
+                _ => ret.push(parser.parse_impl_item_with_outer_attributes())
             }
         }
         self.ensure_complete_parse(false);

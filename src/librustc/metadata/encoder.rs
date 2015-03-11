@@ -827,7 +827,7 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     let elem = ast_map::PathName(m.name);
     encode_path(rbml_w, impl_path.chain(Some(elem).into_iter()));
     if let Some(impl_item) = impl_item_opt {
-        if let ast::MethodImplItem(ref ast_method) = impl_item.node {
+        if let ast::MethodImplItem(ref sig, _) = impl_item.node {
             encode_attributes(rbml_w, &impl_item.attrs);
             let scheme = ty::lookup_item_type(ecx.tcx, m.def_id);
             let any_types = !scheme.generics.types.is_empty();
@@ -838,7 +838,7 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             if !any_types {
                 encode_symbol(ecx, rbml_w, m.def_id.node);
             }
-            encode_method_argument_names(rbml_w, &ast_method.pe_sig().decl);
+            encode_method_argument_names(rbml_w, &sig.decl);
         }
     }
 
@@ -1362,28 +1362,25 @@ fn encode_info_for_item(ecx: &EncodeContext,
             encode_parent_sort(rbml_w, 't');
 
             let trait_item = &*ms[i];
-            let encode_trait_item = |rbml_w: &mut Encoder| {
-                // If this is a static method, we've already
-                // encoded this.
-                if is_nonstatic_method {
-                    // FIXME: I feel like there is something funny
-                    // going on.
-                    encode_bounds_and_type_for_item(rbml_w, ecx, item_def_id.def_id().local_id());
-                }
-            };
             encode_attributes(rbml_w, &trait_item.attrs);
             match trait_item.node {
-                ast::RequiredMethod(ref m) => {
-                    encode_trait_item(rbml_w);
-                    encode_item_sort(rbml_w, 'r');
-                    encode_method_argument_names(rbml_w, &*m.decl);
-                }
+                ast::MethodTraitItem(ref sig, ref body) => {
+                    // If this is a static method, we've already
+                    // encoded this.
+                    if is_nonstatic_method {
+                        // FIXME: I feel like there is something funny
+                        // going on.
+                        encode_bounds_and_type_for_item(rbml_w, ecx,
+                            item_def_id.def_id().local_id());
+                    }
 
-                ast::ProvidedMethod(ref m) => {
-                    encode_trait_item(rbml_w);
-                    encode_item_sort(rbml_w, 'p');
-                    encode_inlined_item(ecx, rbml_w, IITraitItemRef(def_id, trait_item));
-                    encode_method_argument_names(rbml_w, &*m.pe_sig().decl);
+                    if body.is_some() {
+                        encode_item_sort(rbml_w, 'p');
+                        encode_inlined_item(ecx, rbml_w, IITraitItemRef(def_id, trait_item));
+                    } else {
+                        encode_item_sort(rbml_w, 'r');
+                    }
+                    encode_method_argument_names(rbml_w, &sig.decl);
                 }
 
                 ast::TypeTraitItem(..) => {

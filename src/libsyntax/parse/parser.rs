@@ -13,7 +13,7 @@ pub use self::PathParsingMode::*;
 use abi;
 use ast::{BareFnTy};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
-use ast::{ProvidedMethod, Public, Unsafety};
+use ast::{Public, Unsafety};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, BiRem, BiLt, BiGt, Block};
 use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
@@ -42,8 +42,7 @@ use ast::{MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, NodeId, UnNot};
 use ast::{Pat, PatEnum, PatIdent, PatLit, PatRange, PatRegion, PatStruct};
 use ast::{PatTup, PatBox, PatWild, PatWildMulti, PatWildSingle};
-use ast::{PolyTraitRef};
-use ast::{QSelf, RequiredMethod};
+use ast::{PolyTraitRef, QSelf};
 use ast::{Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub, StrStyle};
@@ -1349,18 +1348,18 @@ impl<'a> Parser<'a> {
                 };
 
                 let hi = p.last_span.hi;
-                let node = match p.token {
+                let body = match p.token {
                   token::Semi => {
                     p.bump();
                     debug!("parse_trait_methods(): parsing required method");
-                    RequiredMethod(sig)
+                    None
                   }
                   token::OpenDelim(token::Brace) => {
                     debug!("parse_trait_methods(): parsing provided method");
                     let (inner_attrs, body) =
                         p.parse_inner_attrs_and_block();
                     attrs.push_all(&inner_attrs[..]);
-                    ProvidedMethod(ast::MethDecl(sig, body))
+                    Some(body)
                   }
 
                   _ => {
@@ -1374,7 +1373,7 @@ impl<'a> Parser<'a> {
                     id: ast::DUMMY_NODE_ID,
                     ident: ident,
                     attrs: attrs,
-                    node: node,
+                    node: ast::MethodTraitItem(sig, body),
                     span: mk_sp(lo, hi),
                 })
             }
@@ -4682,11 +4681,15 @@ impl<'a> Parser<'a> {
         (ident, ItemFn(decl, unsafety, abi, generics, body), Some(inner_attrs))
     }
 
-    /// Parse a method in a trait impl
-    pub fn parse_method_with_outer_attributes(&mut self) -> P<ImplItem> {
+    /// Parse an impl item.
+    pub fn parse_impl_item_with_outer_attributes(&mut self) -> P<ImplItem> {
         let attrs = self.parse_outer_attributes();
-        let visa = self.parse_visibility();
-        self.parse_method(attrs, visa)
+        let vis = self.parse_visibility();
+        if self.eat_keyword(keywords::Type) {
+            self.parse_assoc_ty_in_impl(attrs, vis)
+        } else {
+            self.parse_method(attrs, vis)
+        }
     }
 
     fn complain_if_pub_macro(&mut self, visa: Visibility, span: Span) {
@@ -4733,7 +4736,7 @@ impl<'a> Parser<'a> {
                 if delim != token::Brace {
                     self.expect(&token::Semi)
                 }
-                (ast::MethMac(m), self.span.hi, attrs,
+                (ast::MacImplItem(m), self.span.hi, attrs,
                  token::special_idents::invalid)
             } else {
                 let unsafety = self.parse_unsafety();
@@ -4753,7 +4756,7 @@ impl<'a> Parser<'a> {
                 let body_span = body.span;
                 let mut new_attrs = attrs;
                 new_attrs.push_all(&inner_attrs[..]);
-                (ast::MethDecl(ast::MethodSig {
+                (MethodImplItem(ast::MethodSig {
                     generics: generics,
                     abi: abi,
                     explicit_self: explicit_self,
@@ -4767,7 +4770,7 @@ impl<'a> Parser<'a> {
             attrs: new_attrs,
             vis: vis,
             ident: ident,
-            node: MethodImplItem(method_),
+            node: method_,
             span: mk_sp(lo, hi),
         })
     }

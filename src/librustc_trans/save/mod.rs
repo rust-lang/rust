@@ -37,7 +37,7 @@ use std::env;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 
-use syntax::ast_util::{self, PostExpansionMethod};
+use syntax::ast_util;
 use syntax::ast::{self, NodeId, DefId};
 use syntax::ast_map::NodeItem;
 use syntax::attr;
@@ -284,7 +284,8 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         }
     }
 
-    fn process_method(&mut self, method: &ast::Method,
+    fn process_method(&mut self, sig: &ast::MethodSig,
+                      body: Option<&ast::Block>,
                       id: ast::NodeId, ident: ast::Ident,
                       span: Span) {
         if generated_code(span) {
@@ -351,8 +352,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             },
         };
 
-        let qualname = format!("{}::{}", qualname, &get_ident(ident));
-        let qualname = &qualname[..];
+        let qualname = &format!("{}::{}", qualname, &get_ident(ident));
 
         // record the decl for this def (if it has one)
         let decl_id = ty::trait_item_of_item(&self.analysis.ty_cx,
@@ -364,39 +364,44 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     }
                     ty::TypeTraitItemId(_) => false,
                 } {
-                    Some(def_id)
+                    Some(def_id.def_id())
                 } else {
                     None
                 }
             });
-        let decl_id = match decl_id {
-            None => None,
-            Some(id) => Some(id.def_id()),
-        };
 
         let sub_span = self.span.sub_span_after_keyword(span, keywords::Fn);
-        self.fmt.method_str(span,
-                            sub_span,
-                            id,
-                            qualname,
-                            decl_id,
-                            scope_id);
-
-        self.process_formals(&method.pe_sig().decl.inputs, qualname);
-
-        // walk arg and return types
-        for arg in &method.pe_sig().decl.inputs {
-            self.visit_ty(&*arg.ty);
+        if body.is_some() {
+            self.fmt.method_str(span,
+                                sub_span,
+                                id,
+                                qualname,
+                                decl_id,
+                                scope_id);
+            self.process_formals(&sig.decl.inputs, qualname);
+        } else {
+            self.fmt.method_decl_str(span,
+                                     sub_span,
+                                     id,
+                                     qualname,
+                                     scope_id);
         }
 
-        if let ast::Return(ref ret_ty) = method.pe_sig().decl.output {
-            self.visit_ty(&**ret_ty);
+        // walk arg and return types
+        for arg in &sig.decl.inputs {
+            self.visit_ty(&arg.ty);
+        }
+
+        if let ast::Return(ref ret_ty) = sig.decl.output {
+            self.visit_ty(ret_ty);
         }
 
         // walk the fn body
-        self.nest(id, |v| v.visit_block(&*method.pe_body()));
+        if let Some(body) = body {
+            self.nest(id, |v| v.visit_block(body));
+        }
 
-        self.process_generic_params(&method.pe_sig().generics,
+        self.process_generic_params(&sig.generics,
                                     span,
                                     qualname,
                                     id);
@@ -1226,51 +1231,9 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
         match trait_item.node {
-            ast::RequiredMethod(ref method_type) => {
-                if generated_code(trait_item.span) {
-                    return;
-                }
-
-                let mut scope_id;
-                let mut qualname = match ty::trait_of_item(&self.analysis.ty_cx,
-                                                           ast_util::local_def(trait_item.id)) {
-                    Some(def_id) => {
-                        scope_id = def_id.node;
-                        format!("::{}::", ty::item_path_str(&self.analysis.ty_cx, def_id))
-                    },
-                    None => {
-                        self.sess.span_bug(trait_item.span,
-                                           &format!("Could not find trait for method {}",
-                                                   trait_item.id));
-                    },
-                };
-
-                qualname.push_str(&get_ident(trait_item.ident));
-                let qualname = &qualname[..];
-
-                let sub_span = self.span.sub_span_after_keyword(trait_item.span, keywords::Fn);
-                self.fmt.method_decl_str(trait_item.span,
-                                         sub_span,
-                                         trait_item.id,
-                                         qualname,
-                                         scope_id);
-
-                // walk arg and return types
-                for arg in &method_type.decl.inputs {
-                    self.visit_ty(&*arg.ty);
-                }
-
-                if let ast::Return(ref ret_ty) = method_type.decl.output {
-                    self.visit_ty(&**ret_ty);
-                }
-
-                self.process_generic_params(&method_type.generics,
-                                            trait_item.span,
-                                            qualname,
-                                            trait_item.id);
-            }
-            ast::ProvidedMethod(ref method) => {
-                self.process_method(method, trait_item.id, trait_item.ident, trait_item.span);
+            ast::MethodTraitItem(ref sig, ref body) => {
+                self.process_method(sig, body.as_ref().map(|x| &**x),
+                                    trait_item.id, trait_item.ident, trait_item.span);
             }
             ast::TypeTraitItem(..) => {}
         }
@@ -1278,10 +1241,12 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &ast::ImplItem) {
         match impl_item.node {
-            ast::MethodImplItem(ref method) => {
-                self.process_method(method, impl_item.id, impl_item.ident, impl_item.span);
+            ast::MethodImplItem(ref sig, ref body) => {
+                self.process_method(sig, Some(body), impl_item.id,
+                                    impl_item.ident, impl_item.span);
             }
-            ast::TypeImplItem(_) => {}
+            ast::TypeImplItem(_) |
+            ast::MacImplItem(_) => {}
         }
     }
 

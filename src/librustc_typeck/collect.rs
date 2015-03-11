@@ -89,7 +89,7 @@ use std::rc::Rc;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{local_def, PostExpansionMethod};
+use syntax::ast_util::local_def;
 use syntax::codemap::Span;
 use syntax::parse::token::{special_idents};
 use syntax::parse::token;
@@ -847,7 +847,6 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             // Convert all the associated types.
             for impl_item in impl_items {
                 match impl_item.node {
-                    ast::MethodImplItem(_) => {}
                     ast::TypeImplItem(ref ty) => {
                         if opt_trait_ref.is_none() {
                             span_err!(tcx.sess, impl_item.span, E0202,
@@ -867,20 +866,23 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                                                            ty::GenericPredicates::empty());
                         write_ty_to_tcx(tcx, impl_item.id, typ);
                     }
+                    ast::MethodImplItem(..) |
+                    ast::MacImplItem(_) => {}
                 }
             }
 
             let methods = impl_items.iter().filter_map(|ii| {
                 match ii.node {
-                    ast::MethodImplItem(ref m) => {
+                    ast::MethodImplItem(ref sig, _) => {
                         // if the method specifies a visibility, use that, otherwise
                         // inherit the visibility from the impl (so `foo` in `pub impl
                         // { fn foo(); }` is public, but private in `priv impl { fn
                         // foo(); }`).
                         let method_vis = ii.vis.inherit_from(parent_visibility);
-                        Some((m.pe_sig(), ii.id, ii.ident, method_vis, ii.span))
+                        Some((sig, ii.id, ii.ident, method_vis, ii.span))
                     }
-                    ast::TypeImplItem(_) => None
+                    ast::TypeImplItem(_) |
+                    ast::MacImplItem(_) => None
                 }
             });
             convert_methods(ccx,
@@ -892,16 +894,17 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
 
             for impl_item in impl_items {
                 match impl_item.node {
-                    ast::MethodImplItem(ref method) => {
-                        let body_id = method.pe_body().id;
+                    ast::MethodImplItem(ref sig, ref body) => {
+                        let body_id = body.id;
                         check_method_self_type(ccx,
                                                &BindingRscope::new(),
                                                ccx.method_ty(impl_item.id),
                                                selfty,
-                                               &method.pe_sig().explicit_self,
+                                               &sig.explicit_self,
                                                body_id);
                     }
-                    ast::TypeImplItem(_) => {}
+                    ast::TypeImplItem(_) |
+                    ast::MacImplItem(_) => {}
                 }
             }
 
@@ -930,8 +933,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             // Convert all the associated types.
             for trait_item in trait_items {
                 match trait_item.node {
-                    ast::RequiredMethod(_) |
-                    ast::ProvidedMethod(_) => {}
+                    ast::MethodTraitItem(..) => {}
                     ast::TypeTraitItem(..) => {
                         convert_associated_type(ccx, TraitContainer(local_def(it.id)),
                                                 trait_item.ident, trait_item.id, ast::Public);
@@ -941,8 +943,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
 
             let methods = trait_items.iter().filter_map(|ti| {
                 let sig = match ti.node {
-                    ast::RequiredMethod(ref sig) => sig,
-                    ast::ProvidedMethod(ref m) => m.pe_sig(),
+                    ast::MethodTraitItem(ref sig, _) => sig,
                     ast::TypeTraitItem(..) => return None,
                 };
                 Some((sig, ti.id, ti.ident, ast::Inherited, ti.span))
@@ -960,8 +961,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             let trait_item_def_ids = Rc::new(trait_items.iter().map(|trait_item| {
                 let def_id = local_def(trait_item.id);
                 match trait_item.node {
-                    ast::RequiredMethod(_) |
-                    ast::ProvidedMethod(_) => {
+                    ast::MethodTraitItem(..) => {
                         ty::MethodTraitItemId(def_id)
                     }
                     ast::TypeTraitItem(..) => {
@@ -975,8 +975,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             // we have a method type stored for every method.
             for trait_item in trait_items {
                 let sig = match trait_item.node {
-                    ast::RequiredMethod(ref sig) => sig,
-                    ast::ProvidedMethod(ref method) => method.pe_sig(),
+                    ast::MethodTraitItem(ref sig, _) => sig,
                     ast::TypeTraitItem(..) => continue
                 };
                 check_method_self_type(ccx,
@@ -1196,7 +1195,7 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     let associated_type_names: Vec<_> = items.iter().filter_map(|trait_item| {
         match trait_item.node {
-            ast::RequiredMethod(_) | ast::ProvidedMethod(_) => None,
+            ast::MethodTraitItem(..) => None,
             ast::TypeTraitItem(..) => Some(trait_item.ident.name),
         }
     }).collect();
@@ -1269,7 +1268,7 @@ fn trait_defines_associated_type_named(ccx: &CrateCtxt,
     trait_items.iter().any(|trait_item| {
         match trait_item.node {
             ast::TypeTraitItem(..) => trait_item.ident.name == assoc_name,
-            ast::RequiredMethod(_) | ast::ProvidedMethod(_) => false,
+            ast::MethodTraitItem(..) => false,
         }
     })
 }
@@ -1329,7 +1328,7 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
         trait_items.iter().flat_map(|trait_item| {
             let bounds = match trait_item.node {
                 ast::TypeTraitItem(ref bounds, _) => bounds,
-                ast::RequiredMethod(..) | ast::ProvidedMethod(..) => {
+                ast::MethodTraitItem(..) => {
                     return vec!().into_iter();
                 }
             };

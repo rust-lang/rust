@@ -459,8 +459,8 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
             visit::FkItemFn(_, generics, _, _) => {
                 self.visit_generics_helper(generics)
             }
-            visit::FkMethod(_, m) => {
-                self.visit_generics_helper(&m.pe_sig().generics)
+            visit::FkMethod(_, sig) => {
+                self.visit_generics_helper(&sig.generics)
             }
             visit::FkFnBlock => {}
         }
@@ -645,34 +645,6 @@ pub fn lit_is_str(lit: &Lit) -> bool {
         LitStr(..) => true,
         _ => false,
     }
-}
-
-/// Macro invocations are guaranteed not to occur after expansion is complete.
-/// Extracting fields of a method requires a dynamic check to make sure that it's
-/// not a macro invocation. This check is guaranteed to succeed, assuming
-/// that the invocations are indeed gone.
-pub trait PostExpansionMethod {
-    fn pe_sig<'a>(&'a self) -> &'a ast::MethodSig;
-    fn pe_body<'a>(&'a self) -> &'a ast::Block;
-}
-
-macro_rules! mf_method{
-    ($meth_name:ident, $field_ty:ty, $field_pat:pat, $result:expr) => {
-        fn $meth_name<'a>(&'a self) -> $field_ty {
-            match *self {
-                $field_pat => $result,
-                MethMac(_) => {
-                    panic!("expected an AST without macro invocations");
-                }
-            }
-        }
-    }
-}
-
-
-impl PostExpansionMethod for Method {
-    mf_method! { pe_sig, &'a ast::MethodSig,MethDecl(ref sig, _), sig }
-    mf_method! { pe_body, &'a ast::Block,MethDecl(_, ref body), body }
 }
 
 #[cfg(test)]

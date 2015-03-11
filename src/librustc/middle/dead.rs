@@ -18,7 +18,7 @@ use util::nodemap::NodeSet;
 
 use std::collections::HashSet;
 use syntax::{ast, ast_map, codemap};
-use syntax::ast_util::{local_def, is_local, PostExpansionMethod};
+use syntax::ast_util::{local_def, is_local};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::visit::{self, Visitor};
 
@@ -353,7 +353,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
             ast::ItemTrait(_, _, _, ref trait_items) => {
                 for trait_item in trait_items {
                     match trait_item.node {
-                        ast::ProvidedMethod(_) => {
+                        ast::MethodTraitItem(_, Some(_)) => {
                             if has_allow_dead_code_or_lang_attr(&trait_item.attrs) {
                                 self.worklist.push(trait_item.id);
                             }
@@ -365,13 +365,14 @@ impl<'v> Visitor<'v> for LifeSeeder {
             ast::ItemImpl(_, _, _, ref opt_trait, _, ref impl_items) => {
                 for impl_item in impl_items {
                     match impl_item.node {
-                        ast::MethodImplItem(_) => {
+                        ast::MethodImplItem(..) => {
                             if opt_trait.is_some() ||
                                     has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
                                 self.worklist.push(impl_item.id);
                             }
                         }
                         ast::TypeImplItem(_) => {}
+                        ast::MacImplItem(_) => panic!("unexpanded macro")
                     }
                 }
             }
@@ -578,10 +579,10 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     // Overwrite so that we don't warn the trait method itself.
     fn visit_trait_item(&mut self, trait_method: &ast::TraitItem) {
         match trait_method.node {
-            ast::ProvidedMethod(ref method) => {
-                visit::walk_block(self, method.pe_body())
+            ast::MethodTraitItem(_, Some(ref body)) => {
+                visit::walk_block(self, body)
             }
-            ast::RequiredMethod(_) |
+            ast::MethodTraitItem(_, None) |
             ast::TypeTraitItem(..) => {}
         }
     }

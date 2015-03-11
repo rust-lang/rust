@@ -28,7 +28,6 @@ use syntax;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_util;
-use syntax::ast_util::PostExpansionMethod;
 use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
 use syntax::codemap;
@@ -949,10 +948,10 @@ pub struct Method {
     pub abi: abi::Abi
 }
 
-impl Clean<Method> for ast::Method {
+impl Clean<Method> for ast::MethodSig {
     fn clean(&self, cx: &DocContext) -> Method {
-        let all_inputs = &self.pe_sig().decl.inputs;
-        let inputs = match self.pe_sig().explicit_self.node {
+        let all_inputs = &self.decl.inputs;
+        let inputs = match self.explicit_self.node {
             ast::SelfStatic => &**all_inputs,
             _ => &all_inputs[1..]
         };
@@ -960,15 +959,15 @@ impl Clean<Method> for ast::Method {
             inputs: Arguments {
                 values: inputs.clean(cx),
             },
-            output: self.pe_sig().decl.output.clean(cx),
+            output: self.decl.output.clean(cx),
             attrs: Vec::new()
         };
         Method {
-            generics: self.pe_sig().generics.clean(cx),
-            self_: self.pe_sig().explicit_self.node.clean(cx),
-            unsafety: self.pe_sig().unsafety.clone(),
+            generics: self.generics.clean(cx),
+            self_: self.explicit_self.node.clean(cx),
+            unsafety: self.unsafety.clone(),
             decl: decl,
-            abi: self.pe_sig().abi
+            abi: self.abi
         }
     }
 }
@@ -1190,8 +1189,12 @@ impl Clean<PolyTrait> for ast::PolyTraitRef {
 impl Clean<Item> for ast::TraitItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
-            ast::ProvidedMethod(ref m) => MethodItem(m.clean(cx)),
-            ast::RequiredMethod(ref m) => TyMethodItem(m.clean(cx)),
+            ast::MethodTraitItem(ref sig, Some(_)) => {
+                MethodItem(sig.clean(cx))
+            }
+            ast::MethodTraitItem(ref sig, None) => {
+                TyMethodItem(sig.clean(cx))
+            }
             ast::TypeTraitItem(ref bounds, ref default) => {
                 AssociatedTypeItem(bounds.clean(cx), default.clean(cx))
             }
@@ -1211,7 +1214,9 @@ impl Clean<Item> for ast::TraitItem {
 impl Clean<Item> for ast::ImplItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
-            ast::MethodImplItem(ref m) => MethodItem(m.clean(cx)),
+            ast::MethodImplItem(ref sig, _) => {
+                MethodItem(sig.clean(cx))
+            }
             ast::TypeImplItem(ref ty) => TypedefItem(Typedef {
                 type_: ty.clean(cx),
                 generics: Generics {
@@ -1220,6 +1225,11 @@ impl Clean<Item> for ast::ImplItem {
                     where_predicates: Vec::new()
                 },
             }),
+            ast::MacImplItem(_) => {
+                MacroItem(Macro {
+                    source: self.span.to_src(cx),
+                })
+            }
         };
         Item {
             name: Some(self.ident.clean(cx)),
