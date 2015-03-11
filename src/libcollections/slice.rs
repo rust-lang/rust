@@ -99,6 +99,7 @@ use core::mem;
 use core::num::wrapping::WrappingOps;
 use core::ops::FnMut;
 use core::option::Option::{self, Some, None};
+#[cfg(stage0)]
 use core::ptr::PtrExt;
 use core::ptr;
 use core::result::Result;

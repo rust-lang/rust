@@ -20,6 +20,7 @@ use iter::Iterator;
 use marker::Sized;
 use ops::{Drop, FnOnce};
 use option::Option::{self, Some, None};
+#[cfg(stage0)]
 use ptr::PtrExt;
 use result::Result::{Ok, Err};
 use result;

@@ -49,6 +49,7 @@ use option::Option::{None, Some};
 use result::Result;
 use result::Result::{Ok, Err};
 use ptr;
+#[cfg(stage0)]
 use ptr::PtrExt;
 use mem;
 use mem::size_of;

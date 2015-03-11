@@ -26,6 +26,7 @@ use num::Int;
 use ops::FnOnce;
 use option::Option;
 use option::Option::{Some, None};
+#[cfg(stage0)]
 use ptr::PtrExt;
 use result::Result::{Ok, Err};
 #[cfg(stage0)]
