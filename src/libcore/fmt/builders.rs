@@ -72,7 +72,7 @@ pub fn debug_struct_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str)
 
 impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     /// Adds a new field to the generated struct output.
-    #[unstable(feature = "core", reason = "method was just created")]
+    #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn field(mut self, name: &str, value: &fmt::Debug) -> DebugStruct<'a, 'b> {
         self.result = self.result.and_then(|_| {
             let prefix = if self.has_fields {
@@ -95,7 +95,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
 
     /// Consumes the `DebugStruct`, finishing output and returning any error
     /// encountered.
-    #[unstable(feature = "core", reason = "method was just created")]
+    #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn finish(mut self) -> fmt::Result {
         if self.has_fields {
             self.result = self.result.and_then(|_| {
@@ -135,7 +135,7 @@ pub fn debug_tuple_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> D
 
 impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     /// Adds a new field to the generated tuple struct output.
-    #[unstable(feature = "core", reason = "method was just created")]
+    #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn field(mut self, value: &fmt::Debug) -> DebugTuple<'a, 'b> {
         self.result = self.result.and_then(|_| {
             let (prefix, space) = if self.has_fields {
@@ -158,7 +158,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
 
     /// Consumes the `DebugTuple`, finishing output and returning any error
     /// encountered.
-    #[unstable(feature = "core", reason = "method was just created")]
+    #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn finish(mut self) -> fmt::Result {
         if self.has_fields {
             self.result = self.result.and_then(|_| {
@@ -198,7 +198,7 @@ pub fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> Deb
 
 impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// Adds a new entry to the set output.
-    #[unstable(feature = "core", reason = "method was just created")]
+    #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn entry(mut self, entry: &fmt::Debug) -> DebugSet<'a, 'b> {
         self.result = self.result.and_then(|_| {
             let prefix = if self.has_fields {
@@ -221,8 +221,8 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
 
     /// Consumes the `DebugSet`, finishing output and returning any error
     /// encountered.
-    #[unstable(feature = "core", reason = "method was just created")]
-    pub fn finish(mut self) -> fmt::Result {
+    #[unstable(feature = "debug_builders", reason = "method was just created")]
+    pub fn finish(self) -> fmt::Result {
         self.result.and_then(|_| {
             let end = match (self.has_fields, self.is_pretty()) {
                 (false, _) => "}",
@@ -259,7 +259,7 @@ pub fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> Deb
 
 impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// Adds a new entry to the map output.
-    #[unstable(feature = "core", reason = "method was just created")]
+    #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn entry(mut self, key: &fmt::Debug, value: &fmt::Debug) -> DebugMap<'a, 'b> {
         self.result = self.result.and_then(|_| {
             let prefix = if self.has_fields {
@@ -283,8 +283,8 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 
     /// Consumes the `DebugMap`, finishing output and returning any error
     /// encountered.
-    #[unstable(feature = "core", reason = "method was just created")]
-    pub fn finish(mut self) -> fmt::Result {
+    #[unstable(feature = "debug_builders", reason = "method was just created")]
+    pub fn finish(self) -> fmt::Result {
         self.result.and_then(|_| {
             let end = match (self.has_fields, self.is_pretty()) {
                 (false, _) => "}",
