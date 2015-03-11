@@ -11,7 +11,7 @@
 #![deny(warnings)]
 #![allow(unused_imports)]
 
-enum Foo { A }
+pub enum Foo { A }
 mod bar {
     pub fn normal(x: ::Foo) {
         use Foo::A;

@@ -178,7 +178,7 @@ pub struct Rcx<'a, 'tcx: 'a> {
 
 }
 
-struct RepeatingScope(ast::NodeId);
+pub struct RepeatingScope(ast::NodeId);
 pub enum SubjectNode { Subject(ast::NodeId), None }
 
 impl<'a, 'tcx> Rcx<'a, 'tcx> {
