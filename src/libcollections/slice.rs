@@ -120,6 +120,7 @@ pub use core::slice::{from_raw_buf, from_raw_mut_buf};
 // Basic slice extension methods
 ////////////////////////////////////////////////////////////////////////////////
 
+#[cfg(stage0)]
 /// Allocating extension methods for slices.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait SliceExt {
@@ -795,6 +796,7 @@ pub trait SliceExt {
     fn into_vec(self: Box<Self>) -> Vec<Self::Item>;
 }
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> SliceExt for [T] {
     type Item = T;
@@ -1072,6 +1074,836 @@ impl<T> SliceExt for [T] {
     }
 
     fn into_vec(mut self: Box<Self>) -> Vec<T> {
+        unsafe {
+            let xs = Vec::from_raw_parts(self.as_mut_ptr(), self.len(), self.len());
+            mem::forget(self);
+            xs
+        }
+    }
+}
+
+#[cfg(not(stage0))]
+/// Allocating extension methods for slices.
+#[lang = "slice"]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> [T] {
+    /// Sorts the slice, in place, using `compare` to compare
+    /// elements.
+    ///
+    /// This sort is `O(n log n)` worst-case and stable, but allocates
+    /// approximately `2 * n`, where `n` is the length of `self`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut v = [5, 4, 1, 3, 2];
+    /// v.sort_by(|a, b| a.cmp(b));
+    /// assert!(v == [1, 2, 3, 4, 5]);
+    ///
+    /// // reverse sorting
+    /// v.sort_by(|a, b| b.cmp(a));
+    /// assert!(v == [5, 4, 3, 2, 1]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn sort_by<F>(&mut self, compare: F) where F: FnMut(&T, &T) -> Ordering {
+        merge_sort(self, compare)
+    }
+
+    /// Consumes `src` and moves as many elements as it can into `self`
+    /// from the range [start,end).
+    ///
+    /// Returns the number of elements copied (the shorter of `self.len()`
+    /// and `end - start`).
+    ///
+    /// # Arguments
+    ///
+    /// * src - A mutable vector of `T`
+    /// * start - The index into `src` to start copying from
+    /// * end - The index into `src` to stop copying from
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut a = [1, 2, 3, 4, 5];
+    /// let b = vec![6, 7, 8];
+    /// let num_moved = a.move_from(b, 0, 3);
+    /// assert_eq!(num_moved, 3);
+    /// assert!(a == [6, 7, 8, 4, 5]);
+    /// ```
+    #[unstable(feature = "collections",
+               reason = "uncertain about this API approach")]
+    #[inline]
+    pub fn move_from(&mut self, mut src: Vec<T>, start: usize, end: usize) -> usize {
+        for (a, b) in self.iter_mut().zip(src[start .. end].iter_mut()) {
+            mem::swap(a, b);
+        }
+        cmp::min(self.len(), end-start)
+    }
+
+    /// Deprecated: use `&s[start .. end]` notation instead.
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &s[start .. end] instead")]
+    #[inline]
+    pub fn slice(&self, start: usize, end: usize) -> &[T] {
+        &self[start .. end]
+    }
+
+    /// Deprecated: use `&s[start..]` notation instead.
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &s[start..] instead")]
+    #[inline]
+    pub fn slice_from(&self, start: usize) -> &[T] {
+        &self[start ..]
+    }
+
+    /// Deprecated: use `&s[..end]` notation instead.
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &s[..end] instead")]
+    #[inline]
+    pub fn slice_to(&self, end: usize) -> &[T] {
+        &self[.. end]
+    }
+
+    /// Divides one slice into two at an index.
+    ///
+    /// The first will contain all indices from `[0, mid)` (excluding
+    /// the index `mid` itself) and the second will contain all
+    /// indices from `[mid, len)` (excluding the index `len` itself).
+    ///
+    /// Panics if `mid > len`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30, 20, 50];
+    /// let (v1, v2) = v.split_at(2);
+    /// assert_eq!([10, 40], v1);
+    /// assert_eq!([30, 20, 50], v2);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn split_at(&self, mid: usize) -> (&[T], &[T]) {
+        core_slice::SliceExt::split_at(self, mid)
+    }
+
+    /// Returns an iterator over the slice.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn iter(&self) -> Iter<T> {
+        core_slice::SliceExt::iter(self)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`.  The matched element is not contained in the subslices.
+    ///
+    /// # Examples
+    ///
+    /// Print the slice split by numbers divisible by 3 (i.e. `[10, 40]`,
+    /// `[20]`, `[50]`):
+    ///
+    /// ```
+    /// let v = [10, 40, 30, 20, 60, 50];
+    /// for group in v.split(|num| *num % 3 == 0) {
+    ///     println!("{:?}", group);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn split<F>(&self, pred: F) -> Split<T, F> where F: FnMut(&T) -> bool {
+        core_slice::SliceExt::split(self, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`, limited to splitting at most `n` times.  The matched element is
+    /// not contained in the subslices.
+    ///
+    /// # Examples
+    ///
+    /// Print the slice split once by numbers divisible by 3 (i.e. `[10, 40]`,
+    /// `[20, 60, 50]`):
+    ///
+    /// ```
+    /// let v = [10, 40, 30, 20, 60, 50];
+    /// for group in v.splitn(1, |num| *num % 3 == 0) {
+    ///     println!("{:?}", group);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn splitn<F>(&self, n: usize, pred: F) -> SplitN<T, F> where F: FnMut(&T) -> bool {
+        core_slice::SliceExt::splitn(self, n, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred` limited to splitting at most `n` times. This starts at the end of
+    /// the slice and works backwards.  The matched element is not contained in
+    /// the subslices.
+    ///
+    /// # Examples
+    ///
+    /// Print the slice split once, starting from the end, by numbers divisible
+    /// by 3 (i.e. `[50]`, `[10, 40, 30, 20]`):
+    ///
+    /// ```
+    /// let v = [10, 40, 30, 20, 60, 50];
+    /// for group in v.rsplitn(1, |num| *num % 3 == 0) {
+    ///     println!("{:?}", group);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn rsplitn<F>(&self, n: usize, pred: F) -> RSplitN<T, F> where F: FnMut(&T) -> bool {
+        core_slice::SliceExt::rsplitn(self, n, pred)
+    }
+
+    /// Returns an iterator over all contiguous windows of length
+    /// `size`. The windows overlap. If the slice is shorter than
+    /// `size`, the iterator returns no values.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `size` is 0.
+    ///
+    /// # Example
+    ///
+    /// Print the adjacent pairs of a slice (i.e. `[1,2]`, `[2,3]`,
+    /// `[3,4]`):
+    ///
+    /// ```rust
+    /// let v = &[1, 2, 3, 4];
+    /// for win in v.windows(2) {
+    ///     println!("{:?}", win);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn windows(&self, size: usize) -> Windows<T> {
+        core_slice::SliceExt::windows(self, size)
+    }
+
+    /// Returns an iterator over `size` elements of the slice at a
+    /// time. The chunks do not overlap. If `size` does not divide the
+    /// length of the slice, then the last chunk will not have length
+    /// `size`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `size` is 0.
+    ///
+    /// # Example
+    ///
+    /// Print the slice two elements at a time (i.e. `[1,2]`,
+    /// `[3,4]`, `[5]`):
+    ///
+    /// ```rust
+    /// let v = &[1, 2, 3, 4, 5];
+    /// for win in v.chunks(2) {
+    ///     println!("{:?}", win);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn chunks(&self, size: usize) -> Chunks<T> {
+        core_slice::SliceExt::chunks(self, size)
+    }
+
+    /// Returns the element of a slice at the given index, or `None` if the
+    /// index is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert_eq!(Some(&40), v.get(1));
+    /// assert_eq!(None, v.get(3));
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn get(&self, index: usize) -> Option<&T> {
+        core_slice::SliceExt::get(self, index)
+    }
+
+    /// Returns the first element of a slice, or `None` if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert_eq!(Some(&10), v.first());
+    ///
+    /// let w: &[i32] = &[];
+    /// assert_eq!(None, w.first());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn first(&self) -> Option<&T> {
+        core_slice::SliceExt::first(self)
+    }
+
+    /// Returns all but the first element of a slice.
+    #[unstable(feature = "collections", reason = "likely to be renamed")]
+    #[inline]
+    pub fn tail(&self) -> &[T] {
+        core_slice::SliceExt::tail(self)
+    }
+
+    /// Returns all but the last element of a slice.
+    #[unstable(feature = "collections", reason = "likely to be renamed")]
+    #[inline]
+    pub fn init(&self) -> &[T] {
+        core_slice::SliceExt::init(self)
+    }
+
+    /// Returns the last element of a slice, or `None` if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert_eq!(Some(&30), v.last());
+    ///
+    /// let w: &[i32] = &[];
+    /// assert_eq!(None, w.last());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn last(&self) -> Option<&T> {
+        core_slice::SliceExt::last(self)
+    }
+
+    /// Returns a pointer to the element at the given index, without doing
+    /// bounds checking.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub unsafe fn get_unchecked(&self, index: usize) -> &T {
+        core_slice::SliceExt::get_unchecked(self, index)
+    }
+
+    /// Returns an unsafe pointer to the slice's buffer
+    ///
+    /// The caller must ensure that the slice outlives the pointer this
+    /// function returns, or else it will end up pointing to garbage.
+    ///
+    /// Modifying the slice may cause its buffer to be reallocated, which
+    /// would also make any pointers to it invalid.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn as_ptr(&self) -> *const T {
+        core_slice::SliceExt::as_ptr(self)
+    }
+
+    /// Binary search a sorted slice with a comparator function.
+    ///
+    /// The comparator function should implement an order consistent
+    /// with the sort order of the underlying slice, returning an
+    /// order code that indicates whether its argument is `Less`,
+    /// `Equal` or `Greater` the desired target.
+    ///
+    /// If a matching value is found then returns `Ok`, containing
+    /// the index for the matched element; if no match is found then
+    /// `Err` is returned, containing the index where a matching
+    /// element could be inserted while maintaining sorted order.
+    ///
+    /// # Example
+    ///
+    /// Looks up a series of four elements. The first is found, with a
+    /// uniquely determined position; the second and third are not
+    /// found; the fourth could match any position in `[1,4]`.
+    ///
+    /// ```rust
+    /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    /// let s = s.as_slice();
+    ///
+    /// let seek = 13;
+    /// assert_eq!(s.binary_search_by(|probe| probe.cmp(&seek)), Ok(9));
+    /// let seek = 4;
+    /// assert_eq!(s.binary_search_by(|probe| probe.cmp(&seek)), Err(7));
+    /// let seek = 100;
+    /// assert_eq!(s.binary_search_by(|probe| probe.cmp(&seek)), Err(13));
+    /// let seek = 1;
+    /// let r = s.binary_search_by(|probe| probe.cmp(&seek));
+    /// assert!(match r { Ok(1...4) => true, _ => false, });
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn binary_search_by<F>(&self, f: F) -> Result<usize, usize> where F: FnMut(&T) -> Ordering {
+        core_slice::SliceExt::binary_search_by(self, f)
+    }
+
+    /// Return the number of elements in the slice
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    /// assert_eq!(a.len(), 3);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn len(&self) -> usize {
+        core_slice::SliceExt::len(self)
+    }
+
+    /// Returns true if the slice has a length of 0
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// let a = [1, 2, 3];
+    /// assert!(!a.is_empty());
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        core_slice::SliceExt::is_empty(self)
+    }
+
+    /// Returns a mutable reference to the element at the given index,
+    /// or `None` if the index is out of bounds
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn get_mut(&mut self, index: usize) -> Option<&mut T> {
+        core_slice::SliceExt::get_mut(self, index)
+    }
+
+    /// Work with `self` as a mut slice.
+    /// Primarily intended for getting a &mut [T] from a [T; N].
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        core_slice::SliceExt::as_mut_slice(self)
+    }
+
+    /// Deprecated: use `&mut s[start .. end]` instead.
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &mut s[start .. end] instead")]
+    #[inline]
+    pub fn slice_mut(&mut self, start: usize, end: usize) -> &mut [T] {
+        &mut self[start .. end]
+    }
+
+    /// Deprecated: use `&mut s[start ..]` instead.
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &mut s[start ..] instead")]
+    #[inline]
+    pub fn slice_from_mut(&mut self, start: usize) -> &mut [T] {
+        &mut self[start ..]
+    }
+
+    /// Deprecated: use `&mut s[.. end]` instead.
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &mut s[.. end] instead")]
+    #[inline]
+    pub fn slice_to_mut(&mut self, end: usize) -> &mut [T] {
+        &mut self[.. end]
+    }
+
+    /// Returns an iterator that allows modifying each value
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn iter_mut(&mut self) -> IterMut<T> {
+        core_slice::SliceExt::iter_mut(self)
+    }
+
+    /// Returns a mutable pointer to the first element of a slice, or `None` if it is empty
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn first_mut(&mut self) -> Option<&mut T> {
+        core_slice::SliceExt::first_mut(self)
+    }
+
+    /// Returns all but the first element of a mutable slice
+    #[unstable(feature = "collections",
+               reason = "likely to be renamed or removed")]
+    #[inline]
+    pub fn tail_mut(&mut self) -> &mut [T] {
+        core_slice::SliceExt::tail_mut(self)
+    }
+
+    /// Returns all but the last element of a mutable slice
+    #[unstable(feature = "collections",
+               reason = "likely to be renamed or removed")]
+    #[inline]
+    pub fn init_mut(&mut self) -> &mut [T] {
+        core_slice::SliceExt::init_mut(self)
+    }
+
+    /// Returns a mutable pointer to the last item in the slice.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn last_mut(&mut self) -> Option<&mut T> {
+        core_slice::SliceExt::last_mut(self)
+    }
+
+    /// Returns an iterator over mutable subslices separated by elements that
+    /// match `pred`.  The matched element is not contained in the subslices.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn split_mut<F>(&mut self, pred: F) -> SplitMut<T, F> where F: FnMut(&T) -> bool {
+        core_slice::SliceExt::split_mut(self, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`, limited to splitting at most `n` times.  The matched element is
+    /// not contained in the subslices.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn splitn_mut<F>(&mut self, n: usize, pred: F) -> SplitNMut<T, F>
+                         where F: FnMut(&T) -> bool {
+        core_slice::SliceExt::splitn_mut(self, n, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred` limited to splitting at most `n` times. This starts at the end of
+    /// the slice and works backwards.  The matched element is not contained in
+    /// the subslices.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn rsplitn_mut<F>(&mut self,  n: usize, pred: F) -> RSplitNMut<T, F>
+                      where F: FnMut(&T) -> bool {
+        core_slice::SliceExt::rsplitn_mut(self, n, pred)
+    }
+
+    /// Returns an iterator over `chunk_size` elements of the slice at a time.
+    /// The chunks are mutable and do not overlap. If `chunk_size` does
+    /// not divide the length of the slice, then the last chunk will not
+    /// have length `chunk_size`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `chunk_size` is 0.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
+        core_slice::SliceExt::chunks_mut(self, chunk_size)
+    }
+
+    /// Swaps two elements in a slice.
+    ///
+    /// # Arguments
+    ///
+    /// * a - The index of the first element
+    /// * b - The index of the second element
+    ///
+    /// # Panics
+    ///
+    /// Panics if `a` or `b` are out of bounds.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = ["a", "b", "c", "d"];
+    /// v.swap(1, 3);
+    /// assert!(v == ["a", "d", "c", "b"]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn swap(&mut self, a: usize, b: usize) {
+        core_slice::SliceExt::swap(self, a, b)
+    }
+
+    /// Divides one `&mut` into two at an index.
+    ///
+    /// The first will contain all indices from `[0, mid)` (excluding
+    /// the index `mid` itself) and the second will contain all
+    /// indices from `[mid, len)` (excluding the index `len` itself).
+    ///
+    /// # Panics
+    ///
+    /// Panics if `mid > len`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = [1, 2, 3, 4, 5, 6];
+    ///
+    /// // scoped to restrict the lifetime of the borrows
+    /// {
+    ///    let (left, right) = v.split_at_mut(0);
+    ///    assert!(left == []);
+    ///    assert!(right == [1, 2, 3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_at_mut(2);
+    ///     assert!(left == [1, 2]);
+    ///     assert!(right == [3, 4, 5, 6]);
+    /// }
+    ///
+    /// {
+    ///     let (left, right) = v.split_at_mut(6);
+    ///     assert!(left == [1, 2, 3, 4, 5, 6]);
+    ///     assert!(right == []);
+    /// }
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
+        core_slice::SliceExt::split_at_mut(self, mid)
+    }
+
+    /// Reverse the order of elements in a slice, in place.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut v = [1, 2, 3];
+    /// v.reverse();
+    /// assert!(v == [3, 2, 1]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn reverse(&mut self) {
+        core_slice::SliceExt::reverse(self)
+    }
+
+    /// Returns an unsafe mutable pointer to the element in index
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
+        core_slice::SliceExt::get_unchecked_mut(self, index)
+    }
+
+    /// Return an unsafe mutable pointer to the slice's buffer.
+    ///
+    /// The caller must ensure that the slice outlives the pointer this
+    /// function returns, or else it will end up pointing to garbage.
+    ///
+    /// Modifying the slice may cause its buffer to be reallocated, which
+    /// would also make any pointers to it invalid.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn as_mut_ptr(&mut self) -> *mut T {
+        core_slice::SliceExt::as_mut_ptr(self)
+    }
+
+    /// Copies `self` into a new `Vec`.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn to_vec(&self) -> Vec<T> where T: Clone {
+        let mut vector = Vec::with_capacity(self.len());
+        vector.push_all(self);
+        vector
+    }
+
+    /// Creates an iterator that yields every possible permutation of the
+    /// vector in succession.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let v = [1, 2, 3];
+    /// let mut perms = v.permutations();
+    ///
+    /// for p in perms {
+    ///   println!("{:?}", p);
+    /// }
+    /// ```
+    ///
+    /// Iterating through permutations one by one.
+    ///
+    /// ```rust
+    /// let v = [1, 2, 3];
+    /// let mut perms = v.permutations();
+    ///
+    /// assert_eq!(Some(vec![1, 2, 3]), perms.next());
+    /// assert_eq!(Some(vec![1, 3, 2]), perms.next());
+    /// assert_eq!(Some(vec![3, 1, 2]), perms.next());
+    /// ```
+    #[unstable(feature = "collections")]
+    pub fn permutations(&self) -> Permutations<T> where T: Clone {
+        Permutations{
+            swaps: ElementSwaps::new(self.len()),
+            v: self.to_vec(),
+        }
+    }
+
+    /// Copies as many elements from `src` as it can into `self` (the
+    /// shorter of `self.len()` and `src.len()`). Returns the number
+    /// of elements copied.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let mut dst = [0, 0, 0];
+    /// let src = [1, 2];
+    ///
+    /// assert!(dst.clone_from_slice(&src) == 2);
+    /// assert!(dst == [1, 2, 0]);
+    ///
+    /// let src2 = [3, 4, 5, 6];
+    /// assert!(dst.clone_from_slice(&src2) == 3);
+    /// assert!(dst == [3, 4, 5]);
+    /// ```
+    #[unstable(feature = "collections")]
+    pub fn clone_from_slice(&mut self, src: &[T]) -> usize where T: Clone {
+        core_slice::SliceExt::clone_from_slice(self, src)
+    }
+
+    /// Sorts the slice, in place.
+    ///
+    /// This is equivalent to `self.sort_by(|a, b| a.cmp(b))`.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// let mut v = [-5, 4, 1, -3, 2];
+    ///
+    /// v.sort();
+    /// assert!(v == [-5, -3, 1, 2, 4]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn sort(&mut self) where T: Ord {
+        self.sort_by(|a, b| a.cmp(b))
+    }
+
+    /// Binary search a sorted slice for a given element.
+    ///
+    /// If the value is found then `Ok` is returned, containing the
+    /// index of the matching element; if the value is not found then
+    /// `Err` is returned, containing the index where a matching
+    /// element could be inserted while maintaining sorted order.
+    ///
+    /// # Example
+    ///
+    /// Looks up a series of four elements. The first is found, with a
+    /// uniquely determined position; the second and third are not
+    /// found; the fourth could match any position in `[1,4]`.
+    ///
+    /// ```rust
+    /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
+    /// let s = s.as_slice();
+    ///
+    /// assert_eq!(s.binary_search(&13),  Ok(9));
+    /// assert_eq!(s.binary_search(&4),   Err(7));
+    /// assert_eq!(s.binary_search(&100), Err(13));
+    /// let r = s.binary_search(&1);
+    /// assert!(match r { Ok(1...4) => true, _ => false, });
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn binary_search(&self, x: &T) -> Result<usize, usize> where T: Ord {
+        core_slice::SliceExt::binary_search(self, x)
+    }
+
+    /// Deprecated: use `binary_search` instead.
+    #[unstable(feature = "collections")]
+    #[deprecated(since = "1.0.0", reason = "use binary_search instead")]
+    pub fn binary_search_elem(&self, x: &T) -> Result<usize, usize> where T: Ord {
+        self.binary_search(x)
+    }
+
+    /// Mutates the slice to the next lexicographic permutation.
+    ///
+    /// Returns `true` if successful and `false` if the slice is at the
+    /// last-ordered permutation.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: &mut [_] = &mut [0, 1, 2];
+    /// v.next_permutation();
+    /// let b: &mut [_] = &mut [0, 2, 1];
+    /// assert!(v == b);
+    /// v.next_permutation();
+    /// let b: &mut [_] = &mut [1, 0, 2];
+    /// assert!(v == b);
+    /// ```
+    #[unstable(feature = "collections",
+               reason = "uncertain if this merits inclusion in std")]
+    pub fn next_permutation(&mut self) -> bool where T: Ord {
+        core_slice::SliceExt::next_permutation(self)
+    }
+
+    /// Mutates the slice to the previous lexicographic permutation.
+    ///
+    /// Returns `true` if successful and `false` if the slice is at the
+    /// first-ordered permutation.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let v: &mut [_] = &mut [1, 0, 2];
+    /// v.prev_permutation();
+    /// let b: &mut [_] = &mut [0, 2, 1];
+    /// assert!(v == b);
+    /// v.prev_permutation();
+    /// let b: &mut [_] = &mut [0, 1, 2];
+    /// assert!(v == b);
+    /// ```
+    #[unstable(feature = "collections",
+               reason = "uncertain if this merits inclusion in std")]
+    pub fn prev_permutation(&mut self) -> bool where T: Ord {
+        core_slice::SliceExt::prev_permutation(self)
+    }
+
+    /// Find the first index containing a matching value.
+    #[unstable(feature = "collections")]
+    pub fn position_elem(&self, t: &T) -> Option<usize> where T: PartialEq {
+        core_slice::SliceExt::position_elem(self, t)
+    }
+
+    /// Find the last index containing a matching value.
+    #[unstable(feature = "collections")]
+    pub fn rposition_elem(&self, t: &T) -> Option<usize> where T: PartialEq {
+        core_slice::SliceExt::rposition_elem(self, t)
+    }
+
+    /// Returns true if the slice contains an element with the given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert!(v.contains(&30));
+    /// assert!(!v.contains(&50));
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn contains(&self, x: &T) -> bool where T: PartialEq {
+        core_slice::SliceExt::contains(self, x)
+    }
+
+    /// Returns true if `needle` is a prefix of the slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert!(v.starts_with(&[10]));
+    /// assert!(v.starts_with(&[10, 40]));
+    /// assert!(!v.starts_with(&[50]));
+    /// assert!(!v.starts_with(&[10, 50]));
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn starts_with(&self, needle: &[T]) -> bool where T: PartialEq {
+        core_slice::SliceExt::starts_with(self, needle)
+    }
+
+    /// Returns true if `needle` is a suffix of the slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert!(v.ends_with(&[30]));
+    /// assert!(v.ends_with(&[40, 30]));
+    /// assert!(!v.ends_with(&[50]));
+    /// assert!(!v.ends_with(&[50, 30]));
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn ends_with(&self, needle: &[T]) -> bool where T: PartialEq {
+        core_slice::SliceExt::ends_with(self, needle)
+    }
+
+    /// Convert `self` into a vector without clones or allocation.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn into_vec(mut self: Box<Self>) -> Vec<T> {
         unsafe {
             let xs = Vec::from_raw_parts(self.as_mut_ptr(), self.len(), self.len());
             mem::forget(self);

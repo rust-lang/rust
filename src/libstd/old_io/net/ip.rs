@@ -26,6 +26,7 @@ use ops::{FnOnce, FnMut};
 use option::Option;
 use option::Option::{None, Some};
 use result::Result::{self, Ok, Err};
+#[cfg(stage0)]
 use slice::SliceExt;
 #[cfg(stage0)]
 use str::{FromStr, StrExt};

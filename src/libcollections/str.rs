@@ -72,6 +72,7 @@ use unicode::str::{UnicodeStr, Utf16Encoder};
 
 use vec_deque::VecDeque;
 use borrow::{Borrow, ToOwned};
+#[cfg(stage0)]
 use slice::SliceExt;
 use string::String;
 use unicode;

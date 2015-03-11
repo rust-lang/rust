@@ -268,6 +268,7 @@ use boxed::Box;
 use result::Result;
 use result::Result::{Ok, Err};
 use sys;
+#[cfg(stage0)]
 use slice::SliceExt;
 #[cfg(stage0)]
 use str::StrExt;

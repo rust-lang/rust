@@ -1282,7 +1282,11 @@ pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
 
 #[unstable(feature = "collections")]
 impl<T:Clone> Clone for Vec<T> {
+    #[cfg(stage0)]
     fn clone(&self) -> Vec<T> { ::slice::SliceExt::to_vec(&**self) }
+
+    #[cfg(not(stage0))]
+    fn clone(&self) -> Vec<T> { <[T]>::to_vec(&**self) }
 
     fn clone_from(&mut self, other: &Vec<T>) {
         // drop anything in self that will not be overwritten

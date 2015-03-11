@@ -22,7 +22,10 @@ use old_io;
 use ops::Deref;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
+#[cfg(stage0)]
 use slice::{self, SliceExt};
+#[cfg(not(stage0))]
+use slice;
 #[cfg(stage0)]
 use str::StrExt;
 use string::String;

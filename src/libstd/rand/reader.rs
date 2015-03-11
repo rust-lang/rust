@@ -13,6 +13,7 @@
 use old_io::Reader;
 use rand::Rng;
 use result::Result::{Ok, Err};
+#[cfg(stage0)]
 use slice::SliceExt;
 
 /// An RNG that reads random bytes straight from a `Reader`. This will
