@@ -28,7 +28,10 @@ use mem;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
 use slice::{SliceExt, SliceConcatExt};
+#[cfg(stage0)]
 use str::{SplitTerminator, FromStr, StrExt};
+#[cfg(not(stage0))]
+use str::{SplitTerminator, FromStr};
 use string::{String, ToString};
 use vec::Vec;
 

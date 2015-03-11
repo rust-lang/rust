@@ -27,6 +27,7 @@
 #![feature(box_syntax)]
 #![feature(box_patterns)]
 #![feature(core)]
+#![feature(lang_items)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
@@ -162,7 +163,10 @@ mod prelude {
 
     // in core and collections (may differ).
     pub use slice::{AsSlice, SliceExt};
+    #[cfg(stage0)]
     pub use str::{Str, StrExt};
+    #[cfg(not(stage0))]
+    pub use str::Str;
 
     // from other crates.
     pub use alloc::boxed::Box;

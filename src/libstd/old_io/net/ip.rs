@@ -27,7 +27,10 @@ use option::Option;
 use option::Option::{None, Some};
 use result::Result::{self, Ok, Err};
 use slice::SliceExt;
+#[cfg(stage0)]
 use str::{FromStr, StrExt};
+#[cfg(not(stage0))]
+use str::FromStr;
 use vec::Vec;
 
 pub type Port = u16;

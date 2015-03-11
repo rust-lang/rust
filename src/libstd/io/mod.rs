@@ -25,7 +25,10 @@ use result::Result::{Ok, Err};
 use result;
 use slice::{self, SliceExt};
 use string::String;
+#[cfg(stage0)]
 use str::{self, StrExt};
+#[cfg(not(stage0))]
+use str;
 use vec::Vec;
 
 pub use self::buffered::{BufReader, BufWriter, BufStream, LineWriter};

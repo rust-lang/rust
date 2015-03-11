@@ -72,6 +72,7 @@ use iter::IteratorExt;
 use option::Option;
 use option::Option::{None, Some};
 use str;
+#[cfg(stage0)]
 use str::StrExt;
 use string::{String, CowString};
 use slice::SliceExt;

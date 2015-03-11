@@ -24,6 +24,7 @@ use num::{self, Int, Float, ToPrimitive};
 use num::FpCategory as Fp;
 use ops::FnMut;
 use slice::SliceExt;
+#[cfg(stage0)]
 use str::StrExt;
 use string::String;
 use vec::Vec;

@@ -269,6 +269,7 @@ use result::Result;
 use result::Result::{Ok, Err};
 use sys;
 use slice::SliceExt;
+#[cfg(stage0)]
 use str::StrExt;
 use str;
 use string::String;
