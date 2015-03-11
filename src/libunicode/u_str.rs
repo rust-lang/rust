@@ -26,6 +26,7 @@ use core::num::Int;
 use core::slice;
 use core::str::Split;
 
+#[cfg(stage0)]
 use char::CharExt as UCharExt; // conflicts with core::prelude::CharExt
 use tables::grapheme::GraphemeCat;
 

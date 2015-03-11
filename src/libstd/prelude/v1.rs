@@ -25,6 +25,7 @@
 // Reexported types and traits
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use boxed::Box;
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use char::CharExt;
 #[stable(feature = "rust1", since = "1.0.0")]

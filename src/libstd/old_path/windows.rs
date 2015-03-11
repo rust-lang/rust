@@ -15,6 +15,7 @@
 use self::PathPrefix::*;
 
 use ascii::AsciiExt;
+#[cfg(stage0)]
 use char::CharExt;
 use clone::Clone;
 use cmp::{Ordering, Eq, Ord, PartialEq, PartialOrd};
