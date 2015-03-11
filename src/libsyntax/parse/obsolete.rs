@@ -24,8 +24,6 @@ use ptr::P;
 pub enum ObsoleteSyntax {
     Sized,
     ForSized,
-    ProcType,
-    ProcExpr,
     ClosureType,
     ClosureKind,
     EmptyIndex,
@@ -55,16 +53,6 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
                 "for Sized?",
                 "no longer required. Traits (and their `Self` type) do not have the `Sized` bound \
                  by default",
-                true,
-            ),
-            ObsoleteSyntax::ProcType => (
-                "the `proc` type",
-                "use unboxed closures instead",
-                true,
-            ),
-            ObsoleteSyntax::ProcExpr => (
-                "`proc` expression",
-                "use a `move ||` expression instead",
                 true,
             ),
             ObsoleteSyntax::ClosureType => (
