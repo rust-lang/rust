@@ -548,7 +548,7 @@ mod test {
         let mut w = BufferedWriter::with_capacity(3, Vec::new());
         w.write_all(&[0, 1]).unwrap();
         let a: &[_] = &[];
-        assert_eq!(a, &w.get_ref()[..]);
+        assert_eq!(&w.get_ref()[..], a);
         let w = w.into_inner();
         let a: &[_] = &[0, 1];
         assert_eq!(a, &w[..]);
