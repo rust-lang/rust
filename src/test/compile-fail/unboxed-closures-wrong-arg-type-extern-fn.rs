@@ -28,11 +28,15 @@ fn a() {
 }
 
 fn b() {
-    let y = call_it_mut(&mut square, 22); //~ ERROR not implemented
+    let y = call_it_mut(&mut square, 22);
+    //~^ ERROR not implemented
+    //~| ERROR not implemented
 }
 
 fn c() {
-    let z = call_it_once(square, 22); //~ ERROR not implemented
+    let z = call_it_once(square, 22);
+    //~^ ERROR not implemented
+    //~| ERROR not implemented
 }
 
 fn main() { }
