@@ -457,30 +457,25 @@ owner. Rust detects this and gives us the error: we claim that
 `numbers` has ownership, but our code tries to make three owners. This
 may cause a safety problem, so Rust disallows it.
 
-What to do here? Rust has two types that helps us: `Arc<T>` and `Mutex<T>`.
-*Arc* stands for "atomically reference counted". In other words, an Arc will
-keep track of the number of references to something, and not free the
-associated resource until the count is zero. The *atomic* portion refers to an
-Arc's usage of concurrency primitives to atomically update the count, making it
-safe across threads. If we use an Arc, we can have our three references. But,
-an Arc does not allow mutable borrows of the data it holds, and we want to
-modify what we're sharing. In this case, we can use a `Mutex<T>` inside of our
-Arc. A Mutex will synchronize our accesses, so that we can ensure that our
-mutation doesn't cause a data race.
+What to do here? Rust has a type that helps us: `Mutex<T>`. Because the threads
+are scoped, it is possible to use an _immutable_ reference to `numbers` inside
+of the closure. However, Rust prevents us from having multiple _mutable_
+references to the same object, so we need a `Mutex` to be able to modify what
+we're sharing. A Mutex will synchronize our accesses, so that we can ensure
+that our mutation doesn't cause a data race.
 
-Here's what using an Arc with a Mutex looks like:
+Here's what using a Mutex looks like:
 
 ```{rust}
 use std::thread;
-use std::sync::{Arc,Mutex};
+use std::sync::Mutex;
 
 fn main() {
-    let numbers = Arc::new(Mutex::new(vec![1, 2, 3]));
+    let numbers = &Mutex::new(vec![1, 2, 3]);
 
     let guards: Vec<_> = (0..3).map(|i| {
-        let number = numbers.clone();
         thread::scoped(move || {
-            let mut array = number.lock().unwrap();
+            let mut array = numbers.lock().unwrap();
             array[i] += 1;
             println!("numbers[{}] is {}", i, array[i]);
         })
@@ -489,12 +484,9 @@ fn main() {
 ```
 
 We first have to `use` the appropriate library, and then we wrap our vector in
-an Arc with the call to `Arc::new()`. Inside of the loop, we make a new
-reference to the Arc with the `clone()` method. This will increment the
-reference count. When each new `numbers` variable binding goes out of scope, it
-will decrement the count. The `lock()` call will return us a reference to the
-value inside the Mutex, and block any other calls to `lock()` until said
-reference goes out of scope.
+a `Mutex` with the call to `Mutex::new()`. Inside of the loop, the `lock()`
+call will return us a reference to the value inside the Mutex, and block any
+other calls to `lock()` until said reference goes out of scope.
 
 We can compile and run this program without error, and in fact, see the
 non-deterministic aspect:
