@@ -44,11 +44,14 @@
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(io)]
+#![feature(libc)]
+#![feature(set_panic)]
 
 extern crate getopts;
 extern crate serialize;
 extern crate "serialize" as rustc_serialize;
 extern crate term;
+extern crate libc;
 
 pub use self::TestFn::*;
 pub use self::ColorConfig::*;
@@ -70,14 +73,13 @@ use std::collections::BTreeMap;
 use std::env;
 use std::fmt;
 use std::fs::File;
-use std::io::{self, Write};
+use std::io::prelude::*;
+use std::io;
 use std::iter::repeat;
 use std::num::{Float, Int};
-use std::old_io::stdio::StdWriter;
-use std::old_io::{ChanReader, ChanWriter};
-use std::old_io;
 use std::path::{PathBuf};
 use std::sync::mpsc::{channel, Sender};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::thunk::{Thunk, Invoke};
 use std::time::Duration;
@@ -451,23 +453,15 @@ struct ConsoleTestState<T> {
     max_name_len: uint, // number of columns to fill when aligning names
 }
 
-fn new2old(new: io::Error) -> old_io::IoError {
-    old_io::IoError {
-        kind: old_io::OtherIoError,
-        desc: "other error",
-        detail: Some(new.to_string()),
-    }
-}
-
-impl<T: Writer> ConsoleTestState<T> {
+impl<T: Write> ConsoleTestState<T> {
     pub fn new(opts: &TestOpts,
-               _: Option<T>) -> old_io::IoResult<ConsoleTestState<StdWriter>> {
+               _: Option<T>) -> io::Result<ConsoleTestState<io::Stdout>> {
         let log_out = match opts.logfile {
-            Some(ref path) => Some(try!(File::create(path).map_err(new2old))),
+            Some(ref path) => Some(try!(File::create(path))),
             None => None
         };
         let out = match term::stdout() {
-            None => Raw(old_io::stdio::stdout_raw()),
+            None => Raw(io::stdout()),
             Some(t) => Pretty(t)
         };
 
@@ -486,29 +480,29 @@ impl<T: Writer> ConsoleTestState<T> {
         })
     }
 
-    pub fn write_ok(&mut self) -> old_io::IoResult<()> {
+    pub fn write_ok(&mut self) -> io::Result<()> {
         self.write_pretty("ok", term::color::GREEN)
     }
 
-    pub fn write_failed(&mut self) -> old_io::IoResult<()> {
+    pub fn write_failed(&mut self) -> io::Result<()> {
         self.write_pretty("FAILED", term::color::RED)
     }
 
-    pub fn write_ignored(&mut self) -> old_io::IoResult<()> {
+    pub fn write_ignored(&mut self) -> io::Result<()> {
         self.write_pretty("ignored", term::color::YELLOW)
     }
 
-    pub fn write_metric(&mut self) -> old_io::IoResult<()> {
+    pub fn write_metric(&mut self) -> io::Result<()> {
         self.write_pretty("metric", term::color::CYAN)
     }
 
-    pub fn write_bench(&mut self) -> old_io::IoResult<()> {
+    pub fn write_bench(&mut self) -> io::Result<()> {
         self.write_pretty("bench", term::color::CYAN)
     }
 
     pub fn write_pretty(&mut self,
                         word: &str,
-                        color: term::color::Color) -> old_io::IoResult<()> {
+                        color: term::color::Color) -> io::Result<()> {
         match self.out {
             Pretty(ref mut term) => {
                 if self.use_color {
@@ -527,7 +521,7 @@ impl<T: Writer> ConsoleTestState<T> {
         }
     }
 
-    pub fn write_plain(&mut self, s: &str) -> old_io::IoResult<()> {
+    pub fn write_plain(&mut self, s: &str) -> io::Result<()> {
         match self.out {
             Pretty(ref mut term) => {
                 try!(term.write_all(s.as_bytes()));
@@ -540,19 +534,19 @@ impl<T: Writer> ConsoleTestState<T> {
         }
     }
 
-    pub fn write_run_start(&mut self, len: uint) -> old_io::IoResult<()> {
+    pub fn write_run_start(&mut self, len: uint) -> io::Result<()> {
         self.total = len;
         let noun = if len != 1 { "tests" } else { "test" };
         self.write_plain(&format!("\nrunning {} {}\n", len, noun))
     }
 
     pub fn write_test_start(&mut self, test: &TestDesc,
-                            align: NamePadding) -> old_io::IoResult<()> {
+                            align: NamePadding) -> io::Result<()> {
         let name = test.padded_name(self.max_name_len, align);
         self.write_plain(&format!("test {} ... ", name))
     }
 
-    pub fn write_result(&mut self, result: &TestResult) -> old_io::IoResult<()> {
+    pub fn write_result(&mut self, result: &TestResult) -> io::Result<()> {
         try!(match *result {
             TrOk => self.write_ok(),
             TrFailed => self.write_failed(),
@@ -589,7 +583,7 @@ impl<T: Writer> ConsoleTestState<T> {
         }
     }
 
-    pub fn write_failures(&mut self) -> old_io::IoResult<()> {
+    pub fn write_failures(&mut self) -> io::Result<()> {
         try!(self.write_plain("\nfailures:\n"));
         let mut failures = Vec::new();
         let mut fail_out = String::new();
@@ -615,7 +609,7 @@ impl<T: Writer> ConsoleTestState<T> {
         Ok(())
     }
 
-    pub fn write_run_finish(&mut self) -> old_io::IoResult<bool> {
+    pub fn write_run_finish(&mut self) -> io::Result<bool> {
         assert!(self.passed + self.failed + self.ignored + self.measured == self.total);
 
         let success = self.failed == 0;
@@ -651,15 +645,15 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
 }
 
 // A simple console test runner
-pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> old_io::IoResult<bool> {
+pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::Result<bool> {
 
-    fn callback<T: Writer>(event: &TestEvent,
-                           st: &mut ConsoleTestState<T>) -> old_io::IoResult<()> {
+    fn callback<T: Write>(event: &TestEvent,
+                          st: &mut ConsoleTestState<T>) -> io::Result<()> {
         match (*event).clone() {
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
             TeWait(ref test, padding) => st.write_test_start(test, padding),
             TeResult(test, result, stdout) => {
-                try!(st.write_log(&test, &result).map_err(new2old));
+                try!(st.write_log(&test, &result));
                 try!(st.write_result(&result));
                 match result {
                     TrOk => st.passed += 1,
@@ -693,7 +687,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> old_io:
         }
     }
 
-    let mut st = try!(ConsoleTestState::new(opts, None::<StdWriter>));
+    let mut st = try!(ConsoleTestState::new(opts, None::<io::Stdout>));
     fn len_if_padded(t: &TestDescAndFn) -> uint {
         match t.testfn.padding() {
             PadNone => 0,
@@ -752,9 +746,28 @@ fn should_sort_failures_before_printing_them() {
 
 fn use_color(opts: &TestOpts) -> bool {
     match opts.color {
-        AutoColor => get_concurrency() == 1 && old_io::stdout().get_ref().isatty(),
+        AutoColor => get_concurrency() == 1 && stdout_isatty(),
         AlwaysColor => true,
         NeverColor => false,
+    }
+}
+
+#[cfg(unix)]
+fn stdout_isatty() -> bool {
+    unsafe { libc::isatty(libc::STDOUT_FILENO) != 0 }
+}
+#[cfg(windows)]
+fn stdout_isatty() -> bool {
+    const STD_OUTPUT_HANDLE: libc::DWORD = -11;
+    extern "system" {
+        fn GetStdHandle(which: libc::DWORD) -> libc::HANDLE;
+        fn GetConsoleMode(hConsoleHandle: libc::HANDLE,
+                          lpMode: libc::LPDWORD) -> libc::BOOL;
+    }
+    unsafe {
+        let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+        let mut out = 0;
+        GetConsoleMode(handle, &mut out) != 0
     }
 }
 
@@ -770,8 +783,8 @@ pub type MonitorMsg = (TestDesc, TestResult, Vec<u8> );
 
 fn run_tests<F>(opts: &TestOpts,
                 tests: Vec<TestDescAndFn> ,
-                mut callback: F) -> old_io::IoResult<()> where
-    F: FnMut(TestEvent) -> old_io::IoResult<()>,
+                mut callback: F) -> io::Result<()> where
+    F: FnMut(TestEvent) -> io::Result<()>,
 {
     let filtered_tests = filter_tests(opts, tests);
     let filtered_descs = filtered_tests.iter()
@@ -895,29 +908,41 @@ pub fn run_test(opts: &TestOpts,
         return;
     }
 
+    #[allow(deprecated)] // set_stdout
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: Sender<MonitorMsg>,
                       nocapture: bool,
                       testfn: Thunk<'static>) {
+        struct Sink(Arc<Mutex<Vec<u8>>>);
+        impl Write for Sink {
+            fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+                Write::write(&mut *self.0.lock().unwrap(), data)
+            }
+            fn flush(&mut self) -> io::Result<()> { Ok(()) }
+        }
+        impl Writer for Sink {
+            fn write_all(&mut self, data: &[u8]) -> std::old_io::IoResult<()> {
+                Writer::write_all(&mut *self.0.lock().unwrap(), data)
+            }
+        }
+
         thread::spawn(move || {
-            let (tx, rx) = channel();
-            let mut reader = ChanReader::new(rx);
-            let stdout = ChanWriter::new(tx.clone());
-            let stderr = ChanWriter::new(tx);
-            let mut cfg = thread::Builder::new().name(match desc.name {
+            let data = Arc::new(Mutex::new(Vec::new()));
+            let data2 = data.clone();
+            let cfg = thread::Builder::new().name(match desc.name {
                 DynTestName(ref name) => name.clone().to_string(),
                 StaticTestName(name) => name.to_string(),
             });
-            if nocapture {
-                drop((stdout, stderr));
-            } else {
-                cfg = cfg.stdout(box stdout as Box<Writer + Send>);
-                cfg = cfg.stderr(box stderr as Box<Writer + Send>);
-            }
 
-            let result_guard = cfg.spawn(move || { testfn.invoke(()) }).unwrap();
-            let stdout = reader.read_to_end().unwrap().into_iter().collect();
+            let result_guard = cfg.spawn(move || {
+                if !nocapture {
+                    std::old_io::stdio::set_stdout(box Sink(data2.clone()));
+                    io::set_panic(box Sink(data2));
+                }
+                testfn.invoke(())
+            }).unwrap();
             let test_result = calc_result(&desc, result_guard.join());
+            let stdout = data.lock().unwrap().to_vec();
             monitor_ch.send((desc.clone(), test_result, stdout)).unwrap();
         });
     }

@@ -17,6 +17,7 @@ use io;
 use iter::IteratorExt;
 use libc;
 use mem;
+#[allow(deprecated)]
 use old_io;
 use ops::Deref;
 use option::Option::{self, Some, None};
@@ -298,6 +299,7 @@ impl FromError<NulError> for io::Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow(deprecated)]
 impl FromError<NulError> for old_io::IoError {
     fn from_error(_: NulError) -> old_io::IoError {
         old_io::IoError {

@@ -9,11 +9,8 @@
 // except according to those terms.
 
 use std::io;
-use std::old_io::fs;
-use std::old_io;
-#[allow(deprecated)]
-use std::old_path;
-use std::os;
+#[allow(deprecated)] use std::old_path;
+#[allow(deprecated)] use std::old_io;
 use std::path::{Path, PathBuf};
 
 /// Returns an absolute path in the filesystem that `path` points to. The
@@ -31,6 +28,8 @@ pub fn realpath(original: &Path) -> io::Result<PathBuf> {
 
 #[allow(deprecated)]
 fn old_realpath(original: &old_path::Path) -> old_io::IoResult<old_path::Path> {
+    use std::old_io::fs;
+    use std::os;
     const MAX_LINKS_FOLLOWED: usize = 256;
     let original = try!(os::getcwd()).join(original);
 

@@ -905,20 +905,6 @@ mod test {
     }
 
     #[test]
-    fn test_stdout() {
-        let (tx, rx) = channel();
-        let mut reader = ChanReader::new(rx);
-        let stdout = ChanWriter::new(tx);
-
-        Builder::new().stdout(box stdout as Box<Writer + Send>).scoped(move|| {
-            print!("Hello, world!");
-        }).unwrap().join();
-
-        let output = reader.read_to_string().unwrap();
-        assert_eq!(output, "Hello, world!".to_string());
-    }
-
-    #[test]
     fn test_park_timeout_unpark_before() {
         for _ in 0..10 {
             thread::current().unpark();

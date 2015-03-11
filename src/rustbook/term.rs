@@ -12,22 +12,23 @@
 //! verbosity support. For now, just a wrapper around stdout/stderr.
 
 use std::env;
-use std::old_io::stdio;
+use std::io;
+use std::io::prelude::*;
 
 pub struct Term {
-    err: Box<Writer + 'static>
+    err: Box<Write + 'static>
 }
 
 impl Term {
     pub fn new() -> Term {
         Term {
-            err: Box::new(stdio::stderr())
+            err: Box::new(io::stderr())
         }
     }
 
     pub fn err(&mut self, msg: &str) {
         // swallow any errors
-        let _ = self.err.write_line(msg);
+        let _ = writeln!(&mut self.err, "{}", msg);
         env::set_exit_status(101);
     }
 }

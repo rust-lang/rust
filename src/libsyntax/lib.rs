@@ -30,7 +30,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(int_uint)]
-#![feature(old_io)]
 #![feature(libc)]
 #![feature(old_path)]
 #![feature(quote, unsafe_destructor)]

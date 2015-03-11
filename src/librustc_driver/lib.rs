@@ -29,7 +29,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(int_uint)]
-#![feature(old_io)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -38,6 +37,7 @@
 #![feature(staged_api)]
 #![feature(exit_status)]
 #![feature(io)]
+#![feature(set_panic)]
 
 extern crate arena;
 extern crate flate;
@@ -74,10 +74,11 @@ use rustc::util::common::time;
 
 use std::cmp::Ordering::Equal;
 use std::env;
+use std::io::{self, Read, Write};
 use std::iter::repeat;
-use std::old_io::{self, stdio};
 use std::path::PathBuf;
-use std::sync::mpsc::channel;
+use std::str;
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 use rustc::session::early_error;
@@ -171,8 +172,8 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>)> {
     if free_matches.len() == 1 {
         let ifile = &free_matches[0][..];
         if ifile == "-" {
-            let contents = old_io::stdin().read_to_end().unwrap();
-            let src = String::from_utf8(contents).unwrap();
+            let mut src = String::new();
+            io::stdin().read_to_string(&mut src).unwrap();
             Some((Input::Str(src), None))
         } else {
             Some((Input::File(PathBuf::new(ifile)), Some(PathBuf::new(ifile))))
@@ -794,9 +795,16 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
 pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
     const STACK_SIZE: uint = 8 * 1024 * 1024; // 8MB
 
-    let (tx, rx) = channel();
-    let w = old_io::ChanWriter::new(tx);
-    let mut r = old_io::ChanReader::new(rx);
+    struct Sink(Arc<Mutex<Vec<u8>>>);
+    impl Write for Sink {
+        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+            Write::write(&mut *self.0.lock().unwrap(), data)
+        }
+        fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    }
+
+    let data = Arc::new(Mutex::new(Vec::new()));
+    let err = Sink(data.clone());
 
     let mut cfg = thread::Builder::new().name("rustc".to_string());
 
@@ -806,7 +814,7 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match cfg.spawn(move || { stdio::set_stderr(box w); f() }).unwrap().join() {
+    match cfg.spawn(move || { io::set_panic(box err); f() }).unwrap().join() {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic
@@ -833,22 +841,13 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
                     emitter.emit(None, &note[..], None, diagnostic::Note)
                 }
 
-                match r.read_to_string() {
-                    Ok(s) => println!("{}", s),
-                    Err(e) => {
-                        emitter.emit(None,
-                                     &format!("failed to read internal \
-                                              stderr: {}", e),
-                                     None,
-                                     diagnostic::Error)
-                    }
-                }
+                println!("{}", str::from_utf8(&data.lock().unwrap()).unwrap());
             }
 
             // Panic so the process returns a failure code, but don't pollute the
             // output with some unnecessary panic messages, we've already
             // printed everything that we needed to.
-            old_io::stdio::set_stderr(box old_io::util::NullWriter);
+            io::set_panic(box io::sink());
             panic!();
         }
     }

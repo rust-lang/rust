@@ -39,6 +39,8 @@ pub use self::error::{Result, Error, ErrorKind};
 pub use self::util::{copy, sink, Sink, empty, Empty, repeat, Repeat};
 pub use self::stdio::{stdin, stdout, stderr, Stdin, Stdout, Stderr};
 pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
+#[doc(no_inline, hidden)]
+pub use self::stdio::set_panic;
 
 #[macro_use] mod lazy;
 
@@ -930,18 +932,18 @@ mod tests {
     fn read_until() {
         let mut buf = Cursor::new(b"12");
         let mut v = Vec::new();
-        assert_eq!(buf.read_until(b'3', &mut v), Ok(()));
+        assert_eq!(buf.read_until(b'3', &mut v), Ok(2));
         assert_eq!(v, b"12");
 
         let mut buf = Cursor::new(b"1233");
         let mut v = Vec::new();
-        assert_eq!(buf.read_until(b'3', &mut v), Ok(()));
+        assert_eq!(buf.read_until(b'3', &mut v), Ok(3));
         assert_eq!(v, b"123");
         v.truncate(0);
-        assert_eq!(buf.read_until(b'3', &mut v), Ok(()));
+        assert_eq!(buf.read_until(b'3', &mut v), Ok(1));
         assert_eq!(v, b"3");
         v.truncate(0);
-        assert_eq!(buf.read_until(b'3', &mut v), Ok(()));
+        assert_eq!(buf.read_until(b'3', &mut v), Ok(0));
         assert_eq!(v, []);
     }
 
@@ -963,18 +965,18 @@ mod tests {
     fn read_line() {
         let mut buf = Cursor::new(b"12");
         let mut v = String::new();
-        assert_eq!(buf.read_line(&mut v), Ok(()));
+        assert_eq!(buf.read_line(&mut v), Ok(2));
         assert_eq!(v, "12");
 
         let mut buf = Cursor::new(b"12\n\n");
         let mut v = String::new();
-        assert_eq!(buf.read_line(&mut v), Ok(()));
+        assert_eq!(buf.read_line(&mut v), Ok(3));
         assert_eq!(v, "12\n");
         v.truncate(0);
-        assert_eq!(buf.read_line(&mut v), Ok(()));
+        assert_eq!(buf.read_line(&mut v), Ok(1));
         assert_eq!(v, "\n");
         v.truncate(0);
-        assert_eq!(buf.read_line(&mut v), Ok(()));
+        assert_eq!(buf.read_line(&mut v), Ok(0));
         assert_eq!(v, "");
     }
 
@@ -996,12 +998,12 @@ mod tests {
     fn read_to_end() {
         let mut c = Cursor::new(b"");
         let mut v = Vec::new();
-        assert_eq!(c.read_to_end(&mut v), Ok(()));
+        assert_eq!(c.read_to_end(&mut v), Ok(0));
         assert_eq!(v, []);
 
         let mut c = Cursor::new(b"1");
         let mut v = Vec::new();
-        assert_eq!(c.read_to_end(&mut v), Ok(()));
+        assert_eq!(c.read_to_end(&mut v), Ok(1));
         assert_eq!(v, b"1");
     }
 
@@ -1009,12 +1011,12 @@ mod tests {
     fn read_to_string() {
         let mut c = Cursor::new(b"");
         let mut v = String::new();
-        assert_eq!(c.read_to_string(&mut v), Ok(()));
+        assert_eq!(c.read_to_string(&mut v), Ok(0));
         assert_eq!(v, "");
 
         let mut c = Cursor::new(b"1");
         let mut v = String::new();
-        assert_eq!(c.read_to_string(&mut v), Ok(()));
+        assert_eq!(c.read_to_string(&mut v), Ok(1));
         assert_eq!(v, "1");
 
         let mut c = Cursor::new(b"\xff");

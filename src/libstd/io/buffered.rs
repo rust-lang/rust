@@ -159,6 +159,7 @@ impl<W: Write> BufWriter<W> {
                     break;
                 }
                 Ok(n) => written += n,
+                Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
                 Err(e) => { ret = Err(e); break }
 
             }

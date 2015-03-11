@@ -50,3 +50,13 @@ impl Stderr {
         return ret;
     }
 }
+
+// FIXME: right now this raw stderr handle is used in a few places because
+//        std::io::stderr_raw isn't exposed, but once that's exposed this impl
+//        should go away
+impl io::Write for Stderr {
+    fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+        Stderr::write(self, data)
+    }
+    fn flush(&mut self) -> io::Result<()> { Ok(()) }
+}

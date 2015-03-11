@@ -11,16 +11,14 @@
 // ignore-lexer-test FIXME #15677
 
 use prelude::v1::*;
+use io::prelude::*;
 
-use cmp;
 use env;
 use fmt;
 use intrinsics;
-use libc::{self, uintptr_t};
-use os;
-use slice;
-use str;
+use libc::uintptr_t;
 use sync::atomic::{self, Ordering};
+use sys::stdio::Stderr;
 
 /// Dynamically inquire about whether we're running under V.
 /// You should usually not use this unless your test definitely
@@ -62,7 +60,9 @@ pub fn min_stack() -> uint {
 
 /// Get's the number of scheduler threads requested by the environment
 /// either `RUST_THREADS` or `num_cpus`.
+#[allow(deprecated)]
 pub fn default_sched_threads() -> uint {
+    use os;
     match env::var("RUST_THREADS") {
         Ok(nstr) => {
             let opt_n: Option<uint> = nstr.parse().ok();
@@ -88,76 +88,17 @@ pub fn default_sched_threads() -> uint {
 pub const ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) ||
                                   cfg!(rtassert);
 
-pub struct Stdio(libc::c_int);
-
-#[allow(non_upper_case_globals)]
-pub const Stdout: Stdio = Stdio(libc::STDOUT_FILENO);
-#[allow(non_upper_case_globals)]
-pub const Stderr: Stdio = Stdio(libc::STDERR_FILENO);
-
-impl Stdio {
-    pub fn write_bytes(&mut self, data: &[u8]) {
-        #[cfg(unix)]
-        type WriteLen = libc::size_t;
-        #[cfg(windows)]
-        type WriteLen = libc::c_uint;
-        unsafe {
-            let Stdio(fd) = *self;
-            libc::write(fd,
-                        data.as_ptr() as *const libc::c_void,
-                        data.len() as WriteLen);
-        }
-    }
-}
-
-impl fmt::Write for Stdio {
-    fn write_str(&mut self, data: &str) -> fmt::Result {
-        self.write_bytes(data.as_bytes());
-        Ok(()) // yes, we're lying
-    }
-}
-
 pub fn dumb_print(args: fmt::Arguments) {
-    let _ = Stderr.write_fmt(args);
+    let _ = write!(&mut Stderr::new(), "{}", args);
 }
 
 pub fn abort(args: fmt::Arguments) -> ! {
-    use fmt::Write;
-
-    struct BufWriter<'a> {
-        buf: &'a mut [u8],
-        pos: uint,
-    }
-    impl<'a> fmt::Write for BufWriter<'a> {
-        fn write_str(&mut self, bytes: &str) -> fmt::Result {
-            let left = &mut self.buf[self.pos..];
-            let to_write = &bytes.as_bytes()[..cmp::min(bytes.len(), left.len())];
-            slice::bytes::copy_memory(left, to_write);
-            self.pos += to_write.len();
-            Ok(())
-        }
-    }
-
-    // Convert the arguments into a stack-allocated string
-    let mut msg = [0; 512];
-    let mut w = BufWriter { buf: &mut msg, pos: 0 };
-    let _ = write!(&mut w, "{}", args);
-    let msg = str::from_utf8(&w.buf[..w.pos]).unwrap_or("aborted");
-    let msg = if msg.is_empty() {"aborted"} else {msg};
-    rterrln!("fatal runtime error: {}", msg);
+    rterrln!("fatal runtime error: {}", args);
     unsafe { intrinsics::abort(); }
 }
 
 pub unsafe fn report_overflow() {
     use thread;
-
-    // See the message below for why this is not emitted to the
-    // ^ Where did the message below go?
-    // task's logger. This has the additional conundrum of the
-    // logger may not be initialized just yet, meaning that an FFI
-    // call would happen to initialized it (calling out to libuv),
-    // and the FFI call needs 2MB of stack when we just ran out.
-
     rterrln!("\nthread '{}' has overflowed its stack",
              thread::current().name().unwrap_or("<unknown>"));
 }

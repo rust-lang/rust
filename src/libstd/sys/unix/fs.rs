@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //! Blocking posix-based file I/O
+#![allow(deprecated)]
 
 #![allow(deprecated)] // this module itself is essentially deprecated
 

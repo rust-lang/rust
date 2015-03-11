@@ -38,10 +38,11 @@ use syntax::parse::token;
 use syntax::ptr::P;
 use syntax;
 
-use std::old_io::Seek;
+use std::cell::Cell;
+use std::io::SeekFrom;
+use std::io::prelude::*;
 use std::num::FromPrimitive;
 use std::rc::Rc;
-use std::cell::Cell;
 
 use rbml::reader;
 use rbml::writer::Encoder;
@@ -50,7 +51,7 @@ use serialize;
 use serialize::{Decodable, Decoder, DecoderHelpers, Encodable};
 use serialize::{EncoderHelpers};
 
-#[cfg(test)] use rbml::io::SeekableMemWriter;
+#[cfg(test)] use std::io::Cursor;
 #[cfg(test)] use syntax::parse;
 #[cfg(test)] use syntax::print::pprust;
 
@@ -85,7 +86,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
     };
     debug!("> Encoding inlined item: {} ({:?})",
            ecx.tcx.map.path_to_string(id),
-           rbml_w.writer.tell());
+           rbml_w.writer.seek(SeekFrom::Current(0)));
 
     // Folding could be avoided with a smarter encoder.
     let ii = simplify_ast(ii);
@@ -99,7 +100,7 @@ pub fn encode_inlined_item(ecx: &e::EncodeContext,
 
     debug!("< Encoded inlined fn: {} ({:?})",
            ecx.tcx.map.path_to_string(id),
-           rbml_w.writer.tell());
+           rbml_w.writer.seek(SeekFrom::Current(0)));
 }
 
 impl<'a, 'b, 'c, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'c, 'tcx> {
@@ -1974,7 +1975,7 @@ fn mk_ctxt() -> parse::ParseSess {
 #[cfg(test)]
 fn roundtrip(in_item: Option<P<ast::Item>>) {
     let in_item = in_item.unwrap();
-    let mut wr = SeekableMemWriter::new();
+    let mut wr = Cursor::new(Vec::new());
     encode_item_ast(&mut Encoder::new(&mut wr), &*in_item);
     let rbml_doc = rbml::Doc::new(wr.get_ref());
     let out_item = decode_item_ast(rbml_doc);

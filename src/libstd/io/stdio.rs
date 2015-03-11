@@ -346,3 +346,26 @@ impl<'a> Write for StderrLock<'a> {
     }
     fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
 }
+
+/// Resets the task-local stdout handle to the specified writer
+///
+/// This will replace the current task's stdout handle, returning the old
+/// handle. All future calls to `print` and friends will emit their output to
+/// this specified handle.
+///
+/// Note that this does not need to be called for all new tasks; the default
+/// output handle is to the process's stdout stream.
+#[unstable(feature = "set_panic",
+           reason = "this function may disappear completely or be replaced \
+                     with a more general mechanism")]
+#[doc(hidden)]
+pub fn set_panic(sink: Box<Write + Send>) -> Option<Box<Write + Send>> {
+    use panicking::LOCAL_STDERR;
+    use mem;
+    LOCAL_STDERR.with(move |slot| {
+        mem::replace(&mut *slot.borrow_mut(), Some(sink))
+    }).and_then(|mut s| {
+        let _ = s.flush();
+        Some(s)
+    })
+}
