@@ -78,16 +78,16 @@ Once you have this file in place, we should be ready to build! Try this:
 ```bash
 $ cargo build
    Compiling hello_world v0.0.1 (file:///home/yourname/projects/hello_world)
-$ ./target/hello_world
+$ ./target/debug/hello_world
 Hello, world!
 ```
 
 Bam! We build our project with `cargo build`, and run it with
-`./target/hello_world`. This hasn't bought us a whole lot over our simple use
+`./target/debug/hello_world`. This hasn't bought us a whole lot over our simple use
 of `rustc`, but think about the future: when our project has more than one
 file, we would need to call `rustc` more than once, and pass it a bunch of options to
 tell it to build everything together. With Cargo, as our project grows, we can
-just `cargo build` and it'll work the right way.
+just `cargo build` and it'll work the right way. When you're project is finally ready for release, you can use `cargo build --release` to compile your crates with optimizations.
 
 You'll also notice that Cargo has created a new file: `Cargo.lock`.
 
