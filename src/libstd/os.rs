@@ -25,6 +25,7 @@
 //! OS-ignorant code by default.
 
 #![unstable(feature = "os")]
+#![deprecated(since = "1.0.0", reason = "replaced with std::env APIs")]
 
 #![allow(missing_docs)]
 #![allow(non_snake_case)]

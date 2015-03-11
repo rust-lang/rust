@@ -13,13 +13,12 @@ use std::collections::{HashSet, HashMap};
 use std::dynamic_lib::DynamicLibrary;
 use std::env;
 use std::ffi::OsString;
-use std::old_io;
+use std::io::prelude::*;
 use std::io;
 use std::path::PathBuf;
 use std::process::Command;
 use std::str;
-use std::sync::mpsc::channel;
-use std::thread;
+use std::sync::{Arc, Mutex};
 use std::thunk::Thunk;
 
 use testing;
@@ -140,30 +139,29 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     // an explicit handle into rustc to collect output messages, but we also
     // want to catch the error message that rustc prints when it fails.
     //
-    // We take our task-local stderr (likely set by the test runner), and move
-    // it into another task. This helper task then acts as a sink for both the
-    // stderr of this task and stderr of rustc itself, copying all the info onto
-    // the stderr channel we originally started with.
+    // We take our task-local stderr (likely set by the test runner) and replace
+    // it with a sink that is also passed to rustc itself. When this function
+    // returns the output of the sink is copied onto the output of our own task.
     //
     // The basic idea is to not use a default_handler() for rustc, and then also
     // not print things by default to the actual stderr.
-    let (tx, rx) = channel();
-    let w1 = old_io::ChanWriter::new(tx);
-    let w2 = w1.clone();
-    let old = old_io::stdio::set_stderr(box w1);
-    thread::spawn(move || {
-        let mut p = old_io::ChanReader::new(rx);
-        let mut err = match old {
-            Some(old) => {
-                // Chop off the `Send` bound.
-                let old: Box<Writer> = old;
-                old
-            }
-            None => box old_io::stderr() as Box<Writer>,
-        };
-        old_io::util::copy(&mut p, &mut err).unwrap();
-    });
-    let emitter = diagnostic::EmitterWriter::new(box w2, None);
+    struct Sink(Arc<Mutex<Vec<u8>>>);
+    impl Write for Sink {
+        fn write(&mut self, data: &[u8]) -> io::Result<usize> {
+            Write::write(&mut *self.0.lock().unwrap(), data)
+        }
+        fn flush(&mut self) -> io::Result<()> { Ok(()) }
+    }
+    struct Bomb(Arc<Mutex<Vec<u8>>>, Box<Write+Send>);
+    impl Drop for Bomb {
+        fn drop(&mut self) {
+            let _ = self.1.write_all(&self.0.lock().unwrap());
+        }
+    }
+    let data = Arc::new(Mutex::new(Vec::new()));
+    let emitter = diagnostic::EmitterWriter::new(box Sink(data.clone()), None);
+    let old = io::set_panic(box Sink(data.clone()));
+    let _bomb = Bomb(data, old.unwrap_or(box io::stdout()));
 
     // Compile the code
     let codemap = CodeMap::new();

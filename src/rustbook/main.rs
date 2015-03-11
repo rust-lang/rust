@@ -12,8 +12,6 @@
 
 #![feature(core)]
 #![feature(exit_status)]
-#![feature(io)]
-#![feature(old_io)]
 #![feature(rustdoc)]
 #![feature(rustc_private)]
 

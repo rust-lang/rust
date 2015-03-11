@@ -12,7 +12,7 @@ use prelude::v1::*;
 
 use cell::UnsafeCell;
 use libc::{self, DWORD};
-use os;
+use sys::os;
 use sys::mutex::{self, Mutex};
 use sys::sync as ffi;
 use time::Duration;
@@ -46,7 +46,7 @@ impl Condvar {
                                                0);
         if r == 0 {
             const ERROR_TIMEOUT: DWORD = 0x5B4;
-            debug_assert_eq!(os::errno() as uint, ERROR_TIMEOUT as uint);
+            debug_assert_eq!(os::errno() as usize, ERROR_TIMEOUT as usize);
             false
         } else {
             true

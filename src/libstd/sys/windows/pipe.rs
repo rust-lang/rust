@@ -84,6 +84,8 @@
 //! the test suite passing (the suite is in libstd), and that's good enough for
 //! me!
 
+#![allow(deprecated)]
+
 use prelude::v1::*;
 
 use libc;

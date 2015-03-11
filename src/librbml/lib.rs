@@ -123,10 +123,9 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![feature(collections)]
+#![feature(io)]
 #![feature(core)]
 #![feature(int_uint)]
-#![feature(old_io)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 
@@ -142,8 +141,6 @@ pub use self::Error::*;
 
 use std::str;
 use std::fmt;
-
-pub mod io;
 
 /// Common data structures
 #[derive(Clone, Copy)]
@@ -228,7 +225,7 @@ pub enum Error {
     IntTooBig(uint),
     InvalidTag(uint),
     Expected(String),
-    IoError(std::old_io::IoError),
+    IoError(std::io::Error),
     ApplicationError(String)
 }
 
@@ -840,8 +837,8 @@ pub mod reader {
 pub mod writer {
     use std::mem;
     use std::num::Int;
-    use std::old_io::{Writer, Seek};
-    use std::old_io;
+    use std::io::prelude::*;
+    use std::io::{self, SeekFrom, Cursor};
     use std::slice::bytes;
     use std::num::ToPrimitive;
 
@@ -849,35 +846,31 @@ pub mod writer {
         EsU64, EsU32, EsU16, EsU8, EsI64, EsI32, EsI16, EsI8,
         EsBool, EsF64, EsF32, EsChar, EsStr, EsMapVal,
         EsOpaque, NUM_IMPLICIT_TAGS, NUM_TAGS };
-    use super::io::SeekableMemWriter;
 
     use serialize;
 
 
-    pub type EncodeResult = old_io::IoResult<()>;
+    pub type EncodeResult = io::Result<()>;
 
     // rbml writing
     pub struct Encoder<'a> {
-        pub writer: &'a mut SeekableMemWriter,
-        size_positions: Vec<uint>,
+        pub writer: &'a mut Cursor<Vec<u8>>,
+        size_positions: Vec<u64>,
         relax_limit: u64, // do not move encoded bytes before this position
     }
 
-    fn write_tag<W: Writer>(w: &mut W, n: uint) -> EncodeResult {
+    fn write_tag<W: Write>(w: &mut W, n: uint) -> EncodeResult {
         if n < 0xf0 {
             w.write_all(&[n as u8])
         } else if 0x100 <= n && n < NUM_TAGS {
             w.write_all(&[0xf0 | (n >> 8) as u8, n as u8])
         } else {
-            Err(old_io::IoError {
-                kind: old_io::OtherIoError,
-                desc: "invalid tag",
-                detail: Some(format!("{}", n))
-            })
+            Err(io::Error::new(io::ErrorKind::Other, "invalid tag",
+                               Some(n.to_string())))
         }
     }
 
-    fn write_sized_vuint<W: Writer>(w: &mut W, n: uint, size: uint) -> EncodeResult {
+    fn write_sized_vuint<W: Write>(w: &mut W, n: uint, size: uint) -> EncodeResult {
         match size {
             1 => w.write_all(&[0x80 | (n as u8)]),
             2 => w.write_all(&[0x40 | ((n >> 8) as u8), n as u8]),
@@ -885,28 +878,22 @@ pub mod writer {
                             n as u8]),
             4 => w.write_all(&[0x10 | ((n >> 24) as u8), (n >> 16) as u8,
                             (n >> 8) as u8, n as u8]),
-            _ => Err(old_io::IoError {
-                kind: old_io::OtherIoError,
-                desc: "int too big",
-                detail: Some(format!("{}", n))
-            })
+            _ => Err(io::Error::new(io::ErrorKind::Other,
+                                    "int too big", Some(n.to_string())))
         }
     }
 
-    fn write_vuint<W: Writer>(w: &mut W, n: uint) -> EncodeResult {
+    fn write_vuint<W: Write>(w: &mut W, n: uint) -> EncodeResult {
         if n < 0x7f { return write_sized_vuint(w, n, 1); }
         if n < 0x4000 { return write_sized_vuint(w, n, 2); }
         if n < 0x200000 { return write_sized_vuint(w, n, 3); }
         if n < 0x10000000 { return write_sized_vuint(w, n, 4); }
-        Err(old_io::IoError {
-            kind: old_io::OtherIoError,
-            desc: "int too big",
-            detail: Some(format!("{}", n))
-        })
+        Err(io::Error::new(io::ErrorKind::Other, "int too big",
+                           Some(n.to_string())))
     }
 
     impl<'a> Encoder<'a> {
-        pub fn new(w: &'a mut SeekableMemWriter) -> Encoder<'a> {
+        pub fn new(w: &'a mut Cursor<Vec<u8>>) -> Encoder<'a> {
             Encoder {
                 writer: w,
                 size_positions: vec!(),
@@ -931,24 +918,26 @@ pub mod writer {
             try!(write_tag(self.writer, tag_id));
 
             // Write a placeholder four-byte size.
-            self.size_positions.push(try!(self.writer.tell()) as uint);
+            let cur_pos = try!(self.writer.seek(SeekFrom::Current(0)));
+            self.size_positions.push(cur_pos);
             let zeroes: &[u8] = &[0, 0, 0, 0];
             self.writer.write_all(zeroes)
         }
 
         pub fn end_tag(&mut self) -> EncodeResult {
             let last_size_pos = self.size_positions.pop().unwrap();
-            let cur_pos = try!(self.writer.tell());
-            try!(self.writer.seek(last_size_pos as i64, old_io::SeekSet));
-            let size = cur_pos as uint - last_size_pos - 4;
+            let cur_pos = try!(self.writer.seek(SeekFrom::Current(0)));
+            try!(self.writer.seek(SeekFrom::Start(last_size_pos)));
+            let size = (cur_pos - last_size_pos - 4) as usize;
 
             // relax the size encoding for small tags (bigger tags are costly to move).
             // we should never try to move the stable positions, however.
             const RELAX_MAX_SIZE: uint = 0x100;
-            if size <= RELAX_MAX_SIZE && last_size_pos >= self.relax_limit as uint {
+            if size <= RELAX_MAX_SIZE && last_size_pos >= self.relax_limit {
                 // we can't alter the buffer in place, so have a temporary buffer
                 let mut buf = [0u8; RELAX_MAX_SIZE];
                 {
+                    let last_size_pos = last_size_pos as usize;
                     let data = &self.writer.get_ref()[last_size_pos+4..cur_pos as uint];
                     bytes::copy_memory(&mut buf, data);
                 }
@@ -959,7 +948,7 @@ pub mod writer {
             } else {
                 // overwrite the size with an overlong encoding and skip past the data
                 try!(write_sized_vuint(self.writer, size, 4));
-                try!(self.writer.seek(cur_pos as i64, old_io::SeekSet));
+                try!(self.writer.seek(SeekFrom::Start(cur_pos)));
             }
 
             debug!("End tag (size = {:?})", size);
@@ -1074,7 +1063,7 @@ pub mod writer {
         /// Returns the current position while marking it stable, i.e.
         /// generated bytes so far woundn't be affected by relaxation.
         pub fn mark_stable_position(&mut self) -> u64 {
-            let pos = self.writer.tell().unwrap();
+            let pos = self.writer.seek(SeekFrom::Current(0)).unwrap();
             if self.relax_limit < pos {
                 self.relax_limit = pos;
             }
@@ -1090,11 +1079,9 @@ pub mod writer {
             } else if let Some(v) = v.to_u32() {
                 self.wr_tagged_raw_u32(EsSub32 as uint, v)
             } else {
-                Err(old_io::IoError {
-                    kind: old_io::OtherIoError,
-                    desc: "length or variant id too big",
-                    detail: Some(format!("{}", v))
-                })
+                Err(io::Error::new(io::ErrorKind::Other,
+                                   "length or variant id too big",
+                                   Some(v.to_string())))
             }
         }
 
@@ -1108,7 +1095,7 @@ pub mod writer {
     }
 
     impl<'a> serialize::Encoder for Encoder<'a> {
-        type Error = old_io::IoError;
+        type Error = io::Error;
 
         fn emit_nil(&mut self) -> EncodeResult {
             Ok(())
@@ -1339,12 +1326,10 @@ pub mod writer {
 #[cfg(test)]
 mod tests {
     use super::{Doc, reader, writer};
-    use super::io::SeekableMemWriter;
 
     use serialize::{Encodable, Decodable};
 
-    use std::option::Option;
-    use std::option::Option::{None, Some};
+    use std::io::Cursor;
 
     #[test]
     fn test_vuint_at() {
@@ -1398,7 +1383,7 @@ mod tests {
     fn test_option_int() {
         fn test_v(v: Option<int>) {
             debug!("v == {:?}", v);
-            let mut wr = SeekableMemWriter::new();
+            let mut wr = Cursor::new(Vec::new());
             {
                 let mut rbml_w = writer::Encoder::new(&mut wr);
                 let _ = v.encode(&mut rbml_w);

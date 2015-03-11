@@ -20,6 +20,8 @@
 //! Other than that, the implementation is pretty straightforward in terms of
 //! the other two implementations of timers with nothing *that* new showing up.
 
+#![allow(deprecated)]
+
 use prelude::v1::*;
 use self::Req::*;
 

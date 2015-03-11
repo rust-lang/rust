@@ -60,10 +60,12 @@ pub type wrlen = libc::size_t;
 pub type msglen_t = libc::size_t;
 pub unsafe fn close_sock(sock: sock_t) { let _ = libc::close(sock); }
 
+#[allow(deprecated)]
 pub fn last_error() -> IoError {
     decode_error_detailed(os::errno() as i32)
 }
 
+#[allow(deprecated)]
 pub fn last_net_error() -> IoError {
     last_error()
 }
@@ -72,6 +74,7 @@ extern "system" {
     fn gai_strerror(errcode: libc::c_int) -> *const libc::c_char;
 }
 
+#[allow(deprecated)]
 pub fn last_gai_error(s: libc::c_int) -> IoError {
 
     let mut err = decode_error(s);
@@ -83,6 +86,7 @@ pub fn last_gai_error(s: libc::c_int) -> IoError {
 }
 
 /// Convert an `errno` value into a high-level error variant and description.
+#[allow(deprecated)]
 pub fn decode_error(errno: i32) -> IoError {
     // FIXME: this should probably be a bit more descriptive...
     let (kind, desc) = match errno {
@@ -119,12 +123,14 @@ pub fn decode_error(errno: i32) -> IoError {
     IoError { kind: kind, desc: desc, detail: None }
 }
 
+#[allow(deprecated)]
 pub fn decode_error_detailed(errno: i32) -> IoError {
     let mut err = decode_error(errno);
     err.detail = Some(os::error_string(errno));
     err
 }
 
+#[allow(deprecated)]
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno as libc::c_int {
         libc::ECONNREFUSED => ErrorKind::ConnectionRefused,
@@ -155,6 +161,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
 }
 
 #[inline]
+#[allow(deprecated)]
 pub fn retry<T, F> (mut f: F) -> T where
     T: SignedInt,
     F: FnMut() -> T,
@@ -194,11 +201,13 @@ pub fn ms_to_timeval(ms: u64) -> libc::timeval {
     }
 }
 
+#[allow(deprecated)]
 pub fn wouldblock() -> bool {
     let err = os::errno();
     err == libc::EWOULDBLOCK as i32 || err == libc::EAGAIN as i32
 }
 
+#[allow(deprecated)]
 pub fn set_nonblocking(fd: sock_t, nb: bool) {
     let set = nb as libc::c_int;
     mkerr_libc(retry(|| unsafe { c::ioctl(fd, c::FIONBIO, &set) })).unwrap();

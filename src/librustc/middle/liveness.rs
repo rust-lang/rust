@@ -118,9 +118,11 @@ use middle::ty::ClosureTyper;
 use lint;
 use util::nodemap::NodeMap;
 
-use std::{fmt, old_io, usize};
-use std::rc::Rc;
+use std::{fmt, usize};
+use std::io::prelude::*;
+use std::io;
 use std::iter::repeat;
+use std::rc::Rc;
 use syntax::ast::{self, NodeId, Expr};
 use syntax::codemap::{BytePos, original_sp, Span};
 use syntax::parse::token::{self, special_idents};
@@ -680,10 +682,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn write_vars<F>(&self,
-                     wr: &mut old_io::Writer,
+                     wr: &mut Write,
                      ln: LiveNode,
                      mut test: F)
-                     -> old_io::IoResult<()> where
+                     -> io::Result<()> where
         F: FnMut(usize) -> LiveNode,
     {
         let node_base_idx = self.idx(ln, Variable(0));
@@ -727,7 +729,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn ln_str(&self, ln: LiveNode) -> String {
         let mut wr = Vec::new();
         {
-            let wr = &mut wr as &mut old_io::Writer;
+            let wr = &mut wr as &mut Write;
             write!(wr, "[ln({:?}) of kind {:?} reads", ln.get(), self.ir.lnk(ln));
             self.write_vars(wr, ln, |idx| self.users[idx].reader);
             write!(wr, "  writes");

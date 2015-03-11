@@ -37,6 +37,7 @@ pub mod wtf8;
 
 // common error constructors
 
+#[allow(deprecated)]
 pub fn eof() -> IoError {
     IoError {
         kind: old_io::EndOfFile,
@@ -45,6 +46,7 @@ pub fn eof() -> IoError {
     }
 }
 
+#[allow(deprecated)]
 pub fn timeout(desc: &'static str) -> IoError {
     IoError {
         kind: old_io::TimedOut,
@@ -53,6 +55,7 @@ pub fn timeout(desc: &'static str) -> IoError {
     }
 }
 
+#[allow(deprecated)]
 pub fn short_write(n: uint, desc: &'static str) -> IoError {
     IoError {
         kind: if n == 0 { old_io::TimedOut } else { old_io::ShortWrite(n) },
@@ -61,6 +64,7 @@ pub fn short_write(n: uint, desc: &'static str) -> IoError {
     }
 }
 
+#[allow(deprecated)]
 pub fn unimpl() -> IoError {
     IoError {
         kind: old_io::IoUnavailable,
@@ -70,6 +74,7 @@ pub fn unimpl() -> IoError {
 }
 
 // unix has nonzero values as errors
+#[allow(deprecated)]
 pub fn mkerr_libc<T: Int>(ret: T) -> IoResult<()> {
     if ret != Int::zero() {
         Err(last_error())

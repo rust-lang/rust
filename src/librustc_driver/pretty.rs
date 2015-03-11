@@ -40,7 +40,6 @@ use graphviz as dot;
 
 use std::fs::File;
 use std::io::{self, Write};
-use std::old_io;
 use std::option;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -615,7 +614,7 @@ pub fn pretty_print_input(sess: Session,
             });
 
             let code = blocks::Code::from_node(node);
-            let out: &mut Writer = &mut out;
+            let out: &mut Write = &mut out;
             match code {
                 Some(code) => {
                     let variants = gather_flowgraph_variants(&sess);
@@ -654,11 +653,11 @@ pub fn pretty_print_input(sess: Session,
     }
 }
 
-fn print_flowgraph<W:old_io::Writer>(variants: Vec<borrowck_dot::Variant>,
-                                 analysis: ty::CrateAnalysis,
-                                 code: blocks::Code,
-                                 mode: PpFlowGraphMode,
-                                 mut out: W) -> io::Result<()> {
+fn print_flowgraph<W: Write>(variants: Vec<borrowck_dot::Variant>,
+                             analysis: ty::CrateAnalysis,
+                             code: blocks::Code,
+                             mode: PpFlowGraphMode,
+                             mut out: W) -> io::Result<()> {
     let ty_cx = &analysis.ty_cx;
     let cfg = match code {
         blocks::BlockCode(block) => cfg::CFG::new(ty_cx, &*block),
@@ -698,7 +697,7 @@ fn print_flowgraph<W:old_io::Writer>(variants: Vec<borrowck_dot::Variant>,
         }
     }
 
-    fn expand_err_details(r: old_io::IoResult<()>) -> io::Result<()> {
+    fn expand_err_details(r: io::Result<()>) -> io::Result<()> {
         r.map_err(|ioerr| {
             io::Error::new(io::ErrorKind::Other, "graphviz::render failed",
                            Some(ioerr.to_string()))

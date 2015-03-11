@@ -25,6 +25,7 @@ use net;
 use sys::os_str::Buf;
 use sys_common::{AsInner, FromInner, AsInnerMut};
 
+#[allow(deprecated)]
 use old_io;
 
 /// Raw HANDLEs.
@@ -52,6 +53,7 @@ impl AsRawHandle for fs::File {
     }
 }
 
+#[allow(deprecated)]
 impl AsRawHandle for old_io::pipe::PipeStream {
     fn as_raw_handle(&self) -> Handle {
         self.as_inner().handle()
