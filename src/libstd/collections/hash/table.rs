@@ -19,6 +19,7 @@ use iter::{Iterator, IteratorExt, ExactSizeIterator, count};
 use marker::{Copy, Send, Sync, Sized, self};
 use mem::{min_align_of, size_of};
 use mem;
+#[cfg(stage0)]
 use num::{Int, UnsignedInt};
 use num::wrapping::{OverflowingOps, WrappingOps};
 use ops::{Deref, DerefMut, Drop};

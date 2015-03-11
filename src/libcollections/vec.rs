@@ -59,6 +59,7 @@ use core::intrinsics::assume;
 use core::iter::{repeat, FromIterator, IntoIterator};
 use core::marker::PhantomData;
 use core::mem;
+#[cfg(stage0)]
 use core::num::{Int, UnsignedInt};
 use core::ops::{Index, IndexMut, Deref, Add};
 use core::ops;
