@@ -23,6 +23,7 @@ use hash::{Hash, SipHasher};
 use iter::{self, Iterator, ExactSizeIterator, IntoIterator, IteratorExt, FromIterator, Extend, Map};
 use marker::Sized;
 use mem::{self, replace};
+#[cfg(stage0)]
 use num::{Int, UnsignedInt};
 use ops::{Deref, FnMut, Index, IndexMut};
 use option::Option::{self, Some, None};
