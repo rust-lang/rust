@@ -10,8 +10,8 @@
 
 // Test that we generate obsolete syntax errors around usages of `proc`.
 
-fn foo(p: proc()) { } //~ ERROR: the `proc` type isn't used for the moment
+fn foo(p: proc()) { } //~ ERROR `proc` is a reserved keyword
 
-fn bar() { proc() 1; } //~ ERROR: `proc` expression isn't used for the moment
+fn bar() { proc() 1; }
 
 fn main() { }
