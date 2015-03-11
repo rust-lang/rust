@@ -166,7 +166,6 @@ mod prelude {
 
     // from other crates.
     pub use alloc::boxed::Box;
-    pub use unicode::char::CharExt;
 
     // from collections.
     pub use borrow::IntoCow;

@@ -251,6 +251,7 @@ pub use self::FileMode::*;
 pub use self::FileAccess::*;
 pub use self::IoErrorKind::*;
 
+#[cfg(stage0)]
 use char::CharExt;
 use default::Default;
 use error::Error;
