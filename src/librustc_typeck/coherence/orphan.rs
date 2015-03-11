@@ -16,6 +16,7 @@ use middle::ty;
 use syntax::ast::{Item, ItemImpl};
 use syntax::ast;
 use syntax::ast_util;
+use syntax::codemap::Span;
 use syntax::visit;
 use util::ppaux::{Repr, UserString};
 
@@ -35,6 +36,23 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                       "cannot associate methods with a type outside the \
                        crate the type is defined in; define and implement \
                        a trait or new type instead");
+        }
+    }
+
+    fn check_primitive_impl(&self,
+                            impl_def_id: ast::DefId,
+                            lang_def_id: Option<ast::DefId>,
+                            lang: &str,
+                            ty: &str,
+                            span: Span) {
+        match lang_def_id {
+            Some(lang_def_id) if lang_def_id == impl_def_id => { /* OK */ },
+            _ => {
+                self.tcx.sess.span_err(
+                    span,
+                    &format!("only a single inherent implementation marked with `#[lang = \"{}\"]` \
+                              is allowed for the `{}` primitive", lang, ty));
+            }
         }
     }
 
@@ -61,6 +79,125 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                     }
                     ty::ty_uniq(..) => {
                         self.check_def_id(item, self.tcx.lang_items.owned_box().unwrap());
+                    }
+                    ty::ty_char => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.char_impl(),
+                                                  "char",
+                                                  "char",
+                                                  item.span);
+                    }
+                    ty::ty_str => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.str_impl(),
+                                                  "str",
+                                                  "str",
+                                                  item.span);
+                    }
+                    ty::ty_vec(_, None) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.slice_impl(),
+                                                  "slice",
+                                                  "[T]",
+                                                  item.span);
+                    }
+                    ty::ty_ptr(ty::mt { ty: _, mutbl: ast::MutImmutable }) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.const_ptr_impl(),
+                                                  "const_ptr",
+                                                  "*const T",
+                                                  item.span);
+                    }
+                    ty::ty_ptr(ty::mt { ty: _, mutbl: ast::MutMutable }) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.mut_ptr_impl(),
+                                                  "mut_ptr",
+                                                  "*mut T",
+                                                  item.span);
+                    }
+                    ty::ty_int(ast::TyI8) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.i8_impl(),
+                                                  "i8",
+                                                  "i8",
+                                                  item.span);
+                    }
+                    ty::ty_int(ast::TyI16) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.i16_impl(),
+                                                  "i16",
+                                                  "i16",
+                                                  item.span);
+                    }
+                    ty::ty_int(ast::TyI32) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.i32_impl(),
+                                                  "i32",
+                                                  "i32",
+                                                  item.span);
+                    }
+                    ty::ty_int(ast::TyI64) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.i64_impl(),
+                                                  "i64",
+                                                  "i64",
+                                                  item.span);
+                    }
+                    ty::ty_int(ast::TyIs(_)) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.isize_impl(),
+                                                  "isize",
+                                                  "isize",
+                                                  item.span);
+                    }
+                    ty::ty_uint(ast::TyU8) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.u8_impl(),
+                                                  "u8",
+                                                  "u8",
+                                                  item.span);
+                    }
+                    ty::ty_uint(ast::TyU16) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.u16_impl(),
+                                                  "u16",
+                                                  "u16",
+                                                  item.span);
+                    }
+                    ty::ty_uint(ast::TyU32) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.u32_impl(),
+                                                  "u32",
+                                                  "u32",
+                                                  item.span);
+                    }
+                    ty::ty_uint(ast::TyU64) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.u64_impl(),
+                                                  "u64",
+                                                  "u64",
+                                                  item.span);
+                    }
+                    ty::ty_uint(ast::TyUs(_)) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.usize_impl(),
+                                                  "usize",
+                                                  "usize",
+                                                  item.span);
+                    }
+                    ty::ty_float(ast::TyF32) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.f32_impl(),
+                                                  "f32",
+                                                  "f32",
+                                                  item.span);
+                    }
+                    ty::ty_float(ast::TyF64) => {
+                        self.check_primitive_impl(def_id,
+                                                  self.tcx.lang_items.f64_impl(),
+                                                  "f64",
+                                                  "f64",
+                                                  item.span);
                     }
                     _ => {
                         span_err!(self.tcx.sess, item.span, E0118,
