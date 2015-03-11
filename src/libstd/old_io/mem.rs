@@ -398,7 +398,7 @@ impl<'a> Buffer for BufReader<'a> {
 mod test {
     extern crate "test" as test_crate;
     use old_io::{SeekSet, SeekCur, SeekEnd, Reader, Writer, Seek};
-    use prelude::v1::{Ok, Err, range,  Vec, Buffer,  AsSlice, SliceExt};
+    use prelude::v1::{Ok, Err, range,  Vec, Buffer,  AsSlice};
     use prelude::v1::IteratorExt;
     use old_io;
     use iter::repeat;

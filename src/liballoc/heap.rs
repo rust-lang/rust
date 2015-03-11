@@ -388,7 +388,6 @@ mod imp {
 mod test {
     extern crate test;
     use self::test::Bencher;
-    use core::ptr::PtrExt;
     use boxed::Box;
     use heap;
 
