@@ -13,8 +13,8 @@ use io::prelude::*;
 use os::unix::prelude::*;
 
 use ffi::{CString, CStr, OsString, AsOsStr, OsStr};
-use io::{self, Error, Seek, SeekFrom};
-use libc::{self, c_int, c_void, size_t, off_t, c_char, mode_t};
+use io::{self, Error, SeekFrom};
+use libc::{self, c_int, size_t, off_t, c_char, mode_t};
 use mem;
 use path::{Path, PathBuf};
 use ptr;
@@ -321,14 +321,6 @@ pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
 pub fn rmdir(p: &Path) -> io::Result<()> {
     let p = try!(cstr(p));
     try!(cvt(unsafe { libc::rmdir(p.as_ptr()) }));
-    Ok(())
-}
-
-pub fn chown(p: &Path, uid: isize, gid: isize) -> io::Result<()> {
-    let p = try!(cstr(p));
-    try!(cvt_r(|| unsafe {
-        libc::chown(p.as_ptr(), uid as libc::uid_t, gid as libc::gid_t)
-    }));
     Ok(())
 }
 

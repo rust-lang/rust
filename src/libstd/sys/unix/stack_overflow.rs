@@ -37,7 +37,6 @@ impl Drop for Handler {
           target_os = "bitrig",
           target_os = "openbsd"))]
 mod imp {
-    use core::prelude::*;
     use sys_common::stack;
 
     use super::Handler;

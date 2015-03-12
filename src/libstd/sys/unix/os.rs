@@ -10,6 +10,8 @@
 
 //! Implementation of `std::os` functionality for unix systems
 
+#![allow(unused_imports)] // lots of cfg code here
+
 use prelude::v1::*;
 use os::unix::*;
 
@@ -482,7 +484,7 @@ pub fn home_dir() -> Option<PathBuf> {
     #[cfg(not(any(target_os = "android",
                   target_os = "ios")))]
     unsafe fn fallback() -> Option<OsString> {
-        let mut amt = match libc::sysconf(c::_SC_GETPW_R_SIZE_MAX) {
+        let amt = match libc::sysconf(c::_SC_GETPW_R_SIZE_MAX) {
             n if n < 0 => 512 as usize,
             n => n as usize,
         };

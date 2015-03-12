@@ -58,11 +58,9 @@ mod inner {
         type Output = Duration;
 
         fn sub(self, other: &SteadyTime) -> Duration {
-            unsafe {
-                let info = info();
-                let diff = self.t as i64 - other.t as i64;
-                Duration::nanoseconds(diff * info.numer as i64 / info.denom as i64)
-            }
+            let info = info();
+            let diff = self.t as i64 - other.t as i64;
+            Duration::nanoseconds(diff * info.numer as i64 / info.denom as i64)
         }
     }
 }

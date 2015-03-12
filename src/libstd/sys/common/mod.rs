@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![allow(missing_docs)]
-#![allow(dead_code)]
 
 use old_io::{self, IoError, IoResult};
 use prelude::v1::*;
@@ -19,9 +18,10 @@ use num::Int;
 use old_path::BytesContainer;
 use collections;
 
+#[macro_use] pub mod helper_thread;
+
 pub mod backtrace;
 pub mod condvar;
-pub mod helper_thread;
 pub mod mutex;
 pub mod net;
 pub mod net2;
