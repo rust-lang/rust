@@ -76,7 +76,6 @@
 //!   iterators.
 //! * Further methods that return iterators are `.split()`, `.splitn()`,
 //!   `.chunks()`, `.windows()` and more.
-
 #![doc(primitive = "slice")]
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -85,7 +84,7 @@ use core::convert::AsRef;
 use core::clone::Clone;
 use core::cmp::Ordering::{self, Greater, Less};
 use core::cmp::{self, Ord, PartialEq};
-use core::iter::{Iterator, IteratorExt};
+use core::iter::Iterator;
 use core::iter::MultiplicativeIterator;
 use core::marker::Sized;
 use core::mem::size_of;
@@ -131,7 +130,7 @@ mod hack {
     use alloc::boxed::Box;
     use core::clone::Clone;
     #[cfg(test)]
-    use core::iter::{Iterator, IteratorExt};
+    use core::iter::Iterator;
     use core::mem;
     #[cfg(test)]
     use core::option::Option::{Some, None};

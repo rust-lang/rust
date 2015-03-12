@@ -15,7 +15,7 @@
 use cmp;
 use fmt;
 use old_io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
-use iter::{IteratorExt, ExactSizeIterator, repeat};
+use iter::{Iterator, ExactSizeIterator, repeat};
 use ops::Drop;
 use option::Option;
 use option::Option::{Some, None};

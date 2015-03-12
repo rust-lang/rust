@@ -18,9 +18,7 @@ use default::Default;
 use fmt::Debug;
 use fmt;
 use hash::Hash;
-use iter::{
-    Iterator, IntoIterator, ExactSizeIterator, IteratorExt, FromIterator, Map, Chain, Extend,
-};
+use iter::{Iterator, IntoIterator, ExactSizeIterator, FromIterator, Map, Chain, Extend};
 use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, self};
 

@@ -16,7 +16,7 @@ use cmp;
 use unicode::str as core_str;
 use error as std_error;
 use fmt;
-use iter::{self, Iterator, IteratorExt, Extend};
+use iter::{self, Iterator, Extend};
 use marker::Sized;
 use ops::{Drop, FnOnce};
 use option::Option::{self, Some, None};

@@ -21,7 +21,7 @@ use fmt;
 use hash;
 use old_io::Writer;
 use iter::{AdditiveIterator, Extend};
-use iter::{Iterator, IteratorExt, Map, repeat};
+use iter::{Iterator, Map, repeat};
 use mem;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
@@ -1126,7 +1126,7 @@ mod tests {
     use super::*;
 
     use clone::Clone;
-    use iter::IteratorExt;
+    use iter::Iterator;
     use option::Option::{self, Some, None};
     use old_path::GenericPath;
     use slice::AsSlice;
