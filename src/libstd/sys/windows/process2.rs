@@ -128,6 +128,7 @@ impl Process {
         use env::split_paths;
         use mem;
         use iter::IteratorExt;
+        #[cfg(stage0)]
         use str::StrExt;
 
         // To have the spawning semantics of unix/windows stay the same, we need to

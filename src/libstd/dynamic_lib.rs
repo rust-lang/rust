@@ -272,7 +272,9 @@ mod dl {
     use ptr;
     use result::Result;
     use result::Result::{Ok, Err};
+    #[cfg(stage0)]
     use slice::SliceExt;
+    #[cfg(stage0)]
     use str::StrExt;
     use str;
     use string::String;
