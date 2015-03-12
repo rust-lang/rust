@@ -56,11 +56,11 @@
 
 #![allow(non_camel_case_types)]
 #![unstable(feature = "thread_local_internals")]
+#![allow(dead_code)] // sys isn't exported yet
 
 use prelude::v1::*;
 
 use sync::atomic::{self, AtomicUsize, Ordering};
-use sync::{Mutex, Once, ONCE_INIT};
 
 use sys::thread_local as imp;
 
@@ -140,9 +140,6 @@ pub const INIT: StaticKey = StaticKey {
 pub const INIT_INNER: StaticKeyInner = StaticKeyInner {
     key: atomic::ATOMIC_USIZE_INIT,
 };
-
-static INIT_KEYS: Once = ONCE_INIT;
-static mut KEYS: *mut Mutex<Vec<imp::Key>> = 0 as *mut _;
 
 impl StaticKey {
     /// Gets the value associated with this TLS key

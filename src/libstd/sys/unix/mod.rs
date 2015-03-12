@@ -10,10 +10,6 @@
 
 #![allow(missing_docs)]
 #![allow(non_camel_case_types)]
-#![allow(unused_imports)]
-#![allow(dead_code)]
-#![allow(unused_unsafe)]
-#![allow(unused_mut)]
 
 use prelude::v1::*;
 
@@ -21,21 +17,9 @@ use ffi::CStr;
 use io::{self, ErrorKind};
 use libc;
 use num::{Int, SignedInt};
-use num;
-use old_io::{self, IoResult, IoError};
+use old_io::{self, IoError};
 use str;
 use sys_common::mkerr_libc;
-
-macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
-    static $name: Helper<$m> = Helper {
-        lock: ::sync::MUTEX_INIT,
-        cond: ::sync::CONDVAR_INIT,
-        chan: ::cell::UnsafeCell { value: 0 as *mut Sender<$m> },
-        signal: ::cell::UnsafeCell { value: 0 },
-        initialized: ::cell::UnsafeCell { value: false },
-        shutdown: ::cell::UnsafeCell { value: false },
-    };
-) }
 
 pub mod backtrace;
 pub mod c;

@@ -151,7 +151,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
     // I/O done here is blocking I/O, not green I/O, so we don't have to
     // worry about this being a native vs green mutex.
     static LOCK: StaticMutex = MUTEX_INIT;
-    let _g = unsafe { LOCK.lock() };
+    let _g = LOCK.lock();
 
     try!(writeln!(w, "stack backtrace:"));
 

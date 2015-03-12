@@ -70,7 +70,7 @@ impl Slice {
     }
 
     pub fn from_str(s: &str) -> &Slice {
-        unsafe { mem::transmute(s.as_bytes()) }
+        Slice::from_u8_slice(s.as_bytes())
     }
 
     pub fn to_str(&self) -> Option<&str> {
