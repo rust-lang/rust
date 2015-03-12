@@ -124,7 +124,7 @@ impl File {
     /// This function will return an error if `path` does not already exist.
     /// Other errors may also be returned according to `OpenOptions::open`.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn open<P: AsPath + ?Sized>(path: &P) -> io::Result<File> {
+    pub fn open<P: AsPath>(path: P) -> io::Result<File> {
         OpenOptions::new().read(true).open(path)
     }
 
@@ -135,7 +135,7 @@ impl File {
     ///
     /// See the `OpenOptions::open` function for more details.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn create<P: AsPath + ?Sized>(path: &P) -> io::Result<File> {
+    pub fn create<P: AsPath>(path: P) -> io::Result<File> {
         OpenOptions::new().write(true).create(true).truncate(true).open(path)
     }
 
@@ -297,7 +297,7 @@ impl OpenOptions {
     ///   permissions for
     /// * Filesystem-level errors (full disk, etc)
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn open<P: AsPath + ?Sized>(&self, path: &P) -> io::Result<File> {
+    pub fn open<P: AsPath>(&self, path: P) -> io::Result<File> {
         let path = path.as_path();
         let inner = try!(fs_imp::File::open(path, &self.0));
         Ok(File { path: path.to_path_buf(), inner: inner })
@@ -410,7 +410,7 @@ impl DirEntry {
 /// user lacks permissions to remove the file, or if some other filesystem-level
 /// error occurs.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn remove_file<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
+pub fn remove_file<P: AsPath>(path: P) -> io::Result<()> {
     fs_imp::unlink(path.as_path())
 }
 
@@ -438,7 +438,7 @@ pub fn remove_file<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
 /// permissions to perform a `metadata` call on the given `path` or if there
 /// is no entry in the filesystem at the provided path.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn metadata<P: AsPath + ?Sized>(path: &P) -> io::Result<Metadata> {
+pub fn metadata<P: AsPath>(path: P) -> io::Result<Metadata> {
     fs_imp::stat(path.as_path()).map(Metadata)
 }
 
@@ -459,8 +459,7 @@ pub fn metadata<P: AsPath + ?Sized>(path: &P) -> io::Result<Metadata> {
 /// reside on separate filesystems, or if some other intermittent I/O error
 /// occurs.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn rename<P: AsPath + ?Sized, Q: AsPath + ?Sized>(from: &P, to: &Q)
-                                                      -> io::Result<()> {
+pub fn rename<P: AsPath, Q: AsPath>(from: P, to: Q) -> io::Result<()> {
     fs_imp::rename(from.as_path(), to.as_path())
 }
 
@@ -490,9 +489,9 @@ pub fn rename<P: AsPath + ?Sized, Q: AsPath + ?Sized>(from: &P, to: &Q)
 /// * The current process does not have the permission rights to access
 ///   `from` or write `to`
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn copy<P: AsPath + ?Sized, Q: AsPath + ?Sized>(from: &P, to: &Q)
-                                                    -> io::Result<u64> {
+pub fn copy<P: AsPath, Q: AsPath>(from: P, to: Q) -> io::Result<u64> {
     let from = from.as_path();
+    let to = to.as_path();
     if !from.is_file() {
         return Err(Error::new(ErrorKind::MismatchedFileTypeForOperation,
                               "the source path is not an existing file",
@@ -513,8 +512,7 @@ pub fn copy<P: AsPath + ?Sized, Q: AsPath + ?Sized>(from: &P, to: &Q)
 /// The `dst` path will be a link pointing to the `src` path. Note that systems
 /// often require these two paths to both be located on the same filesystem.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn hard_link<P: AsPath + ?Sized, Q: AsPath + ?Sized>(src: &P, dst: &Q)
-                                                         -> io::Result<()> {
+pub fn hard_link<P: AsPath, Q: AsPath>(src: P, dst: Q) -> io::Result<()> {
     fs_imp::link(src.as_path(), dst.as_path())
 }
 
@@ -522,8 +520,7 @@ pub fn hard_link<P: AsPath + ?Sized, Q: AsPath + ?Sized>(src: &P, dst: &Q)
 ///
 /// The `dst` path will be a soft link pointing to the `src` path.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn soft_link<P: AsPath + ?Sized, Q: AsPath + ?Sized>(src: &P, dst: &Q)
-                                                         -> io::Result<()> {
+pub fn soft_link<P: AsPath, Q: AsPath>(src: P, dst: Q) -> io::Result<()> {
     fs_imp::symlink(src.as_path(), dst.as_path())
 }
 
@@ -535,7 +532,7 @@ pub fn soft_link<P: AsPath + ?Sized, Q: AsPath + ?Sized>(src: &P, dst: &Q)
 /// reading a file that does not exist or reading a file that is not a soft
 /// link.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn read_link<P: AsPath + ?Sized>(path: &P) -> io::Result<PathBuf> {
+pub fn read_link<P: AsPath>(path: P) -> io::Result<PathBuf> {
     fs_imp::readlink(path.as_path())
 }
 
@@ -554,7 +551,7 @@ pub fn read_link<P: AsPath + ?Sized>(path: &P) -> io::Result<PathBuf> {
 /// This function will return an error if the user lacks permissions to make a
 /// new directory at the provided `path`, or if the directory already exists.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn create_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
+pub fn create_dir<P: AsPath>(path: P) -> io::Result<()> {
     fs_imp::mkdir(path.as_path())
 }
 
@@ -568,7 +565,7 @@ pub fn create_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
 /// error conditions for when a directory is being created (after it is
 /// determined to not exist) are outlined by `fs::create_dir`.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn create_dir_all<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
+pub fn create_dir_all<P: AsPath>(path: P) -> io::Result<()> {
     let path = path.as_path();
     if path.is_dir() { return Ok(()) }
     if let Some(p) = path.parent() { try!(create_dir_all(p)) }
@@ -590,7 +587,7 @@ pub fn create_dir_all<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
 /// This function will return an error if the user lacks permissions to remove
 /// the directory at the provided `path`, or if the directory isn't empty.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn remove_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
+pub fn remove_dir<P: AsPath>(path: P) -> io::Result<()> {
     fs_imp::rmdir(path.as_path())
 }
 
@@ -604,7 +601,7 @@ pub fn remove_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
 ///
 /// See `file::remove_file` and `fs::remove_dir`
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn remove_dir_all<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
+pub fn remove_dir_all<P: AsPath>(path: P) -> io::Result<()> {
     let path = path.as_path();
     for child in try!(read_dir(path)) {
         let child = try!(child).path();
@@ -657,7 +654,7 @@ pub fn remove_dir_all<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
 /// the process lacks permissions to view the contents or if the `path` points
 /// at a non-directory file
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn read_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<ReadDir> {
+pub fn read_dir<P: AsPath>(path: P) -> io::Result<ReadDir> {
     fs_imp::readdir(path.as_path()).map(ReadDir)
 }
 
@@ -673,7 +670,7 @@ pub fn read_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<ReadDir> {
            reason = "the precise semantics and defaults for a recursive walk \
                      may change and this may end up accounting for files such \
                      as symlinks differently")]
-pub fn walk_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<WalkDir> {
+pub fn walk_dir<P: AsPath>(path: P) -> io::Result<WalkDir> {
     let start = try!(read_dir(path));
     Ok(WalkDir { cur: Some(start), stack: Vec::new() })
 }
@@ -759,8 +756,8 @@ impl PathExt for Path {
            reason = "the argument type of u64 is not quite appropriate for \
                      this function and may change if the standard library \
                      gains a type to represent a moment in time")]
-pub fn set_file_times<P: AsPath + ?Sized>(path: &P, accessed: u64,
-                                          modified: u64) -> io::Result<()> {
+pub fn set_file_times<P: AsPath>(path: P, accessed: u64,
+                                 modified: u64) -> io::Result<()> {
     fs_imp::utimes(path.as_path(), accessed, modified)
 }
 
@@ -788,8 +785,7 @@ pub fn set_file_times<P: AsPath + ?Sized>(path: &P, accessed: u64,
            reason = "a more granual ability to set specific permissions may \
                      be exposed on the Permissions structure itself and this \
                      method may not always exist")]
-pub fn set_permissions<P: AsPath + ?Sized>(path: &P, perm: Permissions)
-                                           -> io::Result<()> {
+pub fn set_permissions<P: AsPath>(path: P, perm: Permissions) -> io::Result<()> {
     fs_imp::set_perm(path.as_path(), perm.0)
 }
 
