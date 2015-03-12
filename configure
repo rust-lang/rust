@@ -760,8 +760,9 @@ fi
 # Force bitrig to build with clang; gcc doesn't like us there
 if [ $CFG_OSTYPE = unknown-bitrig ]
 then
-    step_msg "on Bitrig, forcing use of clang"
+    step_msg "on Bitrig, forcing use of clang, disabling jemalloc"
     CFG_ENABLE_CLANG=1
+    CFG_ENABLE_JEMALLOC=0
 fi
 
 if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
