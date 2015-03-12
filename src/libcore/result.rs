@@ -265,7 +265,7 @@ impl<T, E> Result<T, E> {
 
     /// Returns true if the result is `Ok`
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let x: Result<int, &str> = Ok(-3);
@@ -285,7 +285,7 @@ impl<T, E> Result<T, E> {
 
     /// Returns true if the result is `Err`
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let x: Result<int, &str> = Ok(-3);
@@ -309,7 +309,7 @@ impl<T, E> Result<T, E> {
     /// Converts `self` into an `Option<T>`, consuming `self`,
     /// and discarding the error, if any.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
@@ -332,7 +332,7 @@ impl<T, E> Result<T, E> {
     /// Converts `self` into an `Option<E>`, consuming `self`,
     /// and discarding the value, if any.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
@@ -440,7 +440,7 @@ impl<T, E> Result<T, E> {
     ///
     /// This function can be used to compose the results of two functions.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// Sum the lines of a buffer by mapping strings to numbers,
     /// ignoring I/O and parse errors:
@@ -479,7 +479,7 @@ impl<T, E> Result<T, E> {
     /// This function can be used to pass through a successful result while handling
     /// an error.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// fn stringify(x: u32) -> String { format!("error code: {}", x) }
@@ -505,7 +505,7 @@ impl<T, E> Result<T, E> {
 
     /// Returns an iterator over the possibly contained value.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(7);
@@ -522,7 +522,7 @@ impl<T, E> Result<T, E> {
 
     /// Returns a mutable iterator over the possibly contained value.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let mut x: Result<u32, &str> = Ok(7);
@@ -543,7 +543,7 @@ impl<T, E> Result<T, E> {
 
     /// Returns a consuming iterator over the possibly contained value.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(5);
@@ -566,7 +566,7 @@ impl<T, E> Result<T, E> {
 
     /// Returns `res` if the result is `Ok`, otherwise returns the `Err` value of `self`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
@@ -598,7 +598,7 @@ impl<T, E> Result<T, E> {
     ///
     /// This function can be used for control flow based on result values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// fn sq(x: u32) -> Result<u32, u32> { Ok(x * x) }
@@ -620,7 +620,7 @@ impl<T, E> Result<T, E> {
 
     /// Returns `res` if the result is `Err`, otherwise returns the `Ok` value of `self`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
@@ -652,7 +652,7 @@ impl<T, E> Result<T, E> {
     ///
     /// This function can be used for control flow based on result values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// fn sq(x: u32) -> Result<u32, u32> { Ok(x * x) }
@@ -675,7 +675,7 @@ impl<T, E> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Ok`.
     /// Else it returns `optb`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let optb = 2;
@@ -697,7 +697,7 @@ impl<T, E> Result<T, E> {
     /// Unwraps a result, yielding the content of an `Ok`.
     /// If the value is an `Err` then it calls `op` with its value.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// fn count(x: &str) -> usize { x.len() }
@@ -724,7 +724,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
     /// Panics if the value is an `Err`, with a custom panic message provided
     /// by the `Err`'s value.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let x: Result<u32, &str> = Ok(2);
@@ -755,7 +755,7 @@ impl<T: fmt::Debug, E> Result<T, E> {
     /// Panics if the value is an `Ok`, with a custom panic message provided
     /// by the `Ok`'s value.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```{.should_fail}
     /// let x: Result<u32, &str> = Ok(2);

@@ -215,7 +215,7 @@ pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
 ///   the two ends of a range of values, that is they
 ///   can not "walk past each other".
 ///
-/// # Example
+/// # Examples
 ///
 /// `char::Searcher` is a `DoubleEndedSearcher` because searching for a
 /// `char` only requires looking at one at a time, which behaves the same

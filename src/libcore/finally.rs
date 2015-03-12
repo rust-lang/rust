@@ -16,7 +16,7 @@
 //! "finally" case. For advanced cases, the `try_finally` function can
 //! also be used. See that function for more details.
 //!
-//! # Example
+//! # Examples
 //!
 //! ```
 //! # #![feature(unboxed_closures)]
@@ -67,7 +67,7 @@ impl<T, F> Finally<T> for F where F: FnMut() -> T {
 /// function could have panicked at any point, so the values of the shared
 /// state may be inconsistent.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::finally::try_finally;

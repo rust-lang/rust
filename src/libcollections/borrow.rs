@@ -127,7 +127,7 @@ impl<T> ToOwned for T where T: Clone {
 /// is desired, `to_mut` will obtain a mutable references to an owned
 /// value, cloning if necessary.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::borrow::Cow;

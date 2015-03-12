@@ -21,7 +21,7 @@ use sys_common::AsInner;
 ///
 /// The socket will be closed when the value is dropped.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```no_run
 /// use std::io::prelude::*;

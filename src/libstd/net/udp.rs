@@ -21,7 +21,7 @@ use sys_common::AsInner;
 /// IPv6 addresses, and there is no corresponding notion of a server because UDP
 /// is a datagram protocol.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```no_run
 /// use std::net::UdpSocket;

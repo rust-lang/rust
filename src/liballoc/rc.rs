@@ -264,7 +264,7 @@ pub fn is_unique<T>(rc: &Rc<T>) -> bool {
 ///
 /// If the `Rc<T>` is not unique, an `Err` is returned with the same `Rc<T>`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::rc::{self, Rc};
@@ -298,7 +298,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 ///
 /// Returns `None` if the `Rc<T>` is not unique.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::rc::{self, Rc};

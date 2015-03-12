@@ -1177,7 +1177,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
 impl<K, V> BTreeMap<K, V> {
     /// Gets an iterator over the entries of the map.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::BTreeMap;
