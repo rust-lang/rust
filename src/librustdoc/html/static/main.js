@@ -54,23 +54,6 @@
         return window.history && typeof window.history.pushState === "function";
     }
 
-    function resizeShortBlocks() {
-        if (resizeTimeout) {
-            clearTimeout(resizeTimeout);
-        }
-        resizeTimeout = setTimeout(function() {
-            var contentWidth = $('.content').width();
-            $('.docblock.short').width(function() {
-                return contentWidth - 40 - $(this).prev().width();
-            }).addClass('nowrap');
-            $('.summary-column').width(function() {
-                return contentWidth - 40 - $(this).prev().width();
-            })
-        }, 150);
-    }
-    resizeShortBlocks();
-    $(window).on('resize', resizeShortBlocks);
-
     function highlightSourceLines(ev) {
         var i, from, to, match = window.location.hash.match(/^#?(\d+)(?:-(\d+))?$/);
         if (match) {
