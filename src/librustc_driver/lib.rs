@@ -507,29 +507,18 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
     }
 }
 
-fn usage(verbose: bool, include_unstable_options: bool) {
-    let groups = if verbose {
-        config::rustc_optgroups()
-    } else {
-        config::rustc_short_optgroups()
-    };
-    let groups : Vec<_> = groups.into_iter()
+fn usage(include_unstable_options: bool) {
+    let groups : Vec<_> = config::rustc_optgroups().into_iter()
         .filter(|x| include_unstable_options || x.is_stable())
         .map(|x|x.opt_group)
         .collect();
     let message = format!("Usage: rustc [OPTIONS] INPUT");
-    let extra_help = if verbose {
-        ""
-    } else {
-        "\n    --help -v           Print the full set of options rustc accepts"
-    };
     println!("{}\n\
 Additional help:
     -C help             Print codegen options
     -W help             Print 'lint' options and default settings
-    -Z help             Print internal options for debugging rustc{}\n",
-              getopts::usage(&message, &groups),
-              extra_help);
+    -Z help             Print internal options for debugging rustc\n",
+              getopts::usage(&message, &groups));
 }
 
 fn describe_lints(lint_store: &lint::LintStore, loaded_plugins: bool) {
@@ -682,7 +671,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not
         // include that extra information.
-        usage(false, false);
+        usage(false);
         return None;
     }
 
@@ -718,7 +707,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     let include_unstable_options = r.iter().any(|x| *x == "unstable-options");
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        usage(matches.opt_present("verbose"), include_unstable_options);
+        usage(include_unstable_options);
         return None;
     }
 

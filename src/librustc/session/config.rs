@@ -683,22 +683,6 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
     }
 }
 
-/// Returns the "short" subset of the stable rustc command line options.
-pub fn short_optgroups() -> Vec<getopts::OptGroup> {
-    rustc_short_optgroups().into_iter()
-        .filter(|g|g.is_stable())
-        .map(|g|g.opt_group)
-        .collect()
-}
-
-/// Returns all of the stable rustc command line options.
-pub fn optgroups() -> Vec<getopts::OptGroup> {
-    rustc_optgroups().into_iter()
-        .filter(|g|g.is_stable())
-        .map(|g|g.opt_group)
-        .collect()
-}
-
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum OptionStability { Stable, Unstable }
 
@@ -758,10 +742,10 @@ mod opt {
     pub fn flagopt_u(a: S, b: S, c: S, d: S) -> R { unstable(getopts::optflagopt(a, b, c, d)) }
 }
 
-/// Returns the "short" subset of the rustc command line options,
-/// including metadata for each option, such as whether the option is
-/// part of the stable long-term interface for rustc.
-pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
+/// Returns all rustc command line options, including metadata for
+/// each option, such as whether the option is part of the stable
+/// long-term interface for rustc.
+pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
     vec![
         opt::flag("h", "help", "Display this message"),
         opt::multi("", "cfg", "Configure the compilation environment", "SPEC"),
@@ -802,15 +786,6 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt::multi("C", "codegen", "Set a codegen option", "OPT[=VALUE]"),
         opt::flag("V", "version", "Print version info and exit"),
         opt::flag("v", "verbose", "Use verbose output"),
-    ]
-}
-
-/// Returns all rustc command line options, including metadata for
-/// each option, such as whether the option is part of the stable
-/// long-term interface for rustc.
-pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
-    let mut opts = rustc_short_optgroups();
-    opts.push_all(&[
         opt::multi("", "extern", "Specify where an external rust library is \
                                 located",
                  "NAME=PATH"),
@@ -835,8 +810,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                       `everybody_loops` (all function bodies replaced with `loop {}`).",
                      "TYPE"),
         opt::opt_u("", "show-span", "Show spans for compiler debugging", "expr|pat|ty"),
-    ]);
-    opts
+    ]
 }
 
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
