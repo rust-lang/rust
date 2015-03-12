@@ -1370,25 +1370,25 @@ The contents of `std::io::net` submodules `tcp`, `udp`, `ip` and
 the other modules are being moved or removed and are described
 elsewhere.
 
-#### InetAddr
+#### SocketAddr
 
 This structure will represent either a `sockaddr_in` or `sockaddr_in6` which is
 commonly just a pairing of an IP address and a port.
 
 ```rust
-impl InetAddr {
-    fn as_v4(&self) -> Option<&InetV4Addr>;
-    fn as_v6(&self) -> Option<&InetV6Addr>;
+enum SocketAddr {
+    V4(SocketAddrV4),
+    V6(SocketAddrV6),
 }
 
-impl InetV4Addr {
-    fn new(addr: Ipv4Addr, port: u16) -> InetV4Addr;
+impl SocketAddrV4 {
+    fn new(addr: Ipv4Addr, port: u16) -> SocketAddrV4;
     fn ip(&self) -> &Ipv4Addr;
     fn port(&self) -> u16;
 }
 
-impl InetV6Addr {
-    fn new(addr: Ipv6Addr, port: u16, flowinfo: u32, scope_id: u32) -> InetV6Addr;
+impl SocketAddrV6 {
+    fn new(addr: Ipv6Addr, port: u16, flowinfo: u32, scope_id: u32) -> SocketAddrV6;
     fn ip(&self) -> &Ipv6Addr;
     fn port(&self) -> u16;
     fn flowinfo(&self) -> u32;
@@ -1433,9 +1433,9 @@ following interface:
 // TcpStream, which contains both a reader and a writer
 
 impl TcpStream {
-    fn connect<A: ToInetAddrs>(addr: &A) -> io::Result<TcpStream>;
-    fn peer_addr(&self) -> io::Result<InetAddr>;
-    fn local_addr(&self) -> io::Result<InetAddr>;
+    fn connect<A: ToSocketAddrs>(addr: &A) -> io::Result<TcpStream>;
+    fn peer_addr(&self) -> io::Result<SocketAddr>;
+    fn local_addr(&self) -> io::Result<SocketAddr>;
     fn shutdown(&self, how: Shutdown) -> io::Result<()>;
     fn duplicate(&self) -> io::Result<TcpStream>;
 }
@@ -1473,10 +1473,10 @@ into the `TcpListener` structure. Specifically, this will be the resulting API:
 
 ```rust
 impl TcpListener {
-    fn bind<A: ToInetAddrs>(addr: &A) -> io::Result<TcpListener>;
-    fn local_addr(&self) -> io::Result<InetAddr>;
+    fn bind<A: ToSocketAddrs>(addr: &A) -> io::Result<TcpListener>;
+    fn local_addr(&self) -> io::Result<SocketAddr>;
     fn duplicate(&self) -> io::Result<TcpListener>;
-    fn accept(&self) -> io::Result<(TcpStream, InetAddr)>;
+    fn accept(&self) -> io::Result<(TcpStream, SocketAddr)>;
     fn incoming(&self) -> Incoming;
 }
 
@@ -1500,10 +1500,10 @@ Some major changes from today's API include:
   date with a more robust interface.
 * The `set_timeout` functionality has also been removed in favor of returning at
   a later date in a more robust fashion with `select`.
-* The `accept` function no longer takes `&mut self` and returns `InetAddr`.
+* The `accept` function no longer takes `&mut self` and returns `SocketAddr`.
   The change in mutability is done to express that multiple `accept` calls can
   happen concurrently.
-* For convenience the iterator does not yield the `InetAddr` from `accept`.
+* For convenience the iterator does not yield the `SocketAddr` from `accept`.
 
 The `TcpListener` type will also adhere to `Send` and `Sync`.
 
@@ -1515,10 +1515,10 @@ infrastructure will:
 
 ```rust
 impl UdpSocket {
-    fn bind<A: ToInetAddrs>(addr: &A) -> io::Result<UdpSocket>;
-    fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, InetAddr)>;
-    fn send_to<A: ToInetAddrs>(&self, buf: &[u8], addr: &A) -> io::Result<usize>;
-    fn local_addr(&self) -> io::Result<InetAddr>;
+    fn bind<A: ToSocketAddrs>(addr: &A) -> io::Result<UdpSocket>;
+    fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)>;
+    fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: &A) -> io::Result<usize>;
+    fn local_addr(&self) -> io::Result<SocketAddr>;
     fn duplicate(&self) -> io::Result<UdpSocket>;
 }
 
@@ -1567,20 +1567,20 @@ For the current `addrinfo` module:
 
 For the current `ip` module:
 
-* The `ToSocketAddr` trait should become `ToInetAddrs`
+* The `ToSocketAddr` trait should become `ToSocketAddrs`
 * The default `to_socket_addr_all` method should be removed.
 
-The following implementations of `ToInetAddrs` will be available:
+The following implementations of `ToSocketAddrs` will be available:
 
 ```rust
-impl ToInetAddrs for InetAddr { ... }
-impl ToInetAddrs for InetV4Addr { ... }
-impl ToInetAddrs for InetV6Addr { ... }
-impl ToInetAddrs for (Ipv4Addr, u16) { ... }
-impl ToInetAddrs for (Ipv6Addr, u16) { ... }
-impl ToInetAddrs for (&str, u16) { ... }
-impl ToInetAddrs for str { ... }
-impl<T: ToInetAddrs> ToInetAddrs for &T { ... }
+impl ToSocketAddrs for SocketAddr { ... }
+impl ToSocketAddrs for SocketAddrV4 { ... }
+impl ToSocketAddrs for SocketAddrV6 { ... }
+impl ToSocketAddrs for (Ipv4Addr, u16) { ... }
+impl ToSocketAddrs for (Ipv6Addr, u16) { ... }
+impl ToSocketAddrs for (&str, u16) { ... }
+impl ToSocketAddrs for str { ... }
+impl<T: ToSocketAddrs> ToSocketAddrs for &T { ... }
 ```
 
 ### `std::process`
