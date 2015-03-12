@@ -32,8 +32,7 @@ extern crate unicode;
 mod binary_heap;
 mod bit;
 mod btree;
-// FIXME(japaric) privacy
-//mod enum_set;
+mod enum_set;
 mod fmt;
 mod linked_list;
 mod slice;
