@@ -19,7 +19,7 @@ fn main() {
 //~| found `()`
 //~| expected usize
 //~| found ()
-//~| ERROR expected constant integer for repeat count, found non-constant expression
+//~| ERROR expected positive integer for repeat count, found tuple
     let c = [0; true];
     //~^ ERROR mismatched types
     //~| expected `usize`

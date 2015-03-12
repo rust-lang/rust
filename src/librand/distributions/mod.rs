@@ -93,7 +93,7 @@ pub struct Weighted<T> {
 /// all `T`, as is `uint`, so one can store references or indices into
 /// another vector.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::rand;

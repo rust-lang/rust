@@ -100,7 +100,7 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R> + Default>
 
 /// Something that can be used to reseed an RNG via `ReseedingRng`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::rand::{Rng, SeedableRng, StdRng};

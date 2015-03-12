@@ -225,7 +225,7 @@ fn test_resize_policy() {
 /// 3. Emmanuel Goossaert. ["Robin Hood hashing: backward shift
 ///    deletion"](http://codecapsule.com/2013/11/17/robin-hood-hashing-backward-shift-deletion/)
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::collections::HashMap;
@@ -497,7 +497,7 @@ impl<K, V, S> HashMap<K, V, S>
 impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
     /// Create an empty HashMap.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -511,7 +511,7 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
 
     /// Creates an empty hash map with the given initial capacity.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -531,7 +531,7 @@ impl<K, V, S> HashMap<K, V, S>
     ///
     /// The creates map has the default initial capacity.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -559,7 +559,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -586,7 +586,7 @@ impl<K, V, S> HashMap<K, V, S>
 
     /// Returns the number of elements the map can hold without reallocating.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -607,7 +607,7 @@ impl<K, V, S> HashMap<K, V, S>
     ///
     /// Panics if the new allocation size overflows `usize`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -714,7 +714,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// down as much as possible while maintaining the internal rules
     /// and possibly leaving some space in accordance with the resize policy.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -806,7 +806,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// An iterator visiting all keys in arbitrary order.
     /// Iterator element type is `&'a K`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -831,7 +831,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// An iterator visiting all values in arbitrary order.
     /// Iterator element type is `&'a V`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -856,7 +856,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// An iterator visiting all key-value pairs in arbitrary order.
     /// Iterator element type is `(&'a K, &'a V)`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -879,7 +879,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// with mutable references to the values.
     /// Iterator element type is `(&'a K, &'a mut V)`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -907,7 +907,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// pair out of the map in arbitrary order. The map cannot be used after
     /// calling this.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -942,7 +942,7 @@ impl<K, V, S> HashMap<K, V, S>
 
     /// Returns the number of elements in the map.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -957,7 +957,7 @@ impl<K, V, S> HashMap<K, V, S>
 
     /// Returns true if the map contains no elements.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -974,7 +974,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// Clears the map, returning all key-value pairs as an iterator. Keeps the
     /// allocated memory for reuse.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1005,7 +1005,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// Clears the map, removing all key-value pairs. Keeps the allocated memory
     /// for reuse.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1027,7 +1027,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the key type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1050,7 +1050,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the key type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1073,7 +1073,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the key type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1096,7 +1096,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// Inserts a key-value pair from the map. If the key already had a value
     /// present in the map, that value is returned. Otherwise, `None` is returned.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;
@@ -1128,7 +1128,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the key type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashMap;

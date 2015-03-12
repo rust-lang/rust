@@ -488,7 +488,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
-    /// fn process<U: Iterator<Item=isize>>(it: U) -> isize {
+    /// fn process<U: Iterator<Item=i32>>(it: U) -> i32 {
     ///     let mut it = it.fuse();
     ///     let mut sum = 0;
     ///     for x in it.by_ref() {
@@ -797,7 +797,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     /// use std::iter::MinMaxResult::{NoElements, OneElement, MinMax};
     ///
-    /// let a: [isize; 0] = [];
+    /// let a: [i32; 0] = [];
     /// assert_eq!(a.iter().min_max(), NoElements);
     ///
     /// let a = [1];
@@ -1251,7 +1251,7 @@ impl<T: Clone> MinMaxResult<T> {
     /// ```
     /// use std::iter::MinMaxResult::{self, NoElements, OneElement, MinMax};
     ///
-    /// let r: MinMaxResult<isize> = NoElements;
+    /// let r: MinMaxResult<i32> = NoElements;
     /// assert_eq!(r.into_option(), None);
     ///
     /// let r = OneElement(1);
@@ -2296,7 +2296,7 @@ impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
 
 /// An iterator that passes mutable state to a closure and yields the result.
 ///
-/// # Example: The Fibonacci Sequence
+/// # Examples
 ///
 /// An iterator that yields sequential Fibonacci numbers, and stops on overflow.
 ///

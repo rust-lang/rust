@@ -133,7 +133,7 @@ impl<T : ?Sized> Box<T> {
 /// automatically managed that may lead to memory or other resource
 /// leak.
 ///
-/// # Example
+/// # Examples
 /// ```
 /// use std::boxed;
 ///

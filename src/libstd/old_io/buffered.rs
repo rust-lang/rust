@@ -31,7 +31,7 @@ use vec::Vec;
 /// `BufferedReader` performs large, infrequent reads on the underlying
 /// `Reader` and maintains an in-memory buffer of the results.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::old_io::{BufferedReader, File};
@@ -134,7 +134,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
 ///
 /// This writer will be flushed when it is dropped.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::old_io::{BufferedWriter, File};
@@ -320,7 +320,7 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 ///
 /// The output half will be flushed when this stream is dropped.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]

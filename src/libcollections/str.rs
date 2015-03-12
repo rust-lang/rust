@@ -1377,7 +1377,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     ///
     /// Will return `Err` if it's not possible to parse `self` into the type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// assert_eq!("4".parse::<u32>(), Ok(4));

@@ -464,7 +464,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// All data sent on the sender will become available on the receiver, and no
 /// send will block the calling task (this channel has an "infinite buffer").
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::sync::mpsc::channel;
@@ -506,7 +506,7 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// As with asynchronous channels, all senders will panic in `send` if the
 /// `Receiver` has been destroyed.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::sync::mpsc::sync_channel;
@@ -555,7 +555,7 @@ impl<T: Send> Sender<T> {
     ///
     /// This method will never block the current thread.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::sync::mpsc::channel;

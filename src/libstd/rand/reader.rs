@@ -22,7 +22,7 @@ use slice::SliceExt;
 ///
 /// It will panic if it there is insufficient data to fulfill a request.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::rand::{reader, Rng};

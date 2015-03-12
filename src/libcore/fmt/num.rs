@@ -143,7 +143,7 @@ pub struct RadixFmt<T, R>(T, R);
 
 /// Constructs a radix formatter in the range of `2..36`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::fmt::radix;

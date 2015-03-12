@@ -35,7 +35,7 @@ use thread;
 /// process is created via the `Command` struct, which configures the spawning
 /// process and can itself be constructed using a builder-style interface.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```should_fail
 /// # #![feature(process)]
@@ -288,7 +288,7 @@ impl Command {
     ///
     /// By default, stdin, stdout and stderr are inherited by the parent.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # #![feature(process)]

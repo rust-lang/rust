@@ -1276,7 +1276,7 @@ impl<'a> Writer for &'a mut (Writer+'a) {
 /// A `RefWriter` is a struct implementing `Writer` which contains a reference
 /// to another writer. This is often useful when composing streams.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::old_io::util::TeeReader;
@@ -1401,7 +1401,7 @@ pub trait Buffer: Reader {
     /// encoded Unicode codepoints. If a newline is encountered, then the
     /// newline is contained in the returned string.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::old_io::BufReader;
@@ -1625,7 +1625,7 @@ impl<'a, T, A: ?Sized + Acceptor<T>> Iterator for IncomingConnections<'a, A> {
 /// Creates a standard error for a commonly used flavor of error. The `detail`
 /// field of the returned error will always be `None`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::old_io as io;
