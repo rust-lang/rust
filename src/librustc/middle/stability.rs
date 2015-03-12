@@ -22,11 +22,10 @@ use syntax::codemap::{Span, DUMMY_SP};
 use syntax::{attr, visit};
 use syntax::ast;
 use syntax::ast::{Attribute, Block, Crate, DefId, FnDecl, NodeId, Variant};
-use syntax::ast::{Item, RequiredMethod, ProvidedMethod, TraitItem};
-use syntax::ast::{TypeMethod, Method, Generics, StructField, TypeTraitItem};
+use syntax::ast::{Item, Generics, StructField};
 use syntax::ast_util::is_local;
 use syntax::attr::{Stability, AttrMetaMethods};
-use syntax::visit::{FnKind, FkMethod, Visitor};
+use syntax::visit::{FnKind, Visitor};
 use syntax::feature_gate::emit_feature_warn;
 use util::nodemap::{NodeMap, DefIdMap, FnvHashSet, FnvHashMap};
 use util::ppaux::Repr;
@@ -124,31 +123,20 @@ impl<'a, 'v> Visitor<'v> for Annotator<'a> {
         }
     }
 
-    fn visit_fn(&mut self, fk: FnKind<'v>, _: &'v FnDecl,
-                _: &'v Block, sp: Span, _: NodeId) {
-        if let FkMethod(_, _, meth) = fk {
-            // Methods are not already annotated, so we annotate it
-            self.annotate(meth.id, true, &meth.attrs, sp, |_| {}, true);
-        }
+    fn visit_fn(&mut self, _: FnKind<'v>, _: &'v FnDecl,
+                _: &'v Block, _: Span, _: NodeId) {
         // Items defined in a function body have no reason to have
         // a stability attribute, so we don't recurse.
     }
 
-    fn visit_trait_item(&mut self, t: &TraitItem) {
-        let (id, attrs, sp) = match *t {
-            RequiredMethod(TypeMethod {id, ref attrs, span, ..}) => (id, attrs, span),
+    fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
+        self.annotate(ti.id, true, &ti.attrs, ti.span,
+                      |v| visit::walk_trait_item(v, ti), true);
+    }
 
-            // work around lack of pattern matching for @ types
-            ProvidedMethod(ref method) => {
-                match **method {
-                    Method {ref attrs, id, span, ..} => (id, attrs, span),
-                }
-            }
-
-            TypeTraitItem(ref typedef) => (typedef.ty_param.id, &typedef.attrs,
-                                           typedef.ty_param.span),
-        };
-        self.annotate(id, true, attrs, sp, |v| visit::walk_trait_item(v, t), true);
+    fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
+        self.annotate(ii.id, true, &ii.attrs, ii.span,
+                      |v| visit::walk_impl_item(v, ii), true);
     }
 
     fn visit_variant(&mut self, var: &Variant, g: &'v Generics) {
@@ -335,22 +323,11 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
             let trait_items = ty::trait_items(tcx, trait_did);
 
             for impl_item in impl_items {
-                let (ident, span) = match *impl_item {
-                    ast::MethodImplItem(ref method) => {
-                        (match method.node {
-                            ast::MethDecl(ident, _, _, _, _, _, _, _) => ident,
-                            ast::MethMac(..) => unreachable!(),
-                        }, method.span)
-                    }
-                    ast::TypeImplItem(ref typedef) => {
-                        (typedef.ident, typedef.span)
-                    }
-                };
                 let item = trait_items.iter().find(|item| {
-                    item.name() == ident.name
+                    item.name() == impl_item.ident.name
                 }).unwrap();
                 if warn_about_defns {
-                    maybe_do_stability_check(tcx, item.def_id(), span, cb);
+                    maybe_do_stability_check(tcx, item.def_id(), impl_item.span, cb);
                 }
             }
         }

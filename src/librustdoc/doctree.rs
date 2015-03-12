@@ -174,7 +174,7 @@ pub struct Constant {
 pub struct Trait {
     pub unsafety: ast::Unsafety,
     pub name: Ident,
-    pub items: Vec<ast::TraitItem>, //should be TraitItem
+    pub items: Vec<P<ast::TraitItem>>, //should be TraitItem
     pub generics: ast::Generics,
     pub bounds: Vec<ast::TyParamBound>,
     pub attrs: Vec<ast::Attribute>,
@@ -190,7 +190,7 @@ pub struct Impl {
     pub generics: ast::Generics,
     pub trait_: Option<ast::TraitRef>,
     pub for_: P<ast::Ty>,
-    pub items: Vec<ast::ImplItem>,
+    pub items: Vec<P<ast::ImplItem>>,
     pub attrs: Vec<ast::Attribute>,
     pub whence: Span,
     pub vis: ast::Visibility,

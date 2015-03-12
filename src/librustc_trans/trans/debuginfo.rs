@@ -217,7 +217,6 @@ use std::rc::{Rc, Weak};
 use syntax::util::interner::Interner;
 use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap, ast_util, ast_map, attr};
-use syntax::ast_util::PostExpansionMethod;
 use syntax::parse::token::{self, special_idents};
 
 const DW_LANG_RUST: c_uint = 0x9000;
@@ -1292,7 +1291,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             match item.node {
                 ast::ItemFn(ref fn_decl, _, _, ref generics, ref top_level_block) => {
-                    (item.ident, &**fn_decl, generics, &**top_level_block, item.span, true)
+                    (item.ident, fn_decl, generics, top_level_block, item.span, true)
                 }
                 _ => {
                     cx.sess().span_bug(item.span,
@@ -1300,24 +1299,29 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
-        ast_map::NodeImplItem(ref item) => {
-            match **item {
-                ast::MethodImplItem(ref method) => {
-                    if contains_nodebug_attribute(&method.attrs) {
+        ast_map::NodeImplItem(impl_item) => {
+            match impl_item.node {
+                ast::MethodImplItem(ref sig, ref body) => {
+                    if contains_nodebug_attribute(&impl_item.attrs) {
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
-                    (method.pe_ident(),
-                     method.pe_fn_decl(),
-                     method.pe_generics(),
-                     method.pe_body(),
-                     method.span,
+                    (impl_item.ident,
+                     &sig.decl,
+                     &sig.generics,
+                     body,
+                     impl_item.span,
                      true)
                 }
-                ast::TypeImplItem(ref typedef) => {
-                    cx.sess().span_bug(typedef.span,
+                ast::TypeImplItem(_) => {
+                    cx.sess().span_bug(impl_item.span,
                                        "create_function_debug_context() \
                                         called on associated type?!")
+                }
+                ast::MacImplItem(_) => {
+                    cx.sess().span_bug(impl_item.span,
+                                       "create_function_debug_context() \
+                                        called on unexpanded macro?!")
                 }
             }
         }
@@ -1326,11 +1330,11 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 ast::ExprClosure(_, ref fn_decl, ref top_level_block) => {
                     let name = format!("fn{}", token::gensym("fn"));
                     let name = token::str_to_ident(&name[..]);
-                    (name, &**fn_decl,
+                    (name, fn_decl,
                         // This is not quite right. It should actually inherit
                         // the generics of the enclosing function.
                         &empty_generics,
-                        &**top_level_block,
+                        top_level_block,
                         expr.span,
                         // Don't try to lookup the item path:
                         false)
@@ -1339,18 +1343,18 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         "create_function_debug_context: expected an expr_fn_block here")
             }
         }
-        ast_map::NodeTraitItem(ref trait_method) => {
-            match **trait_method {
-                ast::ProvidedMethod(ref method) => {
-                    if contains_nodebug_attribute(&method.attrs) {
+        ast_map::NodeTraitItem(trait_item) => {
+            match trait_item.node {
+                ast::MethodTraitItem(ref sig, Some(ref body)) => {
+                    if contains_nodebug_attribute(&trait_item.attrs) {
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
-                    (method.pe_ident(),
-                     method.pe_fn_decl(),
-                     method.pe_generics(),
-                     method.pe_body(),
-                     method.span,
+                    (trait_item.ident,
+                     &sig.decl,
+                     &sig.generics,
+                     body,
+                     trait_item.span,
                      true)
                 }
                 _ => {

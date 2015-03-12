@@ -519,28 +519,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
 
     fn visit_fn(&mut self, fk: FnKind<'v>, decl: &'v ast::FnDecl,
                 body: &'v ast::Block, span: Span, id: ast::NodeId) {
-        match fk {
-            visit::FkMethod(_, _, m) => {
-                self.with_lint_attrs(&m.attrs, |cx| {
-                    run_lints!(cx, check_fn, fk, decl, body, span, id);
-                    cx.visit_ids(|v| {
-                        v.visit_fn(fk, decl, body, span, id);
-                    });
-                    visit::walk_fn(cx, fk, decl, body, span);
-                })
-            },
-            _ => {
-                run_lints!(self, check_fn, fk, decl, body, span, id);
-                visit::walk_fn(self, fk, decl, body, span);
-            }
-        }
-    }
-
-    fn visit_ty_method(&mut self, t: &ast::TypeMethod) {
-        self.with_lint_attrs(&t.attrs, |cx| {
-            run_lints!(cx, check_ty_method, t);
-            visit::walk_ty_method(cx, t);
-        })
+        run_lints!(self, check_fn, fk, decl, body, span, id);
+        visit::walk_fn(self, fk, decl, body, span);
     }
 
     fn visit_struct_def(&mut self,
@@ -611,9 +591,20 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
         visit::walk_generics(self, g);
     }
 
-    fn visit_trait_item(&mut self, m: &ast::TraitItem) {
-        run_lints!(self, check_trait_item, m);
-        visit::walk_trait_item(self, m);
+    fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
+        self.with_lint_attrs(&trait_item.attrs, |cx| {
+            run_lints!(cx, check_trait_item, trait_item);
+            cx.visit_ids(|v| v.visit_trait_item(trait_item));
+            visit::walk_trait_item(cx, trait_item);
+        });
+    }
+
+    fn visit_impl_item(&mut self, impl_item: &ast::ImplItem) {
+        self.with_lint_attrs(&impl_item.attrs, |cx| {
+            run_lints!(cx, check_impl_item, impl_item);
+            cx.visit_ids(|v| v.visit_impl_item(impl_item));
+            visit::walk_impl_item(cx, impl_item);
+        });
     }
 
     fn visit_opt_lifetime_ref(&mut self, sp: Span, lt: &Option<ast::Lifetime>) {

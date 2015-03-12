@@ -386,22 +386,22 @@ impl<'a> TraitDef<'a> {
                            cx: &mut ExtCtxt,
                            type_ident: Ident,
                            generics: &Generics,
-                           methods: Vec<P<ast::Method>>) -> P<ast::Item> {
+                           methods: Vec<P<ast::ImplItem>>) -> P<ast::Item> {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
-        // Transform associated types from `deriving::ty::Ty` into `ast::Typedef`
+        // Transform associated types from `deriving::ty::Ty` into `ast::ImplItem`
         let associated_types = self.associated_types.iter().map(|&(ident, ref type_def)| {
-            P(ast::Typedef {
+            P(ast::ImplItem {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
                 ident: ident,
                 vis: ast::Inherited,
                 attrs: Vec::new(),
-                typ: type_def.to_ty(cx,
+                node: ast::TypeImplItem(type_def.to_ty(cx,
                     self.span,
                     type_ident,
                     generics
-                ),
+                )),
             })
         });
 
@@ -510,14 +510,7 @@ impl<'a> TraitDef<'a> {
                           trait_generics,
                           opt_trait_ref,
                           self_type,
-                          methods.into_iter()
-                                 .map(|method| {
-                                     ast::MethodImplItem(method)
-                                 }).chain(
-                                     associated_types.map(|type_| {
-                                         ast::TypeImplItem(type_)
-                                     })
-                                 ).collect()))
+                          methods.into_iter().chain(associated_types).collect()))
     }
 
     fn expand_struct_def(&self,
@@ -702,7 +695,7 @@ impl<'a> MethodDef<'a> {
                      abi: Abi,
                      explicit_self: ast::ExplicitSelf,
                      arg_types: Vec<(Ident, P<ast::Ty>)> ,
-                     body: P<Expr>) -> P<ast::Method> {
+                     body: P<Expr>) -> P<ast::ImplItem> {
         // create the generics that aren't for Self
         let fn_generics = self.generics.to_generics(cx, trait_.span, type_ident, generics);
 
@@ -725,18 +718,19 @@ impl<'a> MethodDef<'a> {
         let body_block = cx.block_expr(body);
 
         // Create the method.
-        P(ast::Method {
-            attrs: self.attributes.clone(),
+        P(ast::ImplItem {
             id: ast::DUMMY_NODE_ID,
+            attrs: self.attributes.clone(),
             span: trait_.span,
-            node: ast::MethDecl(method_ident,
-                                fn_generics,
-                                abi,
-                                explicit_self,
-                                ast::Unsafety::Normal,
-                                fn_decl,
-                                body_block,
-                                ast::Inherited)
+            vis: ast::Inherited,
+            ident: method_ident,
+            node: ast::MethodImplItem(ast::MethodSig {
+                generics: fn_generics,
+                abi: abi,
+                explicit_self: explicit_self,
+                unsafety: ast::Unsafety::Normal,
+                decl: fn_decl
+            }, body_block)
         })
     }
 

@@ -82,7 +82,7 @@ use syntax::abi;
 use syntax::ast::{CrateNum, DefId, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{StmtExpr, StmtSemi, StructField, UnnamedField, Visibility};
-use syntax::ast_util::{self, is_local, lit_is_str, local_def, PostExpansionMethod};
+use syntax::ast_util::{self, is_local, lit_is_str, local_def};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
 use syntax::parse::token::{self, InternedString, special_idents};
@@ -2286,8 +2286,8 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
     pub fn for_item(cx: &'a ctxt<'tcx>, id: NodeId) -> ParameterEnvironment<'a, 'tcx> {
         match cx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
-                match **impl_item {
-                    ast::MethodImplItem(ref method) => {
+                match impl_item.node {
+                    ast::MethodImplItem(_, ref body) => {
                         let method_def_id = ast_util::local_def(id);
                         match ty::impl_or_trait_item(cx, method_def_id) {
                             MethodTraitItem(ref method_ty) => {
@@ -2295,10 +2295,10 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                 let method_bounds = &method_ty.predicates;
                                 construct_parameter_environment(
                                     cx,
-                                    method.span,
+                                    impl_item.span,
                                     method_generics,
                                     method_bounds,
-                                    method.pe_body().id)
+                                    body.id)
                             }
                             TypeTraitItem(_) => {
                                 cx.sess
@@ -2313,18 +2313,19 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                      can't create a parameter environment \
                                      for type impl items")
                     }
+                    ast::MacImplItem(_) => cx.sess.bug("unexpanded macro")
                 }
             }
-            Some(ast_map::NodeTraitItem(trait_method)) => {
-                match *trait_method {
-                    ast::RequiredMethod(ref required) => {
-                        cx.sess.span_bug(required.span,
+            Some(ast_map::NodeTraitItem(trait_item)) => {
+                match trait_item.node {
+                    ast::MethodTraitItem(_, None) => {
+                        cx.sess.span_bug(trait_item.span,
                                          "ParameterEnvironment::for_item():
                                           can't create a parameter \
                                           environment for required trait \
                                           methods")
                     }
-                    ast::ProvidedMethod(ref method) => {
+                    ast::MethodTraitItem(_, Some(ref body)) => {
                         let method_def_id = ast_util::local_def(id);
                         match ty::impl_or_trait_item(cx, method_def_id) {
                             MethodTraitItem(ref method_ty) => {
@@ -2332,10 +2333,10 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                 let method_bounds = &method_ty.predicates;
                                 construct_parameter_environment(
                                     cx,
-                                    method.span,
+                                    trait_item.span,
                                     method_generics,
                                     method_bounds,
-                                    method.pe_body().id)
+                                    body.id)
                             }
                             TypeTraitItem(_) => {
                                 cx.sess
@@ -2345,7 +2346,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                             }
                         }
                     }
-                    ast::TypeTraitItem(_) => {
+                    ast::TypeTraitItem(..) => {
                         cx.sess.bug("ParameterEnvironment::from_item(): \
                                      can't create a parameter environment \
                                      for type trait items")
@@ -5080,39 +5081,23 @@ pub fn provided_source(cx: &ctxt, id: ast::DefId) -> Option<ast::DefId> {
 pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                     -> Vec<Rc<Method<'tcx>>> {
     if is_local(id) {
-        match cx.map.find(id.node) {
-            Some(ast_map::NodeItem(item)) => {
-                match item.node {
-                    ItemTrait(_, _, _, ref ms) => {
-                        let (_, p) =
-                            ast_util::split_trait_methods(&ms[..]);
-                        p.iter()
-                         .map(|m| {
-                            match impl_or_trait_item(
-                                    cx,
-                                    ast_util::local_def(m.id)) {
-                                MethodTraitItem(m) => m,
-                                TypeTraitItem(_) => {
-                                    cx.sess.bug("provided_trait_methods(): \
-                                                 split_trait_methods() put \
-                                                 associated types in the \
-                                                 provided method bucket?!")
-                                }
-                            }
-                         }).collect()
+        if let ItemTrait(_, _, _, ref ms) = cx.map.expect_item(id.node).node {
+            ms.iter().filter_map(|ti| {
+                if let ast::MethodTraitItem(_, Some(_)) = ti.node {
+                    match impl_or_trait_item(cx, ast_util::local_def(ti.id)) {
+                        MethodTraitItem(m) => Some(m),
+                        TypeTraitItem(_) => {
+                            cx.sess.bug("provided_trait_methods(): \
+                                         associated type found from \
+                                         looking up ProvidedMethod?!")
+                        }
                     }
-                    _ => {
-                        cx.sess.bug(&format!("provided_trait_methods: `{:?}` is \
-                                             not a trait",
-                                            id))
-                    }
+                } else {
+                    None
                 }
-            }
-            _ => {
-                cx.sess.bug(&format!("provided_trait_methods: `{:?}` is not a \
-                                     trait",
-                                    id))
-            }
+            }).collect()
+        } else {
+            cx.sess.bug(&format!("provided_trait_methods: `{:?}` is not a trait", id))
         }
     } else {
         csearch::get_provided_trait_methods(cx, id)

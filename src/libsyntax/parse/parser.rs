@@ -11,9 +11,9 @@
 pub use self::PathParsingMode::*;
 
 use abi;
-use ast::{AssociatedType, BareFnTy};
+use ast::{BareFnTy};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
-use ast::{ProvidedMethod, Public, Unsafety};
+use ast::{Public, Unsafety};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, BiRem, BiLt, BiGt, Block};
 use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
@@ -38,12 +38,11 @@ use ast::{LitBool, LitChar, LitByte, LitBinary};
 use ast::{LitStr, LitInt, Local, LocalLet};
 use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchSource};
-use ast::{Method, MutTy, BiMul, Mutability};
+use ast::{MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, NodeId, UnNot};
 use ast::{Pat, PatEnum, PatIdent, PatLit, PatRange, PatRegion, PatStruct};
 use ast::{PatTup, PatBox, PatWild, PatWildMulti, PatWildSingle};
-use ast::{PolyTraitRef};
-use ast::{QSelf, RequiredMethod};
+use ast::{PolyTraitRef, QSelf};
 use ast::{Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub, StrStyle};
@@ -51,11 +50,10 @@ use ast::{SelfExplicit, SelfRegion, SelfStatic, SelfValue};
 use ast::{Delimited, SequenceRepetition, TokenTree, TraitItem, TraitRef};
 use ast::{TtDelimited, TtSequence, TtToken};
 use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
-use ast::{TyFixedLengthVec, TyBareFn};
-use ast::{TyTypeof, TyInfer, TypeMethod};
+use ast::{TyFixedLengthVec, TyBareFn, TyTypeof, TyInfer};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr};
 use ast::{TyRptr, TyTup, TyU32, TyVec, UnUniq};
-use ast::{TypeImplItem, TypeTraitItem, Typedef,};
+use ast::{TypeImplItem, TypeTraitItem};
 use ast::{UnnamedField, UnsafeBlock};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
@@ -1244,52 +1242,53 @@ impl<'a> Parser<'a> {
 
     /// Parses `type Foo;` in a trait declaration only. The `type` keyword has
     /// already been parsed.
-    fn parse_associated_type(&mut self, attrs: Vec<Attribute>)
-                             -> AssociatedType
-    {
-        let ty_param = self.parse_ty_param();
+    fn parse_assoc_ty_in_trait(&mut self, attrs: Vec<Attribute>)
+                               -> P<TraitItem> {
+        let TyParam {id, ident, bounds, default, span} = self.parse_ty_param();
         self.expect(&token::Semi);
-        AssociatedType {
+        P(TraitItem {
+            id: id,
+            ident: ident,
             attrs: attrs,
-            ty_param: ty_param,
-        }
+            node: TypeTraitItem(bounds, default),
+            span: span,
+        })
     }
 
     /// Parses `type Foo = TYPE;` in an implementation declaration only. The
     /// `type` keyword has already been parsed.
-    fn parse_typedef(&mut self, attrs: Vec<Attribute>, vis: Visibility)
-                     -> Typedef {
+    fn parse_assoc_ty_in_impl(&mut self, attrs: Vec<Attribute>, vis: Visibility)
+                              -> P<ImplItem> {
         let lo = self.span.lo;
         let ident = self.parse_ident();
         self.expect(&token::Eq);
         let typ = self.parse_ty_sum();
         let hi = self.span.hi;
         self.expect(&token::Semi);
-        Typedef {
+        P(ImplItem {
             id: ast::DUMMY_NODE_ID,
             span: mk_sp(lo, hi),
             ident: ident,
             vis: vis,
             attrs: attrs,
-            typ: typ,
-        }
+            node: TypeImplItem(typ),
+        })
     }
 
     /// Parse the items in a trait declaration
-    pub fn parse_trait_items(&mut self) -> Vec<TraitItem> {
+    pub fn parse_trait_items(&mut self) -> Vec<P<TraitItem>> {
         self.parse_unspanned_seq(
             &token::OpenDelim(token::Brace),
             &token::CloseDelim(token::Brace),
             seq_sep_none(),
             |p| {
-            let attrs = p.parse_outer_attributes();
+            let mut attrs = p.parse_outer_attributes();
 
             if p.eat_keyword(keywords::Type) {
-                TypeTraitItem(P(p.parse_associated_type(attrs)))
+                p.parse_assoc_ty_in_trait(attrs)
             } else {
                 let lo = p.span.lo;
 
-                let vis = p.parse_visibility();
                 let style = p.parse_unsafety();
                 let abi = if p.eat_keyword(keywords::Extern) {
                     p.parse_opt_abi().unwrap_or(abi::C)
@@ -1309,44 +1308,27 @@ impl<'a> Parser<'a> {
                 });
 
                 p.parse_where_clause(&mut generics);
+                let sig = ast::MethodSig {
+                    unsafety: style,
+                    decl: d,
+                    generics: generics,
+                    abi: abi,
+                    explicit_self: explicit_self,
+                };
 
                 let hi = p.last_span.hi;
-                match p.token {
+                let body = match p.token {
                   token::Semi => {
                     p.bump();
                     debug!("parse_trait_methods(): parsing required method");
-                    RequiredMethod(TypeMethod {
-                        ident: ident,
-                        attrs: attrs,
-                        unsafety: style,
-                        decl: d,
-                        generics: generics,
-                        abi: abi,
-                        explicit_self: explicit_self,
-                        id: ast::DUMMY_NODE_ID,
-                        span: mk_sp(lo, hi),
-                        vis: vis,
-                    })
+                    None
                   }
                   token::OpenDelim(token::Brace) => {
                     debug!("parse_trait_methods(): parsing provided method");
                     let (inner_attrs, body) =
                         p.parse_inner_attrs_and_block();
-                    let mut attrs = attrs;
                     attrs.push_all(&inner_attrs[..]);
-                    ProvidedMethod(P(ast::Method {
-                        attrs: attrs,
-                        id: ast::DUMMY_NODE_ID,
-                        span: mk_sp(lo, hi),
-                        node: ast::MethDecl(ident,
-                                            generics,
-                                            abi,
-                                            explicit_self,
-                                            style,
-                                            d,
-                                            body,
-                                            vis)
-                    }))
+                    Some(body)
                   }
 
                   _ => {
@@ -1354,7 +1336,15 @@ impl<'a> Parser<'a> {
                       p.fatal(&format!("expected `;` or `{{`, found `{}`",
                                        token_str)[..])
                   }
-                }
+                };
+
+                P(TraitItem {
+                    id: ast::DUMMY_NODE_ID,
+                    ident: ident,
+                    attrs: attrs,
+                    node: ast::MethodTraitItem(sig, body),
+                    span: mk_sp(lo, hi),
+                })
             }
         })
     }
@@ -4635,11 +4625,15 @@ impl<'a> Parser<'a> {
         (ident, ItemFn(decl, unsafety, abi, generics, body), Some(inner_attrs))
     }
 
-    /// Parse a method in a trait impl
-    pub fn parse_method_with_outer_attributes(&mut self) -> P<Method> {
+    /// Parse an impl item.
+    pub fn parse_impl_item_with_outer_attributes(&mut self) -> P<ImplItem> {
         let attrs = self.parse_outer_attributes();
-        let visa = self.parse_visibility();
-        self.parse_method(attrs, visa)
+        let vis = self.parse_visibility();
+        if self.eat_keyword(keywords::Type) {
+            self.parse_assoc_ty_in_impl(attrs, vis)
+        } else {
+            self.parse_method(attrs, vis)
+        }
     }
 
     fn complain_if_pub_macro(&mut self, visa: Visibility, span: Span) {
@@ -4656,12 +4650,12 @@ impl<'a> Parser<'a> {
     /// Parse a method in a trait impl, starting with `attrs` attributes.
     pub fn parse_method(&mut self,
                         attrs: Vec<Attribute>,
-                        visa: Visibility)
-                        -> P<Method> {
+                        vis: Visibility)
+                        -> P<ImplItem> {
         let lo = self.span.lo;
 
         // code copied from parse_macro_use_or_failure... abstraction!
-        let (method_, hi, new_attrs) = {
+        let (method_, hi, new_attrs, ident) = {
             if !self.token.is_any_keyword()
                 && self.look_ahead(1, |t| *t == token::Not)
                 && (self.look_ahead(2, |t| *t == token::OpenDelim(token::Paren))
@@ -4669,7 +4663,7 @@ impl<'a> Parser<'a> {
                 // method macro.
 
                 let last_span = self.last_span;
-                self.complain_if_pub_macro(visa, last_span);
+                self.complain_if_pub_macro(vis, last_span);
 
                 let pth = self.parse_path(NoTypesAllowed);
                 self.expect(&token::Not);
@@ -4686,7 +4680,8 @@ impl<'a> Parser<'a> {
                 if delim != token::Brace {
                     self.expect(&token::Semi)
                 }
-                (ast::MethMac(m), self.span.hi, attrs)
+                (ast::MacImplItem(m), self.span.hi, attrs,
+                 token::special_idents::invalid)
             } else {
                 let unsafety = self.parse_unsafety();
                 let abi = if self.eat_keyword(keywords::Extern) {
@@ -4705,22 +4700,22 @@ impl<'a> Parser<'a> {
                 let body_span = body.span;
                 let mut new_attrs = attrs;
                 new_attrs.push_all(&inner_attrs[..]);
-                (ast::MethDecl(ident,
-                               generics,
-                               abi,
-                               explicit_self,
-                               unsafety,
-                               decl,
-                               body,
-                               visa),
-                 body_span.hi, new_attrs)
+                (MethodImplItem(ast::MethodSig {
+                    generics: generics,
+                    abi: abi,
+                    explicit_self: explicit_self,
+                    unsafety: unsafety,
+                    decl: decl
+                 }, body), body_span.hi, new_attrs, ident)
             }
         };
-        P(ast::Method {
-            attrs: new_attrs,
+        P(ImplItem {
             id: ast::DUMMY_NODE_ID,
-            span: mk_sp(lo, hi),
+            attrs: new_attrs,
+            vis: vis,
+            ident: ident,
             node: method_,
+            span: mk_sp(lo, hi),
         })
     }
 
@@ -4752,7 +4747,7 @@ impl<'a> Parser<'a> {
         (ident, ItemTrait(unsafety, tps, bounds, meths), None)
     }
 
-    fn parse_impl_items(&mut self) -> (Vec<ImplItem>, Vec<Attribute>) {
+    fn parse_impl_items(&mut self) -> (Vec<P<ImplItem>>, Vec<Attribute>) {
         let mut impl_items = Vec::new();
         self.expect(&token::OpenDelim(token::Brace));
         let (inner_attrs, mut method_attrs) =
@@ -4764,15 +4759,11 @@ impl<'a> Parser<'a> {
             }
 
             let vis = self.parse_visibility();
-            if self.eat_keyword(keywords::Type) {
-                impl_items.push(TypeImplItem(P(self.parse_typedef(
-                            method_attrs,
-                            vis))))
+            impl_items.push(if self.eat_keyword(keywords::Type) {
+                self.parse_assoc_ty_in_impl(method_attrs, vis)
             } else {
-                impl_items.push(MethodImplItem(self.parse_method(
-                            method_attrs,
-                            vis)));
-            }
+                self.parse_method(method_attrs, vis)
+            });
             method_attrs = vec![];
         }
         (impl_items, inner_attrs)
