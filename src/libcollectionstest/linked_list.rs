@@ -13,41 +13,6 @@ use std::hash::{SipHasher, self};
 
 use test;
 
-// FIXME(japaric) privacy
-/*
-pub fn check_links<T>(list: &LinkedList<T>) {
-    let mut len = 0;
-    let mut last_ptr: Option<&Node<T>> = None;
-    let mut node_ptr: &Node<T>;
-    match list.list_head {
-        None => { assert_eq!(0, list.length); return }
-        Some(ref node) => node_ptr = &**node,
-    }
-    loop {
-        match (last_ptr, node_ptr.prev.resolve_immut()) {
-            (None   , None      ) => {}
-            (None   , _         ) => panic!("prev link for list_head"),
-            (Some(p), Some(pptr)) => {
-                assert_eq!(p as *const Node<T>, pptr as *const Node<T>);
-            }
-            _ => panic!("prev link is none, not good"),
-        }
-        match node_ptr.next {
-            Some(ref next) => {
-                last_ptr = Some(node_ptr);
-                node_ptr = &**next;
-                len += 1;
-            }
-            None => {
-                len += 1;
-                break;
-            }
-        }
-    }
-    assert_eq!(len, list.length);
-}
-*/
-
 #[test]
 fn test_basic() {
     let mut m = LinkedList::<Box<_>>::new();
@@ -97,66 +62,6 @@ fn generate_test() -> LinkedList<i32> {
 fn list_from<T: Clone>(v: &[T]) -> LinkedList<T> {
     v.iter().cloned().collect()
 }
-
-// FIXME(japaric) privacy
-/*
-#[test]
-fn test_append() {
-    // Empty to empty
-    {
-        let mut m = LinkedList::<i32>::new();
-        let mut n = LinkedList::new();
-        m.append(&mut n);
-        check_links(&m);
-        assert_eq!(m.len(), 0);
-        assert_eq!(n.len(), 0);
-    }
-    // Non-empty to empty
-    {
-        let mut m = LinkedList::new();
-        let mut n = LinkedList::new();
-        n.push_back(2);
-        m.append(&mut n);
-        check_links(&m);
-        assert_eq!(m.len(), 1);
-        assert_eq!(m.pop_back(), Some(2));
-        assert_eq!(n.len(), 0);
-        check_links(&m);
-    }
-    // Empty to non-empty
-    {
-        let mut m = LinkedList::new();
-        let mut n = LinkedList::new();
-        m.push_back(2);
-        m.append(&mut n);
-        check_links(&m);
-        assert_eq!(m.len(), 1);
-        assert_eq!(m.pop_back(), Some(2));
-        check_links(&m);
-    }
-
-    // Non-empty to non-empty
-    let v = vec![1,2,3,4,5];
-    let u = vec![9,8,1,2,3,4,5];
-    let mut m = list_from(&v);
-    let mut n = list_from(&u);
-    m.append(&mut n);
-    check_links(&m);
-    let mut sum = v;
-    sum.push_all(&u);
-    assert_eq!(sum.len(), m.len());
-    for elt in sum {
-        assert_eq!(m.pop_front(), Some(elt))
-    }
-    assert_eq!(n.len(), 0);
-    // let's make sure it's working properly, since we
-    // did some direct changes to private members
-    n.push_back(3);
-    assert_eq!(n.len(), 1);
-    assert_eq!(n.pop_front(), Some(3));
-    check_links(&n);
-}
-*/
 
 #[test]
 fn test_split_off() {
@@ -318,36 +223,6 @@ fn test_iterator_mut_double_end() {
     assert!(it.next().is_none());
 }
 
-// FIXME(japaric) privacy
-/*
-#[test]
-fn test_insert_prev() {
-    let mut m = list_from(&[0,2,4,6,8]);
-    let len = m.len();
-    {
-        let mut it = m.iter_mut();
-        it.insert_next(-2);
-        loop {
-            match it.next() {
-                None => break,
-                Some(elt) => {
-                    it.insert_next(*elt + 1);
-                    match it.peek_next() {
-                        Some(x) => assert_eq!(*x, *elt + 2),
-                        None => assert_eq!(8, *elt),
-                    }
-                }
-            }
-        }
-        it.insert_next(0);
-        it.insert_next(1);
-    }
-    check_links(&m);
-    assert_eq!(m.len(), 3 + len * 2);
-    assert_eq!(m.into_iter().collect::<Vec<_>>(), [-2,0,1,2,3,4,5,6,7,8,9,0,1]);
-}
-*/
-
 #[test]
 fn test_mut_rev_iter() {
     let mut m = generate_test();
@@ -361,19 +236,6 @@ fn test_mut_rev_iter() {
     assert!(it.next().is_some());
     assert!(it.next().is_none());
 }
-
-// FIXME(japaric) privacy
-/*
-#[test]
-fn test_send() {
-    let n = list_from(&[1,2,3]);
-    thread::spawn(move || {
-        check_links(&n);
-        let a: &[_] = &[&1,&2,&3];
-        assert_eq!(a, n.iter().collect::<Vec<_>>());
-    }).join().ok().unwrap();
-}
-*/
 
 #[test]
 fn test_eq() {
@@ -450,18 +312,6 @@ fn test_ord_nan() {
     assert!(s >= one);
 }
 
-// FIXME(japaric) privacy
-/*
-#[test]
-fn test_fuzz() {
-    for _ in 0..25 {
-        fuzz_test(3);
-        fuzz_test(16);
-        fuzz_test(189);
-    }
-}
-*/
-
 #[test]
 fn test_show() {
     let list: LinkedList<_> = (0..10).collect();
@@ -470,48 +320,6 @@ fn test_show() {
     let list: LinkedList<_> = vec!["just", "one", "test", "more"].iter().cloned().collect();
     assert_eq!(format!("{:?}", list), "[\"just\", \"one\", \"test\", \"more\"]");
 }
-
-// FIXME(japaric) privacy
-/*
-#[cfg(test)]
-fn fuzz_test(sz: i32) {
-    let mut m: LinkedList<_> = LinkedList::new();
-    let mut v = vec![];
-    for i in 0..sz {
-        check_links(&m);
-        let r: u8 = rand::random();
-        match r % 6 {
-            0 => {
-                m.pop_back();
-                v.pop();
-            }
-            1 => {
-                if !v.is_empty() {
-                    m.pop_front();
-                    v.remove(0);
-                }
-            }
-            2 | 4 =>  {
-                m.push_front(-i);
-                v.insert(0, -i);
-            }
-            3 | 5 | _ => {
-                m.push_back(i);
-                v.push(i);
-            }
-        }
-    }
-
-    check_links(&m);
-
-    let mut i = 0;
-    for (a, &b) in m.into_iter().zip(v.iter()) {
-        i += 1;
-        assert_eq!(a, b);
-    }
-    assert_eq!(i, v.len());
-}
-*/
 
 #[bench]
 fn bench_collect_into(b: &mut test::Bencher) {

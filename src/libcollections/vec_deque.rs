@@ -1768,3 +1768,248 @@ impl<T: fmt::Debug> fmt::Debug for VecDeque<T> {
         write!(f, "]")
     }
 }
+
+#[cfg(test)]
+mod test {
+    use core::iter::{IteratorExt, self};
+    use core::option::Option::Some;
+
+    use test;
+
+    use super::VecDeque;
+
+    #[bench]
+    fn bench_push_back_100(b: &mut test::Bencher) {
+        let mut deq = VecDeque::with_capacity(101);
+        b.iter(|| {
+            for i in 0..100 {
+                deq.push_back(i);
+            }
+            deq.head = 0;
+            deq.tail = 0;
+        })
+    }
+
+    #[bench]
+    fn bench_push_front_100(b: &mut test::Bencher) {
+        let mut deq = VecDeque::with_capacity(101);
+        b.iter(|| {
+            for i in 0..100 {
+                deq.push_front(i);
+            }
+            deq.head = 0;
+            deq.tail = 0;
+        })
+    }
+
+    #[bench]
+    fn bench_pop_back_100(b: &mut test::Bencher) {
+        let mut deq= VecDeque::<i32>::with_capacity(101);
+
+        b.iter(|| {
+            deq.head = 100;
+            deq.tail = 0;
+            while !deq.is_empty() {
+                test::black_box(deq.pop_back());
+            }
+        })
+    }
+
+    #[bench]
+    fn bench_pop_front_100(b: &mut test::Bencher) {
+        let mut deq = VecDeque::<i32>::with_capacity(101);
+
+        b.iter(|| {
+            deq.head = 100;
+            deq.tail = 0;
+            while !deq.is_empty() {
+                test::black_box(deq.pop_front());
+            }
+        })
+    }
+
+    #[test]
+    fn test_swap_front_back_remove() {
+        fn test(back: bool) {
+            // This test checks that every single combination of tail position and length is tested.
+            // Capacity 15 should be large enough to cover every case.
+            let mut tester = VecDeque::with_capacity(15);
+            let usable_cap = tester.capacity();
+            let final_len = usable_cap / 2;
+
+            for len in 0..final_len {
+                let expected = if back {
+                    (0..len).collect()
+                } else {
+                    (0..len).rev().collect()
+                };
+                for tail_pos in 0..usable_cap {
+                    tester.tail = tail_pos;
+                    tester.head = tail_pos;
+                    if back {
+                        for i in 0..len * 2 {
+                            tester.push_front(i);
+                        }
+                        for i in 0..len {
+                            assert_eq!(tester.swap_back_remove(i), Some(len * 2 - 1 - i));
+                        }
+                    } else {
+                        for i in 0..len * 2 {
+                            tester.push_back(i);
+                        }
+                        for i in 0..len {
+                            let idx = tester.len() - 1 - i;
+                            assert_eq!(tester.swap_front_remove(idx), Some(len * 2 - 1 - i));
+                        }
+                    }
+                    assert!(tester.tail < tester.cap);
+                    assert!(tester.head < tester.cap);
+                    assert_eq!(tester, expected);
+                }
+            }
+        }
+        test(true);
+        test(false);
+    }
+
+    #[test]
+    fn test_insert() {
+        // This test checks that every single combination of tail position, length, and
+        // insertion position is tested. Capacity 15 should be large enough to cover every case.
+
+        let mut tester = VecDeque::with_capacity(15);
+        // can't guarantee we got 15, so have to get what we got.
+        // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
+        // this test isn't covering what it wants to
+        let cap = tester.capacity();
+
+
+        // len is the length *after* insertion
+        for len in 1..cap {
+            // 0, 1, 2, .., len - 1
+            let expected = iter::count(0, 1).take(len).collect();
+            for tail_pos in 0..cap {
+                for to_insert in 0..len {
+                    tester.tail = tail_pos;
+                    tester.head = tail_pos;
+                    for i in 0..len {
+                        if i != to_insert {
+                            tester.push_back(i);
+                        }
+                    }
+                    tester.insert(to_insert, to_insert);
+                    assert!(tester.tail < tester.cap);
+                    assert!(tester.head < tester.cap);
+                    assert_eq!(tester, expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_remove() {
+        // This test checks that every single combination of tail position, length, and
+        // removal position is tested. Capacity 15 should be large enough to cover every case.
+
+        let mut tester = VecDeque::with_capacity(15);
+        // can't guarantee we got 15, so have to get what we got.
+        // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
+        // this test isn't covering what it wants to
+        let cap = tester.capacity();
+
+        // len is the length *after* removal
+        for len in 0..cap - 1 {
+            // 0, 1, 2, .., len - 1
+            let expected = iter::count(0, 1).take(len).collect();
+            for tail_pos in 0..cap {
+                for to_remove in 0..len + 1 {
+                    tester.tail = tail_pos;
+                    tester.head = tail_pos;
+                    for i in 0..len {
+                        if i == to_remove {
+                            tester.push_back(1234);
+                        }
+                        tester.push_back(i);
+                    }
+                    if to_remove == len {
+                        tester.push_back(1234);
+                    }
+                    tester.remove(to_remove);
+                    assert!(tester.tail < tester.cap);
+                    assert!(tester.head < tester.cap);
+                    assert_eq!(tester, expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_shrink_to_fit() {
+        // This test checks that every single combination of head and tail position,
+        // is tested. Capacity 15 should be large enough to cover every case.
+
+        let mut tester = VecDeque::with_capacity(15);
+        // can't guarantee we got 15, so have to get what we got.
+        // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
+        // this test isn't covering what it wants to
+        let cap = tester.capacity();
+        tester.reserve(63);
+        let max_cap = tester.capacity();
+
+        for len in 0..cap + 1 {
+            // 0, 1, 2, .., len - 1
+            let expected = iter::count(0, 1).take(len).collect();
+            for tail_pos in 0..max_cap + 1 {
+                tester.tail = tail_pos;
+                tester.head = tail_pos;
+                tester.reserve(63);
+                for i in 0..len {
+                    tester.push_back(i);
+                }
+                tester.shrink_to_fit();
+                assert!(tester.capacity() <= cap);
+                assert!(tester.tail < tester.cap);
+                assert!(tester.head < tester.cap);
+                assert_eq!(tester, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn test_split_off() {
+        // This test checks that every single combination of tail position, length, and
+        // split position is tested. Capacity 15 should be large enough to cover every case.
+
+        let mut tester = VecDeque::with_capacity(15);
+        // can't guarantee we got 15, so have to get what we got.
+        // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
+        // this test isn't covering what it wants to
+        let cap = tester.capacity();
+
+        // len is the length *before* splitting
+        for len in 0..cap {
+            // index to split at
+            for at in 0..len + 1 {
+                // 0, 1, 2, .., at - 1 (may be empty)
+                let expected_self = iter::count(0, 1).take(at).collect();
+                // at, at + 1, .., len - 1 (may be empty)
+                let expected_other = iter::count(at, 1).take(len - at).collect();
+
+                for tail_pos in 0..cap {
+                    tester.tail = tail_pos;
+                    tester.head = tail_pos;
+                    for i in 0..len {
+                        tester.push_back(i);
+                    }
+                    let result = tester.split_off(at);
+                    assert!(tester.tail < tester.cap);
+                    assert!(tester.head < tester.cap);
+                    assert!(result.tail < result.cap);
+                    assert!(result.head < result.cap);
+                    assert_eq!(tester, expected_self);
+                    assert_eq!(result, expected_other);
+                }
+            }
+        }
+    }
+}

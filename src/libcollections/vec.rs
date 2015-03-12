@@ -1287,7 +1287,13 @@ impl<T:Clone> Clone for Vec<T> {
     fn clone(&self) -> Vec<T> { ::slice::SliceExt::to_vec(&**self) }
 
     #[cfg(not(stage0))]
+    #[cfg(not(test))]
     fn clone(&self) -> Vec<T> { <[T]>::to_vec(&**self) }
+
+    // HACK: `impl [T]` not available in cfg(test), use `::slice::to_vec` instead of `<[T]>::to_vec`
+    #[cfg(not(stage0))]
+    #[cfg(test)]
+    fn clone(&self) -> Vec<T> { ::slice::to_vec(&**self) }
 
     fn clone_from(&mut self, other: &Vec<T>) {
         // drop anything in self that will not be overwritten

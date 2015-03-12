@@ -71,6 +71,7 @@ macro_rules! vec {
 /// Note that unlike array expressions this syntax supports all elements
 /// which implement `Clone` and the number of elements doesn't have to be
 /// a constant.
+#[cfg(not(test))]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! vec {
@@ -79,6 +80,20 @@ macro_rules! vec {
     );
     ($($x:expr),*) => (
         <[_]>::into_vec($crate::boxed::Box::new([$($x),*]))
+    );
+    ($($x:expr,)*) => (vec![$($x),*])
+}
+
+// HACK: `impl [T]` is not available in cfg(test), use `::slice::into_vec`, instead of
+// `<[T]>::to_vec`
+#[cfg(not(stage0))]
+#[cfg(test)]
+macro_rules! vec {
+    ($elem:expr; $n:expr) => (
+        $crate::vec::from_elem($elem, $n)
+    );
+    ($($x:expr),*) => (
+        $crate::slice::into_vec($crate::boxed::Box::new([$($x),*]))
     );
     ($($x:expr,)*) => (vec![$($x),*])
 }

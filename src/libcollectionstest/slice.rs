@@ -406,62 +406,6 @@ fn test_element_swaps() {
     }
 }
 
-// FIXME(japaric) privacy
-/*
-#[test]
-fn test_permutations() {
-    {
-        let v: [i32; 0] = [];
-        let mut it = v.permutations();
-        let (min_size, max_opt) = it.size_hint();
-        assert_eq!(min_size, 1);
-        assert_eq!(max_opt.unwrap(), 1);
-        assert_eq!(it.next(), Some(v.to_vec()));
-        assert_eq!(it.next(), None);
-    }
-    {
-        let v = ["Hello".to_string()];
-        let mut it = v.permutations();
-        let (min_size, max_opt) = it.size_hint();
-        assert_eq!(min_size, 1);
-        assert_eq!(max_opt.unwrap(), 1);
-        assert_eq!(it.next(), Some(v.to_vec()));
-        assert_eq!(it.next(), None);
-    }
-    {
-        let v = [1, 2, 3];
-        let mut it = v.permutations();
-        let (min_size, max_opt) = it.size_hint();
-        assert_eq!(min_size, 3*2);
-        assert_eq!(max_opt.unwrap(), 3*2);
-        assert_eq!(it.next(), Some(vec![1,2,3]));
-        assert_eq!(it.next(), Some(vec![1,3,2]));
-        assert_eq!(it.next(), Some(vec![3,1,2]));
-        let (min_size, max_opt) = it.size_hint();
-        assert_eq!(min_size, 3);
-        assert_eq!(max_opt.unwrap(), 3);
-        assert_eq!(it.next(), Some(vec![3,2,1]));
-        assert_eq!(it.next(), Some(vec![2,3,1]));
-        assert_eq!(it.next(), Some(vec![2,1,3]));
-        assert_eq!(it.next(), None);
-    }
-    {
-        // check that we have N! permutations
-        let v = ['A', 'B', 'C', 'D', 'E', 'F'];
-        let mut amt = 0;
-        let mut it = v.permutations();
-        let (min_size, max_opt) = it.size_hint();
-        for _perm in it.by_ref() {
-            amt += 1;
-        }
-        assert_eq!(amt, it.swaps.swaps_made);
-        assert_eq!(amt, min_size);
-        assert_eq!(amt, 2 * 3 * 4 * 5 * 6);
-        assert_eq!(amt, max_opt.unwrap());
-    }
-}
-*/
-
 #[test]
 fn test_lexicographic_permutations() {
     let v : &mut[_] = &mut[1, 2, 3, 4, 5];
