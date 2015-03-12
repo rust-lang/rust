@@ -11,15 +11,12 @@
 use ast;
 use ast::{MetaItem, Item, Expr,};
 use codemap::Span;
-use ext::format;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use parse::token;
 use ptr::P;
-
-use std::collections::HashMap;
 
 pub fn expand_deriving_show<F>(cx: &mut ExtCtxt,
                                span: Span,
@@ -56,14 +53,12 @@ pub fn expand_deriving_show<F>(cx: &mut ExtCtxt,
     trait_def.expand(cx, mitem, item, push)
 }
 
-/// We construct a format string and then defer to std::fmt, since that
-/// knows what's up with formatting and so on.
+/// We use the debug builders to do the heavy lifting here
 fn show_substructure(cx: &mut ExtCtxt, span: Span,
                      substr: &Substructure) -> P<Expr> {
-    // build `<name>`, `<name>({}, {}, ...)` or `<name> { <field>: {},
-    // <field>: {}, ... }` based on the "shape".
-    //
-    // Easy start: they all start with the name.
+    // build fmt.debug_struct(<name>).field(<fieldname>, &<fieldval>)....build()
+    // or fmt.debug_tuple(<name>).field(&<fieldval>)....build()
+    // based on the "shape".
     let name = match *substr.fields {
         Struct(_) => substr.type_ident,
         EnumMatching(_, v, _) => v.node.name,
@@ -72,70 +67,53 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
         }
     };
 
-    let mut format_string = String::from_str(&token::get_ident(name));
-    // the internal fields we're actually formatting
-    let mut exprs = Vec::new();
+    // We want to make sure we have the expn_id set so that we can use unstable methods
+    let span = Span { expn_id: cx.backtrace(), .. span };
+    let name = cx.expr_lit(span, ast::Lit_::LitStr(token::get_ident(name),
+                                                   ast::StrStyle::CookedStr));
+    let mut expr = substr.nonself_args[0].clone();
 
-    // Getting harder... making the format string:
     match *substr.fields {
-        // unit struct/nullary variant: no work necessary!
-        Struct(ref fields) if fields.len() == 0 => {}
-        EnumMatching(_, _, ref fields) if fields.len() == 0 => {}
-
         Struct(ref fields) | EnumMatching(_, _, ref fields) => {
-            if fields[0].name.is_none() {
+            if fields.is_empty() || fields[0].name.is_none() {
                 // tuple struct/"normal" variant
+                expr = cx.expr_method_call(span,
+                                           expr,
+                                           token::str_to_ident("debug_tuple"),
+                                           vec![name]);
 
-                format_string.push_str("(");
-
-                for (i, field) in fields.iter().enumerate() {
-                    if i != 0 { format_string.push_str(", "); }
-
-                    format_string.push_str("{:?}");
-
-                    exprs.push(field.self_.clone());
+                for field in fields {
+                    expr = cx.expr_method_call(span,
+                                               expr,
+                                               token::str_to_ident("field"),
+                                               vec![cx.expr_addr_of(field.span,
+                                                                    field.self_.clone())]);
                 }
-
-                format_string.push_str(")");
             } else {
                 // normal struct/struct variant
+                expr = cx.expr_method_call(span,
+                                           expr,
+                                           token::str_to_ident("debug_struct"),
+                                           vec![name]);
 
-                format_string.push_str(" {{");
-
-                for (i, field) in fields.iter().enumerate() {
-                    if i != 0 { format_string.push_str(","); }
-
-                    let name = token::get_ident(field.name.unwrap());
-                    format_string.push_str(" ");
-                    format_string.push_str(&name);
-                    format_string.push_str(": {:?}");
-
-                    exprs.push(field.self_.clone());
+                for field in fields {
+                    let name = cx.expr_lit(field.span, ast::Lit_::LitStr(
+                            token::get_ident(field.name.clone().unwrap()),
+                            ast::StrStyle::CookedStr));
+                    expr = cx.expr_method_call(span,
+                                               expr,
+                                               token::str_to_ident("field"),
+                                               vec![name,
+                                                    cx.expr_addr_of(field.span,
+                                                                    field.self_.clone())]);
                 }
-
-                format_string.push_str(" }}");
             }
         }
         _ => unreachable!()
     }
 
-    // AST construction!
-    // we're basically calling
-    //
-    // format_arg_method!(fmt, write_fmt, "<format_string>", exprs...)
-    //
-    // but doing it directly via ext::format.
-    let formatter = substr.nonself_args[0].clone();
-
-    let meth = cx.ident_of("write_fmt");
-    let s = token::intern_and_get_ident(&format_string[..]);
-    let format_string = cx.expr_str(span, s);
-
-    // phew, not our responsibility any more!
-
-    let args = vec![
-        format::expand_preparsed_format_args(cx, span, format_string,
-                                             exprs, vec![], HashMap::new())
-    ];
-    cx.expr_method_call(span, formatter, meth, args)
+    cx.expr_method_call(span,
+                        expr,
+                        token::str_to_ident("finish"),
+                        vec![])
 }
