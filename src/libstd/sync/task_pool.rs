@@ -58,7 +58,7 @@ impl<'a> Drop for Sentinel<'a> {
 /// Spawns `n` worker threads and replenishes the pool if any worker threads
 /// panic.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::sync::TaskPool;

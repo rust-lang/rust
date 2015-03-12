@@ -15,7 +15,7 @@
 //! inspected for information about terminal dimensions or for related information
 //! about the stream or terminal to which it is attached.
 //!
-//! # Example
+//! # Examples
 //!
 //! ```rust
 //! # #![allow(unused_must_use)]

@@ -28,7 +28,7 @@ use sys_common;
 /// IPv6 addresses, and there is no corresponding notion of a server because UDP
 /// is a datagram protocol.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust,no_run
 /// # #![allow(unused_must_use)]

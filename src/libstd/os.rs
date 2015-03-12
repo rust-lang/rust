@@ -121,7 +121,7 @@ pub const TMPBUF_SZ : uint = 1000;
 /// * There are insufficient permissions to access the current directory.
 /// * The internal buffer is not large enough to hold the path.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::os;
@@ -141,7 +141,7 @@ pub fn getcwd() -> IoResult<Path> {
 /// Invalid UTF-8 bytes are replaced with \uFFFD. See `String::from_utf8_lossy()`
 /// for details.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::os;
@@ -177,7 +177,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>, Vec<u8>)> {
 ///
 /// Panics if `n` has any interior NULs.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::os;
@@ -219,7 +219,7 @@ fn byteify(s: OsString) -> Vec<u8> {
 /// Sets the environment variable `n` to the value `v` for the currently running
 /// process.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::os;
@@ -260,7 +260,7 @@ pub fn unsetenv(n: &str) {
 /// Parses input according to platform conventions for the `PATH`
 /// environment variable.
 ///
-/// # Example
+/// # Examples
 /// ```rust
 /// use std::os;
 ///
@@ -291,7 +291,7 @@ pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
 /// `Path`s contains an invalid character for constructing the `PATH`
 /// variable (a double quote on Windows or a colon on Unix).
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::os;
@@ -372,7 +372,7 @@ pub fn self_exe_name() -> Option<Path> {
 ///
 /// Like self_exe_name() but without the binary's name.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::os;
@@ -401,7 +401,7 @@ pub fn self_exe_path() -> Option<Path> {
 /// 'USERPROFILE' environment variable if it is set and not equal to the empty
 /// string.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::os;
@@ -491,7 +491,7 @@ pub fn tmpdir() -> Path {
 /// directory. If the given path is already an absolute path, return it
 /// as is.
 ///
-/// # Example
+/// # Examples
 /// ```rust
 /// use std::os;
 /// use std::old_path::Path;
@@ -522,7 +522,7 @@ pub fn make_absolute(p: &Path) -> IoResult<Path> {
 /// Changes the current working directory to the specified path, returning
 /// whether the change was completed successfully or not.
 ///
-/// # Example
+/// # Examples
 /// ```rust
 /// use std::os;
 /// use std::old_path::Path;
@@ -543,7 +543,7 @@ pub fn errno() -> i32 {
 
 /// Return the string corresponding to an `errno()` value of `errnum`.
 ///
-/// # Example
+/// # Examples
 /// ```rust
 /// use std::os;
 ///
@@ -739,7 +739,7 @@ extern "system" {
 ///
 /// The arguments are interpreted as utf-8, with invalid bytes replaced with \uFFFD.
 /// See `String::from_utf8_lossy` for details.
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::os;

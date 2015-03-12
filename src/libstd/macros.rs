@@ -26,7 +26,7 @@
 /// The multi-argument form of this macro panics with a string and has the
 /// `format!` syntax for building a string.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```should_fail
 /// # #![allow(unreachable_code)]
@@ -74,7 +74,7 @@ macro_rules! print {
 /// The syntax of this macro is the same as that used for `format!`. For more
 /// information, see `std::fmt` and `std::old_io::stdio`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// println!("hello there!");
@@ -177,7 +177,7 @@ pub mod builtin {
     ///
     /// For more information, see the documentation in `std::fmt`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::fmt;
@@ -200,7 +200,7 @@ pub mod builtin {
     /// will be emitted.  To not emit a compile error, use the `option_env!`
     /// macro instead.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let path: &'static str = env!("PATH");
@@ -219,7 +219,7 @@ pub mod builtin {
     /// A compile time error is never emitted when using this macro regardless
     /// of whether the environment variable is present or not.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let key: Option<&'static str> = option_env!("SECRET_KEY");
@@ -263,7 +263,7 @@ pub mod builtin {
     /// Integer and floating point literals are stringified in order to be
     /// concatenated.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let s = concat!("test", 10, 'b', true);
@@ -278,7 +278,7 @@ pub mod builtin {
     /// the invocation of the `line!()` macro itself, but rather the first macro
     /// invocation leading up to the invocation of the `line!()` macro.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let current_line = line!();
@@ -293,7 +293,7 @@ pub mod builtin {
     /// the invocation of the `column!()` macro itself, but rather the first macro
     /// invocation leading up to the invocation of the `column!()` macro.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let current_col = column!();
@@ -309,7 +309,7 @@ pub mod builtin {
     /// first macro invocation leading up to the invocation of the `file!()`
     /// macro.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let this_file = file!();
@@ -324,7 +324,7 @@ pub mod builtin {
     /// stringification of all the tokens passed to the macro. No restrictions
     /// are placed on the syntax of the macro invocation itself.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let one_plus_one = stringify!(1 + 1);
@@ -339,7 +339,7 @@ pub mod builtin {
     /// contents of the filename specified. The file is located relative to the
     /// current file (similarly to how modules are found),
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust,ignore
     /// let secret_key = include_str!("secret-key.ascii");
@@ -353,7 +353,7 @@ pub mod builtin {
     /// the contents of the filename specified. The file is located relative to
     /// the current file (similarly to how modules are found),
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust,ignore
     /// let secret_key = include_bytes!("secret-key.bin");
@@ -367,7 +367,7 @@ pub mod builtin {
     /// leading back up to the crate root. The first component of the path
     /// returned is the name of the crate currently being compiled.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// mod test {
@@ -390,7 +390,7 @@ pub mod builtin {
     /// The syntax given to this macro is the same syntax as the `cfg`
     /// attribute.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let my_directory = if cfg!(windows) {

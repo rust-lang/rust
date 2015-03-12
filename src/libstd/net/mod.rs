@@ -82,7 +82,7 @@ impl Iterator for LookupHost {
 /// This method may perform a DNS query to resolve `host` and may also inspect
 /// system configuration to resolve the specified hostname.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```no_run
 /// use std::net;

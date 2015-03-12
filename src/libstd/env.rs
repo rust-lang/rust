@@ -38,7 +38,7 @@ use sys::os as os_imp;
 /// * There are insufficient permissions to access the current directory.
 /// * The internal buffer is not large enough to hold the path.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::env;
@@ -55,7 +55,7 @@ pub fn current_dir() -> io::Result<PathBuf> {
 /// Changes the current working directory to the specified path, returning
 /// whether the change was completed successfully or not.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::env;
@@ -99,7 +99,7 @@ pub struct VarsOs { inner: os_imp::Env }
 /// environment is not valid unicode. If this is not desired, consider using the
 /// `env::vars_os` function.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::env;
@@ -122,7 +122,7 @@ pub fn vars() -> Vars {
 /// variables at the time of this invocation, modifications to environment
 /// variables afterwards will not be reflected in the returned iterator.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::env;
@@ -163,7 +163,7 @@ impl Iterator for VarsOs {
 /// valid unicode. If the environment variable is not present, or it is not
 /// valid unicode, then `Err` will be returned.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::env;
@@ -185,7 +185,7 @@ pub fn var<K: ?Sized>(key: &K) -> Result<String, VarError> where K: AsOsStr {
 /// Fetches the environment variable `key` from the current process, returning
 /// None if the variable isn't set.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::env;
@@ -243,7 +243,7 @@ impl Error for VarError {
 /// Sets the environment variable `k` to the value `v` for the currently running
 /// process.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::env;
@@ -279,7 +279,7 @@ pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
 ///
 /// Returns an iterator over the paths contained in `unparsed`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::env;
@@ -323,7 +323,7 @@ pub struct JoinPathsError {
 /// `Path`s contains an invalid character for constructing the `PATH`
 /// variable (a double quote on Windows or a colon on Unix).
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::env;
@@ -371,7 +371,7 @@ impl Error for JoinPathsError {
 /// 'USERPROFILE' environment variable if it is set and not equal to the empty
 /// string.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::env;
@@ -478,7 +478,7 @@ pub struct ArgsOs { inner: os_imp::Args }
 /// process is not valid unicode. If this is not desired it is recommended to
 /// use the `args_os` function instead.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::env;
@@ -500,7 +500,7 @@ pub fn args() -> Args {
 /// set to arbitrary text, and it may not even exist, so this property should
 /// not be relied upon for security purposes.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::env;

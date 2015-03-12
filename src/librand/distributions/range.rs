@@ -33,7 +33,7 @@ use distributions::{Sample, IndependentSample};
 /// primitive integer types satisfy this property, and the float types
 /// normally satisfy it, but rounding may mean `high` can occur.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::rand::distributions::{IndependentSample, Range};
