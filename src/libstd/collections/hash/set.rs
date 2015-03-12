@@ -38,7 +38,7 @@ use super::state::HashState;
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
 /// requires that the elements implement the `Eq` and `Hash` traits.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::collections::HashSet;
@@ -100,7 +100,7 @@ pub struct HashSet<T, S = RandomState> {
 impl<T: Hash + Eq> HashSet<T, RandomState> {
     /// Create an empty HashSet.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -115,7 +115,7 @@ impl<T: Hash + Eq> HashSet<T, RandomState> {
     /// Create an empty HashSet with space for at least `n` elements in
     /// the hash table.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -136,7 +136,7 @@ impl<T, S> HashSet<T, S>
     ///
     /// The hash set is also created with the default initial capacity.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -160,7 +160,7 @@ impl<T, S> HashSet<T, S>
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -181,7 +181,7 @@ impl<T, S> HashSet<T, S>
 
     /// Returns the number of elements the set can hold without reallocating.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -202,7 +202,7 @@ impl<T, S> HashSet<T, S>
     ///
     /// Panics if the new allocation size overflows `usize`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -218,7 +218,7 @@ impl<T, S> HashSet<T, S>
     /// down as much as possible while maintaining the internal rules
     /// and possibly leaving some space in accordance with the resize policy.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -238,7 +238,7 @@ impl<T, S> HashSet<T, S>
     /// An iterator visiting all elements in arbitrary order.
     /// Iterator element type is &'a T.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -260,7 +260,7 @@ impl<T, S> HashSet<T, S>
     /// of the set in arbitrary order. The set cannot be used after calling
     /// this.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -286,7 +286,7 @@ impl<T, S> HashSet<T, S>
 
     /// Visit the values representing the difference.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -316,7 +316,7 @@ impl<T, S> HashSet<T, S>
 
     /// Visit the values representing the symmetric difference.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -342,7 +342,7 @@ impl<T, S> HashSet<T, S>
 
     /// Visit the values representing the intersection.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -367,7 +367,7 @@ impl<T, S> HashSet<T, S>
 
     /// Visit the values representing the union.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -389,7 +389,7 @@ impl<T, S> HashSet<T, S>
 
     /// Return the number of elements in the set
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -404,7 +404,7 @@ impl<T, S> HashSet<T, S>
 
     /// Returns true if the set contains no elements
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -430,7 +430,7 @@ impl<T, S> HashSet<T, S>
 
     /// Clears the set, removing all values.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -449,7 +449,7 @@ impl<T, S> HashSet<T, S>
     /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the value type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -468,7 +468,7 @@ impl<T, S> HashSet<T, S>
     /// Returns `true` if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -489,7 +489,7 @@ impl<T, S> HashSet<T, S>
 
     /// Returns `true` if the set is a subset of another.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -510,7 +510,7 @@ impl<T, S> HashSet<T, S>
 
     /// Returns `true` if the set is a superset of another.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -536,7 +536,7 @@ impl<T, S> HashSet<T, S>
     /// Adds a value to the set. Returns `true` if the value was not already
     /// present in the set.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;
@@ -557,7 +557,7 @@ impl<T, S> HashSet<T, S>
     /// `Hash` and `Eq` on the borrowed form *must* match those for
     /// the value type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::collections::HashSet;

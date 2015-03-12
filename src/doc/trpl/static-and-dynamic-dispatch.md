@@ -102,38 +102,11 @@ reason.
 Rust provides dynamic dispatch through a feature called 'trait objects.' Trait
 objects, like `&Foo` or `Box<Foo>`, are normal values that store a value of
 *any* type that implements the given trait, where the precise type can only be
-known at runtime. The methods of the trait can be called on a trait object via
-a special record of function pointers (created and managed by the compiler).
+known at runtime.
 
-A function that takes a trait object is not specialized to each of the types
-that implements `Foo`: only one copy is generated, often (but not always)
-resulting in less code bloat. However, this comes at the cost of requiring
-slower virtual function calls, and effectively inhibiting any chance of
-inlining and related optimisations from occurring.
-
-Trait objects are both simple and complicated: their core representation and
-layout is quite straight-forward, but there are some curly error messages and
-surprising behaviors to discover.
-
-### Obtaining a trait object
-
-There's two similar ways to get a trait object value: casts and coercions. If
-`T` is a type that implements a trait `Foo` (e.g. `u8` for the `Foo` above),
-then the two ways to get a `Foo` trait object out of a pointer to `T` look
-like:
-
-```{rust,ignore}
-let ref_to_t: &T = ...;
-
-// `as` keyword for casting
-let cast = ref_to_t as &Foo;
-
-// using a `&T` in a place that has a known type of `&Foo` will implicitly coerce:
-let coerce: &Foo = ref_to_t;
-
-fn also_coerce(_unused: &Foo) {}
-also_coerce(ref_to_t);
-```
+A trait object can be obtained from a pointer to a concrete type that
+implements the trait by *casting* it (e.g. `&x as &Foo`) or *coercing* it
+(e.g. using `&x` as an argument to a function that takes `&Foo`).
 
 These trait object coercions and casts also work for pointers like `&mut T` to
 `&mut Foo` and `Box<T>` to `Box<Foo>`, but that's all at the moment. Coercions
@@ -143,7 +116,73 @@ This operation can be seen as "erasing" the compiler's knowledge about the
 specific type of the pointer, and hence trait objects are sometimes referred to
 as "type erasure".
 
+Coming back to the example above, we can use the same trait to perform dynamic
+dispatch with trait objects by casting:
+
+```rust
+# trait Foo { fn method(&self) -> String; }
+# impl Foo for u8 { fn method(&self) -> String { format!("u8: {}", *self) } }
+# impl Foo for String { fn method(&self) -> String { format!("string: {}", *self) } }
+
+fn do_something(x: &Foo) {
+    x.method();
+}
+
+fn main() {
+    let x = 5u8;
+    do_something(&x as &Foo);
+}
+```
+
+or by coercing:
+
+```rust
+# trait Foo { fn method(&self) -> String; }
+# impl Foo for u8 { fn method(&self) -> String { format!("u8: {}", *self) } }
+# impl Foo for String { fn method(&self) -> String { format!("string: {}", *self) } }
+
+fn do_something(x: &Foo) {
+    x.method();
+}
+
+fn main() {
+    let x = "Hello".to_string();
+    do_something(&x);
+}
+```
+
+A function that takes a trait object is not specialized to each of the types
+that implements `Foo`: only one copy is generated, often (but not always)
+resulting in less code bloat. However, this comes at the cost of requiring
+slower virtual function calls, and effectively inhibiting any chance of
+inlining and related optimisations from occurring.
+
+### Why pointers?
+
+Rust does not put things behind a pointer by default, unlike many managed
+languages, so types can have different sizes. Knowing the size of the value at
+compile time is important for things like passing it as an argument to a
+function, moving it about on the stack and allocating (and deallocating) space
+on the heap to store it.
+
+For `Foo`, we would need to have a value that could be at least either a
+`String` (24 bytes) or a `u8` (1 byte), as well as any other type for which
+dependent crates may implement `Foo` (any number of bytes at all). There's no
+way to guarantee that this last point can work if the values are stored without
+a pointer, because those other types can be arbitrarily large.
+
+Putting the value behind a pointer means the size of the value is not relevant
+when we are tossing a trait object around, only the size of the pointer itself.
+
 ### Representation
+
+The methods of the trait can be called on a trait object via a special record
+of function pointers traditionally called a 'vtable' (created and managed by
+the compiler).
+
+Trait objects are both simple and complicated: their core representation and
+layout is quite straight-forward, but there are some curly error messages and
+surprising behaviors to discover.
 
 Let's start simple, with the runtime representation of a trait object. The
 `std::raw` module contains structs with layouts that are the same as the
@@ -265,23 +304,3 @@ let y = TraitObject {
 If `b` or `y` were owning trait objects (`Box<Foo>`), there would be a
 `(b.vtable.destructor)(b.data)` (respectively `y`) call when they went out of
 scope.
-
-### Why pointers?
-
-The use of language like "fat pointer" implies that a trait object is
-always a pointer of some form, but why?
-
-Rust does not put things behind a pointer by default, unlike many managed
-languages, so types can have different sizes. Knowing the size of the value at
-compile time is important for things like passing it as an argument to a
-function, moving it about on the stack and allocating (and deallocating) space
-on the heap to store it.
-
-For `Foo`, we would need to have a value that could be at least either a
-`String` (24 bytes) or a `u8` (1 byte), as well as any other type for which
-dependent crates may implement `Foo` (any number of bytes at all). There's no
-way to guarantee that this last point can work if the values are stored without
-a pointer, because those other types can be arbitrarily large.
-
-Putting the value behind a pointer means the size of the value is not relevant
-when we are tossing a trait object around, only the size of the pointer itself.

@@ -48,7 +48,7 @@ macro_rules! vec {
 /// Use the syntax described in `std::fmt` to create a value of type `String`.
 /// See `std::fmt` for more information.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// format!("test");

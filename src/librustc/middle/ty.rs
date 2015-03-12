@@ -5853,16 +5853,13 @@ pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
             let found = match val {
                 const_eval::const_uint(count) => return count as uint,
                 const_eval::const_int(count) if count >= 0 => return count as uint,
-                const_eval::const_int(_) =>
-                    "negative integer",
-                const_eval::const_float(_) =>
-                    "float",
-                const_eval::const_str(_) =>
-                    "string",
-                const_eval::const_bool(_) =>
-                    "boolean",
-                const_eval::const_binary(_) =>
-                    "binary array"
+                const_eval::const_int(_) => "negative integer",
+                const_eval::const_float(_) => "float",
+                const_eval::const_str(_) => "string",
+                const_eval::const_bool(_) => "boolean",
+                const_eval::const_binary(_) => "binary array",
+                const_eval::Struct(..) => "struct",
+                const_eval::Tuple(_) => "tuple"
             };
             span_err!(tcx.sess, count_expr.span, E0306,
                 "expected positive integer for repeat count, found {}",

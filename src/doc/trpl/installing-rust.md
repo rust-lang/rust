@@ -78,6 +78,11 @@ rustc 1.0.0-nightly (f11f3e7ba 2015-01-04) (built 2015-01-06)
 
 If you did, Rust has been installed successfully! Congrats!
 
+This installer also installs a copy of the documentation locally, so you can
+read it offline. On UNIX systems, `/usr/local/share/doc/rust` is the location.
+On Windows, it's in a `share/doc` directory, inside wherever you installed Rust
+to.
+
 If not, there are a number of places where you can get help. The easiest is
 [the #rust IRC channel on irc.mozilla.org](irc://irc.mozilla.org/#rust), which
 you can access through

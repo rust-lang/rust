@@ -133,7 +133,7 @@ unsafe impl<T: Send> Sync for Mutex<T> { }
 /// to a `Mutex`, a `destroy` method. This method is unsafe to call, and
 /// documentation can be found directly on the method.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::sync::{StaticMutex, MUTEX_INIT};

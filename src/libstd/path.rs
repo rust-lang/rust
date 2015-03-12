@@ -809,7 +809,7 @@ impl<'a> cmp::Ord for Components<'a> {
 /// More details about the overall approach can be found in
 /// the module documentation.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::path::PathBuf;
@@ -1041,7 +1041,7 @@ impl AsOsStr for PathBuf {
 /// This is an *unsized* type, meaning that it must always be used with behind a
 /// pointer like `&` or `Box`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::path::Path;

@@ -74,7 +74,7 @@ unsafe impl<T: Send + Sync> Sync for RwLock<T> {}
 /// automatic global access as well as lazy initialization. The internal
 /// resources of this RwLock, however, must be manually deallocated.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::sync::{StaticRwLock, RW_LOCK_INIT};

@@ -57,7 +57,7 @@ impl Rand for Exp1 {
 /// This distribution has density function: `f(x) = lambda *
 /// exp(-lambda * x)` for `x > 0`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::rand;

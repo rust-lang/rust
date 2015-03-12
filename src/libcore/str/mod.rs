@@ -1183,7 +1183,7 @@ mod traits {
     /// Panics when `begin` and `end` do not point to valid characters
     /// or point beyond the last character of the string.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let s = "Löwe 老虎 Léopard";

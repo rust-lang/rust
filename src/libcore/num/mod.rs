@@ -82,7 +82,7 @@ pub trait Int
 
     /// Returns the number of ones in the binary representation of `self`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -97,7 +97,7 @@ pub trait Int
 
     /// Returns the number of zeros in the binary representation of `self`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -116,7 +116,7 @@ pub trait Int
     /// Returns the number of leading zeros in the binary representation
     /// of `self`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -132,7 +132,7 @@ pub trait Int
     /// Returns the number of trailing zeros in the binary representation
     /// of `self`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -148,7 +148,7 @@ pub trait Int
     /// Shifts the bits to the left by a specified amount amount, `n`, wrapping
     /// the truncated bits to the end of the resulting integer.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -165,7 +165,7 @@ pub trait Int
     /// Shifts the bits to the right by a specified amount amount, `n`, wrapping
     /// the truncated bits to the beginning of the resulting integer.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -181,7 +181,7 @@ pub trait Int
 
     /// Reverses the byte order of the integer.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -198,7 +198,7 @@ pub trait Int
     ///
     /// On big endian this is a no-op. On little endian the bytes are swapped.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -221,7 +221,7 @@ pub trait Int
     ///
     /// On little endian this is a no-op. On big endian the bytes are swapped.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -244,7 +244,7 @@ pub trait Int
     ///
     /// On big endian this is a no-op. On little endian the bytes are swapped.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -267,7 +267,7 @@ pub trait Int
     ///
     /// On little endian this is a no-op. On big endian the bytes are swapped.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -289,7 +289,7 @@ pub trait Int
     /// Checked integer addition. Computes `self + other`, returning `None` if
     /// overflow occurred.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -303,7 +303,7 @@ pub trait Int
     /// Checked integer subtraction. Computes `self - other`, returning `None`
     /// if underflow occurred.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -317,7 +317,7 @@ pub trait Int
     /// Checked integer multiplication. Computes `self * other`, returning
     /// `None` if underflow or overflow occurred.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -331,7 +331,7 @@ pub trait Int
     /// Checked integer division. Computes `self / other`, returning `None` if
     /// `other == 0` or the operation results in underflow or overflow.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -369,7 +369,7 @@ pub trait Int
 
     /// Raises self to the power of `exp`, using exponentiation by squaring.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::num::Int;
@@ -1273,7 +1273,7 @@ impl_from_primitive! { f64, to_f64 }
 
 /// Cast from one machine scalar to another.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::num;

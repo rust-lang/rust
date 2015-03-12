@@ -29,7 +29,7 @@
 /// The flags should only be defined for integer types, otherwise unexpected
 /// type errors may occur at compile time.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```{.rust}
 /// #[macro_use] extern crate rustc_bitflags;

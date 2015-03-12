@@ -41,7 +41,7 @@ use vec::Vec;
 /// a `CString` do *not* contain the trailing nul terminator unless otherwise
 /// specified.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```no_run
 /// # extern crate libc;
@@ -325,7 +325,7 @@ impl CStr {
     /// > currently implemented with an up-front calculation of the length of
     /// > the string. This is not guaranteed to always be the case.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// # extern crate libc;

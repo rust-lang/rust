@@ -88,7 +88,7 @@ use heap::deallocate;
 
 /// An atomically reference counted wrapper for shared state.
 ///
-/// # Example
+/// # Examples
 ///
 /// In this example, a large vector of floats is shared between several tasks.
 /// With simple pipes, without `Arc`, a copy would have to be made for each

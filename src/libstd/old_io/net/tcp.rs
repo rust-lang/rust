@@ -38,7 +38,7 @@ use sys_common;
 ///
 /// The socket will be closed when the value is dropped.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```no_run
 /// use std::old_io::TcpStream;
@@ -130,7 +130,7 @@ impl TcpStream {
     /// This method will close the reading portion of this connection, causing
     /// all pending and future reads to immediately return with an error.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)]
@@ -373,7 +373,7 @@ impl TcpAcceptor {
     /// regardless of whether the timeout has expired or not (the accept will
     /// not block in this case).
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use std::old_io::TcpListener;
@@ -417,7 +417,7 @@ impl TcpAcceptor {
     /// This is useful for waking up a thread in an accept loop to indicate that
     /// it should exit.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::old_io::{TcpListener, Listener, Acceptor, EndOfFile};
