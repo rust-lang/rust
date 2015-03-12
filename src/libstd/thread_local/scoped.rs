@@ -21,7 +21,7 @@
 //! period of time and it is not required to relinquish ownership of the
 //! contents.
 //!
-//! # Example
+//! # Examples
 //!
 //! ```
 //! scoped_thread_local!(static FOO: u32);
@@ -139,7 +139,7 @@ impl<T> Key<T> {
     /// Upon return, this function will restore the previous value, if any
     /// was available.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// scoped_thread_local!(static FOO: u32);
@@ -191,7 +191,7 @@ impl<T> Key<T> {
     ///
     /// This function will panic if `set` has not previously been called.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// scoped_thread_local!(static FOO: u32);

@@ -113,7 +113,7 @@ impl Timer {
     /// invalidated at the end of that statement, and all `recv` calls will
     /// fail.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::old_io::Timer;
@@ -165,7 +165,7 @@ impl Timer {
     /// invalidated at the end of that statement, and all `recv` calls will
     /// fail.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::old_io::Timer;

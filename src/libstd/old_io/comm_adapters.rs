@@ -20,7 +20,7 @@ use vec::Vec;
 
 /// Allows reading from a rx.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::sync::mpsc::channel;
@@ -111,7 +111,7 @@ impl Reader for ChanReader {
 
 /// Allows writing to a tx.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// # #![allow(unused_must_use)]

@@ -34,7 +34,7 @@ use sync::{mutex, MutexGuard, PoisonError};
 /// in a runtime panic. If this is not desired, then the unsafe primitives in
 /// `sys` do not have this restriction but may result in undefined behavior.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::sync::{Arc, Mutex, Condvar};
@@ -66,7 +66,7 @@ pub struct Condvar { inner: Box<StaticCondvar> }
 /// This structure is identical to `Condvar` except that it is suitable for use
 /// in static initializers for other structures.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::sync::{StaticCondvar, CONDVAR_INIT};

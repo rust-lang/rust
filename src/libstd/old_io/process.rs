@@ -57,7 +57,7 @@ use thread;
 /// process is created via the `Command` struct, which configures the spawning
 /// process and can itself be constructed using a builder-style interface.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```should_fail
 /// use std::old_io::Command;
@@ -361,7 +361,7 @@ impl Command {
     /// Executes the command as a child process, waiting for it to finish and
     /// collecting all of its output.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::old_io::Command;
@@ -382,7 +382,7 @@ impl Command {
     /// Executes a command as a child process, waiting for it to finish and
     /// collecting its exit status.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::old_io::Command;
@@ -656,7 +656,7 @@ impl Process {
     /// A value of `None` will clear any previous timeout, and a value of `Some`
     /// will override any previously set timeout.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use std::old_io::{Command, IoResult};

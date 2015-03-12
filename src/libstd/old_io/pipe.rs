@@ -43,7 +43,7 @@ impl PipeStream {
     /// This operation consumes ownership of the file descriptor and it will be
     /// closed once the object is deallocated.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```{rust,no_run}
     /// # #![allow(unused_must_use)]

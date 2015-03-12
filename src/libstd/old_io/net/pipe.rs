@@ -50,7 +50,7 @@ impl UnixStream {
     ///
     /// The returned stream will be closed when the object falls out of scope.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// # #![allow(unused_must_use)]
@@ -175,7 +175,7 @@ impl UnixListener {
     ///
     /// This listener will be closed when it falls out of scope.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// # fn foo() {

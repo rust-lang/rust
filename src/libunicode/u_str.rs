@@ -479,7 +479,7 @@ impl<'a> Iterator for Utf16Items<'a> {
 /// Create an iterator over the UTF-16 encoded codepoints in `v`,
 /// returning invalid surrogates as `LoneSurrogate`s.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use unicode::str::Utf16Item::{ScalarValue, LoneSurrogate};

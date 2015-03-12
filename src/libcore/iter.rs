@@ -2296,7 +2296,7 @@ impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
 
 /// An iterator that passes mutable state to a closure and yields the result.
 ///
-/// # Example: The Fibonacci Sequence
+/// # Examples
 ///
 /// An iterator that yields sequential Fibonacci numbers, and stops on overflow.
 ///

@@ -288,7 +288,7 @@ impl<T:?Sized> MarkerTrait for T { }
 /// can extend `MarkerTrait`, which is equivalent to
 /// `PhantomFn<Self>`.
 ///
-/// # Example
+/// # Examples
 ///
 /// As an example, consider a trait with no methods like `Even`, meant
 /// to represent types that are "even":

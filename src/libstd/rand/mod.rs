@@ -424,7 +424,7 @@ pub fn random<T: Rand>() -> T {
 
 /// Randomly sample up to `amount` elements from an iterator.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::rand::{thread_rng, sample};

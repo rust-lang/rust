@@ -277,7 +277,7 @@ pub trait SliceExt {
     ///
     /// Panics if `size` is 0.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// Print the adjacent pairs of a slice (i.e. `[1,2]`, `[2,3]`,
     /// `[3,4]`):
@@ -300,7 +300,7 @@ pub trait SliceExt {
     ///
     /// Panics if `size` is 0.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// Print the slice two elements at a time (i.e. `[1,2]`,
     /// `[3,4]`, `[5]`):
@@ -390,7 +390,7 @@ pub trait SliceExt {
     /// `Err` is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
     /// uniquely determined position; the second and third are not
@@ -416,7 +416,7 @@ pub trait SliceExt {
 
     /// Return the number of elements in the slice
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -427,7 +427,7 @@ pub trait SliceExt {
 
     /// Returns true if the slice has a length of 0
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let a = [1, 2, 3];
@@ -529,7 +529,7 @@ pub trait SliceExt {
     ///
     /// Panics if `a` or `b` are out of bounds.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let mut v = ["a", "b", "c", "d"];
@@ -549,7 +549,7 @@ pub trait SliceExt {
     ///
     /// Panics if `mid > len`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let mut v = [1, 2, 3, 4, 5, 6];
@@ -578,7 +578,7 @@ pub trait SliceExt {
 
     /// Reverse the order of elements in a slice, in place.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let mut v = [1, 2, 3];
@@ -638,7 +638,7 @@ pub trait SliceExt {
     /// shorter of `self.len()` and `src.len()`). Returns the number
     /// of elements copied.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let mut dst = [0, 0, 0];
@@ -676,7 +676,7 @@ pub trait SliceExt {
     /// `Err` is returned, containing the index where a matching
     /// element could be inserted while maintaining sorted order.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// Looks up a series of four elements. The first is found, with a
     /// uniquely determined position; the second and third are not
@@ -707,7 +707,7 @@ pub trait SliceExt {
     /// Returns `true` if successful and `false` if the slice is at the
     /// last-ordered permutation.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let v: &mut [_] = &mut [0, 1, 2];
@@ -727,7 +727,7 @@ pub trait SliceExt {
     /// Returns `true` if successful and `false` if the slice is at the
     /// first-ordered permutation.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// let v: &mut [_] = &mut [1, 0, 2];

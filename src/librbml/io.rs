@@ -36,7 +36,7 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 
 /// Writes to an owned, growable byte vector that supports seeking.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]

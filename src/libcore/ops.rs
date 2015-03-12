@@ -27,7 +27,7 @@
 //! idea to have both `T` and `&T` implement the traits `Add<T>` and `Add<&T>`
 //! so that generic code can be written without unnecessary cloning.
 //!
-//! # Example
+//! # Examples
 //!
 //! This example creates a `Point` struct that implements `Add` and `Sub`, and then
 //! demonstrates adding and subtracting two `Point`s.
@@ -73,7 +73,7 @@ use fmt;
 /// The `Drop` trait is used to run some code when a value goes out of scope. This
 /// is sometimes called a 'destructor'.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `Drop`. The `drop` method is called when `_x` goes
 /// out of scope, and therefore `main` prints `Dropping!`.
@@ -157,7 +157,7 @@ macro_rules! forward_ref_binop {
 
 /// The `Add` trait is used to specify the functionality of `+`.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `Add`. When `Foo + Foo` happens, it ends up
 /// calling `add`, and therefore, `main` prints `Adding!`.
@@ -211,7 +211,7 @@ add_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 
 /// The `Sub` trait is used to specify the functionality of `-`.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `Sub`. When `Foo - Foo` happens, it ends up
 /// calling `sub`, and therefore, `main` prints `Subtracting!`.
@@ -265,7 +265,7 @@ sub_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 
 /// The `Mul` trait is used to specify the functionality of `*`.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `Mul`. When `Foo * Foo` happens, it ends up
 /// calling `mul`, and therefore, `main` prints `Multiplying!`.
@@ -319,7 +319,7 @@ mul_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 
 /// The `Div` trait is used to specify the functionality of `/`.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `Div`. When `Foo / Foo` happens, it ends up
 /// calling `div`, and therefore, `main` prints `Dividing!`.
@@ -373,7 +373,7 @@ div_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 
 /// The `Rem` trait is used to specify the functionality of `%`.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `Rem`. When `Foo % Foo` happens, it ends up
 /// calling `rem`, and therefore, `main` prints `Remainder-ing!`.
@@ -446,7 +446,7 @@ rem_float_impl! { f64, fmod }
 
 /// The `Neg` trait is used to specify the functionality of unary `-`.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `Neg`. When `-Foo` happens, it ends up calling
 /// `neg`, and therefore, `main` prints `Negating!`.
@@ -523,7 +523,7 @@ neg_uint_impl! { u64, i64 }
 
 /// The `Not` trait is used to specify the functionality of unary `!`.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `Not`. When `!Foo` happens, it ends up calling
 /// `not`, and therefore, `main` prints `Not-ing!`.
@@ -577,7 +577,7 @@ not_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
 /// The `BitAnd` trait is used to specify the functionality of `&`.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `BitAnd`. When `Foo & Foo` happens, it ends up
 /// calling `bitand`, and therefore, `main` prints `Bitwise And-ing!`.
@@ -631,7 +631,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
 /// The `BitOr` trait is used to specify the functionality of `|`.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `BitOr`. When `Foo | Foo` happens, it ends up
 /// calling `bitor`, and therefore, `main` prints `Bitwise Or-ing!`.
@@ -685,7 +685,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
 /// The `BitXor` trait is used to specify the functionality of `^`.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `BitXor`. When `Foo ^ Foo` happens, it ends up
 /// calling `bitxor`, and therefore, `main` prints `Bitwise Xor-ing!`.
@@ -739,7 +739,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
 /// The `Shl` trait is used to specify the functionality of `<<`.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `Shl`. When `Foo << Foo` happens, it ends up
 /// calling `shl`, and therefore, `main` prints `Shifting left!`.
@@ -811,7 +811,7 @@ shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 
 /// The `Shr` trait is used to specify the functionality of `>>`.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `Shr`. When `Foo >> Foo` happens, it ends up
 /// calling `shr`, and therefore, `main` prints `Shifting right!`.
@@ -883,7 +883,7 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// The `Index` trait is used to specify the functionality of indexing operations
 /// like `arr[idx]` when used in an immutable context.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `Index`. When `Foo[Bar]` happens, it ends up
 /// calling `index`, and therefore, `main` prints `Indexing!`.
@@ -924,7 +924,7 @@ pub trait Index<Idx: ?Sized> {
 /// The `IndexMut` trait is used to specify the functionality of indexing
 /// operations like `arr[idx]`, when used in a mutable context.
 ///
-/// # Example
+/// # Examples
 ///
 /// A trivial implementation of `IndexMut`. When `Foo[Bar]` happens, it ends up
 /// calling `index_mut`, and therefore, `main` prints `Indexing!`.
@@ -1033,7 +1033,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
 /// The `Deref` trait is used to specify the functionality of dereferencing
 /// operations like `*v`.
 ///
-/// # Example
+/// # Examples
 ///
 /// A struct with a single field which is accessible via dereferencing the
 /// struct.
@@ -1087,7 +1087,7 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 /// The `DerefMut` trait is used to specify the functionality of dereferencing
 /// mutably like `*v = 1;`
 ///
-/// # Example
+/// # Examples
 ///
 /// A struct with a single field which is modifiable via dereferencing the
 /// struct.

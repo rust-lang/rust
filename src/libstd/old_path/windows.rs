@@ -603,7 +603,7 @@ impl Path {
     ///
     /// Panics if the vector contains a `NUL`, or if it contains invalid UTF-8.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// println!("{}", Path::new(r"C:\some\path").display());
@@ -617,7 +617,7 @@ impl Path {
     ///
     /// Returns `None` if the vector contains a `NUL`, or if it contains invalid UTF-8.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// let path = Path::new_opt(r"C:\some\path");
