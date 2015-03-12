@@ -1562,6 +1562,7 @@ impl StrExt for str {
 #[cfg(not(stage0))]
 /// Any string that can be represented as a slice.
 #[lang = "str"]
+#[cfg(not(test))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl str {
     /// Escapes each char in `s` with `char::escape_default`.

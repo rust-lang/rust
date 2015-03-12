@@ -1083,9 +1083,36 @@ impl<T> SliceExt for [T] {
     }
 }
 
+// HACK: With cfg(test) `impl [T]` is not available, these three functions are actually methods
+// that are in `impl [T]` but not in `core::slice::SliceExt` - this is only need for testing
+#[cfg(test)]
+pub fn into_vec<T>(mut b: Box<[T]>) -> Vec<T> {
+    unsafe {
+        let xs = Vec::from_raw_parts(b.as_mut_ptr(), b.len(), b.len());
+        mem::forget(b);
+        xs
+    }
+}
+
+#[cfg(test)]
+pub fn permutations<T>(s: &[T]) -> Permutations<T> where T: Clone {
+    Permutations{
+        swaps: ElementSwaps::new(s.len()),
+        v: ::slice::to_vec(s),
+    }
+}
+
+#[cfg(test)]
+pub fn to_vec<T>(s: &[T]) -> Vec<T> where T: Clone {
+    let mut vector = Vec::with_capacity(s.len());
+    vector.push_all(s);
+    vector
+}
+
 #[cfg(not(stage0))]
 /// Allocating extension methods for slices.
 #[lang = "slice"]
+#[cfg(not(test))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> [T] {
     /// Sorts the slice, in place, using `compare` to compare
@@ -2022,7 +2049,13 @@ impl<T> BorrowMut<[T]> for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> ToOwned for [T] {
     type Owned = Vec<T>;
+    #[cfg(not(test))]
     fn to_owned(&self) -> Vec<T> { self.to_vec() }
+
+    // HACK: `impl [T]` is not available in cfg(test), use `::slice::to_vec` instead of
+    // `<[T]>::to_vec`
+    #[cfg(test)]
+    fn to_owned(&self) -> Vec<T> { ::slice::to_vec(self) }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2337,5 +2370,65 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
         let old = *ptr;
         *ptr = ptr.offset(1);
         old
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use core::iter::{Iterator, IteratorExt};
+    use core::option::Option::{None, Some};
+    use string::ToString;
+
+    #[test]
+    fn test_permutations() {
+        {
+            let v: [i32; 0] = [];
+            let mut it = ::slice::permutations(&v);
+            let (min_size, max_opt) = it.size_hint();
+            assert_eq!(min_size, 1);
+            assert_eq!(max_opt.unwrap(), 1);
+            assert_eq!(it.next(), Some(::slice::to_vec(&v)));
+            assert_eq!(it.next(), None);
+        }
+        {
+            let v = ["Hello".to_string()];
+            let mut it = ::slice::permutations(&v);
+            let (min_size, max_opt) = it.size_hint();
+            assert_eq!(min_size, 1);
+            assert_eq!(max_opt.unwrap(), 1);
+            assert_eq!(it.next(), Some(::slice::to_vec(&v)));
+            assert_eq!(it.next(), None);
+        }
+        {
+            let v = [1, 2, 3];
+            let mut it = ::slice::permutations(&v);
+            let (min_size, max_opt) = it.size_hint();
+            assert_eq!(min_size, 3*2);
+            assert_eq!(max_opt.unwrap(), 3*2);
+            assert_eq!(it.next().unwrap(), [1,2,3]);
+            assert_eq!(it.next().unwrap(), [1,3,2]);
+            assert_eq!(it.next().unwrap(), [3,1,2]);
+            let (min_size, max_opt) = it.size_hint();
+            assert_eq!(min_size, 3);
+            assert_eq!(max_opt.unwrap(), 3);
+            assert_eq!(it.next().unwrap(), [3,2,1]);
+            assert_eq!(it.next().unwrap(), [2,3,1]);
+            assert_eq!(it.next().unwrap(), [2,1,3]);
+            assert_eq!(it.next(), None);
+        }
+        {
+            // check that we have N! permutations
+            let v = ['A', 'B', 'C', 'D', 'E', 'F'];
+            let mut amt = 0;
+            let mut it = ::slice::permutations(&v);
+            let (min_size, max_opt) = it.size_hint();
+            for _perm in it.by_ref() {
+                amt += 1;
+            }
+            assert_eq!(amt, it.swaps.swaps_made);
+            assert_eq!(amt, min_size);
+            assert_eq!(amt, 2 * 3 * 4 * 5 * 6);
+            assert_eq!(amt, max_opt.unwrap());
+        }
     }
 }

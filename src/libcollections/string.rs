@@ -113,8 +113,17 @@ impl String {
     #[inline]
     #[unstable(feature = "collections",
                reason = "needs investigation to see if to_string() can match perf")]
+    #[cfg(not(test))]
     pub fn from_str(string: &str) -> String {
         String { vec: <[_]>::to_vec(string.as_bytes()) }
+    }
+
+    // HACK: `impl [T]` is not available in cfg(test), use `::slice::to_vec` instead of
+    // `<[T]>::to_vec`
+    #[inline]
+    #[cfg(test)]
+    pub fn from_str(string: &str) -> String {
+        String { vec: ::slice::to_vec(string.as_bytes()) }
     }
 
     /// Returns the vector as a string buffer, if possible, taking care not to

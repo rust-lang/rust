@@ -47,6 +47,9 @@ extern crate core;
 extern crate unicode;
 extern crate alloc;
 
+#[cfg(test)] #[macro_use] extern crate std;
+#[cfg(test)] extern crate test;
+
 pub use binary_heap::BinaryHeap;
 pub use bit_vec::BitVec;
 pub use bit_set::BitSet;
@@ -131,6 +134,7 @@ pub mod btree_set {
 #[doc(hidden)]
 pub fn fixme_14344_be_sure_to_link_to_collections() {}
 
+#[cfg(not(test))]
 mod std {
     pub use core::ops;      // RangeFull
 }
