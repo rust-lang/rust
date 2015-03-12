@@ -146,7 +146,7 @@ pub trait Rng : Sized {
     /// (e.g. reading past the end of a file that is being used as the
     /// source of randomness).
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::rand::{thread_rng, Rng};
@@ -181,7 +181,7 @@ pub trait Rng : Sized {
 
     /// Return a random value of a `Rand` type.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::rand::{thread_rng, Rng};
@@ -199,7 +199,7 @@ pub trait Rng : Sized {
     /// Return an iterator that will yield an infinite number of randomly
     /// generated items.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::rand::{thread_rng, Rng};
@@ -226,7 +226,7 @@ pub trait Rng : Sized {
     ///
     /// Panics if `low >= high`.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::rand::{thread_rng, Rng};
@@ -244,7 +244,7 @@ pub trait Rng : Sized {
 
     /// Return a bool with a 1 in n chance of true
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::rand::{thread_rng, Rng};
@@ -258,7 +258,7 @@ pub trait Rng : Sized {
 
     /// Return an iterator of random characters from the set A-Z,a-z,0-9.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::rand::{thread_rng, Rng};
@@ -274,7 +274,7 @@ pub trait Rng : Sized {
     ///
     /// Return `None` if `values` is empty.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use std::rand::{thread_rng, Rng};
@@ -294,7 +294,7 @@ pub trait Rng : Sized {
 
     /// Shuffle a mutable slice in place.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::rand::{thread_rng, Rng};
@@ -357,7 +357,7 @@ impl<'a, R: Rng> Iterator for AsciiGenerator<'a, R> {
 pub trait SeedableRng<Seed>: Rng {
     /// Reseed an RNG with the given seed.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::rand::{Rng, SeedableRng, StdRng};
@@ -372,7 +372,7 @@ pub trait SeedableRng<Seed>: Rng {
 
     /// Create a new RNG with the given seed.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::rand::{Rng, SeedableRng, StdRng};
@@ -477,7 +477,7 @@ impl Rand for XorShiftRng {
 /// `Rand` implementation for `f32` and `f64` for the half-open
 /// `[0,1)`.
 ///
-/// # Example
+/// # Examples
 /// ```rust
 /// use std::rand::{random, Open01};
 ///
@@ -493,7 +493,7 @@ pub struct Open01<F>(pub F);
 /// `Rand` implementation of `f32` and `f64` for the half-open
 /// `[0,1)`.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::rand::{random, Closed01};

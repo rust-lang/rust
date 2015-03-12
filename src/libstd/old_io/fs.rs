@@ -27,7 +27,7 @@
 //! the metadata of a file. This includes getting the `stat` information,
 //! reading off particular bits of it, etc.
 //!
-//! # Example
+//! # Examples
 //!
 //! ```rust
 //! # #![allow(unused_must_use)]
@@ -102,7 +102,7 @@ impl File {
     /// Open a file at `path` in the mode specified by the `mode` and `access`
     /// arguments
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust,should_fail
     /// use std::old_io::{File, Open, ReadWrite};
@@ -173,7 +173,7 @@ impl File {
     ///
     /// For more information, see the `File::open_mode` function.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// use std::old_io::File;
@@ -192,7 +192,7 @@ impl File {
     ///
     /// For more information, see the `File::open_mode` function.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```rust
     /// # #![allow(unused_must_use)]
@@ -283,7 +283,7 @@ impl File {
 
 /// Unlink a file from the underlying filesystem.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -314,7 +314,7 @@ pub fn unlink(path: &Path) -> IoResult<()> {
 /// directory, etc. This function will traverse symlinks to query
 /// information about the destination file.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::old_io::fs;
@@ -356,7 +356,7 @@ pub fn lstat(path: &Path) -> IoResult<FileStat> {
 
 /// Rename a file or directory to a new name.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -384,7 +384,7 @@ pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
 /// Note that if `from` and `to` both point to the same file, then the file
 /// will likely get truncated by this operation.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -434,7 +434,7 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 /// Changes the permission mode bits found on a file or a directory. This
 /// function takes a mask from the `io` module
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -505,7 +505,7 @@ pub fn readlink(path: &Path) -> IoResult<Path> {
 
 /// Create a new, empty directory at the provided path
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -529,7 +529,7 @@ pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
 
 /// Remove an existing, empty directory
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -553,7 +553,7 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 
 /// Retrieve a vector containing all entries within a provided directory
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::old_io::fs::PathExtensions;

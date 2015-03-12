@@ -22,7 +22,7 @@ use sync::{Mutex, Condvar};
 /// until the counter is positive, and each release will increment the counter
 /// and unblock any threads if necessary.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::sync::Semaphore;

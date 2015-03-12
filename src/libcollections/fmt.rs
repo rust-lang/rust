@@ -420,7 +420,7 @@ use string;
 ///
 ///   * args - a structure of arguments generated via the `format_args!` macro.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::fmt;

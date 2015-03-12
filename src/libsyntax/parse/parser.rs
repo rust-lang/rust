@@ -5428,7 +5428,7 @@ impl<'a> Parser<'a> {
 
     /// Parse extern crate links
     ///
-    /// # Example
+    /// # Examples
     ///
     /// extern crate url;
     /// extern crate foo = "bar"; //deprecated

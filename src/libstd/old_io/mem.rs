@@ -51,7 +51,7 @@ impl Writer for Vec<u8> {
 
 /// Writes to an owned, growable byte vector
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -111,7 +111,7 @@ impl Writer for MemWriter {
 
 /// Reads from an owned byte vector
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -241,7 +241,7 @@ impl<'a> Buffer for &'a [u8] {
 /// If a write will not fit in the buffer, it returns an error and does not
 /// write any data.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
@@ -313,7 +313,7 @@ impl<'a> Seek for BufWriter<'a> {
 
 /// Reads from a fixed-size byte slice
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]

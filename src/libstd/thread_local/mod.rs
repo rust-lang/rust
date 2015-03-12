@@ -68,7 +68,7 @@ pub mod __impl {
 /// within a thread, and values support destructors which will be run when a
 /// thread exits.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```
 /// use std::cell::RefCell;

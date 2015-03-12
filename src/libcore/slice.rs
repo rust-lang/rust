@@ -1433,7 +1433,7 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
 /// function taking the lifetime of a host value for the slice, or by explicit
 /// annotation.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::slice;
@@ -1476,7 +1476,7 @@ pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
 /// valid for `len` elements, nor whether the lifetime provided is a suitable
 /// lifetime for the returned slice.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// use std::slice;

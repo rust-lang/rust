@@ -28,7 +28,7 @@ The other kind of comment is a doc comment. Doc comments use `///` instead of
 ///
 /// * `name` - The name of the person you'd like to greet.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust
 /// let name = "Steve";

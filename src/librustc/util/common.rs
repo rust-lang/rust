@@ -193,7 +193,7 @@ pub fn can_reach<T, S>(edges_map: &HashMap<T, Vec<T>, S>, source: T,
 /// ```
 /// but currently it is not possible.
 ///
-/// # Example
+/// # Examples
 /// ```
 /// struct Context {
 ///    cache: RefCell<HashMap<uint, uint>>

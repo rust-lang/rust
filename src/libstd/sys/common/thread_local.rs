@@ -28,7 +28,7 @@
 //! more useful in practice than this OS-based version which likely requires
 //! unsafe code to interoperate with.
 //!
-//! # Example
+//! # Examples
 //!
 //! Using a dynamically allocated TLS key. Note that this key can be shared
 //! among many threads via an `Arc`.
@@ -73,7 +73,7 @@ use sys::thread_local as imp;
 /// time. The key is also deallocated when the Rust runtime exits or `destroy`
 /// is called, whichever comes first.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```ignore
 /// use tls::os::{StaticKey, INIT};
@@ -110,7 +110,7 @@ pub struct StaticKeyInner {
 /// Implementations will likely, however, contain unsafe code as this type only
 /// operates on `*mut u8`, an unsafe pointer.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```rust,ignore
 /// use tls::os::Key;
