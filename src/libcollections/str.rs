@@ -67,6 +67,7 @@ use core::option::Option::{self, Some, None};
 use core::result::Result;
 use core::slice::AsSlice;
 use core::str as core_str;
+#[cfg(stage0)]
 use unicode::char::CharExt;
 use unicode::str::{UnicodeStr, Utf16Encoder};
 
