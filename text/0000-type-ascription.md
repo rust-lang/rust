@@ -149,6 +149,47 @@ work with only minor adjustment, it allows for a backwards compatible path to
 allows customisation of a contentious kind of error (especially so in the
 context of cross-platform programming).
 
+
+### Type ascription and temporaries
+
+There is an implementation choice between treating `x: T` as an lvalue or
+rvalue. Note that when a rvalue is used in lvalue context (e.g., the subject of
+a reference operation), then the compiler introduces a temporary variable.
+Neither option is satisfactory, if we treat an ascription expression as an
+lvalue (i.e., no new temporary), then there is potential for unsoundness:
+
+```
+let mut foo: S = ...;
+{
+    let bar = &mut (foo: T);  // S <: T, no coercion required
+    *bar = ... : T;
+}
+// Whoops, foo has type T, but the compiler thinks it has type S, where potentially T </: S
+```
+
+If we treat ascription expressions as rvalues (i.e., create a temporary in
+lvalue position), then we don't have the soundness problem, but we do get the
+unexpected result that `&(x: T)` is not in fact a reference to `x`, but a
+reference to a temporary copy of `x`.
+
+The proposed solution is that type ascription expressions are rvalues, but
+taking a reference of such an expression is forbidden. I.e., type asciption is
+forbidden in the following contexts (where `<expr>` is a type ascription
+expression):
+
+```
+&[mut] <expr>
+let ref [mut] x = <expr>
+match <expr> { .. ref [mut] x .. => { .. } .. }
+<expr>.foo() // due to autoref
+```
+
+Like other rvalues, type ascription would not be allowed as the lhs of assignment.
+
+Note that, if type asciption is required in such a context, an lvalue can be
+forced by using `{}`, e.g., write `&mut { foo: T }`, rather than `&mut (foo: T)`.
+
+
 # Drawbacks
 
 More syntax, another feature in the language.
