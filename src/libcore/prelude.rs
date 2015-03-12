@@ -37,7 +37,7 @@ pub use char::CharExt;
 pub use clone::Clone;
 pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 pub use convert::{AsRef, AsMut, Into, From};
-pub use iter::{Extend, IteratorExt};
+pub use iter::Extend;
 pub use iter::{Iterator, DoubleEndedIterator};
 pub use iter::{ExactSizeIterator};
 pub use option::Option::{self, Some, None};

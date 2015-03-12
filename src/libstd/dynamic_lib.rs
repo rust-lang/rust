@@ -261,7 +261,7 @@ mod dl {
 #[cfg(target_os = "windows")]
 mod dl {
     use ffi::OsStr;
-    use iter::IteratorExt;
+    use iter::Iterator;
     use libc;
     use libc::consts::os::extra::ERROR_CALL_NOT_IMPLEMENTED;
     use ops::FnOnce;
