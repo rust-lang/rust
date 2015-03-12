@@ -253,7 +253,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         let err = _NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
         if err != 0 { return Err(io::Error::last_os_error()); }
         v.set_len(sz as uint - 1); // chop off trailing NUL
-        Ok(PathBuf::new::<OsString>(&OsStringExt::from_vec(v)))
+        Ok(PathBuf::new(OsString::from_vec(v)))
     }
 }
 
