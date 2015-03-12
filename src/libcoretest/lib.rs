@@ -23,6 +23,7 @@
 #![feature(hash)]
 #![feature(io)]
 #![feature(collections)]
+#![feature(debug_builders)]
 #![allow(deprecated)] // rand
 
 extern crate core;

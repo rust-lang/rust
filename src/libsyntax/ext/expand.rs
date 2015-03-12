@@ -1121,7 +1121,7 @@ fn expand_annotatable(a: Annotatable,
                         callee: NameAndSpan {
                             name: mname.to_string(),
                             format: MacroAttribute,
-                            span: None,
+                            span: Some(attr.span),
                             // attributes can do whatever they like,
                             // for now.
                             allow_internal_unstable: true,
