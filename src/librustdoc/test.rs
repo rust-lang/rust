@@ -219,7 +219,14 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
 }
 
 pub fn maketest(s: &str, cratename: Option<&str>, lints: bool, dont_insert_main: bool) -> String {
+    let (crate_attrs, everything_else) = partition_source(s);
+
     let mut prog = String::new();
+
+    // First push any outer attributes from the example, assuming they
+    // are intended to be crate attributes.
+    prog.push_str(&crate_attrs);
+
     if lints {
         prog.push_str(r"
 #![allow(unused_variables, unused_assignments, unused_mut, unused_attributes, dead_code)]
@@ -240,14 +247,40 @@ pub fn maketest(s: &str, cratename: Option<&str>, lints: bool, dont_insert_main:
         }
     }
     if dont_insert_main || s.contains("fn main") {
-        prog.push_str(s);
+        prog.push_str(&everything_else);
     } else {
         prog.push_str("fn main() {\n    ");
-        prog.push_str(&s.replace("\n", "\n    "));
+        prog.push_str(&everything_else.replace("\n", "\n    "));
         prog.push_str("\n}");
     }
 
+    info!("final test program: {}", prog);
+
     return prog
+}
+
+fn partition_source(s: &str) -> (String, String) {
+    use unicode::str::UnicodeStr;
+
+    let mut after_header = false;
+    let mut before = String::new();
+    let mut after = String::new();
+
+    for line in s.lines() {
+        let trimline = StrExt::trim(line);
+        let header = trimline.is_whitespace() ||
+            trimline.starts_with("#![feature");
+        if !header || after_header {
+            after_header = true;
+            after.push_str(line);
+            after.push_str("\n");
+        } else {
+            before.push_str(line);
+            before.push_str("\n");
+        }
+    }
+
+    return (before, after);
 }
 
 pub struct Collector {
