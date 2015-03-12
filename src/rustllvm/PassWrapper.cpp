@@ -14,6 +14,7 @@
 
 #include "llvm/Support/CBindingWrapping.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Host.h"
 #include "llvm/Target/TargetLibraryInfo.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
@@ -83,6 +84,11 @@ LLVMRustCreateTargetMachine(const char *triple,
         return NULL;
     }
 
+    StringRef real_cpu = cpu;
+    if (real_cpu == "native") {
+        real_cpu = sys::getHostCPUName();
+    }
+
     TargetOptions Options;
     Options.PositionIndependentExecutable = PositionIndependentExecutable;
     Options.NoFramePointerElim = NoFramePointerElim;
@@ -96,7 +102,7 @@ LLVMRustCreateTargetMachine(const char *triple,
     }
 
     TargetMachine *TM = TheTarget->createTargetMachine(Trip.getTriple(),
-                                                       cpu,
+                                                       real_cpu,
                                                        feature,
                                                        Options,
                                                        RM,
