@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::Abi;
 use ast::*;
 use ast;
 use ast_util;
@@ -268,62 +267,6 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: Option<&Ty>) -> Ident 
     token::gensym_ident(&pretty[..])
 }
 
-pub fn trait_method_to_ty_method(method: &Method) -> TypeMethod {
-    match method.node {
-        MethDecl(ident,
-                 ref generics,
-                 abi,
-                 ref explicit_self,
-                 unsafety,
-                 ref decl,
-                 _,
-                 vis) => {
-            TypeMethod {
-                ident: ident,
-                attrs: method.attrs.clone(),
-                unsafety: unsafety,
-                decl: (*decl).clone(),
-                generics: generics.clone(),
-                explicit_self: (*explicit_self).clone(),
-                id: method.id,
-                span: method.span,
-                vis: vis,
-                abi: abi,
-            }
-        },
-        MethMac(_) => panic!("expected non-macro method declaration")
-    }
-}
-
-/// extract a TypeMethod from a TraitItem. if the TraitItem is
-/// a default, pull out the useful fields to make a TypeMethod
-//
-// NB: to be used only after expansion is complete, and macros are gone.
-pub fn trait_item_to_ty_method(method: &TraitItem) -> TypeMethod {
-    match *method {
-        RequiredMethod(ref m) => (*m).clone(),
-        ProvidedMethod(ref m) => trait_method_to_ty_method(&**m),
-        TypeTraitItem(_) => {
-            panic!("trait_method_to_ty_method(): expected method but found \
-                   typedef")
-        }
-    }
-}
-
-pub fn split_trait_methods(trait_methods: &[TraitItem])
-                           -> (Vec<TypeMethod>, Vec<P<Method>> ) {
-    let mut reqd = Vec::new();
-    let mut provd = Vec::new();
-    for trt_method in trait_methods {
-        match *trt_method {
-            RequiredMethod(ref tm) => reqd.push((*tm).clone()),
-            ProvidedMethod(ref m) => provd.push((*m).clone()),
-            TypeTraitItem(_) => {}
-        }
-    };
-    (reqd, provd)
-}
-
 pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
     match field.node.kind {
         ast::NamedField(_, v) | ast::UnnamedField(v) => v
@@ -513,9 +456,11 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         self.operation.visit_id(node_id);
 
         match function_kind {
-            visit::FkItemFn(_, generics, _, _) |
-            visit::FkMethod(_, generics, _) => {
+            visit::FkItemFn(_, generics, _, _) => {
                 self.visit_generics_helper(generics)
+            }
+            visit::FkMethod(_, sig) => {
+                self.visit_generics_helper(&sig.generics)
             }
             visit::FkFnBlock => {}
         }
@@ -552,13 +497,14 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         visit::walk_struct_def(self, struct_def);
     }
 
-    fn visit_trait_item(&mut self, tm: &ast::TraitItem) {
-        match *tm {
-            ast::RequiredMethod(ref m) => self.operation.visit_id(m.id),
-            ast::ProvidedMethod(ref m) => self.operation.visit_id(m.id),
-            ast::TypeTraitItem(ref typ) => self.operation.visit_id(typ.ty_param.id),
-        }
-        visit::walk_trait_item(self, tm);
+    fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
+        self.operation.visit_id(ti.id);
+        visit::walk_trait_item(self, ti);
+    }
+
+    fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
+        self.operation.visit_id(ii.id);
+        visit::walk_impl_item(self, ii);
     }
 
     fn visit_lifetime_ref(&mut self, lifetime: &Lifetime) {
@@ -699,52 +645,6 @@ pub fn lit_is_str(lit: &Lit) -> bool {
         LitStr(..) => true,
         _ => false,
     }
-}
-
-/// Macro invocations are guaranteed not to occur after expansion is complete.
-/// Extracting fields of a method requires a dynamic check to make sure that it's
-/// not a macro invocation. This check is guaranteed to succeed, assuming
-/// that the invocations are indeed gone.
-pub trait PostExpansionMethod {
-    fn pe_ident(&self) -> ast::Ident;
-    fn pe_generics<'a>(&'a self) -> &'a ast::Generics;
-    fn pe_abi(&self) -> Abi;
-    fn pe_explicit_self<'a>(&'a self) -> &'a ast::ExplicitSelf;
-    fn pe_unsafety(&self) -> ast::Unsafety;
-    fn pe_fn_decl<'a>(&'a self) -> &'a ast::FnDecl;
-    fn pe_body<'a>(&'a self) -> &'a ast::Block;
-    fn pe_vis(&self) -> ast::Visibility;
-}
-
-macro_rules! mf_method{
-    ($meth_name:ident, $field_ty:ty, $field_pat:pat, $result:expr) => {
-        fn $meth_name<'a>(&'a self) -> $field_ty {
-            match self.node {
-                $field_pat => $result,
-                MethMac(_) => {
-                    panic!("expected an AST without macro invocations");
-                }
-            }
-        }
-    }
-}
-
-
-impl PostExpansionMethod for Method {
-    mf_method! { pe_ident,ast::Ident,MethDecl(ident,_,_,_,_,_,_,_),ident }
-    mf_method! {
-        pe_generics,&'a ast::Generics,
-        MethDecl(_,ref generics,_,_,_,_,_,_),generics
-    }
-    mf_method! { pe_abi,Abi,MethDecl(_,_,abi,_,_,_,_,_),abi }
-    mf_method! {
-        pe_explicit_self,&'a ast::ExplicitSelf,
-        MethDecl(_,_,_,ref explicit_self,_,_,_,_),explicit_self
-    }
-    mf_method! { pe_unsafety,ast::Unsafety,MethDecl(_,_,_,_,unsafety,_,_,_),unsafety }
-    mf_method! { pe_fn_decl,&'a ast::FnDecl,MethDecl(_,_,_,_,_,ref decl,_,_),&**decl }
-    mf_method! { pe_body,&'a ast::Block,MethDecl(_,_,_,_,_,_,ref body,_),&**body }
-    mf_method! { pe_vis,ast::Visibility,MethDecl(_,_,_,_,_,_,_,vis),vis }
 }
 
 #[cfg(test)]

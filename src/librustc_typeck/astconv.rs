@@ -1095,14 +1095,9 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         // by type collection, which may be in progress at this point.
         match this.tcx().map.expect_item(trait_did.node).node {
             ast::ItemTrait(_, _, _, ref trait_items) => {
-                trait_items.iter().filter_map(|i| {
-                    if let ast::TypeTraitItem(ref assoc) = *i {
-                        if assoc.ty_param.ident.name == assoc_name {
-                            return Some(ast_util::local_def(assoc.ty_param.id));
-                        }
-                    }
-                    None
-                }).next().expect("missing associated type")
+                let item = trait_items.iter().find(|i| i.ident.name == assoc_name)
+                                      .expect("missing associated type");
+                ast_util::local_def(item.id)
             }
             _ => unreachable!()
         }
@@ -1447,22 +1442,19 @@ struct SelfInfo<'a, 'tcx> {
 }
 
 pub fn ty_of_method<'tcx>(this: &AstConv<'tcx>,
-                          unsafety: ast::Unsafety,
-                          untransformed_self_ty: Ty<'tcx>,
-                          explicit_self: &ast::ExplicitSelf,
-                          decl: &ast::FnDecl,
-                          abi: abi::Abi)
+                          sig: &ast::MethodSig,
+                          untransformed_self_ty: Ty<'tcx>)
                           -> (ty::BareFnTy<'tcx>, ty::ExplicitSelfCategory) {
     let self_info = Some(SelfInfo {
         untransformed_self_ty: untransformed_self_ty,
-        explicit_self: explicit_self,
+        explicit_self: &sig.explicit_self,
     });
     let (bare_fn_ty, optional_explicit_self_category) =
         ty_of_method_or_bare_fn(this,
-                                unsafety,
-                                abi,
+                                sig.unsafety,
+                                sig.abi,
                                 self_info,
-                                decl);
+                                &sig.decl);
     (bare_fn_ty, optional_explicit_self_category.unwrap())
 }
 

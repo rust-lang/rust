@@ -46,13 +46,12 @@ use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
 use syntax::{abi, ast, ast_map};
-use syntax::ast_util::is_shift_binop;
+use syntax::ast_util::{self, is_shift_binop, local_def};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
 use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
 use syntax::parse::token;
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
-use syntax::ast_util;
 use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
 
@@ -879,36 +878,18 @@ enum MethodContext {
     PlainImpl
 }
 
-fn method_context(cx: &Context, m: &ast::Method) -> MethodContext {
-    let did = ast::DefId {
-        krate: ast::LOCAL_CRATE,
-        node: m.id
-    };
-
-    match cx.tcx.impl_or_trait_items.borrow().get(&did).cloned() {
-        None => cx.sess().span_bug(m.span, "missing method descriptor?!"),
-        Some(ty::MethodTraitItem(md)) => {
-            match md.container {
-                ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
-                ty::ImplContainer(cid) => {
-                    match ty::impl_trait_ref(cx.tcx, cid) {
-                        Some(..) => MethodContext::TraitImpl,
-                        None => MethodContext::PlainImpl
-                    }
+fn method_context(cx: &Context, id: ast::NodeId, span: Span) -> MethodContext {
+    match cx.tcx.impl_or_trait_items.borrow().get(&local_def(id)) {
+        None => cx.sess().span_bug(span, "missing method descriptor?!"),
+        Some(item) => match item.container() {
+            ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
+            ty::ImplContainer(cid) => {
+                match ty::impl_trait_ref(cx.tcx, cid) {
+                    Some(_) => MethodContext::TraitImpl,
+                    None => MethodContext::PlainImpl
                 }
             }
-        },
-        Some(ty::TypeTraitItem(typedef)) => {
-            match typedef.container {
-                ty::TraitContainer(..) => MethodContext::TraitDefaultImpl,
-                ty::ImplContainer(cid) => {
-                    match ty::impl_trait_ref(cx.tcx, cid) {
-                        Some(..) => MethodContext::TraitImpl,
-                        None => MethodContext::PlainImpl
-                    }
-                }
-            }
-        },
+        }
     }
 }
 
@@ -999,9 +980,9 @@ impl LintPass for NonSnakeCase {
 
     fn check_fn(&mut self, cx: &Context,
                 fk: visit::FnKind, _: &ast::FnDecl,
-                _: &ast::Block, span: Span, _: ast::NodeId) {
+                _: &ast::Block, span: Span, id: ast::NodeId) {
         match fk {
-            visit::FkMethod(ident, _, m) => match method_context(cx, m) {
+            visit::FkMethod(ident, _) => match method_context(cx, id, span) {
                 MethodContext::PlainImpl => {
                     self.check_snake_case(cx, "method", ident, span)
                 },
@@ -1023,8 +1004,10 @@ impl LintPass for NonSnakeCase {
         }
     }
 
-    fn check_ty_method(&mut self, cx: &Context, t: &ast::TypeMethod) {
-        self.check_snake_case(cx, "trait method", t.ident, t.span);
+    fn check_trait_item(&mut self, cx: &Context, trait_item: &ast::TraitItem) {
+        if let ast::MethodTraitItem(_, None) = trait_item.node {
+            self.check_snake_case(cx, "trait method", trait_item.ident, trait_item.span);
+        }
     }
 
     fn check_lifetime_def(&mut self, cx: &Context, t: &ast::LifetimeDef) {
@@ -1335,9 +1318,9 @@ impl LintPass for UnsafeCode {
             visit::FkItemFn(_, _, ast::Unsafety::Unsafe, _) =>
                 cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function"),
 
-            visit::FkMethod(_, _, m) => {
-                if let ast::Method_::MethDecl(_, _, _, _, ast::Unsafety::Unsafe, _, _, _) = m.node {
-                    cx.span_lint(UNSAFE_CODE, m.span, "implementation of an `unsafe` method")
+            visit::FkMethod(_, sig) => {
+                if sig.unsafety == ast::Unsafety::Unsafe {
+                    cx.span_lint(UNSAFE_CODE, span, "implementation of an `unsafe` method")
                 }
             },
 
@@ -1345,9 +1328,12 @@ impl LintPass for UnsafeCode {
         }
     }
 
-    fn check_ty_method(&mut self, cx: &Context, ty_method: &ast::TypeMethod) {
-        if let ast::TypeMethod { unsafety: ast::Unsafety::Unsafe, span, ..} = *ty_method {
-            cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` method")
+    fn check_trait_item(&mut self, cx: &Context, trait_item: &ast::TraitItem) {
+        if let ast::MethodTraitItem(ref sig, None) = trait_item.node {
+            if sig.unsafety == ast::Unsafety::Unsafe {
+                cx.span_lint(UNSAFE_CODE, trait_item.span,
+                             "declaration of an `unsafe` method")
+            }
         }
     }
 }
@@ -1576,30 +1562,30 @@ impl LintPass for MissingDoc {
         self.check_missing_docs_attrs(cx, Some(it.id), &it.attrs, it.span, desc);
     }
 
-    fn check_fn(&mut self, cx: &Context, fk: visit::FnKind, _: &ast::FnDecl,
-                _: &ast::Block, _: Span, _: ast::NodeId) {
-        if let visit::FkMethod(_, _, m) = fk {
-            // If the method is an impl for a trait, don't doc.
-            if method_context(cx, m) == MethodContext::TraitImpl {
-                return;
-            }
-
-            // Otherwise, doc according to privacy. This will also check
-            // doc for default methods defined on traits.
-            self.check_missing_docs_attrs(cx, Some(m.id), &m.attrs, m.span, "a method");
-        }
+    fn check_trait_item(&mut self, cx: &Context, trait_item: &ast::TraitItem) {
+        let desc = match trait_item.node {
+            ast::MethodTraitItem(..) => "a trait method",
+            ast::TypeTraitItem(..) => "an associated type"
+        };
+        self.check_missing_docs_attrs(cx, Some(trait_item.id),
+                                      &trait_item.attrs,
+                                      trait_item.span, desc);
     }
 
-    fn check_ty_method(&mut self, cx: &Context, tm: &ast::TypeMethod) {
-        self.check_missing_docs_attrs(cx, Some(tm.id), &tm.attrs, tm.span, "a type method");
-    }
-
-    fn check_trait_item(&mut self, cx: &Context, it: &ast::TraitItem) {
-        if let ast::TraitItem::TypeTraitItem(ref ty) = *it {
-            let assoc_ty = &ty.ty_param;
-            self.check_missing_docs_attrs(cx, Some(assoc_ty.id), &ty.attrs,
-                                          assoc_ty.span, "an associated type");
+    fn check_impl_item(&mut self, cx: &Context, impl_item: &ast::ImplItem) {
+        // If the method is an impl for a trait, don't doc.
+        if method_context(cx, impl_item.id, impl_item.span) == MethodContext::TraitImpl {
+            return;
         }
+
+        let desc = match impl_item.node {
+            ast::MethodImplItem(..) => "a method",
+            ast::TypeImplItem(_) => "an associated type",
+            ast::MacImplItem(_) => "an impl item macro"
+        };
+        self.check_missing_docs_attrs(cx, Some(impl_item.id),
+                                      &impl_item.attrs,
+                                      impl_item.span, desc);
     }
 
     fn check_struct_field(&mut self, cx: &Context, sf: &ast::StructField) {
@@ -1644,10 +1630,7 @@ impl LintPass for MissingCopyImplementations {
         if !cx.exported_items.contains(&item.id) {
             return;
         }
-        if cx.tcx
-             .destructor_for_type
-             .borrow()
-             .contains_key(&ast_util::local_def(item.id)) {
+        if cx.tcx.destructor_for_type.borrow().contains_key(&local_def(item.id)) {
             return;
         }
         let ty = match item.node {
@@ -1655,16 +1638,14 @@ impl LintPass for MissingCopyImplementations {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                ty::mk_struct(cx.tcx,
-                              ast_util::local_def(item.id),
+                ty::mk_struct(cx.tcx, local_def(item.id),
                               cx.tcx.mk_substs(Substs::empty()))
             }
             ast::ItemEnum(_, ref ast_generics) => {
                 if ast_generics.is_parameterized() {
                     return;
                 }
-                ty::mk_enum(cx.tcx,
-                            ast_util::local_def(item.id),
+                ty::mk_enum(cx.tcx, local_def(item.id),
                             cx.tcx.mk_substs(Substs::empty()))
             }
             _ => return,
@@ -1828,13 +1809,13 @@ impl LintPass for UnconditionalRecursion {
 
         let (name, checker) = match fn_kind {
             visit::FkItemFn(name, _, _, _) => (name, id_refers_to_this_fn as F),
-            visit::FkMethod(name, _, _) => (name, id_refers_to_this_method as F),
+            visit::FkMethod(name, _) => (name, id_refers_to_this_method as F),
             // closures can't recur, so they don't matter.
             visit::FkFnBlock => return
         };
 
-        let impl_def_id = ty::impl_of_method(cx.tcx, ast_util::local_def(id))
-            .unwrap_or(ast_util::local_def(ast::DUMMY_NODE_ID));
+        let impl_def_id = ty::impl_of_method(cx.tcx, local_def(id))
+            .unwrap_or(local_def(ast::DUMMY_NODE_ID));
         assert!(ast_util::is_local(impl_def_id));
         let impl_node_id = impl_def_id.node;
 
@@ -1938,7 +1919,7 @@ impl LintPass for UnconditionalRecursion {
                                       _: ast::Ident,
                                       id: ast::NodeId) -> bool {
             tcx.def_map.borrow().get(&id)
-               .map_or(false, |def| def.def_id() == ast_util::local_def(fn_id))
+               .map_or(false, |def| def.def_id() == local_def(fn_id))
         }
 
         // check if the method call `id` refers to method `method_id`

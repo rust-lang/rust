@@ -29,7 +29,7 @@ use util::ppaux::Repr;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{local_def, PostExpansionMethod};
+use syntax::ast_util::local_def;
 use syntax::attr;
 use syntax::codemap::DUMMY_SP;
 use std::hash::{Hasher, Hash, SipHasher};
@@ -216,18 +216,18 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
             d
         }
-        ast_map::NodeImplItem(ii) => {
-            match *ii {
-                ast::MethodImplItem(ref mth) => {
+        ast_map::NodeImplItem(impl_item) => {
+            match impl_item.node {
+                ast::MethodImplItem(ref sig, ref body) => {
                     let d = mk_lldecl(abi::Rust);
-                    let needs_body = setup_lldecl(d, &mth.attrs);
+                    let needs_body = setup_lldecl(d, &impl_item.attrs);
                     if needs_body {
                         trans_fn(ccx,
-                                 mth.pe_fn_decl(),
-                                 mth.pe_body(),
+                                 &sig.decl,
+                                 body,
                                  d,
                                  psubsts,
-                                 mth.id,
+                                 impl_item.id,
                                  &[]);
                     }
                     d
@@ -235,16 +235,19 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 ast::TypeImplItem(_) => {
                     ccx.sess().bug("can't monomorphize an associated type")
                 }
+                ast::MacImplItem(_) => {
+                    ccx.sess().bug("can't monomorphize an unexpanded macro")
+                }
             }
         }
-        ast_map::NodeTraitItem(method) => {
-            match *method {
-                ast::ProvidedMethod(ref mth) => {
+        ast_map::NodeTraitItem(trait_item) => {
+            match trait_item.node {
+                ast::MethodTraitItem(ref sig, Some(ref body)) => {
                     let d = mk_lldecl(abi::Rust);
-                    let needs_body = setup_lldecl(d, &mth.attrs);
+                    let needs_body = setup_lldecl(d, &trait_item.attrs);
                     if needs_body {
-                        trans_fn(ccx, mth.pe_fn_decl(), mth.pe_body(), d,
-                                 psubsts, mth.id, &[]);
+                        trans_fn(ccx, &sig.decl, body, d,
+                                 psubsts, trait_item.id, &[]);
                     }
                     d
                 }

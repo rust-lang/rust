@@ -26,7 +26,6 @@ use rustc::util::ppaux::{Repr, UserString};
 use std::mem;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::ast_map;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
 
@@ -119,24 +118,9 @@ pub fn instrument_move_fragments<'tcx>(this: &MoveData<'tcx>,
                                        tcx: &ty::ctxt<'tcx>,
                                        sp: Span,
                                        id: ast::NodeId) {
-    let (span_err, print) = {
-        let attrs : &[ast::Attribute];
-        attrs = match tcx.map.find(id) {
-            Some(ast_map::NodeItem(ref item)) =>
-                &item.attrs,
-            Some(ast_map::NodeImplItem(&ast::MethodImplItem(ref m))) =>
-                &m.attrs,
-            Some(ast_map::NodeTraitItem(&ast::ProvidedMethod(ref m))) =>
-                &m.attrs,
-            _ => &[],
-        };
-
-        let span_err =
-            attrs.iter().any(|a| a.check_name("rustc_move_fragments"));
-        let print = tcx.sess.opts.debugging_opts.print_move_fragments;
-
-        (span_err, print)
-    };
+    let span_err = tcx.map.attrs(id).iter()
+                          .any(|a| a.check_name("rustc_move_fragments"));
+    let print = tcx.sess.opts.debugging_opts.print_move_fragments;
 
     if !span_err && !print { return; }
 

@@ -176,7 +176,6 @@ pub mod rt {
     impl_to_source! { ast::Arg, arg_to_string }
     impl_to_source! { Generics, generics_to_string }
     impl_to_source! { P<ast::Item>, item_to_string }
-    impl_to_source! { P<ast::Method>, method_to_string }
     impl_to_source! { P<ast::Stmt>, stmt_to_string }
     impl_to_source! { P<ast::Expr>, expr_to_string }
     impl_to_source! { P<ast::Pat>, pat_to_string }
@@ -311,7 +310,6 @@ pub mod rt {
     impl_to_tokens! { P<ast::Item> }
     impl_to_tokens! { P<ast::Pat> }
     impl_to_tokens! { ast::Arm }
-    impl_to_tokens! { P<ast::Method> }
     impl_to_tokens_lifetime! { &'a [P<ast::Item>] }
     impl_to_tokens! { ast::Ty }
     impl_to_tokens_lifetime! { &'a [ast::Ty] }
@@ -443,15 +441,6 @@ pub fn expand_quote_ty(cx: &mut ExtCtxt,
                        tts: &[ast::TokenTree])
                        -> Box<base::MacResult+'static> {
     let expanded = expand_parse_call(cx, sp, "parse_ty", vec!(), tts);
-    base::MacEager::expr(expanded)
-}
-
-pub fn expand_quote_method(cx: &mut ExtCtxt,
-                           sp: Span,
-                           tts: &[ast::TokenTree])
-                           -> Box<base::MacResult+'static> {
-    let expanded = expand_parse_call(cx, sp, "parse_method_with_outer_attributes",
-                                     vec!(), tts);
     base::MacEager::expr(expanded)
 }
 

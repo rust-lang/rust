@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo;
-impl Foo {
-    fn orange(&self){}
-    fn orange(&self){}   //~ ERROR error: duplicate method
+trait Foo {
+    pub fn foo(); //~ ERROR expected one of `extern`, `fn`, `type`, or `unsafe`, found `pub`
 }
 
 fn main() {}

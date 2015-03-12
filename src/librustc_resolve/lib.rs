@@ -82,10 +82,11 @@ use syntax::ast::{TyRptr, TyStr, TyUs, TyU8, TyU16, TyU32, TyU64, TyUint};
 use syntax::ast::{TypeImplItem};
 use syntax::ast;
 use syntax::ast_map;
-use syntax::ast_util::{PostExpansionMethod, local_def, walk_pat};
+use syntax::ast_util::{local_def, walk_pat};
 use syntax::attr::AttrMetaMethods;
 use syntax::ext::mtwt;
 use syntax::parse::token::{self, special_names, special_idents};
+use syntax::ptr::P;
 use syntax::codemap::{self, Span, Pos};
 use syntax::visit::{self, Visitor};
 
@@ -241,9 +242,9 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                 self.visit_generics(generics);
                 ItemRibKind
             }
-            visit::FkMethod(_, generics, method) => {
-                self.visit_generics(generics);
-                self.visit_explicit_self(method.pe_explicit_self());
+            visit::FkMethod(_, sig) => {
+                self.visit_generics(&sig.generics);
+                self.visit_explicit_self(&sig.explicit_self);
                 MethodRibKind
             }
             visit::FkFnBlock(..) => ClosureRibKind(node_id)
@@ -2806,27 +2807,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     this.visit_generics(generics);
                     visit::walk_ty_param_bounds_helper(this, bounds);
 
-                    for trait_item in &(*trait_items) {
+                    for trait_item in trait_items {
                         // Create a new rib for the trait_item-specific type
                         // parameters.
                         //
                         // FIXME #4951: Do we need a node ID here?
 
-                        let type_parameters = match *trait_item {
-                            ast::RequiredMethod(ref ty_m) => {
-                                HasTypeParameters(&ty_m.generics,
+                        let type_parameters = match trait_item.node {
+                            ast::MethodTraitItem(ref sig, _) => {
+                                HasTypeParameters(&sig.generics,
                                                   FnSpace,
                                                   MethodRibKind)
                             }
-                            ast::ProvidedMethod(ref m) => {
-                                HasTypeParameters(m.pe_generics(),
-                                                  FnSpace,
-                                                  MethodRibKind)
-                            }
-                            ast::TypeTraitItem(ref assoc_ty) => {
-                                let ty_param = &assoc_ty.ty_param;
-                                this.check_if_primitive_type_name(ty_param.ident.name,
-                                                                  ty_param.span);
+                            ast::TypeTraitItem(..) => {
+                                this.check_if_primitive_type_name(trait_item.ident.name,
+                                                                  trait_item.span);
                                 NoTypeParameters
                             }
                         };
@@ -3049,7 +3044,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                               generics: &Generics,
                               opt_trait_reference: &Option<TraitRef>,
                               self_type: &Ty,
-                              impl_items: &[ImplItem]) {
+                              impl_items: &[P<ImplItem>]) {
         // If applicable, create a rib for the type parameters.
         self.with_type_parameter_rib(HasTypeParameters(generics,
                                                        TypeSpace,
@@ -3065,31 +3060,32 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 this.with_current_self_type(self_type, |this| {
                     for impl_item in impl_items {
-                        match *impl_item {
-                            MethodImplItem(ref method) => {
+                        match impl_item.node {
+                            MethodImplItem(ref sig, _) => {
                                 // If this is a trait impl, ensure the method
                                 // exists in trait
-                                this.check_trait_item(method.pe_ident().name,
-                                                      method.span);
+                                this.check_trait_item(impl_item.ident.name,
+                                                      impl_item.span);
 
                                 // We also need a new scope for the method-
                                 // specific type parameters.
                                 let type_parameters =
-                                    HasTypeParameters(method.pe_generics(),
+                                    HasTypeParameters(&sig.generics,
                                                       FnSpace,
                                                       MethodRibKind);
                                 this.with_type_parameter_rib(type_parameters, |this| {
-                                    visit::walk_method_helper(this, &**method);
+                                    visit::walk_impl_item(this, impl_item);
                                 });
                             }
-                            TypeImplItem(ref typedef) => {
+                            TypeImplItem(ref ty) => {
                                 // If this is a trait impl, ensure the method
                                 // exists in trait
-                                this.check_trait_item(typedef.ident.name,
-                                                      typedef.span);
+                                this.check_trait_item(impl_item.ident.name,
+                                                      impl_item.span);
 
-                                this.visit_ty(&*typedef.typ);
+                                this.visit_ty(ty);
                             }
+                            ast::MacImplItem(_) => {}
                         }
                     }
                 });
@@ -3953,19 +3949,18 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         fn is_static_method(this: &Resolver, did: DefId) -> bool {
             if did.krate == ast::LOCAL_CRATE {
-                let explicit_self = match this.ast_map.get(did.node) {
-                    ast_map::NodeTraitItem(m) => match *m {
-                        ast::RequiredMethod(ref m) => &m.explicit_self,
-                        ast::ProvidedMethod(ref m) => m.pe_explicit_self(),
+                let sig = match this.ast_map.get(did.node) {
+                    ast_map::NodeTraitItem(trait_item) => match trait_item.node {
+                        ast::MethodTraitItem(ref sig, _) => sig,
                         _ => return false
                     },
-                    ast_map::NodeImplItem(m) => match *m {
-                        ast::MethodImplItem(ref m) => m.pe_explicit_self(),
+                    ast_map::NodeImplItem(impl_item) => match impl_item.node {
+                        ast::MethodImplItem(ref sig, _) => sig,
                         _ => return false
                     },
                     _ => return false
                 };
-                explicit_self.node == ast::SelfStatic
+                sig.explicit_self.node == ast::SelfStatic
             } else {
                 csearch::is_static_method(&this.session.cstore, did)
             }

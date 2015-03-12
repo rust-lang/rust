@@ -1268,47 +1268,35 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
                 _ => tcx.sess.bug("unexpected item variant in has_nested_returns")
             }
         }
-        Some(ast_map::NodeTraitItem(trait_method)) => {
-            match *trait_method {
-                ast::ProvidedMethod(ref m) => {
-                    match m.node {
-                        ast::MethDecl(_, _, _, _, _, _, ref blk, _) => {
-                            blk
-                        }
-                        ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
-                    }
-                }
-                ast::RequiredMethod(_) => {
+        Some(ast_map::NodeTraitItem(trait_item)) => {
+            match trait_item.node {
+                ast::MethodTraitItem(_, Some(ref body)) => body,
+                ast::MethodTraitItem(_, None) => {
                     tcx.sess.bug("unexpected variant: required trait method \
                                   in has_nested_returns")
                 }
-                ast::TypeTraitItem(_) => {
-                    tcx.sess.bug("unexpected variant: type trait item in \
+                ast::TypeTraitItem(..) => {
+                    tcx.sess.bug("unexpected variant: associated type trait item in \
                                   has_nested_returns")
                 }
             }
         }
-        Some(ast_map::NodeImplItem(ii)) => {
-            match *ii {
-                ast::MethodImplItem(ref m) => {
-                    match m.node {
-                        ast::MethDecl(_, _, _, _, _, _, ref blk, _) => {
-                            blk
-                        }
-                        ast::MethMac(_) => tcx.sess.bug("unexpanded macro")
-                    }
-                }
+        Some(ast_map::NodeImplItem(impl_item)) => {
+            match impl_item.node {
+                ast::MethodImplItem(_, ref body) => body,
                 ast::TypeImplItem(_) => {
-                    tcx.sess.bug("unexpected variant: type impl item in \
+                    tcx.sess.bug("unexpected variant: associated type impl item in \
+                                  has_nested_returns")
+                }
+                ast::MacImplItem(_) => {
+                    tcx.sess.bug("unexpected variant: unexpanded macro impl item in \
                                   has_nested_returns")
                 }
             }
         }
         Some(ast_map::NodeExpr(e)) => {
             match e.node {
-                ast::ExprClosure(_, _, ref blk) => {
-                    blk
-                }
+                ast::ExprClosure(_, _, ref blk) => blk,
                 _ => tcx.sess.bug("unexpected expr variant in has_nested_returns")
             }
         }
@@ -1322,7 +1310,7 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
                                    tcx.map.path_to_string(id)))
     };
 
-    (blk.id, Some(cfg::CFG::new(tcx, &**blk)))
+    (blk.id, Some(cfg::CFG::new(tcx, blk)))
 }
 
 // Checks for the presence of "nested returns" in a function.
@@ -2818,26 +2806,31 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             v
         }
 
-        ast_map::NodeTraitItem(trait_method) => {
+        ast_map::NodeTraitItem(trait_item) => {
             debug!("get_item_val(): processing a NodeTraitItem");
-            match *trait_method {
-                ast::RequiredMethod(_) | ast::TypeTraitItem(_) => {
-                    ccx.sess().bug("unexpected variant: required trait \
-                                    method in get_item_val()");
+            match trait_item.node {
+                ast::MethodTraitItem(_, None) | ast::TypeTraitItem(..) => {
+                    ccx.sess().span_bug(trait_item.span,
+                        "unexpected variant: required trait method in get_item_val()");
                 }
-                ast::ProvidedMethod(ref m) => {
-                    register_method(ccx, id, &**m)
+                ast::MethodTraitItem(_, Some(_)) => {
+                    register_method(ccx, id, &trait_item.attrs, trait_item.span)
                 }
             }
         }
 
-        ast_map::NodeImplItem(ii) => {
-            match *ii {
-                ast::MethodImplItem(ref m) => register_method(ccx, id, &**m),
-                ast::TypeImplItem(ref typedef) => {
-                    ccx.sess().span_bug(typedef.span,
-                                        "unexpected variant: required impl \
-                                         method in get_item_val()")
+        ast_map::NodeImplItem(impl_item) => {
+            match impl_item.node {
+                ast::MethodImplItem(..) => {
+                    register_method(ccx, id, &impl_item.attrs, impl_item.span)
+                }
+                ast::TypeImplItem(_) => {
+                    ccx.sess().span_bug(impl_item.span,
+                        "unexpected variant: associated type in get_item_val()")
+                }
+                ast::MacImplItem(_) => {
+                    ccx.sess().span_bug(impl_item.span,
+                        "unexpected variant: unexpanded macro in get_item_val()")
                 }
             }
         }
@@ -2925,21 +2918,21 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
 }
 
 fn register_method(ccx: &CrateContext, id: ast::NodeId,
-                   m: &ast::Method) -> ValueRef {
+                   attrs: &[ast::Attribute], span: Span) -> ValueRef {
     let mty = ty::node_id_to_type(ccx.tcx(), id);
 
-    let sym = exported_name(ccx, id, mty, &m.attrs);
+    let sym = exported_name(ccx, id, mty, &attrs);
 
     if let ty::ty_bare_fn(_, ref f) = mty.sty {
         let llfn = if f.abi == Rust || f.abi == RustCall {
-            register_fn(ccx, m.span, sym, id, mty)
+            register_fn(ccx, span, sym, id, mty)
         } else {
-            foreign::register_rust_fn_with_foreign_abi(ccx, m.span, sym, id)
+            foreign::register_rust_fn_with_foreign_abi(ccx, span, sym, id)
         };
-        set_llvm_fn_attrs(ccx, &m.attrs, llfn);
+        set_llvm_fn_attrs(ccx, &attrs, llfn);
         return llfn;
     } else {
-        ccx.sess().span_bug(m.span, "expected bare rust function");
+        ccx.sess().span_bug(span, "expected bare rust function");
     }
 }
 

@@ -1685,9 +1685,15 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                   bounds,
                   WhereClause(&t.generics)));
 
-    let types = t.items.iter().filter(|m| m.is_type()).collect::<Vec<_>>();
-    let required = t.items.iter().filter(|m| m.is_req()).collect::<Vec<_>>();
-    let provided = t.items.iter().filter(|m| m.is_def()).collect::<Vec<_>>();
+    let types = t.items.iter().filter(|m| {
+        match m.inner { clean::AssociatedTypeItem(..) => true, _ => false }
+    }).collect::<Vec<_>>();
+    let required = t.items.iter().filter(|m| {
+        match m.inner { clean::TyMethodItem(_) => true, _ => false }
+    }).collect::<Vec<_>>();
+    let provided = t.items.iter().filter(|m| {
+        match m.inner { clean::MethodItem(_) => true, _ => false }
+    }).collect::<Vec<_>>();
 
     if t.items.len() == 0 {
         try!(write!(w, "{{ }}"));
@@ -1695,7 +1701,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         try!(write!(w, "{{\n"));
         for t in &types {
             try!(write!(w, "    "));
-            try!(render_method(w, t.item()));
+            try!(render_method(w, t));
             try!(write!(w, ";\n"));
         }
         if types.len() > 0 && required.len() > 0 {
@@ -1703,7 +1709,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in &required {
             try!(write!(w, "    "));
-            try!(render_method(w, m.item()));
+            try!(render_method(w, m));
             try!(write!(w, ";\n"));
         }
         if required.len() > 0 && provided.len() > 0 {
@@ -1711,7 +1717,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in &provided {
             try!(write!(w, "    "));
-            try!(render_method(w, m.item()));
+            try!(render_method(w, m));
             try!(write!(w, " {{ ... }}\n"));
         }
         try!(write!(w, "}}"));
@@ -1721,15 +1727,15 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     // Trait documentation
     try!(document(w, it));
 
-    fn trait_item(w: &mut fmt::Formatter, m: &clean::TraitMethod)
+    fn trait_item(w: &mut fmt::Formatter, m: &clean::Item)
                   -> fmt::Result {
         try!(write!(w, "<h3 id='{}.{}' class='method'>{}<code>",
-                    shortty(m.item()),
-                    *m.item().name.as_ref().unwrap(),
-                    ConciseStability(&m.item().stability)));
-        try!(render_method(w, m.item()));
+                    shortty(m),
+                    *m.name.as_ref().unwrap(),
+                    ConciseStability(&m.stability)));
+        try!(render_method(w, m));
         try!(write!(w, "</code></h3>"));
-        try!(document(w, m.item()));
+        try!(document(w, m));
         Ok(())
     }
 
@@ -1798,12 +1804,14 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 }
 
 fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
-              typ: &clean::TyParam) -> fmt::Result {
+              bounds: &Vec<clean::TyParamBound>,
+              default: &Option<clean::Type>)
+              -> fmt::Result {
     try!(write!(w, "type {}", it.name.as_ref().unwrap()));
-    if typ.bounds.len() > 0 {
-        try!(write!(w, ": {}", TyParamBounds(&*typ.bounds)))
+    if bounds.len() > 0 {
+        try!(write!(w, ": {}", TyParamBounds(bounds)))
     }
-    if let Some(ref default) = typ.default {
+    if let Some(ref default) = *default {
         try!(write!(w, " = {}", default));
     }
     Ok(())
@@ -1839,8 +1847,8 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
         clean::MethodItem(ref m) => {
             method(w, meth, m.unsafety, m.abi, &m.generics, &m.self_, &m.decl)
         }
-        clean::AssociatedTypeItem(ref typ) => {
-            assoc_type(w, meth, typ)
+        clean::AssociatedTypeItem(ref bounds, ref default) => {
+            assoc_type(w, meth, bounds, default)
         }
         _ => panic!("render_method called on non-method")
     }
@@ -2138,13 +2146,13 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
                 try!(write!(w, "type {} = {}", name, tydef.type_));
                 try!(write!(w, "</code></h4>\n"));
             }
-            clean::AssociatedTypeItem(ref typaram) => {
+            clean::AssociatedTypeItem(ref bounds, ref default) => {
                 let name = item.name.as_ref().unwrap();
                 try!(write!(w, "<h4 id='assoc_type.{}' class='{}'>{}<code>",
                             *name,
                             shortty(item),
                             ConciseStability(&item.stability)));
-                try!(assoc_type(w, item, typaram));
+                try!(assoc_type(w, item, bounds, default));
                 try!(write!(w, "</code></h4>\n"));
             }
             _ => panic!("can't make docs for trait item with name {:?}", item.name)
@@ -2167,13 +2175,13 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
                               t: &clean::Trait,
                               i: &clean::Impl) -> fmt::Result {
         for trait_item in &t.items {
-            let n = trait_item.item().name.clone();
+            let n = trait_item.name.clone();
             match i.items.iter().find(|m| { m.name == n }) {
                 Some(..) => continue,
                 None => {}
             }
 
-            try!(doctraititem(w, trait_item.item(), false));
+            try!(doctraititem(w, trait_item, false));
         }
         Ok(())
     }

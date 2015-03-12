@@ -77,51 +77,31 @@ impl<F> ItemModifier for F
 #[derive(Debug,Clone)]
 pub enum Annotatable {
     Item(P<ast::Item>),
-    TraitItem(ast::TraitItem),
-    ImplItem(ast::ImplItem),
+    TraitItem(P<ast::TraitItem>),
+    ImplItem(P<ast::ImplItem>),
 }
 
 impl Annotatable {
     pub fn attrs(&self) -> &[ast::Attribute] {
         match *self {
             Annotatable::Item(ref i) => &i.attrs,
-            Annotatable::TraitItem(ref i) => match *i {
-                ast::TraitItem::RequiredMethod(ref tm) => &tm.attrs,
-                ast::TraitItem::ProvidedMethod(ref m) => &m.attrs,
-                ast::TraitItem::TypeTraitItem(ref at) => &at.attrs,
-            },
-            Annotatable::ImplItem(ref i) => match *i {
-                ast::ImplItem::MethodImplItem(ref m) => &m.attrs,
-                ast::ImplItem::TypeImplItem(ref t) => &t.attrs,
-            }
+            Annotatable::TraitItem(ref ti) => &ti.attrs,
+            Annotatable::ImplItem(ref ii) => &ii.attrs,
         }
     }
 
     pub fn fold_attrs(self, attrs: Vec<ast::Attribute>) -> Annotatable {
         match self {
-            Annotatable::Item(i) => Annotatable::Item(P(ast::Item {
+            Annotatable::Item(i) => Annotatable::Item(i.map(|i| ast::Item {
                 attrs: attrs,
-                ..(*i).clone()
+                ..i
             })),
-            Annotatable::TraitItem(i) => match i {
-                ast::TraitItem::RequiredMethod(tm) => Annotatable::TraitItem(
-                    ast::TraitItem::RequiredMethod(
-                        ast::TypeMethod { attrs: attrs, ..tm })),
-                ast::TraitItem::ProvidedMethod(m) => Annotatable::TraitItem(
-                    ast::TraitItem::ProvidedMethod(P(
-                        ast::Method { attrs: attrs, ..(*m).clone() }))),
-                ast::TraitItem::TypeTraitItem(at) => Annotatable::TraitItem(
-                    ast::TraitItem::TypeTraitItem(P(
-                        ast::AssociatedType { attrs: attrs, ..(*at).clone() }))),
-            },
-            Annotatable::ImplItem(i) => match i {
-                ast::ImplItem::MethodImplItem(m) => Annotatable::ImplItem(
-                    ast::ImplItem::MethodImplItem(P(
-                        ast::Method { attrs: attrs, ..(*m).clone() }))),
-                ast::ImplItem::TypeImplItem(t) => Annotatable::ImplItem(
-                    ast::ImplItem::TypeImplItem(P(
-                        ast::Typedef { attrs: attrs, ..(*t).clone() }))),
-            }
+            Annotatable::TraitItem(i) => Annotatable::TraitItem(i.map(|ti| {
+                ast::TraitItem { attrs: attrs, ..ti }
+            })),
+            Annotatable::ImplItem(i) => Annotatable::ImplItem(i.map(|ii| {
+                ast::ImplItem { attrs: attrs, ..ii }
+            })),
         }
     }
 
@@ -132,14 +112,14 @@ impl Annotatable {
         }
     }
 
-    pub fn expect_trait_item(self) -> ast::TraitItem {
+    pub fn expect_trait_item(self) -> P<ast::TraitItem> {
         match self {
             Annotatable::TraitItem(i) => i,
             _ => panic!("expected Item")
         }
     }
 
-    pub fn expect_impl_item(self) -> ast::ImplItem {
+    pub fn expect_impl_item(self) -> P<ast::ImplItem> {
         match self {
             Annotatable::ImplItem(i) => i,
             _ => panic!("expected Item")
@@ -248,8 +228,8 @@ pub trait MacResult {
         None
     }
 
-    /// Create zero or more methods.
-    fn make_methods(self: Box<Self>) -> Option<SmallVector<P<ast::Method>>> {
+    /// Create zero or more impl items.
+    fn make_impl_items(self: Box<Self>) -> Option<SmallVector<P<ast::ImplItem>>> {
         None
     }
 
@@ -295,7 +275,7 @@ make_MacEager! {
     expr: P<ast::Expr>,
     pat: P<ast::Pat>,
     items: SmallVector<P<ast::Item>>,
-    methods: SmallVector<P<ast::Method>>,
+    impl_items: SmallVector<P<ast::ImplItem>>,
     stmt: P<ast::Stmt>,
 }
 
@@ -308,8 +288,8 @@ impl MacResult for MacEager {
         self.items
     }
 
-    fn make_methods(self: Box<Self>) -> Option<SmallVector<P<ast::Method>>> {
-        self.methods
+    fn make_impl_items(self: Box<Self>) -> Option<SmallVector<P<ast::ImplItem>>> {
+        self.impl_items
     }
 
     fn make_stmt(self: Box<Self>) -> Option<P<ast::Stmt>> {
@@ -397,7 +377,7 @@ impl MacResult for DummyResult {
             Some(SmallVector::zero())
         }
     }
-    fn make_methods(self: Box<DummyResult>) -> Option<SmallVector<P<ast::Method>>> {
+    fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVector<P<ast::ImplItem>>> {
         if self.expr_only {
             None
         } else {
@@ -505,9 +485,6 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
         syntax_expanders.insert(intern("quote_ty"),
                            builtin_normal_expander(
                                 ext::quote::expand_quote_ty));
-        syntax_expanders.insert(intern("quote_method"),
-                           builtin_normal_expander(
-                                ext::quote::expand_quote_method));
         syntax_expanders.insert(intern("quote_item"),
                            builtin_normal_expander(
                                 ext::quote::expand_quote_item));

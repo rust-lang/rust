@@ -142,9 +142,13 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     fn visit_fn(&mut self, fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
                 b: &'v ast::Block, s: Span, _: ast::NodeId) {
         match fk {
-            visit::FkItemFn(_, generics, _, _) |
-            visit::FkMethod(_, generics, _) => {
+            visit::FkItemFn(_, generics, _, _) => {
                 self.visit_early_late(subst::FnSpace, generics, |this| {
+                    visit::walk_fn(this, fk, fd, b, s)
+                })
+            }
+            visit::FkMethod(_, sig) => {
+                self.visit_early_late(subst::FnSpace, &sig.generics, |this| {
                     visit::walk_fn(this, fk, fd, b, s)
                 })
             }
@@ -185,10 +189,14 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         }
     }
 
-    fn visit_ty_method(&mut self, m: &ast::TypeMethod) {
-        self.visit_early_late(
-            subst::FnSpace, &m.generics,
-            |this| visit::walk_ty_method(this, m))
+    fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
+        if let ast::MethodTraitItem(ref sig, None) = trait_item.node {
+            self.visit_early_late(
+                subst::FnSpace, &sig.generics,
+                |this| visit::walk_trait_item(this, trait_item))
+        } else {
+            visit::walk_trait_item(self, trait_item);
+        }
     }
 
     fn visit_block(&mut self, b: &ast::Block) {
