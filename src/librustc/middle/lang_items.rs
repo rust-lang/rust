@@ -95,6 +95,7 @@ impl LanguageItems {
             ty::BoundSend => self.require(SendTraitLangItem),
             ty::BoundSized => self.require(SizedTraitLangItem),
             ty::BoundCopy => self.require(CopyTraitLangItem),
+            ty::BoundPod => self.require(PodTraitLangItem),
             ty::BoundSync => self.require(SyncTraitLangItem),
         }
     }
@@ -106,6 +107,8 @@ impl LanguageItems {
             Some(ty::BoundSized)
         } else if Some(id) == self.copy_trait() {
             Some(ty::BoundCopy)
+        } else if Some(id) == self.pod_trait() {
+            Some(ty::BoundPod)
         } else if Some(id) == self.sync_trait() {
             Some(ty::BoundSync)
         } else {
@@ -242,6 +245,7 @@ lets_do_this! {
     SendTraitLangItem,               "send",                    send_trait;
     SizedTraitLangItem,              "sized",                   sized_trait;
     CopyTraitLangItem,               "copy",                    copy_trait;
+    PodTraitLangItem,                "pod",                     pod_trait;
     SyncTraitLangItem,               "sync",                    sync_trait;
 
     DropTraitLangItem,               "drop",                    drop_trait;

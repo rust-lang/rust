@@ -69,13 +69,12 @@ impl OptimizationDiagnostic {
     }
 }
 
+#[derive(Copy)]
 pub struct InlineAsmDiagnostic {
     pub cookie: c_uint,
     pub message: TwineRef,
     pub instruction: ValueRef,
 }
-
-impl Copy for InlineAsmDiagnostic {}
 
 impl InlineAsmDiagnostic {
     unsafe fn unpack(di: DiagnosticInfoRef)

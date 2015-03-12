@@ -8,24 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Ensure that we can copy out of a fixed-size array.
-//
-// (Compare with compile-fail/move-out-of-array-1.rs)
-
 use std::marker::Pod;
 
-struct C { _x: u8 }
+fn drop<T>(_: T) {}
 
-impl Pod for C { }
-impl Copy for C { }
-
-fn main() {
-    fn d() -> C { C { _x: 0 } }
-
-    let _d1 = foo([d(), d(), d(), d()], 1);
-    let _d3 = foo([d(), d(), d(), d()], 3);
+fn double_move<T: Pod>(x: T) {
+    drop(x);
+    drop(x);  //~ ERROR use of moved value: `x`
 }
 
-fn foo(a: [C; 4], i: usize) -> C {
-    a[i]
-}
+fn main() {}

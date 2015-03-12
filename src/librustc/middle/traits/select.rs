@@ -817,16 +817,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // and applicable impls. There is a certain set of precedence rules here.
 
         match self.tcx().lang_items.to_builtin_kind(obligation.predicate.def_id()) {
-            Some(ty::BoundCopy) => {
+            Some(bound @ ty::BoundCopy) | Some(bound @ ty::BoundPod) => {
                 debug!("obligation self ty is {}",
                        obligation.predicate.0.self_ty().repr(self.tcx()));
 
-                // User-defined copy impls are permitted, but only for
+                // User-defined copy/pod impls are permitted, but only for
                 // structs and enums.
                 try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
 
                 // For other types, we'll use the builtin rules.
-                try!(self.assemble_builtin_bound_candidates(ty::BoundCopy,
+                try!(self.assemble_builtin_bound_candidates(bound,
                                                             stack,
                                                             &mut candidates));
             }
@@ -1362,7 +1362,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // BUILTIN BOUNDS
     //
     // These cover the traits that are built-in to the language
-    // itself.  This includes `Copy` and `Sized` for sure. For the
+    // itself.  This includes `Copy`, `Pod` and `Sized` for sure. For the
     // moment, it also includes `Send` / `Sync` and a few others, but
     // those will hopefully change to library-defined traits in the
     // future.
@@ -1415,7 +1415,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::ty_uniq(_) => {  // Box<T>
                 match bound {
-                    ty::BoundCopy => Err(Unimplemented),
+                    ty::BoundCopy | ty::BoundPod => Err(Unimplemented),
 
                     ty::BoundSized => Ok(If(Vec::new())),
 
@@ -1427,7 +1427,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::ty_ptr(..) => {     // *const T, *mut T
                 match bound {
-                    ty::BoundCopy | ty::BoundSized => Ok(If(Vec::new())),
+                    ty::BoundCopy | ty::BoundPod | ty::BoundSized => Ok(If(Vec::new())),
 
                     ty::BoundSync | ty::BoundSend => {
                         self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
@@ -1438,7 +1438,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_trait(ref data) => {
                 match bound {
                     ty::BoundSized => Err(Unimplemented),
-                    ty::BoundCopy => {
+                    ty::BoundCopy | ty::BoundPod => {
                         if data.bounds.builtin_bounds.contains(&bound) {
                             Ok(If(Vec::new()))
                         } else {
@@ -1466,7 +1466,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_rptr(_, ty::mt { ty: _, mutbl }) => {
                 // &mut T or &T
                 match bound {
-                    ty::BoundCopy => {
+                    ty::BoundCopy | ty::BoundPod => {
                         match mutbl {
                             // &mut T is affine and hence never `Copy`
                             ast::MutMutable => Err(Unimplemented),
@@ -1487,9 +1487,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_vec(element_ty, ref len) => {
                 // [T, ..n] and [T]
                 match bound {
-                    ty::BoundCopy => {
+                    ty::BoundCopy | ty::BoundPod => {
                         match *len {
-                            // [T, ..n] is copy iff T is copy
+                            // [T, ..n] is copy iff T is copy, likewise with pod
                             Some(_) => Ok(If(vec![element_ty])),
 
                             // [T] is unsized and hence affine
@@ -1518,7 +1518,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
                     }
 
-                    ty::BoundCopy | ty::BoundSized => Err(Unimplemented),
+                    ty::BoundCopy | ty::BoundPod | ty::BoundSized => Err(Unimplemented),
                 }
             }
 
@@ -1612,7 +1612,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // First check for markers and other nonsense.
             match bound {
                 // Fallback to whatever user-defined impls exist in this case.
-                ty::BoundCopy => Ok(ParameterBuiltin),
+                ty::BoundCopy | ty::BoundPod => Ok(ParameterBuiltin),
 
                 // Sized if all the component types are sized.
                 ty::BoundSized => Ok(If(types)),

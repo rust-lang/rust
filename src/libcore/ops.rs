@@ -977,8 +977,21 @@ impl fmt::Debug for RangeFull {
     }
 }
 
+#[cfg(stage0)]
 /// A (half-open) range which is bounded at both ends.
 #[derive(Clone, PartialEq, Eq)]
+#[lang="range"]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct Range<Idx> {
+    /// The lower bound of the range (inclusive).
+    pub start: Idx,
+    /// The upper bound of the range (exclusive).
+    pub end: Idx,
+}
+
+#[cfg(not(stage0))]
+/// A (half-open) range which is bounded at both ends.
+#[derive(Clone, Eq, PartialEq, Pod)]
 #[lang="range"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {

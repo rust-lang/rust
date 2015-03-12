@@ -891,8 +891,11 @@ fn parse_builtin_bounds_<F>(st: &mut PState, _conv: &mut F) -> ty::BuiltinBounds
             'Z' => {
                 builtin_bounds.insert(ty::BoundSized);
             }
-            'P' => {
+            'C' => {
                 builtin_bounds.insert(ty::BoundCopy);
+            }
+            'P' => {
+                builtin_bounds.insert(ty::BoundPod);
             }
             'T' => {
                 builtin_bounds.insert(ty::BoundSync);

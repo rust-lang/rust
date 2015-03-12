@@ -11,6 +11,8 @@
 // Tests that you can use a fn lifetime parameter as part of
 // the value for a type parameter in a bound.
 
+use std::marker::Pod;
+
 trait GetRef<'a, T> {
     fn get(&self) -> &'a T;
 }
@@ -19,6 +21,7 @@ struct Box<'a, T:'a> {
     t: &'a T
 }
 
+impl<'a,T:'a> Pod for Box<'a,T> {}
 impl<'a,T:'a> Copy for Box<'a,T> {}
 
 impl<'a,T:Clone> GetRef<'a,T> for Box<'a,T> {

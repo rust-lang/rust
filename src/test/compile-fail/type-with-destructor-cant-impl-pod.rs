@@ -8,24 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Ensure that we can copy out of a fixed-size array.
-//
-// (Compare with compile-fail/move-out-of-array-1.rs)
-
 use std::marker::Pod;
 
-struct C { _x: u8 }
-
-impl Pod for C { }
-impl Copy for C { }
-
-fn main() {
-    fn d() -> C { C { _x: 0 } }
-
-    let _d1 = foo([d(), d(), d(), d()], 1);
-    let _d3 = foo([d(), d(), d(), d()], 3);
+struct Atom {
+    data: u64,
 }
 
-fn foo(a: [C; 4], i: usize) -> C {
-    a[i]
+impl Drop for Atom {
+    fn drop(&mut self) {
+        // decrease refcount
+    }
 }
+
+impl Pod for Atom {}
+//~^ error: the trait `Pod` may not be implemented for this type; the type has a destructor
+
+fn main() {}

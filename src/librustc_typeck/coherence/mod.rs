@@ -140,8 +140,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         // the coherence tables contain the trait -> type mappings.
         self.populate_destructor_table();
 
-        // Check to make sure implementations of `Copy` are legal.
-        self.check_implementations_of_copy();
+        // Check to make sure implementations of `Pod` are legal.
+        self.check_implementations_of_pod();
     }
 
     fn check_implementation(&self, item: &Item, opt_trait: Option<&TraitRef>) {
@@ -428,21 +428,21 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         }
     }
 
-    /// Ensures that implementations of the built-in trait `Copy` are legal.
-    fn check_implementations_of_copy(&self) {
+    /// Ensures that implementations of the built-in trait `Pod` are legal.
+    fn check_implementations_of_pod(&self) {
         let tcx = self.crate_context.tcx;
-        let copy_trait = match tcx.lang_items.copy_trait() {
+        let pod_trait = match tcx.lang_items.pod_trait() {
             Some(id) => id,
             None => return,
         };
 
         let trait_impls = match tcx.trait_impls
                                    .borrow()
-                                   .get(&copy_trait)
+                                   .get(&pod_trait)
                                    .cloned() {
             None => {
-                debug!("check_implementations_of_copy(): no types with \
-                        implementations of `Copy` found");
+                debug!("check_implementations_of_pod(): no types with \
+                        implementations of `Pod` found");
                 return
             }
             Some(found_impls) => found_impls
@@ -452,17 +452,17 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         let trait_impls = trait_impls.borrow().clone();
 
         for &impl_did in &trait_impls {
-            debug!("check_implementations_of_copy: impl_did={}",
+            debug!("check_implementations_of_pod: impl_did={}",
                    impl_did.repr(tcx));
 
             if impl_did.krate != ast::LOCAL_CRATE {
-                debug!("check_implementations_of_copy(): impl not in this \
+                debug!("check_implementations_of_pod(): impl not in this \
                         crate");
                 continue
             }
 
             let self_type = self.get_self_type_for_implementation(impl_did);
-            debug!("check_implementations_of_copy: self_type={} (bound)",
+            debug!("check_implementations_of_pod: self_type={} (bound)",
                    self_type.repr(tcx));
 
             let span = tcx.map.span(impl_did.node);
@@ -470,34 +470,34 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             let self_type = self_type.ty.subst(tcx, &param_env.free_substs);
             assert!(!self_type.has_escaping_regions());
 
-            debug!("check_implementations_of_copy: self_type={} (free)",
+            debug!("check_implementations_of_pod: self_type={} (free)",
                    self_type.repr(tcx));
 
-            match ty::can_type_implement_copy(&param_env, span, self_type) {
+            match ty::can_type_implement_pod(&param_env, span, self_type) {
                 Ok(()) => {}
-                Err(ty::FieldDoesNotImplementCopy(name)) => {
+                Err(ty::FieldDoesNotImplementPod(name)) => {
                        span_err!(tcx.sess, span, E0204,
-                                 "the trait `Copy` may not be \
+                                 "the trait `Pod` may not be \
                                           implemented for this type; field \
-                                          `{}` does not implement `Copy`",
+                                          `{}` does not implement `Pod`",
                                          token::get_name(name))
                 }
-                Err(ty::VariantDoesNotImplementCopy(name)) => {
+                Err(ty::VariantDoesNotImplementPod(name)) => {
                        span_err!(tcx.sess, span, E0205,
-                                 "the trait `Copy` may not be \
+                                 "the trait `Pod` may not be \
                                           implemented for this type; variant \
-                                          `{}` does not implement `Copy`",
+                                          `{}` does not implement `Pod`",
                                          token::get_name(name))
                 }
                 Err(ty::TypeIsStructural) => {
                        span_err!(tcx.sess, span, E0206,
-                                 "the trait `Copy` may not be implemented \
+                                 "the trait `Pod` may not be implemented \
                                   for this type; type is not a structure or \
                                   enumeration")
                 }
                 Err(ty::TypeHasDestructor) => {
                     span_err!(tcx.sess, span, E0184,
-                              "the trait `Copy` may not be implemented for this type; \
+                              "the trait `Pod` may not be implemented for this type; \
                                the type has a destructor");
                 }
             }

@@ -36,7 +36,7 @@ pub use self::IntVarValue::*;
 pub use self::ExprAdjustment::*;
 pub use self::vtable_origin::*;
 pub use self::MethodOrigin::*;
-pub use self::CopyImplementationError::*;
+pub use self::PodImplementationError::*;
 
 use back::svh::Svh;
 use session::Session;
@@ -834,6 +834,11 @@ pub struct ctxt<'tcx> {
     /// results are dependent on the parameter environment.
     pub type_impls_copy_cache: RefCell<HashMap<Ty<'tcx>,bool>>,
 
+    /// Caches whether types are known to impl Pod. Note that type
+    /// parameters are never placed into this cache, because their
+    /// results are dependent on the parameter environment.
+    pub type_impls_pod_cache: RefCell<HashMap<Ty<'tcx>,bool>>,
+
     /// Caches whether types are known to impl Sized. Note that type
     /// parameters are never placed into this cache, because their
     /// results are dependent on the parameter environment.
@@ -1601,6 +1606,7 @@ pub enum BuiltinBound {
     BoundSend,
     BoundSized,
     BoundCopy,
+    BoundPod,
     BoundSync,
 }
 
@@ -2612,6 +2618,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         selection_cache: traits::SelectionCache::new(),
         repr_hint_cache: RefCell::new(DefIdMap()),
         type_impls_copy_cache: RefCell::new(HashMap::new()),
+        type_impls_pod_cache: RefCell::new(HashMap::new()),
         type_impls_sized_cache: RefCell::new(HashMap::new()),
         object_safety_cache: RefCell::new(DefIdMap()),
         const_qualif_map: RefCell::new(NodeMap()),
@@ -3747,7 +3754,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         let mut tc = TC::All - TC::InteriorParam;
         for bound in &bounds.builtin_bounds {
             tc = tc - match bound {
-                BoundSync | BoundSend | BoundCopy => TC::None,
+                BoundSync | BoundSend | BoundCopy | BoundPod => TC::None,
                 BoundSized => TC::Nonsized,
             };
         }
@@ -3801,6 +3808,15 @@ pub fn type_moves_by_default<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
 {
     let tcx = param_env.tcx;
     !type_impls_bound(param_env, &tcx.type_impls_copy_cache, ty, ty::BoundCopy, span)
+}
+
+pub fn type_is_pod<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
+                            span: Span,
+                            ty: Ty<'tcx>)
+                            -> bool
+{
+    let tcx = param_env.tcx;
+    !type_impls_bound(param_env, &tcx.type_impls_pod_cache, ty, ty::BoundPod, span)
 }
 
 pub fn type_is_sized<'a,'tcx>(param_env: &ParameterEnvironment<'a,'tcx>,
@@ -6946,17 +6962,17 @@ pub fn make_substs_for_receiver_types<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 #[derive(Copy)]
-pub enum CopyImplementationError {
-    FieldDoesNotImplementCopy(ast::Name),
-    VariantDoesNotImplementCopy(ast::Name),
+pub enum PodImplementationError {
+    FieldDoesNotImplementPod(ast::Name),
+    VariantDoesNotImplementPod(ast::Name),
     TypeIsStructural,
     TypeHasDestructor,
 }
 
-pub fn can_type_implement_copy<'a,'tcx>(param_env: &ParameterEnvironment<'a, 'tcx>,
-                                        span: Span,
-                                        self_type: Ty<'tcx>)
-                                        -> Result<(),CopyImplementationError>
+pub fn can_type_implement_pod<'a,'tcx>(param_env: &ParameterEnvironment<'a, 'tcx>,
+                                       span: Span,
+                                       self_type: Ty<'tcx>)
+                                       -> Result<(), PodImplementationError>
 {
     let tcx = param_env.tcx;
 
@@ -6964,8 +6980,8 @@ pub fn can_type_implement_copy<'a,'tcx>(param_env: &ParameterEnvironment<'a, 'tc
         ty::ty_struct(struct_did, substs) => {
             let fields = ty::struct_fields(tcx, struct_did, substs);
             for field in &fields {
-                if type_moves_by_default(param_env, span, field.mt.ty) {
-                    return Err(FieldDoesNotImplementCopy(field.name))
+                if type_is_pod(param_env, span, field.mt.ty) {
+                    return Err(FieldDoesNotImplementPod(field.name))
                 }
             }
             struct_did
@@ -6976,8 +6992,8 @@ pub fn can_type_implement_copy<'a,'tcx>(param_env: &ParameterEnvironment<'a, 'tc
                 for variant_arg_type in &variant.args {
                     let substd_arg_type =
                         variant_arg_type.subst(tcx, substs);
-                    if type_moves_by_default(param_env, span, substd_arg_type) {
-                        return Err(VariantDoesNotImplementCopy(variant.name))
+                    if type_is_pod(param_env, span, substd_arg_type) {
+                        return Err(VariantDoesNotImplementPod(variant.name))
                     }
                 }
             }

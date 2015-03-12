@@ -1705,6 +1705,7 @@ specific type.
 Implementations are defined with the keyword `impl`.
 
 ```
+# use std::marker::Pod;
 # #[derive(Copy)]
 # struct Point {x: f64, y: f64};
 # type Surface = i32;
@@ -1716,6 +1717,7 @@ struct Circle {
     center: Point,
 }
 
+impl Pod for Circle {}
 impl Copy for Circle {}
 
 impl Shape for Circle {

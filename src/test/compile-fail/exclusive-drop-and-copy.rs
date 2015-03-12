@@ -12,14 +12,14 @@
 
 // issue #20126
 
-#[derive(Copy)] //~ ERROR the trait `Copy` may not be implemented
+#[derive(Copy)] //~ ERROR the trait `Pod` may not be implemented
 struct Foo;
 
 impl Drop for Foo {
     fn drop(&mut self) {}
 }
 
-#[derive(Copy)] //~ ERROR the trait `Copy` may not be implemented
+#[derive(Copy)] //~ ERROR the trait `Pod` may not be implemented
 struct Bar<T>(::std::marker::PhantomData<T>);
 
 #[unsafe_destructor]

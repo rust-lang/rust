@@ -220,8 +220,10 @@ pub struct TraitDef<'a> {
     /// Path of the trait, including any type parameters
     pub path: Path<'a>,
 
-    /// Additional bounds required of any type parameters of the type,
-    /// other than the current trait
+    /// Whether to include itself as a bound on the type parameters
+    pub bound_self: bool,
+
+    /// Additional bounds required of any type parameters of the type
     pub additional_bounds: Vec<Ty<'a>>,
 
     /// Any extra lifetimes and/or bounds, e.g. `D: serialize::Decoder`
@@ -334,13 +336,11 @@ pub fn combine_substructure<'a>(f: CombineSubstructureFunc<'a>)
 
 
 impl<'a> TraitDef<'a> {
-    pub fn expand<F>(&self,
-                     cx: &mut ExtCtxt,
-                     mitem: &ast::MetaItem,
-                     item: &ast::Item,
-                     push: F) where
-        F: FnOnce(P<ast::Item>),
-    {
+    pub fn expand(&self,
+                  cx: &mut ExtCtxt,
+                  mitem: &ast::MetaItem,
+                  item: &ast::Item,
+                  push: &mut FnMut(P<ast::Item>)) {
         let newitem = match item.node {
             ast::ItemStruct(ref struct_def, ref generics) => {
                 self.expand_struct_def(cx,
@@ -424,7 +424,9 @@ impl<'a> TraitDef<'a> {
                 }).collect();
 
             // require the current trait
-            bounds.push(cx.typarambound(trait_path.clone()));
+            if self.bound_self {
+                bounds.push(cx.typarambound(trait_path.clone()));
+            }
 
             // also add in any bounds from the declaration
             for declared_bound in &*ty_param.bounds {

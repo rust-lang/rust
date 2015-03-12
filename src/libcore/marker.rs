@@ -51,6 +51,7 @@ pub trait Sized : MarkerTrait {
     // Empty.
 }
 
+#[cfg(stage0)]
 /// Types that can be copied by simply copying bits (i.e. `memcpy`).
 ///
 /// By default, variable bindings have 'move semantics.' In other
@@ -156,6 +157,20 @@ pub trait Copy : MarkerTrait {
     // Empty.
 }
 
+/// TODO(japaric) docs
+#[cfg(not(stage0))]
+#[lang="copy"]
+pub trait Copy: Pod {
+    // Empty
+}
+
+/// TODO(japaric) docs
+#[cfg(not(stage0))]
+#[lang="pod"]
+pub trait Pod: MarkerTrait {
+    // Empty
+}
+
 /// Types that can be safely shared between threads when aliased.
 ///
 /// The precise definition is: a type `T` is `Sync` if `&T` is
@@ -253,6 +268,8 @@ macro_rules! impls{
             }
         }
 
+        #[cfg(not(stage0))]
+        impl<T:?Sized> Pod for $t<T> { }
         impl<T:?Sized> Copy for $t<T> { }
 
         impl<T:?Sized> Clone for $t<T> {

@@ -20,13 +20,11 @@ use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 use ptr::P;
 
-pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
-                              span: Span,
-                              mitem: &MetaItem,
-                              item: &Item,
-                              push: F) where
-    F: FnOnce(P<Item>),
-{
+pub fn expand_deriving_ord(cx: &mut ExtCtxt,
+                           span: Span,
+                           mitem: &MetaItem,
+                           item: &Item,
+                           push: &mut FnMut(P<Item>)) {
     macro_rules! md {
         ($name:expr, $op:expr, $equal:expr) => { {
             let inline = cx.meta_word(span, InternedString::new("inline"));
@@ -70,6 +68,7 @@ pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
         span: span,
         attributes: vec![],
         path: path_std!(cx, core::cmp::PartialOrd),
+        bound_self: true,
         additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         methods: vec![

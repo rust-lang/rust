@@ -141,7 +141,7 @@ macro_rules! derive_traits {
                               item: &Item,
                               push: &mut FnMut(P<Item>)) {
                         warn_if_deprecated(ecx, sp, $name);
-                        $func(ecx, sp, mitem, item, |i| push(i));
+                        $func(ecx, sp, mitem, item, push);
                     }
                 }
 
@@ -189,6 +189,7 @@ derive_traits! {
     "Send" => bounds::expand_deriving_unsafe_bound,
     "Sync" => bounds::expand_deriving_unsafe_bound,
     "Copy" => bounds::expand_deriving_copy,
+    "Pod" => bounds::expand_deriving_pod,
 
     // deprecated
     "Show" => show::expand_deriving_show,

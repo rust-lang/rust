@@ -21,13 +21,11 @@ use ptr::P;
 
 use std::collections::HashMap;
 
-pub fn expand_deriving_show<F>(cx: &mut ExtCtxt,
-                               span: Span,
-                               mitem: &MetaItem,
-                               item: &Item,
-                               push: F) where
-    F: FnOnce(P<Item>),
-{
+pub fn expand_deriving_show(cx: &mut ExtCtxt,
+                            span: Span,
+                            mitem: &MetaItem,
+                            item: &Item,
+                            push: &mut FnMut(P<Item>)) {
     // &mut ::std::fmt::Formatter
     let fmtr = Ptr(box Literal(path_std!(cx, core::fmt::Formatter)),
                    Borrowed(None, ast::MutMutable));
@@ -36,6 +34,7 @@ pub fn expand_deriving_show<F>(cx: &mut ExtCtxt,
         span: span,
         attributes: Vec::new(),
         path: path_std!(cx, core::fmt::Debug),
+        bound_self: true,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec![

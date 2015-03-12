@@ -11,6 +11,8 @@
 // Regression test for Issue #22536: If a type implements Copy, then
 // moving it must not zero the original memory.
 
+use std::marker::Pod;
+
 trait Resources {
     type Buffer: Copy;
     fn foo(&self) {}
@@ -19,12 +21,14 @@ trait Resources {
 struct BufferHandle<R: Resources> {
     raw: <R as Resources>::Buffer,
 }
+impl<R: Resources> Pod for BufferHandle<R> {}
 impl<R: Resources> Copy for BufferHandle<R> {}
 
 enum Res {}
 impl Resources for Res {
     type Buffer = u32;
 }
+impl Pod for Res { }
 impl Copy for Res { }
 
 fn main() {

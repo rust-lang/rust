@@ -605,10 +605,12 @@ impl LintPass for RawPointerDerive {
         }
         let did = match item.node {
             ast::ItemImpl(_, _, _, ref t_ref_opt, _, _) => {
-                // Deriving the Copy trait does not cause a warning
+                // Deriving the Copy/Pod trait does not cause a warning
                 if let &Some(ref trait_ref) = t_ref_opt {
                     let def_id = ty::trait_ref_to_def_id(cx.tcx, trait_ref);
-                    if Some(def_id) == cx.tcx.lang_items.copy_trait() {
+                    if Some(def_id) == cx.tcx.lang_items.copy_trait() ||
+                        Some(def_id) == cx.tcx.lang_items.pod_trait()
+                    {
                         return;
                     }
                 }
@@ -1673,11 +1675,11 @@ impl LintPass for MissingCopyImplementations {
         if !ty::type_moves_by_default(&parameter_environment, item.span, ty) {
             return;
         }
-        if ty::can_type_implement_copy(&parameter_environment, item.span, ty).is_ok() {
+        if ty::can_type_implement_pod(&parameter_environment, item.span, ty).is_ok() {
             cx.span_lint(MISSING_COPY_IMPLEMENTATIONS,
                          item.span,
-                         "type could implement `Copy`; consider adding `impl \
-                          Copy`")
+                         "type could implement `Pod`; consider adding `impl \
+                          Pod`")
         }
     }
 }
