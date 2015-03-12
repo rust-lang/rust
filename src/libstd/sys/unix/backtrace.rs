@@ -84,9 +84,8 @@
 /// all unix platforms we support right now, so it at least gets the job done.
 
 use prelude::v1::*;
-use os::unix::prelude::*;
 
-use ffi::{CStr, AsOsStr};
+use ffi::CStr;
 use old_io::IoResult;
 use libc;
 use mem;
@@ -151,7 +150,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
     // I/O done here is blocking I/O, not green I/O, so we don't have to
     // worry about this being a native vs green mutex.
     static LOCK: StaticMutex = MUTEX_INIT;
-    let _g = unsafe { LOCK.lock() };
+    let _g = LOCK.lock();
 
     try!(writeln!(w, "stack backtrace:"));
 
@@ -253,6 +252,8 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void,
 fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void,
          symaddr: *mut libc::c_void) -> IoResult<()> {
     use env;
+    use ffi::AsOsStr;
+    use os::unix::prelude::*;
     use ptr;
 
     ////////////////////////////////////////////////////////////////////////

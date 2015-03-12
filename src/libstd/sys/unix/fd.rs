@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use core::prelude::*;
-use io::prelude::*;
 
 use io;
 use libc::{self, c_int, size_t, c_void};

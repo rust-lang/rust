@@ -29,7 +29,6 @@ use ptr;
 use str;
 use sync::{StaticMutex, MUTEX_INIT};
 use sys::fs::FileDesc;
-
 use sys::timer;
 use sys_common::{AsInner, timeout};
 
@@ -129,8 +128,6 @@ impl Process {
         use libc::funcs::extra::msvcrt::get_osfhandle;
 
         use mem;
-        use iter::IteratorExt;
-        use str::StrExt;
 
         if cfg.gid().is_some() || cfg.uid().is_some() {
             return Err(IoError {

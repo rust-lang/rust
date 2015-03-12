@@ -70,6 +70,17 @@ struct RaceBox(helper_signal::signal);
 unsafe impl Send for RaceBox {}
 unsafe impl Sync for RaceBox {}
 
+macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
+    static $name: Helper<$m> = Helper {
+        lock: ::sync::MUTEX_INIT,
+        cond: ::sync::CONDVAR_INIT,
+        chan: ::cell::UnsafeCell { value: 0 as *mut Sender<$m> },
+        signal: ::cell::UnsafeCell { value: 0 },
+        initialized: ::cell::UnsafeCell { value: false },
+        shutdown: ::cell::UnsafeCell { value: false },
+    };
+) }
+
 impl<M: Send> Helper<M> {
     /// Lazily boots a helper thread, becoming a no-op if the helper has already
     /// been spawned.
