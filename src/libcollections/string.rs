@@ -24,7 +24,7 @@ use core::iter::{IntoIterator, FromIterator};
 use core::mem;
 use core::ops::{self, Deref, Add, Index};
 use core::ptr;
-use core::raw::Slice as RawSlice;
+use core::slice;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
 
@@ -468,11 +468,11 @@ impl String {
         unsafe {
             // Attempt to not use an intermediate buffer by just pushing bytes
             // directly onto this string.
-            let slice = RawSlice {
-                data: self.vec.as_ptr().offset(cur_len as isize),
-                len: 4,
-            };
-            let used = ch.encode_utf8(mem::transmute(slice)).unwrap_or(0);
+            let slice = slice::from_raw_parts_mut (
+                self.vec.as_mut_ptr().offset(cur_len as isize),
+                4
+            );
+            let used = ch.encode_utf8(slice).unwrap_or(0);
             self.vec.set_len(cur_len + used);
         }
     }
