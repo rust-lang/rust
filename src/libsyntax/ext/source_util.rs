@@ -115,7 +115,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree
                       -> Option<SmallVector<P<ast::Item>>> {
             let mut ret = SmallVector::zero();
             while self.p.token != token::Eof {
-                match self.p.parse_item_with_outer_attributes() {
+                match self.p.parse_item() {
                     Some(item) => ret.push(item),
                     None => self.p.span_fatal(
                         self.p.span,

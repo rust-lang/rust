@@ -19,9 +19,8 @@ use ptr::P;
 /// A parser that can parse attributes.
 pub trait ParserAttr {
     fn parse_outer_attributes(&mut self) -> Vec<ast::Attribute>;
+    fn parse_inner_attributes(&mut self) -> Vec<ast::Attribute>;
     fn parse_attribute(&mut self, permit_inner: bool) -> ast::Attribute;
-    fn parse_inner_attrs_and_next(&mut self)
-                                  -> (Vec<ast::Attribute>, Vec<ast::Attribute>);
     fn parse_meta_item(&mut self) -> P<ast::MetaItem>;
     fn parse_meta_seq(&mut self) -> Vec<P<ast::MetaItem>>;
     fn parse_optional_meta(&mut self) -> Vec<P<ast::MetaItem>>;
@@ -118,45 +117,40 @@ impl<'a> ParserAttr for Parser<'a> {
 
     /// Parse attributes that appear after the opening of an item. These should
     /// be preceded by an exclamation mark, but we accept and warn about one
-    /// terminated by a semicolon. In addition to a vector of inner attributes,
-    /// this function also returns a vector that may contain the first outer
-    /// attribute of the next item (since we can't know whether the attribute
-    /// is an inner attribute of the containing item or an outer attribute of
-    /// the first contained item until we see the semi).
+    /// terminated by a semicolon.
 
-    /// matches inner_attrs* outer_attr?
-    /// you can make the 'next' field an Option, but the result is going to be
-    /// more useful as a vector.
-    fn parse_inner_attrs_and_next(&mut self)
-                                  -> (Vec<ast::Attribute> , Vec<ast::Attribute> ) {
-        let mut inner_attrs: Vec<ast::Attribute> = Vec::new();
-        let mut next_outer_attrs: Vec<ast::Attribute> = Vec::new();
+    /// matches inner_attrs*
+    fn parse_inner_attributes(&mut self) -> Vec<ast::Attribute> {
+        let mut attrs: Vec<ast::Attribute> = vec![];
         loop {
-            let attr = match self.token {
+            match self.token {
                 token::Pound => {
-                    self.parse_attribute(true)
+                    // Don't even try to parse if it's not an inner attribute.
+                    if !self.look_ahead(1, |t| t == &token::Not) {
+                        break;
+                    }
+
+                    let attr = self.parse_attribute(true);
+                    assert!(attr.node.style == ast::AttrInner);
+                    attrs.push(attr);
                 }
                 token::DocComment(s) => {
                     // we need to get the position of this token before we bump.
                     let Span { lo, hi, .. } = self.span;
-                    self.bump();
-                    attr::mk_sugared_doc_attr(attr::mk_attr_id(),
-                                              self.id_to_interned_str(s.ident()),
-                                              lo,
-                                              hi)
+                    let attr = attr::mk_sugared_doc_attr(attr::mk_attr_id(),
+                                                         self.id_to_interned_str(s.ident()),
+                                                         lo, hi);
+                    if attr.node.style == ast::AttrInner {
+                        attrs.push(attr);
+                        self.bump();
+                    } else {
+                        break;
+                    }
                 }
-                _ => {
-                    break;
-                }
-            };
-            if attr.node.style == ast::AttrInner {
-                inner_attrs.push(attr);
-            } else {
-                next_outer_attrs.push(attr);
-                break;
+                _ => break
             }
         }
-        (inner_attrs, next_outer_attrs)
+        attrs
     }
 
     /// matches meta_item = IDENT
