@@ -14,6 +14,7 @@
 Core encoding and decoding interfaces.
 */
 
+#[allow(deprecated)]
 use std::old_path;
 use std::path;
 use std::rc::Rc;
@@ -539,12 +540,14 @@ macro_rules! tuple {
 
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 
+#[allow(deprecated)]
 impl Encodable for old_path::posix::Path {
     fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
         self.as_vec().encode(e)
     }
 }
 
+#[allow(deprecated)]
 impl Decodable for old_path::posix::Path {
     fn decode<D: Decoder>(d: &mut D) -> Result<old_path::posix::Path, D::Error> {
         let bytes: Vec<u8> = try!(Decodable::decode(d));
@@ -552,12 +555,14 @@ impl Decodable for old_path::posix::Path {
     }
 }
 
+#[allow(deprecated)]
 impl Encodable for old_path::windows::Path {
     fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
         self.as_vec().encode(e)
     }
 }
 
+#[allow(deprecated)]
 impl Decodable for old_path::windows::Path {
     fn decode<D: Decoder>(d: &mut D) -> Result<old_path::windows::Path, D::Error> {
         let bytes: Vec<u8> = try!(Decodable::decode(d));

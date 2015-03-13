@@ -60,6 +60,7 @@
 //! ```
 
 #![unstable(feature = "old_path")]
+#![deprecated(since = "1.0.0", reason = "use std::path instead")]
 #![allow(deprecated)] // seriously this is all deprecated
 #![allow(unused_imports)]
 

@@ -57,7 +57,6 @@
 #![feature(int_uint)]
 #![feature(io)]
 #![feature(old_io)]
-#![feature(path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(std_misc)]
