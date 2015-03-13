@@ -110,27 +110,36 @@ might expect: we introduce a total of *four* traits:
 
 ```rust
 trait As<Sized? T> for Sized? {
-    fn cvt_as(&self) -> &T;
+    fn convert_as(&self) -> &T;
 }
 
 trait AsMut<Sized? T> for Sized? {
-    fn cvt_as_mut(&mut self) -> &mut T;
+    fn convert_as_mut(&mut self) -> &mut T;
 }
 
 trait To<T> for Sized? {
-    fn cvt_to(&self) -> T;
+    fn convert_to(&self) -> T;
 }
 
 trait Into<T> {
-    fn cvt_into(self) -> T;
+    fn convert_into(self) -> T;
+}
+
+trait From<T> {
+    fn from(T) -> Self;
 }
 ```
 
-These traits mirror our `as`/`to`/`into` conventions, but add a bit
-more structure to them: `as`-style conversions are from references to
-references, `to`-style conversions are from references to arbitrary
-types, and `into`-style conversions are between arbitrary types
-(consuming their argument).
+The first three traits mirror our `as`/`to`/`into` conventions, but
+add a bit more structure to them: `as`-style conversions are from
+references to references, `to`-style conversions are from references
+to arbitrary types, and `into`-style conversions are between arbitrary
+types (consuming their argument).
+
+The final trait, `From`, mimics the `from` constructors. Unlike the
+other traits, its method is not prefixed with `convert`. This is
+because, again unlike the other traits, this trait is expected to
+outright replace most custom `from` constructors. See below.
 
 **Why the reference restrictions?**
 
@@ -140,7 +149,7 @@ would have to use generalized where clauses and explicit lifetimes even for simp
 ```rust
 // Possible alternative:
 trait As<T> {
-    fn cvt_as(self) -> T;
+    fn convert_as(self) -> T;
 }
 
 // But then you get this:
@@ -150,8 +159,8 @@ fn take_as<'a, T>(t: &'a T) where &'a T: As<&'a MyType>;
 fn take_as<T>(t: &T) where T: As<MyType>;
 ```
 
-What's worse, if you need a conversion that works over any lifetime,
-*there's no way to specify it*: you can't write something like
+If you need a conversion that works over any lifetime, you need to use
+higher-ranked trait bounds:
 
 ```rust
 ... where for<'a> &'a T: As<&'a MyType>
@@ -159,8 +168,10 @@ What's worse, if you need a conversion that works over any lifetime,
 
 This case is particularly important when you cannot name a lifetime in
 advance, because it will be created on the stack within the
-function. While such a `where` clause can likely be added in the
-future, it's a bit of a gamble to pin conversion traits on it today.
+function. It might be possible to add sugar so that `where &T:
+As<&MyType>` expands to the above automatically, but such an elision
+might have other problems, and in any case it would preclude writing
+direct bounds like `fn foo<P: AsPath>`.
 
 The proposed trait definition essentially *bakes in* the needed
 lifetime connection, capturing the most common mode of use for
@@ -176,6 +187,14 @@ cost and consumption, and having multiple traits makes it possible to
 (by convention) restrict attention to e.g. "free" `as`-style conversions
 by bounding only by `As`.
 
+Why have both `Into` and `From`? There are a few reasons:
+
+* Coherence issues: the order of the types is significant, so `From`
+  allows extensibility in some cases that `Into` does not.
+
+* To match with existing conventions around conversions and
+  constructors (in particular, replacing many `from` constructors).
+
 ## Blanket `impl`s
 
 Given the above trait design, there are a few straightforward blanket
@@ -184,25 +203,32 @@ Given the above trait design, there are a few straightforward blanket
 ```rust
 // As implies To
 impl<'a, Sized? T, Sized? U> To<&'a U> for &'a T where T: As<U> {
-    fn cvt_to(&self) -> &'a U {
-        self.cvt_as()
+    fn convert_to(&self) -> &'a U {
+        self.convert_as()
     }
 }
 
 // To implies Into
 impl<'a, T, U> Into<U> for &'a T where T: To<U> {
-    fn cvt_into(self) -> U {
-        self.cvt_to()
+    fn convert_into(self) -> U {
+        self.convert_to()
     }
 }
 
 // AsMut implies Into
 impl<'a, T, U> Into<&'a mut U> for &'a mut T where T: AsMut<U> {
-    fn cvt_into(self) -> &'a mut U {
-        self.cvt_as_mut()
+    fn convert_into(self) -> &'a mut U {
+        self.convert_as_mut()
     }
 }
+
+// Into implies From
+impl<T, U> From<T> for U where T: Into<U> {
+    fn from(t: T) -> U { t.cvt_into() }
+}
 ```
+
+The interaction between
 
 ## An example
 
@@ -210,27 +236,27 @@ Using all of the above, here are some example `impl`s and their use:
 
 ```rust
 impl As<str> for String {
-    fn cvt_as(&self) -> &str {
+    fn convert_as(&self) -> &str {
         self.as_slice()
     }
 }
 impl As<[u8]> for String {
-    fn cvt_as(&self) -> &[u8] {
+    fn convert_as(&self) -> &[u8] {
         self.as_bytes()
     }
 }
 
 impl Into<Vec<u8>> for String {
-    fn cvt_into(self) -> Vec<u8> {
+    fn convert_into(self) -> Vec<u8> {
         self.into_bytes()
     }
 }
 
 fn main() {
     let a = format!("hello");
-    let b: &[u8] = a.cvt_as();
-    let c: &str = a.cvt_as();
-    let d: Vec<u8> = a.cvt_into();
+    let b: &[u8] = a.convert_as();
+    let c: &str = a.convert_as();
+    let d: Vec<u8> = a.convert_into();
 }
 ```
 
@@ -242,7 +268,7 @@ impl Path {
     fn join_path_inner(&self, p: &Path) -> PathBuf { ... }
 
     pub fn join_path<P: As<Path>>(&self, p: &P) -> PathBuf {
-        self.join_path_inner(p.cvt_as())
+        self.join_path_inner(p.convert_as())
     }
 }
 ```
@@ -295,15 +321,18 @@ So a rough, preliminary convention would be the following:
   in this RFC. An *ad hoc conversion trait* is a trait providing an ad
   hoc conversion method.
 
-* Use ad hoc conversion methods for "natural" conversions that should
-  have easy names and good discoverability. A conversion is "natural"
-  if you'd call it directly on the type in normal code; "unnatural"
-  conversions usually come from generic programming.
+* Use ad hoc conversion methods for "natural", *outgoing* conversions
+  that should have easy method names and good discoverability. A
+  conversion is "natural" if you'd call it directly on the type in
+  normal code; "unnatural" conversions usually come from generic
+  programming.
 
   For example, `to_string` is a natural conversion for `str`, while
   `into_string` is not; but the latter is sometimes useful in a
   generic context -- and that's what the generic conversion traits can
   help with.
+
+* On the other hand, favor `From` for all conversion constructors.
 
 * Introduce ad hoc conversion *traits* if you need to provide a
   blanket `impl` of an ad hoc conversion method, or need special
@@ -322,6 +351,18 @@ So a rough, preliminary convention would be the following:
 
 * Use the "inner function" pattern mentioned above to avoid code
   bloat.
+
+## Prelude changes
+
+*All* of the conversion traits are added to the prelude. There are two
+ reasons for doing so:
+
+* For `As`/`To`/`Into`, the reasoning is similar to the inclusion of
+  `PartialEq` and friends: they are expected to appear ubiquitously as
+  bounds.
+
+* For `From`, bounds are somewhat less common but the use of the
+  `from` constructor is expected to be rather widespread.
 
 # Drawbacks
 
