@@ -47,6 +47,7 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     struct_has_extern_repr: bool,
     ignore_non_const_paths: bool,
     inherited_pub_visibility: bool,
+    ignore_variant_stack: Vec<ast::NodeId>,
 }
 
 impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
@@ -59,6 +60,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             struct_has_extern_repr: false,
             ignore_non_const_paths: false,
             inherited_pub_visibility: false,
+            ignore_variant_stack: vec![],
         }
     }
 
@@ -79,7 +81,9 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                 def::DefPrimTy(_) => (),
                 def::DefVariant(enum_id, variant_id, _) => {
                     self.check_def_id(enum_id);
-                    self.check_def_id(variant_id);
+                    if !self.ignore_variant_stack.contains(&variant_id.node) {
+                        self.check_def_id(variant_id);
+                    }
                 }
                 _ => {
                     self.check_def_id(def.def_id());
@@ -278,6 +282,23 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
         visit::walk_expr(self, expr);
     }
 
+    fn visit_arm(&mut self, arm: &ast::Arm) {
+        if arm.pats.len() == 1 {
+            let pat = &*arm.pats[0];
+            let variants = pat_util::necessary_variants(&self.tcx.def_map, pat);
+
+            // Inside the body, ignore constructions of variants
+            // necessary for the pattern to match. Those construction sites
+            // can't be reached unless the variant is constructed elsewhere.
+            let len = self.ignore_variant_stack.len();
+            self.ignore_variant_stack.push_all(&*variants);
+            visit::walk_arm(self, arm);
+            self.ignore_variant_stack.truncate(len);
+        } else {
+            visit::walk_arm(self, arm);
+        }
+    }
+
     fn visit_pat(&mut self, pat: &ast::Pat) {
         let def_map = &self.tcx.def_map;
         match pat.node {
@@ -397,6 +418,11 @@ fn create_and_seed_worklist(tcx: &ty::ctxt,
         worklist.push(*id);
     }
     for id in reachable_symbols {
+        // Reachable variants can be dead, because we warn about
+        // variants never constructed, not variants never used.
+        if let Some(ast_map::NodeVariant(..)) = tcx.map.find(*id) {
+            continue;
+        }
         worklist.push(*id);
     }
 
