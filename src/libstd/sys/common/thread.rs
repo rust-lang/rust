@@ -8,28 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use core::prelude::*;
+use prelude::v1::*;
 
-use boxed::Box;
-use mem;
 use usize;
 use libc;
 use thunk::Thunk;
 use sys_common::stack;
-use sys::{thread, stack_overflow};
+use sys::stack_overflow;
 
 // This is the starting point of rust os threads. The first thing we do
 // is make sure that we don't trigger __morestack (also why this has a
 // no_stack_check annotation), and then we extract the main function
 // and invoke it.
 #[no_stack_check]
-pub fn start_thread(main: *mut libc::c_void) -> thread::rust_thread_return {
+pub fn start_thread(main: *mut libc::c_void) {
     unsafe {
         stack::record_os_managed_stack_bounds(0, usize::MAX);
-        let handler = stack_overflow::Handler::new();
-        let f: Box<Thunk> = Box::from_raw(main as *mut Thunk);
-        f.invoke(());
-        drop(handler);
-        mem::transmute(0 as thread::rust_thread_return)
+        let _handler = stack_overflow::Handler::new();
+        Box::from_raw(main as *mut Thunk).invoke(());
     }
 }
