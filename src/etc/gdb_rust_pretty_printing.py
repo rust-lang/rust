@@ -27,8 +27,17 @@ def rust_pretty_printer_lookup_function(val):
     if type_code == gdb.TYPE_CODE_STRUCT:
         struct_kind = classify_struct(val.type)
 
+        if struct_kind == STRUCT_KIND_SLICE:
+            return RustSlicePrinter(val)
+
         if struct_kind == STRUCT_KIND_STR_SLICE:
             return RustStringSlicePrinter(val)
+
+        if struct_kind == STRUCT_KIND_STD_VEC:
+            return RustStdVecPrinter(val)
+
+        if struct_kind == STRUCT_KIND_STD_STRING:
+            return RustStdStringPrinter(val)
 
         if struct_kind == STRUCT_KIND_TUPLE:
             return RustTuplePrinter(val)
@@ -172,6 +181,28 @@ class RustTupleStructPrinter:
     def display_hint(self):
         return "array"
 
+class RustSlicePrinter:
+    def __init__(self, val):
+        self.val = val
+
+    def display_hint(self):
+        return "array"
+
+    def to_string(self):
+        length = int(self.val["length"])
+        return self.val.type.tag + ("(len: %i)" % length)
+
+    def children(self):
+        cs = []
+        length = int(self.val["length"])
+        data_ptr = self.val["data_ptr"]
+        assert data_ptr.type.code == gdb.TYPE_CODE_PTR
+        pointee_type = data_ptr.type.target()
+
+        for index in range(0, length):
+            cs.append((str(index), (data_ptr + index).dereference()))
+
+        return cs
 
 class RustStringSlicePrinter:
     def __init__(self, val):
@@ -180,6 +211,35 @@ class RustStringSlicePrinter:
     def to_string(self):
         slice_byte_len = self.val["length"]
         return '"%s"' % self.val["data_ptr"].string(encoding="utf-8", length=slice_byte_len)
+
+class RustStdVecPrinter:
+    def __init__(self, val):
+        self.val = val
+
+    def display_hint(self):
+        return "array"
+
+    def to_string(self):
+        length = int(self.val["len"])
+        cap = int(self.val["cap"])
+        return self.val.type.tag + ("(len: %i, cap: %i)" % (length, cap))
+
+    def children(self):
+        cs = []
+        (length, data_ptr) = extract_length_and_data_ptr_from_std_vec(self.val)
+        pointee_type = data_ptr.type.target()
+
+        for index in range(0, length):
+            cs.append((str(index), (data_ptr + index).dereference()))
+        return cs
+
+class RustStdStringPrinter:
+    def __init__(self, val):
+        self.val = val
+
+    def to_string(self):
+        (length, data_ptr) = extract_length_and_data_ptr_from_std_vec(self.val["vec"])
+        return '"%s"' % data_ptr.string(encoding="utf-8", length=length)
 
 
 class RustCStyleEnumPrinter:
@@ -204,18 +264,37 @@ STRUCT_KIND_TUPLE           = 2
 STRUCT_KIND_TUPLE_VARIANT   = 3
 STRUCT_KIND_STRUCT_VARIANT  = 4
 STRUCT_KIND_CSTYLE_VARIANT  = 5
-STRUCT_KIND_STR_SLICE       = 6
+STRUCT_KIND_SLICE           = 6
+STRUCT_KIND_STR_SLICE       = 7
+STRUCT_KIND_STD_VEC         = 8
+STRUCT_KIND_STD_STRING      = 9
 
 
 def classify_struct(type):
+    # print("\nclassify_struct: tag=%s\n" % type.tag)
     if type.tag == "&str":
         return STRUCT_KIND_STR_SLICE
+
+    if type.tag.startswith("&[") and type.tag.endswith("]"):
+        return STRUCT_KIND_SLICE
 
     fields = list(type.fields())
     field_count = len(fields)
 
     if field_count == 0:
         return STRUCT_KIND_REGULAR_STRUCT
+
+    if (field_count == 3 and
+        fields[0].name == "ptr" and
+        fields[1].name == "len" and
+        fields[2].name == "cap" and
+        type.tag.startswith("Vec<")):
+        return STRUCT_KIND_STD_VEC
+
+    if (field_count == 1 and
+        fields[0].name == "vec" and
+        type.tag == "String"):
+        return STRUCT_KIND_STD_STRING
 
     if fields[0].name == "RUST$ENUM$DISR":
         if field_count == 1:
@@ -254,3 +333,11 @@ def get_field_at_index(val, index):
             return field
         i += 1
     return None
+
+def extract_length_and_data_ptr_from_std_vec(vec_val):
+    length = int(vec_val["len"])
+    vec_ptr_val = vec_val["ptr"]
+    unique_ptr_val = vec_ptr_val[first_field(vec_ptr_val)]
+    data_ptr = unique_ptr_val[first_field(unique_ptr_val)]
+    assert data_ptr.type.code == gdb.TYPE_CODE_PTR
+    return (length, data_ptr)
