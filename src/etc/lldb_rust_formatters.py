@@ -40,29 +40,10 @@ def print_struct_val(val, internal_dict):
 
     if is_vec_slice(val):
         return print_vec_slice_val(val, internal_dict)
+    elif is_std_vec(val):
+        return print_std_vec_val(val, internal_dict)
     else:
         return print_struct_val_starting_from(0, val, internal_dict)
-
-
-def print_vec_slice_val(val, internal_dict):
-    length = val.GetChildAtIndex(1).GetValueAsUnsigned()
-
-    data_ptr_val = val.GetChildAtIndex(0)
-    data_ptr_type = data_ptr_val.GetType()
-    assert data_ptr_type.IsPointerType()
-
-    element_type = data_ptr_type.GetPointeeType()
-    element_type_size = element_type.GetByteSize()
-
-    start_address = data_ptr_val.GetValueAsUnsigned()
-
-    def render_element(i):
-        address = start_address + i * element_type_size
-        element_val = val.CreateValueFromAddress(val.GetName() +
-                                                 ("[%s]" % i), address, element_type)
-        return print_val(element_val, internal_dict)
-
-    return "&[%s]" % (', '.join([render_element(i) for i in range(length)]))
 
 
 def print_struct_val_starting_from(field_start_index, val, internal_dict):
@@ -100,6 +81,16 @@ def print_struct_val_starting_from(field_start_index, val, internal_dict):
             this += field_name + ": "
 
         field_val = val.GetChildAtIndex(child_index)
+
+        if not field_val.IsValid():
+            field = t.GetFieldAtIndex(child_index)
+            # LLDB is not good at handling zero-sized values, so we have to help
+            # it a little
+            if field.GetType().GetByteSize() == 0:
+                return this + extract_type_name(field.GetType().GetName())
+            else:
+                return this + "<invalid value>"
+
         return this + print_val(field_val, internal_dict)
 
     body = separator.join([render_child(idx) for idx in range(field_start_index, num_children)])
@@ -195,6 +186,30 @@ def print_fixed_size_vec_val(val, internal_dict):
     return output
 
 
+def print_vec_slice_val(val, internal_dict):
+    length = val.GetChildAtIndex(1).GetValueAsUnsigned()
+
+    data_ptr_val = val.GetChildAtIndex(0)
+    data_ptr_type = data_ptr_val.GetType()
+
+    return "&[%s]" % print_array_of_values(val.GetName(),
+                                           data_ptr_val,
+                                           length,
+                                           internal_dict)
+
+
+def print_std_vec_val(val, internal_dict):
+    length = val.GetChildAtIndex(1).GetValueAsUnsigned()
+
+    # Vec<> -> Unique<> -> NonZero<> -> *T
+    data_ptr_val = val.GetChildAtIndex(0).GetChildAtIndex(0).GetChildAtIndex(0)
+    data_ptr_type = data_ptr_val.GetType()
+
+    return "vec![%s]" % print_array_of_values(val.GetName(),
+                                              data_ptr_val,
+                                              length,
+                                              internal_dict)
+
 #=--------------------------------------------------------------------------------------------------
 # Helper Functions
 #=--------------------------------------------------------------------------------------------------
@@ -243,3 +258,44 @@ def is_vec_slice(val):
 
     type_name = extract_type_name(ty.GetName()).replace("&'static", "&").replace(" ", "")
     return type_name.startswith("&[") and type_name.endswith("]")
+
+def is_std_vec(val):
+    ty = val.GetType()
+    if ty.GetTypeClass() != lldb.eTypeClassStruct:
+        return False
+
+    if ty.GetNumberOfFields() != 3:
+        return False
+
+    if ty.GetFieldAtIndex(0).GetName() != "ptr":
+        return False
+
+    if ty.GetFieldAtIndex(1).GetName() != "len":
+        return False
+
+    if ty.GetFieldAtIndex(2).GetName() != "cap":
+        return False
+
+    return ty.GetName().startswith("collections::vec::Vec<")
+
+
+def print_array_of_values(array_name, data_ptr_val, length, internal_dict):
+    '''Prints a contigous memory range, interpreting it as values of the
+       pointee-type of data_ptr_val.'''
+
+    data_ptr_type = data_ptr_val.GetType()
+    assert data_ptr_type.IsPointerType()
+
+    element_type = data_ptr_type.GetPointeeType()
+    element_type_size = element_type.GetByteSize()
+
+    start_address = data_ptr_val.GetValueAsUnsigned()
+
+    def render_element(i):
+        address = start_address + i * element_type_size
+        element_val = data_ptr_val.CreateValueFromAddress(array_name + ("[%s]" % i),
+                                                          address,
+                                                          element_type)
+        return print_val(element_val, internal_dict)
+
+    return ', '.join([render_element(i) for i in range(length)])
