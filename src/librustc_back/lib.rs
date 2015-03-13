@@ -48,6 +48,7 @@
 #![feature(path_ext)]
 #![feature(std_misc)]
 #![feature(path_relative_from)]
+#![feature(step_by)]
 
 extern crate syntax;
 extern crate serialize;
