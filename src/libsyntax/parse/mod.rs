@@ -96,9 +96,7 @@ pub fn parse_crate_attrs_from_file(
     cfg: ast::CrateConfig,
     sess: &ParseSess
 ) -> Vec<ast::Attribute> {
-    let mut parser = new_parser_from_file(sess, cfg, input);
-    let (inner, _) = parser.parse_inner_attrs_and_next();
-    inner
+    new_parser_from_file(sess, cfg, input).parse_inner_attributes()
 }
 
 pub fn parse_crate_from_source_str(name: String,
@@ -122,8 +120,7 @@ pub fn parse_crate_attrs_from_source_str(name: String,
                                            cfg,
                                            name,
                                            source);
-    let (inner, _) = maybe_aborted(p.parse_inner_attrs_and_next(),p);
-    inner
+    maybe_aborted(p.parse_inner_attributes(), p)
 }
 
 pub fn parse_expr_from_source_str(name: String,
@@ -141,7 +138,7 @@ pub fn parse_item_from_source_str(name: String,
                                   sess: &ParseSess)
                                   -> Option<P<ast::Item>> {
     let mut p = new_parser_from_source_str(sess, cfg, name, source);
-    maybe_aborted(p.parse_item_with_outer_attributes(),p)
+    maybe_aborted(p.parse_item(),p)
 }
 
 pub fn parse_meta_from_source_str(name: String,
@@ -156,16 +153,15 @@ pub fn parse_meta_from_source_str(name: String,
 pub fn parse_stmt_from_source_str(name: String,
                                   source: String,
                                   cfg: ast::CrateConfig,
-                                  attrs: Vec<ast::Attribute> ,
                                   sess: &ParseSess)
-                                  -> P<ast::Stmt> {
+                                  -> Option<P<ast::Stmt>> {
     let mut p = new_parser_from_source_str(
         sess,
         cfg,
         name,
         source
     );
-    maybe_aborted(p.parse_stmt(attrs),p)
+    maybe_aborted(p.parse_stmt(), p)
 }
 
 // Note: keep in sync with `with_hygiene::parse_tts_from_source_str`

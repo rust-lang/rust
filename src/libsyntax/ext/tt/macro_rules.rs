@@ -17,7 +17,6 @@ use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::{parse, parse_or_else};
 use parse::lexer::new_tt_reader;
 use parse::parser::Parser;
-use parse::attr::ParserAttr;
 use parse::token::{self, special_idents, gensym_ident, NtTT, Token};
 use parse::token::Token::*;
 use print;
@@ -68,15 +67,8 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
     }
     fn make_items(self: Box<ParserAnyMacro<'a>>) -> Option<SmallVector<P<ast::Item>>> {
         let mut ret = SmallVector::zero();
-        loop {
-            let mut parser = self.parser.borrow_mut();
-            // so... do outer attributes attached to the macro invocation
-            // just disappear? This question applies to make_impl_items, as
-            // well.
-            match parser.parse_item_with_outer_attributes() {
-                Some(item) => ret.push(item),
-                None => break
-            }
+        while let Some(item) = self.parser.borrow_mut().parse_item() {
+            ret.push(item);
         }
         self.ensure_complete_parse(false);
         Some(ret)
@@ -89,7 +81,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
             let mut parser = self.parser.borrow_mut();
             match parser.token {
                 token::Eof => break,
-                _ => ret.push(parser.parse_impl_item_with_outer_attributes())
+                _ => ret.push(parser.parse_impl_item())
             }
         }
         self.ensure_complete_parse(false);
@@ -97,10 +89,9 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
     }
 
     fn make_stmt(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Stmt>> {
-        let attrs = self.parser.borrow_mut().parse_outer_attributes();
-        let ret = self.parser.borrow_mut().parse_stmt(attrs);
+        let ret = self.parser.borrow_mut().parse_stmt();
         self.ensure_complete_parse(true);
-        Some(ret)
+        ret
     }
 }
 
