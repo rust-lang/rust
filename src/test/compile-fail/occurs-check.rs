@@ -11,10 +11,19 @@
 #![feature(box_syntax)]
 
 fn main() {
-    let f;
+    let f: Box<_>;
     f = box f;
-    //~^ ERROR mismatched types
-    //~| expected `_`
-    //~| found `Box<_>`
-    //~| cyclic type of infinite size
+    //~^ ERROR the trait `core::ops::Place<Box<_>>` is not implemented for the type
+
+    // (At one time, we produced a nicer error message like below.
+    //  but right now, the desugaring produces the above error instead
+    //  for the cyclic type here; its especially unfortunate because
+    //  printed error leaves out the information necessary for one to
+    //  deduce that the necessary type for the given impls *is*
+    //  cyclic.)
+    //
+    // ^ ERROR mismatched types
+    // | expected `_`
+    // | found `Box<_>`
+    // | cyclic type of infinite size
 }

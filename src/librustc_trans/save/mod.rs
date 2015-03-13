@@ -1531,7 +1531,7 @@ pub fn process_crate(sess: &Session,
     let mut out_name = cratename.clone();
     out_name.push_str(".csv");
     root_path.push(&out_name);
-    let output_file = match File::create(&root_path) {
+    let output_file: Box<_> = match File::create(&root_path) {
         Ok(f) => box f,
         Err(e) => {
             let disp = root_path.display();

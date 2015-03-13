@@ -649,53 +649,148 @@ it exists. The marker is the attribute `#[lang="..."]` and there are
 various different values of `...`, i.e. various different 'lang
 items'.
 
-For example, `Box` pointers require two lang items, one for allocation
-and one for deallocation. A freestanding program that uses the `Box`
-sugar for dynamic allocations via `malloc` and `free`:
+For example, there are lang items related to the implementation of
+string slices (`&str`); one of these is `str_eq`, which implements the
+equivalence relation on two string slices. This is a lang item because
+string equivalence is used for more than just the `==` operator; in
+particular, it is also used when pattern matching string literals.
+
+A freestanding program that provides its own definition of the
+`str_eq` lang item, with a slightly different semantics than
+usual in Rust:
 
 ```
-#![feature(lang_items, box_syntax, start, no_std)]
+#![feature(lang_items, intrinsics, start, no_std)]
 #![no_std]
 
-extern crate libc;
+// Our str_eq lang item; it normalizes ASCII letters to lowercase.
+#[lang="str_eq"]
+fn eq_slice(s1: &str, s2: &str) -> bool {
+    unsafe {
+        let (p1, s1_len) = str::repr(s1);
+        let (p2, s2_len) = str::repr(s2);
 
-extern {
-    fn abort() -> !;
-}
+        if s1_len != s2_len { return false; }
 
-#[lang = "owned_box"]
-pub struct Box<T>(*mut T);
+        let mut i = 0;
+        while i < s1_len {
+            let b1 = str::at_offset(p1, i);
+            let b2 = str::at_offset(p2, i);
 
-#[lang="exchange_malloc"]
-unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
-    let p = libc::malloc(size as libc::size_t) as *mut u8;
+            let b1 = lower_if_ascii(b1);
+            let b2 = lower_if_ascii(b2);
 
-    // malloc failed
-    if p as usize == 0 {
-        abort();
+            if b1 != b2 { return false; }
+
+            i += 1;
+        }
     }
 
-    p
-}
-#[lang="exchange_free"]
-unsafe fn deallocate(ptr: *mut u8, _size: usize, _align: usize) {
-    libc::free(ptr as *mut libc::c_void)
+    return true;
+
+    fn lower_if_ascii(b: u8) -> u8 {
+        if 'A' as u8 <= b && b <= 'Z' as u8 {
+            b - ('A' as u8) + ('a' as u8)
+        } else {
+            b
+        }
+    }
 }
 
 #[start]
-fn main(argc: isize, argv: *const *const u8) -> isize {
-    let x = box 1;
+fn main(_argc: isize, _argv: *const *const u8) -> isize {
+    let a = "HELLO\0";
+    let b = "World\0";
+    unsafe {
+        let (a_ptr, b_ptr) = (str::as_bytes(a), str::as_bytes(b));
+        match (a,b) {
+            ("hello\0", "world\0") => {
+                printf::print2p("Whoa; matched \"hello world\" on \"%s, %s\"\n\0",
+                                a_ptr, b_ptr);
+            }
 
-    0
+            ("HELLO\0", "World\0") => {
+                printf::print2p("obviously match on %s, %s\n\0", a_ptr, b_ptr);
+            }
+
+            _ => printf::print0("No matches at all???\n\0"),
+        }
+    }
+    return 0;
 }
+
+// To be able to print to standard output from this demonstration
+// program, we link with `printf` from the C standard library. Note
+// that this requires we null-terminate our strings with "\0".
+mod printf {
+    use super::str;
+
+    #[link(name="c")]
+    extern { fn printf(f: *const u8, ...); }
+
+    pub unsafe fn print0(s: &str) {
+        // guard against failure to include '\0'
+        if str::last_byte(s) != '\0' as u8 {
+            printf(str::as_bytes("(invalid input str)\n\0"));
+        } else {
+            let bytes = str::as_bytes(s);
+            printf(bytes);
+        }
+    }
+
+    pub unsafe fn print2p<T,U>(s: &str, arg1: *const T, arg2: *const U) {
+        // guard against failure to include '\0'
+        if str::last_byte(s) != '\0' as u8 {
+            printf(str::as_bytes("(invalid input str)\n\0"));
+        } else {
+            let bytes = str::as_bytes(s);
+            printf(bytes, arg1, arg2);
+        }
+    }
+}
+
+/// A collection of functions to operate on string slices.
+mod str {
+    /// Extracts the underlying representation of a string slice.
+    pub unsafe fn repr(s: &str) -> (*const u8, usize) {
+        extern "rust-intrinsic" { fn transmute<T,U>(e: T) -> U; }
+        transmute(s)
+    }
+
+    /// Extracts the pointer to bytes representing the string slice.
+    pub fn as_bytes(s: &str) -> *const u8 {
+        unsafe { repr(s).0 }
+    }
+
+    /// Returns the last byte in the string slice.
+    pub fn last_byte(s: &str) -> u8 {
+        unsafe {
+            let (bytes, len): (*const u8, usize) = repr(s);
+            at_offset(bytes, len-1)
+        }
+    }
+
+    /// Returns the byte at offset `i` in the byte string.
+    pub unsafe fn at_offset(p: *const u8, i: usize) -> u8 {
+        *((p as usize + i) as *const u8)
+    }
+}
+
+// Again, these functions and traits are used by the compiler, and are
+// normally provided by libstd. (The `Sized` and `Copy` lang_items
+// require definitions due to the type-parametric code above.)
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
+#[lang = "panic"]
+pub fn panic(_: &(&'static str, &'static str, u32)) -> ! { panic_fmt() }
+
+#[lang = "sized"] pub trait Sized: PhantomFn<Self,Self> {}
+#[lang = "copy"] pub trait Copy: PhantomFn<Self,Self>  {}
+#[lang = "phantom_fn"] pub trait PhantomFn<A:?Sized,R:?Sized=()> { }
 ```
 
-Note the use of `abort`: the `exchange_malloc` lang item is assumed to
-return a valid pointer, and so needs to do the check internally.
 
 Other features provided by lang items include:
 
@@ -703,8 +798,8 @@ Other features provided by lang items include:
   `==`, `<`, dereferencing (`*`) and `+` (etc.) operators are all
   marked with lang items; those specific four are `eq`, `ord`,
   `deref`, and `add` respectively.
-- stack unwinding and general failure; the `eh_personality`, `fail`
-  and `fail_bounds_checks` lang items.
+- stack unwinding and general failure; the `eh_personality`, `panic`
+  `panic_fmt`, and `panic_bounds_check` lang items.
 - the traits in `std::marker` used to indicate types of
   various kinds; lang items `send`, `sync` and `copy`.
 - the marker types and variance indicators found in
@@ -712,6 +807,6 @@ Other features provided by lang items include:
   `contravariant_lifetime`, etc.
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses
-`Box` then there is no need to define functions for `exchange_malloc`
-and `exchange_free`. `rustc` will emit an error when an item is needed
-but not found in the current crate or any that it depends on.
+array indexing (`a[i]`) then there is no need to define a function for
+`panic_bounds_check`. `rustc` will emit an error when an item is
+needed but not found in the current crate or any that it depends on.

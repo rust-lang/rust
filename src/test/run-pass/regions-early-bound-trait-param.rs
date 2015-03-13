@@ -81,7 +81,8 @@ impl<'s> Trait<'s> for (int,int) {
 }
 
 impl<'t> MakerTrait for Box<Trait<'t>+'static> {
-    fn mk() -> Box<Trait<'t>+'static> { box() (4,5) as Box<Trait> }
+    // FIXME(22450): workaround pretty-printer deficiency via parens.
+    fn mk() -> Box<Trait<'t>+'static> { (box() (4,5)) as Box<Trait> }
 }
 
 enum List<'l> {

@@ -558,7 +558,7 @@ pub fn pretty_print_input(sess: Session,
         (PpmSource(s), None) => {
             let out: &mut Write = &mut out;
             s.call_with_pp_support(
-                sess, ast_map, &arenas, id, box out, |annotation, out| {
+                sess, ast_map, &arenas, id, Box::new(out), |annotation, out| {
                     debug!("pretty printing source code {:?}", s);
                     let sess = annotation.sess();
                     pprust::print_crate(sess.codemap(),
@@ -585,7 +585,7 @@ pub fn pretty_print_input(sess: Session,
                                                       sess.diagnostic(),
                                                       src_name.to_string(),
                                                       &mut rdr,
-                                                      box out,
+                                                      Box::new(out),
                                                       annotation.pp_ann(),
                                                       is_expanded);
                     for node_id in uii.all_matching_node_ids(ast_map) {

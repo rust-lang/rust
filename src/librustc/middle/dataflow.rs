@@ -486,7 +486,7 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
         debug!("Dataflow result for {}:", self.analysis_name);
         debug!("{}", {
             let mut v = Vec::new();
-            self.pretty_print_to(box &mut v, blk).unwrap();
+            self.pretty_print_to(Box::new(&mut v), blk).unwrap();
             println!("{}", String::from_utf8(v).unwrap());
             ""
         });

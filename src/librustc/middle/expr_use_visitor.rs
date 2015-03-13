@@ -605,6 +605,11 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                     None => {}
                 }
                 self.consume_expr(&**base);
+                if place.is_some() {
+                    self.tcx().sess.span_bug(
+                        expr.span,
+                        "box with explicit place remains after expansion");
+                }
             }
 
             ast::ExprMac(..) => {
