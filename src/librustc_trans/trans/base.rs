@@ -33,7 +33,7 @@ use super::ModuleTranslation;
 use back::link::{mangle_exported_name};
 use back::{link, abi};
 use lint;
-use llvm::{BasicBlockRef, Linkage, ValueRef, Vector, get_param};
+use llvm::{AttrHelper, BasicBlockRef, Linkage, ValueRef, Vector, get_param};
 use llvm;
 use metadata::{csearch, encoder, loader};
 use middle::astencode;
@@ -456,6 +456,9 @@ pub fn set_llvm_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: Val
                                                llvm::FunctionIndex as c_uint,
                                                llvm::ColdAttribute as uint64_t)
             },
+            "allocator" => {
+                llvm::NoAliasAttribute.apply_llfn(llvm::ReturnIndex as c_uint, llfn);
+            }
             _ => used = false,
         }
         if used {
@@ -903,8 +906,10 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     ccx.sess().bug("unexpected intrinsic in trans_external_path")
                 }
                 _ => {
-                    foreign::register_foreign_item_fn(ccx, fn_ty.abi, t,
-                                                      &name[..])
+                    let llfn = foreign::register_foreign_item_fn(ccx, fn_ty.abi, t, &name[..]);
+                    let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
+                    set_llvm_fn_attrs(ccx, &attrs, llfn);
+                    llfn
                 }
             }
         }
@@ -2848,7 +2853,9 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     let abi = ccx.tcx().map.get_foreign_abi(id);
                     let ty = ty::node_id_to_type(ccx.tcx(), ni.id);
                     let name = foreign::link_name(&*ni);
-                    foreign::register_foreign_item_fn(ccx, abi, ty, &name)
+                    let llfn = foreign::register_foreign_item_fn(ccx, abi, ty, &name);
+                    set_llvm_fn_attrs(ccx, &ni.attrs, llfn);
+                    llfn
                 }
                 ast::ForeignItemStatic(..) => {
                     foreign::register_static(ccx, &*ni)
