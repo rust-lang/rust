@@ -43,7 +43,7 @@ use sys::os_str::Buf;
 use sys_common::{AsInner, AsInnerMut, IntoInner, FromInner};
 use libc::{self, gid_t, uid_t};
 
-use old_io;
+#[allow(deprecated)] use old_io;
 
 /// Raw file descriptors.
 pub type Fd = libc::c_int;
@@ -67,6 +67,7 @@ impl AsRawFd for fs::File {
     }
 }
 
+#[allow(deprecated)]
 impl AsRawFd for old_io::pipe::PipeStream {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()

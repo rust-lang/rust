@@ -30,6 +30,8 @@ use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
 use serialize::Encodable;
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher, SipHasher};
+use std::io::prelude::*;
+use std::io::{Cursor, SeekFrom};
 use syntax::abi;
 use syntax::ast::{self, DefId, NodeId};
 use syntax::ast_map::{PathElem, PathElems};
@@ -47,7 +49,6 @@ use syntax::visit::Visitor;
 use syntax::visit;
 use syntax;
 use rbml::writer::Encoder;
-use rbml::io::SeekableMemWriter;
 
 /// A borrowed version of `ast::InlinedItem`.
 pub enum InlinedItemRef<'a> {
@@ -1530,7 +1531,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
 // Path and definition ID indexing
 
 fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: F) where
-    F: FnMut(&mut SeekableMemWriter, &T),
+    F: FnMut(&mut Cursor<Vec<u8>>, &T),
     T: Hash,
 {
     let mut buckets: Vec<Vec<entry<T>>> = (0..256u16).map(|_| Vec::new()).collect();
@@ -1551,8 +1552,8 @@ fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: 
             rbml_w.start_tag(tag_index_buckets_bucket_elt);
             assert!(elt.pos < 0xffff_ffff);
             {
-                let wr: &mut SeekableMemWriter = rbml_w.writer;
-                wr.write_be_u32(elt.pos as u32);
+                let wr: &mut Cursor<Vec<u8>> = rbml_w.writer;
+                write_be_u32(wr, elt.pos as u32);
             }
             write_fn(rbml_w.writer, &elt.val);
             rbml_w.end_tag();
@@ -1563,17 +1564,26 @@ fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: 
     rbml_w.start_tag(tag_index_table);
     for pos in &bucket_locs {
         assert!(*pos < 0xffff_ffff);
-        let wr: &mut SeekableMemWriter = rbml_w.writer;
-        wr.write_be_u32(*pos as u32);
+        let wr: &mut Cursor<Vec<u8>> = rbml_w.writer;
+        write_be_u32(wr, *pos as u32);
     }
     rbml_w.end_tag();
     rbml_w.end_tag();
 }
 
-fn write_i64(writer: &mut SeekableMemWriter, &n: &i64) {
-    let wr: &mut SeekableMemWriter = writer;
+fn write_i64(writer: &mut Cursor<Vec<u8>>, &n: &i64) {
+    let wr: &mut Cursor<Vec<u8>> = writer;
     assert!(n < 0x7fff_ffff);
-    wr.write_be_u32(n as u32);
+    write_be_u32(wr, n as u32);
+}
+
+fn write_be_u32(w: &mut Write, u: u32) {
+    w.write_all(&[
+        (u >> 24) as u8,
+        (u >> 16) as u8,
+        (u >>  8) as u8,
+        (u >>  0) as u8,
+    ]);
 }
 
 fn encode_meta_item(rbml_w: &mut Encoder, mi: &ast::MetaItem) {
@@ -1929,13 +1939,13 @@ fn encode_dylib_dependency_formats(rbml_w: &mut Encoder, ecx: &EncodeContext) {
 pub const metadata_encoding_version : &'static [u8] = &[b'r', b'u', b's', b't', 0, 0, 0, 2 ];
 
 pub fn encode_metadata(parms: EncodeParams, krate: &ast::Crate) -> Vec<u8> {
-    let mut wr = SeekableMemWriter::new();
+    let mut wr = Cursor::new(Vec::new());
     encode_metadata_inner(&mut wr, parms, krate);
 
     // RBML compacts the encoded bytes whenever appropriate,
     // so there are some garbages left after the end of the data.
-    let metalen = wr.tell().unwrap() as uint;
-    let mut v = wr.unwrap();
+    let metalen = wr.seek(SeekFrom::Current(0)).unwrap() as uint;
+    let mut v = wr.into_inner();
     v.truncate(metalen);
     assert_eq!(v.len(), metalen);
 
@@ -1965,7 +1975,7 @@ pub fn encode_metadata(parms: EncodeParams, krate: &ast::Crate) -> Vec<u8> {
     return v;
 }
 
-fn encode_metadata_inner(wr: &mut SeekableMemWriter,
+fn encode_metadata_inner(wr: &mut Cursor<Vec<u8>>,
                          parms: EncodeParams,
                          krate: &ast::Crate) {
     struct Stats {
@@ -2032,64 +2042,64 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
     encode_hash(&mut rbml_w, &ecx.link_meta.crate_hash);
     encode_dylib_dependency_formats(&mut rbml_w, &ecx);
 
-    let mut i = rbml_w.writer.tell().unwrap();
+    let mut i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     encode_attributes(&mut rbml_w, &krate.attrs);
-    stats.attr_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.attr_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     encode_crate_deps(&mut rbml_w, ecx.cstore);
-    stats.dep_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.dep_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     // Encode the language items.
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     encode_lang_items(&ecx, &mut rbml_w);
-    stats.lang_item_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.lang_item_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     // Encode the native libraries used
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     encode_native_libraries(&ecx, &mut rbml_w);
-    stats.native_lib_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.native_lib_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     // Encode the plugin registrar function
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     encode_plugin_registrar_fn(&ecx, &mut rbml_w);
-    stats.plugin_registrar_fn_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.plugin_registrar_fn_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     // Encode codemap
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     encode_codemap(&ecx, &mut rbml_w);
-    stats.codemap_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.codemap_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     // Encode macro definitions
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     encode_macro_defs(&mut rbml_w, krate);
-    stats.macro_defs_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.macro_defs_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     // Encode the def IDs of impls, for coherence checking.
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     encode_impls(&ecx, krate, &mut rbml_w);
-    stats.impl_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.impl_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     // Encode miscellaneous info.
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     encode_misc_info(&ecx, krate, &mut rbml_w);
     encode_reachable_extern_fns(&ecx, &mut rbml_w);
-    stats.misc_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.misc_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
     // Encode and index the items.
     rbml_w.start_tag(tag_items);
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     let items_index = encode_info_for_items(&ecx, &mut rbml_w, krate);
-    stats.item_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.item_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
 
-    i = rbml_w.writer.tell().unwrap();
+    i = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
     encode_index(&mut rbml_w, items_index, write_i64);
-    stats.index_bytes = rbml_w.writer.tell().unwrap() - i;
+    stats.index_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap() - i;
     rbml_w.end_tag();
 
     encode_struct_field_attrs(&mut rbml_w, krate);
 
-    stats.total_bytes = rbml_w.writer.tell().unwrap();
+    stats.total_bytes = rbml_w.writer.seek(SeekFrom::Current(0)).unwrap();
 
     if tcx.sess.meta_stats() {
         for e in rbml_w.writer.get_ref() {
@@ -2117,12 +2127,12 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
 
 // Get the encoded string for a type
 pub fn encoded_ty<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> String {
-    let mut wr = SeekableMemWriter::new();
+    let mut wr = Cursor::new(Vec::new());
     tyencode::enc_ty(&mut Encoder::new(&mut wr), &tyencode::ctxt {
         diag: tcx.sess.diagnostic(),
         ds: def_to_string,
         tcx: tcx,
         abbrevs: &RefCell::new(FnvHashMap())
     }, t);
-    String::from_utf8(wr.unwrap()).unwrap()
+    String::from_utf8(wr.into_inner()).unwrap()
 }

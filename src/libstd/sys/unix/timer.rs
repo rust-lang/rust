@@ -46,6 +46,8 @@
 //!
 //! Note that all time units in this file are in *milliseconds*.
 
+#![allow(deprecated)]
+
 use prelude::v1::*;
 use self::Req::*;
 

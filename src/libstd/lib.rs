@@ -298,6 +298,7 @@ mod std {
     pub use sync; // used for select!()
     pub use error; // used for try!()
     pub use fmt; // used for any formatting strings
+    #[allow(deprecated)]
     pub use old_io; // used for println!()
     pub use option; // used for bitflags!{}
     pub use rt; // used for panic!()

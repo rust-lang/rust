@@ -9,8 +9,8 @@
 // except according to those terms.
 
 use std::fs::File;
-use std::io::Write;
-use std::old_io;
+use std::io;
+use std::io::prelude::*;
 use std::path::{PathBuf, Path};
 
 use core;
@@ -64,7 +64,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 
     let mut out = match File::create(&output) {
         Err(e) => {
-            let _ = writeln!(&mut old_io::stderr(),
+            let _ = writeln!(&mut io::stderr(),
                              "error opening `{}` for writing: {}",
                              output.display(), e);
             return 4;
@@ -74,7 +74,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 
     let (metadata, text) = extract_leading_metadata(&input_str);
     if metadata.len() == 0 {
-        let _ = writeln!(&mut old_io::stderr(),
+        let _ = writeln!(&mut io::stderr(),
                          "invalid markdown file: expecting initial line with `% ...TITLE...`");
         return 5;
     }
@@ -129,7 +129,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 
     match err {
         Err(e) => {
-            let _ = writeln!(&mut old_io::stderr(),
+            let _ = writeln!(&mut io::stderr(),
                              "error writing to `{}`: {}",
                              output.display(), e);
             6

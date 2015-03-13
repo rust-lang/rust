@@ -14,6 +14,7 @@
 #![allow(non_camel_case_types)]
 
 use std::cell::RefCell;
+use std::io::prelude::*;
 
 use middle::region;
 use middle::subst;
