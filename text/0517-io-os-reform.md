@@ -62,6 +62,7 @@ follow-up PRs against this RFC.
             * [Errors]
             * [Channel adapters]
             * [stdin, stdout, stderr]
+            * [Printing functions]
         * [std::env]
         * [std::fs]
             * [Free functions]
@@ -72,7 +73,6 @@ follow-up PRs against this RFC.
             * [TCP]
             * [UDP]
             * [Addresses]
-        * [std::net] (stub)
         * [std::process]
             * [Command]
             * [Child]
@@ -1155,7 +1155,176 @@ RFC recommends they remain unstable.
 #### `stdin`, `stdout`, `stderr`
 [stdin, stdout, stderr]: #stdin-stdout-stderr
 
-> To be added in a follow-up PR.
+The current `stdio` module will be removed in favor of these constructors in the
+`io` module:
+
+```rust
+pub fn stdin() -> Stdin;
+pub fn stdout() -> Stdout;
+pub fn stderr() -> Stderr;
+```
+
+* `stdin` - returns a handle to a **globally shared** standard input of
+  the process which is buffered as well. Due to the globally shared nature of
+  this handle, all operations on `Stdin` directly will acquire a lock internally
+  to ensure access to the shared buffer is synchronized. This implementation
+  detail is also exposed through a `lock` method where the handle can be
+  explicitly locked for a period of time so relocking is not necessary.
+
+  The `Read` trait will be implemented directly on the returned `Stdin` handle
+  but the `BufRead` trait will not be (due to synchronization concerns). The
+  locked version of `Stdin` (`StdinLock`) will provide an implementation of
+  `BufRead`.
+
+  The design will largely be the same as is today with the `old_io` module.
+
+  ```rust
+  impl Stdin {
+      fn lock(&self) -> StdinLock;
+      fn read_line(&mut self, into: &mut String) -> io::Result<()>;
+      fn read_until(&mut self, byte: u8, into: &mut Vec<u8>) -> io::Result<()>;
+  }
+  impl Read for Stdin { ... }
+  impl Read for StdinLock { ... }
+  impl BufRead for StdinLock { ... }
+  ```
+
+* `stderr` - returns a **non buffered** handle to the standard error output
+  stream for the process. Each call to `write` will roughly translate to a
+  system call to output data when written to `stderr`. This handle is locked
+  like `stdin` to ensure, for example, that calls to `write_all` are atomic with
+  respect to one another. There will also be an RAII guard to lock the handle
+  and use the result as an instance of `Write`.
+
+  ```rust
+  impl Stderr {
+      fn lock(&self) -> StderrLock;
+  }
+  impl Write for Stderr { ... }
+  impl Write for StderrLock { ... }
+  ```
+
+* `stdout` - returns a **globally buffered** handle to the standard output of
+  the current process. The amount of buffering can be decided at runtime to
+  allow for different situations such as being attached to a TTY or being
+  redirected to an output file. The `Write` trait will be implemented for this
+  handle, and like `stderr` it will be possible to lock it and then use the
+  result as an instance of `Write` as well.
+
+  ```rust
+  impl Stdout {
+      fn lock(&self) -> StdoutLock;
+  }
+  impl Write for Stdout { ... }
+  impl Write for StdoutLock { ... }
+  ```
+
+#### Windows and stdio
+[Windows stdio]: #windows-and-stdio
+
+On Windows, standard input and output handles can work with either arbitrary
+`[u8]` or `[u16]` depending on the state at runtime. For example a program
+attached to the console will work with arbitrary `[u16]`, but a program attached
+to a pipe would work with arbitrary `[u8]`.
+
+To handle this difference, the following behavior will be enforced for the
+standard primitives listed above:
+
+* If attached to a pipe then no attempts at encoding or decoding will be done,
+  the data will be ferried through as `[u8]`.
+
+* If attached to a console, then `stdin` will attempt to interpret all input as
+  UTF-16, re-encoding into UTF-8 and returning the UTF-8 data instead. This
+  implies that data will be buffered internally to handle partial reads/writes.
+  Invalid UTF-16 will simply be discarded returning an `io::Error` explaining
+  why.
+
+* If attached to a console, then `stdout` and `stderr` will attempt to interpret
+  input as UTF-8, re-encoding to UTF-16. If the input is not valid UTF-8 then an
+  error will be returned and no data will be written.
+
+#### Raw stdio
+[Raw stdio]: #raw-stdio
+
+> **Note**: This section is intended to be a sketch of possible raw stdio
+>           support, but it is not planned to implement or stabilize this
+>           implementation at this time.
+
+The above standard input/output handles all involve some form of locking or
+buffering (or both). This cost is not always wanted, and hence raw variants will
+be provided. Due to platform differences across unix/windows, the following
+structure will be supported:
+
+```rust
+mod os {
+    mod unix {
+        mod stdio {
+            struct Stdio { .. }
+
+            impl Stdio {
+                fn stdout() -> Stdio;
+                fn stderr() -> Stdio;
+                fn stdin() -> Stdio;
+            }
+
+            impl Read for Stdio { ... }
+            impl Write for Stdio { ... }
+        }
+    }
+
+    mod windows {
+        mod stdio {
+            struct Stdio { ... }
+            struct StdioConsole { ... }
+
+            impl Stdio {
+                fn stdout() -> io::Result<Stdio>;
+                fn stderr() -> io::Result<Stdio>;
+                fn stdin() -> io::Result<Stdio>;
+            }
+            // same constructors StdioConsole
+
+            impl Read for Stdio { ... }
+            impl Write for Stdio { ... }
+
+            impl StdioConsole {
+                // returns slice of what was read
+                fn read<'a>(&self, buf: &'a mut OsString) -> io::Result<&'a OsStr>;
+                // returns remaining part of `buf` to be written
+                fn write<'a>(&self, buf: &'a OsStr) -> io::Result<&'a OsStr>;
+            }
+        }
+    }
+}
+```
+
+There are some key differences from today's API:
+
+* On unix, the API has not changed much except that the handles have been
+  consolidated into one type which implements both `Read` and `Write` (although
+  writing to stdin is likely to generate an error).
+* On windows, there are two sets of handles representing the difference between
+  "console mode" and not (e.g. a pipe). When not a console the normal I/O traits
+  are implemented (delegating to `ReadFile` and `WriteFile`. The console mode
+  operations work with `OsStr`, however, to show how they work with UCS-2 under
+  the hood.
+
+#### Printing functions
+[Printing functions]: #printing-functions
+
+The current `print`, `println`, `print_args`, and `println_args` functions will
+all be "removed from the public interface" by [prefixing them with `__` and
+marking `#[doc(hidden)]`][gh22607]. These are all implementation details of the
+`print!` and `println!` macros and don't need to be exposed in the public
+interface.
+
+[gh22607]: https://github.com/rust-lang/rust/issues/22607
+
+The `set_stdout` and `set_stderr` functions will be removed with no replacement
+for now. It's unclear whether these functions should indeed control a thread
+local handle instead of a global handle as whether they're justified in the
+first place. It is a backwards-compatible extension to allow this sort of output
+to be redirected and can be considered if the need arises.
 
 ### `std::env`
 [std::env]: #stdenv
@@ -1173,7 +1342,8 @@ and the signatures will be updated to follow this RFC's
 
 * `vars` (renamed from `env`): yields a vector of `(OsString, OsString)` pairs.
 * `var` (renamed from `getenv`): take a value bounded by `AsOsStr`,
-  allowing Rust strings and slices to be ergonomically passed in. Yields an `Option<OsString>`.
+  allowing Rust strings and slices to be ergonomically passed in. Yields an
+  `Option<OsString>`.
 * `var_string`: take a value bounded by `AsOsStr`, returning `Result<String,
   VarError>` where `VarError` represents a non-unicode `OsString` or a "not
   present" value.
