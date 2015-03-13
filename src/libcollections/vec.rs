@@ -73,6 +73,7 @@ use borrow::{Cow, IntoCow};
 /// # Examples
 ///
 /// ```
+/// # #![feature(collections)]
 /// let mut vec = Vec::new();
 /// vec.push(1);
 /// vec.push(2);
@@ -345,6 +346,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut vec = Vec::with_capacity(10);
     /// vec.push_all(&[1, 2, 3]);
     /// assert_eq!(vec.capacity(), 10);
@@ -400,6 +402,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut vec = vec![1, 2, 3, 4];
     /// vec.truncate(2);
     /// assert_eq!(vec, [1, 2]);
@@ -565,6 +568,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut v = vec![1, 2, 3];
     /// assert_eq!(v.remove(1), 2);
     /// assert_eq!(v, [1, 3]);
@@ -696,6 +700,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut vec = vec![1, 2, 3];
     /// let mut vec2 = vec![4, 5, 6];
     /// vec.append(&mut vec2);
@@ -732,6 +737,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut v = vec!["a".to_string(), "b".to_string()];
     /// for s in v.drain() {
     ///     // s has type String, not &String
@@ -813,6 +819,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections, core)]
     /// let v = vec![0, 1, 2];
     /// let w = v.map_in_place(|i| i + 3);
     /// assert_eq!(w.as_slice(), [3, 4, 5].as_slice());
@@ -1015,6 +1022,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut vec = vec![1,2,3];
     /// let vec2 = vec.split_off(1);
     /// assert_eq!(vec, [1]);
@@ -1053,6 +1061,7 @@ impl<T: Clone> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut vec = vec!["hello"];
     /// vec.resize(3, "world");
     /// assert_eq!(vec, ["hello", "world", "world"]);
@@ -1081,6 +1090,7 @@ impl<T: Clone> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut vec = vec![1];
     /// vec.push_all(&[2, 3, 4]);
     /// assert_eq!(vec, [1, 2, 3, 4]);
@@ -1554,6 +1564,7 @@ impl<T> AsSlice<T> for Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// fn foo(slice: &[i32]) {}
     ///
     /// let vec = vec![1, 2];

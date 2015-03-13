@@ -41,6 +41,7 @@ use sys_common;
 /// # Examples
 ///
 /// ```no_run
+/// # #![feature(old_io, io)]
 /// use std::old_io::*;
 ///
 /// {
@@ -133,6 +134,7 @@ impl TcpStream {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(old_io, std_misc)]
     /// # #![allow(unused_must_use)]
     /// use std::old_io::*;
     /// use std::time::Duration;
@@ -278,6 +280,7 @@ impl sys_common::AsInner<TcpStreamImp> for TcpStream {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io)]
 /// # fn foo() {
 /// use std::old_io::*;
 /// use std::thread;
@@ -374,6 +377,7 @@ impl TcpAcceptor {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(old_io, io)]
     /// use std::old_io::*;
     ///
     /// let mut a = TcpListener::bind("127.0.0.1:8482").listen().unwrap();
@@ -417,6 +421,7 @@ impl TcpAcceptor {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(old_io, io)]
     /// use std::old_io::*;
     /// use std::thread;
     ///

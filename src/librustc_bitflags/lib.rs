@@ -33,6 +33,7 @@
 /// # Examples
 ///
 /// ```{.rust}
+/// # #![feature(rustc_private)]
 /// #[macro_use] extern crate rustc_bitflags;
 ///
 /// bitflags! {
@@ -59,6 +60,7 @@
 /// The generated `struct`s can also be extended with type and trait implementations:
 ///
 /// ```{.rust}
+/// # #![feature(rustc_private)]
 /// #[macro_use] extern crate rustc_bitflags;
 ///
 /// use std::fmt;

@@ -35,6 +35,7 @@
 #![feature(no_std)]
 #![no_std]
 #![feature(core)]
+#![doc(test(no_crate_inject))]
 
 extern crate core;
 

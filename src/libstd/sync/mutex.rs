@@ -85,6 +85,7 @@ use fmt;
 /// To recover from a poisoned mutex:
 ///
 /// ```
+/// # #![feature(std_misc)]
 /// use std::sync::{Arc, Mutex};
 /// use std::thread;
 ///
@@ -136,6 +137,7 @@ unsafe impl<T: Send> Sync for Mutex<T> { }
 /// # Examples
 ///
 /// ```
+/// # #![feature(std_misc)]
 /// use std::sync::{StaticMutex, MUTEX_INIT};
 ///
 /// static LOCK: StaticMutex = MUTEX_INIT;

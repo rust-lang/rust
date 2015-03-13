@@ -36,6 +36,7 @@ use distributions::{Sample, IndependentSample};
 /// # Examples
 ///
 /// ```
+/// # #![feature(rand)]
 /// use std::rand::distributions::{IndependentSample, Range};
 ///
 /// fn main() {

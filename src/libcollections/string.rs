@@ -90,6 +90,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections, core)]
     /// let s = String::from_str("hello");
     /// assert_eq!(s.as_slice(), "hello");
     /// ```
@@ -122,6 +123,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::str::Utf8Error;
     ///
     /// let hello_vec = vec![104, 101, 108, 108, 111];
@@ -350,6 +352,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let s = String::from_str("hello");
     /// let bytes = s.into_bytes();
     /// assert_eq!(bytes, [104, 101, 108, 108, 111]);
@@ -365,6 +368,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("foo");
     /// s.push_str("bar");
     /// assert_eq!(s, "foobar");
@@ -441,6 +445,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("foo");
     /// s.reserve(100);
     /// assert!(s.capacity() >= 100);
@@ -458,6 +463,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("abc");
     /// s.push('1');
     /// s.push('2');
@@ -493,6 +499,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let s = String::from_str("hello");
     /// let b: &[_] = &[104, 101, 108, 108, 111];
     /// assert_eq!(s.as_bytes(), b);
@@ -513,6 +520,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("hello");
     /// s.truncate(2);
     /// assert_eq!(s, "he");
@@ -530,6 +538,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("foo");
     /// assert_eq!(s.pop(), Some('o'));
     /// assert_eq!(s.pop(), Some('o'));
@@ -567,6 +576,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("foo");
     /// assert_eq!(s.remove(0), 'f');
     /// assert_eq!(s.remove(1), 'o');
@@ -629,6 +639,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("hello");
     /// unsafe {
     ///     let vec = s.as_mut_vec();
@@ -930,6 +941,7 @@ impl<'a> Deref for DerefString<'a> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(collections)]
 /// use std::string::as_string;
 ///
 /// fn string_consumer(s: String) {
