@@ -287,9 +287,23 @@ pub fn sleep(dur: Duration) {
         };
         // If we're awoken with a signal then the return value will be -1 and
         // nanosleep will fill in `ts` with the remaining time.
-        while libc::nanosleep(&ts, &mut ts) == -1 {
+        while dosleep(&mut ts) == -1 {
             assert_eq!(os::errno(), libc::EINTR);
         }
+    }
+
+    #[cfg(target_os = "linux")]
+    unsafe fn dosleep(ts: *mut libc::timespec) -> libc::c_int {
+        extern {
+            fn clock_nanosleep(clock_id: libc::c_int, flags: libc::c_int,
+                               request: *const libc::timespec,
+                               remain: *mut libc::timespec) -> libc::c_int;
+        }
+        clock_nanosleep(libc::CLOCK_MONOTONIC, 0, ts, ts)
+    }
+    #[cfg(not(target_os = "linux"))]
+    unsafe fn dosleep(ts: *mut libc::timespec) -> libc::c_int {
+        libc::nanosleep(ts, ts)
     }
 }
 
