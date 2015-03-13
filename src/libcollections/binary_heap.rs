@@ -163,6 +163,11 @@ use vec::{self, Vec};
 /// A priority queue implemented with a binary heap.
 ///
 /// This will be a max-heap.
+///
+/// It is a logic error for an item to be modified in such a way that the
+/// item's ordering relative to any other item, as determined by the `Ord`
+/// trait, changes while it is in the heap. This is normally only possible
+/// through `Cell`, `RefCell`, global state, I/O, or unsafe code.
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BinaryHeap<T> {
