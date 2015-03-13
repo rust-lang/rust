@@ -29,7 +29,7 @@ use core::num::{Int, UnsignedInt};
 use core::num::wrapping::WrappingOps;
 use core::ops::{Index, IndexMut};
 use core::ptr::{self, Unique};
-use core::raw::Slice as RawSlice;
+use core::slice;
 
 use core::hash::{Hash, Hasher};
 use core::cmp;
@@ -91,13 +91,13 @@ impl<T> VecDeque<T> {
     /// Turn ptr into a slice
     #[inline]
     unsafe fn buffer_as_slice(&self) -> &[T] {
-        mem::transmute(RawSlice { data: *self.ptr as *const T, len: self.cap })
+        slice::from_raw_parts(*self.ptr, self.cap)
     }
 
     /// Turn ptr into a mut slice
     #[inline]
     unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {
-        mem::transmute(RawSlice { data: *self.ptr as *const T, len: self.cap })
+        slice::from_raw_parts_mut(*self.ptr, self.cap)
     }
 
     /// Moves an element out of the buffer
