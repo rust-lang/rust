@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable(feature = "ip", reason = "extra functionality has not been \
+                                      scrutinized to the level that it should \
+                                      be stable")]
+
 use prelude::v1::*;
 
 use cmp::Ordering;
@@ -19,12 +23,14 @@ use net::{hton, ntoh};
 
 /// Representation of an IPv4 address.
 #[derive(Copy)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv4Addr {
     inner: libc::in_addr,
 }
 
 /// Representation of an IPv6 address.
 #[derive(Copy)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
     inner: libc::in6_addr,
 }
@@ -41,46 +47,11 @@ pub enum Ipv6MulticastScope {
     Global
 }
 
-/// Enumeration of possible IP addresses
-#[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
-pub enum IpAddr {
-    /// An IPv4 address.
-    V4(Ipv4Addr),
-    /// An IPv6 address.
-    V6(Ipv6Addr)
-}
-
-impl IpAddr {
-    /// Create a new IpAddr that contains an IPv4 address.
-    ///
-    /// The result will represent the IP address a.b.c.d
-    pub fn new_v4(a: u8, b: u8, c: u8, d: u8) -> IpAddr {
-        IpAddr::V4(Ipv4Addr::new(a, b, c, d))
-    }
-
-    /// Create a new IpAddr that contains an IPv6 address.
-    ///
-    /// The result will represent the IP address a:b:c:d:e:f
-    pub fn new_v6(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16,
-                  h: u16) -> IpAddr {
-        IpAddr::V6(Ipv6Addr::new(a, b, c, d, e, f, g, h))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Display for IpAddr {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            IpAddr::V4(v4) => v4.fmt(f),
-            IpAddr::V6(v6) => v6.fmt(f)
-        }
-    }
-}
-
 impl Ipv4Addr {
     /// Create a new IPv4 address from four eight-bit octets.
     ///
     /// The result will represent the IP address a.b.c.d
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr {
         Ipv4Addr {
             inner: libc::in_addr {
@@ -93,6 +64,7 @@ impl Ipv4Addr {
     }
 
     /// Returns the four eight-bit integers that make up this address
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn octets(&self) -> [u8; 4] {
         let bits = ntoh(self.inner.s_addr);
         [(bits >> 24) as u8, (bits >> 16) as u8, (bits >> 8) as u8, bits as u8]
@@ -148,6 +120,7 @@ impl Ipv4Addr {
     /// Convert this address to an IPv4-compatible IPv6 address
     ///
     /// a.b.c.d becomes ::a.b.c.d
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv6_compatible(&self) -> Ipv6Addr {
         Ipv6Addr::new(0, 0, 0, 0, 0, 0,
                       ((self.octets()[0] as u16) << 8) | self.octets()[1] as u16,
@@ -157,6 +130,7 @@ impl Ipv4Addr {
     /// Convert this address to an IPv4-mapped IPv6 address
     ///
     /// a.b.c.d becomes ::ffff:a.b.c.d
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv6_mapped(&self) -> Ipv6Addr {
         Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff,
                       ((self.octets()[0] as u16) << 8) | self.octets()[1] as u16,
@@ -165,6 +139,7 @@ impl Ipv4Addr {
 
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Ipv4Addr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let octets = self.octets();
@@ -172,21 +147,26 @@ impl fmt::Display for Ipv4Addr {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Ipv4Addr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(self, fmt)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for Ipv4Addr {
     fn clone(&self) -> Ipv4Addr { *self }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for Ipv4Addr {
     fn eq(&self, other: &Ipv4Addr) -> bool {
         self.inner.s_addr == other.inner.s_addr
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for Ipv4Addr {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -196,12 +176,14 @@ impl hash::Hash for Ipv4Addr {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for Ipv4Addr {
     fn partial_cmp(&self, other: &Ipv4Addr) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ipv4Addr {
     fn cmp(&self, other: &Ipv4Addr) -> Ordering {
         self.inner.s_addr.cmp(&other.inner.s_addr)
@@ -221,6 +203,7 @@ impl Ipv6Addr {
     /// Create a new IPv6 address from eight 16-bit segments.
     ///
     /// The result will represent the IP address a:b:c:d:e:f
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16,
                h: u16) -> Ipv6Addr {
         Ipv6Addr {
@@ -232,6 +215,7 @@ impl Ipv6Addr {
     }
 
     /// Return the eight 16-bit segments that make up this address
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn segments(&self) -> [u16; 8] {
         [ntoh(self.inner.s6_addr[0]),
          ntoh(self.inner.s6_addr[1]),
@@ -324,6 +308,7 @@ impl Ipv6Addr {
     /// neither IPv4-compatible or IPv4-mapped.
     ///
     /// ::a.b.c.d and ::ffff:a.b.c.d become a.b.c.d
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_ipv4(&self) -> Option<Ipv4Addr> {
         match self.segments() {
             [0, 0, 0, 0, 0, f, g, h] if f == 0 || f == 0xffff => {
@@ -335,6 +320,7 @@ impl Ipv6Addr {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Ipv6Addr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self.segments() {
@@ -405,21 +391,26 @@ impl fmt::Display for Ipv6Addr {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Ipv6Addr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(self, fmt)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for Ipv6Addr {
     fn clone(&self) -> Ipv6Addr { *self }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for Ipv6Addr {
     fn eq(&self, other: &Ipv6Addr) -> bool {
         self.inner.s6_addr == other.inner.s6_addr
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for Ipv6Addr {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -429,12 +420,14 @@ impl hash::Hash for Ipv6Addr {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for Ipv6Addr {
     fn partial_cmp(&self, other: &Ipv6Addr) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ipv6Addr {
     fn cmp(&self, other: &Ipv6Addr) -> Ordering {
         self.inner.s6_addr.cmp(&other.inner.s6_addr)

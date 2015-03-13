@@ -11,19 +11,20 @@
 use prelude::v1::*;
 
 use env;
-use net::{SocketAddr, IpAddr};
+use net::{SocketAddr, SocketAddrV4, SocketAddrV6, Ipv4Addr, Ipv6Addr};
 use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
 static PORT: AtomicUsize = ATOMIC_USIZE_INIT;
 
 pub fn next_test_ip4() -> SocketAddr {
-    SocketAddr::new(IpAddr::new_v4(127, 0, 0, 1),
-                    PORT.fetch_add(1, Ordering::SeqCst) as u16 + base_port())
+    let port = PORT.fetch_add(1, Ordering::SeqCst) as u16 + base_port();
+    SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port))
 }
 
 pub fn next_test_ip6() -> SocketAddr {
-    SocketAddr::new(IpAddr::new_v6(0, 0, 0, 0, 0, 0, 0, 1),
-                    PORT.fetch_add(1, Ordering::SeqCst) as u16 + base_port())
+    let port = PORT.fetch_add(1, Ordering::SeqCst) as u16 + base_port();
+    SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
+                                     port, 0, 0))
 }
 
 // The bots run multiple builds at the same time, and these builds

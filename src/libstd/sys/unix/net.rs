@@ -15,7 +15,7 @@ use io;
 use libc::{self, c_int, size_t};
 use str;
 use sys::c;
-use net::{SocketAddr, IpAddr};
+use net::SocketAddr;
 use sys::fd::FileDesc;
 use sys_common::AsInner;
 
@@ -40,9 +40,9 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 
 impl Socket {
     pub fn new(addr: &SocketAddr, ty: c_int) -> io::Result<Socket> {
-        let fam = match addr.ip() {
-            IpAddr::V4(..) => libc::AF_INET,
-            IpAddr::V6(..) => libc::AF_INET6,
+        let fam = match *addr {
+            SocketAddr::V4(..) => libc::AF_INET,
+            SocketAddr::V6(..) => libc::AF_INET6,
         };
         unsafe {
             let fd = try!(cvt(libc::socket(fam, ty, 0)));

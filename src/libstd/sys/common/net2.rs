@@ -14,7 +14,7 @@ use ffi::CString;
 use io::{self, Error, ErrorKind};
 use libc::{self, c_int, c_char, c_void, socklen_t};
 use mem;
-use net::{IpAddr, SocketAddr, Shutdown};
+use net::{SocketAddr, Shutdown};
 use sys::c;
 use sys::net::{cvt, cvt_r, cvt_gai, Socket, init, wrlen_t};
 use sys_common::{AsInner, FromInner, IntoInner};
@@ -63,15 +63,15 @@ fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
     match storage.ss_family as libc::c_int {
         libc::AF_INET => {
             assert!(len as usize >= mem::size_of::<libc::sockaddr_in>());
-            Ok(FromInner::from_inner(unsafe {
+            Ok(SocketAddr::V4(FromInner::from_inner(unsafe {
                 *(storage as *const _ as *const libc::sockaddr_in)
-            }))
+            })))
         }
         libc::AF_INET6 => {
             assert!(len as usize >= mem::size_of::<libc::sockaddr_in6>());
-            Ok(FromInner::from_inner(unsafe {
+            Ok(SocketAddr::V6(FromInner::from_inner(unsafe {
                 *(storage as *const _ as *const libc::sockaddr_in6)
-            }))
+            })))
         }
         _ => {
             Err(Error::new(ErrorKind::InvalidInput, "invalid argument", None))
@@ -334,39 +334,39 @@ impl UdpSocket {
                    libc::IP_MULTICAST_LOOP, on as c_int)
     }
 
-    pub fn join_multicast(&self, multi: &IpAddr) -> io::Result<()> {
+    pub fn join_multicast(&self, multi: &SocketAddr) -> io::Result<()> {
         match *multi {
-            IpAddr::V4(..) => {
+            SocketAddr::V4(..) => {
                 self.set_membership(multi, libc::IP_ADD_MEMBERSHIP)
             }
-            IpAddr::V6(..) => {
+            SocketAddr::V6(..) => {
                 self.set_membership(multi, libc::IPV6_ADD_MEMBERSHIP)
             }
         }
     }
-    pub fn leave_multicast(&self, multi: &IpAddr) -> io::Result<()> {
+    pub fn leave_multicast(&self, multi: &SocketAddr) -> io::Result<()> {
         match *multi {
-            IpAddr::V4(..) => {
+            SocketAddr::V4(..) => {
                 self.set_membership(multi, libc::IP_DROP_MEMBERSHIP)
             }
-            IpAddr::V6(..) => {
+            SocketAddr::V6(..) => {
                 self.set_membership(multi, libc::IPV6_DROP_MEMBERSHIP)
             }
         }
     }
-    fn set_membership(&self, addr: &IpAddr, opt: c_int) -> io::Result<()> {
+    fn set_membership(&self, addr: &SocketAddr, opt: c_int) -> io::Result<()> {
         match *addr {
-            IpAddr::V4(ref addr) => {
+            SocketAddr::V4(ref addr) => {
                 let mreq = libc::ip_mreq {
-                    imr_multiaddr: *addr.as_inner(),
+                    imr_multiaddr: *addr.ip().as_inner(),
                     // interface == INADDR_ANY
                     imr_interface: libc::in_addr { s_addr: 0x0 },
                 };
                 setsockopt(&self.inner, libc::IPPROTO_IP, opt, mreq)
             }
-            IpAddr::V6(ref addr) => {
+            SocketAddr::V6(ref addr) => {
                 let mreq = libc::ip6_mreq {
-                    ipv6mr_multiaddr: *addr.as_inner(),
+                    ipv6mr_multiaddr: *addr.ip().as_inner(),
                     ipv6mr_interface: 0,
                 };
                 setsockopt(&self.inner, libc::IPPROTO_IPV6, opt, mreq)

@@ -25,5 +25,8 @@ fn main() {
     assert_both::<net::TcpListener>();
     assert_both::<net::UdpSocket>();
     assert_both::<net::SocketAddr>();
-    assert_both::<net::IpAddr>();
+    assert_both::<net::SocketAddrV4>();
+    assert_both::<net::SocketAddrV6>();
+    assert_both::<net::Ipv4Addr>();
+    assert_both::<net::Ipv6Addr>();
 }

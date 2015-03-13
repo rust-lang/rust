@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable(feature = "tcp", reason = "remaining functions have not been \
+                                       scrutinized enough to be stabilized")]
+
 use prelude::v1::*;
 use io::prelude::*;
 
@@ -35,6 +38,7 @@ use sys_common::AsInner;
 ///     let _ = stream.read(&mut [0; 128]); // ignore here too
 /// } // the stream is closed here
 /// ```
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct TcpStream(net_imp::TcpStream);
 
 /// A structure representing a socket server.
@@ -67,12 +71,14 @@ pub struct TcpStream(net_imp::TcpStream);
 /// // close the socket server
 /// drop(listener);
 /// ```
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct TcpListener(net_imp::TcpListener);
 
 /// An infinite iterator over the connections from a `TcpListener`.
 ///
 /// This iterator will infinitely yield `Some` of the accepted connections. It
 /// is equivalent to calling `accept` in a loop.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Incoming<'a> { listener: &'a TcpListener }
 
 impl TcpStream {
@@ -81,17 +87,27 @@ impl TcpStream {
     /// `addr` is an address of the remote host. Anything which implements
     /// `ToSocketAddrs` trait can be supplied for the address; see this trait
     /// documentation for concrete examples.
-    pub fn connect<A: ToSocketAddrs + ?Sized>(addr: &A) -> io::Result<TcpStream> {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<TcpStream> {
         super::each_addr(addr, net_imp::TcpStream::connect).map(TcpStream)
     }
 
     /// Returns the socket address of the remote peer of this TCP connection.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
         self.0.peer_addr()
     }
 
     /// Returns the socket address of the local half of this TCP connection.
+    #[unstable(feature = "net")]
+    #[deprecated(since = "1.0.0", reason = "renamed to local_addr")]
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
+        self.0.socket_addr()
+    }
+
+    /// Returns the socket address of the local half of this TCP connection.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
         self.0.socket_addr()
     }
 
@@ -100,6 +116,7 @@ impl TcpStream {
     /// This function will cause all pending and future I/O on the specified
     /// portions to return immediately with an appropriate value (see the
     /// documentation of `Shutdown`).
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
         self.0.shutdown(how)
     }
@@ -110,6 +127,7 @@ impl TcpStream {
     /// object references. Both handles will read and write the same stream of
     /// data, and options set on one stream will be propagated to the other
     /// stream.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_clone(&self) -> io::Result<TcpStream> {
         self.0.duplicate().map(TcpStream)
     }
@@ -129,16 +147,20 @@ impl TcpStream {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Read for TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Write for TcpStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Read for &'a TcpStream {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { self.0.read(buf) }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for &'a TcpStream {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { self.0.write(buf) }
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
@@ -160,11 +182,20 @@ impl TcpListener {
     ///
     /// The address type can be any implementer of `ToSocketAddrs` trait. See
     /// its documentation for concrete examples.
-    pub fn bind<A: ToSocketAddrs + ?Sized>(addr: &A) -> io::Result<TcpListener> {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<TcpListener> {
         super::each_addr(addr, net_imp::TcpListener::bind).map(TcpListener)
     }
 
     /// Returns the local socket address of this listener.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
+        self.0.socket_addr()
+    }
+
+    /// Deprecated, renamed to local_addr
+    #[unstable(feature = "net")]
+    #[deprecated(since = "1.0.0", reason = "renamed to local_addr")]
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         self.0.socket_addr()
     }
@@ -174,6 +205,7 @@ impl TcpListener {
     /// The returned `TcpListener` is a reference to the same socket that this
     /// object references. Both handles can be used to accept incoming
     /// connections and options set on one listener will affect the other.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_clone(&self) -> io::Result<TcpListener> {
         self.0.duplicate().map(TcpListener)
     }
@@ -183,6 +215,7 @@ impl TcpListener {
     /// This function will block the calling thread until a new TCP connection
     /// is established. When established, the corresponding `TcpStream` and the
     /// remote peer's address will be returned.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
         self.0.accept().map(|(a, b)| (TcpStream(a), b))
     }
@@ -192,11 +225,13 @@ impl TcpListener {
     ///
     /// The returned iterator will never returned `None` and will also not yield
     /// the peer's `SocketAddr` structure.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn incoming(&self) -> Incoming {
         Incoming { listener: self }
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Incoming<'a> {
     type Item = io::Result<TcpStream>;
     fn next(&mut self) -> Option<io::Result<TcpStream>> {
