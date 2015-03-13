@@ -337,6 +337,7 @@ pub enum ItemEnum {
     MacroItem(Macro),
     PrimitiveItem(PrimitiveType),
     AssociatedTypeItem(Vec<TyParamBound>, Option<Type>),
+    DefaultImplItem(DefaultImpl),
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -367,6 +368,7 @@ impl Clean<Item> for doctree::Module {
         items.extend(self.traits.iter().map(|x| x.clean(cx)));
         items.extend(self.impls.iter().map(|x| x.clean(cx)));
         items.extend(self.macros.iter().map(|x| x.clean(cx)));
+        items.extend(self.def_traits.iter().map(|x| x.clean(cx)));
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
@@ -2079,6 +2081,7 @@ impl Clean<ImplPolarity> for ast::ImplPolarity {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Impl {
+    pub unsafety: ast::Unsafety,
     pub generics: Generics,
     pub trait_: Option<Type>,
     pub for_: Type,
@@ -2101,12 +2104,36 @@ impl Clean<Item> for doctree::Impl {
             visibility: self.vis.clean(cx),
             stability: self.stab.clean(cx),
             inner: ImplItem(Impl {
+                unsafety: self.unsafety,
                 generics: self.generics.clean(cx),
                 trait_: self.trait_.clean(cx),
                 for_: self.for_.clean(cx),
                 items: self.items.clean(cx),
                 derived: detect_derived(&self.attrs),
                 polarity: Some(self.polarity.clean(cx)),
+            }),
+        }
+    }
+}
+
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
+pub struct DefaultImpl {
+    pub unsafety: ast::Unsafety,
+    pub trait_: Type,
+}
+
+impl Clean<Item> for doctree::DefaultImpl {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            name: None,
+            attrs: self.attrs.clean(cx),
+            source: self.whence.clean(cx),
+            def_id: ast_util::local_def(self.id),
+            visibility: Some(ast::Public),
+            stability: None,
+            inner: DefaultImplItem(DefaultImpl {
+                unsafety: self.unsafety,
+                trait_: self.trait_.clean(cx),
             }),
         }
     }
