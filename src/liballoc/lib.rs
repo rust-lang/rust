@@ -69,6 +69,7 @@
 
 #![feature(no_std)]
 #![no_std]
+#![feature(allocator)]
 #![feature(lang_items, unsafe_destructor)]
 #![feature(box_syntax)]
 #![feature(optin_builtin_traits)]
