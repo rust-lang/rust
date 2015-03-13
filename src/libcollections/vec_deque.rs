@@ -200,7 +200,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -223,7 +223,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -257,7 +257,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -512,7 +512,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -535,7 +535,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -823,7 +823,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -848,7 +848,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -948,7 +948,7 @@ impl<T> VecDeque<T> {
     /// Panics if `i` is greater than ringbuf's length
     ///
     /// # Examples
-    /// ```rust
+    /// ```
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -1150,7 +1150,7 @@ impl<T> VecDeque<T> {
     /// Returns `None` if `i` is out of bounds.
     ///
     /// # Examples
-    /// ```rust
+    /// ```
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();

@@ -41,7 +41,7 @@ use sys::os as os_imp;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::env;
 ///
 /// // We assume that we are in a valid directory.
@@ -58,7 +58,7 @@ pub fn current_dir() -> io::Result<PathBuf> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::env;
 /// use std::path::Path;
 ///
@@ -102,7 +102,7 @@ pub struct VarsOs { inner: os_imp::Env }
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::env;
 ///
 /// // We will iterate through the references to the element returned by
@@ -125,7 +125,7 @@ pub fn vars() -> Vars {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::env;
 ///
 /// // We will iterate through the references to the element returned by
@@ -166,7 +166,7 @@ impl Iterator for VarsOs {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::env;
 ///
 /// let key = "HOME";
@@ -188,7 +188,7 @@ pub fn var<K: ?Sized>(key: &K) -> Result<String, VarError> where K: AsOsStr {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::env;
 ///
 /// let key = "HOME";
@@ -246,7 +246,7 @@ impl Error for VarError {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::env;
 ///
 /// let key = "KEY";
@@ -282,7 +282,7 @@ pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::env;
 ///
 /// let key = "PATH";
@@ -326,7 +326,7 @@ pub struct JoinPathsError {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::env;
 /// use std::path::PathBuf;
 ///
@@ -374,7 +374,7 @@ impl Error for JoinPathsError {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::env;
 ///
 /// match env::home_dir() {
@@ -416,7 +416,7 @@ pub fn temp_dir() -> PathBuf {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::env;
 ///
 /// match env::current_exe() {
@@ -481,7 +481,7 @@ pub struct ArgsOs { inner: os_imp::Args }
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::env;
 ///
 /// // Prints each argument on a separate line
@@ -503,7 +503,7 @@ pub fn args() -> Args {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::env;
 ///
 /// // Prints each argument on a separate line

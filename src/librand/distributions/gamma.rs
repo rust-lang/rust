@@ -39,7 +39,7 @@ use super::{IndependentSample, Sample, Exp};
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::rand;
 /// use std::rand::distributions::{IndependentSample, Gamma};
 ///
@@ -186,7 +186,7 @@ impl IndependentSample<f64> for GammaLargeShape {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::rand;
 /// use std::rand::distributions::{ChiSquared, IndependentSample};
 ///
@@ -243,7 +243,7 @@ impl IndependentSample<f64> for ChiSquared {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::rand;
 /// use std::rand::distributions::{FisherF, IndependentSample};
 ///
@@ -287,7 +287,7 @@ impl IndependentSample<f64> for FisherF {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::rand;
 /// use std::rand::distributions::{StudentT, IndependentSample};
 ///

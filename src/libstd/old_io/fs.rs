@@ -175,7 +175,7 @@ impl File {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::old_io::File;
     ///
     /// let contents = File::open(&Path::new("foo.txt")).read_to_end();
@@ -194,7 +194,7 @@ impl File {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// # #![allow(unused_must_use)]
     /// use std::old_io::File;
     ///
@@ -285,7 +285,7 @@ impl File {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// # #![allow(unused_must_use)]
 /// use std::old_io::fs;
 ///
@@ -316,7 +316,7 @@ pub fn unlink(path: &Path) -> IoResult<()> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::old_io::fs;
 ///
 /// let p = Path::new("/some/file/path.txt");
@@ -358,7 +358,7 @@ pub fn lstat(path: &Path) -> IoResult<FileStat> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// # #![allow(unused_must_use)]
 /// use std::old_io::fs;
 ///
@@ -386,7 +386,7 @@ pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// # #![allow(unused_must_use)]
 /// use std::old_io::fs;
 ///
@@ -436,7 +436,7 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// # #![allow(unused_must_use)]
 /// use std::old_io;
 /// use std::old_io::fs;
@@ -507,7 +507,7 @@ pub fn readlink(path: &Path) -> IoResult<Path> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// # #![allow(unused_must_use)]
 /// use std::old_io;
 /// use std::old_io::fs;
@@ -531,7 +531,7 @@ pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// # #![allow(unused_must_use)]
 /// use std::old_io::fs;
 ///
@@ -555,7 +555,7 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::old_io::fs::PathExtensions;
 /// use std::old_io::fs;
 /// use std::old_io;

@@ -855,7 +855,7 @@ impl<'a> cmp::Ord for Components<'a> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::path::PathBuf;
 ///
 /// let mut path = PathBuf::new("c:\\");
@@ -947,7 +947,7 @@ impl PathBuf {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::path::PathBuf;
     ///
     /// let mut buf = PathBuf::new("/");
@@ -1104,7 +1104,7 @@ impl AsOsStr for PathBuf {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::path::Path;
 ///
 /// let path = Path::new("/tmp/foo/bar.txt");
@@ -1209,7 +1209,7 @@ impl Path {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::path::Path;
     ///
     /// let path = Path::new("/foo/bar");

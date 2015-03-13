@@ -95,7 +95,7 @@ pub struct Weighted<T> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::rand;
 /// use std::rand::distributions::{Weighted, WeightedChoice, IndependentSample};
 ///

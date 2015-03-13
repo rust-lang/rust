@@ -60,7 +60,7 @@ impl<'a> Drop for Sentinel<'a> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::sync::TaskPool;
 /// use std::iter::AdditiveIterator;
 /// use std::sync::mpsc::channel;

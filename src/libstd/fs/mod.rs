@@ -474,7 +474,7 @@ pub fn rename<P: AsPath + ?Sized, Q: AsPath + ?Sized>(from: &P, to: &Q)
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::fs;
 ///
 /// fs::copy("foo.txt", "bar.txt");
@@ -543,7 +543,7 @@ pub fn read_link<P: AsPath + ?Sized>(path: &P) -> io::Result<PathBuf> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::fs;
 ///
 /// fs::create_dir("/some/dir");
@@ -579,7 +579,7 @@ pub fn create_dir_all<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::fs;
 ///
 /// fs::remove_dir("/some/dir");
@@ -630,7 +630,7 @@ pub fn remove_dir_all<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::io;
 /// use std::fs::{self, PathExt, DirEntry};
 /// use std::path::Path;

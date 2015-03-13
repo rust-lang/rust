@@ -422,7 +422,7 @@ use string;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::fmt;
 ///
 /// let s = fmt::format(format_args!("Hello, {}!", "world"));

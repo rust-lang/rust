@@ -906,7 +906,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// assert!("banana".ends_with("nana"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
