@@ -202,6 +202,8 @@ pub struct DefaultImpl {
     pub unsafety: ast::Unsafety,
     pub trait_: ast::TraitRef,
     pub id: ast::NodeId,
+    pub attrs: Vec<ast::Attribute>,
+    pub whence: Span,
 }
 
 pub struct Macro {

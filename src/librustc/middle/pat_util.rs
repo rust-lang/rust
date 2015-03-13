@@ -155,3 +155,27 @@ pub fn def_to_path(tcx: &ty::ctxt, id: ast::DefId) -> ast::Path {
         span: DUMMY_SP,
     })
 }
+
+/// Return variants that are necessary to exist for the pattern to match.
+pub fn necessary_variants(dm: &DefMap, pat: &ast::Pat) -> Vec<ast::NodeId> {
+    let mut variants = vec![];
+    walk_pat(pat, |p| {
+        match p.node {
+            ast::PatEnum(_, _) |
+            ast::PatIdent(_, _, None) |
+            ast::PatStruct(..) => {
+                match dm.borrow().get(&p.id) {
+                    Some(&PathResolution {base_def: DefVariant(_, id, _), ..}) => {
+                        variants.push(id.node);
+                    }
+                    _ => ()
+                }
+            }
+            _ => ()
+        }
+        true
+    });
+    variants.sort();
+    variants.dedup();
+    variants
+}

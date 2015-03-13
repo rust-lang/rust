@@ -470,8 +470,8 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
                                                      "foreign fn's sty isn't a bare_fn_ty?")
                     }
 
-                    register_foreign_item_fn(ccx, abi, ty,
-                                             &lname);
+                    let llfn = register_foreign_item_fn(ccx, abi, ty, &lname);
+                    base::set_llvm_fn_attrs(ccx, &foreign_item.attrs, llfn);
                     // Unlike for other items, we shouldn't call
                     // `base::update_linkage` here.  Foreign items have
                     // special linkage requirements, which are handled
