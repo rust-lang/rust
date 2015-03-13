@@ -14,7 +14,6 @@
 #![feature(exit_status)]
 #![feature(io)]
 #![feature(old_io)]
-#![feature(path)]
 #![feature(rustdoc)]
 #![feature(rustc_private)]
 

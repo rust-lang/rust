@@ -23,6 +23,7 @@
 //! this takes the route of using StackWalk64 in order to walk the stack.
 
 #![allow(dead_code)]
+#![allow(deprecated)] // for old path for dynamic lib
 
 use prelude::v1::*;
 

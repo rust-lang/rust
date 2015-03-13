@@ -37,7 +37,6 @@
 #![feature(unsafe_destructor)]
 #![feature(staged_api)]
 #![feature(exit_status)]
-#![feature(path)]
 #![feature(io)]
 
 extern crate arena;

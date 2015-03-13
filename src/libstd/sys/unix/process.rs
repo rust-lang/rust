@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(deprecated)]
+#![allow(deprecated)] // this module itself is essentially deprecated
 
 use prelude::v1::*;
 use self::Req::*;

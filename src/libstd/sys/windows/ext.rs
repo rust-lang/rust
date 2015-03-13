@@ -122,7 +122,7 @@ impl AsRawSocket for net::UdpSocket {
     fn as_raw_socket(&self) -> Socket { *self.as_inner().socket().as_inner() }
 }
 
-// Windows-specific extensions to `OsString`.
+/// Windows-specific extensions to `OsString`.
 pub trait OsStringExt {
     /// Create an `OsString` from a potentially ill-formed UTF-16 slice of 16-bit code units.
     ///
@@ -137,8 +137,12 @@ impl OsStringExt for OsString {
     }
 }
 
-// Windows-specific extensions to `OsStr`.
+/// Windows-specific extensions to `OsStr`.
 pub trait OsStrExt {
+    /// Re-encode an `OsStr` as a wide character sequence,
+    /// i.e. potentially ill-formed UTF-16.
+    ///
+    /// This is lossless. Note that the encoding does not include a final null.
     fn encode_wide(&self) -> EncodeWide;
 }
 

@@ -10,6 +10,8 @@
 
 //! Blocking posix-based file I/O
 
+#![allow(deprecated)] // this module itself is essentially deprecated
+
 use prelude::v1::*;
 
 use ffi::{CString, CStr};

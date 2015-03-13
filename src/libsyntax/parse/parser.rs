@@ -5189,13 +5189,7 @@ impl<'a> Parser<'a> {
                     -> (ast::Item_, Vec<ast::Attribute> ) {
         let mut prefix = PathBuf::new(&self.sess.span_diagnostic.cm
                                            .span_to_filename(self.span));
-        // FIXME(acrichto): right now "a".pop() == "a", but need to confirm with
-        //                  aturon whether this is expected or not.
-        if prefix.parent().is_some() {
-            prefix.pop();
-        } else {
-            prefix = PathBuf::new("");
-        }
+        prefix.pop();
         let mut dir_path = prefix;
         for part in &self.mod_path_stack {
             dir_path.push(&**part);

@@ -39,10 +39,10 @@
 #![feature(staged_api)]
 #![feature(unicode)]
 #![feature(io)]
-#![feature(path)]
 #![feature(path_ext)]
 #![feature(fs)]
 #![feature(hash)]
+#![feature(path_relative_from)]
 
 extern crate arena;
 extern crate flate;
