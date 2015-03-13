@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![unstable(feature = "udp", reason = "remaining functions have not been \
+                                       scrutinized enough to be stabilized")]
+
 use prelude::v1::*;
 
 use io::{self, Error, ErrorKind};
-use net::{ToSocketAddrs, SocketAddr, IpAddr};
+use net::{ToSocketAddrs, SocketAddr};
 use sys_common::net2 as net_imp;
 use sys_common::AsInner;
 
@@ -41,6 +44,7 @@ use sys_common::AsInner;
 /// # Ok(())
 /// # }
 /// ```
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct UdpSocket(net_imp::UdpSocket);
 
 impl UdpSocket {
@@ -48,12 +52,14 @@ impl UdpSocket {
     ///
     /// Address type can be any implementor of `ToSocketAddr` trait. See its
     /// documentation for concrete examples.
-    pub fn bind<A: ToSocketAddrs + ?Sized>(addr: &A) -> io::Result<UdpSocket> {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn bind<A: ToSocketAddrs>(addr: A) -> io::Result<UdpSocket> {
         super::each_addr(addr, net_imp::UdpSocket::bind).map(UdpSocket)
     }
 
     /// Receives data from the socket. On success, returns the number of bytes
     /// read and the address from whence the data came.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
         self.0.recv_from(buf)
     }
@@ -63,8 +69,9 @@ impl UdpSocket {
     ///
     /// Address type can be any implementor of `ToSocketAddrs` trait. See its
     /// documentation for concrete examples.
-    pub fn send_to<A: ToSocketAddrs + ?Sized>(&self, buf: &[u8], addr: &A)
-                                              -> io::Result<usize> {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A)
+                                     -> io::Result<usize> {
         match try!(addr.to_socket_addrs()).next() {
             Some(addr) => self.0.send_to(buf, &addr),
             None => Err(Error::new(ErrorKind::InvalidInput,
@@ -73,7 +80,15 @@ impl UdpSocket {
     }
 
     /// Returns the socket address that this socket was created from.
+    #[unstable(feature = "net")]
+    #[deprecated(since = "1.0.0", reason = "renamed to local_addr")]
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
+        self.0.socket_addr()
+    }
+
+    /// Returns the socket address that this socket was created from.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn local_addr(&self) -> io::Result<SocketAddr> {
         self.0.socket_addr()
     }
 
@@ -82,6 +97,7 @@ impl UdpSocket {
     /// The returned `UdpSocket` is a reference to the same socket that this
     /// object references. Both handles will read and write the same port, and
     /// options set on one socket will be propagated to the other.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_clone(&self) -> io::Result<UdpSocket> {
         self.0.duplicate().map(UdpSocket)
     }
@@ -99,12 +115,12 @@ impl UdpSocket {
     }
 
     /// Joins a multicast IP address (becomes a member of it)
-    pub fn join_multicast(&self, multi: &IpAddr) -> io::Result<()> {
+    pub fn join_multicast(&self, multi: &SocketAddr) -> io::Result<()> {
         self.0.join_multicast(multi)
     }
 
     /// Leaves a multicast IP address (drops membership from it)
-    pub fn leave_multicast(&self, multi: &IpAddr) -> io::Result<()> {
+    pub fn leave_multicast(&self, multi: &SocketAddr) -> io::Result<()> {
         self.0.leave_multicast(multi)
     }
 
@@ -151,7 +167,7 @@ mod tests {
     #[cfg_attr(any(windows, target_os = "android"), ignore)]
     #[test]
     fn bind_error() {
-        let addr = SocketAddr::new(IpAddr::new_v4(0, 0, 0, 0), 1);
+        let addr = SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 1);
         match UdpSocket::bind(&addr) {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind(), ErrorKind::PermissionDenied),
