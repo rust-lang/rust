@@ -15,31 +15,32 @@
 
 use std::mem;
 use std::raw;
+use std::slice;
 
 struct Foo<T> {
     f: [T],
 }
 
 struct Bar {
-    f1: uint,
-    f2: [uint],
+    f1: usize,
+    f2: [usize],
 }
 
 struct Baz {
-    f1: uint,
+    f1: usize,
     f2: str,
 }
 
 trait Tr {
-    fn foo(&self) -> uint;
+    fn foo(&self) -> usize;
 }
 
 struct St {
-    f: uint
+    f: usize
 }
 
 impl Tr for St {
-    fn foo(&self) -> uint {
+    fn foo(&self) -> usize {
         self.f
     }
 }
@@ -67,18 +68,18 @@ pub fn main() {
         }
 
         let data: Box<Foo_<i32>> = box Foo_{f: [1, 2, 3] };
-        let x: &Foo<i32> = slice::from_raw_parts(&*data, 3);
+        let x: &Foo<i32> = mem::transmute(slice::from_raw_parts(&*data, 3));
         assert!(x.f.len() == 3);
         assert!(x.f[0] == 1);
 
         struct Baz_ {
-            f1: uint,
+            f1: usize,
             f2: [u8; 5],
         }
 
         let data: Box<_> = box Baz_ {
             f1: 42, f2: ['a' as u8, 'b' as u8, 'c' as u8, 'd' as u8, 'e' as u8] };
-        let x: &Baz = slice::from_raw_parts(&*data, 5);
+        let x: &Baz = mem::transmute(slice::from_raw_parts(&*data, 5));
         assert!(x.f1 == 42);
         let chs: Vec<char> = x.f2.chars().collect();
         assert!(chs.len() == 5);
