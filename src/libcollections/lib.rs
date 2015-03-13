@@ -33,6 +33,7 @@
 #![feature(unsafe_destructor)]
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag)]
+#![feature(step_by)]
 #![cfg_attr(test, feature(rand, rustc_private, test))]
 #![cfg_attr(test, allow(deprecated))] // rand
 

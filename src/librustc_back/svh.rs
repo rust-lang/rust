@@ -48,7 +48,6 @@
 
 use std::fmt;
 use std::hash::{Hash, SipHasher, Hasher};
-use std::iter::range_step;
 use syntax::ast;
 use syntax::visit;
 
@@ -103,7 +102,7 @@ impl Svh {
 
         let hash = state.finish();
         return Svh {
-            hash: range_step(0, 64, 4).map(|i| hex(hash >> i)).collect()
+            hash: (0..64).step_by(4).map(|i| hex(hash >> i)).collect()
         };
 
         fn hex(b: u64) -> char {

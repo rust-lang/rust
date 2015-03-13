@@ -65,7 +65,7 @@ use default::Default;
 use marker;
 use mem;
 use num::{ToPrimitive, Int};
-use ops::{Add, Deref, FnMut};
+use ops::{Add, Deref, FnMut, RangeFrom};
 use option::Option;
 use option::Option::{Some, None};
 use marker::Sized;
@@ -2366,34 +2366,101 @@ impl<A, St, F> Iterator for Unfold<St, F> where F: FnMut(&mut St) -> Option<A> {
     }
 }
 
-/// An infinite iterator starting at `start` and advancing by `step` with each
-/// iteration
+/// An adapter for stepping range iterators by a custom amount.
+///
+/// The resulting iterator handles overflow by stopping. The `A`
+/// parameter is the type being iterated over, while `R` is the range
+/// type (usually one of `std::ops::{Range, RangeFrom}`.
 #[derive(Clone)]
-#[unstable(feature = "core",
-           reason = "may be renamed or replaced by range notation adapters")]
-pub struct Counter<A> {
-    /// The current state the counter is at (next value to be yielded)
-    state: A,
-    /// The amount that this iterator is stepping by
-    step: A,
+#[unstable(feature = "step_by", reason = "recent addition")]
+pub struct StepBy<A, R> {
+    step_by: A,
+    range: R,
 }
 
-/// Creates a new counter with the specified start/step
+impl<A: Add> RangeFrom<A> {
+    /// Creates an iterator starting at the same point, but stepping by
+    /// the given amount at each iteration.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// for i in (0u8..).step_by(2) {
+    ///     println!("{}", i);
+    /// }
+    /// ```
+    ///
+    /// This prints all even `u8` values.
+    #[unstable(feature = "step_by", reason = "recent addition")]
+    pub fn step_by(self, by: A) -> StepBy<A, Self> {
+        StepBy {
+            step_by: by,
+            range: self
+        }
+    }
+}
+
+impl<A: Int> ::ops::Range<A> {
+    /// Creates an iterator with the same range, but stepping by the
+    /// given amount at each iteration.
+    ///
+    /// The resulting iterator handles overflow by stopping.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(step_by, core)]
+    /// for i in (0..10).step_by(2) {
+    ///     println!("{}", i);
+    /// }
+    /// ```
+    ///
+    /// This prints:
+    ///
+    /// ```text
+    /// 0
+    /// 2
+    /// 4
+    /// 6
+    /// 8
+    /// ```
+    #[unstable(feature = "step_by", reason = "recent addition")]
+    pub fn step_by(self, by: A) -> StepBy<A, Self> {
+        StepBy {
+            step_by: by,
+            range: self
+        }
+    }
+}
+
+/// An infinite iterator starting at `start` and advancing by `step` with each
+/// iteration
+#[unstable(feature = "core",
+           reason = "may be renamed or replaced by range notation adapters")]
+#[deprecated(since = "1.0.0-beta", reason = "use range notation and step_by")]
+pub type Counter<A> = StepBy<A, RangeFrom<A>>;
+
+/// Deprecated: use `(start..).step_by(step)` instead.
 #[inline]
 #[unstable(feature = "core",
            reason = "may be renamed or replaced by range notation adapters")]
+#[deprecated(since = "1.0.0-beta", reason = "use (start..).step_by(step) instead")]
+#[allow(deprecated)]
 pub fn count<A>(start: A, step: A) -> Counter<A> {
-    Counter{state: start, step: step}
+    StepBy {
+        range: RangeFrom { start: start },
+        step_by: step,
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Add<Output=A> + Clone> Iterator for Counter<A> {
+impl<A: Add<Output=A> + Clone> Iterator for StepBy<A, RangeFrom<A>> {
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let result = self.state.clone();
-        self.state = self.state.clone() + self.step.clone();
+        let result = self.range.start.clone();
+        self.range.start = result.clone() + self.step_by.clone();
         Some(result)
     }
 
@@ -2404,31 +2471,22 @@ impl<A: Add<Output=A> + Clone> Iterator for Counter<A> {
 }
 
 /// An iterator over the range [start, stop)
+#[allow(deprecated)]
 #[derive(Clone)]
 #[unstable(feature = "core",
            reason = "will be replaced by range notation")]
+#[deprecated(since = "1.0.0-beta", reason = "use range notation")]
 pub struct Range<A> {
     state: A,
     stop: A,
     one: A,
 }
 
-/// Returns an iterator over the given range [start, stop) (that is, starting
-/// at start (inclusive), and ending at stop (exclusive)).
-///
-/// # Examples
-///
-/// ```
-/// let array = [0, 1, 2, 3, 4];
-///
-/// for i in range(0, 5) {
-///     println!("{}", i);
-///     assert_eq!(i,  array[i]);
-/// }
-/// ```
+/// Deprecated: use `(start..stop)` instead.
 #[inline]
-#[unstable(feature = "core",
-           reason = "will be replaced by range notation")]
+#[unstable(feature = "core", reason = "will be replaced by range notation")]
+#[deprecated(since = "1.0.0-beta", reason = "use (start..stop) instead")]
+#[allow(deprecated)]
 pub fn range<A: Int>(start: A, stop: A) -> Range<A> {
     Range {
         state: start,
@@ -2440,6 +2498,8 @@ pub fn range<A: Int>(start: A, stop: A) -> Range<A> {
 // FIXME: #10414: Unfortunate type bound
 #[unstable(feature = "core",
            reason = "will be replaced by range notation")]
+#[deprecated(since = "1.0.0-beta", reason = "use range notation")]
+#[allow(deprecated)]
 impl<A: Int + ToPrimitive> Iterator for Range<A> {
     type Item = A;
 
@@ -2491,6 +2551,8 @@ impl<A: Int + ToPrimitive> Iterator for Range<A> {
 /// the direction it is consumed.
 #[unstable(feature = "core",
            reason = "will be replaced by range notation")]
+#[deprecated(since = "1.0.0-beta", reason = "use range notation")]
+#[allow(deprecated)]
 impl<A: Int + ToPrimitive> DoubleEndedIterator for Range<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
@@ -2507,6 +2569,7 @@ impl<A: Int + ToPrimitive> DoubleEndedIterator for Range<A> {
 #[derive(Clone)]
 #[unstable(feature = "core",
            reason = "likely to be replaced by range notation and adapters")]
+#[allow(deprecated)]
 pub struct RangeInclusive<A> {
     range: Range<A>,
     done: bool,
@@ -2516,6 +2579,7 @@ pub struct RangeInclusive<A> {
 #[inline]
 #[unstable(feature = "core",
            reason = "likely to be replaced by range notation and adapters")]
+#[allow(deprecated)]
 pub fn range_inclusive<A: Int>(start: A, stop: A) -> RangeInclusive<A> {
     RangeInclusive {
         range: range(start, stop),
@@ -2525,6 +2589,7 @@ pub fn range_inclusive<A: Int>(start: A, stop: A) -> RangeInclusive<A> {
 
 #[unstable(feature = "core",
            reason = "likely to be replaced by range notation and adapters")]
+#[allow(deprecated)]
 impl<A: Int + ToPrimitive> Iterator for RangeInclusive<A> {
     type Item = A;
 
@@ -2561,6 +2626,7 @@ impl<A: Int + ToPrimitive> Iterator for RangeInclusive<A> {
 
 #[unstable(feature = "core",
            reason = "likely to be replaced by range notation and adapters")]
+#[allow(deprecated)]
 impl<A: Int + ToPrimitive> DoubleEndedIterator for RangeInclusive<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
@@ -2578,61 +2644,39 @@ impl<A: Int + ToPrimitive> DoubleEndedIterator for RangeInclusive<A> {
 }
 
 /// An iterator over the range [start, stop) by `step`. It handles overflow by stopping.
-#[derive(Clone)]
 #[unstable(feature = "core",
            reason = "likely to be replaced by range notation and adapters")]
-pub struct RangeStep<A> {
-    state: A,
-    stop: A,
-    step: A,
-    rev: bool,
-}
+#[deprecated(since = "1.0.0-beta", reason = "use range notation and step_by")]
+pub type RangeStep<A> = StepBy<A, ::ops::Range<A>>;
 
-/// Return an iterator over the range [start, stop) by `step`.
-///
-/// It handles overflow by stopping.
-///
-/// # Examples
-///
-/// ```
-/// use std::iter::range_step;
-///
-/// for i in range_step(0, 10, 2) {
-///     println!("{}", i);
-/// }
-/// ```
-///
-/// This prints:
-///
-/// ```text
-/// 0
-/// 2
-/// 4
-/// 6
-/// 8
-/// ```
+/// Deprecated: use `(start..stop).step_by(step)` instead.
 #[inline]
 #[unstable(feature = "core",
            reason = "likely to be replaced by range notation and adapters")]
+#[deprecated(since = "1.0.0-beta",
+             reason = "use `(start..stop).step_by(step)` instead")]
+#[allow(deprecated)]
 pub fn range_step<A: Int>(start: A, stop: A, step: A) -> RangeStep<A> {
-    let rev = step < Int::zero();
-    RangeStep{state: start, stop: stop, step: step, rev: rev}
+    StepBy {
+        step_by: step,
+        range: ::ops::Range { start: start, end: stop },
+    }
 }
 
-#[unstable(feature = "core",
-           reason = "likely to be replaced by range notation and adapters")]
-impl<A: Int> Iterator for RangeStep<A> {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: Int> Iterator for StepBy<A, ::ops::Range<A>> {
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        if (self.rev && self.state > self.stop) || (!self.rev && self.state < self.stop) {
-            let result = self.state;
-            match self.state.checked_add(self.step) {
-                Some(x) => self.state = x,
-                None => self.state = self.stop.clone()
+        let rev = self.step_by < Int::zero();
+        let start = self.range.start;
+        if (rev && start > self.range.end) || (!rev && start < self.range.end) {
+            match start.checked_add(self.step_by) {
+                Some(x) => self.range.start = x,
+                None => self.range.start = self.range.end.clone()
             }
-            Some(result)
+            Some(start)
         } else {
             None
         }
