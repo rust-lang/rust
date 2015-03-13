@@ -33,31 +33,34 @@
 //! let my_speed_ptr: *mut i32 = &mut my_speed;
 //! ```
 //!
+//! To get a pointer to a boxed value, dereference the box:
+//!
+//! ```
+//! let my_num: Box<i32> = Box::new(10);
+//! let my_num_ptr: *const i32 = &*my_num;
+//! let mut my_speed: Box<i32> = Box::new(88);
+//! let my_speed_ptr: *mut i32 = &mut *my_speed;
+//! ```
+//!
 //! This does not take ownership of the original allocation
 //! and requires no resource management later,
 //! but you must not use the pointer after its lifetime.
 //!
-//! ## 2. Transmute an owned box (`Box<T>`).
+//! ## 2. Consume a box (`Box<T>`).
 //!
-//! The `transmute` function takes, by value, whatever it's given
-//! and returns it as whatever type is requested, as long as the
-//! types are the same size. Because `Box<T>` and `*mut T` have the same
-//! representation they can be trivially,
-//! though unsafely, transformed from one type to the other.
+//! The `into_raw` function consumes a box and returns
+//! the raw pointer. It doesn't destroy `T` or deallocate any memory.
 //!
 //! ```
-//! use std::mem;
+//! use std::boxed;
 //!
 //! unsafe {
-//!     let my_num: Box<i32> = Box::new(10);
-//!     let my_num: *const i32 = mem::transmute(my_num);
 //!     let my_speed: Box<i32> = Box::new(88);
-//!     let my_speed: *mut i32 = mem::transmute(my_speed);
+//!     let my_speed: *mut i32 = boxed::into_raw(my_speed);
 //!
 //!     // By taking ownership of the original `Box<T>` though
-//!     // we are obligated to transmute it back later to be destroyed.
-//!     drop(mem::transmute::<_, Box<i32>>(my_speed));
-//!     drop(mem::transmute::<_, Box<i32>>(my_num));
+//!     // we are obligated to put it together later to be destroyed.
+//!     drop(Box::from_raw(my_speed));
 //! }
 //! ```
 //!

@@ -198,6 +198,7 @@ mod imp {
     extern {}
 
     extern {
+        #[allocator]
         fn je_mallocx(size: size_t, flags: c_int) -> *mut c_void;
         fn je_rallocx(ptr: *mut c_void, size: size_t, flags: c_int) -> *mut c_void;
         fn je_xallocx(ptr: *mut c_void, size: size_t, extra: size_t, flags: c_int) -> size_t;
