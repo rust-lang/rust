@@ -70,9 +70,7 @@ mod sip;
 /// A hashable type.
 ///
 /// The `H` type parameter is an abstract hash state that is used by the `Hash`
-/// to compute the hash. Specific implementations of this trait may specialize
-/// for particular instances of `H` in order to be able to optimize the hashing
-/// behavior.
+/// to compute the hash.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hash {
     /// Feeds this value into the state given, updating the hasher as necessary.
