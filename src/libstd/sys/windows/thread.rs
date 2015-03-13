@@ -20,6 +20,7 @@ use ptr;
 use sys_common::stack::RED_ZONE;
 use sys_common::thread::*;
 use thunk::Thunk;
+use time::Duration;
 
 pub type rust_thread = HANDLE;
 
@@ -82,6 +83,20 @@ pub unsafe fn yield_now() {
     SwitchToThread();
 }
 
+pub fn sleep(dur: Duration) {
+    unsafe {
+        if dur < Duration::zero() {
+            return yield_now()
+        }
+        let ms = dur.num_milliseconds();
+        // if we have a fractional number of milliseconds then add an extra
+        // millisecond to sleep for
+        let extra = dur - Duration::milliseconds(ms);
+        let ms = ms + if extra.is_zero() {0} else {1};
+        Sleep(ms as DWORD);
+    }
+}
+
 #[allow(non_snake_case)]
 extern "system" {
     fn CreateThread(lpThreadAttributes: LPSECURITY_ATTRIBUTES,
@@ -92,4 +107,5 @@ extern "system" {
                     lpThreadId: LPDWORD) -> HANDLE;
     fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
     fn SwitchToThread() -> BOOL;
+    fn Sleep(dwMilliseconds: DWORD);
 }
