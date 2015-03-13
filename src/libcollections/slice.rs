@@ -134,7 +134,7 @@ pub trait SliceExt {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut v = [5, 4, 1, 3, 2];
     /// v.sort_by(|a, b| a.cmp(b));
     /// assert!(v == [1, 2, 3, 4, 5]);
@@ -160,7 +160,7 @@ pub trait SliceExt {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut a = [1, 2, 3, 4, 5];
     /// let b = vec![6, 7, 8];
     /// let num_moved = a.move_from(b, 0, 3);
@@ -282,7 +282,7 @@ pub trait SliceExt {
     /// Print the adjacent pairs of a slice (i.e. `[1,2]`, `[2,3]`,
     /// `[3,4]`):
     ///
-    /// ```rust
+    /// ```
     /// let v = &[1, 2, 3, 4];
     /// for win in v.windows(2) {
     ///     println!("{:?}", win);
@@ -305,7 +305,7 @@ pub trait SliceExt {
     /// Print the slice two elements at a time (i.e. `[1,2]`,
     /// `[3,4]`, `[5]`):
     ///
-    /// ```rust
+    /// ```
     /// let v = &[1, 2, 3, 4, 5];
     /// for win in v.chunks(2) {
     ///     println!("{:?}", win);
@@ -396,7 +396,7 @@ pub trait SliceExt {
     /// uniquely determined position; the second and third are not
     /// found; the fourth could match any position in `[1,4]`.
     ///
-    /// ```rust
+    /// ```
     /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     /// let s = s.as_slice();
     ///
@@ -531,7 +531,7 @@ pub trait SliceExt {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut v = ["a", "b", "c", "d"];
     /// v.swap(1, 3);
     /// assert!(v == ["a", "d", "c", "b"]);
@@ -551,7 +551,7 @@ pub trait SliceExt {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut v = [1, 2, 3, 4, 5, 6];
     ///
     /// // scoped to restrict the lifetime of the borrows
@@ -580,7 +580,7 @@ pub trait SliceExt {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut v = [1, 2, 3];
     /// v.reverse();
     /// assert!(v == [3, 2, 1]);
@@ -612,7 +612,7 @@ pub trait SliceExt {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let v = [1, 2, 3];
     /// let mut perms = v.permutations();
     ///
@@ -623,7 +623,7 @@ pub trait SliceExt {
     ///
     /// Iterating through permutations one by one.
     ///
-    /// ```rust
+    /// ```
     /// let v = [1, 2, 3];
     /// let mut perms = v.permutations();
     ///
@@ -640,7 +640,7 @@ pub trait SliceExt {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut dst = [0, 0, 0];
     /// let src = [1, 2];
     ///
@@ -660,7 +660,7 @@ pub trait SliceExt {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut v = [-5, 4, 1, -3, 2];
     ///
     /// v.sort();
@@ -682,7 +682,7 @@ pub trait SliceExt {
     /// uniquely determined position; the second and third are not
     /// found; the fourth could match any position in `[1,4]`.
     ///
-    /// ```rust
+    /// ```
     /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
     /// let s = s.as_slice();
     ///
@@ -709,7 +709,7 @@ pub trait SliceExt {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let v: &mut [_] = &mut [0, 1, 2];
     /// v.next_permutation();
     /// let b: &mut [_] = &mut [0, 2, 1];
@@ -729,7 +729,7 @@ pub trait SliceExt {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let v: &mut [_] = &mut [1, 0, 2];
     /// v.prev_permutation();
     /// let b: &mut [_] = &mut [0, 2, 1];

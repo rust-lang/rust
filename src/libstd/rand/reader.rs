@@ -24,7 +24,7 @@ use slice::SliceExt;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::rand::{reader, Rng};
 /// use std::old_io::MemReader;
 ///

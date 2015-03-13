@@ -64,7 +64,7 @@ use core::raw::TraitObject;
 ///
 /// The following two examples are equivalent:
 ///
-/// ```rust
+/// ```
 /// #![feature(box_syntax)]
 /// use std::boxed::HEAP;
 ///

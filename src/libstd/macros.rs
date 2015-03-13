@@ -179,7 +179,7 @@ pub mod builtin {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::fmt;
     ///
     /// let s = fmt::format(format_args!("hello {}", "world"));
@@ -202,7 +202,7 @@ pub mod builtin {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let path: &'static str = env!("PATH");
     /// println!("the $PATH variable at the time of compiling was: {}", path);
     /// ```
@@ -221,7 +221,7 @@ pub mod builtin {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let key: Option<&'static str> = option_env!("SECRET_KEY");
     /// println!("the secret key might be: {:?}", key);
     /// ```
@@ -369,7 +369,7 @@ pub mod builtin {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// mod test {
     ///     pub fn foo() {
     ///         assert!(module_path!().ends_with("test"));
@@ -392,7 +392,7 @@ pub mod builtin {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let my_directory = if cfg!(windows) {
     ///     "windows-specific-directory"
     /// } else {

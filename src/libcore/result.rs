@@ -896,7 +896,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// Here is an example which increments every integer in a vector,
     /// checking for overflow:
     ///
-    /// ```rust
+    /// ```
     /// use std::u32;
     ///
     /// let v = vec!(1, 2);

@@ -46,7 +46,7 @@ use fmt;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::sync::{Arc, Mutex};
 /// use std::thread;
 /// use std::sync::mpsc::channel;
@@ -84,7 +84,7 @@ use fmt;
 ///
 /// To recover from a poisoned mutex:
 ///
-/// ```rust
+/// ```
 /// use std::sync::{Arc, Mutex};
 /// use std::thread;
 ///
@@ -135,7 +135,7 @@ unsafe impl<T: Send> Sync for Mutex<T> { }
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::sync::{StaticMutex, MUTEX_INIT};
 ///
 /// static LOCK: StaticMutex = MUTEX_INIT;

@@ -481,7 +481,7 @@ impl<'a> Iterator for Utf16Items<'a> {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use unicode::str::Utf16Item::{ScalarValue, LoneSurrogate};
 ///
 /// // 𝄞mus<invalid>ic<invalid>

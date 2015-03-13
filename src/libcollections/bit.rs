@@ -133,7 +133,7 @@ static FALSE: bool = false;
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::collections::BitVec;
 ///
 /// let mut bv = BitVec::from_elem(10, false);

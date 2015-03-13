@@ -426,7 +426,7 @@ pub fn random<T: Rand>() -> T {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::rand::{thread_rng, sample};
 ///
 /// let mut rng = thread_rng();

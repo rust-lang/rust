@@ -251,7 +251,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
 /// `self.buf`. But `replace` can be used to disassociate the original value of `self.buf` from
 /// `self`, allowing it to be returned:
 ///
-/// ```rust
+/// ```
 /// use std::mem;
 /// # struct Buffer<T> { buf: Vec<T> }
 /// impl<T> Buffer<T> {
