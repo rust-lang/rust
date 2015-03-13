@@ -1537,11 +1537,16 @@ pub fn is_associated_type(cdata: Cmd, id: ast::NodeId) -> bool {
     }
 }
 
-pub fn is_defaulted_trait<'tcx>(cdata: Cmd, trait_id: ast::NodeId) -> bool {
+pub fn is_defaulted_trait(cdata: Cmd, trait_id: ast::NodeId) -> bool {
     let trait_doc = lookup_item(trait_id, cdata.data());
     assert!(item_family(trait_doc) == Family::Trait);
     let defaulted_doc = reader::get_doc(trait_doc, tag_defaulted_trait);
     reader::doc_as_u8(defaulted_doc) != 0
+}
+
+pub fn is_default_impl(cdata: Cmd, impl_id: ast::NodeId) -> bool {
+    let impl_doc = lookup_item(impl_id, cdata.data());
+    item_family(impl_doc) == Family::DefaultImpl
 }
 
 pub fn get_imported_filemaps(metadata: &[u8]) -> Vec<codemap::FileMap> {
