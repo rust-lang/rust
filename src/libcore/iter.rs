@@ -334,6 +334,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let xs = [100, 200, 300];
     /// let mut it = xs.iter().cloned().peekable();
     /// assert_eq!(*it.peek().unwrap(), 100);
@@ -465,6 +466,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let xs = [2, 3];
     /// let ys = [0, 1, 0, 1, 2];
     /// let it = xs.iter().flat_map(|&x| std::iter::count(0, 1).take(x));
@@ -521,6 +523,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::iter::AdditiveIterator;
     ///
     /// let a = [1, 4, 2, 3, 8, 9, 6];
@@ -563,6 +566,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let a = [1, 2, 3, 4, 5];
     /// let b: Vec<_> = a.iter().cloned().collect();
     /// assert_eq!(a, b);
@@ -579,6 +583,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// do not.
     ///
     /// ```
+    /// # #![feature(core)]
     /// let vec = vec![1, 2, 3, 4];
     /// let (even, odd): (Vec<_>, Vec<_>) = vec.into_iter().partition(|&n| n % 2 == 0);
     /// assert_eq!(even, [2, 4]);
@@ -648,6 +653,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert!(it.any(|x| *x == 3));
@@ -668,6 +674,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert_eq!(it.find(|&x| *x == 3).unwrap(), &3);
@@ -690,6 +697,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert_eq!(it.position(|x| *x == 3).unwrap(), 2);
@@ -718,6 +726,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let a = [1, 2, 2, 4, 5];
     /// let mut it = a.iter();
     /// assert_eq!(it.rposition(|x| *x == 2).unwrap(), 2);
@@ -795,6 +804,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::iter::MinMaxResult::{NoElements, OneElement, MinMax};
     ///
     /// let a: [i32; 0] = [];
@@ -860,7 +870,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
-    /// use core::num::SignedInt;
+    /// # #![feature(core)]
+    /// use std::num::SignedInt;
     ///
     /// let a = [-3, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().max_by(|x| x.abs()).unwrap(), -10);
@@ -890,7 +901,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
-    /// use core::num::SignedInt;
+    /// # #![feature(core)]
+    /// use std::num::SignedInt;
     ///
     /// let a = [-3, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().min_by(|x| x.abs()).unwrap(), 0);
@@ -940,6 +952,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let a = [(1, 2), (3, 4)];
     /// let (left, right): (Vec<_>, Vec<_>) = a.iter().cloned().unzip();
     /// assert_eq!([1, 3], left);
@@ -1146,6 +1159,7 @@ pub trait AdditiveIterator<A> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::iter::AdditiveIterator;
     ///
     /// let a = [1, 2, 3, 4, 5];
@@ -1188,6 +1202,7 @@ pub trait MultiplicativeIterator<A> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::iter::{count, MultiplicativeIterator};
     ///
     /// fn factorial(n: usize) -> usize {
@@ -1248,6 +1263,7 @@ impl<T: Clone> MinMaxResult<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::iter::MinMaxResult::{self, NoElements, OneElement, MinMax};
     ///
     /// let r: MinMaxResult<i32> = NoElements;
@@ -2292,6 +2308,7 @@ impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
 /// An iterator that yields sequential Fibonacci numbers, and stops on overflow.
 ///
 /// ```
+/// # #![feature(core)]
 /// use std::iter::Unfold;
 /// use std::num::Int; // For `.checked_add()`
 ///
@@ -2693,6 +2710,7 @@ pub struct RangeStepInclusive<A> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(core)]
 /// use std::iter::range_step_inclusive;
 ///
 /// for i in range_step_inclusive(0, 10, 2) {

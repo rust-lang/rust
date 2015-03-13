@@ -5,7 +5,7 @@ we haven't seen before. Here's a simple program that reads some input,
 and then prints it back out:
 
 ```{rust,ignore}
-fn main() {
+corefn main() {
     println!("Type something!");
 
     let input = std::old_io::stdin().read_line().ok().expect("Failed to read line");
@@ -28,6 +28,7 @@ Since writing the fully qualified name all the time is annoying, we can use
 the `use` statement to import it in:
 
 ```{rust}
+# #![feature(old_io)]
 use std::old_io::stdin;
 
 stdin();
@@ -37,6 +38,7 @@ However, it's considered better practice to not import individual functions, but
 to import the module, and only use one level of qualification:
 
 ```{rust}
+# #![feature(old_io)]
 use std::old_io;
 
 old_io::stdin();

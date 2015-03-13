@@ -112,6 +112,7 @@ macro_rules! try {
 /// # Examples
 ///
 /// ```
+/// # #![feature(std_misc)]
 /// use std::thread;
 /// use std::sync::mpsc;
 ///

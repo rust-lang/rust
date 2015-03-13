@@ -246,6 +246,7 @@ These two basic iterators should serve you well. There are some more
 advanced iterators, including ones that are infinite. Like `count`:
 
 ```rust
+# #![feature(core)]
 std::iter::count(1, 5);
 ```
 
@@ -294,6 +295,7 @@ has no side effect on the original iterator. Let's try it out with our infinite
 iterator from before, `count()`:
 
 ```rust
+# #![feature(core)]
 for i in std::iter::count(1, 5).take(5) {
     println!("{}", i);
 }

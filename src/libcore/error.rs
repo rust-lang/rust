@@ -48,6 +48,7 @@
 //! For example,
 //!
 //! ```
+//! # #![feature(os, old_io, old_path)]
 //! use std::error::FromError;
 //! use std::old_io::{File, IoError};
 //! use std::os::{MemoryMap, MapError};

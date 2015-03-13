@@ -52,6 +52,7 @@
 //! the raw pointer. It doesn't destroy `T` or deallocate any memory.
 //!
 //! ```
+//! # #![feature(alloc)]
 //! use std::boxed;
 //!
 //! unsafe {
@@ -70,6 +71,7 @@
 //! ## 3. Get it from C.
 //!
 //! ```
+//! # #![feature(libc)]
 //! extern crate libc;
 //!
 //! use std::mem;

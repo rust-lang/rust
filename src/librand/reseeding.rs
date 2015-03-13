@@ -103,6 +103,7 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R> + Default>
 /// # Examples
 ///
 /// ```
+/// # #![feature(rand)]
 /// use std::rand::{Rng, SeedableRng, StdRng};
 /// use std::rand::reseeding::{Reseeder, ReseedingRng};
 ///

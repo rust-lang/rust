@@ -5031,7 +5031,7 @@ pub mod funcs {
                 ///
                 /// # Examples
                 ///
-                /// ```no_run
+                /// ```no_run,ignore
                 /// extern crate libc;
                 ///
                 /// fn main() {

@@ -4,6 +4,7 @@ Do you remember the `impl` keyword, used to call a function with method
 syntax?
 
 ```{rust}
+# #![feature(core)]
 struct Circle {
     x: f64,
     y: f64,
@@ -21,6 +22,7 @@ Traits are similar, except that we define a trait with just the method
 signature, then implement the trait for that struct. Like this:
 
 ```{rust}
+# #![feature(core)]
 struct Circle {
     x: f64,
     y: f64,
@@ -84,6 +86,7 @@ which implements `HasArea` will have an `.area()` method.
 Here's an extended example of how this works:
 
 ```{rust}
+# #![feature(core)]
 trait HasArea {
     fn area(&self) -> f64;
 }
@@ -225,6 +228,7 @@ If we add a `use` line right above `main` and make the right things public,
 everything is fine:
 
 ```{rust}
+# #![feature(core)]
 use shapes::HasArea;
 
 mod shapes {
@@ -408,6 +412,7 @@ but instead, we found a floating-point variable. We need a different bound. `Flo
 to the rescue:
 
 ```
+# #![feature(std_misc)]
 use std::num::Float;
 
 fn inverse<T: Float>(x: T) -> Result<T, String> {
@@ -423,6 +428,7 @@ from the `Float` trait. Both `f32` and `f64` implement `Float`, so our function
 works just fine:
 
 ```
+# #![feature(std_misc)]
 # use std::num::Float;
 # fn inverse<T: Float>(x: T) -> Result<T, String> {
 #     if x == Float::zero() { return Err("x cannot be zero!".to_string()) }

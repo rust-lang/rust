@@ -23,6 +23,7 @@ the ability to use this *method call syntax* via the `impl` keyword.
 Here's how it works:
 
 ```{rust}
+# #![feature(core)]
 struct Circle {
     x: f64,
     y: f64,
@@ -87,6 +88,7 @@ original example, `foo.bar().baz()`? This is called 'method chaining', and we
 can do it by returning `self`.
 
 ```
+# #![feature(core)]
 struct Circle {
     x: f64,
     y: f64,
@@ -164,6 +166,7 @@ have method overloading, named arguments, or variable arguments. We employ
 the builder pattern instead. It looks like this:
 
 ```
+# #![feature(core)]
 struct Circle {
     x: f64,
     y: f64,
