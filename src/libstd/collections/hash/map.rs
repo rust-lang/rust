@@ -217,6 +217,11 @@ fn test_resize_policy() {
 /// It is required that the keys implement the `Eq` and `Hash` traits, although
 /// this can frequently be achieved by using `#[derive(Eq, Hash)]`.
 ///
+/// It is a logic error for a key to be modified in such a way that the key's
+/// hash, as determined by the `Hash` trait, or its equality, as determined by
+/// the `Eq` trait, changes while it is in the map. This is normally only
+/// possible through `Cell`, `RefCell`, global state, I/O, or unsafe code.
+///
 /// Relevant papers/articles:
 ///
 /// 1. Pedro Celis. ["Robin Hood Hashing"](https://cs.uwaterloo.ca/research/tr/1986/CS-86-14.pdf)

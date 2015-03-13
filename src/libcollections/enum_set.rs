@@ -24,6 +24,11 @@ use core::ops::{Sub, BitOr, BitAnd, BitXor};
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// A specialized set implementation to use enum types.
+///
+/// It is a logic error for an item to be modified in such a way that the transformation of the
+/// item to or from a `usize`, as determined by the `CLike` trait, changes while the item is in the
+/// set. This is normally only possible through `Cell`, `RefCell`, global state, I/O, or unsafe
+/// code.
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
     // for which no variant exists

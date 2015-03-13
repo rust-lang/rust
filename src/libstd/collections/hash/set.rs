@@ -38,6 +38,12 @@ use super::state::HashState;
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
 /// requires that the elements implement the `Eq` and `Hash` traits.
 ///
+/// It is a logic error for an item to be modified in such a way that the
+/// item's hash, as determined by the `Hash` trait, or its equality, as
+/// determined by the `Eq` trait, changes while it is in the set. This is
+/// normally only possible through `Cell`, `RefCell`, global state, I/O, or
+/// unsafe code.
+///
 /// # Examples
 ///
 /// ```
