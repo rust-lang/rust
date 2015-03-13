@@ -11,8 +11,9 @@
 //! Terminfo database interface.
 
 use std::collections::HashMap;
-use std::old_io::IoResult;
 use std::env;
+use std::io::prelude::*;
+use std::io;
 
 use attr;
 use color;
@@ -72,8 +73,8 @@ pub struct TerminfoTerminal<T> {
     ti: Box<TermInfo>
 }
 
-impl<T: Writer+Send+'static> Terminal<T> for TerminfoTerminal<T> {
-    fn fg(&mut self, color: color::Color) -> IoResult<bool> {
+impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
+    fn fg(&mut self, color: color::Color) -> io::Result<bool> {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
             let s = expand(self.ti
@@ -90,7 +91,7 @@ impl<T: Writer+Send+'static> Terminal<T> for TerminfoTerminal<T> {
         Ok(false)
     }
 
-    fn bg(&mut self, color: color::Color) -> IoResult<bool> {
+    fn bg(&mut self, color: color::Color) -> io::Result<bool> {
         let color = self.dim_if_necessary(color);
         if self.num_colors > color {
             let s = expand(self.ti
@@ -107,7 +108,7 @@ impl<T: Writer+Send+'static> Terminal<T> for TerminfoTerminal<T> {
         Ok(false)
     }
 
-    fn attr(&mut self, attr: attr::Attr) -> IoResult<bool> {
+    fn attr(&mut self, attr: attr::Attr) -> io::Result<bool> {
         match attr {
             attr::ForegroundColor(c) => self.fg(c),
             attr::BackgroundColor(c) => self.bg(c),
@@ -140,7 +141,7 @@ impl<T: Writer+Send+'static> Terminal<T> for TerminfoTerminal<T> {
         }
     }
 
-    fn reset(&mut self) -> IoResult<()> {
+    fn reset(&mut self) -> io::Result<()> {
         let mut cap = self.ti.strings.get("sgr0");
         if cap.is_none() {
             // are there any terminals that have color/attrs and not sgr0?
@@ -164,11 +165,11 @@ impl<T: Writer+Send+'static> Terminal<T> for TerminfoTerminal<T> {
     fn get_mut<'a>(&'a mut self) -> &'a mut T { &mut self.out }
 }
 
-impl<T: Writer+Send+'static> UnwrappableTerminal<T> for TerminfoTerminal<T> {
+impl<T: Write+Send+'static> UnwrappableTerminal<T> for TerminfoTerminal<T> {
     fn unwrap(self) -> T { self.out }
 }
 
-impl<T: Writer+Send+'static> TerminfoTerminal<T> {
+impl<T: Write+Send+'static> TerminfoTerminal<T> {
     /// Returns `None` whenever the terminal cannot be created for some
     /// reason.
     pub fn new(out: T) -> Option<Box<Terminal<T>+Send+'static>> {
@@ -220,12 +221,12 @@ impl<T: Writer+Send+'static> TerminfoTerminal<T> {
 }
 
 
-impl<T: Writer> Writer for TerminfoTerminal<T> {
-    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.out.write_all(buf)
+impl<T: Write> Write for TerminfoTerminal<T> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.out.write(buf)
     }
 
-    fn flush(&mut self) -> IoResult<()> {
+    fn flush(&mut self) -> io::Result<()> {
         self.out.flush()
     }
 }

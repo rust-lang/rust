@@ -31,10 +31,9 @@ use boxed;
 use boxed::Box;
 use cell::RefCell;
 use clone::Clone;
-use panicking::LOCAL_STDERR;
 use fmt;
 use old_io::{Reader, Writer, IoResult, IoError, OtherIoError, Buffer,
-         standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
+             standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
 use marker::{Sync, Send};
 use libc;
 use mem;
@@ -319,14 +318,10 @@ pub fn set_stdout(stdout: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
 ///
 /// Note that this does not need to be called for all new tasks; the default
 /// output handle is to the process's stderr stream.
-pub fn set_stderr(stderr: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
-    let mut new = Some(stderr);
-    LOCAL_STDERR.with(|slot| {
-        mem::replace(&mut *slot.borrow_mut(), new.take())
-    }).and_then(|mut s| {
-        let _ = s.flush();
-        Some(s)
-    })
+#[unstable(feature = "old_io")]
+#[deprecated(since = "1.0.0", reason = "replaced with std::io::set_panic")]
+pub fn set_stderr(_stderr: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
+    None
 }
 
 // Helper to access the local task's stdout handle
@@ -553,20 +548,5 @@ mod tests {
             println!("hello!");
         });
         assert_eq!(r.read_to_string().unwrap(), "hello!\n");
-    }
-
-    #[test]
-    fn capture_stderr() {
-        use old_io::{ChanReader, ChanWriter, Reader};
-
-        let (tx, rx) = channel();
-        let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-        let _t = thread::spawn(move || -> () {
-            set_stderr(Box::new(w));
-            panic!("my special message");
-        });
-        let s = r.read_to_string().unwrap();
-        assert!(s.contains("my special message"));
     }
 }

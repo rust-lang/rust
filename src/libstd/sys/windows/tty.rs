@@ -25,6 +25,8 @@
 //! wrapper that performs encoding/decoding, this implementation should switch
 //! to working in raw UTF-16, with such a wrapper around it.
 
+#![allow(deprecated)]
+
 use prelude::v1::*;
 
 use old_io::{self, IoError, IoResult, MemReader};

@@ -199,15 +199,17 @@ use self::DecoderError::*;
 use self::ParserState::*;
 use self::InternalStackElement::*;
 
-use std;
 use std::collections::{HashMap, BTreeMap};
-use std::{char, f64, fmt, old_io, num, str};
+use std::io::prelude::*;
+use std::io;
 use std::mem::{swap};
-use std::num::{Float, Int};
 use std::num::FpCategory as Fp;
+use std::num::{Float, Int};
+use std::ops::Index;
 use std::str::FromStr;
 use std::string;
-use std::ops::Index;
+use std::{char, f64, fmt, num, str};
+use std;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
 
@@ -256,11 +258,11 @@ pub enum ErrorCode {
     NotUtf8,
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum ParserError {
     /// msg, line, col
     SyntaxError(ErrorCode, uint, uint),
-    IoError(old_io::IoErrorKind, &'static str),
+    IoError(io::ErrorKind, String),
 }
 
 // Builder and Parser have the same errors.
@@ -331,8 +333,8 @@ impl fmt::Display for ErrorCode {
     }
 }
 
-fn io_error_to_error(io: old_io::IoError) -> ParserError {
-    IoError(io.kind, io.desc)
+fn io_error_to_error(io: io::Error) -> ParserError {
+    IoError(io.kind(), io.to_string())
 }
 
 impl fmt::Display for ParserError {
@@ -1982,7 +1984,7 @@ impl<T: Iterator<Item=char>> Builder<T> {
         self.bump();
         match self.token {
             None => {}
-            Some(Error(e)) => { return Err(e); }
+            Some(Error(ref e)) => { return Err(e.clone()); }
             ref tok => { panic!("unexpected token {:?}", tok.clone()); }
         }
         result
@@ -2004,7 +2006,7 @@ impl<T: Iterator<Item=char>> Builder<T> {
                 swap(s, &mut temp);
                 Ok(Json::String(temp))
             }
-            Some(Error(e)) => Err(e),
+            Some(Error(ref e)) => Err(e.clone()),
             Some(ArrayStart) => self.build_array(),
             Some(ObjectStart) => self.build_object(),
             Some(ObjectEnd) => self.parser.error(InvalidSyntax),
@@ -2037,7 +2039,7 @@ impl<T: Iterator<Item=char>> Builder<T> {
         loop {
             match self.token {
                 Some(ObjectEnd) => { return Ok(Json::Object(values)); }
-                Some(Error(e)) => { return Err(e); }
+                Some(Error(ref e)) => { return Err(e.clone()); }
                 None => { break; }
                 _ => {}
             }
@@ -2056,8 +2058,9 @@ impl<T: Iterator<Item=char>> Builder<T> {
 }
 
 /// Decodes a json value from an `&mut old_io::Reader`
-pub fn from_reader(rdr: &mut old_io::Reader) -> Result<Json, BuilderError> {
-    let contents = match rdr.read_to_end() {
+pub fn from_reader(rdr: &mut Read) -> Result<Json, BuilderError> {
+    let mut contents = Vec::new();
+    match rdr.read_to_end(&mut contents) {
         Ok(c)  => c,
         Err(e) => return Err(io_error_to_error(e))
     };

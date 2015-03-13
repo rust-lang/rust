@@ -26,7 +26,6 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::iter::repeat;
 use std::net::TcpStream;
-use std::old_io::timer;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, ExitStatus};
 use std::str;
@@ -452,7 +451,11 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 .expect(&format!("failed to exec `{:?}`", config.adb_path));
             loop {
                 //waiting 1 second for gdbserver start
-                timer::sleep(Duration::milliseconds(1000));
+                #[allow(deprecated)]
+                fn sleep() {
+                    ::std::old_io::timer::sleep(Duration::milliseconds(1000));
+                }
+                sleep();
                 if TcpStream::connect("127.0.0.1:5039").is_ok() {
                     break
                 }

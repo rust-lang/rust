@@ -28,9 +28,10 @@
 use prelude::v1::*;
 
 use dynamic_lib::DynamicLibrary;
+use io;
+use io::prelude::*;
 use ffi::CStr;
 use intrinsics;
-use old_io::IoResult;
 use libc;
 use mem;
 use ptr;
@@ -292,7 +293,7 @@ impl Drop for Cleanup {
     fn drop(&mut self) { (self.SymCleanup)(self.handle); }
 }
 
-pub fn write(w: &mut Writer) -> IoResult<()> {
+pub fn write(w: &mut Write) -> io::Result<()> {
     // According to windows documentation, all dbghelp functions are
     // single-threaded.
     static LOCK: StaticMutex = MUTEX_INIT;

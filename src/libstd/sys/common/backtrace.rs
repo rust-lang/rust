@@ -9,8 +9,9 @@
 // except according to those terms.
 
 use prelude::v1::*;
+use io::prelude::*;
 
-use old_io::IoResult;
+use io;
 
 #[cfg(target_pointer_width = "64")]
 pub const HEX_WIDTH: uint = 18;
@@ -35,7 +36,7 @@ pub const HEX_WIDTH: uint = 10;
 // Note that this demangler isn't quite as fancy as it could be. We have lots
 // of other information in our symbols like hashes, version, type information,
 // etc. Additionally, this doesn't handle glue symbols at all.
-pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
+pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
     // First validate the symbol. If it doesn't look like anything we're
     // expecting, we just print it literally. Note that we must handle non-rust
     // symbols because we could have any function in the backtrace.
@@ -72,12 +73,12 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
 
     // Alright, let's do this.
     if !valid {
-        try!(writer.write_str(s));
+        try!(writer.write_all(s.as_bytes()));
     } else {
         let mut first = true;
         while inner.len() > 0 {
             if !first {
-                try!(writer.write_str("::"));
+                try!(writer.write_all(b"::"));
             } else {
                 first = false;
             }
@@ -93,11 +94,11 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
                     macro_rules! demangle {
                         ($($pat:expr, => $demangled:expr),*) => ({
                             $(if rest.starts_with($pat) {
-                                try!(writer.write_str($demangled));
+                                try!(writer.write_all($demangled));
                                 rest = &rest[$pat.len()..];
                               } else)*
                             {
-                                try!(writer.write_str(rest));
+                                try!(writer.write_all(rest.as_bytes()));
                                 break;
                             }
 
@@ -106,29 +107,29 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
 
                     // see src/librustc/back/link.rs for these mappings
                     demangle! (
-                        "$SP$", => "@",
-                        "$BP$", => "*",
-                        "$RF$", => "&",
-                        "$LT$", => "<",
-                        "$GT$", => ">",
-                        "$LP$", => "(",
-                        "$RP$", => ")",
-                        "$C$", => ",",
+                        "$SP$", => b"@",
+                        "$BP$", => b"*",
+                        "$RF$", => b"&",
+                        "$LT$", => b"<",
+                        "$GT$", => b">",
+                        "$LP$", => b"(",
+                        "$RP$", => b")",
+                        "$C$", => b",",
 
                         // in theory we can demangle any Unicode code point, but
                         // for simplicity we just catch the common ones.
-                        "$u7e$", => "~",
-                        "$u20$", => " ",
-                        "$u27$", => "'",
-                        "$u5b$", => "[",
-                        "$u5d$", => "]"
+                        "$u7e$", => b"~",
+                        "$u20$", => b" ",
+                        "$u27$", => b"'",
+                        "$u5b$", => b"[",
+                        "$u5d$", => b"]"
                     )
                 } else {
                     let idx = match rest.find('$') {
                         None => rest.len(),
                         Some(i) => i,
                     };
-                    try!(writer.write_str(&rest[..idx]));
+                    try!(writer.write_all(rest[..idx].as_bytes()));
                     rest = &rest[idx..];
                 }
             }

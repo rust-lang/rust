@@ -242,6 +242,9 @@
 #![deny(unused_must_use)]
 #![allow(deprecated)] // seriously this is all deprecated
 #![allow(unused_imports)]
+#![deprecated(since = "1.0.0",
+              reasons = "APIs have been replaced with new I/O modules such as \
+                         std::{io, fs, net, process}")]
 
 pub use self::SeekStyle::*;
 pub use self::FileMode::*;

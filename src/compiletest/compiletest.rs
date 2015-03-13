@@ -20,7 +20,6 @@
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(core)]
-#![feature(io)]
 #![feature(net)]
 #![feature(path_ext)]
 
@@ -34,7 +33,6 @@ extern crate log;
 
 use std::env;
 use std::fs;
-use std::old_io;
 use std::path::{Path, PathBuf};
 use std::thunk::Thunk;
 use getopts::{optopt, optflag, reqopt};
@@ -246,7 +244,11 @@ pub fn run_tests(config: &Config) {
     // sadly osx needs some file descriptor limits raised for running tests in
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
-    old_io::test::raise_fd_limit();
+    #[allow(deprecated)]
+    fn raise_fd_limit() {
+        std::old_io::test::raise_fd_limit();
+    }
+    raise_fd_limit();
     // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
     // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
     env::set_var("__COMPAT_LAYER", "RunAsInvoker");

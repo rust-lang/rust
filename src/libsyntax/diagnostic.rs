@@ -19,10 +19,11 @@ use diagnostics;
 
 use std::cell::{RefCell, Cell};
 use std::fmt;
-use std::old_io;
-use std::string::String;
+use std::io::prelude::*;
+use std::io;
 use term::WriterWrapper;
 use term;
+use libc;
 
 /// maximum number of lines we will print for each error; arbitrary.
 const MAX_LINES: usize = 6;
@@ -271,7 +272,7 @@ impl Level {
 
 fn print_maybe_styled(w: &mut EmitterWriter,
                       msg: &str,
-                      color: term::attr::Attr) -> old_io::IoResult<()> {
+                      color: term::attr::Attr) -> io::Result<()> {
     match w.dst {
         Terminal(ref mut t) => {
             try!(t.attr(color));
@@ -289,23 +290,21 @@ fn print_maybe_styled(w: &mut EmitterWriter,
             // to be miscolored. We assume this is rare enough that we don't
             // have to worry about it.
             if msg.ends_with("\n") {
-                try!(t.write_str(&msg[..msg.len()-1]));
+                try!(t.write_all(msg[..msg.len()-1].as_bytes()));
                 try!(t.reset());
-                try!(t.write_str("\n"));
+                try!(t.write_all(b"\n"));
             } else {
-                try!(t.write_str(msg));
+                try!(t.write_all(msg.as_bytes()));
                 try!(t.reset());
             }
             Ok(())
         }
-        Raw(ref mut w) => {
-            w.write_str(msg)
-        }
+        Raw(ref mut w) => w.write_all(msg.as_bytes()),
     }
 }
 
 fn print_diagnostic(dst: &mut EmitterWriter, topic: &str, lvl: Level,
-                    msg: &str, code: Option<&str>) -> old_io::IoResult<()> {
+                    msg: &str, code: Option<&str>) -> io::Result<()> {
     if !topic.is_empty() {
         try!(write!(&mut dst.dst, "{} ", topic));
     }
@@ -324,7 +323,7 @@ fn print_diagnostic(dst: &mut EmitterWriter, topic: &str, lvl: Level,
         }
         None => ()
     }
-    try!(dst.dst.write_char('\n'));
+    try!(write!(&mut dst.dst, "\n"));
     Ok(())
 }
 
@@ -335,18 +334,18 @@ pub struct EmitterWriter {
 
 enum Destination {
     Terminal(Box<term::Terminal<WriterWrapper> + Send>),
-    Raw(Box<Writer + Send>),
+    Raw(Box<Write + Send>),
 }
 
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
                   registry: Option<diagnostics::registry::Registry>) -> EmitterWriter {
-        let stderr = old_io::stderr();
+        let stderr = io::stderr();
 
         let use_color = match color_config {
             Always => true,
             Never  => false,
-            Auto   => stderr.get_ref().isatty()
+            Auto   => stderr_isatty(),
         };
 
         if use_color {
@@ -360,17 +359,42 @@ impl EmitterWriter {
         }
     }
 
-    pub fn new(dst: Box<Writer + Send>,
+    pub fn new(dst: Box<Write + Send>,
                registry: Option<diagnostics::registry::Registry>) -> EmitterWriter {
         EmitterWriter { dst: Raw(dst), registry: registry }
     }
 }
 
-impl Writer for Destination {
-    fn write_all(&mut self, bytes: &[u8]) -> old_io::IoResult<()> {
+#[cfg(unix)]
+fn stderr_isatty() -> bool {
+    unsafe { libc::isatty(libc::STDERR_FILENO) != 0 }
+}
+#[cfg(windows)]
+fn stderr_isatty() -> bool {
+    const STD_ERROR_HANDLE: libc::DWORD = -12;
+    extern "system" {
+        fn GetStdHandle(which: libc::DWORD) -> libc::HANDLE;
+        fn GetConsoleMode(hConsoleHandle: libc::HANDLE,
+                          lpMode: libc::LPDWORD) -> libc::BOOL;
+    }
+    unsafe {
+        let handle = GetStdHandle(STD_ERROR_HANDLE);
+        let mut out = 0;
+        GetConsoleMode(handle, &mut out) != 0
+    }
+}
+
+impl Write for Destination {
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
         match *self {
-            Terminal(ref mut t) => t.write_all(bytes),
-            Raw(ref mut w) => w.write_all(bytes),
+            Terminal(ref mut t) => t.write(bytes),
+            Raw(ref mut w) => w.write(bytes),
+        }
+    }
+    fn flush(&mut self) -> io::Result<()> {
+        match *self {
+            Terminal(ref mut t) => t.flush(),
+            Raw(ref mut w) => w.flush(),
         }
     }
 }
@@ -403,7 +427,7 @@ impl Emitter for EmitterWriter {
 }
 
 fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
-        msg: &str, code: Option<&str>, lvl: Level, custom: bool) -> old_io::IoResult<()> {
+        msg: &str, code: Option<&str>, lvl: Level, custom: bool) -> io::Result<()> {
     let sp = rsp.span();
 
     // We cannot check equality directly with COMMAND_LINE_SP
@@ -451,7 +475,7 @@ fn highlight_lines(err: &mut EmitterWriter,
                    cm: &codemap::CodeMap,
                    sp: Span,
                    lvl: Level,
-                   lines: codemap::FileLines) -> old_io::IoResult<()> {
+                   lines: codemap::FileLines) -> io::Result<()> {
     let fm = &*lines.file;
 
     let mut elided = false;
@@ -560,7 +584,7 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
                           sp: Span,
                           lvl: Level,
                           lines: codemap::FileLines)
-                          -> old_io::IoResult<()> {
+                          -> io::Result<()> {
     let fm = &*lines.file;
 
     let lines = &lines.lines[..];
@@ -617,8 +641,8 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
 fn print_macro_backtrace(w: &mut EmitterWriter,
                          cm: &codemap::CodeMap,
                          sp: Span)
-                         -> old_io::IoResult<()> {
-    let cs = try!(cm.with_expn_info(sp.expn_id, |expn_info| -> old_io::IoResult<_> {
+                         -> io::Result<()> {
+    let cs = try!(cm.with_expn_info(sp.expn_id, |expn_info| -> io::Result<_> {
         match expn_info {
             Some(ei) => {
                 let ss = ei.callee.span.map_or(String::new(),

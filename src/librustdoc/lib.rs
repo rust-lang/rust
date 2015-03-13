@@ -26,9 +26,8 @@
 #![feature(core)]
 #![feature(exit_status)]
 #![feature(int_uint)]
-#![feature(old_io)]
+#![feature(set_panic)]
 #![feature(libc)]
-#![feature(os)]
 #![feature(old_path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -465,7 +464,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 fn json_input(input: &str) -> Result<Output, String> {
     let mut bytes = Vec::new();
     match File::open(input).and_then(|mut f| f.read_to_end(&mut bytes)) {
-        Ok(()) => {}
+        Ok(_) => {}
         Err(e) => return Err(format!("couldn't open {}: {}", input, e)),
     };
     match json::from_reader(&mut &bytes[..]) {

@@ -13,16 +13,15 @@
 extern crate rbml;
 extern crate serialize;
 
-use std::old_io;
+use std::io::Cursor;
+use std::io::prelude::*;
 use std::fmt;
-use std::old_io::{IoResult, SeekStyle};
 use std::slice;
 
 use serialize::{Encodable, Encoder};
 use serialize::json;
 
 use rbml::writer;
-use rbml::io::SeekableMemWriter;
 
 #[derive(Encodable)]
 struct Foo {
@@ -40,17 +39,17 @@ enum WireProtocol {
     // ...
 }
 
-fn encode_json<T: Encodable>(val: &T, wr: &mut SeekableMemWriter) {
+fn encode_json<T: Encodable>(val: &T, wr: &mut Cursor<Vec<u8>>) {
     write!(wr, "{}", json::as_json(val));
 }
-fn encode_rbml<T: Encodable>(val: &T, wr: &mut SeekableMemWriter) {
+fn encode_rbml<T: Encodable>(val: &T, wr: &mut Cursor<Vec<u8>>) {
     let mut encoder = writer::Encoder::new(wr);
     val.encode(&mut encoder);
 }
 
 pub fn main() {
     let target = Foo{baz: false,};
-    let mut wr = SeekableMemWriter::new();
+    let mut wr = Cursor::new(Vec::new());
     let proto = WireProtocol::JSON;
     match proto {
         WireProtocol::JSON => encode_json(&target, &mut wr),

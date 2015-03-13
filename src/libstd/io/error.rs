@@ -10,7 +10,7 @@
 
 use boxed::Box;
 use clone::Clone;
-use error::Error as StdError;
+use error;
 use fmt;
 use option::Option::{self, Some, None};
 use result;
@@ -22,6 +22,7 @@ use sys;
 ///
 /// This typedef is generally used to avoid writing out `io::Error` directly and
 /// is otherwise a direct mapping to `std::result::Result`.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub type Result<T> = result::Result<T, Error>;
 
 /// The error type for I/O operations of the `Read`, `Write`, `Seek`, and
@@ -31,6 +32,7 @@ pub type Result<T> = result::Result<T, Error>;
 /// `Error` can be created with crafted error messages and a particular value of
 /// `ErrorKind`.
 #[derive(PartialEq, Eq, Clone, Debug)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Error {
     repr: Repr,
 }
@@ -50,6 +52,10 @@ struct Custom {
 
 /// A list specifying general categories of I/O error.
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
+#[unstable(feature = "io",
+           reason = "the interaction between OS error codes and how they map to \
+                     these names (as well as the names themselves) has not \
+                     been thoroughly thought out")]
 pub enum ErrorKind {
     /// The file was not found.
     FileNotFound,
@@ -96,6 +102,9 @@ pub enum ErrorKind {
 
 impl Error {
     /// Creates a new custom error from a specified kind/description/detail.
+    #[unstable(feature = "io", reason = "the exact makeup of an Error may
+                                         change to include `Box<Error>` for \
+                                         example")]
     pub fn new(kind: ErrorKind,
                description: &'static str,
                detail: Option<String>) -> Error {
@@ -113,16 +122,20 @@ impl Error {
     /// This function reads the value of `errno` for the target platform (e.g.
     /// `GetLastError` on Windows) and will return a corresponding instance of
     /// `Error` for the error code.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn last_os_error() -> Error {
         Error::from_os_error(sys::os::errno() as i32)
     }
 
     /// Creates a new instance of an `Error` from a particular OS error code.
+    #[unstable(feature = "io",
+               reason = "unclear whether this function is necessary")]
     pub fn from_os_error(code: i32) -> Error {
         Error { repr: Repr::Os(code) }
     }
 
     /// Return the corresponding `ErrorKind` for this error.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn kind(&self) -> ErrorKind {
         match self.repr {
             Repr::Os(code) => sys::decode_error_kind(code),
@@ -131,6 +144,9 @@ impl Error {
     }
 
     /// Returns a short description for this error message
+    #[unstable(feature = "io")]
+    #[deprecated(since = "1.0.0", reason = "use the Error trait's description \
+                                            method instead")]
     pub fn description(&self) -> &str {
         match self.repr {
             Repr::Os(..) => "os error",
@@ -139,6 +155,8 @@ impl Error {
     }
 
     /// Returns a detailed error message for this error (if one is available)
+    #[unstable(feature = "io")]
+    #[deprecated(since = "1.0.0", reason = "use the to_string() method instead")]
     pub fn detail(&self) -> Option<String> {
         match self.repr {
             Repr::Os(code) => Some(sys::os::error_string(code)),
@@ -147,6 +165,7 @@ impl Error {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self.repr {
@@ -173,7 +192,8 @@ impl fmt::Display for Error {
     }
 }
 
-impl StdError for Error {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl error::Error for Error {
     fn description(&self) -> &str {
         match self.repr {
             Repr::Os(..) => "os error",

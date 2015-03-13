@@ -11,7 +11,6 @@
 use std::fs::File;
 use std::io::prelude::*;
 use std::io;
-use std::old_io;
 use std::path::{PathBuf, Path};
 use std::str;
 
@@ -51,12 +50,12 @@ macro_rules! load_or_return {
             let input = PathBuf::new($input);
             match ::externalfiles::load_string(&input) {
                 Err(e) => {
-                    let _ = writeln!(&mut old_io::stderr(),
+                    let _ = writeln!(&mut io::stderr(),
                                      "error reading `{}`: {}", input.display(), e);
                     return $cant_read;
                 }
                 Ok(None) => {
-                    let _ = writeln!(&mut old_io::stderr(),
+                    let _ = writeln!(&mut io::stderr(),
                                      "error reading `{}`: not UTF-8", input.display());
                     return $not_utf8;
                 }
