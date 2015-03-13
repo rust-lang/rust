@@ -26,8 +26,8 @@ impl<'a> MyWriter for &'a mut [u8] {
 
         let write_len = buf.len();
         unsafe {
-            *self = slice::from_raw_parts(
-                self.as_ptr().offset(write_len as int),
+            *self = slice::from_raw_parts_mut(
+                self.as_mut_ptr().offset(write_len as isize),
                 self.len() - write_len
             );
         }
