@@ -176,7 +176,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                     return None;
                 }
             }
-            clean::ImplItem(..) => {}
+            clean::DefaultImplItem(..) | clean::ImplItem(..) => {}
 
             // tymethods/macros have no control over privacy
             clean::MacroItem(..) | clean::TyMethodItem(..) => {}

@@ -64,6 +64,7 @@ impl ItemType {
             clean::MacroItem(..)           => ItemType::Macro,
             clean::PrimitiveItem(..)       => ItemType::Primitive,
             clean::AssociatedTypeItem(..)  => ItemType::AssociatedType,
+            clean::DefaultImplItem(..)     => ItemType::Impl,
         }
     }
 

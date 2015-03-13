@@ -362,7 +362,9 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 let i = DefaultImpl {
                     unsafety: unsafety,
                     trait_: trait_ref.clone(),
-                    id: item.id
+                    id: item.id,
+                    attrs: item.attrs.clone(),
+                    whence: item.span,
                 };
                 om.def_traits.push(i);
             }
