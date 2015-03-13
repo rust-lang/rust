@@ -9,11 +9,11 @@ around build commands to facilitate linking native code to Cargo packages.
 
 1. Instead of having the `build` command be some form of script, it will be a
    Rust command instead
-2. Establish a namespace of `foo_sys` packages which represent the native
+2. Establish a namespace of `foo-sys` packages which represent the native
    library `foo`. These packages will have Cargo-based dependencies between
-   `*_sys` packages to express dependencies among C packages themselves.
+   `*-sys` packages to express dependencies among C packages themselves.
 3. Establish a set of standard environment variables for build commands which
-   will instruct how `foo_sys` packages should be built in terms of dynamic or
+   will instruct how `foo-sys` packages should be built in terms of dynamic or
    static linkage, as well as providing the ability to override where a package
    comes from via environment variables.
 
@@ -101,7 +101,7 @@ Summary:
 * Add platform-specific dependencies to Cargo manifests
 * Allow pre-built libraries in the same manner as Cargo overrides
 * Use Rust for build scripts
-* Develop a convention of `*_sys` packages
+* Develop a convention of `*-sys` packages
 
 ## Modifications to `rustc`
 
@@ -358,38 +358,38 @@ useful to interdependencies among native packages themselves. For example
 libssh2 depends on OpenSSL on linux, which means it needs to find the
 corresponding libraries and header files. The metadata keys serve as a vector
 through which this information can be transmitted. The maintainer of the
-`openssl_sys` package (described below) would have a build script responsible
+`openssl-sys` package (described below) would have a build script responsible
 for generating this sort of metadata so consumer packages can use it to build C
 libraries themselves.
 
-## A set of `*_sys` packages
+## A set of `*-sys` packages
 
 This section will discuss a *convention* by which Cargo packages providing
 native dependencies will be named, it is not proposed to have Cargo enforce this
 convention via any means. These conventions are proposed to address constraints
 5 and 6 above.
 
-Common C dependencies will be refactored into a package named `foo_sys` where
-`foo` is the name of the C library that `foo_sys` will provide and link to.
+Common C dependencies will be refactored into a package named `foo-sys` where
+`foo` is the name of the C library that `foo-sys` will provide and link to.
 There are two key motivations behind this convention:
 
-* Each `foo_sys` package will declare its own dependencies on other `foo_sys`
+* Each `foo-sys` package will declare its own dependencies on other `foo-sys`
   based packages
 * Dependencies on native libraries expressed through Cargo will be subject to
   version management, version locking, and deduplication as usual.
 
-Each `foo_sys` package is responsible for providing the following:
+Each `foo-sys` package is responsible for providing the following:
 
-* Declarations of all symbols in a library. Essentially each `foo_sys` library
+* Declarations of all symbols in a library. Essentially each `foo-sys` library
   is *only* a header file in terms of Rust-related code.
-* Ensuring that the native library `foo` is linked to the `foo_sys` crate. This
+* Ensuring that the native library `foo` is linked to the `foo-sys` crate. This
   guarantees that all exposed symbols are indeed linked into the crate.
 
-Dependencies making use of `*_sys` packages will not expose `extern` blocks
-themselves, but rather use the symbols exposed in the `foo_sys` package
-directly. Additionally, packages using `*_sys` packages should not declare a
+Dependencies making use of `*-sys` packages will not expose `extern` blocks
+themselves, but rather use the symbols exposed in the `foo-sys` package
+directly. Additionally, packages using `*-sys` packages should not declare a
 `#[link]` directive to link to the native library as it's already linked to the
-`*_sys` package.
+`*-sys` package.
 
 ## Phasing strategy
 
@@ -517,7 +517,7 @@ perform this configuration (be it environment or in files).
 * Features themselves will also likely need to be platform-specific, but this
   runs into a number of tricky situations and needs to be fleshed out.
 
-[verbose]: https://github.com/alexcrichton/complicated-linkage-example/blob/master/curl_sys/Cargo.toml#L9-L17
+[verbose]: https://github.com/alexcrichton/complicated-linkage-example/blob/master/curl-sys/Cargo.toml#L9-L17
 
 # Alternatives
 
