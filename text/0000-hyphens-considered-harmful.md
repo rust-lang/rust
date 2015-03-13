@@ -27,11 +27,15 @@ Fortunately, Cargo presents us with a solution. It already separates the concept
 
 ## Disallow hyphens in crates (only)
 
-In **Cargo**, continue allowing hyphens in package names. But unless the `Cargo.toml` says otherwise, the inner crate name will have all hyphens replaced with underscores.
+In **rustc**, enforce that all crate names are valid identifiers.
 
-For example, if I had a package named `apple-fritter`, its crate will be named `apple_fritter` instead.
+In **Cargo**, continue allowing hyphens in package names.
 
-In **rustc**, enforce that all crate names are valid identifiers. With the changes in Cargo, existing hyphenated packages should continue to build unchanged.
+The difference will be in the crate name Cargo passes to the compiler. If the `Cargo.toml` does *not* specify an explicit crate name, then Cargo will use the package name but with all `-` replaced by `_`.
+
+For example, if I have a package named `apple-fritter`, Cargo will pass `--crate-name apple_fritter` to the compiler instead.
+
+Since most packages do not set their own crate names, this mapping will ensure that the majority of hyphenated packages continue to build unchanged.
 
 ## Identify `-` and `_` on crates.io
 
