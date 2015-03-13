@@ -1491,6 +1491,7 @@ pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
 /// # Examples
 ///
 /// ```
+/// #![feature(core)]
 /// use std::slice;
 ///
 /// // manifest a slice out of thin air!

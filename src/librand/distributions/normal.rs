@@ -76,6 +76,7 @@ impl Rand for StandardNormal {
 /// # Examples
 ///
 /// ```
+/// # #![feature(rand)]
 /// use std::rand;
 /// use std::rand::distributions::{Normal, IndependentSample};
 ///
@@ -124,6 +125,7 @@ impl IndependentSample<f64> for Normal {
 /// # Examples
 ///
 /// ```
+/// # #![feature(rand)]
 /// use std::rand;
 /// use std::rand::distributions::{LogNormal, IndependentSample};
 ///

@@ -47,6 +47,7 @@
 //! which is cyclic.
 //!
 //! ```rust
+//! # #![feature(rustc_private, core)]
 //! use std::borrow::IntoCow;
 //! use std::io::Write;
 //! use graphviz as dot;
@@ -148,6 +149,7 @@
 //! entity `&sube`).
 //!
 //! ```rust
+//! # #![feature(rustc_private, core)]
 //! use std::borrow::IntoCow;
 //! use std::io::Write;
 //! use graphviz as dot;
@@ -205,6 +207,7 @@
 //! Hasse-diagram for the subsets of the set `{x, y}`.
 //!
 //! ```rust
+//! # #![feature(rustc_private, core)]
 //! use std::borrow::IntoCow;
 //! use std::io::Write;
 //! use graphviz as dot;

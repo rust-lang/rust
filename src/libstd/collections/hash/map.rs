@@ -538,6 +538,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::collections::HashMap;
     /// use std::collections::hash_map::RandomState;
     ///
@@ -566,6 +567,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::collections::HashMap;
     /// use std::collections::hash_map::RandomState;
     ///
@@ -981,6 +983,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::collections::HashMap;
     ///
     /// let mut a = HashMap::new();

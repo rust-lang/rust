@@ -816,8 +816,7 @@ may optionally begin with any number of `attributes` that apply to the
 containing module. Attributes on the anonymous crate module define important
 metadata that influences the behavior of the compiler.
 
-```{.rust}
-# #![allow(unused_attribute)]
+```no_run
 // Crate name
 #![crate_name = "projx"]
 
@@ -1020,6 +1019,7 @@ Use declarations support a number of convenient shortcuts:
 An example of `use` declarations:
 
 ```
+# #![feature(core)]
 use std::iter::range_step;
 use std::option::Option::{Some, None};
 use std::collections::hash_map::{self, HashMap};
@@ -1080,6 +1080,7 @@ declarations.
 An example of what will and will not work for `use` items:
 
 ```
+# #![feature(core)]
 # #![allow(unused_imports)]
 use foo::core::iter;  // good: foo is at the root of the crate
 use foo::baz::foobaz;    // good: foo is at the root of the crate
@@ -1781,6 +1782,7 @@ functions, with the exception that they may not have a body and are instead
 terminated by a semicolon.
 
 ```
+# #![feature(libc)]
 extern crate libc;
 use libc::{c_char, FILE};
 

@@ -12,6 +12,7 @@ The following is a minimal example of calling a foreign function which will
 compile if snappy is installed:
 
 ```no_run
+# #![feature(libc)]
 extern crate libc;
 use libc::size_t;
 
@@ -45,6 +46,7 @@ keeping the binding correct at runtime.
 The `extern` block can be extended to cover the entire snappy API:
 
 ```no_run
+# #![feature(libc)]
 extern crate libc;
 use libc::{c_int, size_t};
 
@@ -80,6 +82,7 @@ length is number of elements currently contained, and the capacity is the total 
 the allocated memory. The length is less than or equal to the capacity.
 
 ```
+# #![feature(libc)]
 # extern crate libc;
 # use libc::{c_int, size_t};
 # unsafe fn snappy_validate_compressed_buffer(_: *const u8, _: size_t) -> c_int { 0 }
@@ -104,6 +107,7 @@ required capacity to hold the compressed output. The vector can then be passed t
 the true length after compression for setting the length.
 
 ```
+# #![feature(libc)]
 # extern crate libc;
 # use libc::{size_t, c_int};
 # unsafe fn snappy_compress(a: *const u8, b: size_t, c: *mut u8,
@@ -130,6 +134,7 @@ Decompression is similar, because snappy stores the uncompressed size as part of
 format and `snappy_uncompressed_length` will retrieve the exact buffer size required.
 
 ```
+# #![feature(libc)]
 # extern crate libc;
 # use libc::{size_t, c_int};
 # unsafe fn snappy_uncompress(compressed: *const u8,
@@ -408,6 +413,7 @@ global state. In order to access these variables, you declare them in `extern`
 blocks with the `static` keyword:
 
 ```no_run
+# #![feature(libc)]
 extern crate libc;
 
 #[link(name = "readline")]
@@ -426,6 +432,7 @@ interface. To do this, statics can be declared with `mut` so we can mutate
 them.
 
 ```no_run
+# #![feature(libc)]
 extern crate libc;
 
 use std::ffi::CString;
@@ -458,6 +465,7 @@ calling foreign functions. Some foreign functions, most notably the Windows API,
 conventions. Rust provides a way to tell the compiler which convention to use:
 
 ```
+# #![feature(libc)]
 extern crate libc;
 
 #[cfg(all(target_os = "win32", target_arch = "x86"))]

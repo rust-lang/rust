@@ -19,6 +19,7 @@
 //! # Examples
 //!
 //! ```no_run
+//! # #![feature(rustc_private)]
 //! extern crate term;
 //!
 //! use std::io::prelude::*;

@@ -149,6 +149,7 @@ pub trait Rng : Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(rand, core)]
     /// use std::rand::{thread_rng, Rng};
     ///
     /// let mut v = [0; 13579];
@@ -184,6 +185,7 @@ pub trait Rng : Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(rand)]
     /// use std::rand::{thread_rng, Rng};
     ///
     /// let mut rng = thread_rng();
@@ -202,6 +204,7 @@ pub trait Rng : Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(rand)]
     /// use std::rand::{thread_rng, Rng};
     ///
     /// let mut rng = thread_rng();
@@ -229,6 +232,7 @@ pub trait Rng : Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(rand)]
     /// use std::rand::{thread_rng, Rng};
     ///
     /// let mut rng = thread_rng();
@@ -247,6 +251,7 @@ pub trait Rng : Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(rand)]
     /// use std::rand::{thread_rng, Rng};
     ///
     /// let mut rng = thread_rng();
@@ -261,6 +266,7 @@ pub trait Rng : Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(rand)]
     /// use std::rand::{thread_rng, Rng};
     ///
     /// let s: String = thread_rng().gen_ascii_chars().take(10).collect();
@@ -277,6 +283,7 @@ pub trait Rng : Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(rand)]
     /// use std::rand::{thread_rng, Rng};
     ///
     /// let choices = [1, 2, 4, 8, 16, 32];
@@ -297,6 +304,7 @@ pub trait Rng : Sized {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(rand, core)]
     /// use std::rand::{thread_rng, Rng};
     ///
     /// let mut rng = thread_rng();
@@ -360,6 +368,7 @@ pub trait SeedableRng<Seed>: Rng {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(rand)]
     /// use std::rand::{Rng, SeedableRng, StdRng};
     ///
     /// let seed: &[_] = &[1, 2, 3, 4];
@@ -375,6 +384,7 @@ pub trait SeedableRng<Seed>: Rng {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(rand)]
     /// use std::rand::{Rng, SeedableRng, StdRng};
     ///
     /// let seed: &[_] = &[1, 2, 3, 4];
@@ -480,6 +490,7 @@ impl Rand for XorShiftRng {
 /// # Examples
 ///
 /// ```
+/// # #![feature(rand)]
 /// use std::rand::{random, Open01};
 ///
 /// let Open01(val) = random::<Open01<f32>>();
@@ -497,6 +508,7 @@ pub struct Open01<F>(pub F);
 /// # Examples
 ///
 /// ```
+/// # #![feature(rand)]
 /// use std::rand::{random, Closed01};
 ///
 /// let Closed01(val) = random::<Closed01<f32>>();

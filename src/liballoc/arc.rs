@@ -95,6 +95,7 @@ use heap::deallocate;
 /// task.
 ///
 /// ```
+/// # #![feature(alloc, core)]
 /// use std::sync::Arc;
 /// use std::thread;
 ///
@@ -185,6 +186,7 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
@@ -246,6 +248,7 @@ impl<T> Clone for Arc<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
@@ -289,6 +292,7 @@ impl<T: Send + Sync + Clone> Arc<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::sync::Arc;
     ///
     /// let mut five = Arc::new(5);
@@ -324,6 +328,7 @@ impl<T: Sync + Send> Drop for Arc<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::sync::Arc;
     ///
     /// {
@@ -387,6 +392,7 @@ impl<T: Sync + Send> Weak<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
@@ -424,6 +430,7 @@ impl<T: Sync + Send> Clone for Weak<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::sync::Arc;
     ///
     /// let weak_five = Arc::new(5).downgrade();
@@ -448,6 +455,7 @@ impl<T: Sync + Send> Drop for Weak<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::sync::Arc;
     ///
     /// {

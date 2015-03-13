@@ -374,6 +374,7 @@ impl f64 {
     /// Returns the `NaN` value.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let nan: f32 = Float::nan();
@@ -388,6 +389,7 @@ impl f64 {
     /// Returns the infinite value.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f32;
     ///
@@ -405,6 +407,7 @@ impl f64 {
     /// Returns the negative infinite value.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f32;
     ///
@@ -422,6 +425,7 @@ impl f64 {
     /// Returns `0.0`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let inf: f32 = Float::infinity();
@@ -440,6 +444,7 @@ impl f64 {
     /// Returns `-0.0`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let inf: f32 = Float::infinity();
@@ -458,6 +463,7 @@ impl f64 {
     /// Returns `1.0`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let one: f32 = Float::one();
@@ -534,6 +540,7 @@ impl f64 {
     /// Returns the smallest finite value that this type can represent.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -557,6 +564,7 @@ impl f64 {
     /// Returns the largest finite value that this type can represent.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -572,6 +580,7 @@ impl f64 {
     /// Returns `true` if this value is `NaN` and false otherwise.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -589,6 +598,7 @@ impl f64 {
     /// false otherwise.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f32;
     ///
@@ -610,6 +620,7 @@ impl f64 {
     /// Returns `true` if this number is neither infinite nor `NaN`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f32;
     ///
@@ -632,6 +643,7 @@ impl f64 {
     /// [subnormal][subnormal], or `NaN`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f32;
     ///
@@ -659,6 +671,7 @@ impl f64 {
     /// predicate instead.
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::{Float, FpCategory};
     /// use std::f32;
     ///
@@ -677,6 +690,7 @@ impl f64 {
     /// The floating point encoding is documented in the [Reference][floating-point].
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let num = 2.0f32;
@@ -779,6 +793,7 @@ impl f64 {
     /// number is `Float::nan()`.
     ///
     /// ```
+    /// # #![feature(core, std_misc)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -804,6 +819,7 @@ impl f64 {
     /// - `Float::nan()` if the number is `Float::nan()`
     ///
     /// ```
+    /// # #![feature(core, std_misc)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -865,6 +881,7 @@ impl f64 {
     /// a separate multiplication operation followed by an add.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let m = 10.0;
@@ -884,6 +901,7 @@ impl f64 {
     /// Take the reciprocal (inverse) of a number, `1/x`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 2.0;
@@ -931,6 +949,7 @@ impl f64 {
     /// Returns NaN if `self` is a negative number.
     ///
     /// ```
+    /// # #![feature(core, std_misc)]
     /// use std::num::Float;
     ///
     /// let positive = 4.0;
@@ -948,6 +967,7 @@ impl f64 {
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let f = 4.0;
@@ -1069,6 +1089,7 @@ impl f64 {
     /// Convert radians to degrees.
     ///
     /// ```
+    /// # #![feature(std_misc, core)]
     /// use std::num::Float;
     /// use std::f64::consts;
     ///
@@ -1085,6 +1106,7 @@ impl f64 {
     /// Convert degrees to radians.
     ///
     /// ```
+    /// # #![feature(std_misc, core)]
     /// use std::num::Float;
     /// use std::f64::consts;
     ///
@@ -1101,6 +1123,7 @@ impl f64 {
     /// Constructs a floating point number of `x*2^exp`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// // 3*2^2 - 12 == 0
@@ -1122,6 +1145,7 @@ impl f64 {
     ///  * `0.5 <= abs(x) < 1.0`
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 4.0;
@@ -1149,6 +1173,7 @@ impl f64 {
     /// `other`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 1.0f32;
@@ -1202,6 +1227,7 @@ impl f64 {
     /// * Else: `self - other`
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 3.0;
@@ -1222,6 +1248,7 @@ impl f64 {
     /// Take the cubic root of a number.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 8.0;
@@ -1241,6 +1268,7 @@ impl f64 {
     /// legs of length `x` and `y`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 2.0;
@@ -1261,6 +1289,7 @@ impl f64 {
     /// Computes the sine of a number (in radians).
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1279,6 +1308,7 @@ impl f64 {
     /// Computes the cosine of a number (in radians).
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1297,6 +1327,7 @@ impl f64 {
     /// Computes the tangent of a number (in radians).
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1316,6 +1347,7 @@ impl f64 {
     /// [-1, 1].
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1337,6 +1369,7 @@ impl f64 {
     /// [-1, 1].
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1380,6 +1413,7 @@ impl f64 {
     /// * `y < 0`: `arctan(y/x) - pi` -> `(-pi, -pi/2)`
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1409,6 +1443,7 @@ impl f64 {
     /// `(sin(x), cos(x))`.
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1431,6 +1466,7 @@ impl f64 {
     /// number is close to zero.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 7.0;
@@ -1450,6 +1486,7 @@ impl f64 {
     /// the operations were performed separately.
     ///
     /// ```
+    /// # #![feature(std_misc, core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1469,6 +1506,7 @@ impl f64 {
     /// Hyperbolic sine function.
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1491,6 +1529,7 @@ impl f64 {
     /// Hyperbolic cosine function.
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1513,6 +1552,7 @@ impl f64 {
     /// Hyperbolic tangent function.
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1577,6 +1617,7 @@ impl f64 {
     /// Inverse hyperbolic tangent function.
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///

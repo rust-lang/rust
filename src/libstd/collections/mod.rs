@@ -300,6 +300,7 @@
 //! #### Counting the number of times each character in a string occurs
 //!
 //! ```
+//! # #![feature(collections)]
 //! use std::collections::btree_map::{BTreeMap, Entry};
 //!
 //! let mut count = BTreeMap::new();
@@ -327,6 +328,7 @@
 //! #### Tracking the inebriation of customers at a bar
 //!
 //! ```
+//! # #![feature(collections)]
 //! use std::collections::btree_map::{BTreeMap, Entry};
 //!
 //! // A client of the bar. They have an id and a blood alcohol level.

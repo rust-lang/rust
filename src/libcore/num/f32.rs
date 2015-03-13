@@ -282,7 +282,8 @@ impl Float for f32 {
     /// The fractional part of the number, satisfying:
     ///
     /// ```
-    /// use core::num::Float;
+    /// # #![feature(core)]
+    /// use std::num::Float;
     ///
     /// let x = 1.65f32;
     /// assert!(x == x.trunc() + x.fract())
