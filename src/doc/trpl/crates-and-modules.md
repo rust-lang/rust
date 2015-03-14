@@ -1,6 +1,6 @@
 % Crates and Modules
 
-When a project starts getting large, it's considered a good software
+When a project starts getting large, it's considered good software
 engineering practice to split it up into a bunch of smaller pieces, and then
 fit them together. It's also important to have a well-defined interface, so
 that some of your functionality is private, and some is public. To facilitate
@@ -24,23 +24,23 @@ in different languages. To keep things simple, we'll stick to "greetings" and
 two languages for those phrases to be in. We'll use this module layout:
 
 ```text
-                                +-----------+
-                            +---| greetings |
-                            |   +-----------+
-              +---------+   |
-              | english |---+
-              +---------+   |   +-----------+
-              |             +---| farewells |
-+---------+   |                 +-----------+
+                                    +-----------+
+                                +---| greetings |
+                                |   +-----------+
+                  +---------+   |
+              +---| english |---+
+              |   +---------+   |   +-----------+
+              |                 +---| farewells |
++---------+   |                     +-----------+
 | phrases |---+
-+---------+   |                  +-----------+
-              |              +---| greetings |
-              +----------+   |   +-----------+
-              | japanese |---+
-              +----------+   |
-                             |   +-----------+
-                             +---| farewells |
-                                 +-----------+
++---------+   |                     +-----------+
+              |                 +---| greetings |
+              |   +----------+  |   +-----------+
+              +---| japanese |--+
+                  +----------+  |
+                                |   +-----------+
+                                +---| farewells |
+                                    +-----------+
 ```
 
 In this example, `phrases` is the name of our crate. All of the rest are
@@ -76,25 +76,19 @@ To define each of our modules, we use the `mod` keyword. Let's make our
 `src/lib.rs` look like this:
 
 ```
-// in src/lib.rs
-
 mod english {
     mod greetings {
-
     }
 
     mod farewells {
-
     }
 }
 
 mod japanese {
     mod greetings {
-
     }
 
     mod farewells {
-
     }
 }
 ```
@@ -145,11 +139,7 @@ mod english;
 ```
 
 If we do that, Rust will expect to find either a `english.rs` file, or a
-`english/mod.rs` file with the contents of our module:
-
-```{rust,ignore}
-// contents of our module go here
-```
+`english/mod.rs` file with the contents of our module.
 
 Note that in these files, you don't need to re-declare the module: that's
 already been done with the initial `mod` declaration.
@@ -181,10 +171,7 @@ $ tree .
 `src/lib.rs` is our crate root, and looks like this:
 
 ```{rust,ignore}
-// in src/lib.rs
-
 mod english;
-
 mod japanese;
 ```
 
@@ -195,10 +182,7 @@ chosen the second. Both `src/english/mod.rs` and `src/japanese/mod.rs` look
 like this:
 
 ```{rust,ignore}
-// both src/english/mod.rs and src/japanese/mod.rs
-
 mod greetings;
-
 mod farewells;
 ```
 
@@ -214,8 +198,6 @@ both empty at the moment. Let's add some functions.
 Put this in `src/english/greetings.rs`:
 
 ```rust
-// in src/english/greetings.rs
-
 fn hello() -> String {
     "Hello!".to_string()
 }
@@ -224,8 +206,6 @@ fn hello() -> String {
 Put this in `src/english/farewells.rs`:
 
 ```rust
-// in src/english/farewells.rs
-
 fn goodbye() -> String {
     "Goodbye.".to_string()
 }
@@ -248,8 +228,6 @@ about the module system.
 Put this in `src/japanese/farewells.rs`:
 
 ```rust
-// in src/japanese/farewells.rs
-
 fn goodbye() -> String {
     "さようなら".to_string()
 }
@@ -265,11 +243,9 @@ another crate.
 We have a library crate. Let's make an executable crate that imports and uses
 our library.
 
-Make a `src/main.rs` and put this in it: (it won't quite compile yet)
+Make a `src/main.rs` and put this in it (it won't quite compile yet):
 
 ```rust,ignore
-// in src/main.rs
-
 extern crate phrases;
 
 fn main() {
@@ -320,8 +296,6 @@ keyword. Let's focus on the `english` module first, so let's reduce our `src/mai
 to just this:
 
 ```{rust,ignore}
-// in src/main.rs
-
 extern crate phrases;
 
 fn main() {
@@ -333,28 +307,20 @@ fn main() {
 In our `src/lib.rs`, let's add `pub` to the `english` module declaration:
 
 ```{rust,ignore}
-// in src/lib.rs
-
 pub mod english;
-
 mod japanese;
 ```
 
 And in our `src/english/mod.rs`, let's make both `pub`:
 
 ```{rust,ignore}
-// in src/english/mod.rs
-
 pub mod greetings;
-
 pub mod farewells;
 ```
 
 In our `src/english/greetings.rs`, let's add `pub` to our `fn` declaration:
 
 ```{rust,ignore}
-// in src/english/greetings.rs
-
 pub fn hello() -> String {
     "Hello!".to_string()
 }
@@ -363,8 +329,6 @@ pub fn hello() -> String {
 And also in `src/english/farewells.rs`:
 
 ```{rust,ignore}
-// in src/english/farewells.rs
-
 pub fn goodbye() -> String {
     "Goodbye.".to_string()
 }
@@ -400,8 +364,6 @@ Rust has a `use` keyword, which allows us to import names into our local scope.
 Let's change our `src/main.rs` to look like this:
 
 ```{rust,ignore}
-// in src/main.rs
-
 extern crate phrases;
 
 use phrases::english::greetings;
@@ -430,7 +392,7 @@ fn main() {
 }
 ```
 
-But it is not idiomatic. This is significantly more likely to introducing a
+But it is not idiomatic: it is more likely to introduce a
 naming conflict. In our short program, it's not a big deal, but as it grows, it
 becomes a problem. If we have conflicting names, Rust will give a compilation
 error. For example, if we made the `japanese` functions public, and tried to do
@@ -460,20 +422,18 @@ Could not compile `phrases`.
 ```
 
 If we're importing multiple names from the same module, we don't have to type it out
-twice. Rust has a shortcut syntax for writing this:
+twice. Instead of this:
 
 ```{rust,ignore}
 use phrases::english::greetings;
 use phrases::english::farewells;
 ```
 
-You use curly braces:
+We can use this shortcut:
 
 ```{rust,ignore}
 use phrases::english::{greetings, farewells};
 ```
-
-These two declarations are equivalent, but the second is a lot less typing.
 
 ## Re-exporting with `pub use`
 
@@ -484,8 +444,6 @@ interface that may not directly map to your internal code organization.
 Let's look at an example. Modify your `src/main.rs` to read like this:
 
 ```{rust,ignore}
-// in src/main.rs
-
 extern crate phrases;
 
 use phrases::english::{greetings,farewells};
@@ -503,18 +461,13 @@ fn main() {
 Then, modify your `src/lib.rs` to make the `japanese` mod public:
 
 ```{rust,ignore}
-// in src/lib.rs
-
 pub mod english;
-
 pub mod japanese;
 ```
 
 Next, make the two functions public, first in `src/japanese/greetings.rs`:
 
 ```{rust,ignore}
-// in src/japanese/greetings.rs
-
 pub fn hello() -> String {
     "こんにちは".to_string()
 }
@@ -523,8 +476,6 @@ pub fn hello() -> String {
 And then in `src/japanese/farewells.rs`:
 
 ```{rust,ignore}
-// in src/japanese/farewells.rs
-
 pub fn goodbye() -> String {
     "さようなら".to_string()
 }
@@ -533,13 +484,10 @@ pub fn goodbye() -> String {
 Finally, modify your `src/japanese/mod.rs` to read like this:
 
 ```{rust,ignore}
-// in src/japanese/mod.rs
-
 pub use self::greetings::hello;
 pub use self::farewells::goodbye;
 
 mod greetings;
-
 mod farewells;
 ```
 
@@ -551,9 +499,9 @@ module, we now have a `phrases::japanese::hello()` function and a
 `phrases::japanese::farewells::goodbye()`. Our internal organization doesn't
 define our external interface.
 
-Here we have a `pub use` for each function we want to bring into the 
+Here we have a `pub use` for each function we want to bring into the
 `japanese` scope. We could alternatively use the wildcard syntax to include
-everything from `greetings` into the current scope: `pub use self::greetings::*`. 
+everything from `greetings` into the current scope: `pub use self::greetings::*`.
 
 What about the `self`? Well, by default, `use` declarations are absolute paths,
 starting from your crate root. `self` makes that path relative to your current
