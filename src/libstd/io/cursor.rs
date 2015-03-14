@@ -192,66 +192,42 @@ impl<T> Cursor<T> {
     pub fn set_position(&mut self, pos: u64) { self.pos = pos; }
 }
 
-macro_rules! seek {
-    () => {
-        fn seek(&mut self, style: SeekFrom) -> io::Result<u64> {
-            let pos = match style {
-                SeekFrom::Start(n) => { self.pos = n; return Ok(n) }
-                SeekFrom::End(n) => self.inner.len() as i64 + n,
-                SeekFrom::Current(n) => self.pos as i64 + n,
-            };
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> io::Seek for Cursor<T> where T: AsRef<[u8]> {
+    fn seek(&mut self, style: SeekFrom) -> io::Result<u64> {
+        let pos = match style {
+            SeekFrom::Start(n) => { self.pos = n; return Ok(n) }
+            SeekFrom::End(n) => self.inner.as_ref().len() as i64 + n,
+            SeekFrom::Current(n) => self.pos as i64 + n,
+        };
 
-            if pos < 0 {
-                Err(Error::new(ErrorKind::InvalidInput,
-                               "invalid seek to a negative position"))
-            } else {
-                self.pos = pos as u64;
-                Ok(self.pos)
-            }
+        if pos < 0 {
+            Err(Error::new(ErrorKind::InvalidInput,
+                           "invalid seek to a negative position"))
+        } else {
+            self.pos = pos as u64;
+            Ok(self.pos)
         }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> io::Seek for Cursor<&'a [u8]> { seek!(); }
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> io::Seek for Cursor<&'a mut [u8]> { seek!(); }
-#[stable(feature = "rust1", since = "1.0.0")]
-impl io::Seek for Cursor<Vec<u8>> { seek!(); }
-
-macro_rules! read {
-    () => {
-        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-            let n = try!(Read::read(&mut try!(self.fill_buf()), buf));
-            self.pos += n as u64;
-            Ok(n)
-        }
+impl<T> Read for Cursor<T> where T: AsRef<[u8]> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let n = try!(Read::read(&mut try!(self.fill_buf()), buf));
+        self.pos += n as u64;
+        Ok(n)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Read for Cursor<&'a [u8]> { read!(); }
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Read for Cursor<&'a mut [u8]> { read!(); }
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Read for Cursor<Vec<u8>> { read!(); }
-
-macro_rules! buffer {
-    () => {
-        fn fill_buf(&mut self) -> io::Result<&[u8]> {
-            let amt = cmp::min(self.pos, self.inner.len() as u64);
-            Ok(&self.inner[(amt as usize)..])
-        }
-        fn consume(&mut self, amt: usize) { self.pos += amt as u64; }
+impl<T> BufRead for Cursor<T> where T: AsRef<[u8]> {
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        let amt = cmp::min(self.pos, self.inner.as_ref().len() as u64);
+        Ok(&self.inner.as_ref()[(amt as usize)..])
     }
+    fn consume(&mut self, amt: usize) { self.pos += amt as u64; }
 }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> BufRead for Cursor<&'a [u8]> { buffer!(); }
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> BufRead for Cursor<&'a mut [u8]> { buffer!(); }
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> BufRead for Cursor<Vec<u8>> { buffer!(); }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for Cursor<&'a mut [u8]> {
