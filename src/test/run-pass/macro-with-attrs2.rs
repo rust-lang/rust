@@ -17,4 +17,3 @@ macro_rules! foo { () => (2) }
 pub fn main() {
     assert_eq!(foo!(), 2);
 }
-

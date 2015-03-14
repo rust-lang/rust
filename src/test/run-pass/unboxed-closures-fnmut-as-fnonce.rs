@@ -39,4 +39,3 @@ fn main() {
     let z = call_it_once(S, 22);
     assert_eq!(y, z);
 }
-

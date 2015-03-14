@@ -13,4 +13,3 @@ fn f(a: isize, a: isize) {}
 
 fn main() {
 }
-

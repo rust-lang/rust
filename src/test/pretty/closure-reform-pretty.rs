@@ -24,4 +24,3 @@ fn call_extern(f: fn() -> int) { }
 fn call_abid_extern(f: extern "C" fn() -> int) { }
 
 pub fn main() { }
-

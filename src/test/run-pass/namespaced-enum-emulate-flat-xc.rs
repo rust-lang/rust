@@ -28,4 +28,3 @@ fn _f2(f: Bar) {
 }
 
 pub fn main() {}
-

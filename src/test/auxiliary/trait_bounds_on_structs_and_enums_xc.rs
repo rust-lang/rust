@@ -21,4 +21,3 @@ pub enum Bar<T:Trait> {
     BBar(T),
     CBar(uint),
 }
-

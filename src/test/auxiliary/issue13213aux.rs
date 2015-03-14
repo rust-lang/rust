@@ -27,4 +27,3 @@ mod private {
 }
 
 pub static A: S = S { p: private::THREE };
-

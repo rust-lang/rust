@@ -963,4 +963,3 @@ fn parse_region_bounds_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F)
         }
     }
 }
-

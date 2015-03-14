@@ -9,4 +9,3 @@
 // except according to those terms.
 
 static foo: isize = 2; } //~ ERROR incorrect close delimiter:
-

@@ -20,4 +20,3 @@ fn main() {
     let _ = ||();
     let _ = (1_usize..3).map(|_| 5);
 }
-

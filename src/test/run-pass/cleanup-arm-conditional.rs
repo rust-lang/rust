@@ -52,4 +52,3 @@ pub fn main() {
     let t = Test { x: 1 };
     do_something(&t);
 }
-

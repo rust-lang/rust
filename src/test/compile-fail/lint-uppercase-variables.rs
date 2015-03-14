@@ -40,4 +40,3 @@ fn main() {
 
     let _ = Something { X: 0 };
 }
-

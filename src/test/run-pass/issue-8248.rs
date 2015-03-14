@@ -20,4 +20,3 @@ pub fn main() {
     let mut b = B;
     foo(&mut b as &mut A);
 }
-

@@ -20,4 +20,3 @@ fn main() {
     let x = box (HEAP) 'c'; //~ ERROR box expression syntax is experimental
     println!("x: {}", x);
 }
-

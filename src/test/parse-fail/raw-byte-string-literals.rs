@@ -13,5 +13,3 @@ pub fn main() {
     br"é";  //~ raw byte string must be ASCII
     br##~"a"~##;  //~ only `#` is allowed in raw string delimitation
 }
-
-

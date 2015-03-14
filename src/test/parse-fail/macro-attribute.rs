@@ -10,4 +10,3 @@
 
 #[doc = $not_there] //~ error: unexpected token: `$`
 fn main() { }
-

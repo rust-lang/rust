@@ -25,4 +25,3 @@ CFG_LDPATH_x86_64-unknown-linux-gnu :=
 CFG_RUN_x86_64-unknown-linux-gnu=$(2)
 CFG_RUN_TARG_x86_64-unknown-linux-gnu=$(call CFG_RUN_x86_64-unknown-linux-gnu,,$(2))
 CFG_GNU_TRIPLE_x86_64-unknown-linux-gnu := x86_64-unknown-linux-gnu
-

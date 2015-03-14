@@ -17,4 +17,3 @@ fn f<F:Trait(isize) -> isize>(x: F) {}
 //~| ERROR no associated type `Output`
 
 fn main() {}
-

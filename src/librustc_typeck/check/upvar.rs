@@ -556,5 +556,3 @@ impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
         self.adjust_upvar_borrow_kind_for_mut(assignee_cmt);
     }
 }
-
-

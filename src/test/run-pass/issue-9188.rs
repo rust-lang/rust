@@ -17,4 +17,3 @@ pub fn main() {
     let b = issue_9188::foo::<int>();
     assert_eq!(*a, *b);
 }
-

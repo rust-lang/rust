@@ -213,4 +213,3 @@ fn read_from_le_bytes<T: Int>(bytes: &[u8], position_in_bytes: uint) -> T {
 
     Int::from_le(data)
 }
-

@@ -16,4 +16,3 @@ fn main() {
     let mut x: Box<_> = box 3;
     f(x)    //~ ERROR mismatched types
 }
-

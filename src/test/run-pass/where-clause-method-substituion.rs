@@ -27,4 +27,3 @@ impl Bar<X> for i32 {
 fn main() {
     1.method::<S>();
 }
-

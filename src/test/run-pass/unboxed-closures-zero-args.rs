@@ -14,4 +14,3 @@ fn main() {
     let mut zero = || {};
     let () = zero();
 }
-

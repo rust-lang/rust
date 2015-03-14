@@ -84,4 +84,3 @@ fn meh1<'a, T: Iter>(v: &'a T) -> Box<X+'a>
 }
 
 fn main() {}
-

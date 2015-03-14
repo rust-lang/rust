@@ -11,4 +11,3 @@
 extern crate "#a" as bar; //~ ERROR: invalid character `#` in crate name: `#a`
 
 fn main() {}
-

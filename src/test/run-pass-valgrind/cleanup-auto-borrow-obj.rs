@@ -36,4 +36,3 @@ pub fn main() {
         assert!(DROP_RAN);
     }
 }
-

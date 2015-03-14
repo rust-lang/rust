@@ -17,4 +17,3 @@ fn bench_explicit_return_type(_: &mut ::test::Bencher) -> () {}
 
 #[test]
 fn test_explicit_return_type() -> () {}
-

@@ -19,5 +19,3 @@ pub fn main() {
     b"é";  //~ ERROR byte constant must be ASCII
     b"a  //~ ERROR unterminated double quote byte string
 }
-
-

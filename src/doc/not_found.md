@@ -63,4 +63,3 @@ function populate_rust_search() {
 populate_site_search();
 populate_rust_search();
 </script>
-

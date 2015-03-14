@@ -15,4 +15,3 @@ fn transmute() {}
 
 fn main() {
 }
-

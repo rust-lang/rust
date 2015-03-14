@@ -11,4 +11,3 @@
 enum Bar {
     Baz { a: int }
 }
-

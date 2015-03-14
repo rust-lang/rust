@@ -25,5 +25,3 @@ unsafe fn g<T>(x: &T) {
 }
 
 fn main() {}
-
-

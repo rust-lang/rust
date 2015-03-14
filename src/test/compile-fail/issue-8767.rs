@@ -15,4 +15,3 @@ impl B { //~ ERROR use of undeclared type name `B`
 
 fn main() {
 }
-

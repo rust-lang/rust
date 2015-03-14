@@ -18,4 +18,3 @@ trait Trait : ::std::marker::MarkerTrait {
 impl Trait for isize {}  //~ ERROR missing: `Type`
 
 fn main() {}
-

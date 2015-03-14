@@ -26,4 +26,3 @@ impl<'a,'b> Foo<'a,'b> {
 }
 
 fn main() {}
-

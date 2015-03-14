@@ -17,4 +17,3 @@ const C2: &'static mut usize = &mut S;
 //~^^ ERROR: references in constants may only refer to immutable values
 
 fn main() {}
-

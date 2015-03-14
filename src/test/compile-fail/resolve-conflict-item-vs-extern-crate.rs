@@ -12,4 +12,3 @@ fn std() {}    //~ ERROR the name `std` conflicts with an external crate
 
 fn main() {
 }
-

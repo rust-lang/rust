@@ -16,4 +16,3 @@ fn main() {
     unsafe { foo::bar(); }
     //~^ ERROR: function `bar` is private
 }
-

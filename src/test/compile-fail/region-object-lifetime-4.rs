@@ -23,4 +23,3 @@ fn borrowed_receiver_related_lifetimes2<'a,'b>(x: &'a (Foo+'b)) -> &'b () {
 }
 
 fn main() {}
-

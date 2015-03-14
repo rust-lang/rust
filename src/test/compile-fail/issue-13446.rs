@@ -16,4 +16,3 @@
 static VEC: [u32; 256] = vec!();
 
 fn main() {}
-

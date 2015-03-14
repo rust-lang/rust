@@ -29,4 +29,3 @@ trait B<T>: Tr<T> {
 
 fn main() {
 }
-

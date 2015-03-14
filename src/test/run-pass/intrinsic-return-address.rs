@@ -40,4 +40,3 @@ fn main() {
     let actual_address = &pt as *const Point as uint;
     assert_eq!(intrinsic_reported_address, actual_address);
 }
-

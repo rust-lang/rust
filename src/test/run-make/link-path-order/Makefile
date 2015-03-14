@@ -14,4 +14,3 @@ all: $(TMPDIR)/libcorrect.a $(TMPDIR)/libwrong.a
 	$(call RUN,should_succeed)
 	$(RUSTC) main.rs -o $(TMPDIR)/should_fail -L $(WRONG_DIR) -L $(CORRECT_DIR)
 	$(call FAIL,should_fail)
-

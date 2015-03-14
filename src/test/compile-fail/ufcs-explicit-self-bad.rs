@@ -63,4 +63,3 @@ fn main() {
     };
     println!("{} {}", bar.foo(2), bar.bar(2));
 }
-

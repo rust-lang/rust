@@ -21,4 +21,3 @@ fn _foo (f: Foo) {
 }
 
 pub fn main() {}
-
