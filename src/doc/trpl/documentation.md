@@ -306,23 +306,23 @@ println!("{}", x + y);
 Here's the same explanation, in raw text:
 
 > First, we set `x` to five:
-> 
+>
 > ```text
 > let x = 5;
 > # let y = 6;
 > # println!("{}", x + y);
 > ```
-> 
+>
 > Next, we set `y` to six:
-> 
+>
 > ```text
 > # let x = 5;
 > let y = 6;
 > # println!("{}", x + y);
 > ```
-> 
+>
 > Finally, we print the sum of `x` and `y`:
-> 
+>
 > ```text
 > # let x = 5;
 > # let y = 6;

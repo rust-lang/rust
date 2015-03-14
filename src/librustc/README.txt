@@ -40,7 +40,7 @@ crates is preferable):
   driver that orchestrates all the other passes and various other bits
   of miscellany. In general it contains code that runs towards the
   end of the compilation process.
-  
+
 Roughly speaking the "order" of the three crates is as follows:
 
     libsyntax -> librustc -> librustc_trans
