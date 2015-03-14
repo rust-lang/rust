@@ -187,6 +187,32 @@ pub trait Read {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
 
+    /// Read as many bytes as buf can hold, stopping at EOF or on error
+    ///
+    /// This method will continuously call `read` while there is more data to
+    /// read. This method will not return until the entire buffer has been
+    /// successfully read or an error occurs. The first error generated from
+    /// this method will be returned.
+    ///
+    /// # Errors
+    ///
+    /// This function will return the first error that `read` returns.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn read_all(&mut self, mut buf: &mut [u8]) -> Result<()> {
+        let mut total = 0;
+        while total < buf.len() {
+            match self.read(&mut buf[total..]) {
+                Ok(0) => return Err(Error::new(ErrorKind::ShortRead(total),
+                                               "failed to read whole buffer",
+                                               None)),
+                Ok(n) => total += n,
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(e) => return Err(e),
+            }
+        }
+        Ok(())
+    }
+
     /// Read all bytes until EOF in this source, placing them into `buf`.
     ///
     /// All bytes read from this source will be appended to the specified buffer
@@ -987,6 +1013,21 @@ mod tests {
         assert_eq!(s.next(), Some(Ok("12".to_string())));
         assert_eq!(s.next(), Some(Ok(String::new())));
         assert_eq!(s.next(), None);
+    }
+
+    #[test]
+    fn read_all() {
+        let mut c = Cursor::new(b"hello");
+        let mut v = [0 as u8; 5];
+        assert_eq!(c.read_all(&mut v), Ok());
+        assert_eq!(v, b"hello");
+
+        let mut c = Cursor::new(b"short");
+        let mut v = [115 as u8; 6];
+        assert_eq!(c.read_all(&mut v), Error::new(ErrorKind::ShortRead(5),
+                                                  "failed to read whole buffer",
+                                                  None));
+        assert_eq!(v, b"shorts");
     }
 
     #[test]

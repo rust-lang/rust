@@ -164,6 +164,9 @@ impl Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.lock().read(buf)
     }
+    fn read_all(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        self.lock().read_all(buf)
+    }
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
         self.lock().read_to_end(buf)
     }

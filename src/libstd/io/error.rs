@@ -107,6 +107,14 @@ pub enum ErrorKind {
     /// written.
     #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,
+    /// An error returned when an operation could not be completed because a
+    /// call to `read` returned `Ok(0)`.
+    ///
+    /// This typically means that an operation could only succeed if it read a
+    /// particular number of bytes but only a smaller number of bytes could be
+    /// read.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    ShortRead(usize),
     /// This operation was interrupted.
     ///
     /// Interrupted operations can typically be retried.
