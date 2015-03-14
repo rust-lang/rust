@@ -209,6 +209,33 @@
                         break;
                     }
                 }
+            // searching by type
+            } else if (val.search("->") > -1) {
+                var trimmer = function (s) { return s.trim(); };
+                var parts = val.split("->").map(trimmer);
+                var input = parts[0];
+                // sort inputs so that order does not matter
+                var inputs = input.split(",").map(trimmer).sort();
+                var output = parts[1];
+
+                for (var i = 0; i < nSearchWords; ++i) {
+                    var type = searchIndex[i].type;
+                    if (!type) {
+                        continue;
+                    }
+
+                    // sort index inputs so that order does not matter
+                    var typeInputs = type.inputs.map(function (input) {
+                        return input.name;
+                    }).sort();
+
+                    // allow searching for void (no output) functions as well
+                    var typeOutput = type.output ? type.output.name : "";
+                    if (inputs.toString() === typeInputs.toString() &&
+                        output == typeOutput) {
+                        results.push({id: i, index: -1, dontValidate: true});
+                    }
+                }
             } else {
                 // gather matching search results up to a certain maximum
                 val = val.replace(/\_/g, "");
@@ -328,6 +355,11 @@
                     name = result.item.name.toLowerCase(),
                     path = result.item.path.toLowerCase(),
                     parent = result.item.parent;
+
+                // this validation does not make sense when searching by types
+                if (result.dontValidate) {
+                    continue;
+                }
 
                 var valid = validateResult(name, path, split, parent);
                 if (!valid) {
@@ -573,7 +605,8 @@
                 //              (String) name,
                 //              (String) full path or empty string for previous path,
                 //              (String) description,
-                //              (optional Number) the parent path index to `paths`]
+                //              (Number | null) the parent path index to `paths`]
+                //              (Object | null) the type of the function (if any)
                 var items = rawSearchIndex[crate].items;
                 // an array of [(Number) item type,
                 //              (String) name]
@@ -598,7 +631,7 @@
                     var rawRow = items[i];
                     var row = {crate: crate, ty: rawRow[0], name: rawRow[1],
                                path: rawRow[2] || lastPath, desc: rawRow[3],
-                               parent: paths[rawRow[4]]};
+                               parent: paths[rawRow[4]], type: rawRow[5]};
                     searchIndex.push(row);
                     if (typeof row.name === "string") {
                         var word = row.name.toLowerCase();
