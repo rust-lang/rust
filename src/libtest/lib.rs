@@ -123,7 +123,6 @@ impl fmt::Display for TestName {
 #[derive(Clone, Copy)]
 enum NamePadding {
     PadNone,
-    #[allow(dead_code)]
     PadOnLeft,
     PadOnRight,
 }
