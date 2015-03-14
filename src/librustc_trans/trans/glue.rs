@@ -32,7 +32,6 @@ use trans::datum;
 use trans::debuginfo::DebugLoc;
 use trans::expr;
 use trans::machine::*;
-use trans::tvec;
 use trans::type_::Type;
 use trans::type_of::{self, type_of, sizing_type_of, align_of};
 use middle::ty::{self, Ty};
@@ -386,51 +385,34 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
     let _icx = push_ctxt("make_drop_glue");
     match t.sty {
         ty::ty_uniq(content_ty) => {
-            match content_ty.sty {
-                ty::ty_vec(ty, None) => {
-                    tvec::make_drop_glue_unboxed(bcx, v0, ty, true)
-                }
-                ty::ty_str => {
-                    let unit_ty = ty::sequence_element_type(bcx.tcx(), content_ty);
-                    tvec::make_drop_glue_unboxed(bcx, v0, unit_ty, true)
-                }
-                ty::ty_trait(..) => {
-                    let lluniquevalue = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
-                    // Only drop the value when it is non-null
-                    let concrete_ptr = Load(bcx, lluniquevalue);
-                    with_cond(bcx, IsNotNull(bcx, concrete_ptr), |bcx| {
-                        let dtor_ptr = Load(bcx, GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]));
-                        let dtor = Load(bcx, dtor_ptr);
-                        Call(bcx,
-                             dtor,
-                             &[PointerCast(bcx, lluniquevalue, Type::i8p(bcx.ccx()))],
-                             None,
-                             DebugLoc::None);
-                        bcx
-                    })
-                }
-                ty::ty_struct(..) if !type_is_sized(bcx.tcx(), content_ty) => {
-                    let llval = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
-                    let llbox = Load(bcx, llval);
-                    let not_null = IsNotNull(bcx, llbox);
-                    with_cond(bcx, not_null, |bcx| {
-                        let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
-                        let info = GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]);
-                        let info = Load(bcx, info);
-                        let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
+            if !type_is_sized(bcx.tcx(), content_ty) {
+                let llval = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
+                let llbox = Load(bcx, llval);
+                let not_null = IsNotNull(bcx, llbox);
+                with_cond(bcx, not_null, |bcx| {
+                    let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
+                    let info = GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]);
+                    let info = Load(bcx, info);
+                    let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
+
+                    // `Box<ZeroSizeType>` does not allocate.
+                    let needs_free = ICmp(bcx,
+                                          llvm::IntNE,
+                                          llsize,
+                                          C_uint(bcx.ccx(), 0u64),
+                                          DebugLoc::None);
+                    with_cond(bcx, needs_free, |bcx| {
                         trans_exchange_free_dyn(bcx, llbox, llsize, llalign, DebugLoc::None)
                     })
-                }
-                _ => {
-                    assert!(type_is_sized(bcx.tcx(), content_ty));
-                    let llval = v0;
-                    let llbox = Load(bcx, llval);
-                    let not_null = IsNotNull(bcx, llbox);
-                    with_cond(bcx, not_null, |bcx| {
-                        let bcx = drop_ty(bcx, llbox, content_ty, DebugLoc::None);
-                        trans_exchange_free_ty(bcx, llbox, content_ty, DebugLoc::None)
-                    })
-                }
+                })
+            } else {
+                let llval = v0;
+                let llbox = Load(bcx, llval);
+                let not_null = IsNotNull(bcx, llbox);
+                with_cond(bcx, not_null, |bcx| {
+                    let bcx = drop_ty(bcx, llbox, content_ty, DebugLoc::None);
+                    trans_exchange_free_ty(bcx, llbox, content_ty, DebugLoc::None)
+                })
             }
         }
         ty::ty_struct(did, substs) | ty::ty_enum(did, substs) => {
@@ -462,34 +444,19 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                 }
             }
         }
-        ty::ty_closure(..) => {
-            iter_structural_ty(bcx,
-                               v0,
-                               t,
-                               |bb, vv, tt| drop_ty(bb, vv, tt, DebugLoc::None))
-        }
         ty::ty_trait(..) => {
-            // No need to do a null check here (as opposed to the Box<trait case
-            // above), because this happens for a trait field in an unsized
-            // struct. If anything is null, it is the whole struct and we won't
-            // get here.
-            let lluniquevalue = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
-            let dtor_ptr = Load(bcx, GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]));
-            let dtor = Load(bcx, dtor_ptr);
+            let data_ptr = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
+            let vtable_ptr = Load(bcx, GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]));
+            let dtor = Load(bcx, vtable_ptr);
             Call(bcx,
                  dtor,
-                 &[PointerCast(bcx, Load(bcx, lluniquevalue), Type::i8p(bcx.ccx()))],
+                 &[PointerCast(bcx, Load(bcx, data_ptr), Type::i8p(bcx.ccx()))],
                  None,
                  DebugLoc::None);
             bcx
-        },
-        ty::ty_vec(_, None) | ty::ty_str => {
-            let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
-            tvec::make_drop_glue_unboxed(bcx, v0, unit_ty, false)
-        },
+        }
         _ => {
-            assert!(type_is_sized(bcx.tcx(), t));
-            if bcx.fcx.type_needs_drop(t) && ty::type_is_structural(t) {
+            if bcx.fcx.type_needs_drop(t) {
                 iter_structural_ty(bcx,
                                    v0,
                                    t,
