@@ -11,6 +11,9 @@
 #![forbid(non_camel_case_types)]
 #![allow(dead_code)]
 
+struct ONE_TWO_THREE;
+//~^ ERROR type `ONE_TWO_THREE` should have a camel case name such as `OneTwoThree`
+
 struct foo { //~ ERROR type `foo` should have a camel case name such as `Foo`
     bar: isize,
 }
