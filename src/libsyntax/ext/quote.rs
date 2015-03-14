@@ -175,6 +175,7 @@ pub mod rt {
     impl_to_source! { ast::Block, block_to_string }
     impl_to_source! { ast::Arg, arg_to_string }
     impl_to_source! { Generics, generics_to_string }
+    impl_to_source! { ast::WhereClause, where_clause_to_string }
     impl_to_source! { P<ast::Item>, item_to_string }
     impl_to_source! { P<ast::ImplItem>, impl_item_to_string }
     impl_to_source! { P<ast::TraitItem>, trait_item_to_string }
@@ -318,6 +319,7 @@ pub mod rt {
     impl_to_tokens! { ast::Ty }
     impl_to_tokens_lifetime! { &'a [ast::Ty] }
     impl_to_tokens! { Generics }
+    impl_to_tokens! { ast::WhereClause }
     impl_to_tokens! { P<ast::Stmt> }
     impl_to_tokens! { P<ast::Expr> }
     impl_to_tokens! { ast::Block }
