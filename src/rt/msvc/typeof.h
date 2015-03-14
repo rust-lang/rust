@@ -94,4 +94,3 @@ namespace msvc_typeof_impl {
 #endif
 
 #endif
-

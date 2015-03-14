@@ -37,4 +37,3 @@ fn imm_owned_receiver(mut x: Box<Foo>) {
 }
 
 fn main() {}
-

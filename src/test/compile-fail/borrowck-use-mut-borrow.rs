@@ -94,4 +94,3 @@ fn main() {
     field_deref_after_var_borrow();
     field_deref_after_field_borrow();
 }
-

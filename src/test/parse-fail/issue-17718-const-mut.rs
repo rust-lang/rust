@@ -15,4 +15,3 @@ FOO: usize = 3;
 
 fn main() {
 }
-

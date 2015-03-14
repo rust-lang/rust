@@ -22,4 +22,3 @@ fn kaboom(y: Bar<f32>) {}
 
 fn main() {
 }
-

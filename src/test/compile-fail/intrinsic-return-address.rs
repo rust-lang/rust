@@ -27,5 +27,3 @@ unsafe fn g() -> isize {
 }
 
 fn main() {}
-
-

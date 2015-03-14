@@ -35,4 +35,3 @@ fn main() {
     //~^ ERROR not implemented
     //~| ERROR not implemented
 }
-

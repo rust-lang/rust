@@ -40,4 +40,3 @@ fn main() {
     function_without_debuginfo();
     function_with_debuginfo();
 }
-

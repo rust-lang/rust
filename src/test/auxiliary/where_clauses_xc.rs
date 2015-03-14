@@ -27,4 +27,3 @@ impl<T> Equal for T where T: Eq {
 pub fn equal<T>(x: &T, y: &T) -> bool where T: Eq {
     x == y
 }
-

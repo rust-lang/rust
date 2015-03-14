@@ -16,4 +16,3 @@ fn main() {
         [ 1, 2, xs.. ] => {}    // OK without feature gate
     }
 }
-

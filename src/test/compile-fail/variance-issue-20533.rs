@@ -51,4 +51,3 @@ fn main() {
         drop(x);
     }
 }
-

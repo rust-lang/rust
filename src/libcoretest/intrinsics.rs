@@ -28,4 +28,3 @@ fn test_typeid_unsized_types() {
     assert_eq!(TypeId::of::<Y>(), TypeId::of::<Y>());
     assert!(TypeId::of::<X>() != TypeId::of::<Y>());
 }
-

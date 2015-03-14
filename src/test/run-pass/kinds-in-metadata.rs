@@ -22,4 +22,3 @@ use kinds_in_metadata::f;
 pub fn main() {
     f::<int>();
 }
-

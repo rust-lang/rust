@@ -21,4 +21,3 @@ pub fn main() {
         assert_eq!(*i, 3);
     }
 }
-

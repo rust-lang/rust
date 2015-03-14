@@ -22,4 +22,3 @@ use lint_stability::*;
 fn main() {
     macro_test_arg_nested!(deprecated_text);
 }
-

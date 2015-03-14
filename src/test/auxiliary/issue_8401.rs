@@ -24,4 +24,3 @@ fn foo<T>(t: &T) {
     let b = B;
     bar(unsafe { mem::transmute(&b as &A) }, t)
 }
-

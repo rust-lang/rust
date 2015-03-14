@@ -22,4 +22,3 @@ fn main() {
     let x = unsafe { f(34) };
     assert_eq!(x, 42);
 }
-

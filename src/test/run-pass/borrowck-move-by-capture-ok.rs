@@ -17,4 +17,3 @@ pub fn main() {
     let h = || -> int *bar;
     assert_eq!(h(), 3);
 }
-

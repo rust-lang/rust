@@ -37,4 +37,3 @@ fn p4<'a,T>(v: Box<T>) -> Box<X+'a>
 }
 
 fn main() {}
-

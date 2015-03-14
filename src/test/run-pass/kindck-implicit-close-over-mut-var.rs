@@ -50,4 +50,3 @@ fn car() {
 }
 
 pub fn main() {}
-

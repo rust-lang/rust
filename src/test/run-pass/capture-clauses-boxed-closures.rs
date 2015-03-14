@@ -20,4 +20,3 @@ fn main() {
     each(&elems, |val| sum += *val);
     assert_eq!(sum, 15);
 }
-

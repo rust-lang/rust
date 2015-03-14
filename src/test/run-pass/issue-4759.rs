@@ -25,4 +25,3 @@ pub fn main() {
     let T { a: a } = T { a: box 0 };
     a.f();
 }
-

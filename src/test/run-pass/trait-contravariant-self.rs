@@ -38,5 +38,3 @@ fn main() {
     let x: Box<Foo+Send> = (box SFoo);
     wants_bar(&x);
 }
-
-

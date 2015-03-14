@@ -32,4 +32,3 @@ pub fn opts() -> TargetOptions {
         .. Default::default()
     }
 }
-

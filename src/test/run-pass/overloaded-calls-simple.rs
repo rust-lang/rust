@@ -70,4 +70,3 @@ fn main() {
     let ans = s(3, 1);
     assert_eq!(ans, 27);
 }
-

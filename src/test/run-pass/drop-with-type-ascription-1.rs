@@ -14,4 +14,3 @@ fn main() {
     let invalid_string = &foo[0];
     assert_eq!(*invalid_string, "hello");
 }
-

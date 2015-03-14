@@ -15,4 +15,3 @@ fn foo<T>() {} //~ ERROR generic functions must be mangled
 
 #[no_mangle]
 extern fn foo<T>() {} //~ ERROR generic functions must be mangled
-

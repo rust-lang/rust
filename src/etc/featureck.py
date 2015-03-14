@@ -242,4 +242,3 @@ print
 for line in lines:
     print "* " + line
 print
-

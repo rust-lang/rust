@@ -40,4 +40,3 @@ fn main() {
               .filter_map; //~ ERROR attempted to take value of method `filter_map` on type
               //~^ HELP maybe a `()` to call it is missing
 }
-

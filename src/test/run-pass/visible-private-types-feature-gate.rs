@@ -19,4 +19,3 @@ struct Baz;
 pub fn f(_: Baz) {}
 
 fn main() {}
-

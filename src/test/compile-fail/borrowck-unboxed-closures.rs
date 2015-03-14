@@ -26,4 +26,3 @@ fn c<F:FnOnce(isize, isize) -> isize>(f: F) {
 }
 
 fn main() {}
-

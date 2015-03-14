@@ -12,4 +12,3 @@
 use std::collections::HashMap;
 
 pub type map = Box<HashMap<uint, uint>>;
-

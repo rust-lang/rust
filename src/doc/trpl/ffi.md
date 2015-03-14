@@ -543,4 +543,3 @@ The `extern` makes this function adhere to the C calling convention, as
 discussed above in "[Foreign Calling
 Conventions](ffi.html#foreign-calling-conventions)". The `no_mangle`
 attribute turns off Rust's name mangling, so that it is easier to link to.
-

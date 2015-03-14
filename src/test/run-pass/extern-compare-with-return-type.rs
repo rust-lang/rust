@@ -31,4 +31,3 @@ pub fn main() {
     assert!(uintuintuintuintret as uintuintuintuintret ==
             uintuintuintuintret as uintuintuintuintret);
 }
-

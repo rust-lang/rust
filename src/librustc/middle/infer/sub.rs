@@ -153,4 +153,3 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         self.higher_ranked_sub(a, b)
     }
 }
-

@@ -18,4 +18,3 @@ macro_rules! assert_approx_eq {
                 "{} is not approximately equal to {}", *a, *b);
     })
 }
-

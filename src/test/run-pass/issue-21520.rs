@@ -26,4 +26,3 @@ struct Bar<T:Foo>
 }
 
 fn main() { }
-

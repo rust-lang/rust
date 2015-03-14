@@ -17,4 +17,3 @@ else
 endif
 
 S := $(CFG_SRC_DIR)
-
