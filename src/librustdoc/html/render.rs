@@ -453,7 +453,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
                         path: fqp[..fqp.len() - 1].connect("::"),
-                        desc: shorter(item.doc_value()).to_string(),
+                        desc: shorter(item.doc_value()),
                         parent: Some(did),
                         search_type: None,
                     });
@@ -935,7 +935,7 @@ impl DocFolder for Cache {
                         ty: shortty(&item),
                         name: s.to_string(),
                         path: path.connect("::").to_string(),
-                        desc: shorter(item.doc_value()).to_string(),
+                        desc: shorter(item.doc_value()),
                         parent: parent,
                         search_type: get_index_search_type(&item, parent_basename),
                     });
@@ -1527,13 +1527,14 @@ fn full_path(cx: &Context, item: &clean::Item) -> String {
     return s
 }
 
-fn shorter<'a>(s: Option<&'a str>) -> &'a str {
+fn shorter<'a>(s: Option<&'a str>) -> String {
     match s {
-        Some(s) => match s.find("\n\n") {
-            Some(pos) => &s[..pos],
-            None => s,
-        },
-        None => ""
+        Some(s) => s.lines().take_while(|line|{
+            (*line).chars().any(|chr|{
+                !chr.is_whitespace()
+            })
+        }).collect::<Vec<_>>().connect("\n"),
+        None => "".to_string()
     }
 }
 
@@ -1663,7 +1664,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                     </tr>
                 ",
                 *myitem.name.as_ref().unwrap(),
-                Markdown(shorter(myitem.doc_value())),
+                Markdown(&shorter(myitem.doc_value())[..]),
                 class = shortty(myitem),
                 href = item_path(myitem),
                 title = full_path(cx, myitem),
