@@ -410,8 +410,12 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     F: FnOnce(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
 {
     let _icx = push_ctxt("tvec::iter_vec_loop");
-    let fcx = bcx.fcx;
 
+    if bcx.unreachable.get() {
+        return bcx;
+    }
+
+    let fcx = bcx.fcx;
     let loop_bcx = fcx.new_temp_block("expr_repeat");
     let next_bcx = fcx.new_temp_block("expr_repeat: next");
 
