@@ -14,8 +14,7 @@ use libc;
 use ArchiveRef;
 
 use std::ffi::CString;
-use std::mem;
-use std::raw;
+use std::slice;
 use std::path::Path;
 
 pub struct ArchiveRO {
@@ -62,10 +61,7 @@ impl ArchiveRO {
             if ptr.is_null() {
                 None
             } else {
-                Some(mem::transmute(raw::Slice {
-                    data: ptr,
-                    len: size as uint,
-                }))
+                Some(slice::from_raw_parts(ptr as *const u8, size as uint))
             }
         }
     }

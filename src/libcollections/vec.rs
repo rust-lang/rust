@@ -64,7 +64,6 @@ use core::ops::{Index, IndexMut, Deref, Add};
 use core::ops;
 use core::ptr;
 use core::ptr::Unique;
-use core::raw::Slice as RawSlice;
 use core::slice;
 use core::usize;
 
@@ -435,10 +434,7 @@ impl<T> Vec<T> {
         unsafe {
             let ptr = *self.ptr;
             assume(!ptr.is_null());
-            mem::transmute(RawSlice {
-                data: ptr,
-                len: self.len,
-            })
+            slice::from_raw_parts_mut(ptr, self.len)
         }
     }
 
@@ -1560,10 +1556,7 @@ impl<T> AsSlice<T> for Vec<T> {
         unsafe {
             let p = *self.ptr;
             assume(p != 0 as *mut T);
-            mem::transmute(RawSlice {
-                data: p,
-                len: self.len
-            })
+            slice::from_raw_parts(p, self.len)
         }
     }
 }

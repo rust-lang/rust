@@ -348,14 +348,8 @@ impl<K, V> Node<K, V> {
     #[inline]
     pub fn as_slices<'a>(&'a self) -> (&'a [K], &'a [V]) {
         unsafe {(
-            mem::transmute(raw::Slice {
-                data: *self.keys as *const K,
-                len: self.len()
-            }),
-            mem::transmute(raw::Slice {
-                data: *self.vals as *const V,
-                len: self.len()
-            })
+            slice::from_raw_parts(*self.keys, self.len()),
+            slice::from_raw_parts(*self.vals, self.len()),
         )}
     }
 
