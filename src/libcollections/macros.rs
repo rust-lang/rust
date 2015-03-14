@@ -84,8 +84,10 @@ macro_rules! vec {
     ($($x:expr,)*) => (vec![$($x),*])
 }
 
-// HACK: `impl [T]` is not available in cfg(test), use `::slice::into_vec`, instead of
-// `<[T]>::to_vec`
+// HACK(japaric): with cfg(test) the inherent `[T]::into_vec` method, which is required for this
+// macro definition, is not available. Instead use the `slice::into_vec`  function which is only
+// available with cfg(test)
+// NB see the slice::hack module in slice.rs for more information
 #[cfg(not(stage0))]
 #[cfg(test)]
 macro_rules! vec {

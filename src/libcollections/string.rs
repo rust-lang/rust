@@ -118,12 +118,14 @@ impl String {
         String { vec: <[_]>::to_vec(string.as_bytes()) }
     }
 
-    // HACK: `impl [T]` is not available in cfg(test), use `::slice::to_vec` instead of
-    // `<[T]>::to_vec`
+    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is required for this
+    // method definition, is not available. Since we don't require this method for testing
+    // purposes, I'll just stub it
+    // NB see the slice::hack module in slice.rs for more information
     #[inline]
     #[cfg(test)]
-    pub fn from_str(string: &str) -> String {
-        String { vec: ::slice::to_vec(string.as_bytes()) }
+    pub fn from_str(_: &str) -> String {
+        panic!("not available with cfg(test)");
     }
 
     /// Returns the vector as a string buffer, if possible, taking care not to
