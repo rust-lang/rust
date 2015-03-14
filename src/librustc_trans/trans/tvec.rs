@@ -293,7 +293,7 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
                 SaveIn(lldest) => {
                     match ty::eval_repeat_count(bcx.tcx(), &**count_expr) {
-                        0 => bcx,
+                        0 => expr::trans_into(bcx, &**element, Ignore),
                         1 => expr::trans_into(bcx, &**element, SaveIn(lldest)),
                         count => {
                             let elem = unpack_datum!(bcx, expr::trans(bcx, &**element));
