@@ -204,6 +204,7 @@ use std::io::prelude::*;
 use std::io;
 use std::mem::{swap};
 use std::num::FpCategory as Fp;
+#[cfg(stage0)]
 use std::num::{Float, Int};
 use std::ops::Index;
 use std::str::FromStr;
@@ -2622,7 +2623,6 @@ mod tests {
                 StackElement, Stack, Decoder, Encoder, EncoderError};
     use std::{i64, u64, f32, f64};
     use std::collections::BTreeMap;
-    use std::num::Float;
     use std::string;
 
     #[derive(RustcDecodable, Eq, PartialEq, Debug)]
