@@ -68,7 +68,7 @@ is that a moving closure always takes ownership of all variables that
 it uses. Ordinary closures, in contrast, just create a reference into
 the enclosing stack frame. Moving closures are most useful with Rust's
 concurrency features, and so we'll just leave it at this for
-now. We'll talk about them more in the "Threads" section of the guide.
+now. We'll talk about them more in the "Concurrency" chapter of the book.
 
 ## Accepting closures as arguments
 
