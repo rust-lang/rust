@@ -111,7 +111,24 @@ macro_rules! delegate_iter {
                 self.0.size_hint()
             }
         }
-    }
+    };
+    (pattern reverse $te:ty : $ti:ty) => {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl<'a, P: Pattern<'a>> Iterator for $ti
+            where P::Searcher: ReverseSearcher<'a>
+        {
+            type Item = $te;
+
+            #[inline]
+            fn next(&mut self) -> Option<$te> {
+                self.0.next()
+            }
+            #[inline]
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                self.0.size_hint()
+            }
+        }
+    };
 }
 
 /// A trait to abstract the idea of creating a new instance of a type from a
@@ -553,6 +570,19 @@ struct CharSplitsN<'a, P: Pattern<'a>> {
     invert: bool,
 }
 
+/// An iterator over the substrings of a string, separated by a
+/// pattern, in reverse order.
+struct RCharSplits<'a, P: Pattern<'a>> {
+    /// The slice remaining to be iterated
+    start: usize,
+    end: usize,
+    matcher: P::Searcher,
+    /// Whether an empty string at the end of iteration is allowed
+    allow_final_empty: bool,
+    finished: bool,
+}
+
+
 /// An iterator over the lines of a string, separated by `\n`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Lines<'a> {
@@ -642,6 +672,43 @@ where P::Searcher: DoubleEndedSearcher<'a> {
             if self.invert { self.iter.next_back() } else { self.iter.next() }
         } else {
             self.iter.get_end()
+        }
+    }
+}
+
+impl<'a, P: Pattern<'a>> RCharSplits<'a, P> {
+    #[inline]
+    fn get_remainder(&mut self) -> Option<&'a str> {
+        if !self.finished && (self.allow_final_empty || self.end - self.start > 0) {
+            self.finished = true;
+            unsafe {
+                let string = self.matcher.haystack().slice_unchecked(self.start, self.end);
+                Some(string)
+            }
+        } else {
+            None
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, P: Pattern<'a>> Iterator for RCharSplits<'a, P>
+    where P::Searcher: ReverseSearcher<'a>
+{
+    type Item = &'a str;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a str> {
+        if self.finished { return None }
+
+        let haystack = self.matcher.haystack();
+        match self.matcher.next_match_back() {
+            Some((a, b)) => unsafe {
+                let elt = haystack.slice_unchecked(b, self.end);
+                self.end = a;
+                Some(elt)
+            },
+            None => self.get_remainder(),
         }
     }
 }
@@ -1321,6 +1388,11 @@ delegate_iter!{pattern &'a str : SplitTerminator<'a, P>}
 pub struct SplitN<'a, P: Pattern<'a>>(CharSplitsN<'a, P>);
 delegate_iter!{pattern forward &'a str : SplitN<'a, P>}
 
+/// Return type of `StrExt::rsplit`
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct RSplit<'a, P: Pattern<'a>>(RCharSplits<'a, P>);
+delegate_iter!{pattern reverse &'a str : RSplit<'a, P>}
+
 /// Return type of `StrExt::rsplitn`
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplitN<'a, P: Pattern<'a>>(CharSplitsN<'a, P>);
@@ -1340,6 +1412,8 @@ pub trait StrExt {
     fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P>;
     fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P>;
     fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P>;
+    fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
+        where P::Searcher: ReverseSearcher<'a>;
     fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>;
     fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P>;
     #[allow(deprecated) /* for SplitStr */]
@@ -1433,6 +1507,19 @@ impl StrExt for str {
         SplitTerminator(CharSplits {
             allow_trailing_empty: false,
             ..self.split(pat).0
+        })
+    }
+
+    #[inline]
+    fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        RSplit(RCharSplits {
+            start: 0,
+            end: self.len(),
+            matcher: pat.into_searcher(self),
+            allow_final_empty: true,
+            finished: false,
         })
     }
 

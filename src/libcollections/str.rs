@@ -74,8 +74,8 @@ use slice::SliceConcatExt;
 
 pub use core::str::{FromStr, Utf8Error, Str};
 pub use core::str::{Lines, LinesAny, MatchIndices, SplitStr, CharRange};
-pub use core::str::{Split, SplitTerminator};
-pub use core::str::{SplitN, RSplitN};
+pub use core::str::{Split, SplitTerminator, SplitN};
+pub use core::str::{RSplit, RSplitN};
 pub use core::str::{from_utf8, CharEq, Chars, CharIndices, Bytes};
 pub use core::str::{from_utf8_unchecked, from_c_str, ParseBoolError};
 pub use unicode::str::{Words, Graphemes, GraphemeIndices};
@@ -697,6 +697,34 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
         core_str::StrExt::split_terminator(&self[..], pat)
+    }
+
+    /// An iterator over substrings of `self`, separated by a pattern,
+    /// starting from the end of the string.
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplit(' ').collect();
+    /// assert_eq!(v, ["lamb", "little", "a", "had", "Mary"]);
+    ///
+    /// let v: Vec<&str> = "lion::tiger::leopard".rsplit("::").collect();
+    /// assert_eq!(v, ["leopard", "tiger", "lion"]);
+    /// ```
+    ///
+    /// More complex patterns with a lambda:
+    ///
+    /// ```
+    /// let v: Vec<&str> = "abc1def2ghi".rsplit(|c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, ["ghi", "def", "abc"]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        core_str::StrExt::rsplit(&self[..], pat)
     }
 
     /// An iterator over substrings of `self`, separated by characters matched by a pattern,
