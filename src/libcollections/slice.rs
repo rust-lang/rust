@@ -1083,30 +1083,113 @@ impl<T> SliceExt for [T] {
     }
 }
 
-// HACK: With cfg(test) `impl [T]` is not available, these three functions are actually methods
-// that are in `impl [T]` but not in `core::slice::SliceExt` - this is only need for testing
+// HACK(japaric) needed for the implementation of `vec!` macro during testing
+// NB see the hack module in this file for more details
+#[cfg(not(stage0))]
 #[cfg(test)]
-pub fn into_vec<T>(mut b: Box<[T]>) -> Vec<T> {
-    unsafe {
-        let xs = Vec::from_raw_parts(b.as_mut_ptr(), b.len(), b.len());
-        mem::forget(b);
-        xs
-    }
-}
+pub use self::hack::into_vec;
 
+// HACK(japaric) needed for the implementation of `Vec::clone` during testing
+// NB see the hack module in this file for more details
+#[cfg(not(stage0))]
 #[cfg(test)]
-pub fn permutations<T>(s: &[T]) -> Permutations<T> where T: Clone {
-    Permutations{
-        swaps: ElementSwaps::new(s.len()),
-        v: ::slice::to_vec(s),
-    }
-}
+pub use self::hack::to_vec;
 
-#[cfg(test)]
-pub fn to_vec<T>(s: &[T]) -> Vec<T> where T: Clone {
-    let mut vector = Vec::with_capacity(s.len());
-    vector.push_all(s);
-    vector
+// HACK(japaric): With cfg(test) `impl [T]` is not available, these three functions are actually
+// methods that are in `impl [T]` but not in `core::slice::SliceExt` - we need to supply these
+// functions for the `test_permutations` test
+#[cfg(not(stage0))]
+mod hack {
+    use alloc::boxed::Box;
+    use core::clone::Clone;
+    #[cfg(test)]
+    use core::iter::{Iterator, IteratorExt};
+    use core::mem;
+    #[cfg(test)]
+    use core::option::Option::{Some, None};
+
+    #[cfg(test)]
+    use string::ToString;
+    use vec::Vec;
+
+    use super::{ElementSwaps, Permutations};
+
+    pub fn into_vec<T>(mut b: Box<[T]>) -> Vec<T> {
+        unsafe {
+            let xs = Vec::from_raw_parts(b.as_mut_ptr(), b.len(), b.len());
+            mem::forget(b);
+            xs
+        }
+    }
+
+    pub fn permutations<T>(s: &[T]) -> Permutations<T> where T: Clone {
+        Permutations{
+            swaps: ElementSwaps::new(s.len()),
+            v: to_vec(s),
+        }
+    }
+
+    #[inline]
+    pub fn to_vec<T>(s: &[T]) -> Vec<T> where T: Clone {
+        let mut vector = Vec::with_capacity(s.len());
+        vector.push_all(s);
+        vector
+    }
+
+    // NB we can remove this hack if we move this test to libcollectionstest - but that can't be
+    // done right now because the test needs access to the private fields of Permutations
+    #[test]
+    fn test_permutations() {
+        {
+            let v: [i32; 0] = [];
+            let mut it = permutations(&v);
+            let (min_size, max_opt) = it.size_hint();
+            assert_eq!(min_size, 1);
+            assert_eq!(max_opt.unwrap(), 1);
+            assert_eq!(it.next(), Some(to_vec(&v)));
+            assert_eq!(it.next(), None);
+        }
+        {
+            let v = ["Hello".to_string()];
+            let mut it = permutations(&v);
+            let (min_size, max_opt) = it.size_hint();
+            assert_eq!(min_size, 1);
+            assert_eq!(max_opt.unwrap(), 1);
+            assert_eq!(it.next(), Some(to_vec(&v)));
+            assert_eq!(it.next(), None);
+        }
+        {
+            let v = [1, 2, 3];
+            let mut it = permutations(&v);
+            let (min_size, max_opt) = it.size_hint();
+            assert_eq!(min_size, 3*2);
+            assert_eq!(max_opt.unwrap(), 3*2);
+            assert_eq!(it.next().unwrap(), [1,2,3]);
+            assert_eq!(it.next().unwrap(), [1,3,2]);
+            assert_eq!(it.next().unwrap(), [3,1,2]);
+            let (min_size, max_opt) = it.size_hint();
+            assert_eq!(min_size, 3);
+            assert_eq!(max_opt.unwrap(), 3);
+            assert_eq!(it.next().unwrap(), [3,2,1]);
+            assert_eq!(it.next().unwrap(), [2,3,1]);
+            assert_eq!(it.next().unwrap(), [2,1,3]);
+            assert_eq!(it.next(), None);
+        }
+        {
+            // check that we have N! permutations
+            let v = ['A', 'B', 'C', 'D', 'E', 'F'];
+            let mut amt = 0;
+            let mut it = permutations(&v);
+            let (min_size, max_opt) = it.size_hint();
+            for _perm in it.by_ref() {
+                amt += 1;
+            }
+            assert_eq!(amt, it.swaps.swaps_made);
+            assert_eq!(amt, min_size);
+            assert_eq!(amt, 2 * 3 * 4 * 5 * 6);
+            assert_eq!(amt, max_opt.unwrap());
+        }
+    }
 }
 
 #[cfg(not(stage0))]
@@ -1715,9 +1798,8 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_vec(&self) -> Vec<T> where T: Clone {
-        let mut vector = Vec::with_capacity(self.len());
-        vector.push_all(self);
-        vector
+        // NB see hack module in this file
+        hack::to_vec(self)
     }
 
     /// Creates an iterator that yields every possible permutation of the
@@ -1745,11 +1827,10 @@ impl<T> [T] {
     /// assert_eq!(Some(vec![3, 1, 2]), perms.next());
     /// ```
     #[unstable(feature = "collections")]
+    #[inline]
     pub fn permutations(&self) -> Permutations<T> where T: Clone {
-        Permutations{
-            swaps: ElementSwaps::new(self.len()),
-            v: self.to_vec(),
-        }
+        // NB see hack module in this file
+        hack::permutations(self)
     }
 
     /// Copies as many elements from `src` as it can into `self` (the
@@ -1931,12 +2012,10 @@ impl<T> [T] {
 
     /// Convert `self` into a vector without clones or allocation.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_vec(mut self: Box<Self>) -> Vec<T> {
-        unsafe {
-            let xs = Vec::from_raw_parts(self.as_mut_ptr(), self.len(), self.len());
-            mem::forget(self);
-            xs
-        }
+    #[inline]
+    pub fn into_vec(self: Box<Self>) -> Vec<T> {
+        // NB see hack module in this file
+        hack::into_vec(self)
     }
 }
 
@@ -2052,10 +2131,12 @@ impl<T: Clone> ToOwned for [T] {
     #[cfg(not(test))]
     fn to_owned(&self) -> Vec<T> { self.to_vec() }
 
-    // HACK: `impl [T]` is not available in cfg(test), use `::slice::to_vec` instead of
-    // `<[T]>::to_vec`
+    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec`, which is required for this method
+    // definition, is not available. Since we don't require this method for testing purposes, I'll
+    // just stub it
+    // NB see the slice::hack module in slice.rs for more information
     #[cfg(test)]
-    fn to_owned(&self) -> Vec<T> { ::slice::to_vec(self) }
+    fn to_owned(&self) -> Vec<T> { panic!("not available with cfg(test)") }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2370,65 +2451,5 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
         let old = *ptr;
         *ptr = ptr.offset(1);
         old
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use core::iter::{Iterator, IteratorExt};
-    use core::option::Option::{None, Some};
-    use string::ToString;
-
-    #[test]
-    fn test_permutations() {
-        {
-            let v: [i32; 0] = [];
-            let mut it = ::slice::permutations(&v);
-            let (min_size, max_opt) = it.size_hint();
-            assert_eq!(min_size, 1);
-            assert_eq!(max_opt.unwrap(), 1);
-            assert_eq!(it.next(), Some(::slice::to_vec(&v)));
-            assert_eq!(it.next(), None);
-        }
-        {
-            let v = ["Hello".to_string()];
-            let mut it = ::slice::permutations(&v);
-            let (min_size, max_opt) = it.size_hint();
-            assert_eq!(min_size, 1);
-            assert_eq!(max_opt.unwrap(), 1);
-            assert_eq!(it.next(), Some(::slice::to_vec(&v)));
-            assert_eq!(it.next(), None);
-        }
-        {
-            let v = [1, 2, 3];
-            let mut it = ::slice::permutations(&v);
-            let (min_size, max_opt) = it.size_hint();
-            assert_eq!(min_size, 3*2);
-            assert_eq!(max_opt.unwrap(), 3*2);
-            assert_eq!(it.next().unwrap(), [1,2,3]);
-            assert_eq!(it.next().unwrap(), [1,3,2]);
-            assert_eq!(it.next().unwrap(), [3,1,2]);
-            let (min_size, max_opt) = it.size_hint();
-            assert_eq!(min_size, 3);
-            assert_eq!(max_opt.unwrap(), 3);
-            assert_eq!(it.next().unwrap(), [3,2,1]);
-            assert_eq!(it.next().unwrap(), [2,3,1]);
-            assert_eq!(it.next().unwrap(), [2,1,3]);
-            assert_eq!(it.next(), None);
-        }
-        {
-            // check that we have N! permutations
-            let v = ['A', 'B', 'C', 'D', 'E', 'F'];
-            let mut amt = 0;
-            let mut it = ::slice::permutations(&v);
-            let (min_size, max_opt) = it.size_hint();
-            for _perm in it.by_ref() {
-                amt += 1;
-            }
-            assert_eq!(amt, it.swaps.swaps_made);
-            assert_eq!(amt, min_size);
-            assert_eq!(amt, 2 * 3 * 4 * 5 * 6);
-            assert_eq!(amt, max_opt.unwrap());
-        }
     }
 }
