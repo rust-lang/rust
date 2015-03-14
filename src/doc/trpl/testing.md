@@ -1,7 +1,7 @@
 % Testing
 
 > Program testing can be a very effective way to show the presence of bugs, but
-> it is hopelessly inadequate for showing their absence. 
+> it is hopelessly inadequate for showing their absence.
 >
 > Edsger W. Dijkstra, "The Humble Programmer" (1972)
 
@@ -308,7 +308,7 @@ extern crate adder;
 #[test]
 fn it_works() {
     assert_eq!(4, adder::add_two(2));
-}   
+}
 ```
 
 This looks similar to our previous tests, but slightly different. We now have
