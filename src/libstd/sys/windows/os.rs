@@ -13,7 +13,7 @@
 #![allow(bad_style)]
 
 use prelude::v1::*;
-use os::windows::*;
+use os::windows::prelude::*;
 
 use error::Error as StdError;
 use ffi::{OsString, OsStr, AsOsStr};
@@ -25,6 +25,7 @@ use mem;
 #[allow(deprecated)]
 use old_io::{IoError, IoResult};
 use ops::Range;
+use os::windows::ffi::EncodeWide;
 use path::{self, PathBuf};
 use ptr;
 use slice;

@@ -20,7 +20,7 @@ use libc;
 use mem;
 use num::Int;
 use old_io::{self, IoResult, IoError};
-use os::windows::{OsStrExt, OsStringExt};
+use os::windows::ffi::{OsStrExt, OsStringExt};
 use path::PathBuf;
 use sync::{Once, ONCE_INIT};
 

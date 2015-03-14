@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use prelude::v1::*;
+use os::unix::prelude::*;
 
 use collections::HashMap;
 use env;
@@ -17,7 +18,6 @@ use fmt;
 use io::{self, Error, ErrorKind};
 use libc::{self, pid_t, c_void, c_int, gid_t, uid_t};
 use mem;
-use os::unix::OsStrExt;
 use ptr;
 use sys::pipe2::AnonPipe;
 use sys::{self, retry, c, cvt};
