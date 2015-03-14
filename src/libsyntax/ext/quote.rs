@@ -171,6 +171,7 @@ pub mod rt {
         }
     }
 
+    impl_to_source! { ast::Path, path_to_string }
     impl_to_source! { ast::Ty, ty_to_string }
     impl_to_source! { ast::Block, block_to_string }
     impl_to_source! { ast::Arg, arg_to_string }
@@ -310,6 +311,7 @@ pub mod rt {
     }
 
     impl_to_tokens! { ast::Ident }
+    impl_to_tokens! { ast::Path }
     impl_to_tokens! { P<ast::Item> }
     impl_to_tokens! { P<ast::ImplItem> }
     impl_to_tokens! { P<ast::TraitItem> }
