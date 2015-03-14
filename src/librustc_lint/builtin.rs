@@ -811,7 +811,7 @@ impl NonCamelCaseTypes {
                 if i == 0 {
                     c.to_uppercase().collect::<String>()
                 } else {
-                    c.to_string()
+                    c.to_lowercase().collect()
                 }
             )).collect::<Vec<_>>().concat()
         }
