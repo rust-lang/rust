@@ -1078,25 +1078,17 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
         Some(ast_map::NodeTraitItem(trait_item)) => {
             match trait_item.node {
                 ast::MethodTraitItem(_, Some(ref body)) => body,
-                ast::MethodTraitItem(_, None) => {
-                    tcx.sess.bug("unexpected variant: required trait method \
-                                  in has_nested_returns")
-                }
-                ast::TypeTraitItem(..) => {
-                    tcx.sess.bug("unexpected variant: associated type trait item in \
-                                  has_nested_returns")
+                _ => {
+                    tcx.sess.bug("unexpected variant: trait item other than a \
+                                  provided method in has_nested_returns")
                 }
             }
         }
         Some(ast_map::NodeImplItem(impl_item)) => {
             match impl_item.node {
                 ast::MethodImplItem(_, ref body) => body,
-                ast::TypeImplItem(_) => {
-                    tcx.sess.bug("unexpected variant: associated type impl item in \
-                                  has_nested_returns")
-                }
-                ast::MacImplItem(_) => {
-                    tcx.sess.bug("unexpected variant: unexpanded macro impl item in \
+                _ => {
+                    tcx.sess.bug("unexpected variant: non-method impl item in \
                                   has_nested_returns")
                 }
             }
@@ -2363,12 +2355,13 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
         ast_map::NodeTraitItem(trait_item) => {
             debug!("get_item_val(): processing a NodeTraitItem");
             match trait_item.node {
-                ast::MethodTraitItem(_, None) | ast::TypeTraitItem(..) => {
-                    ccx.sess().span_bug(trait_item.span,
-                        "unexpected variant: required trait method in get_item_val()");
-                }
                 ast::MethodTraitItem(_, Some(_)) => {
                     register_method(ccx, id, &trait_item.attrs, trait_item.span)
+                }
+                _ => {
+                    ccx.sess().span_bug(trait_item.span,
+                        "unexpected variant: trait item other than a provided \
+                         method in get_item_val()");
                 }
             }
         }
@@ -2378,13 +2371,10 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                 ast::MethodImplItem(..) => {
                     register_method(ccx, id, &impl_item.attrs, impl_item.span)
                 }
-                ast::TypeImplItem(_) => {
+                _ => {
                     ccx.sess().span_bug(impl_item.span,
-                        "unexpected variant: associated type in get_item_val()")
-                }
-                ast::MacImplItem(_) => {
-                    ccx.sess().span_bug(impl_item.span,
-                        "unexpected variant: unexpanded macro in get_item_val()")
+                        "unexpected variant: non-method impl item in \
+                         get_item_val()");
                 }
             }
         }

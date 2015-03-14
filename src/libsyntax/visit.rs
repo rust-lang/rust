@@ -619,6 +619,12 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
         visitor.visit_attribute(attr);
     }
     match trait_item.node {
+        ConstTraitItem(ref ty, ref default) => {
+            visitor.visit_ty(ty);
+            if let Some(ref expr) = *default {
+                visitor.visit_expr(expr);
+            }
+        }
         MethodTraitItem(ref sig, None) => {
             visitor.visit_explicit_self(&sig.explicit_self);
             visitor.visit_generics(&sig.generics);
@@ -641,6 +647,10 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
         visitor.visit_attribute(attr);
     }
     match impl_item.node {
+        ConstImplItem(ref ty, ref expr) => {
+            visitor.visit_ty(ty);
+            visitor.visit_expr(expr);
+        }
         MethodImplItem(ref sig, ref body) => {
             visitor.visit_fn(FkMethod(impl_item.ident, sig, Some(impl_item.vis)), &sig.decl,
                              body, impl_item.span, impl_item.id);

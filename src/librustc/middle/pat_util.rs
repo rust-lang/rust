@@ -62,7 +62,7 @@ pub fn pat_is_const(dm: &DefMap, pat: &ast::Pat) -> bool {
     match pat.node {
         ast::PatIdent(_, _, None) | ast::PatEnum(..) => {
             match dm.borrow().get(&pat.id).map(|d| d.full_def()) {
-                Some(DefConst(..)) => true,
+                Some(DefConst(..)) | Some(DefAssociatedConst(..)) => true,
                 _ => false
             }
         }

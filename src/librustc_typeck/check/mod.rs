@@ -808,6 +808,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
 
         for impl_item in impl_items {
             match impl_item.node {
+                ast::ConstImplItem(_, _) => {}
                 ast::MethodImplItem(ref sig, ref body) => {
                     check_method_body(ccx, &impl_pty.generics, sig, body,
                                       impl_item.id, impl_item.span);
@@ -823,6 +824,7 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
         let trait_def = ty::lookup_trait_def(ccx.tcx, local_def(it.id));
         for trait_item in trait_items {
             match trait_item.node {
+                ast::ConstTraitItem(_, _) => {}
                 ast::MethodTraitItem(_, None) => {
                     // Nothing to do, since required methods don't have
                     // bodies to check.
@@ -920,6 +922,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // and compatible with trait signature
     for impl_item in impl_items {
         match impl_item.node {
+            ast::ConstImplItem(_, _) => {}
             ast::MethodImplItem(_, ref body) => {
                 let impl_method_def_id = local_def(impl_item.id);
                 let impl_item_ty = ty::impl_or_trait_item(ccx.tcx,
@@ -979,13 +982,15 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         match (associated_type, &typedef_ty) {
                             (&ty::TypeTraitItem(_), &ty::TypeTraitItem(_)) => {}
                             _ => {
-                                // This is `span_bug` as it should have
-                                // already been caught in resolve.
-                                tcx.sess.span_bug(
-                                    impl_item.span,
-                                    &format!("item `{}` is of a different kind from its trait `{}`",
-                                             token::get_name(typedef_ty.name()),
-                                             impl_trait_ref.repr(tcx)));
+                                // Formerly `span_bug`, but it turns out that
+                                // this is not checked in resolve, so this is
+                                // the first place where we'll notice the
+                                // mismatch.
+                                span_err!(tcx.sess, impl_item.span, E0323,
+                                          "item `{}` is an associated type, \
+                                          which doesn't match its trait `{}`",
+                                          token::get_name(typedef_ty.name()),
+                                          impl_trait_ref.repr(tcx))
                             }
                         }
                     }
@@ -1012,6 +1017,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let mut missing_methods = Vec::new();
     for trait_item in &*trait_items {
         match *trait_item {
+            ty::ConstTraitItem(_) => {}
             ty::MethodTraitItem(ref trait_method) => {
                 let is_implemented =
                     impl_items.iter().any(|ii| {
@@ -1019,8 +1025,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                             ast::MethodImplItem(..) => {
                                 ii.ident.name == trait_method.name
                             }
-                            ast::TypeImplItem(_) |
-                            ast::MacImplItem(_) => false,
+                            _ => false,
                         }
                     });
                 let is_provided =
@@ -1035,8 +1040,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         ast::TypeImplItem(_) => {
                             ii.ident.name == associated_type.name
                         }
-                        ast::MethodImplItem(..) |
-                        ast::MacImplItem(_) => false,
+                        _ => false,
                     }
                 });
                 if !is_implemented {
@@ -4208,7 +4212,7 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
         def::DefFn(id, _) | def::DefMethod(id, _) |
         def::DefStatic(id, _) | def::DefVariant(_, id, _) |
-        def::DefStruct(id) | def::DefConst(id) => {
+        def::DefStruct(id) | def::DefConst(id) | def::DefAssociatedConst(id, _) => {
             (ty::lookup_item_type(fcx.tcx(), id), ty::lookup_predicates(fcx.tcx(), id))
         }
         def::DefTrait(_) |
@@ -4349,6 +4353,10 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 segment_spaces = vec![Some(subst::FnSpace)];
                 ufcs_method = Some((provenance, self_ty));
             }
+        }
+
+        def::DefAssociatedConst(..) => {
+            segment_spaces = repeat(None).take(segments.len()).collect();
         }
 
         // Other cases. Various nonsense that really shouldn't show up

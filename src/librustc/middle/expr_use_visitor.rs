@@ -234,7 +234,7 @@ impl OverloadedCallType {
             ty::MethodTraitItem(ref method_descriptor) => {
                 (*method_descriptor).clone()
             }
-            ty::TypeTraitItem(_) => {
+            _ => {
                 tcx.sess.bug("overloaded call method wasn't in method map")
             }
         };
@@ -1183,6 +1183,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         }
 
                         Some(def::DefConst(..)) |
+                        Some(def::DefAssociatedConst(..)) |
                         Some(def::DefLocal(..)) => {
                             // This is a leaf (i.e. identifier binding
                             // or constant value to match); thus no

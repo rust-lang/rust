@@ -1236,6 +1236,7 @@ pub struct TraitItem {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum TraitItem_ {
+    ConstTraitItem(P<Ty>, Option<P<Expr>>),
     MethodTraitItem(MethodSig, Option<P<Block>>),
     TypeTraitItem(TyParamBounds, Option<P<Ty>>),
 }
@@ -1252,6 +1253,7 @@ pub struct ImplItem {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ImplItem_ {
+    ConstImplItem(P<Ty>, P<Expr>),
     MethodImplItem(MethodSig, P<Block>),
     TypeImplItem(P<Ty>),
     MacImplItem(Mac),

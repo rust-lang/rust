@@ -973,6 +973,10 @@ pub fn noop_fold_trait_item<T: Folder>(i: P<TraitItem>, folder: &mut T)
         ident: folder.fold_ident(ident),
         attrs: fold_attrs(attrs, folder),
         node: match node {
+            ConstTraitItem(ty, default) => {
+                ConstTraitItem(folder.fold_ty(ty),
+                               default.map(|x| folder.fold_expr(x)))
+            }
             MethodTraitItem(sig, body) => {
                 MethodTraitItem(noop_fold_method_sig(sig, folder),
                                 body.map(|x| folder.fold_block(x)))
@@ -994,6 +998,9 @@ pub fn noop_fold_impl_item<T: Folder>(i: P<ImplItem>, folder: &mut T)
         attrs: fold_attrs(attrs, folder),
         vis: vis,
         node: match node  {
+            ConstImplItem(ty, expr) => {
+                ConstImplItem(folder.fold_ty(ty), folder.fold_expr(expr))
+            }
             MethodImplItem(sig, body) => {
                 MethodImplItem(noop_fold_method_sig(sig, folder),
                                folder.fold_block(body))

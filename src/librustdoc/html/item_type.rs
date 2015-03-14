@@ -39,6 +39,7 @@ pub enum ItemType {
     Primitive       = 15,
     AssociatedType  = 16,
     Constant        = 17,
+    AssociatedConst = 18,
 }
 
 impl ItemType {
@@ -63,6 +64,7 @@ impl ItemType {
             clean::ForeignStaticItem(..)   => ItemType::Static, // no ForeignStatic
             clean::MacroItem(..)           => ItemType::Macro,
             clean::PrimitiveItem(..)       => ItemType::Primitive,
+            clean::AssociatedConstItem(..) => ItemType::AssociatedConst,
             clean::AssociatedTypeItem(..)  => ItemType::AssociatedType,
             clean::DefaultImplItem(..)     => ItemType::Impl,
         }
@@ -102,6 +104,7 @@ impl ItemType {
             ItemType::Primitive       => "primitive",
             ItemType::AssociatedType  => "associatedtype",
             ItemType::Constant        => "constant",
+            ItemType::AssociatedConst => "associatedconstant",
         }
     }
 }

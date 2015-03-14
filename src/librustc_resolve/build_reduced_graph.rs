@@ -530,6 +530,12 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                         trait_item.span);
 
                     match trait_item.node {
+                        ast::ConstTraitItem(..) => {
+                            let def = DefAssociatedConst(local_def(trait_item.id),
+                                                         FromTrait(local_def(item.id)));
+                            // NB: not IMPORTABLE
+                            name_bindings.define_value(def, trait_item.span, PUBLIC);
+                        }
                         ast::MethodTraitItem(..) => {
                             let def = DefMethod(local_def(trait_item.id),
                                                 FromTrait(local_def(item.id)));
@@ -703,7 +709,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 csearch::get_tuple_struct_definition_if_ctor(&self.session.cstore, ctor_id)
                     .map_or(def, |_| DefStruct(ctor_id)), DUMMY_SP, modifiers);
           }
-          DefFn(..) | DefStatic(..) | DefConst(..) | DefMethod(..) => {
+          DefFn(..) | DefStatic(..) | DefConst(..) | DefAssociatedConst(..) |
+          DefMethod(..) => {
             debug!("(building reduced graph for external \
                     crate) building value (fn/static) {}", final_ident);
             // impl methods have already been defined with the correct importability modifier

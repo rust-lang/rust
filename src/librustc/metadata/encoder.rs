@@ -378,14 +378,11 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
                     let impl_item = ty::impl_or_trait_item(
                         ecx.tcx,
                         method_did.def_id());
-                    match impl_item {
-                        ty::MethodTraitItem(ref m) => {
-                            encode_reexported_static_method(rbml_w,
-                                                            exp,
-                                                            m.def_id,
-                                                            m.name);
-                        }
-                        ty::TypeTraitItem(_) => {}
+                    if let ty::MethodTraitItem(ref m) = impl_item {
+                        encode_reexported_static_method(rbml_w,
+                                                        exp,
+                                                        m.def_id,
+                                                        m.name);
                     }
                 }
             }
@@ -1195,6 +1192,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         for &item_def_id in items {
             rbml_w.start_tag(tag_item_impl_item);
             match item_def_id {
+                ty::ConstTraitItemId(_) => {}
                 ty::MethodTraitItemId(item_def_id) => {
                     encode_def_id(rbml_w, item_def_id);
                     encode_item_sort(rbml_w, 'r');
@@ -1232,6 +1230,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             });
 
             match ty::impl_or_trait_item(tcx, trait_item_def_id.def_id()) {
+                ty::ConstTraitItem(_) => {}
                 ty::MethodTraitItem(ref method_type) => {
                     encode_info_for_method(ecx,
                                            rbml_w,
@@ -1276,6 +1275,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         for &method_def_id in &*ty::trait_item_def_ids(tcx, def_id) {
             rbml_w.start_tag(tag_item_trait_item);
             match method_def_id {
+                ty::ConstTraitItemId(_) => {}
                 ty::MethodTraitItemId(method_def_id) => {
                     encode_def_id(rbml_w, method_def_id);
                     encode_item_sort(rbml_w, 'r');
@@ -1321,6 +1321,9 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 ty::impl_or_trait_item(tcx, item_def_id.def_id());
             let is_nonstatic_method;
             match trait_item_type {
+                ty::ConstTraitItem(_) => {
+                    is_nonstatic_method = false;
+                }
                 ty::MethodTraitItem(method_ty) => {
                     let method_def_id = item_def_id.def_id();
 
@@ -1365,6 +1368,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             let trait_item = &*ms[i];
             encode_attributes(rbml_w, &trait_item.attrs);
             match trait_item.node {
+                ast::ConstTraitItem(_, _) => {}
                 ast::MethodTraitItem(ref sig, ref body) => {
                     // If this is a static method, we've already
                     // encoded this.
