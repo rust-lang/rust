@@ -155,3 +155,33 @@ impl Write for Vec<u8> {
 
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use core::prelude::*;
+
+    use io::prelude::*;
+
+    #[test]
+    fn test_slice_reader() {
+        let in_buf = vec![0, 1, 2, 3, 4, 5, 6, 7];
+        let mut reader = &mut in_buf.as_slice();
+        let mut buf = [];
+        assert_eq!(reader.read(&mut buf), Ok(0));
+        let mut buf = [0];
+        assert_eq!(reader.read(&mut buf), Ok(1));
+        assert_eq!(reader.len(), 7);
+        let b: &[_] = &[0];
+        assert_eq!(buf.as_slice(), b);
+        let mut buf = [0; 4];
+        assert_eq!(reader.read(&mut buf), Ok(4));
+        assert_eq!(reader.len(), 3);
+        let b: &[_] = &[1, 2, 3, 4];
+        assert_eq!(buf.as_slice(), b);
+        assert_eq!(reader.read(&mut buf), Ok(3));
+        let b: &[_] = &[5, 6, 7];
+        assert_eq!(&buf[..3], b);
+        assert_eq!(reader.read(&mut buf), Ok(0));
+    }
+}
