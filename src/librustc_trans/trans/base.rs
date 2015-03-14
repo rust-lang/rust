@@ -702,6 +702,10 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
         let unit_ty = ty::sequence_element_type(cx.tcx(), t);
         cx = tvec::iter_vec_raw(cx, base, unit_ty, len, f);
       }
+      ty::ty_vec(_, None) | ty::ty_str => {
+        let unit_ty = ty::sequence_element_type(cx.tcx(), t);
+        cx = tvec::iter_vec_raw(cx, data_ptr, unit_ty, info.unwrap(), f);
+      }
       ty::ty_tup(ref args) => {
           let repr = adt::represent_type(cx.ccx(), t);
           for (i, arg) in args.iter().enumerate() {

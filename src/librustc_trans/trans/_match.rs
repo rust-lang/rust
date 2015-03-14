@@ -660,7 +660,7 @@ fn bind_subslice_pat(bcx: Block,
                      offset_right: uint) -> ValueRef {
     let _icx = push_ctxt("match::bind_subslice_pat");
     let vec_ty = node_id_type(bcx, pat_id);
-    let vt = tvec::vec_types(bcx, ty::sequence_element_type(bcx.tcx(), ty::type_content(vec_ty)));
+    let unit_ty = ty::sequence_element_type(bcx.tcx(), ty::type_content(vec_ty));
     let vec_datum = match_datum(val, vec_ty);
     let (base, len) = vec_datum.get_vec_base_and_len(bcx);
 
@@ -669,7 +669,7 @@ fn bind_subslice_pat(bcx: Block,
     let slice_len = Sub(bcx, len, slice_len_offset, DebugLoc::None);
     let slice_ty = ty::mk_slice(bcx.tcx(),
                                 bcx.tcx().mk_region(ty::ReStatic),
-                                ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable});
+                                ty::mt {ty: unit_ty, mutbl: ast::MutImmutable});
     let scratch = rvalue_scratch_datum(bcx, slice_ty, "");
     Store(bcx, slice_begin,
           GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
