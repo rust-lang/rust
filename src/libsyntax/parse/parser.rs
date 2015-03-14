@@ -78,6 +78,7 @@ use owned_slice::OwnedSlice;
 use std::collections::HashSet;
 use std::io::prelude::*;
 use std::mem;
+#[cfg(stage0)]
 use std::num::Float;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
