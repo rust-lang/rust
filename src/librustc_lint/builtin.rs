@@ -1584,8 +1584,9 @@ impl LintPass for MissingDoc {
         if self.private_traits.contains(&trait_item.id) { return }
 
         let desc = match trait_item.node {
+            ast::ConstTraitItem(..) => "an associated constant",
             ast::MethodTraitItem(..) => "a trait method",
-            ast::TypeTraitItem(..) => "an associated type"
+            ast::TypeTraitItem(..) => "an associated type",
         };
 
         self.check_missing_docs_attrs(cx, Some(trait_item.id),
@@ -1600,9 +1601,10 @@ impl LintPass for MissingDoc {
         }
 
         let desc = match impl_item.node {
+            ast::ConstImplItem(..) => "an associated constant",
             ast::MethodImplItem(..) => "a method",
             ast::TypeImplItem(_) => "an associated type",
-            ast::MacImplItem(_) => "an impl item macro"
+            ast::MacImplItem(_) => "an impl item macro",
         };
         self.check_missing_docs_attrs(cx, Some(impl_item.id),
                                       &impl_item.attrs,

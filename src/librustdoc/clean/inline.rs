@@ -312,6 +312,7 @@ pub fn build_impl(cx: &DocContext,
         let did = did.def_id();
         let impl_item = ty::impl_or_trait_item(tcx, did);
         match impl_item {
+            ty::ConstTraitItem(_) => { return None }
             ty::MethodTraitItem(method) => {
                 if method.vis != ast::Public && associated_trait.is_none() {
                     return None

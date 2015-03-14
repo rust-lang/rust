@@ -1314,15 +1314,10 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                      impl_item.span,
                      true)
                 }
-                ast::TypeImplItem(_) => {
+                _ => {
                     cx.sess().span_bug(impl_item.span,
                                        "create_function_debug_context() \
-                                        called on associated type?!")
-                }
-                ast::MacImplItem(_) => {
-                    cx.sess().span_bug(impl_item.span,
-                                       "create_function_debug_context() \
-                                        called on unexpanded macro?!")
+                                        called on non-method impl item?!")
                 }
             }
         }

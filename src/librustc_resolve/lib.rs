@@ -60,7 +60,8 @@ use rustc::middle::ty::{Freevar, FreevarMap, TraitMap, GlobMap};
 use rustc::util::nodemap::{NodeMap, NodeSet, DefIdSet, FnvHashMap};
 use rustc::util::lev_distance::lev_distance;
 
-use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate, CrateNum};
+use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block};
+use syntax::ast::{ConstImplItem, Crate, CrateNum};
 use syntax::ast::{DefId, Expr, ExprAgain, ExprBreak, ExprField};
 use syntax::ast::{ExprLoop, ExprWhile, ExprMethodCall};
 use syntax::ast::{ExprPath, ExprStruct, FnDecl};
@@ -1831,6 +1832,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // FIXME #4951: Do we need a node ID here?
 
                             let type_parameters = match trait_item.node {
+                                ast::ConstTraitItem(..) => NoTypeParameters,
                                 ast::MethodTraitItem(ref sig, _) => {
                                     HasTypeParameters(&sig.generics,
                                                       FnSpace,
@@ -2094,6 +2096,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     this.with_current_self_type(self_type, |this| {
                         for impl_item in impl_items {
                             match impl_item.node {
+                                ConstImplItem(_, _) => {}
                                 MethodImplItem(ref sig, _) => {
                                     // If this is a trait impl, ensure the method
                                     // exists in trait
@@ -2466,7 +2469,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     // This must be an enum variant, struct or const.
                     if let Some(path_res) = self.resolve_path(pat_id, path, 0, ValueNS, false) {
                         match path_res.base_def {
-                            DefVariant(..) | DefStruct(..) | DefConst(..) => {
+                            DefVariant(..) | DefStruct(..) | DefConst(..) |
+                            DefAssociatedConst(..) => {
                                 self.record_def(pattern.id, path_res);
                             }
                             DefStatic(..) => {
@@ -2542,7 +2546,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             def @ DefVariant(..) | def @ DefStruct(..) => {
                                 return FoundStructOrEnumVariant(def, LastMod(AllPublic));
                             }
-                            def @ DefConst(..) => {
+                            def @ DefConst(..) | def @ DefAssociatedConst(..) => {
                                 return FoundConst(def, LastMod(AllPublic));
                             }
                             DefStatic(..) => {

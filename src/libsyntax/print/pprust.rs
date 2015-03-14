@@ -1269,6 +1269,7 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ti.span.lo));
         try!(self.print_outer_attributes(&ti.attrs));
         match ti.node {
+            ast::ConstTraitItem(_, _) => Ok(()),
             ast::MethodTraitItem(ref sig, ref body) => {
                 if body.is_some() {
                     try!(self.head(""));
@@ -1295,6 +1296,7 @@ impl<'a> State<'a> {
         try!(self.maybe_print_comment(ii.span.lo));
         try!(self.print_outer_attributes(&ii.attrs));
         match ii.node {
+            ast::ConstImplItem(_, _) => Ok(()),
             ast::MethodImplItem(ref sig, ref body) => {
                 try!(self.head(""));
                 try!(self.print_method_sig(ii.ident, sig, ii.vis));

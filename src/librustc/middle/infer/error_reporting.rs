@@ -843,8 +843,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                   Some(&sig.explicit_self.node),
                                   item.span))
                         }
-                        ast::TypeImplItem(_) => None,
-                        ast::MacImplItem(_) => self.tcx.sess.bug("unexpanded macro")
+                        ast::MacImplItem(_) => self.tcx.sess.bug("unexpanded macro"),
+                        _ => None,
                     }
                 },
                 ast_map::NodeTraitItem(item) => {
@@ -1723,8 +1723,8 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
                         taken.push_all(&sig.generics.lifetimes);
                         Some(ii.id)
                     }
-                    ast::TypeImplItem(_) => None,
-                    ast::MacImplItem(_) => tcx.sess.bug("unexpanded macro")
+                    ast::MacImplItem(_) => tcx.sess.bug("unexpanded macro"),
+                    _ => None,
                 }
             }
             _ => None

@@ -589,7 +589,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         match def {
           def::DefStruct(..) | def::DefVariant(..) | def::DefConst(..) |
-          def::DefFn(..) | def::DefMethod(..) => {
+          def::DefAssociatedConst(..) | def::DefFn(..) | def::DefMethod(..) => {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
           def::DefMod(_) | def::DefForeignMod(_) | def::DefUse(_) |
@@ -1286,7 +1286,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         try!(self.cat_pattern_(cmt_field, &**subpat, op));
                     }
                 }
-                Some(def::DefConst(..)) => {
+                Some(def::DefConst(..)) | Some(def::DefAssociatedConst(..)) => {
                     for subpat in subpats {
                         try!(self.cat_pattern_(cmt.clone(), &**subpat, op));
                     }

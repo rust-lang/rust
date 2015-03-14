@@ -236,11 +236,9 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     }
                     d
                 }
-                ast::TypeImplItem(_) => {
-                    ccx.sess().bug("can't monomorphize an associated type")
-                }
-                ast::MacImplItem(_) => {
-                    ccx.sess().bug("can't monomorphize an unexpanded macro")
+                _ => {
+                    ccx.sess().bug(&format!("can't monomorphize a {:?}",
+                                           map_node))
                 }
             }
         }

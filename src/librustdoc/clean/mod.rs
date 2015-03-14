@@ -361,6 +361,7 @@ pub enum ItemEnum {
     ForeignStaticItem(Static),
     MacroItem(Macro),
     PrimitiveItem(PrimitiveType),
+    AssociatedConstItem(Type, Option<String>),
     AssociatedTypeItem(Vec<TyParamBound>, Option<Type>),
     DefaultImplItem(DefaultImpl),
 }
@@ -1235,6 +1236,11 @@ impl Clean<PolyTrait> for ast::PolyTraitRef {
 impl Clean<Item> for ast::TraitItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
+            ast::ConstTraitItem(ref ty, ref default) => {
+                AssociatedConstItem(ty.clean(cx),
+                                    default.as_ref().map(|expr|
+                                                         expr.span.to_src(cx)))
+            }
             ast::MethodTraitItem(ref sig, Some(_)) => {
                 MethodItem(sig.clean(cx))
             }
@@ -1260,6 +1266,12 @@ impl Clean<Item> for ast::TraitItem {
 impl Clean<Item> for ast::ImplItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.node {
+            ast::ConstImplItem(ref ty, ref expr) => {
+                ConstantItem(Constant{
+                    type_: ty.clean(cx),
+                    expr: expr.span.to_src(cx),
+                })
+            }
             ast::MethodImplItem(ref sig, _) => {
                 MethodItem(sig.clean(cx))
             }
@@ -1363,6 +1375,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
 impl<'tcx> Clean<Item> for ty::ImplOrTraitItem<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
         match *self {
+            ty::ConstTraitItem(ref cti) => cti.clean(cx),
             ty::MethodTraitItem(ref mti) => mti.clean(cx),
             ty::TypeTraitItem(ref tti) => tti.clean(cx),
         }
@@ -2668,6 +2681,20 @@ impl Clean<Stability> for attr::Stability {
                                                                     |istr| istr.to_string()),
             reason: self.reason.as_ref().map_or("".to_string(),
                                                 |interned| interned.to_string()),
+        }
+    }
+}
+
+impl<'tcx> Clean<Item> for ty::AssociatedConst<'tcx> {
+    fn clean(&self, cx: &DocContext) -> Item {
+        Item {
+            source: DUMMY_SP.clean(cx),
+            name: Some(self.name.clean(cx)),
+            attrs: Vec::new(),
+            inner: AssociatedConstItem(self.ty.clean(cx), None),
+            visibility: None,
+            def_id: self.def_id,
+            stability: None,
         }
     }
 }

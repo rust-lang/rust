@@ -272,6 +272,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
                 if public_ty || public_trait {
                     for impl_item in impl_items {
                         match impl_item.node {
+                            ast::ConstImplItem(_, _) => {}
                             ast::MethodImplItem(ref sig, _) => {
                                 let meth_public = match sig.explicit_self.node {
                                     ast::SelfStatic => public_ty,
@@ -399,6 +400,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             debug!("privacy - is {:?} a public method", did);
 
             return match self.tcx.impl_or_trait_items.borrow().get(&did) {
+                Some(&ty::ConstTraitItem(_)) => ExternallyDenied,
                 Some(&ty::MethodTraitItem(ref meth)) => {
                     debug!("privacy - well at least it's a method: {:?}",
                            *meth);
@@ -490,6 +492,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 //               where the method was defined?
                 Some(ast_map::NodeImplItem(ii)) => {
                     match ii.node {
+                        ast::ConstImplItem(..) |
                         ast::MethodImplItem(..) => {
                             let imp = self.tcx.map
                                           .get_parent_did(closest_private_id);
@@ -693,7 +696,11 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             ty::MethodTraitItem(method_type) => {
                 method_type.provided_source.unwrap_or(method_id)
             }
-            ty::TypeTraitItem(_) => method_id,
+            _ => {
+                self.tcx.sess
+                    .span_bug(span,
+                              "got non-method item in check_static_method")
+            }
         };
 
         let string = token::get_name(name);
@@ -1128,8 +1135,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                         ast::MethodImplItem(..) => {
                             check_inherited(tcx, impl_item.span, impl_item.vis);
                         }
-                        ast::TypeImplItem(_) |
-                        ast::MacImplItem(_) => {}
+                        _ => {}
                     }
                 }
             }
@@ -1307,6 +1313,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     impl_items.iter()
                               .any(|impl_item| {
                                   match impl_item.node {
+                                      ast::ConstImplItem(..) |
                                       ast::MethodImplItem(..) => {
                                           self.exported_items.contains(&impl_item.id)
                                       }
@@ -1330,6 +1337,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                                 // don't erroneously report errors for private
                                 // types in private items.
                                 match impl_item.node {
+                                    ast::ConstImplItem(..) |
                                     ast::MethodImplItem(..)
                                         if self.item_is_public(&impl_item.id, impl_item.vis) =>
                                     {
@@ -1360,12 +1368,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 
                             // Those in 3. are warned with this call.
                             for impl_item in impl_items {
-                                match impl_item.node {
-                                    ast::TypeImplItem(ref ty) => {
-                                        self.visit_ty(ty);
-                                    }
-                                    ast::MethodImplItem(..) |
-                                    ast::MacImplItem(_) => {},
+                                if let ast::TypeImplItem(ref ty) = impl_item.node {
+                                    self.visit_ty(ty);
                                 }
                             }
                         }
@@ -1376,15 +1380,20 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     let mut found_pub_static = false;
                     for impl_item in impl_items {
                         match impl_item.node {
-                            ast::MethodImplItem(ref sig, _) => {
-                                if sig.explicit_self.node == ast::SelfStatic &&
-                                        self.item_is_public(&impl_item.id, impl_item.vis) {
+                            ast::ConstImplItem(..) => {
+                                if self.item_is_public(&impl_item.id, impl_item.vis) {
                                     found_pub_static = true;
                                     visit::walk_impl_item(self, impl_item);
                                 }
                             }
-                            ast::TypeImplItem(_) |
-                            ast::MacImplItem(_) => {}
+                            ast::MethodImplItem(ref sig, _) => {
+                                if sig.explicit_self.node == ast::SelfStatic &&
+                                      self.item_is_public(&impl_item.id, impl_item.vis) {
+                                    found_pub_static = true;
+                                    visit::walk_impl_item(self, impl_item);
+                                }
+                            }
+                            _ => {}
                         }
                     }
                     if found_pub_static {

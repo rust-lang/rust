@@ -242,6 +242,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefTrait(_) => Some(recorder::TypeRef),
             def::DefStatic(_, _) |
             def::DefConst(_) |
+            def::DefAssociatedConst(..) |
             def::DefLocal(_) |
             def::DefVariant(_, _, _) |
             def::DefUpvar(..) => Some(recorder::VarRef),
@@ -359,14 +360,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         // record the decl for this def (if it has one)
         let decl_id = ty::trait_item_of_item(&self.analysis.ty_cx,
                                              ast_util::local_def(id))
-            .and_then(|def_id| {
-                if match def_id {
-                    ty::MethodTraitItemId(def_id) => {
-                        def_id.node != 0 && def_id != ast_util::local_def(id)
-                    }
-                    ty::TypeTraitItemId(_) => false,
-                } {
-                    Some(def_id.def_id())
+            .and_then(|new_id| {
+                let def_id = new_id.def_id();
+                if def_id.node != 0 && def_id != ast_util::local_def(id) {
+                    Some(def_id)
                 } else {
                     None
                 }
@@ -800,6 +797,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefLocal(..) |
             def::DefStatic(..) |
             def::DefConst(..) |
+            def::DefAssociatedConst(..) |
             def::DefVariant(..) => self.fmt.ref_str(ref_kind.unwrap_or(recorder::VarRef),
                                                     span,
                                                     sub_span,
@@ -883,6 +881,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefLocal(_) |
             def::DefStatic(_,_) |
             def::DefConst(..) |
+            def::DefAssociatedConst(..) |
             def::DefStruct(_) |
             def::DefVariant(..) |
             def::DefFn(..) => self.write_sub_paths_truncated(path, false),
@@ -966,7 +965,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     ty::MethodTraitItem(method) => {
                         method.provided_source.unwrap_or(def_id)
                     }
-                    ty::TypeTraitItem(_) => def_id,
+                    _ => self.sess
+                             .span_bug(ex.span,
+                                       "save::process_method_call: non-method \
+                                        DefId in MethodStatic or MethodStaticClosure"),
                 };
                 (Some(def_id), decl_id)
             }
@@ -1008,7 +1010,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
                 let def = self.analysis.ty_cx.def_map.borrow().get(&p.id).unwrap().full_def();
                 let struct_def = match def {
-                    def::DefConst(..) => None,
+                    def::DefConst(..) | def::DefAssociatedConst(..) => None,
                     def::DefVariant(_, variant_id, _) => Some(variant_id),
                     _ => {
                         match ty::ty_to_def_id(ty::node_id_to_type(&self.analysis.ty_cx, p.id)) {
@@ -1236,6 +1238,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
 
     fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
         match trait_item.node {
+            ast::ConstTraitItem(..) => {}
             ast::MethodTraitItem(ref sig, ref body) => {
                 self.process_method(sig, body.as_ref().map(|x| &**x),
                                     trait_item.id, trait_item.ident.name, trait_item.span);
@@ -1246,6 +1249,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
 
     fn visit_impl_item(&mut self, impl_item: &ast::ImplItem) {
         match impl_item.node {
+            ast::ConstImplItem(..) => {}
             ast::MethodImplItem(ref sig, ref body) => {
                 self.process_method(sig, Some(body), impl_item.id,
                                     impl_item.ident.name, impl_item.span);
@@ -1432,8 +1436,9 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                     paths_to_process.push((id, p.clone(), Some(ref_kind)))
                 }
                 // FIXME(nrc) what are these doing here?
-                def::DefStatic(_, _) => {}
-                def::DefConst(..) => {}
+                def::DefStatic(_, _) |
+                def::DefConst(..) |
+                def::DefAssociatedConst(..) => {}
                 _ => error!("unexpected definition kind when processing collected paths: {:?}",
                             def)
             }

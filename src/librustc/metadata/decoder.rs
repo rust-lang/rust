@@ -951,11 +951,8 @@ pub fn get_provided_trait_methods<'tcx>(intr: Rc<IdentInterner>,
                                                     cdata,
                                                     did.node,
                                                     tcx);
-            match trait_item {
-                ty::MethodTraitItem(ref method) => {
-                    result.push((*method).clone())
-                }
-                ty::TypeTraitItem(_) => {}
+            if let ty::MethodTraitItem(ref method) = trait_item {
+                result.push((*method).clone())
             }
         }
         true

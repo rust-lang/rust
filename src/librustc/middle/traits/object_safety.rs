@@ -100,9 +100,7 @@ fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
                         .map(|code| ObjectSafetyViolation::Method(m.clone(), code))
                         .into_iter()
                 }
-                ty::TypeTraitItem(_) => {
-                    None.into_iter()
-                }
+                _ => None.into_iter(),
             }
         })
         .collect();

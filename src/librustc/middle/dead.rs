@@ -72,7 +72,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     fn lookup_and_handle_definition(&mut self, id: &ast::NodeId) {
         self.tcx.def_map.borrow().get(id).map(|def| {
             match def.full_def() {
-                def::DefConst(_) => {
+                def::DefConst(_) | def::DefAssociatedConst(..) => {
                     self.check_def_id(def.def_id())
                 }
                 _ if self.ignore_non_const_paths => (),
@@ -114,14 +114,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                         let trait_item = ty::trait_item(self.tcx,
                                                         trait_ref.def_id,
                                                         index);
-                        match trait_item {
-                            ty::MethodTraitItem(method) => {
-                                self.check_def_id(method.def_id);
-                            }
-                            ty::TypeTraitItem(typedef) => {
-                                self.check_def_id(typedef.def_id);
-                            }
-                        }
+                        self.check_def_id(trait_item.def_id());
                     }
                 }
             }
@@ -365,6 +358,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
             ast::ItemImpl(_, _, _, ref opt_trait, _, ref impl_items) => {
                 for impl_item in impl_items {
                     match impl_item.node {
+                        ast::ConstImplItem(..) => {}
                         ast::MethodImplItem(..) => {
                             if opt_trait.is_some() ||
                                     has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
@@ -584,6 +578,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
     // Overwrite so that we don't warn the trait method itself.
     fn visit_trait_item(&mut self, trait_method: &ast::TraitItem) {
         match trait_method.node {
+            ast::ConstTraitItem(_, _) => {}
             ast::MethodTraitItem(_, Some(ref body)) => {
                 visit::walk_block(self, body)
             }

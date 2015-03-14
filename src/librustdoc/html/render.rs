@@ -1629,6 +1629,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 ItemType::Macro           => ("macros", "Macros"),
                 ItemType::Primitive       => ("primitives", "Primitive Types"),
                 ItemType::AssociatedType  => ("associated-types", "Associated Types"),
+                ItemType::AssociatedConst => ("associated-consts", "Associated Constants"),
             };
             try!(write!(w,
                         "<h2 id='{id}' class='section-header'>\
@@ -1799,7 +1800,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         try!(write!(w, "{{\n"));
         for t in &types {
             try!(write!(w, "    "));
-            try!(render_method(w, t, MethodLink::Anchor));
+            try!(render_assoc_item(w, t, AssocItemLink::Anchor));
             try!(write!(w, ";\n"));
         }
         if !types.is_empty() && !required.is_empty() {
@@ -1807,7 +1808,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in &required {
             try!(write!(w, "    "));
-            try!(render_method(w, m, MethodLink::Anchor));
+            try!(render_assoc_item(w, m, AssocItemLink::Anchor));
             try!(write!(w, ";\n"));
         }
         if !required.is_empty() && !provided.is_empty() {
@@ -1815,7 +1816,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in &provided {
             try!(write!(w, "    "));
-            try!(render_method(w, m, MethodLink::Anchor));
+            try!(render_assoc_item(w, m, AssocItemLink::Anchor));
             try!(write!(w, " {{ ... }}\n"));
         }
         try!(write!(w, "}}"));
@@ -1831,7 +1832,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                     ty = shortty(m),
                     name = *m.name.as_ref().unwrap(),
                     stab = m.stability_class()));
-        try!(render_method(w, m, MethodLink::Anchor));
+        try!(render_assoc_item(w, m, AssocItemLink::Anchor));
         try!(write!(w, "</code></h3>"));
         try!(document(w, m));
         Ok(())
@@ -1871,7 +1872,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }
 
     // If there are methods directly on this trait object, render them here.
-    try!(render_methods(w, it.def_id, MethodRender::All));
+    try!(render_assoc_items(w, it.def_id, AssocItemRender::All));
 
     let cache = cache();
     try!(write!(w, "
@@ -1917,19 +1918,19 @@ fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
     Ok(())
 }
 
-fn render_method(w: &mut fmt::Formatter, meth: &clean::Item,
-                 link: MethodLink) -> fmt::Result {
+fn render_assoc_item(w: &mut fmt::Formatter, meth: &clean::Item,
+                     link: AssocItemLink) -> fmt::Result {
     fn method(w: &mut fmt::Formatter, it: &clean::Item,
               unsafety: ast::Unsafety, abi: abi::Abi,
               g: &clean::Generics, selfty: &clean::SelfTy,
-              d: &clean::FnDecl, link: MethodLink) -> fmt::Result {
+              d: &clean::FnDecl, link: AssocItemLink) -> fmt::Result {
         use syntax::abi::Abi;
 
         let name = it.name.as_ref().unwrap();
         let anchor = format!("#{}.{}", shortty(it), name);
         let href = match link {
-            MethodLink::Anchor => anchor,
-            MethodLink::GotoSource(did) => {
+            AssocItemLink::Anchor => anchor,
+            AssocItemLink::GotoSource(did) => {
                 href(did).map(|p| format!("{}{}", p.0, anchor)).unwrap_or(anchor)
             }
         };
@@ -1958,10 +1959,11 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item,
             method(w, meth, m.unsafety, m.abi, &m.generics, &m.self_, &m.decl,
                    link)
         }
+        clean::AssociatedConstItem(_, _) => Ok(()),
         clean::AssociatedTypeItem(ref bounds, ref default) => {
             assoc_type(w, meth, bounds, default)
         }
-        _ => panic!("render_method called on non-method")
+        _ => panic!("render_assoc_item called on non-associated-item")
     }
 }
 
@@ -2001,7 +2003,7 @@ fn item_struct(w: &mut fmt::Formatter, it: &clean::Item,
             try!(write!(w, "</table>"));
         }
     }
-    render_methods(w, it.def_id, MethodRender::All)
+    render_assoc_items(w, it.def_id, AssocItemRender::All)
 }
 
 fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
@@ -2100,7 +2102,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
         try!(write!(w, "</table>"));
 
     }
-    try!(render_methods(w, it.def_id, MethodRender::All));
+    try!(render_assoc_items(w, it.def_id, AssocItemRender::All));
     Ok(())
 }
 
@@ -2184,19 +2186,19 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
 }
 
 #[derive(Copy, Clone)]
-enum MethodLink {
+enum AssocItemLink {
     Anchor,
     GotoSource(ast::DefId),
 }
 
-enum MethodRender<'a> {
+enum AssocItemRender<'a> {
     All,
     DerefFor { trait_: &'a clean::Type, type_: &'a clean::Type },
 }
 
-fn render_methods(w: &mut fmt::Formatter,
-                  it: ast::DefId,
-                  what: MethodRender) -> fmt::Result {
+fn render_assoc_items(w: &mut fmt::Formatter,
+                      it: ast::DefId,
+                      what: AssocItemRender) -> fmt::Result {
     let c = cache();
     let v = match c.impls.get(&it) {
         Some(v) => v,
@@ -2207,21 +2209,21 @@ fn render_methods(w: &mut fmt::Formatter,
     });
     if !non_trait.is_empty() {
         let render_header = match what {
-            MethodRender::All => {
+            AssocItemRender::All => {
                 try!(write!(w, "<h2 id='methods'>Methods</h2>"));
                 true
             }
-            MethodRender::DerefFor { trait_, type_ } => {
+            AssocItemRender::DerefFor { trait_, type_ } => {
                 try!(write!(w, "<h2 id='deref-methods'>Methods from \
                                     {}&lt;Target={}&gt;</h2>", trait_, type_));
                 false
             }
         };
         for i in &non_trait {
-            try!(render_impl(w, i, MethodLink::Anchor, render_header));
+            try!(render_impl(w, i, AssocItemLink::Anchor, render_header));
         }
     }
-    if let MethodRender::DerefFor { .. } = what {
+    if let AssocItemRender::DerefFor { .. } = what {
         return Ok(())
     }
     if !traits.is_empty() {
@@ -2243,7 +2245,7 @@ fn render_methods(w: &mut fmt::Formatter,
         });
         for i in &manual {
             let did = i.trait_did().unwrap();
-            try!(render_impl(w, i, MethodLink::GotoSource(did), true));
+            try!(render_impl(w, i, AssocItemLink::GotoSource(did), true));
         }
         if !derived.is_empty() {
             try!(write!(w, "<h3 id='derived_implementations'>\
@@ -2251,7 +2253,7 @@ fn render_methods(w: &mut fmt::Formatter,
             </h3>"));
             for i in &derived {
                 let did = i.trait_did().unwrap();
-                try!(render_impl(w, i, MethodLink::GotoSource(did), true));
+                try!(render_impl(w, i, AssocItemLink::GotoSource(did), true));
             }
         }
     }
@@ -2266,14 +2268,14 @@ fn render_deref_methods(w: &mut fmt::Formatter, impl_: &Impl) -> fmt::Result {
             _ => None,
         }
     }).next().unwrap();
-    let what = MethodRender::DerefFor { trait_: deref_type, type_: target };
+    let what = AssocItemRender::DerefFor { trait_: deref_type, type_: target };
     match *target {
-        clean::ResolvedPath { did, .. } => render_methods(w, did, what),
+        clean::ResolvedPath { did, .. } => render_assoc_items(w, did, what),
         _ => {
             if let Some(prim) = target.primitive_type() {
                 if let Some(c) = cache().primitive_locations.get(&prim) {
                     let did = ast::DefId { krate: *c, node: prim.to_node_id() };
-                    try!(render_methods(w, did, what));
+                    try!(render_assoc_items(w, did, what));
                 }
             }
             Ok(())
@@ -2281,7 +2283,7 @@ fn render_deref_methods(w: &mut fmt::Formatter, impl_: &Impl) -> fmt::Result {
     }
 }
 
-fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: MethodLink,
+fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: AssocItemLink,
                render_header: bool) -> fmt::Result {
     if render_header {
         try!(write!(w, "<h3 class='impl'><code>impl{} ",
@@ -2300,13 +2302,13 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: MethodLink,
     }
 
     fn doctraititem(w: &mut fmt::Formatter, item: &clean::Item,
-                    link: MethodLink) -> fmt::Result {
+                    link: AssocItemLink) -> fmt::Result {
         match item.inner {
             clean::MethodItem(..) | clean::TyMethodItem(..) => {
                 try!(write!(w, "<h4 id='method.{}' class='{}'><code>",
                             *item.name.as_ref().unwrap(),
                             shortty(item)));
-                try!(render_method(w, item, link));
+                try!(render_assoc_item(w, item, link));
                 try!(write!(w, "</code></h4>\n"));
             }
             clean::TypedefItem(ref tydef) => {
@@ -2317,6 +2319,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: MethodLink,
                 try!(write!(w, "type {} = {}", name, tydef.type_));
                 try!(write!(w, "</code></h4>\n"));
             }
+            clean::AssociatedConstItem(_, _) => {}
             clean::AssociatedTypeItem(ref bounds, ref default) => {
                 let name = item.name.as_ref().unwrap();
                 try!(write!(w, "<h4 id='assoc_type.{}' class='{}'><code>",
@@ -2327,7 +2330,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: MethodLink,
             }
             _ => panic!("can't make docs for trait item with name {:?}", item.name)
         }
-        if let MethodLink::Anchor = link {
+        if let AssocItemLink::Anchor = link {
             document(w, item)
         } else {
             Ok(())
@@ -2339,10 +2342,10 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: MethodLink,
         try!(doctraititem(w, trait_item, link));
     }
 
-    fn render_default_methods(w: &mut fmt::Formatter,
-                              did: ast::DefId,
-                              t: &clean::Trait,
-                              i: &clean::Impl) -> fmt::Result {
+    fn render_default_items(w: &mut fmt::Formatter,
+                            did: ast::DefId,
+                            t: &clean::Trait,
+                            i: &clean::Impl) -> fmt::Result {
         for trait_item in &t.items {
             let n = trait_item.name.clone();
             match i.items.iter().find(|m| { m.name == n }) {
@@ -2350,7 +2353,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: MethodLink,
                 None => {}
             }
 
-            try!(doctraititem(w, trait_item, MethodLink::GotoSource(did)));
+            try!(doctraititem(w, trait_item, AssocItemLink::GotoSource(did)));
         }
         Ok(())
     }
@@ -2361,7 +2364,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: MethodLink,
     // for them work.
     if let Some(clean::ResolvedPath { did, .. }) = i.impl_.trait_ {
         if let Some(t) = cache().traits.get(&did) {
-            try!(render_default_methods(w, did, t, &i.impl_));
+            try!(render_default_items(w, did, t, &i.impl_));
         }
     }
     try!(write!(w, "</div>"));
@@ -2458,7 +2461,7 @@ fn item_primitive(w: &mut fmt::Formatter,
                   it: &clean::Item,
                   _p: &clean::PrimitiveType) -> fmt::Result {
     try!(document(w, it));
-    render_methods(w, it.def_id, MethodRender::All)
+    render_assoc_items(w, it.def_id, AssocItemRender::All)
 }
 
 fn get_basic_keywords() -> &'static str {
