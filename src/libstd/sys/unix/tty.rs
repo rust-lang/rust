@@ -23,6 +23,8 @@ pub struct TTY {
 }
 
 #[cfg(any(target_os = "macos",
+          target_os = "ios",
+          target_os = "dragonfly",
           target_os = "freebsd",
           target_os = "bitrig",
           target_os = "openbsd"))]
@@ -54,12 +56,6 @@ impl TTY {
         Err(sys_common::unimpl())
     }
 
-    #[cfg(any(target_os = "linux",
-              target_os = "android",
-              target_os = "macos",
-              target_os = "freebsd",
-              target_os = "bitrig",
-              target_os = "openbsd"))]
     pub fn get_winsize(&mut self) -> IoResult<(int, int)> {
         unsafe {
             #[repr(C)]
@@ -81,11 +77,5 @@ impl TTY {
                 Ok((size.ws_col as int, size.ws_row as int))
             }
         }
-    }
-
-    #[cfg(any(target_os = "ios",
-              target_os = "dragonfly"))]
-    pub fn get_winsize(&mut self) -> IoResult<(int, int)> {
-        Err(sys_common::unimpl())
     }
 }
