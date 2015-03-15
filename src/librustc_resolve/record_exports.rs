@@ -133,13 +133,13 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
     fn add_exports_for_module(&mut self,
                               exports: &mut Vec<Export>,
                               module_: &Module) {
-        for (name, importresolution) in &*module_.import_resolutions.borrow() {
-            if !importresolution.is_public {
+        for (name, import_resolution) in &*module_.import_resolutions.borrow() {
+            if !import_resolution.is_public {
                 continue
             }
             let xs = [TypeNS, ValueNS];
             for &ns in &xs {
-                match importresolution.target_for_namespace(ns) {
+                match import_resolution.target_for_namespace(ns) {
                     Some(target) => {
                         debug!("(computing exports) maybe export '{}'",
                                token::get_name(*name));
