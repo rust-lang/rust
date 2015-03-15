@@ -857,6 +857,19 @@ impl NameBindings {
             None
         }
     }
+
+    fn is_public(&self, namespace: Namespace) -> bool {
+        match namespace {
+            TypeNS  => {
+                let type_def = self.type_def.borrow();
+                type_def.as_ref().unwrap().modifiers.contains(PUBLIC)
+            }
+            ValueNS => {
+                let value_def = self.value_def.borrow();
+                value_def.as_ref().unwrap().modifiers.contains(PUBLIC)
+            }
+        }
+    }
 }
 
 /// Interns the names of the primitive types.
@@ -1334,22 +1347,33 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut type_result = UnknownResult;
 
         // Search for direct children of the containing module.
-        build_reduced_graph::populate_module_if_necessary(self, &containing_module);
+        build_reduced_graph::populate_module_if_necessary(self, &target_module);
 
-        match containing_module.children.borrow().get(&source) {
+        match target_module.children.borrow().get(&source) {
             None => {
                 // Continue.
             }
             Some(ref child_name_bindings) => {
+                // pub_err makes sure we don't give the same error twice.
+                let mut pub_err = false;
                 if child_name_bindings.defined_in_namespace(ValueNS) {
                     debug!("(resolving single import) found value binding");
-                    value_result = BoundResult(containing_module.clone(),
+                    value_result = BoundResult(target_module.clone(),
                                                (*child_name_bindings).clone());
+                    if directive.is_public && !child_name_bindings.is_public(ValueNS) {
+                        let msg = format!("`{}` is private", token::get_name(source));
+                        span_err!(self.session, directive.span, E0364, "{}", &msg);
+                        pub_err = true;
+                    }
                 }
                 if child_name_bindings.defined_in_namespace(TypeNS) {
                     debug!("(resolving single import) found type binding");
-                    type_result = BoundResult(containing_module.clone(),
+                    type_result = BoundResult(target_module.clone(),
                                               (*child_name_bindings).clone());
+                    if !pub_err && directive.is_public && !child_name_bindings.is_public(TypeNS) {
+                        let msg = format!("`{}` is private", token::get_name(source));
+                        span_err!(self.session, directive.span, E0365, "{}", &msg);
+                    }
                 }
             }
         }
