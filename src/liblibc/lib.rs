@@ -4820,10 +4820,25 @@ pub mod consts {
             pub const TCP_NODELAY: c_int = 0x01;
             pub const TCP_KEEPALIVE: c_int = 0x10;
             pub const SOL_SOCKET: c_int = 0xffff;
-            pub const SO_KEEPALIVE: c_int = 0x0008;
-            pub const SO_BROADCAST: c_int = 0x0020;
+            
+            pub const SO_DEBUG: c_int = 0x01;
+            pub const SO_ACCEPTCONN: c_int = 0x0002;
             pub const SO_REUSEADDR: c_int = 0x0004;
+            pub const SO_KEEPALIVE: c_int = 0x0008;
+            pub const SO_DONTROUTE: c_int = 0x0010;
+            pub const SO_BROADCAST: c_int = 0x0020;
+            pub const SO_USELOOPBACK: c_int = 0x0040;
+            pub const SO_LINGER: c_int = 0x0080;
+            pub const SO_OOBINLINE: c_int = 0x0100;
+            pub const SO_REUSEPORT: c_int = 0x0200;
+            pub const SO_SNDBUF: c_int = 0x1001;
+            pub const SO_RCVBUF: c_int = 0x1002;
+            pub const SO_SNDLOWAT: c_int = 0x1003;
+            pub const SO_RCVLOWAT: c_int = 0x1004;
+            pub const SO_SNDTIMEO: c_int = 0x1005;
+            pub const SO_RCVTIMEO: c_int = 0x1006;
             pub const SO_ERROR: c_int = 0x1007;
+            pub const SO_TYPE: c_int = 0x1008;
 
             pub const IFF_LOOPBACK: c_int = 0x8;
 
