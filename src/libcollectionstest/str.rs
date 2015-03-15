@@ -925,6 +925,20 @@ fn test_rsplit() {
 }
 
 #[test]
+fn test_rsplitn() {
+    let data = "\nMäry häd ä little lämb\nLittle lämb\n";
+
+    let split: Vec<&str> = data.rsplitn(1, ' ').collect();
+    assert_eq!(split, ["lämb\n", "\nMäry häd ä little lämb\nLittle"]);
+
+    let split: Vec<&str> = data.rsplitn(1, "lämb").collect();
+    assert_eq!(split, ["\n", "\nMäry häd ä little lämb\nLittle "]);
+
+    let split: Vec<&str> = data.rsplitn(1, |c: char| c == 'ä').collect();
+    assert_eq!(split, ["mb\n", "\nMäry häd ä little lämb\nLittle l"]);
+}
+
+#[test]
 fn test_words() {
     let data = "\n \tMäry   häd\tä  little lämb\nLittle lämb\n";
     let words: Vec<&str> = data.words().collect();
