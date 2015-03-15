@@ -316,9 +316,6 @@ lets_do_this! {
 
     StartFnLangItem,                 "start",                   start_fn;
 
-    TyDescStructLangItem,            "ty_desc",                 ty_desc;
-    OpaqueStructLangItem,            "opaque",                  opaque;
-
     EhPersonalityLangItem,           "eh_personality",          eh_personality;
 
     ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;

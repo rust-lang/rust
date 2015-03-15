@@ -47,8 +47,7 @@ use middle::check_const;
 use middle::const_eval;
 use middle::def::{self, DefMap, ExportMap};
 use middle::dependency_format;
-use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
-use middle::lang_items::{FnOnceTraitLangItem, TyDescStructLangItem};
+use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::mem_categorization as mc;
 use middle::region;
 use middle::resolve_lifetime;
@@ -723,7 +722,6 @@ pub struct ctxt<'tcx> {
     pub object_cast_map: ObjectCastMap<'tcx>,
 
     pub map: ast_map::Map<'tcx>,
-    pub intrinsic_defs: RefCell<DefIdMap<Ty<'tcx>>>,
     pub freevars: RefCell<FreevarMap>,
     pub tcache: RefCell<DefIdMap<TypeScheme<'tcx>>>,
     pub rcache: RefCell<FnvHashMap<creader_cache_key, Ty<'tcx>>>,
@@ -2575,7 +2573,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         super_predicates: RefCell::new(DefIdMap()),
         object_cast_map: RefCell::new(NodeMap()),
         map: map,
-        intrinsic_defs: RefCell::new(DefIdMap()),
         freevars: freevars,
         tcache: RefCell::new(DefIdMap()),
         rcache: RefCell::new(FnvHashMap()),
@@ -5949,13 +5946,6 @@ pub fn required_region_bounds<'tcx>(tcx: &ctxt<'tcx>,
             }
         })
         .collect()
-}
-
-pub fn get_tydesc_ty<'tcx>(tcx: &ctxt<'tcx>) -> Result<Ty<'tcx>, String> {
-    tcx.lang_items.require(TyDescStructLangItem).map(|tydesc_lang_item| {
-        tcx.intrinsic_defs.borrow().get(&tydesc_lang_item).cloned()
-            .expect("Failed to resolve TyDesc")
-    })
 }
 
 pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {

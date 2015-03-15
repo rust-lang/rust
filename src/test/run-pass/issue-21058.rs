@@ -13,17 +13,17 @@ struct NT(str);
 struct DST { a: u32, b: str }
 
 fn main() {
-    // get_tydesc should support unsized types
+    // type_name should support unsized types
     assert_eq!(unsafe {(
         // Slice
-        (*std::intrinsics::get_tydesc::<[u8]>()).name,
+        std::intrinsics::type_name::<[u8]>(),
         // str
-        (*std::intrinsics::get_tydesc::<str>()).name,
+        std::intrinsics::type_name::<str>(),
         // Trait
-        (*std::intrinsics::get_tydesc::<Copy>()).name,
+        std::intrinsics::type_name::<Copy>(),
         // Newtype
-        (*std::intrinsics::get_tydesc::<NT>()).name,
+        std::intrinsics::type_name::<NT>(),
         // DST
-        (*std::intrinsics::get_tydesc::<DST>()).name
+        std::intrinsics::type_name::<DST>()
     )}, ("[u8]", "str", "core::marker::Copy", "NT", "DST"));
 }
