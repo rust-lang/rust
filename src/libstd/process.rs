@@ -147,7 +147,7 @@ impl Command {
     /// Builder methods are provided to change these defaults and
     /// otherwise configure the process.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn new<S: AsOsStr + ?Sized>(program: &S) -> Command {
+    pub fn new<S: AsOsStr>(program: S) -> Command {
         Command {
             inner: CommandImp::new(program.as_os_str()),
             stdin: None,
@@ -158,7 +158,7 @@ impl Command {
 
     /// Add an argument to pass to the program.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn arg<S: AsOsStr + ?Sized>(&mut self, arg: &S) -> &mut Command {
+    pub fn arg<S: AsOsStr>(&mut self, arg: S) -> &mut Command {
         self.inner.arg(arg.as_os_str());
         self
     }
@@ -175,7 +175,7 @@ impl Command {
     /// Note that environment variable names are case-insensitive (but case-preserving) on Windows,
     /// and case-sensitive on all other platforms.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn env<K: ?Sized, V: ?Sized>(&mut self, key: &K, val: &V) -> &mut Command
+    pub fn env<K, V>(&mut self, key: K, val: V) -> &mut Command
         where K: AsOsStr, V: AsOsStr
     {
         self.inner.env(key.as_os_str(), val.as_os_str());
@@ -184,7 +184,7 @@ impl Command {
 
     /// Removes an environment variable mapping.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn env_remove<K: ?Sized + AsOsStr>(&mut self, key: &K) -> &mut Command {
+    pub fn env_remove<K: AsOsStr>(&mut self, key: K) -> &mut Command {
         self.inner.env_remove(key.as_os_str());
         self
     }
@@ -198,7 +198,7 @@ impl Command {
 
     /// Set the working directory for the child process.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn current_dir<P: AsPath + ?Sized>(&mut self, dir: &P) -> &mut Command {
+    pub fn current_dir<P: AsPath>(&mut self, dir: P) -> &mut Command {
         self.inner.cwd(dir.as_path().as_os_str());
         self
     }
