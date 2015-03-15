@@ -18,7 +18,7 @@ use middle::traits;
 use trans::adt;
 use trans::base;
 use trans::builder::Builder;
-use trans::common::{ExternMap,tydesc_info,BuilderRef_res};
+use trans::common::{ExternMap,BuilderRef_res};
 use trans::debuginfo;
 use trans::monomorphize::MonoId;
 use trans::type_::{Type, TypeNames};
@@ -38,7 +38,6 @@ use syntax::ast;
 use syntax::parse::token::InternedString;
 
 pub struct Stats {
-    pub n_static_tydescs: Cell<uint>,
     pub n_glues_created: Cell<uint>,
     pub n_null_glues: Cell<uint>,
     pub n_real_glues: Cell<uint>,
@@ -89,10 +88,6 @@ pub struct LocalCrateContext<'tcx> {
     needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
     drop_glues: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
-    tydescs: RefCell<FnvHashMap<Ty<'tcx>, Rc<tydesc_info<'tcx>>>>,
-    /// Set when running emit_tydescs to enforce that no more tydescs are
-    /// created.
-    finished_tydescs: Cell<bool>,
     /// Track mapping of external ids to local items imported for inlining
     external: RefCell<DefIdMap<Option<ast::NodeId>>>,
     /// Backwards version of the `external` map (inlined items to where they
@@ -264,7 +259,6 @@ impl<'tcx> SharedCrateContext<'tcx> {
             symbol_hasher: RefCell::new(symbol_hasher),
             tcx: tcx,
             stats: Stats {
-                n_static_tydescs: Cell::new(0),
                 n_glues_created: Cell::new(0),
                 n_null_glues: Cell::new(0),
                 n_real_glues: Cell::new(0),
@@ -399,8 +393,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 needs_unwind_cleanup_cache: RefCell::new(FnvHashMap()),
                 fn_pointer_shims: RefCell::new(FnvHashMap()),
                 drop_glues: RefCell::new(FnvHashMap()),
-                tydescs: RefCell::new(FnvHashMap()),
-                finished_tydescs: Cell::new(false),
                 external: RefCell::new(DefIdMap()),
                 external_srcs: RefCell::new(NodeMap()),
                 monomorphized: RefCell::new(FnvHashMap()),
@@ -441,8 +433,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 let mut str_slice_ty = Type::named_struct(&ccx, "str_slice");
                 str_slice_ty.set_struct_body(&[Type::i8p(&ccx), ccx.int_type()], false);
                 ccx.tn().associate_type("str_slice", &str_slice_ty);
-
-                ccx.tn().associate_type("tydesc", &Type::tydesc(&ccx, str_slice_ty));
 
                 if ccx.sess().count_llvm_insns() {
                     base::init_insn_ctxt()
@@ -519,10 +509,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local.builder.b
     }
 
-    pub fn tydesc_type(&self) -> Type {
-        self.local.tn.find_type("tydesc").unwrap()
-    }
-
     pub fn get_intrinsic(&self, key: & &'static str) -> ValueRef {
         if let Some(v) = self.intrinsics().borrow().get(key).cloned() {
             return v;
@@ -588,14 +574,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn drop_glues<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, ValueRef>> {
         &self.local.drop_glues
-    }
-
-    pub fn tydescs<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, Rc<tydesc_info<'tcx>>>> {
-        &self.local.tydescs
-    }
-
-    pub fn finished_tydescs<'a>(&'a self) -> &'a Cell<bool> {
-        &self.local.finished_tydescs
     }
 
     pub fn external<'a>(&'a self) -> &'a RefCell<DefIdMap<Option<ast::NodeId>>> {

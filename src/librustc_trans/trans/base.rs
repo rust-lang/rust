@@ -57,8 +57,7 @@ use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
 use trans::common::{CrateContext, ExternMap, FunctionContext};
 use trans::common::{Result, NodeIdAndSpan};
 use trans::common::{node_id_type, return_type_is_void};
-use trans::common::{tydesc_info, type_is_immediate};
-use trans::common::{type_is_zero_size, val_ty};
+use trans::common::{type_is_immediate, type_is_zero_size, val_ty};
 use trans::common;
 use trans::consts;
 use trans::context::SharedCrateContext;
@@ -90,7 +89,6 @@ use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::mem;
-use std::rc::Rc;
 use std::str;
 use std::{i8, i16, i32, i64};
 use syntax::abi::{Rust, RustCall, RustIntrinsic, Abi};
@@ -390,22 +388,6 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         debug_loc);
 
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
-}
-
-// Type descriptor and type glue stuff
-
-pub fn get_tydesc<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                            t: Ty<'tcx>) -> Rc<tydesc_info<'tcx>> {
-    match ccx.tydescs().borrow().get(&t) {
-        Some(inf) => return inf.clone(),
-        _ => { }
-    }
-
-    ccx.stats().n_static_tydescs.set(ccx.stats().n_static_tydescs.get() + 1);
-    let inf = Rc::new(glue::declare_tydesc(ccx, t));
-
-    ccx.tydescs().borrow_mut().insert(t, inf.clone());
-    inf
 }
 
 #[allow(dead_code)] // useful
@@ -3137,7 +3119,6 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     }
 
     for ccx in shared_ccx.iter() {
-        glue::emit_tydescs(&ccx);
         if ccx.sess().opts.debuginfo != NoDebugInfo {
             debuginfo::finalize(&ccx);
         }
@@ -3149,7 +3130,6 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     if shared_ccx.sess().trans_stats() {
         let stats = shared_ccx.stats();
         println!("--- trans stats ---");
-        println!("n_static_tydescs: {}", stats.n_static_tydescs.get());
         println!("n_glues_created: {}", stats.n_glues_created.get());
         println!("n_null_glues: {}", stats.n_null_glues.get());
         println!("n_real_glues: {}", stats.n_real_glues.get());

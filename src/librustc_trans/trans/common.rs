@@ -316,15 +316,6 @@ pub fn gensym_name(name: &str) -> PathElem {
     PathName(token::gensym(&format!("{}:{}", name, num)))
 }
 
-#[derive(Copy)]
-pub struct tydesc_info<'tcx> {
-    pub ty: Ty<'tcx>,
-    pub tydesc: ValueRef,
-    pub size: ValueRef,
-    pub align: ValueRef,
-    pub name: ValueRef,
-}
-
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".
 *

@@ -347,15 +347,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             bcx = src.store_to(bcx, llargs[0]);
             C_nil(ccx)
         }
-        (_, "get_tydesc") => {
+        (_, "type_name") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            let static_ti = get_tydesc(ccx, tp_ty);
-
-            // FIXME (#3730): ideally this shouldn't need a cast,
-            // but there's a circularity between translating rust types to llvm
-            // types and having a tydesc type available. So I can't directly access
-            // the llvm type of intrinsic::TyDesc struct.
-            PointerCast(bcx, static_ti.tydesc, llret_ty)
+            let ty_name = token::intern_and_get_ident(&ty_to_string(ccx.tcx(), tp_ty));
+            C_str_slice(ccx, ty_name)
         }
         (_, "type_id") => {
             let hash = ty::hash_crate_independent(
