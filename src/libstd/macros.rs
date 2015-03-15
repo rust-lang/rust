@@ -60,19 +60,21 @@ macro_rules! panic {
     });
 }
 
+/// Macro for printing to the standard output.
+///
 /// Equivalent to the `println!` macro except that a newline is not printed at
 /// the end of the message.
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::old_io::stdio::print_args(format_args!($($arg)*)))
+    ($($arg:tt)*) => ($crate::io::_print(format_args!($($arg)*)));
 }
 
-/// Macro for printing to a task's stdout handle.
+/// Macro for printing to the standard output.
 ///
-/// Each task can override its stdout handle via `std::old_io::stdio::set_stdout`.
-/// The syntax of this macro is the same as that used for `format!`. For more
-/// information, see `std::fmt` and `std::old_io::stdio`.
+/// Use the `format!` syntax to write data to the standard output.
+/// See `std::fmt` for more information.
 ///
 /// # Examples
 ///
@@ -83,7 +85,8 @@ macro_rules! print {
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! println {
-    ($($arg:tt)*) => ($crate::old_io::stdio::println_args(format_args!($($arg)*)))
+    ($fmt:expr) => (print!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
 }
 
 /// Helper macro for unwrapping `Result` values while returning early with an
