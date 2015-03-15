@@ -877,7 +877,7 @@ impl PathBuf {
     /// Allocate a `PathBuf` with initial contents given by the
     /// argument.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new<S: ?Sized + AsOsStr>(s: &S) -> PathBuf {
+    pub fn new<S: AsOsStr>(s: S) -> PathBuf {
         PathBuf { inner: s.as_os_str().to_os_string() }
     }
 
@@ -891,7 +891,7 @@ impl PathBuf {
     ///   replaces everything except for the prefix (if any) of `self`.
     /// * if `path` has a prefix but no root, it replaces `self.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push<P: ?Sized>(&mut self, path: &P) where P: AsPath {
+    pub fn push<P: AsPath>(&mut self, path: P) {
         let path = path.as_path();
 
         // in general, a separator is needed if the rightmost byte is not a separator
@@ -959,7 +959,7 @@ impl PathBuf {
     /// assert!(buf == PathBuf::new("/baz.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn set_file_name<S: ?Sized>(&mut self, file_name: &S) where S: AsOsStr {
+    pub fn set_file_name<S: AsOsStr>(&mut self, file_name: S) {
         if self.file_name().is_some() {
             let popped = self.pop();
             debug_assert!(popped);
@@ -974,7 +974,7 @@ impl PathBuf {
     /// Otherwise, returns `true`; if `self.extension()` is `None`, the extension
     /// is added; otherwise it is replaced.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn set_extension<S: ?Sized + AsOsStr>(&mut self, extension: &S) -> bool {
+    pub fn set_extension<S: AsOsStr>(&mut self, extension: S) -> bool {
         if self.file_name().is_none() { return false; }
 
         let mut stem = match self.file_stem() {
@@ -1000,8 +1000,8 @@ impl PathBuf {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: ?Sized + 'a> iter::FromIterator<&'a P> for PathBuf where P: AsPath {
-    fn from_iter<I: IntoIterator<Item = &'a P>>(iter: I) -> PathBuf {
+impl<P: AsPath> iter::FromIterator<P> for PathBuf {
+    fn from_iter<I: IntoIterator<Item = P>>(iter: I) -> PathBuf {
         let mut buf = PathBuf::new("");
         buf.extend(iter);
         buf
@@ -1009,8 +1009,8 @@ impl<'a, P: ?Sized + 'a> iter::FromIterator<&'a P> for PathBuf where P: AsPath {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: ?Sized + 'a> iter::Extend<&'a P> for PathBuf where P: AsPath {
-    fn extend<I: IntoIterator<Item = &'a P>>(&mut self, iter: I) {
+impl<P: AsPath> iter::Extend<P> for PathBuf {
+    fn extend<I: IntoIterator<Item = P>>(&mut self, iter: I) {
         for p in iter {
             self.push(p)
         }
@@ -1253,13 +1253,13 @@ impl Path {
 
     /// Determines whether `base` is a prefix of `self`.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn starts_with<P: ?Sized>(&self, base: &P) -> bool where P: AsPath {
+    pub fn starts_with<P: AsPath>(&self, base: P) -> bool {
         iter_after(self.components(), base.as_path().components()).is_some()
     }
 
     /// Determines whether `child` is a suffix of `self`.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn ends_with<P: ?Sized>(&self, child: &P) -> bool where P: AsPath {
+    pub fn ends_with<P: AsPath>(&self, child: P) -> bool {
         iter_after(self.components().rev(), child.as_path().components().rev()).is_some()
     }
 
@@ -1293,7 +1293,7 @@ impl Path {
     ///
     /// See `PathBuf::push` for more details on what it means to adjoin a path.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn join<P: ?Sized>(&self, path: &P) -> PathBuf where P: AsPath {
+    pub fn join<P: AsPath>(&self, path: P) -> PathBuf {
         let mut buf = self.to_path_buf();
         buf.push(path);
         buf
@@ -1303,7 +1303,7 @@ impl Path {
     ///
     /// See `PathBuf::set_file_name` for more details.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_file_name<S: ?Sized>(&self, file_name: &S) -> PathBuf where S: AsOsStr {
+    pub fn with_file_name<S: AsOsStr>(&self, file_name: S) -> PathBuf {
         let mut buf = self.to_path_buf();
         buf.set_file_name(file_name);
         buf
@@ -1313,7 +1313,7 @@ impl Path {
     ///
     /// See `PathBuf::set_extension` for more details.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_extension<S: ?Sized>(&self, extension: &S) -> PathBuf where S: AsOsStr {
+    pub fn with_extension<S: AsOsStr>(&self, extension: S) -> PathBuf {
         let mut buf = self.to_path_buf();
         buf.set_extension(extension);
         buf
