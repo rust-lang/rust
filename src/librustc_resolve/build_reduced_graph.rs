@@ -14,16 +14,17 @@
 //! any imports resolved.
 
 use {DefModifiers, PUBLIC, IMPORTABLE};
-use ImportDirective;
-use ImportDirectiveSubclass::{self, SingleImport, GlobImport};
-use ImportResolution;
+use resolve_imports::ImportDirective;
+use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
+use resolve_imports::ImportResolution;
 use Module;
 use ModuleKind::*;
 use Namespace::{TypeNS, ValueNS};
 use NameBindings;
+use {names_to_string, module_to_string};
 use ParentLink::{self, ModuleParentLink, BlockParentLink};
 use Resolver;
-use Shadowable;
+use resolve_imports::Shadowable;
 use TypeNsDef;
 
 use self::DuplicateCheckingMode::*;
@@ -381,7 +382,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                               false,
                                                               true));
                     debug!("(build reduced graph for item) found extern `{}`",
-                            self.module_to_string(&*external_module));
+                            module_to_string(&*external_module));
                     self.check_for_conflicts_between_external_crates(&**parent, name, sp);
                     parent.external_module_children.borrow_mut()
                           .insert(name, external_module.clone());
@@ -836,7 +837,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     /// Builds the reduced graph rooted at the given external module.
     fn populate_external_module(&mut self, module: &Rc<Module>) {
         debug!("(populating external module) attempting to populate {}",
-               self.module_to_string(&**module));
+               module_to_string(&**module));
 
         let def_id = match module.def_id.get() {
             None => {
@@ -903,7 +904,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
         match subclass {
             SingleImport(target, _) => {
                 debug!("(building import directive) building import directive: {}::{}",
-                       self.names_to_string(&module_.imports.borrow().last().unwrap().module_path),
+                       names_to_string(&module_.imports.borrow().last().unwrap().module_path),
                        token::get_name(target));
 
                 let mut import_resolutions = module_.import_resolutions.borrow_mut();

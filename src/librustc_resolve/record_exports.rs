@@ -22,6 +22,7 @@ use {Module, NameBindings, Resolver};
 use Namespace::{self, TypeNS, ValueNS};
 
 use build_reduced_graph;
+use module_to_string;
 
 use rustc::middle::def::Export;
 use syntax::ast;
@@ -60,19 +61,19 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
                 // OK. Continue.
                 debug!("(recording exports for module subtree) recording \
                         exports for local module `{}`",
-                       self.module_to_string(&*module_));
+                       module_to_string(&*module_));
             }
             None => {
                 // Record exports for the root module.
                 debug!("(recording exports for module subtree) recording \
                         exports for root module `{}`",
-                       self.module_to_string(&*module_));
+                       module_to_string(&*module_));
             }
             Some(_) => {
                 // Bail out.
                 debug!("(recording exports for module subtree) not recording \
                         exports for `{}`",
-                       self.module_to_string(&*module_));
+                       module_to_string(&*module_));
                 return;
             }
         }
