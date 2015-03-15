@@ -25,7 +25,6 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![feature(int_uint)]
 #![feature(libc)]
 #![feature(staged_api)]
 #![feature(unique)]
@@ -35,13 +34,33 @@
 extern crate libc;
 
 use libc::{c_void, size_t, c_int};
+use std::fmt;
 use std::ops::Deref;
 use std::ptr::Unique;
 use std::slice;
 
+#[derive(Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Error {
+    _unused: (),
+}
+
+impl Error {
+    fn new() -> Error {
+        Error {
+            _unused: (),
+        }
+    }
+}
+
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        "decompression error".fmt(f)
+    }
+}
+
 pub struct Bytes {
     ptr: Unique<u8>,
-    len: uint,
+    len: usize,
 }
 
 impl Deref for Bytes {
@@ -78,55 +97,56 @@ const LZ_NORM: c_int = 0x80;  // LZ with 128 probes, "normal"
 const TINFL_FLAG_PARSE_ZLIB_HEADER: c_int = 0x1; // parse zlib header and adler32 checksum
 const TDEFL_WRITE_ZLIB_HEADER: c_int = 0x01000; // write zlib header and adler32 checksum
 
-fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<Bytes> {
+fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Bytes {
     unsafe {
-        let mut outsz : size_t = 0;
+        let mut outsz: size_t = 0;
         let res = tdefl_compress_mem_to_heap(bytes.as_ptr() as *const _,
                                              bytes.len() as size_t,
                                              &mut outsz,
                                              flags);
-        if !res.is_null() {
-            let res = Unique::new(res as *mut u8);
-            Some(Bytes { ptr: res, len: outsz as uint })
-        } else {
-            None
+        assert!(!res.is_null());
+        Bytes {
+            ptr: Unique::new(res as *mut u8),
+            len: outsz as usize,
         }
     }
 }
 
 /// Compress a buffer, without writing any sort of header on the output.
-pub fn deflate_bytes(bytes: &[u8]) -> Option<Bytes> {
+pub fn deflate_bytes(bytes: &[u8]) -> Bytes {
     deflate_bytes_internal(bytes, LZ_NORM)
 }
 
 /// Compress a buffer, using a header that zlib can understand.
-pub fn deflate_bytes_zlib(bytes: &[u8]) -> Option<Bytes> {
+pub fn deflate_bytes_zlib(bytes: &[u8]) -> Bytes {
     deflate_bytes_internal(bytes, LZ_NORM | TDEFL_WRITE_ZLIB_HEADER)
 }
 
-fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<Bytes> {
+fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Result<Bytes,Error> {
     unsafe {
-        let mut outsz : size_t = 0;
+        let mut outsz: size_t = 0;
         let res = tinfl_decompress_mem_to_heap(bytes.as_ptr() as *const _,
                                                bytes.len() as size_t,
                                                &mut outsz,
                                                flags);
         if !res.is_null() {
-            let res = Unique::new(res as *mut u8);
-            Some(Bytes { ptr: res, len: outsz as uint })
+            Ok(Bytes {
+                ptr: Unique::new(res as *mut u8),
+                len: outsz as usize,
+            })
         } else {
-            None
+            Err(Error::new())
         }
     }
 }
 
 /// Decompress a buffer, without parsing any sort of header on the input.
-pub fn inflate_bytes(bytes: &[u8]) -> Option<Bytes> {
+pub fn inflate_bytes(bytes: &[u8]) -> Result<Bytes,Error> {
     inflate_bytes_internal(bytes, 0)
 }
 
 /// Decompress a buffer that starts with a zlib header.
-pub fn inflate_bytes_zlib(bytes: &[u8]) -> Option<Bytes> {
+pub fn inflate_bytes_zlib(bytes: &[u8]) -> Result<Bytes,Error> {
     inflate_bytes_internal(bytes, TINFL_FLAG_PARSE_ZLIB_HEADER)
 }
 
@@ -140,7 +160,7 @@ mod tests {
     #[test]
     fn test_flate_round_trip() {
         let mut r = rand::thread_rng();
-        let mut words = vec!();
+        let mut words = vec![];
         for _ in 0..20 {
             let range = r.gen_range(1, 10);
             let v = r.gen_iter::<u8>().take(range).collect::<Vec<u8>>();
@@ -153,8 +173,8 @@ mod tests {
             }
             debug!("de/inflate of {} bytes of random word-sequences",
                    input.len());
-            let cmp = deflate_bytes(&input).expect("deflation failed");
-            let out = inflate_bytes(&cmp).expect("inflation failed");
+            let cmp = deflate_bytes(&input);
+            let out = inflate_bytes(&cmp).unwrap();
             debug!("{} bytes deflated to {} ({:.1}% size)",
                    input.len(), cmp.len(),
                    100.0 * ((cmp.len() as f64) / (input.len() as f64)));
@@ -164,9 +184,9 @@ mod tests {
 
     #[test]
     fn test_zlib_flate() {
-        let bytes = vec!(1, 2, 3, 4, 5);
-        let deflated = deflate_bytes(&bytes).expect("deflation failed");
-        let inflated = inflate_bytes(&deflated).expect("inflation failed");
+        let bytes = vec![1, 2, 3, 4, 5];
+        let deflated = deflate_bytes(&bytes);
+        let inflated = inflate_bytes(&deflated).unwrap();
         assert_eq!(&*inflated, &*bytes);
     }
 }

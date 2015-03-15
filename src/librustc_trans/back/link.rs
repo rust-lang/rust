@@ -626,12 +626,7 @@ fn link_rlib<'a>(sess: &'a Session,
                                                  e))
                 }
 
-                let bc_data_deflated = match flate::deflate_bytes(&bc_data[..]) {
-                    Some(compressed) => compressed,
-                    None => sess.fatal(&format!("failed to compress bytecode \
-                                                 from {}",
-                                                 bc_filename.display()))
-                };
+                let bc_data_deflated = flate::deflate_bytes(&bc_data[..]);
 
                 let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
                     Ok(file) => file,
