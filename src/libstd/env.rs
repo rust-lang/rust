@@ -452,7 +452,7 @@ pub fn get_exit_status() -> i32 {
     EXIT_STATUS.load(Ordering::SeqCst) as i32
 }
 
-/// An iterator over the arguments of a process, yielding an `String` value
+/// An iterator over the arguments of a process, yielding a `String` value
 /// for each argument.
 ///
 /// This structure is created through the `std::env::args` method.
