@@ -11,12 +11,20 @@
 use prelude::v1::*;
 use io::prelude::*;
 
+use cell::RefCell;
 use cmp;
 use fmt;
 use io::lazy::Lazy;
 use io::{self, BufReader, LineWriter};
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
+
+/// Stdout used by print! and println! macroses
+thread_local! {
+    static LOCAL_STDOUT: RefCell<Option<Box<Write + Send>>> = {
+        RefCell::new(None)
+    }
+}
 
 /// A handle to a raw instance of the standard input stream of this process.
 ///
@@ -338,15 +346,15 @@ impl<'a> Write for StderrLock<'a> {
     fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
 }
 
-/// Resets the task-local stdout handle to the specified writer
+/// Resets the task-local stderr handle to the specified writer
 ///
-/// This will replace the current task's stdout handle, returning the old
-/// handle. All future calls to `print` and friends will emit their output to
+/// This will replace the current task's stderr handle, returning the old
+/// handle. All future calls to `panic!` and friends will emit their output to
 /// this specified handle.
 ///
 /// Note that this does not need to be called for all new tasks; the default
-/// output handle is to the process's stdout stream.
-#[unstable(feature = "set_panic",
+/// output handle is to the process's stderr stream.
+#[unstable(feature = "set_stdio",
            reason = "this function may disappear completely or be replaced \
                      with a more general mechanism")]
 #[doc(hidden)]
@@ -359,4 +367,38 @@ pub fn set_panic(sink: Box<Write + Send>) -> Option<Box<Write + Send>> {
         let _ = s.flush();
         Some(s)
     })
+}
+
+/// Resets the task-local stdout handle to the specified writer
+///
+/// This will replace the current task's stdout handle, returning the old
+/// handle. All future calls to `print!` and friends will emit their output to
+/// this specified handle.
+///
+/// Note that this does not need to be called for all new tasks; the default
+/// output handle is to the process's stdout stream.
+#[unstable(feature = "set_stdio",
+           reason = "this function may disappear completely or be replaced \
+                     with a more general mechanism")]
+#[doc(hidden)]
+pub fn set_print(sink: Box<Write + Send>) -> Option<Box<Write + Send>> {
+    use mem;
+    LOCAL_STDOUT.with(move |slot| {
+        mem::replace(&mut *slot.borrow_mut(), Some(sink))
+    }).and_then(|mut s| {
+        let _ = s.flush();
+        Some(s)
+    })
+}
+
+#[unstable(feature = "print",
+           reason = "implementation detail which may disappear or be replaced at any time")]
+#[doc(hidden)]
+pub fn _print(args: fmt::Arguments) {
+    if let Err(e) = LOCAL_STDOUT.with(|s| match s.borrow_mut().as_mut() {
+        Some(w) => w.write_fmt(args),
+        None => stdout().write_fmt(args)
+    }) {
+        panic!("failed printing to stdout: {}", e);
+    }
 }
