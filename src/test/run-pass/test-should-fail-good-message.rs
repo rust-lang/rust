@@ -13,13 +13,13 @@
 
 #[test]
 #[should_panic(expected = "foo")]
-fn test_foo() {
+pub fn test_foo() {
     panic!("foo bar")
 }
 
 #[test]
 #[should_panic(expected = "foo")]
-fn test_foo_dynamic() {
+pub fn test_foo_dynamic() {
     panic!("{} bar", "foo")
 }
 
