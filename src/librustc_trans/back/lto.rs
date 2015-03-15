@@ -96,8 +96,8 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                             (link::RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET + data_size as uint)];
 
                         match flate::inflate_bytes(compressed_data) {
-                            Some(inflated) => inflated,
-                            None => {
+                            Ok(inflated) => inflated,
+                            Err(_) => {
                                 sess.fatal(&format!("failed to decompress bc of `{}`",
                                                    name))
                             }
@@ -112,8 +112,8 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                 // the object must be in the old, pre-versioning format, so simply
                 // inflate everything and let LLVM decide if it can make sense of it
                     match flate::inflate_bytes(bc_encoded) {
-                        Some(bc) => bc,
-                        None => {
+                        Ok(bc) => bc,
+                        Err(_) => {
                             sess.fatal(&format!("failed to decompress bc of `{}`",
                                                name))
                         }
