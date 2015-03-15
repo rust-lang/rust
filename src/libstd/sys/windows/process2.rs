@@ -19,7 +19,7 @@ use fmt;
 use fs;
 use io::{self, Error};
 use libc::{self, c_void};
-use os::windows::OsStrExt;
+use os::windows::ffi::OsStrExt;
 use ptr;
 use sync::{StaticMutex, MUTEX_INIT};
 use sys::handle::Handle;
