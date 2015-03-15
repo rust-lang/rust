@@ -10,18 +10,12 @@
 
 //! Operations on tuples
 //!
-//! To access a single element of a tuple one can use the following
-//! methods:
+//! To access a single element of a tuple one can use the `.0`
+//! field access syntax.
 //!
-//! * `valN` - returns a value of _N_-th element
-//! * `refN` - returns a reference to _N_-th element
-//! * `mutN` - returns a mutable reference to _N_-th element
-//!
-//! Indexing starts from zero, so `val0` returns first value, `val1`
-//! returns second value, and so on. In general, a tuple with _S_
-//! elements provides aforementioned methods suffixed with numbers
-//! from `0` to `S-1`. Traits which contain these methods are
-//! implemented for tuples with up to 12 elements.
+//! Indexing starts from zero, so `.0` returns first value, `.1`
+//! returns second value, and so on. In general, a tuple with *N*
+//! elements has field accessors from 0 to *N* - 1.
 //!
 //! If every type inside a tuple implements one of the following
 //! traits, then a tuple itself also implements it.
