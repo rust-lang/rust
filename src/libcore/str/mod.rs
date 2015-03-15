@@ -567,7 +567,6 @@ struct CharSplitsN<'a, P: Pattern<'a>> {
     iter: CharSplits<'a, P>,
     /// The number of splits remaining
     count: usize,
-    invert: bool,
 }
 
 /// An iterator over the substrings of a string, separated by a
@@ -582,6 +581,13 @@ struct RCharSplits<'a, P: Pattern<'a>> {
     finished: bool,
 }
 
+/// An iterator over the substrings of a string, separated by a
+/// pattern, splitting at most `count` times, in reverse order.
+struct RCharSplitsN<'a, P: Pattern<'a>> {
+    iter: RCharSplits<'a, P>,
+    /// The number of splits remaining
+    count: usize,
+}
 
 /// An iterator over the lines of a string, separated by `\n`.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -661,15 +667,14 @@ where P::Searcher: DoubleEndedSearcher<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: Pattern<'a>> Iterator for CharSplitsN<'a, P>
-where P::Searcher: DoubleEndedSearcher<'a> {
+impl<'a, P: Pattern<'a>> Iterator for CharSplitsN<'a, P> {
     type Item = &'a str;
 
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         if self.count != 0 {
             self.count -= 1;
-            if self.invert { self.iter.next_back() } else { self.iter.next() }
+            self.iter.next()
         } else {
             self.iter.get_end()
         }
@@ -709,6 +714,23 @@ impl<'a, P: Pattern<'a>> Iterator for RCharSplits<'a, P>
                 Some(elt)
             },
             None => self.get_remainder(),
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, P: Pattern<'a>> Iterator for RCharSplitsN<'a, P>
+    where P::Searcher: ReverseSearcher<'a>
+{
+    type Item = &'a str;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a str> {
+        if self.count != 0 {
+            self.count -= 1;
+            self.iter.next()
+        } else {
+            self.iter.get_remainder()
         }
     }
 }
@@ -1360,23 +1382,7 @@ impl<'a, S: ?Sized> Str for &'a S where S: Str {
 /// Return type of `StrExt::split`
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Split<'a, P: Pattern<'a>>(CharSplits<'a, P>);
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: Pattern<'a>> Iterator for Split<'a, P> {
-    type Item = &'a str;
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        self.0.next()
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: Pattern<'a>> DoubleEndedIterator for Split<'a, P>
-where P::Searcher: DoubleEndedSearcher<'a> {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a str> {
-        self.0.next_back()
-    }
-}
+delegate_iter!{pattern &'a str : Split<'a, P>}
 
 /// Return type of `StrExt::split_terminator`
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1395,8 +1401,8 @@ delegate_iter!{pattern reverse &'a str : RSplit<'a, P>}
 
 /// Return type of `StrExt::rsplitn`
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct RSplitN<'a, P: Pattern<'a>>(CharSplitsN<'a, P>);
-delegate_iter!{pattern forward &'a str : RSplitN<'a, P>}
+pub struct RSplitN<'a, P: Pattern<'a>>(RCharSplitsN<'a, P>);
+delegate_iter!{pattern reverse &'a str : RSplitN<'a, P>}
 
 /// Methods for string slices
 #[allow(missing_docs)]
@@ -1414,7 +1420,8 @@ pub trait StrExt {
     fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P>;
     fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
-    fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>;
+    fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
+        where P::Searcher: ReverseSearcher<'a>;
     fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P>;
     #[allow(deprecated) /* for SplitStr */]
     fn split_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitStr<'a, P>;
@@ -1498,7 +1505,6 @@ impl StrExt for str {
         SplitN(CharSplitsN {
             iter: self.split(pat).0,
             count: count,
-            invert: false,
         })
     }
 
@@ -1524,11 +1530,12 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P> {
-        RSplitN(CharSplitsN {
-            iter: self.split(pat).0,
+    fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        RSplitN(RCharSplitsN {
+            iter: self.rsplit(pat).0,
             count: count,
-            invert: true,
         })
     }
 

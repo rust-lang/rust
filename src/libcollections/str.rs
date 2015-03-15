@@ -727,23 +727,20 @@ impl str {
         core_str::StrExt::rsplit(&self[..], pat)
     }
 
-    /// An iterator over substrings of `self`, separated by characters matched by a pattern,
-    /// starting from the end of the string.
-    ///
-    /// Restricted to splitting at most `count` times.
-    ///
-    /// The pattern can be a simple `&str`, or a closure that determines the split.
+    /// An iterator over substrings of `self`, separated by a pattern,
+    /// starting from the end of the string, restricted to splitting
+    /// at most `count` times.
     ///
     /// # Examples
     ///
-    /// Simple `&str` patterns:
+    /// Simple patterns:
     ///
     /// ```
     /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(2, ' ').collect();
     /// assert_eq!(v, ["lamb", "little", "Mary had a"]);
     ///
-    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
-    /// assert_eq!(v, ["leopard", "tiger", "lionX"]);
+    /// let v: Vec<&str> = "lion::tiger::leopard".rsplitn(1, "::").collect();
+    /// assert_eq!(v, ["leopard", "lion::tiger"]);
     /// ```
     ///
     /// More complex patterns with a lambda:
@@ -753,7 +750,9 @@ impl str {
     /// assert_eq!(v, ["ghi", "abc1def"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P> {
+    pub fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
         core_str::StrExt::rsplitn(&self[..], count, pat)
     }
 
