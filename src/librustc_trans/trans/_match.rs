@@ -326,7 +326,7 @@ pub enum OptResult<'blk, 'tcx: 'blk> {
     LowerBound(Result<'blk, 'tcx>)
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum TransBindingMode {
     TrByCopy(/* llbinding */ ValueRef),
     TrByMove,
@@ -1000,9 +1000,14 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         None => {
             let data = &m[0].data;
             for &(ref ident, ref value_ptr) in &m[0].bound_ptrs {
-                let llmatch = data.bindings_map[*ident].llmatch;
-                call_lifetime_start(bcx, llmatch);
-                Store(bcx, *value_ptr, llmatch);
+                let binfo = data.bindings_map[*ident];
+                call_lifetime_start(bcx, binfo.llmatch);
+                if binfo.trmode == TrByRef && type_is_fat_ptr(bcx.tcx(), binfo.ty) {
+                    expr::copy_fat_ptr(bcx, *value_ptr, binfo.llmatch);
+                }
+                else {
+                    Store(bcx, *value_ptr, binfo.llmatch);
+                }
             }
             match data.arm.guard {
                 Some(ref guard_expr) => {
@@ -1070,7 +1075,6 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             _ => None
         }
     };
-
     match adt_vals {
         Some(field_vals) => {
             let pats = enter_match(bcx, dm, m, col, val, |pats|
@@ -1677,8 +1681,14 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
                             ast::BindByRef(_) => {
                                 // By ref binding: the value of the variable
-                                // is the pointer `val` itself.
-                                Store(bcx, val, llval);
+                                // is the pointer `val` itself or fat pointer referenced by `val`
+                                if type_is_fat_ptr(bcx.tcx(), ty) {
+                                    expr::copy_fat_ptr(bcx, val, llval);
+                                }
+                                else {
+                                    Store(bcx, val, llval);
+                                }
+
                                 bcx
                             }
                         }
