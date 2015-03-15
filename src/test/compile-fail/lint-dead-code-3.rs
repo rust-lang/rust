@@ -19,7 +19,7 @@ extern crate libc;
 
 pub use extern_foo as x;
 extern {
-    fn extern_foo();
+    pub fn extern_foo();
 }
 
 struct Foo; //~ ERROR: struct is never used

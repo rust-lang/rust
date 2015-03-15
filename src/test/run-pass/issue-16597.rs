@@ -15,5 +15,5 @@ mod test {
     use super::*;
 
     #[test]
-    fn test(){}
+    pub fn test(){}
 }
