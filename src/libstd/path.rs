@@ -86,8 +86,8 @@
 //!
 //! * Occurrences of `.` are normalized away, *except* if they are at
 //! the beginning of the path (in which case they are often meaningful
-//! in terms of path searching). So, fore xample, `a/./b`, `a/b/`,
-//! `/a/b/.` and `a/b` all ahve components `a` and `b`, but `./a/b`
+//! in terms of path searching). So, for example, `a/./b`, `a/b/`,
+//! `/a/b/.` and `a/b` all have components `a` and `b`, but `./a/b`
 //! has a leading current directory component.
 //!
 //! No other normalization takes place by default. In particular,
