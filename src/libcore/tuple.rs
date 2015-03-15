@@ -52,7 +52,7 @@ macro_rules! e {
 macro_rules! tuple_impls {
     ($(
         $Tuple:ident {
-            $(($valN:ident, $refN:ident, $mutN:ident, $idx:tt) -> $T:ident)+
+            $(($idx:tt) -> $T:ident)+
         }
     )+) => {
         $(
@@ -156,105 +156,105 @@ macro_rules! lexical_cmp {
 
 tuple_impls! {
     Tuple1 {
-        (val0, ref0, mut0, 0) -> A
+        (0) -> A
     }
     Tuple2 {
-        (val0, ref0, mut0, 0) -> A
-        (val1, ref1, mut1, 1) -> B
+        (0) -> A
+        (1) -> B
     }
     Tuple3 {
-        (val0, ref0, mut0, 0) -> A
-        (val1, ref1, mut1, 1) -> B
-        (val2, ref2, mut2, 2) -> C
+        (0) -> A
+        (1) -> B
+        (2) -> C
     }
     Tuple4 {
-        (val0, ref0, mut0, 0) -> A
-        (val1, ref1, mut1, 1) -> B
-        (val2, ref2, mut2, 2) -> C
-        (val3, ref3, mut3, 3) -> D
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
     }
     Tuple5 {
-        (val0, ref0, mut0, 0) -> A
-        (val1, ref1, mut1, 1) -> B
-        (val2, ref2, mut2, 2) -> C
-        (val3, ref3, mut3, 3) -> D
-        (val4, ref4, mut4, 4) -> E
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
     }
     Tuple6 {
-        (val0, ref0, mut0, 0) -> A
-        (val1, ref1, mut1, 1) -> B
-        (val2, ref2, mut2, 2) -> C
-        (val3, ref3, mut3, 3) -> D
-        (val4, ref4, mut4, 4) -> E
-        (val5, ref5, mut5, 5) -> F
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
     }
     Tuple7 {
-        (val0, ref0, mut0, 0) -> A
-        (val1, ref1, mut1, 1) -> B
-        (val2, ref2, mut2, 2) -> C
-        (val3, ref3, mut3, 3) -> D
-        (val4, ref4, mut4, 4) -> E
-        (val5, ref5, mut5, 5) -> F
-        (val6, ref6, mut6, 6) -> G
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
     }
     Tuple8 {
-        (val0, ref0, mut0, 0) -> A
-        (val1, ref1, mut1, 1) -> B
-        (val2, ref2, mut2, 2) -> C
-        (val3, ref3, mut3, 3) -> D
-        (val4, ref4, mut4, 4) -> E
-        (val5, ref5, mut5, 5) -> F
-        (val6, ref6, mut6, 6) -> G
-        (val7, ref7, mut7, 7) -> H
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
     }
     Tuple9 {
-        (val0, ref0, mut0, 0) -> A
-        (val1, ref1, mut1, 1) -> B
-        (val2, ref2, mut2, 2) -> C
-        (val3, ref3, mut3, 3) -> D
-        (val4, ref4, mut4, 4) -> E
-        (val5, ref5, mut5, 5) -> F
-        (val6, ref6, mut6, 6) -> G
-        (val7, ref7, mut7, 7) -> H
-        (val8, ref8, mut8, 8) -> I
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+        (8) -> I
     }
     Tuple10 {
-        (val0, ref0, mut0, 0) -> A
-        (val1, ref1, mut1, 1) -> B
-        (val2, ref2, mut2, 2) -> C
-        (val3, ref3, mut3, 3) -> D
-        (val4, ref4, mut4, 4) -> E
-        (val5, ref5, mut5, 5) -> F
-        (val6, ref6, mut6, 6) -> G
-        (val7, ref7, mut7, 7) -> H
-        (val8, ref8, mut8, 8) -> I
-        (val9, ref9, mut9, 9) -> J
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+        (8) -> I
+        (9) -> J
     }
     Tuple11 {
-        (val0, ref0, mut0, 0) -> A
-        (val1, ref1, mut1, 1) -> B
-        (val2, ref2, mut2, 2) -> C
-        (val3, ref3, mut3, 3) -> D
-        (val4, ref4, mut4, 4) -> E
-        (val5, ref5, mut5, 5) -> F
-        (val6, ref6, mut6, 6) -> G
-        (val7, ref7, mut7, 7) -> H
-        (val8, ref8, mut8, 8) -> I
-        (val9, ref9, mut9, 9) -> J
-        (val10, ref10, mut10, 10) -> K
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+        (8) -> I
+        (9) -> J
+        (10) -> K
     }
     Tuple12 {
-        (val0, ref0, mut0, 0) -> A
-        (val1, ref1, mut1, 1) -> B
-        (val2, ref2, mut2, 2) -> C
-        (val3, ref3, mut3, 3) -> D
-        (val4, ref4, mut4, 4) -> E
-        (val5, ref5, mut5, 5) -> F
-        (val6, ref6, mut6, 6) -> G
-        (val7, ref7, mut7, 7) -> H
-        (val8, ref8, mut8, 8) -> I
-        (val9, ref9, mut9, 9) -> J
-        (val10, ref10, mut10, 10) -> K
-        (val11, ref11, mut11, 11) -> L
+        (0) -> A
+        (1) -> B
+        (2) -> C
+        (3) -> D
+        (4) -> E
+        (5) -> F
+        (6) -> G
+        (7) -> H
+        (8) -> I
+        (9) -> J
+        (10) -> K
+        (11) -> L
     }
 }
