@@ -9,10 +9,6 @@
 // except according to those terms.
 
 //! Traits, helpers, and type definitions for core I/O functionality.
-//!
-//! > **NOTE**: This module is very much a work in progress and is under active
-//! > development. At this time it is still recommended to use the `old_io`
-//! > module while the details of this module shake out.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
