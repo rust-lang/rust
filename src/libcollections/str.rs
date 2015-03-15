@@ -69,9 +69,12 @@ use vec::Vec;
 use slice::SliceConcatExt;
 
 pub use core::str::{FromStr, Utf8Error, Str};
-pub use core::str::{Lines, LinesAny, MatchIndices, CharRange};
-pub use core::str::{Split, SplitTerminator, SplitN};
-pub use core::str::{RSplit, RSplitN};
+pub use core::str::{Lines, LinesAny, CharRange};
+pub use core::str::{Split, RSplit};
+pub use core::str::{SplitN, RSplitN};
+pub use core::str::{SplitTerminator, RSplitTerminator};
+pub use core::str::{Matches, RMatches};
+pub use core::str::{MatchIndices, RMatchIndices};
 pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
 pub use core::str::{from_utf8_unchecked, ParseBoolError};
 pub use unicode::str::{Words, Graphemes, GraphemeIndices};
@@ -581,12 +584,22 @@ impl str {
     /// An iterator over substrings of `self`, separated by characters
     /// matched by a pattern.
     ///
-    /// The pattern can be a simple `&str`, or a closure that determines
+    /// The pattern can be a simple `&str`, `char`, or a closure that determines
     /// the split.
+    /// Additional libraries might provide more complex patterns like regular expressions.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator will be double ended if the pattern allows a reverse search
+    /// and forward/reverse search yields the same elements. This is true for, eg, `char` but not
+    /// for `&str`.
+    ///
+    /// If the pattern allows a reverse search but its results might differ
+    /// from a forward search, `rsplit()` can be used.
     ///
     /// # Examples
     ///
-    /// Simple `&str` patterns:
+    /// Simple patterns:
     ///
     /// ```
     /// let v: Vec<&str> = "Mary had a little lamb".split(' ').collect();
@@ -594,6 +607,12 @@ impl str {
     ///
     /// let v: Vec<&str> = "".split('X').collect();
     /// assert_eq!(v, [""]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').collect();
+    /// assert_eq!(v, ["lion", "", "tiger", "leopard"]);
+    ///
+    /// let v: Vec<&str> = "lion::tiger::leopard".split("::").collect();
+    /// assert_eq!(v, ["lion", "tiger", "leopard"]);
     /// ```
     ///
     /// More complex patterns with a lambda:
@@ -602,33 +621,176 @@ impl str {
     /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_numeric()).collect();
     /// assert_eq!(v, ["abc", "def", "ghi"]);
     ///
-    /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').collect();
-    /// assert_eq!(v, ["lion", "", "tiger", "leopard"]);
+    /// let v: Vec<&str> = "lionXtigerXleopard".split(|c: char| c.is_uppercase()).collect();
+    /// assert_eq!(v, ["lion", "tiger", "leopard"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
         core_str::StrExt::split(&self[..], pat)
     }
 
-    /// An iterator over substrings of `self`, separated by characters matched
-    /// by a pattern, returning most `count` items.
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by a pattern and yielded in reverse order.
     ///
-    /// The pattern can be a simple `&str`, or a closure that determines
+    /// The pattern can be a simple `&str`, `char`, or a closure that determines
     /// the split.
+    /// Additional libraries might provide more complex patterns like regular expressions.
     ///
-    /// The last element returned, if any, will contain the remainder of the
-    /// string.
+    /// # Iterator behavior
+    ///
+    /// The returned iterator requires that the pattern supports a reverse search,
+    /// and it will be double ended if a forward/reverse search yields the same elements.
+    ///
+    /// For iterating from the front, `split()` can be used.
     ///
     /// # Examples
     ///
-    /// Simple `&str` patterns:
+    /// Simple patterns:
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplit(' ').collect();
+    /// assert_eq!(v, ["lamb", "little", "a", "had", "Mary"]);
+    ///
+    /// let v: Vec<&str> = "".rsplit('X').collect();
+    /// assert_eq!(v, [""]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplit('X').collect();
+    /// assert_eq!(v, ["leopard", "tiger", "", "lion"]);
+    ///
+    /// let v: Vec<&str> = "lion::tiger::leopard".rsplit("::").collect();
+    /// assert_eq!(v, ["leopard", "tiger", "lion"]);
+    /// ```
+    ///
+    /// More complex patterns with a lambda:
+    ///
+    /// ```rust
+    /// let v: Vec<&str> = "abc1def2ghi".rsplit(|c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, ["ghi", "def", "abc"]);
+    ///
+    /// let v: Vec<&str> = "lionXtigerXleopard".rsplit(|c: char| c.is_uppercase()).collect();
+    /// assert_eq!(v, ["leopard", "tiger", "lion"]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        core_str::StrExt::rsplit(&self[..], pat)
+    }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by a pattern.
+    ///
+    /// The pattern can be a simple `&str`, `char`, or a closure that determines
+    /// the split.
+    /// Additional libraries might provide more complex patterns like regular expressions.
+    ///
+    /// Equivalent to `split`, except that the trailing substring is skipped if empty.
+    ///
+    /// This method can be used for string data that is _terminated_, rather than
+    /// _seperated_ by some string.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator will be double ended if the pattern allows a reverse search
+    /// and forward/reverse search yields the same elements. This is true for, eg, `char` but not
+    /// for `&str`.
+    ///
+    /// If the pattern allows a reverse search but its results might differ
+    /// from a forward search, `rsplit_terminator()` can be used.
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
     ///
     /// ```
-    /// let v: Vec<&str> = "Mary had a little lambda".splitn(2, ' ').collect();
-    /// assert_eq!(v, ["Mary", "had a little lambda"]);
+    /// let v: Vec<&str> = "A.B.".split_terminator('.').collect();
+    /// assert_eq!(v, ["A", "B"]);
     ///
-    /// let v: Vec<&str> = "lionXXtigerXleopard".splitn(2, 'X').collect();
-    /// assert_eq!(v, ["lion", "XtigerXleopard"]);
+    /// let v: Vec<&str> = "A..B..".split_terminator(".").collect();
+    /// assert_eq!(v, ["A", "", "B", ""]);
+    /// ```
+    ///
+    /// More complex patterns with a lambda:
+    ///
+    /// ```
+    /// let v: Vec<&str> = "abc1def2ghi3".split_terminator(|c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, ["abc", "def", "ghi"]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
+        core_str::StrExt::split_terminator(&self[..], pat)
+    }
+
+    /// An iterator over substrings of `self`, separated by characters
+    /// matched by a pattern and yielded in reverse order.
+    ///
+    /// The pattern can be a simple `&str`, `char`, or a closure that determines
+    /// the split.
+    /// Additional libraries might provide more complex patterns like regular expressions.
+    ///
+    /// Equivalent to `split`, except that the trailing substring is skipped if empty.
+    ///
+    /// This method can be used for string data that is _terminated_, rather than
+    /// _seperated_ by some string.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator requires that the pattern supports a reverse search,
+    /// and it will be double ended if a forward/reverse search yields the same elements.
+    ///
+    /// For iterating from the front, `split_terminator()` can be used.
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// let v: Vec<&str> = "A.B.".rsplit_terminator('.').collect();
+    /// assert_eq!(v, ["B", "A"]);
+    ///
+    /// let v: Vec<&str> = "A..B..".rsplit_terminator(".").collect();
+    /// assert_eq!(v, ["", "B", "", "A"]);
+    /// ```
+    ///
+    /// More complex patterns with a lambda:
+    ///
+    /// ```
+    /// let v: Vec<&str> = "abc1def2ghi3".rsplit_terminator(|c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, ["ghi", "def", "abc"]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn rsplit_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplitTerminator<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        core_str::StrExt::rsplit_terminator(&self[..], pat)
+    }
+
+    /// An iterator over substrings of `self`, separated by a pattern,
+    /// restricted to returning
+    /// at most `count` items.
+    ///
+    /// The last element returned, if any, will contain the remainder of the
+    /// string.
+    /// The pattern can be a simple `&str`, `char`, or a closure that determines
+    /// the split.
+    /// Additional libraries might provide more complex patterns like regular expressions.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator will not be double ended, because it is not efficient to support.
+    ///
+    /// If the pattern allows a reverse search, `rsplitn()` can be used.
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
+    ///
+    /// ```
+    /// let v: Vec<&str> = "Mary had a little lambda".splitn(3, ' ').collect();
+    /// assert_eq!(v, ["Mary", "had", "a little lambda"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".splitn(3, "X").collect();
+    /// assert_eq!(v, ["lion", "", "tigerXleopard"]);
     ///
     /// let v: Vec<&str> = "abcXdef".splitn(1, 'X').collect();
     /// assert_eq!(v, ["abcXdef"]);
@@ -648,71 +810,22 @@ impl str {
         core_str::StrExt::splitn(&self[..], count, pat)
     }
 
-    /// An iterator over substrings of `self`, separated by characters
-    /// matched by a pattern.
-    ///
-    /// Equivalent to `split`, except that the trailing substring is skipped if empty.
-    ///
-    /// The pattern can be a simple `&str`, or a closure that determines
-    /// the split.
-    ///
-    /// # Examples
-    ///
-    /// Simple `&str` patterns:
-    ///
-    /// ```
-    /// let v: Vec<&str> = "A.B.".split_terminator('.').collect();
-    /// assert_eq!(v, ["A", "B"]);
-    ///
-    /// let v: Vec<&str> = "A..B..".split_terminator('.').collect();
-    /// assert_eq!(v, ["A", "", "B", ""]);
-    /// ```
-    ///
-    /// More complex patterns with a lambda:
-    ///
-    /// ```
-    /// let v: Vec<&str> = "abc1def2ghi3".split_terminator(|c: char| c.is_numeric()).collect();
-    /// assert_eq!(v, ["abc", "def", "ghi"]);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
-        core_str::StrExt::split_terminator(&self[..], pat)
-    }
-
-    /// An iterator over substrings of `self`, separated by a pattern,
-    /// starting from the end of the string.
-    ///
-    /// # Examples
-    ///
-    /// Simple patterns:
-    ///
-    /// ```
-    /// let v: Vec<&str> = "Mary had a little lamb".rsplit(' ').collect();
-    /// assert_eq!(v, ["lamb", "little", "a", "had", "Mary"]);
-    ///
-    /// let v: Vec<&str> = "lion::tiger::leopard".rsplit("::").collect();
-    /// assert_eq!(v, ["leopard", "tiger", "lion"]);
-    /// ```
-    ///
-    /// More complex patterns with a lambda:
-    ///
-    /// ```
-    /// let v: Vec<&str> = "abc1def2ghi".rsplit(|c: char| c.is_numeric()).collect();
-    /// assert_eq!(v, ["ghi", "def", "abc"]);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
-        where P::Searcher: ReverseSearcher<'a>
-    {
-        core_str::StrExt::rsplit(&self[..], pat)
-    }
-
     /// An iterator over substrings of `self`, separated by a pattern,
     /// starting from the end of the string, restricted to returning
     /// at most `count` items.
     ///
     /// The last element returned, if any, will contain the remainder of the
     /// string.
+    ///
+    /// The pattern can be a simple `&str`, `char`, or a closure that determines
+    /// the split.
+    /// Additional libraries might provide more complex patterns like regular expressions.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator will not be double ended, because it is not efficient to support.
+    ///
+    /// `splitn()` can be used for splitting from the front.
     ///
     /// # Examples
     ///
@@ -721,6 +834,9 @@ impl str {
     /// ```
     /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(3, ' ').collect();
     /// assert_eq!(v, ["lamb", "little", "Mary had a"]);
+    ///
+    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(3, 'X').collect();
+    /// assert_eq!(v, ["leopard", "tiger", "lionX"]);
     ///
     /// let v: Vec<&str> = "lion::tiger::leopard".rsplitn(2, "::").collect();
     /// assert_eq!(v, ["leopard", "lion::tiger"]);
@@ -739,12 +855,86 @@ impl str {
         core_str::StrExt::rsplitn(&self[..], count, pat)
     }
 
-    /// An iterator over the start and end indices of the disjoint matches of a `&str` within
+    /// An iterator over the matches of a pattern within `self`.
+    ///
+    /// The pattern can be a simple `&str`, `char`, or a closure that determines
+    /// the split.
+    /// Additional libraries might provide more complex patterns like regular expressions.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator will be double ended if the pattern allows a reverse search
+    /// and forward/reverse search yields the same elements. This is true for, eg, `char` but not
+    /// for `&str`.
+    ///
+    /// If the pattern allows a reverse search but its results might differ
+    /// from a forward search, `rmatches()` can be used.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collections)]
+    /// let v: Vec<&str> = "abcXXXabcYYYabc".matches("abc").collect();
+    /// assert_eq!(v, ["abc", "abc", "abc"]);
+    ///
+    /// let v: Vec<&str> = "1abc2abc3".matches(|c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, ["1", "2", "3"]);
+    /// ```
+    #[unstable(feature = "collections",
+               reason = "method got recently added")]
+    pub fn matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> Matches<'a, P> {
+        core_str::StrExt::matches(&self[..], pat)
+    }
+
+    /// An iterator over the matches of a pattern within `self`, yielded in reverse order.
+    ///
+    /// The pattern can be a simple `&str`, `char`, or a closure that determines
+    /// the split.
+    /// Additional libraries might provide more complex patterns like regular expressions.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator requires that the pattern supports a reverse search,
+    /// and it will be double ended if a forward/reverse search yields the same elements.
+    ///
+    /// For iterating from the front, `matches()` can be used.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collections)]
+    /// let v: Vec<&str> = "abcXXXabcYYYabc".rmatches("abc").collect();
+    /// assert_eq!(v, ["abc", "abc", "abc"]);
+    ///
+    /// let v: Vec<&str> = "1abc2abc3".rmatches(|c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, ["3", "2", "1"]);
+    /// ```
+    #[unstable(feature = "collections",
+               reason = "method got recently added")]
+    pub fn rmatches<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatches<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        core_str::StrExt::rmatches(&self[..], pat)
+    }
+
+    /// An iterator over the start and end indices of the disjoint matches of a pattern within
     /// `self`.
     ///
-    /// That is, each returned value `(start, end)` satisfies `self.slice(start, end) == sep`. For
-    /// matches of `sep` within `self` that overlap, only the indices corresponding to the first
+    /// For matches of `pat` within `self` that overlap, only the indices corresponding to the first
     /// match are returned.
+    ///
+    /// The pattern can be a simple `&str`, `char`, or a closure that determines
+    /// the split.
+    /// Additional libraries might provide more complex patterns like regular expressions.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator will be double ended if the pattern allows a reverse search
+    /// and forward/reverse search yields the same elements. This is true for, eg, `char` but not
+    /// for `&str`.
+    ///
+    /// If the pattern allows a reverse search but its results might differ
+    /// from a forward search, `rmatch_indices()` can be used.
     ///
     /// # Examples
     ///
@@ -761,10 +951,50 @@ impl str {
     /// ```
     #[unstable(feature = "collections",
                reason = "might have its iterator type changed")]
-    // NB: Right now MatchIndices yields `(usize, usize)`,
-    // but it would be more consistent and useful to return `(usize, &str)`
+    // NB: Right now MatchIndices yields `(usize, usize)`, but it would
+    // be more consistent with `matches` and `char_indices` to return `(usize, &str)`
     pub fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
         core_str::StrExt::match_indices(&self[..], pat)
+    }
+
+    /// An iterator over the start and end indices of the disjoint matches of a pattern within
+    /// `self`, yielded in reverse order.
+    ///
+    /// For matches of `pat` within `self` that overlap, only the indices corresponding to the last
+    /// match are returned.
+    ///
+    /// The pattern can be a simple `&str`, `char`, or a closure that determines
+    /// the split.
+    /// Additional libraries might provide more complex patterns like regular expressions.
+    ///
+    /// # Iterator behavior
+    ///
+    /// The returned iterator requires that the pattern supports a reverse search,
+    /// and it will be double ended if a forward/reverse search yields the same elements.
+    ///
+    /// For iterating from the front, `match_indices()` can be used.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collections)]
+    /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".rmatch_indices("abc").collect();
+    /// assert_eq!(v, [(12,15), (6,9), (0,3)]);
+    ///
+    /// let v: Vec<(usize, usize)> = "1abcabc2".rmatch_indices("abc").collect();
+    /// assert_eq!(v, [(4,7), (1,4)]);
+    ///
+    /// let v: Vec<(usize, usize)> = "ababa".rmatch_indices("aba").collect();
+    /// assert_eq!(v, [(2, 5)]); // only the last `aba`
+    /// ```
+    #[unstable(feature = "collections",
+               reason = "might have its iterator type changed")]
+    // NB: Right now RMatchIndices yields `(usize, usize)`, but it would
+    // be more consistent with `rmatches` and `char_indices` to return `(usize, &str)`
+    pub fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        core_str::StrExt::rmatch_indices(&self[..], pat)
     }
 
     /// An iterator over the lines of a string, separated by `\n`.

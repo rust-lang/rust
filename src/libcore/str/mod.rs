@@ -39,96 +39,6 @@ pub use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher, SearchSt
 
 mod pattern;
 
-macro_rules! delegate_iter {
-    (exact $te:ty : $ti:ty) => {
-        delegate_iter!{$te : $ti}
-        impl<'a> ExactSizeIterator for $ti {
-            #[inline]
-            fn len(&self) -> usize {
-                self.0.len()
-            }
-        }
-    };
-    ($te:ty : $ti:ty) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a> Iterator for $ti {
-            type Item = $te;
-
-            #[inline]
-            fn next(&mut self) -> Option<$te> {
-                self.0.next()
-            }
-            #[inline]
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                self.0.size_hint()
-            }
-        }
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a> DoubleEndedIterator for $ti {
-            #[inline]
-            fn next_back(&mut self) -> Option<$te> {
-                self.0.next_back()
-            }
-        }
-    };
-    (pattern $te:ty : $ti:ty) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, P: Pattern<'a>> Iterator for $ti {
-            type Item = $te;
-
-            #[inline]
-            fn next(&mut self) -> Option<$te> {
-                self.0.next()
-            }
-            #[inline]
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                self.0.size_hint()
-            }
-        }
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, P: Pattern<'a>> DoubleEndedIterator for $ti
-        where P::Searcher: DoubleEndedSearcher<'a> {
-            #[inline]
-            fn next_back(&mut self) -> Option<$te> {
-                self.0.next_back()
-            }
-        }
-    };
-    (pattern forward $te:ty : $ti:ty) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, P: Pattern<'a>> Iterator for $ti
-        where P::Searcher: DoubleEndedSearcher<'a> {
-            type Item = $te;
-
-            #[inline]
-            fn next(&mut self) -> Option<$te> {
-                self.0.next()
-            }
-            #[inline]
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                self.0.size_hint()
-            }
-        }
-    };
-    (pattern reverse $te:ty : $ti:ty) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, P: Pattern<'a>> Iterator for $ti
-            where P::Searcher: ReverseSearcher<'a>
-        {
-            type Item = $te;
-
-            #[inline]
-            fn next(&mut self) -> Option<$te> {
-                self.0.next()
-            }
-            #[inline]
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                self.0.size_hint()
-            }
-        }
-    };
-}
-
 /// A trait to abstract the idea of creating a new instance of a type from a
 /// string.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -444,11 +354,9 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Bytes<'a>(Map<slice::Iter<'a, u8>, BytesDeref>);
-delegate_iter!{exact u8 : Bytes<'a>}
 
-/// A temporary fn new type that ensures that the `Bytes` iterator
-/// is cloneable.
-#[derive(Copy, Clone)]
+/// A nameable, clonable fn type
+#[derive(Clone)]
 struct BytesDeref;
 
 impl<'a> Fn<(&'a u8,)> for BytesDeref {
@@ -474,58 +382,173 @@ impl<'a> FnOnce<(&'a u8,)> for BytesDeref {
     }
 }
 
-/// An iterator over the substrings of a string, separated by `sep`.
-struct CharSplits<'a, P: Pattern<'a>> {
-    /// The slice remaining to be iterated
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> Iterator for Bytes<'a> {
+    type Item = u8;
+
+    #[inline]
+    fn next(&mut self) -> Option<u8> {
+        self.0.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> DoubleEndedIterator for Bytes<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<u8> {
+        self.0.next_back()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> ExactSizeIterator for Bytes<'a> {
+    #[inline]
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+}
+
+/// This macro generates two public iterator structs
+/// wrapping an private internal one that makes use of the `Pattern` API.
+///
+/// For all patterns `P: Pattern<'a>` the following items will be
+/// generated (generics ommitted):
+///
+/// struct $forward_iterator($internal_iterator);
+/// struct $reverse_iterator($internal_iterator);
+///
+/// impl Iterator for $forward_iterator
+/// { /* internal ends up calling Searcher::next_match() */ }
+///
+/// impl DoubleEndedIterator for $forward_iterator
+///       where P::Searcher: DoubleEndedSearcher
+/// { /* internal ends up calling Searcher::next_match_back() */ }
+///
+/// impl Iterator for $reverse_iterator
+///       where P::Searcher: ReverseSearcher
+/// { /* internal ends up calling Searcher::next_match_back() */ }
+///
+/// impl DoubleEndedIterator for $reverse_iterator
+///       where P::Searcher: DoubleEndedSearcher
+/// { /* internal ends up calling Searcher::next_match() */ }
+///
+/// The internal one is defined outside the macro, and has almost the same
+/// semantic as a DoubleEndedIterator by delegating to `pattern::Searcher` and
+/// `pattern::ReverseSearcher` for both forward and reverse iteration.
+///
+/// "Almost", because a `Searcher` and a `ReverseSearcher` for a given
+/// `Pattern` might not return the same elements, so actually implementing
+/// `DoubleEndedIterator` for it would be incorrect.
+/// (See the docs in `str::pattern` for more details)
+///
+/// However, the internal struct still represents a single ended iterator from
+/// either end, and depending on pattern is also a valid double ended iterator,
+/// so the two wrapper structs implement `Iterator`
+/// and `DoubleEndedIterator` depending on the concrete pattern type, leading
+/// to the complex impls seen above.
+macro_rules! generate_pattern_iterators {
+    {
+        // Forward iterator
+        forward:
+            $(#[$forward_iterator_attribute:meta])*
+            struct $forward_iterator:ident;
+
+        // Reverse iterator
+        reverse:
+            $(#[$reverse_iterator_attribute:meta])*
+            struct $reverse_iterator:ident;
+
+        // Stability of all generated items
+        stability:
+            $(#[$common_stability_attribute:meta])*
+
+        // Internal almost-iterator that is being delegated to
+        internal:
+            $internal_iterator:ident yielding ($iterty:ty);
+
+        // Kind of delgation - either single ended or double ended
+        delegate $($t:tt)*
+    } => {
+        $(#[$forward_iterator_attribute])*
+        $(#[$common_stability_attribute])*
+        pub struct $forward_iterator<'a, P: Pattern<'a>>($internal_iterator<'a, P>);
+
+        $(#[$common_stability_attribute])*
+        impl<'a, P: Pattern<'a>> Iterator for $forward_iterator<'a, P> {
+            type Item = $iterty;
+
+            #[inline]
+            fn next(&mut self) -> Option<$iterty> {
+                self.0.next()
+            }
+        }
+
+        $(#[$reverse_iterator_attribute])*
+        $(#[$common_stability_attribute])*
+        pub struct $reverse_iterator<'a, P: Pattern<'a>>($internal_iterator<'a, P>);
+
+        $(#[$common_stability_attribute])*
+        impl<'a, P: Pattern<'a>> Iterator for $reverse_iterator<'a, P>
+            where P::Searcher: ReverseSearcher<'a>
+        {
+            type Item = $iterty;
+
+            #[inline]
+            fn next(&mut self) -> Option<$iterty> {
+                self.0.next_back()
+            }
+        }
+
+        generate_pattern_iterators!($($t)* with $(#[$common_stability_attribute])*,
+                                                $forward_iterator,
+                                                $reverse_iterator, $iterty);
+    };
+    {
+        double ended; with $(#[$common_stability_attribute:meta])*,
+                           $forward_iterator:ident,
+                           $reverse_iterator:ident, $iterty:ty
+    } => {
+        $(#[$common_stability_attribute])*
+        impl<'a, P: Pattern<'a>> DoubleEndedIterator for $forward_iterator<'a, P>
+            where P::Searcher: DoubleEndedSearcher<'a>
+        {
+            #[inline]
+            fn next_back(&mut self) -> Option<$iterty> {
+                self.0.next_back()
+            }
+        }
+
+        $(#[$common_stability_attribute])*
+        impl<'a, P: Pattern<'a>> DoubleEndedIterator for $reverse_iterator<'a, P>
+            where P::Searcher: DoubleEndedSearcher<'a>
+        {
+            #[inline]
+            fn next_back(&mut self) -> Option<$iterty> {
+                self.0.next()
+            }
+        }
+    };
+    {
+        single ended; with $(#[$common_stability_attribute:meta])*,
+                           $forward_iterator:ident,
+                           $reverse_iterator:ident, $iterty:ty
+    } => {}
+}
+
+struct SplitInternal<'a, P: Pattern<'a>> {
     start: usize,
     end: usize,
     matcher: P::Searcher,
-    /// Whether an empty string at the end is allowed
     allow_trailing_empty: bool,
     finished: bool,
 }
 
-/// An iterator over the substrings of a string, separated by `sep`,
-/// splitting at most `count` times.
-struct CharSplitsN<'a, P: Pattern<'a>> {
-    iter: CharSplits<'a, P>,
-    /// The number of items remaining
-    count: usize,
-}
-
-/// An iterator over the substrings of a string, separated by a
-/// pattern, in reverse order.
-struct RCharSplits<'a, P: Pattern<'a>> {
-    /// The slice remaining to be iterated
-    start: usize,
-    end: usize,
-    matcher: P::Searcher,
-    /// Whether an empty string at the end of iteration is allowed
-    allow_final_empty: bool,
-    finished: bool,
-}
-
-/// An iterator over the substrings of a string, separated by a
-/// pattern, splitting at most `count` times, in reverse order.
-struct RCharSplitsN<'a, P: Pattern<'a>> {
-    iter: RCharSplits<'a, P>,
-    /// The number of splits remaining
-    count: usize,
-}
-
-/// An iterator over the lines of a string, separated by `\n`.
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct Lines<'a> {
-    inner: CharSplits<'a, char>,
-}
-
-/// An iterator over the lines of a string, separated by either `\n` or (`\r\n`).
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct LinesAny<'a> {
-    inner: Map<Lines<'a>, fn(&str) -> &str>,
-}
-
-impl<'a, P: Pattern<'a>> CharSplits<'a, P> {
+impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
     #[inline]
     fn get_end(&mut self) -> Option<&'a str> {
         if !self.finished && (self.allow_trailing_empty || self.end - self.start > 0) {
@@ -538,11 +561,6 @@ impl<'a, P: Pattern<'a>> CharSplits<'a, P> {
             None
         }
     }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: Pattern<'a>> Iterator for CharSplits<'a, P> {
-    type Item = &'a str;
 
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
@@ -558,13 +576,11 @@ impl<'a, P: Pattern<'a>> Iterator for CharSplits<'a, P> {
             None => self.get_end(),
         }
     }
-}
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: Pattern<'a>> DoubleEndedIterator for CharSplits<'a, P>
-where P::Searcher: DoubleEndedSearcher<'a> {
     #[inline]
-    fn next_back(&mut self) -> Option<&'a str> {
+    fn next_back(&mut self) -> Option<&'a str>
+        where P::Searcher: ReverseSearcher<'a>
+    {
         if self.finished { return None }
 
         if !self.allow_trailing_empty {
@@ -590,10 +606,41 @@ where P::Searcher: DoubleEndedSearcher<'a> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: Pattern<'a>> Iterator for CharSplitsN<'a, P> {
-    type Item = &'a str;
+generate_pattern_iterators! {
+    forward:
+        /// Return type of `str::split()`
+        struct Split;
+    reverse:
+        /// Return type of `str::rsplit()`
+        struct RSplit;
+    stability:
+        #[stable(feature = "rust1", since = "1.0.0")]
+    internal:
+        SplitInternal yielding (&'a str);
+    delegate double ended;
+}
 
+generate_pattern_iterators! {
+    forward:
+        /// Return type of `str::split_terminator()`
+        struct SplitTerminator;
+    reverse:
+        /// Return type of `str::rsplit_terminator()`
+        struct RSplitTerminator;
+    stability:
+        #[stable(feature = "rust1", since = "1.0.0")]
+    internal:
+        SplitInternal yielding (&'a str);
+    delegate double ended;
+}
+
+struct SplitNInternal<'a, P: Pattern<'a>> {
+    iter: SplitInternal<'a, P>,
+    /// The number of splits remaining
+    count: usize,
+}
+
+impl<'a, P: Pattern<'a>> SplitNInternal<'a, P> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         match self.count {
@@ -602,58 +649,151 @@ impl<'a, P: Pattern<'a>> Iterator for CharSplitsN<'a, P> {
             _ => { self.count -= 1; self.iter.next() }
         }
     }
-}
-
-impl<'a, P: Pattern<'a>> RCharSplits<'a, P> {
-    #[inline]
-    fn get_remainder(&mut self) -> Option<&'a str> {
-        if !self.finished && (self.allow_final_empty || self.end - self.start > 0) {
-            self.finished = true;
-            unsafe {
-                let string = self.matcher.haystack().slice_unchecked(self.start, self.end);
-                Some(string)
-            }
-        } else {
-            None
-        }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: Pattern<'a>> Iterator for RCharSplits<'a, P>
-    where P::Searcher: ReverseSearcher<'a>
-{
-    type Item = &'a str;
 
     #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        if self.finished { return None }
-
-        let haystack = self.matcher.haystack();
-        match self.matcher.next_match_back() {
-            Some((a, b)) => unsafe {
-                let elt = haystack.slice_unchecked(b, self.end);
-                self.end = a;
-                Some(elt)
-            },
-            None => self.get_remainder(),
-        }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: Pattern<'a>> Iterator for RCharSplitsN<'a, P>
-    where P::Searcher: ReverseSearcher<'a>
-{
-    type Item = &'a str;
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
+    fn next_back(&mut self) -> Option<&'a str>
+        where P::Searcher: ReverseSearcher<'a>
+    {
         match self.count {
             0 => None,
-            1 => { self.count -= 1; self.iter.get_remainder() }
-            _ => { self.count -= 1; self.iter.next() }
+            1 => { self.count = 0; self.iter.get_end() }
+            _ => { self.count -= 1; self.iter.next_back() }
         }
+    }
+}
+
+generate_pattern_iterators! {
+    forward:
+        /// Return type of `str::splitn()`
+        struct SplitN;
+    reverse:
+        /// Return type of `str::rsplitn()`
+        struct RSplitN;
+    stability:
+        #[stable(feature = "rust1", since = "1.0.0")]
+    internal:
+        SplitNInternal yielding (&'a str);
+    delegate single ended;
+}
+
+struct MatchIndicesInternal<'a, P: Pattern<'a>>(P::Searcher);
+
+impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
+    #[inline]
+    fn next(&mut self) -> Option<(usize, usize)> {
+        self.0.next_match()
+    }
+
+    #[inline]
+    fn next_back(&mut self) -> Option<(usize, usize)>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        self.0.next_match_back()
+    }
+}
+
+generate_pattern_iterators! {
+    forward:
+        /// Return type of `str::match_indices()`
+        struct MatchIndices;
+    reverse:
+        /// Return type of `str::rmatch_indices()`
+        struct RMatchIndices;
+    stability:
+        #[unstable(feature = "core",
+                   reason = "type may be removed or have its iterator impl changed")]
+    internal:
+        MatchIndicesInternal yielding ((usize, usize));
+    delegate double ended;
+}
+
+struct MatchesInternal<'a, P: Pattern<'a>>(P::Searcher);
+
+impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
+    #[inline]
+    fn next(&mut self) -> Option<&'a str> {
+        self.0.next_match().map(|(a, b)| unsafe {
+            // Indices are known to be on utf8 boundaries
+            self.0.haystack().slice_unchecked(a, b)
+        })
+    }
+
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a str>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        self.0.next_match_back().map(|(a, b)| unsafe {
+            // Indices are known to be on utf8 boundaries
+            self.0.haystack().slice_unchecked(a, b)
+        })
+    }
+}
+
+generate_pattern_iterators! {
+    forward:
+        /// Return type of `str::matches()`
+        struct Matches;
+    reverse:
+        /// Return type of `str::rmatches()`
+        struct RMatches;
+    stability:
+        #[unstable(feature = "core", reason = "type got recently added")]
+    internal:
+        MatchesInternal yielding (&'a str);
+    delegate double ended;
+}
+
+/// Return type of `str::lines()`
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct Lines<'a>(SplitTerminator<'a, char>);
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> Iterator for Lines<'a> {
+    type Item = &'a str;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a str> {
+        self.0.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> DoubleEndedIterator for Lines<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a str> {
+        self.0.next_back()
+    }
+}
+
+/// Return type of `str::lines_any()`
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct LinesAny<'a>(Map<Lines<'a>, fn(&str) -> &str>);
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> Iterator for LinesAny<'a> {
+    type Item = &'a str;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a str> {
+        self.0.next()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> DoubleEndedIterator for LinesAny<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a str> {
+        self.0.next_back()
     }
 }
 
@@ -937,22 +1077,6 @@ struct OldMatchIndices<'a, 'b> {
     haystack: &'a str,
     needle: &'b str,
     searcher: OldSearcher
-}
-
-// FIXME: #21637 Prevents a Clone impl
-/// An iterator over the start and end indices of the matches of a
-/// substring within a larger string
-#[unstable(feature = "core", reason = "type may be removed")]
-pub struct MatchIndices<'a, P: Pattern<'a>>(P::Searcher);
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: Pattern<'a>> Iterator for MatchIndices<'a, P> {
-    type Item = (usize, usize);
-
-    #[inline]
-    fn next(&mut self) -> Option<(usize, usize)> {
-        self.0.next_match()
-    }
 }
 
 impl<'a, 'b>  OldMatchIndices<'a, 'b> {
@@ -1292,31 +1416,6 @@ impl<'a, S: ?Sized> Str for &'a S where S: Str {
     fn as_slice(&self) -> &str { Str::as_slice(*self) }
 }
 
-/// Return type of `str::split`
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct Split<'a, P: Pattern<'a>>(CharSplits<'a, P>);
-delegate_iter!{pattern &'a str : Split<'a, P>}
-
-/// Return type of `str::split_terminator`
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct SplitTerminator<'a, P: Pattern<'a>>(CharSplits<'a, P>);
-delegate_iter!{pattern &'a str : SplitTerminator<'a, P>}
-
-/// Return type of `str::splitn`
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct SplitN<'a, P: Pattern<'a>>(CharSplitsN<'a, P>);
-delegate_iter!{pattern forward &'a str : SplitN<'a, P>}
-
-/// Return type of `str::rsplit`
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct RSplit<'a, P: Pattern<'a>>(RCharSplits<'a, P>);
-delegate_iter!{pattern reverse &'a str : RSplit<'a, P>}
-
-/// Return type of `str::rsplitn`
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct RSplitN<'a, P: Pattern<'a>>(RCharSplitsN<'a, P>);
-delegate_iter!{pattern reverse &'a str : RSplitN<'a, P>}
-
 /// Methods for string slices
 #[allow(missing_docs)]
 pub trait StrExt {
@@ -1329,13 +1428,20 @@ pub trait StrExt {
     fn bytes<'a>(&'a self) -> Bytes<'a>;
     fn char_indices<'a>(&'a self) -> CharIndices<'a>;
     fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P>;
-    fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P>;
-    fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P>;
     fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
+    fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P>;
     fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
+    fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P>;
+    fn rsplit_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplitTerminator<'a, P>
+        where P::Searcher: ReverseSearcher<'a>;
+    fn matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> Matches<'a, P>;
+    fn rmatches<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatches<'a, P>
+        where P::Searcher: ReverseSearcher<'a>;
     fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P>;
+    fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
+        where P::Searcher: ReverseSearcher<'a>;
     fn lines<'a>(&'a self) -> Lines<'a>;
     fn lines_any<'a>(&'a self) -> LinesAny<'a>;
     fn char_len(&self) -> usize;
@@ -1402,7 +1508,7 @@ impl StrExt for str {
 
     #[inline]
     fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
-        Split(CharSplits {
+        Split(SplitInternal {
             start: 0,
             end: self.len(),
             matcher: pat.into_searcher(self),
@@ -1412,31 +1518,17 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P> {
-        SplitN(CharSplitsN {
-            iter: self.split(pat).0,
-            count: count,
-        })
-    }
-
-    #[inline]
-    fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
-        SplitTerminator(CharSplits {
-            allow_trailing_empty: false,
-            ..self.split(pat).0
-        })
-    }
-
-    #[inline]
     fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
-        RSplit(RCharSplits {
-            start: 0,
-            end: self.len(),
-            matcher: pat.into_searcher(self),
-            allow_final_empty: true,
-            finished: false,
+        RSplit(self.split(pat).0)
+    }
+
+    #[inline]
+    fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P> {
+        SplitN(SplitNInternal {
+            iter: self.split(pat).0,
+            count: count,
         })
     }
 
@@ -1444,22 +1536,53 @@ impl StrExt for str {
     fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
         where P::Searcher: ReverseSearcher<'a>
     {
-        RSplitN(RCharSplitsN {
-            iter: self.rsplit(pat).0,
-            count: count,
+        RSplitN(self.splitn(count, pat).0)
+    }
+
+    #[inline]
+    fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
+        SplitTerminator(SplitInternal {
+            allow_trailing_empty: false,
+            ..self.split(pat).0
         })
     }
 
     #[inline]
-    fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
-        MatchIndices(pat.into_searcher(self))
+    fn rsplit_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplitTerminator<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        RSplitTerminator(self.split_terminator(pat).0)
     }
 
     #[inline]
-    fn lines(&self) -> Lines {
-        Lines { inner: self.split_terminator('\n').0 }
+    fn matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> Matches<'a, P> {
+        Matches(MatchesInternal(pat.into_searcher(self)))
     }
 
+    #[inline]
+    fn rmatches<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatches<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        RMatches(self.matches(pat).0)
+    }
+
+    #[inline]
+    fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
+        MatchIndices(MatchIndicesInternal(pat.into_searcher(self)))
+    }
+
+    #[inline]
+    fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        RMatchIndices(self.match_indices(pat).0)
+    }
+    #[inline]
+    fn lines(&self) -> Lines {
+        Lines(self.split_terminator('\n'))
+    }
+
+    #[inline]
     fn lines_any(&self) -> LinesAny {
         fn f(line: &str) -> &str {
             let l = line.len();
@@ -1468,7 +1591,7 @@ impl StrExt for str {
         }
 
         let f: fn(&str) -> &str = f; // coerce to fn pointer
-        LinesAny { inner: self.lines().map(f) }
+        LinesAny(self.lines().map(f))
     }
 
     #[inline]
@@ -1708,36 +1831,4 @@ pub fn char_range_at_raw(bytes: &[u8], i: usize) -> (u32, usize) {
 impl<'a> Default for &'a str {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> &'a str { "" }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for Lines<'a> {
-    type Item = &'a str;
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> { self.inner.next() }
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> DoubleEndedIterator for Lines<'a> {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for LinesAny<'a> {
-    type Item = &'a str;
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> { self.inner.next() }
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> DoubleEndedIterator for LinesAny<'a> {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }
 }
