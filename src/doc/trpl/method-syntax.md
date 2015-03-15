@@ -187,13 +187,13 @@ impl CircleBuilder {
     }
 
     fn coordinate(&mut self, coordinate: f64) -> &mut CircleBuilder {
-	self.coordinate = coordinate;
-	self
+        self.coordinate = coordinate;
+        self
     }
 
     fn radius(&mut self, radius: f64) -> &mut CircleBuilder {
-	self.radius = radius;
-	self
+        self.radius = radius;
+        self
     }
 
     fn finalize(&self) -> Circle {

@@ -339,7 +339,7 @@ fn main() {
         });
     }
 
-   rx.recv().ok().expect("Could not recieve answer");
+   rx.recv().ok().expect("Could not receive answer");
 }
 ```
 

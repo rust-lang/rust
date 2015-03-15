@@ -290,6 +290,7 @@ LLVM_VERSION_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --version)
 LLVM_BINDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --bindir)
 LLVM_INCDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --includedir)
 LLVM_LIBDIR_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libdir)
+LLVM_LIBDIR_RUSTFLAGS_$(1)=-L "$$(LLVM_LIBDIR_$(1))"
 LLVM_LIBS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --libs $$(LLVM_COMPONENTS))
 LLVM_LDFLAGS_$(1)=$$(shell "$$(LLVM_CONFIG_$(1))" --ldflags)
 # On FreeBSD, it may search wrong headers (that are for pre-installed LLVM),
