@@ -210,7 +210,7 @@ pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
 
 #[cfg(unix)]
 fn byteify(s: OsString) -> Vec<u8> {
-    use os::unix::*;
+    use os::unix::prelude::*;
     s.into_vec()
 }
 #[cfg(windows)]
@@ -238,7 +238,7 @@ fn byteify(s: OsString) -> Vec<u8> {
 pub fn setenv<T: BytesContainer>(n: &str, v: T) {
     #[cfg(unix)]
     fn _setenv(n: &str, v: &[u8]) {
-        use os::unix::*;
+        use os::unix::prelude::*;
         let v: OsString = OsStringExt::from_vec(v.to_vec());
         env::set_var(n, &v)
     }
@@ -1705,13 +1705,13 @@ mod tests {
 
         #[cfg(not(windows))]
         fn get_fd(file: &File) -> libc::c_int {
-            use os::unix::AsRawFd;
+            use os::unix::prelude::*;
             file.as_raw_fd()
         }
 
         #[cfg(windows)]
         fn get_fd(file: &File) -> libc::HANDLE {
-            use os::windows::AsRawHandle;
+            use os::windows::prelude::*;
             file.as_raw_handle()
         }
 

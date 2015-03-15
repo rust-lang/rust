@@ -573,7 +573,7 @@ mod tests {
     #[cfg(all(unix, not(target_os="android")))]
     #[test]
     fn signal_reported_right() {
-        use os::unix::ExitStatusExt;
+        use os::unix::process::ExitStatusExt;
 
         let p = Command::new("/bin/sh").arg("-c").arg("kill -9 $$").spawn();
         assert!(p.is_ok());
@@ -633,7 +633,7 @@ mod tests {
     #[cfg(all(unix, not(target_os="android")))]
     #[test]
     fn uid_works() {
-        use os::unix::*;
+        use os::unix::prelude::*;
         use libc;
         let mut p = Command::new("/bin/sh")
                             .arg("-c").arg("true")
@@ -646,7 +646,7 @@ mod tests {
     #[cfg(all(unix, not(target_os="android")))]
     #[test]
     fn uid_to_root_fails() {
-        use os::unix::*;
+        use os::unix::prelude::*;
         use libc;
 
         // if we're already root, this isn't a valid test. Most of the bots run
