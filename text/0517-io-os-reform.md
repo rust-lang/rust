@@ -1016,10 +1016,11 @@ strings) and is usually what you want when working with iterators.
 
 The `BufReader`, `BufWriter` and `BufStream` types stay
 essentially as they are today, except that for streams and writers the
-`into_inner` method yields the structure back in the case of a flush error:
-
+`into_inner` method yields the structure back in the case of a write error,
+and its behavior is clarified to writing out the buffered data without
+flushing the underlying reader:
 ```rust
-// If flushing fails, you get the unflushed data back
+// If writing fails, you get the unwritten data back
 fn into_inner(self) -> Result<W, IntoInnerError<Self>>;
 
 pub struct IntoInnerError<W>(W, Error);
