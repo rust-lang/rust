@@ -50,6 +50,7 @@ the direction the language is evolving in.
 * [0702-rangefull-expression.md](text/0702-rangefull-expression.md)
 * [0738-variance.md](text/0738-variance.md)
 * [0769-sound-generic-drop.md](text/0769-sound-generic-drop.md)
+* [0803-type-ascription.md](text/0803-type-ascription.md)
 * [0809-box-and-in-for-stdlib.md](text/0809-box-and-in-for-stdlib.md)
 
 ## Table of Contents

@@ -1,6 +1,6 @@
 - Start Date: 2015-2-3
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#803](https://github.com/rust-lang/rfcs/pull/803)
+- Rust Issue: [rust-lang/rust#23416](https://github.com/rust-lang/rust/issues/23416)
 - Feature: `ascription`
 
 # Summary
