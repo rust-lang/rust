@@ -678,6 +678,7 @@ pub enum UnOp {
     UnNeg
 }
 
+/// A statement
 pub type Stmt = Spanned<Stmt_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -722,6 +723,7 @@ pub enum LocalSource {
 pub struct Local {
     pub pat: P<Pat>,
     pub ty: Option<P<Ty>>,
+    /// Initializer expression to set the value, if any
     pub init: Option<P<Expr>>,
     pub id: NodeId,
     pub span: Span,
@@ -768,6 +770,7 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
+/// An expression
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Expr {
     pub id: NodeId,
@@ -981,7 +984,6 @@ pub enum KleeneOp {
 /// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-#[doc="For macro invocations; parsing is delegated to the macro"]
 pub enum TokenTree {
     /// A single token
     TtToken(Span, token::Token),
@@ -1092,10 +1094,14 @@ pub enum Mac_ {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum StrStyle {
+    /// A regular string, like `"fooo"`
     CookedStr,
+    /// A raw string, like `r##"foo"##`
+    /// The uint is the number of `#` symbols used
     RawStr(usize)
 }
 
+/// A literal
 pub type Lit = Spanned<Lit_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1133,13 +1139,21 @@ impl LitIntType {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Lit_ {
+    /// A string literal (`"foo"`)
     LitStr(InternedString, StrStyle),
+    /// A byte string (`b"foo"`)
     LitBinary(Rc<Vec<u8>>),
+    /// A byte char (`b'f'`)
     LitByte(u8),
+    /// A character literal (`'a'`)
     LitChar(char),
+    /// An integer liteal (`1u8`)
     LitInt(u64, LitIntType),
+    /// A float literal (`1f64` or `1E10f64`)
     LitFloat(InternedString, FloatTy),
+    /// A float literal without a suffix (`1.0 or 1.0E10`)
     LitFloatUnsuffixed(InternedString),
+    /// A boolean literal
     LitBool(bool),
 }
 
