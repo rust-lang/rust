@@ -12,10 +12,11 @@
 // recursively.
 
 use session::Session;
-use middle::def::{DefStatic, DefConst, DefMap};
+use middle::def::{DefStatic, DefConst, DefAssociatedConst, DefMap};
 
 use syntax::ast;
 use syntax::{ast_util, ast_map};
+use syntax::codemap::Span;
 use syntax::visit::Visitor;
 use syntax::visit;
 
@@ -26,8 +27,43 @@ struct CheckCrateVisitor<'a, 'ast: 'a> {
 }
 
 impl<'v, 'a, 'ast> Visitor<'v> for CheckCrateVisitor<'a, 'ast> {
-    fn visit_item(&mut self, i: &ast::Item) {
-        check_item(self, i);
+    fn visit_item(&mut self, it: &ast::Item) {
+        match it.node {
+            ast::ItemStatic(_, _, ref expr) |
+            ast::ItemConst(_, ref expr) => {
+                let mut recursion_visitor =
+                    CheckItemRecursionVisitor::new(self, &it.span);
+                recursion_visitor.visit_item(it);
+                visit::walk_expr(self, &*expr)
+            },
+            _ => visit::walk_item(self, it)
+        }
+    }
+
+    fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
+        match ti.node {
+            ast::ConstTraitItem(_, ref default) => {
+                if let Some(ref expr) = *default {
+                    let mut recursion_visitor =
+                        CheckItemRecursionVisitor::new(self, &ti.span);
+                    recursion_visitor.visit_trait_item(ti);
+                    visit::walk_expr(self, &*expr)
+                }
+            }
+            _ => visit::walk_trait_item(self, ti)
+        }
+    }
+
+    fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
+        match ii.node {
+            ast::ConstImplItem(_, ref expr) => {
+                let mut recursion_visitor =
+                    CheckItemRecursionVisitor::new(self, &ii.span);
+                recursion_visitor.visit_impl_item(ii);
+                visit::walk_expr(self, &*expr)
+            }
+            _ => visit::walk_impl_item(self, ii)
+        }
     }
 }
 
@@ -44,51 +80,48 @@ pub fn check_crate<'ast>(sess: &Session,
     sess.abort_if_errors();
 }
 
-fn check_item(v: &mut CheckCrateVisitor, it: &ast::Item) {
-    match it.node {
-        ast::ItemStatic(_, _, ref ex) |
-        ast::ItemConst(_, ref ex) => {
-            check_item_recursion(v.sess, v.ast_map, v.def_map, it);
-            visit::walk_expr(v, &**ex)
-        },
-        _ => visit::walk_item(v, it)
-    }
-}
-
 struct CheckItemRecursionVisitor<'a, 'ast: 'a> {
-    root_it: &'a ast::Item,
+    root_span: &'a Span,
     sess: &'a Session,
     ast_map: &'a ast_map::Map<'ast>,
     def_map: &'a DefMap,
     idstack: Vec<ast::NodeId>
 }
 
-// Make sure a const item doesn't recursively refer to itself
-// FIXME: Should use the dependency graph when it's available (#1356)
-pub fn check_item_recursion<'a>(sess: &'a Session,
-                                ast_map: &'a ast_map::Map,
-                                def_map: &'a DefMap,
-                                it: &'a ast::Item) {
-
-    let mut visitor = CheckItemRecursionVisitor {
-        root_it: it,
-        sess: sess,
-        ast_map: ast_map,
-        def_map: def_map,
-        idstack: Vec::new()
-    };
-    visitor.visit_item(it);
+impl<'a, 'ast: 'a> CheckItemRecursionVisitor<'a, 'ast> {
+    fn new(v: &CheckCrateVisitor<'a, 'ast>, span: &'a Span)
+           -> CheckItemRecursionVisitor<'a, 'ast> {
+        CheckItemRecursionVisitor {
+            root_span: span,
+            sess: v.sess,
+            ast_map: v.ast_map,
+            def_map: v.def_map,
+            idstack: Vec::new()
+        }
+    }
+    fn with_item_id_pushed<F>(&mut self, id: ast::NodeId, f: F)
+          where F: Fn(&mut Self) {
+        if self.idstack.iter().any(|x| x == &(id)) {
+            span_err!(self.sess, *self.root_span, E0265, "recursive constant");
+            return;
+        }
+        self.idstack.push(id);
+        f(self);
+        self.idstack.pop();
+    }
 }
 
 impl<'a, 'ast, 'v> Visitor<'v> for CheckItemRecursionVisitor<'a, 'ast> {
     fn visit_item(&mut self, it: &ast::Item) {
-        if self.idstack.iter().any(|x| x == &(it.id)) {
-            span_err!(self.sess, self.root_it.span, E0265, "recursive constant");
-            return;
-        }
-        self.idstack.push(it.id);
-        visit::walk_item(self, it);
-        self.idstack.pop();
+        self.with_item_id_pushed(it.id, |v| visit::walk_item(v, it));
+    }
+
+    fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
+        self.with_item_id_pushed(ti.id, |v| visit::walk_trait_item(v, ti));
+    }
+
+    fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
+        self.with_item_id_pushed(ii.id, |v| visit::walk_impl_item(v, ii));
     }
 
     fn visit_expr(&mut self, e: &ast::Expr) {
@@ -96,11 +129,16 @@ impl<'a, 'ast, 'v> Visitor<'v> for CheckItemRecursionVisitor<'a, 'ast> {
             ast::ExprPath(..) => {
                 match self.def_map.borrow().get(&e.id).map(|d| d.base_def) {
                     Some(DefStatic(def_id, _)) |
+                    Some(DefAssociatedConst(def_id, _)) |
                     Some(DefConst(def_id)) if
                             ast_util::is_local(def_id) => {
                         match self.ast_map.get(def_id.node) {
                           ast_map::NodeItem(item) =>
                             self.visit_item(item),
+                          ast_map::NodeTraitItem(item) =>
+                            self.visit_trait_item(item),
+                          ast_map::NodeImplItem(item) =>
+                            self.visit_impl_item(item),
                           ast_map::NodeForeignItem(_) => {},
                           _ => {
                             span_err!(self.sess, e.span, E0266,

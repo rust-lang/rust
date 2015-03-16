@@ -9,7 +9,8 @@
 // except according to those terms.
 
 trait Foo {
-    pub fn foo(); //~ ERROR expected one of `extern`, `fn`, `type`, or `unsafe`, found `pub`
+    pub fn foo();
+    //~^ ERROR expected one of `const`, `extern`, `fn`, `type`, or `unsafe`, found `pub`
 }
 
 fn main() {}

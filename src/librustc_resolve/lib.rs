@@ -1831,22 +1831,36 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             //
                             // FIXME #4951: Do we need a node ID here?
 
-                            let type_parameters = match trait_item.node {
-                                ast::ConstTraitItem(..) => NoTypeParameters,
+                            match trait_item.node {
+                                ast::ConstTraitItem(_, ref default) => {
+                                    // Only impose the restrictions of
+                                    // ConstRibKind if there's an actual constant
+                                    // expression in a provided default.
+                                    if default.is_some() {
+                                        this.with_constant_rib(|this| {
+                                            visit::walk_trait_item(this, trait_item)
+                                        });
+                                    } else {
+                                        visit::walk_trait_item(this, trait_item)
+                                    }
+                                }
                                 ast::MethodTraitItem(ref sig, _) => {
-                                    HasTypeParameters(&sig.generics,
-                                                      FnSpace,
-                                                      MethodRibKind)
+                                    let type_parameters =
+                                        HasTypeParameters(&sig.generics,
+                                                          FnSpace,
+                                                          MethodRibKind);
+                                    this.with_type_parameter_rib(type_parameters, |this| {
+                                        visit::walk_trait_item(this, trait_item)
+                                    });
                                 }
                                 ast::TypeTraitItem(..) => {
                                     this.check_if_primitive_type_name(trait_item.ident.name,
                                                                       trait_item.span);
-                                    NoTypeParameters
+                                    this.with_type_parameter_rib(NoTypeParameters, |this| {
+                                        visit::walk_trait_item(this, trait_item)
+                                    });
                                 }
                             };
-                            this.with_type_parameter_rib(type_parameters, |this| {
-                                visit::walk_trait_item(this, trait_item)
-                            });
                         }
                     });
                 });
@@ -2096,7 +2110,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     this.with_current_self_type(self_type, |this| {
                         for impl_item in impl_items {
                             match impl_item.node {
-                                ConstImplItem(_, _) => {}
+                                ConstImplItem(..) => {
+                                    // If this is a trait impl, ensure the method
+                                    // exists in trait
+                                    this.check_trait_item(impl_item.ident.name,
+                                                          impl_item.span);
+                                    this.with_constant_rib(|this| {
+                                        visit::walk_impl_item(this, impl_item);
+                                    });
+                                }
                                 MethodImplItem(ref sig, _) => {
                                     // If this is a trait impl, ensure the method
                                     // exists in trait

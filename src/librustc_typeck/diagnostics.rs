@@ -176,7 +176,10 @@ register_diagnostics! {
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
     E0322, // cannot implement Sized explicitly
-    E0323, // implemented trait where method should have been provided
+    E0323, // implemented an associated const when another trait item expected
+    E0324, // implemented a method when another trait item expected
+    E0325, // implemented an associated type when another trait item expected
+    E0326, // associated const implemented with different type from trait
     E0366, // dropck forbid specialization to concrete type or region
     E0367, // dropck forbid specialization to predicate not in struct/enum
     E0368, // binary operation `<op>=` cannot be applied to types

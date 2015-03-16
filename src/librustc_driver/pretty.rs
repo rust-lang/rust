@@ -35,6 +35,7 @@ use syntax::codemap;
 use syntax::fold::{self, Folder};
 use syntax::print::{pp, pprust};
 use syntax::ptr::P;
+use syntax::util::small_vector::SmallVector;
 
 use graphviz as dot;
 
@@ -475,6 +476,29 @@ impl fold::Folder for ReplaceBodyWithLoop {
         }
     }
 
+    fn fold_trait_item(&mut self, i: P<ast::TraitItem>) -> SmallVector<P<ast::TraitItem>> {
+        match i.node {
+            ast::ConstTraitItem(..) => {
+                self.within_static_or_const = true;
+                let ret = fold::noop_fold_trait_item(i, self);
+                self.within_static_or_const = false;
+                return ret;
+            }
+            _ => fold::noop_fold_trait_item(i, self),
+        }
+    }
+
+    fn fold_impl_item(&mut self, i: P<ast::ImplItem>) -> SmallVector<P<ast::ImplItem>> {
+        match i.node {
+            ast::ConstImplItem(..) => {
+                self.within_static_or_const = true;
+                let ret = fold::noop_fold_impl_item(i, self);
+                self.within_static_or_const = false;
+                return ret;
+            }
+            _ => fold::noop_fold_impl_item(i, self),
+        }
+    }
 
     fn fold_block(&mut self, b: P<ast::Block>) -> P<ast::Block> {
         fn expr_to_block(rules: ast::BlockCheckMode,

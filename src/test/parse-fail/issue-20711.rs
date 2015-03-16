@@ -14,6 +14,6 @@ struct Foo;
 
 impl Foo {
     #[stable(feature = "rust1", since = "1.0.0")]
-} //~ ERROR expected one of `extern`, `fn`, `pub`, `type`, or `unsafe`, found `}`
+} //~ ERROR expected one of `const`, `extern`, `fn`, `pub`, `type`, or `unsafe`, found `}`
 
 fn main() {}

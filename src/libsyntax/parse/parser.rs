@@ -17,8 +17,8 @@ use ast::{Public, Unsafety};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, BiRem, BiLt, BiGt, Block};
 use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
-use ast::{Crate, CrateConfig, Decl, DeclItem};
-use ast::{DeclLocal, DefaultBlock, DefaultReturn};
+use ast::{ConstImplItem, ConstTraitItem, Crate, CrateConfig};
+use ast::{Decl, DeclItem, DeclLocal, DefaultBlock, DefaultReturn};
 use ast::{UnDeref, BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
@@ -1158,6 +1158,20 @@ impl<'a> Parser<'a> {
                 let TyParam {ident, bounds, default, ..} = try!(p.parse_ty_param());
                 try!(p.expect(&token::Semi));
                 (ident, TypeTraitItem(bounds, default))
+            } else if try!(p.eat_keyword(keywords::Const)) {
+                let ident = try!(p.parse_ident());
+                try!(p.expect(&token::Colon));
+                let ty = try!(p.parse_ty_sum());
+                let default = if p.check(&token::Eq) {
+                    try!(p.bump());
+                    let expr = try!(p.parse_expr_nopanic());
+                    try!(p.commit_expr_expecting(&expr, token::Semi));
+                    Some(expr)
+                } else {
+                    try!(p.expect(&token::Semi));
+                    None
+                };
+                (ident, ConstTraitItem(ty, default))
             } else {
                 let style = try!(p.parse_unsafety());
                 let abi = if try!(p.eat_keyword(keywords::Extern)) {
@@ -4313,6 +4327,14 @@ impl<'a> Parser<'a> {
             let typ = try!(self.parse_ty_sum());
             try!(self.expect(&token::Semi));
             (name, TypeImplItem(typ))
+        } else if try!(self.eat_keyword(keywords::Const)) {
+            let name = try!(self.parse_ident());
+            try!(self.expect(&token::Colon));
+            let typ = try!(self.parse_ty_sum());
+            try!(self.expect(&token::Eq));
+            let expr = try!(self.parse_expr_nopanic());
+            try!(self.commit_expr_expecting(&expr, token::Semi));
+            (name, ConstImplItem(typ, expr))
         } else {
             let (name, inner_attrs, node) = try!(self.parse_impl_method(vis));
             attrs.extend(inner_attrs.into_iter());

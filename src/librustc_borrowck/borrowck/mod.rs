@@ -62,6 +62,20 @@ impl<'a, 'tcx, 'v> Visitor<'v> for BorrowckCtxt<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
         borrowck_item(self, item);
     }
+
+    fn visit_trait_item(&mut self, ti: &ast::TraitItem) {
+        if let ast::ConstTraitItem(_, Some(ref expr)) = ti.node {
+            gather_loans::gather_loans_in_static_initializer(self, &*expr);
+        }
+        visit::walk_trait_item(self, ti);
+    }
+
+    fn visit_impl_item(&mut self, ii: &ast::ImplItem) {
+        if let ast::ConstImplItem(_, ref expr) = ii.node {
+            gather_loans::gather_loans_in_static_initializer(self, &*expr);
+        }
+        visit::walk_impl_item(self, ii);
+    }
 }
 
 pub fn check_crate(tcx: &ty::ctxt) {

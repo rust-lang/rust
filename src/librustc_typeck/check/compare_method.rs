@@ -401,3 +401,85 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         return true;
     }
 }
+
+pub fn compare_const_impl<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                impl_c: &ty::AssociatedConst<'tcx>,
+                                impl_c_span: Span,
+                                trait_c: &ty::AssociatedConst<'tcx>,
+                                impl_trait_ref: &ty::TraitRef<'tcx>) {
+    debug!("compare_const_impl(impl_trait_ref={})",
+           impl_trait_ref.repr(tcx));
+
+    let infcx = infer::new_infer_ctxt(tcx);
+    let mut fulfillment_cx = traits::FulfillmentContext::new();
+
+    // The below is for the most part highly similar to the procedure
+    // for methods above. It is simpler in many respects, especially
+    // because we shouldn't really have to deal with lifetimes or
+    // predicates. In fact some of this should probably be put into
+    // shared functions because of DRY violations...
+    let trait_to_impl_substs = &impl_trait_ref.substs;
+
+    // Create a parameter environment that represents the implementation's
+    // method.
+    let impl_param_env =
+        ty::ParameterEnvironment::for_item(tcx, impl_c.def_id.node);
+
+    // Create mapping from impl to skolemized.
+    let impl_to_skol_substs = &impl_param_env.free_substs;
+
+    // Create mapping from trait to skolemized.
+    let trait_to_skol_substs =
+        trait_to_impl_substs
+        .subst(tcx, impl_to_skol_substs)
+        .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
+                     impl_to_skol_substs.regions().get_slice(subst::FnSpace).to_vec());
+    debug!("compare_const_impl: trait_to_skol_substs={}",
+           trait_to_skol_substs.repr(tcx));
+
+    // Compute skolemized form of impl and trait const tys.
+    let impl_ty = impl_c.ty.subst(tcx, impl_to_skol_substs);
+    let trait_ty = trait_c.ty.subst(tcx, &trait_to_skol_substs);
+
+    let err = infcx.commit_if_ok(|_| {
+        let origin = infer::Misc(impl_c_span);
+
+        // There is no "body" here, so just pass dummy id.
+        let impl_ty =
+            assoc::normalize_associated_types_in(&infcx,
+                                                 &impl_param_env,
+                                                 &mut fulfillment_cx,
+                                                 impl_c_span,
+                                                 0,
+                                                 &impl_ty);
+        debug!("compare_const_impl: impl_ty={}",
+               impl_ty.repr(tcx));
+
+        let trait_ty =
+            assoc::normalize_associated_types_in(&infcx,
+                                                 &impl_param_env,
+                                                 &mut fulfillment_cx,
+                                                 impl_c_span,
+                                                 0,
+                                                 &trait_ty);
+        debug!("compare_const_impl: trait_ty={}",
+               trait_ty.repr(tcx));
+
+        infer::mk_subty(&infcx, false, origin, impl_ty, trait_ty)
+    });
+
+    match err {
+        Ok(()) => { }
+        Err(terr) => {
+            debug!("checking associated const for compatibility: impl ty {}, trait ty {}",
+                   impl_ty.repr(tcx),
+                   trait_ty.repr(tcx));
+            span_err!(tcx.sess, impl_c_span, E0326,
+                      "implemented const `{}` has an incompatible type for \
+                      trait: {}",
+                      token::get_name(trait_c.name),
+                      ty::type_err_to_str(tcx, &terr));
+            return;
+        }
+    }
+}

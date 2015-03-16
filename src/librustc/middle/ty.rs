@@ -78,7 +78,7 @@ use std::vec::IntoIter;
 use collections::enum_set::{EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
-use syntax::ast::{CrateNum, DefId, ItemTrait, LOCAL_CRATE};
+use syntax::ast::{CrateNum, DefId, ItemImpl, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{StmtExpr, StmtSemi, StructField, UnnamedField, Visibility};
 use syntax::ast_util::{self, is_local, lit_is_str, local_def};
@@ -5122,6 +5122,53 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
         }
     } else {
         csearch::get_provided_trait_methods(cx, id)
+    }
+}
+
+pub fn associated_consts<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
+                               -> Vec<Rc<AssociatedConst<'tcx>>> {
+    if is_local(id) {
+        match cx.map.expect_item(id.node).node {
+            ItemTrait(_, _, _, ref tis) => {
+                tis.iter().filter_map(|ti| {
+                    if let ast::ConstTraitItem(_, _) = ti.node {
+                        match impl_or_trait_item(cx, ast_util::local_def(ti.id)) {
+                            ConstTraitItem(ac) => Some(ac),
+                            _ => {
+                                cx.sess.bug("associated_consts(): \
+                                             non-const item found from \
+                                             looking up a constant?!")
+                            }
+                        }
+                    } else {
+                        None
+                    }
+                }).collect()
+            }
+            ItemImpl(_, _, _, _, _, ref iis) => {
+                iis.iter().filter_map(|ii| {
+                    if let ast::ConstImplItem(_, _) = ii.node {
+                        match impl_or_trait_item(cx, ast_util::local_def(ii.id)) {
+                            ConstTraitItem(ac) => Some(ac),
+                            _ => {
+                                cx.sess.bug("associated_consts(): \
+                                             non-const item found from \
+                                             looking up a constant?!")
+                            }
+                        }
+                    } else {
+                        None
+                    }
+                }).collect()
+            }
+            _ => {
+                cx.sess.bug(&format!("associated_consts: `{:?}` is not a trait \
+                                      or impl", id))
+            }
+        }
+    } else {
+        let acs = csearch::get_associated_consts(cx, id);
+        acs.iter().map(|ac| (*ac).clone()).collect()
     }
 }
 

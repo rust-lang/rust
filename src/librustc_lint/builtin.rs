@@ -1068,9 +1068,30 @@ impl LintPass for NonUpperCaseGlobals {
         }
     }
 
+    fn check_trait_item(&mut self, cx: &Context, ti: &ast::TraitItem) {
+        match ti.node {
+            ast::ConstTraitItem(..) => {
+                NonUpperCaseGlobals::check_upper_case(cx, "associated constant",
+                                                      ti.ident, ti.span);
+            }
+            _ => {}
+        }
+    }
+
+    fn check_impl_item(&mut self, cx: &Context, ii: &ast::ImplItem) {
+        match ii.node {
+            ast::ConstImplItem(..) => {
+                NonUpperCaseGlobals::check_upper_case(cx, "associated constant",
+                                                      ii.ident, ii.span);
+            }
+            _ => {}
+        }
+    }
+
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
         match (&p.node, cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def())) {
+            (&ast::PatIdent(_, ref path1, _), Some(def::DefAssociatedConst(..))) |
             (&ast::PatIdent(_, ref path1, _), Some(def::DefConst(..))) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "constant in pattern",
                                                       path1.node, p.span);
