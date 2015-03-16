@@ -594,23 +594,41 @@ pub enum Mutability {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BinOp_ {
+    /// The `+` operator (addition)
     BiAdd,
+    /// The `-` operator (subtraction)
     BiSub,
+    /// The `*` operator (multiplication)
     BiMul,
+    /// The `/` operator (division)
     BiDiv,
+    /// The `%` operator (modulus)
     BiRem,
+    /// The `&&` operator (logical and)
     BiAnd,
+    /// The `||` operator (logical or)
     BiOr,
+    /// The `^` operator (bitwise xor)
     BiBitXor,
+    /// The `&` operator (bitwise and)
     BiBitAnd,
+    /// The `|` operator (bitwise or)
     BiBitOr,
+    /// The `<<` operator (shift left)
     BiShl,
+    /// The `>>` operator (shift right)
     BiShr,
+    /// The `==` operator (equality)
     BiEq,
+    /// The `<` operator (less than)
     BiLt,
+    /// The `<=` operator (less than or equal to)
     BiLe,
+    /// The `!=` operator (not equal to)
     BiNe,
+    /// The `>=` operator (greater than or equal to)
     BiGe,
+    /// The `>` operator (greater than)
     BiGt,
 }
 
@@ -618,9 +636,13 @@ pub type BinOp = Spanned<BinOp_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum UnOp {
+    /// The `box` operator
     UnUniq,
+    /// The `*` operator for dereferencing
     UnDeref,
+    /// The `!` operator for logical inversion
     UnNot,
+    /// The `-` operator for negation
     UnNeg
 }
 
@@ -725,34 +747,73 @@ pub struct Expr {
 pub enum Expr_ {
     /// First expr is the place; second expr is the value.
     ExprBox(Option<P<Expr>>, P<Expr>),
+    /// An array (`[a, b, c, d]`)
     ExprVec(Vec<P<Expr>>),
+    /// A function cal
     ExprCall(P<Expr>, Vec<P<Expr>>),
+    /// A method call (`x.foo::<Bar, Baz>(a, b, c, d)`)
+    /// The `SpannedIdent` is the identifier for the method name
+    /// The vector of `Ty`s are the ascripted type parameters for the method
+    /// (within the angle brackets)
+    /// The first element of the vector of `Expr`s is the expression that evaluates
+    /// to the object on which the method is being called on, and the remaining elements
+    /// are the arguments
     ExprMethodCall(SpannedIdent, Vec<P<Ty>>, Vec<P<Expr>>),
+    /// A tuple (`(a, b, c ,d)`)
     ExprTup(Vec<P<Expr>>),
+    /// A binary operation (For example: `a + b`, `a * b`)
     ExprBinary(BinOp, P<Expr>, P<Expr>),
+    /// A unary operation (For example: `!x`, `*x`)
     ExprUnary(UnOp, P<Expr>),
+    /// A literal (For example: `1u8`, `"foo"`)
     ExprLit(P<Lit>),
+    /// A cast (`foo as f64`)
     ExprCast(P<Expr>, P<Ty>),
+    /// An `if` block, with an optional else block
+    /// `if expr { block } else { expr }`
     ExprIf(P<Expr>, P<Block>, Option<P<Expr>>),
+    /// An `if let` expression with an optional else block
+    /// `if let pat = expr { block } else { expr }`
+    /// This is desugared to a `match` expression
     ExprIfLet(P<Pat>, P<Expr>, P<Block>, Option<P<Expr>>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
+    /// A while loop, with an optional label
+    /// `'label while expr { block }`
     ExprWhile(P<Expr>, P<Block>, Option<Ident>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
+    /// A while-let loop, with an optional label
+    /// `'label while let pat = expr { block }`
+    /// This is desugared to a combination of `loop` and `match` expressions
     ExprWhileLet(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
+    /// A for loop, with an optional label
+    /// `'label for pat in expr { block }`
+    /// This is desugared to a combination of `loop` and `match` expressions
     ExprForLoop(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
-    // Conditionless loop (can be exited with break, cont, or ret)
+    /// Conditionless loop (can be exited with break, cont, or ret)
+    /// `'label loop { block }`
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
+    /// A `match` block, with a desugar source
     ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
+    /// A closure (for example, `move |a, b, c| {a + b + c}`)
     ExprClosure(CaptureClause, P<FnDecl>, P<Block>),
+    /// A block
     ExprBlock(P<Block>),
 
+    /// An assignment (`a = foo()`)
     ExprAssign(P<Expr>, P<Expr>),
+    /// An assignment with an operator
+    /// For example, `a += 1`
     ExprAssignOp(BinOp, P<Expr>, P<Expr>),
+    /// Access of a named struct field (`obj.foo`)
     ExprField(P<Expr>, SpannedIdent),
+    /// Access of an unnamed field of a struct or tuple-struct
+    /// For example, `foo.0`
     ExprTupField(P<Expr>, Spanned<usize>),
+    /// An indexing operation (`foo[2]`)
     ExprIndex(P<Expr>, P<Expr>),
+    /// A range (`[1..2]`, `[1..]`, or `[..2]`)
     ExprRange(Option<P<Expr>>, Option<P<Expr>>),
 
     /// Variable reference, possibly containing `::` and/or type
@@ -760,19 +821,27 @@ pub enum Expr_ {
     /// e.g. `<Vec<T> as SomeTrait>::SomeType`.
     ExprPath(Option<QSelf>, Path),
 
+    /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
+    /// A `break`, with an optional label to break
     ExprBreak(Option<Ident>),
+    /// A `continue`, with an optional label
     ExprAgain(Option<Ident>),
+    /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
+    /// Output of the `asm!()` macro
     ExprInlineAsm(InlineAsm),
 
+    /// A macro invocation; pre-expansion
     ExprMac(Mac),
 
     /// A struct literal expression.
+    /// For example, `Foo {x: 1, y: 2}`
     ExprStruct(Path, Vec<Field>, Option<P<Expr>> /* base */),
 
     /// A vector literal constructed from one repeated element.
+    /// For example, `[u8; 5]`
     ExprRepeat(P<Expr> /* element */, P<Expr> /* count */),
 
     /// No-op: used solely so we can pretty-print faithfully
