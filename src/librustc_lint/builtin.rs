@@ -1405,11 +1405,11 @@ impl LintPass for UnusedAllocation {
         if let Some(adjustment) = cx.tcx.adjustments.borrow().get(&e.id) {
             if let ty::AdjustDerefRef(ty::AutoDerefRef { ref autoref, .. }) = *adjustment {
                 match autoref {
-                    &Some(ty::AutoPtr(_, ast::MutImmutable, None)) => {
+                    &Some(ty::AutoPtr(_, ast::MutImmutable)) => {
                         cx.span_lint(UNUSED_ALLOCATION, e.span,
                                      "unnecessary allocation, use & instead");
                     }
-                    &Some(ty::AutoPtr(_, ast::MutMutable, None)) => {
+                    &Some(ty::AutoPtr(_, ast::MutMutable)) => {
                         cx.span_lint(UNUSED_ALLOCATION, e.span,
                                      "unnecessary allocation, use &mut instead");
                     }

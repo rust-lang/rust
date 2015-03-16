@@ -451,32 +451,22 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AdjustReifyFnPointer(..) |
-                    ty::AdjustUnsafeFnPointer(..) => {
-                        debug!("cat_expr(AdjustReifyFnPointer): {}",
-                               expr.repr(self.tcx()));
-                        // Convert a bare fn to a closure by adding NULL env.
-                        // Result is an rvalue.
-                        let expr_ty = try!(self.expr_ty_adjusted(expr));
-                        Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
-                    }
-
                     ty::AdjustDerefRef(
                         ty::AutoDerefRef {
-                            autoref: Some(_), ..}) => {
-                        debug!("cat_expr(AdjustDerefRef): {}",
-                               expr.repr(self.tcx()));
-                        // Equivalent to &*expr or something similar.
-                        // Result is an rvalue.
-                        let expr_ty = try!(self.expr_ty_adjusted(expr));
-                        Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
-                    }
-
-                    ty::AdjustDerefRef(
-                        ty::AutoDerefRef {
-                            autoref: None, autoderefs}) => {
+                            autoref: None, unsize: None, autoderefs, ..}) => {
                         // Equivalent to *expr or something similar.
                         self.cat_expr_autoderefd(expr, autoderefs)
+                    }
+
+                    ty::AdjustReifyFnPointer |
+                    ty::AdjustUnsafeFnPointer |
+                    ty::AdjustDerefRef(_) => {
+                        debug!("cat_expr({}): {}",
+                               adjustment.repr(self.tcx()),
+                               expr.repr(self.tcx()));
+                        // Result is an rvalue.
+                        let expr_ty = try!(self.expr_ty_adjusted(expr));
+                        Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
                     }
                 }
             }
@@ -928,15 +918,9 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                              deref_cnt: usize,
                              deref_context: DerefKindContext)
                              -> McResult<cmt<'tcx>> {
-        let adjustment = match self.typer.adjustments().borrow().get(&node.id()) {
-            Some(adj) if ty::adjust_is_object(adj) => ty::AutoObject,
-            _ if deref_cnt != 0 => ty::AutoDeref(deref_cnt),
-            _ => ty::NoAdjustment
-        };
-
         let method_call = ty::MethodCall {
             expr_id: node.id(),
-            adjustment: adjustment
+            autoderef: deref_cnt as u32
         };
         let method_ty = self.typer.node_method_ty(method_call);
 

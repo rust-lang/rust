@@ -285,11 +285,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             }
 
             Some(adjustment) => {
-                let adj_object = ty::adjust_is_object(&adjustment);
                 let resolved_adjustment = match adjustment {
-                    ty::AdjustReifyFnPointer(def_id) => {
-                        ty::AdjustReifyFnPointer(def_id)
-                    }
+                    ty::AdjustReifyFnPointer => ty::AdjustReifyFnPointer,
 
                     ty::AdjustUnsafeFnPointer => {
                         ty::AdjustUnsafeFnPointer
@@ -297,18 +294,14 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
                     ty::AdjustDerefRef(adj) => {
                         for autoderef in 0..adj.autoderefs {
-                            let method_call = MethodCall::autoderef(id, autoderef);
-                            self.visit_method_map_entry(reason, method_call);
-                        }
-
-                        if adj_object {
-                            let method_call = MethodCall::autoobject(id);
+                            let method_call = MethodCall::autoderef(id, autoderef as u32);
                             self.visit_method_map_entry(reason, method_call);
                         }
 
                         ty::AdjustDerefRef(ty::AutoDerefRef {
                             autoderefs: adj.autoderefs,
                             autoref: self.resolve(&adj.autoref, reason),
+                            unsize: self.resolve(&adj.unsize, reason),
                         })
                     }
                 };

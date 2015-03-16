@@ -499,10 +499,10 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     if let Some(adjustment) = rcx.fcx.inh.adjustments.borrow().get(&expr.id) {
         debug!("adjustment={:?}", adjustment);
         match *adjustment {
-            ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, autoref: ref opt_autoref}) => {
+            ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, ref autoref, ..}) => {
                 let expr_ty = rcx.resolve_node_type(expr.id);
                 constrain_autoderefs(rcx, expr, autoderefs, expr_ty);
-                if let Some(ref autoref) = *opt_autoref {
+                if let Some(ref autoref) = *autoref {
                     link_autoref(rcx, expr, autoderefs, autoref);
 
                     // Require that the resulting region encompasses
@@ -872,7 +872,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
 
     let r_deref_expr = ty::ReScope(CodeExtent::from_node_id(deref_expr.id));
     for i in 0..derefs {
-        let method_call = MethodCall::autoderef(deref_expr.id, i);
+        let method_call = MethodCall::autoderef(deref_expr.id, i as u32);
         debug!("constrain_autoderefs: method_call={:?} (of {:?} total)", method_call, derefs);
 
         derefd_ty = match rcx.fcx.inh.method_map.borrow().get(&method_call) {
@@ -904,7 +904,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                     let self_cmt = ignore_err!(mc.cat_expr_autoderefd(deref_expr, i));
                     debug!("constrain_autoderefs: self_cmt={:?}",
                            self_cmt.repr(rcx.tcx()));
-                    link_region(rcx, deref_expr.span, *r,
+                    link_region(rcx, deref_expr.span, r,
                                 ty::BorrowKind::from_mutbl(m), self_cmt);
                 }
 
@@ -1102,7 +1102,7 @@ fn link_pattern<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                 ast::PatVec(_, Some(ref slice_pat), _) => {
                     match mc.cat_slice_pattern(sub_cmt, &**slice_pat) {
                         Ok((slice_cmt, slice_mutbl, slice_r)) => {
-                            link_region(rcx, sub_pat.span, slice_r,
+                            link_region(rcx, sub_pat.span, &slice_r,
                                         ty::BorrowKind::from_mutbl(slice_mutbl),
                                         slice_cmt);
                         }
@@ -1127,16 +1127,15 @@ fn link_autoref(rcx: &Rcx,
     debug!("expr_cmt={}", expr_cmt.repr(rcx.tcx()));
 
     match *autoref {
-        ty::AutoPtr(r, m, _) => {
-            link_region(rcx, expr.span, r, ty::BorrowKind::from_mutbl(m), expr_cmt);
+        ty::AutoPtr(r, m) => {
+            link_region(rcx, expr.span, r,
+                ty::BorrowKind::from_mutbl(m), expr_cmt);
         }
 
-        ty::AutoUnsafe(m, _) => {
+        ty::AutoUnsafe(m) => {
             let r = ty::ReScope(CodeExtent::from_node_id(expr.id));
             link_region(rcx, expr.span, r, ty::BorrowKind::from_mutbl(m), expr_cmt);
         }
-
-        ty::AutoUnsizeUniq(_) | ty::AutoUnsize(_) => {}
     }
 }
 
@@ -1151,7 +1150,7 @@ fn link_by_ref(rcx: &Rcx,
     let mc = mc::MemCategorizationContext::new(rcx.fcx);
     let expr_cmt = ignore_err!(mc.cat_expr(expr));
     let borrow_region = ty::ReScope(callee_scope);
-    link_region(rcx, expr.span, borrow_region, ty::ImmBorrow, expr_cmt);
+    link_region(rcx, expr.span, &borrow_region, ty::ImmBorrow, expr_cmt);
 }
 
 /// Like `link_region()`, except that the region is extracted from the type of `id`, which must be
@@ -1169,7 +1168,7 @@ fn link_region_from_node_type<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
         let tcx = rcx.fcx.ccx.tcx;
         debug!("rptr_ty={}", ty_to_string(tcx, rptr_ty));
         let r = ty::ty_region(tcx, span, rptr_ty);
-        link_region(rcx, span, r, ty::BorrowKind::from_mutbl(mutbl),
+        link_region(rcx, span, &r, ty::BorrowKind::from_mutbl(mutbl),
                     cmt_borrowed);
     }
 }
@@ -1179,7 +1178,7 @@ fn link_region_from_node_type<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 /// between regions, as explained in `link_reborrowed_region()`.
 fn link_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                          span: Span,
-                         borrow_region: ty::Region,
+                         borrow_region: &ty::Region,
                          borrow_kind: ty::BorrowKind,
                          borrow_cmt: mc::cmt<'tcx>) {
     let mut borrow_cmt = borrow_cmt;
@@ -1273,7 +1272,7 @@ fn link_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 /// recurse and process `ref_cmt` (see case 2 above).
 fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                     span: Span,
-                                    borrow_region: ty::Region,
+                                    borrow_region: &ty::Region,
                                     borrow_kind: ty::BorrowKind,
                                     ref_cmt: mc::cmt<'tcx>,
                                     ref_region: ty::Region,
@@ -1318,7 +1317,7 @@ fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     debug!("link_reborrowed_region: {} <= {}",
            borrow_region.repr(rcx.tcx()),
            ref_region.repr(rcx.tcx()));
-    rcx.fcx.mk_subr(cause, borrow_region, ref_region);
+    rcx.fcx.mk_subr(cause, *borrow_region, ref_region);
 
     // If we end up needing to recurse and establish a region link
     // with `ref_cmt`, calculate what borrow kind we will end up
