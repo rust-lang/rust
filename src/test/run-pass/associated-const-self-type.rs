@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
+use std::marker::MarkerTrait;
 
-trait MyTrait<T>: Iterator {
-    Item = T; //~ ERROR expected one of `const`, `extern`, `fn`, `type`, or `unsafe`, found `Item`
+trait MyInt: MarkerTrait {
+    const ONE: Self;
+}
+
+impl MyInt for i32 {
+    const ONE: i32 = 1;
+}
+
+fn main() {
+    assert_eq!(1, <i32>::ONE);
 }

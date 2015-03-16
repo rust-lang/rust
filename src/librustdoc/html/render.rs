@@ -1904,6 +1904,17 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     Ok(())
 }
 
+fn assoc_const(w: &mut fmt::Formatter, it: &clean::Item,
+               ty: &clean::Type, default: &Option<String>)
+               -> fmt::Result {
+    try!(write!(w, "const {}", it.name.as_ref().unwrap()));
+    try!(write!(w, ": {}", ty));
+    if let Some(ref default) = *default {
+        try!(write!(w, " = {}", default));
+    }
+    Ok(())
+}
+
 fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
               bounds: &Vec<clean::TyParamBound>,
               default: &Option<clean::Type>)
@@ -1959,7 +1970,9 @@ fn render_assoc_item(w: &mut fmt::Formatter, meth: &clean::Item,
             method(w, meth, m.unsafety, m.abi, &m.generics, &m.self_, &m.decl,
                    link)
         }
-        clean::AssociatedConstItem(_, _) => Ok(()),
+        clean::AssociatedConstItem(ref ty, ref default) => {
+            assoc_const(w, meth, ty, default)
+        }
         clean::AssociatedTypeItem(ref bounds, ref default) => {
             assoc_type(w, meth, bounds, default)
         }
@@ -2319,7 +2332,14 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: AssocItemLink,
                 try!(write!(w, "type {} = {}", name, tydef.type_));
                 try!(write!(w, "</code></h4>\n"));
             }
-            clean::AssociatedConstItem(_, _) => {}
+            clean::AssociatedConstItem(ref ty, ref default) => {
+                let name = item.name.as_ref().unwrap();
+                try!(write!(w, "<h4 id='assoc_const.{}' class='{}'><code>",
+                            *name,
+                            shortty(item)));
+                try!(assoc_const(w, item, ty, default));
+                try!(write!(w, "</code></h4>\n"));
+            }
             clean::AssociatedTypeItem(ref bounds, ref default) => {
                 let name = item.name.as_ref().unwrap();
                 try!(write!(w, "<h4 id='assoc_type.{}' class='{}'><code>",

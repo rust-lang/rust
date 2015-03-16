@@ -173,13 +173,11 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                             "cross crate constant could not be inlined");
     }
 
-    let item = ccx.tcx().map.expect_item(def_id.node);
-    if let ast::ItemConst(_, ref expr) = item.node {
-        &**expr
-    } else {
-        ccx.sess().span_bug(ref_expr.span,
-                            &format!("get_const_expr given non-constant item {}",
-                                     item.repr(ccx.tcx())));
+    match const_eval::lookup_const_by_id(ccx.tcx(), def_id, Some(ref_expr.id)) {
+        Some(ref expr) => expr,
+        None => {
+            ccx.sess().span_bug(ref_expr.span, "constant item not found")
+        }
     }
 }
 
@@ -201,7 +199,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ast::ExprPath(..) => {
             let def = ccx.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
             match def {
-                def::DefConst(def_id) => {
+                def::DefConst(def_id) | def::DefAssociatedConst(def_id, _) => {
                     if !ccx.tcx().adjustments.borrow().contains_key(&expr.id) {
                         return get_const_val(ccx, def_id, expr);
                     }
@@ -774,7 +772,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 def::DefFn(..) | def::DefMethod(..) => {
                     expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                 }
-                def::DefConst(def_id) => {
+                def::DefConst(def_id) | def::DefAssociatedConst(def_id, _) => {
                     const_deref_ptr(cx, get_const_val(cx, def_id, e))
                 }
                 def::DefVariant(enum_did, variant_did, _) => {

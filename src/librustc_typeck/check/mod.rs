@@ -78,7 +78,7 @@ type parameter).
 
 pub use self::LvaluePreference::*;
 pub use self::Expectation::*;
-pub use self::compare_method::compare_impl_method;
+pub use self::compare_method::{compare_impl_method, compare_const_impl};
 use self::TupleArgumentsFlag::*;
 
 use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv, PathParamMode};
@@ -808,7 +808,9 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
 
         for impl_item in impl_items {
             match impl_item.node {
-                ast::ConstImplItem(_, _) => {}
+                ast::ConstImplItem(_, ref expr) => {
+                    check_const(ccx, impl_item.span, &*expr, impl_item.id)
+                }
                 ast::MethodImplItem(ref sig, ref body) => {
                     check_method_body(ccx, &impl_pty.generics, sig, body,
                                       impl_item.id, impl_item.span);
@@ -824,15 +826,15 @@ pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
         let trait_def = ty::lookup_trait_def(ccx.tcx, local_def(it.id));
         for trait_item in trait_items {
             match trait_item.node {
-                ast::ConstTraitItem(_, _) => {}
-                ast::MethodTraitItem(_, None) => {
-                    // Nothing to do, since required methods don't have
-                    // bodies to check.
+                ast::ConstTraitItem(_, Some(ref expr)) => {
+                    check_const(ccx, trait_item.span, &*expr, trait_item.id)
                 }
                 ast::MethodTraitItem(ref sig, Some(ref body)) => {
                     check_method_body(ccx, &trait_def.generics, sig, body,
                                       trait_item.id, trait_item.span);
                 }
+                ast::ConstTraitItem(_, None) |
+                ast::MethodTraitItem(_, None) |
                 ast::TypeTraitItem(..) => {
                     // Nothing to do.
                 }
@@ -922,7 +924,48 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // and compatible with trait signature
     for impl_item in impl_items {
         match impl_item.node {
-            ast::ConstImplItem(_, _) => {}
+            ast::ConstImplItem(..) => {
+                let impl_const_def_id = local_def(impl_item.id);
+                let impl_const_ty = ty::impl_or_trait_item(ccx.tcx,
+                                                           impl_const_def_id);
+
+                // Find associated const definition.
+                let opt_associated_const =
+                    trait_items.iter()
+                               .find(|ac| ac.name() == impl_const_ty.name());
+                match opt_associated_const {
+                    Some(associated_const) => {
+                        match (associated_const, &impl_const_ty) {
+                            (&ty::ConstTraitItem(ref const_trait),
+                             &ty::ConstTraitItem(ref const_impl)) => {
+                                compare_const_impl(ccx.tcx,
+                                                   &const_impl,
+                                                   impl_item.span,
+                                                   &const_trait,
+                                                   &*impl_trait_ref);
+                            }
+                            _ => {
+                                span_err!(tcx.sess, impl_item.span, E0323,
+                                          "item `{}` is an associated const, \
+                                          which doesn't match its trait `{}`",
+                                          token::get_name(impl_const_ty.name()),
+                                          impl_trait_ref.repr(tcx))
+                            }
+                        }
+                    }
+                    None => {
+                        // This is `span_bug` as it should have already been
+                        // caught in resolve.
+                        tcx.sess.span_bug(
+                            impl_item.span,
+                            &format!(
+                                "associated const `{}` is not a member of \
+                                 trait `{}`",
+                                token::get_name(impl_const_ty.name()),
+                                impl_trait_ref.repr(tcx)));
+                    }
+                }
+            }
             ast::MethodImplItem(_, ref body) => {
                 let impl_method_def_id = local_def(impl_item.id);
                 let impl_item_ty = ty::impl_or_trait_item(ccx.tcx,
@@ -946,13 +989,11 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                                     &*impl_trait_ref);
                             }
                             _ => {
-                                // This is span_bug as it should have already been
-                                // caught in resolve.
-                                tcx.sess.span_bug(
-                                    impl_item.span,
-                                    &format!("item `{}` is of a different kind from its trait `{}`",
-                                             token::get_name(impl_item_ty.name()),
-                                             impl_trait_ref.repr(tcx)));
+                                span_err!(tcx.sess, impl_item.span, E0324,
+                                          "item `{}` is an associated method, \
+                                          which doesn't match its trait `{}`",
+                                          token::get_name(impl_item_ty.name()),
+                                          impl_trait_ref.repr(tcx))
                             }
                         }
                     }
@@ -982,11 +1023,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         match (associated_type, &typedef_ty) {
                             (&ty::TypeTraitItem(_), &ty::TypeTraitItem(_)) => {}
                             _ => {
-                                // Formerly `span_bug`, but it turns out that
-                                // this is not checked in resolve, so this is
-                                // the first place where we'll notice the
-                                // mismatch.
-                                span_err!(tcx.sess, impl_item.span, E0323,
+                                span_err!(tcx.sess, impl_item.span, E0325,
                                           "item `{}` is an associated type, \
                                           which doesn't match its trait `{}`",
                                           token::get_name(typedef_ty.name()),
@@ -1014,10 +1051,27 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
     // Check for missing items from trait
     let provided_methods = ty::provided_trait_methods(tcx, impl_trait_ref.def_id);
+    let associated_consts = ty::associated_consts(tcx, impl_trait_ref.def_id);
     let mut missing_methods = Vec::new();
     for trait_item in &*trait_items {
         match *trait_item {
-            ty::ConstTraitItem(_) => {}
+            ty::ConstTraitItem(ref associated_const) => {
+                let is_implemented = impl_items.iter().any(|ii| {
+                    match ii.node {
+                        ast::ConstImplItem(..) => {
+                            ii.ident.name == associated_const.name
+                        }
+                        _ => false,
+                    }
+                });
+                let is_provided =
+                    associated_consts.iter().any(|ac| ac.default.is_some() &&
+                                                 ac.name == associated_const.name);
+                if !is_implemented && !is_provided {
+                    missing_methods.push(format!("`{}`",
+                                                 token::get_name(associated_const.name)));
+                }
+            }
             ty::MethodTraitItem(ref trait_method) => {
                 let is_implemented =
                     impl_items.iter().any(|ii| {
@@ -4254,7 +4308,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Luckily, we can (at least for now) deduce the intermediate steps
     // just from the end-point.
     //
-    // There are basically three cases to consider:
+    // There are basically four cases to consider:
     //
     // 1. Reference to a *type*, such as a struct or enum:
     //
@@ -4303,6 +4357,16 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     //    may appear in two places. The penultimate segment,
     //    `SomeStruct::<A>`, contains parameters in TypeSpace, and the
     //    final segment, `foo::<B>` contains parameters in fn space.
+    //
+    // 4. Reference to an *associated const*:
+    //
+    // impl<A> AnotherStruct<A> {
+    // const FOO: B = BAR;
+    // }
+    //
+    // The path in this case will look like
+    // `a::b::AnotherStruct::<A>::FOO`, so the penultimate segment
+    // only will have parameters in TypeSpace.
     //
     // The first step then is to categorize the segments appropriately.
 
@@ -4355,8 +4419,21 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
         }
 
-        def::DefAssociatedConst(..) => {
-            segment_spaces = repeat(None).take(segments.len()).collect();
+        def::DefAssociatedConst(_, provenance) => {
+            match provenance {
+                def::FromTrait(trait_did) => {
+                    callee::check_legal_trait_for_method_call(fcx.ccx, span, trait_did)
+                }
+                def::FromImpl(_) => {}
+            }
+
+            if segments.len() >= 2 {
+                segment_spaces = repeat(None).take(segments.len() - 2).collect();
+                segment_spaces.push(Some(subst::TypeSpace));
+                segment_spaces.push(None);
+            } else {
+                segment_spaces = vec![None];
+            }
         }
 
         // Other cases. Various nonsense that really shouldn't show up

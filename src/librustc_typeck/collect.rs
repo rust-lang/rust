@@ -691,11 +691,37 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
+fn convert_associated_const<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+                                      container: ImplOrTraitItemContainer,
+                                      ident: ast::Ident,
+                                      id: ast::NodeId,
+                                      vis: ast::Visibility,
+                                      ty: ty::Ty<'tcx>,
+                                      default: Option<&ast::Expr>)
+{
+    ccx.tcx.predicates.borrow_mut().insert(local_def(id),
+                                           ty::GenericPredicates::empty());
+
+    write_ty_to_tcx(ccx.tcx, id, ty);
+    let default_id = default.map(|expr| local_def(expr.id));
+
+    let associated_const = Rc::new(ty::AssociatedConst {
+        name: ident.name,
+        vis: vis,
+        def_id: local_def(id),
+        container: container,
+        ty: ty,
+        default: default_id,
+    });
+    ccx.tcx.impl_or_trait_items.borrow_mut()
+       .insert(local_def(id), ty::ConstTraitItem(associated_const));
+}
+
 fn as_refsociated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                                     container: ImplOrTraitItemContainer,
-                                     ident: ast::Ident,
-                                     id: ast::NodeId,
-                                     vis: ast::Visibility)
+                                 container: ImplOrTraitItemContainer,
+                                 ident: ast::Ident,
+                                 id: ast::NodeId,
+                                 vis: ast::Visibility)
 {
     let associated_type = Rc::new(ty::AssociatedType {
         name: ident.name,
@@ -828,6 +854,23 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                 it.vis
             };
 
+            // Convert all the associated consts.
+            for impl_item in impl_items {
+                if let ast::ConstImplItem(ref ty, ref expr) = impl_item.node {
+                    let ty = ccx.icx(&ty_predicates)
+                                .to_ty(&ExplicitRscope, &*ty);
+                    tcx.tcache.borrow_mut().insert(local_def(impl_item.id),
+                                                   TypeScheme {
+                                                       generics: ty_generics.clone(),
+                                                       ty: ty,
+                                                   });
+                    convert_associated_const(ccx, ImplContainer(local_def(it.id)),
+                                             impl_item.ident, impl_item.id,
+                                             impl_item.vis.inherit_from(parent_visibility),
+                                             ty, Some(&*expr));
+                }
+            }
+
             // Convert all the associated types.
             for impl_item in impl_items {
                 if let ast::TypeImplItem(ref ty) = impl_item.node {
@@ -905,6 +948,25 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
             let trait_predicates = ty::lookup_predicates(tcx, local_def(it.id));
 
             debug!("convert: trait_bounds={:?}", trait_predicates);
+
+            // Convert all the associated types.
+            for trait_item in trait_items {
+                match trait_item.node {
+                    ast::ConstTraitItem(ref ty, ref default) => {
+                        let ty = ccx.icx(&trait_predicates)
+                                    .to_ty(&ExplicitRscope, ty);
+                        tcx.tcache.borrow_mut().insert(local_def(trait_item.id),
+                                                       TypeScheme {
+                                                           generics: trait_def.generics.clone(),
+                                                           ty: ty,
+                                                       });
+                        convert_associated_const(ccx, TraitContainer(local_def(it.id)),
+                                                 trait_item.ident, trait_item.id,
+                                                 ast::Public, ty, default.as_ref().map(|d| &**d));
+                    }
+                    _ => {}
+                }
+            };
 
             // Convert all the associated types.
             for trait_item in trait_items {

@@ -22,12 +22,13 @@ use rustc::middle::def;
 use rustc::middle::ty;
 use rustc::middle::subst;
 use rustc::middle::stability;
+use rustc::middle::const_eval;
 
 use core::DocContext;
 use doctree;
 use clean;
 
-use super::Clean;
+use super::{Clean, ToSource};
 
 /// Attempt to inline the definition of a local node id into this AST.
 ///
@@ -106,7 +107,7 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
             record_extern_fqn(cx, did, clean::TypeStatic);
             clean::StaticItem(build_static(cx, tcx, did, mtbl))
         }
-        def::DefConst(did) => {
+        def::DefConst(did) | def::DefAssociatedConst(did, _) => {
             record_extern_fqn(cx, did, clean::TypeConst);
             clean::ConstantItem(build_const(cx, tcx, did))
         }
@@ -312,7 +313,27 @@ pub fn build_impl(cx: &DocContext,
         let did = did.def_id();
         let impl_item = ty::impl_or_trait_item(tcx, did);
         match impl_item {
-            ty::ConstTraitItem(_) => { return None }
+            ty::ConstTraitItem(ref assoc_const) => {
+                let did = assoc_const.def_id;
+                let type_scheme = ty::lookup_item_type(tcx, did);
+                let default = match assoc_const.default {
+                    Some(_) => Some(const_eval::lookup_const_by_id(tcx, did, None)
+                                               .unwrap().span.to_src(cx)),
+                    None => None,
+                };
+                Some(clean::Item {
+                    name: Some(assoc_const.name.clean(cx)),
+                    inner: clean::AssociatedConstItem(
+                        type_scheme.ty.clean(cx),
+                        default,
+                    ),
+                    source: clean::Span::empty(),
+                    attrs: vec![],
+                    visibility: None,
+                    stability: stability::lookup(tcx, did).clean(cx),
+                    def_id: did
+                })
+            }
             ty::MethodTraitItem(method) => {
                 if method.vis != ast::Public && associated_trait.is_none() {
                     return None
@@ -444,7 +465,7 @@ fn build_const(cx: &DocContext, tcx: &ty::ctxt,
     use rustc::middle::const_eval;
     use syntax::print::pprust;
 
-    let expr = const_eval::lookup_const_by_id(tcx, did).unwrap_or_else(|| {
+    let expr = const_eval::lookup_const_by_id(tcx, did, None).unwrap_or_else(|| {
         panic!("expected lookup_const_by_id to succeed for {:?}", did);
     });
     debug!("converting constant expr {:?} to snippet", expr);

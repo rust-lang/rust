@@ -505,8 +505,18 @@ trait_items
 ;
 
 trait_item
-: trait_type
+: trait_const
+| trait_type
 | trait_method
+;
+
+trait_const
+: maybe_outer_attrs CONST ident maybe_const_default ';' { $$ = mk_node("ConstTraitItem", 3, $1, $3, $4); }
+;
+
+maybe_const_default
+: '=' expr { $$ = mk_node("ConstDefault", 1, $2); }
+| %empty   { $$ = mk_none(); }
 ;
 
 trait_type
@@ -611,7 +621,16 @@ impl_items
 impl_item
 : impl_method
 | item_macro
-| trait_type
+| impl_const
+| impl_type
+;
+
+impl_const
+: attrs_and_vis item_const { $$ = mk_node("ImplConst", 1, $1, $2); }
+;
+
+impl_type
+: attrs_and_vis TYPE ident generic_params '=' ty_sum ';'  { $$ = mk_node("ImplType", 4, $1, $3, $4, $6); }
 ;
 
 item_fn
