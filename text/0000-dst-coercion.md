@@ -66,9 +66,8 @@ coerced to the `Target` type. E.g., the above implementation means that
 ## Newtype coercions
 
 We also add a new built-in coercion for 'newtype's. If `Foo<T>` is a tuple
-struct with a single field with type `T` and `T` has at least the `?Sized`
-bound, then coerce_inner(`Foo<T>`) = `Foo<U>` holds for any `T` and `U` where
-`T` coerces to `U`.
+struct with a single field with type `T`, then coerce_inner(`Foo<T>`) = `Foo<U>`
+holds for any `T` and `U` where `T` coerces to `U`.
 
 This coercion is not opt-in. It is best thought of as an extension to the
 coercion rule for structs with an unsized field, the extension is that here the
@@ -121,7 +120,7 @@ adjustment.
 ### Adjustment types
 
 We add `AdjustCustom(usize, Box<AutoAdjustment>)` and
-`AdjustNewtype(Box<AutoAdjustment>)` to the `AutoAdjustment` enum. These
+`AdjustNewtype(Box<AutoDerefRef>)` to the `AutoAdjustment` enum. These
 represent the new custom and newtype coercions, respectively. We add
 `UnsizePlaceHolder(Ty, Ty)` to the `UnsizeKind` enum to represent a placeholder
 adjustment due to an `Unsize` bound.
