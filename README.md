@@ -52,6 +52,7 @@ the direction the language is evolving in.
 * [0769-sound-generic-drop.md](text/0769-sound-generic-drop.md)
 * [0803-type-ascription.md](text/0803-type-ascription.md)
 * [0809-box-and-in-for-stdlib.md](text/0809-box-and-in-for-stdlib.md)
+* [0968-closure-return-type-syntax.md](text/0968-closure-return-type-syntax.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
