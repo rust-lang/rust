@@ -206,7 +206,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         if err != 0 { return Err(io::Error::last_os_error()); }
         if sz == 0 { return Err(io::Error::last_os_error()); }
         v.set_len(sz as uint - 1); // chop off trailing NUL
-        Ok(PathBuf::new::<OsString>(&OsStringExt::from_vec(v)))
+        Ok(PathBuf::new::<OsString>(OsStringExt::from_vec(v)))
     }
 }
 
@@ -232,7 +232,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
             Err(io::Error::last_os_error())
         } else {
             let vec = CStr::from_ptr(v).to_bytes().to_vec();
-            Ok(PathBuf::new::<OsString>(&OsStringExt::from_vec(vec)))
+            Ok(PathBuf::new::<OsString>(OsStringExt::from_vec(vec)))
         }
     }
 }
