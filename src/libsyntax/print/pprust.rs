@@ -2254,15 +2254,17 @@ impl<'a> State<'a> {
     }
 
     pub fn print_pats(&mut self, pats: &[P<ast::Pat>]) -> io::Result<()> {
-        let mut first = true;
-        for ref p in pats {
-            if first {
-                first = false;
-            } else {
-                try!(space(&mut self.s));
-                try!(self.word_space("|"));
+        match pats {
+            [] => {},
+            [ref p, ref ps..] => {
+                try!(self.print_pat(&*p));
+
+                for p in *ps {
+                    try!(space(&mut self.s));
+                    try!(self.word_space("|"));
+                    try!(self.print_pat(&*p));
+                }
             }
-            try!(self.print_pat(&**p));
         }
         Ok(())
     }
