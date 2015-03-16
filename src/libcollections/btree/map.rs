@@ -64,6 +64,10 @@ use super::node::{self, Node, Found, GoDown};
 /// and possibly other factors. Using linear search, searching for a random element is expected
 /// to take O(B log<sub>B</sub>n) comparisons, which is generally worse than a BST. In practice,
 /// however, performance is excellent.
+///
+/// It is a logic error for a key to be modified in such a way that the key's ordering relative to
+/// any other key, as determined by the `Ord` trait, changes while it is in the map. This is
+/// normally only possible through `Cell`, `RefCell`, global state, I/O, or unsafe code.
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BTreeMap<K, V> {
