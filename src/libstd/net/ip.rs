@@ -359,7 +359,7 @@ impl fmt::Display for Ipv6Addr {
                     let mut cur_span_len = 0;
                     let mut cur_span_at = 0;
 
-                    for i in range(0, 8) {
+                    for i in 0..8 {
                         if segments[i] == 0 {
                             if cur_span_len == 0 {
                                 cur_span_at = i;

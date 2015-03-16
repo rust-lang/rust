@@ -154,7 +154,7 @@ pub trait Combine<'tcx> : Sized {
                                                                  b_tys.len())));
             }
 
-            range(0, a_tys.len()).map(|i| {
+            (0.. a_tys.len()).map(|i| {
                 let a_ty = a_tys[i];
                 let b_ty = b_tys[i];
                 let v = variances.map_or(ty::Invariant, |v| v[i]);
