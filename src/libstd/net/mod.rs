@@ -11,8 +11,7 @@
 //! Networking primitives for TCP/UDP communication
 //!
 //! > **NOTE**: This module is very much a work in progress and is under active
-//! > development. At this time it is still recommended to use the `old_io`
-//! > module while the details of this module shake out.
+//! > development.
 
 #![unstable(feature = "net")]
 
