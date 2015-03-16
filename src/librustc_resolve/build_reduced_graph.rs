@@ -372,7 +372,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
             ItemExternCrate(_) => {
                 // n.b. we don't need to look at the path option here, because cstore already did
-                for &crate_id in self.session.cstore.find_extern_mod_stmt_cnum(item.id).iter() {
+                if let Some(crate_id) = self.session.cstore.find_extern_mod_stmt_cnum(item.id) {
                     let def_id = DefId { krate: crate_id, node: 0 };
                     self.external_exports.insert(def_id);
                     let parent_link = ModuleParentLink(parent.downgrade(), name);

@@ -144,9 +144,10 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                     // Make all tests public so we can call them from outside
                     // the module (note that the tests are re-exported and must
                     // be made public themselves to avoid privacy errors).
-                    let mut result = (*i).clone();
-                    result.vis = ast::Public;
-                    P(result)
+                    i.map(|mut i| {
+                        i.vis = ast::Public;
+                        i
+                    })
                 }
             }
         } else {
