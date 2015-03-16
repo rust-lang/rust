@@ -402,7 +402,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     match datum.ty.sty {
                         // Don't skip a conversion from Box<T> to &T, etc.
                         ty::ty_rptr(..) => {
-                            let method_call = MethodCall::autoderef(expr.id, adj.autoderefs-1);
+                            let method_call = MethodCall::autoderef(expr.id, (adj.autoderefs-1) as u32);
                             let method = bcx.tcx().method_map.borrow().get(&method_call).is_some();
                             if method {
                                 // Don't skip an overloaded deref.
@@ -2227,7 +2227,7 @@ fn deref_multiple<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = bcx;
     let mut datum = datum;
     for i in 0..times {
-        let method_call = MethodCall::autoderef(expr.id, i);
+        let method_call = MethodCall::autoderef(expr.id, i as u32);
         datum = unpack_datum!(bcx, deref_once(bcx, expr, datum, method_call));
     }
     DatumBlock { bcx: bcx, datum: datum }
@@ -2259,10 +2259,11 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // converts from the `Smaht<T>` pointer that we have into
             // a `&T` pointer.  We can then proceed down the normal
             // path (below) to dereference that `&T`.
-            let datum = match method_call.adjustment {
+            let datum = if method_call.autoderef == 0 {
+                datum
+            } else {
                 // Always perform an AutoPtr when applying an overloaded auto-deref
-                ty::AutoDeref(_) => unpack_datum!(bcx, auto_ref(bcx, datum, expr)),
-                _ => datum
+                unpack_datum!(bcx, auto_ref(bcx, datum, expr))
             };
 
             let ref_ty = // invoked methods have their LB regions instantiated

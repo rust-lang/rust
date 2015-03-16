@@ -33,7 +33,6 @@ pub use self::ImplOrTraitItem::*;
 pub use self::BoundRegion::*;
 pub use self::sty::*;
 pub use self::IntVarValue::*;
-pub use self::ExprAdjustment::*;
 pub use self::vtable_origin::*;
 pub use self::MethodOrigin::*;
 pub use self::CopyImplementationError::*;
@@ -368,17 +367,6 @@ pub fn adjusted_object_region(adj: &AutoAdjustment) -> Option<Region> {
     }
 }
 
-// Returns true if there is a trait cast at the bottom of the adjustment.
-pub fn adjust_is_object(adj: &AutoAdjustment) -> bool {
-    match adj {
-        &AdjustDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
-            let (b, _, _) = autoref_object_region(autoref);
-            b
-        }
-        _ => false
-    }
-}
-
 // If possible, returns the type expected from the given adjustment. This is not
 // possible if the adjustment depends on the type of the adjusted expression.
 pub fn type_of_adjust<'tcx>(cx: &ctxt<'tcx>, adj: &AutoAdjustment<'tcx>) -> Option<Ty<'tcx>> {
@@ -505,35 +493,21 @@ pub struct MethodCallee<'tcx> {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct MethodCall {
     pub expr_id: ast::NodeId,
-    pub adjustment: ExprAdjustment
-}
-
-#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, Copy)]
-pub enum ExprAdjustment {
-    NoAdjustment,
-    AutoDeref(uint),
-    AutoObject
+    pub autoderef: u32
 }
 
 impl MethodCall {
     pub fn expr(id: ast::NodeId) -> MethodCall {
         MethodCall {
             expr_id: id,
-            adjustment: NoAdjustment
+            autoderef: 0
         }
     }
 
-    pub fn autoobject(id: ast::NodeId) -> MethodCall {
-        MethodCall {
-            expr_id: id,
-            adjustment: AutoObject
-        }
-    }
-
-    pub fn autoderef(expr_id: ast::NodeId, autoderef: uint) -> MethodCall {
+    pub fn autoderef(expr_id: ast::NodeId, autoderef: u32) -> MethodCall {
         MethodCall {
             expr_id: expr_id,
-            adjustment: AutoDeref(1 + autoderef)
+            autoderef: 1 + autoderef
         }
     }
 }
@@ -4581,7 +4555,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
 
                     if !ty::type_is_error(adjusted_ty) {
                         for i in 0..adj.autoderefs {
-                            let method_call = MethodCall::autoderef(expr_id, i);
+                            let method_call = MethodCall::autoderef(expr_id, i as u32);
                             match method_type(method_call) {
                                 Some(method_ty) => {
                                     // overloaded deref operators have all late-bound

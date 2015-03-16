@@ -597,18 +597,18 @@ impl tr for ty::UpvarCapture {
 
 trait read_method_callee_helper<'tcx> {
     fn read_method_callee<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-        -> (ty::ExprAdjustment, MethodCallee<'tcx>);
+                                  -> (u32, MethodCallee<'tcx>);
 }
 
 fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
                                   rbml_w: &mut Encoder,
-                                  adjustment: ty::ExprAdjustment,
+                                  autoderef: u32,
                                   method: &MethodCallee<'tcx>) {
     use serialize::Encoder;
 
     rbml_w.emit_struct("MethodCallee", 4, |rbml_w| {
-        rbml_w.emit_struct_field("adjustment", 0, |rbml_w| {
-            adjustment.encode(rbml_w)
+        rbml_w.emit_struct_field("autoderef", 0, |rbml_w| {
+            autoderef.encode(rbml_w)
         });
         rbml_w.emit_struct_field("origin", 1, |rbml_w| {
             Ok(rbml_w.emit_method_origin(ecx, &method.origin))
@@ -624,13 +624,13 @@ fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
 
 impl<'a, 'tcx> read_method_callee_helper<'tcx> for reader::Decoder<'a> {
     fn read_method_callee<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-        -> (ty::ExprAdjustment, MethodCallee<'tcx>) {
+                                  -> (u32, MethodCallee<'tcx>) {
 
         self.read_struct("MethodCallee", 4, |this| {
-            let adjustment = this.read_struct_field("adjustment", 0, |this| {
+            let autoderef = this.read_struct_field("autoderef", 0, |this| {
                 Decodable::decode(this)
             }).unwrap();
-            Ok((adjustment, MethodCallee {
+            Ok((autoderef, MethodCallee {
                 origin: this.read_struct_field("origin", 1, |this| {
                     Ok(this.read_method_origin(dcx))
                 }).unwrap(),
@@ -684,7 +684,7 @@ pub trait vtable_decoder_helpers<'tcx> {
     fn read_vtable_res_with_key(&mut self,
                                 tcx: &ty::ctxt<'tcx>,
                                 cdata: &cstore::crate_metadata)
-                                -> (ty::ExprAdjustment, ty::vtable_res<'tcx>);
+                                -> (u32, ty::vtable_res<'tcx>);
     fn read_vtable_res(&mut self,
                        tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata)
                       -> ty::vtable_res<'tcx>;
@@ -709,12 +709,12 @@ impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_vtable_res_with_key(&mut self,
                                 tcx: &ty::ctxt<'tcx>,
                                 cdata: &cstore::crate_metadata)
-                                -> (ty::ExprAdjustment, ty::vtable_res<'tcx>) {
+                                -> (u32, ty::vtable_res<'tcx>) {
         self.read_struct("VtableWithKey", 2, |this| {
-            let adjustment = this.read_struct_field("adjustment", 0, |this| {
+            let autoderef = this.read_struct_field("autoderef", 0, |this| {
                 Decodable::decode(this)
             }).unwrap();
-            Ok((adjustment, this.read_struct_field("vtable_res", 1, |this| {
+            Ok((autoderef, this.read_struct_field("vtable_res", 1, |this| {
                 Ok(this.read_vtable_res(tcx, cdata))
             }).unwrap()))
         }).unwrap()
@@ -1254,7 +1254,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     if let Some(method) = tcx.method_map.borrow().get(&method_call) {
         rbml_w.tag(c::tag_table_method_map, |rbml_w| {
             rbml_w.id(id);
-            encode_method_callee(ecx, rbml_w, method_call.adjustment, method)
+            encode_method_callee(ecx, rbml_w, method_call.autoderef, method)
         })
     }
 
@@ -1267,31 +1267,19 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     if let Some(adjustment) = tcx.adjustments.borrow().get(&id) {
         match *adjustment {
-            _ if ty::adjust_is_object(adjustment) => {
-                let method_call = MethodCall::autoobject(id);
-                if let Some(method) = tcx.method_map.borrow().get(&method_call) {
-                    rbml_w.tag(c::tag_table_method_map, |rbml_w| {
-                        rbml_w.id(id);
-                        encode_method_callee(ecx, rbml_w, method_call.adjustment, method)
-                    })
-                }
-            }
             ty::AdjustDerefRef(ref adj) => {
-                assert!(!ty::adjust_is_object(adjustment));
                 for autoderef in 0..adj.autoderefs {
-                    let method_call = MethodCall::autoderef(id, autoderef);
+                    let method_call = MethodCall::autoderef(id, autoderef as u32);
                     if let Some(method) = tcx.method_map.borrow().get(&method_call) {
                         rbml_w.tag(c::tag_table_method_map, |rbml_w| {
                             rbml_w.id(id);
                             encode_method_callee(ecx, rbml_w,
-                                                 method_call.adjustment, method)
+                                                 method_call.autoderef, method)
                         })
                     }
                 }
             }
-            _ => {
-                assert!(!ty::adjust_is_object(adjustment));
-            }
+            _ => {}
         }
 
         rbml_w.tag(c::tag_table_adjustments, |rbml_w| {
@@ -1918,10 +1906,10 @@ fn decode_side_tables(dcx: &DecodeContext,
                         dcx.tcx.ty_param_defs.borrow_mut().insert(id, bounds);
                     }
                     c::tag_table_method_map => {
-                        let (adjustment, method) = val_dsr.read_method_callee(dcx);
+                        let (autoderef, method) = val_dsr.read_method_callee(dcx);
                         let method_call = MethodCall {
                             expr_id: id,
-                            adjustment: adjustment
+                            autoderef: autoderef
                         };
                         dcx.tcx.method_map.borrow_mut().insert(method_call, method);
                     }

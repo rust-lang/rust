@@ -872,7 +872,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
 
     let r_deref_expr = ty::ReScope(CodeExtent::from_node_id(deref_expr.id));
     for i in 0..derefs {
-        let method_call = MethodCall::autoderef(deref_expr.id, i);
+        let method_call = MethodCall::autoderef(deref_expr.id, i as u32);
         debug!("constrain_autoderefs: method_call={:?} (of {:?} total)", method_call, derefs);
 
         derefd_ty = match rcx.fcx.inh.method_map.borrow().get(&method_call) {

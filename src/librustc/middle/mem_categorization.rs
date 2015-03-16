@@ -887,15 +887,9 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                              deref_cnt: uint,
                              deref_context: DerefKindContext)
                              -> McResult<cmt<'tcx>> {
-        let adjustment = match self.typer.adjustments().borrow().get(&node.id()) {
-            Some(adj) if ty::adjust_is_object(adj) => ty::AutoObject,
-            _ if deref_cnt != 0 => ty::AutoDeref(deref_cnt),
-            _ => ty::NoAdjustment
-        };
-
         let method_call = ty::MethodCall {
             expr_id: node.id(),
-            adjustment: adjustment
+            autoderef: deref_cnt as u32
         };
         let method_ty = self.typer.node_method_ty(method_call);
 

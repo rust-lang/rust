@@ -2018,7 +2018,8 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
         let mt = match ty::deref(resolved_t, false) {
             Some(mt) => Some(mt),
             None => {
-                let method_call = opt_expr.map(|expr| MethodCall::autoderef(expr.id, autoderefs));
+                let method_call =
+                    opt_expr.map(|expr| MethodCall::autoderef(expr.id, autoderefs as u32));
 
                 // Super subtle: it might seem as though we should
                 // pass `opt_expr` to `try_overloaded_deref`, so that
