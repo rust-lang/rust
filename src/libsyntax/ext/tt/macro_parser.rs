@@ -521,12 +521,15 @@ pub fn parse_nt(p: &mut Parser, sp: Span, name: &str) -> Nonterminal {
     // check at the beginning and the parser checks after each bump
     p.check_unknown_macro_variable();
     match name {
-      "item" => match p.parse_item(Vec::new()) {
+      "item" => match p.parse_item() {
         Some(i) => token::NtItem(i),
         None => p.fatal("expected an item keyword")
       },
       "block" => token::NtBlock(p.parse_block()),
-      "stmt" => token::NtStmt(p.parse_stmt(Vec::new())),
+      "stmt" => match p.parse_stmt() {
+        Some(s) => token::NtStmt(s),
+        None => p.fatal("expected a statement")
+      },
       "pat" => token::NtPat(p.parse_pat()),
       "expr" => token::NtExpr(p.parse_expr()),
       "ty" => token::NtTy(p.parse_ty()),
