@@ -1541,6 +1541,59 @@ The contents of `std::io::net` submodules `tcp`, `udp`, `ip` and
 the other modules are being moved or removed and are described
 elsewhere.
 
+#### SocketAddr
+
+This structure will represent either a `sockaddr_in` or `sockaddr_in6` which is
+commonly just a pairing of an IP address and a port.
+
+```rust
+enum SocketAddr {
+    V4(SocketAddrV4),
+    V6(SocketAddrV6),
+}
+
+impl SocketAddrV4 {
+    fn new(addr: Ipv4Addr, port: u16) -> SocketAddrV4;
+    fn ip(&self) -> &Ipv4Addr;
+    fn port(&self) -> u16;
+}
+
+impl SocketAddrV6 {
+    fn new(addr: Ipv6Addr, port: u16, flowinfo: u32, scope_id: u32) -> SocketAddrV6;
+    fn ip(&self) -> &Ipv6Addr;
+    fn port(&self) -> u16;
+    fn flowinfo(&self) -> u32;
+    fn scope_id(&self) -> u32;
+}
+```
+
+#### Ipv4Addr
+
+Represents a version 4 IP address. It has the following interface:
+
+```rust
+impl Ipv4Addr {
+    fn new(a: u8, b: u8, c: u8, d: u8) -> Ipv4Addr;
+    fn any() -> Ipv4Addr;
+    fn octets(&self) -> [u8; 4];
+    fn to_ipv6_compatible(&self) -> Ipv6Addr;
+    fn to_ipv6_mapped(&self) -> Ipv6Addr;
+}
+```
+
+#### Ipv6Addr
+
+Represents a version 6 IP address. It has the following interface:
+
+```rust
+impl Ipv6Addr {
+    fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16, h: u16) -> Ipv6Addr;
+    fn any() -> Ipv6Addr;
+    fn segments(&self) -> [u16; 8]
+    fn to_ipv4(&self) -> Option<Ipv4Addr>;
+}
+```
+
 #### TCP
 [TCP]: #tcp
 
@@ -1553,7 +1606,7 @@ following interface:
 impl TcpStream {
     fn connect<A: ToSocketAddrs>(addr: &A) -> io::Result<TcpStream>;
     fn peer_addr(&self) -> io::Result<SocketAddr>;
-    fn socket_addr(&self) -> io::Result<SocketAddr>;
+    fn local_addr(&self) -> io::Result<SocketAddr>;
     fn shutdown(&self, how: Shutdown) -> io::Result<()>;
     fn duplicate(&self) -> io::Result<TcpStream>;
 }
@@ -1592,7 +1645,7 @@ into the `TcpListener` structure. Specifically, this will be the resulting API:
 ```rust
 impl TcpListener {
     fn bind<A: ToSocketAddrs>(addr: &A) -> io::Result<TcpListener>;
-    fn socket_addr(&self) -> io::Result<SocketAddr>;
+    fn local_addr(&self) -> io::Result<SocketAddr>;
     fn duplicate(&self) -> io::Result<TcpListener>;
     fn accept(&self) -> io::Result<(TcpStream, SocketAddr)>;
     fn incoming(&self) -> Incoming;
@@ -1636,7 +1689,7 @@ impl UdpSocket {
     fn bind<A: ToSocketAddrs>(addr: &A) -> io::Result<UdpSocket>;
     fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)>;
     fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: &A) -> io::Result<usize>;
-    fn socket_addr(&self) -> io::Result<SocketAddr>;
+    fn local_addr(&self) -> io::Result<SocketAddr>;
     fn duplicate(&self) -> io::Result<UdpSocket>;
 }
 
@@ -1688,8 +1741,18 @@ For the current `ip` module:
 * The `ToSocketAddr` trait should become `ToSocketAddrs`
 * The default `to_socket_addr_all` method should be removed.
 
-The actual address structures could use some scrutiny, but any
-revisions there are left as an unresolved question.
+The following implementations of `ToSocketAddrs` will be available:
+
+```rust
+impl ToSocketAddrs for SocketAddr { ... }
+impl ToSocketAddrs for SocketAddrV4 { ... }
+impl ToSocketAddrs for SocketAddrV6 { ... }
+impl ToSocketAddrs for (Ipv4Addr, u16) { ... }
+impl ToSocketAddrs for (Ipv6Addr, u16) { ... }
+impl ToSocketAddrs for (&str, u16) { ... }
+impl ToSocketAddrs for str { ... }
+impl<T: ToSocketAddrs> ToSocketAddrs for &T { ... }
+```
 
 ### `std::process`
 [std::process]: #stdprocess
