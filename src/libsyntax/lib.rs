@@ -37,7 +37,6 @@
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(unicode)]
-#![feature(io)]
 #![feature(path_ext)]
 
 extern crate arena;

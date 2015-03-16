@@ -175,7 +175,6 @@
 #![feature(int_uint)]
 #![feature(core)]
 #![feature(std_misc)]
-#![feature(io)]
 
 use std::boxed;
 use std::cell::RefCell;

@@ -42,7 +42,6 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(std_misc)]
-#![feature(io)]
 #![feature(libc)]
 #![feature(set_stdio)]
 
