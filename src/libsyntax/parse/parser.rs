@@ -77,7 +77,6 @@ use owned_slice::OwnedSlice;
 
 use std::collections::HashSet;
 use std::io::prelude::*;
-use std::iter;
 use std::mem;
 use std::num::Float;
 use std::path::{Path, PathBuf};
@@ -749,7 +748,7 @@ impl<'a> Parser<'a> {
         // would encounter a `>` and stop. This lets the parser handle trailing
         // commas in generic parameters, because it can stop either after
         // parsing a type or after parsing a comma.
-        for i in iter::count(0, 1) {
+        for i in 0.. {
             if self.check(&token::Gt)
                 || self.token == token::BinOp(token::Shr)
                 || self.token == token::Ge

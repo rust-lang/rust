@@ -92,7 +92,7 @@ use core::clone::Clone;
 use core::cmp::Ordering::{self, Greater, Less};
 use core::cmp::{self, Ord, PartialEq};
 use core::iter::{Iterator, IteratorExt};
-use core::iter::{range_step, MultiplicativeIterator};
+use core::iter::MultiplicativeIterator;
 use core::marker::Sized;
 use core::mem::size_of;
 use core::mem;
@@ -1387,7 +1387,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
     // We could hardcode the sorting comparisons here, and we could
     // manipulate/step the pointers themselves, rather than repeatedly
     // .offset-ing.
-    for start in range_step(0, len, insertion) {
+    for start in (0.. len).step_by(insertion) {
         // start <= i < len;
         for i in start..cmp::min(start + insertion, len) {
             // j satisfies: start <= j <= i;
@@ -1427,7 +1427,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
         // a time, placing the result in `buf_tmp`.
 
         // 0 <= start <= len.
-        for start in range_step(0, len, 2 * width) {
+        for start in (0..len).step_by(2 * width) {
             // manipulate pointers directly for speed (rather than
             // using a `for` loop with `range` and `.offset` inside
             // that loop).

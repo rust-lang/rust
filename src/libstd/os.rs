@@ -587,7 +587,6 @@ pub fn get_exit_status() -> int {
 unsafe fn load_argc_and_argv(argc: int,
                              argv: *const *const c_char) -> Vec<Vec<u8>> {
     use ffi::CStr;
-    use iter::range;
 
     (0..argc).map(|i| {
         CStr::from_ptr(*argv.offset(i)).to_bytes().to_vec()

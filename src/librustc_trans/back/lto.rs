@@ -21,7 +21,6 @@ use libc;
 use flate;
 
 use std::ffi::CString;
-use std::iter;
 use std::mem;
 use std::num::Int;
 
@@ -62,7 +61,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         let file = path.file_name().unwrap().to_str().unwrap();
         let file = &file[3..file.len() - 5]; // chop off lib/.rlib
         debug!("reading {}", file);
-        for i in iter::count(0, 1) {
+        for i in 0.. {
             let bc_encoded = time(sess.time_passes(),
                                   &format!("check for {}.{}.bytecode.deflate", name, i),
                                   (),
@@ -213,4 +212,3 @@ fn read_from_le_bytes<T: Int>(bytes: &[u8], position_in_bytes: uint) -> T {
 
     Int::from_le(data)
 }
-

@@ -16,8 +16,8 @@
 
 use prelude::v1::*;
 
+use ops::Range;
 use mem;
-use iter::Range;
 
 /// Extension methods for ASCII-subset only operations on owned strings
 #[unstable(feature = "std_misc",
@@ -270,7 +270,7 @@ pub fn escape_default(c: u8) -> EscapeDefault {
         _ => ([b'\\', b'x', hexify(c >> 4), hexify(c & 0xf)], 4),
     };
 
-    return EscapeDefault { range: range(0, len), data: data };
+    return EscapeDefault { range: (0.. len), data: data };
 
     fn hexify(b: u8) -> u8 {
         match b {
