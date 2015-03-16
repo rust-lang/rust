@@ -4,7 +4,7 @@
 
 # Summary
 
-The `Debug` trait is intended to be implemented by every trait and display
+The `Debug` trait is intended to be implemented by every type and display
 useful runtime information to help with debugging. This RFC proposes two
 additions to the fmt API, one of which aids implementors of `Debug`, and one
 which aids consumers of the output of `Debug`. Specifically, the `#` format
