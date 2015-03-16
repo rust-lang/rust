@@ -356,7 +356,7 @@ pub trait Write {
     ///
     /// It is considered an error if not all bytes could be written due to
     /// I/O errors or EOF being reached.
-    #[unstable(feature = "io", reason = "waiting for RFC 950")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn flush(&mut self) -> Result<()>;
 
     /// Attempts to write an entire buffer into this write.
