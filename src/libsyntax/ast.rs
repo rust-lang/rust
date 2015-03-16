@@ -535,9 +535,13 @@ impl PartialEq for MetaItem_ {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Block {
+    /// Statements in a block
     pub stmts: Vec<P<Stmt>>,
+    /// An expression at the end of the block
+    /// without a semicolon, if any
     pub expr: Option<P<Expr>>,
     pub id: NodeId,
+    /// Unsafety of the block
     pub rules: BlockCheckMode,
     pub span: Span,
 }
@@ -550,8 +554,14 @@ pub struct Pat {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+/// A single field in a struct pattern
+///
+/// For patterns like `Foo {x, y, z}`, `pat` and `ident` point to the same identifier
+/// and `is_shorthand` is true.
 pub struct FieldPat {
+    /// The identifier for the field
     pub ident: Ident,
+    /// The pattern the field is destructured to
     pub pat: P<Pat>,
     pub is_shorthand: bool,
 }
@@ -588,15 +598,23 @@ pub enum Pat_ {
     /// "None" means a * pattern where we don't bind the fields to names.
     PatEnum(Path, Option<Vec<P<Pat>>>),
 
+    /// Destructuring of a struct, e.g. `Foo {x, y, ..}`
+    /// The `bool` is `true` in the presence of a `..`
     PatStruct(Path, Vec<Spanned<FieldPat>>, bool),
+    /// A tuple pattern (`a, b`)
     PatTup(Vec<P<Pat>>),
+    /// A `box` pattern
     PatBox(P<Pat>),
-    PatRegion(P<Pat>, Mutability), // reference pattern
+    /// A reference pattern, e.g. `&mut (a, b)`
+    PatRegion(P<Pat>, Mutability),
+    /// A literal
     PatLit(P<Expr>),
+    /// A range pattern, e.g. `[1...2]`
     PatRange(P<Expr>, P<Expr>),
     /// [a, b, ..i, y, z] is represented as:
     ///     PatVec(box [a, b], Some(i), box [y, z])
     PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
+    /// A macro pattern; pre-expansion
     PatMac(Mac),
 }
 
