@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Test that a partially specified trait object with unspecified associated
-// type does not ICE.
+// type does not type-check.
 
 // pretty-expanded FIXME #23616
 
@@ -20,7 +20,6 @@ trait Foo {
 }
 
 fn bar(x: &Foo) {}
-// FIXME(#19482) -- `Foo` should specify `A`, but this is not
-// currently enforced except at object creation
+//~^ ERROR the associated type `A` (from the trait `Foo`) must be specified
 
 pub fn main() {}

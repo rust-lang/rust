@@ -24,7 +24,6 @@ use middle::infer::InferCtxt;
 use syntax::ast;
 use syntax::codemap::Span;
 use std::rc::Rc;
-use std::mem;
 use std::iter::repeat;
 use util::ppaux::Repr;
 
@@ -84,7 +83,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                -> MethodCallee<'tcx>
     {
         // Adjust the self expression the user provided and obtain the adjusted type.
-        let self_ty = self.adjust_self_ty(unadjusted_self_ty, &pick.adjustment);
+        let self_ty = self.adjust_self_ty(unadjusted_self_ty, &pick);
 
         // Make sure nobody calls `drop()` explicitly.
         self.enforce_illegal_method_limitations(&pick);
@@ -134,11 +133,20 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
     fn adjust_self_ty(&mut self,
                       unadjusted_self_ty: Ty<'tcx>,
-                      adjustment: &probe::PickAdjustment)
+                      pick: &probe::Pick<'tcx>)
                       -> Ty<'tcx>
     {
-        // Construct the actual adjustment and write it into the table
-        let auto_deref_ref = self.create_ty_adjustment(adjustment);
+        let (autoref, unsize) = if let Some(mutbl) = pick.autoref {
+            let region = self.infcx().next_region_var(infer::Autoref(self.span));
+            let autoref = ty::AutoPtr(self.tcx().mk_region(region), mutbl);
+            (Some(autoref), pick.unsize.map(|target| {
+                ty::adjust_ty_for_autoref(self.tcx(), target, Some(autoref))
+            }))
+        } else {
+            // No unsizing should be performed without autoref.
+            assert!(pick.unsize.is_none());
+            (None, None)
+        };
 
         // Commit the autoderefs by calling `autoderef again, but this
         // time writing the results into the various tables.
@@ -149,47 +157,27 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                                           UnresolvedTypeAction::Error,
                                                           NoPreference,
                                                           |_, n| {
-            if n == auto_deref_ref.autoderefs {
+            if n == pick.autoderefs {
                 Some(())
             } else {
                 None
             }
         });
-        assert_eq!(n, auto_deref_ref.autoderefs);
+        assert_eq!(n, pick.autoderefs);
         assert_eq!(result, Some(()));
 
-        let final_ty =
-            ty::adjust_ty_for_autoref(self.tcx(), self.span, autoderefd_ty,
-                                      auto_deref_ref.autoref.as_ref());
-
         // Write out the final adjustment.
-        self.fcx.write_adjustment(self.self_expr.id, self.span, ty::AdjustDerefRef(auto_deref_ref));
+        self.fcx.write_adjustment(self.self_expr.id,
+                                  ty::AdjustDerefRef(ty::AutoDerefRef {
+            autoderefs: pick.autoderefs,
+            autoref: autoref,
+            unsize: unsize
+        }));
 
-        final_ty
-    }
-
-    fn create_ty_adjustment(&mut self,
-                            adjustment: &probe::PickAdjustment)
-                            -> ty::AutoDerefRef<'tcx>
-    {
-        match *adjustment {
-            probe::AutoDeref(num) => {
-                ty::AutoDerefRef {
-                    autoderefs: num,
-                    autoref: None,
-                }
-            }
-            probe::AutoUnsizeLength(autoderefs, len) => {
-                ty::AutoDerefRef {
-                    autoderefs: autoderefs,
-                    autoref: Some(ty::AutoUnsize(ty::UnsizeLength(len))),
-                }
-            }
-            probe::AutoRef(mutability, ref sub_adjustment) => {
-                let deref = self.create_ty_adjustment(&**sub_adjustment);
-                let region = self.infcx().next_region_var(infer::Autoref(self.span));
-                wrap_autoref(deref, |base| ty::AutoPtr(region, mutability, base))
-            }
+        if let Some(target) = unsize {
+            target
+        } else {
+            ty::adjust_ty_for_autoref(self.tcx(), autoderefd_ty, autoref)
         }
     }
 
@@ -499,10 +487,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                             .adjustments
                                             .borrow()
                                             .get(&expr.id) {
-                Some(&ty::AdjustDerefRef(ty::AutoDerefRef {
-                    autoderefs: autoderef_count,
-                    autoref: _
-                })) => autoderef_count,
+                Some(&ty::AdjustDerefRef(ref adj)) => adj.autoderefs,
                 Some(_) | None => 0,
             };
 
@@ -529,17 +514,6 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             if i != 0 {
                 match expr.node {
                     ast::ExprIndex(ref base_expr, ref index_expr) => {
-                        let mut base_adjustment =
-                            match self.fcx.inh.adjustments.borrow().get(&base_expr.id) {
-                                Some(&ty::AdjustDerefRef(ref adr)) => (*adr).clone(),
-                                None => ty::AutoDerefRef { autoderefs: 0, autoref: None },
-                                Some(_) => {
-                                    self.tcx().sess.span_bug(
-                                        base_expr.span,
-                                        "unexpected adjustment type");
-                                }
-                            };
-
                         // If this is an overloaded index, the
                         // adjustment will include an extra layer of
                         // autoref because the method is an &self/&mut
@@ -548,21 +522,44 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         // expects. This is annoying and horrible. We
                         // ought to recode this routine so it doesn't
                         // (ab)use the normal type checking paths.
-                        base_adjustment.autoref = match base_adjustment.autoref {
-                            None => { None }
-                            Some(ty::AutoPtr(_, _, None)) => { None }
-                            Some(ty::AutoPtr(_, _, Some(box r))) => { Some(r) }
+                        let adj = self.fcx.inh.adjustments.borrow().get(&base_expr.id).cloned();
+                        let (autoderefs, unsize) = match adj {
+                            Some(ty::AdjustDerefRef(adr)) => match adr.autoref {
+                                None => {
+                                    assert!(adr.unsize.is_none());
+                                    (adr.autoderefs, None)
+                                }
+                                Some(ty::AutoPtr(_, _)) => {
+                                    (adr.autoderefs, adr.unsize.map(|target| {
+                                        ty::deref(target, false)
+                                            .expect("fixup: AutoPtr is not &T").ty
+                                    }))
+                                }
+                                Some(_) => {
+                                    self.tcx().sess.span_bug(
+                                        base_expr.span,
+                                        &format!("unexpected adjustment autoref {}",
+                                                adr.repr(self.tcx())));
+                                }
+                            },
+                            None => (0, None),
                             Some(_) => {
                                 self.tcx().sess.span_bug(
                                     base_expr.span,
-                                    "unexpected adjustment autoref");
+                                    "unexpected adjustment type");
                             }
                         };
 
-                        let adjusted_base_ty =
-                            self.fcx.adjust_expr_ty(
-                                &**base_expr,
-                                Some(&ty::AdjustDerefRef(base_adjustment.clone())));
+                        let (adjusted_base_ty, unsize) = if let Some(target) = unsize {
+                            (target, true)
+                        } else {
+                            (self.fcx.adjust_expr_ty(base_expr,
+                                Some(&ty::AdjustDerefRef(ty::AutoDerefRef {
+                                    autoderefs: autoderefs,
+                                    autoref: None,
+                                    unsize: None
+                                }))), false)
+                        };
                         let index_expr_ty = self.fcx.expr_ty(&**index_expr);
 
                         let result = check::try_index_step(
@@ -571,7 +568,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                             expr,
                             &**base_expr,
                             adjusted_base_ty,
-                            base_adjustment,
+                            autoderefs,
+                            unsize,
                             PreferMutLvalue,
                             index_expr_ty);
 
@@ -657,15 +655,4 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         self.infcx().replace_late_bound_regions_with_fresh_var(
             self.span, infer::FnCall, value).0
     }
-}
-
-fn wrap_autoref<'tcx, F>(mut deref: ty::AutoDerefRef<'tcx>,
-                         base_fn: F)
-                         -> ty::AutoDerefRef<'tcx> where
-    F: FnOnce(Option<Box<ty::AutoRef<'tcx>>>) -> ty::AutoRef<'tcx>,
-{
-    let autoref = mem::replace(&mut deref.autoref, None);
-    let autoref = autoref.map(|r| box r);
-    deref.autoref = Some(base_fn(autoref));
-    deref
 }
