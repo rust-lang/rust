@@ -1476,9 +1476,9 @@ impl fmt::Display for Unsafety {
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub enum ImplPolarity {
-    /// impl Trait for Type
+    /// `impl Trait for Type`
     Positive,
-    /// impl !Trait for Type
+    /// `impl !Trait for Type`
     Negative,
 }
 
@@ -1494,10 +1494,10 @@ impl fmt::Debug for ImplPolarity {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum FunctionRetTy {
-    /// Functions with return type ! that always
+    /// Functions with return type `!`that always
     /// raise an error or exit (i.e. never return to the caller)
     NoReturn(Span),
-    /// Return type is not specified. Functions default to () and
+    /// Return type is not specified. Functions default to `()` and
     /// closures default to inference. Span points to where return
     /// type would be inserted.
     DefaultReturn(Span),
@@ -1553,7 +1553,9 @@ pub struct VariantArg {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum VariantKind {
+    /// Tuple variant, e.g. `Foo(A, B)`
     TupleVariantKind(Vec<VariantArg>),
+    /// Struct variant, e.g. `Foo {x: A, y: B}`
     StructVariantKind(P<StructDef>),
 }
 
@@ -1568,6 +1570,7 @@ pub struct Variant_ {
     pub attrs: Vec<Attribute>,
     pub kind: VariantKind,
     pub id: NodeId,
+    /// Explicit discriminant, eg `Foo = 1`
     pub disr_expr: Option<P<Expr>>,
     pub vis: Visibility,
 }
@@ -1718,6 +1721,9 @@ pub struct StructDef {
   FIXME (#3300): Should allow items to be anonymous. Right now
   we just use dummy names for anon items.
  */
+/// An item
+///
+/// The name might be a dummy name in case of anonymous items
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Item {
     pub ident: Ident,
@@ -1730,19 +1736,27 @@ pub struct Item {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Item_ {
-    // Optional location (containing arbitrary characters) from which
-    // to fetch the crate sources.
-    // For example, extern crate whatever = "github.com/rust-lang/rust".
+    /// An`extern crate` item, with optional original crate name,
+    /// e.g. `extern crate foo` or `extern crate "foo-bar" as foo`
     ItemExternCrate(Option<(InternedString, StrStyle)>),
+    /// A `use` or `pub use` item
     ItemUse(P<ViewPath>),
 
+    /// A `static` item
     ItemStatic(P<Ty>, Mutability, P<Expr>),
+    /// A `const` item
     ItemConst(P<Ty>, P<Expr>),
+    /// A function declaration
     ItemFn(P<FnDecl>, Unsafety, Abi, Generics, P<Block>),
+    /// A module
     ItemMod(Mod),
+    /// An external module
     ItemForeignMod(ForeignMod),
+    /// A type alias, e.g. `type Foo = Bar<u8>`
     ItemTy(P<Ty>, Generics),
+    /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
     ItemEnum(EnumDef, Generics),
+    /// A struct definition, e.g. `struct Foo<A> {x: A}`
     ItemStruct(P<StructDef>, Generics),
     /// Represents a Trait Declaration
     ItemTrait(Unsafety,
@@ -1751,8 +1765,9 @@ pub enum Item_ {
               Vec<P<TraitItem>>),
 
     // Default trait implementations
-    // `impl Trait for ..`
+    // `impl Trait for .. {}`
     ItemDefaultImpl(Unsafety, TraitRef),
+    /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,
              ImplPolarity,
              Generics,
@@ -1794,10 +1809,13 @@ pub struct ForeignItem {
     pub vis: Visibility,
 }
 
+/// An item within an `extern` block
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ForeignItem_ {
+    /// A foreign function
     ForeignItemFn(P<FnDecl>, Generics),
-    ForeignItemStatic(P<Ty>, /* is_mutbl */ bool),
+    /// A foreign static item (`static ext: u8`), with optional mutability
+    ForeignItemStatic(P<Ty>, bool),
 }
 
 impl ForeignItem_ {
