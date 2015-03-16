@@ -150,7 +150,7 @@ impl PartialEq for Ident {
 
 /// A SyntaxContext represents a chain of macro-expandings
 /// and renamings. Each macro expansion corresponds to
-/// a fresh usize
+/// a fresh u32
 
 // I'm representing this syntax context as an index into
 // a table, in order to work around a compiler bug
@@ -216,6 +216,7 @@ pub struct Lifetime {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+/// A lifetime definition, eg `'a: 'b+'c+'d`
 pub struct LifetimeDef {
     pub lifetime: Lifetime,
     pub bounds: Vec<Lifetime>
@@ -251,7 +252,9 @@ pub struct PathSegment {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum PathParameters {
+    /// The `<'a, A,B,C>` in `foo::bar::baz::<'a, A,B,C>`
     AngleBracketedParameters(AngleBracketedParameterData),
+    /// The `(A,B)` and `C` in `Foo(A,B) -> C`
     ParenthesizedParameters(ParenthesizedParameterData),
 }
 
@@ -436,27 +439,37 @@ impl Generics {
     }
 }
 
+/// A `where` clause in a definition
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereClause {
     pub id: NodeId,
     pub predicates: Vec<WherePredicate>,
 }
 
+/// A single predicate in a `where` clause
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum WherePredicate {
+    /// A type binding, eg `for<'c> Foo: Send+Clone+'c`
     BoundPredicate(WhereBoundPredicate),
+    /// A lifetime predicate, e.g. `'a: 'b+'c`
     RegionPredicate(WhereRegionPredicate),
+    /// An equality predicate (unsupported)
     EqPredicate(WhereEqPredicate)
 }
 
+/// A type bound, eg `for<'c> Foo: Send+Clone+'c`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereBoundPredicate {
     pub span: Span,
+    /// Any lifetimes from a `for` binding
     pub bound_lifetimes: Vec<LifetimeDef>,
+    /// The type being bounded
     pub bounded_ty: P<Ty>,
+    /// Trait and lifetime bounds (`Clone+Send+'static`)
     pub bounds: OwnedSlice<TyParamBound>,
 }
 
+/// A lifetime predicate, e.g. `'a: 'b+'c`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereRegionPredicate {
     pub span: Span,
@@ -464,6 +477,7 @@ pub struct WhereRegionPredicate {
     pub bounds: Vec<Lifetime>,
 }
 
+/// An equality predicate (unsupported), e.g. `T=int`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereEqPredicate {
     pub id: NodeId,
