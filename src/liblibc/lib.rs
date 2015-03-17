@@ -3298,7 +3298,7 @@ pub mod consts {
             pub const MAP_DENYWRITE : c_int = 0x0800;
             pub const MAP_EXECUTABLE : c_int = 0x01000;
             pub const MAP_LOCKED : c_int = 0x02000;
-            pub const MAP_NONRESERVE : c_int = 0x04000;
+            pub const MAP_NORESERVE : c_int = 0x04000;
             pub const MAP_POPULATE : c_int = 0x08000;
             pub const MAP_NONBLOCK : c_int = 0x010000;
             pub const MAP_STACK : c_int = 0x020000;
@@ -3325,7 +3325,7 @@ pub mod consts {
             pub const MAP_DENYWRITE : c_int = 0x02000;
             pub const MAP_EXECUTABLE : c_int = 0x04000;
             pub const MAP_LOCKED : c_int = 0x08000;
-            pub const MAP_NONRESERVE : c_int = 0x0400;
+            pub const MAP_NORESERVE : c_int = 0x0400;
             pub const MAP_POPULATE : c_int = 0x010000;
             pub const MAP_NONBLOCK : c_int = 0x020000;
             pub const MAP_STACK : c_int = 0x040000;
