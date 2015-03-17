@@ -118,15 +118,16 @@ impl<R> fmt::Debug for BufReader<R> where R: fmt::Debug {
 /// `BufWriter` keeps an in memory buffer of data and writes it to the
 /// underlying `Write` in large, infrequent batches.
 ///
-/// This writer will be flushed when it is dropped.
+/// The buffer will be written out when the writer is dropped.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufWriter<W> {
     inner: Option<W>,
     buf: Vec<u8>,
 }
 
-/// An error returned by `into_inner` which indicates whether a flush error
-/// happened or not.
+/// An error returned by `into_inner` which combines an error that
+/// happened while writing out the buffer, and the buffered writer object
+/// which may be used to recover from the condition.
 #[derive(Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoInnerError<W>(W, Error);
@@ -155,7 +156,7 @@ impl<W: Write> BufWriter<W> {
             match self.inner.as_mut().unwrap().write(&self.buf[written..]) {
                 Ok(0) => {
                     ret = Err(Error::new(ErrorKind::WriteZero,
-                                         "failed to flush", None));
+                                         "failed to write the buffered data", None));
                     break;
                 }
                 Ok(n) => written += n,
@@ -190,7 +191,7 @@ impl<W: Write> BufWriter<W> {
 
     /// Unwraps this `BufWriter`, returning the underlying writer.
     ///
-    /// The buffer is flushed before returning the writer.
+    /// The buffer is written out before returning the writer.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(mut self) -> Result<W, IntoInnerError<BufWriter<W>>> {
         match self.flush_buf() {
@@ -239,14 +240,14 @@ impl<W: Write> Drop for BufWriter<W> {
 impl<W> IntoInnerError<W> {
     /// Returns the error which caused the call to `into_inner` to fail.
     ///
-    /// This error was returned when attempting to flush the internal buffer.
+    /// This error was returned when attempting to write the internal buffer.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn error(&self) -> &Error { &self.1 }
 
-    /// Returns the underlying `BufWriter` instance which generated the error.
+    /// Returns the buffered writer instance which generated the error.
     ///
-    /// The returned object can be used to retry a flush or re-inspect the
-    /// buffer.
+    /// The returned object can be used for error recovery, such as
+    /// re-inspecting the buffer.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> W { self.0 }
 }
@@ -273,7 +274,7 @@ impl<W> fmt::Display for IntoInnerError<W> {
 /// Wraps a Writer and buffers output to it, flushing whenever a newline
 /// (`0x0a`, `'\n'`) is detected.
 ///
-/// This writer will be flushed when it is dropped.
+/// The buffer will be written out when the writer is dropped.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LineWriter<W> {
     inner: BufWriter<W>,
@@ -307,7 +308,7 @@ impl<W: Write> LineWriter<W> {
 
     /// Unwraps this `LineWriter`, returning the underlying writer.
     ///
-    /// The internal buffer is flushed before returning the writer.
+    /// The internal buffer is written out before returning the writer.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> Result<W, IntoInnerError<LineWriter<W>>> {
         self.inner.into_inner().map_err(|IntoInnerError(buf, e)| {
@@ -364,7 +365,7 @@ impl<W: Read> Read for InternalBufWriter<W> {
 /// call. A `BufStream` keeps in memory buffers of data, making large,
 /// infrequent calls to `read` and `write` on the underlying `Read+Write`.
 ///
-/// The output half will be flushed when this stream is dropped.
+/// The output buffer will be written out when this stream is dropped.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BufStream<S> {
     inner: BufReader<InternalBufWriter<S>>
@@ -410,8 +411,8 @@ impl<S: Read + Write> BufStream<S> {
 
     /// Unwraps this `BufStream`, returning the underlying stream.
     ///
-    /// The internal buffer is flushed before returning the stream. Any leftover
-    /// data in the read buffer is lost.
+    /// The internal write buffer is written out before returning the stream.
+    /// Any leftover data in the read buffer is lost.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> Result<S, IntoInnerError<BufStream<S>>> {
         let BufReader { inner: InternalBufWriter(w), buf } = self.inner;
