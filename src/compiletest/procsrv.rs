@@ -10,9 +10,10 @@
 
 #![allow(deprecated)] // for old path, for dynamic_lib
 
-use std::process::{ExitStatus, Command, Child, Output, Stdio};
-use std::io::prelude::*;
 use std::dynamic_lib::DynamicLibrary;
+use std::io::prelude::*;
+use std::old_path::Path;
+use std::process::{ExitStatus, Command, Child, Output, Stdio};
 
 fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
     // Need to be sure to put both the lib_path and the aux path in the dylib

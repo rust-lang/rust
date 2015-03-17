@@ -729,10 +729,11 @@ mod arch {
 mod tests {
     use prelude::v1::*;
     use super::*;
+
     use iter::repeat;
     use rand::{self, Rng};
     use ffi::{OsString, OsStr};
-    use path::PathBuf;
+    use path::{Path, PathBuf};
 
     fn make_rand_name() -> OsString {
         let mut rng = rand::thread_rng();

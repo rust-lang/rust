@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::io;
-#[allow(deprecated)] use std::old_path;
+#[allow(deprecated)] use std::old_path::{self, GenericPath};
 #[allow(deprecated)] use std::old_io;
 use std::path::{Path, PathBuf};
 
@@ -72,6 +72,7 @@ mod test {
     use std::old_io::fs::{File, symlink, mkdir, mkdir_recursive};
     use super::old_realpath as realpath;
     use std::old_io::TempDir;
+    use std::old_path::{Path, GenericPath};
 
     #[test]
     fn realpath_works() {

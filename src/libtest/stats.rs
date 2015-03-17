@@ -333,7 +333,7 @@ pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
 mod tests {
     use stats::Stats;
     use stats::Summary;
-    use std::old_io;
+    use std::old_io::{self, Writer};
     use std::f64;
 
     macro_rules! assert_approx_eq {

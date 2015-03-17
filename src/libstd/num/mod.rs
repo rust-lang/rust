@@ -1650,7 +1650,7 @@ mod tests {
                 #![test]
                 assert_eq!((0 as $T).next_power_of_two(), 1);
                 let mut next_power = 1;
-                for i in range::<$T>(1, 40) {
+                for i in 1 as $T..40 {
                      assert_eq!(i.next_power_of_two(), next_power);
                      if i == next_power { next_power *= 2 }
                 }
@@ -1673,7 +1673,7 @@ mod tests {
                 assert_eq!(($T::MAX - 1).checked_next_power_of_two(), None);
                 assert_eq!($T::MAX.checked_next_power_of_two(), None);
                 let mut next_power = 1;
-                for i in range::<$T>(1, 40) {
+                for i in 1 as $T..40 {
                      assert_eq!(i.checked_next_power_of_two(), Some(next_power));
                      if i == next_power { next_power *= 2 }
                 }

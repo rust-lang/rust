@@ -18,11 +18,12 @@
 
 use prelude::v1::*;
 
+use env;
 use ffi::CString;
 use mem;
-use env;
-use str;
+use old_path::{Path, GenericPath};
 use os;
+use str;
 
 pub struct DynamicLibrary {
     handle: *mut u8
@@ -133,6 +134,7 @@ mod test {
     use super::*;
     use prelude::v1::*;
     use libc;
+    use old_path::Path;
     use mem;
 
     #[test]
@@ -140,8 +142,7 @@ mod test {
     fn test_loading_cosine() {
         // The math library does not need to be loaded since it is already
         // statically linked in
-        let none: Option<&Path> = None; // appease the typechecker
-        let libm = match DynamicLibrary::open(none) {
+        let libm = match DynamicLibrary::open(None) {
             Err(error) => panic!("Could not load self as module: {}", error),
             Ok(libm) => libm
         };

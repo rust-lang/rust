@@ -179,7 +179,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
 #[cfg(test)]
 mod test {
     use prelude::v1::*;
-    use old_io;
+    use old_io::{self, Reader, Writer};
     use old_io::{MemReader, BytesReader};
 
     struct InitialZeroByteReader {

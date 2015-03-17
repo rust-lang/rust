@@ -150,11 +150,12 @@ use io;
 use marker::PhantomData;
 use rt::{self, unwind};
 use sync::{Mutex, Condvar, Arc};
+use sys::thread as imp;
+use sys_common::{stack, thread_info};
 use thunk::Thunk;
 use time::Duration;
 
-use sys::thread as imp;
-use sys_common::{stack, thread_info};
+#[allow(deprecated)] use old_io::Writer;
 
 /// Thread configuration. Provides detailed control over the properties
 /// and behavior of new threads.
