@@ -18,4 +18,3 @@ impl private_trait_xc::Foo for Bar {}
 //~^ ERROR: trait `Foo` is private
 
 fn main() {}
-

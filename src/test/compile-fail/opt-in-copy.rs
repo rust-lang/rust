@@ -30,4 +30,3 @@ impl Copy for IWantToCopyThisToo {}
 //~^ ERROR the trait `Copy` may not be implemented for this type
 
 fn main() {}
-

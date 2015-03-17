@@ -35,4 +35,3 @@ pub fn main() {
         println!("{}", pup.bark());
     }
 }
-

@@ -32,4 +32,3 @@ pub fn main() {
     let c: &Trait<&'static str> = &a;
     c.f("Joe");
 }
-

@@ -15,4 +15,3 @@ fn foo(a: &mut old_io::Writer) {
 }
 
 pub fn main(){}
-

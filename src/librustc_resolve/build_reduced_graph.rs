@@ -14,16 +14,17 @@
 //! any imports resolved.
 
 use {DefModifiers, PUBLIC, IMPORTABLE};
-use ImportDirective;
-use ImportDirectiveSubclass::{self, SingleImport, GlobImport};
-use ImportResolution;
+use resolve_imports::ImportDirective;
+use resolve_imports::ImportDirectiveSubclass::{self, SingleImport, GlobImport};
+use resolve_imports::ImportResolution;
 use Module;
 use ModuleKind::*;
 use Namespace::{TypeNS, ValueNS};
 use NameBindings;
+use {names_to_string, module_to_string};
 use ParentLink::{self, ModuleParentLink, BlockParentLink};
 use Resolver;
-use Shadowable;
+use resolve_imports::Shadowable;
 use TypeNsDef;
 
 use self::DuplicateCheckingMode::*;
@@ -371,8 +372,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
             ItemExternCrate(_) => {
                 // n.b. we don't need to look at the path option here, because cstore already did
-                for &crate_id in self.session.cstore
-                                     .find_extern_mod_stmt_cnum(item.id).iter() {
+                if let Some(crate_id) = self.session.cstore.find_extern_mod_stmt_cnum(item.id) {
                     let def_id = DefId { krate: crate_id, node: 0 };
                     self.external_exports.insert(def_id);
                     let parent_link = ModuleParentLink(parent.downgrade(), name);
@@ -382,7 +382,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                               false,
                                                               true));
                     debug!("(build reduced graph for item) found extern `{}`",
-                            self.module_to_string(&*external_module));
+                            module_to_string(&*external_module));
                     self.check_for_conflicts_between_external_crates(&**parent, name, sp);
                     parent.external_module_children.borrow_mut()
                           .insert(name, external_module.clone());
@@ -400,7 +400,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                             Some(def_id),
                                             NormalModuleKind,
                                             false,
-                                            item.vis == ast::Public,
+                                            is_public,
                                             sp);
 
                 name_bindings.get_module()
@@ -432,8 +432,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             // These items live in the type namespace.
             ItemTy(..) => {
                 let name_bindings =
-                    self.add_child(name, parent, ForbidDuplicateTypesAndModules,
-                                   sp);
+                    self.add_child(name, parent, ForbidDuplicateTypesAndModules, sp);
 
                 name_bindings.define_type(DefTy(local_def(item.id), false), sp,
                                           modifiers);
@@ -517,7 +516,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                             Some(local_def(item.id)),
                                             TraitModuleKind,
                                             false,
-                                            item.vis == ast::Public,
+                                            is_public,
                                             sp);
                 let module_parent = name_bindings.get_module();
 
@@ -636,8 +635,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                            name: Name,
                            new_parent: &Rc<Module>) {
         debug!("(building reduced graph for \
-                external crate) building external def, priv {:?}",
-               vis);
+                external crate) building external def {}, priv {:?}",
+               final_ident, vis);
         let is_public = vis == ast::Public;
         let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
         let is_exported = is_public && match new_parent.def_id.get() {
@@ -667,7 +666,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
               Some(_) | None => {
                 debug!("(building reduced graph for \
                         external crate) building module \
-                        {}", final_ident);
+                        {} {}", final_ident, is_public);
                 let parent_link = self.get_parent_link(new_parent, name);
 
                 child_name_bindings.define_module(parent_link,
@@ -838,7 +837,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     /// Builds the reduced graph rooted at the given external module.
     fn populate_external_module(&mut self, module: &Rc<Module>) {
         debug!("(populating external module) attempting to populate {}",
-               self.module_to_string(&**module));
+               module_to_string(&**module));
 
         let def_id = match module.def_id.get() {
             None => {
@@ -904,18 +903,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
         match subclass {
             SingleImport(target, _) => {
-                debug!("(building import directive) building import \
-                        directive: {}::{}",
-                       self.names_to_string(&module_.imports.borrow().last().unwrap().
-                                                             module_path),
+                debug!("(building import directive) building import directive: {}::{}",
+                       names_to_string(&module_.imports.borrow().last().unwrap().module_path),
                        token::get_name(target));
 
-                let mut import_resolutions = module_.import_resolutions
-                                                    .borrow_mut();
+                let mut import_resolutions = module_.import_resolutions.borrow_mut();
                 match import_resolutions.get_mut(&target) {
                     Some(resolution) => {
-                        debug!("(building import directive) bumping \
-                                reference");
+                        debug!("(building import directive) bumping reference");
                         resolution.outstanding_references += 1;
 
                         // the source of this name is different now

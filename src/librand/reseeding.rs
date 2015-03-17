@@ -102,7 +102,7 @@ impl<S, R: SeedableRng<S>, Rsdr: Reseeder<R> + Default>
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::rand::{Rng, SeedableRng, StdRng};
 /// use std::rand::reseeding::{Reseeder, ReseedingRng};
 ///

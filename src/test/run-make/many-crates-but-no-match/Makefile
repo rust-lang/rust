@@ -16,7 +16,7 @@ A3=$(TMPDIR)/a3
 # A hack to match distinct lines of output from a single run.
 LOG=$(TMPDIR)/log.txt
 
-all: 
+all:
 	mkdir -p $(A1) $(A2) $(A3)
 	$(RUSTC) --crate-type=rlib crateA1.rs
 	mv $(TMPDIR)/$(call RLIB_GLOB,crateA) $(A1)

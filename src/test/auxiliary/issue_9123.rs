@@ -17,4 +17,3 @@ pub trait X {
     }
     fn dummy(&self) { }
 }
-

@@ -157,4 +157,3 @@ fn main() {
         run_test(&args[0]);
     }
 }
-

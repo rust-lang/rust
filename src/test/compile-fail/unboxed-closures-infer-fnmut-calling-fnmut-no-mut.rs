@@ -29,4 +29,3 @@ fn main() {
 
     tick2(); //~ ERROR cannot borrow
 }
-

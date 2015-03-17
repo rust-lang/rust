@@ -15,4 +15,3 @@ fn main() {
     assert_eq!(3 as uint + 3, 6);
     assert_eq!(3 as (uint) + 3, 6);
 }
-

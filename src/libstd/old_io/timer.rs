@@ -115,7 +115,7 @@ impl Timer {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::old_io::Timer;
     /// use std::time::Duration;
     ///
@@ -128,7 +128,7 @@ impl Timer {
     /// ten_milliseconds.recv().unwrap();
     /// ```
     ///
-    /// ```rust
+    /// ```
     /// use std::old_io::Timer;
     /// use std::time::Duration;
     ///
@@ -167,7 +167,7 @@ impl Timer {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::old_io::Timer;
     /// use std::time::Duration;
     ///
@@ -186,7 +186,7 @@ impl Timer {
     /// ten_milliseconds.recv().unwrap();
     /// ```
     ///
-    /// ```rust
+    /// ```
     /// use std::old_io::Timer;
     /// use std::time::Duration;
     ///

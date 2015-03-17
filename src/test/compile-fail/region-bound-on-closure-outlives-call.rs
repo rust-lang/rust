@@ -13,4 +13,3 @@ fn call_rec<F>(mut f: F) -> usize where F: FnMut(usize) -> usize {
 }
 
 fn main() {}
-

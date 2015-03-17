@@ -20,4 +20,3 @@ extern {
 pub fn doit() {
     unsafe { bar(); }
 }
-

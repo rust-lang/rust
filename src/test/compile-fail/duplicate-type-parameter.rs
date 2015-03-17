@@ -36,4 +36,3 @@ impl<T,T> Qux<T,T> for Option<T> {}
 
 fn main() {
 }
-

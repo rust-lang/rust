@@ -31,7 +31,7 @@ impl ToHex for [u8] {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// extern crate serialize;
     /// use serialize::hex::ToHex;
     ///
@@ -100,7 +100,7 @@ impl FromHex for str {
     ///
     /// This converts a string literal to hexadecimal and back.
     ///
-    /// ```rust
+    /// ```
     /// extern crate serialize;
     /// use serialize::hex::{FromHex, ToHex};
     ///

@@ -14,4 +14,3 @@ pub struct S {
 }
 
 pub type S2 = S;
-

@@ -1,6 +1,6 @@
 -include ../tools.mk
 
-all: 
+all:
 	$(RUSTC) --crate-type=rlib crateA.rs
 	$(RUSTC) --crate-type=rlib crateB.rs
 	$(call REMOVE_RLIBS,crateA)

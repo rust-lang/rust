@@ -57,4 +57,3 @@ fn main() {
     field_move_after_field_borrow();
     fu_field_move_after_field_borrow();
 }
-

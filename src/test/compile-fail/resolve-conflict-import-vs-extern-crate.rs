@@ -12,4 +12,3 @@ use std::slice as std; //~ ERROR import `std` conflicts with imported crate
 
 fn main() {
 }
-

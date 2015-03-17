@@ -66,4 +66,3 @@ impl PolyTrait<Foo<usize>> for Struct {
 
 fn main() {
 }
-

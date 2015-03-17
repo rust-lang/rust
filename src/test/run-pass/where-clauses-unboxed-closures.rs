@@ -23,4 +23,3 @@ fn main() {
     // OK
     warm_up(|b| () );
 }
-

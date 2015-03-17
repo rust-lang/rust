@@ -23,4 +23,3 @@ all:
 	@echo after
 	$(RUSTC) --cfg after  d.rs --extern a=$(TMPDIR)/liba-1.rlib
 	$(call RUN,d)
-

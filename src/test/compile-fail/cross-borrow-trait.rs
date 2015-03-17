@@ -24,4 +24,3 @@ pub fn main() {
                         //~| expected &-ptr
                         //~| found box
 }
-

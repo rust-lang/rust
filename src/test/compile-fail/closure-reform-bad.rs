@@ -20,4 +20,3 @@ fn main() {
     let f = |s: &str| println!("{}{}", s, string);
     call_bare(f)    //~ ERROR mismatched types
 }
-

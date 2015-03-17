@@ -12,4 +12,3 @@ all: $(call STATICLIB,foo) $(call STATICLIB,bar)
 	$(RUSTC) foo.rs
 	$(RUSTC) bar.rs
 	$(RUSTC) main.rs -Z print-link-args
-

@@ -1961,16 +1961,18 @@ module through the rules above. It essentially allows public access into the
 re-exported item. For example, this program is valid:
 
 ```
-pub use self::implementation as api;
+pub use self::implementation::api;
 
 mod implementation {
-    pub fn f() {}
+    pub mod api {
+        pub fn f() {}
+    }
 }
 
 # fn main() {}
 ```
 
-This means that any external crate referencing `implementation::f` would
+This means that any external crate referencing `implementation::api::f` would
 receive a privacy violation, while the path `api::f` would be allowed.
 
 When re-exporting a private item, it can be thought of as allowing the "privacy

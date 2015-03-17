@@ -20,4 +20,3 @@ fn main() {
     println!("{}", "hello".equal(&"hello"));
     println!("{}", "hello".equals::<int,&str>(&1, &1, &"foo", &"bar"));
 }
-

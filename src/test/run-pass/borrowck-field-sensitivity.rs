@@ -270,4 +270,3 @@ fn main() {
     borrow_after_assign_after_uninit();
     move_after_assign_after_uninit();
 }
-

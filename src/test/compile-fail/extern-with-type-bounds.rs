@@ -28,4 +28,3 @@ extern "rust-intrinsic" {
 }
 
 fn main() {}
-

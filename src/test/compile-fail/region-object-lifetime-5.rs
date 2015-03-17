@@ -22,4 +22,3 @@ fn owned_receiver(x: Box<Foo>) -> &'static () {
 }
 
 fn main() {}
-

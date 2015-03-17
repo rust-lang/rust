@@ -31,4 +31,3 @@ fn main() {
     let x = &(&(&Foo));
     x.foo();
 }
-

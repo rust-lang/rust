@@ -20,4 +20,3 @@ fn main() {
     let outer!(g1) = 13;
     g1;
 }
-

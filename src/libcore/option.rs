@@ -897,7 +897,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// Here is an example which increments every integer in a vector,
     /// checking for overflow:
     ///
-    /// ```rust
+    /// ```
     /// use std::u16;
     ///
     /// let v = vec!(1, 2);

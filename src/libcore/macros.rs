@@ -216,7 +216,7 @@ macro_rules! writeln {
 ///
 /// Match arms:
 ///
-/// ```rust
+/// ```
 /// fn foo(x: Option<int>) {
 ///     match x {
 ///         Some(n) if n >= 0 => println!("Some(Non-negative)"),
@@ -229,7 +229,7 @@ macro_rules! writeln {
 ///
 /// Iterators:
 ///
-/// ```rust
+/// ```
 /// fn divide_by_three(x: u32) -> u32 { // one of the poorest implementations of x/3
 ///     for i in std::iter::count(0, 1) {
 ///         if 3*i < i { panic!("u32 overflow"); }

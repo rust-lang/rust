@@ -39,4 +39,3 @@ fn main() {
     f(box 1234);
     g(box Struct as Box<Trait>);
 }
-

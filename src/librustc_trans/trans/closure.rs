@@ -259,4 +259,3 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
 
     Some(bcx)
 }
-

@@ -140,7 +140,7 @@ right at home if you've used tools like [Bundler](http://bundler.io/),
 [npm](https://www.npmjs.org/), or [pip](https://pip.pypa.io/en/latest/).
 There's no `Makefile`s or endless `autotools` output here. (Rust's tooling does
 [play nice with external libraries written in those
-tools](http://crates.io/native-build.html), if you need to.)
+tools](http://doc.crates.io/build-script.html), if you need to.)
 
 Enough about tools, let's talk code!
 
