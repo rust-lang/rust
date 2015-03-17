@@ -24,8 +24,6 @@ use trans::datum::*;
 use trans::debuginfo::DebugLoc;
 use trans::expr::{Dest, Ignore, SaveIn};
 use trans::expr;
-use trans::glue;
-use trans::machine;
 use trans::machine::llsize_of_alloc;
 use trans::type_::Type;
 use trans::type_of;
@@ -35,79 +33,17 @@ use util::ppaux::ty_to_string;
 use syntax::ast;
 use syntax::parse::token::InternedString;
 
-fn get_len(bcx: Block, vptr: ValueRef) -> ValueRef {
-    let _icx = push_ctxt("tvec::get_lenl");
-    Load(bcx, expr::get_len(bcx, vptr))
-}
-
-fn get_dataptr(bcx: Block, vptr: ValueRef) -> ValueRef {
-    let _icx = push_ctxt("tvec::get_dataptr");
-    Load(bcx, expr::get_dataptr(bcx, vptr))
-}
-
-pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                          vptr: ValueRef,
-                                          unit_ty: Ty<'tcx>,
-                                          should_deallocate: bool)
-                                          -> Block<'blk, 'tcx> {
-    let not_null = IsNotNull(bcx, vptr);
-    with_cond(bcx, not_null, |bcx| {
-        let ccx = bcx.ccx();
-        let _icx = push_ctxt("tvec::make_drop_glue_unboxed");
-
-        let dataptr = get_dataptr(bcx, vptr);
-        let bcx = if bcx.fcx.type_needs_drop(unit_ty) {
-            let len = get_len(bcx, vptr);
-            iter_vec_raw(bcx,
-                         dataptr,
-                         unit_ty,
-                         len,
-                         |bb, vv, tt| glue::drop_ty(bb, vv, tt, DebugLoc::None))
-        } else {
-            bcx
-        };
-
-        if should_deallocate {
-            let llty = type_of::type_of(ccx, unit_ty);
-            let unit_size = llsize_of_alloc(ccx, llty);
-            if unit_size != 0 {
-                let len = get_len(bcx, vptr);
-                let not_empty = ICmp(bcx,
-                                     llvm::IntNE,
-                                     len,
-                                     C_uint(ccx, 0_u32),
-                                     DebugLoc::None);
-                with_cond(bcx, not_empty, |bcx| {
-                    let llalign = C_uint(ccx, machine::llalign_of_min(ccx, llty));
-                    let size = Mul(bcx, C_uint(ccx, unit_size), len, DebugLoc::None);
-                    glue::trans_exchange_free_dyn(bcx,
-                                                  dataptr,
-                                                  size,
-                                                  llalign,
-                                                  DebugLoc::None)
-                })
-            } else {
-                bcx
-            }
-        } else {
-            bcx
-        }
-    })
-}
-
 #[derive(Copy)]
-pub struct VecTypes<'tcx> {
-    pub unit_ty: Ty<'tcx>,
-    pub llunit_ty: Type,
-    pub llunit_alloc_size: u64
+struct VecTypes<'tcx> {
+    unit_ty: Ty<'tcx>,
+    llunit_ty: Type
 }
 
 impl<'tcx> VecTypes<'tcx> {
     pub fn to_string<'a>(&self, ccx: &CrateContext<'a, 'tcx>) -> String {
-        format!("VecTypes {{unit_ty={}, llunit_ty={}, llunit_alloc_size={}}}",
+        format!("VecTypes {{unit_ty={}, llunit_ty={}}}",
                 ty_to_string(ccx.tcx(), self.unit_ty),
-                ccx.tn().type_to_string(self.llunit_ty),
-                self.llunit_alloc_size)
+                ccx.tn().type_to_string(self.llunit_ty))
     }
 }
 
@@ -221,12 +157,12 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                 vt: &VecTypes<'tcx>,
-                                 vstore_expr: &ast::Expr,
-                                 content_expr: &ast::Expr,
-                                 dest: Dest)
-                                 -> Block<'blk, 'tcx> {
+fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                             vt: &VecTypes<'tcx>,
+                             vstore_expr: &ast::Expr,
+                             content_expr: &ast::Expr,
+                             dest: Dest)
+                             -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("tvec::write_content");
     let fcx = bcx.fcx;
     let mut bcx = bcx;
@@ -315,28 +251,21 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn vec_types_from_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                       vec_expr: &ast::Expr)
-                                       -> VecTypes<'tcx> {
+fn vec_types_from_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, vec_expr: &ast::Expr)
+                                   -> VecTypes<'tcx> {
     let vec_ty = node_id_type(bcx, vec_expr.id);
     vec_types(bcx, ty::sequence_element_type(bcx.tcx(), vec_ty))
 }
 
-pub fn vec_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                             unit_ty: Ty<'tcx>)
-                             -> VecTypes<'tcx> {
-    let ccx = bcx.ccx();
-    let llunit_ty = type_of::type_of(ccx, unit_ty);
-    let llunit_alloc_size = llsize_of_alloc(ccx, llunit_ty);
-
+fn vec_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, unit_ty: Ty<'tcx>)
+                         -> VecTypes<'tcx> {
     VecTypes {
         unit_ty: unit_ty,
-        llunit_ty: llunit_ty,
-        llunit_alloc_size: llunit_alloc_size
+        llunit_ty: type_of::type_of(bcx.ccx(), unit_ty)
     }
 }
 
-pub fn elements_required(bcx: Block, content_expr: &ast::Expr) -> uint {
+fn elements_required(bcx: Block, content_expr: &ast::Expr) -> uint {
     //! Figure out the number of elements we need to store this content
 
     match content_expr.node {
@@ -401,12 +330,12 @@ pub fn get_base_and_len<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
-                                     data_ptr: ValueRef,
-                                     vt: &VecTypes<'tcx>,
-                                     count: ValueRef,
-                                     f: F)
-                                     -> Block<'blk, 'tcx> where
+fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
+                                data_ptr: ValueRef,
+                                vt: &VecTypes<'tcx>,
+                                count: ValueRef,
+                                f: F)
+                                -> Block<'blk, 'tcx> where
     F: FnOnce(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
 {
     let _icx = push_ctxt("tvec::iter_vec_loop");
@@ -426,7 +355,7 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
     let bcx = loop_bcx;
 
-    let lleltptr = if vt.llunit_alloc_size == 0 {
+    let lleltptr = if llsize_of_alloc(bcx.ccx(), vt.llunit_ty) == 0 {
         data_ptr
     } else {
         InBoundsGEP(bcx, data_ptr, &[loop_counter])
@@ -454,7 +383,7 @@ pub fn iter_vec_raw<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
     let vt = vec_types(bcx, unit_ty);
 
-    if vt.llunit_alloc_size == 0 {
+    if llsize_of_alloc(bcx.ccx(), vt.llunit_ty) == 0 {
         // Special-case vectors with elements of size 0  so they don't go out of bounds (#9890)
         iter_vec_loop(bcx, data_ptr, &vt, len, f)
     } else {
@@ -471,7 +400,7 @@ pub fn iter_vec_raw<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         let body_bcx = fcx.new_temp_block("iter_vec_loop_body");
         let next_bcx = fcx.new_temp_block("iter_vec_next");
         CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
-        let body_bcx = f(body_bcx, data_ptr, vt.unit_ty);
+        let body_bcx = f(body_bcx, data_ptr, unit_ty);
         AddIncomingToPhi(data_ptr, InBoundsGEP(body_bcx, data_ptr,
                                                &[C_int(bcx.ccx(), 1)]),
                          body_bcx.llbb);

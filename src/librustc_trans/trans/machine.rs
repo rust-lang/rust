@@ -12,9 +12,7 @@
 
 #![allow(non_camel_case_types)]
 
-use llvm;
-use llvm::{ValueRef};
-use llvm::False;
+use llvm::{self, ValueRef};
 use trans::common::*;
 
 use trans::type_::Type;
@@ -98,16 +96,6 @@ pub fn llalign_of_pref(cx: &CrateContext, ty: Type) -> llalign {
 pub fn llalign_of_min(cx: &CrateContext, ty: Type) -> llalign {
     unsafe {
         return llvm::LLVMABIAlignmentOfType(cx.td().lltd, ty.to_ref());
-    }
-}
-
-// Returns the "default" alignment of t, which is calculated by casting
-// null to a record containing a single-bit followed by a t value, then
-// doing gep(0,1) to get at the trailing (and presumably padded) t cell.
-pub fn llalign_of(cx: &CrateContext, ty: Type) -> ValueRef {
-    unsafe {
-        return llvm::LLVMConstIntCast(
-            llvm::LLVMAlignOf(ty.to_ref()), cx.int_type().to_ref(), False);
     }
 }
 

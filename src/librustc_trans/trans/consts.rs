@@ -314,7 +314,6 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     let info =
                         expr::unsized_info(
                             cx, k, e.id, ty, param_substs,
-                            |t| ty::mk_imm_rptr(cx.tcx(), cx.tcx().mk_region(ty::ReStatic), t),
                             || const_get_elt(cx, llconst, &[abi::FAT_PTR_EXTRA as u32]));
 
                     let unsized_ty = ty::unsize_ty(cx.tcx(), ty, k, e.span);

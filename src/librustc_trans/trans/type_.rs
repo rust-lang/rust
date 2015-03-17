@@ -175,39 +175,8 @@ impl Type {
         Type::array(&Type::i8p(ccx).ptr_to(), 1)
     }
 
-    pub fn generic_glue_fn(cx: &CrateContext) -> Type {
-        match cx.tn().find_type("glue_fn") {
-            Some(ty) => return ty,
-            None => ()
-        }
-
-        let ty = Type::glue_fn(cx, Type::i8p(cx));
-        cx.tn().associate_type("glue_fn", &ty);
-
-        ty
-    }
-
     pub fn glue_fn(ccx: &CrateContext, t: Type) -> Type {
         Type::func(&[t], &Type::void(ccx))
-    }
-
-    pub fn tydesc(ccx: &CrateContext, str_slice_ty: Type) -> Type {
-        let mut tydesc = Type::named_struct(ccx, "tydesc");
-        let glue_fn_ty = Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to();
-
-        let int_ty = Type::int(ccx);
-
-        // Must mirror:
-        //
-        // std::unstable::intrinsics::TyDesc
-
-        let elems = [int_ty,     // size
-                     int_ty,     // align
-                     glue_fn_ty, // drop
-                     str_slice_ty]; // name
-        tydesc.set_struct_body(&elems, false);
-
-        tydesc
     }
 
     pub fn array(ty: &Type, len: u64) -> Type {

@@ -5347,17 +5347,8 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "needs_drop" => (1, Vec::new(), ccx.tcx.types.bool),
             "owns_managed" => (1, Vec::new(), ccx.tcx.types.bool),
 
-            "get_tydesc" => {
-              let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {
-                  Ok(t) => t,
-                  Err(s) => { span_fatal!(tcx.sess, it.span, E0240, "{}", &s[..]); }
-              };
-              let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
-                  ty: tydesc_ty,
-                  mutbl: ast::MutImmutable
-              });
-              (1, Vec::new(), td_ptr)
-            }
+            "type_name" => (1, Vec::new(), ty::mk_str_slice(tcx, tcx.mk_region(ty::ReStatic),
+                                                             ast::MutImmutable)),
             "type_id" => (1, Vec::new(), ccx.tcx.types.u64),
             "offset" => {
               (1,
