@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::ty::{BuiltinBounds};
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use middle::infer::combine::*;
@@ -68,23 +67,6 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
     fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
         if a != b {
             Err(ty::terr_unsafety_mismatch(expected_found(self, a, b)))
-        } else {
-            Ok(a)
-        }
-    }
-
-    fn builtin_bounds(&self,
-                      a: BuiltinBounds,
-                      b: BuiltinBounds)
-                      -> cres<'tcx, BuiltinBounds>
-    {
-        // More bounds is a subtype of fewer bounds.
-        //
-        // e.g., fn:Copy() <: fn(), because the former is a function
-        // that only closes over copyable things, but the latter is
-        // any function at all.
-        if a != b {
-            Err(ty::terr_builtin_bounds(expected_found(self, a, b)))
         } else {
             Ok(a)
         }
