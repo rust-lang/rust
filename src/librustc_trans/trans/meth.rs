@@ -842,13 +842,20 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 return nullptr;
             }
 
-            let predicates =
-                monomorphize::apply_param_substs(tcx,
-                                                 &substs,
-                                                 &impl_method_type.predicates.predicates);
-            if !predicates_hold(ccx, predicates.into_vec()) {
-                debug!("emit_vtable_methods: predicates do not hold");
-                return nullptr;
+            // If this is a default method, it's possible that it
+            // relies on where clauses that do not hold for this
+            // particular set of type parameters. Note that this
+            // method could then never be called, so we do not want to
+            // try and trans it, in that case. Issue #23435.
+            if ty::provided_source(tcx, impl_method_def_id).is_some() {
+                let predicates =
+                    monomorphize::apply_param_substs(tcx,
+                                                     &substs,
+                                                     &impl_method_type.predicates.predicates);
+                if !predicates_hold(ccx, predicates.into_vec()) {
+                    debug!("emit_vtable_methods: predicates do not hold");
+                    return nullptr;
+                }
             }
 
             trans_fn_ref_with_substs(ccx,
