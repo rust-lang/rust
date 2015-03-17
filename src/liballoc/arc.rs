@@ -94,7 +94,7 @@ use heap::deallocate;
 /// With simple pipes, without `Arc`, a copy would have to be made for each
 /// task.
 ///
-/// ```rust
+/// ```
 /// use std::sync::Arc;
 /// use std::thread;
 ///

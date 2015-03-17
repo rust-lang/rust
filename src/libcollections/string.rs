@@ -138,7 +138,7 @@ impl String {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::str::Utf8Error;
     ///
     /// let hello_vec = vec![104, 101, 108, 108, 111];
@@ -164,7 +164,7 @@ impl String {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let input = b"Hello \xF0\x90\x80World";
     /// let output = String::from_utf8_lossy(input);
     /// assert_eq!(output, "Hello \u{FFFD}World");
@@ -296,7 +296,7 @@ impl String {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// // 𝄞music
     /// let mut v = &mut [0xD834, 0xDD1E, 0x006d, 0x0075,
     ///                   0x0073, 0x0069, 0x0063];
@@ -324,7 +324,7 @@ impl String {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// // 𝄞mus<invalid>ic<invalid>
     /// let v = &[0xD834, 0xDD1E, 0x006d, 0x0075,
     ///           0x0073, 0xDD1E, 0x0069, 0x0063,

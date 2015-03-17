@@ -288,7 +288,7 @@ impl Float for f64 {
 
     /// The fractional part of the number, satisfying:
     ///
-    /// ```rust
+    /// ```
     /// use core::num::Float;
     ///
     /// let x = 1.65f64;

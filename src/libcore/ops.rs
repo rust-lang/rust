@@ -78,7 +78,7 @@ use fmt;
 /// A trivial implementation of `Drop`. The `drop` method is called when `_x` goes
 /// out of scope, and therefore `main` prints `Dropping!`.
 ///
-/// ```rust
+/// ```
 /// struct HasDrop;
 ///
 /// impl Drop for HasDrop {
@@ -162,7 +162,7 @@ macro_rules! forward_ref_binop {
 /// A trivial implementation of `Add`. When `Foo + Foo` happens, it ends up
 /// calling `add`, and therefore, `main` prints `Adding!`.
 ///
-/// ```rust
+/// ```
 /// use std::ops::Add;
 ///
 /// #[derive(Copy)]
@@ -216,7 +216,7 @@ add_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// A trivial implementation of `Sub`. When `Foo - Foo` happens, it ends up
 /// calling `sub`, and therefore, `main` prints `Subtracting!`.
 ///
-/// ```rust
+/// ```
 /// use std::ops::Sub;
 ///
 /// #[derive(Copy)]
@@ -270,7 +270,7 @@ sub_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// A trivial implementation of `Mul`. When `Foo * Foo` happens, it ends up
 /// calling `mul`, and therefore, `main` prints `Multiplying!`.
 ///
-/// ```rust
+/// ```
 /// use std::ops::Mul;
 ///
 /// #[derive(Copy)]
