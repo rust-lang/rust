@@ -561,38 +561,40 @@ fn main() {
 In this case, Rust knows that `x` is being *borrowed* by the `add_one()`
 function, and since it's only reading the value, allows it.
 
-We can borrow `x` multiple times, as long as it's not simultaneous:
+We can borrow `x` as read-only multiple times, even simultaneously:
 
 ```{rust}
-fn add_one(x: &i32) -> i32 {
-    *x + 1
+fn add(x: &i32, y: &i32) -> i32 {
+    *x + *y
 }
 
 fn main() {
     let x = Box::new(5);
 
-    println!("{}", add_one(&*x));
-    println!("{}", add_one(&*x));
-    println!("{}", add_one(&*x));
+    println!("{}", add(&x, &x));
+    println!("{}", add(&x, &x));
 }
 ```
 
-Or as long as it's not a mutable borrow. This will error:
+We can mutably borrow `x` multiple times, but only if x itself is mutable, and
+it may not be *simultaneously* borrowed: 
 
 ```{rust,ignore}
-fn add_one(x: &mut i32) -> i32 {
-    *x + 1
+fn increment(x: &mut i32) {
+    *x += 1;
 }
 
 fn main() {
-    let x = Box::new(5);
+    // If variable x is not "mut", this will not compile
+    let mut x = Box::new(5);
 
-    println!("{}", add_one(&*x)); // error: cannot borrow immutable dereference
-                                  // of `&`-pointer as mutable
+    increment(&mut x);
+    increment(&mut x);
+    println!("{}", x);
 }
 ```
 
-Notice we changed the signature of `add_one()` to request a mutable reference.
+Notice the signature of `increment()` requests a mutable reference.
 
 ## Best practices
 
