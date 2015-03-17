@@ -102,15 +102,6 @@ use syntax::visit;
 pub fn collect_item_types(tcx: &ty::ctxt) {
     let ccx = &CrateCtxt { tcx: tcx, stack: RefCell::new(Vec::new()) };
 
-    match ccx.tcx.lang_items.ty_desc() {
-        Some(id) => { collect_intrinsic_type(ccx, id); }
-        None => {}
-    }
-    match ccx.tcx.lang_items.opaque() {
-        Some(id) => { collect_intrinsic_type(ccx, id); }
-        None => {}
-    }
-
     let mut visitor = CollectTraitDefVisitor{ ccx: ccx };
     visit::walk_crate(&mut visitor, ccx.tcx.map.krate());
 
@@ -150,15 +141,6 @@ enum AstConvRequest {
     GetTraitDef(ast::DefId),
     EnsureSuperPredicates(ast::DefId),
     GetTypeParameterBounds(ast::NodeId),
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Zeroth phase: collect types of intrinsics
-
-fn collect_intrinsic_type(ccx: &CrateCtxt,
-                          lang_item: ast::DefId) {
-    let ty::TypeScheme { ty, .. } = type_scheme_of_def_id(ccx, lang_item);
-    ccx.tcx.intrinsic_defs.borrow_mut().insert(lang_item, ty);
 }
 
 ///////////////////////////////////////////////////////////////////////////

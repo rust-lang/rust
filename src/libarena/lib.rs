@@ -42,8 +42,9 @@ extern crate alloc;
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
-use std::intrinsics::{TyDesc, get_tydesc};
 use std::intrinsics;
+#[cfg(stage0)] // SNAP 270a677
+use std::intrinsics::{get_tydesc, TyDesc};
 use std::marker;
 use std::mem;
 #[cfg(stage0)]
@@ -184,6 +185,27 @@ fn bitpack_tydesc_ptr(p: *const TyDesc, is_done: bool) -> usize {
 #[inline]
 fn un_bitpack_tydesc_ptr(p: usize) -> (*const TyDesc, bool) {
     ((p & !1) as *const TyDesc, p & 1 == 1)
+}
+
+// HACK(eddyb) TyDesc replacement using a trait object vtable.
+// This could be replaced in the future with a custom DST layout,
+// or `&'static (drop_glue, size, align)` created by a `const fn`.
+#[cfg(not(stage0))] // SNAP 270a677
+struct TyDesc {
+    drop_glue: fn(*const i8),
+    size: usize,
+    align: usize
+}
+
+#[cfg(not(stage0))] // SNAP 270a677
+unsafe fn get_tydesc<T>() -> *const TyDesc {
+    use std::raw::TraitObject;
+
+    let ptr = &*(1 as *const T);
+
+    // Can use any trait that is implemented for all types.
+    let obj = mem::transmute::<&marker::MarkerTrait, TraitObject>(ptr);
+    obj.vtable as *const TyDesc
 }
 
 impl<'longer_than_self> Arena<'longer_than_self> {

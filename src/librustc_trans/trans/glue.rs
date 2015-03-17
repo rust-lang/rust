@@ -10,12 +10,12 @@
 
 //!
 //
-// Code relating to taking, dropping, etc as well as type descriptors.
+// Code relating to drop glue.
 
 
 use back::abi;
 use back::link::*;
-use llvm::{ValueRef, True, get_param};
+use llvm::{ValueRef, get_param};
 use llvm;
 use middle::lang_items::ExchangeFreeFnLangItem;
 use middle::subst;
@@ -26,24 +26,20 @@ use trans::build::*;
 use trans::callee;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
-use trans::consts;
 use trans::common::*;
 use trans::datum;
 use trans::debuginfo::DebugLoc;
 use trans::expr;
 use trans::machine::*;
-use trans::tvec;
 use trans::type_::Type;
-use trans::type_of::{self, type_of, sizing_type_of, align_of};
+use trans::type_of::{type_of, sizing_type_of, align_of};
 use middle::ty::{self, Ty};
 use util::ppaux::{ty_to_short_str, Repr};
 use util::ppaux;
 
 use arena::TypedArena;
 use libc::c_uint;
-use std::ffi::CString;
 use syntax::ast;
-use syntax::parse::token;
 
 pub fn trans_exchange_free_dyn<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                            v: ValueRef,
@@ -178,31 +174,46 @@ pub fn get_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Val
 
     let llfnty = Type::glue_fn(ccx, llty);
 
-    let (glue, new_sym) = match ccx.available_drop_glues().borrow().get(&t) {
-        Some(old_sym) => {
-            let glue = decl_cdecl_fn(ccx, &old_sym[..], llfnty, ty::mk_nil(ccx.tcx()));
-            (glue, None)
-        },
-        None => {
-            let (sym, glue) = declare_generic_glue(ccx, t, llfnty, "drop");
-            (glue, Some(sym))
-        },
-    };
-
-    ccx.drop_glues().borrow_mut().insert(t, glue);
-
     // To avoid infinite recursion, don't `make_drop_glue` until after we've
     // added the entry to the `drop_glues` cache.
-    match new_sym {
-        Some(sym) => {
-            ccx.available_drop_glues().borrow_mut().insert(t, sym);
-            // We're creating a new drop glue, so also generate a body.
-            make_generic_glue(ccx, t, glue, make_drop_glue, "drop");
-        },
-        None => {},
-    }
+    if let Some(old_sym) = ccx.available_drop_glues().borrow().get(&t) {
+        let llfn = decl_cdecl_fn(ccx, &old_sym, llfnty, ty::mk_nil(ccx.tcx()));
+        ccx.drop_glues().borrow_mut().insert(t, llfn);
+        return llfn;
+    };
 
-    glue
+    let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, "drop");
+    let llfn = decl_cdecl_fn(ccx, &fn_nm, llfnty, ty::mk_nil(ccx.tcx()));
+    note_unique_llvm_symbol(ccx, fn_nm.clone());
+    ccx.available_drop_glues().borrow_mut().insert(t, fn_nm);
+
+    let _s = StatRecorder::new(ccx, format!("drop {}", ty_to_short_str(ccx.tcx(), t)));
+
+    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
+    let (arena, fcx): (TypedArena<_>, FunctionContext);
+    arena = TypedArena::new();
+    fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,
+                      ty::FnConverging(ty::mk_nil(ccx.tcx())),
+                      empty_substs, None, &arena);
+
+    let bcx = init_function(&fcx, false, ty::FnConverging(ty::mk_nil(ccx.tcx())));
+
+    update_linkage(ccx, llfn, None, OriginalTranslation);
+
+    ccx.stats().n_glues_created.set(ccx.stats().n_glues_created.get() + 1);
+    // All glue functions take values passed *by alias*; this is a
+    // requirement since in many contexts glue is invoked indirectly and
+    // the caller has no idea if it's dealing with something that can be
+    // passed by value.
+    //
+    // llfn is expected be declared to take a parameter of the appropriate
+    // type, so we don't need to explicitly cast the function parameter.
+
+    let llrawptr0 = get_param(llfn, fcx.arg_pos(0) as c_uint);
+    let bcx = make_drop_glue(bcx, llrawptr0, t);
+    finish_fn(&fcx, bcx, ty::FnConverging(ty::mk_nil(ccx.tcx())), DebugLoc::None);
+
+    llfn
 }
 
 fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
@@ -386,51 +397,34 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
     let _icx = push_ctxt("make_drop_glue");
     match t.sty {
         ty::ty_uniq(content_ty) => {
-            match content_ty.sty {
-                ty::ty_vec(ty, None) => {
-                    tvec::make_drop_glue_unboxed(bcx, v0, ty, true)
-                }
-                ty::ty_str => {
-                    let unit_ty = ty::sequence_element_type(bcx.tcx(), content_ty);
-                    tvec::make_drop_glue_unboxed(bcx, v0, unit_ty, true)
-                }
-                ty::ty_trait(..) => {
-                    let lluniquevalue = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
-                    // Only drop the value when it is non-null
-                    let concrete_ptr = Load(bcx, lluniquevalue);
-                    with_cond(bcx, IsNotNull(bcx, concrete_ptr), |bcx| {
-                        let dtor_ptr = Load(bcx, GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]));
-                        let dtor = Load(bcx, dtor_ptr);
-                        Call(bcx,
-                             dtor,
-                             &[PointerCast(bcx, lluniquevalue, Type::i8p(bcx.ccx()))],
-                             None,
-                             DebugLoc::None);
-                        bcx
-                    })
-                }
-                ty::ty_struct(..) if !type_is_sized(bcx.tcx(), content_ty) => {
-                    let llval = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
-                    let llbox = Load(bcx, llval);
-                    let not_null = IsNotNull(bcx, llbox);
-                    with_cond(bcx, not_null, |bcx| {
-                        let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
-                        let info = GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]);
-                        let info = Load(bcx, info);
-                        let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
+            if !type_is_sized(bcx.tcx(), content_ty) {
+                let llval = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
+                let llbox = Load(bcx, llval);
+                let not_null = IsNotNull(bcx, llbox);
+                with_cond(bcx, not_null, |bcx| {
+                    let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
+                    let info = GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]);
+                    let info = Load(bcx, info);
+                    let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
+
+                    // `Box<ZeroSizeType>` does not allocate.
+                    let needs_free = ICmp(bcx,
+                                          llvm::IntNE,
+                                          llsize,
+                                          C_uint(bcx.ccx(), 0u64),
+                                          DebugLoc::None);
+                    with_cond(bcx, needs_free, |bcx| {
                         trans_exchange_free_dyn(bcx, llbox, llsize, llalign, DebugLoc::None)
                     })
-                }
-                _ => {
-                    assert!(type_is_sized(bcx.tcx(), content_ty));
-                    let llval = v0;
-                    let llbox = Load(bcx, llval);
-                    let not_null = IsNotNull(bcx, llbox);
-                    with_cond(bcx, not_null, |bcx| {
-                        let bcx = drop_ty(bcx, llbox, content_ty, DebugLoc::None);
-                        trans_exchange_free_ty(bcx, llbox, content_ty, DebugLoc::None)
-                    })
-                }
+                })
+            } else {
+                let llval = v0;
+                let llbox = Load(bcx, llval);
+                let not_null = IsNotNull(bcx, llbox);
+                with_cond(bcx, not_null, |bcx| {
+                    let bcx = drop_ty(bcx, llbox, content_ty, DebugLoc::None);
+                    trans_exchange_free_ty(bcx, llbox, content_ty, DebugLoc::None)
+                })
             }
         }
         ty::ty_struct(did, substs) | ty::ty_enum(did, substs) => {
@@ -462,34 +456,19 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                 }
             }
         }
-        ty::ty_closure(..) => {
-            iter_structural_ty(bcx,
-                               v0,
-                               t,
-                               |bb, vv, tt| drop_ty(bb, vv, tt, DebugLoc::None))
-        }
         ty::ty_trait(..) => {
-            // No need to do a null check here (as opposed to the Box<trait case
-            // above), because this happens for a trait field in an unsized
-            // struct. If anything is null, it is the whole struct and we won't
-            // get here.
-            let lluniquevalue = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
-            let dtor_ptr = Load(bcx, GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]));
-            let dtor = Load(bcx, dtor_ptr);
+            let data_ptr = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
+            let vtable_ptr = Load(bcx, GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]));
+            let dtor = Load(bcx, vtable_ptr);
             Call(bcx,
                  dtor,
-                 &[PointerCast(bcx, Load(bcx, lluniquevalue), Type::i8p(bcx.ccx()))],
+                 &[PointerCast(bcx, Load(bcx, data_ptr), Type::i8p(bcx.ccx()))],
                  None,
                  DebugLoc::None);
             bcx
-        },
-        ty::ty_vec(_, None) | ty::ty_str => {
-            let unit_ty = ty::sequence_element_type(bcx.tcx(), t);
-            tvec::make_drop_glue_unboxed(bcx, v0, unit_ty, false)
-        },
+        }
         _ => {
-            assert!(type_is_sized(bcx.tcx(), t));
-            if bcx.fcx.type_needs_drop(t) && ty::type_is_structural(t) {
+            if bcx.fcx.type_needs_drop(t) {
                 iter_structural_ty(bcx,
                                    v0,
                                    t,
@@ -499,125 +478,4 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
             }
         }
     }
-}
-
-// Generates the declaration for (but doesn't emit) a type descriptor.
-pub fn declare_tydesc<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
-                                -> tydesc_info<'tcx> {
-    // If emit_tydescs already ran, then we shouldn't be creating any new
-    // tydescs.
-    assert!(!ccx.finished_tydescs().get());
-
-    // This really shouldn't be like this, size/align will be wrong for
-    // unsized types (i.e. [T] will have the size/align of T).
-    // But we need it until we split this out into a "type name" intrinsic.
-    let llty = type_of::in_memory_type_of(ccx, t);
-
-    if ccx.sess().count_type_sizes() {
-        println!("{}\t{}", llsize_of_real(ccx, llty),
-                 ppaux::ty_to_string(ccx.tcx(), t));
-    }
-
-    let llsize = llsize_of(ccx, llty);
-    let llalign = llalign_of(ccx, llty);
-    let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc");
-    debug!("+++ declare_tydesc {} {}", ppaux::ty_to_string(ccx.tcx(), t), name);
-    let buf = CString::new(name.clone()).unwrap();
-    let gvar = unsafe {
-        llvm::LLVMAddGlobal(ccx.llmod(), ccx.tydesc_type().to_ref(),
-                            buf.as_ptr())
-    };
-    note_unique_llvm_symbol(ccx, name);
-
-    let ty_name = token::intern_and_get_ident(
-        &ppaux::ty_to_string(ccx.tcx(), t));
-    let ty_name = C_str_slice(ccx, ty_name);
-
-    debug!("--- declare_tydesc {}", ppaux::ty_to_string(ccx.tcx(), t));
-    tydesc_info {
-        ty: t,
-        tydesc: gvar,
-        size: llsize,
-        align: llalign,
-        name: ty_name,
-    }
-}
-
-fn declare_generic_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
-                                  llfnty: Type, name: &str) -> (String, ValueRef) {
-    let _icx = push_ctxt("declare_generic_glue");
-    let fn_nm = mangle_internal_name_by_type_and_seq(
-        ccx,
-        t,
-        &format!("glue_{}", name));
-    let llfn = decl_cdecl_fn(ccx, &fn_nm[..], llfnty, ty::mk_nil(ccx.tcx()));
-    note_unique_llvm_symbol(ccx, fn_nm.clone());
-    return (fn_nm, llfn);
-}
-
-fn make_generic_glue<'a, 'tcx, F>(ccx: &CrateContext<'a, 'tcx>,
-                                  t: Ty<'tcx>,
-                                  llfn: ValueRef,
-                                  helper: F,
-                                  name: &str)
-                                  -> ValueRef where
-    F: for<'blk> FnOnce(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
-{
-    let _icx = push_ctxt("make_generic_glue");
-    let glue_name = format!("glue {} {}", name, ty_to_short_str(ccx.tcx(), t));
-    let _s = StatRecorder::new(ccx, glue_name);
-
-    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-    let (arena, fcx): (TypedArena<_>, FunctionContext);
-    arena = TypedArena::new();
-    fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,
-                      ty::FnConverging(ty::mk_nil(ccx.tcx())),
-                      empty_substs, None, &arena);
-
-    let bcx = init_function(&fcx, false, ty::FnConverging(ty::mk_nil(ccx.tcx())));
-
-    update_linkage(ccx, llfn, None, OriginalTranslation);
-
-    ccx.stats().n_glues_created.set(ccx.stats().n_glues_created.get() + 1);
-    // All glue functions take values passed *by alias*; this is a
-    // requirement since in many contexts glue is invoked indirectly and
-    // the caller has no idea if it's dealing with something that can be
-    // passed by value.
-    //
-    // llfn is expected be declared to take a parameter of the appropriate
-    // type, so we don't need to explicitly cast the function parameter.
-
-    let llrawptr0 = get_param(llfn, fcx.arg_pos(0) as c_uint);
-    let bcx = helper(bcx, llrawptr0, t);
-    finish_fn(&fcx, bcx, ty::FnConverging(ty::mk_nil(ccx.tcx())), DebugLoc::None);
-
-    llfn
-}
-
-pub fn emit_tydescs(ccx: &CrateContext) {
-    let _icx = push_ctxt("emit_tydescs");
-    // As of this point, allow no more tydescs to be created.
-    ccx.finished_tydescs().set(true);
-    let glue_fn_ty = Type::generic_glue_fn(ccx).ptr_to();
-    for (_, ti) in &*ccx.tydescs().borrow() {
-        // Each of the glue functions needs to be cast to a generic type
-        // before being put into the tydesc because we only have a singleton
-        // tydesc type. Then we'll recast each function to its real type when
-        // calling it.
-        let drop_glue = consts::ptrcast(get_drop_glue(ccx, ti.ty), glue_fn_ty);
-        ccx.stats().n_real_glues.set(ccx.stats().n_real_glues.get() + 1);
-
-        let tydesc = C_named_struct(ccx.tydesc_type(),
-                                    &[ti.size, // size
-                                      ti.align, // align
-                                      drop_glue, // drop_glue
-                                      ti.name]); // name
-
-        unsafe {
-            let gvar = ti.tydesc;
-            llvm::LLVMSetInitializer(gvar, tydesc);
-            llvm::LLVMSetGlobalConstant(gvar, True);
-            llvm::SetLinkage(gvar, llvm::InternalLinkage);
-        }
-    };
 }

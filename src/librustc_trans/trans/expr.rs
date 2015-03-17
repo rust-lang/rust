@@ -288,53 +288,38 @@ pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
 // Retrieve the information we are losing (making dynamic) in an unsizing
 // adjustment.
 //
-// When making a dtor, we need to do different things depending on the
-// ownership of the object.. mk_ty is a function for turning `unadjusted_ty`
-// into a type to be destructed. If we want to end up with a Box pointer,
-// then mk_ty should make a Box pointer (T -> Box<T>), if we want a
-// borrowed reference then it should be T -> &T.
-//
 // The `unadjusted_val` argument is a bit funny. It is intended
 // for use in an upcast, where the new vtable for an object will
 // be drived from the old one. Hence it is a pointer to the fat
 // pointer.
-pub fn unsized_info_bcx<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
-                                       kind: &ty::UnsizeKind<'tcx>,
-                                       id: ast::NodeId,
-                                       unadjusted_ty: Ty<'tcx>,
-                                       unadjusted_val: ValueRef, // see above (*)
-                                       param_substs: &'tcx subst::Substs<'tcx>,
-                                       mk_ty: F)
-                                       -> ValueRef
-    where F: FnOnce(Ty<'tcx>) -> Ty<'tcx>
-{
+pub fn unsized_info_bcx<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                    kind: &ty::UnsizeKind<'tcx>,
+                                    id: ast::NodeId,
+                                    unadjusted_ty: Ty<'tcx>,
+                                    unadjusted_val: ValueRef, // see above (*)
+                                    param_substs: &'tcx subst::Substs<'tcx>)
+                                    -> ValueRef {
     unsized_info(
         bcx.ccx(),
         kind,
         id,
         unadjusted_ty,
         param_substs,
-        mk_ty,
         || Load(bcx, GEPi(bcx, unadjusted_val, &[0, abi::FAT_PTR_EXTRA])))
 }
 
 // Same as `unsize_info_bcx`, but does not require a bcx -- instead it
 // takes an extra closure to compute the upcast vtable.
-pub fn unsized_info<'ccx, 'tcx, MK_TY, MK_UPCAST_VTABLE>(
+pub fn unsized_info<'ccx, 'tcx, MK_UPCAST_VTABLE>(
     ccx: &CrateContext<'ccx, 'tcx>,
     kind: &ty::UnsizeKind<'tcx>,
     id: ast::NodeId,
     unadjusted_ty: Ty<'tcx>,
     param_substs: &'tcx subst::Substs<'tcx>,
-    mk_ty: MK_TY,
     mk_upcast_vtable: MK_UPCAST_VTABLE) // see notes above
     -> ValueRef
-    where MK_TY: FnOnce(Ty<'tcx>) -> Ty<'tcx>,
-          MK_UPCAST_VTABLE: FnOnce() -> ValueRef,
+    where MK_UPCAST_VTABLE: FnOnce() -> ValueRef
 {
-    // FIXME(#19596) workaround: `|t| t` causes monomorphization recursion
-    fn identity<T>(t: T) -> T { t }
-
     debug!("unsized_info(kind={:?}, id={}, unadjusted_ty={})",
            kind, id, unadjusted_ty.repr(ccx.tcx()));
     match kind {
@@ -342,10 +327,8 @@ pub fn unsized_info<'ccx, 'tcx, MK_TY, MK_UPCAST_VTABLE>(
         &ty::UnsizeStruct(box ref k, tp_index) => match unadjusted_ty.sty {
             ty::ty_struct(_, ref substs) => {
                 let ty_substs = substs.types.get_slice(subst::TypeSpace);
-                // The dtor for a field treats it like a value, so mk_ty
-                // should just be the identity function.
                 unsized_info(ccx, k, id, ty_substs[tp_index], param_substs,
-                             identity, mk_upcast_vtable)
+                             mk_upcast_vtable)
             }
             _ => ccx.sess().bug(&format!("UnsizeStruct with bad sty: {}",
                                          unadjusted_ty.repr(ccx.tcx())))
@@ -359,8 +342,7 @@ pub fn unsized_info<'ccx, 'tcx, MK_TY, MK_UPCAST_VTABLE>(
             let trait_ref = monomorphize::apply_param_substs(ccx.tcx(),
                                                              param_substs,
                                                              &trait_ref);
-            let box_ty = mk_ty(unadjusted_ty);
-            consts::ptrcast(meth::get_vtable(ccx, box_ty, trait_ref, param_substs),
+            consts::ptrcast(meth::get_vtable(ccx, trait_ref, param_substs),
                             Type::vtable_ptr(ccx))
         }
         &ty::UnsizeUpcast(_) => {
@@ -498,8 +480,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let unsized_ty = ty::unsize_ty(tcx, datum_ty, k, expr.span);
         debug!("unsized_ty={}", unsized_ty.repr(bcx.tcx()));
 
-        let info = unsized_info_bcx(bcx, k, expr.id, datum_ty, datum.val, bcx.fcx.param_substs,
-                                    |t| ty::mk_imm_rptr(tcx, tcx.mk_region(ty::ReStatic), t));
+        let info = unsized_info_bcx(bcx, k, expr.id, datum_ty, datum.val, bcx.fcx.param_substs);
 
         // Arrange cleanup
         let lval = unpack_datum!(bcx, datum.to_lvalue_datum(bcx, "into_fat_ptr", expr.id));
@@ -590,8 +571,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let base = PointerCast(bcx, get_dataptr(bcx, scratch.val), llbox_ty.ptr_to());
         bcx = datum.store_to(bcx, base);
 
-        let info = unsized_info_bcx(bcx, k, expr.id, unboxed_ty, base, bcx.fcx.param_substs,
-                                    |t| ty::mk_uniq(tcx, t));
+        let info = unsized_info_bcx(bcx, k, expr.id, unboxed_ty, base, bcx.fcx.param_substs);
         Store(bcx, info, get_len(bcx, scratch.val));
 
         DatumBlock::new(bcx, scratch.to_expr_datum())
@@ -888,10 +868,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
             };
 
-            let vt =
-                tvec::vec_types(bcx,
-                                ty::sequence_element_type(bcx.tcx(),
-                                                          base_datum.ty));
+            let unit_ty = ty::sequence_element_type(bcx.tcx(), base_datum.ty);
 
             let (base, len) = base_datum.get_vec_base_and_len(bcx);
 
@@ -916,8 +893,8 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                      len)
             });
             let elt = InBoundsGEP(bcx, base, &[ix_val]);
-            let elt = PointerCast(bcx, elt, vt.llunit_ty.ptr_to());
-            Datum::new(elt, vt.unit_ty, LvalueExpr)
+            let elt = PointerCast(bcx, elt, type_of::type_of(ccx, unit_ty).ptr_to());
+            Datum::new(elt, unit_ty, LvalueExpr)
         }
     };
 

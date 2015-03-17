@@ -680,11 +680,8 @@ pub fn trans_object_shim<'a, 'tcx>(
 ///
 /// The `trait_ref` encodes the erased self type. Hence if we are
 /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
-/// `trait_ref` would map `T:Trait`, but `box_ty` would be
-/// `Foo<T>`. This `box_ty` is primarily used to encode the destructor.
-/// This will hopefully change now that DST is underway.
+/// `trait_ref` would map `T:Trait`.
 pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                            box_ty: Ty<'tcx>,
                             trait_ref: ty::PolyTraitRef<'tcx>,
                             param_substs: &'tcx subst::Substs<'tcx>)
                             -> ValueRef
@@ -692,13 +689,10 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let tcx = ccx.tcx();
     let _icx = push_ctxt("meth::get_vtable");
 
-    debug!("get_vtable(box_ty={}, trait_ref={})",
-           box_ty.repr(tcx),
-           trait_ref.repr(tcx));
+    debug!("get_vtable(trait_ref={})", trait_ref.repr(tcx));
 
     // Check the cache.
-    let cache_key = (box_ty, trait_ref.clone());
-    match ccx.vtables().borrow().get(&cache_key) {
+    match ccx.vtables().borrow().get(&trait_ref) {
         Some(&val) => { return val }
         None => { }
     }
@@ -755,7 +749,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let components: Vec<_> = vec![
         // Generate a destructor for the vtable.
-        glue::get_drop_glue(ccx, box_ty),
+        glue::get_drop_glue(ccx, trait_ref.self_ty()),
         C_uint(ccx, size),
         C_uint(ccx, align)
     ].into_iter().chain(methods).collect();
@@ -763,7 +757,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let vtable = consts::addr_of(ccx, C_struct(ccx, &components, false),
                                  "vtable", trait_ref.def_id().node);
 
-    ccx.vtables().borrow_mut().insert(cache_key, vtable);
+    ccx.vtables().borrow_mut().insert(trait_ref, vtable);
     vtable
 }
 
@@ -842,16 +836,15 @@ pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("trans_trait_cast: trait_ref={}",
            trait_ref.repr(bcx.tcx()));
 
-    let datum_ty = datum.ty;
-    let llbox_ty = type_of(bcx.ccx(), datum_ty);
+    let llty = type_of(bcx.ccx(), datum.ty);
 
     // Store the pointer into the first half of pair.
     let llboxdest = GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]);
-    let llboxdest = PointerCast(bcx, llboxdest, llbox_ty.ptr_to());
+    let llboxdest = PointerCast(bcx, llboxdest, llty.ptr_to());
     bcx = datum.store_to(bcx, llboxdest);
 
     // Store the vtable into the second half of pair.
-    let vtable = get_vtable(bcx.ccx(), datum_ty, trait_ref, bcx.fcx.param_substs);
+    let vtable = get_vtable(bcx.ccx(), trait_ref, bcx.fcx.param_substs);
     let llvtabledest = GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]);
     let llvtabledest = PointerCast(bcx, llvtabledest, val_ty(vtable).ptr_to());
     Store(bcx, vtable, llvtabledest);
