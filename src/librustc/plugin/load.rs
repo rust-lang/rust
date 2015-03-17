@@ -19,10 +19,7 @@ use std::dynamic_lib::DynamicLibrary;
 use std::env;
 use std::mem;
 
-#[allow(deprecated)]
-use std::old_path;
-
-use std::path::PathBuf;
+use std::path::{self, PathBuf};
 use syntax::ast;
 use syntax::codemap::{Span, COMMAND_LINE_SP};
 use syntax::ptr::P;
@@ -110,7 +107,7 @@ impl<'a> PluginLoader<'a> {
                         symbol: String) -> PluginRegistrarFun {
         // Make sure the path contains a / or the linker will search for it.
         let path = env::current_dir().unwrap().join(&path);
-        let path = old_path::Path::new(path.to_str().unwrap());
+        let path = path::Path::new(path.to_str().unwrap());
 
         let lib = match DynamicLibrary::open(Some(&path)) {
             Ok(lib) => lib,
