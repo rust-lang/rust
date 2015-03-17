@@ -68,12 +68,12 @@ impl TempDir {
             let path = tmpdir.join(&leaf);
             match fs::create_dir(&path) {
                 Ok(_) => return Ok(TempDir { path: Some(path) }),
-                Err(ref e) if e.kind() == ErrorKind::PathAlreadyExists => {}
+                Err(ref e) if e.kind() == ErrorKind::AlreadyExists => {}
                 Err(e) => return Err(e)
             }
         }
 
-        Err(Error::new(ErrorKind::PathAlreadyExists,
+        Err(Error::new(ErrorKind::AlreadyExists,
                        "too many temporary directories already exist",
                        None))
     }

@@ -668,7 +668,7 @@ mod tests {
     #[test]
     fn test_process_output_fail_to_start() {
         match Command::new("/no-binary-by-this-name-should-exist").output() {
-            Err(e) => assert_eq!(e.kind(), ErrorKind::FileNotFound),
+            Err(e) => assert_eq!(e.kind(), ErrorKind::NotFound),
             Ok(..) => panic!()
         }
     }
