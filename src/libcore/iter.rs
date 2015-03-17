@@ -65,7 +65,7 @@ use default::Default;
 use marker;
 use mem;
 use num::{ToPrimitive, Int};
-use ops::{Add, Deref, FnMut, RangeFrom};
+use ops::{Add, FnMut, RangeFrom};
 use option::Option;
 use option::Option::{Some, None};
 use marker::Sized;
@@ -976,12 +976,11 @@ pub trait IteratorExt: Iterator + Sized {
         (ts, us)
     }
 
-    /// Creates an iterator that clones the elements it yields. Useful for converting an
-    /// Iterator<&T> to an Iterator<T>.
-    #[unstable(feature = "core", reason = "recent addition")]
-    fn cloned(self) -> Cloned<Self> where
-        Self::Item: Deref,
-        <Self::Item as Deref>::Target: Clone,
+    /// Creates an iterator that clones the elements it yields. Useful for
+    /// converting an Iterator<&T> to an Iterator<T>.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn cloned<'a, T: 'a>(self) -> Cloned<Self>
+        where Self: Iterator<Item=&'a T>, T: Clone
     {
         Cloned { it: self }
     }
@@ -1279,14 +1278,12 @@ pub struct Cloned<I> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> Iterator for Cloned<I> where
-    I: Iterator,
-    I::Item: Deref,
-    <I::Item as Deref>::Target: Clone
+impl<'a, I, T: 'a> Iterator for Cloned<I>
+    where I: Iterator<Item=&'a T>, T: Clone
 {
-    type Item = <I::Item as Deref>::Target;
+    type Item = T;
 
-    fn next(&mut self) -> Option<<Self as Iterator>::Item> {
+    fn next(&mut self) -> Option<T> {
         self.it.next().cloned()
     }
 
@@ -1296,28 +1293,22 @@ impl<I> Iterator for Cloned<I> where
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> DoubleEndedIterator for Cloned<I> where
-    I: DoubleEndedIterator,
-    I::Item: Deref,
-    <I::Item as Deref>::Target: Clone
+impl<'a, I, T: 'a> DoubleEndedIterator for Cloned<I>
+    where I: DoubleEndedIterator<Item=&'a T>, T: Clone
 {
-    fn next_back(&mut self) -> Option<<Self as Iterator>::Item> {
+    fn next_back(&mut self) -> Option<T> {
         self.it.next_back().cloned()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> ExactSizeIterator for Cloned<I> where
-    I: ExactSizeIterator,
-    I::Item: Deref,
-    <I::Item as Deref>::Target: Clone
+impl<'a, I, T: 'a> ExactSizeIterator for Cloned<I>
+    where I: ExactSizeIterator<Item=&'a T>, T: Clone
 {}
 
 #[unstable(feature = "core", reason = "trait is experimental")]
-impl<I> RandomAccessIterator for Cloned<I> where
-    I: RandomAccessIterator,
-    I::Item: Deref,
-    <I::Item as Deref>::Target: Clone
+impl<'a, I, T: 'a> RandomAccessIterator for Cloned<I>
+    where I: RandomAccessIterator<Item=&'a T>, T: Clone
 {
     #[inline]
     fn indexable(&self) -> usize {
@@ -1325,7 +1316,7 @@ impl<I> RandomAccessIterator for Cloned<I> where
     }
 
     #[inline]
-    fn idx(&mut self, index: usize) -> Option<<Self as Iterator>::Item> {
+    fn idx(&mut self, index: usize) -> Option<T> {
         self.it.idx(index).cloned()
     }
 }
