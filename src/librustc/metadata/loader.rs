@@ -784,8 +784,8 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
                        csz - vlen);
                 let bytes = slice::from_raw_parts(cvbuf1, csz - vlen);
                 match flate::inflate_bytes(bytes) {
-                    Some(inflated) => return Ok(MetadataVec(inflated)),
-                    None => {}
+                    Ok(inflated) => return Ok(MetadataVec(inflated)),
+                    Err(_) => {}
                 }
             }
             llvm::LLVMMoveToNextSection(si.llsi);
