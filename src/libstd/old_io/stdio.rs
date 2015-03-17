@@ -142,7 +142,7 @@ impl StdinReader {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::old_io;
     ///
     /// let mut stdin = old_io::stdin();

@@ -59,7 +59,7 @@ impl Rand for Exp1 {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::rand;
 /// use std::rand::distributions::{Exp, IndependentSample};
 ///

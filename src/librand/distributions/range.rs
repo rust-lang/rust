@@ -35,7 +35,7 @@ use distributions::{Sample, IndependentSample};
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::rand::distributions::{IndependentSample, Range};
 ///
 /// fn main() {

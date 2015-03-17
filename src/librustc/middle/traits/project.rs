@@ -535,7 +535,7 @@ fn assemble_candidates_from_param_env<'cx,'tcx>(
 /// In the case of a nested projection like <<A as Foo>::FooT as Bar>::BarT, we may find
 /// that the definition of `Foo` has some clues:
 ///
-/// ```rust
+/// ```
 /// trait Foo {
 ///     type FooT : Bar<BarT=i32>
 /// }

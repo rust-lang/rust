@@ -26,7 +26,7 @@ use sync::{StaticMutex, MUTEX_INIT};
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::sync::{Once, ONCE_INIT};
 ///
 /// static START: Once = ONCE_INIT;

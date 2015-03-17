@@ -84,7 +84,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// let n = 0b01001100u8;
@@ -99,7 +99,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// let n = 0b01001100u8;
@@ -118,7 +118,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// let n = 0b0101000u16;
@@ -134,7 +134,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// let n = 0b0101000u16;
@@ -150,7 +150,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// let n = 0x0123456789ABCDEFu64;
@@ -167,7 +167,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// let n = 0x0123456789ABCDEFu64;
@@ -183,7 +183,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// let n = 0x0123456789ABCDEFu64;
@@ -200,7 +200,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// let n = 0x0123456789ABCDEFu64;
@@ -223,7 +223,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// let n = 0x0123456789ABCDEFu64;
@@ -246,7 +246,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// let n = 0x0123456789ABCDEFu64;
@@ -269,7 +269,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// let n = 0x0123456789ABCDEFu64;
@@ -291,7 +291,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// assert_eq!(5u16.checked_add(65530), Some(65535));
@@ -305,7 +305,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// assert_eq!((-127i8).checked_sub(1), Some(-128));
@@ -319,7 +319,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// assert_eq!(5u8.checked_mul(51), Some(255));
@@ -333,7 +333,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// assert_eq!((-127i8).checked_div(-1), Some(127));
@@ -371,7 +371,7 @@ pub trait Int
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::num::Int;
     ///
     /// assert_eq!(2.pow(4), 16);

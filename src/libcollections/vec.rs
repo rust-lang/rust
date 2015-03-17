@@ -633,7 +633,7 @@ impl<T> Vec<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut vec = vec!(1, 2);
     /// vec.push(3);
     /// assert_eq!(vec, [1, 2, 3]);
@@ -671,7 +671,7 @@ impl<T> Vec<T> {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let mut vec = vec![1, 2, 3];
     /// assert_eq!(vec.pop(), Some(3));
     /// assert_eq!(vec, [1, 2]);

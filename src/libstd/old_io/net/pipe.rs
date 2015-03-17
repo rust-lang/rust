@@ -52,7 +52,7 @@ impl UnixStream {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// # #![allow(unused_must_use)]
     /// use std::old_io::net::pipe::UnixStream;
     ///

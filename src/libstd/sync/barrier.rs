@@ -13,7 +13,7 @@ use sync::{Mutex, Condvar};
 /// A barrier enables multiple tasks to synchronize the beginning
 /// of some computation.
 ///
-/// ```rust
+/// ```
 /// use std::sync::{Arc, Barrier};
 /// use std::thread;
 ///

@@ -129,7 +129,7 @@ impl<T> ToOwned for T where T: Clone {
 ///
 /// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::borrow::Cow;
 ///
 /// fn abs_all(input: &mut Cow<[i32]>) {
