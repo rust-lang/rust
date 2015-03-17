@@ -5521,6 +5521,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
 
             "return_address" => (0, vec![], ty::mk_imm_ptr(tcx, tcx.types.u8)),
 
+            "frame_address" => (0, vec![tcx.types.u32], ty::mk_ptr(ccx.tcx, ty::mt {
+                ty: tcx.types.u8,
+                mutbl: ast::MutImmutable
+            })),
+
             "assume" => (0, vec![tcx.types.bool], ty::mk_nil(tcx)),
 
             ref other => {
