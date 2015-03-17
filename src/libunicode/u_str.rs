@@ -244,7 +244,7 @@ impl<'a> Iterator for Graphemes<'a> {
         }
 
         self.cat = if take_curr {
-            idx = self.string.char_range_at(idx).next;
+            idx = idx + UCharExt::len_utf8(self.string.char_at(idx));
             None
         } else {
             Some(cat)
