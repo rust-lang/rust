@@ -74,7 +74,24 @@ pub trait Combine<'tcx> : Sized {
     fn lub<'a>(&'a self) -> Lub<'a, 'tcx> { Lub(self.fields().clone()) }
     fn glb<'a>(&'a self) -> Glb<'a, 'tcx> { Glb(self.fields().clone()) }
 
-    fn mts(&self, a: &ty::mt<'tcx>, b: &ty::mt<'tcx>) -> cres<'tcx, ty::mt<'tcx>>;
+    fn mts(&self, a: &ty::mt<'tcx>, b: &ty::mt<'tcx>) -> cres<'tcx, ty::mt<'tcx>> {
+        debug!("{}.mts({}, {})",
+               self.tag(),
+               a.repr(self.tcx()),
+               b.repr(self.tcx()));
+
+        if a.mutbl != b.mutbl {
+            Err(ty::terr_mutability)
+        } else {
+            let mutbl = a.mutbl;
+            let variance = match mutbl {
+                ast::MutImmutable => ty::Covariant,
+                ast::MutMutable => ty::Invariant,
+            };
+            let ty = try!(self.tys_with_variance(variance, a.ty, b.ty));
+            Ok(ty::mt {ty: ty, mutbl: mutbl})
+        }
+    }
 
     fn tys_with_variance(&self, variance: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
                          -> cres<'tcx, Ty<'tcx>>;
