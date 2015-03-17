@@ -788,6 +788,9 @@ pub struct ctxt<'tcx> {
     /// is used for lazy resolution of traits.
     pub populated_external_traits: RefCell<DefIdSet>,
 
+    /// The set of external primitive inherent implementations that have been read.
+    pub populated_external_primitive_impls: RefCell<DefIdSet>,
+
     /// Borrows
     pub upvar_capture_map: RefCell<UpvarCaptureMap>,
 
@@ -2599,6 +2602,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         used_mut_nodes: RefCell::new(NodeSet()),
         populated_external_types: RefCell::new(DefIdSet()),
         populated_external_traits: RefCell::new(DefIdSet()),
+        populated_external_primitive_impls: RefCell::new(DefIdSet()),
         upvar_capture_map: RefCell::new(FnvHashMap()),
         extern_const_statics: RefCell::new(DefIdMap()),
         extern_const_variants: RefCell::new(DefIdMap()),
@@ -5986,6 +5990,25 @@ pub fn record_trait_implementation(tcx: &ctxt,
     }
 
     tcx.trait_impls.borrow_mut().insert(trait_def_id, Rc::new(RefCell::new(vec!(impl_def_id))));
+}
+
+/// Load primitive inherent implementations if necessary
+pub fn populate_implementations_for_primitive_if_necessary(tcx: &ctxt, lang_def_id: ast::DefId) {
+    if lang_def_id.krate == LOCAL_CRATE {
+        return
+    }
+    if tcx.populated_external_primitive_impls.borrow().contains(&lang_def_id) {
+        return
+    }
+
+    debug!("populate_implementations_for_primitive_if_necessary: searching for {:?}", lang_def_id);
+
+    let impl_items = csearch::get_impl_items(&tcx.sess.cstore, lang_def_id);
+
+    // Store the implementation info.
+    tcx.impl_items.borrow_mut().insert(lang_def_id, impl_items);
+
+    tcx.populated_external_primitive_impls.borrow_mut().insert(lang_def_id);
 }
 
 /// Populates the type context with all the implementations for the given type

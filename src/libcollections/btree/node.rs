@@ -23,7 +23,7 @@ use core::iter::Zip;
 use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 use core::ptr::Unique;
-use core::{slice, mem, ptr, cmp, num, raw};
+use core::{slice, mem, ptr, cmp, raw};
 use alloc::heap::{self, EMPTY};
 
 use borrow::Borrow;
@@ -105,7 +105,10 @@ struct MutNodeSlice<'a, K: 'a, V: 'a> {
 /// Fails if `target_alignment` is not a power of two.
 #[inline]
 fn round_up_to_next(unrounded: usize, target_alignment: usize) -> usize {
-    assert!(num::UnsignedInt::is_power_of_two(target_alignment));
+    #[cfg(stage0)]
+    use core::num::UnsignedInt;
+
+    assert!(target_alignment.is_power_of_two());
     (unrounded + target_alignment - 1) & !(target_alignment - 1)
 }
 

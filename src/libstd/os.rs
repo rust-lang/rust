@@ -52,12 +52,19 @@ use option::Option::{Some, None};
 use option::Option;
 use old_path::{Path, GenericPath, BytesContainer};
 use path::{self, PathBuf};
+#[cfg(stage0)]
 use ptr::PtrExt;
 use ptr;
 use result::Result::{Err, Ok};
 use result::Result;
+#[cfg(stage0)]
 use slice::{AsSlice, SliceExt};
+#[cfg(not(stage0))]
+use slice::AsSlice;
+#[cfg(stage0)]
 use str::{Str, StrExt};
+#[cfg(not(stage0))]
+use str::Str;
 use str;
 use string::{String, ToString};
 use sync::atomic::{AtomicIsize, ATOMIC_ISIZE_INIT, Ordering};

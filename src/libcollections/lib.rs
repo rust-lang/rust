@@ -27,6 +27,7 @@
 #![feature(box_syntax)]
 #![feature(box_patterns)]
 #![feature(core)]
+#![feature(lang_items)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
@@ -46,9 +47,8 @@ extern crate core;
 extern crate unicode;
 extern crate alloc;
 
-#[cfg(test)] extern crate test;
 #[cfg(test)] #[macro_use] extern crate std;
-#[cfg(test)] #[macro_use] extern crate log;
+#[cfg(test)] extern crate test;
 
 pub use binary_heap::BinaryHeap;
 pub use bit_vec::BitVec;
@@ -83,8 +83,6 @@ pub use alloc::boxed;
 
 #[macro_use]
 mod macros;
-
-#[cfg(test)] #[macro_use] mod bench;
 
 pub mod binary_heap;
 mod bit;
@@ -139,40 +137,6 @@ pub fn fixme_14344_be_sure_to_link_to_collections() {}
 #[cfg(not(test))]
 mod std {
     pub use core::ops;      // RangeFull
-}
-
-#[cfg(test)]
-mod prelude {
-    // from core.
-    pub use core::clone::Clone;
-    pub use core::cmp::{PartialEq, Eq, PartialOrd, Ord};
-    pub use core::cmp::Ordering::{Less, Equal, Greater};
-    pub use core::iter::range;
-    pub use core::iter::{FromIterator, Extend, IteratorExt};
-    pub use core::iter::{Iterator, DoubleEndedIterator, RandomAccessIterator};
-    pub use core::iter::{ExactSizeIterator};
-    pub use core::marker::{Copy, Send, Sized, Sync};
-    pub use core::mem::drop;
-    pub use core::ops::{Drop, Fn, FnMut, FnOnce};
-    pub use core::option::Option;
-    pub use core::option::Option::{Some, None};
-    pub use core::ptr::PtrExt;
-    pub use core::result::Result;
-    pub use core::result::Result::{Ok, Err};
-
-    // in core and collections (may differ).
-    pub use slice::{AsSlice, SliceExt};
-    pub use str::{Str, StrExt};
-
-    // from other crates.
-    pub use alloc::boxed::Box;
-    pub use unicode::char::CharExt;
-
-    // from collections.
-    pub use borrow::IntoCow;
-    pub use slice::SliceConcatExt;
-    pub use string::{String, ToString};
-    pub use vec::Vec;
 }
 
 /// An endpoint of a range of keys.

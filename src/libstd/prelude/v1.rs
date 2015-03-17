@@ -25,6 +25,7 @@
 // Reexported types and traits
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use boxed::Box;
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use char::CharExt;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -39,14 +40,23 @@
 #[doc(no_inline)] pub use iter::{Iterator, IteratorExt, Extend};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use option::Option::{self, Some, None};
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use ptr::{PtrExt, MutPtrExt};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use result::Result::{self, Ok, Err};
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use slice::{SliceExt, SliceConcatExt, AsSlice};
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[doc(no_inline)] pub use slice::{SliceConcatExt, AsSlice};
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use str::{Str, StrExt};
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[doc(no_inline)] pub use str::Str;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use string::{String, ToString};
 #[stable(feature = "rust1", since = "1.0.0")]

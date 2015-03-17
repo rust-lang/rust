@@ -66,11 +66,11 @@ macro_rules! map_find_rand_bench {
     ($name: ident, $n: expr, $map: ident) => (
         #[bench]
         pub fn $name(b: &mut ::test::Bencher) {
-            use std::rand;
             use std::iter::IteratorExt;
             use std::rand::Rng;
+            use std::rand;
+            use std::vec::Vec;
             use test::black_box;
-            use vec::Vec;
 
             let mut map = $map::new();
             let n: usize = $n;
