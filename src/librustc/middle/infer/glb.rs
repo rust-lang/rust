@@ -55,36 +55,6 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
         }
     }
 
-    fn mts(&self, a: &ty::mt<'tcx>, b: &ty::mt<'tcx>) -> cres<'tcx, ty::mt<'tcx>> {
-        let tcx = self.fields.infcx.tcx;
-
-        debug!("{}.mts({}, {})",
-               self.tag(),
-               mt_to_string(tcx, a),
-               mt_to_string(tcx, b));
-
-        match (a.mutbl, b.mutbl) {
-            // If one side or both is mut, then the GLB must use
-            // the precise type from the mut side.
-            (MutMutable, MutMutable) => {
-                let t = try!(self.equate().tys(a.ty, b.ty));
-                Ok(ty::mt {ty: t, mutbl: MutMutable})
-            }
-
-            // If one side or both is immutable, we can use the GLB of
-            // both sides but mutbl must be `MutImmutable`.
-            (MutImmutable, MutImmutable) => {
-                let t = try!(self.tys(a.ty, b.ty));
-                Ok(ty::mt {ty: t, mutbl: MutImmutable})
-            }
-
-            // There is no mutual subtype of these combinations.
-            (MutMutable, MutImmutable) |
-            (MutImmutable, MutMutable) => {
-                Err(ty::terr_mutability)
-            }
-        }
-    }
 
     fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
         match (a, b) {

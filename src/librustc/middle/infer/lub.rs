@@ -55,32 +55,6 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
         }
     }
 
-    fn mts(&self, a: &ty::mt<'tcx>, b: &ty::mt<'tcx>) -> cres<'tcx, ty::mt<'tcx>> {
-        let tcx = self.tcx();
-
-        debug!("{}.mts({}, {})",
-               self.tag(),
-               mt_to_string(tcx, a),
-               mt_to_string(tcx, b));
-
-        if a.mutbl != b.mutbl {
-            return Err(ty::terr_mutability)
-        }
-
-        let m = a.mutbl;
-        match m {
-            MutImmutable => {
-                let t = try!(self.tys(a.ty, b.ty));
-                Ok(ty::mt {ty: t, mutbl: m})
-            }
-
-            MutMutable => {
-                let t = try!(self.equate().tys(a.ty, b.ty));
-                Ok(ty::mt {ty: t, mutbl: m})
-            }
-        }
-    }
-
     fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
         match (a, b) {
           (Unsafety::Unsafe, _) | (_, Unsafety::Unsafe) => Ok(Unsafety::Unsafe),

@@ -66,30 +66,6 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         Ok(a)
     }
 
-    fn mts(&self, a: &ty::mt<'tcx>, b: &ty::mt<'tcx>) -> cres<'tcx, ty::mt<'tcx>> {
-        debug!("mts({} <: {})",
-               a.repr(self.tcx()),
-               b.repr(self.tcx()));
-
-        if a.mutbl != b.mutbl {
-            return Err(ty::terr_mutability);
-        }
-
-        match b.mutbl {
-            MutMutable => {
-                // If supertype is mut, subtype must match exactly
-                // (i.e., invariant if mut):
-                try!(self.equate().tys(a.ty, b.ty));
-            }
-            MutImmutable => {
-                // Otherwise we can be covariant:
-                try!(self.tys(a.ty, b.ty));
-            }
-        }
-
-        Ok(*a) // return is meaningless in sub, just return *a
-    }
-
     fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
         self.lub().unsafeties(a, b).compare(b, || {
             ty::terr_unsafety_mismatch(expected_found(self, a, b))
