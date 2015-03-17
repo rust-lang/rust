@@ -14,7 +14,7 @@ use io;
 use libc::consts::os::extra::INVALID_SOCKET;
 use libc::{self, c_int, c_void};
 use mem;
-use net::{SocketAddr, IpAddr};
+use net::SocketAddr;
 use num::{SignedInt, Int};
 use rt;
 use sync::{Once, ONCE_INIT};
@@ -73,9 +73,9 @@ pub fn cvt_r<T: SignedInt, F>(mut f: F) -> io::Result<T> where F: FnMut() -> T {
 
 impl Socket {
     pub fn new(addr: &SocketAddr, ty: c_int) -> io::Result<Socket> {
-        let fam = match addr.ip() {
-            IpAddr::V4(..) => libc::AF_INET,
-            IpAddr::V6(..) => libc::AF_INET6,
+        let fam = match *addr {
+            SocketAddr::V4(..) => libc::AF_INET,
+            SocketAddr::V6(..) => libc::AF_INET6,
         };
         match unsafe { libc::socket(fam, ty, 0) } {
             INVALID_SOCKET => Err(last_error()),

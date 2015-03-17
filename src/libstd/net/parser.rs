@@ -16,12 +16,17 @@
 use prelude::v1::*;
 
 use str::FromStr;
-use net::{Ipv4Addr, Ipv6Addr, IpAddr, SocketAddr};
+use net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 
 struct Parser<'a> {
     // parsing as ASCII, so can use byte array
     s: &'a [u8],
     pos: usize,
+}
+
+enum IpAddr {
+    V4(Ipv4Addr),
+    V6(Ipv6Addr),
 }
 
 impl<'a> Parser<'a> {
@@ -281,18 +286,13 @@ impl<'a> Parser<'a> {
         let port  = |p: &mut Parser| p.read_number(10, 5, 0x10000).map(|n| n as u16);
 
         // host, colon, port
-        self.read_seq_3::<IpAddr, char, u16, _, _, _>(ip_addr, colon, port)
-                .map(|t| match t { (ip, _, port) => SocketAddr::new(ip, port) })
-    }
-}
-
-impl FromStr for IpAddr {
-    type Err = ParseError;
-    fn from_str(s: &str) -> Result<IpAddr, ParseError> {
-        match Parser::new(s).read_till_eof(|p| p.read_ip_addr()) {
-            Some(s) => Ok(s),
-            None => Err(ParseError),
-        }
+        self.read_seq_3(ip_addr, colon, port).map(|t| {
+            let (ip, _, port): (IpAddr, char, u16) = t;
+            match ip {
+                IpAddr::V4(ip) => SocketAddr::V4(SocketAddrV4::new(ip, port)),
+                IpAddr::V6(ip) => SocketAddr::V6(SocketAddrV6::new(ip, port, 0, 0)),
+            }
+        })
     }
 }
 

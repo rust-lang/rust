@@ -13,7 +13,7 @@
 //! > **NOTE**: This module is very much a work in progress and is under active
 //! > development.
 
-#![unstable(feature = "net")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use prelude::v1::*;
 
@@ -21,8 +21,8 @@ use io::{self, Error, ErrorKind};
 use num::Int;
 use sys_common::net2 as net_imp;
 
-pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
-pub use self::addr::{SocketAddr, ToSocketAddrs};
+pub use self::ip::{Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
+pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 pub use self::tcp::{TcpStream, TcpListener};
 pub use self::udp::UdpSocket;
 
@@ -36,23 +36,27 @@ mod parser;
 /// Possible values which can be passed to the `shutdown` method of `TcpStream`
 /// and `UdpSocket`.
 #[derive(Copy, Clone, PartialEq)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub enum Shutdown {
     /// Indicates that the reading portion of this stream/socket should be shut
     /// down. All currently blocked and future reads will return `Ok(0)`.
+    #[stable(feature = "rust1", since = "1.0.0")]
     Read,
     /// Indicates that the writing portion of this stream/socket should be shut
     /// down. All currently blocked and future writes will return an error.
+    #[stable(feature = "rust1", since = "1.0.0")]
     Write,
     /// Shut down both the reading and writing portions of this stream.
     ///
     /// See `Shutdown::Read` and `Shutdown::Write` for more information.
-    Both
+    #[stable(feature = "rust1", since = "1.0.0")]
+    Both,
 }
 
 fn hton<I: Int>(i: I) -> I { i.to_be() }
 fn ntoh<I: Int>(i: I) -> I { Int::from_be(i) }
 
-fn each_addr<A: ToSocketAddrs + ?Sized, F, T>(addr: &A, mut f: F) -> io::Result<T>
+fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
     where F: FnMut(&SocketAddr) -> io::Result<T>
 {
     let mut last_err = None;
@@ -69,8 +73,10 @@ fn each_addr<A: ToSocketAddrs + ?Sized, F, T>(addr: &A, mut f: F) -> io::Result<
 }
 
 /// An iterator over `SocketAddr` values returned from a host lookup operation.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct LookupHost(net_imp::LookupHost);
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for LookupHost {
     type Item = io::Result<SocketAddr>;
     fn next(&mut self) -> Option<io::Result<SocketAddr>> { self.0.next() }
@@ -93,6 +99,7 @@ impl Iterator for LookupHost {
 /// # Ok(())
 /// # }
 /// ```
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
     net_imp::lookup_host(host).map(LookupHost)
 }
