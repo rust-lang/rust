@@ -692,16 +692,23 @@ fn shortty(item: &clean::Item) -> ItemType {
 
 /// Takes a path to a source file and cleans the path to it. This canonicalizes
 /// things like ".." to components which preserve the "top down" hierarchy of a
-/// static HTML tree.
+/// static HTML tree. Each component in the cleaned path will be passed as an
+/// argument to `f`. The very last component of the path (ie the file name) will
+/// be passed to `f` if `keep_filename` is true, and ignored otherwise.
 // FIXME (#9639): The closure should deal with &[u8] instead of &str
 // FIXME (#9639): This is too conservative, rejecting non-UTF-8 paths
-fn clean_srcpath<F>(src_root: &Path, p: &Path, mut f: F) where
+fn clean_srcpath<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F) where
     F: FnMut(&str),
 {
     // make it relative, if possible
     let p = p.relative_from(src_root).unwrap_or(p);
 
-    for c in p.iter().map(|x| x.to_str().unwrap()) {
+    let mut iter = p.iter().map(|x| x.to_str().unwrap()).peekable();
+    while let Some(c) = iter.next() {
+        if !keep_filename && iter.peek().is_none() {
+            break;
+        }
+
         if ".." == c {
             f("up");
         } else {
@@ -803,7 +810,7 @@ impl<'a> SourceCollector<'a> {
         // Create the intermediate directories
         let mut cur = self.dst.clone();
         let mut root_path = String::from_str("../../");
-        clean_srcpath(&self.cx.src_root, &p, |component| {
+        clean_srcpath(&self.cx.src_root, &p, false, |component| {
             cur.push(component);
             mkdir(&cur).unwrap();
             root_path.push_str("../");
@@ -1368,7 +1375,7 @@ impl<'a> Item<'a> {
         if ast_util::is_local(self.item.def_id) {
             let mut path = Vec::new();
             clean_srcpath(&cx.src_root, Path::new(&self.item.source.filename),
-                          |component| {
+                          true, |component| {
                 path.push(component.to_string());
             });
             let href = if self.item.source.loline == self.item.source.hiline {
