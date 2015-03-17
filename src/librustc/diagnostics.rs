@@ -132,4 +132,3 @@ register_diagnostics! {
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }
-

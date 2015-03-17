@@ -18,4 +18,3 @@ fn main() {
     <i32 as Add<i32>>::add(1, 2u32);
     //~^ ERROR mismatched types
 }
-

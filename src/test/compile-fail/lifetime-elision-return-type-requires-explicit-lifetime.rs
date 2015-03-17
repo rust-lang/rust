@@ -37,4 +37,3 @@ fn i(_x: isize) -> &isize { //~ ERROR missing lifetime specifier
 }
 
 fn main() {}
-

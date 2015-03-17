@@ -324,4 +324,3 @@ impl<'a> ArchiveBuilder<'a> {
         Ok(())
     }
 }
-

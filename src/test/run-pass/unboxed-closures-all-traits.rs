@@ -28,4 +28,3 @@ fn main() {
     assert_eq!(b(move |x: int, y| x + y + z), 14);
     assert_eq!(c(move |x: int, y| x + y + z), 18);
 }
-

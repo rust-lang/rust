@@ -28,4 +28,3 @@ fn main() {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let s: Box<Trait<&'static str>> = Box::new(Struct { person: person });
 }
-

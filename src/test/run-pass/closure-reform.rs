@@ -66,4 +66,3 @@ pub fn main() {
 
     call_bare_again(println);
 }
-

@@ -54,4 +54,3 @@ fn some_function(a: int, b: int) {
 }
 
 fn some_other_function(a: int, b: int) -> bool { true }
-

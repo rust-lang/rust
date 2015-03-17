@@ -13,7 +13,3 @@ bar:
 
 foo: bar
 	$(RUSTC) foo.rs -A warnings
-
-
-
-

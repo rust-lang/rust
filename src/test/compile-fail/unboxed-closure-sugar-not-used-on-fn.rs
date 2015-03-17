@@ -20,4 +20,3 @@ fn bar2<T>(x: &T) where T: Fn<()> {
 }
 
 fn main() { }
-

@@ -14,4 +14,3 @@ fn main() {
         () => { static MAGIC: uint = 0; }
     }
 }
-

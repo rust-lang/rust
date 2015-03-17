@@ -80,4 +80,3 @@ fn main() {
     rustc_driver::run_compiler(args.as_slice(), &mut tc);
     assert!(tc.count == 30);
 }
-

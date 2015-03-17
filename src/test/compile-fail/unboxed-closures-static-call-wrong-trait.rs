@@ -16,4 +16,3 @@ fn main() {
     let mut_ = to_fn_mut(|x| x);
     mut_.call((0, )); //~ ERROR does not implement any method in scope named `call`
 }
-

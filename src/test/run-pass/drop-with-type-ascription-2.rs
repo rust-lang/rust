@@ -14,4 +14,3 @@ fn main() {
     assert_eq!(arr[0], "asdf");
     assert_eq!(arr[0], "asdf");
 }
-

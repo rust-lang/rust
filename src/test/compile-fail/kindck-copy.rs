@@ -80,4 +80,3 @@ fn test<'a,T,U:Copy>(_: &'a isize) {
 
 pub fn main() {
 }
-

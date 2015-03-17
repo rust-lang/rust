@@ -18,4 +18,3 @@ fn f(b: struct_variant_privacy::Bar) { //~ ERROR enum `Bar` is private
 }
 
 fn main() {}
-

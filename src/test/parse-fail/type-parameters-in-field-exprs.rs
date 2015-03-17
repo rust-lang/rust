@@ -21,4 +21,3 @@ fn main() {
     f.x::<isize>;
     //~^ ERROR field expressions may not have type parameters
 }
-

@@ -13,4 +13,3 @@ fn main() {
     assert!(3 == 4) //~ ERROR expected one of `.`, `;`, `}`, or an operator, found `assert`
     println!("hello");
 }
-

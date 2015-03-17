@@ -9,4 +9,3 @@ all: foo
 # This is just to make sure the above command actually succeeds
 foo:
 	$(RUSTC) foo.rs -A warnings
-

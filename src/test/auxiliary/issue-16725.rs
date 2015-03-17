@@ -11,4 +11,3 @@
 extern {
     fn bar();
 }
-

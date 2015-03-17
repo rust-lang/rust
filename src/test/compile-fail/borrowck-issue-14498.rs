@@ -62,4 +62,3 @@ fn main() {
     borrow_in_field_from_var();
     borrow_in_field_from_field();
 }
-

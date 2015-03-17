@@ -45,4 +45,3 @@ pub fn main() {
     let out = old_io::stdout();
     foo(Box::new(out));
 }
-

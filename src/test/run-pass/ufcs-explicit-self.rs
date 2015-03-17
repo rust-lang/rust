@@ -57,4 +57,3 @@ fn main() {
     let bar: Box<Bar<int>> = bar;
     println!("{} {} {}", bar.foo(2), bar.bar(2), bar.baz(2));
 }
-

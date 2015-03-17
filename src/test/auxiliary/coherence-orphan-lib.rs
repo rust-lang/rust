@@ -11,4 +11,3 @@
 pub trait TheTrait<T> : ::std::marker::PhantomFn<T> {
     fn the_fn(&self);
 }
-

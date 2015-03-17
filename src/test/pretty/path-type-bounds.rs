@@ -23,4 +23,3 @@ fn main() {
 
     Box::new(1) as Box<Tr+ Sync>;
 }
-

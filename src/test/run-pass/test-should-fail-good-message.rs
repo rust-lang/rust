@@ -22,5 +22,3 @@ pub fn test_foo() {
 pub fn test_foo_dynamic() {
     panic!("{} bar", "foo")
 }
-
-

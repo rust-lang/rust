@@ -31,4 +31,3 @@ fn main() {
     };
     drop(s(3))  //~ ERROR cannot use call notation
 }
-

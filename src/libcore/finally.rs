@@ -107,4 +107,3 @@ impl<'a, A, F> Drop for Finallyalizer<'a, A, F> where F: FnMut(&mut A) {
         (self.dtor)(self.mutate);
     }
 }
-

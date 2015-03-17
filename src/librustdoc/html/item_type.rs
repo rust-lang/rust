@@ -111,4 +111,3 @@ impl fmt::Display for ItemType {
         self.to_static_str().fmt(f)
     }
 }
-

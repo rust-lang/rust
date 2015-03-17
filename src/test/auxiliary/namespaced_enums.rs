@@ -18,4 +18,3 @@ impl Foo {
     pub fn foo() {}
     pub fn bar(&self) {}
 }
-

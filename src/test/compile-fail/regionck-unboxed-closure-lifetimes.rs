@@ -20,4 +20,3 @@ fn main() {
         f = move |a: isize, b: isize| { a + b + *c_ref };
     }
 }
-

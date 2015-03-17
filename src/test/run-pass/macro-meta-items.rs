@@ -38,4 +38,3 @@ pub fn main() {
     emit!(baz);
     println!("{}", MISTYPED);
 }
-

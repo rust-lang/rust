@@ -25,4 +25,3 @@ fn main() {
     let baz: Foo<usize> = panic!();
     //~^ ERROR not implemented
 }
-

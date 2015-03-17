@@ -24,4 +24,3 @@ fn foo(a: &mut A) {
 
 pub fn main() {
 }
-

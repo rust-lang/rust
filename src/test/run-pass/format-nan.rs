@@ -15,4 +15,3 @@ pub fn main() {
     assert_eq!(format!("{:e}", f64::NAN), x);
     assert_eq!(format!("{:E}", f64::NAN), x);
 }
-

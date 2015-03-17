@@ -36,4 +36,3 @@ fn main() {
     assert_eq!(a::TWO, 2);
     assert_eq!(b::THREE, 3);
 }
-

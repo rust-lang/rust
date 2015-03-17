@@ -21,4 +21,3 @@ fn borrowed_receiver_different_lifetimes<'a,'b>(x: &'a Foo) -> &'b () {
 }
 
 fn main() {}
-

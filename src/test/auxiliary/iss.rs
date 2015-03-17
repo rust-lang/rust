@@ -20,4 +20,3 @@ fn no_op() { }
 pub const D : C<fn()> = C {
     k: no_op as fn()
 };
-

@@ -35,4 +35,3 @@ fn main() {
     assert_eq!(call_g(g, "foo".to_string(), "bar".to_string()),
                "foobar");
 }
-
