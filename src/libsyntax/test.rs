@@ -121,13 +121,11 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         debug!("current path: {}",
                ast_util::path_name_i(&self.cx.path));
 
-        if is_test_fn(&self.cx, &*i) || is_bench_fn(&self.cx, &*i) {
+        let i = if is_test_fn(&self.cx, &*i) || is_bench_fn(&self.cx, &*i) {
             match i.node {
                 ast::ItemFn(_, ast::Unsafety::Unsafe, _, _, _) => {
                     let diag = self.cx.span_diagnostic;
-                    diag.span_fatal(i.span,
-                                    "unsafe functions cannot be used for \
-                                     tests");
+                    diag.span_fatal(i.span, "unsafe functions cannot be used for tests");
                 }
                 _ => {
                     debug!("this is a test function");
@@ -142,9 +140,19 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                     self.tests.push(i.ident);
                     // debug!("have {} test/bench functions",
                     //        cx.testfns.len());
+
+                    // Make all tests public so we can call them from outside
+                    // the module (note that the tests are re-exported and must
+                    // be made public themselves to avoid privacy errors).
+                    i.map(|mut i| {
+                        i.vis = ast::Public;
+                        i
+                    })
                 }
             }
-        }
+        } else {
+            i
+        };
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
