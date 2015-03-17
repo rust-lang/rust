@@ -334,7 +334,7 @@ macro_rules! repeat_u8_as_u64 {
 // But having the sign bit set is a pain, so 0x1d is probably better.
 //
 // And of course, 0x00 brings back the old world of zero'ing on drop.
-#[cfg(not(stage0))] pub const POST_DROP_U8: u8 = 0x0;
+#[cfg(not(stage0))] pub const POST_DROP_U8: u8 = 0x1d;
 #[cfg(not(stage0))] pub const POST_DROP_U32: u32 = repeat_u8_as_u32!(POST_DROP_U8);
 #[cfg(not(stage0))] pub const POST_DROP_U64: u64 = repeat_u8_as_u64!(POST_DROP_U8);
 
