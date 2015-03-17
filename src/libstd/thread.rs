@@ -402,18 +402,18 @@ pub fn park() {
 /// the specified duration has been reached (may wake spuriously).
 ///
 /// The semantics of this function are equivalent to `park()` except that the
-/// thread will be blocked for roughly no longer than dur. This method
+/// thread will be blocked for roughly no longer than *duration*. This method
 /// should not be used for precise timing due to anomalies such as
 /// preemption or platform differences that may not cause the maximum
-/// amount of time waited to be precisely dur
+/// amount of time waited to be precisely *duration* long.
 ///
 /// See the module doc for more detail.
 #[unstable(feature = "std_misc", reason = "recently introduced, depends on Duration")]
-pub fn park_timeout(dur: Duration) {
+pub fn park_timeout(duration: Duration) {
     let thread = current();
     let mut guard = thread.inner.lock.lock().unwrap();
     if !*guard {
-        let (g, _) = thread.inner.cvar.wait_timeout(guard, dur).unwrap();
+        let (g, _) = thread.inner.cvar.wait_timeout(guard, duration).unwrap();
         guard = g;
     }
     *guard = false;
@@ -502,11 +502,11 @@ impl Thread {
     /// Deprecated: use module-level free function.
     #[deprecated(since = "1.0.0", reason = "use module-level free function")]
     #[unstable(feature = "std_misc", reason = "recently introduced")]
-    pub fn park_timeout(dur: Duration) {
+    pub fn park_timeout(duration: Duration) {
         let thread = current();
         let mut guard = thread.inner.lock.lock().unwrap();
         if !*guard {
-            let (g, _) = thread.inner.cvar.wait_timeout(guard, dur).unwrap();
+            let (g, _) = thread.inner.cvar.wait_timeout(guard, duration).unwrap();
             guard = g;
         }
         *guard = false;
