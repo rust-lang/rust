@@ -842,6 +842,15 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 return nullptr;
             }
 
+            let predicates =
+                monomorphize::apply_param_substs(tcx,
+                                                 &substs,
+                                                 &impl_method_type.predicates.predicates);
+            if !predicates_hold(ccx, predicates.into_vec()) {
+                debug!("emit_vtable_methods: predicates do not hold");
+                return nullptr;
+            }
+
             trans_fn_ref_with_substs(ccx,
                                      impl_method_def_id,
                                      ExprId(0),
