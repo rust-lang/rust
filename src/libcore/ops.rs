@@ -983,8 +983,10 @@ impl fmt::Debug for RangeFull {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub start: Idx,
     /// The upper bound of the range (exclusive).
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub end: Idx,
 }
 
@@ -1001,10 +1003,9 @@ impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub start: Idx,
 }
-
-
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
@@ -1019,6 +1020,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub end: Idx,
 }
 
@@ -1028,7 +1030,6 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
         write!(fmt, "..{:?}", self.end)
     }
 }
-
 
 /// The `Deref` trait is used to specify the functionality of dereferencing
 /// operations like `*v`.
