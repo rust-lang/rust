@@ -8,19 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Check that an associated type cannot be bound in an expression path.
-
-trait Foo : ::std::marker::MarkerTrait {
-    type A;
-    fn bar() -> isize;
-}
-
-impl Foo for isize {
-    type A = usize;
-    fn bar() -> isize { 42 }
-}
-
-pub fn main() {
-    let x: isize = Foo::<A=usize>::bar();
-    //~^ ERROR unexpected binding of associated item in expression path
-}
+pub static ARRAY: &'static [u8] = &[1];
