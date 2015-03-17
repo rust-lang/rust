@@ -379,6 +379,19 @@ pub fn panicking() -> bool {
     unwind::panicking()
 }
 
+/// Put the current thread to sleep for the specified amount of time.
+///
+/// The thread may sleep longer than the duration specified due to scheduling
+/// specifics or platform-dependent functionality. Note that on unix platforms
+/// this function will not return early due to a signal being received or a
+/// spurious wakeup.
+#[unstable(feature = "thread_sleep",
+           reason = "recently added, needs an RFC, and `Duration` itself is \
+                     unstable")]
+pub fn sleep(dur: Duration) {
+    imp::sleep(dur)
+}
+
 /// Block unless or until the current thread's token is made available (may wake spuriously).
 ///
 /// See the module doc for more detail.
@@ -933,6 +946,12 @@ mod test {
 
             thread::park_timeout(Duration::seconds(10_000_000));
         }
+    }
+
+    #[test]
+    fn sleep_smoke() {
+        thread::sleep(Duration::milliseconds(2));
+        thread::sleep(Duration::milliseconds(-2));
     }
 
     // NOTE: the corresponding test for stderr is in run-pass/task-stderr, due

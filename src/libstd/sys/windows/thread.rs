@@ -10,43 +10,28 @@
 
 use prelude::v1::*;
 
-use boxed;
 use cmp;
 use io;
-use ptr;
-use libc;
+use libc::{self, c_void};
 use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, SIZE_T, BOOL,
                                    LPVOID, DWORD, LPDWORD, HANDLE};
-use thunk::Thunk;
+use mem;
+use ptr;
 use sys_common::stack::RED_ZONE;
 use sys_common::thread::*;
+use thunk::Thunk;
+use time::Duration;
 
 pub type rust_thread = HANDLE;
-pub type rust_thread_return = DWORD;
-
-pub type StartFn = extern "system" fn(*mut libc::c_void) -> rust_thread_return;
-
-#[no_stack_check]
-pub extern "system" fn thread_start(main: *mut libc::c_void) -> rust_thread_return {
-    return start_thread(main);
-}
 
 pub mod guard {
-    pub unsafe fn main() -> uint {
-        0
-    }
-
-    pub unsafe fn current() -> uint {
-        0
-    }
-
-    pub unsafe fn init() {
-    }
+    pub unsafe fn main() -> uint { 0 }
+    pub unsafe fn current() -> uint { 0 }
+    pub unsafe fn init() {}
 }
 
-pub unsafe fn create(stack: uint, p: Thunk) -> io::Result<rust_thread> {
-    let raw_p = boxed::into_raw(box p);
-    let arg = raw_p as *mut libc::c_void;
+pub unsafe fn create(stack: usize, p: Thunk) -> io::Result<rust_thread> {
+    let p = box p;
     // FIXME On UNIX, we guard against stack sizes that are too small but
     // that's because pthreads enforces that stacks are at least
     // PTHREAD_STACK_MIN bytes big.  Windows has no such lower limit, it's
@@ -58,14 +43,20 @@ pub unsafe fn create(stack: uint, p: Thunk) -> io::Result<rust_thread> {
     // 20 kB red zone, that makes for a 64 kB minimum stack.
     let stack_size = (cmp::max(stack, RED_ZONE) + 0xfffe) & (-0xfffe - 1);
     let ret = CreateThread(ptr::null_mut(), stack_size as libc::size_t,
-                           thread_start, arg, 0, ptr::null_mut());
+                           thread_start, &*p as *const _ as *mut _,
+                           0, ptr::null_mut());
 
-    if ret as uint == 0 {
-        // be sure to not leak the closure
-        let _p: Box<Thunk> = Box::from_raw(raw_p);
+    return if ret as usize == 0 {
         Err(io::Error::last_os_error())
     } else {
+        mem::forget(p); // ownership passed to CreateThread
         Ok(ret)
+    };
+
+    #[no_stack_check]
+    extern "system" fn thread_start(main: *mut libc::c_void) -> DWORD {
+        start_thread(main);
+        0
     }
 }
 
@@ -92,14 +83,29 @@ pub unsafe fn yield_now() {
     SwitchToThread();
 }
 
+pub fn sleep(dur: Duration) {
+    unsafe {
+        if dur < Duration::zero() {
+            return yield_now()
+        }
+        let ms = dur.num_milliseconds();
+        // if we have a fractional number of milliseconds then add an extra
+        // millisecond to sleep for
+        let extra = dur - Duration::milliseconds(ms);
+        let ms = ms + if extra.is_zero() {0} else {1};
+        Sleep(ms as DWORD);
+    }
+}
+
 #[allow(non_snake_case)]
 extern "system" {
     fn CreateThread(lpThreadAttributes: LPSECURITY_ATTRIBUTES,
                     dwStackSize: SIZE_T,
-                    lpStartAddress: StartFn,
+                    lpStartAddress: extern "system" fn(*mut c_void) -> DWORD,
                     lpParameter: LPVOID,
                     dwCreationFlags: DWORD,
                     lpThreadId: LPDWORD) -> HANDLE;
     fn WaitForSingleObject(hHandle: HANDLE, dwMilliseconds: DWORD) -> DWORD;
     fn SwitchToThread() -> BOOL;
+    fn Sleep(dwMilliseconds: DWORD);
 }
