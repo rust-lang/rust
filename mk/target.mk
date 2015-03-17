@@ -72,6 +72,7 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): CFG_COMPILER_HOST_TRIPLE = $(2)
 $$(TLIB$(1)_T_$(2)_H_$(3))/stamp.$(4): \
 		$$(CRATEFILE_$(4)) \
 		$$(CRATE_FULLDEPS_$(1)_T_$(2)_H_$(3)_$(4)) \
+		$$(LLVM_CONFIG_$(2)) \
 		$$(TSREQ$(1)_T_$(2)_H_$(3)) \
 		| $$(TLIB$(1)_T_$(2)_H_$(3))/
 	@$$(call E, rustc: $$(@D)/lib$(4))
