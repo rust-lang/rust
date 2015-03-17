@@ -71,6 +71,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use marker::Send;
 use mem::transmute;
 use option::Option::{self, Some, None};
 use raw::TraitObject;
@@ -153,6 +154,31 @@ impl Any {
         }
     }
 }
+
+#[cfg(not(stage0))]
+impl Any+Send {
+    /// Forwards to the method defined on the type `Any`.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn is<T: 'static>(&self) -> bool {
+        Any::is::<T>(self)
+    }
+
+    /// Forwards to the method defined on the type `Any`.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn downcast_ref<T: 'static>(&self) -> Option<&T> {
+        Any::downcast_ref::<T>(self)
+    }
+
+    /// Forwards to the method defined on the type `Any`.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
+    pub fn downcast_mut<T: 'static>(&mut self) -> Option<&mut T> {
+        Any::downcast_mut::<T>(self)
+    }
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // TypeID and its methods

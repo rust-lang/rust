@@ -314,9 +314,18 @@ pub trait Combine<'tcx> : Sized {
     }
 
     fn builtin_bounds(&self,
-                      a: ty::BuiltinBounds,
-                      b: ty::BuiltinBounds)
-                      -> cres<'tcx, ty::BuiltinBounds>;
+                      a: BuiltinBounds,
+                      b: BuiltinBounds)
+                      -> cres<'tcx, BuiltinBounds>
+    {
+        // Two sets of builtin bounds are only relatable if they are
+        // precisely the same (but see the coercion code).
+        if a != b {
+            Err(ty::terr_builtin_bounds(expected_found(self, a, b)))
+        } else {
+            Ok(a)
+        }
+    }
 
     fn trait_refs(&self,
                   a: &ty::TraitRef<'tcx>,

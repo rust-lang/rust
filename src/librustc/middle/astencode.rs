@@ -1102,6 +1102,11 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                         this.emit_enum_variant_arg(1, |this| Ok(this.emit_ty(ecx, self_ty)))
                     })
                 }
+                ty::UnsizeUpcast(target_ty) => {
+                    this.emit_enum_variant("UnsizeUpcast", 3, 1, |this| {
+                        this.emit_enum_variant_arg(0, |this| Ok(this.emit_ty(ecx, target_ty)))
+                    })
+                }
             }
         });
     }
@@ -1707,7 +1712,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_unsize_kind<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                                 -> ty::UnsizeKind<'tcx> {
         self.read_enum("UnsizeKind", |this| {
-            let variants = &["UnsizeLength", "UnsizeStruct", "UnsizeVtable"];
+            let variants = &["UnsizeLength", "UnsizeStruct", "UnsizeVtable", "UnsizeUpcast"];
             this.read_enum_variant(variants, |this, i| {
                 Ok(match i {
                     0 => {
@@ -1740,6 +1745,11 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                         let self_ty =
                             this.read_enum_variant_arg(1, |this| Ok(this.read_ty(dcx))).unwrap();
                         ty::UnsizeVtable(ty_trait, self_ty)
+                    }
+                    3 => {
+                        let target_ty =
+                            this.read_enum_variant_arg(0, |this| Ok(this.read_ty(dcx))).unwrap();
+                        ty::UnsizeUpcast(target_ty)
                     }
                     _ => panic!("bad enum variant for ty::UnsizeKind")
                 })

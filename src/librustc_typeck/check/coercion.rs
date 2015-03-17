@@ -334,15 +334,33 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     let ty = ty::mk_vec(tcx, t_a, None);
                     Some((ty, ty::UnsizeLength(len)))
                 }
-                (&ty::ty_trait(..), &ty::ty_trait(..)) => {
-                    None
+                (&ty::ty_trait(ref data_a), &ty::ty_trait(ref data_b)) => {
+                    // For now, we only support upcasts from
+                    // `Foo+Send` to `Foo` (really, any time there are
+                    // fewer builtin bounds then before). These are
+                    // convenient because they don't require any sort
+                    // of change to the vtable at runtime.
+                    if data_a.bounds.builtin_bounds != data_b.bounds.builtin_bounds &&
+                        data_a.bounds.builtin_bounds.is_superset(&data_b.bounds.builtin_bounds)
+                    {
+                        let bounds_a1 = ty::ExistentialBounds {
+                            region_bound: data_a.bounds.region_bound,
+                            builtin_bounds: data_b.bounds.builtin_bounds,
+                            projection_bounds: data_a.bounds.projection_bounds.clone(),
+                        };
+                        let ty_a1 = ty::mk_trait(tcx, data_a.principal.clone(), bounds_a1);
+                        match self.fcx.infcx().try(|_| self.subtype(ty_a1, ty_b)) {
+                            Ok(_) => Some((ty_b, ty::UnsizeUpcast(ty_b))),
+                            Err(_) => None,
+                        }
+                    } else {
+                        None
+                    }
                 }
-                (_, &ty::ty_trait(box ty::TyTrait { ref principal, ref bounds })) => {
-                    // FIXME what is the purpose of `ty`?
-                    let ty = ty::mk_trait(tcx, principal.clone(), bounds.clone());
-                    Some((ty, ty::UnsizeVtable(ty::TyTrait { principal: principal.clone(),
-                                                             bounds: bounds.clone() },
-                                               ty_a)))
+                (_, &ty::ty_trait(ref data)) => {
+                    Some((ty_b, ty::UnsizeVtable(ty::TyTrait { principal: data.principal.clone(),
+                                                               bounds: data.bounds.clone() },
+                                                 ty_a)))
                 }
                 (&ty::ty_struct(did_a, substs_a), &ty::ty_struct(did_b, substs_b))
                   if did_a == did_b => {

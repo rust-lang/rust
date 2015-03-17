@@ -14,7 +14,6 @@ use super::higher_ranked::HigherRankedRelations;
 use super::{cres};
 use super::Subtype;
 
-use middle::ty::{BuiltinBounds};
 use middle::ty::{self, Ty};
 use syntax::ast::{MutImmutable, MutMutable, Unsafety};
 use util::ppaux::mt_to_string;
@@ -92,15 +91,6 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
           (Unsafety::Normal, _) | (_, Unsafety::Normal) => Ok(Unsafety::Normal),
           (Unsafety::Unsafe, Unsafety::Unsafe) => Ok(Unsafety::Unsafe)
         }
-    }
-
-    fn builtin_bounds(&self,
-                      a: ty::BuiltinBounds,
-                      b: ty::BuiltinBounds)
-                      -> cres<'tcx, ty::BuiltinBounds> {
-        // More bounds is a subtype of fewer bounds, so
-        // the GLB (mutual subtype) is the union.
-        Ok(a.union(b))
     }
 
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region> {

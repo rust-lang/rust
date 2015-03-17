@@ -14,7 +14,6 @@ use super::lattice::*;
 use super::{cres};
 use super::{Subtype};
 
-use middle::ty::{BuiltinBounds};
 use middle::ty::{self, Ty};
 use syntax::ast::{MutMutable, MutImmutable, Unsafety};
 use util::ppaux::mt_to_string;
@@ -87,15 +86,6 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
           (Unsafety::Unsafe, _) | (_, Unsafety::Unsafe) => Ok(Unsafety::Unsafe),
           (Unsafety::Normal, Unsafety::Normal) => Ok(Unsafety::Normal),
         }
-    }
-
-    fn builtin_bounds(&self,
-                      a: ty::BuiltinBounds,
-                      b: ty::BuiltinBounds)
-                      -> cres<'tcx, ty::BuiltinBounds> {
-        // More bounds is a subtype of fewer bounds, so
-        // the LUB (mutual supertype) is the intersection.
-        Ok(a.intersection(b))
     }
 
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region> {
