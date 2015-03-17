@@ -48,12 +48,5 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use vec::Vec;
 
-// NB: remove when path reform lands
-#[doc(no_inline)] pub use old_path::{Path, GenericPath};
-// NB: remove when I/O reform lands
-#[doc(no_inline)] pub use old_io::{Buffer, Writer, Reader, Seek, BufferPrelude};
-// NB: remove when range syntax lands
-#[allow(deprecated)]
-#[doc(no_inline)] pub use iter::range;
-
+// FIXME(#23454) should these be here?
 #[doc(no_inline)] pub use num::wrapping::{Wrapping, WrappingOps};

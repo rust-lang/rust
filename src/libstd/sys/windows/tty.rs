@@ -29,7 +29,7 @@
 
 use prelude::v1::*;
 
-use old_io::{self, IoError, IoResult, MemReader};
+use old_io::{self, IoError, IoResult, MemReader, Reader};
 use iter::repeat;
 use libc::types::os::arch::extra::LPCVOID;
 use libc::{c_int, HANDLE, LPDWORD, DWORD, LPVOID};

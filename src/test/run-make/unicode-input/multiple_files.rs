@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{char, env};
-use std::old_io::{File, Command};
+use std::fs::File;
+use std::io::prelude::*;
+use std::path::Path;
+use std::process::Command;
 use std::rand::{thread_rng, Rng};
+use std::{char, env};
 
 // creates unicode_input_multiple_files_{main,chars}.rs, where the
 // former imports the latter. `_chars` just contains an identifier
@@ -40,7 +43,7 @@ fn main() {
     let main_file = tmpdir.join("unicode_input_multiple_files_main.rs");
     {
         let _ = File::create(&main_file).unwrap()
-            .write_str("mod unicode_input_multiple_files_chars;");
+            .write_all(b"mod unicode_input_multiple_files_chars;").unwrap();
     }
 
     for _ in 0..100 {
@@ -48,7 +51,7 @@ fn main() {
             let randoms = tmpdir.join("unicode_input_multiple_files_chars.rs");
             let mut w = File::create(&randoms).unwrap();
             for _ in 0..30 {
-                let _ = w.write_char(random_char());
+                write!(&mut w, "{}", random_char()).unwrap();
             }
         }
 
@@ -58,10 +61,9 @@ fn main() {
                              .arg("-c")
                              .arg(&format!("{} {}",
                                            rustc,
-                                           main_file.as_str()
-                                                    .unwrap()))
+                                           main_file.display()))
                              .output().unwrap();
-        let err = String::from_utf8_lossy(&result.error);
+        let err = String::from_utf8_lossy(&result.stderr);
 
         // positive test so that this test will be updated when the
         // compiler changes.

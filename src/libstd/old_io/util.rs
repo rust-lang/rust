@@ -14,7 +14,7 @@
 
 use prelude::v1::*;
 use cmp;
-use old_io;
+use old_io::{self, Reader, Writer, Buffer};
 use slice::bytes::MutableByteVector;
 
 /// Wraps a `Reader`, limiting the number of bytes that can be read from it.
@@ -325,7 +325,7 @@ impl<T: Iterator<Item=u8>> Reader for IterReader<T> {
 mod test {
     use prelude::v1::*;
 
-    use old_io::{MemReader, ByRefReader};
+    use old_io::{MemReader, ByRefReader, Reader, Writer, Buffer};
     use old_io;
     use super::*;
 

@@ -26,14 +26,15 @@
 #![allow(deprecated)] // for old path for dynamic lib
 
 use prelude::v1::*;
+use io::prelude::*;
 
 use dynamic_lib::DynamicLibrary;
-use io;
-use io::prelude::*;
 use ffi::CStr;
 use intrinsics;
+use io;
 use libc;
 use mem;
+use old_path::Path;
 use ptr;
 use str;
 use sync::{StaticMutex, MUTEX_INIT};

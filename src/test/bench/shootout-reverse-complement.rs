@@ -45,7 +45,7 @@
 extern crate libc;
 
 use std::old_io::stdio::{stdin_raw, stdout_raw};
-use std::old_io::{IoResult, EndOfFile};
+use std::old_io::*;
 use std::ptr::{copy_memory, Unique};
 use std::thread;
 

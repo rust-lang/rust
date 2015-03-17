@@ -20,6 +20,7 @@ use old_io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode
 use old_io::{IoResult, FileStat, SeekStyle};
 use old_io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
 use old_io;
+use old_path::{Path, GenericPath};
 use libc::{self, c_int, c_void};
 use mem;
 use ptr;

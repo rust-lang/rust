@@ -533,8 +533,8 @@ mod tests {
     use io::prelude::*;
     use prelude::v1::{Ok, Err, drop, Some, Vec};
     use prelude::v1::{String, Clone};
-    use prelude::v1::{Str, AsSlice, ToString, GenericPath};
-    use old_path;
+    use prelude::v1::{Str, AsSlice, ToString};
+    use old_path::{self, GenericPath};
     use old_io::fs::PathExtensions;
     use rt::running_on_valgrind;
     use str;

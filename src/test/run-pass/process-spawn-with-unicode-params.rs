@@ -28,9 +28,9 @@ use std::path::{Path, PathBuf};
 
 fn main() {
     let my_args = env::args().collect::<Vec<_>>();
-    let my_cwd  = PathBuf::new(os::getcwd().unwrap().as_str().unwrap());
+    let my_cwd  = env::current_dir().unwrap();
     let my_env  = env::vars().collect::<Vec<_>>();
-    let my_path = PathBuf::new(os::self_exe_name().unwrap().as_str().unwrap());
+    let my_path = env::current_exe().unwrap();
     let my_dir  = my_path.parent().unwrap();
     let my_ext  = my_path.extension().and_then(|s| s.to_str()).unwrap_or("");
 

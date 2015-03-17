@@ -10,7 +10,6 @@
 //
 // ignore-lexer-test FIXME #15677
 
-use prelude::v1::*;
 use io::prelude::*;
 
 use env;

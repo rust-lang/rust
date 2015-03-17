@@ -11,24 +11,25 @@
 // A reduced version of the rustbook ice. The problem this encountered
 // had to do with trans ignoring binders.
 
-#![feature(associated_types)]
-#![feature(macro_rules)]
-
 use std::iter;
 use std::os;
-use std::old_io::File;
+use std::fs::File;
+use std::io::prelude::*;
+use std::env;
+use std::path::Path;
 
-#[allow(unused)]
-pub fn parse_summary<R: Reader>(_: R, _: &Path) {
+pub fn parse_summary<R: Read>(_: R, _: &Path) {
      let path_from_root = Path::new("");
-     Path::new(iter::repeat("../")
+     Path::new(&iter::repeat("../")
                .take(path_from_root.components().count() - 1)
                .collect::<String>());
  }
 
-fn main() {
-    let cwd = os::getcwd().unwrap();
+fn foo() {
+    let cwd = env::current_dir().unwrap();
     let src = cwd.clone();
-    let summary = File::open(&src.join("SUMMARY.md"));
+    let summary = File::open(&src.join("SUMMARY.md")).unwrap();
     let _ = parse_summary(summary, &src);
 }
+
+fn main() {}

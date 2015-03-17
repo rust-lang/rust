@@ -55,7 +55,7 @@ impl Writer for Vec<u8> {
 ///
 /// ```
 /// # #![allow(unused_must_use)]
-/// use std::old_io::MemWriter;
+/// use std::old_io::*;
 ///
 /// let mut w = MemWriter::new();
 /// w.write(&[0, 1, 2]);
@@ -115,7 +115,7 @@ impl Writer for MemWriter {
 ///
 /// ```
 /// # #![allow(unused_must_use)]
-/// use std::old_io::MemReader;
+/// use std::old_io::*;
 ///
 /// let mut r = MemReader::new(vec!(0, 1, 2));
 ///
@@ -245,7 +245,7 @@ impl<'a> Buffer for &'a [u8] {
 ///
 /// ```
 /// # #![allow(unused_must_use)]
-/// use std::old_io::BufWriter;
+/// use std::old_io::*;
 ///
 /// let mut buf = [0; 4];
 /// {
@@ -317,7 +317,7 @@ impl<'a> Seek for BufWriter<'a> {
 ///
 /// ```
 /// # #![allow(unused_must_use)]
-/// use std::old_io::BufReader;
+/// use std::old_io::*;
 ///
 /// let buf = [0, 1, 2, 3];
 /// let mut r = BufReader::new(&buf);
@@ -394,8 +394,8 @@ impl<'a> Buffer for BufReader<'a> {
 #[cfg(test)]
 mod test {
     extern crate "test" as test_crate;
-    use old_io::{SeekSet, SeekCur, SeekEnd, Reader, Writer, Seek};
-    use prelude::v1::{Ok, Err, range,  Vec, Buffer,  AsSlice};
+    use old_io::{SeekSet, SeekCur, SeekEnd, Reader, Writer, Seek, Buffer};
+    use prelude::v1::{Ok, Err, Vec,  AsSlice};
     use prelude::v1::IteratorExt;
     use old_io;
     use iter::repeat;

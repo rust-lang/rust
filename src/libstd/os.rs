@@ -126,6 +126,7 @@ pub const TMPBUF_SZ : uint = 1000;
 ///
 /// ```
 /// use std::os;
+/// use std::old_path::{Path, GenericPath};
 ///
 /// // We assume that we are in a valid directory.
 /// let current_working_directory = os::getcwd().unwrap();
@@ -265,6 +266,7 @@ pub fn unsetenv(n: &str) {
 ///
 /// ```
 /// use std::os;
+/// use std::old_path::{Path, GenericPath};
 ///
 /// let key = "PATH";
 /// match os::getenv_as_bytes(key) {
@@ -358,6 +360,7 @@ pub fn dll_filename(base: &str) -> String {
 ///
 /// ```
 /// use std::os;
+/// use std::old_path::{Path, GenericPath};
 ///
 /// match os::self_exe_name() {
 ///     Some(exe_path) => println!("Path of this executable is: {}", exe_path.display()),
@@ -378,6 +381,7 @@ pub fn self_exe_name() -> Option<Path> {
 ///
 /// ```
 /// use std::os;
+/// use std::old_path::{Path, GenericPath};
 ///
 /// match os::self_exe_path() {
 ///     Some(exe_path) => println!("Executable's Path is: {}", exe_path.display()),
@@ -407,6 +411,7 @@ pub fn self_exe_path() -> Option<Path> {
 ///
 /// ```
 /// use std::os;
+/// use std::old_path::{Path, GenericPath};
 ///
 /// match os::homedir() {
 ///     Some(ref p) => println!("{}", p.display()),
@@ -497,7 +502,7 @@ pub fn tmpdir() -> Path {
 ///
 /// ```
 /// use std::os;
-/// use std::old_path::Path;
+/// use std::old_path::{Path, GenericPath};
 ///
 /// // Assume we're in a path like /home/someuser
 /// let rel_path = Path::new("..");
@@ -529,7 +534,7 @@ pub fn make_absolute(p: &Path) -> IoResult<Path> {
 ///
 /// ```
 /// use std::os;
-/// use std::old_path::Path;
+/// use std::old_path::{Path, GenericPath};
 ///
 /// let root = Path::new("/");
 /// assert!(os::change_dir(&root).is_ok());
@@ -1496,6 +1501,8 @@ mod tests {
     use os;
     use rand::Rng;
     use rand;
+    use old_path::{Path, GenericPath};
+    use old_io::{Reader, Writer, Seek};
 
     #[test]
     pub fn last_os_error() {

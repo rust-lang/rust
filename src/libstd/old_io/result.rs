@@ -80,7 +80,7 @@ impl<T, A: Acceptor<T>> Acceptor<T> for IoResult<A> {
 mod test {
     use prelude::v1::*;
     use super::super::mem::*;
-    use old_io;
+    use old_io::{self, Reader, Writer};
 
     #[test]
     fn test_option_writer() {

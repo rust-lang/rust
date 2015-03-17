@@ -11,18 +11,15 @@
 // Be sure that when a SIGPIPE would have been received that the entire process
 // doesn't die in a ball of fire, but rather it's gracefully handled.
 
-use std::os;
 use std::env;
-use std::old_io::PipeStream;
-use std::old_io::Command;
+use std::io::prelude::*;
+use std::io;
+use std::process::{Command, Stdio};
 
 fn test() {
-    let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
-    let reader = PipeStream::open(reader);
-    let mut writer = PipeStream::open(writer);
-    drop(reader);
-
-    let _ = writer.write(&[1]);
+    let _ = io::stdin().read_line(&mut String::new());
+    io::stdout().write(&[1]);
+    assert!(io::stdout().flush().is_err());
 }
 
 fn main() {
@@ -32,6 +29,9 @@ fn main() {
     }
 
     let mut p = Command::new(&args[0])
+                        .stdout(Stdio::piped())
+                        .stdin(Stdio::piped())
                         .arg("test").spawn().unwrap();
+    drop(p.stdout.take());
     assert!(p.wait().unwrap().success());
 }

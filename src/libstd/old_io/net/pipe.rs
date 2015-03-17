@@ -31,6 +31,7 @@ use prelude::v1::*;
 use ffi::CString;
 use old_path::BytesContainer;
 use old_io::{Listener, Acceptor, IoResult, TimedOut, standard_error};
+use old_io::{Reader, Writer};
 use sys::pipe::UnixAcceptor as UnixAcceptorImp;
 use sys::pipe::UnixListener as UnixListenerImp;
 use sys::pipe::UnixStream as UnixStreamImp;
@@ -55,6 +56,8 @@ impl UnixStream {
     /// ```
     /// # #![allow(unused_must_use)]
     /// use std::old_io::net::pipe::UnixStream;
+    /// use std::old_io::*;
+    /// use std::old_path::Path;
     ///
     /// let server = Path::new("path/to/my/socket");
     /// let mut stream = UnixStream::connect(&server);
@@ -180,7 +183,8 @@ impl UnixListener {
     /// ```
     /// # fn foo() {
     /// use std::old_io::net::pipe::UnixListener;
-    /// use std::old_io::{Listener, Acceptor};
+    /// use std::old_io::*;
+    /// use std::old_path::Path;
     ///
     /// let server = Path::new("/path/to/my/socket");
     /// let stream = UnixListener::bind(&server);
@@ -285,6 +289,7 @@ mod tests {
     use old_io::{EndOfFile, TimedOut, ShortWrite, IoError, ConnectionReset};
     use old_io::{NotConnected, BrokenPipe, FileNotFound, InvalidInput, OtherIoError};
     use old_io::{PermissionDenied, Acceptor, Listener};
+    use old_io::{Reader, Writer};
     use old_io::test::*;
     use super::*;
     use sync::mpsc::channel;
