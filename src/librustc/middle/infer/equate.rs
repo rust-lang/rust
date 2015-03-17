@@ -16,8 +16,6 @@ use middle::infer::{Subtype};
 use middle::infer::type_variable::{EqTo};
 use util::ppaux::{Repr};
 
-use syntax::ast::Unsafety;
-
 pub struct Equate<'f, 'tcx: 'f> {
     fields: CombineFields<'f, 'tcx>
 }
@@ -52,15 +50,6 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
                b.repr(self.fields.infcx.tcx));
         self.infcx().region_vars.make_eqregion(Subtype(self.trace()), a, b);
         Ok(a)
-    }
-
-
-    fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
-        if a != b {
-            Err(ty::terr_unsafety_mismatch(expected_found(self, a, b)))
-        } else {
-            Ok(a)
-        }
     }
 
     fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {

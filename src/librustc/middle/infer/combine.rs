@@ -263,7 +263,13 @@ pub trait Combine<'tcx> : Sized {
         self.tys_with_variance(ty::Contravariant, a, b).and_then(|t| Ok(t))
     }
 
-    fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety>;
+    fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
+        if a != b {
+            Err(ty::terr_unsafety_mismatch(expected_found(self, a, b)))
+        } else {
+            Ok(a)
+        }
+    }
 
     fn abi(&self, a: abi::Abi, b: abi::Abi) -> cres<'tcx, abi::Abi> {
         if a == b {
