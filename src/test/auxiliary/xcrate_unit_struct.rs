@@ -36,4 +36,3 @@ pub enum EnumWithVariants {
     EnumVariant,
     EnumVariantArg(int)
 }
-

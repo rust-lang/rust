@@ -36,4 +36,3 @@ pub fn main() {
         unsafe { *(0 as *mut int) = 0; }
     }
 }
-

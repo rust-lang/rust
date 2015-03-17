@@ -28,4 +28,3 @@ pub fn main() {
         Thing::A(_a) => 0,
     };
 }
-

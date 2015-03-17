@@ -61,15 +61,15 @@ struct Circle {
 
 impl Circle {
     fn reference(&self) {
-       println!("taking self by reference!"); 
+       println!("taking self by reference!");
     }
 
     fn mutable_reference(&mut self) {
-       println!("taking self by mutable reference!"); 
+       println!("taking self by mutable reference!");
     }
 
     fn takes_ownership(self) {
-       println!("taking ownership of self!"); 
+       println!("taking ownership of self!");
     }
 }
 ```

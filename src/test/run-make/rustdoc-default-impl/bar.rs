@@ -14,4 +14,3 @@ pub use foo::bar;
 
 pub fn wut<T: bar::Bar>() {
 }
-

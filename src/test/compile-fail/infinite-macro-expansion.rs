@@ -15,4 +15,3 @@ macro_rules! recursive {
 fn main() {
     recursive!()
 }
-

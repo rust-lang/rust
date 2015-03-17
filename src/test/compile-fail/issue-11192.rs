@@ -30,4 +30,3 @@ fn main() {
     test(&*ptr);
     //~^ ERROR: cannot borrow `*ptr` as immutable
 }
-

@@ -152,4 +152,3 @@ fn main() {
     borrow_after_mut_borrow_nested();
     mut_borrow_after_borrow_nested();
 }
-

@@ -17,4 +17,3 @@ impl SomeNonExistentTrait for isize {}
 
 fn f<T:SomeNonExistentTrait>() {}
 //~^ ERROR use of undeclared trait name `SomeNonExistentTrait`
-

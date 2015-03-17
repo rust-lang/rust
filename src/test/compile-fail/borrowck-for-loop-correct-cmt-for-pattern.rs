@@ -32,4 +32,3 @@ fn main() {
     for &a in x.iter() {    //~ ERROR cannot move out
     }
 }
-

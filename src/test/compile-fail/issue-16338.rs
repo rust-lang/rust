@@ -18,4 +18,3 @@ fn main() {
     //~| expected &-ptr
     //~| found struct `core::raw::Slice`
 }
-

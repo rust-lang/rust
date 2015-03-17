@@ -32,5 +32,3 @@ fn main() {
     let ans = s();
     assert_eq!(ans, 9);
 }
-
-

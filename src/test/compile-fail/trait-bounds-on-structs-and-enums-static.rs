@@ -23,4 +23,3 @@ static X: Foo<usize> = Foo {
 
 fn main() {
 }
-

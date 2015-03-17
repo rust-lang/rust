@@ -124,4 +124,3 @@ impl<'a, 'ast> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast>
     fn source(&'a self, edge: &Edge<'a>) -> Node<'a> { self.cfg.source(edge) }
     fn target(&'a self, edge: &Edge<'a>) -> Node<'a> { self.cfg.target(edge) }
 }
-

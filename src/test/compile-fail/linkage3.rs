@@ -18,4 +18,3 @@ extern {
 fn main() {
     println!("{:?}", foo);
 }
-

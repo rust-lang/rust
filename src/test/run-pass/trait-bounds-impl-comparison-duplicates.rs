@@ -21,5 +21,3 @@ impl A for int {
 }
 
 fn main() {}
-
-

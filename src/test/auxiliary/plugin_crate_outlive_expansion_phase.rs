@@ -32,4 +32,3 @@ pub fn registrar(_: &mut Registry) {
     thread_local!(static FOO: RefCell<Option<Box<Any+Send>>> = RefCell::new(None));
     FOO.with(|s| *s.borrow_mut() = Some(box Foo { foo: 10 } as Box<Any+Send>));
 }
-

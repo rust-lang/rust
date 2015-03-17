@@ -32,5 +32,3 @@ extern fn eh_personality() {}
 pub trait Copy : PhantomFn<Self> {
     // Empty.
 }
-
-

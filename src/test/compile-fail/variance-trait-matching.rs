@@ -27,4 +27,3 @@ fn f() -> &'static mut isize {
 }
 
 fn main() {}
-

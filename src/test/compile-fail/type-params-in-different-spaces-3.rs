@@ -15,4 +15,3 @@ trait Tr : Sized {
 }
 
 fn main() {}
-

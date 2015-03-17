@@ -164,4 +164,3 @@ default_impl! { i64, 0 }
 
 default_impl! { f32, 0.0f32 }
 default_impl! { f64, 0.0f64 }
-

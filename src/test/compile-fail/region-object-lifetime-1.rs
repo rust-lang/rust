@@ -26,4 +26,3 @@ fn borrowed_receiver_same_lifetime<'a>(x: &'a Foo) -> &'a () {
 
 #[rustc_error]
 fn main() {} //~ ERROR compilation successful
-

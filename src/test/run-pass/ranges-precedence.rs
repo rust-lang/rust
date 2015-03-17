@@ -58,4 +58,3 @@ fn main() {
     let y = ..;
     assert!(y == (..));
 }
-

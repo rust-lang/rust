@@ -20,4 +20,3 @@ mod test {
 }
 
 fn main() {}
-

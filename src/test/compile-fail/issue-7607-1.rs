@@ -17,4 +17,3 @@ impl Fo { //~ ERROR use of undeclared type name `Fo`
 }
 
 fn main() {}
-

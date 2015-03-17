@@ -197,4 +197,3 @@ macro_rules! log_enabled {
         ::log::mod_enabled(lvl, module_path!())
     })
 }
-

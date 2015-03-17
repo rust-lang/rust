@@ -20,4 +20,3 @@ fn foo(b: Box<Bar()>) {
 }
 
 fn main() { }
-

@@ -302,4 +302,3 @@ pub fn select_new_fcx_obligations(fcx: &FnCtxt) {
         Err(errors) => { report_fulfillment_errors(fcx.infcx(), &errors); }
     }
 }
-

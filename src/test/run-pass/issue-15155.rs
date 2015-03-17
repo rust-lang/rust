@@ -28,5 +28,3 @@ fn main() {
     test_trait::<TraitWithSend>();
     test_trait::<IndirectTraitWithSend>();
 }
-
-

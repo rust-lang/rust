@@ -17,4 +17,3 @@ impl Foo {
 } //~ ERROR expected one of `extern`, `fn`, `pub`, `type`, or `unsafe`, found `}`
 
 fn main() {}
-

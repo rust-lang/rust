@@ -13,4 +13,3 @@ extern crate libc;
 extern "C" {
     pub fn rand() -> libc::c_int;
 }
-

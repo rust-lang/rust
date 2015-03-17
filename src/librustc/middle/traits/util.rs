@@ -568,5 +568,3 @@ impl<'tcx> fmt::Debug for super::MismatchedProjectionTypes<'tcx> {
         write!(f, "MismatchedProjectionTypes(..)")
     }
 }
-
-

@@ -29,4 +29,3 @@ pub fn main() {
     // least throw a conventional error.
     assert!({one! two});
 }
-

@@ -28,4 +28,3 @@ fn main() {
     let t1: *mut [u8; 2] = &mut x1.y as *mut _;
     let h1: *mut [u8; 2] = &mut x1.y as *mut [u8; 2];
 }
-

@@ -14,4 +14,3 @@
 
 extern crate "issue-12133-rlib" as a;
 extern crate "issue-12133-dylib" as b;
-

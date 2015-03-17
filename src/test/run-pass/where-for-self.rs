@@ -62,4 +62,3 @@ fn main() {
         assert!(COUNT == 12);
     }
 }
-

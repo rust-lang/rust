@@ -15,4 +15,3 @@ fn main() {
     let () = zero.call_mut(());
     //~^ ERROR we have not yet inferred what kind of closure it is
 }
-

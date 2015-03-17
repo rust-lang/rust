@@ -23,4 +23,3 @@ fn i<'a, T, U>(v: Box<A<U>+'a>) -> Box<X+'static> {
 }
 
 fn main() {}
-

@@ -26,4 +26,3 @@ fn borrowed_receiver_related_lifetimes<'a,'b>(x: &'a (Foo+'b)) -> &'a () {
 
 #[rustc_error]
 fn main() {} //~ ERROR compilation successful
-

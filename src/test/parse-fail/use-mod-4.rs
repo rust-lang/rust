@@ -12,4 +12,3 @@ use foo::self;
 //~^ ERROR expected identifier, found keyword `self`
 
 fn main() {}
-

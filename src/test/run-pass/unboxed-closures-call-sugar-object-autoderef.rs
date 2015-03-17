@@ -26,4 +26,3 @@ pub fn main() {
     println!("{}", z);
     assert_eq!(z, 5);
 }
-

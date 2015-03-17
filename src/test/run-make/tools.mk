@@ -83,4 +83,3 @@ REMOVE_RLIBS      = rm $(TMPDIR)/$(call RLIB_GLOB,$(1))
 
 $(TMPDIR)/lib%.o: %.c
 	$(CC) -c -o $@ $<
-

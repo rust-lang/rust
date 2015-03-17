@@ -20,4 +20,3 @@ fn equal2<T>(_: &T, _: &T) -> bool where T: {
 
 fn main() {
 }
-
