@@ -11,6 +11,6 @@
 
 pub use local as local_alias;
 
-mod local { }
+pub mod local { }
 
 pub fn main() {}
