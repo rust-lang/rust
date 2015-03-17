@@ -15,8 +15,6 @@ use super::{cres};
 use super::Subtype;
 
 use middle::ty::{self, Ty};
-use syntax::ast::{MutImmutable, MutMutable, Unsafety};
-use util::ppaux::mt_to_string;
 use util::ppaux::Repr;
 
 /// "Greatest lower bound" (common subtype)
@@ -52,14 +50,6 @@ impl<'f, 'tcx> Combine<'tcx> for Glb<'f, 'tcx> {
             ty::Covariant => self.regions(a, b),
             ty::Bivariant => self.bivariate().regions(a, b),
             ty::Contravariant => self.lub().regions(a, b),
-        }
-    }
-
-
-    fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
-        match (a, b) {
-          (Unsafety::Normal, _) | (_, Unsafety::Normal) => Ok(Unsafety::Normal),
-          (Unsafety::Unsafe, Unsafety::Unsafe) => Ok(Unsafety::Unsafe)
         }
     }
 

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use super::combine::*;
-use super::{cres, CresCompare};
+use super::{cres};
 use super::higher_ranked::HigherRankedRelations;
 use super::{Subtype};
 use super::type_variable::{SubtypeOf, SupertypeOf};
@@ -17,9 +17,6 @@ use super::type_variable::{SubtypeOf, SupertypeOf};
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use util::ppaux::{Repr};
-
-use syntax::ast::{MutImmutable, MutMutable, Unsafety};
-
 
 /// "Greatest lower bound" (common subtype)
 pub struct Sub<'f, 'tcx: 'f> {
@@ -64,12 +61,6 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
                b.repr(self.tcx()));
         self.infcx().region_vars.make_subregion(Subtype(self.trace()), a, b);
         Ok(a)
-    }
-
-    fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
-        self.lub().unsafeties(a, b).compare(b, || {
-            ty::terr_unsafety_mismatch(expected_found(self, a, b))
-        })
     }
 
     fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
