@@ -24,6 +24,7 @@
 #![cfg_attr(stage0, feature(custom_attribute))]
 #![crate_name = "unicode"]
 #![unstable(feature = "unicode")]
+#![feature(lang_items)]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]

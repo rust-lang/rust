@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(stage0)]
 #[cfg(not(test))]
 use core::ptr::PtrExt;
 
@@ -387,7 +388,6 @@ mod imp {
 mod test {
     extern crate test;
     use self::test::Bencher;
-    use core::ptr::PtrExt;
     use boxed::Box;
     use heap;
 

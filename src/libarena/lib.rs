@@ -46,6 +46,7 @@ use std::intrinsics::{TyDesc, get_tydesc};
 use std::intrinsics;
 use std::marker;
 use std::mem;
+#[cfg(stage0)]
 use std::num::{Int, UnsignedInt};
 use std::ptr;
 use std::rc::Rc;

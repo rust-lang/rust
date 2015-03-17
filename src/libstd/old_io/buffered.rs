@@ -20,6 +20,7 @@ use ops::Drop;
 use option::Option;
 use option::Option::{Some, None};
 use result::Result::Ok;
+#[cfg(stage0)]
 use slice::{SliceExt};
 use slice;
 use vec::Vec;

@@ -251,6 +251,7 @@ pub use self::FileMode::*;
 pub use self::FileAccess::*;
 pub use self::IoErrorKind::*;
 
+#[cfg(stage0)]
 use char::CharExt;
 use default::Default;
 use error::Error;
@@ -267,7 +268,9 @@ use boxed::Box;
 use result::Result;
 use result::Result::{Ok, Err};
 use sys;
+#[cfg(stage0)]
 use slice::SliceExt;
+#[cfg(stage0)]
 use str::StrExt;
 use str;
 use string::String;
@@ -932,6 +935,7 @@ impl<'a> Reader for &'a mut (Reader+'a) {
 // API yet. If so, it should be a method on Vec.
 unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: uint, end: uint) -> &'a mut [T] {
     use slice;
+    #[cfg(stage0)]
     use ptr::PtrExt;
 
     assert!(start <= end);
@@ -1849,7 +1853,7 @@ impl fmt::Display for FilePermission {
 mod tests {
     use self::BadReaderBehavior::*;
     use super::{IoResult, Reader, MemReader, NoProgress, InvalidInput, Writer};
-    use prelude::v1::{Ok, Vec, Buffer, SliceExt};
+    use prelude::v1::{Ok, Vec, Buffer};
     use usize;
 
     #[derive(Clone, PartialEq, Debug)]

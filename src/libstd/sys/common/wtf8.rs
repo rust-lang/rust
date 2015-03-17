@@ -172,6 +172,7 @@ impl Wtf8Buf {
         Wtf8Buf { bytes: string.into_bytes() }
     }
 
+    #[cfg(stage0)]
     /// Create a WTF-8 string from an UTF-8 `&str` slice.
     ///
     /// This copies the content of the slice.
@@ -180,6 +181,17 @@ impl Wtf8Buf {
     #[inline]
     pub fn from_str(str: &str) -> Wtf8Buf {
         Wtf8Buf { bytes: slice::SliceExt::to_vec(str.as_bytes()) }
+    }
+
+    #[cfg(not(stage0))]
+    /// Create a WTF-8 string from an UTF-8 `&str` slice.
+    ///
+    /// This copies the content of the slice.
+    ///
+    /// Since WTF-8 is a superset of UTF-8, this always succeeds.
+    #[inline]
+    pub fn from_str(str: &str) -> Wtf8Buf {
+        Wtf8Buf { bytes: <[_]>::to_vec(str.as_bytes()) }
     }
 
     /// Create a WTF-8 string from a potentially ill-formed UTF-16 slice of 16-bit code units.

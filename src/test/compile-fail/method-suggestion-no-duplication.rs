@@ -19,6 +19,4 @@ fn main() {
     //~^ ERROR does not implement any method
     //~^^ HELP #1: `core::slice::SliceExt`
     //~^^^ HELP #2: `core::str::StrExt`
-    //~^^^^ HELP #3: `collections::slice::SliceExt`
-    //~^^^^^ HELP #4: `collections::str::StrExt`
 }

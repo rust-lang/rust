@@ -239,6 +239,24 @@ pub fn collect_language_items(krate: &ast::Crate,
 
 lets_do_this! {
 //  Variant name,                    Name,                      Method name;
+    CharImplItem,                    "char",                    char_impl;
+    StrImplItem,                     "str",                     str_impl;
+    SliceImplItem,                   "slice",                   slice_impl;
+    ConstPtrImplItem,                "const_ptr",               const_ptr_impl;
+    MutPtrImplItem,                  "mut_ptr",                 mut_ptr_impl;
+    I8ImplItem,                      "i8",                      i8_impl;
+    I16ImplItem,                     "i16",                     i16_impl;
+    I32ImplItem,                     "i32",                     i32_impl;
+    I64ImplItem,                     "i64",                     i64_impl;
+    IsizeImplItem,                   "isize",                   isize_impl;
+    U8ImplItem,                      "u8",                      u8_impl;
+    U16ImplItem,                     "u16",                     u16_impl;
+    U32ImplItem,                     "u32",                     u32_impl;
+    U64ImplItem,                     "u64",                     u64_impl;
+    UsizeImplItem,                   "usize",                   usize_impl;
+    F32ImplItem,                     "f32",                     f32_impl;
+    F64ImplItem,                     "f64",                     f64_impl;
+
     SendTraitLangItem,               "send",                    send_trait;
     SizedTraitLangItem,              "sized",                   sized_trait;
     CopyTraitLangItem,               "copy",                    copy_trait;
