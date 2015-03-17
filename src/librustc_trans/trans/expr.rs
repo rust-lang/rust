@@ -290,16 +290,15 @@ pub fn copy_fat_ptr(bcx: Block, src_ptr: ValueRef, dst_ptr: ValueRef) {
     Store(bcx, Load(bcx, get_len(bcx, src_ptr)), get_len(bcx, dst_ptr));
 }
 
-// Retrieve the information we are losing (making dynamic) in an unsizing
-// adjustment.
-//
-// The `unadjusted_val` argument is a bit funny. It is intended
-// for use in an upcast, where the new vtable for an object will
-// be drived from the old one. Hence it is a pointer to the fat
-// pointer.
+/// Retrieve the information we are losing (making dynamic) in an unsizing
+/// adjustment.
+///
+/// The `unadjusted_val` argument is a bit funny. It is intended
+/// for use in an upcast, where the new vtable for an object will
+/// be drived from the old one. Hence it is a pointer to the fat
+/// pointer.
 pub fn unsized_info_bcx<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     kind: &ty::UnsizeKind<'tcx>,
-                                    id: ast::NodeId,
                                     unadjusted_ty: Ty<'tcx>,
                                     unadjusted_val: ValueRef, // see above (*)
                                     param_substs: &'tcx subst::Substs<'tcx>)
@@ -307,7 +306,6 @@ pub fn unsized_info_bcx<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     unsized_info(
         bcx.ccx(),
         kind,
-        id,
         unadjusted_ty,
         param_substs,
         || Load(bcx, GEPi(bcx, unadjusted_val, &[0, abi::FAT_PTR_EXTRA])))
@@ -318,21 +316,18 @@ pub fn unsized_info_bcx<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn unsized_info<'ccx, 'tcx, MK_UPCAST_VTABLE>(
     ccx: &CrateContext<'ccx, 'tcx>,
     kind: &ty::UnsizeKind<'tcx>,
-    id: ast::NodeId,
     unadjusted_ty: Ty<'tcx>,
     param_substs: &'tcx subst::Substs<'tcx>,
     mk_upcast_vtable: MK_UPCAST_VTABLE) // see notes above
     -> ValueRef
     where MK_UPCAST_VTABLE: FnOnce() -> ValueRef
 {
-    debug!("unsized_info(kind={:?}, id={}, unadjusted_ty={})",
-           kind, id, unadjusted_ty.repr(ccx.tcx()));
     match kind {
         &ty::UnsizeLength(len) => C_uint(ccx, len),
         &ty::UnsizeStruct(box ref k, tp_index) => match unadjusted_ty.sty {
             ty::ty_struct(_, ref substs) => {
                 let ty_substs = substs.types.get_slice(subst::TypeSpace);
-                unsized_info(ccx, k, id, ty_substs[tp_index], param_substs,
+                unsized_info(ccx, k, ty_substs[tp_index], param_substs,
                              mk_upcast_vtable)
             }
             _ => ccx.sess().bug(&format!("UnsizeStruct with bad sty: {}",
@@ -387,11 +382,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // purely a type-level thing
         }
         AdjustDerefRef(ref adj) => {
-            let (autoderefs, use_autoref) = match adj.autoref {
-                // Extracting a value from a box counts as a deref, but if we are
-                // just converting Box<[T, ..n]> to Box<[T]> we aren't really doing
-                // a deref (and wouldn't if we could treat Box like a normal struct).
-                Some(ty::AutoUnsizeUniq(..)) => (adj.autoderefs - 1, true),
+            let skip_reborrows = match adj.autoref {
                 // We are a bit paranoid about adjustments and thus might have a re-
                 // borrow here which merely derefs and then refs again (it might have
                 // a different region or mutability, but we don't care here. It might
@@ -402,36 +393,38 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     match datum.ty.sty {
                         // Don't skip a conversion from Box<T> to &T, etc.
                         ty::ty_rptr(..) => {
-                            let method_call = MethodCall::autoderef(expr.id, (adj.autoderefs-1) as u32);
-                            let method = bcx.tcx().method_map.borrow().get(&method_call).is_some();
-                            if method {
+                            let autoderef = (adj.autoderefs - 1) as u32;
+                            let method_call = MethodCall::autoderef(expr.id, autoderef);
+                            if bcx.tcx().method_map.borrow().contains_key(&method_call) {
                                 // Don't skip an overloaded deref.
-                                (adj.autoderefs, true)
+                                0
                             } else {
-                                (adj.autoderefs - 1, false)
+                                1
                             }
                         }
-                        _ => (adj.autoderefs, true),
+                        _ => 0
                     }
                 }
-                _ => (adj.autoderefs, true)
+                _ => 0
             };
 
-            if autoderefs > 0 {
+            if adj.autoderefs > skip_reborrows {
                 // Schedule cleanup.
                 let lval = unpack_datum!(bcx, datum.to_lvalue_datum(bcx, "auto_deref", expr.id));
-                datum = unpack_datum!(
-                    bcx, deref_multiple(bcx, expr, lval.to_expr_datum(), autoderefs));
+                datum = unpack_datum!(bcx, deref_multiple(bcx, expr,
+                                                          lval.to_expr_datum(),
+                                                          adj.autoderefs - skip_reborrows));
             }
 
             // (You might think there is a more elegant way to do this than a
-            // use_autoref bool, but then you remember that the borrow checker exists).
-            if let (true, &Some(ref a)) = (use_autoref, &adj.autoref) {
-                datum = unpack_datum!(bcx, apply_autoref(a,
-                                                         bcx,
-                                                         expr,
-                                                         datum));
+            // skip_reborrows bool, but then you remember that the borrow checker exists).
+            if let (0, &Some(ref a)) = (skip_reborrows, &adj.autoref) {
+                datum = unpack_datum!(bcx, apply_autoref(a, bcx, expr, datum));
             }
+        }
+        ty::AdjustUnsize(ref k) => {
+            debug!("  AdjustUnsize");
+            datum = unpack_datum!(bcx, unsize_unique_expr(bcx, expr, datum, k))
         }
     }
     debug!("after adjustments, datum={}", datum.to_string(bcx.ccx()));
@@ -462,15 +455,10 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
             &ty::AutoUnsize(ref k) => {
                 debug!("  AutoUnsize");
-                unpack_datum!(bcx, unsize_expr(bcx, expr, datum, k))
-            }
-            &ty::AutoUnsizeUniq(ty::UnsizeLength(len)) => {
-                debug!("  AutoUnsizeUniq(UnsizeLength)");
-                unpack_datum!(bcx, unsize_unique_vec(bcx, expr, datum, len))
-            }
-            &ty::AutoUnsizeUniq(ref k) => {
-                debug!("  AutoUnsizeUniq");
-                unpack_datum!(bcx, unsize_unique_expr(bcx, expr, datum, k))
+                // Arrange cleanup
+                let lval = unpack_datum!(bcx,
+                    datum.to_lvalue_datum(bcx, "into_fat_ptr", expr.id));
+                unpack_datum!(bcx, unsize_expr(bcx, expr, lval, k))
             }
         };
 
@@ -479,33 +467,28 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     fn unsize_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                expr: &ast::Expr,
-                               datum: Datum<'tcx, Expr>,
+                               datum: Datum<'tcx, Lvalue>,
                                k: &ty::UnsizeKind<'tcx>)
                                -> DatumBlock<'blk, 'tcx, Expr> {
-        let mut bcx = bcx;
-        let tcx = bcx.tcx();
         let datum_ty = datum.ty;
-        let unsized_ty = ty::unsize_ty(tcx, datum_ty, k, expr.span);
-        debug!("unsized_ty={}", unsized_ty.repr(bcx.tcx()));
+        let unsized_ty = ty::unsize_ty(bcx.tcx(), datum_ty, k, expr.span);
+        debug!("unsize_expr(unsized_ty={})", unsized_ty.repr(bcx.tcx()));
 
-        let info = unsized_info_bcx(bcx, k, expr.id, datum_ty, datum.val, bcx.fcx.param_substs);
-
-        // Arrange cleanup
-        let lval = unpack_datum!(bcx, datum.to_lvalue_datum(bcx, "into_fat_ptr", expr.id));
+        let info = unsized_info_bcx(bcx, k, datum_ty, datum.val, bcx.fcx.param_substs);
 
         // Compute the base pointer. This doesn't change the pointer value,
         // but merely its type.
         let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), unsized_ty).ptr_to();
-        let base = if !type_is_sized(bcx.tcx(), lval.ty) {
+        let base = if !type_is_sized(bcx.tcx(), datum.ty) {
             // Normally, the source is a thin pointer and we are
             // adding extra info to make a fat pointer. The exception
             // is when we are upcasting an existing object fat pointer
             // to use a different vtable. In that case, we want to
             // load out the original data pointer so we can repackage
             // it.
-            Load(bcx, get_dataptr(bcx, lval.val))
+            Load(bcx, get_dataptr(bcx, datum.val))
         } else {
-            lval.val
+            datum.val
         };
         let base = PointerCast(bcx, base, ptr_ty);
 
@@ -516,40 +499,6 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         Store(bcx, info, get_len(bcx, scratch));
 
         DatumBlock::new(bcx, Datum::new(scratch, unsized_ty, LvalueExpr))
-    }
-
-    fn unsize_unique_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                     expr: &ast::Expr,
-                                     datum: Datum<'tcx, Expr>,
-                                     len: uint)
-                                     -> DatumBlock<'blk, 'tcx, Expr> {
-        let mut bcx = bcx;
-        let tcx = bcx.tcx();
-
-        let datum_ty = datum.ty;
-
-        debug!("unsize_unique_vec expr.id={} datum_ty={} len={}",
-               expr.id, datum_ty.repr(tcx), len);
-
-        // We do not arrange cleanup ourselves; if we already are an
-        // L-value, then cleanup will have already been scheduled (and
-        // the `datum.store_to` call below will emit code to zero the
-        // drop flag when moving out of the L-value). If we are an R-value,
-        // then we do not need to schedule cleanup.
-
-        let ll_len = C_uint(bcx.ccx(), len);
-        let unit_ty = ty::sequence_element_type(tcx, ty::type_content(datum_ty));
-        let vec_ty = ty::mk_uniq(tcx, ty::mk_vec(tcx, unit_ty, None));
-        let scratch = rvalue_scratch_datum(bcx, vec_ty, "__unsize_unique");
-
-        let base = get_dataptr(bcx, scratch.val);
-        let base = PointerCast(bcx,
-                               base,
-                               type_of::type_of(bcx.ccx(), datum_ty).ptr_to());
-        bcx = datum.store_to(bcx, base);
-
-        Store(bcx, ll_len, get_len(bcx, scratch.val));
-        DatumBlock::new(bcx, scratch.to_expr_datum())
     }
 
     fn unsize_unique_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -579,7 +528,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let base = PointerCast(bcx, get_dataptr(bcx, scratch.val), llbox_ty.ptr_to());
         bcx = datum.store_to(bcx, base);
 
-        let info = unsized_info_bcx(bcx, k, expr.id, unboxed_ty, base, bcx.fcx.param_substs);
+        let info = unsized_info_bcx(bcx, k, unboxed_ty, base, bcx.fcx.param_substs);
         Store(bcx, info, get_len(bcx, scratch.val));
 
         DatumBlock::new(bcx, scratch.to_expr_datum())

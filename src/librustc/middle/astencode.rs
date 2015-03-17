@@ -1026,6 +1026,12 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                             |this| Ok(this.emit_auto_deref_ref(ecx, auto_deref_ref)))
                     })
                 }
+
+                ty::AdjustUnsize(ref uk) => {
+                    this.emit_enum_variant("AdjustUnsize", 3, 1, |this| {
+                        this.emit_enum_variant_arg(0, |this| Ok(this.emit_unsize_kind(ecx, uk)))
+                    })
+                }
             }
         });
     }
@@ -1057,20 +1063,15 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                         this.emit_enum_variant_arg(0, |this| Ok(this.emit_unsize_kind(ecx, uk)))
                     })
                 }
-                &ty::AutoUnsizeUniq(ref uk) => {
-                    this.emit_enum_variant("AutoUnsizeUniq", 2, 1, |this| {
-                        this.emit_enum_variant_arg(0, |this| Ok(this.emit_unsize_kind(ecx, uk)))
-                    })
-                }
                 &ty::AutoUnsafe(m, None) => {
-                    this.emit_enum_variant("AutoUnsafe", 3, 2, |this| {
+                    this.emit_enum_variant("AutoUnsafe", 2, 2, |this| {
                         this.emit_enum_variant_arg(0, |this| m.encode(this));
                         this.emit_enum_variant_arg(1,
                             |this| this.emit_option(|this| this.emit_option_none()))
                     })
                 }
                 &ty::AutoUnsafe(m, Some(box ref a)) => {
-                    this.emit_enum_variant("AutoUnsafe", 3, 2, |this| {
+                    this.emit_enum_variant("AutoUnsafe", 2, 2, |this| {
                         this.emit_enum_variant_arg(0, |this| m.encode(this));
                         this.emit_enum_variant_arg(1, |this| this.emit_option(
                             |this| this.emit_option_some(|this| Ok(this.emit_autoref(ecx, a)))))
@@ -1624,7 +1625,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_auto_adjustment<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                                     -> ty::AutoAdjustment<'tcx> {
         self.read_enum("AutoAdjustment", |this| {
-            let variants = ["AutoAddEnv", "AutoDerefRef"];
+            let variants = ["AdjustReifyFnPointer", "AdjustDerefRef", "AdjustUnsize"];
             this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
                     1 => {
@@ -1642,6 +1643,13 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                 |this| Ok(this.read_auto_deref_ref(dcx))).unwrap();
 
                         ty::AdjustDerefRef(auto_deref_ref)
+                    }
+                    3 => {
+                        let uk: ty::UnsizeKind =
+                            this.read_enum_variant_arg(0,
+                                |this| Ok(this.read_unsize_kind(dcx))).unwrap();
+
+                        ty::AdjustUnsize(uk)
                     }
                     _ => panic!("bad enum variant for ty::AutoAdjustment")
                 })
@@ -1673,7 +1681,6 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         self.read_enum("AutoRef", |this| {
             let variants = ["AutoPtr",
                             "AutoUnsize",
-                            "AutoUnsizeUniq",
                             "AutoUnsafe"];
             this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
@@ -1701,13 +1708,6 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                         ty::AutoUnsize(uk)
                     }
                     2 => {
-                        let uk: ty::UnsizeKind =
-                            this.read_enum_variant_arg(0,
-                                |this| Ok(this.read_unsize_kind(dcx))).unwrap();
-
-                        ty::AutoUnsizeUniq(uk)
-                    }
-                    3 => {
                         let m: ast::Mutability =
                             this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
                         let a: Option<Box<ty::AutoRef>> =

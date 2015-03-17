@@ -767,7 +767,6 @@ pub fn super_fold_autoref<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
             ty::AutoUnsafe(m, Some(box super_fold_autoref(this, &**a)))
         }
         ty::AutoUnsize(ref k) => ty::AutoUnsize(k.fold_with(this)),
-        ty::AutoUnsizeUniq(ref k) => ty::AutoUnsizeUniq(k.fold_with(this)),
     }
 }
 

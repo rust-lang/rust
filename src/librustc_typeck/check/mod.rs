@@ -1541,6 +1541,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     None => {}
                 }
             }
+            ty::AdjustUnsize(ref unsize) => {
+                self.register_unsize_obligations(span, unsize);
+            }
         }
     }
 
@@ -1548,9 +1551,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     span: Span,
                                     autoref: &ty::AutoRef<'tcx>) {
         match *autoref {
-            ty::AutoUnsize(ref unsize) => {
-                self.register_unsize_obligations(span, unsize);
-            }
             ty::AutoPtr(_, _, None) |
             ty::AutoUnsafe(_, None) => {
             }
@@ -1558,7 +1558,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::AutoUnsafe(_, Some(ref a_r)) => {
                 self.register_autoref_obligations(span, &**a_r)
             }
-            ty::AutoUnsizeUniq(ref unsize) => {
+            ty::AutoUnsize(ref unsize) => {
                 self.register_unsize_obligations(span, unsize);
             }
         }

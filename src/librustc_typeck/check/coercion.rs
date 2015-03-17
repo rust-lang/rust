@@ -307,12 +307,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     Some((ty, kind)) => {
                         let ty = ty::mk_uniq(self.tcx(), ty);
                         try!(self.fcx.infcx().try(|_| self.subtype(ty, b)));
-                        debug!("Success, coerced with AutoDerefRef(1, \
-                                AutoUnsizeUniq({:?}))", kind);
-                        Ok(Some(AdjustDerefRef(AutoDerefRef {
-                            autoderefs: 1,
-                            autoref: Some(ty::AutoUnsizeUniq(kind))
-                        })))
+                        debug!("Success, coerced with AdjustUnsize({:?})", kind);
+                        Ok(Some(ty::AdjustUnsize(kind)))
                     }
                     _ => Err(ty::terr_mismatch)
                 }

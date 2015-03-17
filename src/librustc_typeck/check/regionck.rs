@@ -1132,7 +1132,7 @@ fn link_autoref(rcx: &Rcx,
                 ty::BorrowKind::from_mutbl(m), expr_cmt);
         }
 
-        ty::AutoUnsafe(..) | ty::AutoUnsizeUniq(_) | ty::AutoUnsize(_) => {}
+        ty::AutoUnsafe(..) | ty::AutoUnsize(_) => {}
     }
 }
 

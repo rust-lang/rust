@@ -282,7 +282,10 @@ pub enum Variance {
 pub enum AutoAdjustment<'tcx> {
     AdjustReifyFnPointer(ast::DefId), // go from a fn-item type to a fn-pointer type
     AdjustUnsafeFnPointer, // go from a safe fn pointer to an unsafe fn pointer
-    AdjustDerefRef(AutoDerefRef<'tcx>)
+    AdjustDerefRef(AutoDerefRef<'tcx>),
+
+    /// Convert Box<[T, ..n]> to Box<[T]> or something similar in a Box.
+    AdjustUnsize(UnsizeKind<'tcx>),
 }
 
 #[derive(Clone, PartialEq, Debug)]
@@ -311,101 +314,10 @@ pub enum AutoRef<'tcx> {
     /// Convert [T, ..n] to [T] (or similar, depending on the kind)
     AutoUnsize(UnsizeKind<'tcx>),
 
-    /// Convert Box<[T, ..n]> to Box<[T]> or something similar in a Box.
-    /// With DST and Box a library type, this should be replaced by UnsizeStruct.
-    AutoUnsizeUniq(UnsizeKind<'tcx>),
-
     /// Convert from T to *T
     /// Value to thin pointer
     /// The second field allows us to wrap other AutoRef adjustments.
     AutoUnsafe(ast::Mutability, Option<Box<AutoRef<'tcx>>>),
-}
-
-// Ugly little helper function. The first bool in the returned tuple is true if
-// there is an 'unsize to trait object' adjustment at the bottom of the
-// adjustment. If that is surrounded by an AutoPtr, then we also return the
-// region of the AutoPtr (in the third argument). The second bool is true if the
-// adjustment is unique.
-fn autoref_object_region(autoref: &AutoRef) -> (bool, bool, Option<Region>) {
-    fn unsize_kind_is_object(k: &UnsizeKind) -> bool {
-        match k {
-            &UnsizeVtable(..) => true,
-            &UnsizeStruct(box ref k, _) => unsize_kind_is_object(k),
-            _ => false
-        }
-    }
-
-    match autoref {
-        &AutoUnsize(ref k) => (unsize_kind_is_object(k), false, None),
-        &AutoUnsizeUniq(ref k) => (unsize_kind_is_object(k), true, None),
-        &AutoPtr(adj_r, _, Some(box ref autoref)) => {
-            let (b, u, r) = autoref_object_region(autoref);
-            if r.is_some() || u {
-                (b, u, r)
-            } else {
-                (b, u, Some(adj_r))
-            }
-        }
-        &AutoUnsafe(_, Some(box ref autoref)) => autoref_object_region(autoref),
-        _ => (false, false, None)
-    }
-}
-
-// If the adjustment introduces a borrowed reference to a trait object, then
-// returns the region of the borrowed reference.
-pub fn adjusted_object_region(adj: &AutoAdjustment) -> Option<Region> {
-    match adj {
-        &AdjustDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
-            let (b, _, r) = autoref_object_region(autoref);
-            if b {
-                r
-            } else {
-                None
-            }
-        }
-        _ => None
-    }
-}
-
-// If possible, returns the type expected from the given adjustment. This is not
-// possible if the adjustment depends on the type of the adjusted expression.
-pub fn type_of_adjust<'tcx>(cx: &ctxt<'tcx>, adj: &AutoAdjustment<'tcx>) -> Option<Ty<'tcx>> {
-    fn type_of_autoref<'tcx>(cx: &ctxt<'tcx>, autoref: &AutoRef<'tcx>) -> Option<Ty<'tcx>> {
-        match autoref {
-            &AutoUnsize(ref k) => match k {
-                &UnsizeVtable(TyTrait { ref principal, ref bounds }, _) => {
-                    Some(mk_trait(cx, principal.clone(), bounds.clone()))
-                }
-                _ => None
-            },
-            &AutoUnsizeUniq(ref k) => match k {
-                &UnsizeVtable(TyTrait { ref principal, ref bounds }, _) => {
-                    Some(mk_uniq(cx, mk_trait(cx, principal.clone(), bounds.clone())))
-                }
-                _ => None
-            },
-            &AutoPtr(r, m, Some(box ref autoref)) => {
-                match type_of_autoref(cx, autoref) {
-                    Some(ty) => Some(mk_rptr(cx, cx.mk_region(r), mt {mutbl: m, ty: ty})),
-                    None => None
-                }
-            }
-            &AutoUnsafe(m, Some(box ref autoref)) => {
-                match type_of_autoref(cx, autoref) {
-                    Some(ty) => Some(mk_ptr(cx, mt {mutbl: m, ty: ty})),
-                    None => None
-                }
-            }
-            _ => None
-        }
-    }
-
-    match adj {
-        &AdjustDerefRef(AutoDerefRef{autoref: Some(ref autoref), ..}) => {
-            type_of_autoref(cx, autoref)
-        }
-        _ => None
-    }
 }
 
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Debug)]
@@ -4529,11 +4441,10 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                         ty::ty_bare_fn(Some(_), b) => {
                             ty::mk_bare_fn(cx, None, b)
                         }
-                        ref b => {
+                        _ => {
                             cx.sess.bug(
                                 &format!("AdjustReifyFnPointer adjustment on non-fn-item: \
-                                         {:?}",
-                                        b));
+                                          {}", unadjusted_ty.repr(cx)));
                         }
                     }
                 }
@@ -4584,6 +4495,19 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
 
                     adjust_ty_for_autoref(cx, span, adjusted_ty, adj.autoref.as_ref())
                 }
+
+                AdjustUnsize(ref k) => {
+                    match unadjusted_ty.sty {
+                        ty::ty_uniq(ty) => {
+                            ty::mk_uniq(cx, unsize_ty(cx, ty, k, span))
+                        }
+                        _ => {
+                            cx.sess.bug(
+                                &format!("AdjustUnsize adjustment on non-Box type: \
+                                          {}", unadjusted_ty.repr(cx)));
+                        }
+                    }
+                }
             }
         }
         None => unadjusted_ty
@@ -4619,8 +4543,6 @@ pub fn adjust_ty_for_autoref<'tcx>(cx: &ctxt<'tcx>,
         }
 
         Some(&AutoUnsize(ref k)) => unsize_ty(cx, ty, k, span),
-
-        Some(&AutoUnsizeUniq(ref k)) => ty::mk_uniq(cx, unsize_ty(cx, ty, k, span)),
     }
 }
 
@@ -6683,6 +6605,7 @@ pub fn with_freevars<T, F>(tcx: &ty::ctxt, fid: ast::NodeId, f: F) -> T where
 impl<'tcx> AutoAdjustment<'tcx> {
     pub fn is_identity(&self) -> bool {
         match *self {
+            AdjustUnsize(_) |
             AdjustReifyFnPointer(..) => false,
             AdjustUnsafeFnPointer(..) => false,
             AdjustDerefRef(ref r) => r.is_identity(),
@@ -6840,6 +6763,9 @@ impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
             AdjustDerefRef(ref data) => {
                 data.repr(tcx)
             }
+            AdjustUnsize(ref a) => {
+                format!("AdjustUnsize({})", a.repr(tcx))
+            }
         }
     }
 }
@@ -6869,9 +6795,6 @@ impl<'tcx> Repr<'tcx> for AutoRef<'tcx> {
             }
             AutoUnsize(ref a) => {
                 format!("AutoUnsize({})", a.repr(tcx))
-            }
-            AutoUnsizeUniq(ref a) => {
-                format!("AutoUnsizeUniq({})", a.repr(tcx))
             }
             AutoUnsafe(ref a, ref b) => {
                 format!("AutoUnsafe({:?},{})", a, b.repr(tcx))

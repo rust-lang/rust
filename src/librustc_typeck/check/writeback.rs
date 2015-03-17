@@ -279,6 +279,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                             autoref: self.resolve(&adj.autoref, reason),
                         })
                     }
+
+                    ty::AdjustUnsize(uk) => {
+                        ty::AdjustUnsize(self.resolve(&uk, reason))
+                    }
                 };
                 debug!("Adjustments for node {}: {:?}", id, resolved_adjustment);
                 self.tcx().adjustments.borrow_mut().insert(

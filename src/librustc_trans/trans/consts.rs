@@ -309,7 +309,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 Some(box ty::AutoUnsize(ref k)) => {
                     let info =
                         expr::unsized_info(
-                            cx, k, e.id, ty, param_substs,
+                            cx, k, ty, param_substs,
                             || const_get_elt(cx, llconst, &[abi::FAT_PTR_EXTRA as u32]));
 
                     let unsized_ty = ty::unsize_ty(cx.tcx(), ty, k, e.span);
@@ -328,6 +328,10 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         &format!("unimplemented const second autoref {:?}", autoref))
                 }
             }
+        }
+        Some(adj) => {
+            cx.sess().span_bug(e.span,
+                &format!("unimplemented const adjustment {:?}", adj))
         }
         None => {}
     };

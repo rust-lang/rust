@@ -438,6 +438,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                         Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
                     }
 
+                    ty::AdjustUnsize(_) |
                     ty::AdjustDerefRef(
                         ty::AutoDerefRef {
                             autoref: Some(_), ..}) => {

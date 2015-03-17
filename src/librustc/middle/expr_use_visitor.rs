@@ -791,11 +791,11 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             Some(adjustment) => {
                 match *adjustment {
                     ty::AdjustReifyFnPointer(..) |
-                    ty::AdjustUnsafeFnPointer(..) => {
-                        // Creating a closure/fn-pointer consumes the
-                        // input and stores it into the resulting
-                        // rvalue.
-                        debug!("walk_adjustment(AutoAddEnv|AdjustReifyFnPointer)");
+                    ty::AdjustUnsafeFnPointer(..) |
+                    ty::AdjustUnsize(_) => {
+                        // Creating a closure/fn-pointer or unsizing consumes
+                        // the input and stores it into the resulting rvalue.
+                        debug!("walk_adjustment(AdjustUnsize|AdjustReifyFnPointer)");
                         let cmt_unadjusted =
                             return_if_err!(self.mc.cat_expr_unadjusted(expr));
                         self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
@@ -872,8 +872,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                                      ty::BorrowKind::from_mutbl(m),
                                      AutoRef);
             }
-            ty::AutoUnsize(_) |
-            ty::AutoUnsizeUniq(_) => {
+            ty::AutoUnsize(_) => {
                 assert!(n == 1, format!("Expected exactly 1 deref with Uniq \
                                          AutoRefs, found: {}", n));
                 let cmt_unadjusted =
