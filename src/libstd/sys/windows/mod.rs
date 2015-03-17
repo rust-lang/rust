@@ -149,25 +149,21 @@ pub fn decode_error_detailed(errno: i32) -> IoError {
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno as libc::c_int {
         libc::ERROR_ACCESS_DENIED => ErrorKind::PermissionDenied,
-        libc::ERROR_ALREADY_EXISTS => ErrorKind::PathAlreadyExists,
+        libc::ERROR_ALREADY_EXISTS => ErrorKind::AlreadyExists,
         libc::ERROR_BROKEN_PIPE => ErrorKind::BrokenPipe,
-        libc::ERROR_FILE_NOT_FOUND => ErrorKind::FileNotFound,
-        libc::ERROR_INVALID_FUNCTION => ErrorKind::InvalidInput,
-        libc::ERROR_INVALID_HANDLE => ErrorKind::MismatchedFileTypeForOperation,
-        libc::ERROR_INVALID_NAME => ErrorKind::InvalidInput,
-        libc::ERROR_NOTHING_TO_TERMINATE => ErrorKind::InvalidInput,
+        libc::ERROR_FILE_NOT_FOUND => ErrorKind::NotFound,
         libc::ERROR_NO_DATA => ErrorKind::BrokenPipe,
         libc::ERROR_OPERATION_ABORTED => ErrorKind::TimedOut,
 
         libc::WSAEACCES => ErrorKind::PermissionDenied,
-        libc::WSAEADDRINUSE => ErrorKind::ConnectionRefused,
-        libc::WSAEADDRNOTAVAIL => ErrorKind::ConnectionRefused,
+        libc::WSAEADDRINUSE => ErrorKind::AddrInUse,
+        libc::WSAEADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
         libc::WSAECONNABORTED => ErrorKind::ConnectionAborted,
         libc::WSAECONNREFUSED => ErrorKind::ConnectionRefused,
         libc::WSAECONNRESET => ErrorKind::ConnectionReset,
         libc::WSAEINVAL => ErrorKind::InvalidInput,
         libc::WSAENOTCONN => ErrorKind::NotConnected,
-        libc::WSAEWOULDBLOCK => ErrorKind::ResourceUnavailable,
+        libc::WSAEWOULDBLOCK => ErrorKind::WouldBlock,
 
         _ => ErrorKind::Other,
     }

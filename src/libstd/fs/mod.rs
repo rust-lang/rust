@@ -493,7 +493,7 @@ pub fn copy<P: AsPath, Q: AsPath>(from: P, to: Q) -> io::Result<u64> {
     let from = from.as_path();
     let to = to.as_path();
     if !from.is_file() {
-        return Err(Error::new(ErrorKind::MismatchedFileTypeForOperation,
+        return Err(Error::new(ErrorKind::InvalidInput,
                               "the source path is not an existing file",
                               None))
     }
@@ -1134,7 +1134,7 @@ mod tests {
         let dir = &tmpdir.join("mkdir_error_twice");
         check!(fs::create_dir(dir));
         let e = fs::create_dir(dir).err().unwrap();
-        assert_eq!(e.kind(), ErrorKind::PathAlreadyExists);
+        assert_eq!(e.kind(), ErrorKind::AlreadyExists);
     }
 
     #[test]

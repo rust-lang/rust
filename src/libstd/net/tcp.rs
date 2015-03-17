@@ -273,8 +273,7 @@ mod tests {
         match TcpListener::bind("1.1.1.1:9999") {
             Ok(..) => panic!(),
             Err(e) =>
-                // EADDRNOTAVAIL is mapped to ConnectionRefused
-                assert_eq!(e.kind(), ErrorKind::ConnectionRefused),
+                assert_eq!(e.kind(), ErrorKind::AddrNotAvailable),
         }
     }
 
@@ -282,8 +281,11 @@ mod tests {
     fn connect_error() {
         match TcpStream::connect("0.0.0.0:1") {
             Ok(..) => panic!(),
-            Err(e) => assert!((e.kind() == ErrorKind::ConnectionRefused)
-                              || (e.kind() == ErrorKind::InvalidInput)),
+            Err(e) => assert!(e.kind() == ErrorKind::ConnectionRefused ||
+                              e.kind() == ErrorKind::InvalidInput ||
+                              e.kind() == ErrorKind::AddrInUse ||
+                              e.kind() == ErrorKind::AddrNotAvailable,
+                              "bad error: {} {:?}", e, e.kind()),
         }
     }
 
@@ -535,7 +537,8 @@ mod tests {
                 Ok(..) => panic!(),
                 Err(e) => {
                     assert!(e.kind() == ErrorKind::ConnectionRefused ||
-                            e.kind() == ErrorKind::Other,
+                            e.kind() == ErrorKind::Other ||
+                            e.kind() == ErrorKind::AddrInUse,
                             "unknown error: {} {:?}", e, e.kind());
                 }
             }

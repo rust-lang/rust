@@ -51,41 +51,53 @@ struct Custom {
 }
 
 /// A list specifying general categories of I/O error.
+///
+/// This list is intended to grow over time and it is not recommended to
+/// exhaustively match against it.
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
-#[unstable(feature = "io",
-           reason = "the interaction between OS error codes and how they map to \
-                     these names (as well as the names themselves) has not \
-                     been thoroughly thought out")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub enum ErrorKind {
-    /// The file was not found.
-    FileNotFound,
-    /// The file permissions disallowed access to this file.
+    /// An entity was not found, often a file.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    NotFound,
+    /// The operation lacked the necessary privileges to complete.
+    #[stable(feature = "rust1", since = "1.0.0")]
     PermissionDenied,
     /// The connection was refused by the remote server.
+    #[stable(feature = "rust1", since = "1.0.0")]
     ConnectionRefused,
     /// The connection was reset by the remote server.
+    #[stable(feature = "rust1", since = "1.0.0")]
     ConnectionReset,
     /// The connection was aborted (terminated) by the remote server.
+    #[stable(feature = "rust1", since = "1.0.0")]
     ConnectionAborted,
     /// The network operation failed because it was not connected yet.
+    #[stable(feature = "rust1", since = "1.0.0")]
     NotConnected,
+    /// A socket address could not be bound because the address is already in
+    /// use elsewhere.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    AddrInUse,
+    /// A nonexistent interface was requested or the requested address was not
+    /// local.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    AddrNotAvailable,
     /// The operation failed because a pipe was closed.
+    #[stable(feature = "rust1", since = "1.0.0")]
     BrokenPipe,
-    /// A file already existed with that name.
-    PathAlreadyExists,
-    /// No file exists at that location.
-    PathDoesntExist,
-    /// The path did not specify the type of file that this operation required.
-    /// For example, attempting to copy a directory with the `fs::copy()`
-    /// operation will fail with this error.
-    MismatchedFileTypeForOperation,
-    /// The operation temporarily failed (for example, because a signal was
-    /// received), and retrying may succeed.
-    ResourceUnavailable,
-    /// A parameter was incorrect in a way that caused an I/O error not part of
-    /// this list.
+    /// An entity already exists, often a file.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    AlreadyExists,
+    /// The operation needs to block to complete, but the blocking operation was
+    /// requested to not occur.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    WouldBlock,
+    /// A parameter was incorrect.
+    #[stable(feature = "rust1", since = "1.0.0")]
     InvalidInput,
     /// The I/O operation's timeout expired, causing it to be canceled.
+    #[stable(feature = "rust1", since = "1.0.0")]
     TimedOut,
     /// An error returned when an operation could not be completed because a
     /// call to `write` returned `Ok(0)`.
@@ -93,11 +105,23 @@ pub enum ErrorKind {
     /// This typically means that an operation could only succeed if it wrote a
     /// particular number of bytes but only a smaller number of bytes could be
     /// written.
+    #[stable(feature = "rust1", since = "1.0.0")]
     WriteZero,
-    /// This operation was interrupted
+    /// This operation was interrupted.
+    ///
+    /// Interrupted operations can typically be retried.
+    #[stable(feature = "rust1", since = "1.0.0")]
     Interrupted,
     /// Any I/O error not part of this list.
+    #[stable(feature = "rust1", since = "1.0.0")]
     Other,
+
+    /// Any I/O error not part of this list.
+    #[unstable(feature = "std_misc",
+               reason = "better expressed through extensible enums that this \
+                         enum cannot be exhaustively matched against")]
+    #[doc(hidden)]
+    __Nonexhaustive,
 }
 
 impl Error {
@@ -132,6 +156,19 @@ impl Error {
                reason = "unclear whether this function is necessary")]
     pub fn from_os_error(code: i32) -> Error {
         Error { repr: Repr::Os(code) }
+    }
+
+    /// Returns the OS error that this error represents (if any).
+    ///
+    /// If this `Error` was constructed via `last_os_error` then this function
+    /// will return `Some`, otherwise it will return `None`.
+    #[unstable(feature = "io", reason = "function was just added and the return \
+                                         type may become an abstract OS error")]
+    pub fn raw_os_error(&self) -> Option<i32> {
+        match self.repr {
+            Repr::Os(i) => Some(i),
+            Repr::Custom(..) => None,
+        }
     }
 
     /// Return the corresponding `ErrorKind` for this error.
