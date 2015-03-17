@@ -1410,7 +1410,7 @@ pub trait Buffer: Reader {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::old_io::BufReader;
     ///
     /// let mut reader = BufReader::new(b"hello\nworld");

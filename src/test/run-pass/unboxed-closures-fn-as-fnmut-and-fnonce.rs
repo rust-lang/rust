@@ -44,4 +44,3 @@ fn main() {
     assert_eq!(x, y);
     assert_eq!(y, z);
 }
-

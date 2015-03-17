@@ -30,4 +30,3 @@ fn foo() -> isize {
 fn main() {
     foo();
 }
-

@@ -551,9 +551,9 @@ module, we now have a `phrases::japanese::hello()` function and a
 `phrases::japanese::farewells::goodbye()`. Our internal organization doesn't
 define our external interface.
 
-Here we have a `pub use` for each function we want to bring into the 
+Here we have a `pub use` for each function we want to bring into the
 `japanese` scope. We could alternatively use the wildcard syntax to include
-everything from `greetings` into the current scope: `pub use self::greetings::*`. 
+everything from `greetings` into the current scope: `pub use self::greetings::*`.
 
 What about the `self`? Well, by default, `use` declarations are absolute paths,
 starting from your crate root. `self` makes that path relative to your current

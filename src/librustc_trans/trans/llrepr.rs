@@ -34,5 +34,3 @@ impl LlvmRepr for ValueRef {
         ccx.tn().val_to_string(*self)
     }
 }
-
-

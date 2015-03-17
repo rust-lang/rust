@@ -37,4 +37,3 @@ fn main() {
     assert_eq!(y, square(22));
     assert_eq!(z, square(22));
 }
-

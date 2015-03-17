@@ -26,4 +26,3 @@ fn use_bar(t: Box<Bar>) {
 }
 
 fn main() { }
-

@@ -96,4 +96,3 @@ pub fn simplify_type(tcx: &ty::ctxt,
         ty::ty_infer(_) | ty::ty_err => None,
     }
 }
-

@@ -253,7 +253,7 @@ fn trans_fn_ref_with_substs_to_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// Translates an adapter that implements the `Fn` trait for a fn
 /// pointer. This is basically the equivalent of something like:
 ///
-/// ```rust
+/// ```
 /// impl<'a> Fn(&'a int) -> &'a int for fn(&int) -> &int {
 ///     extern "rust-abi" fn call(&self, args: (&'a int,)) -> &'a int {
 ///         (*self)(args.0)

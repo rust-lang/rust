@@ -35,4 +35,3 @@ fn mut_owned_receiver(mut x: Box<Foo>) {
 }
 
 fn main() {}
-

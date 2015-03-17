@@ -290,7 +290,7 @@ transcriber : '(' transcriber * ')' | '[' transcriber * ']'
 
 # Items and attributes
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ## Items
 
@@ -301,7 +301,7 @@ item : mod_item | fn_item | type_item | struct_item | enum_item
 
 ### Type Parameters
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Modules
 
@@ -338,35 +338,35 @@ path_item : ident | "mod" ;
 
 ### Functions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 #### Generic functions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 #### Unsafety
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ##### Unsafe functions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ##### Unsafe blocks
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 #### Diverging functions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Type definitions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Structures
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Constant items
 
@@ -382,15 +382,15 @@ static_item : "static" ident ':' type '=' expr ';' ;
 
 #### Mutable statics
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Traits
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Implementations
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### External blocks
 
@@ -401,11 +401,11 @@ extern_block : [ foreign_fn ] * ;
 
 ## Visibility and Privacy
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Re-exporting and Visibility
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ## Attributes
 
@@ -420,11 +420,11 @@ meta_seq : meta_item [ ',' meta_seq ] ? ;
 
 ## Statements
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Declaration statements
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 A _declaration statement_ is one that introduces one or more *names* into the
 enclosing statement block. The declared names may denote new slots or new
@@ -432,7 +432,7 @@ items.
 
 #### Item declarations
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 An _item declaration statement_ has a syntactic form identical to an
 [item](#items) declaration within a module. Declaring an item &mdash; a
@@ -450,35 +450,35 @@ init : [ '=' ] expr ;
 
 ### Expression statements
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ## Expressions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 #### Lvalues, rvalues and temporaries
 
-**FIXME:** grammar?  
+**FIXME:** grammar?
 
 #### Moved and copied types
 
-**FIXME:** Do we want to capture this in the grammar as different productions? 
+**FIXME:** Do we want to capture this in the grammar as different productions?
 
 ### Literal expressions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Path expressions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Tuple expressions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Unit expressions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Structure expressions
 
@@ -527,7 +527,7 @@ idx_expr : expr '[' expr ']' ;
 
 ### Unary operator expressions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Binary operator expressions
 
@@ -537,31 +537,31 @@ binop_expr : expr binop expr ;
 
 #### Arithmetic operators
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 #### Bitwise operators
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 #### Lazy boolean operators
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 #### Comparison operators
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 #### Type cast expressions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 #### Assignment expressions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 #### Compound assignment expressions
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 #### Operator precedence
 
@@ -680,49 +680,49 @@ return_expr : "return" expr ? ;
 
 # Type system
 
-**FIXME:** is this entire chapter relevant here? Or should it all have been covered by some production already? 
+**FIXME:** is this entire chapter relevant here? Or should it all have been covered by some production already?
 
 ## Types
 
 ### Primitive types
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 #### Machine types
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 #### Machine-dependent integer types
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Textual types
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Tuple types
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Array, and Slice types
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Structure types
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Enumerated types
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Pointer types
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Function types
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Closure types
 
@@ -739,15 +739,15 @@ bound := path | lifetime
 
 ### Object types
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Type parameters
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ### Self types
 
-**FIXME:** grammar? 
+**FIXME:** grammar?
 
 ## Type kinds
 
@@ -755,7 +755,7 @@ bound := path | lifetime
 
 # Memory and concurrency models
 
-**FIXME:** is this entire chapter relevant here? Or should it all have been covered by some production already? 
+**FIXME:** is this entire chapter relevant here? Or should it all have been covered by some production already?
 
 ## Memory model
 

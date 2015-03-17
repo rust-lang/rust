@@ -124,4 +124,3 @@ fn main() {
     test_fn_mut();
     test_fn_once();
 }
-

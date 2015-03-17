@@ -281,7 +281,7 @@ impl Float for f32 {
 
     /// The fractional part of the number, satisfying:
     ///
-    /// ```rust
+    /// ```
     /// use core::num::Float;
     ///
     /// let x = 1.65f32;

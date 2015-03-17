@@ -28,4 +28,3 @@ fn main() {
 fn call<F:FnOnce(int) -> int>(f: F, x: int) -> int {
     f(x)
 }
-

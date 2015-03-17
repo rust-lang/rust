@@ -63,4 +63,3 @@ fn main() {
     same_var_after_borrow();
     same_var_after_move();
 }
-

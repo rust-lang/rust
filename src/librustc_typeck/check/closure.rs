@@ -248,5 +248,3 @@ fn self_type_matches_expected_vid<'a,'tcx>(
         _ => None,
     }
 }
-
-

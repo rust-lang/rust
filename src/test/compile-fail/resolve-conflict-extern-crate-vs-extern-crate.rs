@@ -12,4 +12,3 @@ extern crate std;
 //~^ ERROR an external crate named `std` has already been imported
 
 fn main(){}
-

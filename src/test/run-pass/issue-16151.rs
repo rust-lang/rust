@@ -35,4 +35,3 @@ fn main() {
         assert_eq!(DROP_COUNT, 3);
     }
 }
-

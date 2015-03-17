@@ -45,5 +45,3 @@ fn main() {
     let y = get(&x);
     assert_eq!(y, 23);
 }
-
-

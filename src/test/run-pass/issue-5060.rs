@@ -24,4 +24,3 @@ macro_rules! print_hd_tl {
 pub fn main() {
     print_hd_tl!(x, y, z, w)
 }
-

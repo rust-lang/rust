@@ -20,4 +20,3 @@ fn main() {
     bar(move|| foo(x));
     //~^ ERROR `core::marker::Send` is not implemented
 }
-

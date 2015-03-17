@@ -31,4 +31,3 @@ fn main() {
     stuff();
     println!("Hello, world!")
 }
-

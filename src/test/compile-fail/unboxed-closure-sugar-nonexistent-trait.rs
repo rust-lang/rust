@@ -17,4 +17,3 @@ type Typedef = isize;
 fn g<F:Typedef(isize) -> isize>(x: F) {} //~ ERROR `Typedef` is not a trait
 
 fn main() {}
-

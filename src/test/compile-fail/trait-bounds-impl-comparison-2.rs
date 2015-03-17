@@ -32,4 +32,3 @@ struct ZipIterator<T, U> {
 }
 
 fn main() {}
-

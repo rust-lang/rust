@@ -25,4 +25,3 @@ pub fn main() {
     //~| ERROR type mismatch
     println!("{}", z);
 }
-

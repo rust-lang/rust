@@ -13,4 +13,3 @@
 extern crate anonexternmod;
 
 pub fn main() { }
-

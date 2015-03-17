@@ -22,4 +22,3 @@ fn bar() {
 }
 
 fn main() { }
-

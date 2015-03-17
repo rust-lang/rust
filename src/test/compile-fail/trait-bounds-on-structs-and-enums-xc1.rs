@@ -23,4 +23,3 @@ fn main() {
     //~^ ERROR not implemented
     let _ = bar;
 }
-

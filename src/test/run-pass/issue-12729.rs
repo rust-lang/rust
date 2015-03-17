@@ -18,4 +18,3 @@ mod bar {
     }
 }
 fn main() {}
-

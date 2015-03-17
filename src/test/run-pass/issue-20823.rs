@@ -14,4 +14,4 @@
 #![deny(unstable)]
 
 #[test]
-fn foo() {}
+pub fn foo() {}

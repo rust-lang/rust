@@ -25,4 +25,3 @@ fn main() {
         println!("yo");
     }
 }
-

@@ -140,7 +140,7 @@ impl FromStr for bool {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::str::FromStr;
     ///
     /// assert_eq!(FromStr::from_str("true"), Ok(true));
@@ -151,7 +151,7 @@ impl FromStr for bool {
     /// Note, in many cases, the StrExt::parse() which is based on
     /// this FromStr::from_str() is more proper.
     ///
-    /// ```rust
+    /// ```
     /// assert_eq!("true".parse(), Ok(true));
     /// assert_eq!("false".parse(), Ok(false));
     /// assert!("not even a boolean".parse::<bool>().is_err());
@@ -1186,7 +1186,7 @@ mod traits {
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// let s = "Löwe 老虎 Léopard";
     /// assert_eq!(&s[0 .. 1], "L");
     ///

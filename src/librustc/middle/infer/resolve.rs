@@ -112,4 +112,3 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
         }
     }
 }
-

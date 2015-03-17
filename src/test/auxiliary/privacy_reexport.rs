@@ -10,6 +10,6 @@
 
 pub use foo as bar;
 
-mod foo {
+pub mod foo {
     pub fn frob() {}
 }

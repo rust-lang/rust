@@ -28,4 +28,3 @@ fn main() {
     a::bar(); //~ ERROR unresolved name `a::bar`
     b::bar();
 }
-

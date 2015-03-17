@@ -62,4 +62,3 @@ fn foo<K: Hash<SipHasher>>(map: &Map<SipState>) {
 }
 
 fn main() {}
-

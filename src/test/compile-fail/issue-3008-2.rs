@@ -15,4 +15,3 @@ struct bar { x: bar }
 
 fn main() {
 }
-

@@ -1635,4 +1635,3 @@ impl<'tcx> UserString<'tcx> for Upvar {
         format!("captured outer variable in an `{}` closure", kind)
     }
 }
-

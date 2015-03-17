@@ -24,7 +24,9 @@ register_diagnostics! {
     E0258, // import conflicts with existing submodule
     E0259, // an extern crate has already been imported into this module
     E0260, // name conflicts with an external crate that has been imported into this module
-    E0317 // user-defined types or type parameters cannot shadow the primitive types
+    E0317, // user-defined types or type parameters cannot shadow the primitive types
+    E0364, // item is private
+    E0365  // item is private
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }

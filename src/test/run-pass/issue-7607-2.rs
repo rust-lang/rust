@@ -20,5 +20,3 @@ pub mod b {
 }
 
 pub fn main() { }
-
-

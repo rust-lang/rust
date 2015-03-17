@@ -23,4 +23,3 @@ fn main() {
     bar::<isize>(i);  // i should not be re-coerced back to an isize
     //~^ ERROR: mismatched types
 }
-

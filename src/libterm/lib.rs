@@ -57,7 +57,6 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(int_uint)]
-#![feature(io)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(std_misc)]

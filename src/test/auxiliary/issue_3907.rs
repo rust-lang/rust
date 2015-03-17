@@ -13,4 +13,3 @@ use std::marker::MarkerTrait;
 pub trait Foo : MarkerTrait {
     fn bar();
 }
-

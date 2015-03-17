@@ -21,4 +21,3 @@ pub fn foo<T>() -> &'static int {
 pub fn bar() -> &'static int {
     foo::<int>()
 }
-

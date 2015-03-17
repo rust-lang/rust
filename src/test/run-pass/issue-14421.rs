@@ -19,4 +19,3 @@ pub fn main() {
     let mut an_A: B = make();
     an_A.foo();
 }
-

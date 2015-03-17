@@ -44,4 +44,3 @@ fn main() {
 }
 
 fn read(_: usize) { }
-

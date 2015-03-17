@@ -310,7 +310,7 @@ impl<T:?Sized> MarkerTrait for T { }
 ///
 /// Therefore, we can model a method like this as follows:
 ///
-/// ```rust
+/// ```
 /// use std::marker::PhantomFn;
 /// trait Even : PhantomFn<Self> { }
 /// ```
@@ -318,7 +318,7 @@ impl<T:?Sized> MarkerTrait for T { }
 /// Another equivalent, but clearer, option would be to use
 /// `MarkerTrait`:
 ///
-/// ```rust
+/// ```
 /// use std::marker::MarkerTrait;
 /// trait Even : MarkerTrait { }
 /// ```

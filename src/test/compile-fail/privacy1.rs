@@ -27,10 +27,6 @@ mod bar {
 
     // can't publicly re-export private items
     pub use self::baz::{foo, bar};
-    //~^ ERROR: function `bar` is private
-
-    pub use self::private::ppriv;
-    //~^ ERROR: function `ppriv` is private
 
     pub struct A;
     impl A {
@@ -61,10 +57,8 @@ mod bar {
             fn bar2(&self) {}
         }
 
-        // both of these are re-exported by `bar`, but only one should be
-        // validly re-exported
         pub fn foo() {}
-        fn bar() {}
+        pub fn bar() {}
     }
 
     extern {
@@ -91,10 +85,6 @@ mod bar {
     mod glob {
         pub fn gpub() {}
         fn gpriv() {}
-    }
-
-    mod private {
-        fn ppriv() {}
     }
 }
 
@@ -142,13 +132,13 @@ mod foo {
 
         ::bar::baz::foo(); //~ ERROR: function `foo` is inaccessible
                            //~^ NOTE: module `baz` is private
-        ::bar::baz::bar(); //~ ERROR: function `bar` is private
+        ::bar::baz::bar(); //~ ERROR: function `bar` is inaccessible
     }
 
     fn test2() {
         use bar::baz::{foo, bar};
         //~^ ERROR: function `foo` is inaccessible
-        //~^^ ERROR: function `bar` is private
+        //~^^ ERROR: function `bar` is inaccessible
         foo();
         bar();
     }
