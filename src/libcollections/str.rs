@@ -923,11 +923,11 @@ pub trait StrExt: Index<RangeFull, Output = str> {
 
     /// Returns a string with all pre- and suffixes that match a pattern repeatedly removed.
     ///
-    /// The pattern can be a simple `&str`, or a closure that determines the split.
+    /// The pattern can be any `DoubleEndedSearcher`, including a closure that determines the split.
     ///
     /// # Examples
     ///
-    /// Simple `&str` patterns:
+    /// Simple `char` patterns:
     ///
     /// ```
     /// assert_eq!("11foo1bar11".trim_matches('1'), "foo1bar");
