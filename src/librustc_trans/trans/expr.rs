@@ -72,8 +72,7 @@ use trans::monomorphize;
 use trans::tvec;
 use trans::type_of;
 use middle::ty::{struct_fields, tup_fields};
-use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustUnsafeFnPointer, AutoUnsafe};
-use middle::ty::{AutoPtr};
+use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustUnsafeFnPointer};
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use util::common::indenter;
@@ -382,14 +381,14 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // purely a type-level thing
         }
         AdjustDerefRef(ref adj) => {
-            let skip_reborrows = match adj.autoref {
+            let skip_reborrows = match (&adj.unsize, &adj.autoref) {
                 // We are a bit paranoid about adjustments and thus might have a re-
                 // borrow here which merely derefs and then refs again (it might have
                 // a different region or mutability, but we don't care here. It might
                 // also be just in case we need to unsize. But if there are no nested
                 // adjustments then it should be a no-op).
-                Some(ty::AutoPtr(_, _, None)) |
-                Some(ty::AutoUnsafe(_, None)) if adj.autoderefs == 1 => {
+                (&None, &Some(ty::AutoPtr(_, _, None))) |
+                (&None, &Some(ty::AutoUnsafe(_))) if adj.autoderefs == 1 => {
                     match datum.ty.sty {
                         // Don't skip a conversion from Box<T> to &T, etc.
                         ty::ty_rptr(..) => {
@@ -416,6 +415,13 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                           adj.autoderefs - skip_reborrows));
             }
 
+            if let Some(ref k) = adj.unsize {
+                // Arrange cleanup
+                let lval = unpack_datum!(bcx,
+                    datum.to_lvalue_datum(bcx, "into_fat_ptr", expr.id));
+                datum = unpack_datum!(bcx, unsize_lvalue(bcx, expr, lval, k));
+            }
+
             // (You might think there is a more elegant way to do this than a
             // skip_reborrows bool, but then you remember that the borrow checker exists).
             if let (0, &Some(ref a)) = (skip_reborrows, &adj.autoref) {
@@ -430,7 +436,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debug!("after adjustments, datum={}", datum.to_string(bcx.ccx()));
     return DatumBlock::new(bcx, datum);
 
-    fn apply_autoref<'blk, 'tcx>(autoref: &ty::AutoRef<'tcx>,
+    fn apply_autoref<'blk, 'tcx>(autoref: &ty::AutoRef,
                                  bcx: Block<'blk, 'tcx>,
                                  expr: &ast::Expr,
                                  datum: Datum<'tcx, Expr>)
@@ -438,41 +444,28 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let mut bcx = bcx;
         let mut datum = datum;
 
-        let datum = match autoref {
-            &AutoPtr(_, _, ref a) | &AutoUnsafe(_, ref a) => {
-                debug!("  AutoPtr");
-                if let &Some(box ref a) = a {
-                    datum = unpack_datum!(bcx, apply_autoref(a, bcx, expr, datum));
-                }
-                if !type_is_sized(bcx.tcx(), datum.ty) {
-                    // Arrange cleanup
-                    let lval = unpack_datum!(bcx,
-                        datum.to_lvalue_datum(bcx, "ref_fat_ptr", expr.id));
-                    unpack_datum!(bcx, ref_fat_ptr(bcx, lval))
-                } else {
-                    unpack_datum!(bcx, auto_ref(bcx, datum, expr))
-                }
-            }
-            &ty::AutoUnsize(ref k) => {
-                debug!("  AutoUnsize");
-                // Arrange cleanup
-                let lval = unpack_datum!(bcx,
-                    datum.to_lvalue_datum(bcx, "into_fat_ptr", expr.id));
-                unpack_datum!(bcx, unsize_expr(bcx, expr, lval, k))
-            }
-        };
+        if let ty::AutoPtr(_, _, Some(ref a)) = *autoref {
+            datum = unpack_datum!(bcx, apply_autoref(a, bcx, expr, datum));
+        }
 
-        DatumBlock::new(bcx, datum)
+        if !type_is_sized(bcx.tcx(), datum.ty) {
+            // Arrange cleanup
+            let lval = unpack_datum!(bcx,
+                datum.to_lvalue_datum(bcx, "ref_fat_ptr", expr.id));
+            ref_fat_ptr(bcx, lval)
+        } else {
+            auto_ref(bcx, datum, expr)
+        }
     }
 
-    fn unsize_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                               expr: &ast::Expr,
-                               datum: Datum<'tcx, Lvalue>,
-                               k: &ty::UnsizeKind<'tcx>)
-                               -> DatumBlock<'blk, 'tcx, Expr> {
+    fn unsize_lvalue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                 expr: &ast::Expr,
+                                 datum: Datum<'tcx, Lvalue>,
+                                 k: &ty::UnsizeKind<'tcx>)
+                                 -> DatumBlock<'blk, 'tcx, Expr> {
         let datum_ty = datum.ty;
         let unsized_ty = ty::unsize_ty(bcx.tcx(), datum_ty, k, expr.span);
-        debug!("unsize_expr(unsized_ty={})", unsized_ty.repr(bcx.tcx()));
+        debug!("unsize_lvalue(unsized_ty={})", unsized_ty.repr(bcx.tcx()));
 
         let info = unsized_info_bcx(bcx, k, datum_ty, datum.val, bcx.fcx.param_substs);
 

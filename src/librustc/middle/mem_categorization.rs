@@ -452,7 +452,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
                     ty::AdjustDerefRef(
                         ty::AutoDerefRef {
-                            autoref: None, autoderefs}) => {
+                            autoref: None, autoderefs, ..}) => {
                         // Equivalent to *expr or something similar.
                         self.cat_expr_autoderefd(expr, autoderefs)
                     }

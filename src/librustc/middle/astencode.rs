@@ -842,7 +842,7 @@ trait rbml_writer_helpers<'tcx> {
     fn emit_auto_adjustment<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                                 adj: &ty::AutoAdjustment<'tcx>);
     fn emit_autoref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                        autoref: &ty::AutoRef<'tcx>);
+                        autoref: &ty::AutoRef);
     fn emit_auto_deref_ref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                                auto_deref_ref: &ty::AutoDerefRef<'tcx>);
     fn emit_unsize_kind<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
@@ -1037,7 +1037,7 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
     }
 
     fn emit_autoref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                        autoref: &ty::AutoRef<'tcx>) {
+                        autoref: &ty::AutoRef) {
         use serialize::Encoder;
 
         self.emit_enum("AutoRef", |this| {
@@ -1058,23 +1058,9 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                             |this| this.emit_option_some(|this| Ok(this.emit_autoref(ecx, a)))))
                     })
                 }
-                &ty::AutoUnsize(ref uk) => {
-                    this.emit_enum_variant("AutoUnsize", 1, 1, |this| {
-                        this.emit_enum_variant_arg(0, |this| Ok(this.emit_unsize_kind(ecx, uk)))
-                    })
-                }
-                &ty::AutoUnsafe(m, None) => {
-                    this.emit_enum_variant("AutoUnsafe", 2, 2, |this| {
-                        this.emit_enum_variant_arg(0, |this| m.encode(this));
-                        this.emit_enum_variant_arg(1,
-                            |this| this.emit_option(|this| this.emit_option_none()))
-                    })
-                }
-                &ty::AutoUnsafe(m, Some(box ref a)) => {
-                    this.emit_enum_variant("AutoUnsafe", 2, 2, |this| {
-                        this.emit_enum_variant_arg(0, |this| m.encode(this));
-                        this.emit_enum_variant_arg(1, |this| this.emit_option(
-                            |this| this.emit_option_some(|this| Ok(this.emit_autoref(ecx, a)))))
+                &ty::AutoUnsafe(m) => {
+                    this.emit_enum_variant("AutoUnsafe", 1, 1, |this| {
+                        this.emit_enum_variant_arg(0, |this| m.encode(this))
                     })
                 }
             }
@@ -1087,7 +1073,17 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
         self.emit_struct("AutoDerefRef", 2, |this| {
             this.emit_struct_field("autoderefs", 0, |this| auto_deref_ref.autoderefs.encode(this));
-            this.emit_struct_field("autoref", 1, |this| {
+
+            this.emit_struct_field("unsize", 1, |this| {
+                this.emit_option(|this| {
+                    match auto_deref_ref.unsize {
+                        None => this.emit_option_none(),
+                        Some(ref uk) => this.emit_option_some(|this| Ok(this.emit_unsize_kind(ecx, uk))),
+                    }
+                })
+            });
+
+            this.emit_struct_field("autoref", 2, |this| {
                 this.emit_option(|this| {
                     match auto_deref_ref.autoref {
                         None => this.emit_option_none(),
@@ -1351,7 +1347,7 @@ trait rbml_decoder_decoder_helpers<'tcx> {
     fn read_auto_deref_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                    -> ty::AutoDerefRef<'tcx>;
     fn read_autoref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                            -> ty::AutoRef<'tcx>;
+                            -> ty::AutoRef;
     fn read_unsize_kind<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                 -> ty::UnsizeKind<'tcx>;
     fn convert_def_id(&mut self,
@@ -1664,7 +1660,16 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                 autoderefs: this.read_struct_field("autoderefs", 0, |this| {
                     Decodable::decode(this)
                 }).unwrap(),
-                autoref: this.read_struct_field("autoref", 1, |this| {
+                unsize: this.read_struct_field("unsize", 1, |this| {
+                    this.read_option(|this, b| {
+                        if b {
+                            Ok(Some(this.read_unsize_kind(dcx)))
+                        } else {
+                            Ok(None)
+                        }
+                    })
+                }).unwrap(),
+                autoref: this.read_struct_field("autoref", 2, |this| {
                     this.read_option(|this, b| {
                         if b {
                             Ok(Some(this.read_autoref(dcx)))
@@ -1677,11 +1682,9 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_autoref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>) -> ty::AutoRef<'tcx> {
+    fn read_autoref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>) -> ty::AutoRef {
         self.read_enum("AutoRef", |this| {
-            let variants = ["AutoPtr",
-                            "AutoUnsize",
-                            "AutoUnsafe"];
+            let variants = ["AutoPtr", "AutoUnsafe"];
             this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
                     0 => {
@@ -1701,25 +1704,10 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                         ty::AutoPtr(r.tr(dcx), m, a)
                     }
                     1 => {
-                        let uk: ty::UnsizeKind =
-                            this.read_enum_variant_arg(0,
-                                |this| Ok(this.read_unsize_kind(dcx))).unwrap();
-
-                        ty::AutoUnsize(uk)
-                    }
-                    2 => {
                         let m: ast::Mutability =
                             this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
-                        let a: Option<Box<ty::AutoRef>> =
-                            this.read_enum_variant_arg(1, |this| this.read_option(|this, b| {
-                                if b {
-                                    Ok(Some(box this.read_autoref(dcx)))
-                                } else {
-                                    Ok(None)
-                                }
-                            })).unwrap();
 
-                        ty::AutoUnsafe(m, a)
+                        ty::AutoUnsafe(m)
                     }
                     _ => panic!("bad enum variant for ty::AutoRef")
                 })

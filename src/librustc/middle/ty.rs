@@ -301,23 +301,25 @@ pub enum UnsizeKind<'tcx> {
 
 #[derive(Clone, Debug)]
 pub struct AutoDerefRef<'tcx> {
+    /// Apply a number of dereferences, producing an lvalue.
     pub autoderefs: uint,
-    pub autoref: Option<AutoRef<'tcx>>
+
+    /// Convert a lvalue from [T; n] to [T] (or similar, depending on the kind).
+    pub unsize: Option<UnsizeKind<'tcx>>,
+
+    /// Produce a pointer/reference from the lvalue.
+    pub autoref: Option<AutoRef>
 }
 
 #[derive(Clone, PartialEq, Debug)]
-pub enum AutoRef<'tcx> {
+pub enum AutoRef {
     /// Convert from T to &T
     /// The third field allows us to wrap other AutoRef adjustments.
-    AutoPtr(Region, ast::Mutability, Option<Box<AutoRef<'tcx>>>),
-
-    /// Convert [T, ..n] to [T] (or similar, depending on the kind)
-    AutoUnsize(UnsizeKind<'tcx>),
+    AutoPtr(Region, ast::Mutability, Option<Box<AutoRef>>),
 
     /// Convert from T to *T
     /// Value to thin pointer
-    /// The second field allows us to wrap other AutoRef adjustments.
-    AutoUnsafe(ast::Mutability, Option<Box<AutoRef<'tcx>>>),
+    AutoUnsafe(ast::Mutability),
 }
 
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Debug)]
@@ -4493,6 +4495,10 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                         }
                     }
 
+                    if let Some(ref k) = adj.unsize {
+                        adjusted_ty = unsize_ty(cx, adjusted_ty, k, span);
+                    }
+
                     adjust_ty_for_autoref(cx, span, adjusted_ty, adj.autoref.as_ref())
                 }
 
@@ -4517,7 +4523,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
 pub fn adjust_ty_for_autoref<'tcx>(cx: &ctxt<'tcx>,
                                    span: Span,
                                    ty: Ty<'tcx>,
-                                   autoref: Option<&AutoRef<'tcx>>)
+                                   autoref: Option<&AutoRef>)
                                    -> Ty<'tcx>
 {
     match autoref {
@@ -4534,15 +4540,9 @@ pub fn adjust_ty_for_autoref<'tcx>(cx: &ctxt<'tcx>,
             })
         }
 
-        Some(&AutoUnsafe(m, ref a)) => {
-            let adjusted_ty = match a {
-                &Some(box ref a) => adjust_ty_for_autoref(cx, span, ty, Some(a)),
-                &None => ty
-            };
-            mk_ptr(cx, mt {ty: adjusted_ty, mutbl: m})
+        Some(&AutoUnsafe(m)) => {
+            mk_ptr(cx, mt {ty: ty, mutbl: m})
         }
-
-        Some(&AutoUnsize(ref k)) => unsize_ty(cx, ty, k, span),
     }
 }
 
@@ -6615,7 +6615,7 @@ impl<'tcx> AutoAdjustment<'tcx> {
 
 impl<'tcx> AutoDerefRef<'tcx> {
     pub fn is_identity(&self) -> bool {
-        self.autoderefs == 0 && self.autoref.is_none()
+        self.autoderefs == 0 && self.unsize.is_none() && self.autoref.is_none()
     }
 }
 
@@ -6783,21 +6783,19 @@ impl<'tcx> Repr<'tcx> for UnsizeKind<'tcx> {
 
 impl<'tcx> Repr<'tcx> for AutoDerefRef<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("AutoDerefRef({}, {})", self.autoderefs, self.autoref.repr(tcx))
+        format!("AutoDerefRef({}, unsize={}, {})",
+                self.autoderefs, self.unsize.repr(tcx), self.autoref.repr(tcx))
     }
 }
 
-impl<'tcx> Repr<'tcx> for AutoRef<'tcx> {
+impl<'tcx> Repr<'tcx> for AutoRef {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match *self {
             AutoPtr(a, b, ref c) => {
                 format!("AutoPtr({},{:?},{})", a.repr(tcx), b, c.repr(tcx))
             }
-            AutoUnsize(ref a) => {
-                format!("AutoUnsize({})", a.repr(tcx))
-            }
-            AutoUnsafe(ref a, ref b) => {
-                format!("AutoUnsafe({:?},{})", a, b.repr(tcx))
+            AutoUnsafe(ref a) => {
+                format!("AutoUnsafe({:?})", a)
             }
         }
     }

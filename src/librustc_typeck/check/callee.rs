@@ -84,7 +84,11 @@ pub fn check_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                   UnresolvedTypeAction::Error,
                   LvaluePreference::NoPreference,
                   |adj_ty, idx| {
-                      let autoderefref = ty::AutoDerefRef { autoderefs: idx, autoref: None };
+                      let autoderefref = ty::AutoDerefRef {
+                          autoderefs: idx,
+                          unsize: None,
+                          autoref: None
+                      };
                       try_overloaded_call_step(fcx, call_expr, callee_expr,
                                                adj_ty, autoderefref)
                   });

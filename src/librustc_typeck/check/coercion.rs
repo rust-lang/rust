@@ -66,7 +66,7 @@ use middle::infer::{self, cres, Coercion, TypeTrace};
 use middle::infer::combine::Combine;
 use middle::infer::sub::Sub;
 use middle::subst;
-use middle::ty::{AutoPtr, AutoDerefRef, AdjustDerefRef, AutoUnsize, AutoUnsafe};
+use middle::ty::{AutoDerefRef, AdjustDerefRef};
 use middle::ty::{self, mt, Ty};
 use util::common::indent;
 use util::ppaux;
@@ -192,7 +192,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let coercion = Coercion(self.trace.clone());
         let r_borrow = self.fcx.infcx().next_region_var(coercion);
-        let autoref = Some(AutoPtr(r_borrow, mutbl_b, None));
+        let autoref = Some(ty::AutoPtr(r_borrow, mutbl_b, None));
 
         let r_borrow = self.tcx().mk_region(r_borrow);
         let lvalue_pref = match mutbl_b {
@@ -228,6 +228,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             Some(_) => {
                 Ok(Some(AdjustDerefRef(AutoDerefRef {
                     autoderefs: autoderefs,
+                    unsize: None,
                     autoref: autoref
                 })))
             }
@@ -271,11 +272,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                              ty::mt{ty: ty, mutbl: mt_b.mutbl});
                         try!(self.fcx.infcx().try(|_| self.subtype(ty, b)));
                         debug!("Success, coerced with AutoDerefRef(1, \
-                                AutoPtr(AutoUnsize({:?})))", kind);
+                                unsize({:?}), AutoPtr)", kind);
                         Ok(Some(AdjustDerefRef(AutoDerefRef {
                             autoderefs: 1,
-                            autoref: Some(ty::AutoPtr(r_borrow, mt_b.mutbl,
-                                                      Some(box AutoUnsize(kind))))
+                            unsize: Some(kind),
+                            autoref: Some(ty::AutoPtr(r_borrow, mt_b.mutbl, None))
                         })))
                     }
                     _ => Err(ty::terr_mismatch)
@@ -292,11 +293,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                                              ty::mt{ty: ty, mutbl: mt_b.mutbl});
                         try!(self.fcx.infcx().try(|_| self.subtype(ty, b)));
                         debug!("Success, coerced with AutoDerefRef(1, \
-                                AutoPtr(AutoUnsize({:?})))", kind);
+                                unsize({:?}), AutoUnsafe)", kind);
                         Ok(Some(AdjustDerefRef(AutoDerefRef {
                             autoderefs: 1,
-                            autoref: Some(ty::AutoUnsafe(mt_b.mutbl,
-                                                         Some(box AutoUnsize(kind))))
+                            unsize: Some(kind),
+                            autoref: Some(ty::AutoUnsafe(mt_b.mutbl))
                         })))
                     }
                     _ => Err(ty::terr_mismatch)
@@ -521,7 +522,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // regionck knows that the region for `a` must be valid here.
         Ok(Some(AdjustDerefRef(AutoDerefRef {
             autoderefs: 1,
-            autoref: Some(ty::AutoUnsafe(mutbl_b, None))
+            unsize: None,
+            autoref: Some(ty::AutoUnsafe(mutbl_b))
         })))
     }
 }

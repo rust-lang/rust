@@ -276,6 +276,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
                         ty::AdjustDerefRef(ty::AutoDerefRef {
                             autoderefs: adj.autoderefs,
+                            unsize: self.resolve(&adj.unsize, reason),
                             autoref: self.resolve(&adj.autoref, reason),
                         })
                     }

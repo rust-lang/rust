@@ -158,8 +158,14 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         assert_eq!(n, auto_deref_ref.autoderefs);
         assert_eq!(result, Some(()));
 
+        let adjusted_ty = if let Some(ref k) = auto_deref_ref.unsize {
+            ty::unsize_ty(self.tcx(), autoderefd_ty, k, self.span)
+        } else {
+            autoderefd_ty
+        };
+
         let final_ty =
-            ty::adjust_ty_for_autoref(self.tcx(), self.span, autoderefd_ty,
+            ty::adjust_ty_for_autoref(self.tcx(), self.span, adjusted_ty,
                                       auto_deref_ref.autoref.as_ref());
 
         // Write out the final adjustment.
@@ -176,13 +182,15 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             probe::AutoDeref(num) => {
                 ty::AutoDerefRef {
                     autoderefs: num,
-                    autoref: None,
+                    unsize: None,
+                    autoref: None
                 }
             }
             probe::AutoUnsizeLength(autoderefs, len) => {
                 ty::AutoDerefRef {
                     autoderefs: autoderefs,
-                    autoref: Some(ty::AutoUnsize(ty::UnsizeLength(len))),
+                    unsize: Some(ty::UnsizeLength(len)),
+                    autoref: None
                 }
             }
             probe::AutoRef(mutability, ref sub_adjustment) => {
@@ -499,10 +507,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                             .adjustments
                                             .borrow()
                                             .get(&expr.id) {
-                Some(&ty::AdjustDerefRef(ty::AutoDerefRef {
-                    autoderefs: autoderef_count,
-                    autoref: _
-                })) => autoderef_count,
+                Some(&ty::AdjustDerefRef(ref adj)) => adj.autoderefs,
                 Some(_) | None => 0,
             };
 
@@ -532,7 +537,11 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         let mut base_adjustment =
                             match self.fcx.inh.adjustments.borrow().get(&base_expr.id) {
                                 Some(&ty::AdjustDerefRef(ref adr)) => (*adr).clone(),
-                                None => ty::AutoDerefRef { autoderefs: 0, autoref: None },
+                                None => ty::AutoDerefRef {
+                                    autoderefs: 0,
+                                    unsize: None,
+                                    autoref: None
+                                },
                                 Some(_) => {
                                     self.tcx().sess.span_bug(
                                         base_expr.span,
@@ -662,7 +671,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 fn wrap_autoref<'tcx, F>(mut deref: ty::AutoDerefRef<'tcx>,
                          base_fn: F)
                          -> ty::AutoDerefRef<'tcx> where
-    F: FnOnce(Option<Box<ty::AutoRef<'tcx>>>) -> ty::AutoRef<'tcx>,
+    F: FnOnce(Option<Box<ty::AutoRef>>) -> ty::AutoRef,
 {
     let autoref = mem::replace(&mut deref.autoref, None);
     let autoref = autoref.map(|r| box r);

@@ -1444,7 +1444,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span,
             ty::AdjustDerefRef(ty::AutoDerefRef {
                 autoderefs: derefs,
-                autoref: None })
+                unsize: None,
+                autoref: None
+            })
         );
     }
 
@@ -1531,34 +1533,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                        span: Span,
                                        adj: &ty::AutoAdjustment<'tcx>) {
         match *adj {
-            ty::AdjustReifyFnPointer(..) => { }
-            ty::AdjustUnsafeFnPointer => { }
-            ty::AdjustDerefRef(ref d_r) => {
-                match d_r.autoref {
-                    Some(ref a_r) => {
-                        self.register_autoref_obligations(span, a_r);
-                    }
-                    None => {}
-                }
-            }
-            ty::AdjustUnsize(ref unsize) => {
-                self.register_unsize_obligations(span, unsize);
-            }
-        }
-    }
+            ty::AdjustReifyFnPointer(..) |
+            ty::AdjustUnsafeFnPointer |
+            ty::AdjustDerefRef(ty::AutoDerefRef { unsize: None, .. }) => {}
 
-    fn register_autoref_obligations(&self,
-                                    span: Span,
-                                    autoref: &ty::AutoRef<'tcx>) {
-        match *autoref {
-            ty::AutoPtr(_, _, None) |
-            ty::AutoUnsafe(_, None) => {
-            }
-            ty::AutoPtr(_, _, Some(ref a_r)) |
-            ty::AutoUnsafe(_, Some(ref a_r)) => {
-                self.register_autoref_obligations(span, &**a_r)
-            }
-            ty::AutoUnsize(ref unsize) => {
+            ty::AdjustDerefRef(ty::AutoDerefRef { unsize: Some(ref unsize), .. }) |
+            ty::AdjustUnsize(ref unsize) => {
                 self.register_unsize_obligations(span, unsize);
             }
         }
@@ -2136,7 +2116,11 @@ fn autoderef_for_index<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                UnresolvedTypeAction::Error,
                                                lvalue_pref,
                                                |adj_ty, idx| {
-            let autoderefref = ty::AutoDerefRef { autoderefs: idx, autoref: None };
+            let autoderefref = ty::AutoDerefRef {
+                autoderefs: idx,
+                unsize: None,
+                autoref: None
+            };
             step(adj_ty, autoderefref)
         });
 
@@ -2151,7 +2135,8 @@ fn autoderef_for_index<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
             let adjusted_ty = ty::mk_vec(fcx.tcx(), element_ty, None);
             let autoderefref = ty::AutoDerefRef {
                 autoderefs: autoderefs,
-                autoref: Some(ty::AutoUnsize(ty::UnsizeLength(n)))
+                unsize: Some(ty::UnsizeLength(n)),
+                autoref: None
             };
             step(adjusted_ty, autoderefref)
         }
@@ -2837,11 +2822,19 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                         fcx.mk_subr(infer::Reborrow(lhs.span), r_adj, *r_in);
                         let adjusted_ty = ty::mk_rptr(fcx.tcx(), fcx.tcx().mk_region(r_adj), mt);
                         let autoptr = ty::AutoPtr(r_adj, mt.mutbl, None);
-                        let adjustment = ty::AutoDerefRef { autoderefs: 1, autoref: Some(autoptr) };
+                        let adjustment = ty::AutoDerefRef {
+                            autoderefs: 1,
+                            unsize: None,
+                            autoref: Some(autoptr)
+                        };
                         (adjusted_ty, adjustment)
                     }
                     _ => {
-                        (lhs_ty, ty::AutoDerefRef { autoderefs: 0, autoref: None })
+                        (lhs_ty, ty::AutoDerefRef {
+                            autoderefs: 0,
+                            unsize: None,
+                            autoref: None
+                         })
                     }
                 };
 

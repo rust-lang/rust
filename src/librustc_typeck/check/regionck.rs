@@ -499,10 +499,10 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     if let Some(adjustment) = rcx.fcx.inh.adjustments.borrow().get(&expr.id) {
         debug!("adjustment={:?}", adjustment);
         match *adjustment {
-            ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, autoref: ref opt_autoref}) => {
+            ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, ref autoref, ..}) => {
                 let expr_ty = rcx.resolve_node_type(expr.id);
                 constrain_autoderefs(rcx, expr, autoderefs, expr_ty);
-                if let Some(ref autoref) = *opt_autoref {
+                if let Some(ref autoref) = *autoref {
                     link_autoref(rcx, expr, autoderefs, autoref);
 
                     // Require that the resulting region encompasses
@@ -1132,7 +1132,7 @@ fn link_autoref(rcx: &Rcx,
                 ty::BorrowKind::from_mutbl(m), expr_cmt);
         }
 
-        ty::AutoUnsafe(..) | ty::AutoUnsize(_) => {}
+        ty::AutoUnsafe(_) => {}
     }
 }
 

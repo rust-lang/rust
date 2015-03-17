@@ -122,7 +122,7 @@ pub fn lookup_in_trait<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                  -> Option<MethodCallee<'tcx>>
 {
     lookup_in_trait_adjusted(fcx, span, self_expr, m_name, trait_def_id,
-                             ty::AutoDerefRef { autoderefs: 0, autoref: None },
+                             ty::AutoDerefRef { autoderefs: 0, unsize: None, autoref: None },
                              self_ty, opt_input_types)
 }
 
@@ -260,13 +260,14 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     // autoref. Pull the region etc out of the type of first argument.
                     match transformed_self_ty.sty {
                         ty::ty_rptr(region, ty::mt { mutbl, ty: _ }) => {
-                            let ty::AutoDerefRef { autoderefs, autoref } = autoderefref;
+                            let ty::AutoDerefRef { autoderefs, unsize, autoref } = autoderefref;
                             let autoref = autoref.map(|r| box r);
                             fcx.write_adjustment(
                                 self_expr.id,
                                 span,
                                 ty::AdjustDerefRef(ty::AutoDerefRef {
                                     autoderefs: autoderefs,
+                                    unsize: unsize,
                                     autoref: Some(ty::AutoPtr(*region, mutbl, autoref))
                                 }));
                         }

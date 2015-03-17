@@ -800,17 +800,17 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             return_if_err!(self.mc.cat_expr_unadjusted(expr));
                         self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
                     }
-                    ty::AdjustDerefRef(ty::AutoDerefRef {
-                        autoref: ref opt_autoref,
-                        autoderefs: n
-                    }) => {
-                        self.walk_autoderefs(expr, n);
-
-                        match *opt_autoref {
-                            None => { }
-                            Some(ref r) => {
-                                self.walk_autoref(expr, r, n);
-                            }
+                    ty::AdjustDerefRef(ref adj) => {
+                        self.walk_autoderefs(expr, adj.autoderefs);
+                        if let Some(ref r) = adj.autoref {
+                            self.walk_autoref(expr, r, adj.autoderefs);
+                        } else if adj.unsize.is_some() {
+                            assert!(adj.autoderefs == 1,
+                                    format!("Expected exactly 1 deref with \
+                                             unsize AutoRefs, found: {}", adj.autoderefs));
+                            let cmt_unadjusted =
+                                return_if_err!(self.mc.cat_expr_unadjusted(expr));
+                            self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
                         }
                     }
                 }
@@ -858,13 +858,13 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                     n: uint) {
         debug!("walk_autoref expr={}", expr.repr(self.tcx()));
 
+        let cmt_derefd = return_if_err!(
+            self.mc.cat_expr_autoderefd(expr, n));
+        debug!("walk_adjustment: cmt_derefd={}",
+               cmt_derefd.repr(self.tcx()));
+
         match *autoref {
             ty::AutoPtr(r, m, _) => {
-                let cmt_derefd = return_if_err!(
-                    self.mc.cat_expr_autoderefd(expr, n));
-                debug!("walk_adjustment: cmt_derefd={}",
-                       cmt_derefd.repr(self.tcx()));
-
                 self.delegate.borrow(expr.id,
                                      expr.span,
                                      cmt_derefd,
@@ -872,15 +872,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                                      ty::BorrowKind::from_mutbl(m),
                                      AutoRef);
             }
-            ty::AutoUnsize(_) => {
-                assert!(n == 1, format!("Expected exactly 1 deref with Uniq \
-                                         AutoRefs, found: {}", n));
-                let cmt_unadjusted =
-                    return_if_err!(self.mc.cat_expr_unadjusted(expr));
-                self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
-            }
-            ty::AutoUnsafe(..) => {
-            }
+            ty::AutoUnsafe(..) => {}
         }
     }
 

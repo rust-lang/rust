@@ -260,7 +260,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
 
-            let second_autoref = match adj.autoref {
+            match adj.autoref {
                 None => {
                     let (dv, dt) = const_deref(cx, llconst, ty);
                     llconst = dv;
@@ -269,10 +269,8 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     // open type here. So we need to update the type with
                     // the one returned from const_deref.
                     ety_adjusted = dt;
-                    None
                 }
-                Some(ty::AutoUnsafe(_, opt_autoref)) |
-                Some(ty::AutoPtr(_, _, opt_autoref)) => {
+                Some(_) => {
                     if adj.autoderefs == 0 {
                         // Don't copy data to do a deref+ref
                         // (i.e., skip the last auto-deref).
@@ -293,35 +291,39 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             }
                         }
                     }
-                    opt_autoref
                 }
-                Some(autoref) => {
-                    cx.sess().span_bug(e.span,
-                        &format!("unimplemented const first autoref {:?}", autoref))
-                }
+            }
+
+            if let Some(ref k) = adj.unsize {
+                // This works a reference, not an lvalue (like trans::expr does).
+                assert!(adj.autoref.is_some());
+
+                let info = expr::unsized_info(cx, k, ty, param_substs,
+                    || const_get_elt(cx, llconst, &[abi::FAT_PTR_EXTRA as u32]));
+
+                let unsized_ty = ty::unsize_ty(cx.tcx(), ty, k, e.span);
+                let ptr_ty = type_of::in_memory_type_of(cx, unsized_ty).ptr_to();
+                let base = ptrcast(llconst, ptr_ty);
+
+                let prev_const = cx.const_unsized().borrow_mut()
+                                   .insert(base, llconst);
+                assert!(prev_const.is_none() || prev_const == Some(llconst));
+                assert_eq!(abi::FAT_PTR_ADDR, 0);
+                assert_eq!(abi::FAT_PTR_EXTRA, 1);
+                llconst = C_struct(cx, &[base, info], false);
+            }
+
+            let second_autoref =  if let Some(ty::AutoPtr(_, _, opt_autoref)) = adj.autoref {
+                opt_autoref
+            } else {
+                None
             };
+
             match second_autoref {
                 None => {}
-                Some(box ty::AutoUnsafe(_, None)) |
+                Some(box ty::AutoUnsafe(_)) |
                 Some(box ty::AutoPtr(_, _, None)) => {
                     llconst = addr_of(cx, llconst, "autoref", e.id);
-                }
-                Some(box ty::AutoUnsize(ref k)) => {
-                    let info =
-                        expr::unsized_info(
-                            cx, k, ty, param_substs,
-                            || const_get_elt(cx, llconst, &[abi::FAT_PTR_EXTRA as u32]));
-
-                    let unsized_ty = ty::unsize_ty(cx.tcx(), ty, k, e.span);
-                    let ptr_ty = type_of::in_memory_type_of(cx, unsized_ty).ptr_to();
-                    let base = ptrcast(llconst, ptr_ty);
-
-                    let prev_const = cx.const_unsized().borrow_mut()
-                                       .insert(base, llconst);
-                    assert!(prev_const.is_none() || prev_const == Some(llconst));
-                    assert_eq!(abi::FAT_PTR_ADDR, 0);
-                    assert_eq!(abi::FAT_PTR_EXTRA, 1);
-                    llconst = C_struct(cx, &[base, info], false);
                 }
                 Some(autoref) => {
                     cx.sess().span_bug(e.span,
