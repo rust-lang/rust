@@ -784,15 +784,19 @@ pub enum Expr_ {
     ExprBox(Option<P<Expr>>, P<Expr>),
     /// An array (`[a, b, c, d]`)
     ExprVec(Vec<P<Expr>>),
-    /// A function cal
+    /// A function call
+    /// The first field resolves to the function itself,
+    /// and the second field is the list of arguments
     ExprCall(P<Expr>, Vec<P<Expr>>),
     /// A method call (`x.foo::<Bar, Baz>(a, b, c, d)`)
     /// The `SpannedIdent` is the identifier for the method name
     /// The vector of `Ty`s are the ascripted type parameters for the method
     /// (within the angle brackets)
     /// The first element of the vector of `Expr`s is the expression that evaluates
-    /// to the object on which the method is being called on, and the remaining elements
-    /// are the arguments
+    /// to the object on which the method is being called on (the receiver),
+    /// and the remaining elements are the rest of the arguments.
+    /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
+    /// `ExprMethodCall(foo, [Bar, Baz], [x, a, b, c, d])`
     ExprMethodCall(SpannedIdent, Vec<P<Ty>>, Vec<P<Expr>>),
     /// A tuple (`(a, b, c ,d)`)
     ExprTup(Vec<P<Expr>>),
@@ -829,7 +833,8 @@ pub enum Expr_ {
     /// `'label loop { block }`
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
-    /// A `match` block, with a desugar source
+    /// A `match` block, with a source that indicates whether or not it is
+    /// the result of a desugaring, and if so, which kind
     ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
     /// A closure (for example, `move |a, b, c| {a + b + c}`)
     ExprClosure(CaptureClause, P<FnDecl>, P<Block>),
@@ -1094,7 +1099,7 @@ pub enum Mac_ {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum StrStyle {
-    /// A regular string, like `"fooo"`
+    /// A regular string, like `"foo"`
     CookedStr,
     /// A raw string, like `r##"foo"##`
     /// The uint is the number of `#` symbols used
