@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-    fn dummy(&self) { }
-}
+// aux-build:pub_static_array.rs
 
-// This should emit the less confusing error, not the more confusing one.
+extern crate "pub_static_array" as array;
 
-fn foo(_x: Foo + Send) {
-    //~^ ERROR the trait `core::marker::Sized` is not implemented
-}
+use array::ARRAY;
 
-fn main() { }
+static X: &'static u8 = &ARRAY[0];
+//~^ ERROR: cannot refer to the interior of another static, use a constant
+
+pub fn main() {}
