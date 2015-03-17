@@ -454,7 +454,8 @@ fn box_succ(x: Box<i32>) -> i32 { *x + 1 }
 fn rc_succ(x: Rc<i32>) -> i32 { *x + 1 }
 ```
 
-Note that the caller of your function will have to modify their calls slightly:
+Note that the caller of your function will have to modify their calls slightly 
+(FIXME: actually they don't):
 
 ```{rust}
 use std::rc::Rc;
@@ -466,8 +467,8 @@ let box_x = Box::new(5);
 let rc_x = Rc::new(5);
 
 succ(ref_x);
-succ(&*box_x);
-succ(&*rc_x);
+succ(&*box_x);  // FIXME: actually &box_x works fine
+succ(&*rc_x);  // FIXME: actually &rc_x works fine
 ```
 
 The initial `*` dereferences the pointer, and then `&` takes a reference to
