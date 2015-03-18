@@ -23,7 +23,7 @@ use error::Error;
 use ffi::{OsString, AsOsStr};
 use fmt;
 use io;
-use path::{AsPath, PathBuf};
+use path::{self, Path, PathBuf};
 use sync::atomic::{AtomicIsize, ATOMIC_ISIZE_INIT, Ordering};
 use sync::{StaticMutex, MUTEX_INIT};
 use sys::os as os_imp;
@@ -67,8 +67,8 @@ pub fn current_dir() -> io::Result<PathBuf> {
 /// println!("Successfully changed working directory to {}!", root.display());
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn set_current_dir<P: AsPath + ?Sized>(p: &P) -> io::Result<()> {
-    os_imp::chdir(p.as_path())
+pub fn set_current_dir<P: AsRef<Path> + ?Sized>(p: &P) -> io::Result<()> {
+    os_imp::chdir(p.as_ref())
 }
 
 static ENV_LOCK: StaticMutex = MUTEX_INIT;

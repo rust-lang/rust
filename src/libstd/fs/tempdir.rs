@@ -18,7 +18,7 @@ use prelude::v1::*;
 use env;
 use io::{self, Error, ErrorKind};
 use fs;
-use path::{self, PathBuf, AsPath};
+use path::{self, PathBuf};
 use rand::{thread_rng, Rng};
 
 /// A wrapper for a path to temporary directory implementing automatic
@@ -43,10 +43,9 @@ impl TempDir {
     ///
     /// If no directory can be created, `Err` is returned.
     #[allow(deprecated)] // rand usage
-    pub fn new_in<P: AsPath + ?Sized>(tmpdir: &P, prefix: &str)
-                                      -> io::Result<TempDir> {
+    pub fn new_in<P: AsRef<path::Path>>(tmpdir: P, prefix: &str) -> io::Result<TempDir> {
         let storage;
-        let mut tmpdir = tmpdir.as_path();
+        let mut tmpdir = tmpdir.as_ref();
         if !tmpdir.is_absolute() {
             let cur_dir = try!(env::current_dir());
             storage = cur_dir.join(tmpdir);

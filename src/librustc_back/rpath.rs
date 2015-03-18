@@ -106,7 +106,7 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig, lib: &Path) -> String 
 }
 
 fn relativize(path: &Path, rel: &Path) -> PathBuf {
-    let mut res = PathBuf::new("");
+    let mut res = PathBuf::new();
     let mut cur = rel;
     while !path.starts_with(cur) {
         res.push("..");
