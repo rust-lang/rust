@@ -1186,6 +1186,7 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
         if !is_local(did) {
             return false
         }
+
         // .. and it corresponds to a private type in the AST (this returns
         // None for type parameters)
         match self.tcx.map.find(did.node) {
@@ -1206,11 +1207,14 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
             if !self.tcx.sess.features.borrow().visible_private_types &&
                 self.path_is_private_type(trait_ref.trait_ref.ref_id) {
                     let span = trait_ref.trait_ref.path.span;
-                    self.tcx.sess.span_err(span,
-                                           "private trait in exported type \
-                                            parameter bound");
+                    self.tcx.sess.span_err(span, "private trait in exported type \
+                                                  parameter bound");
             }
         }
+    }
+
+    fn item_is_public(&self, id: &ast::NodeId, vis: ast::Visibility) -> bool {
+        self.exported_items.contains(id) || vis == ast::Public
     }
 }
 
@@ -1259,7 +1263,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
             // error messages without (too many) false positives
             // (i.e. we could just return here to not check them at
             // all, or some worse estimation of whether an impl is
-            // publicly visible.
+            // publicly visible).
             ast::ItemImpl(_, _, ref g, ref trait_ref, ref self_, ref impl_items) => {
                 // `impl [... for] Private` is never visible.
                 let self_contains_private;
@@ -1321,7 +1325,22 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                     match *trait_ref {
                         None => {
                             for impl_item in impl_items {
-                                visit::walk_impl_item(self, impl_item);
+                                // This is where we choose whether to walk down
+                                // further into the impl to check its items. We
+                                // should only walk into public items so that we
+                                // don't erroneously report errors for private
+                                // types in private items.
+                                match impl_item.node {
+                                    ast::MethodImplItem(..)
+                                        if self.item_is_public(&impl_item.id, impl_item.vis) =>
+                                    {
+                                        visit::walk_impl_item(self, impl_item)
+                                    }
+                                    ast::TypeImplItem(..) => {
+                                        visit::walk_impl_item(self, impl_item)
+                                    }
+                                    _ => {}
+                                }
                             }
                         }
                         Some(ref tr) => {
@@ -1360,7 +1379,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                         match impl_item.node {
                             ast::MethodImplItem(ref sig, _) => {
                                 if sig.explicit_self.node == ast::SelfStatic &&
-                                   self.exported_items.contains(&impl_item.id) {
+                                        self.item_is_public(&impl_item.id, impl_item.vis) {
                                     found_pub_static = true;
                                     visit::walk_impl_item(self, impl_item);
                                 }
@@ -1381,15 +1400,18 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
             ast::ItemTy(..) => return,
 
             // not at all public, so we don't care
-            _ if !self.exported_items.contains(&item.id) => return,
+            _ if !self.item_is_public(&item.id, item.vis) => {
+                return;
+            }
 
             _ => {}
         }
 
-        // we've carefully constructed it so that if we're here, then
+        // We've carefully constructed it so that if we're here, then
         // any `visit_ty`'s will be called on things that are in
         // public signatures, i.e. things that we're interested in for
         // this visitor.
+        debug!("VisiblePrivateTypesVisitor entering item {:?}", item);
         visit::walk_item(self, item);
     }
 
@@ -1420,20 +1442,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
         }
     }
 
-    fn visit_fn(&mut self, fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
-                b: &'v ast::Block, s: Span, id: ast::NodeId) {
-        // needs special handling for methods.
-        if self.exported_items.contains(&id) {
-            visit::walk_fn(self, fk, fd, b, s);
-        }
-    }
-
     fn visit_ty(&mut self, t: &ast::Ty) {
+        debug!("VisiblePrivateTypesVisitor checking ty {:?}", t);
         if let ast::TyPath(_, ref p) = t.node {
             if !self.tcx.sess.features.borrow().visible_private_types &&
                 self.path_is_private_type(t.id) {
-                self.tcx.sess.span_err(p.span,
-                                       "private type in exported type signature");
+                self.tcx.sess.span_err(p.span, "private type in exported type signature");
             }
         }
         visit::walk_ty(self, t)

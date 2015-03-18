@@ -382,7 +382,7 @@ enum ModuleKind {
 }
 
 /// One node in the tree of modules.
-struct Module {
+pub struct Module {
     parent_link: ParentLink,
     def_id: Cell<Option<DefId>>,
     kind: Cell<ModuleKind>,
@@ -491,7 +491,7 @@ struct ValueNsDef {
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
 #[derive(Debug)]
-struct NameBindings {
+pub struct NameBindings {
     type_def: RefCell<Option<TypeNsDef>>,   //< Meaning in type namespace.
     value_def: RefCell<Option<ValueNsDef>>, //< Meaning in value namespace.
 }
@@ -767,7 +767,7 @@ impl PrimitiveTypeTable {
 }
 
 /// The main resolver class.
-struct Resolver<'a, 'tcx:'a> {
+pub struct Resolver<'a, 'tcx:'a> {
     session: &'a Session,
 
     ast_map: &'a ast_map::Map<'tcx>,
