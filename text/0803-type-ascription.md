@@ -172,10 +172,10 @@ lvalue position), then we don't have the soundness problem, but we do get the
 unexpected result that `&(x: T)` is not in fact a reference to `x`, but a
 reference to a temporary copy of `x`.
 
-The proposed solution is that type ascription expressions are rvalues, but
-taking a reference of such an expression is forbidden. I.e., type asciption is
-forbidden in the following contexts (where `<expr>` is a type ascription
-expression):
+The proposed solution is that type ascription expressions are lvalues, where
+the type ascription expression is in reference context, then we require the
+ascribed type to exactly match the type of the expression, i.e., neither
+subtyping nor coercion is allowed. These contexts are:
 
 ```
 &[mut] <expr>
@@ -183,12 +183,6 @@ let ref [mut] x = <expr>
 match <expr> { .. ref [mut] x .. => { .. } .. }
 <expr>.foo() // due to autoref
 ```
-
-Like other rvalues, type ascription would not be allowed as the lhs of assignment.
-
-Note that, if type asciption is required in such a context, an lvalue can be
-forced by using `{}`, e.g., write `&mut { foo: T }`, rather than `&mut (foo: T)`.
-
 
 # Drawbacks
 
