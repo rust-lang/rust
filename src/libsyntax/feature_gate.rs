@@ -201,7 +201,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("no_mangle", Normal),
     ("no_link", Normal),
     ("derive", Normal),
-    ("deriving", Normal), // deprecation err in expansion
     ("should_fail", Normal),
     ("should_panic", Normal),
     ("ignore", Normal),
@@ -259,7 +258,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("link_section", Whitelisted),
     ("no_builtins", Whitelisted),
     ("no_mangle", Whitelisted),
-    ("no_split_stack", Whitelisted),
     ("no_stack_check", Whitelisted),
     ("packed", Whitelisted),
     ("static_assert", Gated("static_assert",
