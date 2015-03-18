@@ -1053,10 +1053,11 @@ impl<'tcx> Repr<'tcx> for ty::Variance {
 
 impl<'tcx> Repr<'tcx> for ty::Method<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("method(name: {}, generics: {}, fty: {}, \
+        format!("method(name: {}, generics: {}, predicates: {}, fty: {}, \
                  explicit_self: {}, vis: {}, def_id: {})",
                 self.name.repr(tcx),
                 self.generics.repr(tcx),
+                self.predicates.repr(tcx),
                 self.fty.repr(tcx),
                 self.explicit_self.repr(tcx),
                 self.vis.repr(tcx),

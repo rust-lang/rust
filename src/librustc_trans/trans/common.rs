@@ -46,6 +46,7 @@ use arena::TypedArena;
 use libc::{c_uint, c_char};
 use std::ffi::CString;
 use std::cell::{Cell, RefCell};
+use std::result::Result as StdResult;
 use std::vec::Vec;
 use syntax::ast::Ident;
 use syntax::ast;
@@ -997,9 +998,9 @@ pub fn expr_ty_adjusted<'blk, 'tcx>(bcx: &BlockS<'blk, 'tcx>, ex: &ast::Expr) ->
 /// do not (necessarily) resolve all nested obligations on the impl. Note that type check should
 /// guarantee to us that all nested obligations *could be* resolved if we wanted to.
 pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                span: Span,
-                                trait_ref: ty::PolyTraitRef<'tcx>)
-                                -> traits::Vtable<'tcx, ()>
+                                    span: Span,
+                                    trait_ref: ty::PolyTraitRef<'tcx>)
+                                    -> traits::Vtable<'tcx, ()>
 {
     let tcx = ccx.tcx();
 
@@ -1058,13 +1059,29 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let vtable = selection.map_move_nested(|predicate| {
         fulfill_cx.register_predicate_obligation(&infcx, predicate);
     });
-    let vtable = drain_fulfillment_cx(span, &infcx, &mut fulfill_cx, &vtable);
+    let vtable = drain_fulfillment_cx_or_panic(span, &infcx, &mut fulfill_cx, &vtable);
 
     info!("Cache miss: {}", trait_ref.repr(ccx.tcx()));
     ccx.trait_cache().borrow_mut().insert(trait_ref,
                                           vtable.clone());
 
     vtable
+}
+
+pub fn predicates_hold<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                 predicates: Vec<ty::Predicate<'tcx>>)
+                                 -> bool
+{
+    debug!("predicates_hold(predicates={})",
+           predicates.repr(ccx.tcx()));
+
+    let infcx = infer::new_infer_ctxt(ccx.tcx());
+    let mut fulfill_cx = traits::FulfillmentContext::new();
+    for predicate in predicates {
+        let obligation = traits::Obligation::new(traits::ObligationCause::dummy(), predicate);
+        fulfill_cx.register_predicate_obligation(&infcx, obligation);
+    }
+    drain_fulfillment_cx(DUMMY_SP, &infcx, &mut fulfill_cx, &()).is_ok()
 }
 
 pub struct NormalizingClosureTyper<'a,'tcx:'a> {
@@ -1114,11 +1131,36 @@ impl<'a,'tcx> ty::ClosureTyper<'tcx> for NormalizingClosureTyper<'a,'tcx> {
     }
 }
 
+pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
+                                                infcx: &infer::InferCtxt<'a,'tcx>,
+                                                fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
+                                                result: &T)
+                                                -> T
+    where T : TypeFoldable<'tcx> + Repr<'tcx>
+{
+    match drain_fulfillment_cx(span, infcx, fulfill_cx, result) {
+        Ok(v) => v,
+        Err(errors) => {
+            infcx.tcx.sess.span_bug(
+                span,
+                &format!("Encountered errors `{}` fulfilling during trans",
+                         errors.repr(infcx.tcx)));
+        }
+    }
+}
+
+/// Finishes processes any obligations that remain in the fulfillment
+/// context, and then "freshens" and returns `result`. This is
+/// primarily used during normalization and other cases where
+/// processing the obligations in `fulfill_cx` may cause type
+/// inference variables that appear in `result` to be unified, and
+/// hence we need to process those obligations to get the complete
+/// picture of the type.
 pub fn drain_fulfillment_cx<'a,'tcx,T>(span: Span,
-                                   infcx: &infer::InferCtxt<'a,'tcx>,
-                                   fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
-                                   result: &T)
-                                   -> T
+                                       infcx: &infer::InferCtxt<'a,'tcx>,
+                                       fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
+                                       result: &T)
+                                       -> StdResult<T,Vec<traits::FulfillmentError<'tcx>>>
     where T : TypeFoldable<'tcx> + Repr<'tcx>
 {
     debug!("drain_fulfillment_cx(result={})",
@@ -1131,16 +1173,13 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(span: Span,
     match fulfill_cx.select_all_or_error(infcx, &typer) {
         Ok(()) => { }
         Err(errors) => {
+            // We always want to surface any overflow errors, no matter what.
             if errors.iter().all(|e| e.is_overflow()) {
-                // See Ok(None) case above.
                 infcx.tcx.sess.span_fatal(
                     span,
                     "reached the recursion limit during monomorphization");
             } else {
-                infcx.tcx.sess.span_bug(
-                    span,
-                    &format!("Encountered errors `{}` fulfilling during trans",
-                            errors.repr(infcx.tcx)));
+                return Err(errors);
             }
         }
     }
@@ -1150,7 +1189,7 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(span: Span,
     // sort of overkill because we do not expect there to be any
     // unbound type variables, hence no `TyFresh` types should ever be
     // inserted.
-    result.fold_with(&mut infcx.freshener())
+    Ok(result.fold_with(&mut infcx.freshener()))
 }
 
 // Key used to lookup values supplied for type parameters in an expr.
