@@ -12,7 +12,7 @@ pub use self::VarValue::*;
 
 use std::marker;
 
-use middle::ty::{expected_found, IntVarValue};
+use middle::ty::{IntVarValue};
 use middle::ty::{self, Ty};
 use std::fmt::Debug;
 use std::marker::PhantomData;
