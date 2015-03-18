@@ -428,11 +428,6 @@ pub fn set_llvm_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: Val
         let mut used = true;
         match &attr.name()[..] {
             "no_stack_check" => unset_split_stack(llfn),
-            "no_split_stack" => {
-                unset_split_stack(llfn);
-                ccx.sess().span_warn(attr.span,
-                                     "no_split_stack is a deprecated synonym for no_stack_check");
-            }
             "cold" => unsafe {
                 llvm::LLVMAddFunctionAttribute(llfn,
                                                llvm::FunctionIndex as c_uint,

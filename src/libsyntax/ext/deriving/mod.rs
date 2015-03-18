@@ -78,14 +78,6 @@ pub mod totalord;
 
 pub mod generic;
 
-fn expand_deprecated_deriving(cx: &mut ExtCtxt,
-                              span: Span,
-                              _: &MetaItem,
-                              _: &Item,
-                              _: &mut FnMut(P<Item>)) {
-    cx.span_err(span, "`deriving` has been renamed to `derive`");
-}
-
 fn expand_derive(cx: &mut ExtCtxt,
                  _: Span,
                  mitem: &MetaItem,
@@ -151,8 +143,6 @@ macro_rules! derive_traits {
 
             env.insert(intern("derive"),
                        Modifier(Box::new(expand_derive)));
-            env.insert(intern("deriving"),
-                       Decorator(Box::new(expand_deprecated_deriving)));
         }
 
         fn is_builtin_trait(name: &str) -> bool {
