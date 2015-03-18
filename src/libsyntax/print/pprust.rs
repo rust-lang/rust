@@ -1777,7 +1777,12 @@ impl<'a> State<'a> {
                 try!(self.print_fn_block_args(&**decl));
                 try!(space(&mut self.s));
 
-                if !body.stmts.is_empty() || !body.expr.is_some() {
+                let default_return = match decl.output {
+                    ast::DefaultReturn(..) => true,
+                    _ => false
+                };
+
+                if !default_return || !body.stmts.is_empty() || body.expr.is_none() {
                     try!(self.print_block_unclosed(&**body));
                 } else {
                     // we extract the block, so as not to create another set of boxes
