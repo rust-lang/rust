@@ -38,6 +38,7 @@
 #![feature(std_misc)]
 #![feature(unicode)]
 #![feature(path_ext)]
+#![feature(str_char)]
 
 extern crate arena;
 extern crate fmt_macros;

@@ -175,7 +175,9 @@ enum DecompositionType {
 ///
 /// For use with the `std::iter` module.
 #[derive(Clone)]
-#[unstable(feature = "collections")]
+#[unstable(feature = "unicode",
+           reason = "this functionality may be replaced with a more generic \
+                     unicode crate on crates.io")]
 pub struct Decompositions<'a> {
     kind: DecompositionType,
     iter: Chars<'a>,
@@ -266,7 +268,9 @@ enum RecompositionState {
 ///
 /// For use with the `std::iter` module.
 #[derive(Clone)]
-#[unstable(feature = "collections")]
+#[unstable(feature = "unicode",
+           reason = "this functionality may be replaced with a more generic \
+                     unicode crate on crates.io")]
 pub struct Recompositions<'a> {
     iter: Decompositions<'a>,
     state: RecompositionState,
@@ -472,8 +476,9 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// Returns an iterator over the string in Unicode Normalization Form D
     /// (canonical decomposition).
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "this functionality may be moved to libunicode")]
+    #[unstable(feature = "unicode",
+               reason = "this functionality may be replaced with a more generic \
+                         unicode crate on crates.io")]
     fn nfd_chars(&self) -> Decompositions {
         Decompositions {
             iter: self[..].chars(),
@@ -486,8 +491,9 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// Returns an iterator over the string in Unicode Normalization Form KD
     /// (compatibility decomposition).
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "this functionality may be moved to libunicode")]
+    #[unstable(feature = "unicode",
+               reason = "this functionality may be replaced with a more generic \
+                         unicode crate on crates.io")]
     fn nfkd_chars(&self) -> Decompositions {
         Decompositions {
             iter: self[..].chars(),
@@ -500,8 +506,9 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// An Iterator over the string in Unicode Normalization Form C
     /// (canonical decomposition followed by canonical composition).
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "this functionality may be moved to libunicode")]
+    #[unstable(feature = "unicode",
+               reason = "this functionality may be replaced with a more generic \
+                         unicode crate on crates.io")]
     fn nfc_chars(&self) -> Recompositions {
         Recompositions {
             iter: self.nfd_chars(),
@@ -515,8 +522,9 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// An Iterator over the string in Unicode Normalization Form KC
     /// (compatibility decomposition followed by canonical composition).
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "this functionality may be moved to libunicode")]
+    #[unstable(feature = "unicode",
+               reason = "this functionality may be replaced with a more generic \
+                         unicode crate on crates.io")]
     fn nfkc_chars(&self) -> Recompositions {
         Recompositions {
             iter: self.nfkd_chars(),
@@ -1023,8 +1031,11 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// // third byte of `老`
     /// assert!(!s.is_char_boundary(8));
     /// ```
-    #[unstable(feature = "collections",
-               reason = "naming is uncertain with container conventions")]
+    #[unstable(feature = "str_char",
+               reason = "it is unclear whether this method pulls its weight \
+                         with the existence of the char_indices iterator or \
+                         this method may want to be replaced with checked \
+                         slicing")]
     fn is_char_boundary(&self, index: usize) -> bool {
         core_str::StrExt::is_char_boundary(&self[..], index)
     }
@@ -1069,8 +1080,10 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// 14: a
     /// 15: m
     /// ```
-    #[unstable(feature = "collections",
-               reason = "naming is uncertain with container conventions")]
+    #[unstable(feature = "str_char",
+               reason = "often replaced by char_indices, this method may \
+                         be removed in favor of just char_at() or eventually \
+                         removed altogether")]
     fn char_range_at(&self, start: usize) -> CharRange {
         core_str::StrExt::char_range_at(&self[..], start)
     }
@@ -1117,8 +1130,10 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// 6: 华
     /// 3: 中
     /// ```
-    #[unstable(feature = "collections",
-               reason = "naming is uncertain with container conventions")]
+    #[unstable(feature = "str_char",
+               reason = "often replaced by char_indices, this method may \
+                         be removed in favor of just char_at() or eventually \
+                         removed altogether")]
     fn char_range_at_reverse(&self, start: usize) -> CharRange {
         core_str::StrExt::char_range_at_reverse(&self[..], start)
     }
@@ -1137,8 +1152,12 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert_eq!(s.char_at(1), 'b');
     /// assert_eq!(s.char_at(2), 'π');
     /// ```
-    #[unstable(feature = "collections",
-               reason = "naming is uncertain with container conventions")]
+    #[unstable(feature = "str_char",
+               reason = "frequently replaced by the chars() iterator, this \
+                         method may be removed or possibly renamed in the \
+                         future; it is normally replaced by chars/char_indices \
+                         iterators or by getting the first char from a \
+                         subslice")]
     fn char_at(&self, i: usize) -> char {
         core_str::StrExt::char_at(&self[..], i)
     }
@@ -1157,8 +1176,10 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert_eq!(s.char_at_reverse(1), 'a');
     /// assert_eq!(s.char_at_reverse(2), 'b');
     /// ```
-    #[unstable(feature = "collections",
-               reason = "naming is uncertain with container conventions")]
+    #[unstable(feature = "str_char",
+               reason = "see char_at for more details, but reverse semantics \
+                         are also somewhat unclear, especially with which \
+                         cases generate panics")]
     fn char_at_reverse(&self, i: usize) -> char {
         core_str::StrExt::char_at_reverse(&self[..], i)
     }
@@ -1297,8 +1318,10 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert_eq!(c, 'ö');
     /// assert_eq!(s2, "we 老虎 Léopard");
     /// ```
-    #[unstable(feature = "collections",
-               reason = "awaiting conventions about shifting and slices")]
+    #[unstable(feature = "str_char",
+               reason = "awaiting conventions about shifting and slices and \
+                         may not be warranted with the existence of the chars \
+                         and/or char_indices iterators")]
     fn slice_shift_char(&self) -> Option<(char, &str)> {
         core_str::StrExt::slice_shift_char(&self[..])
     }
@@ -1421,8 +1444,9 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     ///
     /// assert_eq!(gr2.as_slice(), b);
     /// ```
-    #[unstable(feature = "collections",
-               reason = "this functionality may only be provided by libunicode")]
+    #[unstable(feature = "unicode",
+               reason = "this functionality may be replaced with a more generic \
+                         unicode crate on crates.io")]
     fn graphemes(&self, is_extended: bool) -> Graphemes {
         UnicodeStr::graphemes(&self[..], is_extended)
     }
@@ -1438,8 +1462,9 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     ///
     /// assert_eq!(gr_inds.as_slice(), b);
     /// ```
-    #[unstable(feature = "collections",
-               reason = "this functionality may only be provided by libunicode")]
+    #[unstable(feature = "unicode",
+               reason = "this functionality may be replaced with a more generic \
+                         unicode crate on crates.io")]
     fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices {
         UnicodeStr::grapheme_indices(&self[..], is_extended)
     }
@@ -1467,13 +1492,15 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     ///
     /// Control characters have zero width.
     ///
-    /// `is_cjk` determines behavior for characters in the Ambiguous category: if `is_cjk` is
-    /// `true`, these are 2 columns wide; otherwise, they are 1. In CJK locales, `is_cjk` should be
-    /// `true`, else it should be `false`.
-    /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/) recommends that these
-    /// characters be treated as 1 column (i.e., `is_cjk = false`) if the locale is unknown.
-    #[unstable(feature = "collections",
-               reason = "this functionality may only be provided by libunicode")]
+    /// `is_cjk` determines behavior for characters in the Ambiguous category:
+    /// if `is_cjk` is `true`, these are 2 columns wide; otherwise, they are 1.
+    /// In CJK locales, `is_cjk` should be `true`, else it should be `false`.
+    /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
+    /// recommends that these characters be treated as 1 column (i.e., `is_cjk =
+    /// false`) if the locale is unknown.
+    #[unstable(feature = "unicode",
+               reason = "this functionality may be replaced with a more generic \
+                         unicode crate on crates.io")]
     fn width(&self, is_cjk: bool) -> usize {
         UnicodeStr::width(&self[..], is_cjk)
     }
@@ -1615,8 +1642,9 @@ impl str {
     /// Returns an iterator over the string in Unicode Normalization Form D
     /// (canonical decomposition).
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "this functionality may be moved to libunicode")]
+    #[unstable(feature = "unicode",
+               reason = "this functionality may be replaced with a more generic \
+                         unicode crate on crates.io")]
     pub fn nfd_chars(&self) -> Decompositions {
         Decompositions {
             iter: self[..].chars(),
@@ -1629,8 +1657,9 @@ impl str {
     /// Returns an iterator over the string in Unicode Normalization Form KD
     /// (compatibility decomposition).
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "this functionality may be moved to libunicode")]
+    #[unstable(feature = "unicode",
+               reason = "this functionality may be replaced with a more generic \
+                         unicode crate on crates.io")]
     pub fn nfkd_chars(&self) -> Decompositions {
         Decompositions {
             iter: self[..].chars(),
@@ -1643,8 +1672,9 @@ impl str {
     /// An Iterator over the string in Unicode Normalization Form C
     /// (canonical decomposition followed by canonical composition).
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "this functionality may be moved to libunicode")]
+    #[unstable(feature = "unicode",
+               reason = "this functionality may be replaced with a more generic \
+                         unicode crate on crates.io")]
     pub fn nfc_chars(&self) -> Recompositions {
         Recompositions {
             iter: self.nfd_chars(),
@@ -1658,8 +1688,9 @@ impl str {
     /// An Iterator over the string in Unicode Normalization Form KC
     /// (compatibility decomposition followed by canonical composition).
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "this functionality may be moved to libunicode")]
+    #[unstable(feature = "unicode",
+               reason = "this functionality may be replaced with a more generic \
+                         unicode crate on crates.io")]
     pub fn nfkc_chars(&self) -> Recompositions {
         Recompositions {
             iter: self.nfkd_chars(),
@@ -2172,8 +2203,11 @@ impl str {
     /// // third byte of `老`
     /// assert!(!s.is_char_boundary(8));
     /// ```
-    #[unstable(feature = "collections",
-               reason = "naming is uncertain with container conventions")]
+    #[unstable(feature = "str_char",
+               reason = "it is unclear whether this method pulls its weight \
+                         with the existence of the char_indices iterator or \
+                         this method may want to be replaced with checked \
+                         slicing")]
     pub fn is_char_boundary(&self, index: usize) -> bool {
         core_str::StrExt::is_char_boundary(&self[..], index)
     }
@@ -2218,8 +2252,10 @@ impl str {
     /// 14: a
     /// 15: m
     /// ```
-    #[unstable(feature = "collections",
-               reason = "naming is uncertain with container conventions")]
+    #[unstable(feature = "str_char",
+               reason = "often replaced by char_indices, this method may \
+                         be removed in favor of just char_at() or eventually \
+                         removed altogether")]
     pub fn char_range_at(&self, start: usize) -> CharRange {
         core_str::StrExt::char_range_at(&self[..], start)
     }
@@ -2266,8 +2302,10 @@ impl str {
     /// 6: 华
     /// 3: 中
     /// ```
-    #[unstable(feature = "collections",
-               reason = "naming is uncertain with container conventions")]
+    #[unstable(feature = "str_char",
+               reason = "often replaced by char_indices, this method may \
+                         be removed in favor of just char_at_reverse() or \
+                         eventually removed altogether")]
     pub fn char_range_at_reverse(&self, start: usize) -> CharRange {
         core_str::StrExt::char_range_at_reverse(&self[..], start)
     }
@@ -2286,8 +2324,12 @@ impl str {
     /// assert_eq!(s.char_at(1), 'b');
     /// assert_eq!(s.char_at(2), 'π');
     /// ```
-    #[unstable(feature = "collections",
-               reason = "naming is uncertain with container conventions")]
+    #[unstable(feature = "str_char",
+               reason = "frequently replaced by the chars() iterator, this \
+                         method may be removed or possibly renamed in the \
+                         future; it is normally replaced by chars/char_indices \
+                         iterators or by getting the first char from a \
+                         subslice")]
     pub fn char_at(&self, i: usize) -> char {
         core_str::StrExt::char_at(&self[..], i)
     }
@@ -2306,8 +2348,10 @@ impl str {
     /// assert_eq!(s.char_at_reverse(1), 'a');
     /// assert_eq!(s.char_at_reverse(2), 'b');
     /// ```
-    #[unstable(feature = "collections",
-               reason = "naming is uncertain with container conventions")]
+    #[unstable(feature = "str_char",
+               reason = "see char_at for more details, but reverse semantics \
+                         are also somewhat unclear, especially with which \
+                         cases generate panics")]
     pub fn char_at_reverse(&self, i: usize) -> char {
         core_str::StrExt::char_at_reverse(&self[..], i)
     }
@@ -2446,8 +2490,10 @@ impl str {
     /// assert_eq!(c, 'ö');
     /// assert_eq!(s2, "we 老虎 Léopard");
     /// ```
-    #[unstable(feature = "collections",
-               reason = "awaiting conventions about shifting and slices")]
+    #[unstable(feature = "str_char",
+               reason = "awaiting conventions about shifting and slices and \
+                         may not be warranted with the existence of the chars \
+                         and/or char_indices iterators")]
     pub fn slice_shift_char(&self) -> Option<(char, &str)> {
         core_str::StrExt::slice_shift_char(&self[..])
     }
@@ -2570,7 +2616,7 @@ impl str {
     ///
     /// assert_eq!(gr2.as_slice(), b);
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "unicode",
                reason = "this functionality may only be provided by libunicode")]
     pub fn graphemes(&self, is_extended: bool) -> Graphemes {
         UnicodeStr::graphemes(&self[..], is_extended)
@@ -2587,7 +2633,7 @@ impl str {
     ///
     /// assert_eq!(gr_inds.as_slice(), b);
     /// ```
-    #[unstable(feature = "collections",
+    #[unstable(feature = "unicode",
                reason = "this functionality may only be provided by libunicode")]
     pub fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices {
         UnicodeStr::grapheme_indices(&self[..], is_extended)
@@ -2621,7 +2667,7 @@ impl str {
     /// `true`, else it should be `false`.
     /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/) recommends that these
     /// characters be treated as 1 column (i.e., `is_cjk = false`) if the locale is unknown.
-    #[unstable(feature = "collections",
+    #[unstable(feature = "unicode",
                reason = "this functionality may only be provided by libunicode")]
     pub fn width(&self, is_cjk: bool) -> usize {
         UnicodeStr::width(&self[..], is_cjk)
