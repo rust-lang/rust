@@ -907,7 +907,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let cg = build_codegen_options(matches);
 
-    let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::new(&m));
+    let sysroot_opt = matches.opt_str("sysroot").map(|m| PathBuf::from(&m));
     let target = matches.opt_str("target").unwrap_or(
         host_triple().to_string());
     let opt_level = {

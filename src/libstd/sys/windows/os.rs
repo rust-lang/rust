@@ -364,8 +364,7 @@ pub fn home_dir() -> Option<PathBuf> {
     getenv("HOME".as_os_str()).or_else(|| {
         getenv("USERPROFILE".as_os_str())
     }).map(|os| {
-        // FIXME(#22751) should consume `os`
-        PathBuf::new(&os)
+        PathBuf::from(os)
     }).or_else(|| unsafe {
         let me = c::GetCurrentProcess();
         let mut token = ptr::null_mut();

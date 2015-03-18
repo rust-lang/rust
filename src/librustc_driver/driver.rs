@@ -468,7 +468,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
             // dependent dlls. Note that this uses cfg!(windows) as opposed to
             // targ_cfg because syntax extensions are always loaded for the host
             // compiler, not for the target.
-            let mut _old_path = OsString::from_str("");
+            let mut _old_path = OsString::new();
             if cfg!(windows) {
                 _old_path = env::var_os("PATH").unwrap_or(_old_path);
                 let mut new_path = sess.host_filesearch(PathKind::All).get_dylib_search_paths();
@@ -752,7 +752,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
 pub fn phase_6_link_output(sess: &Session,
                            trans: &trans::CrateTranslation,
                            outputs: &OutputFilenames) {
-    let old_path = env::var_os("PATH").unwrap_or(OsString::from_str(""));
+    let old_path = env::var_os("PATH").unwrap_or(OsString::new());
     let mut new_path = sess.host_filesearch(PathKind::All).get_tools_search_paths();
     new_path.extend(env::split_paths(&old_path));
     env::set_var("PATH", &env::join_paths(new_path.iter()).unwrap());
@@ -927,7 +927,7 @@ pub fn build_output_filenames(input: &Input,
             // We want to toss everything after the final '.'
             let dirpath = match *odir {
                 Some(ref d) => d.clone(),
-                None => PathBuf::new("")
+                None => PathBuf::new()
             };
 
             // If a crate name is present, we use it as the link name

@@ -125,6 +125,7 @@ pub mod ops;
 pub mod cmp;
 pub mod clone;
 pub mod default;
+pub mod convert;
 
 /* Core types and methods on primitives */
 

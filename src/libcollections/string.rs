@@ -814,6 +814,7 @@ impl<'a, 'b> PartialEq<Cow<'a, str>> for &'b str {
 }
 
 #[unstable(feature = "collections", reason = "waiting on Str stabilization")]
+#[allow(deprecated)]
 impl Str for String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -974,6 +975,27 @@ impl<T: fmt::Display + ?Sized> ToString for T {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<str> for String {
+    fn as_ref(&self) -> &str {
+        self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&'a str> for String {
+    fn from(s: &'a str) -> String {
+        s.to_string()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Into<Vec<u8>> for String {
+    fn into(self) -> Vec<u8> {
+        self.into_bytes()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl IntoCow<'static, str> for String {
     #[inline]
     fn into_cow(self) -> Cow<'static, str> {
@@ -989,6 +1011,7 @@ impl<'a> IntoCow<'a, str> for &'a str {
     }
 }
 
+#[allow(deprecated)]
 impl<'a> Str for Cow<'a, str> {
     #[inline]
     fn as_slice<'b>(&'b self) -> &'b str {

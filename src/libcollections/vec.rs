@@ -1369,7 +1369,7 @@ impl<T> ops::Index<ops::RangeFull> for Vec<T> {
     type Output = [T];
     #[inline]
     fn index(&self, _index: &ops::RangeFull) -> &[T] {
-        self.as_slice()
+        self
     }
 }
 
@@ -1406,7 +1406,13 @@ impl<T> ops::IndexMut<ops::RangeFull> for Vec<T> {
 impl<T> ops::Deref for Vec<T> {
     type Target = [T];
 
-    fn deref(&self) -> &[T] { self.as_slice() }
+    fn deref(&self) -> &[T] {
+        unsafe {
+            let p = *self.ptr;
+            assume(p != 0 as *mut T);
+            slice::from_raw_parts(p, self.len)
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1548,6 +1554,7 @@ impl<T: Ord> Ord for Vec<T> {
     }
 }
 
+#[allow(deprecated)]
 impl<T> AsSlice<T> for Vec<T> {
     /// Returns a slice into `self`.
     ///
@@ -1562,11 +1569,7 @@ impl<T> AsSlice<T> for Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice(&self) -> &[T] {
-        unsafe {
-            let p = *self.ptr;
-            assume(p != 0 as *mut T);
-            slice::from_raw_parts(p, self.len)
-        }
+        self
     }
 }
 
@@ -1611,6 +1614,41 @@ impl<T> Default for Vec<T> {
 impl<T: fmt::Debug> fmt::Debug for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> AsRef<Vec<T>> for Vec<T> {
+    fn as_ref(&self) -> &Vec<T> {
+        self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> Into<Vec<T>> for Vec<T> {
+    fn into(self) -> Vec<T> {
+        self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> AsRef<[T]> for Vec<T> {
+    fn as_ref(&self) -> &[T] {
+        self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, T: Clone> From<&'a [T]> for Vec<T> {
+    fn from(s: &'a [T]) -> Vec<T> {
+        s.to_vec()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&'a str> for Vec<u8> {
+    fn from(s: &'a str) -> Vec<u8> {
+        s.as_bytes().to_vec()
     }
 }
 

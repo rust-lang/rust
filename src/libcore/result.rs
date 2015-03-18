@@ -240,6 +240,7 @@ use iter::{Iterator, IteratorExt, DoubleEndedIterator,
            FromIterator, ExactSizeIterator, IntoIterator};
 use ops::{FnMut, FnOnce};
 use option::Option::{self, None, Some};
+#[allow(deprecated)]
 use slice::AsSlice;
 use slice;
 
@@ -405,6 +406,20 @@ impl<T, E> Result<T, E> {
         match *self {
             Ok(ref mut x) => Ok(x),
             Err(ref mut x) => Err(x),
+        }
+    }
+
+    /// Convert from `Result<T, E>` to `&[T]` (without copying)
+    #[inline]
+    #[unstable(feature = "as_slice", since = "unsure of the utility here")]
+    pub fn as_slice(&self) -> &[T] {
+        match *self {
+            Ok(ref x) => slice::ref_slice(x),
+            Err(_) => {
+                // work around lack of implicit coercion from fixed-size array to slice
+                let emp: &[_] = &[];
+                emp
+            }
         }
     }
 
@@ -788,10 +803,14 @@ impl<T: fmt::Debug, E> Result<T, E> {
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
 
+#[unstable(feature = "core",
+           reason = "waiting on the stability of the trait itself")]
+#[deprecated(since = "1.0.0",
+             reason = "use inherent method instead")]
+#[allow(deprecated)]
 impl<T, E> AsSlice<T> for Result<T, E> {
     /// Convert from `Result<T, E>` to `&[T]` (without copying)
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice<'a>(&'a self) -> &'a [T] {
         match *self {
             Ok(ref x) => slice::ref_slice(x),

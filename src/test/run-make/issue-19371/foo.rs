@@ -31,9 +31,9 @@ fn main() {
         panic!("expected rustc path");
     }
 
-    let tmpdir = PathBuf::new(&args[1]);
+    let tmpdir = PathBuf::from(&args[1]);
 
-    let mut sysroot = PathBuf::new(&args[3]);
+    let mut sysroot = PathBuf::from(&args[3]);
     sysroot.pop();
     sysroot.pop();
 

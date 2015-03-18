@@ -338,8 +338,7 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
         }));
         buf.set_len(n as usize);
     }
-    let s: OsString = OsStringExt::from_vec(buf);
-    Ok(PathBuf::new(&s))
+    Ok(PathBuf::from(OsString::from_vec(buf)))
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
