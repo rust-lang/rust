@@ -765,8 +765,14 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                  impl_id: ast::DefId,
                                  substs: subst::Substs<'tcx>,
                                  param_substs: &'tcx subst::Substs<'tcx>)
-                                 -> Vec<ValueRef> {
+                                 -> Vec<ValueRef>
+{
     let tcx = ccx.tcx();
+
+    debug!("emit_vtable_methods(impl_id={}, substs={}, param_substs={})",
+           impl_id.repr(tcx),
+           substs.repr(tcx),
+           param_substs.repr(tcx));
 
     let trt_id = match ty::impl_trait_ref(tcx, impl_id) {
         Some(t_id) => t_id.def_id,
@@ -777,41 +783,82 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     ty::populate_implementations_for_trait_if_necessary(tcx, trt_id);
 
     let trait_item_def_ids = ty::trait_item_def_ids(tcx, trt_id);
-    trait_item_def_ids.iter().flat_map(|method_def_id| {
-        let method_def_id = method_def_id.def_id();
-        let name = ty::impl_or_trait_item(tcx, method_def_id).name();
-        // The substitutions we have are on the impl, so we grab
-        // the method type from the impl to substitute into.
-        let m_id = method_with_name(ccx, impl_id, name);
-        let ti = ty::impl_or_trait_item(tcx, m_id);
-        match ti {
-            ty::MethodTraitItem(m) => {
-                debug!("(making impl vtable) emitting method {} at subst {}",
-                       m.repr(tcx),
-                       substs.repr(tcx));
-                if m.generics.has_type_params(subst::FnSpace) ||
-                    ty::type_has_self(ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(m.fty.clone())))
-                {
-                    debug!("(making impl vtable) method has self or type \
-                            params: {}",
-                           token::get_name(name));
-                    Some(C_null(Type::nil(ccx).ptr_to())).into_iter()
-                } else {
-                    let fn_ref = trans_fn_ref_with_substs(
-                        ccx,
-                        m_id,
-                        ExprId(0),
-                        param_substs,
-                        substs.clone()).val;
+    trait_item_def_ids
+        .iter()
 
-                    Some(fn_ref).into_iter()
+        // Filter out the associated types.
+        .filter_map(|item_def_id| {
+            match *item_def_id {
+                ty::MethodTraitItemId(def_id) => Some(def_id),
+                ty::TypeTraitItemId(_) => None,
+            }
+        })
+
+        // Now produce pointers for each remaining method. If the
+        // method could never be called from this object, just supply
+        // null.
+        .map(|trait_method_def_id| {
+            debug!("emit_vtable_methods: trait_method_def_id={}",
+                   trait_method_def_id.repr(tcx));
+
+            let trait_method_type = match ty::impl_or_trait_item(tcx, trait_method_def_id) {
+                ty::MethodTraitItem(m) => m,
+                ty::TypeTraitItem(_) => ccx.sess().bug("should be a method, not assoc type")
+            };
+            let name = trait_method_type.name;
+
+            debug!("emit_vtable_methods: trait_method_type={}",
+                   trait_method_type.repr(tcx));
+
+            // The substitutions we have are on the impl, so we grab
+            // the method type from the impl to substitute into.
+            let impl_method_def_id = method_with_name(ccx, impl_id, name);
+            let impl_method_type = match ty::impl_or_trait_item(tcx, impl_method_def_id) {
+                ty::MethodTraitItem(m) => m,
+                ty::TypeTraitItem(_) => ccx.sess().bug("should be a method, not assoc type")
+            };
+
+            debug!("emit_vtable_methods: m={}",
+                   impl_method_type.repr(tcx));
+
+            let nullptr = C_null(Type::nil(ccx).ptr_to());
+
+            if impl_method_type.generics.has_type_params(subst::FnSpace) {
+                debug!("emit_vtable_methods: generic");
+                return nullptr;
+            }
+
+            let bare_fn_ty =
+                ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(impl_method_type.fty.clone()));
+            if ty::type_has_self(bare_fn_ty) {
+                debug!("emit_vtable_methods: type_has_self {}",
+                       bare_fn_ty.repr(tcx));
+                return nullptr;
+            }
+
+            // If this is a default method, it's possible that it
+            // relies on where clauses that do not hold for this
+            // particular set of type parameters. Note that this
+            // method could then never be called, so we do not want to
+            // try and trans it, in that case. Issue #23435.
+            if ty::provided_source(tcx, impl_method_def_id).is_some() {
+                let predicates =
+                    monomorphize::apply_param_substs(tcx,
+                                                     &substs,
+                                                     &impl_method_type.predicates.predicates);
+                if !predicates_hold(ccx, predicates.into_vec()) {
+                    debug!("emit_vtable_methods: predicates do not hold");
+                    return nullptr;
                 }
             }
-            ty::TypeTraitItem(_) => {
-                None.into_iter()
-            }
-        }
-    }).collect()
+
+            trans_fn_ref_with_substs(ccx,
+                                     impl_method_def_id,
+                                     ExprId(0),
+                                     param_substs,
+                                     substs.clone()).val
+        })
+        .collect()
 }
 
 /// Generates the code to convert from a pointer (`Box<T>`, `&T`, etc) into an object

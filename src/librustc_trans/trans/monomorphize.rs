@@ -339,7 +339,7 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
     for obligation in obligations {
         fulfill_cx.register_predicate_obligation(&infcx, obligation);
     }
-    let result = drain_fulfillment_cx(DUMMY_SP, &infcx, &mut fulfill_cx, &result);
+    let result = drain_fulfillment_cx_or_panic(DUMMY_SP, &infcx, &mut fulfill_cx, &result);
 
     result
 }
