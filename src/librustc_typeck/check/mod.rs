@@ -1532,8 +1532,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                        span: Span,
                                        adj: &ty::AutoAdjustment<'tcx>) {
         match *adj {
-            ty::AdjustReifyFnPointer(..) => {
-            }
+            ty::AdjustReifyFnPointer(..) => { }
+            ty::AdjustUnsafeFnPointer => { }
             ty::AdjustDerefRef(ref d_r) => {
                 match d_r.autoref {
                     Some(ref a_r) => {

@@ -72,7 +72,7 @@ use trans::monomorphize;
 use trans::tvec;
 use trans::type_of;
 use middle::ty::{struct_fields, tup_fields};
-use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AutoUnsafe};
+use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustUnsafeFnPointer, AutoUnsafe};
 use middle::ty::{AutoPtr};
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
@@ -377,6 +377,9 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         AdjustReifyFnPointer(_def_id) => {
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
+        }
+        AdjustUnsafeFnPointer => {
+            // purely a type-level thing
         }
         AdjustDerefRef(ref adj) => {
             let (autoderefs, use_autoref) = match adj.autoref {

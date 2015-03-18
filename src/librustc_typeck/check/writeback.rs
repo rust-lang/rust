@@ -265,6 +265,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                         ty::AdjustReifyFnPointer(def_id)
                     }
 
+                    ty::AdjustUnsafeFnPointer => {
+                        ty::AdjustUnsafeFnPointer
+                    }
+
                     ty::AdjustDerefRef(adj) => {
                         for autoderef in 0..adj.autoderefs {
                             let method_call = MethodCall::autoderef(id, autoderef);

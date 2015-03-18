@@ -281,6 +281,7 @@ pub enum Variance {
 #[derive(Clone, Debug)]
 pub enum AutoAdjustment<'tcx> {
     AdjustReifyFnPointer(ast::DefId), // go from a fn-item type to a fn-pointer type
+    AdjustUnsafeFnPointer, // go from a safe fn pointer to an unsafe fn pointer
     AdjustDerefRef(AutoDerefRef<'tcx>)
 }
 
@@ -2634,6 +2635,17 @@ impl<'tcx> ctxt<'tcx> {
         substs
     }
 
+    /// Create an unsafe fn ty based on a safe fn ty.
+    pub fn safe_to_unsafe_fn_ty(&self, bare_fn: &BareFnTy<'tcx>) -> Ty<'tcx> {
+        assert_eq!(bare_fn.unsafety, ast::Unsafety::Normal);
+        let unsafe_fn_ty_a = self.mk_bare_fn(ty::BareFnTy {
+            unsafety: ast::Unsafety::Unsafe,
+            abi: bare_fn.abi,
+            sig: bare_fn.sig.clone()
+        });
+        ty::mk_bare_fn(self, None, unsafe_fn_ty_a)
+    }
+
     pub fn mk_bare_fn(&self, bare_fn: BareFnTy<'tcx>) -> &'tcx BareFnTy<'tcx> {
         if let Some(bare_fn) = self.bare_fn_interner.borrow().get(&bare_fn) {
             return *bare_fn;
@@ -4522,6 +4534,18 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                         }
                     }
                 }
+
+               AdjustUnsafeFnPointer => {
+                    match unadjusted_ty.sty {
+                        ty::ty_bare_fn(None, b) => cx.safe_to_unsafe_fn_ty(b),
+                        ref b => {
+                            cx.sess.bug(
+                                &format!("AdjustReifyFnPointer adjustment on non-fn-item: \
+                                         {:?}",
+                                        b));
+                        }
+                    }
+               }
 
                 AdjustDerefRef(ref adj) => {
                     let mut adjusted_ty = unadjusted_ty;
@@ -6685,6 +6709,7 @@ impl<'tcx> AutoAdjustment<'tcx> {
     pub fn is_identity(&self) -> bool {
         match *self {
             AdjustReifyFnPointer(..) => false,
+            AdjustUnsafeFnPointer(..) => false,
             AdjustDerefRef(ref r) => r.is_identity(),
         }
     }
@@ -6833,6 +6858,9 @@ impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
         match *self {
             AdjustReifyFnPointer(def_id) => {
                 format!("AdjustReifyFnPointer({})", def_id.repr(tcx))
+            }
+            AdjustUnsafeFnPointer => {
+                format!("AdjustUnsafeFnPointer")
             }
             AdjustDerefRef(ref data) => {
                 data.repr(tcx)

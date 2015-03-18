@@ -33,8 +33,6 @@ use middle::infer::{cres};
 use middle::infer::type_variable::{BiTo};
 use util::ppaux::{Repr};
 
-use syntax::ast::{Unsafety};
-
 pub struct Bivariate<'f, 'tcx: 'f> {
     fields: CombineFields<'f, 'tcx>
 }
@@ -72,24 +70,6 @@ impl<'f, 'tcx> Combine<'tcx> for Bivariate<'f, 'tcx> {
 
     fn regions(&self, a: ty::Region, _: ty::Region) -> cres<'tcx, ty::Region> {
         Ok(a)
-    }
-
-    fn mts(&self, a: &ty::mt<'tcx>, b: &ty::mt<'tcx>) -> cres<'tcx, ty::mt<'tcx>> {
-        debug!("mts({} <: {})",
-               a.repr(self.fields.infcx.tcx),
-               b.repr(self.fields.infcx.tcx));
-
-        if a.mutbl != b.mutbl { return Err(ty::terr_mutability); }
-        let t = try!(self.tys(a.ty, b.ty));
-        Ok(ty::mt { mutbl: a.mutbl, ty: t })
-    }
-
-    fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
-        if a != b {
-            Err(ty::terr_unsafety_mismatch(expected_found(self, a, b)))
-        } else {
-            Ok(a)
-        }
     }
 
     fn builtin_bounds(&self,
