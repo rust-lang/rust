@@ -1231,7 +1231,7 @@ mod tests {
         cmd.env("path", "foo");
         cmd.env("Path", "bar");
         let env = &cmd.env.unwrap();
-        let val = env.get(&EnvKey(CString::new(b"PATH").unwrap()));
-        assert!(val.unwrap() == &CString::new(b"bar").unwrap());
+        let val = env.get(&EnvKey(CString::new("PATH").unwrap()));
+        assert!(val.unwrap() == &CString::new("bar").unwrap());
     }
 }

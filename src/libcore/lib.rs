@@ -129,6 +129,7 @@ pub mod default;
 /* Core types and methods on primitives */
 
 pub mod any;
+pub mod array;
 pub mod atomic;
 pub mod cell;
 pub mod char;
@@ -151,7 +152,6 @@ mod bool {
 
 // note: does not need to be public
 mod tuple;
-mod array;
 
 #[doc(hidden)]
 mod core {
