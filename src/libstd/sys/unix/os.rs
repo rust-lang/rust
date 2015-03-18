@@ -306,12 +306,11 @@ pub fn args() -> Args {
 // In general it looks like:
 // res = Vec::new()
 // let args = [[NSProcessInfo processInfo] arguments]
-// for i in range(0, [args count])
+// for i in (0..[args count])
 //      res.push([args objectAtIndex:i])
 // res
 #[cfg(target_os = "ios")]
 pub fn args() -> Args {
-    use iter::range;
     use mem;
 
     #[link(name = "objc")]
@@ -341,7 +340,7 @@ pub fn args() -> Args {
         let args = objc_msgSend(info, arguments_sel);
 
         let cnt: int = mem::transmute(objc_msgSend(args, count_sel));
-        for i in range(0, cnt) {
+        for i in (0..cnt) {
             let tmp = objc_msgSend(args, object_at_sel, i);
             let utf_c_str: *const libc::c_char =
                 mem::transmute(objc_msgSend(tmp, utf8_sel));
