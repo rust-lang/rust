@@ -163,6 +163,9 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
     fn ignore_target(config: &Config) -> String {
         format!("ignore-{}", util::get_os(&config.target))
     }
+    fn ignore_architecture(config: &Config) -> String {
+        format!("ignore-{}", util::get_arch(&config.target))
+    }
     fn ignore_stage(config: &Config) -> String {
         format!("ignore-{}",
                 config.stage_id.split('-').next().unwrap())
@@ -226,6 +229,7 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
     let val = iter_header(testfile, &mut |ln| {
         !parse_name_directive(ln, "ignore-test") &&
         !parse_name_directive(ln, &ignore_target(config)) &&
+        !parse_name_directive(ln, &ignore_architecture(config)) &&
         !parse_name_directive(ln, &ignore_stage(config)) &&
         !(config.mode == common::Pretty && parse_name_directive(ln, "ignore-pretty")) &&
         !(config.target != config.host && parse_name_directive(ln, "ignore-cross-compile")) &&
