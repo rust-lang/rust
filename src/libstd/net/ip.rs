@@ -202,7 +202,7 @@ impl FromInner<libc::in_addr> for Ipv4Addr {
 impl Ipv6Addr {
     /// Create a new IPv6 address from eight 16-bit segments.
     ///
-    /// The result will represent the IP address a:b:c:d:e:f
+    /// The result will represent the IP address a:b:c:d:e:f:g:h
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(a: u16, b: u16, c: u16, d: u16, e: u16, f: u16, g: u16,
                h: u16) -> Ipv6Addr {
