@@ -402,3 +402,29 @@ pub fn _print(args: fmt::Arguments) {
         panic!("failed printing to stdout: {}", e);
     }
 }
+
+#[cfg(test)]
+mod test {
+    use thread;
+    use super::*;
+
+    #[test]
+    fn panic_doesnt_poison() {
+        thread::spawn(|| {
+            let _a = stdin();
+            let _a = _a.lock();
+            let _a = stdout();
+            let _a = _a.lock();
+            let _a = stderr();
+            let _a = _a.lock();
+            panic!();
+        }).join().unwrap_err();
+
+        let _a = stdin();
+        let _a = _a.lock();
+        let _a = stdout();
+        let _a = _a.lock();
+        let _a = stderr();
+        let _a = _a.lock();
+    }
+}
