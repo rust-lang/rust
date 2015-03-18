@@ -790,8 +790,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             None => { }
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AdjustReifyFnPointer(..) |
-                    ty::AdjustUnsafeFnPointer(..) |
+                    ty::AdjustReifyFnPointer |
+                    ty::AdjustUnsafeFnPointer |
                     ty::AdjustUnsize(_) => {
                         // Creating a closure/fn-pointer or unsizing consumes
                         // the input and stores it into the resulting rvalue.

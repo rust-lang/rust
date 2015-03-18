@@ -242,7 +242,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                             &ty::expr_ty_adjusted(cx.tcx(), e));
     let opt_adj = cx.tcx().adjustments.borrow().get(&e.id).cloned();
     match opt_adj {
-        Some(ty::AdjustReifyFnPointer(_def_id)) => {
+        Some(ty::AdjustReifyFnPointer) => {
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
         }

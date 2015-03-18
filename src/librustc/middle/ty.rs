@@ -280,7 +280,7 @@ pub enum Variance {
 
 #[derive(Clone, Debug)]
 pub enum AutoAdjustment<'tcx> {
-    AdjustReifyFnPointer(ast::DefId), // go from a fn-item type to a fn-pointer type
+    AdjustReifyFnPointer, // go from a fn-item type to a fn-pointer type
     AdjustUnsafeFnPointer, // go from a safe fn pointer to an unsafe fn pointer
     AdjustDerefRef(AutoDerefRef<'tcx>),
 
@@ -4438,7 +4438,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
     return match adjustment {
         Some(adjustment) => {
             match *adjustment {
-               AdjustReifyFnPointer(_) => {
+               AdjustReifyFnPointer => {
                     match unadjusted_ty.sty {
                         ty::ty_bare_fn(Some(_), b) => {
                             ty::mk_bare_fn(cx, None, b)
@@ -6606,8 +6606,8 @@ impl<'tcx> AutoAdjustment<'tcx> {
     pub fn is_identity(&self) -> bool {
         match *self {
             AdjustUnsize(_) |
-            AdjustReifyFnPointer(..) => false,
-            AdjustUnsafeFnPointer(..) => false,
+            AdjustReifyFnPointer |
+            AdjustUnsafeFnPointer => false,
             AdjustDerefRef(ref r) => r.is_identity(),
         }
     }
@@ -6754,8 +6754,8 @@ impl DebruijnIndex {
 impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match *self {
-            AdjustReifyFnPointer(def_id) => {
-                format!("AdjustReifyFnPointer({})", def_id.repr(tcx))
+            AdjustReifyFnPointer => {
+                format!("AdjustReifyFnPointer")
             }
             AdjustUnsafeFnPointer => {
                 format!("AdjustUnsafeFnPointer")

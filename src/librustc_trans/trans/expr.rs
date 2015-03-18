@@ -373,7 +373,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            datum.to_string(bcx.ccx()),
            adjustment);
     match adjustment {
-        AdjustReifyFnPointer(_def_id) => {
+        AdjustReifyFnPointer => {
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
         }

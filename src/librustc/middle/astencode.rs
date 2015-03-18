@@ -1008,10 +1008,8 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
         self.emit_enum("AutoAdjustment", |this| {
             match *adj {
-                ty::AdjustReifyFnPointer(def_id) => {
-                    this.emit_enum_variant("AdjustReifyFnPointer", 1, 2, |this| {
-                        this.emit_enum_variant_arg(0, |this| def_id.encode(this))
-                    })
+                ty::AdjustReifyFnPointer=> {
+                    this.emit_enum_variant("AdjustReifyFnPointer", 1, 0, |_| Ok(()))
                 }
 
                 ty::AdjustUnsafeFnPointer => {
@@ -1621,18 +1619,12 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_auto_adjustment<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                                     -> ty::AutoAdjustment<'tcx> {
         self.read_enum("AutoAdjustment", |this| {
-            let variants = ["AdjustReifyFnPointer", "AdjustDerefRef", "AdjustUnsize"];
+            let variants = ["AdjustReifyFnPointer", "AdjustUnsafeFnPointer",
+                            "AdjustDerefRef", "AdjustUnsize"];
             this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
-                    1 => {
-                        let def_id: ast::DefId =
-                            this.read_def_id(dcx);
-
-                        ty::AdjustReifyFnPointer(def_id)
-                    }
-                    2 => {
-                        ty::AdjustUnsafeFnPointer
-                    }
+                    1 => ty::AdjustReifyFnPointer,
+                    2 => ty::AdjustUnsafeFnPointer,
                     3 => {
                         let auto_deref_ref: ty::AutoDerefRef =
                             this.read_enum_variant_arg(0,

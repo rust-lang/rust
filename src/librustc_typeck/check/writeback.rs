@@ -260,9 +260,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
             Some(adjustment) => {
                 let resolved_adjustment = match adjustment {
-                    ty::AdjustReifyFnPointer(def_id) => {
-                        ty::AdjustReifyFnPointer(def_id)
-                    }
+                    ty::AdjustReifyFnPointer => ty::AdjustReifyFnPointer,
 
                     ty::AdjustUnsafeFnPointer => {
                         ty::AdjustUnsafeFnPointer

@@ -143,11 +143,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         self.unpack_actual_value(a, |a| {
             match a.sty {
-                ty::ty_bare_fn(Some(a_def_id), a_f) => {
+                ty::ty_bare_fn(Some(_), a_f) => {
                     // Function items are coercible to any closure
                     // type; function pointers are not (that would
                     // require double indirection).
-                    self.coerce_from_fn_item(a, a_def_id, a_f, b)
+                    self.coerce_from_fn_item(a, a_f, b)
                 }
                 ty::ty_bare_fn(None, a_f) => {
                     // We permit coercion of fn pointers to drop the
@@ -446,29 +446,22 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             debug!("coerce_from_fn_pointer(a={}, b={})",
                    a.repr(self.tcx()), b.repr(self.tcx()));
 
-            match b.sty {
-                ty::ty_bare_fn(None, fn_ty_b) => {
-                    match (fn_ty_a.unsafety, fn_ty_b.unsafety) {
-                        (ast::Unsafety::Normal, ast::Unsafety::Unsafe) => {
-                            let unsafe_a = self.tcx().safe_to_unsafe_fn_ty(fn_ty_a);
-                            try!(self.subtype(unsafe_a, b));
-                            Ok(Some(ty::AdjustUnsafeFnPointer))
-                        }
-                        _ => {
-                            self.subtype(a, b)
-                        }
+            if let ty::ty_bare_fn(None, fn_ty_b) = b.sty {
+                match (fn_ty_a.unsafety, fn_ty_b.unsafety) {
+                    (ast::Unsafety::Normal, ast::Unsafety::Unsafe) => {
+                        let unsafe_a = self.tcx().safe_to_unsafe_fn_ty(fn_ty_a);
+                        try!(self.subtype(unsafe_a, b));
+                        return Ok(Some(ty::AdjustUnsafeFnPointer));
                     }
-                }
-                _ => {
-                    return self.subtype(a, b)
+                    _ => {}
                 }
             }
+            self.subtype(a, b)
         })
     }
 
     fn coerce_from_fn_item(&self,
                            a: Ty<'tcx>,
-                           fn_def_id_a: ast::DefId,
                            fn_ty_a: &'tcx ty::BareFnTy<'tcx>,
                            b: Ty<'tcx>)
                            -> CoerceResult<'tcx> {
@@ -485,11 +478,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 ty::ty_bare_fn(None, _) => {
                     let a_fn_pointer = ty::mk_bare_fn(self.tcx(), None, fn_ty_a);
                     try!(self.subtype(a_fn_pointer, b));
-                    Ok(Some(ty::AdjustReifyFnPointer(fn_def_id_a)))
+                    Ok(Some(ty::AdjustReifyFnPointer))
                 }
-                _ => {
-                    return self.subtype(a, b)
-                }
+                _ => self.subtype(a, b)
             }
         })
     }
