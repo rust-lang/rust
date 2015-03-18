@@ -326,7 +326,12 @@ impl<T: ?Sized> PtrExt for *const T {
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn is_null(self) -> bool { self == 0 as *const T }
+    fn is_null(self) -> bool {
+        unsafe {
+            let ptr_ptr: *const usize = mem::transmute(&self);
+            *ptr_ptr == 0
+        }
+    }
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -354,7 +359,7 @@ impl<T: ?Sized> PtrExt for *mut T {
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn is_null(self) -> bool { self == 0 as *mut T }
+    fn is_null(self) -> bool { (self as *const T).is_null() }
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]

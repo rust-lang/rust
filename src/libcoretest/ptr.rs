@@ -11,6 +11,7 @@
 use core::ptr::*;
 use core::mem;
 use std::iter::repeat;
+use core::slice;
 
 #[test]
 fn test() {
@@ -66,6 +67,17 @@ fn test_is_null() {
 
     let mq = unsafe { mp.offset(1) };
     assert!(!mq.is_null());
+
+    unsafe {
+        let sn = slice::from_raw_parts(null(), 0) as *const [u32];
+        assert!(sn.is_null());
+
+        let s = &[1, 2, 3] as *const [u32];
+        assert!(!s.is_null());
+    }
+
+    let s: *const str = "rust" as *const str;
+    assert!(!s.is_null());
 }
 
 #[test]
@@ -89,6 +101,15 @@ fn test_as_ref() {
             let p: *const int = &u as *const _;
             assert_eq!(p.as_ref().unwrap(), &2);
         }
+
+        let sn = slice::from_raw_parts(null(), 0) as *const [u32];
+        assert_eq!(sn.as_ref(), None);
+
+        let sl = &[1, 2, 3] as *const [u32];
+        assert_eq!(sl.as_ref().unwrap(), &[1, 2, 3]);
+
+        let s = "rust" as *const str;
+        assert_eq!(s.as_ref().unwrap(), "rust");
     }
 }
 
@@ -107,6 +128,12 @@ fn test_as_mut() {
             let p: *mut int = &mut u as *mut _;
             assert!(p.as_mut().unwrap() == &mut 2);
         }
+
+        let sn = slice::from_raw_parts_mut(null_mut(), 0) as *mut [u32];
+        assert_eq!(sn.as_ref(), None);
+
+        let s = &mut [1, 2, 3] as *mut [u32];
+        assert_eq!(s.as_mut().unwrap(), &mut [1, 2, 3]);
     }
 }
 
