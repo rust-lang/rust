@@ -64,7 +64,6 @@
 #![allow(deprecated)] // seriously this is all deprecated
 #![allow(unused_imports)]
 
-use core::array::FixedSizeArray;
 use core::marker::Sized;
 use ffi::CString;
 use clone::Clone;
@@ -893,13 +892,6 @@ impl BytesContainer for [u8] {
     #[inline]
     fn container_as_bytes(&self) -> &[u8] {
         self
-    }
-}
-
-impl<T: FixedSizeArray<u8>> BytesContainer for T {
-    #[inline]
-    fn container_as_bytes(&self) -> &[u8] {
-        self.as_slice()
     }
 }
 

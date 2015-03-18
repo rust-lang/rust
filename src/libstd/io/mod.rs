@@ -933,12 +933,12 @@ mod tests {
 
     #[test]
     fn read_until() {
-        let mut buf = Cursor::new(b"12");
+        let mut buf = Cursor::new(&b"12"[..]);
         let mut v = Vec::new();
         assert_eq!(buf.read_until(b'3', &mut v), Ok(2));
         assert_eq!(v, b"12");
 
-        let mut buf = Cursor::new(b"1233");
+        let mut buf = Cursor::new(&b"1233"[..]);
         let mut v = Vec::new();
         assert_eq!(buf.read_until(b'3', &mut v), Ok(3));
         assert_eq!(v, b"123");
@@ -952,12 +952,12 @@ mod tests {
 
     #[test]
     fn split() {
-        let buf = Cursor::new(b"12");
+        let buf = Cursor::new(&b"12"[..]);
         let mut s = buf.split(b'3');
         assert_eq!(s.next(), Some(Ok(vec![b'1', b'2'])));
         assert_eq!(s.next(), None);
 
-        let buf = Cursor::new(b"1233");
+        let buf = Cursor::new(&b"1233"[..]);
         let mut s = buf.split(b'3');
         assert_eq!(s.next(), Some(Ok(vec![b'1', b'2'])));
         assert_eq!(s.next(), Some(Ok(vec![])));
@@ -966,12 +966,12 @@ mod tests {
 
     #[test]
     fn read_line() {
-        let mut buf = Cursor::new(b"12");
+        let mut buf = Cursor::new(&b"12"[..]);
         let mut v = String::new();
         assert_eq!(buf.read_line(&mut v), Ok(2));
         assert_eq!(v, "12");
 
-        let mut buf = Cursor::new(b"12\n\n");
+        let mut buf = Cursor::new(&b"12\n\n"[..]);
         let mut v = String::new();
         assert_eq!(buf.read_line(&mut v), Ok(3));
         assert_eq!(v, "12\n");
@@ -985,12 +985,12 @@ mod tests {
 
     #[test]
     fn lines() {
-        let buf = Cursor::new(b"12");
+        let buf = Cursor::new(&b"12"[..]);
         let mut s = buf.lines();
         assert_eq!(s.next(), Some(Ok("12".to_string())));
         assert_eq!(s.next(), None);
 
-        let buf = Cursor::new(b"12\n\n");
+        let buf = Cursor::new(&b"12\n\n"[..]);
         let mut s = buf.lines();
         assert_eq!(s.next(), Some(Ok("12".to_string())));
         assert_eq!(s.next(), Some(Ok(String::new())));
@@ -999,12 +999,12 @@ mod tests {
 
     #[test]
     fn read_to_end() {
-        let mut c = Cursor::new(b"");
+        let mut c = Cursor::new(&b""[..]);
         let mut v = Vec::new();
         assert_eq!(c.read_to_end(&mut v), Ok(0));
         assert_eq!(v, []);
 
-        let mut c = Cursor::new(b"1");
+        let mut c = Cursor::new(&b"1"[..]);
         let mut v = Vec::new();
         assert_eq!(c.read_to_end(&mut v), Ok(1));
         assert_eq!(v, b"1");
@@ -1012,17 +1012,17 @@ mod tests {
 
     #[test]
     fn read_to_string() {
-        let mut c = Cursor::new(b"");
+        let mut c = Cursor::new(&b""[..]);
         let mut v = String::new();
         assert_eq!(c.read_to_string(&mut v), Ok(0));
         assert_eq!(v, "");
 
-        let mut c = Cursor::new(b"1");
+        let mut c = Cursor::new(&b"1"[..]);
         let mut v = String::new();
         assert_eq!(c.read_to_string(&mut v), Ok(1));
         assert_eq!(v, "1");
 
-        let mut c = Cursor::new(b"\xff");
+        let mut c = Cursor::new(&b"\xff"[..]);
         let mut v = String::new();
         assert!(c.read_to_string(&mut v).is_err());
     }

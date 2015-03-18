@@ -32,11 +32,11 @@ fn rename_directory() {
 
         /* Write the temp input file */
         let fromp = CString::new(test_file.as_vec()).unwrap();
-        let modebuf = CString::new(b"w+b").unwrap();
+        let modebuf = CString::new(&b"w+b"[..]).unwrap();
         let ostream = libc::fopen(fromp.as_ptr(), modebuf.as_ptr());
         assert!((ostream as uint != 0));
         let s = "hello".to_string();
-        let buf = CString::new(b"hello").unwrap();
+        let buf = CString::new(&b"hello"[..]).unwrap();
         let write_len = libc::fwrite(buf.as_ptr() as *mut _,
                                      1_usize as libc::size_t,
                                      (s.len() + 1_usize) as libc::size_t,
