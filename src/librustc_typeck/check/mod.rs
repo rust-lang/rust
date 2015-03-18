@@ -718,7 +718,7 @@ pub fn check_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
                             &enum_definition.variants,
                             it.id);
       }
-      ast::ItemFn(ref decl, _, _, _, ref body) => {
+      ast::ItemFn(ref decl, _, _, _, _, ref body) => {
         let fn_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
         let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
         check_bare_fn(ccx, &**decl, &**body, it.id, it.span, fn_pty.ty, param_env);

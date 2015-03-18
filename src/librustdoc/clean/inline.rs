@@ -169,6 +169,7 @@ fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> 
         decl: decl,
         generics: (&t.generics, &predicates, subst::FnSpace).clean(cx),
         unsafety: style,
+        constness: ast::Constness::NotConst
     }
 }
 
@@ -317,6 +318,7 @@ fn build_impl(cx: &DocContext,
                     }) => {
                         clean::MethodItem(clean::Method {
                             unsafety: unsafety,
+                            constness: ast::Constness::NotConst,
                             decl: decl,
                             self_: self_,
                             generics: generics,

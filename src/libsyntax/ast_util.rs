@@ -267,6 +267,7 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: Option<&Ty>) -> Ident 
     token::gensym_ident(&pretty[..])
 }
 
+                 _,
 pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
     match field.node.kind {
         ast::NamedField(_, v) | ast::UnnamedField(v) => v
@@ -456,7 +457,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         self.operation.visit_id(node_id);
 
         match function_kind {
-            visit::FkItemFn(_, generics, _, _) => {
+            visit::FkItemFn(_, generics, _, _, _) => {
                 self.visit_generics_helper(generics)
             }
             visit::FkMethod(_, sig) => {

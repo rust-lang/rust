@@ -1290,7 +1290,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
 
             match item.node {
-                ast::ItemFn(ref fn_decl, _, _, ref generics, ref top_level_block) => {
+                ast::ItemFn(ref fn_decl, _, _, _, ref generics, ref top_level_block) => {
                     (item.ident, fn_decl, generics, top_level_block, item.span, true)
                 }
                 _ => {

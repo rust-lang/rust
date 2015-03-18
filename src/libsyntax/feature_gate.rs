@@ -706,7 +706,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 span: Span,
                 _node_id: NodeId) {
         match fn_kind {
-            visit::FkItemFn(_, _, _, abi) if abi == RustIntrinsic => {
+            visit::FkItemFn(_, _, _, _, abi) if abi == RustIntrinsic => {
                 self.gate_feature("intrinsics",
                                   span,
                                   "intrinsics are subject to change")

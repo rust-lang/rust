@@ -242,7 +242,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
                 _: Span,
                 node_id: NodeId) {
         let rib_kind = match function_kind {
-            visit::FkItemFn(_, generics, _, _) => {
+            visit::FkItemFn(_, generics, _, _, _) => {
                 self.visit_generics(generics);
                 ItemRibKind
             }
@@ -1799,7 +1799,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                                ItemRibKind),
                                              |this| visit::walk_item(this, item));
             }
-            ItemFn(_, _, _, ref generics, _) => {
+            ItemFn(_, _, _, _, ref generics, _) => {
                 self.with_type_parameter_rib(HasTypeParameters(generics,
                                                                FnSpace,
                                                                ItemRibKind),

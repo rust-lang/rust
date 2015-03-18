@@ -123,7 +123,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
         let i = if is_test_fn(&self.cx, &*i) || is_bench_fn(&self.cx, &*i) {
             match i.node {
-                ast::ItemFn(_, ast::Unsafety::Unsafe, _, _, _) => {
+                ast::ItemFn(_, ast::Unsafety::Unsafe, _, _, _, _) => {
                     let diag = self.cx.span_diagnostic;
                     diag.span_fatal(i.span, "unsafe functions cannot be used for tests");
                 }
@@ -320,7 +320,7 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 
     fn has_test_signature(i: &ast::Item) -> HasTestSignature {
         match &i.node {
-          &ast::ItemFn(ref decl, _, _, ref generics, _) => {
+          &ast::ItemFn(ref decl, _, _, _, ref generics, _) => {
             let no_output = match decl.output {
                 ast::DefaultReturn(..) => true,
                 ast::Return(ref t) if t.node == ast::TyTup(vec![]) => true,
@@ -356,7 +356,7 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 
     fn has_test_signature(i: &ast::Item) -> bool {
         match i.node {
-            ast::ItemFn(ref decl, _, _, ref generics, _) => {
+            ast::ItemFn(ref decl, _, _, _, ref generics, _) => {
                 let input_cnt = decl.inputs.len();
                 let no_output = match decl.output {
                     ast::DefaultReturn(..) => true,
@@ -477,7 +477,9 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
     let main_ret_ty = ecx.ty(sp, ast::TyTup(vec![]));
     let main_body = ecx.block_all(sp, vec![call_test_main], None);
     let main = ast::ItemFn(ecx.fn_decl(vec![], main_ret_ty),
-                           ast::Unsafety::Normal, ::abi::Rust, empty_generics(), main_body);
+                           ast::Unsafety::Normal,
+                           ast::Constness::NotConst,
+                           ::abi::Rust, empty_generics(), main_body);
     let main = P(ast::Item {
         ident: token::str_to_ident("main"),
         attrs: vec![main_attr],

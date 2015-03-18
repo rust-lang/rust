@@ -35,6 +35,7 @@ use util::nodemap::NodeMap;
 use util::ppaux;
 
 use syntax::ast;
+use syntax::ast_util::PostExpansionMethod;
 use syntax::codemap::Span;
 use syntax::print::pprust;
 use syntax::visit::{self, Visitor};
@@ -79,6 +80,7 @@ bitflags! {
 #[derive(Copy, Eq, PartialEq)]
 enum Mode {
     Const,
+    ConstFn,
     Static,
     StaticMut,
 
@@ -136,8 +138,85 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         })
     }
 
+    fn fn_like(&mut self,
+               fk: visit::FnKind,
+               fd: &ast::FnDecl,
+               b: &ast::Block,
+               s: Span,
+               fn_id: ast::NodeId)
+               -> ConstQualif {
+        match self.tcx.const_qualif_map.borrow_mut().entry(fn_id) {
+            Entry::Occupied(entry) => return *entry.get(),
+            Entry::Vacant(entry) => {
+                // Prevent infinite recursion on re-entry.
+                entry.insert(PURE_CONST);
+            }
+        }
+
+        let mode = match fk {
+            visit::FkItemFn(_, _, _, ast::Constness::Const, _) => {
+                Mode::ConstFn
+            }
+            visit::FkMethod(_, _, m) => {
+                if m.pe_constness() == ast::Constness::Const {
+                    Mode::ConstFn
+                } else {
+                    Mode::Var
+                }
+            }
+            _ => Mode::Var
+        };
+
+        // Ensure the arguments are simple, not mutable/by-ref or patterns.
+        if mode == Mode::ConstFn {
+            for arg in &fd.inputs {
+                match arg.pat.node {
+                    ast::PatIdent(ast::BindByValue(ast::MutImmutable), _, None) => {}
+                    _ => {
+                        span_err!(self.tcx.sess, arg.pat.span, E0022,
+                                  "arguments of constant functions can only \
+                                   be immutable by-value bindings");
+                    }
+                }
+            }
+        }
+
+        let qualif = self.with_mode(mode, |this| {
+            this.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, b));
+            visit::walk_fn(this, fk, fd, b, s);
+            this.qualif
+        });
+
+        // Keep only bits that aren't affected by function body (NON_ZERO_SIZED),
+        // and bits that don't change semantics, just optimizations (PREFER_IN_PLACE).
+        let qualif = qualif & (NON_ZERO_SIZED | PREFER_IN_PLACE);
+
+        self.tcx.const_qualif_map.borrow_mut().insert(fn_id, qualif);
+        qualif
+    }
+
     fn add_qualif(&mut self, qualif: ConstQualif) {
         self.qualif = self.qualif | qualif;
+    }
+
+    /// Returns true if the call is to a const fn or method.
+    fn handle_const_fn_call(&mut self, def_id: ast::DefId, ret_ty: Ty<'tcx>) -> bool {
+        if let Some(fn_like) = const_eval::lookup_const_fn_by_id(self.tcx, def_id) {
+            let qualif = self.fn_like(fn_like.kind(),
+                                      fn_like.decl(),
+                                      fn_like.body(),
+                                      fn_like.span(),
+                                      fn_like.id());
+            self.add_qualif(qualif);
+
+            if ty::type_contents(self.tcx, ret_ty).interior_unsafe() {
+                self.add_qualif(MUTABLE_MEM);
+            }
+
+            true
+        } else {
+            false
+        }
     }
 
     fn record_borrow(&mut self, id: ast::NodeId, mutbl: ast::Mutability) {
@@ -158,6 +237,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
     fn msg(&self) -> &'static str {
         match self.mode {
             Mode::Const => "constant",
+            Mode::ConstFn => "constant function",
             Mode::StaticMut | Mode::Static => "static",
             Mode::Var => unreachable!(),
         }
@@ -229,9 +309,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
                 b: &'v ast::Block,
                 s: Span,
                 fn_id: ast::NodeId) {
-        assert!(self.mode == Mode::Var);
-        self.with_euv(Some(fn_id), |euv| euv.walk_fn(fd, b));
-        visit::walk_fn(self, fk, fd, b, s);
+        self.fn_like(fk, fd, b, s, fn_id);
     }
 
     fn visit_pat(&mut self, p: &ast::Pat) {
@@ -245,6 +323,35 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
             }
             _ => visit::walk_pat(self, p)
         }
+    }
+
+    fn visit_block(&mut self, block: &ast::Block) {
+        // Check all statements in the block
+        for stmt in &block.stmts {
+            let span = match stmt.node {
+                ast::StmtDecl(ref decl, _) => {
+                    match decl.node {
+                        ast::DeclLocal(_) => decl.span,
+
+                        // Item statements are allowed
+                        ast::DeclItem(_) => continue
+                    }
+                }
+                ast::StmtExpr(ref expr, _) => expr.span,
+                ast::StmtSemi(ref semi, _) => semi.span,
+                ast::StmtMac(..) => {
+                    self.tcx.sess.span_bug(stmt.span, "unexpanded statement \
+                                                       macro in const?!")
+                }
+            };
+            self.add_qualif(NOT_CONST);
+            if self.mode != Mode::Var {
+                span_err!(self.tcx.sess, span, E0016,
+                          "blocks in {}s are limited to items and \
+                           tail expressions", self.msg());
+            }
+        }
+        visit::walk_block(self, block);
     }
 
     fn visit_expr(&mut self, ex: &ast::Expr) {
@@ -460,10 +567,10 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                 Some(def::DefStatic(..)) => {
                     match v.mode {
                         Mode::Static | Mode::StaticMut => {}
-                        Mode::Const => {
+                        Mode::Const | Mode::ConstFn => {
                             span_err!(v.tcx.sess, e.span, E0013,
-                                "constants cannot refer to other statics, \
-                                 insert an intermediate constant instead");
+                                "{}s cannot refer to other statics, insert \
+                                 an intermediate constant instead", v.msg());
                         }
                         Mode::Var => v.add_qualif(NOT_CONST)
                     }
@@ -476,6 +583,10 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                         v.tcx.sess.span_bug(e.span, "DefConst doesn't point \
                                                      to an ItemConst");
                     }
+                }
+                Some(def::DefLocal(_)) if v.mode == Mode::ConstFn => {
+                    // Sadly, we can't determine whether the types are zero-sized.
+                    v.add_qualif(NOT_CONST | NON_ZERO_SIZED);
                 }
                 def => {
                     v.add_qualif(NOT_CONST);
@@ -501,48 +612,44 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                 };
             }
             let def = v.tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def());
-            match def {
-                Some(def::DefStruct(..)) => {}
+            let is_const = match def {
+                Some(def::DefStruct(..)) => true,
                 Some(def::DefVariant(..)) => {
                     // Count the discriminator.
                     v.add_qualif(NON_ZERO_SIZED);
+                    true
                 }
-                _ => {
-                    v.add_qualif(NOT_CONST);
-                    if v.mode != Mode::Var {
-                        span_err!(v.tcx.sess, e.span, E0015,
-                                  "function calls in {}s are limited to \
-                                   struct and enum constructors", v.msg());
-                    }
+                Some(def::DefMethod(did, def::FromImpl(_))) |
+                Some(def::DefFn(did, _)) => {
+                    v.handle_const_fn_call(did, node_ty)
+                }
+                _ => false
+            };
+            if !is_const {
+                v.add_qualif(NOT_CONST);
+                if v.mode != Mode::Var {
+                    span_err!(v.tcx.sess, e.span, E0015,
+                              "function calls in {}s are limited to \
+                               constant functions, \
+                               struct and enum constructors", v.msg());
                 }
             }
         }
-        ast::ExprBlock(ref block) => {
-            // Check all statements in the block
-            let mut block_span_err = |span| {
+        ast::ExprMethodCall(..) => {
+            let method_did = match v.tcx.method_map.borrow()[method_call].origin {
+                ty::MethodStatic(did) => Some(did),
+                _ => None
+            };
+            let is_const = match method_did {
+                Some(did) => v.handle_const_fn_call(did, node_ty),
+                None => false
+            };
+            if !is_const {
                 v.add_qualif(NOT_CONST);
                 if v.mode != Mode::Var {
-                    span_err!(v.tcx.sess, span, E0016,
-                              "blocks in {}s are limited to items and \
-                               tail expressions", v.msg());
-                }
-            };
-            for stmt in &block.stmts {
-                match stmt.node {
-                    ast::StmtDecl(ref decl, _) => {
-                        match decl.node {
-                            ast::DeclLocal(_) => block_span_err(decl.span),
-
-                            // Item statements are allowed
-                            ast::DeclItem(_) => {}
-                        }
-                    }
-                    ast::StmtExpr(ref expr, _) => block_span_err(expr.span),
-                    ast::StmtSemi(ref semi, _) => block_span_err(semi.span),
-                    ast::StmtMac(..) => {
-                        v.tcx.sess.span_bug(e.span, "unexpanded statement \
-                                                     macro in const?!")
-                    }
+                    span_err!(v.tcx.sess, e.span, E0021,
+                              "method calls in {}s are limited to \
+                               constant inherent methods", v.msg());
                 }
             }
         }
@@ -563,7 +670,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         }
 
         ast::ExprClosure(..) => {
-            // Paths in constant constexts cannot refer to local variables,
+            // Paths in constant contexts cannot refer to local variables,
             // as there are none, and thus closures can't have upvars there.
             if ty::with_freevars(v.tcx, e.id, |fv| !fv.is_empty()) {
                 assert!(v.mode == Mode::Var,
@@ -572,6 +679,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             }
         }
 
+        ast::ExprBlock(_) |
         ast::ExprUnary(..) |
         ast::ExprBinary(..) |
         ast::ExprIndex(..) |
@@ -600,8 +708,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         // Miscellaneous expressions that could be implemented.
         ast::ExprRange(..) |
 
-        // Various other expressions.
-        ast::ExprMethodCall(..) |
+        // Expressions with side-effects.
         ast::ExprAssign(..) |
         ast::ExprAssignOp(..) |
         ast::ExprInlineAsm(_) |

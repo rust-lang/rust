@@ -794,10 +794,10 @@ pub struct ctxt<'tcx> {
     /// Borrows
     pub upvar_capture_map: RefCell<UpvarCaptureMap>,
 
-    /// These two caches are used by const_eval when decoding external statics
-    /// and variants that are found.
+    /// These caches are used by const_eval when decoding external constants.
     pub extern_const_statics: RefCell<DefIdMap<ast::NodeId>>,
     pub extern_const_variants: RefCell<DefIdMap<ast::NodeId>>,
+    pub extern_const_fns: RefCell<DefIdMap<ast::NodeId>>,
 
     pub method_map: MethodMap<'tcx>,
 
@@ -2358,7 +2358,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             }
             Some(ast_map::NodeItem(item)) => {
                 match item.node {
-                    ast::ItemFn(_, _, _, _, ref body) => {
+                    ast::ItemFn(_, _, _, _, _, ref body) => {
                         // We assume this is a function.
                         let fn_def_id = ast_util::local_def(id);
                         let fn_scheme = lookup_item_type(cx, fn_def_id);
@@ -2605,6 +2605,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         upvar_capture_map: RefCell::new(FnvHashMap()),
         extern_const_statics: RefCell::new(DefIdMap()),
         extern_const_variants: RefCell::new(DefIdMap()),
+        extern_const_fns: RefCell::new(DefIdMap()),
         method_map: RefCell::new(FnvHashMap()),
         dependency_formats: RefCell::new(FnvHashMap()),
         closure_kinds: RefCell::new(DefIdMap()),

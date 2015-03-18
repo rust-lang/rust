@@ -46,7 +46,7 @@ fn item_might_be_inlined(item: &ast::Item) -> bool {
 
     match item.node {
         ast::ItemImpl(_, _, ref generics, _, _, _) |
-        ast::ItemFn(_, _, _, ref generics, _) => {
+        ast::ItemFn(_, _, _, _, ref generics, _) => {
             generics_require_inlining(generics)
         }
         _ => false,
@@ -254,7 +254,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
             // but all other rust-only interfaces can be private (they will not
             // participate in linkage after this product is produced)
             if let ast_map::NodeItem(item) = *node {
-                if let ast::ItemFn(_, _, abi, _, _) = item.node {
+                if let ast::ItemFn(_, _, _, abi, _, _) = item.node {
                     if abi != abi::Rust {
                         self.reachable_symbols.insert(search_item);
                     }
@@ -271,7 +271,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
         match *node {
             ast_map::NodeItem(item) => {
                 match item.node {
-                    ast::ItemFn(_, _, _, _, ref search_block) => {
+                    ast::ItemFn(_, _, _, _, _, ref search_block) => {
                         if item_might_be_inlined(&*item) {
                             visit::walk_block(self, &**search_block)
                         }

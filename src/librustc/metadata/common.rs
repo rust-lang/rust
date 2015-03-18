@@ -256,3 +256,5 @@ pub const tag_codemap_filemap: uint = 0xa2;
 pub const tag_item_super_predicates: uint = 0xa3;
 
 pub const tag_defaulted_trait: uint = 0xa4;
+
+pub const tag_items_data_item_constness: uint = 0xa5;

@@ -132,6 +132,7 @@ pub struct Function {
     pub vis: ast::Visibility,
     pub stab: Option<attr::Stability>,
     pub unsafety: ast::Unsafety,
+    pub constness: ast::Constness,
     pub whence: Span,
     pub generics: ast::Generics,
 }

@@ -421,7 +421,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     .define_value(DefConst(local_def(item.id)), sp, modifiers);
                 parent.clone()
             }
-            ItemFn(_, _, _, _, _) => {
+            ItemFn(_, _, _, _, _, _) => {
                 let name_bindings = self.add_child(name, parent, ForbidDuplicateValues, sp);
 
                 let def = DefFn(local_def(item.id), false);

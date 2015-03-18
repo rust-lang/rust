@@ -729,6 +729,7 @@ impl<'a> MethodDef<'a> {
                 abi: abi,
                 explicit_self: explicit_self,
                 unsafety: ast::Unsafety::Normal,
+                constness: ast::Constness::NotConst,
                 decl: fn_decl
             }, body_block)
         })

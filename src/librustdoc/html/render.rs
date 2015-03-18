@@ -61,7 +61,7 @@ use clean;
 use doctree;
 use fold::DocFolder;
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace, Stability};
-use html::format::{ConciseStability, TyParamBounds, WhereClause};
+use html::format::{ConciseStability, ConstnessSpace, TyParamBounds, WhereClause};
 use html::highlight;
 use html::item_type::ItemType;
 use html::layout;
@@ -1712,10 +1712,11 @@ fn item_static(w: &mut fmt::Formatter, it: &clean::Item,
 
 fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
-    try!(write!(w, "<pre class='rust fn'>{vis}{unsafety}fn \
+    try!(write!(w, "<pre class='rust fn'>{vis}{unsafety}{constness}fn \
                     {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(it.visibility),
            unsafety = UnsafetySpace(f.unsafety),
+           constness = ConstnessSpace(f.constness),
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
            where_clause = WhereClause(&f.generics),
@@ -1879,18 +1880,20 @@ fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
 }
 
 fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
-    fn method(w: &mut fmt::Formatter, it: &clean::Item,
-              unsafety: ast::Unsafety, abi: abi::Abi,
-              g: &clean::Generics, selfty: &clean::SelfTy,
+    fn method(w: &mut fmt::Formatter,
+              it: &clean::Item,
+              unsafety: ast::Unsafety,
+              constness: ast::Constness,
+              abi: abi::Abi,
+              g: &clean::Generics,
+              selfty: &clean::SelfTy,
               d: &clean::FnDecl) -> fmt::Result {
         use syntax::abi::Abi;
 
-        write!(w, "{}{}fn <a href='#{ty}.{name}' class='fnname'>{name}</a>\
+        write!(w, "{}{}{}fn <a href='#{ty}.{name}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
-               match unsafety {
-                   ast::Unsafety::Unsafe => "unsafe ",
-                   _ => "",
-               },
+               UnsafetySpace(unsafety),
+               ConstnessSpace(constness),
                match abi {
                    Abi::Rust => String::new(),
                    a => format!("extern {} ", a.to_string())
@@ -1903,10 +1906,12 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
     }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
-            method(w, meth, m.unsafety, m.abi, &m.generics, &m.self_, &m.decl)
+            method(w, meth, m.unsafety, ast::Constness::NotConst,
+                   m.abi, &m.generics, &m.self_, &m.decl)
         }
         clean::MethodItem(ref m) => {
-            method(w, meth, m.unsafety, m.abi, &m.generics, &m.self_, &m.decl)
+            method(w, meth, m.unsafety, m.constness,
+                   m.abi, &m.generics, &m.self_, &m.decl)
         }
         clean::AssociatedTypeItem(ref bounds, ref default) => {
             assoc_type(w, meth, bounds, default)

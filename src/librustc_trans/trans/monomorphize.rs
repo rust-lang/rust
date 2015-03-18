@@ -173,7 +173,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ast_map::NodeItem(i) => {
             match *i {
               ast::Item {
-                  node: ast::ItemFn(ref decl, _, abi, _, ref body),
+                  node: ast::ItemFn(ref decl, _, _, abi, _, ref body),
                   ..
               } => {
                   let d = mk_lldecl(abi);

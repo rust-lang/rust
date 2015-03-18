@@ -159,6 +159,7 @@ trait ErrorReportingHelpers<'tcx> {
     fn give_expl_lifetime_param(&self,
                                 decl: &ast::FnDecl,
                                 unsafety: ast::Unsafety,
+                                constness: ast::Constness,
                                 ident: ast::Ident,
                                 opt_explicit_self: Option<&ast::ExplicitSelf_>,
                                 generics: &ast::Generics,
@@ -840,8 +841,9 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             Some(ref node) => match *node {
                 ast_map::NodeItem(ref item) => {
                     match item.node {
-                        ast::ItemFn(ref fn_decl, pur, _, ref gen, _) => {
-                            Some((fn_decl, gen, pur, item.ident, None, item.span))
+                        ast::ItemFn(ref fn_decl, unsafety, constness, _, ref gen, _) => {
+                            Some((fn_decl, gen, unsafety, constness,
+                                  item.ident, None, item.span))
                         },
                         _ => None
                     }
@@ -852,6 +854,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                             Some((&sig.decl,
                                   &sig.generics,
                                   sig.unsafety,
+                                  sig.constness,
                                   item.ident,
                                   Some(&sig.explicit_self.node),
                                   item.span))
@@ -866,6 +869,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                             Some((&sig.decl,
                                   &sig.generics,
                                   sig.unsafety,
+                                  sig.constness,
                                   item.ident,
                                   Some(&sig.explicit_self.node),
                                   item.span))
@@ -877,12 +881,12 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             },
             None => None
         };
-        let (fn_decl, generics, unsafety, ident, expl_self, span)
+        let (fn_decl, generics, unsafety, constness, ident, expl_self, span)
                                     = node_inner.expect("expect item fn");
         let rebuilder = Rebuilder::new(self.tcx, fn_decl, expl_self,
                                        generics, same_regions, &life_giver);
         let (fn_decl, expl_self, generics) = rebuilder.rebuild();
-        self.give_expl_lifetime_param(&fn_decl, unsafety, ident,
+        self.give_expl_lifetime_param(&fn_decl, unsafety, constness, ident,
                                       expl_self.as_ref(), &generics, span);
     }
 }
@@ -1437,12 +1441,13 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
     fn give_expl_lifetime_param(&self,
                                 decl: &ast::FnDecl,
                                 unsafety: ast::Unsafety,
+                                constness: ast::Constness,
                                 ident: ast::Ident,
                                 opt_explicit_self: Option<&ast::ExplicitSelf_>,
                                 generics: &ast::Generics,
                                 span: codemap::Span) {
-        let suggested_fn = pprust::fun_to_string(decl, unsafety, ident,
-                                              opt_explicit_self, generics);
+        let suggested_fn = pprust::fun_to_string(decl, unsafety, constness, ident,
+                                                 opt_explicit_self, generics);
         let msg = format!("consider using an explicit lifetime \
                            parameter as shown: {}", suggested_fn);
         self.tcx.sess.span_help(span, &msg[..]);
@@ -1724,7 +1729,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
     let method_id_opt = match tcx.map.find(parent) {
         Some(node) => match node {
             ast_map::NodeItem(item) => match item.node {
-                ast::ItemFn(_, _, _, ref gen, _) => {
+                ast::ItemFn(_, _, _, _, ref gen, _) => {
                     taken.push_all(&gen.lifetimes);
                     None
                 },

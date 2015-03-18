@@ -35,7 +35,7 @@ use owned_slice::OwnedSlice;
 #[derive(Copy)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
-    FkItemFn(Ident, &'a Generics, Unsafety, Abi),
+    FkItemFn(Ident, &'a Generics, Unsafety, Constness, Abi),
 
     /// fn foo(&self)
     FkMethod(Ident, &'a MethodSig),
@@ -246,8 +246,8 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_ty(&**typ);
             visitor.visit_expr(&**expr);
         }
-        ItemFn(ref declaration, fn_style, abi, ref generics, ref body) => {
-            visitor.visit_fn(FkItemFn(item.ident, generics, fn_style, abi),
+        ItemFn(ref declaration, unsafety, constness, abi, ref generics, ref body) => {
+            visitor.visit_fn(FkItemFn(item.ident, generics, unsafety, constness, abi),
                              &**declaration,
                              &**body,
                              item.span,
@@ -600,7 +600,7 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
     walk_fn_decl(visitor, function_declaration);
 
     match function_kind {
-        FkItemFn(_, generics, _, _) => {
+        FkItemFn(_, generics, _, _, _) => {
             visitor.visit_generics(generics);
         }
         FkMethod(_, sig) => {

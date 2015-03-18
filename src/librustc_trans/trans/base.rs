@@ -1253,7 +1253,7 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
     let blk = match tcx.map.find(id) {
         Some(ast_map::NodeItem(i)) => {
             match i.node {
-                ast::ItemFn(_, _, _, _, ref blk) => {
+                ast::ItemFn(_, _, _, _, _, ref blk) => {
                     blk
                 }
                 _ => tcx.sess.bug("unexpected item variant in has_nested_returns")
@@ -2221,7 +2221,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
     let from_external = ccx.external_srcs().borrow().contains_key(&item.id);
 
     match item.node {
-      ast::ItemFn(ref decl, _fn_style, abi, ref generics, ref body) => {
+      ast::ItemFn(ref decl, _, _, abi, ref generics, ref body) => {
         if !generics.is_type_parameterized() {
             let trans_everywhere = attr::requests_inline(&item.attrs);
             // Ignore `trans_everywhere` for cross-crate inlined items
@@ -2734,7 +2734,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     // We need the translated value here, because for enums the
                     // LLVM type is not fully determined by the Rust type.
                     let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
-                    let (v, ty) = consts::const_expr(ccx, &**expr, empty_substs);
+                    let (v, ty) = consts::const_expr(ccx, &**expr, empty_substs, None);
                     ccx.static_values().borrow_mut().insert(id, v);
                     unsafe {
                         // boolean SSA values are i1, but they have to be stored in i8 slots,
@@ -2762,7 +2762,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     }
                 }
 
-                ast::ItemFn(_, _, abi, _, _) => {
+                ast::ItemFn(_, _, _, abi, _, _) => {
                     let sym = sym();
                     let llfn = if abi == Rust {
                         register_fn(ccx, i.span, sym, i.id, ty)
