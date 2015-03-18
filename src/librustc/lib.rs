@@ -42,6 +42,7 @@
 #![feature(io)]
 #![feature(path_ext)]
 #![feature(str_words)]
+#![feature(str_char)]
 #![cfg_attr(test, feature(test))]
 
 extern crate arena;
