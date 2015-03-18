@@ -144,7 +144,7 @@ mod imp {
         munmap(handler._data, SIGSTKSZ);
     }
 
-    type sighandler_t = *mut libc::c_void;
+    pub type sighandler_t = *mut libc::c_void;
 
     #[cfg(any(all(target_os = "linux", target_arch = "x86"), // may not match
               all(target_os = "linux", target_arch = "x86_64"),
@@ -156,7 +156,7 @@ mod imp {
               target_os = "android"))] // may not match
     mod signal {
         use libc;
-        use super::sighandler_t;
+        pub use super::sighandler_t;
 
         pub static SA_ONSTACK: libc::c_int = 0x08000000;
         pub static SA_SIGINFO: libc::c_int = 0x00000004;
@@ -210,7 +210,7 @@ mod imp {
               target_os = "openbsd"))]
     mod signal {
         use libc;
-        use super::sighandler_t;
+        pub use super::sighandler_t;
 
         pub const SA_ONSTACK: libc::c_int = 0x0001;
         pub const SA_SIGINFO: libc::c_int = 0x0040;

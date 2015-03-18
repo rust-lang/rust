@@ -379,7 +379,7 @@ pub fn validate_substs(substs: &Substs) {
 
 // work around bizarre resolve errors
 type RvalueDatum<'tcx> = datum::Datum<'tcx, datum::Rvalue>;
-type LvalueDatum<'tcx> = datum::Datum<'tcx, datum::Lvalue>;
+pub type LvalueDatum<'tcx> = datum::Datum<'tcx, datum::Lvalue>;
 
 // Function context.  Every LLVM function we create will have one of
 // these.

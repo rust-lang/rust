@@ -104,7 +104,7 @@ struct ADDRESS64 {
     Mode: ADDRESS_MODE,
 }
 
-struct STACKFRAME64 {
+pub struct STACKFRAME64 {
     AddrPC: ADDRESS64,
     AddrReturn: ADDRESS64,
     AddrFrame: ADDRESS64,

@@ -736,8 +736,8 @@ mod opt {
     use getopts;
     use super::RustcOptGroup;
 
-    type R = RustcOptGroup;
-    type S<'a> = &'a str;
+    pub type R = RustcOptGroup;
+    pub type S<'a> = &'a str;
 
     fn stable(g: getopts::OptGroup) -> R { RustcOptGroup::stable(g) }
     fn unstable(g: getopts::OptGroup) -> R { RustcOptGroup::unstable(g) }

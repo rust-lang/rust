@@ -195,7 +195,7 @@ type DeferredCallResolutionHandler<'tcx> = Box<DeferredCallResolution<'tcx>+'tcx
 /// When type-checking an expression, we propagate downward
 /// whatever type hint we are able in the form of an `Expectation`.
 #[derive(Copy)]
-enum Expectation<'tcx> {
+pub enum Expectation<'tcx> {
     /// We know nothing about what type this expression should have.
     NoExpectation,
 

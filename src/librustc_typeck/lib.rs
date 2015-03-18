@@ -128,12 +128,12 @@ mod constrained_type_params;
 mod coherence;
 mod variance;
 
-struct TypeAndSubsts<'tcx> {
+pub struct TypeAndSubsts<'tcx> {
     pub substs: subst::Substs<'tcx>,
     pub ty: Ty<'tcx>,
 }
 
-struct CrateCtxt<'a, 'tcx: 'a> {
+pub struct CrateCtxt<'a, 'tcx: 'a> {
     // A mapping from method call sites to traits that have that method.
     trait_map: ty::TraitMap,
     /// A vector of every trait accessible in the whole crate
