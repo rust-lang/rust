@@ -179,7 +179,7 @@ Because this function will cause a crash, it will never return, and so it has
 the type '`!`', which is read "diverges." A diverging function can be used
 as any type:
 
-```should_fail
+```should_panic
 # fn diverges() -> ! {
 #    panic!("This function never returns!");
 # }
