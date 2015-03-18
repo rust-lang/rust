@@ -105,11 +105,18 @@
 //! hexadecimal as well as an
 //! octal.
 //!
-//! There are various parameters which do require a particular type, however.
-//! Namely if the syntax `{:.*}` is used, then the number of characters to print
-//! precedes the actual object being formatted, and the number of characters
-//! must have the type `usize`. Although a `usize` can be printed with `{}`, it is
-//! illegal to reference an argument as such. For example this is another
+//! There are various parameters which do require a particular type, however. Namely, the `{:.*}`
+//! syntax, which sets the number of numbers after the decimal in floating-point types:
+//!
+//! ```
+//! let formatted_number = format!("{:.*}", 2, 1.234567);
+//!
+//! assert_eq!("1.23", formatted_number)
+//! ```
+//!
+//! If this syntax is used, then the number of characters to print precedes the actual object being
+//! formatted, and the number of characters must have the type `usize`. Although a `usize` can be
+//! printed with `{}`, it is illegal to reference an argument as such. For example this is another
 //! invalid format string:
 //!
 //! ```text
