@@ -168,6 +168,7 @@ impl<T:Copy> Cell<T> {
     /// let c = Cell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn new(value: T) -> Cell<T> {
         Cell {
             value: UnsafeCell::new(value),
@@ -237,6 +238,7 @@ unsafe impl<T> Send for Cell<T> where T: Send {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Copy> Clone for Cell<T> {
+    #[inline]
     fn clone(&self) -> Cell<T> {
         Cell::new(self.get())
     }
@@ -245,6 +247,7 @@ impl<T:Copy> Clone for Cell<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Default + Copy> Default for Cell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     fn default() -> Cell<T> {
         Cell::new(Default::default())
     }
@@ -252,6 +255,7 @@ impl<T:Default + Copy> Default for Cell<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:PartialEq + Copy> PartialEq for Cell<T> {
+    #[inline]
     fn eq(&self, other: &Cell<T>) -> bool {
         self.get() == other.get()
     }
@@ -295,6 +299,7 @@ impl<T> RefCell<T> {
     /// let c = RefCell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn new(value: T) -> RefCell<T> {
         RefCell {
             value: UnsafeCell::new(value),
@@ -314,6 +319,7 @@ impl<T> RefCell<T> {
     /// let five = c.into_inner();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn into_inner(self) -> T {
         // Since this function takes `self` (the `RefCell`) by value, the
         // compiler statically verifies that it is not currently borrowed.
@@ -327,6 +333,7 @@ impl<T> RefCell<T> {
     /// The returned value can be dispatched on to determine if a call to
     /// `borrow` or `borrow_mut` would succeed.
     #[unstable(feature = "std_misc")]
+    #[inline]
     pub fn borrow_state(&self) -> BorrowState {
         match self.borrow.get() {
             WRITING => BorrowState::Writing,
@@ -344,6 +351,7 @@ impl<T> RefCell<T> {
     #[unstable(feature = "core", reason = "may be renamed or removed")]
     #[deprecated(since = "1.0.0",
                  reason = "dispatch on `cell.borrow_state()` instead")]
+    #[inline]
     pub fn try_borrow<'a>(&'a self) -> Option<Ref<'a, T>> {
         match BorrowRef::new(&self.borrow) {
             Some(b) => Some(Ref { _value: unsafe { &*self.value.get() }, _borrow: b }),
@@ -387,6 +395,7 @@ impl<T> RefCell<T> {
     /// assert!(result.is_err());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn borrow<'a>(&'a self) -> Ref<'a, T> {
         match BorrowRef::new(&self.borrow) {
             Some(b) => Ref {
@@ -406,6 +415,7 @@ impl<T> RefCell<T> {
     #[unstable(feature = "core", reason = "may be renamed or removed")]
     #[deprecated(since = "1.0.0",
                  reason = "dispatch on `cell.borrow_state()` instead")]
+    #[inline]
     pub fn try_borrow_mut<'a>(&'a self) -> Option<RefMut<'a, T>> {
         match BorrowRefMut::new(&self.borrow) {
             Some(b) => Some(RefMut { _value: unsafe { &mut *self.value.get() }, _borrow: b }),
@@ -448,6 +458,7 @@ impl<T> RefCell<T> {
     /// assert!(result.is_err());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn borrow_mut<'a>(&'a self) -> RefMut<'a, T> {
         match BorrowRefMut::new(&self.borrow) {
             Some(b) => RefMut {
@@ -475,6 +486,7 @@ unsafe impl<T> Send for RefCell<T> where T: Send {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for RefCell<T> {
+    #[inline]
     fn clone(&self) -> RefCell<T> {
         RefCell::new(self.borrow().clone())
     }
@@ -483,6 +495,7 @@ impl<T: Clone> Clone for RefCell<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Default> Default for RefCell<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     fn default() -> RefCell<T> {
         RefCell::new(Default::default())
     }
@@ -490,6 +503,7 @@ impl<T:Default> Default for RefCell<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialEq> PartialEq for RefCell<T> {
+    #[inline]
     fn eq(&self, other: &RefCell<T>) -> bool {
         *self.borrow() == *other.borrow()
     }
@@ -500,6 +514,7 @@ struct BorrowRef<'b> {
 }
 
 impl<'b> BorrowRef<'b> {
+    #[inline]
     fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRef<'b>> {
         match borrow.get() {
             WRITING => None,
@@ -513,6 +528,7 @@ impl<'b> BorrowRef<'b> {
 
 #[unsafe_destructor]
 impl<'b> Drop for BorrowRef<'b> {
+    #[inline]
     fn drop(&mut self) {
         let borrow = self._borrow.get();
         debug_assert!(borrow != WRITING && borrow != UNUSED);
@@ -521,6 +537,7 @@ impl<'b> Drop for BorrowRef<'b> {
 }
 
 impl<'b> Clone for BorrowRef<'b> {
+    #[inline]
     fn clone(&self) -> BorrowRef<'b> {
         // Since this Ref exists, we know the borrow flag
         // is not set to WRITING.
@@ -561,6 +578,7 @@ impl<'b, T> Deref for Ref<'b, T> {
 /// use of `r.borrow().clone()` to clone the contents of a `RefCell`.
 #[unstable(feature = "core",
            reason = "likely to be moved to a method, pending language changes")]
+#[inline]
 pub fn clone_ref<'b, T:Clone>(orig: &Ref<'b, T>) -> Ref<'b, T> {
     Ref {
         _value: orig._value,
@@ -574,6 +592,7 @@ struct BorrowRefMut<'b> {
 
 #[unsafe_destructor]
 impl<'b> Drop for BorrowRefMut<'b> {
+    #[inline]
     fn drop(&mut self) {
         let borrow = self._borrow.get();
         debug_assert!(borrow == WRITING);
@@ -582,6 +601,7 @@ impl<'b> Drop for BorrowRefMut<'b> {
 }
 
 impl<'b> BorrowRefMut<'b> {
+    #[inline]
     fn new(borrow: &'b Cell<BorrowFlag>) -> Option<BorrowRefMut<'b>> {
         match borrow.get() {
             UNUSED => {
@@ -674,6 +694,7 @@ impl<T> UnsafeCell<T> {
     /// let uc = UnsafeCell::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn new(value: T) -> UnsafeCell<T> {
         UnsafeCell { value: value }
     }
