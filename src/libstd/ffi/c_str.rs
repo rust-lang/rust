@@ -11,7 +11,6 @@
 #![unstable(feature = "std_misc")]
 
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
-use core::array::FixedSizeArray;
 use error::{Error, FromError};
 use fmt;
 use io;
@@ -59,7 +58,7 @@ use vec::Vec;
 ///     fn my_printer(s: *const libc::c_char);
 /// }
 ///
-/// let to_print = b"Hello, world!";
+/// let to_print = &b"Hello, world!"[..];
 /// let c_to_print = CString::new(to_print).unwrap();
 /// unsafe {
 ///     my_printer(c_to_print.as_ptr());
@@ -451,9 +450,6 @@ impl IntoBytes for String {
 impl IntoBytes for Vec<u8> {
     fn into_bytes(self) -> Vec<u8> { self }
 }
-impl<'a, T: FixedSizeArray<u8>> IntoBytes for &'a T {
-    fn into_bytes(self) -> Vec<u8> { self.as_slice().to_vec() }
-}
 
 #[cfg(test)]
 mod tests {
@@ -473,14 +469,14 @@ mod tests {
 
     #[test]
     fn simple() {
-        let s = CString::new(b"1234").unwrap();
+        let s = CString::new("1234").unwrap();
         assert_eq!(s.as_bytes(), b"1234");
         assert_eq!(s.as_bytes_with_nul(), b"1234\0");
     }
 
     #[test]
     fn build_with_zero1() {
-        assert!(CString::new(b"\0").is_err());
+        assert!(CString::new(&b"\0"[..]).is_err());
     }
     #[test]
     fn build_with_zero2() {
@@ -497,7 +493,7 @@ mod tests {
 
     #[test]
     fn formatted() {
-        let s = CString::new(b"12").unwrap();
+        let s = CString::new(&b"12"[..]).unwrap();
         assert_eq!(format!("{:?}", s), "\"12\"");
     }
 
