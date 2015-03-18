@@ -31,8 +31,6 @@ use mem;
 use num::Int;
 use ops::{Fn, FnMut};
 use option::Option::{self, None, Some};
-#[cfg(stage0)]
-use ptr::PtrExt;
 use raw::{Repr, Slice};
 use result::Result::{self, Ok, Err};
 use slice::{self, SliceExt};

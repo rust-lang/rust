@@ -23,9 +23,6 @@ use marker::Copy;
 use clone::Clone;
 use cmp::{PartialOrd, PartialEq};
 
-#[cfg(stage0)]
-pub use core::num::{Int, SignedInt, UnsignedInt};
-#[cfg(not(stage0))]
 pub use core::num::{Int, SignedInt};
 pub use core::num::{cast, FromPrimitive, NumCast, ToPrimitive};
 pub use core::num::{from_int, from_i8, from_i16, from_i32, from_i64};

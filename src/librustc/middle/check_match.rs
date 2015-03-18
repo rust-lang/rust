@@ -27,8 +27,6 @@ use middle::ty;
 use std::cmp::Ordering;
 use std::fmt;
 use std::iter::{range_inclusive, AdditiveIterator, FromIterator, IntoIterator, repeat};
-#[cfg(stage0)]
-use std::num::Float;
 use std::slice;
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId, Pat};
 use syntax::ast_util;

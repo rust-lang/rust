@@ -366,7 +366,6 @@ impl Float for f64 {
     }
 }
 
-#[cfg(not(stage0))]
 #[cfg(not(test))]
 #[lang = "f64"]
 #[stable(feature = "rust1", since = "1.0.0")]
