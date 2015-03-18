@@ -24,8 +24,6 @@ mod imp {
     use rand::Rng;
     use rand::reader::ReaderRng;
     use result::Result::Ok;
-    #[cfg(stage0)]
-    use slice::SliceExt;
     use mem;
     use os::errno;
 
@@ -194,8 +192,6 @@ mod imp {
     use rand::Rng;
     use result::Result::{Ok};
     use self::libc::{c_int, size_t};
-    #[cfg(stage0)]
-    use slice::SliceExt;
 
     /// A random number generator that retrieves randomness straight from
     /// the operating system. Platform sources:
@@ -265,8 +261,6 @@ mod imp {
     use result::Result::{Ok, Err};
     use self::libc::{DWORD, BYTE, LPCSTR, BOOL};
     use self::libc::types::os::arch::extra::{LONG_PTR};
-    #[cfg(stage0)]
-    use slice::SliceExt;
 
     type HCRYPTPROV = LONG_PTR;
 

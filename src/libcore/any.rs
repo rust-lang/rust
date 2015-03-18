@@ -155,7 +155,6 @@ impl Any {
     }
 }
 
-#[cfg(not(stage0))]
 impl Any+Send {
     /// Forwards to the method defined on the type `Any`.
     #[stable(feature = "rust1", since = "1.0.0")]

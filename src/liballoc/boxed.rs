@@ -264,7 +264,6 @@ impl BoxAny for Box<Any> {
     }
 }
 
-#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl BoxAny for Box<Any+Send> {
     #[inline]

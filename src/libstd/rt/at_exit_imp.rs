@@ -12,9 +12,6 @@
 //!
 //! Documentation can be found on the `rt::at_exit` function.
 
-#[cfg(stage0)]
-use core::prelude::*;
-
 use boxed;
 use boxed::Box;
 use vec::Vec;

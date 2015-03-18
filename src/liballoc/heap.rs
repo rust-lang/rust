@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(stage0)]
-#[cfg(not(test))]
-use core::ptr::PtrExt;
-
 // FIXME: #13996: mark the `allocate` and `reallocate` return value as `noalias`
 
 /// Return a pointer to `size` bytes of memory aligned to `align`.

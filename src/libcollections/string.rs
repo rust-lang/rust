@@ -85,23 +85,6 @@ impl String {
         }
     }
 
-    #[cfg(stage0)]
-    /// Creates a new string buffer from the given string.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let s = String::from_str("hello");
-    /// assert_eq!(s.as_slice(), "hello");
-    /// ```
-    #[inline]
-    #[unstable(feature = "collections",
-               reason = "needs investigation to see if to_string() can match perf")]
-    pub fn from_str(string: &str) -> String {
-        String { vec: ::slice::SliceExt::to_vec(string.as_bytes()) }
-    }
-
-    #[cfg(not(stage0))]
     /// Creates a new string buffer from the given string.
     ///
     /// # Examples
@@ -118,9 +101,9 @@ impl String {
         String { vec: <[_]>::to_vec(string.as_bytes()) }
     }
 
-    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is required for this
-    // method definition, is not available. Since we don't require this method for testing
-    // purposes, I'll just stub it
+    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
+    // required for this method definition, is not available. Since we don't
+    // require this method for testing purposes, I'll just stub it
     // NB see the slice::hack module in slice.rs for more information
     #[inline]
     #[cfg(test)]

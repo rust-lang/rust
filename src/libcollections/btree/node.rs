@@ -105,9 +105,6 @@ struct MutNodeSlice<'a, K: 'a, V: 'a> {
 /// Fails if `target_alignment` is not a power of two.
 #[inline]
 fn round_up_to_next(unrounded: usize, target_alignment: usize) -> usize {
-    #[cfg(stage0)]
-    use core::num::UnsignedInt;
-
     assert!(target_alignment.is_power_of_two());
     (unrounded + target_alignment - 1) & !(target_alignment - 1)
 }
