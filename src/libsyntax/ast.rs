@@ -541,7 +541,7 @@ pub struct Block {
     /// without a semicolon, if any
     pub expr: Option<P<Expr>>,
     pub id: NodeId,
-    /// Unsafety of the block
+    /// Distinguishes between `unsafe { ... }` and `{ ... }`
     pub rules: BlockCheckMode,
     pub span: Span,
 }
@@ -553,11 +553,12 @@ pub struct Pat {
     pub span: Span,
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 /// A single field in a struct pattern
 ///
-/// For patterns like `Foo {x, y, z}`, `pat` and `ident` point to the same identifier
-/// and `is_shorthand` is true.
+/// Patterns like the fields of Foo `{ x, ref y, ref mut z }`
+/// are treated the same as` x: x, y: ref y, z: ref mut z`,
+/// except is_shorthand is true
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct FieldPat {
     /// The identifier for the field
     pub ident: Ident,
@@ -601,7 +602,7 @@ pub enum Pat_ {
     /// Destructuring of a struct, e.g. `Foo {x, y, ..}`
     /// The `bool` is `true` in the presence of a `..`
     PatStruct(Path, Vec<Spanned<FieldPat>>, bool),
-    /// A tuple pattern (`a, b`)
+    /// A tuple pattern `(a, b)`
     PatTup(Vec<P<Pat>>),
     /// A `box` pattern
     PatBox(P<Pat>),
@@ -609,7 +610,7 @@ pub enum Pat_ {
     PatRegion(P<Pat>, Mutability),
     /// A literal
     PatLit(P<Expr>),
-    /// A range pattern, e.g. `[1...2]`
+    /// A range pattern, e.g. `1...2`
     PatRange(P<Expr>, P<Expr>),
     /// [a, b, ..i, y, z] is represented as:
     ///     PatVec(box [a, b], Some(i), box [y, z])
@@ -817,20 +818,20 @@ pub enum Expr_ {
     ExprIfLet(P<Pat>, P<Expr>, P<Block>, Option<P<Expr>>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     /// A while loop, with an optional label
-    /// `'label while expr { block }`
+    /// `'label: while expr { block }`
     ExprWhile(P<Expr>, P<Block>, Option<Ident>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     /// A while-let loop, with an optional label
-    /// `'label while let pat = expr { block }`
+    /// `'label: while let pat = expr { block }`
     /// This is desugared to a combination of `loop` and `match` expressions
     ExprWhileLet(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     /// A for loop, with an optional label
-    /// `'label for pat in expr { block }`
+    /// `'label: for pat in expr { block }`
     /// This is desugared to a combination of `loop` and `match` expressions
     ExprForLoop(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
-    /// Conditionless loop (can be exited with break, cont, or ret)
-    /// `'label loop { block }`
+    /// Conditionless loop (can be exited with break, continue, or return)
+    /// `'label: loop { block }`
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
     /// A `match` block, with a source that indicates whether or not it is
@@ -838,7 +839,7 @@ pub enum Expr_ {
     ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
     /// A closure (for example, `move |a, b, c| {a + b + c}`)
     ExprClosure(CaptureClause, P<FnDecl>, P<Block>),
-    /// A block
+    /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
     /// An assignment (`a = foo()`)
@@ -853,7 +854,7 @@ pub enum Expr_ {
     ExprTupField(P<Expr>, Spanned<usize>),
     /// An indexing operation (`foo[2]`)
     ExprIndex(P<Expr>, P<Expr>),
-    /// A range (`[1..2]`, `[1..]`, or `[..2]`)
+    /// A range (`1..2`, `1..`, or `..2`)
     ExprRange(Option<P<Expr>>, Option<P<Expr>>),
 
     /// Variable reference, possibly containing `::` and/or type
@@ -877,12 +878,14 @@ pub enum Expr_ {
     ExprMac(Mac),
 
     /// A struct literal expression.
-    /// For example, `Foo {x: 1, y: 2}`
-    ExprStruct(Path, Vec<Field>, Option<P<Expr>> /* base */),
+    /// For example, `Foo {x: 1, y: 2}`, or
+    /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`
+    ExprStruct(Path, Vec<Field>, Option<P<Expr>>),
 
     /// A vector literal constructed from one repeated element.
-    /// For example, `[u8; 5]`
-    ExprRepeat(P<Expr> /* element */, P<Expr> /* count */),
+    /// For example, `[1u8; 5]`. The first expression is the element
+    /// to be repeated; the second is the number of times to repeat it
+    ExprRepeat(P<Expr>, P<Expr>),
 
     /// No-op: used solely so we can pretty-print faithfully
     ExprParen(P<Expr>)
@@ -1820,6 +1823,7 @@ pub enum ForeignItem_ {
     /// A foreign function
     ForeignItemFn(P<FnDecl>, Generics),
     /// A foreign static item (`static ext: u8`), with optional mutability
+    /// (the boolean is true when mutable)
     ForeignItemStatic(P<Ty>, bool),
 }
 
