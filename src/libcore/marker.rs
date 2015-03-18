@@ -270,6 +270,7 @@ macro_rules! impls{
 /// any methods, but instead is used to gate access to data.
 ///
 /// FIXME. Better documentation needed here!
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait MarkerTrait : PhantomFn<Self,Self> { }
 //                                    ~~~~~ <-- FIXME(#22806)?
 //
