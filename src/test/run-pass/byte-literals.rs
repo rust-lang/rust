@@ -13,9 +13,13 @@
 
 static FOO: u8 = b'\xF0';
 static BAR: &'static [u8] = b"a\xF0\t";
+static BAR_FIXED: &'static [u8; 3] = b"a\xF0\t";
 static BAZ: &'static [u8] = br"a\n";
 
 pub fn main() {
+    let bar: &'static [u8] = b"a\xF0\t";
+    let bar_fixed: &'static [u8; 3] = b"a\xF0\t";
+
     assert_eq!(b'a', 97u8);
     assert_eq!(b'\n', 10u8);
     assert_eq!(b'\r', 13u8);
@@ -44,8 +48,11 @@ pub fn main() {
                  b", expected);
     let expected: &[_] = &[97u8, 240u8, 9u8];
     assert_eq!(BAR, expected);
+    assert_eq!(BAR_FIXED, expected);
+    assert_eq!(bar, expected);
+    assert_eq!(bar_fixed, expected);
 
-    let val: &[_] = &[97u8, 10u8];
+    let val = &[97u8, 10u8];
     match val {
         b"a\n" => {},
         _ => panic!(),
@@ -53,9 +60,9 @@ pub fn main() {
 
     let buf = vec!(97u8, 98, 99, 100);
     assert_eq!(match &buf[0..3] {
-         b"def" => 1_usize,
-         b"abc" => 2_usize,
-         _ => 3_usize
+         b"def" => 1,
+         b"abc" => 2,
+         _ => 3
     }, 2);
 
     let expected: &[_] = &[97u8, 92u8, 110u8];

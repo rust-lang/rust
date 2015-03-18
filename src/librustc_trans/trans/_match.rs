@@ -200,7 +200,7 @@ use middle::mem_categorization as mc;
 use middle::pat_util::*;
 use trans::adt;
 use trans::base::*;
-use trans::build::{AddCase, And, BitCast, Br, CondBr, GEPi, InBoundsGEP, Load};
+use trans::build::{AddCase, And, Br, CondBr, GEPi, InBoundsGEP, Load, PointerCast};
 use trans::build::{Not, Store, Sub, add_comment};
 use trans::build;
 use trans::callee;
@@ -853,14 +853,31 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
             ty::ty_str => compare_str(cx, lhs, rhs, rhs_t, debug_loc),
             ty::ty_vec(ty, _) => match ty.sty {
                 ty::ty_uint(ast::TyU8) => {
-                    // NOTE: cast &[u8] to &str and abuse the str_eq lang item,
+                    // NOTE: cast &[u8] and &[u8; N] to &str and abuse the str_eq lang item,
                     // which calls memcmp().
-                    let t = ty::mk_str_slice(cx.tcx(),
-                                             cx.tcx().mk_region(ty::ReStatic),
-                                             ast::MutImmutable);
-                    let lhs = BitCast(cx, lhs, type_of::type_of(cx.ccx(), t).ptr_to());
-                    let rhs = BitCast(cx, rhs, type_of::type_of(cx.ccx(), t).ptr_to());
-                    compare_str(cx, lhs, rhs, rhs_t, debug_loc)
+                    let pat_len = val_ty(rhs).element_type().array_length();
+                    let ty_str_slice = ty::mk_str_slice(cx.tcx(),
+                                                        cx.tcx().mk_region(ty::ReStatic),
+                                                        ast::MutImmutable);
+
+                    let rhs_str = alloc_ty(cx, ty_str_slice, "rhs_str");
+                    Store(cx, GEPi(cx, rhs, &[0, 0]), expr::get_dataptr(cx, rhs_str));
+                    Store(cx, C_uint(cx.ccx(), pat_len), expr::get_len(cx, rhs_str));
+
+                    let lhs_str;
+                    if val_ty(lhs) == val_ty(rhs) {
+                        // Both the discriminant and the pattern are thin pointers
+                        lhs_str = alloc_ty(cx, ty_str_slice, "lhs_str");
+                        Store(cx, GEPi(cx, lhs, &[0, 0]), expr::get_dataptr(cx, lhs_str));
+                        Store(cx, C_uint(cx.ccx(), pat_len), expr::get_len(cx, lhs_str));
+                    }
+                    else {
+                        // The discriminant is a fat pointer
+                        let llty_str_slice = type_of::type_of(cx.ccx(), ty_str_slice).ptr_to();
+                        lhs_str = PointerCast(cx, lhs, llty_str_slice);
+                    }
+
+                    compare_str(cx, lhs_str, rhs_str, rhs_t, debug_loc)
                 },
                 _ => cx.sess().bug("only byte strings supported in compare_values"),
             },
