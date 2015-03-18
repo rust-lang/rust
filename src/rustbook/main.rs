@@ -15,6 +15,7 @@
 #![feature(rustdoc)]
 #![feature(rustc_private)]
 #![feature(path_relative_from)]
+#![feature(convert)]
 
 extern crate rustdoc;
 extern crate rustc_back;

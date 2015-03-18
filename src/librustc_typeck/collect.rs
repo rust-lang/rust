@@ -690,7 +690,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+fn as_refsociated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                      container: ImplOrTraitItemContainer,
                                      ident: ast::Ident,
                                      id: ast::NodeId,
@@ -835,7 +835,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                                               "associated items are not allowed in inherent impls");
                         }
 
-                        convert_associated_type(ccx, ImplContainer(local_def(it.id)),
+                        as_refsociated_type(ccx, ImplContainer(local_def(it.id)),
                                                 impl_item.ident, impl_item.id, impl_item.vis);
 
                         let typ = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, ty);
@@ -917,7 +917,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                 match trait_item.node {
                     ast::MethodTraitItem(..) => {}
                     ast::TypeTraitItem(..) => {
-                        convert_associated_type(ccx, TraitContainer(local_def(it.id)),
+                        as_refsociated_type(ccx, TraitContainer(local_def(it.id)),
                                                 trait_item.ident, trait_item.id, ast::Public);
                     }
                 }
@@ -1987,7 +1987,7 @@ fn conv_param_bounds<'a,'tcx>(astconv: &AstConv<'tcx>,
         builtin_bounds,
         trait_bounds,
         region_bounds
-    } = astconv::partition_bounds(tcx, span, ast_bounds.as_slice());
+    } = astconv::partition_bounds(tcx, span, &ast_bounds);
 
     let mut projection_bounds = Vec::new();
 

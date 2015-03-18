@@ -1762,7 +1762,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match obligations {
             Ok(mut obls) => {
-                obls.push_all(normalized.obligations.as_slice());
+                obls.push_all(&normalized.obligations);
                 obls
             },
             Err(ErrorReported) => Vec::new()

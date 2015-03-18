@@ -106,6 +106,7 @@ use cmp;
 use iter::{self, IntoIterator};
 use mem;
 use ops::{self, Deref};
+use string::String;
 use vec::Vec;
 use fmt;
 
@@ -527,6 +528,13 @@ impl<'a> Component<'a> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> AsRef<OsStr> for Component<'a> {
+    fn as_ref(&self) -> &OsStr {
+        self.as_os_str()
+    }
+}
+
 /// The core iterator giving the components of a path.
 ///
 /// See the module documentation for an in-depth explanation of components and
@@ -601,6 +609,7 @@ impl<'a> Components<'a> {
     }
 
     /// Extract a slice corresponding to the portion of the path remaining for iteration.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &'a Path {
         let mut comps = self.clone();
         if comps.front == State::Body { comps.trim_left(); }
@@ -695,11 +704,39 @@ impl<'a> Components<'a> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> AsRef<Path> for Components<'a> {
+    fn as_ref(&self) -> &Path {
+        self.as_path()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> AsRef<OsStr> for Components<'a> {
+    fn as_ref(&self) -> &OsStr {
+        self.as_path().as_os_str()
+    }
+}
+
 impl<'a> Iter<'a> {
     /// Extract a slice corresponding to the portion of the path remaining for iteration.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &'a Path {
         self.inner.as_path()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> AsRef<Path> for Iter<'a> {
+    fn as_ref(&self) -> &Path {
+        self.as_path()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> AsRef<OsStr> for Iter<'a> {
+    fn as_ref(&self) -> &OsStr {
+        self.as_path().as_os_str()
     }
 }
 
@@ -873,11 +910,10 @@ impl PathBuf {
         unsafe { mem::transmute(self) }
     }
 
-    /// Allocate a `PathBuf` with initial contents given by the
-    /// argument.
+    /// Allocate an empty `PathBuf`.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new<S: AsOsStr>(s: S) -> PathBuf {
-        PathBuf { inner: s.as_os_str().to_os_string() }
+    pub fn new() -> PathBuf {
+        PathBuf { inner: OsString::new() }
     }
 
     /// Extend `self` with `path`.
@@ -890,8 +926,8 @@ impl PathBuf {
     ///   replaces everything except for the prefix (if any) of `self`.
     /// * if `path` has a prefix but no root, it replaces `self.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push<P: AsPath>(&mut self, path: P) {
-        let path = path.as_path();
+    pub fn push<P: AsRef<Path>>(&mut self, path: P) {
+        let path = path.as_ref();
 
         // in general, a separator is needed if the rightmost byte is not a separator
         let mut need_sep = self.as_mut_vec().last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
@@ -958,12 +994,12 @@ impl PathBuf {
     /// assert!(buf == PathBuf::new("/baz.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn set_file_name<S: AsOsStr>(&mut self, file_name: S) {
+    pub fn set_file_name<S: AsRef<OsStr>>(&mut self, file_name: S) {
         if self.file_name().is_some() {
             let popped = self.pop();
             debug_assert!(popped);
         }
-        self.push(file_name.as_os_str());
+        self.push(file_name.as_ref());
     }
 
     /// Updates `self.extension()` to `extension`.
@@ -973,15 +1009,15 @@ impl PathBuf {
     /// Otherwise, returns `true`; if `self.extension()` is `None`, the extension
     /// is added; otherwise it is replaced.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn set_extension<S: AsOsStr>(&mut self, extension: S) -> bool {
+    pub fn set_extension<S: AsRef<OsStr>>(&mut self, extension: S) -> bool {
         if self.file_name().is_none() { return false; }
 
         let mut stem = match self.file_stem() {
             Some(stem) => stem.to_os_string(),
-            None => OsString::from_str(""),
+            None => OsString::new(),
         };
 
-        let extension = extension.as_os_str();
+        let extension = extension.as_ref();
         if os_str_as_u8_slice(extension).len() > 0 {
             stem.push(".");
             stem.push(extension);
@@ -999,16 +1035,65 @@ impl PathBuf {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<P: AsPath> iter::FromIterator<P> for PathBuf {
+impl<'a> From<&'a Path> for PathBuf {
+    fn from(s: &'a Path) -> PathBuf {
+        s.to_path_buf()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&'a str> for PathBuf {
+    fn from(s: &'a str) -> PathBuf {
+        PathBuf::from(OsString::from(s))
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&'a String> for PathBuf {
+    fn from(s: &'a String) -> PathBuf {
+        PathBuf::from(OsString::from(s))
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl From<String> for PathBuf {
+    fn from(s: String) -> PathBuf {
+        PathBuf::from(OsString::from(s))
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&'a OsStr> for PathBuf {
+    fn from(s: &'a OsStr) -> PathBuf {
+        PathBuf::from(OsString::from(s))
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&'a OsString> for PathBuf {
+    fn from(s: &'a OsString) -> PathBuf {
+        PathBuf::from(s.to_os_string())
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl From<OsString> for PathBuf {
+    fn from(s: OsString) -> PathBuf {
+        PathBuf { inner: s }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<P: AsRef<Path>> iter::FromIterator<P> for PathBuf {
     fn from_iter<I: IntoIterator<Item = P>>(iter: I) -> PathBuf {
-        let mut buf = PathBuf::new("");
+        let mut buf = PathBuf::new();
         buf.extend(iter);
         buf
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<P: AsPath> iter::Extend<P> for PathBuf {
+impl<P: AsRef<Path>> iter::Extend<P> for PathBuf {
     fn extend<I: IntoIterator<Item = P>>(&mut self, iter: I) {
         for p in iter {
             self.push(p)
@@ -1084,9 +1169,24 @@ impl cmp::Ord for PathBuf {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<OsStr> for PathBuf {
+    fn as_ref(&self) -> &OsStr {
+        &self.inner[..]
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
 impl AsOsStr for PathBuf {
     fn as_os_str(&self) -> &OsStr {
         &self.inner[..]
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Into<OsString> for PathBuf {
+    fn into(self) -> OsString {
+        self.inner
     }
 }
 
@@ -1133,8 +1233,14 @@ impl Path {
     ///
     /// This is a cost-free conversion.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new<S: ?Sized + AsOsStr>(s: &S) -> &Path {
-        unsafe { mem::transmute(s.as_os_str()) }
+    pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &Path {
+        unsafe { mem::transmute(s.as_ref()) }
+    }
+
+    /// Yield the underlying `OsStr` slice.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn as_os_str(&self) -> &OsStr {
+        &self.inner
     }
 
     /// Yield a `&str` slice if the `Path` is valid unicode.
@@ -1156,7 +1262,7 @@ impl Path {
     /// Convert a `Path` to an owned `PathBuf`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_path_buf(&self) -> PathBuf {
-        PathBuf::new(self)
+        PathBuf::from(self.inner.to_os_string())
     }
 
     /// A path is *absolute* if it is independent of the current directory.
@@ -1244,22 +1350,21 @@ impl Path {
 
     /// Returns a path that, when joined onto `base`, yields `self`.
     #[unstable(feature = "path_relative_from", reason = "see #23284")]
-    pub fn relative_from<'a, P: ?Sized>(&'a self, base: &'a P) -> Option<&Path> where
-        P: AsPath
+    pub fn relative_from<'a, P: ?Sized + AsRef<Path>>(&'a self, base: &'a P) -> Option<&Path>
     {
-        iter_after(self.components(), base.as_path().components()).map(|c| c.as_path())
+        iter_after(self.components(), base.as_ref().components()).map(|c| c.as_path())
     }
 
     /// Determines whether `base` is a prefix of `self`.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn starts_with<P: AsPath>(&self, base: P) -> bool {
-        iter_after(self.components(), base.as_path().components()).is_some()
+    pub fn starts_with<P: AsRef<Path>>(&self, base: P) -> bool {
+        iter_after(self.components(), base.as_ref().components()).is_some()
     }
 
     /// Determines whether `child` is a suffix of `self`.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn ends_with<P: AsPath>(&self, child: P) -> bool {
-        iter_after(self.components().rev(), child.as_path().components().rev()).is_some()
+    pub fn ends_with<P: AsRef<Path>>(&self, child: P) -> bool {
+        iter_after(self.components().rev(), child.as_ref().components().rev()).is_some()
     }
 
     /// Extract the stem (non-extension) portion of `self.file()`.
@@ -1292,7 +1397,7 @@ impl Path {
     ///
     /// See `PathBuf::push` for more details on what it means to adjoin a path.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn join<P: AsPath>(&self, path: P) -> PathBuf {
+    pub fn join<P: AsRef<Path>>(&self, path: P) -> PathBuf {
         let mut buf = self.to_path_buf();
         buf.push(path);
         buf
@@ -1302,7 +1407,7 @@ impl Path {
     ///
     /// See `PathBuf::set_file_name` for more details.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_file_name<S: AsOsStr>(&self, file_name: S) -> PathBuf {
+    pub fn with_file_name<S: AsRef<OsStr>>(&self, file_name: S) -> PathBuf {
         let mut buf = self.to_path_buf();
         buf.set_file_name(file_name);
         buf
@@ -1312,7 +1417,7 @@ impl Path {
     ///
     /// See `PathBuf::set_extension` for more details.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_extension<S: AsOsStr>(&self, extension: S) -> PathBuf {
+    pub fn with_extension<S: AsRef<OsStr>>(&self, extension: S) -> PathBuf {
         let mut buf = self.to_path_buf();
         buf.set_extension(extension);
         buf
@@ -1346,6 +1451,14 @@ impl Path {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<OsStr> for Path {
+    fn as_ref(&self) -> &OsStr {
+        &self.inner
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
 impl AsOsStr for Path {
     fn as_os_str(&self) -> &OsStr {
         &self.inner
@@ -1405,6 +1518,7 @@ impl cmp::Ord for Path {
 
 /// Freely convertible to a `Path`.
 #[unstable(feature = "std_misc")]
+#[deprecated(since = "1.0.0", reason = "use std::convert::AsRef<Path> instead")]
 pub trait AsPath {
     /// Convert to a `Path`.
     #[unstable(feature = "std_misc")]
@@ -1412,8 +1526,40 @@ pub trait AsPath {
 }
 
 #[unstable(feature = "std_misc")]
+#[deprecated(since = "1.0.0", reason = "use std::convert::AsRef<Path> instead")]
+#[allow(deprecated)]
 impl<T: AsOsStr + ?Sized> AsPath for T {
     fn as_path(&self) -> &Path { Path::new(self.as_os_str()) }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<Path> for Path {
+    fn as_ref(&self) -> &Path { self }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<Path> for OsStr {
+    fn as_ref(&self) -> &Path { Path::new(self) }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<Path> for OsString {
+    fn as_ref(&self) -> &Path { Path::new(self) }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<Path> for str {
+    fn as_ref(&self) -> &Path { Path::new(self) }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<Path> for String {
+    fn as_ref(&self) -> &Path { Path::new(self) }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<Path> for PathBuf {
+    fn as_ref(&self) -> &Path { self }
 }
 
 #[cfg(test)]

@@ -1509,10 +1509,10 @@ pub fn process_crate(sess: &Session,
 
     // find a path to dump our data to
     let mut root_path = match env::var_os("DXR_RUST_TEMP_FOLDER") {
-        Some(val) => PathBuf::new(&val),
+        Some(val) => PathBuf::from(val),
         None => match odir {
             Some(val) => val.join("dxr"),
-            None => PathBuf::new("dxr-temp"),
+            None => PathBuf::from("dxr-temp"),
         },
     };
 

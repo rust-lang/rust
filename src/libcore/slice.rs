@@ -596,24 +596,29 @@ impl<T> ops::IndexMut<RangeFull> for [T] {
 /// Data that is viewable as a slice.
 #[unstable(feature = "core",
            reason = "will be replaced by slice syntax")]
+#[deprecated(since = "1.0.0",
+             reason = "use std::convert::AsRef<[T]> instead")]
 pub trait AsSlice<T> {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a [T];
 }
 
 #[unstable(feature = "core", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<T> AsSlice<T> for [T] {
     #[inline(always)]
     fn as_slice<'a>(&'a self) -> &'a [T] { self }
 }
 
 #[unstable(feature = "core", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a U {
     #[inline(always)]
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
 }
 
 #[unstable(feature = "core", reason = "trait is experimental")]
+#[allow(deprecated)]
 impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a mut U {
     #[inline(always)]
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
