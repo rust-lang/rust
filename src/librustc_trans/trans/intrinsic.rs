@@ -671,6 +671,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             }
         }
 
+        (_, "frame_address") => {
+            let llfn = ccx.get_intrinsic(&("llvm.frameaddress"));
+            Call(bcx, llfn, &[llargs[0]], None, call_debug_location)
+        }
+
         // This requires that atomic intrinsics follow a specific naming pattern:
         // "atomic_<operation>[_<ordering>]", and no ordering means SeqCst
         (_, name) if name.starts_with("atomic_") => {
