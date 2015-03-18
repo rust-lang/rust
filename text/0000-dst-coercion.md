@@ -51,34 +51,60 @@ An example implementation:
 
 ```
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
+impl<T: ?Sized+CoerceUnsized<U>, U: ?Sized> NonZero<U> for NonZero<T> {}
 
-// For reference, the definition of Rc:
+// For reference, the definitions of Rc and NonZero:
 pub struct Rc<T: ?Sized> {
     _ptr: NonZero<*mut RcBox<T>>,
 }
+pub struct NonZero<T: Zeroable+?Sized>(T);
 ```
 
 Implementing `CoerceUnsized` indicates that the self type should be able to be
 coerced to the `Target` type. E.g., the above implementation means that
-`Rc<[i32; 42]>` can be coerced to `Rc<[i32]>`.
+`Rc<[i32; 42]>` can be coerced to `Rc<[i32]>`. There will be `CoerceUnsized` impls
+for the various pointer kinds available in Rust and which allow coercions, therefore
+`CoerceUnsized` when used as a bound indicates coercible types. E.g.,
 
+```
+fn foo<T: CoerceUnsized<U>, U>(x: T) -> U {
+    x
+}
+```
 
-## Newtype coercions
+Built-in pointer impls:
 
-We also add a new built-in coercion for 'newtype's. If `Foo<T>` is a tuple
-struct with a single field with type `T`, then coerce_inner(`Foo<T>`) = `Foo<U>`
-holds for any `T` and `U` where `T` coerces to `U`.
+```
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
+impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a> CoerceUnsized<&'a U> for Box<T> {}
+impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a> CoerceUnsized<&mut 'a U> for Box<T> {}
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for Box<T> {}
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for Box<T> {}
 
-This coercion is not opt-in. It is best thought of as an extension to the
-coercion rule for structs with an unsized field, the extension is that here the
-field conversion is a proper coercion, not an application of `coerce_inner`.
-Note that this coercion can be recursively applied.
+impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a, 'b: 'a> CoerceUnsized<&'a U> for &mut 'b U {}
+impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a> CoerceUnsized<&mut 'a U> for &mut 'a U {}
+impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a> CoerceUnsized<*const U> for &mut 'a U {}
+impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a> CoerceUnsized<*mut U> for &mut 'a U {}
+
+impl<T: ?Sized+Unsize<U>, U: ?Sized, 'a, 'b> CoerceUnsized<&'a U> for &'b U {}
+impl<T: ?Sized+Unsize<U>, U: ?Sized, 'b> CoerceUnsized<*const U> for &'b U {}
+
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut U {}
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut U {}
+
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const U {}
+```
+
+Note that there are some coercions which are not given by `CoerceUnsized`, e.g.,
+from safe to unsafe function pointers, so it really is a `CoerceUnsized` trait,
+not a general `Coerce` trait.
 
 
 ## Compiler checking
 
 ### On encountering an implementation of `CoerceUnsized` (type collection phase)
 
+* If the impl is for a built-in pointer type, we check nothing, otherwise...
 * The compiler checks that the `Self` type is a struct or tuple struct and that
 the `Target` type is a simple substitution of type parameters from the `Self`
 type (one day, with HKT, this could be a regular part of type checking, for now
@@ -87,63 +113,46 @@ form `X/Y` where `X` and `Y` are both formal type parameters of the
 implementation (I don't think this is necessary, but it makes checking coercions
 easier and is satisfied for all smart pointers).
 * The compiler checks each field in the `Self` type against the corresponding field
-in the `Target` type. Either the field types must be subtypes or be coercible from the
-`Self` field to the `Target` field (this is checked taking into account any
-`Unsize` bounds in the environment which indicate that some coercion can take
-place). Note that this per-field check uses only the built-in coercion
-mechanics. It does not take into account `CoerceUnsized` impls (although we
-might allow this in the future).
+in the `Target` type. Assuming `Fs` is the type of a field in `Self` and `Ft` is
+the type of the corresponding field in `Target`, then either `Ft <: Fs` or
+`Fs: CoerceUnsized<Ft>` (note that this includes built-in coercions).
 * There must be only one field that is coerced.
-* We record in a side table a mapping from the impl to an adjustment. The
-adjustment will contain the field which is coerced and a nested adjustment
-representing that coercion. The nested adjustment will have a placeholder for
-any use of the `Unsize` bound (we should require that there is exactly one such use).
+* We record for each impl, the index of the field in the `Self` type which is
+coerced.
 
-### On encountering a potential coercion
+### On encountering a potential coercion (type checking phase)
 
 * If we have an expression with type `E` where the type `F` is required during
 type checking and `E` is not a subtype of `F`, nor is it coercible using the
-built-in coercions, then we search for an implementation of `CoerceUnsized<F>`
-for `E`. A match will give us a substitution of the formal type parameters of
-the impl by some actual types.
-* We look up the impl in the side table described above. The substitution is used
-with the placeholder in the recorded adjustment to create a new coercion which
-will map one field of the struct being coerced. That coercion should always be
-valid (if it is not, there is a compiler bug).
-* We create a new adjustment for the coerced expression. This will include the
-index of the field which is deeply coerced and the adjustment for the coercion
-described in the previous step.
-* In trans, the adjustment is used to codegen a coercion by moving the coerced
-value and changing the indicated field to a new type according to the nested
-adjustment.
+built-in coercions, then we search for a bound of `E: CoerceUnsized<F>`. Note
+that we may not at this stage find the actual impl, but finding the bound is
+good enough for type checking.
+
+* If we require a coercion in the receiver of a method call or field lookup, we
+perform the same search that we currently do, except that where we currently
+check for coercions, we check for built-in coercions and then for `CoerceUnsized`
+bounds. We must also check for `Unsize` bounds for the case where the receiver
+is auto-deref'ed, but not autoref'ed.
+
+
+### On encountering an adjustment (translation phase)
+
+* In trans (which is post-monomorphisation) we should always be able to find an
+impl for any `CoerceUnsized` bound. 
+* If the impl is for a built-in pointer type, then we use the current coercion
+code for the various pointer kinds (`Box<T>` has different behaviour than `&` and
+`*` pointers).
+* Otherwise, we lookup which field is coerced due to the opt-in coercion, move
+the object being coerced and coerce the field in question by recursing (the
+built-in pointers are the base cases).
+
 
 ### Adjustment types
 
-We add `AdjustCustom(usize, Box<AutoAdjustment>)` and
-`AdjustNewtype(Box<AutoDerefRef>)` to the `AutoAdjustment` enum. These
-represent the new custom and newtype coercions, respectively. We add
-`UnsizePlaceHolder(Ty, Ty)` to the `UnsizeKind` enum to represent a placeholder
-adjustment due to an `Unsize` bound.
+We add `AdjustCustom` to the `AutoAdjustment` enum as a placeholder for coercions
+due to a `CoerceUnsized` bound. I don't think we need the `UnsizeKind` enum at
+all now, since all checking is postponed until trans or relies on traits and impls.
 
-### Example
-
-For the above `Rc` impl, we record the following adjustment (with some trivial
-bits and pieces elided):
-
-```
-AdjustCustom(0, AdjustNewType(
-    AutoDerefRef {
-        autoderefs: 1,
-        autoref: AutoUnsafe(mut, AutoUnsize(
-            UnsizeStruct(UnsizePlaceholder(T, U))))
-    }))
-```
-
-When we need to coerce `Rc<[i32; 42]>` to `Rc<[i32]>`, we look up the impl and
-find `T = [i32; 42]` and `U = [i32]` (note that we automatically require that
-`Unsize` is satisfied when looking up the impl). We can therefore replace the
-placeholder in the above adjustment with `UnsizeLength(42)`. That gives us the
-real adjustment to store for trans.
 
 # Drawbacks
 
@@ -164,8 +173,7 @@ intrinsics. Although more flexible, this allows for implcicit excecution of
 arbitrary code. If we need the increased flexibility, I believe we can add a
 manual option to the `CoerceUnsized` trait backwards compatibly.
 
-The proposed design could be tweaked: we could make newtype coercions opt-in
-(this would complicate other parts of the proposal though). We could change the
+The proposed design could be tweaked: for example, we could change the
 `CoerceUnsized` trait in many ways (we experimented with an associated type to
 indicate the field type which is coerced, for example).
 
