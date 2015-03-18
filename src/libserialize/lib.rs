@@ -37,6 +37,7 @@ Core encoding and decoding interfaces.
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(unicode)]
+#![feature(str_char)]
 #![cfg_attr(test, feature(test))]
 
 // test harness access

@@ -73,10 +73,10 @@
 //!
 //! ## Concurrency, I/O, and the runtime
 //!
-//! The [`thread`](thread/index.html) module contains Rust's threading abstractions,
-//! while [`comm`](comm/index.html) contains the channel types for message
-//! passing. [`sync`](sync/index.html) contains further, primitive, shared
-//! memory types, including [`atomic`](sync/atomic/index.html).
+//! The [`thread`](thread/index.html) module contains Rust's threading abstractions.
+//! [`sync`](sync/index.html) contains further, primitive, shared memory types,
+//! including [`atomic`](sync/atomic/index.html), and [`mpsc`](sync/mpmc/index.html),
+//! which contains the channel types for message passing.
 //!
 //! Common types of I/O, including files, TCP, UDP, pipes, Unix domain sockets,
 //! timers, and process spawning, are defined in the
@@ -127,6 +127,7 @@
 #![feature(int_uint)]
 #![feature(unique)]
 #![feature(allow_internal_unstable)]
+#![feature(str_char)]
 #![cfg_attr(test, feature(test, rustc_private))]
 
 // Don't link to std. We are std.

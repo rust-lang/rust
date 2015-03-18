@@ -150,7 +150,7 @@ impl PartialEq for Ident {
 
 /// A SyntaxContext represents a chain of macro-expandings
 /// and renamings. Each macro expansion corresponds to
-/// a fresh usize
+/// a fresh u32
 
 // I'm representing this syntax context as an index into
 // a table, in order to work around a compiler bug
@@ -216,6 +216,7 @@ pub struct Lifetime {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+/// A lifetime definition, eg `'a: 'b+'c+'d`
 pub struct LifetimeDef {
     pub lifetime: Lifetime,
     pub bounds: Vec<Lifetime>
@@ -251,7 +252,9 @@ pub struct PathSegment {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum PathParameters {
+    /// The `<'a, A,B,C>` in `foo::bar::baz::<'a, A,B,C>`
     AngleBracketedParameters(AngleBracketedParameterData),
+    /// The `(A,B)` and `C` in `Foo(A,B) -> C`
     ParenthesizedParameters(ParenthesizedParameterData),
 }
 
@@ -436,27 +439,37 @@ impl Generics {
     }
 }
 
+/// A `where` clause in a definition
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereClause {
     pub id: NodeId,
     pub predicates: Vec<WherePredicate>,
 }
 
+/// A single predicate in a `where` clause
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum WherePredicate {
+    /// A type binding, eg `for<'c> Foo: Send+Clone+'c`
     BoundPredicate(WhereBoundPredicate),
+    /// A lifetime predicate, e.g. `'a: 'b+'c`
     RegionPredicate(WhereRegionPredicate),
+    /// An equality predicate (unsupported)
     EqPredicate(WhereEqPredicate)
 }
 
+/// A type bound, eg `for<'c> Foo: Send+Clone+'c`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereBoundPredicate {
     pub span: Span,
+    /// Any lifetimes from a `for` binding
     pub bound_lifetimes: Vec<LifetimeDef>,
+    /// The type being bounded
     pub bounded_ty: P<Ty>,
+    /// Trait and lifetime bounds (`Clone+Send+'static`)
     pub bounds: OwnedSlice<TyParamBound>,
 }
 
+/// A lifetime predicate, e.g. `'a: 'b+'c`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereRegionPredicate {
     pub span: Span,
@@ -464,6 +477,7 @@ pub struct WhereRegionPredicate {
     pub bounds: Vec<Lifetime>,
 }
 
+/// An equality predicate (unsupported), e.g. `T=int`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereEqPredicate {
     pub id: NodeId,
@@ -521,9 +535,13 @@ impl PartialEq for MetaItem_ {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Block {
+    /// Statements in a block
     pub stmts: Vec<P<Stmt>>,
+    /// An expression at the end of the block
+    /// without a semicolon, if any
     pub expr: Option<P<Expr>>,
     pub id: NodeId,
+    /// Distinguishes between `unsafe { ... }` and `{ ... }`
     pub rules: BlockCheckMode,
     pub span: Span,
 }
@@ -535,9 +553,16 @@ pub struct Pat {
     pub span: Span,
 }
 
+/// A single field in a struct pattern
+///
+/// Patterns like the fields of Foo `{ x, ref y, ref mut z }`
+/// are treated the same as` x: x, y: ref y, z: ref mut z`,
+/// except is_shorthand is true
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct FieldPat {
+    /// The identifier for the field
     pub ident: Ident,
+    /// The pattern the field is destructured to
     pub pat: P<Pat>,
     pub is_shorthand: bool,
 }
@@ -574,15 +599,23 @@ pub enum Pat_ {
     /// "None" means a * pattern where we don't bind the fields to names.
     PatEnum(Path, Option<Vec<P<Pat>>>),
 
+    /// Destructuring of a struct, e.g. `Foo {x, y, ..}`
+    /// The `bool` is `true` in the presence of a `..`
     PatStruct(Path, Vec<Spanned<FieldPat>>, bool),
+    /// A tuple pattern `(a, b)`
     PatTup(Vec<P<Pat>>),
+    /// A `box` pattern
     PatBox(P<Pat>),
-    PatRegion(P<Pat>, Mutability), // reference pattern
+    /// A reference pattern, e.g. `&mut (a, b)`
+    PatRegion(P<Pat>, Mutability),
+    /// A literal
     PatLit(P<Expr>),
+    /// A range pattern, e.g. `1...2`
     PatRange(P<Expr>, P<Expr>),
     /// [a, b, ..i, y, z] is represented as:
     ///     PatVec(box [a, b], Some(i), box [y, z])
     PatVec(Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>),
+    /// A macro pattern; pre-expansion
     PatMac(Mac),
 }
 
@@ -594,23 +627,41 @@ pub enum Mutability {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum BinOp_ {
+    /// The `+` operator (addition)
     BiAdd,
+    /// The `-` operator (subtraction)
     BiSub,
+    /// The `*` operator (multiplication)
     BiMul,
+    /// The `/` operator (division)
     BiDiv,
+    /// The `%` operator (modulus)
     BiRem,
+    /// The `&&` operator (logical and)
     BiAnd,
+    /// The `||` operator (logical or)
     BiOr,
+    /// The `^` operator (bitwise xor)
     BiBitXor,
+    /// The `&` operator (bitwise and)
     BiBitAnd,
+    /// The `|` operator (bitwise or)
     BiBitOr,
+    /// The `<<` operator (shift left)
     BiShl,
+    /// The `>>` operator (shift right)
     BiShr,
+    /// The `==` operator (equality)
     BiEq,
+    /// The `<` operator (less than)
     BiLt,
+    /// The `<=` operator (less than or equal to)
     BiLe,
+    /// The `!=` operator (not equal to)
     BiNe,
+    /// The `>=` operator (greater than or equal to)
     BiGe,
+    /// The `>` operator (greater than)
     BiGt,
 }
 
@@ -618,12 +669,17 @@ pub type BinOp = Spanned<BinOp_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum UnOp {
+    /// The `box` operator
     UnUniq,
+    /// The `*` operator for dereferencing
     UnDeref,
+    /// The `!` operator for logical inversion
     UnNot,
+    /// The `-` operator for negation
     UnNeg
 }
 
+/// A statement
 pub type Stmt = Spanned<Stmt_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -668,6 +724,7 @@ pub enum LocalSource {
 pub struct Local {
     pub pat: P<Pat>,
     pub ty: Option<P<Ty>>,
+    /// Initializer expression to set the value, if any
     pub init: Option<P<Expr>>,
     pub id: NodeId,
     pub span: Span,
@@ -714,6 +771,7 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
+/// An expression
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Expr {
     pub id: NodeId,
@@ -725,34 +783,78 @@ pub struct Expr {
 pub enum Expr_ {
     /// First expr is the place; second expr is the value.
     ExprBox(Option<P<Expr>>, P<Expr>),
+    /// An array (`[a, b, c, d]`)
     ExprVec(Vec<P<Expr>>),
+    /// A function call
+    /// The first field resolves to the function itself,
+    /// and the second field is the list of arguments
     ExprCall(P<Expr>, Vec<P<Expr>>),
+    /// A method call (`x.foo::<Bar, Baz>(a, b, c, d)`)
+    /// The `SpannedIdent` is the identifier for the method name
+    /// The vector of `Ty`s are the ascripted type parameters for the method
+    /// (within the angle brackets)
+    /// The first element of the vector of `Expr`s is the expression that evaluates
+    /// to the object on which the method is being called on (the receiver),
+    /// and the remaining elements are the rest of the arguments.
+    /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
+    /// `ExprMethodCall(foo, [Bar, Baz], [x, a, b, c, d])`
     ExprMethodCall(SpannedIdent, Vec<P<Ty>>, Vec<P<Expr>>),
+    /// A tuple (`(a, b, c ,d)`)
     ExprTup(Vec<P<Expr>>),
+    /// A binary operation (For example: `a + b`, `a * b`)
     ExprBinary(BinOp, P<Expr>, P<Expr>),
+    /// A unary operation (For example: `!x`, `*x`)
     ExprUnary(UnOp, P<Expr>),
+    /// A literal (For example: `1u8`, `"foo"`)
     ExprLit(P<Lit>),
+    /// A cast (`foo as f64`)
     ExprCast(P<Expr>, P<Ty>),
+    /// An `if` block, with an optional else block
+    /// `if expr { block } else { expr }`
     ExprIf(P<Expr>, P<Block>, Option<P<Expr>>),
+    /// An `if let` expression with an optional else block
+    /// `if let pat = expr { block } else { expr }`
+    /// This is desugared to a `match` expression
     ExprIfLet(P<Pat>, P<Expr>, P<Block>, Option<P<Expr>>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
+    /// A while loop, with an optional label
+    /// `'label: while expr { block }`
     ExprWhile(P<Expr>, P<Block>, Option<Ident>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
+    /// A while-let loop, with an optional label
+    /// `'label: while let pat = expr { block }`
+    /// This is desugared to a combination of `loop` and `match` expressions
     ExprWhileLet(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
+    /// A for loop, with an optional label
+    /// `'label: for pat in expr { block }`
+    /// This is desugared to a combination of `loop` and `match` expressions
     ExprForLoop(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
-    // Conditionless loop (can be exited with break, cont, or ret)
+    /// Conditionless loop (can be exited with break, continue, or return)
+    /// `'label: loop { block }`
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
+    /// A `match` block, with a source that indicates whether or not it is
+    /// the result of a desugaring, and if so, which kind
     ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
+    /// A closure (for example, `move |a, b, c| {a + b + c}`)
     ExprClosure(CaptureClause, P<FnDecl>, P<Block>),
+    /// A block (`{ ... }`)
     ExprBlock(P<Block>),
 
+    /// An assignment (`a = foo()`)
     ExprAssign(P<Expr>, P<Expr>),
+    /// An assignment with an operator
+    /// For example, `a += 1`
     ExprAssignOp(BinOp, P<Expr>, P<Expr>),
+    /// Access of a named struct field (`obj.foo`)
     ExprField(P<Expr>, SpannedIdent),
+    /// Access of an unnamed field of a struct or tuple-struct
+    /// For example, `foo.0`
     ExprTupField(P<Expr>, Spanned<usize>),
+    /// An indexing operation (`foo[2]`)
     ExprIndex(P<Expr>, P<Expr>),
+    /// A range (`1..2`, `1..`, or `..2`)
     ExprRange(Option<P<Expr>>, Option<P<Expr>>),
 
     /// Variable reference, possibly containing `::` and/or type
@@ -760,20 +862,30 @@ pub enum Expr_ {
     /// e.g. `<Vec<T> as SomeTrait>::SomeType`.
     ExprPath(Option<QSelf>, Path),
 
+    /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
+    /// A `break`, with an optional label to break
     ExprBreak(Option<Ident>),
+    /// A `continue`, with an optional label
     ExprAgain(Option<Ident>),
+    /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
+    /// Output of the `asm!()` macro
     ExprInlineAsm(InlineAsm),
 
+    /// A macro invocation; pre-expansion
     ExprMac(Mac),
 
     /// A struct literal expression.
-    ExprStruct(Path, Vec<Field>, Option<P<Expr>> /* base */),
+    /// For example, `Foo {x: 1, y: 2}`, or
+    /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`
+    ExprStruct(Path, Vec<Field>, Option<P<Expr>>),
 
     /// A vector literal constructed from one repeated element.
-    ExprRepeat(P<Expr> /* element */, P<Expr> /* count */),
+    /// For example, `[1u8; 5]`. The first expression is the element
+    /// to be repeated; the second is the number of times to repeat it
+    ExprRepeat(P<Expr>, P<Expr>),
 
     /// No-op: used solely so we can pretty-print faithfully
     ExprParen(P<Expr>)
@@ -880,7 +992,6 @@ pub enum KleeneOp {
 /// The RHS of an MBE macro is the only place `SubstNt`s are substituted.
 /// Nothing special happens to misnamed or misplaced `SubstNt`s.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-#[doc="For macro invocations; parsing is delegated to the macro"]
 pub enum TokenTree {
     /// A single token
     TtToken(Span, token::Token),
@@ -991,10 +1102,14 @@ pub enum Mac_ {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum StrStyle {
+    /// A regular string, like `"foo"`
     CookedStr,
+    /// A raw string, like `r##"foo"##`
+    /// The uint is the number of `#` symbols used
     RawStr(usize)
 }
 
+/// A literal
 pub type Lit = Spanned<Lit_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1032,13 +1147,21 @@ impl LitIntType {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Lit_ {
+    /// A string literal (`"foo"`)
     LitStr(InternedString, StrStyle),
+    /// A byte string (`b"foo"`)
     LitBinary(Rc<Vec<u8>>),
+    /// A byte char (`b'f'`)
     LitByte(u8),
+    /// A character literal (`'a'`)
     LitChar(char),
+    /// An integer liteal (`1u8`)
     LitInt(u64, LitIntType),
+    /// A float literal (`1f64` or `1E10f64`)
     LitFloat(InternedString, FloatTy),
+    /// A float literal without a suffix (`1.0 or 1.0E10`)
     LitFloatUnsuffixed(InternedString),
+    /// A boolean literal
     LitBool(bool),
 }
 
@@ -1361,9 +1484,9 @@ impl fmt::Display for Unsafety {
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
 pub enum ImplPolarity {
-    /// impl Trait for Type
+    /// `impl Trait for Type`
     Positive,
-    /// impl !Trait for Type
+    /// `impl !Trait for Type`
     Negative,
 }
 
@@ -1379,10 +1502,10 @@ impl fmt::Debug for ImplPolarity {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum FunctionRetTy {
-    /// Functions with return type ! that always
+    /// Functions with return type `!`that always
     /// raise an error or exit (i.e. never return to the caller)
     NoReturn(Span),
-    /// Return type is not specified. Functions default to () and
+    /// Return type is not specified. Functions default to `()` and
     /// closures default to inference. Span points to where return
     /// type would be inserted.
     DefaultReturn(Span),
@@ -1438,7 +1561,9 @@ pub struct VariantArg {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum VariantKind {
+    /// Tuple variant, e.g. `Foo(A, B)`
     TupleVariantKind(Vec<VariantArg>),
+    /// Struct variant, e.g. `Foo {x: A, y: B}`
     StructVariantKind(P<StructDef>),
 }
 
@@ -1453,6 +1578,7 @@ pub struct Variant_ {
     pub attrs: Vec<Attribute>,
     pub kind: VariantKind,
     pub id: NodeId,
+    /// Explicit discriminant, eg `Foo = 1`
     pub disr_expr: Option<P<Expr>>,
     pub vis: Visibility,
 }
@@ -1603,6 +1729,9 @@ pub struct StructDef {
   FIXME (#3300): Should allow items to be anonymous. Right now
   we just use dummy names for anon items.
  */
+/// An item
+///
+/// The name might be a dummy name in case of anonymous items
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Item {
     pub ident: Ident,
@@ -1615,19 +1744,27 @@ pub struct Item {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Item_ {
-    // Optional location (containing arbitrary characters) from which
-    // to fetch the crate sources.
-    // For example, extern crate whatever = "github.com/rust-lang/rust".
+    /// An`extern crate` item, with optional original crate name,
+    /// e.g. `extern crate foo` or `extern crate "foo-bar" as foo`
     ItemExternCrate(Option<(InternedString, StrStyle)>),
+    /// A `use` or `pub use` item
     ItemUse(P<ViewPath>),
 
+    /// A `static` item
     ItemStatic(P<Ty>, Mutability, P<Expr>),
+    /// A `const` item
     ItemConst(P<Ty>, P<Expr>),
+    /// A function declaration
     ItemFn(P<FnDecl>, Unsafety, Abi, Generics, P<Block>),
+    /// A module
     ItemMod(Mod),
+    /// An external module
     ItemForeignMod(ForeignMod),
+    /// A type alias, e.g. `type Foo = Bar<u8>`
     ItemTy(P<Ty>, Generics),
+    /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
     ItemEnum(EnumDef, Generics),
+    /// A struct definition, e.g. `struct Foo<A> {x: A}`
     ItemStruct(P<StructDef>, Generics),
     /// Represents a Trait Declaration
     ItemTrait(Unsafety,
@@ -1636,8 +1773,9 @@ pub enum Item_ {
               Vec<P<TraitItem>>),
 
     // Default trait implementations
-    // `impl Trait for ..`
+    // `impl Trait for .. {}`
     ItemDefaultImpl(Unsafety, TraitRef),
+    /// An implementation, eg `impl<A> Trait for Foo { .. }`
     ItemImpl(Unsafety,
              ImplPolarity,
              Generics,
@@ -1679,10 +1817,14 @@ pub struct ForeignItem {
     pub vis: Visibility,
 }
 
+/// An item within an `extern` block
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum ForeignItem_ {
+    /// A foreign function
     ForeignItemFn(P<FnDecl>, Generics),
-    ForeignItemStatic(P<Ty>, /* is_mutbl */ bool),
+    /// A foreign static item (`static ext: u8`), with optional mutability
+    /// (the boolean is true when mutable)
+    ForeignItemStatic(P<Ty>, bool),
 }
 
 impl ForeignItem_ {

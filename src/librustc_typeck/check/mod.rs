@@ -5240,7 +5240,7 @@ pub fn may_break(cx: &ty::ctxt, id: ast::NodeId, b: &ast::Block) -> bool {
     // inside the loop?
     (loop_query(&*b, |e| {
         match *e {
-            ast::ExprBreak(_) => true,
+            ast::ExprBreak(None) => true,
             _ => false
         }
     })) ||
