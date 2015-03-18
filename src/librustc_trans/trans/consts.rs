@@ -253,6 +253,9 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
         }
+        Some(ty::AdjustUnsafeFnPointer) => {
+            // purely a type-level thing
+        }
         Some(ty::AdjustDerefRef(adj)) => {
             let mut ty = ety;
             // Save the last autoderef in case we can avoid it.

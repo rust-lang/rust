@@ -993,8 +993,14 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     })
                 }
 
+                ty::AdjustUnsafeFnPointer => {
+                    this.emit_enum_variant("AdjustUnsafeFnPointer", 2, 0, |_| {
+                        Ok(())
+                    })
+                }
+
                 ty::AdjustDerefRef(ref auto_deref_ref) => {
-                    this.emit_enum_variant("AdjustDerefRef", 2, 2, |this| {
+                    this.emit_enum_variant("AdjustDerefRef", 3, 2, |this| {
                         this.emit_enum_variant_arg(0,
                             |this| Ok(this.emit_auto_deref_ref(ecx, auto_deref_ref)))
                     })
@@ -1619,6 +1625,9 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                         ty::AdjustReifyFnPointer(def_id)
                     }
                     2 => {
+                        ty::AdjustUnsafeFnPointer
+                    }
+                    3 => {
                         let auto_deref_ref: ty::AutoDerefRef =
                             this.read_enum_variant_arg(0,
                                 |this| Ok(this.read_auto_deref_ref(dcx))).unwrap();

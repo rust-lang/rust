@@ -30,9 +30,9 @@ fn main() {
         //~| expected non-variadic fn
         //~| found variadic function
 
-        let y: unsafe extern "C" fn(f: isize, x: u8, ...) = bar;
+        let y: extern "C" fn(f: isize, x: u8, ...) = bar;
         //~^ ERROR: mismatched types
-        //~| expected `unsafe extern "C" fn(isize, u8, ...)`
+        //~| expected `extern "C" fn(isize, u8, ...)`
         //~| found `extern "C" fn(isize, u8) {bar}`
         //~| expected variadic fn
         //~| found non-variadic function

@@ -143,6 +143,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     // require double indirection).
                     self.coerce_from_fn_item(a, a_def_id, a_f, b)
                 }
+                ty::ty_bare_fn(None, a_f) => {
+                    // We permit coercion of fn pointers to drop the
+                    // unsafe qualifier.
+                    self.coerce_from_fn_pointer(a, a_f, b)
+                }
                 _ => {
                     // Otherwise, just use subtyping rules.
                     self.subtype(a, b)
@@ -409,6 +414,41 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 _ => None
             }
         )
+    }
+
+    fn coerce_from_fn_pointer(&self,
+                           a: Ty<'tcx>,
+                           fn_ty_a: &'tcx ty::BareFnTy<'tcx>,
+                           b: Ty<'tcx>)
+                           -> CoerceResult<'tcx>
+    {
+        /*!
+         * Attempts to coerce from the type of a Rust function item
+         * into a closure or a `proc`.
+         */
+
+        self.unpack_actual_value(b, |b| {
+            debug!("coerce_from_fn_pointer(a={}, b={})",
+                   a.repr(self.tcx()), b.repr(self.tcx()));
+
+            match b.sty {
+                ty::ty_bare_fn(None, fn_ty_b) => {
+                    match (fn_ty_a.unsafety, fn_ty_b.unsafety) {
+                        (ast::Unsafety::Normal, ast::Unsafety::Unsafe) => {
+                            let unsafe_a = self.tcx().safe_to_unsafe_fn_ty(fn_ty_a);
+                            try!(self.subtype(unsafe_a, b));
+                            Ok(Some(ty::AdjustUnsafeFnPointer))
+                        }
+                        _ => {
+                            self.subtype(a, b)
+                        }
+                    }
+                }
+                _ => {
+                    return self.subtype(a, b)
+                }
+            }
+        })
     }
 
     fn coerce_from_fn_item(&self,
