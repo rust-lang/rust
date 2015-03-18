@@ -1449,11 +1449,11 @@ impl<'a> State<'a> {
                         self.print_else(e.as_ref().map(|e| &**e))
                     }
                     // "another else-if-let"
-                    ast::ExprIfLet(ref pat, ref expr, ref then, ref e) => {
+                    ast::ExprIfLet(ref pats, ref expr, ref then, ref e) => {
                         try!(self.cbox(indent_unit - 1));
                         try!(self.ibox(0));
                         try!(word(&mut self.s, " else if let "));
-                        try!(self.print_pat(&**pat));
+                        try!(self.print_pats(pats));
                         try!(space(&mut self.s));
                         try!(self.word_space("="));
                         try!(self.print_expr(&**expr));
@@ -1487,10 +1487,10 @@ impl<'a> State<'a> {
         self.print_else(elseopt)
     }
 
-    pub fn print_if_let(&mut self, pat: &ast::Pat, expr: &ast::Expr, blk: &ast::Block,
+    pub fn print_if_let(&mut self, pats: &[P<ast::Pat>], expr: &ast::Expr, blk: &ast::Block,
                         elseopt: Option<&ast::Expr>) -> io::Result<()> {
         try!(self.head("if let"));
-        try!(self.print_pat(pat));
+        try!(self.print_pats(pats));
         try!(space(&mut self.s));
         try!(self.word_space("="));
         try!(self.print_expr(expr));
@@ -1711,8 +1711,8 @@ impl<'a> State<'a> {
             ast::ExprIf(ref test, ref blk, ref elseopt) => {
                 try!(self.print_if(&**test, &**blk, elseopt.as_ref().map(|e| &**e)));
             }
-            ast::ExprIfLet(ref pat, ref expr, ref blk, ref elseopt) => {
-                try!(self.print_if_let(&**pat, &**expr, &** blk, elseopt.as_ref().map(|e| &**e)));
+            ast::ExprIfLet(ref pats, ref expr, ref blk, ref elseopt) => {
+                try!(self.print_if_let(&**pats, &**expr, &** blk, elseopt.as_ref().map(|e| &**e)));
             }
             ast::ExprWhile(ref test, ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
@@ -1724,13 +1724,13 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.print_block(&**blk));
             }
-            ast::ExprWhileLet(ref pat, ref expr, ref blk, opt_ident) => {
+            ast::ExprWhileLet(ref pats, ref expr, ref blk, opt_ident) => {
                 if let Some(ident) = opt_ident {
                     try!(self.print_ident(ident));
                     try!(self.word_space(":"));
                 }
                 try!(self.head("while let"));
-                try!(self.print_pat(&**pat));
+                try!(self.print_pats(pats));
                 try!(space(&mut self.s));
                 try!(self.word_space("="));
                 try!(self.print_expr(&**expr));
@@ -2241,6 +2241,22 @@ impl<'a> State<'a> {
             ast::PatMac(ref m) => try!(self.print_mac(m, token::Paren)),
         }
         self.ann.post(self, NodePat(pat))
+    }
+
+    pub fn print_pats(&mut self, pats: &[P<ast::Pat>]) -> io::Result<()> {
+        match pats {
+            [] => {},
+            [ref p, ref ps..] => {
+                try!(self.print_pat(&*p));
+
+                for p in *ps {
+                    try!(space(&mut self.s));
+                    try!(self.word_space("|"));
+                    try!(self.print_pat(&*p));
+                }
+            }
+        }
+        Ok(())
     }
 
     fn print_arm(&mut self, arm: &ast::Arm) -> io::Result<()> {
