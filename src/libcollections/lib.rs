@@ -35,6 +35,7 @@
 #![feature(unique)]
 #![feature(unsafe_no_drop_flag)]
 #![feature(step_by)]
+#![feature(str_char)]
 #![cfg_attr(test, feature(rand, rustc_private, test))]
 #![cfg_attr(test, allow(deprecated))] // rand
 
