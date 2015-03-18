@@ -77,8 +77,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     fcx.pop_custom_cleanup_scope(temp_scope);
 
     let clobbers = ia.clobbers.iter()
-                              .map(|s| format!("~{{{}}}", &s))
-                              .collect::<Vec<String>>();
+                              .map(|s| format!("~{{{}}}", &s));
 
     // Default per-arch clobbers
     // Basically what clang does
@@ -90,8 +89,8 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     let all_constraints= constraints.iter()
                                     .map(|s| s.to_string())
                                     .chain(ext_constraints.into_iter())
-                                    .chain(clobbers.into_iter())
-                                    .chain(arch_clobbers.into_iter()
+                                    .chain(clobbers)
+                                    .chain(arch_clobbers.iter()
                                                .map(|s| s.to_string()))
                                     .collect::<Vec<String>>()
                                     .connect(",");
