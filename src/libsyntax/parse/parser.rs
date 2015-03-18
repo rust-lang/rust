@@ -2101,10 +2101,7 @@ impl<'a> Parser<'a> {
                 }
             },
             token::OpenDelim(token::Brace) => {
-                self.bump();
-                let blk = self.parse_block_tail(lo, DefaultBlock);
-                return self.mk_expr(blk.span.lo, blk.span.hi,
-                                    ExprBlock(blk));
+                return self.parse_block_expr(lo, DefaultBlock);
             },
             token::BinOp(token::Or) |  token::OrOr => {
                 return self.parse_lambda_expr(CaptureByRef);
@@ -3000,19 +2997,30 @@ impl<'a> Parser<'a> {
     {
         let lo = self.span.lo;
         let decl = self.parse_fn_block_decl();
-        let body = self.parse_expr();
-        let fakeblock = P(ast::Block {
-            id: ast::DUMMY_NODE_ID,
-            stmts: vec![],
-            span: body.span,
-            expr: Some(body),
-            rules: DefaultBlock,
-        });
+        let body = match decl.output {
+            DefaultReturn(_) => {
+                // If no explicit return type is given, parse any
+                // expr and wrap it up in a dummy block:
+                let body_expr = self.parse_expr();
+                P(ast::Block {
+                    id: ast::DUMMY_NODE_ID,
+                    stmts: vec![],
+                    span: body_expr.span,
+                    expr: Some(body_expr),
+                    rules: DefaultBlock,
+                })
+            }
+            _ => {
+                // If an explicit return type is given, require a
+                // block to appear (RFC 968).
+                self.parse_block()
+            }
+        };
 
         self.mk_expr(
             lo,
-            fakeblock.span.hi,
-            ExprClosure(capture_clause, decl, fakeblock))
+            body.span.hi,
+            ExprClosure(capture_clause, decl, body))
     }
 
     pub fn parse_else_expr(&mut self) -> P<Expr> {
