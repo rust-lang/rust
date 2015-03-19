@@ -92,13 +92,8 @@ macro_rules! array_impls {
                 }
             }
 
-            // NOTE: some less important impls are omitted to reduce code bloat
             __impl_slice_eq1! { [A; $N], [B; $N] }
             __impl_slice_eq2! { [A; $N], [B] }
-            __impl_slice_eq2! { [A; $N], &'b [B] }
-            __impl_slice_eq2! { [A; $N], &'b mut [B] }
-            // __impl_slice_eq2! { [A; $N], &'b [B; $N] }
-            // __impl_slice_eq2! { [A; $N], &'b mut [B; $N] }
 
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<T:Eq> Eq for [T; $N] { }

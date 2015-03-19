@@ -569,6 +569,45 @@ mod impls {
 
     // & pointers
 
+    /// A trait implemented for everything except for `&/&mut` references
+    trait NonRef: ::marker::MarkerTrait {}
+    impl NonRef for .. {}
+    impl<'a, T> !NonRef for &'a T {}
+    impl<'a, T> !NonRef for &'a mut T {}
+
+    // NOTE: The numerous impls below can be compressed with a macro
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, 'b, A: ?Sized, B: ?Sized + NonRef> PartialEq<B> for &'a A where A: PartialEq<B>
+    {
+        #[inline]
+        fn eq(&self, other: &B) -> bool { PartialEq::eq(*self, other) }
+        #[inline]
+        fn ne(&self, other: &B) -> bool { PartialEq::ne(*self, other) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, 'b, A: ?Sized, B: ?Sized + NonRef> PartialEq<B> for &'a mut A where A: PartialEq<B>
+    {
+        #[inline]
+        fn eq(&self, other: &B) -> bool { PartialEq::eq(*self, other) }
+        #[inline]
+        fn ne(&self, other: &B) -> bool { PartialEq::ne(*self, other) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, 'b, A: ?Sized + NonRef, B: ?Sized> PartialEq<&'b B> for A where A: PartialEq<B>
+    {
+        #[inline]
+        fn eq(&self, other: &&'b B) -> bool { PartialEq::eq(self, *other) }
+        #[inline]
+        fn ne(&self, other: &&'b B) -> bool { PartialEq::ne(self, *other) }
+    }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl<'a, 'b, A: ?Sized + NonRef, B: ?Sized> PartialEq<&'b mut B> for A where A: PartialEq<B>
+    {
+        #[inline]
+        fn eq(&self, other: &&'b mut B) -> bool { PartialEq::eq(self, *other) }
+        #[inline]
+        fn ne(&self, other: &&'b mut B) -> bool { PartialEq::ne(self, *other) }
+    }
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b B> for &'a A where A: PartialEq<B> {
         #[inline]
