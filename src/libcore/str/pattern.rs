@@ -25,7 +25,7 @@ use super::CharEq;
 ///
 /// The trait itself acts as a builder for an associated
 /// `Searcher` type, which does the actual work of finding
-/// occurences of the pattern in a string.
+/// occurrences of the pattern in a string.
 pub trait Pattern<'a>: Sized {
     /// Associated searcher for this pattern
     type Searcher: Searcher<'a>;
@@ -72,7 +72,7 @@ pub enum SearchStep {
     /// Expresses that `haystack[a..b]` has been rejected as a possible match
     /// of the pattern.
     ///
-    /// Note that there might be more than one `Reject` betwen two `Match`es,
+    /// Note that there might be more than one `Reject` between two `Match`es,
     /// there is no requirement for them to be combined into one.
     Reject(usize, usize),
     /// Expresses that every byte of the haystack has been visted, ending

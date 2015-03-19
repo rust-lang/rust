@@ -294,7 +294,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
 
     /// Indicates that `cmt` is being directly mutated (e.g., assigned
     /// to). If cmt contains any by-ref upvars, this implies that
-    /// those upvars must be borrowed using an `&mut` borow.
+    /// those upvars must be borrowed using an `&mut` borrow.
     fn adjust_upvar_borrow_kind_for_mut(&mut self, cmt: mc::cmt<'tcx>) {
         debug!("adjust_upvar_borrow_kind_for_mut(cmt={})",
                cmt.repr(self.tcx()));

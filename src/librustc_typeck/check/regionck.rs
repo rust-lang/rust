@@ -225,7 +225,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     /// }
     /// ```
     ///
-    /// Here, the region of `b` will be `<R0>`.  `<R0>` is constrainted to be some subregion of the
+    /// Here, the region of `b` will be `<R0>`.  `<R0>` is constrained to be some subregion of the
     /// block B and some superregion of the call.  If we forced it now, we'd choose the smaller
     /// region (the call).  But that would make the *b illegal.  Since we don't resolve, the type
     /// of b will be `&<R0>.int` and then `*b` will require that `<R0>` be bigger than the let and
