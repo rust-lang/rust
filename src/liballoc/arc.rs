@@ -210,6 +210,21 @@ impl<T> Arc<T> {
         // contents.
         unsafe { &**self._ptr }
     }
+
+    // Non-inlined part of `drop`.
+    #[inline(never)]
+    unsafe fn drop_slow(&mut self) {
+        let ptr = *self._ptr;
+
+        // Destroy the data at this time, even though we may not free the box allocation itself
+        // (there may still be weak pointers lying around).
+        drop(ptr::read(&self.inner().data));
+
+        if self.inner().weak.fetch_sub(1, Release) == 1 {
+            atomic::fence(Acquire);
+            deallocate(ptr as *mut u8, size_of::<ArcInner<T>>(), min_align_of::<ArcInner<T>>())
+        }
+    }
 }
 
 /// Get the number of weak references to this value.
@@ -325,6 +340,7 @@ impl<T: Sync + Send> Drop for Arc<T> {
     ///
     /// } // implicit drop
     /// ```
+    #[inline]
     fn drop(&mut self) {
         // This structure has #[unsafe_no_drop_flag], so this drop glue may run more than once (but
         // it is guaranteed to be zeroed after the first if it's run more than once)
@@ -353,14 +369,8 @@ impl<T: Sync + Send> Drop for Arc<T> {
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
         atomic::fence(Acquire);
 
-        // Destroy the data at this time, even though we may not free the box allocation itself
-        // (there may still be weak pointers lying around).
-        unsafe { drop(ptr::read(&self.inner().data)); }
-
-        if self.inner().weak.fetch_sub(1, Release) == 1 {
-            atomic::fence(Acquire);
-            unsafe { deallocate(ptr as *mut u8, size_of::<ArcInner<T>>(),
-                                min_align_of::<ArcInner<T>>()) }
+        unsafe {
+            self.drop_slow()
         }
     }
 }
