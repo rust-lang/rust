@@ -426,9 +426,13 @@ Current valid options are:
 
 # Avoiding the standard library
 
-By default, `std` is linked to every Rust crate. In some contexts,
-this is undesirable, and can be avoided with the `#![no_std]`
-attribute attached to the crate.
+By default, `std` is linked to every Rust crate. In some contexts, such as
+writing a kernel, this is undesirable. Rust's standard library can still be
+used when writing things like shared libraries, even when being called into,
+as in C.
+
+If you don't want the standard library linked, it can be avoided with the
+`#![no_std]` attribute attached to the crate.
 
 ```ignore
 // a minimal library
