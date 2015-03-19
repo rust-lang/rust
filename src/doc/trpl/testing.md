@@ -129,11 +129,11 @@ $ echo $?
 
 This is useful if you want to integrate `cargo test` into other tooling.
 
-We can invert our test's failure with another attribute: `should_fail`:
+We can invert our test's failure with another attribute: `should_panic`:
 
 ```rust
 #[test]
-#[should_fail]
+#[should_panic]
 fn it_works() {
     assert!(false);
 }
@@ -163,13 +163,13 @@ equality:
 
 ```rust
 #[test]
-#[should_fail]
+#[should_panic]
 fn it_works() {
     assert_eq!("Hello", "world");
 }
 ```
 
-Does this test pass or fail? Because of the `should_fail` attribute, it
+Does this test pass or fail? Because of the `should_panic` attribute, it
 passes:
 
 ```bash
@@ -189,15 +189,15 @@ running 0 tests
 test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured
 ```
 
-`should_fail` tests can be fragile, as it's hard to guarantee that the test
+`should_panic` tests can be fragile, as it's hard to guarantee that the test
 didn't fail for an unexpected reason. To help with this, an optional `expected`
-parameter can be added to the `should_fail` attribute. The test harness will
+parameter can be added to the `should_panic` attribute. The test harness will
 make sure that the failure message contains the provided text. A safer version
 of the example above would be:
 
 ```
 #[test]
-#[should_fail(expected = "assertion failed")]
+#[should_panic(expected = "assertion failed")]
 fn it_works() {
     assert_eq!("Hello", "world");
 }

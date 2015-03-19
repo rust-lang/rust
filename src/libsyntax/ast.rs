@@ -215,8 +215,8 @@ pub struct Lifetime {
     pub name: Name
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 /// A lifetime definition, eg `'a: 'b+'c+'d`
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct LifetimeDef {
     pub lifetime: Lifetime,
     pub bounds: Vec<Lifetime>
@@ -590,6 +590,7 @@ pub enum Pat_ {
     /// A PatIdent may either be a new bound variable,
     /// or a nullary enum (in which case the third field
     /// is None).
+    ///
     /// In the nullary enum case, the parser can't determine
     /// which it is. The resolver determines this, and
     /// records this pattern's NodeId in an auxiliary
@@ -786,18 +787,22 @@ pub enum Expr_ {
     /// An array (`[a, b, c, d]`)
     ExprVec(Vec<P<Expr>>),
     /// A function call
+    ///
     /// The first field resolves to the function itself,
     /// and the second field is the list of arguments
     ExprCall(P<Expr>, Vec<P<Expr>>),
     /// A method call (`x.foo::<Bar, Baz>(a, b, c, d)`)
-    /// The `SpannedIdent` is the identifier for the method name
+    ///
+    /// The `SpannedIdent` is the identifier for the method name.
     /// The vector of `Ty`s are the ascripted type parameters for the method
-    /// (within the angle brackets)
+    /// (within the angle brackets).
+    ///
     /// The first element of the vector of `Expr`s is the expression that evaluates
     /// to the object on which the method is being called on (the receiver),
     /// and the remaining elements are the rest of the arguments.
+    ///
     /// Thus, `x.foo::<Bar, Baz>(a, b, c, d)` is represented as
-    /// `ExprMethodCall(foo, [Bar, Baz], [x, a, b, c, d])`
+    /// `ExprMethodCall(foo, [Bar, Baz], [x, a, b, c, d])`.
     ExprMethodCall(SpannedIdent, Vec<P<Ty>>, Vec<P<Expr>>),
     /// A tuple (`(a, b, c ,d)`)
     ExprTup(Vec<P<Expr>>),
@@ -810,32 +815,41 @@ pub enum Expr_ {
     /// A cast (`foo as f64`)
     ExprCast(P<Expr>, P<Ty>),
     /// An `if` block, with an optional else block
+    ///
     /// `if expr { block } else { expr }`
     ExprIf(P<Expr>, P<Block>, Option<P<Expr>>),
     /// An `if let` expression with an optional else block
+    ///
     /// `if let pat = expr { block } else { expr }`
-    /// This is desugared to a `match` expression
+    ///
+    /// This is desugared to a `match` expression.
     ExprIfLet(P<Pat>, P<Expr>, P<Block>, Option<P<Expr>>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     /// A while loop, with an optional label
+    ///
     /// `'label: while expr { block }`
     ExprWhile(P<Expr>, P<Block>, Option<Ident>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     /// A while-let loop, with an optional label
+    ///
     /// `'label: while let pat = expr { block }`
-    /// This is desugared to a combination of `loop` and `match` expressions
+    ///
+    /// This is desugared to a combination of `loop` and `match` expressions.
     ExprWhileLet(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     /// A for loop, with an optional label
+    ///
     /// `'label: for pat in expr { block }`
-    /// This is desugared to a combination of `loop` and `match` expressions
+    ///
+    /// This is desugared to a combination of `loop` and `match` expressions.
     ExprForLoop(P<Pat>, P<Expr>, P<Block>, Option<Ident>),
     /// Conditionless loop (can be exited with break, continue, or return)
+    ///
     /// `'label: loop { block }`
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
     /// A `match` block, with a source that indicates whether or not it is
-    /// the result of a desugaring, and if so, which kind
+    /// the result of a desugaring, and if so, which kind.
     ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
     /// A closure (for example, `move |a, b, c| {a + b + c}`)
     ExprClosure(CaptureClause, P<FnDecl>, P<Block>),
@@ -845,12 +859,14 @@ pub enum Expr_ {
     /// An assignment (`a = foo()`)
     ExprAssign(P<Expr>, P<Expr>),
     /// An assignment with an operator
-    /// For example, `a += 1`
+    ///
+    /// For example, `a += 1`.
     ExprAssignOp(BinOp, P<Expr>, P<Expr>),
     /// Access of a named struct field (`obj.foo`)
     ExprField(P<Expr>, SpannedIdent),
     /// Access of an unnamed field of a struct or tuple-struct
-    /// For example, `foo.0`
+    ///
+    /// For example, `foo.0`.
     ExprTupField(P<Expr>, Spanned<usize>),
     /// An indexing operation (`foo[2]`)
     ExprIndex(P<Expr>, P<Expr>),
@@ -858,7 +874,9 @@ pub enum Expr_ {
     ExprRange(Option<P<Expr>>, Option<P<Expr>>),
 
     /// Variable reference, possibly containing `::` and/or type
-    /// parameters, e.g. foo::bar::<baz>. Optionally "qualified",
+    /// parameters, e.g. foo::bar::<baz>.
+    ///
+    /// Optionally "qualified",
     /// e.g. `<Vec<T> as SomeTrait>::SomeType`.
     ExprPath(Option<QSelf>, Path),
 
@@ -878,13 +896,15 @@ pub enum Expr_ {
     ExprMac(Mac),
 
     /// A struct literal expression.
+    ///
     /// For example, `Foo {x: 1, y: 2}`, or
-    /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`
+    /// `Foo {x: 1, .. base}`, where `base` is the `Option<Expr>`.
     ExprStruct(Path, Vec<Field>, Option<P<Expr>>),
 
     /// A vector literal constructed from one repeated element.
+    ///
     /// For example, `[1u8; 5]`. The first expression is the element
-    /// to be repeated; the second is the number of times to repeat it
+    /// to be repeated; the second is the number of times to repeat it.
     ExprRepeat(P<Expr>, P<Expr>),
 
     /// No-op: used solely so we can pretty-print faithfully
@@ -1092,6 +1112,7 @@ pub type Mac = Spanned<Mac_>;
 /// Represents a macro invocation. The Path indicates which macro
 /// is being invoked, and the vector of token-trees contains the source
 /// of the macro invocation.
+///
 /// There's only one flavor, now, so this could presumably be simplified.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Mac_ {
@@ -1105,6 +1126,7 @@ pub enum StrStyle {
     /// A regular string, like `"foo"`
     CookedStr,
     /// A raw string, like `r##"foo"##`
+    ///
     /// The uint is the number of `#` symbols used
     RawStr(usize)
 }
@@ -1155,7 +1177,7 @@ pub enum Lit_ {
     LitByte(u8),
     /// A character literal (`'a'`)
     LitChar(char),
-    /// An integer liteal (`1u8`)
+    /// An integer literal (`1u8`)
     LitInt(u64, LitIntType),
     /// A float literal (`1f64` or `1E10f64`)
     LitFloat(InternedString, FloatTy),
@@ -1459,7 +1481,7 @@ impl Arg {
     }
 }
 
-/// represents the header (not the body) of a function declaration
+/// Represents the header (not the body) of a function declaration
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct FnDecl {
     pub inputs: Vec<Arg>,
@@ -1505,7 +1527,9 @@ pub enum FunctionRetTy {
     /// Functions with return type `!`that always
     /// raise an error or exit (i.e. never return to the caller)
     NoReturn(Span),
-    /// Return type is not specified. Functions default to `()` and
+    /// Return type is not specified.
+    ///
+    /// Functions default to `()` and
     /// closures default to inference. Span points to where return
     /// type would be inserted.
     DefaultReturn(Span),
@@ -1645,6 +1669,7 @@ pub struct Attribute_ {
 }
 
 /// TraitRef's appear in impls.
+///
 /// resolve maps each TraitRef's ref_id to its defining trait; that's all
 /// that the ref_id is for. The impl_id maps to the "self type" of this impl.
 /// If this impl is an ItemImpl, the impl_id is redundant (it could be the
@@ -1745,6 +1770,7 @@ pub struct Item {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Item_ {
     /// An`extern crate` item, with optional original crate name,
+    ///
     /// e.g. `extern crate foo` or `extern crate "foo-bar" as foo`
     ItemExternCrate(Option<(InternedString, StrStyle)>),
     /// A `use` or `pub use` item
@@ -1773,6 +1799,7 @@ pub enum Item_ {
               Vec<P<TraitItem>>),
 
     // Default trait implementations
+    ///
     // `impl Trait for .. {}`
     ItemDefaultImpl(Unsafety, TraitRef),
     /// An implementation, eg `impl<A> Trait for Foo { .. }`

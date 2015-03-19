@@ -404,7 +404,7 @@ pub fn char_lit(lit: &str) -> (char, isize) {
         .map(|x| (x, len as isize))
     }
 
-    let unicode_escape = || -> Option<(char, isize)>
+    let unicode_escape = || -> Option<(char, isize)> {
         if lit.as_bytes()[2] == b'{' {
             let idx = lit.find('}').expect(msg2);
             let subslice = &lit[3..idx];
@@ -413,7 +413,8 @@ pub fn char_lit(lit: &str) -> (char, isize) {
                 .map(|x| (x, subslice.chars().count() as isize + 4))
         } else {
             esc(6, lit)
-        };
+        }
+    };
 
     // Unicode escapes
     return match lit.as_bytes()[1] as char {

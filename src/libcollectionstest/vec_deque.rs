@@ -360,7 +360,7 @@ fn test_mut_rev_iter_wrap() {
     assert_eq!(d.pop_front(), Some(1));
     d.push_back(4);
 
-    assert_eq!(d.iter_mut().rev().cloned().collect::<Vec<_>>(),
+    assert_eq!(d.iter_mut().rev().map(|x| *x).collect::<Vec<_>>(),
                vec![4, 3, 2]);
 }
 
