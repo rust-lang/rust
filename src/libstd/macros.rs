@@ -404,4 +404,18 @@ pub mod builtin {
     /// ```
     #[macro_export]
     macro_rules! cfg { ($cfg:tt) => ({ /* compiler built-in */ }) }
+
+    /// Parse the current given file as an expression.
+    ///
+    /// This is generally a bad idea, because it's going to behave unhygenically.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// fn foo() {
+    ///     include!("/path/to/a/file")
+    /// }
+    /// ```
+    #[macro_export]
+    macro_rules! include { ($cfg:tt) => ({ /* compiler built-in */ }) }
 }
