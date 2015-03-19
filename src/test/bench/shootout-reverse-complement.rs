@@ -46,7 +46,7 @@ extern crate libc;
 
 use std::old_io::stdio::{stdin_raw, stdout_raw};
 use std::old_io::*;
-use std::ptr::{copy_memory, Unique};
+use std::ptr::{copy, Unique};
 use std::thread;
 
 struct Tables {
@@ -181,8 +181,8 @@ fn reverse_complement(seq: &mut [u8], tables: &Tables) {
     let mut i = LINE_LEN;
     while i < len {
         unsafe {
-            copy_memory(seq.as_mut_ptr().offset((i - off + 1) as int),
-                        seq.as_ptr().offset((i - off) as int), off);
+            copy(seq.as_mut_ptr().offset((i - off + 1) as int),
+                 seq.as_ptr().offset((i - off) as int), off);
             *seq.get_unchecked_mut(i - off) = b'\n';
         }
         i += LINE_LEN + 1;
