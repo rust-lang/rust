@@ -1127,7 +1127,7 @@ fn link_autoref(rcx: &Rcx,
     debug!("expr_cmt={}", expr_cmt.repr(rcx.tcx()));
 
     match *autoref {
-        ty::AutoPtr(r, m, _) => {
+        ty::AutoPtr(r, m) => {
             link_region(rcx, expr.span, r,
                 ty::BorrowKind::from_mutbl(m), expr_cmt);
         }

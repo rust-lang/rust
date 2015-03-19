@@ -20,7 +20,6 @@ pub use self::ClosureKind::*;
 pub use self::Variance::*;
 pub use self::AutoAdjustment::*;
 pub use self::Representability::*;
-pub use self::UnsizeKind::*;
 pub use self::AutoRef::*;
 pub use self::ExprKind::*;
 pub use self::DtorKind::*;
@@ -285,18 +284,18 @@ pub enum AutoAdjustment<'tcx> {
     AdjustDerefRef(AutoDerefRef<'tcx>),
 
     /// Convert Box<[T, ..n]> to Box<[T]> or something similar in a Box.
-    AdjustUnsize(UnsizeKind<'tcx>),
+    AdjustUnsize(AutoUnsize<'tcx>),
 }
 
-#[derive(Clone, PartialEq, Debug)]
-pub enum UnsizeKind<'tcx> {
-    // [T, ..n] -> [T], the uint field is n.
-    UnsizeLength(uint),
-    // An unsize coercion applied to the tail field of a struct.
-    // The uint is the index of the type parameter which is unsized.
-    UnsizeStruct(Box<UnsizeKind<'tcx>>, uint),
-    UnsizeVtable(TyTrait<'tcx>, /* the self type of the trait */ Ty<'tcx>),
-    UnsizeUpcast(Ty<'tcx>),
+// In the case of `&Struct<[T; N]>` -> `&Struct<[T]>`, the types are:
+// * leaf_source: `[T; N]`
+// * leaf_target: `[T]`
+// * root_target: `Struct<[T]>`
+#[derive(Copy, Clone, Debug)]
+pub struct AutoUnsize<'tcx> {
+    pub leaf_source: Ty<'tcx>,
+    pub leaf_target: Ty<'tcx>,
+    pub root_target: Ty<'tcx>
 }
 
 #[derive(Clone, Debug)]
@@ -305,17 +304,16 @@ pub struct AutoDerefRef<'tcx> {
     pub autoderefs: uint,
 
     /// Convert a lvalue from [T; n] to [T] (or similar, depending on the kind).
-    pub unsize: Option<UnsizeKind<'tcx>>,
+    pub unsize: Option<AutoUnsize<'tcx>>,
 
     /// Produce a pointer/reference from the lvalue.
     pub autoref: Option<AutoRef>
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum AutoRef {
     /// Convert from T to &T
-    /// The third field allows us to wrap other AutoRef adjustments.
-    AutoPtr(Region, ast::Mutability, Option<Box<AutoRef>>),
+    AutoPtr(Region, ast::Mutability),
 
     /// Convert from T to *T
     /// Value to thin pointer
@@ -4495,18 +4493,16 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                         }
                     }
 
-                    if let Some(ref k) = adj.unsize {
-                        adjusted_ty = unsize_ty(cx, adjusted_ty, k, span);
+                    if let Some(ref unsize) = adj.unsize {
+                        adjusted_ty = unsize.root_target;
                     }
 
-                    adjust_ty_for_autoref(cx, span, adjusted_ty, adj.autoref.as_ref())
+                    adjust_ty_for_autoref(cx, adjusted_ty, adj.autoref.as_ref())
                 }
 
-                AdjustUnsize(ref k) => {
+                AdjustUnsize(ref unsize) => {
                     match unadjusted_ty.sty {
-                        ty::ty_uniq(ty) => {
-                            ty::mk_uniq(cx, unsize_ty(cx, ty, k, span))
-                        }
+                        ty::ty_uniq(_) => ty::mk_uniq(cx, unsize.root_target),
                         _ => {
                             cx.sess.bug(
                                 &format!("AdjustUnsize adjustment on non-Box type: \
@@ -4521,65 +4517,17 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
 }
 
 pub fn adjust_ty_for_autoref<'tcx>(cx: &ctxt<'tcx>,
-                                   span: Span,
                                    ty: Ty<'tcx>,
                                    autoref: Option<&AutoRef>)
                                    -> Ty<'tcx>
 {
     match autoref {
         None => ty,
-
-        Some(&AutoPtr(r, m, ref a)) => {
-            let adjusted_ty = match a {
-                &Some(box ref a) => adjust_ty_for_autoref(cx, span, ty, Some(a)),
-                &None => ty
-            };
-            mk_rptr(cx, cx.mk_region(r), mt {
-                ty: adjusted_ty,
-                mutbl: m
-            })
+        Some(&AutoPtr(r, m)) => {
+            mk_rptr(cx, cx.mk_region(r), mt { ty: ty, mutbl: m })
         }
-
         Some(&AutoUnsafe(m)) => {
-            mk_ptr(cx, mt {ty: ty, mutbl: m})
-        }
-    }
-}
-
-// Take a sized type and a sizing adjustment and produce an unsized version of
-// the type.
-pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
-                       ty: Ty<'tcx>,
-                       kind: &UnsizeKind<'tcx>,
-                       span: Span)
-                       -> Ty<'tcx> {
-    match kind {
-        &UnsizeLength(len) => match ty.sty {
-            ty_vec(ty, Some(n)) => {
-                assert!(len == n);
-                mk_vec(cx, ty, None)
-            }
-            _ => cx.sess.span_bug(span,
-                                  &format!("UnsizeLength with bad sty: {:?}",
-                                          ty_to_string(cx, ty)))
-        },
-        &UnsizeStruct(box ref k, tp_index) => match ty.sty {
-            ty_struct(did, substs) => {
-                let ty_substs = substs.types.get_slice(subst::TypeSpace);
-                let new_ty = unsize_ty(cx, ty_substs[tp_index], k, span);
-                let mut unsized_substs = substs.clone();
-                unsized_substs.types.get_mut_slice(subst::TypeSpace)[tp_index] = new_ty;
-                mk_struct(cx, did, cx.mk_substs(unsized_substs))
-            }
-            _ => cx.sess.span_bug(span,
-                                  &format!("UnsizeStruct with bad sty: {:?}",
-                                          ty_to_string(cx, ty)))
-        },
-        &UnsizeVtable(TyTrait { ref principal, ref bounds }, _) => {
-            mk_trait(cx, principal.clone(), bounds.clone())
-        }
-        &UnsizeUpcast(target_ty) => {
-            target_ty
+            mk_ptr(cx, mt { ty: ty, mutbl: m })
         }
     }
 }
@@ -6770,14 +6718,12 @@ impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for UnsizeKind<'tcx> {
+impl<'tcx> Repr<'tcx> for AutoUnsize<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        match *self {
-            UnsizeLength(n) => format!("UnsizeLength({})", n),
-            UnsizeStruct(ref k, n) => format!("UnsizeStruct({},{})", k.repr(tcx), n),
-            UnsizeVtable(ref a, ref b) => format!("UnsizeVtable({},{})", a.repr(tcx), b.repr(tcx)),
-            UnsizeUpcast(ref a) => format!("UnsizeUpcast({})", a.repr(tcx)),
-        }
+        format!("unsize({} => {}) => {}",
+                self.leaf_source.repr(tcx),
+                self.leaf_target.repr(tcx),
+                self.root_target.repr(tcx))
     }
 }
 
@@ -6791,8 +6737,8 @@ impl<'tcx> Repr<'tcx> for AutoDerefRef<'tcx> {
 impl<'tcx> Repr<'tcx> for AutoRef {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         match *self {
-            AutoPtr(a, b, ref c) => {
-                format!("AutoPtr({},{:?},{})", a.repr(tcx), b, c.repr(tcx))
+            AutoPtr(a, b) => {
+                format!("AutoPtr({},{:?})", a.repr(tcx), b)
             }
             AutoUnsafe(ref a) => {
                 format!("AutoUnsafe({:?})", a)
@@ -7208,6 +7154,14 @@ impl<'tcx> HasProjectionTypes for field<'tcx> {
 impl<'tcx> HasProjectionTypes for BareFnTy<'tcx> {
     fn has_projection_types(&self) -> bool {
         self.sig.has_projection_types()
+    }
+}
+
+impl<'tcx> HasProjectionTypes for AutoUnsize<'tcx> {
+    fn has_projection_types(&self) -> bool {
+        self.leaf_source.has_projection_types() ||
+        self.leaf_target.has_projection_types() ||
+        self.root_target.has_projection_types()
     }
 }
 

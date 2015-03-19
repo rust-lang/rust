@@ -864,7 +864,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                cmt_derefd.repr(self.tcx()));
 
         match *autoref {
-            ty::AutoPtr(r, m, _) => {
+            ty::AutoPtr(r, m) => {
                 self.delegate.borrow(expr.id,
                                      expr.span,
                                      cmt_derefd,

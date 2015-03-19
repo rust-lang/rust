@@ -49,7 +49,7 @@ struct ProbeContext<'a, 'tcx:'a> {
 
 struct CandidateStep<'tcx> {
     self_ty: Ty<'tcx>,
-    adjustment: PickAdjustment,
+    adjustment: PickAdjustment<'tcx>,
 }
 
 struct Candidate<'tcx> {
@@ -70,7 +70,7 @@ enum CandidateKind<'tcx> {
 
 pub struct Pick<'tcx> {
     pub method_ty: Rc<ty::Method<'tcx>>,
-    pub adjustment: PickAdjustment,
+    pub adjustment: PickAdjustment<'tcx>,
     pub kind: PickKind<'tcx>,
 }
 
@@ -90,7 +90,7 @@ pub type PickResult<'tcx> = Result<Pick<'tcx>, MethodError>;
 // specifics. The "confirmation" step recreates those details as
 // needed.
 #[derive(Clone,Debug)]
-pub enum PickAdjustment {
+pub enum PickAdjustment<'tcx> {
     // Indicates that the source expression should be autoderef'd N times
     //
     // A = expr | *expr | **expr
@@ -101,12 +101,13 @@ pub enum PickAdjustment {
     // away in favor of just coercing method receivers.
     //
     // A = unsize(expr | *expr | **expr)
-    AutoUnsizeLength(/* number of autoderefs */ uint, /* length*/ uint),
+    AutoDerefUnsize(/* number of autoderefs */ uint,
+                    /* source */ Ty<'tcx>, /* target */ Ty<'tcx>),
 
     // Indicates that an autoref is applied after some number of other adjustments
     //
     // A = &A | &mut A
-    AutoRef(ast::Mutability, Box<PickAdjustment>),
+    AutoRef(ast::Mutability, Box<PickAdjustment<'tcx>>),
 }
 
 #[derive(PartialEq, Eq, Copy)]
@@ -206,10 +207,11 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     });
 
     match final_ty.sty {
-        ty::ty_vec(elem_ty, Some(len)) => {
+        ty::ty_vec(elem_ty, Some(_)) => {
+            let slice_ty = ty::mk_vec(fcx.tcx(), elem_ty, None);
             steps.push(CandidateStep {
-                self_ty: ty::mk_vec(fcx.tcx(), elem_ty, None),
-                adjustment: AutoUnsizeLength(dereferences, len),
+                self_ty: slice_ty,
+                adjustment: AutoDerefUnsize(dereferences, final_ty, slice_ty),
             });
         }
         ty::ty_err => return None,
@@ -927,19 +929,17 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
          */
 
         let adjustment = match step.adjustment {
-            AutoDeref(d) => consider_reborrow(step.self_ty, d),
-            AutoUnsizeLength(..) | AutoRef(..) => step.adjustment.clone(),
+            AutoDeref(d) => {
+                // Insert a `&*` or `&mut *` if this is a reference type:
+                match step.self_ty.sty {
+                    ty::ty_rptr(_, ref mt) => AutoRef(mt.mutbl, box AutoDeref(d+1)),
+                    _ => AutoDeref(d),
+                }
+            }
+            AutoDerefUnsize(..) | AutoRef(..) => step.adjustment.clone(),
         };
 
-        return self.pick_method(step.self_ty).map(|r| self.adjust(r, adjustment.clone()));
-
-        fn consider_reborrow<'tcx>(ty: Ty<'tcx>, d: uint) -> PickAdjustment {
-            // Insert a `&*` or `&mut *` if this is a reference type:
-            match ty.sty {
-                ty::ty_rptr(_, ref mt) => AutoRef(mt.mutbl, box AutoDeref(d+1)),
-                _ => AutoDeref(d),
-            }
-        }
+        self.pick_method(step.self_ty).map(|r| self.adjust(r, adjustment))
     }
 
     fn pick_autorefd_method(&mut self,
@@ -956,7 +956,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                  mut mk_adjustment: F,
                                  mut mk_autoref_ty: G)
                                  -> Option<PickResult<'tcx>> where
-        F: FnMut(ast::Mutability) -> PickAdjustment,
+        F: FnMut(ast::Mutability) -> PickAdjustment<'tcx>,
         G: FnMut(ast::Mutability, ty::Region) -> Ty<'tcx>,
     {
         // In general, during probing we erase regions. See
@@ -964,20 +964,16 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let region = ty::ReStatic;
 
         // Search through mutabilities in order to find one where pick works:
-        [ast::MutImmutable, ast::MutMutable]
-            .iter()
-            .flat_map(|&m| {
-                let autoref_ty = mk_autoref_ty(m, region);
-                self.pick_method(autoref_ty)
-                    .map(|r| self.adjust(r, mk_adjustment(m)))
-                    .into_iter()
-            })
-            .nth(0)
+        [ast::MutImmutable, ast::MutMutable].iter().filter_map(|&m| {
+            let autoref_ty = mk_autoref_ty(m, region);
+            self.pick_method(autoref_ty)
+                .map(|r| self.adjust(r, mk_adjustment(m)))
+        }).nth(0)
     }
 
     fn adjust(&mut self,
               result: PickResult<'tcx>,
-              adjustment: PickAdjustment)
+              adjustment: PickAdjustment<'tcx>)
               -> PickResult<'tcx>
     {
         match result {
@@ -1398,7 +1394,7 @@ impl<'tcx> Repr<'tcx> for CandidateStep<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for PickAdjustment {
+impl<'tcx> Repr<'tcx> for PickAdjustment<'tcx> {
     fn repr(&self, _tcx: &ty::ctxt) -> String {
         format!("{:?}", self)
     }

@@ -192,7 +192,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let coercion = Coercion(self.trace.clone());
         let r_borrow = self.fcx.infcx().next_region_var(coercion);
-        let autoref = Some(ty::AutoPtr(r_borrow, mutbl_b, None));
+        let autoref = Some(ty::AutoPtr(r_borrow, mutbl_b));
 
         let r_borrow = self.tcx().mk_region(r_borrow);
         let lvalue_pref = match mutbl_b {
@@ -260,7 +260,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         match (&a.sty, &b.sty) {
             (&ty::ty_rptr(_, ty::mt{ty: t_a, mutbl: mutbl_a}), &ty::ty_rptr(_, mt_b)) => {
                 match self.unsize_ty(t_a, mt_b.ty) {
-                    Some((ty, kind)) => {
+                    Some(unsize) => {
                         if !can_coerce_mutbls(mutbl_a, mt_b.mutbl) {
                             return Err(ty::terr_mutability);
                         }
@@ -269,14 +269,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         let r_borrow = self.fcx.infcx().next_region_var(coercion);
                         let ty = ty::mk_rptr(self.tcx(),
                                              self.tcx().mk_region(r_borrow),
-                                             ty::mt{ty: ty, mutbl: mt_b.mutbl});
+                                             ty::mt { ty: unsize.root_target,
+                                                      mutbl: mt_b.mutbl });
                         try!(self.fcx.infcx().try(|_| self.subtype(ty, b)));
                         debug!("Success, coerced with AutoDerefRef(1, \
-                                unsize({:?}), AutoPtr)", kind);
+                                unsize({:?}), AutoPtr)", unsize);
                         Ok(Some(AdjustDerefRef(AutoDerefRef {
                             autoderefs: 1,
-                            unsize: Some(kind),
-                            autoref: Some(ty::AutoPtr(r_borrow, mt_b.mutbl, None))
+                            unsize: Some(unsize),
+                            autoref: Some(ty::AutoPtr(r_borrow, mt_b.mutbl))
                         })))
                     }
                     _ => Err(ty::terr_mismatch)
@@ -284,19 +285,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             (&ty::ty_rptr(_, ty::mt{ty: t_a, mutbl: mutbl_a}), &ty::ty_ptr(mt_b)) => {
                 match self.unsize_ty(t_a, mt_b.ty) {
-                    Some((ty, kind)) => {
+                    Some(unsize) => {
                         if !can_coerce_mutbls(mutbl_a, mt_b.mutbl) {
                             return Err(ty::terr_mutability);
                         }
 
                         let ty = ty::mk_ptr(self.tcx(),
-                                             ty::mt{ty: ty, mutbl: mt_b.mutbl});
+                                            ty::mt { ty: unsize.root_target,
+                                                     mutbl: mt_b.mutbl });
                         try!(self.fcx.infcx().try(|_| self.subtype(ty, b)));
                         debug!("Success, coerced with AutoDerefRef(1, \
-                                unsize({:?}), AutoUnsafe)", kind);
+                                unsize({:?}), AutoUnsafe)", unsize);
                         Ok(Some(AdjustDerefRef(AutoDerefRef {
                             autoderefs: 1,
-                            unsize: Some(kind),
+                            unsize: Some(unsize),
                             autoref: Some(ty::AutoUnsafe(mt_b.mutbl))
                         })))
                     }
@@ -305,11 +307,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             (&ty::ty_uniq(t_a), &ty::ty_uniq(t_b)) => {
                 match self.unsize_ty(t_a, t_b) {
-                    Some((ty, kind)) => {
-                        let ty = ty::mk_uniq(self.tcx(), ty);
+                    Some(unsize) => {
+                        let ty = ty::mk_uniq(self.tcx(), unsize.root_target);
                         try!(self.fcx.infcx().try(|_| self.subtype(ty, b)));
-                        debug!("Success, coerced with AdjustUnsize({:?})", kind);
-                        Ok(Some(ty::AdjustUnsize(kind)))
+                        debug!("Success, coerced with AdjustUnsize({:?})", unsize);
+                        Ok(Some(ty::AdjustUnsize(unsize)))
                     }
                     _ => Err(ty::terr_mismatch)
                 }
@@ -318,23 +320,25 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         }
     }
 
-    // Takes a type and returns an unsized version along with the adjustment
-    // performed to unsize it.
-    // E.g., `[T, ..n]` -> `([T], UnsizeLength(n))`
+    // Takes a type and returns an unsized version.
+    // E.g., `[T, ..n]` -> `[T]`.
     fn unsize_ty(&self,
                  ty_a: Ty<'tcx>,
                  ty_b: Ty<'tcx>)
-                 -> Option<(Ty<'tcx>, ty::UnsizeKind<'tcx>)>
-    {
+                 -> Option<ty::AutoUnsize<'tcx>> {
         let tcx = self.tcx();
 
         self.unpack_actual_value(ty_a, |a| {
             self.unpack_actual_value(ty_b, |b| {
                 debug!("unsize_ty(a={}, b={})", a.repr(self.tcx()), b.repr(self.tcx()));
                 match (&a.sty, &b.sty) {
-                    (&ty::ty_vec(t_a, Some(len)), &ty::ty_vec(_, None)) => {
+                    (&ty::ty_vec(t_a, Some(_)), &ty::ty_vec(_, None)) => {
                         let ty = ty::mk_vec(tcx, t_a, None);
-                        Some((ty, ty::UnsizeLength(len)))
+                        Some(ty::AutoUnsize {
+                            leaf_source: ty_a,
+                            leaf_target: ty,
+                            root_target: ty
+                        })
                     }
                     (&ty::ty_trait(ref data_a), &ty::ty_trait(ref data_b)) => {
                         // Upcasts permit two things:
@@ -371,19 +375,23 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                             // if that was successful, we have a coercion
                             match result {
-                                Ok(_) => Some((ty_b, ty::UnsizeUpcast(ty_b))),
+                                Ok(_) => Some(ty::AutoUnsize {
+                                    leaf_source: ty_a,
+                                    leaf_target: ty_b,
+                                    root_target: ty_b
+                                }),
                                 Err(_) => None,
                             }
                         } else {
                             None
                         }
                     }
-                    (_, &ty::ty_trait(ref data)) => {
-                        Some((ty_b, ty::UnsizeVtable(ty::TyTrait {
-                                                         principal: data.principal.clone(),
-                                                         bounds: data.bounds.clone()
-                                                     },
-                                                     ty_a)))
+                    (_, &ty::ty_trait(_)) => {
+                        Some(ty::AutoUnsize {
+                            leaf_source: ty_a,
+                            leaf_target: ty_b,
+                            root_target: ty_b
+                        })
                     }
                     (&ty::ty_struct(did_a, substs_a), &ty::ty_struct(did_b, substs_b))
                       if did_a == did_b => {
@@ -393,37 +401,33 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                         let ty_substs_b = substs_b.types.get_slice(subst::TypeSpace);
                         assert!(ty_substs_a.len() == ty_substs_b.len());
 
-                        let mut result = None;
                         let tps = ty_substs_a.iter().zip(ty_substs_b.iter()).enumerate();
                         for (i, (tp_a, tp_b)) in tps {
                             if self.fcx.infcx().try(|_| self.subtype(*tp_a, *tp_b)).is_ok() {
                                 continue;
                             }
-                            match self.unsize_ty(*tp_a, *tp_b) {
-                                Some((new_tp, k)) => {
-                                    // Check that the whole types match.
-                                    let mut new_substs = substs_a.clone();
-                                    new_substs.types.get_mut_slice(subst::TypeSpace)[i] = new_tp;
-                                    let ty = ty::mk_struct(tcx, did_a, tcx.mk_substs(new_substs));
-                                    if self.fcx.infcx().try(|_| self.subtype(ty, ty_b)).is_err() {
-                                        debug!("Unsized type parameter '{}', but still \
-                                                could not match types {} and {}",
-                                               ppaux::ty_to_string(tcx, *tp_a),
-                                               ppaux::ty_to_string(tcx, ty),
-                                               ppaux::ty_to_string(tcx, ty_b));
-                                        // We can only unsize a single type parameter, so
-                                        // if we unsize one and it doesn't give us the
-                                        // type we want, then we won't succeed later.
-                                        break;
-                                    }
-
-                                    result = Some((ty, ty::UnsizeStruct(box k, i)));
+                            if let Some(unsize) = self.unsize_ty(*tp_a, *tp_b) {
+                                // Check that the whole types match.
+                                let mut new_substs = substs_a.clone();
+                                let new_tp = unsize.root_target;
+                                new_substs.types.get_mut_slice(subst::TypeSpace)[i] = new_tp;
+                                let ty = ty::mk_struct(tcx, did_a, tcx.mk_substs(new_substs));
+                                if self.fcx.infcx().try(|_| self.subtype(ty, ty_b)).is_err() {
+                                    debug!("Unsized type parameter '{}', but still \
+                                            could not match types {} and {}",
+                                            ppaux::ty_to_string(tcx, *tp_a),
+                                            ppaux::ty_to_string(tcx, ty),
+                                            ppaux::ty_to_string(tcx, ty_b));
+                                    // We can only unsize a single type parameter, so
+                                    // if we unsize one and it doesn't give us the
+                                    // type we want, then we won't succeed later.
                                     break;
                                 }
-                                None => {}
+
+                                return Some(ty::AutoUnsize { root_target: ty, ..unsize });
                             }
                         }
-                        result
+                        None
                     }
                     _ => None
                 }

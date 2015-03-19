@@ -467,20 +467,12 @@ impl<'tcx> TypeFoldable<'tcx> for ty::InstantiatedPredicates<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::UnsizeKind<'tcx> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::UnsizeKind<'tcx> {
-        match *self {
-            ty::UnsizeLength(len) => ty::UnsizeLength(len),
-            ty::UnsizeStruct(box ref k, n) => ty::UnsizeStruct(box k.fold_with(folder), n),
-            ty::UnsizeVtable(ty::TyTrait{ref principal, ref bounds}, self_ty) => {
-                ty::UnsizeVtable(
-                    ty::TyTrait {
-                        principal: principal.fold_with(folder),
-                        bounds: bounds.fold_with(folder),
-                    },
-                    self_ty.fold_with(folder))
-            }
-            ty::UnsizeUpcast(t) => ty::UnsizeUpcast(t.fold_with(folder)),
+impl<'tcx> TypeFoldable<'tcx> for ty::AutoUnsize<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::AutoUnsize<'tcx> {
+        ty::AutoUnsize {
+            leaf_source: self.leaf_source.fold_with(folder),
+            leaf_target: self.leaf_target.fold_with(folder),
+            root_target: self.root_target.fold_with(folder)
         }
     }
 }
@@ -758,10 +750,7 @@ pub fn super_fold_autoref<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                      -> ty::AutoRef
 {
     match *autoref {
-        ty::AutoPtr(r, m, None) => ty::AutoPtr(this.fold_region(r), m, None),
-        ty::AutoPtr(r, m, Some(ref a)) => {
-            ty::AutoPtr(this.fold_region(r), m, Some(box super_fold_autoref(this, &**a)))
-        }
+        ty::AutoPtr(r, m) => ty::AutoPtr(this.fold_region(r), m),
         ty::AutoUnsafe(m) => ty::AutoUnsafe(m)
     }
 }
