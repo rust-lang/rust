@@ -73,22 +73,24 @@ struct CrateInfo {
 }
 
 pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
-    let err = |s: &str| {
+    let say = |s: &str, warn: bool| {
         match (sp, sess) {
             (_, None) => panic!("{}", s),
+            (Some(sp), Some(sess)) if warn => sess.span_warn(sp, s),
             (Some(sp), Some(sess)) => sess.span_err(sp, s),
+            (None, Some(sess)) if warn => sess.warn(s),
             (None, Some(sess)) => sess.err(s),
         }
     };
     if s.len() == 0 {
-        err("crate name must not be empty");
-    } else if s.char_at(0) == '-' {
-        err(&format!("crate name cannot start with a hyphen: {}", s));
+        say("crate name must not be empty", false);
+    } else if s.contains("-") {
+        say(&format!("crate names soon cannot contain hyphens: {}", s), true);
     }
     for c in s.chars() {
         if c.is_alphanumeric() { continue }
         if c == '_' || c == '-' { continue }
-        err(&format!("invalid character `{}` in crate name: `{}`", c, s));
+        say(&format!("invalid character `{}` in crate name: `{}`", c, s), false);
     }
     match sess {
         Some(sess) => sess.abort_if_errors(),
@@ -153,8 +155,9 @@ impl<'a> CrateReader<'a> {
         }
     }
 
-    // Traverses an AST, reading all the information about use'd crates and extern
-    // libraries necessary for later resolving, typechecking, linking, etc.
+    // Traverses an AST, reading all the information about use'd crates and
+    // extern libraries necessary for later resolving, typechecking, linking,
+    // etc.
     pub fn read_crates(&mut self, krate: &ast::Crate) {
         self.process_crate(krate);
         visit::walk_crate(self, krate);
@@ -184,11 +187,10 @@ impl<'a> CrateReader<'a> {
                 debug!("resolving extern crate stmt. ident: {} path_opt: {:?}",
                        ident, path_opt);
                 let name = match *path_opt {
-                    Some((ref path_str, _)) => {
-                        let name = path_str.to_string();
-                        validate_crate_name(Some(self.sess), &name[..],
+                    Some(name) => {
+                        validate_crate_name(Some(self.sess), name.as_str(),
                                             Some(i.span));
-                        name
+                        name.as_str().to_string()
                     }
                     None => ident.to_string(),
                 };
@@ -304,7 +306,13 @@ impl<'a> CrateReader<'a> {
                       -> Option<ast::CrateNum> {
         let mut ret = None;
         self.sess.cstore.iter_crate_data(|cnum, data| {
-            if data.name != name { return }
+            // For now we do a "fuzzy match" on crate names by considering
+            // hyphens equal to underscores. This is purely meant to be a
+            // transitionary feature while we deprecate the quote syntax of
+            // `extern crate` statements.
+            if data.name != name.replace("-", "_") {
+                return
+            }
 
             match hash {
                 Some(hash) if *hash == data.hash() => { ret = Some(cnum); return }

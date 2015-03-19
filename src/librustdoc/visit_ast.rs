@@ -237,7 +237,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             ast::ItemExternCrate(ref p) => {
                 let path = match *p {
                     None => None,
-                    Some((ref x, _)) => Some(x.to_string()),
+                    Some(x) => Some(x.to_string()),
                 };
                 om.extern_crates.push(ExternCrate {
                     name: name,

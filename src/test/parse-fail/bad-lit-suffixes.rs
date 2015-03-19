@@ -11,6 +11,7 @@
 
 extern crate
     "foo"suffix //~ ERROR extern crate name with a suffix is illegal
+                //~^ WARNING: obsolete syntax
      as foo;
 
 extern

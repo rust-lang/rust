@@ -9,11 +9,11 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// aux-build:coherence-orphan-lib.rs
+// aux-build:coherence_orphan_lib.rs
 
 #![feature(optin_builtin_traits)]
 
-extern crate "coherence-orphan-lib" as lib;
+extern crate coherence_orphan_lib as lib;
 
 use lib::TheTrait;
 
