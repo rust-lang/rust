@@ -131,7 +131,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         true
     });
 
-    for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_TASKS"] {
+    for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_THREADS"] {
         match env::var(key) {
             Ok(val) =>
                 if exec_env.iter().find(|&&(ref x, _)| *x == key.to_string()).is_none() {
