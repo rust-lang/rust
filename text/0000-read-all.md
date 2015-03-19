@@ -26,12 +26,12 @@ read into, and will attempt to fill that entire slice with data.
 It will loop, calling read() once per iteration and attempting to read
 the remaining amount of data.  If read returns EINTR, the loop will
 retry.  If there are no more bytes to read (as signalled by a return
-of Ok(0) from read()), a new error type, ErrorKind::ShortRead, will be
-returned.  In the event of another error, that error will be
+of Ok(0) from read()), a new error type, ErrorKind::ShortRead(usize),
+will be returned.  ShortRead includes the number of bytes successfully
+read.  In the event of another error, that error will be
 returned. After a read call returns having successfully read some
-bytes, the total number of bytes read will be updated.  If that
-total is equal to the size of the buffer, read will return
-successfully.
+bytes, the total number of bytes read will be updated.  If that total
+is equal to the size of the buffer, read will return successfully.
 
 # Drawbacks
 
@@ -46,9 +46,9 @@ One alternative design would return some new kind of Result which
 could report the number of bytes sucessfully read before an error.
 This would be inconsistent with write_all, but arguably more correct.
 
-Another would be that ErrorKind::ShortRead would be parameterized by
-the number of bytes read before EOF.  The downside of this is that it
-bloats the size of io::Error.
+If we wanted io::Error to be a smaller type, ErrorKind::ShortRead
+could be unparameterized.  But this would reduce the information
+available to calleres.
 
 Finally, in the event of a short read, we could return Ok(number of
 bytes read before EOF) instead of an error.  But then every user would
