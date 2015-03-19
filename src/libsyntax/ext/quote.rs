@@ -177,6 +177,7 @@ pub mod rt {
     impl_to_source! { Generics, generics_to_string }
     impl_to_source! { P<ast::Item>, item_to_string }
     impl_to_source! { P<ast::ImplItem>, impl_item_to_string }
+    impl_to_source! { P<ast::TraitItem>, trait_item_to_string }
     impl_to_source! { P<ast::Stmt>, stmt_to_string }
     impl_to_source! { P<ast::Expr>, expr_to_string }
     impl_to_source! { P<ast::Pat>, pat_to_string }
@@ -310,6 +311,7 @@ pub mod rt {
     impl_to_tokens! { ast::Ident }
     impl_to_tokens! { P<ast::Item> }
     impl_to_tokens! { P<ast::ImplItem> }
+    impl_to_tokens! { P<ast::TraitItem> }
     impl_to_tokens! { P<ast::Pat> }
     impl_to_tokens! { ast::Arm }
     impl_to_tokens_lifetime! { &'a [P<ast::Item>] }
