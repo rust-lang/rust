@@ -80,7 +80,6 @@ This API is completely unstable and subject to change.
 #![feature(collections)]
 #![feature(core)]
 #![feature(int_uint)]
-#![feature(std_misc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
