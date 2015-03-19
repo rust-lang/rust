@@ -26,7 +26,7 @@ fn main() {
     //~| found `Box<core::ops::Fn(isize, isize)>`
     //~| expected ()
     //~| found box
-    let _: () = (box || -> isize unimplemented!()) as Box<FnMut() -> isize>;
+    let _: () = (box || -> isize { unimplemented!() }) as Box<FnMut() -> isize>;
     //~^ ERROR mismatched types
     //~| expected `()`
     //~| found `Box<core::ops::FnMut() -> isize>`
