@@ -124,26 +124,26 @@ pub struct RangeMut<'a, K: 'a, V: 'a> {
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
-#[unstable(feature = "collections",
-           reason = "precise API still under development")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub enum Entry<'a, K:'a, V:'a> {
     /// A vacant Entry
+    #[stable(feature = "rust1", since = "1.0.0")]
     Vacant(VacantEntry<'a, K, V>),
+
     /// An occupied Entry
+    #[stable(feature = "rust1", since = "1.0.0")]
     Occupied(OccupiedEntry<'a, K, V>),
 }
 
 /// A vacant Entry.
-#[unstable(feature = "collections",
-           reason = "precise API still under development")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct VacantEntry<'a, K:'a, V:'a> {
     key: K,
     stack: stack::SearchStack<'a, K, V, node::handle::Edge, node::handle::Leaf>,
 }
 
 /// An occupied Entry.
-#[unstable(feature = "collections",
-           reason = "precise API still under development")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct OccupiedEntry<'a, K:'a, V:'a> {
     stack: stack::SearchStack<'a, K, V, node::handle::KV, node::handle::LeafOrInternal>,
 }
@@ -1124,9 +1124,9 @@ impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
 }
 
 impl<'a, K: Ord, V> Entry<'a, K, V> {
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
     /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
+    #[unstable(feature = "std_misc",
+               reason = "will soon be replaced by or_insert")]
     pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, K, V>> {
         match self {
             Occupied(entry) => Ok(entry.into_mut()),
