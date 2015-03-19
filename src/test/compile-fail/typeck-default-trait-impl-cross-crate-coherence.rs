@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:typeck-default-trait-impl-cross-crate-coherence-lib.rs
+// aux-build:typeck_default_trait_impl_cross_crate_coherence_lib.rs
 
 // Test that we do not consider associated types to be sendable without
 // some applicable trait bound (and we don't ICE).
 
 #![feature(optin_builtin_traits)]
 
-extern crate "typeck-default-trait-impl-cross-crate-coherence-lib" as lib;
+extern crate typeck_default_trait_impl_cross_crate_coherence_lib as lib;
 
 use lib::DefaultedTrait;
 
