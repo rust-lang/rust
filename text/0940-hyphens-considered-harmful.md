@@ -1,7 +1,7 @@
 - Feature Name: `hyphens_considered_harmful`
 - Start Date: 2015-03-05
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#940](https://github.com/rust-lang/rfcs/pull/940)
+- Rust Issue: [rust-lang/rust#23533](https://github.com/rust-lang/rust/issues/23533)
 
 # Summary
 
