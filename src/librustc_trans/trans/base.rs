@@ -756,7 +756,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
 }
 
 pub fn cast_shift_expr_rhs(cx: Block,
-                           op: ast::BinOp,
+                           op: ast::BinOp_,
                            lhs: ValueRef,
                            rhs: ValueRef)
                            -> ValueRef {
@@ -765,24 +765,24 @@ pub fn cast_shift_expr_rhs(cx: Block,
                    |a,b| ZExt(cx, a, b))
 }
 
-pub fn cast_shift_const_rhs(op: ast::BinOp,
+pub fn cast_shift_const_rhs(op: ast::BinOp_,
                             lhs: ValueRef, rhs: ValueRef) -> ValueRef {
     cast_shift_rhs(op, lhs, rhs,
                    |a, b| unsafe { llvm::LLVMConstTrunc(a, b.to_ref()) },
                    |a, b| unsafe { llvm::LLVMConstZExt(a, b.to_ref()) })
 }
 
-pub fn cast_shift_rhs<F, G>(op: ast::BinOp,
-                            lhs: ValueRef,
-                            rhs: ValueRef,
-                            trunc: F,
-                            zext: G)
-                            -> ValueRef where
+fn cast_shift_rhs<F, G>(op: ast::BinOp_,
+                        lhs: ValueRef,
+                        rhs: ValueRef,
+                        trunc: F,
+                        zext: G)
+                        -> ValueRef where
     F: FnOnce(ValueRef, Type) -> ValueRef,
     G: FnOnce(ValueRef, Type) -> ValueRef,
 {
     // Shifts may have any size int on the rhs
-    if ast_util::is_shift_binop(op.node) {
+    if ast_util::is_shift_binop(op) {
         let mut rhs_llty = val_ty(rhs);
         let mut lhs_llty = val_ty(lhs);
         if rhs_llty.kind() == Vector { rhs_llty = rhs_llty.element_type() }
