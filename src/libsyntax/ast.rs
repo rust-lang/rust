@@ -1155,7 +1155,7 @@ pub enum Lit_ {
     LitByte(u8),
     /// A character literal (`'a'`)
     LitChar(char),
-    /// An integer liteal (`1u8`)
+    /// An integer literal (`1u8`)
     LitInt(u64, LitIntType),
     /// A float literal (`1f64` or `1E10f64`)
     LitFloat(InternedString, FloatTy),
