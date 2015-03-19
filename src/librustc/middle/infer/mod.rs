@@ -29,6 +29,7 @@ use middle::ty::replace_late_bound_regions;
 use middle::ty::{self, Ty};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use std::cell::{RefCell};
+use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap;
@@ -126,6 +127,25 @@ pub enum TypeOrigin {
 
     // `where a == b`
     EquatePredicate(Span),
+}
+
+impl fmt::Display for TypeOrigin {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(),fmt::Error> {
+        let msg = match self {
+            &TypeOrigin::Misc(_) => "mismatched types",
+            &TypeOrigin::MethodCompatCheck(_) => "method not compatible with trait",
+            &TypeOrigin::ExprAssignable(_) => "mismatched types",
+            &TypeOrigin::RelateTraitRefs(_) => "mismatched traits",
+            &TypeOrigin::RelateSelfType(_) => "mismatched types",
+            &TypeOrigin::RelateOutputImplTypes(_) => "mismatched types",
+            &TypeOrigin::MatchExpressionArm(_, _) => "match arms have incompatible types",
+            &TypeOrigin::IfExpression(_) => "if and else have incompatible types",
+            &TypeOrigin::IfExpressionWithNoElse(_) => "if may be missing an else clause",
+            &TypeOrigin::RangeExpression(_) => "start and end of range have incompatible types",
+            &TypeOrigin::EquatePredicate(_) => "equality predicate not satisfied",
+        };
+        fmt::Display::fmt(msg, f)
+    }
 }
 
 /// See `error_reporting.rs` for more details
