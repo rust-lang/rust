@@ -576,7 +576,7 @@ Available lint options:
         .map(|&s| s.name.width(true))
         .max().unwrap_or(0);
     let padded = |x: &str| {
-        let mut s = repeat(" ").take(max_name_len - x.chars().count())
+        let mut s = repeat(" ").take((max_name_len - x.width(true)) as usize)
                                .collect::<String>();
         s.push_str(x);
         s
@@ -603,7 +603,7 @@ Available lint options:
         .map(|&(s, _)| s.width(true))
         .max().unwrap_or(0);
     let padded = |x: &str| {
-        let mut s = repeat(" ").take(max_name_len - x.chars().count())
+        let mut s = repeat(" ").take((max_name_len - x.width(true)) as usize)
                                .collect::<String>();
         s.push_str(x);
         s

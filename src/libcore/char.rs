@@ -286,7 +286,7 @@ enum EscapeUnicodeState {
     Backslash,
     Type,
     LeftBrace,
-    Value(usize),
+    Value(u8),
     RightBrace,
     Done,
 }

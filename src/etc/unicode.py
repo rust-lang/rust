@@ -457,13 +457,13 @@ def emit_charwidth_module(f, width_table):
 """)
 
     f.write("""
-    pub fn width(c: char, is_cjk: bool) -> Option<usize> {
-        match c as usize {
+    pub fn width(c: char, is_cjk: bool) -> Option<u32> {
+        match c as u32 {
             _c @ 0 => Some(0),          // null is zero width
             cu if cu < 0x20 => None,    // control sequences have no width
             cu if cu < 0x7F => Some(1), // ASCII
             cu if cu < 0xA0 => None,    // more control sequences
-            _ => Some(bsearch_range_value_table(c, is_cjk, charwidth_table) as usize)
+            _ => Some(bsearch_range_value_table(c, is_cjk, charwidth_table) as u32)
         }
     }
 

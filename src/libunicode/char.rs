@@ -447,5 +447,5 @@ impl char {
     /// `is_cjk` = `false`) if the context cannot be reliably determined.
     #[unstable(feature = "unicode",
                reason = "needs expert opinion. is_cjk flag stands out as ugly")]
-    pub fn width(self, is_cjk: bool) -> Option<usize> { charwidth::width(self, is_cjk) }
+    pub fn width(self, is_cjk: bool) -> Option<u32> { charwidth::width(self, is_cjk) }
 }

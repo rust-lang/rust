@@ -545,7 +545,7 @@ fn highlight_lines(err: &mut EmitterWriter,
                 _ => lastc.width(false).unwrap_or(0),
             };
             col += count;
-            s.extend(::std::iter::repeat('~').take(count));
+            s.extend(::std::iter::repeat('~').take(count as usize));
 
             let hi = cm.lookup_char_pos(sp.hi);
             if hi.col != lo.col {
@@ -556,7 +556,7 @@ fn highlight_lines(err: &mut EmitterWriter,
                         _ => ch.width(false).unwrap_or(0),
                     };
                     col += count;
-                    s.extend(::std::iter::repeat('~').take(count));
+                    s.extend(::std::iter::repeat('~').take(count as usize));
                 }
             }
 
