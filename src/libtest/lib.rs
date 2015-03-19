@@ -44,6 +44,7 @@
 #![feature(std_misc)]
 #![feature(libc)]
 #![feature(set_stdio)]
+#![feature(os)]
 
 extern crate getopts;
 extern crate serialize;
@@ -841,8 +842,8 @@ fn run_tests<F>(opts: &TestOpts,
     Ok(())
 }
 
+#[allow(deprecated)]
 fn get_concurrency() -> uint {
-    use std::rt;
     match env::var("RUST_TEST_THREADS") {
         Ok(s) => {
             let opt_n: Option<uint> = s.parse().ok();
@@ -852,7 +853,11 @@ fn get_concurrency() -> uint {
             }
         }
         Err(..) => {
-            rt::default_sched_threads()
+            if std::rt::util::limit_thread_creation_due_to_osx_and_valgrind() {
+                1
+            } else {
+                std::os::num_cpus()
+            }
         }
     }
 }
