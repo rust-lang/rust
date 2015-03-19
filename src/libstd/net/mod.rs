@@ -25,6 +25,7 @@ pub use self::ip::{Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 pub use self::tcp::{TcpStream, TcpListener};
 pub use self::udp::UdpSocket;
+pub use self::parser::AddrParseError;
 
 mod ip;
 mod addr;
