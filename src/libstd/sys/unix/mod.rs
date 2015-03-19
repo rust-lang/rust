@@ -139,22 +139,19 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         libc::EPIPE => ErrorKind::BrokenPipe,
         libc::ENOTCONN => ErrorKind::NotConnected,
         libc::ECONNABORTED => ErrorKind::ConnectionAborted,
-        libc::EADDRNOTAVAIL => ErrorKind::ConnectionRefused,
-        libc::EADDRINUSE => ErrorKind::ConnectionRefused,
-        libc::ENOENT => ErrorKind::FileNotFound,
-        libc::EISDIR => ErrorKind::InvalidInput,
+        libc::EADDRNOTAVAIL => ErrorKind::AddrNotAvailable,
+        libc::EADDRINUSE => ErrorKind::AddrInUse,
+        libc::ENOENT => ErrorKind::NotFound,
         libc::EINTR => ErrorKind::Interrupted,
         libc::EINVAL => ErrorKind::InvalidInput,
-        libc::ENOTTY => ErrorKind::MismatchedFileTypeForOperation,
         libc::ETIMEDOUT => ErrorKind::TimedOut,
-        libc::ECANCELED => ErrorKind::TimedOut,
-        libc::consts::os::posix88::EEXIST => ErrorKind::PathAlreadyExists,
+        libc::consts::os::posix88::EEXIST => ErrorKind::AlreadyExists,
 
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match
         // clause
         x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
-            ErrorKind::ResourceUnavailable,
+            ErrorKind::WouldBlock,
 
         _ => ErrorKind::Other,
     }

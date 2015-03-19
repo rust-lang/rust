@@ -35,7 +35,6 @@
 #![feature(test)]
 #![feature(unicode)]
 #![feature(str_words)]
-#![feature(io)]
 #![feature(file_path)]
 #![feature(path_ext)]
 #![feature(path_relative_from)]
