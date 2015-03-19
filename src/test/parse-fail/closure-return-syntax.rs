@@ -8,12 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unknown_features)]
-#![feature(box_syntax)]
-#![feature(unboxed_closures)]
+// Test that we cannot parse a closure with an explicit return type
+// unless it uses braces.
 
-pub fn main() {
-    let bar: Box<_> = box 3;
-    let h = || -> int { *bar };
-    assert_eq!(h(), 3);
+fn main() {
+    let x = || -> i32 22; //~ ERROR expected `{`, found `22`
 }
