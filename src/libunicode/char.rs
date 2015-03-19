@@ -462,7 +462,8 @@ impl CharExt for char {
 }
 
 /// An iterator over the lowercase mapping of a given character, returned from
-/// the `lowercase` method on characters.
+/// the [`to_lowercase` method](../primitive.char.html#method.to_lowercase) on
+/// characters.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ToLowercase(Option<char>);
 
@@ -473,7 +474,8 @@ impl Iterator for ToLowercase {
 }
 
 /// An iterator over the uppercase mapping of a given character, returned from
-/// the `uppercase` method on characters.
+/// the [`to_uppercase` method](../primitive.char.html#method.to_uppercase) on
+/// characters.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ToUppercase(Option<char>);
 
