@@ -130,12 +130,13 @@ pub mod guard {
     #[cfg(any(target_os = "openbsd", target_os = "bitrig"))]
     pub unsafe fn current() -> usize {
         #[repr(C)]
-        pub struct stack_t {
+        struct stack_t {
             ss_sp: *mut libc::c_void,
             ss_size: libc::size_t,
             ss_flags: libc::c_int,
         }
         extern {
+            fn pthread_main_np() -> libc::c_uint;
             fn pthread_stackseg_np(thread: pthread_t,
                                    sinfo: *mut stack_t) -> libc::c_uint;
         }
@@ -339,9 +340,6 @@ fn min_stack_size(_: *const libc::pthread_attr_t) -> libc::size_t {
 }
 
 extern {
-    #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
-    fn pthread_main_np() -> libc::c_uint;
-
     fn pthread_self() -> libc::pthread_t;
     fn pthread_create(native: *mut libc::pthread_t,
                       attr: *const libc::pthread_attr_t,
