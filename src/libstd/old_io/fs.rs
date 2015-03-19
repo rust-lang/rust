@@ -64,8 +64,6 @@ use option::Option::{Some, None};
 use old_path::{Path, GenericPath};
 use old_path;
 use result::Result::{Err, Ok};
-#[cfg(stage0)]
-use slice::SliceExt;
 use string::String;
 use vec::Vec;
 

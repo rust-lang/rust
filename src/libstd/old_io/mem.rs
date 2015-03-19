@@ -17,9 +17,6 @@ use option::Option::None;
 use result::Result::{Err, Ok};
 use old_io;
 use old_io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
-#[cfg(stage0)]
-use slice::{self, SliceExt};
-#[cfg(not(stage0))]
 use slice;
 use vec::Vec;
 

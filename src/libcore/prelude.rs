@@ -42,8 +42,6 @@ pub use iter::{Extend, IteratorExt};
 pub use iter::{Iterator, DoubleEndedIterator};
 pub use iter::{ExactSizeIterator};
 pub use option::Option::{self, Some, None};
-#[cfg(stage0)]
-pub use ptr::{PtrExt, MutPtrExt};
 pub use result::Result::{self, Ok, Err};
 pub use slice::{AsSlice, SliceExt};
 pub use str::{Str, StrExt};

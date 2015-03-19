@@ -26,8 +26,6 @@ use core::num::Int;
 use core::slice;
 use core::str::Split;
 
-#[cfg(stage0)]
-use char::CharExt as UCharExt; // conflicts with core::prelude::CharExt
 use tables::grapheme::GraphemeCat;
 
 /// An iterator over the words of a string, separated by a sequence of whitespace
@@ -244,7 +242,7 @@ impl<'a> Iterator for Graphemes<'a> {
         }
 
         self.cat = if take_curr {
-            idx = idx + len_utf8(self.string.char_at(idx));
+            idx = idx + self.string.char_at(idx).len_utf8();
             None
         } else {
             Some(cat)
@@ -255,11 +253,6 @@ impl<'a> Iterator for Graphemes<'a> {
         Some(retstr)
     }
 }
-
-#[cfg(stage0)]
-fn len_utf8(c: char) -> usize { UCharExt::len_utf8(c) }
-#[cfg(not(stage0))]
-fn len_utf8(c: char) -> usize { c.len_utf8() }
 
 impl<'a> DoubleEndedIterator for Graphemes<'a> {
     #[inline]

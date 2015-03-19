@@ -159,8 +159,6 @@ mod platform {
     use core::prelude::*;
     use ascii::*;
 
-    #[cfg(stage0)]
-    use char::CharExt as UnicodeCharExt;
     use super::{os_str_as_u8_slice, u8_slice_as_os_str, Prefix};
     use ffi::OsStr;
 

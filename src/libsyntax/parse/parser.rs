@@ -78,8 +78,6 @@ use owned_slice::OwnedSlice;
 use std::collections::HashSet;
 use std::io::prelude::*;
 use std::mem;
-#[cfg(stage0)]
-use std::num::Float;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::slice;
@@ -5807,12 +5805,6 @@ impl<'a> Parser<'a> {
             self.expected_item_err(&attrs);
         }
         None
-    }
-
-    // HACK(eddyb) staging required for `quote_item!`.
-    #[cfg(stage0)] // SNAP 270a677
-    pub fn parse_item_with_outer_attributes(&mut self) -> Option<P<Item>> {
-        self.parse_item()
     }
 
     pub fn parse_item(&mut self) -> Option<P<Item>> {

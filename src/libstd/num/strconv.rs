@@ -16,17 +16,10 @@ use self::ExponentFormat::*;
 use self::SignificantDigits::*;
 use self::SignFormat::*;
 
-#[cfg(stage0)]
-use char::{self, CharExt};
-#[cfg(not(stage0))]
 use char;
 use num::{self, Int, Float, ToPrimitive};
 use num::FpCategory as Fp;
 use ops::FnMut;
-#[cfg(stage0)]
-use slice::SliceExt;
-#[cfg(stage0)]
-use str::StrExt;
 use string::String;
 use vec::Vec;
 
