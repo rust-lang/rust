@@ -30,7 +30,7 @@ use thunk::Thunk;
 use usize;
 
 // Reexport some of our utilities which are expected by other crates.
-pub use self::util::{default_sched_threads, min_stack, running_on_valgrind};
+pub use self::util::{min_stack, running_on_valgrind};
 pub use self::unwind::{begin_unwind, begin_unwind_fmt};
 
 // Reexport some functionality from liballoc.
