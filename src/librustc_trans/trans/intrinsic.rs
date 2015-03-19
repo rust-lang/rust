@@ -386,7 +386,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             InBoundsGEP(bcx, ptr, &[offset])
         }
 
-        (_, "copy_nonoverlapping_memory") => {
+        (_, "copy_nonoverlapping") => {
             copy_intrinsic(bcx,
                            false,
                            false,
@@ -396,7 +396,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                            llargs[2],
                            call_debug_location)
         }
-        (_, "copy_memory") => {
+        (_, "copy") => {
             copy_intrinsic(bcx,
                            true,
                            false,
@@ -406,7 +406,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                            llargs[2],
                            call_debug_location)
         }
-        (_, "set_memory") => {
+        (_, "write_bytes") => {
             memset_intrinsic(bcx,
                              false,
                              *substs.types.get(FnSpace, 0),

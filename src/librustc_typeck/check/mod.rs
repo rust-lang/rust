@@ -5365,7 +5365,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                    mutbl: ast::MutImmutable
                }))
             }
-            "copy_memory" | "copy_nonoverlapping_memory" |
+            "copy" | "copy_nonoverlapping" |
             "volatile_copy_memory" | "volatile_copy_nonoverlapping_memory" => {
               (1,
                vec!(
@@ -5381,7 +5381,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                ),
                ty::mk_nil(tcx))
             }
-            "set_memory" | "volatile_set_memory" => {
+            "write_bytes" | "volatile_set_memory" => {
               (1,
                vec!(
                   ty::mk_ptr(tcx, ty::mt {
