@@ -913,7 +913,7 @@ pub enum Expr_ {
 
 /// The explicit Self type in a "qualified path". The actual
 /// path, including the trait and the associated item, is stored
-/// sepparately. `position` represents the index of the associated
+/// separately. `position` represents the index of the associated
 /// item qualified with this Self type.
 ///
 ///     <Vec<T> as a::b::Trait>::AssociatedItem
