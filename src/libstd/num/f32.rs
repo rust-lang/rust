@@ -357,7 +357,6 @@ impl Float for f32 {
     }
 }
 
-#[cfg(not(stage0))]
 #[cfg(not(test))]
 #[lang = "f32"]
 #[stable(feature = "rust1", since = "1.0.0")]

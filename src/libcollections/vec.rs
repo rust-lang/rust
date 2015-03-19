@@ -59,8 +59,6 @@ use core::intrinsics::assume;
 use core::iter::{repeat, FromIterator, IntoIterator};
 use core::marker::PhantomData;
 use core::mem;
-#[cfg(stage0)]
-use core::num::{Int, UnsignedInt};
 use core::ops::{Index, IndexMut, Deref, Add};
 use core::ops;
 use core::ptr;
@@ -1283,18 +1281,13 @@ pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
 
 #[unstable(feature = "collections")]
 impl<T:Clone> Clone for Vec<T> {
-    #[cfg(stage0)]
-    fn clone(&self) -> Vec<T> { ::slice::SliceExt::to_vec(&**self) }
-
-    #[cfg(not(stage0))]
     #[cfg(not(test))]
     fn clone(&self) -> Vec<T> { <[T]>::to_vec(&**self) }
 
-    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is required for this
-    // method definition, is not available. Instead use the `slice::to_vec`  function which is only
-    // available with cfg(test)
+    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
+    // required for this method definition, is not available. Instead use the
+    // `slice::to_vec`  function which is only available with cfg(test)
     // NB see the slice::hack module in slice.rs for more information
-    #[cfg(not(stage0))]
     #[cfg(test)]
     fn clone(&self) -> Vec<T> {
         ::slice::to_vec(&**self)

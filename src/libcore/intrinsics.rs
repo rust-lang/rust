@@ -44,26 +44,6 @@
 
 use marker::Sized;
 
-#[cfg(stage0)] // SNAP 270a677
-pub type GlueFn = extern "Rust" fn(*const i8);
-
-#[lang="ty_desc"]
-#[derive(Copy)]
-#[cfg(stage0)] // SNAP 270a677
-pub struct TyDesc {
-    // sizeof(T)
-    pub size: usize,
-
-    // alignof(T)
-    pub align: usize,
-
-    // Called when a value of type `T` is no longer needed
-    pub drop_glue: GlueFn,
-
-    // Name corresponding to the type
-    pub name: &'static str,
-}
-
 extern "rust-intrinsic" {
 
     // NB: These intrinsics take unsafe pointers because they mutate aliased
@@ -198,12 +178,8 @@ extern "rust-intrinsic" {
     pub fn min_align_of<T>() -> usize;
     pub fn pref_align_of<T>() -> usize;
 
-    /// Get a static pointer to a type descriptor.
-    #[cfg(stage0)] // SNAP 270a677
-    pub fn get_tydesc<T: ?Sized>() -> *const TyDesc;
-
     /// Gets a static string slice containing the name of a type.
-    #[cfg(not(stage0))] // SNAP 270a677
+    #[cfg(not(stage0))]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
     /// Gets an identifier which is globally unique to the specified type. This

@@ -20,18 +20,10 @@ use iter::Iterator;
 use marker::Sized;
 use ops::{Drop, FnOnce};
 use option::Option::{self, Some, None};
-#[cfg(stage0)]
-use ptr::PtrExt;
 use result::Result::{Ok, Err};
 use result;
-#[cfg(stage0)]
-use slice::{self, SliceExt};
-#[cfg(not(stage0))]
 use slice;
 use string::String;
-#[cfg(stage0)]
-use str::{self, StrExt};
-#[cfg(not(stage0))]
 use str;
 use vec::Vec;
 

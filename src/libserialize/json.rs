@@ -204,8 +204,6 @@ use std::io::prelude::*;
 use std::io;
 use std::mem::{swap};
 use std::num::FpCategory as Fp;
-#[cfg(stage0)]
-use std::num::{Float, Int};
 use std::ops::Index;
 use std::str::FromStr;
 use std::string;

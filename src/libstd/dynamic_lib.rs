@@ -272,10 +272,6 @@ mod dl {
     use ptr;
     use result::Result;
     use result::Result::{Ok, Err};
-    #[cfg(stage0)]
-    use slice::SliceExt;
-    #[cfg(stage0)]
-    use str::StrExt;
     use str;
     use string::String;
     use vec::Vec;
@@ -294,10 +290,11 @@ mod dl {
                 let err = os::errno();
                 if err as libc::c_int == ERROR_CALL_NOT_IMPLEMENTED {
                     use_thread_mode = false;
-                    // SetThreadErrorMode not found. use fallback solution: SetErrorMode()
-                    // Note that SetErrorMode is process-wide so this can cause race condition!
-                    // However, since even Windows APIs do not care of such problem (#20650),
-                    // we just assume SetErrorMode race is not a great deal.
+                    // SetThreadErrorMode not found. use fallback solution:
+                    // SetErrorMode() Note that SetErrorMode is process-wide so
+                    // this can cause race condition!  However, since even
+                    // Windows APIs do not care of such problem (#20650), we
+                    // just assume SetErrorMode race is not a great deal.
                     prev_error_mode = SetErrorMode(new_error_mode);
                 }
             }
