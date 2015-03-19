@@ -264,7 +264,7 @@ pub fn arg_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
 }
 
 /// Get the LLVM type corresponding to a Rust type, i.e. `middle::ty::Ty`.
-/// This is the right LLVM type for an alloca containg a value of that type,
+/// This is the right LLVM type for an alloca containing a value of that type,
 /// and the pointee of an Lvalue Datum (which is always a LLVM pointer).
 /// For unsized types, the returned type is a fat pointer, thus the resulting
 /// LLVM type for a `Trait` Lvalue is `{ i8*, void(i8*)** }*`, which is a double

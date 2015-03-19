@@ -25,7 +25,7 @@ impl RWLock {
     /// thread to do so.
     ///
     /// Behavior is undefined if the rwlock has been moved between this and any
-    /// previous methodo call.
+    /// previous method call.
     #[inline]
     pub unsafe fn read(&self) { self.0.read() }
 
@@ -35,7 +35,7 @@ impl RWLock {
     /// This function does not block the current thread.
     ///
     /// Behavior is undefined if the rwlock has been moved between this and any
-    /// previous methodo call.
+    /// previous method call.
     #[inline]
     pub unsafe fn try_read(&self) -> bool { self.0.try_read() }
 
@@ -43,7 +43,7 @@ impl RWLock {
     /// to do so.
     ///
     /// Behavior is undefined if the rwlock has been moved between this and any
-    /// previous methodo call.
+    /// previous method call.
     #[inline]
     pub unsafe fn write(&self) { self.0.write() }
 
@@ -53,7 +53,7 @@ impl RWLock {
     /// This function does not block the current thread.
     ///
     /// Behavior is undefined if the rwlock has been moved between this and any
-    /// previous methodo call.
+    /// previous method call.
     #[inline]
     pub unsafe fn try_write(&self) -> bool { self.0.try_write() }
 
