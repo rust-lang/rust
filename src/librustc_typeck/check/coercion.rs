@@ -92,6 +92,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Ok(None) // No coercion required.
     }
 
+    fn outlives(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ()> {
+        let sub = Sub(self.fcx.infcx().combine_fields(false, self.trace.clone()));
+        try!(sub.regions(b, a));
+        Ok(())
+    }
+
     fn unpack_actual_value<T, F>(&self, a: Ty<'tcx>, f: F) -> T where
         F: FnOnce(Ty<'tcx>) -> T,
     {
@@ -340,21 +346,40 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     Some((ty, ty::UnsizeLength(len)))
                 }
                 (&ty::ty_trait(ref data_a), &ty::ty_trait(ref data_b)) => {
-                    // For now, we only support upcasts from
-                    // `Foo+Send` to `Foo` (really, any time there are
-                    // fewer builtin bounds then before). These are
-                    // convenient because they don't require any sort
-                    // of change to the vtable at runtime.
-                    if data_a.bounds.builtin_bounds != data_b.bounds.builtin_bounds &&
-                        data_a.bounds.builtin_bounds.is_superset(&data_b.bounds.builtin_bounds)
-                    {
+                    // Upcasts permit two things:
+                    //
+                    // 1. Dropping builtin bounds, e.g. `Foo+Send` to `Foo`
+                    // 2. Tightening the region bound, e.g. `Foo+'a` to `Foo+'b` if `'a : 'b`
+                    //
+                    // Note that neither of these changes requires any
+                    // change at runtime.  Eventually this will be
+                    // generalized.
+                    //
+                    // We always upcast when we can because of reason
+                    // #2 (region bounds).
+                    if data_a.bounds.builtin_bounds.is_superset(&data_b.bounds.builtin_bounds) {
+                        // construct a type `a1` which is a version of
+                        // `a` using the upcast bounds from `b`
                         let bounds_a1 = ty::ExistentialBounds {
-                            region_bound: data_a.bounds.region_bound,
+                            // From type b
+                            region_bound: data_b.bounds.region_bound,
                             builtin_bounds: data_b.bounds.builtin_bounds,
+
+                            // From type a
                             projection_bounds: data_a.bounds.projection_bounds.clone(),
                         };
                         let ty_a1 = ty::mk_trait(tcx, data_a.principal.clone(), bounds_a1);
-                        match self.fcx.infcx().try(|_| self.subtype(ty_a1, ty_b)) {
+
+                        // relate `a1` to `b`
+                        let result = self.fcx.infcx().try(|_| {
+                            // it's ok to upcast from Foo+'a to Foo+'b so long as 'a : 'b
+                            try!(self.outlives(data_a.bounds.region_bound,
+                                               data_b.bounds.region_bound));
+                            self.subtype(ty_a1, ty_b)
+                        });
+
+                        // if that was successful, we have a coercion
+                        match result {
                             Ok(_) => Some((ty_b, ty::UnsizeUpcast(ty_b))),
                             Err(_) => None,
                         }
