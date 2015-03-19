@@ -146,7 +146,7 @@ impl Stdin {
     /// accessing the underlying data.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdinLock {
-        StdinLock { inner: self.inner.lock().unwrap() }
+        StdinLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
     }
 
     /// Locks this handle and reads a line of input into the specified buffer.
@@ -249,7 +249,7 @@ impl Stdout {
     /// returned guard also implements the `Write` trait for writing data.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StdoutLock {
-        StdoutLock { inner: self.inner.lock().unwrap() }
+        StdoutLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
     }
 }
 
@@ -319,7 +319,7 @@ impl Stderr {
     /// returned guard also implements the `Write` trait for writing data.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> StderrLock {
-        StderrLock { inner: self.inner.lock().unwrap() }
+        StderrLock { inner: self.inner.lock().unwrap_or_else(|e| e.into_inner()) }
     }
 }
 
@@ -400,5 +400,31 @@ pub fn _print(args: fmt::Arguments) {
         None => stdout().write_fmt(args)
     }) {
         panic!("failed printing to stdout: {}", e);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use thread;
+    use super::*;
+
+    #[test]
+    fn panic_doesnt_poison() {
+        thread::spawn(|| {
+            let _a = stdin();
+            let _a = _a.lock();
+            let _a = stdout();
+            let _a = _a.lock();
+            let _a = stderr();
+            let _a = _a.lock();
+            panic!();
+        }).join().unwrap_err();
+
+        let _a = stdin();
+        let _a = _a.lock();
+        let _a = stdout();
+        let _a = _a.lock();
+        let _a = stderr();
+        let _a = _a.lock();
     }
 }
