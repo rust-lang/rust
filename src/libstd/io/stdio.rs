@@ -19,7 +19,7 @@ use io::{self, BufReader, LineWriter};
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
 
-/// Stdout used by print! and println! macroses
+/// Stdout used by print! and println! macros
 thread_local! {
     static LOCAL_STDOUT: RefCell<Option<Box<Write + Send>>> = {
         RefCell::new(None)
