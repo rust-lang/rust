@@ -357,23 +357,9 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             }
         };
 
-        let message_root_str = match trace.origin {
-            infer::Misc(_) => "mismatched types",
-            infer::MethodCompatCheck(_) => "method not compatible with trait",
-            infer::ExprAssignable(_) => "mismatched types",
-            infer::RelateTraitRefs(_) => "mismatched traits",
-            infer::RelateSelfType(_) => "mismatched types",
-            infer::RelateOutputImplTypes(_) => "mismatched types",
-            infer::MatchExpressionArm(_, _) => "match arms have incompatible types",
-            infer::IfExpression(_) => "if and else have incompatible types",
-            infer::IfExpressionWithNoElse(_) => "if may be missing an else clause",
-            infer::RangeExpression(_) => "start and end of range have incompatible types",
-            infer::EquatePredicate(_) => "equality predicate not satisfied",
-        };
-
         span_err!(self.tcx.sess, trace.origin.span(), E0308,
             "{}: {} ({})",
-                 message_root_str,
+                 trace.origin,
                  expected_found_str,
                  ty::type_err_to_str(self.tcx, terr));
 
