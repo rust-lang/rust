@@ -1,12 +1,12 @@
 - Feature Name: entry_v3
 - Start Date: 2015-03-01
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/921
+- Rust Issue: https://github.com/rust-lang/rust/issues/23508
 
 # Summary
 
-Replace Entry::get with Entry::default and Entry::default_with for better ergonomics and clearer
-code.
+Replace `Entry::get` with `Entry::or_insert` and
+`Entry::or_insert_with` for better ergonomics and clearer code.
 
 # Motivation
 
@@ -63,7 +63,7 @@ Replace `Entry::get` with the following two methods:
 ```
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
-    pub fn default(self. default: V) -> &'a mut V {
+    pub fn or_insert(self. default: V) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default),
@@ -72,7 +72,7 @@ Replace `Entry::get` with the following two methods:
 
     /// Ensures a value is in the entry by inserting the result of the default function if empty,
     /// and returns a mutable reference to the value in the entry.
-    pub fn default_with<F: FnOnce() -> V>(self. default: F) -> &'a mut V {
+    pub fn or_insert_with<F: FnOnce() -> V>(self. default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default()),
@@ -84,16 +84,16 @@ which allows the following:
 
 
 ```
-*map.entry(key).default(0) += 1;
+*map.entry(key).or_insert(0) += 1;
 ```
 
 ```
 // vec![] doesn't even allocate, and is only 3 ptrs big.
-map.entry(key).default(vec![]).push(val);
+map.entry(key).or_insert(vec![]).push(val);
 ```
 
 ```
-let val = map.entry(key).default_with(|| expensive(big, data));
+let val = map.entry(key).or_insert_with(|| expensive(big, data));
 ```
 
 Look at all that ergonomics. *Look at it*. This pushes us more into the "one right way"
@@ -114,15 +114,8 @@ method is trivial to write as a consumer of the API.
 
 # Alternatives
 
-Settle for Result chumpsville or abandon this sugar altogether. Truly, fates worse than death.
+Settle for `Result` chumpsville or abandon this sugar altogether. Truly, fates worse than death.
 
 # Unresolved questions
 
-`default` and `default_with` are universally reviled as *names*. Need a better name. Some candidates.
-
-* set_default
-* or_insert
-* insert_default
-* insert_if_vacant
-* with_default
-
+None.
