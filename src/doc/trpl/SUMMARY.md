@@ -14,7 +14,6 @@
     * [Strings](strings.md)
     * [Arrays, Vectors, and Slices](arrays-vectors-and-slices.md)
     * [Standard Input](standard-input.md)
-    * [Guessing Game](guessing-game.md)
 * [II: Intermediate Rust](intermediate.md)
     * [Crates and Modules](crates-and-modules.md)
     * [Testing](testing.md)
