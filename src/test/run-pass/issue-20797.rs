@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-android
-// ignore-windows
-
 // Regression test for #20797.
 
 use std::default::Default;
 use std::old_io::IoResult;
 use std::old_io::fs;
 use std::old_io::fs::PathExtensions;
+use std::os;
 
 /// A strategy for acquiring more subpaths to walk.
 pub trait Strategy {
@@ -90,5 +88,5 @@ impl<S: Strategy> Iterator for Subpaths<S> {
 }
 
 fn main() {
-  let mut walker: Subpaths<Recursive> = Subpaths::walk(&Path::new("/home")).unwrap();
+  let mut walker: Subpaths<Recursive> = Subpaths::walk(&os::tmpdir()).unwrap();
 }
