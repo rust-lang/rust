@@ -24,7 +24,7 @@ use core::default::Default;
 use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{Map, FromIterator, IntoIterator};
-use core::ops::{Index, IndexMut};
+use core::ops::{Index};
 use core::{iter, fmt, mem, usize};
 use Bound::{self, Included, Excluded, Unbounded};
 
@@ -922,15 +922,6 @@ impl<K: Ord, Q: ?Sized, V> Index<Q> for BTreeMap<K, V>
 
     fn index(&self, key: &Q) -> &V {
         self.get(key).expect("no entry found for key")
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<K: Ord, Q: ?Sized, V> IndexMut<Q> for BTreeMap<K, V>
-    where K: Borrow<Q>, Q: Ord
-{
-    fn index_mut(&mut self, key: &Q) -> &mut V {
-        self.get_mut(key).expect("no entry found for key")
     }
 }
 
