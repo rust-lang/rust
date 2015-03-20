@@ -9,39 +9,12 @@
 // except according to those terms.
 
 //! Thread local storage
-//!
-//! This module provides an implementation of thread local storage for Rust
-//! programs. Thread local storage is a method of storing data into a global
-//! variable which each thread in the program will have its own copy of.
-//! Threads do not share this data, so accesses do not need to be synchronized.
-//!
-//! At a high level, this module provides two variants of storage:
-//!
-//! * Owning thread local storage. This is a type of thread local key which
-//!   owns the value that it contains, and will destroy the value when the
-//!   thread exits. This variant is created with the `thread_local!` macro and
-//!   can contain any value which is `'static` (no borrowed pointers.
-//!
-//! * Scoped thread local storage. This type of key is used to store a reference
-//!   to a value into local storage temporarily for the scope of a function
-//!   call. There are no restrictions on what types of values can be placed
-//!   into this key.
-//!
-//! Both forms of thread local storage provide an accessor function, `with`,
-//! which will yield a shared reference to the value to the specified
-//! closure. Thread local keys only allow shared access to values as there is no
-//! way to guarantee uniqueness if a mutable borrow was allowed. Most values
-//! will want to make use of some form of **interior mutability** through the
-//! `Cell` or `RefCell` types.
 
-#![stable(feature = "rust1", since = "1.0.0")]
+#![unstable(feature = "thread_local_internals")]
 
 use prelude::v1::*;
 
 use cell::UnsafeCell;
-
-#[macro_use]
-pub mod scoped;
 
 // Sure wish we had macro hygiene, no?
 #[doc(hidden)]
@@ -95,7 +68,7 @@ pub mod __impl {
 /// });
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Key<T> {
+pub struct LocalKey<T> {
     // The key itself may be tagged with #[thread_local], and this `Key` is
     // stored as a `static`, and it's not valid for a static to reference the
     // address of another thread_local static. For this reason we kinda wonkily
@@ -114,15 +87,15 @@ pub struct Key<T> {
     pub init: fn() -> T,
 }
 
-/// Declare a new thread local storage key of type `std::thread_local::Key`.
+/// Declare a new thread local storage key of type `std::thread::LocalKey`.
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
 macro_rules! thread_local {
     (static $name:ident: $t:ty = $init:expr) => (
-        static $name: ::std::thread_local::Key<$t> = {
+        static $name: ::std::thread::LocalKey<$t> = {
             use std::cell::UnsafeCell as __UnsafeCell;
-            use std::thread_local::__impl::KeyInner as __KeyInner;
+            use std::thread::__local::__impl::KeyInner as __KeyInner;
             use std::option::Option as __Option;
             use std::option::Option::None as __None;
 
@@ -133,13 +106,13 @@ macro_rules! thread_local {
             fn __getit() -> &'static __KeyInner<__UnsafeCell<__Option<$t>>> {
                 &__KEY
             }
-            ::std::thread_local::Key { inner: __getit, init: __init }
+            ::std::thread::LocalKey { inner: __getit, init: __init }
         };
     );
     (pub static $name:ident: $t:ty = $init:expr) => (
-        pub static $name: ::std::thread_local::Key<$t> = {
+        pub static $name: ::std::thread::LocalKey<$t> = {
             use std::cell::UnsafeCell as __UnsafeCell;
-            use std::thread_local::__impl::KeyInner as __KeyInner;
+            use std::thread::__local::__impl::KeyInner as __KeyInner;
             use std::option::Option as __Option;
             use std::option::Option::None as __None;
 
@@ -150,7 +123,7 @@ macro_rules! thread_local {
             fn __getit() -> &'static __KeyInner<__UnsafeCell<__Option<$t>>> {
                 &__KEY
             }
-            ::std::thread_local::Key { inner: __getit, init: __init }
+            ::std::thread::LocalKey { inner: __getit, init: __init }
         };
     );
 }
@@ -183,20 +156,20 @@ macro_rules! __thread_local_inner {
         #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
                        not(target_arch = "aarch64")),
                    thread_local)]
-        static $name: ::std::thread_local::__impl::KeyInner<$t> =
+        static $name: ::std::thread::__local::__impl::KeyInner<$t> =
             __thread_local_inner!($init, $t);
     );
     (pub static $name:ident: $t:ty = $init:expr) => (
         #[cfg_attr(all(any(target_os = "macos", target_os = "linux"),
                        not(target_arch = "aarch64")),
                    thread_local)]
-        pub static $name: ::std::thread_local::__impl::KeyInner<$t> =
+        pub static $name: ::std::thread::__local::__impl::KeyInner<$t> =
             __thread_local_inner!($init, $t);
     );
     ($init:expr, $t:ty) => ({
         #[cfg(all(any(target_os = "macos", target_os = "linux"), not(target_arch = "aarch64")))]
-        const _INIT: ::std::thread_local::__impl::KeyInner<$t> = {
-            ::std::thread_local::__impl::KeyInner {
+        const _INIT: ::std::thread::__local::__impl::KeyInner<$t> = {
+            ::std::thread::__local::__impl::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: $init },
                 dtor_registered: ::std::cell::UnsafeCell { value: false },
                 dtor_running: ::std::cell::UnsafeCell { value: false },
@@ -204,15 +177,15 @@ macro_rules! __thread_local_inner {
         };
 
         #[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
-        const _INIT: ::std::thread_local::__impl::KeyInner<$t> = {
+        const _INIT: ::std::thread::__local::__impl::KeyInner<$t> = {
             unsafe extern fn __destroy(ptr: *mut u8) {
-                ::std::thread_local::__impl::destroy_value::<$t>(ptr);
+                ::std::thread::__local::__impl::destroy_value::<$t>(ptr);
             }
 
-            ::std::thread_local::__impl::KeyInner {
+            ::std::thread::__local::__impl::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: $init },
-                os: ::std::thread_local::__impl::OsStaticKey {
-                    inner: ::std::thread_local::__impl::OS_INIT_INNER,
+                os: ::std::thread::__local::__impl::OsStaticKey {
+                    inner: ::std::thread::__local::__impl::OS_INIT_INNER,
                     dtor: ::std::option::Option::Some(__destroy as unsafe extern fn(*mut u8)),
                 },
             }
@@ -226,7 +199,7 @@ macro_rules! __thread_local_inner {
 #[unstable(feature = "std_misc",
            reason = "state querying was recently added")]
 #[derive(Eq, PartialEq, Copy)]
-pub enum State {
+pub enum LocalKeyState {
     /// All keys are in this state whenever a thread starts. Keys will
     /// transition to the `Valid` state once the first call to `with` happens
     /// and the initialization expression succeeds.
@@ -253,7 +226,7 @@ pub enum State {
     Destroyed,
 }
 
-impl<T: 'static> Key<T> {
+impl<T: 'static> LocalKey<T> {
     /// Acquire a reference to the value in this TLS key.
     ///
     /// This will lazily initialize the value if this thread has not referenced
@@ -309,16 +282,16 @@ impl<T: 'static> Key<T> {
     /// any call to `with`.
     #[unstable(feature = "std_misc",
                reason = "state querying was recently added")]
-    pub fn state(&'static self) -> State {
+    pub fn state(&'static self) -> LocalKeyState {
         unsafe {
             match (self.inner)().get() {
                 Some(cell) => {
                     match *cell.get() {
-                        Some(..) => State::Valid,
-                        None => State::Uninitialized,
+                        Some(..) => LocalKeyState::Valid,
+                        None => LocalKeyState::Uninitialized,
                     }
                 }
-                None => State::Destroyed,
+                None => LocalKeyState::Destroyed,
             }
         }
     }
@@ -327,7 +300,7 @@ impl<T: 'static> Key<T> {
     #[unstable(feature = "std_misc")]
     #[deprecated(since = "1.0.0",
                  reason = "function renamed to state() and returns more info")]
-    pub fn destroyed(&'static self) -> bool { self.state() == State::Destroyed }
+    pub fn destroyed(&'static self) -> bool { self.state() == LocalKeyState::Destroyed }
 }
 
 #[cfg(all(any(target_os = "macos", target_os = "linux"), not(target_arch = "aarch64")))]
@@ -553,7 +526,7 @@ mod tests {
 
     use sync::mpsc::{channel, Sender};
     use cell::UnsafeCell;
-    use super::State;
+    use super::LocalKeyState;
     use thread;
 
     struct Foo(Sender<()>);
@@ -592,21 +565,21 @@ mod tests {
         struct Foo;
         impl Drop for Foo {
             fn drop(&mut self) {
-                assert!(FOO.state() == State::Destroyed);
+                assert!(FOO.state() == LocalKeyState::Destroyed);
             }
         }
         fn foo() -> Foo {
-            assert!(FOO.state() == State::Uninitialized);
+            assert!(FOO.state() == LocalKeyState::Uninitialized);
             Foo
         }
         thread_local!(static FOO: Foo = foo());
 
         thread::spawn(|| {
-            assert!(FOO.state() == State::Uninitialized);
+            assert!(FOO.state() == LocalKeyState::Uninitialized);
             FOO.with(|_| {
-                assert!(FOO.state() == State::Valid);
+                assert!(FOO.state() == LocalKeyState::Valid);
             });
-            assert!(FOO.state() == State::Valid);
+            assert!(FOO.state() == LocalKeyState::Valid);
         }).join().ok().unwrap();
     }
 
@@ -642,7 +615,7 @@ mod tests {
             fn drop(&mut self) {
                 unsafe {
                     HITS += 1;
-                    if K2.state() == State::Destroyed {
+                    if K2.state() == LocalKeyState::Destroyed {
                         assert_eq!(HITS, 3);
                     } else {
                         if HITS == 1 {
@@ -658,7 +631,7 @@ mod tests {
             fn drop(&mut self) {
                 unsafe {
                     HITS += 1;
-                    assert!(K1.state() != State::Destroyed);
+                    assert!(K1.state() != LocalKeyState::Destroyed);
                     assert_eq!(HITS, 2);
                     K1.with(|s| *s.get() = Some(S1));
                 }
@@ -679,7 +652,7 @@ mod tests {
 
         impl Drop for S1 {
             fn drop(&mut self) {
-                assert!(K1.state() == State::Destroyed);
+                assert!(K1.state() == LocalKeyState::Destroyed);
             }
         }
 
@@ -702,7 +675,7 @@ mod tests {
             fn drop(&mut self) {
                 let S1(ref tx) = *self;
                 unsafe {
-                    if K2.state() != State::Destroyed {
+                    if K2.state() != LocalKeyState::Destroyed {
                         K2.with(|s| *s.get() = Some(Foo(tx.clone())));
                     }
                 }

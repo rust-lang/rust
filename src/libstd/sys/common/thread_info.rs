@@ -15,7 +15,7 @@ use core::prelude::*;
 use cell::RefCell;
 use string::String;
 use thread::Thread;
-use thread_local::State;
+use thread::LocalKeyState;
 
 struct ThreadInfo {
     stack_guard: uint,
@@ -26,7 +26,7 @@ thread_local! { static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(N
 
 impl ThreadInfo {
     fn with<R, F>(f: F) -> R where F: FnOnce(&mut ThreadInfo) -> R {
-        if THREAD_INFO.state() == State::Destroyed {
+        if THREAD_INFO.state() == LocalKeyState::Destroyed {
             panic!("Use of std::thread::current() is not possible after \
                     the thread's local data has been destroyed");
         }
