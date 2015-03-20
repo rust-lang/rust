@@ -296,35 +296,40 @@ impl<'a> Parser<'a> {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for Ipv4Addr {
-    type Err = ParseError;
-    fn from_str(s: &str) -> Result<Ipv4Addr, ParseError> {
+    type Err = AddrParseError;
+    fn from_str(s: &str) -> Result<Ipv4Addr, AddrParseError> {
         match Parser::new(s).read_till_eof(|p| p.read_ipv4_addr()) {
             Some(s) => Ok(s),
-            None => Err(ParseError)
+            None => Err(AddrParseError(()))
         }
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for Ipv6Addr {
-    type Err = ParseError;
-    fn from_str(s: &str) -> Result<Ipv6Addr, ParseError> {
+    type Err = AddrParseError;
+    fn from_str(s: &str) -> Result<Ipv6Addr, AddrParseError> {
         match Parser::new(s).read_till_eof(|p| p.read_ipv6_addr()) {
             Some(s) => Ok(s),
-            None => Err(ParseError)
+            None => Err(AddrParseError(()))
         }
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for SocketAddr {
-    type Err = ParseError;
-    fn from_str(s: &str) -> Result<SocketAddr, ParseError> {
+    type Err = AddrParseError;
+    fn from_str(s: &str) -> Result<SocketAddr, AddrParseError> {
         match Parser::new(s).read_till_eof(|p| p.read_socket_addr()) {
             Some(s) => Ok(s),
-            None => Err(ParseError),
+            None => Err(AddrParseError(())),
         }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Copy)]
-pub struct ParseError;
+/// An error returned when parsing an IP address or a socket address.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug, Clone, PartialEq)]
+pub struct AddrParseError(());
