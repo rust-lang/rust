@@ -12,6 +12,7 @@ use super::{
     FulfillmentError,
     FulfillmentErrorCode,
     MismatchedProjectionTypes,
+    Obligation,
     ObligationCauseCode,
     OutputTypeParameterMismatch,
     PredicateObligation,
@@ -21,6 +22,7 @@ use super::{
 use fmt_macros::{Parser, Piece, Position};
 use middle::infer::InferCtxt;
 use middle::ty::{self, AsPredicate, ReferencesError, ToPolyTraitRef, TraitRef};
+use middle::ty_fold::TypeFoldable;
 use std::collections::HashMap;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
@@ -137,24 +139,36 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     report
 }
 
+/// Reports that an overflow has occurred and halts compilation. We
+/// halt compilation unconditionally because it is important that
+/// overflows never be masked -- they basically represent computations
+/// whose result could not be truly determined and thus we can't say
+/// if the program type checks or not -- and they are unusual
+/// occurrences in any case.
+pub fn report_overflow_error<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
+                                          obligation: &Obligation<'tcx, T>)
+                                          -> !
+    where T: UserString<'tcx> + TypeFoldable<'tcx>
+{
+    let predicate =
+        infcx.resolve_type_vars_if_possible(&obligation.predicate);
+    span_err!(infcx.tcx.sess, obligation.cause.span, E0275,
+              "overflow evaluating the requirement `{}`",
+              predicate.user_string(infcx.tcx));
+
+    suggest_new_overflow_limit(infcx.tcx, obligation.cause.span);
+
+    note_obligation_cause(infcx, obligation);
+
+    infcx.tcx.sess.abort_if_errors();
+    unreachable!();
+}
+
 pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                         obligation: &PredicateObligation<'tcx>,
                                         error: &SelectionError<'tcx>)
 {
     match *error {
-        SelectionError::Overflow => {
-            // We could track the stack here more precisely if we wanted, I imagine.
-            let predicate =
-                infcx.resolve_type_vars_if_possible(&obligation.predicate);
-            span_err!(infcx.tcx.sess, obligation.cause.span, E0275,
-                    "overflow evaluating the requirement `{}`",
-                    predicate.user_string(infcx.tcx));
-
-            suggest_new_overflow_limit(infcx.tcx, obligation.cause.span);
-
-            note_obligation_cause(infcx, obligation);
-        }
-
         SelectionError::Unimplemented => {
             match &obligation.cause.code {
                 &ObligationCauseCode::CompareImplMethodObligation => {
@@ -309,8 +323,9 @@ pub fn maybe_report_ambiguity<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     }
 }
 
-fn note_obligation_cause<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                   obligation: &PredicateObligation<'tcx>)
+fn note_obligation_cause<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
+                                      obligation: &Obligation<'tcx, T>)
+    where T: UserString<'tcx>
 {
     note_obligation_cause_code(infcx,
                                &obligation.predicate,
@@ -318,10 +333,11 @@ fn note_obligation_cause<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                &obligation.cause.code);
 }
 
-fn note_obligation_cause_code<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                        predicate: &ty::Predicate<'tcx>,
-                                        cause_span: Span,
-                                        cause_code: &ObligationCauseCode<'tcx>)
+fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
+                                           predicate: &T,
+                                           cause_span: Span,
+                                           cause_code: &ObligationCauseCode<'tcx>)
+    where T: UserString<'tcx>
 {
     let tcx = infcx.tcx;
     match *cause_code {

@@ -23,9 +23,10 @@ use std::slice::Iter;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::{Span, DUMMY_SP};
-use util::ppaux::{Repr, UserString};
+use util::ppaux::Repr;
 
 pub use self::error_reporting::report_fulfillment_errors;
+pub use self::error_reporting::report_overflow_error;
 pub use self::error_reporting::suggest_new_overflow_limit;
 pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
@@ -151,7 +152,6 @@ pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
 #[derive(Clone,Debug)]
 pub enum SelectionError<'tcx> {
     Unimplemented,
-    Overflow,
     OutputTypeParameterMismatch(ty::PolyTraitRef<'tcx>,
                                 ty::PolyTraitRef<'tcx>,
                                 ty::type_err<'tcx>),
@@ -327,16 +327,9 @@ pub fn evaluate_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     let result = match fulfill_cx.select_all_or_error(infcx, typer) {
         Ok(()) => Ok(Some(())), // Success, we know it implements Copy.
         Err(errors) => {
-            // Check if overflow occurred anywhere and propagate that.
-            if errors.iter().any(
-                |err| match err.code { CodeSelectionError(Overflow) => true, _ => false })
-            {
-                return Err(Overflow);
-            }
-
-            // Otherwise, if there were any hard errors, propagate an
-            // arbitrary one of those. If no hard errors at all,
-            // report ambiguity.
+            // If there were any hard errors, propagate an arbitrary
+            // one of those. If no hard errors at all, report
+            // ambiguity.
             let sel_error =
                 errors.iter()
                       .filter_map(|err| {
@@ -384,16 +377,8 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
             // soldering on, so just treat this like not implemented
             false
         }
-        Err(Overflow) => {
-            span_err!(infcx.tcx.sess, span, E0285,
-                "overflow evaluating whether `{}` is `{}`",
-                      ty.user_string(infcx.tcx),
-                      bound.user_string(infcx.tcx));
-            suggest_new_overflow_limit(infcx.tcx, span);
-            false
-        }
         Err(_) => {
-            // other errors: not implemented.
+            // errors: not implemented.
             false
         }
     }
@@ -651,15 +636,6 @@ impl<'tcx> FulfillmentError<'tcx> {
            -> FulfillmentError<'tcx>
     {
         FulfillmentError { obligation: obligation, code: code }
-    }
-
-    pub fn is_overflow(&self) -> bool {
-        match self.code {
-            CodeAmbiguity => false,
-            CodeSelectionError(Overflow) => true,
-            CodeSelectionError(_) => false,
-            CodeProjectionError(_) => false,
-        }
     }
 }
 
