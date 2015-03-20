@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(optin_builtin_traits)]
+
 pub mod bar {
     use std::marker;
 
