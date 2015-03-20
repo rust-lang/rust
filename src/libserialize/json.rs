@@ -204,6 +204,8 @@ use std::io::prelude::*;
 use std::io;
 use std::mem::swap;
 use std::num::FpCategory as Fp;
+#[allow(deprecated)]
+use std::num::wrapping::WrappingOps;
 use std::ops::Index;
 use std::str::FromStr;
 use std::string;
@@ -1552,6 +1554,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
         }
     }
 
+    #[allow(deprecated)] // possible resolve bug is mapping these to traits
     fn parse_u64(&mut self) -> Result<u64, ParserError> {
         let mut accum = 0;
         let last_accum = 0; // necessary to detect overflow.

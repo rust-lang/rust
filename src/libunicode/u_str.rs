@@ -22,7 +22,6 @@ use core::char;
 use core::cmp;
 use core::iter::{Filter, AdditiveIterator};
 use core::mem;
-use core::num::Int;
 use core::slice;
 use core::str::Split;
 

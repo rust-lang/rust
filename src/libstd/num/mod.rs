@@ -15,6 +15,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
+#![allow(deprecated)]
 
 #[cfg(test)] use fmt::Debug;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
@@ -23,22 +24,24 @@ use marker::Copy;
 use clone::Clone;
 use cmp::{PartialOrd, PartialEq};
 
-pub use core::num::{Int, SignedInt};
+pub use core::num::{Int, SignedInt, Zero, One};
 pub use core::num::{cast, FromPrimitive, NumCast, ToPrimitive};
 pub use core::num::{from_int, from_i8, from_i16, from_i32, from_i64};
 pub use core::num::{from_uint, from_u8, from_u16, from_u32, from_u64};
 pub use core::num::{from_f32, from_f64};
 pub use core::num::{FromStrRadix, from_str_radix};
 pub use core::num::{FpCategory, ParseIntError, ParseFloatError};
-pub use core::num::wrapping;
+pub use core::num::{wrapping, Wrapping};
 
 use option::Option;
 
-#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
+#[unstable(feature = "std_misc", reason = "likely to be removed")]
 pub mod strconv;
 
 /// Mathematical operations on primitive floating point numbers.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0",
+             reason = "replaced by inherent methods; use rust-lang/num for generics")]
 pub trait Float
     : Copy + Clone
     + NumCast
@@ -272,6 +275,7 @@ pub trait Float
     /// ```
     #[unstable(feature = "std_misc", reason = "position is undecided")]
     fn is_finite(self) -> bool;
+
     /// Returns `true` if the number is neither zero, infinite,
     /// [subnormal][subnormal], or `NaN`.
     ///
@@ -1148,7 +1152,7 @@ pub fn test_num<T>(ten: T, two: T) where
 
 #[cfg(test)]
 mod tests {
-    use prelude::v1::*;
+    use core::prelude::*;
     use super::*;
     use i8;
     use i16;
@@ -1160,6 +1164,7 @@ mod tests {
     use u32;
     use u64;
     use usize;
+    use string::ToString;
 
     macro_rules! test_cast_20 {
         ($_20:expr) => ({

@@ -33,6 +33,7 @@ trait GenericRadix {
     fn digit(&self, x: u8) -> u8;
 
     /// Format an integer using the radix using a formatter.
+    #[allow(deprecated)] // Int
     fn fmt_int<T: Int>(&self, mut x: T, f: &mut fmt::Formatter) -> fmt::Result {
         // The radix can be as low as 2, so we need a buffer of at least 64
         // characters for a base 2 number.

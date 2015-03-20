@@ -20,8 +20,6 @@
 //!
 //! ```
 //! # #![feature(core)]
-//! use std::num::SignedInt;
-//!
 //! struct FuzzyNum {
 //!     num: i32,
 //! }

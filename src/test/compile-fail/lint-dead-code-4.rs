@@ -16,8 +16,6 @@
 
 extern crate libc;
 
-use std::num::Int;
-
 struct Foo {
     x: usize,
     b: bool, //~ ERROR: struct field is never used
