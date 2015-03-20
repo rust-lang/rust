@@ -844,7 +844,7 @@ fn run_tests<F>(opts: &TestOpts,
 
 #[allow(deprecated)]
 fn get_concurrency() -> uint {
-    match env::var("RUST_TEST_THREADS") {
+    match env::var("RUST_TEST_TASKS") {
         Ok(s) => {
             let opt_n: Option<uint> = s.parse().ok();
             match opt_n {
