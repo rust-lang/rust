@@ -122,7 +122,7 @@ pub fn lookup_in_trait<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                  -> Option<MethodCallee<'tcx>>
 {
     lookup_in_trait_adjusted(fcx, span, self_expr, m_name, trait_def_id,
-                             0, None, self_ty, opt_input_types)
+                             0, false, self_ty, opt_input_types)
 }
 
 /// `lookup_in_trait_adjusted` is used for overloaded operators. It does a very narrow slice of
@@ -140,7 +140,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                           m_name: ast::Name,
                                           trait_def_id: DefId,
                                           autoderefs: usize,
-                                          unsize: Option<ty::AutoUnsize<'tcx>>,
+                                          unsize: bool,
                                           self_ty: Ty<'tcx>,
                                           opt_input_types: Option<Vec<Ty<'tcx>>>)
                                           -> Option<MethodCallee<'tcx>>
@@ -242,23 +242,14 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         Some(self_expr) => {
             debug!("lookup_in_trait_adjusted: inserting adjustment if needed \
                    (self-id={}, autoderefs={}, unsize={}, explicit_self={:?})",
-                   self_expr.id, autoderefs, unsize.repr(fcx.tcx()),
+                   self_expr.id, autoderefs, unsize,
                    method_ty.explicit_self);
 
             match method_ty.explicit_self {
                 ty::ByValueExplicitSelfCategory => {
                     // Trait method is fn(self), no transformation needed.
-                    assert!(unsize.is_none());
-                    if autoderefs > 0 {
-                        fcx.write_adjustment(
-                            self_expr.id,
-                            span,
-                            ty::AdjustDerefRef(ty::AutoDerefRef {
-                                autoderefs: autoderefs,
-                                autoref: None,
-                                unsize: None
-                            }));
-                    }
+                    assert!(!unsize);
+                    fcx.write_autoderef_adjustment(self_expr.id, autoderefs);
                 }
 
                 ty::ByReferenceExplicitSelfCategory(..) => {
@@ -266,16 +257,15 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     // autoref. Pull the region etc out of the type of first argument.
                     match transformed_self_ty.sty {
                         ty::ty_rptr(region, ty::mt { mutbl, ty: _ }) => {
-                            fcx.write_adjustment(
-                                self_expr.id,
-                                span,
+                            fcx.write_adjustment(self_expr.id,
                                 ty::AdjustDerefRef(ty::AutoDerefRef {
                                     autoderefs: autoderefs,
                                     autoref: Some(ty::AutoPtr(region, mutbl)),
-                                    unsize: unsize.map(|unsize| ty::AutoUnsize {
-                                        target: transformed_self_ty,
-                                        ..unsize
-                                    })
+                                    unsize: if unsize {
+                                        Some(transformed_self_ty)
+                                    } else {
+                                        None
+                                    }
                                 }));
                         }
 

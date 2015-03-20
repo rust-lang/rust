@@ -467,16 +467,6 @@ impl<'tcx> TypeFoldable<'tcx> for ty::InstantiatedPredicates<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::AutoUnsize<'tcx> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::AutoUnsize<'tcx> {
-        ty::AutoUnsize {
-            leaf_source: self.leaf_source.fold_with(folder),
-            leaf_target: self.leaf_target.fold_with(folder),
-            target: self.target.fold_with(folder)
-        }
-    }
-}
-
 impl<'tcx,O> TypeFoldable<'tcx> for traits::Obligation<'tcx,O>
     where O : TypeFoldable<'tcx>
 {

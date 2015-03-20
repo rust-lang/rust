@@ -277,10 +277,10 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 ety_adjusted = dt;
             }
 
-            if let Some(ref unsize) = adj.unsize {
-                let unsize = monomorphize::apply_param_substs(cx.tcx(),
+            if let Some(target) = adj.unsize {
+                let target = monomorphize::apply_param_substs(cx.tcx(),
                                                               param_substs,
-                                                              unsize);
+                                                              &target);
 
                 let pointee_ty = ty::deref(ty, true)
                     .expect("consts: unsizing got non-pointer type").ty;
@@ -297,11 +297,12 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     (llconst, None)
                 };
 
-                let unsized_ty = ty::deref(unsize.target, true)
+                let unsized_ty = ty::deref(target, true)
                     .expect("consts: unsizing got non-pointer target type").ty;
                 let ptr_ty = type_of::in_memory_type_of(cx, unsized_ty).ptr_to();
                 let base = ptrcast(base, ptr_ty);
-                let info = expr::unsized_info(cx, &unsize, old_info, param_substs);
+                let info = expr::unsized_info(cx, pointee_ty, unsized_ty,
+                                              old_info, param_substs);
 
                 let prev_const = cx.const_unsized().borrow_mut()
                                    .insert(base, llconst);

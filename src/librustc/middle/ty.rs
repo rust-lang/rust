@@ -284,17 +284,6 @@ pub enum AutoAdjustment<'tcx> {
     AdjustDerefRef(AutoDerefRef<'tcx>),
 }
 
-// In the case of `&Struct<[T; N]>` -> `&Struct<[T]>`, the types are:
-// * leaf_source: `[T; N]`
-// * leaf_target: `[T]`
-// * target: `&Struct<[T]>`
-#[derive(Copy, Clone, Debug)]
-pub struct AutoUnsize<'tcx> {
-    pub leaf_source: Ty<'tcx>,
-    pub leaf_target: Ty<'tcx>,
-    pub target: Ty<'tcx>
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct AutoDerefRef<'tcx> {
     /// Apply a number of dereferences, producing an lvalue.
@@ -304,7 +293,8 @@ pub struct AutoDerefRef<'tcx> {
     pub autoref: Option<AutoRef<'tcx>>,
 
     /// Unsize a pointer/reference value, e.g. &[T; n] to &[T].
-    pub unsize: Option<AutoUnsize<'tcx>>,
+    /// The stored type is the target pointer type.
+    pub unsize: Option<Ty<'tcx>>,
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -4490,8 +4480,8 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                         }
                     }
 
-                    if let Some(ref unsize) = adj.unsize {
-                        unsize.target
+                    if let Some(target) = adj.unsize {
+                        target
                     } else {
                         adjust_ty_for_autoref(cx, adjusted_ty, adj.autoref)
                     }
@@ -5555,6 +5545,47 @@ pub fn tup_fields<'tcx>(v: &[Ty<'tcx>]) -> Vec<field<'tcx>> {
             }
         }
     }).collect()
+}
+
+/// Returns the deeply last field of nested structures, or the same type,
+/// if not a structure at all. Corresponds to the only possible unsized
+/// field, and its type can be used to determine unsizing strategy.
+pub fn struct_tail<'tcx>(cx: &ctxt<'tcx>, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+    while let ty_struct(def_id, substs) = ty.sty {
+        match struct_fields(cx, def_id, substs).last() {
+            Some(f) => ty = f.mt.ty,
+            None => break
+        }
+    }
+    ty
+}
+
+/// Same as applying struct_tail on `source` and `target`, but only
+/// keeps going as long as the two types are instances of the same
+/// structure definitions.
+/// For `(Foo<Foo<T>>, Foo<Trait>)`, the result will be `(Foo<T>, Trait)`,
+/// whereas struct_tail produces `T`, and `Trait`, respectively.
+pub fn struct_lockstep_tails<'tcx>(cx: &ctxt<'tcx>,
+                                   source: Ty<'tcx>,
+                                   target: Ty<'tcx>)
+                                   -> (Ty<'tcx>, Ty<'tcx>) {
+    let (mut a, mut b) = (source, target);
+    while let (&ty_struct(a_did, a_substs), &ty_struct(b_did, b_substs)) = (&a.sty, &b.sty) {
+        if a_did != b_did {
+            continue;
+        }
+        if let Some(a_f) = struct_fields(cx, a_did, a_substs).last() {
+            if let Some(b_f) = struct_fields(cx, b_did, b_substs).last() {
+                a = a_f.mt.ty;
+                b = b_f.mt.ty;
+            } else {
+                break;
+            }
+        } else {
+            break;
+        }
+    }
+    (a, b)
 }
 
 #[derive(Copy, Clone)]
@@ -6699,15 +6730,6 @@ impl<'tcx> Repr<'tcx> for AutoAdjustment<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for AutoUnsize<'tcx> {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("unsize({} => {}) => {}",
-                self.leaf_source.repr(tcx),
-                self.leaf_target.repr(tcx),
-                self.target.repr(tcx))
-    }
-}
-
 impl<'tcx> Repr<'tcx> for AutoDerefRef<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         format!("AutoDerefRef({}, unsize={}, {})",
@@ -7135,14 +7157,6 @@ impl<'tcx> HasProjectionTypes for field<'tcx> {
 impl<'tcx> HasProjectionTypes for BareFnTy<'tcx> {
     fn has_projection_types(&self) -> bool {
         self.sig.has_projection_types()
-    }
-}
-
-impl<'tcx> HasProjectionTypes for AutoUnsize<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.leaf_source.has_projection_types() ||
-        self.leaf_target.has_projection_types() ||
-        self.target.has_projection_types()
     }
 }
 

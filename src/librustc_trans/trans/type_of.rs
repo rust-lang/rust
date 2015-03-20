@@ -358,14 +358,14 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
                   cx.tn().find_type("str_slice").unwrap()
               } else {
                   let ptr_ty = in_memory_type_of(cx, ty).ptr_to();
-                  let unsized_part = unsized_part_of_type(cx.tcx(), ty);
+                  let unsized_part = ty::struct_tail(cx.tcx(), ty);
                   let info_ty = match unsized_part.sty {
                       ty::ty_str | ty::ty_vec(..) => {
                           Type::uint_from_ty(cx, ast::TyUs(false))
                       }
                       ty::ty_trait(_) => Type::vtable_ptr(cx),
                       _ => panic!("Unexpected type returned from \
-                                   unsized_part_of_type: {} for ty={}",
+                                   struct_tail: {} for ty={}",
                                   unsized_part.repr(cx.tcx()), ty.repr(cx.tcx()))
                   };
                   Type::struct_(cx, &[ptr_ty, info_ty], false)

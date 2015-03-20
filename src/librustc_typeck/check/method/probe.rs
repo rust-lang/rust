@@ -49,7 +49,7 @@ struct ProbeContext<'a, 'tcx:'a> {
 struct CandidateStep<'tcx> {
     self_ty: Ty<'tcx>,
     autoderefs: usize,
-    unsize: Option</* source */ Ty<'tcx>>
+    unsize: bool
 }
 
 struct Candidate<'tcx> {
@@ -82,12 +82,12 @@ pub struct Pick<'tcx> {
     // B = A | &A | &mut A
     pub autoref: Option<ast::Mutability>,
 
-    // Indicates that the source expression should be "unsized".
-    // This should probably eventually go away in favor of just
-    // coercing method receivers.
+    // Indicates that the source expression should be "unsized" to a
+    // target type. This should probably eventually go away in favor
+    // of just coercing method receivers.
     //
     // C = B | unsize(B)
-    pub unsize: Option<(/* source */ Ty<'tcx>, /* target */ Ty<'tcx>)>,
+    pub unsize: Option<Ty<'tcx>>,
 }
 
 #[derive(Clone,Debug)]
@@ -142,7 +142,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         vec![CandidateStep {
             self_ty: self_ty,
             autoderefs: 0,
-            unsize: None
+            unsize: false
         }]
     };
 
@@ -196,7 +196,7 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         steps.push(CandidateStep {
             self_ty: t,
             autoderefs: d,
-            unsize: None
+            unsize: false
         });
         None::<()> // keep iterating until we can't anymore
     });
@@ -207,7 +207,7 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             steps.push(CandidateStep {
                 self_ty: slice_ty,
                 autoderefs: dereferences,
-                unsize: Some(final_ty)
+                unsize: true
             });
         }
         ty::ty_err => return None,
@@ -924,7 +924,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
          * consuming them for their entire lifetime.
          */
 
-        if step.unsize.is_some() {
+        if step.unsize {
             return None;
         }
 
@@ -960,9 +960,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             self.pick_method(autoref_ty).map(|r| r.map(|mut pick| {
                 pick.autoderefs = step.autoderefs;
                 pick.autoref = Some(m);
-                pick.unsize = step.unsize.map(|source| {
-                    (source, step.self_ty)
-                });
+                pick.unsize = if step.unsize {
+                    Some(step.self_ty)
+                } else {
+                    None
+                };
                 pick
             }))
         }).nth(0)
@@ -1378,7 +1380,7 @@ impl<'tcx> Repr<'tcx> for CandidateStep<'tcx> {
         format!("CandidateStep({}, autoderefs={}, unsize={})",
                 self.self_ty.repr(tcx),
                 self.autoderefs,
-                self.unsize.repr(tcx))
+                self.unsize)
     }
 }
 

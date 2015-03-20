@@ -292,16 +292,17 @@ pub fn copy_fat_ptr(bcx: Block, src_ptr: ValueRef, dst_ptr: ValueRef) {
 /// Retrieve the information we are losing (making dynamic) in an unsizing
 /// adjustment.
 ///
-/// The `unadjusted_val` argument is a bit funny. It is intended
-/// for use in an upcast, where the new vtable for an object will
-/// be drived from the old one. Hence it is a pointer to the fat
-/// pointer.
+/// The `old_info` argument is a bit funny. It is intended for use
+/// in an upcast, where the new vtable for an object will be drived
+/// from the old one.
 pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
-                                unsize: &ty::AutoUnsize<'tcx>,
+                                source: Ty<'tcx>,
+                                target: Ty<'tcx>,
                                 old_info: Option<ValueRef>,
                                 param_substs: &'tcx subst::Substs<'tcx>)
                                 -> ValueRef {
-    match (&unsize.leaf_source.sty, &unsize.leaf_target.sty) {
+    let (source, target) = ty::struct_lockstep_tails(ccx.tcx(), source, target);
+    match (&source.sty, &target.sty) {
         (&ty::ty_vec(_, Some(len)), &ty::ty_vec(_, None)) => C_uint(ccx, len),
         (&ty::ty_trait(_), &ty::ty_trait(_)) => {
             // For now, upcasts are limited to changes in marker
@@ -311,15 +312,16 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
         }
         (_, &ty::ty_trait(box ty::TyTrait { ref principal, .. })) => {
             // Note that we preserve binding levels here:
-            let substs = principal.0.substs.with_self_ty(unsize.leaf_source).erase_regions();
+            let substs = principal.0.substs.with_self_ty(source).erase_regions();
             let substs = ccx.tcx().mk_substs(substs);
             let trait_ref = ty::Binder(Rc::new(ty::TraitRef { def_id: principal.def_id(),
                                                                substs: substs }));
             consts::ptrcast(meth::get_vtable(ccx, trait_ref, param_substs),
                             Type::vtable_ptr(ccx))
         }
-        _ => ccx.sess().bug(&format!("unsized_info: invalid unsizing {}",
-                                     unsize.repr(ccx.tcx())))
+        _ => ccx.sess().bug(&format!("unsized_info: invalid unsizing {} -> {}",
+                                     source.repr(ccx.tcx()),
+                                     target.repr(ccx.tcx())))
     }
 }
 
@@ -386,8 +388,9 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 datum = unpack_datum!(bcx, apply_autoref(bcx, expr, datum));
             }
 
-            if let Some(ref unsize) = adj.unsize {
-                datum = unpack_datum!(bcx, unsize_pointer(bcx, datum, unsize));
+            if let Some(target) = adj.unsize {
+                datum = unpack_datum!(bcx, unsize_pointer(bcx, datum,
+                                                          bcx.monomorphize(&target)));
             }
         }
     }
@@ -412,11 +415,10 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     fn unsize_pointer<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   datum: Datum<'tcx, Expr>,
-                                  unsize: &ty::AutoUnsize<'tcx>)
+                                  target: Ty<'tcx>)
                                   -> DatumBlock<'blk, 'tcx, Expr> {
         let mut bcx = bcx;
-        let unsize = bcx.monomorphize(unsize);
-        let unsized_ty = ty::deref(unsize.target, true)
+        let unsized_ty = ty::deref(target, true)
             .expect("expr::unsize got non-pointer target type").ty;
         debug!("unsize_lvalue(unsized_ty={})", unsized_ty.repr(bcx.tcx()));
 
@@ -442,20 +444,21 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             (datum.val, None)
         };
 
-        let info = unsized_info(bcx.ccx(), &unsize, old_info, bcx.fcx.param_substs);
+        let info = unsized_info(bcx.ccx(), pointee_ty, unsized_ty,
+                                old_info, bcx.fcx.param_substs);
 
         // Compute the base pointer. This doesn't change the pointer value,
         // but merely its type.
         let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), unsized_ty).ptr_to();
         let base = PointerCast(bcx, base, ptr_ty);
 
-        let llty = type_of::type_of(bcx.ccx(), unsize.target);
+        let llty = type_of::type_of(bcx.ccx(), target);
         // HACK(eddyb) get around issues with lifetime intrinsics.
         let scratch = alloca_no_lifetime(bcx, llty, "__fat_ptr");
         Store(bcx, base, get_dataptr(bcx, scratch));
         Store(bcx, info, get_len(bcx, scratch));
 
-        DatumBlock::new(bcx, Datum::new(scratch, unsize.target,
+        DatumBlock::new(bcx, Datum::new(scratch, target,
                                         RvalueExpr(Rvalue::new(ByRef))))
     }
 }

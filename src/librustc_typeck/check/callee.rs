@@ -128,12 +128,7 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // If the callee is a bare function or a closure, then we're all set.
     match structurally_resolved_type(fcx, callee_expr.span, adjusted_ty).sty {
         ty::ty_bare_fn(..) => {
-            let adjustment = ty::AdjustDerefRef(ty::AutoDerefRef {
-                autoderefs: autoderefs,
-                autoref: None,
-                unsize: None
-            });
-            fcx.write_adjustment(callee_expr.id, callee_expr.span, adjustment);
+            fcx.write_autoderef_adjustment(callee_expr.id, autoderefs);
             return Some(CallStep::Builtin);
         }
 
@@ -193,7 +188,7 @@ fn try_overloaded_call_traits<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                method_name,
                                                trait_def_id,
                                                autoderefs,
-                                               None,
+                                               false,
                                                adjusted_ty,
                                                None) {
             None => continue,

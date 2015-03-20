@@ -844,8 +844,6 @@ trait rbml_writer_helpers<'tcx> {
     fn emit_autoref<'a>(&mut self, autoref: &ty::AutoRef<'tcx>);
     fn emit_auto_deref_ref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                                auto_deref_ref: &ty::AutoDerefRef<'tcx>);
-    fn emit_auto_unsize<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                            unsize: &ty::AutoUnsize<'tcx>);
 }
 
 impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
@@ -1067,26 +1065,11 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                 this.emit_option(|this| {
                     match auto_deref_ref.unsize {
                         None => this.emit_option_none(),
-                        Some(ref uk) => this.emit_option_some(|this| Ok(this.emit_auto_unsize(ecx, uk))),
+                        Some(target) => this.emit_option_some(|this| {
+                            Ok(this.emit_ty(ecx, target))
+                        })
                     }
                 })
-            })
-        });
-    }
-
-    fn emit_auto_unsize<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                            unsize: &ty::AutoUnsize<'tcx>) {
-        use serialize::Encoder;
-
-        self.emit_struct("AutoUnsize", 3, |this| {
-            this.emit_struct_field("leaf_source", 0, |this| {
-                Ok(this.emit_ty(ecx, unsize.leaf_source))
-            });
-            this.emit_struct_field("leaf_target", 1, |this| {
-                Ok(this.emit_ty(ecx, unsize.leaf_target))
-            });
-            this.emit_struct_field("target", 2, |this| {
-                Ok(this.emit_ty(ecx, unsize.target))
             })
         });
     }
@@ -1304,8 +1287,6 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                                    -> ty::AutoDerefRef<'tcx>;
     fn read_autoref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                             -> ty::AutoRef<'tcx>;
-    fn read_auto_unsize<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                -> ty::AutoUnsize<'tcx>;
     fn convert_def_id(&mut self,
                       dcx: &DecodeContext,
                       source: DefIdSource,
@@ -1614,7 +1595,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                 unsize: this.read_struct_field("unsize", 2, |this| {
                     this.read_option(|this, b| {
                         if b {
-                            Ok(Some(this.read_auto_unsize(dcx)))
+                            Ok(Some(this.read_ty(dcx)))
                         } else {
                             Ok(None)
                         }
@@ -1646,23 +1627,6 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                     }
                     _ => panic!("bad enum variant for ty::AutoRef")
                 })
-            })
-        }).unwrap()
-    }
-
-    fn read_auto_unsize<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                -> ty::AutoUnsize<'tcx> {
-        self.read_struct("AutoUnsize", 3, |this| {
-            Ok(ty::AutoUnsize {
-                leaf_source: this.read_struct_field("leaf_source", 0, |this| {
-                    Ok(this.read_ty(dcx))
-                }).unwrap(),
-                leaf_target: this.read_struct_field("leaf_target", 1, |this| {
-                    Ok(this.read_ty(dcx))
-                }).unwrap(),
-                target: this.read_struct_field("target", 2, |this| {
-                    Ok(this.read_ty(dcx))
-                }).unwrap()
             })
         }).unwrap()
     }

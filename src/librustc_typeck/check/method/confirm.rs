@@ -139,23 +139,13 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         let (autoref, unsize) = if let Some(mutbl) = pick.autoref {
             let region = self.infcx().next_region_var(infer::Autoref(self.span));
             let autoref = ty::AutoPtr(self.tcx().mk_region(region), mutbl);
-            let unsize = pick.unsize.map(|(source, target)| ty::AutoUnsize {
-                leaf_source: source,
-                leaf_target: target,
-                target: ty::adjust_ty_for_autoref(self.tcx(), target, Some(autoref))
-            });
-            (Some(autoref), unsize)
+            (Some(autoref), pick.unsize.map(|target| {
+                ty::adjust_ty_for_autoref(self.tcx(), target, Some(autoref))
+            }))
         } else {
             // No unsizing should be performed without autoref.
             assert!(pick.unsize.is_none());
             (None, None)
-        };
-
-        // Construct the actual adjustment and write it into the table
-        let auto_deref_ref = ty::AutoDerefRef {
-            autoderefs: pick.autoderefs,
-            autoref: autoref,
-            unsize: unsize
         };
 
         // Commit the autoderefs by calling `autoderef again, but this
@@ -167,26 +157,28 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                                           UnresolvedTypeAction::Error,
                                                           NoPreference,
                                                           |_, n| {
-            if n == auto_deref_ref.autoderefs {
+            if n == pick.autoderefs {
                 Some(())
             } else {
                 None
             }
         });
-        assert_eq!(n, auto_deref_ref.autoderefs);
+        assert_eq!(n, pick.autoderefs);
         assert_eq!(result, Some(()));
 
-        let final_ty = if let Some(ref unsize) = auto_deref_ref.unsize {
-            unsize.target
-        } else {
-            ty::adjust_ty_for_autoref(self.tcx(), autoderefd_ty,
-                                      auto_deref_ref.autoref)
-        };
-
         // Write out the final adjustment.
-        self.fcx.write_adjustment(self.self_expr.id, self.span, ty::AdjustDerefRef(auto_deref_ref));
+        self.fcx.write_adjustment(self.self_expr.id,
+                                  ty::AdjustDerefRef(ty::AutoDerefRef {
+            autoderefs: pick.autoderefs,
+            autoref: autoref,
+            unsize: unsize
+        }));
 
-        final_ty
+        if let Some(target) = unsize {
+            target
+        } else {
+            ty::adjust_ty_for_autoref(self.tcx(), autoderefd_ty, autoref)
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -538,10 +530,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                     (adr.autoderefs, None)
                                 }
                                 Some(ty::AutoPtr(_, _)) => {
-                                    (adr.autoderefs, adr.unsize.map(|mut unsize| {
-                                        unsize.target = ty::deref(unsize.target, false)
-                                            .expect("fixup: AutoPtr is not &T").ty;
-                                        unsize
+                                    (adr.autoderefs, adr.unsize.map(|target| {
+                                        ty::deref(target, false)
+                                            .expect("fixup: AutoPtr is not &T").ty
                                     }))
                                 }
                                 Some(_) => {
@@ -559,13 +550,16 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                             }
                         };
 
-                        let adjusted_base_ty =
-                            self.fcx.adjust_expr_ty(base_expr,
+                        let (adjusted_base_ty, unsize) = if let Some(target) = unsize {
+                            (target, true)
+                        } else {
+                            (self.fcx.adjust_expr_ty(base_expr,
                                 Some(&ty::AdjustDerefRef(ty::AutoDerefRef {
                                     autoderefs: autoderefs,
                                     autoref: None,
-                                    unsize: unsize
-                                })));
+                                    unsize: None
+                                }))), false)
+                        };
                         let index_expr_ty = self.fcx.expr_ty(&**index_expr);
 
                         let result = check::try_index_step(
