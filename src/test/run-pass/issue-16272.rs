@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-aarch64
+
 use std::process::Command;
 use std::env;
 
