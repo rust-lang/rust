@@ -85,7 +85,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
         ast::LitBool(b) => C_bool(cx, b),
         ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
         ast::LitBinary(ref data) => {
-            addr_of(cx, C_bytes(cx, &data[..]), "binary", e.id)
+            addr_of(cx, C_bytes(cx, &data[..]), "binary")
         }
     }
 }

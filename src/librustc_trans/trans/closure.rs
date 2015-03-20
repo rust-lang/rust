@@ -386,7 +386,10 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Create the by-value helper.
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, llonce_fn_ty, "once_shim");
-    let lloncefn = decl_internal_rust_fn(ccx, llonce_fn_ty, &function_name);
+    let lloncefn = declare::define_internal_rust_fn(ccx, &function_name[..], llonce_fn_ty)
+        .unwrap_or_else(||{
+            ccx.sess().bug(&format!("symbol `{}` already defined", function_name));
+        });
 
     let sig = ty::erase_late_bound_regions(tcx, &llonce_bare_fn_ty.sig);
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);

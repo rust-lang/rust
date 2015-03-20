@@ -39,7 +39,7 @@ use middle::astencode;
 use middle::cfg;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
-use middle::subst::{Subst, Substs};
+use middle::subst::Substs;
 use middle::ty::{self, Ty, ClosureTyper, type_is_simd, simd_size};
 use session::config::{self, NoDebugInfo};
 use session::Session;
