@@ -1,1 +1,1 @@
-See the README.txt in ../librustc.
+See the README.md in ../librustc.
