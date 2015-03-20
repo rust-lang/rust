@@ -106,7 +106,7 @@ more detail below, and merits community discussion.
 ## Basic design
 
 The design is fairly simple, although perhaps not as simple as one
-might expect: we introduce a total of *four* traits:
+might expect: we introduce a total of *five* traits:
 
 ```rust
 trait As<Sized? T> for Sized? {
@@ -227,8 +227,6 @@ impl<T, U> From<T> for U where T: Into<U> {
     fn from(t: T) -> U { t.cvt_into() }
 }
 ```
-
-The interaction between
 
 ## An example
 
