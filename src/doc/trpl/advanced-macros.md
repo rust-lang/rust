@@ -6,9 +6,11 @@ off.
 # Syntactic requirements
 
 Even when Rust code contains un-expanded macros, it can be parsed as a full
-syntax tree. This property can be very useful for editors and other tools that
-process code. It also has a few consequences for the design of Rust's macro
-system.
+[syntax tree][ast]. This property can be very useful for editors and other
+tools that process code. It also has a few consequences for the design of
+Rust's macro system.
+
+[ast]: glossary.html#abstract-syntax-tree
 
 One consequence is that Rust must determine, when it parses a macro invocation,
 whether the macro stands in for
