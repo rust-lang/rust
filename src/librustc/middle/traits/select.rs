@@ -21,8 +21,9 @@ use super::DerivedObligationCause;
 use super::project;
 use super::project::{normalize_with_depth, Normalized};
 use super::{PredicateObligation, TraitObligation, ObligationCause};
+use super::{report_overflow_error};
 use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
-use super::{SelectionError, Unimplemented, Overflow, OutputTypeParameterMismatch};
+use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
 use super::{Selection};
 use super::{SelectionResult};
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
@@ -561,10 +562,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // not update) the cache.
         let recursion_limit = self.infcx.tcx.sess.recursion_limit.get();
         if stack.obligation.recursion_depth >= recursion_limit {
-            debug!("{} --> overflow (limit={})",
-                   stack.obligation.repr(self.tcx()),
-                   recursion_limit);
-            return Err(Overflow)
+            report_overflow_error(self.infcx(), &stack.obligation);
         }
 
         // Check the cache. Note that we skolemize the trait-ref
@@ -2582,11 +2580,13 @@ impl<'o, 'tcx> Repr<'tcx> for TraitObligationStack<'o, 'tcx> {
 impl<'tcx> EvaluationResult<'tcx> {
     fn may_apply(&self) -> bool {
         match *self {
-            EvaluatedToOk
-            | EvaluatedToAmbig
-            | EvaluatedToErr(Overflow)
-            | EvaluatedToErr(OutputTypeParameterMismatch(..)) => true,
-            EvaluatedToErr(Unimplemented) => false,
+            EvaluatedToOk |
+            EvaluatedToAmbig |
+            EvaluatedToErr(OutputTypeParameterMismatch(..)) =>
+                true,
+
+            EvaluatedToErr(Unimplemented) =>
+                false,
         }
     }
 }

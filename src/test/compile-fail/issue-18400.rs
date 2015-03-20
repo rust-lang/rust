@@ -33,7 +33,4 @@ fn main() {
 
     0.contains(bits);
     //~^ ERROR overflow
-    //~| ERROR overflow
-    //~| ERROR overflow
-    //~| ERROR mismatched types
 }
