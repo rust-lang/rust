@@ -16,6 +16,7 @@ use {fmt, i64};
 use ops::{Add, Sub, Mul, Div, Neg, FnOnce};
 use option::Option;
 use option::Option::{Some, None};
+#[allow(deprecated)] // Int
 use num::Int;
 use result::Result::Ok;
 

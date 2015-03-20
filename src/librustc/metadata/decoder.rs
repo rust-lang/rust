@@ -35,7 +35,7 @@ use std::collections::HashMap;
 use std::hash::{self, Hash, SipHasher};
 use std::io::prelude::*;
 use std::io;
-use std::num::{FromPrimitive, Int};
+use std::num::FromPrimitive;
 use std::rc::Rc;
 use std::slice::bytes;
 use std::str;

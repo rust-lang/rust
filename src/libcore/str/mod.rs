@@ -945,9 +945,9 @@ impl TwoWaySearcher {
     // critical factorization (u, v) and p = period(v)
     #[inline]
     #[allow(dead_code)]
+    #[allow(deprecated)]
     fn maximal_suffix(arr: &[u8], reversed: bool) -> (usize, usize) {
-        use num::wrapping::WrappingOps;
-        let mut left = -1; // Corresponds to i in the paper
+        let mut left: usize = -1; // Corresponds to i in the paper
         let mut right = 0; // Corresponds to j in the paper
         let mut offset = 1; // Corresponds to k in the paper
         let mut period = 1; // Corresponds to p in the paper

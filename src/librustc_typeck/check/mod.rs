@@ -4622,7 +4622,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                           id: ast::NodeId,
                           hint: attr::ReprAttr)
                           -> Vec<Rc<ty::VariantInfo<'tcx>>> {
-        use std::num::Int;
+        #![allow(trivial_numeric_casts)]
 
         let rty = ty::node_id_to_type(ccx.tcx, id);
         let mut variants: Vec<Rc<ty::VariantInfo>> = Vec::new();

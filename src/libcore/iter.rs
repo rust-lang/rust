@@ -64,8 +64,8 @@ use cmp::Ord;
 use default::Default;
 use marker;
 use mem;
-use num::{ToPrimitive, Int};
-use ops::{Add, FnMut, RangeFrom};
+use num::{Int, Zero, One, ToPrimitive};
+use ops::{Add, Sub, FnMut, RangeFrom};
 use option::Option;
 use option::Option::{Some, None};
 use marker::Sized;
@@ -843,9 +843,8 @@ pub trait Iterator {
     ///
     /// ```
     /// # #![feature(core)]
-    /// use std::num::SignedInt;
     ///
-    /// let a = [-3, 0, 1, 5, -10];
+    /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
     #[inline]
@@ -875,9 +874,8 @@ pub trait Iterator {
     ///
     /// ```
     /// # #![feature(core)]
-    /// use std::num::SignedInt;
     ///
-    /// let a = [-3, 0, 1, 5, -10];
+    /// let a = [-3_i32, 0, 1, 5, -10];
     /// assert_eq!(*a.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
     #[inline]
@@ -2417,6 +2415,67 @@ impl<A, St, F> Iterator for Unfold<St, F> where F: FnMut(&mut St) -> Option<A> {
     }
 }
 
+/// Objects that can be stepped over in both directions.
+///
+/// The `steps_between` function provides a way to efficiently compare
+/// two `Step` objects.
+#[unstable(feature = "step_trait",
+           reason = "likely to be replaced by finer-grained traits")]
+pub trait Step: Ord {
+    /// Steps `self` if possible.
+    fn step(&self, by: &Self) -> Option<Self>;
+
+    /// The number of steps between two step objects.
+    ///
+    /// `start` should always be less than `end`, so the result should never
+    /// be negative.
+    ///
+    /// Return `None` if it is not possible to calculate steps_between
+    /// without overflow.
+    fn steps_between(start: &Self, end: &Self, by: &Self) -> Option<usize>;
+}
+
+macro_rules! step_impl {
+    ($($t:ty)*) => ($(
+        impl Step for $t {
+            #[inline]
+            fn step(&self, by: &$t) -> Option<$t> {
+                (*self).checked_add(*by)
+            }
+            #[inline]
+            #[allow(trivial_numeric_casts)]
+            fn steps_between(start: &$t, end: &$t, by: &$t) -> Option<usize> {
+                if *start <= *end {
+                    Some(((*end - *start) / *by) as usize)
+                } else {
+                    Some(0)
+                }
+            }
+        }
+    )*)
+}
+
+macro_rules! step_impl_no_between {
+    ($($t:ty)*) => ($(
+        impl Step for $t {
+            #[inline]
+            fn step(&self, by: &$t) -> Option<$t> {
+                (*self).checked_add(*by)
+            }
+            #[inline]
+            fn steps_between(_a: &$t, _b: &$t, _by: &$t) -> Option<usize> {
+                None
+            }
+        }
+    )*)
+}
+
+step_impl!(usize u8 u16 u32 isize i8 i16 i32);
+#[cfg(target_pointer_width = "64")]
+step_impl!(u64 i64);
+#[cfg(target_pointer_width = "32")]
+step_impl_no_between!(u64 i64);
+
 /// An adapter for stepping range iterators by a custom amount.
 ///
 /// The resulting iterator handles overflow by stopping. The `A`
@@ -2429,7 +2488,7 @@ pub struct StepBy<A, R> {
     range: R,
 }
 
-impl<A: Add> RangeFrom<A> {
+impl<A: Step> RangeFrom<A> {
     /// Creates an iterator starting at the same point, but stepping by
     /// the given amount at each iteration.
     ///
@@ -2451,7 +2510,8 @@ impl<A: Add> RangeFrom<A> {
     }
 }
 
-impl<A: Int> ::ops::Range<A> {
+#[allow(deprecated)]
+impl<A: Step> ::ops::Range<A> {
     /// Creates an iterator with the same range, but stepping by the
     /// given amount at each iteration.
     ///
@@ -2505,14 +2565,17 @@ pub fn count<A>(start: A, step: A) -> Counter<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Add<Output=A> + Clone> Iterator for StepBy<A, RangeFrom<A>> {
+impl<A> Iterator for StepBy<A, RangeFrom<A>> where
+    A: Clone,
+    for<'a> &'a A: Add<&'a A, Output = A>
+{
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let result = self.range.start.clone();
-        self.range.start = result.clone() + self.step_by.clone();
-        Some(result)
+        let mut n = &self.range.start + &self.step_by;
+        mem::swap(&mut n, &mut self.range.start);
+        Some(n)
     }
 
     #[inline]
@@ -2715,19 +2778,27 @@ pub fn range_step<A: Int>(start: A, stop: A, step: A) -> RangeStep<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Int> Iterator for StepBy<A, ::ops::Range<A>> {
+#[allow(deprecated)]
+impl<A: Step + Zero + Clone> Iterator for StepBy<A, ::ops::Range<A>> {
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let rev = self.step_by < Int::zero();
-        let start = self.range.start;
-        if (rev && start > self.range.end) || (!rev && start < self.range.end) {
-            match start.checked_add(self.step_by) {
-                Some(x) => self.range.start = x,
-                None => self.range.start = self.range.end.clone()
+        let rev = self.step_by < A::zero();
+        if (rev && self.range.start > self.range.end) ||
+           (!rev && self.range.start < self.range.end)
+        {
+            match self.range.start.step(&self.step_by) {
+                Some(mut n) => {
+                    mem::swap(&mut self.range.start, &mut n);
+                    Some(n)
+                },
+                None => {
+                    let mut n = self.range.end.clone();
+                    mem::swap(&mut self.range.start, &mut n);
+                    Some(n)
+                }
             }
-            Some(start)
         } else {
             None
         }
@@ -2774,6 +2845,7 @@ pub struct RangeStepInclusive<A> {
 #[inline]
 #[unstable(feature = "core",
            reason = "likely to be replaced by range notation and adapters")]
+#[allow(deprecated)]
 pub fn range_step_inclusive<A: Int>(start: A, stop: A, step: A) -> RangeStepInclusive<A> {
     let rev = step < Int::zero();
     RangeStepInclusive {
@@ -2787,6 +2859,7 @@ pub fn range_step_inclusive<A: Int>(start: A, stop: A, step: A) -> RangeStepIncl
 
 #[unstable(feature = "core",
            reason = "likely to be replaced by range notation and adapters")]
+#[allow(deprecated)]
 impl<A: Int> Iterator for RangeStepInclusive<A> {
     type Item = A;
 
@@ -2814,15 +2887,25 @@ macro_rules! range_exact_iter_impl {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Int> Iterator for ::ops::Range<A> {
+#[allow(deprecated)]
+impl<A: Step + One + Clone> Iterator for ::ops::Range<A> {
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.start < self.end {
-            let result = self.start;
-            self.start = self.start + Int::one();
-            Some(result)
+            match self.start.step(&A::one()) {
+                Some(mut n) => {
+                    mem::swap(&mut n, &mut self.start);
+                    Some(n)
+                },
+                None => {
+                    let mut n = self.end.clone();
+                    mem::swap(&mut n, &mut self.start);
+                    Some(n)
+
+                }
+            }
         } else {
             None
         }
@@ -2830,11 +2913,10 @@ impl<A: Int> Iterator for ::ops::Range<A> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.start >= self.end {
-            (0, Some(0))
+        if let Some(hint) = Step::steps_between(&self.start, &self.end, &A::one()) {
+            (hint, Some(hint))
         } else {
-            let length = (self.end - self.start).to_usize();
-            (length.unwrap_or(0), length)
+            (0, None)
         }
     }
 }
@@ -2844,12 +2926,15 @@ impl<A: Int> Iterator for ::ops::Range<A> {
 range_exact_iter_impl!(usize u8 u16 u32 isize i8 i16 i32);
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Int> DoubleEndedIterator for ::ops::Range<A> {
+#[allow(deprecated)]
+impl<A: Step + One + Clone> DoubleEndedIterator for ::ops::Range<A> where
+    for<'a> &'a A: Sub<&'a A, Output = A>
+{
     #[inline]
     fn next_back(&mut self) -> Option<A> {
         if self.start < self.end {
-            self.end = self.end - Int::one();
-            Some(self.end)
+            self.end = &self.end - &A::one();
+            Some(self.end.clone())
         } else {
             None
         }
@@ -2857,15 +2942,16 @@ impl<A: Int> DoubleEndedIterator for ::ops::Range<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Int> Iterator for ::ops::RangeFrom<A> {
+#[allow(deprecated)]
+impl<A: Step + One> Iterator for ::ops::RangeFrom<A> {
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        let result = self.start;
-        self.start = self.start + Int::one();
-        debug_assert!(result < self.start);
-        Some(result)
+        self.start.step(&A::one()).map(|mut n| {
+            mem::swap(&mut n, &mut self.start);
+            n
+        })
     }
 }
 
