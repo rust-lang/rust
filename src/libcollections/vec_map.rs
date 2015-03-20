@@ -637,7 +637,7 @@ impl<V> VecMap<V> {
     ///
     /// // count the number of occurrences of numbers in the vec
     /// for x in vec![1, 2, 1, 2, 3, 4, 1, 2, 4] {
-    ///     *count.entry(x).default(0) += 1;
+    ///     *count.entry(x).or_insert(0) += 1;
     /// }
     ///
     /// assert_eq!(count[1], 3);
@@ -667,7 +667,7 @@ impl<'a, V> Entry<'a, V> {
     #[unstable(feature = "collections",
                reason = "will soon be replaced by or_insert")]
     #[deprecated(since = "1.0",
-                reason = "replaced with more ergonomic `default` and `default_with`")]
+                reason = "replaced with more ergonomic `or_insert` and `or_insert_with`")]
     /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
     pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, V>> {
         match self {
@@ -680,7 +680,7 @@ impl<'a, V> Entry<'a, V> {
                reason = "matches entry v3 specification, waiting for dust to settle")]
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
-    pub fn default(self, default: V) -> &'a mut V {
+    pub fn or_insert(self, default: V) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default),
@@ -691,7 +691,7 @@ impl<'a, V> Entry<'a, V> {
                reason = "matches entry v3 specification, waiting for dust to settle")]
     /// Ensures a value is in the entry by inserting the result of the default function if empty,
     /// and returns a mutable reference to the value in the entry.
-    pub fn default_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
+    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default()),

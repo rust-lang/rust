@@ -5669,7 +5669,7 @@ pub fn lookup_field_type<'tcx>(tcx: &ctxt<'tcx>,
         node_id_to_type(tcx, id.node)
     } else {
         let mut tcache = tcx.tcache.borrow_mut();
-        tcache.entry(id).default_with(|| csearch::get_field_type(tcx, struct_id, id)).ty
+        tcache.entry(id).or_insert_with(|| csearch::get_field_type(tcx, struct_id, id)).ty
     };
     ty.subst(tcx, substs)
 }
@@ -6817,7 +6817,7 @@ pub fn replace_late_bound_regions<'tcx, T, F>(
         debug!("region={}", region.repr(tcx));
         match region {
             ty::ReLateBound(debruijn, br) if debruijn.depth == current_depth => {
-                let region = *map.entry(br).default_with(|| mapf(br));
+                let region = *map.entry(br).or_insert_with(|| mapf(br));
 
                 if let ty::ReLateBound(debruijn1, br) = region {
                     // If the callback returns a late-bound region,

@@ -876,7 +876,7 @@ impl DocFolder for Cache {
         if let clean::ImplItem(ref i) = item.inner {
             match i.trait_ {
                 Some(clean::ResolvedPath{ did, .. }) => {
-                    self.implementors.entry(did).default(vec![]).push(Implementor {
+                    self.implementors.entry(did).or_insert(vec![]).push(Implementor {
                         def_id: item.def_id,
                         generics: i.generics.clone(),
                         trait_: i.trait_.as_ref().unwrap().clone(),
@@ -1078,7 +1078,7 @@ impl DocFolder for Cache {
                         };
 
                         if let Some(did) = did {
-                            self.impls.entry(did).default(vec![]).push(Impl {
+                            self.impls.entry(did).or_insert(vec![]).push(Impl {
                                 impl_: i,
                                 dox: dox,
                                 stability: item.stability.clone(),
@@ -1330,7 +1330,7 @@ impl Context {
                 Some(ref s) => s.to_string(),
             };
             let short = short.to_string();
-            map.entry(short).default(vec![])
+            map.entry(short).or_insert(vec![])
                 .push((myname, Some(plain_summary_line(item.doc_value()))));
         }
 

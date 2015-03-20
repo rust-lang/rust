@@ -1489,7 +1489,8 @@ impl<'a, K, V> Entry<'a, K, V> {
     #[unstable(feature = "std_misc",
                reason = "will soon be replaced by or_insert")]
     #[deprecated(since = "1.0",
-                reason = "replaced with more ergonomic `default` and `default_with`")]
+                reason = "replaced with more ergonomic `or_insert` and `or_insert_with`")]
+    /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
     pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, K, V>> {
         match self {
             Occupied(entry) => Ok(entry.into_mut()),
@@ -1501,7 +1502,7 @@ impl<'a, K, V> Entry<'a, K, V> {
                reason = "matches entry v3 specification, waiting for dust to settle")]
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
-    pub fn default(self, default: V) -> &'a mut V {
+    pub fn or_insert(self, default: V) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default),
@@ -1512,7 +1513,7 @@ impl<'a, K, V> Entry<'a, K, V> {
                reason = "matches entry v3 specification, waiting for dust to settle")]
     /// Ensures a value is in the entry by inserting the result of the default function if empty,
     /// and returns a mutable reference to the value in the entry.
-    pub fn default_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
+    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default()),

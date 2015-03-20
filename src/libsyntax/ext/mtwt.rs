@@ -67,7 +67,7 @@ pub fn apply_mark(m: Mrk, ctxt: SyntaxContext) -> SyntaxContext {
 fn apply_mark_internal(m: Mrk, ctxt: SyntaxContext, table: &SCTable) -> SyntaxContext {
     let key = (ctxt, m);
     * table.mark_memo.borrow_mut().entry(key)
-        .default_with(|| idx_push(&mut *table.table.borrow_mut(), Mark(m, ctxt)))
+        .or_insert_with(|| idx_push(&mut *table.table.borrow_mut(), Mark(m, ctxt)))
 }
 
 /// Extend a syntax context with a given rename
@@ -84,7 +84,7 @@ fn apply_rename_internal(id: Ident,
     let key = (ctxt, id, to);
 
     * table.rename_memo.borrow_mut().entry(key)
-        .default_with(|| idx_push(&mut *table.table.borrow_mut(), Rename(id, to, ctxt)))
+        .or_insert_with(|| idx_push(&mut *table.table.borrow_mut(), Rename(id, to, ctxt)))
 }
 
 /// Apply a list of renamings to a context

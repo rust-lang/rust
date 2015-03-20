@@ -426,7 +426,8 @@ impl<'a> Context<'a> {
             info!("lib candidate: {}", path.display());
 
             let hash_str = hash.to_string();
-            let slot = candidates.entry(hash_str).default_with(|| (HashMap::new(), HashMap::new()));
+            let slot = candidates.entry(hash_str)
+                                 .or_insert_with(|| (HashMap::new(), HashMap::new()));
             let (ref mut rlibs, ref mut dylibs) = *slot;
             if rlib {
                 rlibs.insert(fs::realpath(path).unwrap(), kind);
