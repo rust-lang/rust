@@ -242,6 +242,28 @@ full debug info with variable and type information.
 \fBopt\-level\fR=\fIVAL\fR
 Optimize with possible levels 0\[en]3
 
+.SH ENVIRONMENT VARIABLES
+
+Some of these affect the output of the compiler, while others affect programs
+which link to the standard library.
+
+.TP
+\fBRUST_TEST_THREADS\fR
+The test framework Rust provides executes tests in parallel. This variable sets
+the maximum number of threads used for this purpose.
+
+.TP
+\fBRUST_TEST_NOCAPTURE\fR
+A synonym for the --nocapture flag.
+
+.TP
+\fBRUST_MIN_STACK\fR
+Sets the minimum stack size for new threads.
+
+.TP
+\fBRUST_BACKTRACE\fR
+If set, produces a backtrace in the output of a program which panics.
+
 .SH "EXAMPLES"
 To build an executable from a source file with a main function:
     $ rustc \-o hello hello.rs

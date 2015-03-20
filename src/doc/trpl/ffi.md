@@ -170,6 +170,8 @@ Foreign libraries often hand off ownership of resources to the calling code.
 When this occurs, we must use Rust's destructors to provide safety and guarantee
 the release of these resources (especially in the case of panic).
 
+For more about destructors, see the [Drop trait](../std/ops/trait.Drop.html).
+
 # Callbacks from C code to Rust functions
 
 Some external libraries require the usage of callbacks to report back their

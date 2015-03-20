@@ -584,7 +584,8 @@ pub trait BufRead: Read {
         read_until(self, byte, buf)
     }
 
-    /// Read all bytes until a newline byte (the 0xA byte) is reached.
+    /// Read all bytes until a newline byte (the 0xA byte) is reached, and
+    /// append them to the provided buffer.
     ///
     /// This function will continue to read (and buffer) bytes from the
     /// underlying stream until the newline delimiter (the 0xA byte) or EOF is

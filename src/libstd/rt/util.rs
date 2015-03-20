@@ -58,29 +58,6 @@ pub fn min_stack() -> uint {
     return amt;
 }
 
-/// Get's the number of scheduler threads requested by the environment
-/// either `RUST_THREADS` or `num_cpus`.
-#[allow(deprecated)]
-pub fn default_sched_threads() -> uint {
-    use os;
-    match env::var("RUST_THREADS") {
-        Ok(nstr) => {
-            let opt_n: Option<uint> = nstr.parse().ok();
-            match opt_n {
-                Some(n) if n > 0 => n,
-                _ => panic!("`RUST_THREADS` is `{}`, should be a positive integer", nstr)
-            }
-        }
-        Err(..) => {
-            if limit_thread_creation_due_to_osx_and_valgrind() {
-                1
-            } else {
-                os::num_cpus()
-            }
-        }
-    }
-}
-
 // Indicates whether we should perform expensive sanity checks, including rtassert!
 //
 // FIXME: Once the runtime matures remove the `true` below to turn off rtassert,
