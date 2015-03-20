@@ -10,7 +10,7 @@
 
 // ignore-pretty
 // compile-flags:--test
-// exec-env:RUST_TEST_TASKS=1
+// exec-env:RUST_TEST_THREADS=1
 
 // Tests for the connect_timeout() function on a TcpStream. This runs with only
 // one test task to ensure that errors are timeouts, not file descriptor
