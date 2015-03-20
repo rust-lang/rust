@@ -249,30 +249,23 @@ pub mod num;
 /* Runtime and platform support */
 
 #[macro_use]
-pub mod thread_local;
-
-pub mod dynamic_lib;
-pub mod ffi;
-pub mod old_io;
-pub mod io;
-pub mod fs;
-pub mod net;
-pub mod os;
-pub mod env;
-pub mod path;
-pub mod old_path;
-pub mod process;
-pub mod rand;
-pub mod time;
-
-/* Common data structures */
+pub mod thread;
 
 pub mod collections;
-
-/* Threads and communication */
-
-pub mod thread;
+pub mod dynamic_lib;
+pub mod env;
+pub mod ffi;
+pub mod fs;
+pub mod io;
+pub mod net;
+pub mod old_io;
+pub mod old_path;
+pub mod os;
+pub mod path;
+pub mod process;
+pub mod rand;
 pub mod sync;
+pub mod time;
 
 #[macro_use]
 #[path = "sys/common/mod.rs"] mod sys_common;
@@ -305,7 +298,7 @@ mod std {
     pub use rt; // used for panic!()
     pub use vec; // used for vec![]
     pub use cell; // used for tls!
-    pub use thread_local; // used for thread_local!
+    pub use thread; // used for thread_local!
     pub use marker;  // used for tls!
     pub use ops; // used for bitflags!
 
