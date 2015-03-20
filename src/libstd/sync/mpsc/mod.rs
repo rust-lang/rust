@@ -592,7 +592,7 @@ impl<T: Send> Sender<T> {
                                 // asleep (we're looking at it), so the receiver
                                 // can't go away.
                                 (*a.get()).send(t).ok().unwrap();
-                        token.signal();
+                                token.signal();
                                 (a, Ok(()))
                             }
                         }

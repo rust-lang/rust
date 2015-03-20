@@ -757,10 +757,10 @@ impl UnixAcceptor {
 
 impl Clone for UnixAcceptor {
     fn clone(&self) -> UnixAcceptor {
-        let name = to_utf16(&self.listener.name).ok().unwrap();
+        let name = to_utf16(&self.listener.name).unwrap();
         UnixAcceptor {
             inner: self.inner.clone(),
-            event: Event::new(true, false).ok().unwrap(),
+            event: Event::new(true, false).unwrap(),
             deadline: 0,
             listener: UnixListener {
                 name: self.listener.name.clone(),
