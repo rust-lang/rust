@@ -261,7 +261,7 @@ pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
              reason = "use std::ffi::c_str_to_bytes + str::from_utf8")]
 pub unsafe fn from_c_str(s: *const i8) -> &'static str {
     let s = s as *const u8;
-    let mut len = 0;
+    let mut len: usize = 0;
     while *s.offset(len as isize) != 0 {
         len += 1;
     }

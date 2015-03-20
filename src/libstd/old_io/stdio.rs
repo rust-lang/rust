@@ -337,10 +337,10 @@ pub fn set_stderr(_stderr: Box<Writer + Send>) -> Option<Box<Writer + Send>> {
 //      })
 //  })
 fn with_task_stdout<F>(f: F) where F: FnOnce(&mut Writer) -> IoResult<()> {
-    let mut my_stdout = LOCAL_STDOUT.with(|slot| {
+    let mut my_stdout: Box<Writer + Send> = LOCAL_STDOUT.with(|slot| {
         slot.borrow_mut().take()
     }).unwrap_or_else(|| {
-        box stdout() as Box<Writer + Send>
+        box stdout()
     });
     let result = f(&mut *my_stdout);
     let mut var = Some(my_stdout);

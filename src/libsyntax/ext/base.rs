@@ -264,7 +264,7 @@ macro_rules! make_MacEager {
                     box MacEager {
                         $fld: Some(v),
                         ..Default::default()
-                    } as Box<MacResult>
+                    }
                 }
             )*
         }
@@ -330,7 +330,7 @@ impl DummyResult {
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
     pub fn any(sp: Span) -> Box<MacResult+'static> {
-        box DummyResult { expr_only: false, span: sp } as Box<MacResult+'static>
+        box DummyResult { expr_only: false, span: sp }
     }
 
     /// Create a default MacResult that can only be an expression.
@@ -339,7 +339,7 @@ impl DummyResult {
     /// if an error is encountered internally, the user will receive
     /// an error that they also used it in the wrong place.
     pub fn expr(sp: Span) -> Box<MacResult+'static> {
-        box DummyResult { expr_only: true, span: sp } as Box<MacResult+'static>
+        box DummyResult { expr_only: true, span: sp }
     }
 
     /// A plain dummy expression.

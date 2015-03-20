@@ -12,6 +12,7 @@
 
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
+#![allow(trivial_cast)]
 
 trait Bar {
     fn bar(self);

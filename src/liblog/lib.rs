@@ -304,10 +304,10 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
     // Completely remove the local logger from TLS in case anyone attempts to
     // frob the slot while we're doing the logging. This will destroy any logger
     // set during logging.
-    let mut logger = LOCAL_LOGGER.with(|s| {
+    let mut logger: Box<Logger + Send> = LOCAL_LOGGER.with(|s| {
         s.borrow_mut().take()
     }).unwrap_or_else(|| {
-        box DefaultLogger { handle: io::stderr() } as Box<Logger + Send>
+        box DefaultLogger { handle: io::stderr() }
     });
     logger.log(&LogRecord {
         level: LogLevel(level),

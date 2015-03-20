@@ -21,5 +21,5 @@ fn foo<'a>(x: Box<Tr+ Sync + 'a>) -> Box<Tr+ Sync + 'a> { x }
 fn main() {
     let x: Box<Tr+ Sync>;
 
-    Box::new(1) as Box<Tr+ Sync>;
+    Box::new(1isize) as Box<Tr+ Sync>;
 }
