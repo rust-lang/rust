@@ -1361,7 +1361,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                        closure_def_id: ast::DefId,
                                        r: DeferredCallResolutionHandler<'tcx>) {
         let mut deferred_call_resolutions = self.inh.deferred_call_resolutions.borrow_mut();
-        deferred_call_resolutions.entry(closure_def_id).default(vec![]).push(r);
+        deferred_call_resolutions.entry(closure_def_id).or_insert(vec![]).push(r);
     }
 
     fn remove_deferred_call_resolutions(&self,

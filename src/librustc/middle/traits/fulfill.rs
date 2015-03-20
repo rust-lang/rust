@@ -436,7 +436,7 @@ fn register_region_obligation<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("register_region_obligation({})",
            region_obligation.repr(tcx));
 
-    region_obligations.entry(region_obligation.cause.body_id).default(vec![])
+    region_obligations.entry(region_obligation.cause.body_id).or_insert(vec![])
         .push(region_obligation);
 
 }

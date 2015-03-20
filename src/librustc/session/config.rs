@@ -1036,7 +1036,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             None => early_error("--extern value must be of the format `foo=bar`"),
         };
 
-        externs.entry(name.to_string()).default(vec![]).push(location.to_string());
+        externs.entry(name.to_string()).or_insert(vec![]).push(location.to_string());
     }
 
     let crate_name = matches.opt_str("crate-name");

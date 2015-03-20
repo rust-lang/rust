@@ -352,7 +352,7 @@ fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
             }
         };
         let name = name.to_string();
-        externs.entry(name).default(vec![]).push(location.to_string());
+        externs.entry(name).or_insert(vec![]).push(location.to_string());
     }
     Ok(externs)
 }
