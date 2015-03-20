@@ -200,8 +200,8 @@ impl Float for f64 {
     fn to_radians(self) -> f64 { num::Float::to_radians(self) }
 
     #[inline]
-    fn ldexp(x: f64, exp: int) -> f64 {
-        unsafe { cmath::ldexp(x, exp as c_int) }
+    fn ldexp(self, exp: isize) -> f64 {
+        unsafe { cmath::ldexp(self, exp as c_int) }
     }
 
     /// Breaks the number into a normalized fraction and a base-2 exponent,
@@ -2214,8 +2214,8 @@ mod tests {
         let f1: f64 = FromStrRadix::from_str_radix("1p-123", 16).unwrap();
         let f2: f64 = FromStrRadix::from_str_radix("1p-111", 16).unwrap();
         let f3: f64 = FromStrRadix::from_str_radix("1.Cp-12", 16).unwrap();
-        assert_eq!(Float::ldexp(1f64, -123), f1);
-        assert_eq!(Float::ldexp(1f64, -111), f2);
+        assert_eq!(1f64.ldexp(-123), f1);
+        assert_eq!(1f64.ldexp(-111), f2);
         assert_eq!(Float::ldexp(1.75f64, -12), f3);
 
         assert_eq!(Float::ldexp(0f64, -123), 0f64);

@@ -355,6 +355,14 @@ pub fn item_to_string(i: &ast::Item) -> String {
     $to_string(|s| s.print_item(i))
 }
 
+pub fn impl_item_to_string(i: &ast::ImplItem) -> String {
+    $to_string(|s| s.print_impl_item(i))
+}
+
+pub fn trait_item_to_string(i: &ast::TraitItem) -> String {
+    $to_string(|s| s.print_trait_item(i))
+}
+
 pub fn generics_to_string(generics: &ast::Generics) -> String {
     $to_string(|s| s.print_generics(generics))
 }
