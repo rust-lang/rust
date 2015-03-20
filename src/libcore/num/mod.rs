@@ -345,6 +345,16 @@ pub trait Int
 
     /// Saturating integer addition. Computes `self + other`, saturating at
     /// the numeric bounds instead of overflowing.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::num::Int;
+    ///
+    /// assert_eq!(5u16.saturating_add(65534), 65535);
+    /// assert_eq!((-5i16).saturating_add(-32767), -32768);
+    /// assert_eq!(100u32.saturating_add(4294967294), 4294967295);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn saturating_add(self, other: Self) -> Self {
@@ -357,6 +367,16 @@ pub trait Int
 
     /// Saturating integer subtraction. Computes `self - other`, saturating at
     /// the numeric bounds instead of overflowing.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::num::Int;
+    ///
+    /// assert_eq!(5u16.saturating_sub(65534), 0);
+    /// assert_eq!(5i16.saturating_sub(-32767), 32767);
+    /// assert_eq!(100u32.saturating_sub(4294967294), 0);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn saturating_sub(self, other: Self) -> Self {
