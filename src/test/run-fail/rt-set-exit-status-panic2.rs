@@ -35,7 +35,7 @@ fn r(x:int) -> r {
 
 fn main() {
     error!("whatever");
-    let _t = thread::spawn(move|| {
+    let _t = thread::scoped(move|| {
       let _i = r(5);
     });
     panic!();
