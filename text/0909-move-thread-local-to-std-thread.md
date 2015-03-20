@@ -1,7 +1,7 @@
 - Feature Name: N/A
 - Start Date: 2015-02-25
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/909
+- Rust Issue: https://github.com/rust-lang/rust/issues/23547
 
 # Summary
 
@@ -17,14 +17,15 @@ slightly reduce the number of `use` statementsl
 
 # Detailed design
 
-The `std::thread_local` module would be renamed to `std::thread::local`.
-All contents of the module would remain the same. This way, all thread
-related code is combined in one module.
+The contents of`std::thread_local` module would be moved into to
+`std::thread::local`. `Key` would be renamed to `LocalKey`, and
+`scoped` would also be flattened, providing `ScopedKey`, etc. This
+way, all thread related code is combined in one module.
 
 It would also allow using it as such:
 
 ```rust
-use std::thread::{local, Thread};
+use std::thread::{LocalKey, Thread};
 ```
 
 # Drawbacks
@@ -36,11 +37,10 @@ may prefer to have more top level modules.
 
 # Alternatives
 
-Another strategy for moving `std::thread_local` would be to move it
-directly into `std::thread` without scoping it in a dedicated module.
-There are no naming conflicts, but the names would not be ideal anymore.
-One way to mitigate would be to rename the types to something like
-`LocalKey` and `LocalState`.
+An alternative (as the RFC originally proposed) would be to bring
+`thread_local` in as a submodule, rather than flattening. This was
+decided against in an effort to keep hierarchies flat, and because of
+the slim contents on the `thread_local` module.
 
 # Unresolved questions
 
