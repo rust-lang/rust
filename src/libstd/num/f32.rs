@@ -191,8 +191,8 @@ impl Float for f32 {
     /// Constructs a floating point number by multiplying `x` by 2 raised to the
     /// power of `exp`
     #[inline]
-    fn ldexp(x: f32, exp: int) -> f32 {
-        unsafe { cmath::ldexpf(x, exp as c_int) }
+    fn ldexp(self, exp: isize) -> f32 {
+        unsafe { cmath::ldexpf(self, exp as c_int) }
     }
 
     /// Breaks the number into a normalized fraction and a base-2 exponent,
@@ -2207,8 +2207,8 @@ mod tests {
         let f1: f32 = FromStrRadix::from_str_radix("1p-123", 16).unwrap();
         let f2: f32 = FromStrRadix::from_str_radix("1p-111", 16).unwrap();
         let f3: f32 = FromStrRadix::from_str_radix("1.Cp-12", 16).unwrap();
-        assert_eq!(Float::ldexp(1f32, -123), f1);
-        assert_eq!(Float::ldexp(1f32, -111), f2);
+        assert_eq!(1f32.ldexp(-123), f1);
+        assert_eq!(1f32.ldexp(-111), f2);
         assert_eq!(Float::ldexp(1.75f32, -12), f3);
 
         assert_eq!(Float::ldexp(0f32, -123), 0f32);
