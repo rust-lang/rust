@@ -46,7 +46,7 @@ One alternative design would return some new kind of Result which
 could report the number of bytes sucessfully read before an error.
 This would be inconsistent with write_all, but arguably more correct.
 
-If we wanted io::Error to be a smaller type, ErrorKind::ShortRead
+If we wanted io::ErrorKind to be a smaller type, ErrorKind::ShortRead
 could be unparameterized.  But this would reduce the information
 available to calleres.
 
