@@ -64,7 +64,7 @@
 //!     fn encode(&self, s: &mut S) -> Result<(), E> {
 //!         s.emit_struct("Spanned", 2, |this| {
 //!             this.emit_struct_field("node", 0, |this| self.node.encode(this))
-//!                 .ok().unwrap();
+//!                 .unwrap();
 //!             this.emit_struct_field("span", 1, |this| self.span.encode(this))
 //!         })
 //!     }
@@ -79,9 +79,9 @@
 //!         d.read_struct("Spanned", 2, |this| {
 //!             Ok(Spanned {
 //!                 node: this.read_struct_field("node", 0, |this| Decodable::decode(this))
-//!                     .ok().unwrap(),
+//!                     .unwrap(),
 //!                 span: this.read_struct_field("span", 1, |this| Decodable::decode(this))
-//!                     .ok().unwrap(),
+//!                     .unwrap(),
 //!             })
 //!         })
 //!     }

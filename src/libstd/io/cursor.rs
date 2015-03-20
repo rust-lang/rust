@@ -277,7 +277,7 @@ mod tests {
     fn read_to_end() {
         let mut reader = Cursor::new(vec!(0, 1, 2, 3, 4, 5, 6, 7));
         let mut v = Vec::new();
-        reader.read_to_end(&mut v).ok().unwrap();
+        reader.read_to_end(&mut v).unwrap();
         assert_eq!(v, [0, 1, 2, 3, 4, 5, 6, 7]);
     }
 

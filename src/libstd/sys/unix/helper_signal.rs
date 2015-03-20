@@ -23,7 +23,7 @@ pub fn new() -> (signal, signal) {
 }
 
 pub fn signal(fd: libc::c_int) {
-    FileDesc::new(fd, false).write(&[0]).ok().unwrap();
+    FileDesc::new(fd, false).write(&[0]).unwrap();
 }
 
 pub fn close(fd: libc::c_int) {

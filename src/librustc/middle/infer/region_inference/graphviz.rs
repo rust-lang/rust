@@ -69,13 +69,13 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
         return;
     }
 
-    let requested_output = env::var("RUST_REGION_GRAPH").ok();
+    let requested_output = env::var("RUST_REGION_GRAPH");
     debug!("requested_output: {:?} requested_node: {:?}",
            requested_output, requested_node);
 
     let output_path = {
         let output_template = match requested_output {
-            Some(ref s) if &**s == "help" => {
+            Ok(ref s) if &**s == "help" => {
                 static PRINTED_YET: AtomicBool = ATOMIC_BOOL_INIT;
                 if !PRINTED_YET.load(Ordering::SeqCst) {
                     print_help_message();
@@ -84,8 +84,8 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
                 return;
             }
 
-            Some(other_path) => other_path,
-            None => "/tmp/constraints.node%.dot".to_string(),
+            Ok(other_path) => other_path,
+            Err(_) => "/tmp/constraints.node%.dot".to_string(),
         };
 
         if output_template.len() == 0 {
@@ -171,7 +171,7 @@ impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
 
 impl<'a, 'tcx> dot::Labeller<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
     fn graph_id(&self) -> dot::Id {
-        dot::Id::new(&*self.graph_name).ok().unwrap()
+        dot::Id::new(&*self.graph_name).unwrap()
     }
     fn node_id(&self, n: &Node) -> dot::Id {
         let node_id = match self.node_ids.get(n) {

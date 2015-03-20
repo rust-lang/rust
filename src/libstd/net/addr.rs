@@ -617,7 +617,7 @@ mod tests {
                  unique_local: bool, global: bool,
                  u_link_local: bool, u_site_local: bool, u_global: bool,
                  m_scope: Option<Ipv6MulticastScope>) {
-            let ip: Ipv6Addr = str_addr.parse().ok().unwrap();
+            let ip: Ipv6Addr = str_addr.parse().unwrap();
             assert_eq!(str_addr, ip.to_string());
 
             assert_eq!(ip.is_unspecified(), unspec);

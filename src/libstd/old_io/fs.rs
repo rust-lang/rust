@@ -1608,7 +1608,7 @@ mod test {
         use rand::{StdRng, Rng};
 
         let mut bytes = [0; 1024];
-        StdRng::new().ok().unwrap().fill_bytes(&mut bytes);
+        StdRng::new().unwrap().fill_bytes(&mut bytes);
 
         let tmpdir = tmpdir();
 
