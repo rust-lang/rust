@@ -99,11 +99,6 @@
 #     // Having trouble figuring out which test is failing? Turn off parallel tests
 #     make check-stage1-std RUST_TEST_THREADS=1
 #
-# This is hardly all there is to know of The Rust Build System's
-# mysteries. The tale continues on the wiki[1].
-#
-# [1]: https://github.com/rust-lang/rust/wiki/Note-testsuite
-#
 # If you really feel like getting your hands dirty, then:
 #
 #     run `make nitty-gritty`
