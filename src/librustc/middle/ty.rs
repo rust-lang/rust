@@ -5483,7 +5483,6 @@ pub fn type_is_empty(cx: &ctxt, ty: Ty) -> bool {
 
 pub fn enum_variants<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                            -> Rc<Vec<Rc<VariantInfo<'tcx>>>> {
-    use std::num::Int; // For checked_add
     memoized(&cx.enum_var_cache, id, |id: ast::DefId| {
         if ast::LOCAL_CRATE != id.krate {
             Rc::new(csearch::get_enum_variants(cx, id))

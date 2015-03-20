@@ -22,12 +22,12 @@ use num::Float;
 use num::FpCategory as Fp;
 use option::Option;
 
-#[unstable(feature = "core", reason = "pending integer conventions")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const RADIX: u32 = 2;
 
-#[unstable(feature = "core", reason = "pending integer conventions")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const MANTISSA_DIGITS: u32 = 24;
-#[unstable(feature = "core", reason = "pending integer conventions")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const DIGITS: u32 = 6;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -56,14 +56,14 @@ pub const MIN_POSITIVE: f32 = 1.17549435e-38_f32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX: f32 = 3.40282347e+38_f32;
 
-#[unstable(feature = "core", reason = "pending integer conventions")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_EXP: i32 = -125;
-#[unstable(feature = "core", reason = "pending integer conventions")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX_EXP: i32 = 128;
 
-#[unstable(feature = "core", reason = "pending integer conventions")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_10_EXP: i32 = -37;
-#[unstable(feature = "core", reason = "pending integer conventions")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX_10_EXP: i32 = 38;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -73,61 +73,89 @@ pub const INFINITY: f32 = 1.0_f32/0.0_f32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const NEG_INFINITY: f32 = -1.0_f32/0.0_f32;
 
-/// Various useful constants.
-#[unstable(feature = "core",
-           reason = "naming scheme needs to be revisited")]
+/// Basic mathematial constants.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
     /// Archimedes' constant
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const PI: f32 = 3.14159265358979323846264338327950288_f32;
 
     /// pi * 2.0
+    #[unstable(feature = "core", reason = "unclear naming convention/usefulness")]
     pub const PI_2: f32 = 6.28318530717958647692528676655900576_f32;
 
     /// pi/2.0
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_PI_2: f32 = 1.57079632679489661923132169163975144_f32;
 
     /// pi/3.0
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_PI_3: f32 = 1.04719755119659774615421446109316763_f32;
 
     /// pi/4.0
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_PI_4: f32 = 0.785398163397448309615660845819875721_f32;
 
     /// pi/6.0
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_PI_6: f32 = 0.52359877559829887307710723054658381_f32;
 
     /// pi/8.0
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_PI_8: f32 = 0.39269908169872415480783042290993786_f32;
 
     /// 1.0/pi
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_1_PI: f32 = 0.318309886183790671537767526745028724_f32;
 
     /// 2.0/pi
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_2_PI: f32 = 0.636619772367581343075535053490057448_f32;
 
     /// 2.0/sqrt(pi)
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub const FRAC_2_SQRT_PI: f32 = 1.12837916709551257389615890312154517_f32;
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", reason = "renamed to FRAC_2_SQRT_PI")]
     pub const FRAC_2_SQRTPI: f32 = 1.12837916709551257389615890312154517_f32;
 
     /// sqrt(2.0)
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub const SQRT_2: f32 = 1.41421356237309504880168872420969808_f32;
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", reason = "renamed to SQRT_2")]
     pub const SQRT2: f32 = 1.41421356237309504880168872420969808_f32;
 
     /// 1.0/sqrt(2.0)
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub const FRAC_1_SQRT_2: f32 = 0.707106781186547524400844362104849039_f32;
+
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", reason = "renamed to FRAC_1_SQRT_2")]
     pub const FRAC_1_SQRT2: f32 = 0.707106781186547524400844362104849039_f32;
 
     /// Euler's number
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const E: f32 = 2.71828182845904523536028747135266250_f32;
 
     /// log2(e)
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const LOG2_E: f32 = 1.44269504088896340735992468100189214_f32;
 
     /// log10(e)
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const LOG10_E: f32 = 0.434294481903251827651128918916605082_f32;
 
     /// ln(2.0)
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const LN_2: f32 = 0.693147180559945309417232121458176568_f32;
 
     /// ln(10.0)
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub const LN_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
