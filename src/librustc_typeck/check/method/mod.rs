@@ -255,8 +255,8 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             span,
                             ty::AdjustDerefRef(ty::AutoDerefRef {
                                 autoderefs: autoderefs,
-                                unsize: None,
-                                autoref: None
+                                autoref: None,
+                                unsize: None
                             }));
                     }
                 }
@@ -271,8 +271,11 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                 span,
                                 ty::AdjustDerefRef(ty::AutoDerefRef {
                                     autoderefs: autoderefs,
-                                    unsize: unsize,
-                                    autoref: Some(ty::AutoPtr(*region, mutbl))
+                                    autoref: Some(ty::AutoPtr(region, mutbl)),
+                                    unsize: unsize.map(|unsize| ty::AutoUnsize {
+                                        target: transformed_self_ty,
+                                        ..unsize
+                                    })
                                 }));
                         }
 

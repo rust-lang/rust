@@ -31,7 +31,6 @@ use std::rc::Rc;
 use util::ppaux::Repr;
 
 use self::CandidateKind::*;
-pub use self::PickAdjustment::*;
 pub use self::PickKind::*;
 
 struct ProbeContext<'a, 'tcx:'a> {
@@ -49,7 +48,8 @@ struct ProbeContext<'a, 'tcx:'a> {
 
 struct CandidateStep<'tcx> {
     self_ty: Ty<'tcx>,
-    adjustment: PickAdjustment<'tcx>,
+    autoderefs: usize,
+    unsize: Option</* source */ Ty<'tcx>>
 }
 
 struct Candidate<'tcx> {
@@ -70,8 +70,24 @@ enum CandidateKind<'tcx> {
 
 pub struct Pick<'tcx> {
     pub method_ty: Rc<ty::Method<'tcx>>,
-    pub adjustment: PickAdjustment<'tcx>,
     pub kind: PickKind<'tcx>,
+
+    // Indicates that the source expression should be autoderef'd N times
+    //
+    // A = expr | *expr | **expr | ...
+    pub autoderefs: usize,
+
+    // Indicates that an autoref is applied after the optional autoderefs
+    //
+    // B = A | &A | &mut A
+    pub autoref: Option<ast::Mutability>,
+
+    // Indicates that the source expression should be "unsized".
+    // This should probably eventually go away in favor of just
+    // coercing method receivers.
+    //
+    // C = B | unsize(B)
+    pub unsize: Option<(/* source */ Ty<'tcx>, /* target */ Ty<'tcx>)>,
 }
 
 #[derive(Clone,Debug)]
@@ -84,31 +100,6 @@ pub enum PickKind<'tcx> {
 }
 
 pub type PickResult<'tcx> = Result<Pick<'tcx>, MethodError>;
-
-// This is a kind of "abstracted" version of ty::AutoAdjustment.  The
-// difference is that it doesn't embed any regions or other
-// specifics. The "confirmation" step recreates those details as
-// needed.
-#[derive(Clone,Debug)]
-pub enum PickAdjustment<'tcx> {
-    // Indicates that the source expression should be autoderef'd N times
-    //
-    // A = expr | *expr | **expr
-    AutoDeref(uint),
-
-    // Indicates that the source expression should be autoderef'd N
-    // times and then "unsized". This should probably eventually go
-    // away in favor of just coercing method receivers.
-    //
-    // A = unsize(expr | *expr | **expr)
-    AutoDerefUnsize(/* number of autoderefs */ uint,
-                    /* source */ Ty<'tcx>, /* target */ Ty<'tcx>),
-
-    // Indicates that an autoref is applied after some number of other adjustments
-    //
-    // A = &A | &mut A
-    AutoRef(ast::Mutability, Box<PickAdjustment<'tcx>>),
-}
 
 #[derive(PartialEq, Eq, Copy)]
 pub enum Mode {
@@ -150,7 +141,8 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     } else {
         vec![CandidateStep {
             self_ty: self_ty,
-            adjustment: AutoDeref(0)
+            autoderefs: 0,
+            unsize: None
         }]
     };
 
@@ -201,8 +193,11 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                        UnresolvedTypeAction::Error,
                                                        NoPreference,
                                                        |t, d| {
-        let adjustment = AutoDeref(d);
-        steps.push(CandidateStep { self_ty: t, adjustment: adjustment });
+        steps.push(CandidateStep {
+            self_ty: t,
+            autoderefs: d,
+            unsize: None
+        });
         None::<()> // keep iterating until we can't anymore
     });
 
@@ -211,7 +206,8 @@ fn create_steps<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             let slice_ty = ty::mk_vec(fcx.tcx(), elem_ty, None);
             steps.push(CandidateStep {
                 self_ty: slice_ty,
-                adjustment: AutoDerefUnsize(dereferences, final_ty, slice_ty),
+                autoderefs: dereferences,
+                unsize: Some(final_ty)
             });
         }
         ty::ty_err => return None,
@@ -928,18 +924,21 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
          * consuming them for their entire lifetime.
          */
 
-        let adjustment = match step.adjustment {
-            AutoDeref(d) => {
-                // Insert a `&*` or `&mut *` if this is a reference type:
-                match step.self_ty.sty {
-                    ty::ty_rptr(_, ref mt) => AutoRef(mt.mutbl, box AutoDeref(d+1)),
-                    _ => AutoDeref(d),
-                }
-            }
-            AutoDerefUnsize(..) | AutoRef(..) => step.adjustment.clone(),
-        };
+        if step.unsize.is_some() {
+            return None;
+        }
 
-        self.pick_method(step.self_ty).map(|r| self.adjust(r, adjustment))
+        self.pick_method(step.self_ty).map(|r| r.map(|mut pick| {
+            pick.autoderefs = step.autoderefs;
+
+            // Insert a `&*` or `&mut *` if this is a reference type:
+            if let ty::ty_rptr(_, mt) = step.self_ty.sty {
+                pick.autoderefs += 1;
+                pick.autoref = Some(mt.mutbl);
+            }
+
+            pick
+        }))
     }
 
     fn pick_autorefd_method(&mut self,
@@ -947,42 +946,26 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                             -> Option<PickResult<'tcx>>
     {
         let tcx = self.tcx();
-        self.search_mutabilities(
-            |m| AutoRef(m, box step.adjustment.clone()),
-            |m,r| ty::mk_rptr(tcx, tcx.mk_region(r), ty::mt {ty:step.self_ty, mutbl:m}))
-    }
 
-    fn search_mutabilities<F, G>(&mut self,
-                                 mut mk_adjustment: F,
-                                 mut mk_autoref_ty: G)
-                                 -> Option<PickResult<'tcx>> where
-        F: FnMut(ast::Mutability) -> PickAdjustment<'tcx>,
-        G: FnMut(ast::Mutability, ty::Region) -> Ty<'tcx>,
-    {
         // In general, during probing we erase regions. See
         // `impl_self_ty()` for an explanation.
-        let region = ty::ReStatic;
+        let region = tcx.mk_region(ty::ReStatic);
 
         // Search through mutabilities in order to find one where pick works:
         [ast::MutImmutable, ast::MutMutable].iter().filter_map(|&m| {
-            let autoref_ty = mk_autoref_ty(m, region);
-            self.pick_method(autoref_ty)
-                .map(|r| self.adjust(r, mk_adjustment(m)))
+            let autoref_ty = ty::mk_rptr(tcx, region, ty::mt {
+                ty: step.self_ty,
+                mutbl: m
+            });
+            self.pick_method(autoref_ty).map(|r| r.map(|mut pick| {
+                pick.autoderefs = step.autoderefs;
+                pick.autoref = Some(m);
+                pick.unsize = step.unsize.map(|source| {
+                    (source, step.self_ty)
+                });
+                pick
+            }))
         }).nth(0)
-    }
-
-    fn adjust(&mut self,
-              result: PickResult<'tcx>,
-              adjustment: PickAdjustment<'tcx>)
-              -> PickResult<'tcx>
-    {
-        match result {
-            Err(e) => Err(e),
-            Ok(mut pick) => {
-                pick.adjustment = adjustment;
-                Ok(pick)
-            }
-        }
     }
 
     fn pick_method(&mut self, self_ty: Ty<'tcx>) -> Option<PickResult<'tcx>> {
@@ -1118,8 +1101,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let method_ty = probes[0].method_ty.clone();
         Some(Pick {
             method_ty: method_ty,
-            adjustment: AutoDeref(0),
-            kind: TraitPick(trait_def_id, method_num)
+            kind: TraitPick(trait_def_id, method_num),
+            autoderefs: 0,
+            autoref: None,
+            unsize: None
         })
     }
 
@@ -1292,7 +1277,6 @@ impl<'tcx> Candidate<'tcx> {
     fn to_unadjusted_pick(&self) -> Pick<'tcx> {
         Pick {
             method_ty: self.method_ty.clone(),
-            adjustment: AutoDeref(0),
             kind: match self.kind {
                 InherentImplCandidate(def_id, _) => {
                     InherentImplPick(def_id)
@@ -1319,7 +1303,10 @@ impl<'tcx> Candidate<'tcx> {
                 ProjectionCandidate(def_id, index) => {
                     TraitPick(def_id, index)
                 }
-            }
+            },
+            autoderefs: 0,
+            autoref: None,
+            unsize: None
         }
     }
 
@@ -1388,15 +1375,10 @@ impl<'tcx> Repr<'tcx> for CandidateKind<'tcx> {
 
 impl<'tcx> Repr<'tcx> for CandidateStep<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("CandidateStep({},{:?})",
+        format!("CandidateStep({}, autoderefs={}, unsize={})",
                 self.self_ty.repr(tcx),
-                self.adjustment)
-    }
-}
-
-impl<'tcx> Repr<'tcx> for PickAdjustment<'tcx> {
-    fn repr(&self, _tcx: &ty::ctxt) -> String {
-        format!("{:?}", self)
+                self.autoderefs,
+                self.unsize.repr(tcx))
     }
 }
 
@@ -1408,9 +1390,12 @@ impl<'tcx> Repr<'tcx> for PickKind<'tcx> {
 
 impl<'tcx> Repr<'tcx> for Pick<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("Pick(method_ty={}, adjustment={:?}, kind={:?})",
+        format!("Pick(method_ty={}, autoderefs={},
+                 autoref={}, unsize={}, kind={:?})",
                 self.method_ty.repr(tcx),
-                self.adjustment,
+                self.autoderefs,
+                self.autoref.repr(tcx),
+                self.unsize.repr(tcx),
                 self.kind)
     }
 }

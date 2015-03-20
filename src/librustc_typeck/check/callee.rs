@@ -130,8 +130,8 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         ty::ty_bare_fn(..) => {
             let adjustment = ty::AdjustDerefRef(ty::AutoDerefRef {
                 autoderefs: autoderefs,
-                unsize: None,
-                autoref: None
+                autoref: None,
+                unsize: None
             });
             fcx.write_adjustment(callee_expr.id, callee_expr.span, adjustment);
             return Some(CallStep::Builtin);

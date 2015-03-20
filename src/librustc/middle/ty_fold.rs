@@ -129,7 +129,7 @@ pub trait TypeFolder<'tcx> : Sized {
         super_fold_existential_bounds(self, s)
     }
 
-    fn fold_autoref(&mut self, ar: &ty::AutoRef) -> ty::AutoRef {
+    fn fold_autoref(&mut self, ar: &ty::AutoRef<'tcx>) -> ty::AutoRef<'tcx> {
         super_fold_autoref(self, ar)
     }
 
@@ -292,8 +292,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ItemSubsts<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::AutoRef {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::AutoRef {
+impl<'tcx> TypeFoldable<'tcx> for ty::AutoRef<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::AutoRef<'tcx> {
         folder.fold_autoref(self)
     }
 }
@@ -472,7 +472,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::AutoUnsize<'tcx> {
         ty::AutoUnsize {
             leaf_source: self.leaf_source.fold_with(folder),
             leaf_target: self.leaf_target.fold_with(folder),
-            root_target: self.root_target.fold_with(folder)
+            target: self.target.fold_with(folder)
         }
     }
 }
@@ -746,11 +746,14 @@ pub fn super_fold_existential_bounds<'tcx, T: TypeFolder<'tcx>>(
 }
 
 pub fn super_fold_autoref<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
-                                                     autoref: &ty::AutoRef)
-                                                     -> ty::AutoRef
+                                                     autoref: &ty::AutoRef<'tcx>)
+                                                     -> ty::AutoRef<'tcx>
 {
     match *autoref {
-        ty::AutoPtr(r, m) => ty::AutoPtr(this.fold_region(r), m),
+        ty::AutoPtr(r, m) => {
+            let r = r.fold_with(this);
+            ty::AutoPtr(this.tcx().mk_region(r), m)
+        }
         ty::AutoUnsafe(m) => ty::AutoUnsafe(m)
     }
 }

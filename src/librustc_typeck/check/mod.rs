@@ -1444,8 +1444,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             span,
             ty::AdjustDerefRef(ty::AutoDerefRef {
                 autoderefs: derefs,
-                unsize: None,
-                autoref: None
+                autoref: None,
+                unsize: None
             })
         );
     }
@@ -1537,8 +1537,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::AdjustUnsafeFnPointer |
             ty::AdjustDerefRef(ty::AutoDerefRef { unsize: None, .. }) => {}
 
-            ty::AdjustDerefRef(ty::AutoDerefRef { unsize: Some(ref unsize), .. }) |
-            ty::AdjustUnsize(ref unsize) => {
+            ty::AdjustDerefRef(ty::AutoDerefRef { unsize: Some(ref unsize), .. }) => {
                 self.register_unsize_obligations(span, unsize);
             }
         }
@@ -2130,7 +2129,7 @@ fn lookup_indexing<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         let unsize = ty::AutoUnsize {
             leaf_source: ty,
             leaf_target: adjusted_ty,
-            root_target: adjusted_ty
+            target: adjusted_ty
         };
         try_index_step(fcx, MethodCall::expr(expr.id), expr, base_expr,
                        adjusted_ty, autoderefs, Some(unsize), lvalue_pref, idx_ty)
@@ -2174,8 +2173,8 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             assert!(unsize.is_none());
             let adjustment = ty::AdjustDerefRef(ty::AutoDerefRef {
                 autoderefs: autoderefs,
-                unsize: None,
-                autoref: None
+                autoref: None,
+                unsize: None
             });
             fcx.write_adjustment(base_expr.id, base_expr.span, adjustment);
             return Some((tcx.types.uint, ty));

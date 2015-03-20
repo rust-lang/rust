@@ -428,33 +428,22 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
             Some(adjustment) => {
                 match *adjustment {
-                    ty::AdjustReifyFnPointer |
-                    ty::AdjustUnsafeFnPointer => {
-                        debug!("cat_expr(AdjustReifyFnPointer): {}",
-                               expr.repr(self.tcx()));
-                        // Convert a bare fn to a closure by adding NULL env.
-                        // Result is an rvalue.
-                        let expr_ty = try!(self.expr_ty_adjusted(expr));
-                        Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
-                    }
-
-                    ty::AdjustUnsize(_) |
                     ty::AdjustDerefRef(
                         ty::AutoDerefRef {
-                            autoref: Some(_), ..}) => {
-                        debug!("cat_expr(AdjustDerefRef): {}",
-                               expr.repr(self.tcx()));
-                        // Equivalent to &*expr or something similar.
-                        // Result is an rvalue.
-                        let expr_ty = try!(self.expr_ty_adjusted(expr));
-                        Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
-                    }
-
-                    ty::AdjustDerefRef(
-                        ty::AutoDerefRef {
-                            autoref: None, autoderefs, ..}) => {
+                            autoref: None, unsize: None, autoderefs, ..}) => {
                         // Equivalent to *expr or something similar.
                         self.cat_expr_autoderefd(expr, autoderefs)
+                    }
+
+                    ty::AdjustReifyFnPointer |
+                    ty::AdjustUnsafeFnPointer |
+                    ty::AdjustDerefRef(_) => {
+                        debug!("cat_expr({}): {}",
+                               adjustment.repr(self.tcx()),
+                               expr.repr(self.tcx()));
+                        // Result is an rvalue.
+                        let expr_ty = try!(self.expr_ty_adjusted(expr));
+                        Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
                     }
                 }
             }

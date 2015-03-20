@@ -274,13 +274,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
                         ty::AdjustDerefRef(ty::AutoDerefRef {
                             autoderefs: adj.autoderefs,
-                            unsize: self.resolve(&adj.unsize, reason),
                             autoref: self.resolve(&adj.autoref, reason),
+                            unsize: self.resolve(&adj.unsize, reason),
                         })
-                    }
-
-                    ty::AdjustUnsize(uk) => {
-                        ty::AdjustUnsize(self.resolve(&uk, reason))
                     }
                 };
                 debug!("Adjustments for node {}: {:?}", id, resolved_adjustment);

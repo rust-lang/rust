@@ -786,32 +786,29 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     // process.
     fn walk_adjustment(&mut self, expr: &ast::Expr) {
         let typer = self.typer;
-        match typer.adjustments().borrow().get(&expr.id) {
-            None => { }
-            Some(adjustment) => {
-                match *adjustment {
-                    ty::AdjustReifyFnPointer |
-                    ty::AdjustUnsafeFnPointer |
-                    ty::AdjustUnsize(_) => {
-                        // Creating a closure/fn-pointer or unsizing consumes
-                        // the input and stores it into the resulting rvalue.
-                        debug!("walk_adjustment(AdjustUnsize|AdjustReifyFnPointer)");
+        if let Some(adjustment) = typer.adjustments().borrow().get(&expr.id) {
+            match *adjustment {
+                ty::AdjustReifyFnPointer |
+                ty::AdjustUnsafeFnPointer => {
+                    // Creating a closure/fn-pointer or unsizing consumes
+                    // the input and stores it into the resulting rvalue.
+                    debug!("walk_adjustment(AdjustReifyFnPointer|AdjustUnsafeFnPointer)");
+                    let cmt_unadjusted =
+                        return_if_err!(self.mc.cat_expr_unadjusted(expr));
+                    self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
+                }
+                ty::AdjustDerefRef(ref adj) => {
+                    self.walk_autoderefs(expr, adj.autoderefs);
+                    if let Some(ref r) = adj.autoref {
+                        self.walk_autoref(expr, r, adj.autoderefs);
+                    } else if adj.unsize.is_some() {
+                        assert!(adj.autoderefs == 0,
+                                format!("Expected no derefs with \
+                                         unsize AutoRefs, found: {}",
+                                         adj.repr(self.tcx())));
                         let cmt_unadjusted =
                             return_if_err!(self.mc.cat_expr_unadjusted(expr));
                         self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
-                    }
-                    ty::AdjustDerefRef(ref adj) => {
-                        self.walk_autoderefs(expr, adj.autoderefs);
-                        if let Some(ref r) = adj.autoref {
-                            self.walk_autoref(expr, r, adj.autoderefs);
-                        } else if adj.unsize.is_some() {
-                            assert!(adj.autoderefs == 1,
-                                    format!("Expected exactly 1 deref with \
-                                             unsize AutoRefs, found: {}", adj.autoderefs));
-                            let cmt_unadjusted =
-                                return_if_err!(self.mc.cat_expr_unadjusted(expr));
-                            self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
-                        }
                     }
                 }
             }
@@ -868,7 +865,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 self.delegate.borrow(expr.id,
                                      expr.span,
                                      cmt_derefd,
-                                     r,
+                                     *r,
                                      ty::BorrowKind::from_mutbl(m),
                                      AutoRef);
             }
