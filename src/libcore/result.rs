@@ -78,7 +78,7 @@
 //! let bad_result: Result<int, int> = bad_result.or_else(|i| Ok(11));
 //!
 //! // Consume the result and return the contents with `unwrap`.
-//! let final_awesome_result = good_result.ok().unwrap();
+//! let final_awesome_result = good_result.unwrap();
 //! ```
 //!
 //! # Results must be used
@@ -460,7 +460,7 @@ impl<T, E> Result<T, E> {
     ///         line.trim_right().parse::<int>().unwrap_or(0)
     ///     });
     ///     // Add the value if there were no errors, otherwise add 0
-    ///     sum += val.ok().unwrap_or(0);
+    ///     sum += val.unwrap_or(0);
     /// }
     ///
     /// assert!(sum == 10);

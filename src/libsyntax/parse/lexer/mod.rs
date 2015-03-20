@@ -623,7 +623,7 @@ impl<'a> StringReader<'a> {
         // find the integer representing the name
         self.scan_digits(base);
         let encoded_name : u32 = self.with_str_from(start_bpos, |s| {
-            num::from_str_radix(s, 10).ok().unwrap_or_else(|| {
+            num::from_str_radix(s, 10).unwrap_or_else(|_| {
                 panic!("expected digits representing a name, got {:?}, {}, range [{:?},{:?}]",
                       s, whence, start_bpos, self.last_pos);
             })
@@ -641,7 +641,7 @@ impl<'a> StringReader<'a> {
         let start_bpos = self.last_pos;
         self.scan_digits(base);
         let encoded_ctxt : ast::SyntaxContext = self.with_str_from(start_bpos, |s| {
-            num::from_str_radix(s, 10).ok().unwrap_or_else(|| {
+            num::from_str_radix(s, 10).unwrap_or_else(|_| {
                 panic!("expected digits representing a ctxt, got {:?}, {}", s, whence);
             })
         });

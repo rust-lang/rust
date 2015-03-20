@@ -181,21 +181,24 @@ impl<T: Write+Send+'static> TerminfoTerminal<T> {
             }
         };
 
-        let entry = open(&term[..]);
-        if entry.is_err() {
-            if env::var("MSYSCON").ok().map_or(false, |s| {
-                    "mintty.exe" == s
-                }) {
-                // msys terminal
-                return Some(box TerminfoTerminal {out: out,
-                                                  ti: msys_terminfo(),
-                                                  num_colors: 8} as Box<Terminal<T>+Send>);
-            }
-            debug!("error finding terminfo entry: {:?}", entry.err().unwrap());
-            return None;
-        }
+        let mut file = match open(&term[..]) {
+            Ok(f) => f,
+            Err(err) => return match env::var("MSYSCON") {
+                Ok(ref val) if &val[..] == "mintty.exe" => {
+                    // msys terminal
+                    Some(box TerminfoTerminal{
+                        out: out,
+                        ti: msys_terminfo(),
+                        num_colors: 8,
+                    } as Box<Terminal<T>+Send>)
+                },
+                _ => {
+                    debug!("error finding terminfo entry: {:?}", err);
+                    None
+                },
+            },
+        };
 
-        let mut file = entry.unwrap();
         let ti = parse(&mut file, false);
         if ti.is_err() {
             debug!("error parsing terminfo entry: {:?}", ti.err().unwrap());

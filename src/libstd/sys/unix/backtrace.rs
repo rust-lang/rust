@@ -454,7 +454,7 @@ fn output(w: &mut Write, idx: int, addr: *mut libc::c_void,
 #[allow(dead_code)]
 fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
                    more: bool) -> io::Result<()> {
-    let file = str::from_utf8(file).ok().unwrap_or("<unknown>");
+    let file = str::from_utf8(file).unwrap_or("<unknown>");
     // prior line: "  ##: {:2$} - func"
     try!(write!(w, "      {:3$}at {}:{}", "", file, line, HEX_WIDTH));
     if more {

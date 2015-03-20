@@ -43,6 +43,7 @@ use std::io::SeekFrom;
 use std::io::prelude::*;
 use std::num::FromPrimitive;
 use std::rc::Rc;
+use std::fmt::Debug;
 
 use rbml::reader;
 use rbml::writer::Encoder;
@@ -313,9 +314,11 @@ trait def_id_encoder_helpers {
     fn emit_def_id(&mut self, did: ast::DefId);
 }
 
-impl<S:serialize::Encoder> def_id_encoder_helpers for S {
+impl<S:serialize::Encoder> def_id_encoder_helpers for S
+    where <S as serialize::serialize::Encoder>::Error: Debug
+{
     fn emit_def_id(&mut self, did: ast::DefId) {
-        did.encode(self).ok().unwrap()
+        did.encode(self).unwrap()
     }
 }
 
@@ -325,15 +328,18 @@ trait def_id_decoder_helpers {
                          cdata: &cstore::crate_metadata) -> ast::DefId;
 }
 
-impl<D:serialize::Decoder> def_id_decoder_helpers for D {
+impl<D:serialize::Decoder> def_id_decoder_helpers for D
+    where <D as serialize::serialize::Decoder>::Error: Debug
+{
     fn read_def_id(&mut self, dcx: &DecodeContext) -> ast::DefId {
-        let did: ast::DefId = Decodable::decode(self).ok().unwrap();
+        let did: ast::DefId = Decodable::decode(self).unwrap();
         did.tr(dcx)
     }
 
     fn read_def_id_nodcx(&mut self,
-                         cdata: &cstore::crate_metadata) -> ast::DefId {
-        let did: ast::DefId = Decodable::decode(self).ok().unwrap();
+                         cdata: &cstore::crate_metadata)
+                         -> ast::DefId {
+        let did: ast::DefId = Decodable::decode(self).unwrap();
         decoder::translate_def_id(cdata, did)
     }
 }
@@ -1784,7 +1790,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_closure_kind<'b, 'c>(&mut self, _dcx: &DecodeContext<'b, 'c, 'tcx>)
                                  -> ty::ClosureKind
     {
-        Decodable::decode(self).ok().unwrap()
+        Decodable::decode(self).unwrap()
     }
 
     fn read_closure_ty<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
