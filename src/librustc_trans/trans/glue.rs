@@ -30,7 +30,6 @@ use trans::callee;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
 use trans::common::*;
-use trans::consts;
 use trans::datum;
 use trans::debuginfo::DebugLoc;
 use trans::declare;
@@ -39,8 +38,7 @@ use trans::foreign;
 use trans::inline;
 use trans::machine::*;
 use trans::monomorphize;
-use trans::tvec;
-use trans::type_of::{type_of, sizing_type_of, align_of};
+use trans::type_of::{type_of, type_of_dtor, sizing_type_of, align_of};
 use trans::type_::Type;
 use util::ppaux;
 use util::ppaux::{ty_to_short_str, Repr};
@@ -191,8 +189,9 @@ pub fn get_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Val
     };
 
     let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, "drop");
-    let llfn = decl_cdecl_fn(ccx, &fn_nm, llfnty, ty::mk_nil(ccx.tcx()));
-    note_unique_llvm_symbol(ccx, fn_nm.clone());
+    let llfn = declare::define_cfn(ccx, &fn_nm, llfnty, ty::mk_nil(ccx.tcx())).unwrap_or_else(||{
+       ccx.sess().bug(&format!("symbol `{}` already defined", fn_nm));
+    });
     ccx.available_drop_glues().borrow_mut().insert(t, fn_nm);
 
     let _s = StatRecorder::new(ccx, format!("drop {}", ty_to_short_str(ccx.tcx(), t)));
