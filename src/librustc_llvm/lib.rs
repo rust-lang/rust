@@ -14,6 +14,8 @@
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
 #![allow(dead_code)]
+#![allow(trivial_cast)]
+#![allow(trivial_numeric_cast)]
 
 #![crate_name = "rustc_llvm"]
 #![unstable(feature = "rustc_private")]

@@ -10,7 +10,7 @@
 
 #![deny(unused_variables)]
 #![deny(unused_assignments)]
-#![allow(dead_code, non_camel_case_types)]
+#![allow(dead_code, non_camel_case_types, trivial_numeric_cast)]
 
 fn f1(x: isize) {
     //~^ ERROR unused variable: `x`

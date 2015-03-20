@@ -308,8 +308,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         };
         (*((*renderer).opaque as *mut hoedown_html_renderer_state)).opaque
                 = &mut opaque as *mut _ as *mut libc::c_void;
-        (*renderer).blockcode = Some(block as blockcodefn);
-        (*renderer).header = Some(header as headerfn);
+        (*renderer).blockcode = Some(block);
+        (*renderer).header = Some(header);
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
         hoedown_document_render(document, ob, s.as_ptr(),
@@ -380,8 +380,8 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
         let renderer = hoedown_html_renderer_new(0, 0);
-        (*renderer).blockcode = Some(block as blockcodefn);
-        (*renderer).header = Some(header as headerfn);
+        (*renderer).blockcode = Some(block);
+        (*renderer).header = Some(header);
         (*((*renderer).opaque as *mut hoedown_html_renderer_state)).opaque
                 = tests as *mut _ as *mut libc::c_void;
 
@@ -501,10 +501,10 @@ pub fn plain_summary_line(md: &str) -> String {
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
         let mut plain_renderer: hoedown_renderer = ::std::mem::zeroed();
-        let renderer = &mut plain_renderer as *mut hoedown_renderer;
+        let renderer: *mut hoedown_renderer = &mut plain_renderer;
         (*renderer).opaque = ob as *mut libc::c_void;
-        (*renderer).link = Some(link as linkfn);
-        (*renderer).normal_text = Some(normal_text as normaltextfn);
+        (*renderer).link = Some(link);
+        (*renderer).normal_text = Some(normal_text);
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
         hoedown_document_render(document, ob, md.as_ptr(),

@@ -26,7 +26,7 @@ use trans::common::*;
 use trans::consts;
 use trans::datum::*;
 use trans::debuginfo::DebugLoc;
-use trans::expr::{SaveIn, Ignore};
+use trans::expr::SaveIn;
 use trans::expr;
 use trans::glue;
 use trans::machine;
@@ -859,44 +859,6 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      substs.clone()).val
         })
         .collect()
-}
-
-/// Generates the code to convert from a pointer (`Box<T>`, `&T`, etc) into an object
-/// (`Box<Trait>`, `&Trait`, etc). This means creating a pair where the first word is the vtable
-/// and the second word is the pointer.
-pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    datum: Datum<'tcx, Expr>,
-                                    id: ast::NodeId,
-                                    trait_ref: ty::PolyTraitRef<'tcx>,
-                                    dest: expr::Dest)
-                                    -> Block<'blk, 'tcx> {
-    let mut bcx = bcx;
-    let _icx = push_ctxt("meth::trans_trait_cast");
-
-    let lldest = match dest {
-        Ignore => {
-            return datum.clean(bcx, "trait_trait_cast", id);
-        }
-        SaveIn(dest) => dest
-    };
-
-    debug!("trans_trait_cast: trait_ref={}",
-           trait_ref.repr(bcx.tcx()));
-
-    let llty = type_of(bcx.ccx(), datum.ty);
-
-    // Store the pointer into the first half of pair.
-    let llboxdest = GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]);
-    let llboxdest = PointerCast(bcx, llboxdest, llty.ptr_to());
-    bcx = datum.store_to(bcx, llboxdest);
-
-    // Store the vtable into the second half of pair.
-    let vtable = get_vtable(bcx.ccx(), trait_ref, bcx.fcx.param_substs);
-    let llvtabledest = GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]);
-    let llvtabledest = PointerCast(bcx, llvtabledest, val_ty(vtable).ptr_to());
-    Store(bcx, vtable, llvtabledest);
-
-    bcx
 }
 
 /// Replace the self type (&Self or Box<Self>) with an opaque pointer.

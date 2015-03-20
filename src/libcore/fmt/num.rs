@@ -13,6 +13,7 @@
 // FIXME: #6220 Implement floating point formatting
 
 #![allow(unsigned_negation)]
+#![allow(trivial_numeric_cast)]
 
 use fmt;
 use iter::IteratorExt;

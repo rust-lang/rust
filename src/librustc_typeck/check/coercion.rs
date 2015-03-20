@@ -332,14 +332,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
     // E.g., `[T, ..n]` -> `([T], UnsizeLength(n))`
     fn unsize_ty(&self,
                  ty_a: Ty<'tcx>,
-                 a: Ty<'tcx>,
+                 a: Ty<'tcx>, // TODO unwrap ty_a here, not in the caller
                  ty_b: Ty<'tcx>)
-                 -> Option<(Ty<'tcx>, ty::UnsizeKind<'tcx>)> {
-        debug!("unsize_ty(a={:?}, ty_b={})", a, ty_b.repr(self.tcx()));
-
+                 -> Option<(Ty<'tcx>, ty::UnsizeKind<'tcx>)>
+    {
         let tcx = self.tcx();
 
-        self.unpack_actual_value(ty_b, |b|
+        self.unpack_actual_value(ty_b, |b| {
+            debug!("unsize_ty(a={}, b={})", a.repr(self.tcx()), b.repr(self.tcx()));
             match (&a.sty, &b.sty) {
                 (&ty::ty_vec(t_a, Some(len)), &ty::ty_vec(_, None)) => {
                     let ty = ty::mk_vec(tcx, t_a, None);
@@ -438,7 +438,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
                 _ => None
             }
-        )
+        })
     }
 
     fn coerce_from_fn_pointer(&self,

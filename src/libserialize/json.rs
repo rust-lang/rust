@@ -2429,7 +2429,10 @@ pub trait ToJson {
 macro_rules! to_json_impl_i64 {
     ($($t:ty), +) => (
         $(impl ToJson for $t {
-            fn to_json(&self) -> Json { Json::I64(*self as i64) }
+            fn to_json(&self) -> Json {
+                #![allow(trivial_numeric_cast)]
+                Json::I64(*self as i64)
+            }
         })+
     )
 }
@@ -2439,7 +2442,10 @@ to_json_impl_i64! { int, i8, i16, i32, i64 }
 macro_rules! to_json_impl_u64 {
     ($($t:ty), +) => (
         $(impl ToJson for $t {
-            fn to_json(&self) -> Json { Json::U64(*self as u64) }
+            fn to_json(&self) -> Json {
+                #![allow(trivial_numeric_cast)]
+                Json::U64(*self as u64)
+            }
         })+
     )
 }

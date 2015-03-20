@@ -73,7 +73,7 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
     use thread::Thread;
 
     let something_around_the_top_of_the_stack = 1;
-    let addr = &something_around_the_top_of_the_stack as *const int;
+    let addr = &something_around_the_top_of_the_stack as *const _ as *const int;
     let my_stack_top = addr as uint;
 
     // FIXME #11359 we just assume that this thread has a stack of a

@@ -713,7 +713,11 @@ impl<T> UnsafeCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get(&self) -> *mut T { &self.value as *const T as *mut T }
+    pub fn get(&self) -> *mut T {
+        // FIXME(#23542) Replace with type ascription.
+        #![allow(trivial_cast)]
+        &self.value as *const T as *mut T
+    }
 
     /// Unwraps the value
     ///

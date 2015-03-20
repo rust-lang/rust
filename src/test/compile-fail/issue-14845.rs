@@ -22,11 +22,11 @@ fn main() {
     //~| expected u8
     //~| found array of 1 elements
 
-    let local = [0];
+    let local: [u8; 1] = [0];
     let _v = &local as *mut u8;
     //~^ ERROR mismatched types
     //~| expected `*mut u8`
-    //~| found `&[_; 1]`
+    //~| found `&[u8; 1]`
     //~| expected u8,
     //~| found array of 1 elements
 }

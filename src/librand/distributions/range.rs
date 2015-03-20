@@ -10,6 +10,8 @@
 
 //! Generating numbers between two others.
 
+#![allow(trivial_numeric_cast)]
+
 // this is surprisingly complicated to be both generic & correct
 
 use core::prelude::{PartialOrd};

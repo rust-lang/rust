@@ -865,7 +865,7 @@ impl<'a> Parser<'a> {
         } else {
             // Avoid token copies with `replace`.
             let buffer_start = self.buffer_start as usize;
-            let next_index = (buffer_start + 1) & 3 as usize;
+            let next_index = (buffer_start + 1) & 3;
             self.buffer_start = next_index as isize;
 
             let placeholder = TokenAndSpan {

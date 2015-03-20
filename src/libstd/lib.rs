@@ -135,6 +135,8 @@
 #![feature(no_std)]
 #![no_std]
 
+#![allow(trivial_cast)]
+#![allow(trivial_numeric_cast)]
 #![deny(missing_docs)]
 
 #[cfg(test)] extern crate test;
