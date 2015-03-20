@@ -73,6 +73,11 @@ pub struct Metadata(fs_imp::FileAttr);
 /// will yield instances of `io::Result<DirEntry>`. Through a `DirEntry`
 /// information like the entry's path and possibly other metadata can be
 /// learned.
+///
+/// # Failure
+///
+/// This `io::Result` will be an `Err` if there's some sort of intermittent
+/// IO error during iteration.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ReadDir(fs_imp::ReadDir);
 
