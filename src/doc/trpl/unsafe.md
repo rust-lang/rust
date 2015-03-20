@@ -93,10 +93,6 @@ offered by the Rust language and libraries. For example, they
 - are plain-old-data, that is, they don't move ownership, again unlike
   `Box`, hence the Rust compiler cannot protect against bugs like
   use-after-free;
-- are considered sendable (if their contents is considered sendable),
-  so the compiler offers no assistance with ensuring their use is
-  thread-safe; for example, one can concurrently access a `*mut i32`
-  from two threads without synchronization.
 - lack any form of lifetimes, unlike `&`, and so the compiler cannot
   reason about dangling pointers; and
 - have no guarantees about aliasing or mutability other than mutation
