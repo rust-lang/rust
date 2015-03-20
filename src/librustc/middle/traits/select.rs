@@ -38,6 +38,8 @@ use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
+use middle::ty_match;
+use middle::ty_relate::TypeRelation;
 use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::{abi, ast};
@@ -472,7 +474,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             unbound_input_types &&
              (self.intercrate ||
               stack.iter().skip(1).any(
-                  |prev| stack.fresh_trait_ref.def_id() == prev.fresh_trait_ref.def_id()))
+                  |prev| self.match_fresh_trait_refs(&stack.fresh_trait_ref,
+                                                     &prev.fresh_trait_ref)))
         {
             debug!("evaluate_stack({}) --> unbound argument, recursion -->  ambiguous",
                    stack.fresh_trait_ref.repr(self.tcx()));
@@ -2474,6 +2477,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     ///////////////////////////////////////////////////////////////////////////
     // Miscellany
+
+    fn match_fresh_trait_refs(&self,
+                              previous: &ty::PolyTraitRef<'tcx>,
+                              current: &ty::PolyTraitRef<'tcx>)
+                              -> bool
+    {
+        let mut matcher = ty_match::Match::new(self.tcx());
+        matcher.relate(previous, current).is_ok()
+    }
 
     fn push_stack<'o,'s:'o>(&mut self,
                             previous_stack: Option<&'s TraitObligationStack<'s, 'tcx>>,
