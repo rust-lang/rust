@@ -102,6 +102,22 @@ pub struct AtomicUsize {
 
 unsafe impl Sync for AtomicUsize {}
 
+/// An signed integer type which can be safely shared between threads.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct AtomicI32 {
+    v: UnsafeCell<i32>,
+}
+
+unsafe impl Sync for AtomicI32 {}
+
+/// An unsigned integer type which can be safely shared between threads.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct AtomicU32 {
+    v: UnsafeCell<u32>,
+}
+
+unsafe impl Sync for AtomicU32 {}
+
 /// A raw pointer type which can be safely shared between threads.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct AtomicPtr<T> {
@@ -775,6 +791,380 @@ impl AtomicUsize {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_xor(&self, val: usize, order: Ordering) -> usize {
+        unsafe { atomic_xor(self.v.get(), val, order) }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AtomicI32 {
+    /// Creates a new `AtomicI32`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::AtomicI32;
+    ///
+    /// let atomic_forty_two  = AtomicI32::new(42);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn new(v: i32) -> AtomicI32 {
+        AtomicI32 {v: UnsafeCell::new(v)}
+    }
+
+    /// Loads a value from the i32.
+    ///
+    /// `load` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is `Release` or `AcqRel`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicI32, Ordering};
+    ///
+    /// let some_i32 = AtomicI32::new(5);
+    ///
+    /// let value = some_i32.load(Ordering::Relaxed);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn load(&self, order: Ordering) -> i32 {
+        unsafe { atomic_load(self.v.get(), order) }
+    }
+
+    /// Stores a value into the i32.
+    ///
+    /// `store` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicI32, Ordering};
+    ///
+    /// let some_i32 = AtomicI32::new(5);
+    ///
+    /// some_i32.store(10, Ordering::Relaxed);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is `Acquire` or `AcqRel`.
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn store(&self, val: i32, order: Ordering) {
+        unsafe { atomic_store(self.v.get(), val, order); }
+    }
+
+    /// Stores a value into the i32, returning the old value.
+    ///
+    /// `swap` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicI32, Ordering};
+    ///
+    /// let some_i32 = AtomicI32::new(5);
+    ///
+    /// let value = some_i32.swap(10, Ordering::Relaxed);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn swap(&self, val: i32, order: Ordering) -> i32 {
+        unsafe { atomic_swap(self.v.get(), val, order) }
+    }
+
+    /// Stores a value into the i32 if the current value is the same as the expected value.
+    ///
+    /// If the return value is equal to `old` then the value was updated.
+    ///
+    /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
+    /// this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicI32, Ordering};
+    ///
+    /// let some_i32 = AtomicI32::new(5);
+    ///
+    /// let value = some_i32.compare_and_swap(5, 10, Ordering::Relaxed);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn compare_and_swap(&self, old: i32, new: i32, order: Ordering) -> i32 {
+        unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
+    }
+
+    /// Add an i32 to the current value, returning the previous value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicI32, Ordering};
+    ///
+    /// let foo = AtomicI32::new(0);
+    /// assert_eq!(0, foo.fetch_add(10, Ordering::SeqCst));
+    /// assert_eq!(10, foo.load(Ordering::SeqCst));
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn fetch_add(&self, val: i32, order: Ordering) -> i32 {
+        unsafe { atomic_add(self.v.get(), val, order) }
+    }
+
+    /// Subtract an i32 from the current value, returning the previous value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicI32, Ordering};
+    ///
+    /// let foo = AtomicI32::new(0);
+    /// assert_eq!(0, foo.fetch_sub(10, Ordering::SeqCst));
+    /// assert_eq!(-10, foo.load(Ordering::SeqCst));
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn fetch_sub(&self, val: i32, order: Ordering) -> i32 {
+        unsafe { atomic_sub(self.v.get(), val, order) }
+    }
+
+    /// Bitwise and with the current i32, returning the previous value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicI32, Ordering};
+    ///
+    /// let foo = AtomicI32::new(0b101101);
+    /// assert_eq!(0b101101, foo.fetch_and(0b110011, Ordering::SeqCst));
+    /// assert_eq!(0b100001, foo.load(Ordering::SeqCst));
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn fetch_and(&self, val: i32, order: Ordering) -> i32 {
+        unsafe { atomic_and(self.v.get(), val, order) }
+    }
+
+    /// Bitwise or with the current i32, returning the previous value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicI32, Ordering};
+    ///
+    /// let foo = AtomicI32::new(0b101101);
+    /// assert_eq!(0b101101, foo.fetch_or(0b110011, Ordering::SeqCst));
+    /// assert_eq!(0b111111, foo.load(Ordering::SeqCst));
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn fetch_or(&self, val: i32, order: Ordering) -> i32 {
+        unsafe { atomic_or(self.v.get(), val, order) }
+    }
+
+    /// Bitwise xor with the current i32, returning the previous value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicI32, Ordering};
+    ///
+    /// let foo = AtomicI32::new(0b101101);
+    /// assert_eq!(0b101101, foo.fetch_xor(0b110011, Ordering::SeqCst));
+    /// assert_eq!(0b011110, foo.load(Ordering::SeqCst));
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn fetch_xor(&self, val: i32, order: Ordering) -> i32 {
+        unsafe { atomic_xor(self.v.get(), val, order) }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AtomicU32 {
+    /// Creates a new `AtomicU32`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::AtomicU32;
+    ///
+    /// let atomic_forty_two = AtomicU32::new(42);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn new(v: u32) -> AtomicU32 {
+        AtomicU32 { v: UnsafeCell::new(v) }
+    }
+
+    /// Loads a value from the u32.
+    ///
+    /// `load` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is `Release` or `AcqRel`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicU32, Ordering};
+    ///
+    /// let some_u32 = AtomicU32::new(5);
+    ///
+    /// let value = some_u32.load(Ordering::Relaxed);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn load(&self, order: Ordering) -> u32 {
+        unsafe { atomic_load(self.v.get(), order) }
+    }
+
+    /// Stores a value into the u32.
+    ///
+    /// `store` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicU32, Ordering};
+    ///
+    /// let some_u32 = AtomicU32::new(5);
+    ///
+    /// some_u32.store(10, Ordering::Relaxed);
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if `order` is `Acquire` or `AcqRel`.
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn store(&self, val: u32, order: Ordering) {
+        unsafe { atomic_store(self.v.get(), val, order); }
+    }
+
+    /// Stores a value into the u32, returning the old value.
+    ///
+    /// `swap` takes an `Ordering` argument which describes the memory ordering of this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicU32, Ordering};
+    ///
+    /// let some_u32= AtomicU32::new(5);
+    ///
+    /// let value = some_u32.swap(10, Ordering::Relaxed);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn swap(&self, val: u32, order: Ordering) -> u32 {
+        unsafe { atomic_swap(self.v.get(), val, order) }
+    }
+
+    /// Stores a value into the u32 if the current value is the same as the expected value.
+    ///
+    /// If the return value is equal to `old` then the value was updated.
+    ///
+    /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
+    /// this operation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicU32, Ordering};
+    ///
+    /// let some_u32 = AtomicU32::new(5);
+    ///
+    /// let value = some_u32.compare_and_swap(5, 10, Ordering::Relaxed);
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn compare_and_swap(&self, old: u32, new: u32, order: Ordering) -> u32 {
+        unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
+    }
+
+    /// Add to the current u32, returning the previous value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicU32, Ordering};
+    ///
+    /// let foo = AtomicU32::new(0);
+    /// assert_eq!(0, foo.fetch_add(10, Ordering::SeqCst));
+    /// assert_eq!(10, foo.load(Ordering::SeqCst));
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn fetch_add(&self, val: u32, order: Ordering) -> u32 {
+        unsafe { atomic_add(self.v.get(), val, order) }
+    }
+
+    /// Subtract from the current u32, returning the previous value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicU32, Ordering};
+    ///
+    /// let foo = AtomicU32::new(10);
+    /// assert_eq!(10, foo.fetch_sub(10, Ordering::SeqCst));
+    /// assert_eq!(0, foo.load(Ordering::SeqCst));
+    /// ```
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn fetch_sub(&self, val: u32, order: Ordering) -> u32 {
+        unsafe { atomic_sub(self.v.get(), val, order) }
+    }
+
+    /// Bitwise and with the current u32, returning the previous value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicU32, Ordering};
+    ///
+    /// let foo = AtomicU32::new(0b101101);
+    /// assert_eq!(0b101101, foo.fetch_and(0b110011, Ordering::SeqCst));
+    /// assert_eq!(0b100001, foo.load(Ordering::SeqCst));
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn fetch_and(&self, val: u32, order: Ordering) -> u32 {
+        unsafe { atomic_and(self.v.get(), val, order) }
+    }
+
+    /// Bitwise or with the current u32, returning the previous value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicU32, Ordering};
+    ///
+    /// let foo = AtomicU32::new(0b101101);
+    /// assert_eq!(0b101101, foo.fetch_or(0b110011, Ordering::SeqCst));
+    /// assert_eq!(0b111111, foo.load(Ordering::SeqCst));
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn fetch_or(&self, val: u32, order: Ordering) -> u32 {
+        unsafe { atomic_or(self.v.get(), val, order) }
+    }
+
+    /// Bitwise xor with the current u32, returning the previous value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::atomic::{AtomicU32, Ordering};
+    ///
+    /// let foo = AtomicU32::new(0b101101);
+    /// assert_eq!(0b101101, foo.fetch_xor(0b110011, Ordering::SeqCst));
+    /// assert_eq!(0b011110, foo.load(Ordering::SeqCst));
+    #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn fetch_xor(&self, val: u32, order: Ordering) -> u32 {
         unsafe { atomic_xor(self.v.get(), val, order) }
     }
 }
