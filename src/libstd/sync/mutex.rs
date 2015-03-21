@@ -40,7 +40,7 @@ use fmt;
 /// among threads to ensure that a possibly invalid invariant is not witnessed.
 ///
 /// A poisoned mutex, however, does not prevent all access to the underlying
-/// data. The `PoisonError` type has an `into_guard` method which will return
+/// data. The `PoisonError` type has an `into_inner` method which will return
 /// the guard that would have otherwise been returned on a successful lock. This
 /// allows access to the data, despite the lock being poisoned.
 ///
@@ -105,7 +105,7 @@ use fmt;
 /// // pattern matched on to return the underlying guard on both branches.
 /// let mut guard = match lock.lock() {
 ///     Ok(guard) => guard,
-///     Err(poisoned) => poisoned.into_guard(),
+///     Err(poisoned) => poisoned.into_inner(),
 /// };
 ///
 /// *guard += 1;
