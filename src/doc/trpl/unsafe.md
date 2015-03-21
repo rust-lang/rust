@@ -197,15 +197,16 @@ use std::ptr;
 
 // Define a wrapper around the handle returned by the foreign code.
 // Unique<T> has the same semantics as Box<T>
-pub struct Unique<T> {
+//
+// NB: For simplicity and correctness, we require that T has kind Send
+// (owned boxes relax this restriction).
+pub struct Unique<T: Send> {
     // It contains a single raw, mutable pointer to the object in question.
     ptr: *mut T
 }
 
 // Implement methods for creating and using the values in the box.
 
-// NB: For simplicity and correctness, we require that T has kind Send
-// (owned boxes relax this restriction).
 impl<T: Send> Unique<T> {
     pub fn new(value: T) -> Unique<T> {
         unsafe {
@@ -239,11 +240,11 @@ impl<T: Send> Unique<T> {
 // Unique<T>, making the struct manage the raw pointer: when the
 // struct goes out of scope, it will automatically free the raw pointer.
 //
-// NB: This is an unsafe destructor, because rustc will not normally
-// allow destructors to be associated with parameterized types, due to
-// bad interaction with managed boxes. (With the Send restriction,
-// we don't have this problem.) Note that the `#[unsafe_destructor]`
-// feature gate is required to use unsafe destructors.
+// NB: This is an unsafe destructor; rustc will not normally allow
+// destructors to be associated with parameterized types (due to
+// historically failing to check them soundly).  Note that the
+// `#[unsafe_destructor]` feature gate is currently required to use
+// unsafe destructors.
 #[unsafe_destructor]
 impl<T: Send> Drop for Unique<T> {
     fn drop(&mut self) {

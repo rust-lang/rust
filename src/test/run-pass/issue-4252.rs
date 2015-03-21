@@ -21,7 +21,7 @@ trait X {
 struct Y(int);
 
 #[derive(Debug)]
-struct Z<T> {
+struct Z<T: X+std::fmt::Debug> {
     x: T
 }
 

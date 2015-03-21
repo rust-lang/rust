@@ -1793,6 +1793,9 @@ impl RegionParameterDef {
     pub fn to_early_bound_region(&self) -> ty::Region {
         ty::ReEarlyBound(self.def_id.node, self.space, self.index, self.name)
     }
+    pub fn to_bound_region(&self) -> ty::BoundRegion {
+        ty::BoundRegion::BrNamed(self.def_id, self.name)
+    }
 }
 
 /// Information about the formal type/lifetime parameters associated
