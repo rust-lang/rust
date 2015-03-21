@@ -18,7 +18,7 @@ use std::fmt;
 use serialize::{Encoder, Encodable};
 use serialize::json;
 
-struct Foo<T> {
+struct Foo<T: Encodable> {
     v: T,
 }
 
