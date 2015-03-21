@@ -843,7 +843,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                base_datum,
                                                vec![(ix_datum, idx.id)],
                                                Some(SaveIn(scratch.val)),
-                                               true));
+                                               false));
             let datum = scratch.to_expr_datum();
             if type_is_sized(bcx.tcx(), elt_ty) {
                 Datum::new(datum.to_llscalarish(bcx), elt_ty, LvalueExpr)
