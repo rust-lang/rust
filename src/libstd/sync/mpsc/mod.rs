@@ -372,7 +372,7 @@ unsafe impl<T: Send> Send for Sender<T> { }
 /// The sending-half of Rust's synchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct SyncSender<T> {
+pub struct SyncSender<T: Send> {
     inner: Arc<UnsafeCell<sync::Packet<T>>>,
 }
 
