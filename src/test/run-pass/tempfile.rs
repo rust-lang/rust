@@ -18,6 +18,7 @@
 // they're in a different location than before. Hence, these tests are all run
 // serially here.
 
+use std::old_path::{Path, GenericPath};
 use std::old_io::fs::PathExtensions;
 use std::old_io::{fs, TempDir};
 use std::old_io;

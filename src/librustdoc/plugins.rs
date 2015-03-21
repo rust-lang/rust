@@ -16,6 +16,7 @@ use std::dynamic_lib as dl;
 use serialize::json;
 use std::mem;
 use std::string::String;
+use std::old_path::{Path, GenericPath};
 
 pub type PluginJson = Option<(String, json::Json)>;
 pub type PluginResult = (clean::Crate, PluginJson);

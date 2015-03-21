@@ -10,6 +10,8 @@
 
 #![feature(unboxed_closures)]
 
+use std::io::Read;
+
 fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
 
 fn main() {
@@ -17,7 +19,7 @@ fn main() {
     to_fn_once(move|| { x = 2; });
     //~^ ERROR: cannot assign to immutable captured outer variable
 
-    let s = std::old_io::stdin();
-    to_fn_once(move|| { s.read_to_end(); });
+    let s = std::io::stdin();
+    to_fn_once(move|| { s.read_to_end(&mut Vec::new()); });
     //~^ ERROR: cannot borrow immutable captured outer variable
 }

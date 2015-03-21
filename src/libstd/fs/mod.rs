@@ -801,6 +801,7 @@ mod tests {
     use prelude::v1::*;
     use io::prelude::*;
 
+    use env;
     use fs::{self, File, OpenOptions};
     use io::{ErrorKind, SeekFrom};
     use path::PathBuf;
@@ -848,8 +849,7 @@ mod tests {
     }
 
     pub fn tmpdir() -> TempDir {
-        let s = os::tmpdir();
-        let p = Path2::new(s.as_str().unwrap());
+        let p = env::temp_dir();
         let ret = p.join(&format!("rust-{}", rand::random::<u32>()));
         check!(fs::create_dir(&ret));
         TempDir(ret)
@@ -1082,7 +1082,7 @@ mod tests {
         let dir = &tmpdir.join("di_readdir");
         check!(fs::create_dir(dir));
         let prefix = "foo";
-        for n in range(0, 3) {
+        for n in 0..3 {
             let f = dir.join(&format!("{}.txt", n));
             let mut w = check!(File::create(&f));
             let msg_str = format!("{}{}", prefix, n.to_string());

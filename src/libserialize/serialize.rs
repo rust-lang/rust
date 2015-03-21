@@ -15,7 +15,7 @@ Core encoding and decoding interfaces.
 */
 
 #[allow(deprecated)]
-use std::old_path;
+use std::old_path::{self, GenericPath};
 use std::path;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};

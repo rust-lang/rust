@@ -39,8 +39,9 @@
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::cmp::min;
-use std::old_io::{BufferedWriter, File};
+use std::old_io::*;
 use std::old_io;
+use std::old_path::Path;
 use std::num::Float;
 use std::env;
 

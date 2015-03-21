@@ -176,6 +176,7 @@ macro_rules! try {
 ///
 /// ```
 /// # #![allow(unused_must_use)]
+/// use std::io::Write;
 ///
 /// let mut w = Vec::new();
 /// write!(&mut w, "test");

@@ -23,8 +23,5 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-pub use super::{Read, Write, BufRead};
+pub use super::{Read, Write, BufRead, Seek};
 pub use fs::PathExt;
-
-// FIXME: pub use as `Seek` when the name isn't in the actual prelude any more
-pub use super::Seek as NewSeek;

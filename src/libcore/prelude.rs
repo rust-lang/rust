@@ -29,8 +29,6 @@ pub use marker::{Copy, Send, Sized, Sync};
 pub use ops::{Drop, Fn, FnMut, FnOnce};
 
 // Reexported functions
-#[allow(deprecated)]
-pub use iter::range;
 pub use mem::drop;
 
 // Reexported types and traits

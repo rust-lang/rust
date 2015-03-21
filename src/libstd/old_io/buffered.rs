@@ -33,7 +33,8 @@ use vec::Vec;
 /// # Examples
 ///
 /// ```
-/// use std::old_io::{BufferedReader, File};
+/// use std::old_io::*;
+/// use std::old_path::Path;
 ///
 /// let file = File::open(&Path::new("message.txt"));
 /// let mut reader = BufferedReader::new(file);
@@ -136,7 +137,8 @@ impl<R: Reader> Reader for BufferedReader<R> {
 /// # Examples
 ///
 /// ```
-/// use std::old_io::{BufferedWriter, File};
+/// use std::old_io::*;
+/// use std::old_path::Path;
 ///
 /// let file = File::create(&Path::new("message.txt")).unwrap();
 /// let mut writer = BufferedWriter::new(file);
@@ -323,7 +325,8 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 ///
 /// ```
 /// # #![allow(unused_must_use)]
-/// use std::old_io::{BufferedStream, File};
+/// use std::old_io::*;
+/// use std::old_path::Path;
 ///
 /// let file = File::open(&Path::new("message.txt"));
 /// let mut stream = BufferedStream::new(file);
@@ -422,7 +425,7 @@ impl<S: Stream> Writer for BufferedStream<S> {
 #[cfg(test)]
 mod test {
     extern crate test;
-    use old_io;
+    use old_io::{self, Reader, Writer, Buffer, BufferPrelude};
     use prelude::v1::*;
     use super::*;
     use super::super::{IoResult, EndOfFile};

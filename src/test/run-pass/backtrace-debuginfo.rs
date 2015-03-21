@@ -11,7 +11,8 @@
 // compile-flags:-g
 // ignore-pretty as this critically relies on line numbers
 
-use std::old_io::stderr;
+use std::io;
+use std::io::prelude::*;
 use std::env;
 
 #[path = "backtrace-debuginfo-aux.rs"] mod aux;
@@ -124,17 +125,18 @@ fn check_trace(output: &str, error: &str) {
 
 fn run_test(me: &str) {
     use std::str;
-    use std::old_io::process::Command;
+    use std::process::Command;
 
     let mut template = Command::new(me);
     template.env("RUST_BACKTRACE", "1");
 
     let mut i = 0;
     loop {
-        let p = template.clone().arg(i.to_string()).spawn().unwrap();
-        let out = p.wait_with_output().unwrap();
-        let output = str::from_utf8(&out.output).unwrap();
-        let error = str::from_utf8(&out.error).unwrap();
+        let out = Command::new(me)
+                          .env("RUST_BACKTRACE", "1")
+                          .arg(i.to_string()).output().unwrap();
+        let output = str::from_utf8(&out.stdout).unwrap();
+        let error = str::from_utf8(&out.stderr).unwrap();
         if out.status.success() {
             assert!(output.contains("done."), "bad output for successful run: {}", output);
             break;
@@ -150,7 +152,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() >= 2 {
         let case = args[1].parse().unwrap();
-        writeln!(&mut stderr(), "test case {}", case).unwrap();
+        writeln!(&mut io::stderr(), "test case {}", case).unwrap();
         outer(case, pos!());
         println!("done.");
     } else {
