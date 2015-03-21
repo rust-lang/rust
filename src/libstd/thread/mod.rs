@@ -698,7 +698,7 @@ impl Drop for JoinHandle {
 /// permission.
 #[must_use = "thread will be immediately joined if `JoinGuard` is not used"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct JoinGuard<'a, T: 'a> {
+pub struct JoinGuard<'a, T: Send + 'a> {
     inner: JoinInner<T>,
     _marker: PhantomData<&'a T>,
 }
