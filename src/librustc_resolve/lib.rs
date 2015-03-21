@@ -900,7 +900,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             return;
         }
         if self.glob_map.contains_key(&import_id) {
-            self.glob_map[import_id].insert(name);
+            self.glob_map.get_mut(&import_id).unwrap().insert(name);
             return;
         }
 

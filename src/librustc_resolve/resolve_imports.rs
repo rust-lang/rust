@@ -603,7 +603,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         // We've successfully resolved the import. Write the results in.
         let mut import_resolutions = module_.import_resolutions.borrow_mut();
-        let import_resolution = &mut (*import_resolutions)[target];
+        let import_resolution = import_resolutions.get_mut(&target).unwrap();
 
         {
             let mut check_and_write_import = |namespace, result: &_, used_public: &mut bool| {

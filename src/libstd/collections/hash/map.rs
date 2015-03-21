@@ -23,7 +23,7 @@ use hash::{Hash, SipHasher};
 use iter::{self, Iterator, ExactSizeIterator, IntoIterator, IteratorExt, FromIterator, Extend, Map};
 use marker::Sized;
 use mem::{self, replace};
-use ops::{Deref, FnMut, Index, IndexMut};
+use ops::{Deref, FnMut, Index};
 use option::Option::{self, Some, None};
 use rand::{self, Rng};
 use result::Result::{self, Ok, Err};
@@ -1255,18 +1255,6 @@ impl<K, Q: ?Sized, V, S> Index<Q> for HashMap<K, V, S>
     #[inline]
     fn index<'a>(&'a self, index: &Q) -> &'a V {
         self.get(index).expect("no entry found for key")
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S, Q: ?Sized> IndexMut<Q> for HashMap<K, V, S>
-    where K: Eq + Hash + Borrow<Q>,
-          Q: Eq + Hash,
-          S: HashState,
-{
-    #[inline]
-    fn index_mut<'a>(&'a mut self, index: &Q) -> &'a mut V {
-        self.get_mut(index).expect("no entry found for key")
     }
 }
 
