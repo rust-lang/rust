@@ -205,15 +205,13 @@ macro_rules! __thread_local_inner {
 
         #[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
         const _INIT: ::std::thread_local::__impl::KeyInner<$t> = {
-            unsafe extern fn __destroy(ptr: *mut u8) {
-                ::std::thread_local::__impl::destroy_value::<$t>(ptr);
-            }
-
             ::std::thread_local::__impl::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: $init },
                 os: ::std::thread_local::__impl::OsStaticKey {
                     inner: ::std::thread_local::__impl::OS_INIT_INNER,
-                    dtor: ::std::option::Option::Some(__destroy as unsafe extern fn(*mut u8)),
+                    dtor: ::std::option::Option::Some(
+                        ::std::thread_local::__impl::destroy_value::<$t>
+                    ),
                 },
             }
         };
