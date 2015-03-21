@@ -120,7 +120,7 @@ impl<R> fmt::Debug for BufReader<R> where R: fmt::Debug {
 ///
 /// The buffer will be written out when the writer is dropped.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct BufWriter<W> {
+pub struct BufWriter<W: Write> {
     inner: Option<W>,
     buf: Vec<u8>,
 }
@@ -220,7 +220,7 @@ impl<W: Write> Write for BufWriter<W> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<W> fmt::Debug for BufWriter<W> where W: fmt::Debug {
+impl<W: Write> fmt::Debug for BufWriter<W> where W: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "BufWriter {{ writer: {:?}, buffer: {}/{} }}",
                self.inner.as_ref().unwrap(), self.buf.len(), self.buf.capacity())
@@ -276,7 +276,7 @@ impl<W> fmt::Display for IntoInnerError<W> {
 ///
 /// The buffer will be written out when the writer is dropped.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct LineWriter<W> {
+pub struct LineWriter<W: Write> {
     inner: BufWriter<W>,
 }
 
@@ -335,7 +335,7 @@ impl<W: Write> Write for LineWriter<W> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<W> fmt::Debug for LineWriter<W> where W: fmt::Debug {
+impl<W: Write> fmt::Debug for LineWriter<W> where W: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "LineWriter {{ writer: {:?}, buffer: {}/{} }}",
                self.inner.inner, self.inner.buf.len(),
@@ -343,16 +343,16 @@ impl<W> fmt::Debug for LineWriter<W> where W: fmt::Debug {
     }
 }
 
-struct InternalBufWriter<W>(BufWriter<W>);
+struct InternalBufWriter<W: Write>(BufWriter<W>);
 
-impl<W> InternalBufWriter<W> {
+impl<W: Read + Write> InternalBufWriter<W> {
     fn get_mut(&mut self) -> &mut BufWriter<W> {
         let InternalBufWriter(ref mut w) = *self;
         return w;
     }
 }
 
-impl<W: Read> Read for InternalBufWriter<W> {
+impl<W: Read + Write> Read for InternalBufWriter<W> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         self.get_mut().inner.as_mut().unwrap().read(buf)
     }
@@ -367,7 +367,7 @@ impl<W: Read> Read for InternalBufWriter<W> {
 ///
 /// The output buffer will be written out when this stream is dropped.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct BufStream<S> {
+pub struct BufStream<S: Write> {
     inner: BufReader<InternalBufWriter<S>>
 }
 
@@ -448,7 +448,7 @@ impl<S: Read + Write> Write for BufStream<S> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<S> fmt::Debug for BufStream<S> where S: fmt::Debug {
+impl<S: Write> fmt::Debug for BufStream<S> where S: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let reader = &self.inner;
         let writer = &self.inner.inner.0;
