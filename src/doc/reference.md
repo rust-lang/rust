@@ -3158,7 +3158,7 @@ ten_times(|j| println!("hello, {}", j));
 ### While loops
 
 ```{.ebnf .gram}
-while_expr : "while" no_struct_literal_expr '{' block '}' ;
+while_expr : [ lifetime ':' ] "while" no_struct_literal_expr '{' block '}' ;
 ```
 
 A `while` loop begins by evaluating the boolean loop conditional expression.
@@ -3223,7 +3223,7 @@ A `continue` expression is only permitted in the body of a loop.
 ### For expressions
 
 ```{.ebnf .gram}
-for_expr : "for" pat "in" no_struct_literal_expr '{' block '}' ;
+for_expr : [ lifetime ':' ] "for" pat "in" no_struct_literal_expr '{' block '}' ;
 ```
 
 A `for` expression is a syntactic construct for looping over elements provided
