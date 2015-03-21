@@ -16,13 +16,13 @@ make mathematical libraries more palatable.
 
 # Detailed design
 
-Add the following **unstable** traits to libcore and reexported them in stdlib:
+Add the following **unstable** traits to libcore and reexported them in libstd:
 
 ```
 // `+=`
 #[lang = "add_assign"]
 trait AddAssign<Rhs=Self> {
-    fn add_assign(&mut self, &Rhs);
+    fn add_assign(&mut self, Rhs);
 }
 
 // the remaining traits have the same signature
@@ -50,19 +50,22 @@ Once we feel comfortable with the implementation we'll remove the feature gate
 and mark the traits as stable. This can be done after 1.0 as this change is
 backwards compatible.
 
-## RHS: By ref vs by value
+## RHS: By value vs by ref
 
-This RFC proposes that the assignment operations take the RHS always by ref;
-instead of by value like the "normal" binary operations (e.g. `Add`) do. The
-rationale is that, as far as the author has seen in practice [1], one never
-wants to mutate the RHS or consume it, or in other words an immutable view into
-the RHS is enough to perform the operation. Therefore, this RFC follows in the
-footsteps of the `Index` traits, where the same situation arises with the
-indexing value, and by ref was chosen over by value.
+Taking the RHS by value is more flexible. The implementations allowed with
+a by value RHS are a superset of the implementations allowed with a by ref RHS.
+An example where taking the RHS by value is necessary would be operator sugar
+for extending a collection with an iterator [1]: `vec ++= iter` where
+`vec: Vec<T>` and `iter impls Iterator<T>`. This can't be implemented with the
+by ref version as the iterator couldn't be advanced in that case.
 
-[1] It could be possible that the author is not aware of use cases where taking
-RHS by value is necessary. Feedback on this matter would be appreciated. (See
-the first unresolved question)
+[1] Where `++` is the "combine" operator that has been proposed [elsewhere].
+Note that this RFC doesn't propose adding that particular operator or adding
+similar overloaded operations (`vec += iter`) to stdlib's collections, but it
+leaves the door open to the possibility of adding them in the future (if
+desired).
+
+[elsewhere]: https://github.com/rust-lang/rfcs/pull/203
 
 # Drawbacks
 
@@ -70,15 +73,13 @@ None that I can think of.
 
 # Alternatives
 
-Alternatively, we could change the traits to take the RHS by value. This makes
-them more "flexible" as the user can pick by value or by reference, but makes
-the use slightly unergonomic in the by ref case as the borrow must be explicit
-e.g. `x += &big_float;` vs `x += big_float;`.
+Take the RHS by ref. This is less flexible than taking the RHS by value but, in
+some instances, it can save writing `&rhs` when the RHS is owned and the
+implementation demands a reference. However, this last point will be moot if we
+implement auto-referencing for binary operators, as `lhs += rhs` would actually
+call `add_assign(&mut lhs, &rhs)` if `Lhs impls AddAssign<&Rhs>`.
 
 # Unresolved questions
-
-Are there any use cases of assignment operations where the RHS has to be taken
-by value for the operation to be performant (e.g. to avoid internal cloning)?
 
 Should we overload `ShlAssign` and `ShrAssign`, e.g.
 `impl ShlAssign<u8> for i32`, since we have already overloaded the `Shl` and
