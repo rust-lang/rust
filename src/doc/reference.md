@@ -1982,7 +1982,7 @@ the namespace hierarchy as it normally would.
 ## Attributes
 
 ```{.ebnf .gram}
-attribute : "#!" ? '[' meta_item ']' ;
+attribute : '#' '!' ? '[' meta_item ']' ;
 meta_item : ident [ '=' literal
                   | '(' meta_seq ')' ] ? ;
 meta_seq : meta_item [ ',' meta_seq ] ? ;
