@@ -1323,19 +1323,37 @@ impl<T: Hash> Hash for Vec<T> {
 impl<T> Index<usize> for Vec<T> {
     type Output = T;
 
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, index: &usize) -> &T {
         // NB built-in indexing via `&[T]`
         &(**self)[*index]
     }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, index: usize) -> &T {
+        // NB built-in indexing via `&[T]`
+        &(**self)[index]
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> IndexMut<usize> for Vec<T> {
+
+    #[cfg(stage0)]
     #[inline]
     fn index_mut(&mut self, index: &usize) -> &mut T {
         // NB built-in indexing via `&mut [T]`
         &mut (**self)[*index]
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index_mut(&mut self, index: usize) -> &mut T {
+        // NB built-in indexing via `&mut [T]`
+        &mut (**self)[index]
     }
 }
 
@@ -1343,61 +1361,125 @@ impl<T> IndexMut<usize> for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::Range<usize>> for Vec<T> {
     type Output = [T];
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, index: &ops::Range<usize>) -> &[T] {
+        Index::index(&**self, index)
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, index: ops::Range<usize>) -> &[T] {
         Index::index(&**self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::RangeTo<usize>> for Vec<T> {
     type Output = [T];
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, index: &ops::RangeTo<usize>) -> &[T] {
+        Index::index(&**self, index)
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, index: ops::RangeTo<usize>) -> &[T] {
         Index::index(&**self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::RangeFrom<usize>> for Vec<T> {
     type Output = [T];
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, index: &ops::RangeFrom<usize>) -> &[T] {
+        Index::index(&**self, index)
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, index: ops::RangeFrom<usize>) -> &[T] {
         Index::index(&**self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::RangeFull> for Vec<T> {
     type Output = [T];
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, _index: &ops::RangeFull) -> &[T] {
+        self.as_slice()
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, _index: ops::RangeFull) -> &[T] {
         self.as_slice()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::Range<usize>> for Vec<T> {
+
+    #[cfg(stage0)]
     #[inline]
     fn index_mut(&mut self, index: &ops::Range<usize>) -> &mut [T] {
+        IndexMut::index_mut(&mut **self, index)
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index_mut(&mut self, index: ops::Range<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeTo<usize>> for Vec<T> {
+
+    #[cfg(stage0)]
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeTo<usize>) -> &mut [T] {
+        IndexMut::index_mut(&mut **self, index)
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeFrom<usize>> for Vec<T> {
+
+    #[cfg(stage0)]
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeFrom<usize>) -> &mut [T] {
+        IndexMut::index_mut(&mut **self, index)
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeFull> for Vec<T> {
+
+    #[cfg(stage0)]
     #[inline]
     fn index_mut(&mut self, _index: &ops::RangeFull) -> &mut [T] {
+        self.as_mut_slice()
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index_mut(&mut self, _index: ops::RangeFull) -> &mut [T] {
         self.as_mut_slice()
     }
 }

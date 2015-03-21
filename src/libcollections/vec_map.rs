@@ -798,6 +798,7 @@ impl<V> Extend<(usize, V)> for VecMap<V> {
     }
 }
 
+#[cfg(stage0)]
 impl<V> Index<usize> for VecMap<V> {
     type Output = V;
 
@@ -807,10 +808,49 @@ impl<V> Index<usize> for VecMap<V> {
     }
 }
 
+#[cfg(not(stage0))]
+impl<V> Index<usize> for VecMap<V> {
+    type Output = V;
+
+    #[inline]
+    fn index<'a>(&'a self, i: usize) -> &'a V {
+        self.get(&i).expect("key not present")
+    }
+}
+
+#[cfg(not(stage0))]
+impl<'a,V> Index<&'a usize> for VecMap<V> {
+    type Output = V;
+
+    #[inline]
+    fn index(&self, i: &usize) -> &V {
+        self.get(i).expect("key not present")
+    }
+}
+
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<V> IndexMut<usize> for VecMap<V> {
     #[inline]
-    fn index_mut<'a>(&'a mut self, i: &usize) -> &'a mut V {
+    fn index_mut(&mut self, i: &usize) -> &mut V {
+        self.get_mut(&i).expect("key not present")
+    }
+}
+
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<V> IndexMut<usize> for VecMap<V> {
+    #[inline]
+    fn index_mut(&mut self, i: usize) -> &mut V {
+        self.get_mut(&i).expect("key not present")
+    }
+}
+
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, V> IndexMut<&'a usize> for VecMap<V> {
+    #[inline]
+    fn index_mut(&mut self, i: &usize) -> &mut V {
         self.get_mut(i).expect("key not present")
     }
 }

@@ -1689,17 +1689,31 @@ impl<A: Hash> Hash for VecDeque<A> {
 impl<A> Index<usize> for VecDeque<A> {
     type Output = A;
 
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, i: &usize) -> &A {
         self.get(*i).expect("Out of bounds access")
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, i: usize) -> &A {
+        self.get(i).expect("Out of bounds access")
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> IndexMut<usize> for VecDeque<A> {
+    #[cfg(stage0)]
     #[inline]
     fn index_mut(&mut self, i: &usize) -> &mut A {
         self.get_mut(*i).expect("Out of bounds access")
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index_mut(&mut self, i: usize) -> &mut A {
+        self.get_mut(i).expect("Out of bounds access")
     }
 }
 
