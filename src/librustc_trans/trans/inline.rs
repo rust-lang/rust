@@ -134,6 +134,14 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
 
             ccx.stats().n_inlines.set(ccx.stats().n_inlines.get() + 1);
 
+            // Associated consts already have to be evaluated in `typeck`, so
+            // the logic to do that already exists in `middle`. In order to
+            // reuse that code, it needs to be able to look up the traits for
+            // inlined items.
+            let ty_trait_item = ty::impl_or_trait_item(ccx.tcx(), fn_id).clone();
+            ccx.tcx().impl_or_trait_items.borrow_mut()
+                     .insert(local_def(trait_item.id), ty_trait_item);
+
             // If this is a default method, we can't look up the
             // impl type. But we aren't going to translate anyways, so
             // don't.

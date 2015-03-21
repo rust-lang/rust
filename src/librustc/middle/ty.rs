@@ -5167,8 +5167,7 @@ pub fn associated_consts<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
             }
         }
     } else {
-        let acs = csearch::get_associated_consts(cx, id);
-        acs.iter().map(|ac| (*ac).clone()).collect()
+        csearch::get_associated_consts(cx, id)
     }
 }
 
