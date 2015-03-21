@@ -983,56 +983,72 @@ pub fn load_if_immediate<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 /// gives us better information about what we are loading.
 pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                            ptr: ValueRef, t: Ty<'tcx>) -> ValueRef {
-    if type_is_zero_size(cx.ccx(), t) {
-        C_undef(type_of::type_of(cx.ccx(), t))
-    } else if type_is_immediate(cx.ccx(), t) && type_of::type_of(cx.ccx(), t).is_aggregate() {
-        // We want to pass small aggregates as immediate values, but using an aggregate LLVM type
-        // for this leads to bad optimizations, so its arg type is an appropriately sized integer
-        // and we have to convert it
-        Load(cx, BitCast(cx, ptr, type_of::arg_type_of(cx.ccx(), t).ptr_to()))
-    } else {
-        unsafe {
-            let global = llvm::LLVMIsAGlobalVariable(ptr);
-            if !global.is_null() && llvm::LLVMIsGlobalConstant(global) == llvm::True {
-                let val = llvm::LLVMGetInitializer(global);
-                if !val.is_null() {
-                    // This could go into its own function, for DRY.
-                    // (something like "pre-store packing/post-load unpacking")
-                    if ty::type_is_bool(t) {
-                        return Trunc(cx, val, Type::i1(cx.ccx()));
-                    } else {
-                        return val;
-                    }
-                }
+    if cx.unreachable.get() || type_is_zero_size(cx.ccx(), t) {
+        return C_undef(type_of::type_of(cx.ccx(), t));
+    }
+
+    let ptr = to_arg_ty_ptr(cx, ptr, t);
+
+    if type_is_immediate(cx.ccx(), t) && type_of::type_of(cx.ccx(), t).is_aggregate() {
+        return Load(cx, ptr);
+    }
+
+    unsafe {
+        let global = llvm::LLVMIsAGlobalVariable(ptr);
+        if !global.is_null() && llvm::LLVMIsGlobalConstant(global) == llvm::True {
+            let val = llvm::LLVMGetInitializer(global);
+            if !val.is_null() {
+                return from_arg_ty(cx, val, t);
             }
         }
-        if ty::type_is_bool(t) {
-            Trunc(cx, LoadRangeAssert(cx, ptr, 0, 2, llvm::False), Type::i1(cx.ccx()))
-        } else if ty::type_is_char(t) {
-            // a char is a Unicode codepoint, and so takes values from 0
-            // to 0x10FFFF inclusive only.
-            LoadRangeAssert(cx, ptr, 0, 0x10FFFF + 1, llvm::False)
-        } else if (ty::type_is_region_ptr(t) || ty::type_is_unique(t))
-                  && !common::type_is_fat_ptr(cx.tcx(), t) {
-            LoadNonNull(cx, ptr)
-        } else {
-            Load(cx, ptr)
-        }
     }
+
+    let val =  if ty::type_is_bool(t) {
+        LoadRangeAssert(cx, ptr, 0, 2, llvm::False)
+    } else if ty::type_is_char(t) {
+        // a char is a Unicode codepoint, and so takes values from 0
+        // to 0x10FFFF inclusive only.
+        LoadRangeAssert(cx, ptr, 0, 0x10FFFF + 1, llvm::False)
+    } else if (ty::type_is_region_ptr(t) || ty::type_is_unique(t))
+        && !common::type_is_fat_ptr(cx.tcx(), t) {
+            LoadNonNull(cx, ptr)
+    } else {
+        Load(cx, ptr)
+    };
+
+    from_arg_ty(cx, val, t)
 }
 
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values.
 pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
-    if ty::type_is_bool(t) {
-        Store(cx, ZExt(cx, v, Type::i8(cx.ccx())), dst);
-    } else if type_is_immediate(cx.ccx(), t) && type_of::type_of(cx.ccx(), t).is_aggregate() {
+    Store(cx, to_arg_ty(cx, v, t), to_arg_ty_ptr(cx, dst, t));
+}
+
+pub fn to_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
+    if ty::type_is_bool(ty) {
+        ZExt(bcx, val, Type::i8(bcx.ccx()))
+    } else {
+        val
+    }
+}
+
+pub fn from_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
+    if ty::type_is_bool(ty) {
+        Trunc(bcx, val, Type::i1(bcx.ccx()))
+    } else {
+        val
+    }
+}
+
+pub fn to_arg_ty_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ptr: ValueRef, ty: Ty<'tcx>) -> ValueRef {
+    if type_is_immediate(bcx.ccx(), ty) && type_of::type_of(bcx.ccx(), ty).is_aggregate() {
         // We want to pass small aggregates as immediate values, but using an aggregate LLVM type
         // for this leads to bad optimizations, so its arg type is an appropriately sized integer
         // and we have to convert it
-        Store(cx, v, BitCast(cx, dst, type_of::arg_type_of(cx.ccx(), t).ptr_to()));
+        BitCast(bcx, ptr, type_of::arg_type_of(bcx.ccx(), ty).ptr_to())
     } else {
-        Store(cx, v, dst);
+        ptr
     }
 }
 
