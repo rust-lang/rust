@@ -54,7 +54,7 @@ const DISCONNECTED: usize = 2;   // channel is disconnected OR upgraded
 // moves *from* a pointer, ownership of the token is transferred to
 // whoever changed the state.
 
-pub struct Packet<T> {
+pub struct Packet<T:Send> {
     // Internal state of the chan/port pair (stores the blocked task as well)
     state: AtomicUsize,
     // One-shot data slot location
@@ -64,7 +64,7 @@ pub struct Packet<T> {
     upgrade: MyUpgrade<T>,
 }
 
-pub enum Failure<T> {
+pub enum Failure<T:Send> {
     Empty,
     Disconnected,
     Upgraded(Receiver<T>),
@@ -76,13 +76,13 @@ pub enum UpgradeResult {
     UpWoke(SignalToken),
 }
 
-pub enum SelectionResult<T> {
+pub enum SelectionResult<T:Send> {
     SelCanceled,
     SelUpgraded(SignalToken, Receiver<T>),
     SelSuccess,
 }
 
-enum MyUpgrade<T> {
+enum MyUpgrade<T:Send> {
     NothingSent,
     SendUsed,
     GoUp(Receiver<T>),
