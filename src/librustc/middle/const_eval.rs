@@ -117,15 +117,25 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                 _ => None
             },
             Some(ast_map::NodeTraitItem(ti)) => match ti.node {
-                ast::ConstTraitItem(_, ref default) => {
+                ast::ConstTraitItem(_, _) => {
                     match maybe_ref_id {
+                        // If we have a trait item, and we know the expression
+                        // that's the source of the obligation to resolve it,
+                        // `resolve_trait_associated_const` will select an impl
+                        // or the default.
                         Some(ref_id) => {
                             let trait_id = ty::trait_of_item(tcx, def_id)
                                               .unwrap();
                             resolve_trait_associated_const(tcx, ti, trait_id,
                                                            ref_id)
                         }
-                        None => default.as_ref().map(|expr| &**expr),
+                        // Technically, without knowing anything about the
+                        // expression that generates the obligation, we could
+                        // still return the default if there is one. However,
+                        // it's safer to return `None` than to return some value
+                        // that may differ from what you would get from
+                        // correctly selecting an impl.
+                        None => None
                     }
                 }
                 _ => None
@@ -153,17 +163,19 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
                 ast::ItemConst(_, ref const_expr) => Some(const_expr.id),
                 _ => None
             },
-            csearch::FoundAst::Found(&ast::IITraitItem(_, ref ti)) => match ti.node {
-                ast::ConstTraitItem(_, ref default) => {
+            csearch::FoundAst::Found(&ast::IITraitItem(trait_id, ref ti)) => match ti.node {
+                ast::ConstTraitItem(_, _) => {
                     used_ref_id = true;
                     match maybe_ref_id {
+                        // As mentioned in the comments above for in-crate
+                        // constants, we only try to find the expression for
+                        // a trait-associated const if the caller gives us
+                        // the expression that refers to it.
                         Some(ref_id) => {
-                            let trait_id = ty::trait_of_item(tcx, def_id)
-                                              .unwrap();
                             resolve_trait_associated_const(tcx, ti, trait_id,
                                                            ref_id).map(|e| e.id)
                         }
-                        None => default.as_ref().map(|expr| expr.id),
+                        None => None
                     }
                 }
                 _ => None
@@ -177,7 +189,7 @@ pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
         // If we used the reference expression, particularly to choose an impl
         // of a trait-associated const, don't cache that, because the next
         // lookup with the same def_id may yield a different result.
-        if used_ref_id {
+        if !used_ref_id {
             tcx.extern_const_statics
                .borrow_mut().insert(def_id,
                                     expr_id.unwrap_or(ast::DUMMY_NODE_ID));

@@ -1002,21 +1002,23 @@ pub fn get_associated_consts<'tcx>(intr: Rc<IdentInterner>,
     let item = lookup_item(id, data);
     let mut result = Vec::new();
 
-    reader::tagged_docs(item, tag_item_trait_item, |ac_id| {
-        let did = item_def_id(ac_id, cdata);
-        let ac_doc = lookup_item(did.node, data);
+    for &tag in &[tag_item_trait_item, tag_item_impl_item] {
+        reader::tagged_docs(item, tag, |ac_id| {
+            let did = item_def_id(ac_id, cdata);
+            let ac_doc = lookup_item(did.node, data);
 
-        if item_sort(ac_doc) == Some('C') {
-            let trait_item = get_impl_or_trait_item(intr.clone(),
-                                                    cdata,
-                                                    did.node,
-                                                    tcx);
-            if let ty::ConstTraitItem(ref ac) = trait_item {
-                result.push((*ac).clone())
+            if item_sort(ac_doc) == Some('C') {
+                let trait_item = get_impl_or_trait_item(intr.clone(),
+                                                        cdata,
+                                                        did.node,
+                                                        tcx);
+                if let ty::ConstTraitItem(ref ac) = trait_item {
+                    result.push((*ac).clone())
+                }
             }
-        }
-        true
-    });
+            true
+        });
+    }
 
     return result;
 }
