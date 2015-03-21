@@ -1,6 +1,6 @@
 # Summary
 
-* [I: The Basics](basic.md)
+* [The Basics](basic.md)
     * [Installing Rust](installing-rust.md)
     * [Hello, world!](hello-world.md)
     * [Hello, Cargo!](hello-cargo.md)
@@ -14,7 +14,7 @@
     * [Strings](strings.md)
     * [Arrays, Vectors, and Slices](arrays-vectors-and-slices.md)
     * [Standard Input](standard-input.md)
-* [II: Intermediate Rust](intermediate.md)
+* [Intermediate Rust](intermediate.md)
     * [Crates and Modules](crates-and-modules.md)
     * [Testing](testing.md)
     * [Pointers](pointers.md)
@@ -31,7 +31,7 @@
     * [Concurrency](concurrency.md)
     * [Error Handling](error-handling.md)
     * [Documentation](documentation.md)
-* [III: Advanced Topics](advanced.md)
+* [Advanced Topics](advanced.md)
     * [FFI](ffi.md)
     * [Unsafe Code](unsafe.md)
     * [Advanced Macros](advanced-macros.md)
