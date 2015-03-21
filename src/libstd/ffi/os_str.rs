@@ -103,12 +103,24 @@ impl OsString {
     }
 }
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeFull> for OsString {
     type Output = OsStr;
 
     #[inline]
     fn index(&self, _index: &ops::RangeFull) -> &OsStr {
+        unsafe { mem::transmute(self.inner.as_slice()) }
+    }
+}
+
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl ops::Index<ops::RangeFull> for OsString {
+    type Output = OsStr;
+
+    #[inline]
+    fn index(&self, _index: ops::RangeFull) -> &OsStr {
         unsafe { mem::transmute(self.inner.as_slice()) }
     }
 }

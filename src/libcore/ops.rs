@@ -898,7 +898,7 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// impl Index<Bar> for Foo {
 ///     type Output = Foo;
 ///
-///     fn index<'a>(&'a self, _index: &Bar) -> &'a Foo {
+///     fn index<'a>(&'a self, _index: Bar) -> &'a Foo {
 ///         println!("Indexing!");
 ///         self
 ///     }
@@ -945,13 +945,13 @@ pub trait Index<Idx: ?Sized> {
 /// impl Index<Bar> for Foo {
 ///     type Output = Foo;
 ///
-///     fn index<'a>(&'a self, _index: &Bar) -> &'a Foo {
+///     fn index<'a>(&'a self, _index: Bar) -> &'a Foo {
 ///         self
 ///     }
 /// }
 ///
 /// impl IndexMut<Bar> for Foo {
-///     fn index_mut<'a>(&'a mut self, _index: &Bar) -> &'a mut Foo {
+///     fn index_mut<'a>(&'a mut self, _index: Bar) -> &'a mut Foo {
 ///         println!("Indexing!");
 ///         self
 ///     }

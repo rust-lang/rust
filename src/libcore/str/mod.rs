@@ -1203,11 +1203,55 @@ mod traits {
     /// // byte 100 is outside the string
     /// // &s[3 .. 100];
     /// ```
+    #[cfg(stage0)]
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::Range<usize>> for str {
         type Output = str;
         #[inline]
         fn index(&self, index: &ops::Range<usize>) -> &str {
+            // is_char_boundary checks that the index is in [0, .len()]
+            if index.start <= index.end &&
+               self.is_char_boundary(index.start) &&
+               self.is_char_boundary(index.end) {
+                unsafe { self.slice_unchecked(index.start, index.end) }
+            } else {
+                super::slice_error_fail(self, index.start, index.end)
+            }
+        }
+    }
+
+    /// Returns a slice of the given string from the byte range
+    /// [`begin`..`end`).
+    ///
+    /// This operation is `O(1)`.
+    ///
+    /// Panics when `begin` and `end` do not point to valid characters
+    /// or point beyond the last character of the string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let s = "Löwe 老虎 Léopard";
+    /// assert_eq!(&s[0 .. 1], "L");
+    ///
+    /// assert_eq!(&s[1 .. 9], "öwe 老");
+    ///
+    /// // these will panic:
+    /// // byte 2 lies within `ö`:
+    /// // &s[2 ..3];
+    ///
+    /// // byte 8 lies within `老`
+    /// // &s[1 .. 8];
+    ///
+    /// // byte 100 is outside the string
+    /// // &s[3 .. 100];
+    /// ```
+    #[cfg(not(stage0))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl ops::Index<ops::Range<usize>> for str {
+        type Output = str;
+        #[inline]
+        fn index(&self, index: ops::Range<usize>) -> &str {
             // is_char_boundary checks that the index is in [0, .len()]
             if index.start <= index.end &&
                self.is_char_boundary(index.start) &&
@@ -1229,8 +1273,21 @@ mod traits {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeTo<usize>> for str {
         type Output = str;
+
+        #[cfg(stage0)]
         #[inline]
         fn index(&self, index: &ops::RangeTo<usize>) -> &str {
+            // is_char_boundary checks that the index is in [0, .len()]
+            if self.is_char_boundary(index.end) {
+                unsafe { self.slice_unchecked(0, index.end) }
+            } else {
+                super::slice_error_fail(self, 0, index.end)
+            }
+        }
+
+        #[cfg(not(stage0))]
+        #[inline]
+        fn index(&self, index: ops::RangeTo<usize>) -> &str {
             // is_char_boundary checks that the index is in [0, .len()]
             if self.is_char_boundary(index.end) {
                 unsafe { self.slice_unchecked(0, index.end) }
@@ -1249,8 +1306,21 @@ mod traits {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeFrom<usize>> for str {
         type Output = str;
+
+        #[cfg(stage0)]
         #[inline]
         fn index(&self, index: &ops::RangeFrom<usize>) -> &str {
+            // is_char_boundary checks that the index is in [0, .len()]
+            if self.is_char_boundary(index.start) {
+                unsafe { self.slice_unchecked(index.start, self.len()) }
+            } else {
+                super::slice_error_fail(self, index.start, self.len())
+            }
+        }
+
+        #[cfg(not(stage0))]
+        #[inline]
+        fn index(&self, index: ops::RangeFrom<usize>) -> &str {
             // is_char_boundary checks that the index is in [0, .len()]
             if self.is_char_boundary(index.start) {
                 unsafe { self.slice_unchecked(index.start, self.len()) }
@@ -1263,8 +1333,16 @@ mod traits {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeFull> for str {
         type Output = str;
+
+        #[cfg(stage0)]
         #[inline]
         fn index(&self, _index: &ops::RangeFull) -> &str {
+            self
+        }
+
+        #[cfg(not(stage0))]
+        #[inline]
+        fn index(&self, _index: ops::RangeFull) -> &str {
             self
         }
     }
