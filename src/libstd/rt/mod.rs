@@ -17,14 +17,9 @@
 //! time being.
 
 #![unstable(feature = "std_misc")]
-
-// FIXME: this should not be here.
 #![allow(missing_docs)]
 
-#![allow(dead_code)]
-
-use marker::Send;
-use ops::FnOnce;
+use prelude::v1::*;
 use sys;
 use thunk::Thunk;
 use usize;
@@ -149,13 +144,16 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
 
 /// Enqueues a procedure to run when the main thread exits.
 ///
-/// It is forbidden for procedures to register more `at_exit` handlers when they
-/// are running, and doing so will lead to a process abort.
+/// Currently these closures are only run once the main *Rust* thread exits.
+/// Once the `at_exit` handlers begin running, more may be enqueued, but not
+/// infinitely so. Eventually a handler registration will be forced to fail.
 ///
-/// Note that other threads may still be running when `at_exit` routines start
-/// running.
-pub fn at_exit<F: FnOnce() + Send + 'static>(f: F) {
-    at_exit_imp::push(Thunk::new(f));
+/// Returns `Ok` if the handler was successfully registered, meaning that the
+/// closure will be run once the main thread exits. Returns `Err` to indicate
+/// that the closure could not be registered, meaning that it is not scheduled
+/// to be rune.
+pub fn at_exit<F: FnOnce() + Send + 'static>(f: F) -> Result<(), ()> {
+    if at_exit_imp::push(Thunk::new(f)) {Ok(())} else {Err(())}
 }
 
 /// One-time runtime cleanup.

@@ -443,7 +443,7 @@ fn init() {
         DIRECTIVES = boxed::into_raw(box directives);
 
         // Schedule the cleanup for the globals for when the runtime exits.
-        rt::at_exit(move || {
+        let _ = rt::at_exit(move || {
             let _g = LOCK.lock();
             assert!(!DIRECTIVES.is_null());
             let _directives = Box::from_raw(DIRECTIVES);

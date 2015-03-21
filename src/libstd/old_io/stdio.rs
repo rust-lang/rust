@@ -238,7 +238,7 @@ pub fn stdin() -> StdinReader {
             STDIN = boxed::into_raw(box stdin);
 
             // Make sure to free it at exit
-            rt::at_exit(|| {
+            let _ = rt::at_exit(|| {
                 Box::from_raw(STDIN);
                 STDIN = ptr::null_mut();
             });
