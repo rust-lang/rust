@@ -917,8 +917,14 @@ pub trait Index<Idx: ?Sized> {
     type Output: ?Sized;
 
     /// The method for the indexing (`Foo[Bar]`) operation
+    #[cfg(stage0)]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn index<'a>(&'a self, index: &Idx) -> &'a Self::Output;
+
+    /// The method for the indexing (`Foo[Bar]`) operation
+    #[cfg(not(stage0))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn index<'a>(&'a self, index: Idx) -> &'a Self::Output;
 }
 
 /// The `IndexMut` trait is used to specify the functionality of indexing
@@ -960,8 +966,14 @@ pub trait Index<Idx: ?Sized> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     /// The method for the indexing (`Foo[Bar]`) operation
+    #[cfg(stage0)]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn index_mut<'a>(&'a mut self, index: &Idx) -> &'a mut Self::Output;
+
+    /// The method for the indexing (`Foo[Bar]`) operation
+    #[cfg(not(stage0))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn index_mut<'a>(&'a mut self, index: Idx) -> &'a mut Self::Output;
 }
 
 /// An unbounded range.
