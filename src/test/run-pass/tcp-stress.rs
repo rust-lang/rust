@@ -19,7 +19,7 @@ extern crate libc;
 
 use std::sync::mpsc::channel;
 use std::old_io::net::tcp::{TcpListener, TcpStream};
-use std::old_io::{Acceptor, Listener};
+use std::old_io::{Acceptor, Listener, Reader, Writer};
 use std::thread::{Builder, Thread};
 use std::time::Duration;
 

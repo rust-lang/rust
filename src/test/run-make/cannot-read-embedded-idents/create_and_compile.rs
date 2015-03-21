@@ -9,7 +9,10 @@
 // except according to those terms.
 
 use std::env;
-use std::old_io::{File, Command};
+use std::fs::File;
+use std::process::Command;
+use std::io::Write;
+use std::path::Path;
 
 // creates broken.rs, which has the Ident \x00name_0,ctxt_0\x00
 // embedded within it, and then attempts to compile broken.rs with the
@@ -22,21 +25,18 @@ fn main() {
 
     let main_file = tmpdir.join("broken.rs");
     let _ = File::create(&main_file).unwrap()
-        .write_str("pub fn main() {
+        .write_all(b"pub fn main() {
                    let \x00name_0,ctxt_0\x00 = 3;
                    println!(\"{}\", \x00name_0,ctxt_0\x00);
-        }");
+        }").unwrap();
 
     // rustc is passed to us with --out-dir and -L etc., so we
     // can't exec it directly
     let result = Command::new("sh")
         .arg("-c")
-        .arg(&format!("{} {}",
-                      rustc,
-                      main_file.as_str()
-                      .unwrap()))
+        .arg(&format!("{} {}", rustc, main_file.display()))
         .output().unwrap();
-    let err = String::from_utf8_lossy(&result.error);
+    let err = String::from_utf8_lossy(&result.stderr);
 
     // positive test so that this test will be updated when the
     // compiler changes.

@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::old_io::fs::PathExtensions;
-use std::old_io::{File, TempDir};
+use std::fs::{File, TempDir};
+use std::io::prelude::*;
 
 pub fn main() {
-    let dir = TempDir::new_in(&Path::new("."), "").unwrap();
+    let dir = TempDir::new_in(".", "").unwrap();
     let path = dir.path().join("file");
 
     {
@@ -20,7 +20,7 @@ pub fn main() {
             Err(..) => unreachable!(),
             Ok(f) => {
                 let mut f = f;
-                for _ in 0_usize..1000 {
+                for _ in 0..1000 {
                     f.write(&[0]);
                 }
             }
@@ -28,5 +28,5 @@ pub fn main() {
     }
 
     assert!(path.exists());
-    assert_eq!(path.stat().unwrap().size, 1000);
+    assert_eq!(path.metadata().unwrap().len(), 1000);
 }

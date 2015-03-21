@@ -20,6 +20,7 @@
 //! ```rust
 //! # #![allow(unused_must_use)]
 //! use std::old_io;
+//! use std::old_io::*;
 //!
 //! let mut out = old_io::stdout();
 //! out.write_all(b"Hello, world!");
@@ -140,6 +141,7 @@ impl StdinReader {
     ///
     /// ```
     /// use std::old_io;
+    /// use std::old_io::*;
     ///
     /// let mut stdin = old_io::stdin();
     /// for line in stdin.lock().lines() {

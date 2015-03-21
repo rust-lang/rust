@@ -8,31 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::old_io::BufReader;
-use std::old_io::BufferedReader;
-use std::old_io::File;
-use std::old_io::IoResult;
+use std::fs::File;
+use std::io::{self, BufReader, Read};
 
-struct Lexer<R: Reader>
+struct Lexer<R: Read>
 {
-    reader: BufferedReader<R>,
+    reader: BufReader<R>,
 }
 
-impl<R: Reader> Lexer<R>
+impl<R: Read> Lexer<R>
 {
     pub fn new_from_reader(r: R) -> Lexer<R>
     {
-        Lexer{reader: BufferedReader::new(r)}
+        Lexer{reader: BufReader::new(r)}
     }
 
-    pub fn new_from_file(p: Path) -> IoResult<Lexer<File>>
+    pub fn new_from_file(p: &str) -> io::Result<Lexer<File>>
     {
-        Ok(Lexer::new_from_reader(try!(File::open(&p))))
+        Ok(Lexer::new_from_reader(try!(File::open(p))))
     }
 
-    pub fn new_from_str<'a>(s: &'a str) -> Lexer<BufReader<'a>>
+    pub fn new_from_str<'a>(s: &'a str) -> Lexer<&'a [u8]>
     {
-        Lexer::new_from_reader(BufReader::new(s.as_bytes()))
+        Lexer::new_from_reader(s.as_bytes())
     }
 }
 

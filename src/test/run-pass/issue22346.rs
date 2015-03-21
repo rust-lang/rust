@@ -10,7 +10,7 @@
 
 // This used to cause an ICE because the retslot for the "return" had the wrong type
 fn testcase<'a>() -> Box<Iterator<Item=usize> + 'a> {
-    return Box::new(range(0, 3).map(|i| { return i; }));
+    return Box::new((0..3).map(|i| { return i; }));
 }
 
 fn main() {

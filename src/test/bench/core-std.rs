@@ -13,7 +13,8 @@
 
 #![feature(unboxed_closures)]
 
-use std::old_io::File;
+use std::old_io::*;
+use std::old_path::{Path, GenericPath};
 use std::iter::repeat;
 use std::mem::swap;
 use std::env;

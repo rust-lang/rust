@@ -64,6 +64,8 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::mpsc::channel;
 
+#[allow(deprecated)] use std::old_path::Path;
+
 use externalfiles::ExternalHtml;
 use serialize::Decodable;
 use serialize::json::{self, Json};

@@ -17,7 +17,7 @@
 
 use prelude::v1::*;
 
-use old_io::IoResult;
+use old_io::{IoResult, Reader, Writer};
 use libc;
 use sync::Arc;
 
@@ -49,7 +49,7 @@ impl PipeStream {
     /// # #![allow(unused_must_use)]
     /// extern crate libc;
     ///
-    /// use std::old_io::pipe::PipeStream;
+    /// use std::old_io::*;
     ///
     /// fn main() {
     ///     let mut pipe = PipeStream::open(libc::STDERR_FILENO);
@@ -114,6 +114,7 @@ impl Writer for PipeStream {
 mod test {
     use prelude::v1::*;
 
+    use old_io::{Writer, Reader};
     use sync::mpsc::channel;
     use thread;
 

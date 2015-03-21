@@ -22,6 +22,7 @@ use prelude::v1::*;
 use sys;
 use sys_common::{self, mkerr_libc};
 
+use old_path::{Path, GenericPath};
 use old_io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
 use old_io::{IoResult, IoError, FileStat, SeekStyle};
 use old_io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};

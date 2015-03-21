@@ -31,7 +31,7 @@ impl<I> IntoIterator for I where I: Iterator {
 
 fn desugared_for_loop_bad(byte: u8) -> u8 {
     let mut result = 0;
-    let mut x = IntoIterator::into_iter(range(0, u8::BITS));
+    let mut x = IntoIterator::into_iter(0..u8::BITS);
     let mut y = Iterator::next(&mut x);
     let mut z = y.unwrap();
     byte >> z;

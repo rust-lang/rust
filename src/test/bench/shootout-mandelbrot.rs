@@ -43,6 +43,7 @@
 // ignore-pretty very bad with line comments
 
 use std::old_io;
+use std::old_io::*;
 use std::env;
 use std::simd::f64x2;
 use std::sync::Arc;
