@@ -447,8 +447,8 @@ impl<'a> FmtVisitor<'a> {
         len += ret_str.len();
         // Opening brace if no where clause.
         match fk {
-            visit::FnKind::FkItemFn(_, g, _, _) |
-            visit::FnKind::FkMethod(_, g, _)
+            visit::FnKind::FkItemFn(_, &ref g, _, _) |
+            visit::FnKind::FkMethod(_, &ast::MethodSig { generics: ref g, ..})
             if g.where_clause.predicates.len() > 0 => {}
             _ => len += 2 // ` {`
         }
