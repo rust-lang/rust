@@ -16,6 +16,7 @@ use io::{self, SeekFrom, Error, ErrorKind};
 use iter::repeat;
 use num::Int;
 use slice;
+use fmt;
 
 /// A `Cursor` is a type which wraps another I/O object to provide a `Seek`
 /// implementation.
@@ -65,6 +66,13 @@ impl<T> Cursor<T> {
     /// Sets the value of this cursor
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_position(&mut self, pos: u64) { self.pos = pos; }
+}
+
+impl<T> fmt::Debug for Cursor<T> where T: fmt::Debug {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "Cursor {{ cursor: {} }}",
+               self.pos)
+    }
 }
 
 macro_rules! seek {
