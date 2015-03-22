@@ -10,7 +10,6 @@ set of methods, together with:
 
 * Associated functions (already present as "static" functions)
 * Associated consts
-* Associated statics
 * Associated types
 * Associated lifetimes
 
@@ -21,10 +20,12 @@ This RFC also provides a mechanism for *multidispatch* traits, where the `impl`
 is selected based on multiple types. The connection to associated items will
 become clear in the detailed text below.
 
-*Note: This RFC was originally accepted before RFC 246 added consts and changed
-the definition of statics. The text has been updated to clarify that both consts
-and statics can be associated with a trait. Other than that modification, the
-proposal has not been changed to reflect newer Rust features or syntax.*
+*Note: This RFC was originally accepted before RFC 246 introduced the
+distinction between const and static items. The text has been updated to clarify
+that associated consts will be added rather than statics, and to provide a
+summary of restrictions on the initial implementation of associated
+consts. Other than that modification, the proposal has not been changed to
+reflect newer Rust features or syntax.*
 
 # Motivation
 
@@ -179,7 +180,7 @@ provide a distinct `impl` for every member of this family.
 Associated types, lifetimes, and functions can already be expressed in today's
 Rust, though it is unwieldy to do so (as argued above).
 
-But associated _consts_ and _statics_ cannot be expressed using today's traits.
+But associated _consts_ cannot be expressed using today's traits.
 
 For example, today's Rust includes a variety of numeric traits, including
 `Float`, which must currently expose constants as static functions:
@@ -196,7 +197,7 @@ trait Float {
 }
 ```
 
-Because these functions cannot be used in static initializers, the modules for
+Because these functions cannot be used in constant expressions, the modules for
 float types _also_ export a separate set of constants as consts, not using
 traits.
 
@@ -288,15 +289,14 @@ distinction" below.
 
 ## Trait bodies: defining associated items
 
-Trait bodies are expanded to include four new kinds of items: consts, statics,
-types, and lifetimes:
+Trait bodies are expanded to include three new kinds of items: consts, types,
+and lifetimes:
 
 ```
 TRAIT = TRAIT_HEADER '{' TRAIT_ITEM* '}'
 TRAIT_ITEM =
   ... <existing productions>
   | 'const' IDENT ':' TYPE [ '=' CONST_EXP ] ';'
-  | 'static' IDENT ':' TYPE [ '=' CONST_EXP ] ';'
   | 'type' IDENT [ ':' BOUNDS ] [ WHERE_CLAUSE ] [ '=' TYPE ] ';'
   | 'lifetime' LIFETIME_IDENT ';'
 ```
@@ -359,7 +359,7 @@ external to the trait.
 
 ### Defaults
 
-Notice that associated consts, statics, and types permit defaults, just as trait
+Notice that associated consts and types both permit defaults, just as trait
 methods and functions can provide defaults.
 
 Defaults are useful both as a code reuse mechanism, and as a way to expand the
@@ -431,14 +431,13 @@ We deal with this in a very simple way:
 
 ## Trait implementations
 
-Trait `impl` syntax is much the same as before, except that static, type, and
+Trait `impl` syntax is much the same as before, except that const, type, and
 lifetime items are allowed:
 
 ```
 IMPL_ITEM =
   ... <existing productions>
   | 'const' IDENT ':' TYPE '=' CONST_EXP ';'
-  | 'static' IDENT ':' TYPE '=' CONST_EXP ';'
   | 'type' IDENT' '=' 'TYPE' ';'
   | 'lifetime' LIFETIME_IDENT '=' LIFETIME_REFERENCE ';'
 ```
@@ -776,7 +775,6 @@ trait Foo {
     type AssocType;
     lifetime 'assoc_lifetime;
     const ASSOC_CONST: uint;
-    static ASSOC_STATIC: &'static [uint, ..1024];
     fn assoc_fn() -> Self;
 
     // Note: 'assoc_lifetime and AssocType in scope:
@@ -786,7 +784,6 @@ trait Foo {
         // method in scope UFCS-style, assoc_fn in scope
         let _ = method(self, assoc_fn());
         ASSOC_CONST // in scope
-        ASSOC_STATIC // in scope
     }
 }
 
@@ -1200,6 +1197,73 @@ trait Mappable
 While the above demonstrates the versatility of associated types and `where`
 clauses, it is probably too much of a hack to be viable for use in `libstd`.
 
+### Associated consts in generic code
+
+There are some restrictions on uses of associated consts in generic code. These
+might be loosened or removed in the future (see the related sub-sections in
+"Unresolved questions" below).
+
+ 1. Values of constant expressions in match patterns cannot depend on a type
+    parameter (by extension, neither can the types of such expressions). This
+    restriction is necessary for exhaustiveness and reachability to be checked
+    in generic code.
+
+    Note that the dependence of a value on a type parameter may be indirect:
+
+    ```rust
+    enum MyEnum {
+        Var1,
+        Var2,
+    }
+    trait HasVar {
+        const VAR: MyEnum;
+    }
+    fn do_something<T: HasVar>(x: MyEnum) {
+        const y: MyEnum = <T>::VAR;
+        // The following is forbidden because the value `y` depends on `T`.
+        match x {
+            y => { /* ... */ }
+            _ => { /* ... */ }
+        }
+        // However, this is OK because the guard is not a part of the pattern.
+        match x {
+            z if z == y => { /* ... */ }
+            _ => { /* ... */ }
+        }
+    }
+    ```
+
+ 2. Array sizes that depend on type parameters cannot be compared for equality
+    by type-checking, with one exception: if the expression for an array size
+    comprises only a single reference to a constant item (or associated item),
+    it will be considered equal to any other array size that refers to the same
+    item, even if that item itself depends on the type parameters.
+
+    For clarification, here are some examples. Assume that `T` is a type
+    parameter in the outer scope, and that it is known to have an associated
+    const `<T>::N` of type `usize`.
+
+    ```rust
+    // This is OK (but there are limitations to how x can be used).
+    let x: [u8; <T>::N] = [0u8; <T>::N];
+    // Equivalent to the above.
+    let x = [0u8; <T>::N];
+    // Neither of the following are allowed (type checking shouldn't have to
+    // know anything about arithmetic).
+    let x: [u8; 2 * <T>::N] = [0u8; <T>::N + <T>::N];
+    let x: [u8; <T>::N + 1] = [0u8; 1 + <T>::N];
+    // Still not allowed.
+    let x: [u8; <T>::N + 1] = [0u8; <T>::N + 1];
+    // Workaround for the expression above.
+    const N_PLUS_1: usize = <T>::N + 1;
+    let x: [u8; N_PLUS_1] = [0u8; N_PLUS_1];
+    // Neither of the following are allowed.
+    const ALIAS_N_PLUS_1: usize = N_PLUS_1;
+    let x: [u8; N_PLUS_1] = [0u8; ALIAS_N_PLUS_1];
+    const ALIAS_N: usize = <T>::N;
+    let x: [u8; <T>::N] = [0u8; ALIAS_N];
+    ```
+
 # Staging
 
 Associated lifetimes are probably not necessary for the 1.0 timeframe. While we
@@ -1403,3 +1467,101 @@ This seems like a potentially useful feature, and should be unproblematic for
 bounds, but may have implications for vtables that make it problematic for trait
 objects. Whether or not such trait combinations are allowed will likely depend
 on implementation concerns, which are not yet clear.
+
+## Generic associated consts in match patterns
+
+It seems desirable to allow constants that depend on type parameters in match
+patterns, but it's not clear how to do so.
+
+Looking at the `HasVar` example above, one possibility would be to simply treat
+the first, forbidden match expression as syntactic sugar for the second, allowed
+match expression that uses a pattern guard. This is simple to implement because
+one can simply ignore the constant when performing exhaustiveness and
+reachability checks. Unfortunately, this approach blurs the difference between
+match patterns (which provide strict checks) and pattern guards (which are just
+useful syntactic sugar), and it does not increase the expressiveness of the
+language.
+
+An alternative would be to allow `where` clauses to place constraints on
+associated consts. If an associated const is known to be equal/unequal to some
+other value (or in the case of integers, inside/outside a given range), this can
+inform exhaustiveness and reachability checks. But this requires more design and
+implementation work, and more syntax.
+
+For now, we simply defer the question.
+
+## Generic associated consts in array sizes
+
+The above solution for type-checking array sizes is somewhat unsatisfactory. In
+particular, it is counter-intuitive that neither of the following will type
+check:
+
+```rust
+// Shouldn't this be OK?
+const ALIAS_N: usize = <T>::N;
+let x: [u8; <T>::N] = [0u8; ALIAS_N];
+// This is likely to yield an embarrassing error message such as:
+// "couldn't prove that `<T>::N + 1` is equal to `<T>::N + 1`"
+let x: [u8; <T>::N + 1] = [0u8; <T>::N + 1];
+```
+
+A function like this is especially affected:
+
+```rust
+trait HasN {
+    const N: usize;
+}
+fn foo<T: HasN>() -> [u8; <T>::N + 1] {
+    // Can't be verified to be correct for the return type, and can't use the
+    // intermediate const workaround due to scoping issues.
+    [0u8; <T>::N + 1]
+}
+```
+
+This can be worked around with type-level naturals that use associated consts to
+produce array sizes, but this is syntactically a bit inelegant.
+
+```rust
+// Assume that `TypeAdd` and `One` are from a type-level naturals or similar
+// library, and that `NAsTypeNatN` provides some way of translating the `N`
+// on a `HasN` to a type compatible with that library.
+trait HasN {
+    const N: usize;
+    type TypeNatN;
+}
+fn foo<T: HasN>() -> [u8; TypeAdd<<T>::TypeNatN, One>::AsUsize] {
+    // Because the type `TypeAdd<<T>::TypeNatN, One>` can be verified to be
+    // equal to itself in type checking, we know that the associated const
+    // `AsUsize` below must be the same item as the `AsUsize` mentioned in the
+    // return type above.
+    [0u8; TypeAdd<<T>::NAsTypeNat, One>::AsUsize]
+}
+```
+
+There are a variety of possible ways to address the above issues, including:
+
+ - Implementing smarter handling of consts that are just aliases of other
+   constant items.
+ - Allowing `where` clauses to constrain some associated constants to be equal,
+   to other expressions, and using this information in type checking.
+ - Adding normalization with little or no awareness of arithmetic (e.g. allowing
+   expressions that are exactly the same to be considered equal, or using only
+   a very basic understanding of which operations are commutative and/or
+   associative).
+ - Adding new syntax and/or new capability to plugins to allow type-level
+   naturals to be used with more ergonomic and clear syntax.
+ - Implementing a dependent type system that provides built-in semantics for
+   integer arithmetic at the type level, rather than implementing this in an
+   external or standard library.
+ - Using a full-fledged SMT solver.
+ - Some other creative solutions not on this list.
+
+While there are many ways to improve on the current design, and many of these
+approaches are not mutually exclusive, much more work is needed to investigate
+and implement a self-consistent, effective, and ideally intuitive set of
+solutions.
+
+Though admittedly not very satisfying at the moment, the current approach has
+the advantage of being (arguably) a good minimalist design, allowing associated
+consts to be used for array sizes in generic code now, but also allowing for any
+of a number of improved systems to be implemented later.
