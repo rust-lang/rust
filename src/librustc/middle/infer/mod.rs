@@ -28,7 +28,8 @@ use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
 use middle::ty::replace_late_bound_regions;
 use middle::ty::{self, Ty};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
-use std::cell::RefCell;
+use middle::ty_relate::{Relate, RelateResult, TypeRelation};
+use std::cell::{RefCell};
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
@@ -38,11 +39,8 @@ use util::nodemap::FnvHashMap;
 use util::ppaux::ty_to_string;
 use util::ppaux::{Repr, UserString};
 
-use self::combine::{Combine, Combineable, CombineFields};
+use self::combine::CombineFields;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
-use self::equate::Equate;
-use self::sub::Sub;
-use self::lub::Lub;
 use self::unify::{ToType, UnificationTable};
 use self::error_reporting::ErrorReporting;
 
@@ -62,9 +60,7 @@ pub mod type_variable;
 pub mod unify;
 
 pub type Bound<T> = Option<T>;
-
-pub type CombineResult<'tcx, T> = Result<T,ty::type_err<'tcx>>; // "combine result"
-pub type UnitResult<'tcx> = CombineResult<'tcx, ()>; // "unify result"
+pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"
 pub type fres<T> = Result<T, fixup_err>; // "fixup result"
 
 pub struct InferCtxt<'a, 'tcx: 'a> {
@@ -343,7 +339,7 @@ pub fn common_supertype<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
         values: Types(expected_found(a_is_expected, a, b))
     };
 
-    let result = cx.commit_if_ok(|_| cx.lub(a_is_expected, trace.clone()).tys(a, b));
+    let result = cx.commit_if_ok(|_| cx.lub(a_is_expected, trace.clone()).relate(&a, &b));
     match result {
         Ok(t) => t,
         Err(ref err) => {
@@ -374,11 +370,12 @@ pub fn can_mk_subty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
             origin: Misc(codemap::DUMMY_SP),
             values: Types(expected_found(true, a, b))
         };
-        cx.sub(true, trace).tys(a, b).map(|_| ())
+        cx.sub(true, trace).relate(&a, &b).map(|_| ())
     })
 }
 
-pub fn can_mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> UnitResult<'tcx>
+pub fn can_mk_eqty<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>, a: Ty<'tcx>, b: Ty<'tcx>)
+                             -> UnitResult<'tcx>
 {
     cx.can_equate(&a, &b)
 }
@@ -473,26 +470,39 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         }
     }
 
-    fn combine_fields<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-                          -> CombineFields<'b, 'tcx> {
+    fn combine_fields(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+                      -> CombineFields<'a, 'tcx> {
         CombineFields {infcx: self,
                        a_is_expected: a_is_expected,
                        trace: trace}
     }
 
-    fn equate<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-                  -> Equate<'b, 'tcx> {
-        Equate(self.combine_fields(a_is_expected, trace))
+    // public so that it can be used from the rustc_driver unit tests
+    pub fn equate(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+              -> equate::Equate<'a, 'tcx>
+    {
+        self.combine_fields(a_is_expected, trace).equate()
     }
 
-    fn sub<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-               -> Sub<'b, 'tcx> {
-        Sub(self.combine_fields(a_is_expected, trace))
+    // public so that it can be used from the rustc_driver unit tests
+    pub fn sub(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+               -> sub::Sub<'a, 'tcx>
+    {
+        self.combine_fields(a_is_expected, trace).sub()
     }
 
-    fn lub<'b>(&'b self, a_is_expected: bool, trace: TypeTrace<'tcx>)
-               -> Lub<'b, 'tcx> {
-        Lub(self.combine_fields(a_is_expected, trace))
+    // public so that it can be used from the rustc_driver unit tests
+    pub fn lub(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+               -> lub::Lub<'a, 'tcx>
+    {
+        self.combine_fields(a_is_expected, trace).lub()
+    }
+
+    // public so that it can be used from the rustc_driver unit tests
+    pub fn glb(&'a self, a_is_expected: bool, trace: TypeTrace<'tcx>)
+               -> glb::Glb<'a, 'tcx>
+    {
+        self.combine_fields(a_is_expected, trace).glb()
     }
 
     fn start_snapshot(&self) -> CombinedSnapshot {
@@ -631,7 +641,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         debug!("sub_types({} <: {})", a.repr(self.tcx), b.repr(self.tcx));
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.sub(a_is_expected, trace).tys(a, b).map(|_| ())
+            self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
         })
     }
 
@@ -644,7 +654,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         self.commit_if_ok(|_| {
             let trace = TypeTrace::types(origin, a_is_expected, a, b);
-            self.equate(a_is_expected, trace).tys(a, b).map(|_| ())
+            self.equate(a_is_expected, trace).relate(&a, &b).map(|_| ())
         })
     }
 
@@ -663,7 +673,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: TraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace).trait_refs(&*a, &*b).map(|_| ())
+            self.sub(a_is_expected, trace).relate(&*a, &*b).map(|_| ())
         })
     }
 
@@ -682,7 +692,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                 origin: origin,
                 values: PolyTraitRefs(expected_found(a_is_expected, a.clone(), b.clone()))
             };
-            self.sub(a_is_expected, trace).binders(&a, &b).map(|_| ())
+            self.sub(a_is_expected, trace).relate(&a, &b).map(|_| ())
         })
     }
 
@@ -1045,8 +1055,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.region_vars.verify_generic_bound(origin, kind, a, bs);
     }
 
-    pub fn can_equate<T>(&self, a: &T, b: &T) -> UnitResult<'tcx>
-        where T : Combineable<'tcx> + Repr<'tcx>
+    pub fn can_equate<'b,T>(&'b self, a: &T, b: &T) -> UnitResult<'tcx>
+        where T: Relate<'b,'tcx> + Repr<'tcx>
     {
         debug!("can_equate({}, {})", a.repr(self.tcx), b.repr(self.tcx));
         self.probe(|_| {
@@ -1057,8 +1067,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             let e = self.tcx.types.err;
             let trace = TypeTrace { origin: Misc(codemap::DUMMY_SP),
                                     values: Types(expected_found(true, e, e)) };
-            let eq = self.equate(true, trace);
-            Combineable::combine(&eq, a, b)
+            self.equate(true, trace).relate(a, b)
         }).map(|_| ())
     }
 }

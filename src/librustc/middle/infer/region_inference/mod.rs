@@ -18,7 +18,6 @@ pub use self::RegionResolutionError::*;
 pub use self::VarValue::*;
 use self::Classification::*;
 
-use super::CombineResult;
 use super::{RegionVariableOrigin, SubregionOrigin, TypeTrace, MiscVariable};
 
 use middle::region;
@@ -26,6 +25,7 @@ use middle::ty::{self, Ty};
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
 use middle::ty::{ReEmpty, ReStatic, ReInfer, ReFree, ReEarlyBound};
 use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
+use middle::ty_relate::RelateResult;
 use middle::graph;
 use middle::graph::{Direction, NodeIndex};
 use util::common::indenter;
@@ -825,7 +825,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     fn glb_concrete_regions(&self,
                             a: Region,
                             b: Region)
-                            -> CombineResult<'tcx, Region>
+                            -> RelateResult<'tcx, Region>
     {
         debug!("glb_concrete_regions({:?}, {:?})", a, b);
         match (a, b) {
@@ -901,7 +901,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     fn glb_free_regions(&self,
                         a: &FreeRegion,
                         b: &FreeRegion)
-                        -> CombineResult<'tcx, ty::Region>
+                        -> RelateResult<'tcx, ty::Region>
     {
         return match a.cmp(b) {
             Less => helper(self, a, b),
@@ -911,7 +911,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         fn helper<'a, 'tcx>(this: &RegionVarBindings<'a, 'tcx>,
                             a: &FreeRegion,
-                            b: &FreeRegion) -> CombineResult<'tcx, ty::Region>
+                            b: &FreeRegion) -> RelateResult<'tcx, ty::Region>
         {
             if this.tcx.region_maps.sub_free_region(*a, *b) {
                 Ok(ty::ReFree(*a))
@@ -930,7 +930,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                         region_b: ty::Region,
                         scope_a: region::CodeExtent,
                         scope_b: region::CodeExtent)
-                        -> CombineResult<'tcx, Region>
+                        -> RelateResult<'tcx, Region>
     {
         // We want to generate the intersection of two
         // scopes or two free regions.  So, if one of

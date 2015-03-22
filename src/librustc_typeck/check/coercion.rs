@@ -62,11 +62,11 @@
 
 use check::{autoderef, FnCtxt, NoPreference, PreferMutLvalue, UnresolvedTypeAction};
 
-use middle::infer::{self, CombineResult, Coercion};
-use middle::infer::combine::Combine;
+use middle::infer::{self, Coercion};
 use middle::subst;
 use middle::ty::{AutoPtr, AutoDerefRef, AdjustDerefRef, AutoUnsize, AutoUnsafe};
 use middle::ty::{self, mt, Ty};
+use middle::ty_relate::RelateResult;
 use util::common::indent;
 use util::ppaux;
 use util::ppaux::Repr;
@@ -78,7 +78,7 @@ struct Coerce<'a, 'tcx: 'a> {
     origin: infer::TypeOrigin,
 }
 
-type CoerceResult<'tcx> = CombineResult<'tcx, Option<ty::AutoAdjustment<'tcx>>>;
+type CoerceResult<'tcx> = RelateResult<'tcx, Option<ty::AutoAdjustment<'tcx>>>;
 
 impl<'f, 'tcx> Coerce<'f, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> {
@@ -536,7 +536,7 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              expr: &ast::Expr,
                              a: Ty<'tcx>,
                              b: Ty<'tcx>)
-                             -> CombineResult<'tcx, ()> {
+                             -> RelateResult<'tcx, ()> {
     debug!("mk_assignty({} -> {})", a.repr(fcx.tcx()), b.repr(fcx.tcx()));
     let adjustment = try!(indent(|| {
         fcx.infcx().commit_if_ok(|_| {

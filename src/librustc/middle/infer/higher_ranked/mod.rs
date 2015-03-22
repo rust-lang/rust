@@ -11,25 +11,26 @@
 //! Helper routines for higher-ranked things. See the `doc` module at
 //! the end of the file for details.
 
-use super::{CombinedSnapshot, CombineResult, InferCtxt, HigherRankedType, SkolemizationMap};
-use super::combine::{Combine, Combineable};
+use super::{CombinedSnapshot, InferCtxt, HigherRankedType, SkolemizationMap};
+use super::combine::CombineFields;
 
 use middle::subst;
 use middle::ty::{self, Binder};
 use middle::ty_fold::{self, TypeFoldable};
+use middle::ty_relate::{Relate, RelateResult, TypeRelation};
 use syntax::codemap::Span;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::Repr;
 
-pub trait HigherRankedRelations<'tcx> {
-    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> CombineResult<'tcx, Binder<T>>
-        where T : Combineable<'tcx>;
+pub trait HigherRankedRelations<'a,'tcx> {
+    fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+        where T: Relate<'a,'tcx>;
 
-    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> CombineResult<'tcx, Binder<T>>
-        where T : Combineable<'tcx>;
+    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+        where T: Relate<'a,'tcx>;
 
-    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> CombineResult<'tcx, Binder<T>>
-        where T : Combineable<'tcx>;
+    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+        where T: Relate<'a,'tcx>;
 }
 
 trait InferCtxtExt {
@@ -40,15 +41,15 @@ trait InferCtxtExt {
                                         -> Vec<ty::RegionVid>;
 }
 
-impl<'tcx,C> HigherRankedRelations<'tcx> for C
-    where C : Combine<'tcx>
-{
+impl<'a,'tcx> HigherRankedRelations<'a,'tcx> for CombineFields<'a,'tcx> {
     fn higher_ranked_sub<T>(&self, a: &Binder<T>, b: &Binder<T>)
-                            -> CombineResult<'tcx, Binder<T>>
-        where T : Combineable<'tcx>
+                            -> RelateResult<'tcx, Binder<T>>
+        where T: Relate<'a,'tcx>
     {
+        let tcx = self.infcx.tcx;
+
         debug!("higher_ranked_sub(a={}, b={})",
-               a.repr(self.tcx()), b.repr(self.tcx()));
+               a.repr(tcx), b.repr(tcx));
 
         // Rather than checking the subtype relationship between `a` and `b`
         // as-is, we need to do some extra work here in order to make sure
@@ -60,32 +61,32 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
 
         // Start a snapshot so we can examine "all bindings that were
         // created as part of this type comparison".
-        return self.infcx().commit_if_ok(|snapshot| {
+        return self.infcx.commit_if_ok(|snapshot| {
             // First, we instantiate each bound region in the subtype with a fresh
             // region variable.
             let (a_prime, _) =
-                self.infcx().replace_late_bound_regions_with_fresh_var(
-                    self.trace().origin.span(),
+                self.infcx.replace_late_bound_regions_with_fresh_var(
+                    self.trace.origin.span(),
                     HigherRankedType,
                     a);
 
             // Second, we instantiate each bound region in the supertype with a
             // fresh concrete region.
             let (b_prime, skol_map) =
-                self.infcx().skolemize_late_bound_regions(b, snapshot);
+                self.infcx.skolemize_late_bound_regions(b, snapshot);
 
-            debug!("a_prime={}", a_prime.repr(self.tcx()));
-            debug!("b_prime={}", b_prime.repr(self.tcx()));
+            debug!("a_prime={}", a_prime.repr(tcx));
+            debug!("b_prime={}", b_prime.repr(tcx));
 
             // Compare types now that bound regions have been replaced.
-            let result = try!(Combineable::combine(self, &a_prime, &b_prime));
+            let result = try!(self.sub().relate(&a_prime, &b_prime));
 
             // Presuming type comparison succeeds, we need to check
             // that the skolemized regions do not "leak".
-            match leak_check(self.infcx(), &skol_map, snapshot) {
+            match leak_check(self.infcx, &skol_map, snapshot) {
                 Ok(()) => { }
                 Err((skol_br, tainted_region)) => {
-                    if self.a_is_expected() {
+                    if self.a_is_expected {
                         debug!("Not as polymorphic!");
                         return Err(ty::terr_regions_insufficiently_polymorphic(skol_br,
                                                                                tainted_region));
@@ -98,42 +99,42 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
             }
 
             debug!("higher_ranked_sub: OK result={}",
-                   result.repr(self.tcx()));
+                   result.repr(tcx));
 
             Ok(ty::Binder(result))
         });
     }
 
-    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> CombineResult<'tcx, Binder<T>>
-        where T : Combineable<'tcx>
+    fn higher_ranked_lub<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+        where T: Relate<'a,'tcx>
     {
         // Start a snapshot so we can examine "all bindings that were
         // created as part of this type comparison".
-        return self.infcx().commit_if_ok(|snapshot| {
+        return self.infcx.commit_if_ok(|snapshot| {
             // Instantiate each bound region with a fresh region variable.
-            let span = self.trace().origin.span();
+            let span = self.trace.origin.span();
             let (a_with_fresh, a_map) =
-                self.infcx().replace_late_bound_regions_with_fresh_var(
+                self.infcx.replace_late_bound_regions_with_fresh_var(
                     span, HigherRankedType, a);
             let (b_with_fresh, _) =
-                self.infcx().replace_late_bound_regions_with_fresh_var(
+                self.infcx.replace_late_bound_regions_with_fresh_var(
                     span, HigherRankedType, b);
 
             // Collect constraints.
             let result0 =
-                try!(Combineable::combine(self, &a_with_fresh, &b_with_fresh));
+                try!(self.lub().relate(&a_with_fresh, &b_with_fresh));
             let result0 =
-                self.infcx().resolve_type_vars_if_possible(&result0);
+                self.infcx.resolve_type_vars_if_possible(&result0);
             debug!("lub result0 = {}", result0.repr(self.tcx()));
 
             // Generalize the regions appearing in result0 if possible
-            let new_vars = self.infcx().region_vars_confined_to_snapshot(snapshot);
-            let span = self.trace().origin.span();
+            let new_vars = self.infcx.region_vars_confined_to_snapshot(snapshot);
+            let span = self.trace.origin.span();
             let result1 =
                 fold_regions_in(
                     self.tcx(),
                     &result0,
-                    |r, debruijn| generalize_region(self.infcx(), span, snapshot, debruijn,
+                    |r, debruijn| generalize_region(self.infcx, span, snapshot, debruijn,
                                                     &new_vars, &a_map, r));
 
             debug!("lub({},{}) = {}",
@@ -194,40 +195,40 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
         }
     }
 
-    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> CombineResult<'tcx, Binder<T>>
-        where T : Combineable<'tcx>
+    fn higher_ranked_glb<T>(&self, a: &Binder<T>, b: &Binder<T>) -> RelateResult<'tcx, Binder<T>>
+        where T: Relate<'a,'tcx>
     {
-        debug!("{}.higher_ranked_glb({}, {})",
-               self.tag(), a.repr(self.tcx()), b.repr(self.tcx()));
+        debug!("higher_ranked_glb({}, {})",
+               a.repr(self.tcx()), b.repr(self.tcx()));
 
         // Make a snapshot so we can examine "all bindings that were
         // created as part of this type comparison".
-        return self.infcx().commit_if_ok(|snapshot| {
+        return self.infcx.commit_if_ok(|snapshot| {
             // Instantiate each bound region with a fresh region variable.
             let (a_with_fresh, a_map) =
-                self.infcx().replace_late_bound_regions_with_fresh_var(
-                    self.trace().origin.span(), HigherRankedType, a);
+                self.infcx.replace_late_bound_regions_with_fresh_var(
+                    self.trace.origin.span(), HigherRankedType, a);
             let (b_with_fresh, b_map) =
-                self.infcx().replace_late_bound_regions_with_fresh_var(
-                    self.trace().origin.span(), HigherRankedType, b);
+                self.infcx.replace_late_bound_regions_with_fresh_var(
+                    self.trace.origin.span(), HigherRankedType, b);
             let a_vars = var_ids(self, &a_map);
             let b_vars = var_ids(self, &b_map);
 
             // Collect constraints.
             let result0 =
-                try!(Combineable::combine(self, &a_with_fresh, &b_with_fresh));
+                try!(self.glb().relate(&a_with_fresh, &b_with_fresh));
             let result0 =
-                self.infcx().resolve_type_vars_if_possible(&result0);
+                self.infcx.resolve_type_vars_if_possible(&result0);
             debug!("glb result0 = {}", result0.repr(self.tcx()));
 
             // Generalize the regions appearing in result0 if possible
-            let new_vars = self.infcx().region_vars_confined_to_snapshot(snapshot);
-            let span = self.trace().origin.span();
+            let new_vars = self.infcx.region_vars_confined_to_snapshot(snapshot);
+            let span = self.trace.origin.span();
             let result1 =
                 fold_regions_in(
                     self.tcx(),
                     &result0,
-                    |r, debruijn| generalize_region(self.infcx(), span, snapshot, debruijn,
+                    |r, debruijn| generalize_region(self.infcx, span, snapshot, debruijn,
                                                     &new_vars,
                                                     &a_map, &a_vars, &b_vars,
                                                     r));
@@ -332,17 +333,19 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
     }
 }
 
-fn var_ids<'tcx, T: Combine<'tcx>>(combiner: &T,
-                                   map: &FnvHashMap<ty::BoundRegion, ty::Region>)
-                                   -> Vec<ty::RegionVid> {
-    map.iter().map(|(_, r)| match *r {
-            ty::ReInfer(ty::ReVar(r)) => { r }
-            r => {
-                combiner.infcx().tcx.sess.span_bug(
-                    combiner.trace().origin.span(),
-                    &format!("found non-region-vid: {:?}", r));
-            }
-        }).collect()
+fn var_ids<'a, 'tcx>(fields: &CombineFields<'a, 'tcx>,
+                      map: &FnvHashMap<ty::BoundRegion, ty::Region>)
+                     -> Vec<ty::RegionVid> {
+    map.iter()
+       .map(|(_, r)| match *r {
+           ty::ReInfer(ty::ReVar(r)) => { r }
+           r => {
+               fields.tcx().sess.span_bug(
+                   fields.trace.origin.span(),
+                   &format!("found non-region-vid: {:?}", r));
+           }
+       })
+       .collect()
 }
 
 fn is_var_in_set(new_vars: &[ty::RegionVid], r: ty::Region) -> bool {
@@ -356,8 +359,8 @@ fn fold_regions_in<'tcx, T, F>(tcx: &ty::ctxt<'tcx>,
                                unbound_value: &T,
                                mut fldr: F)
                                -> T
-    where T : Combineable<'tcx>,
-          F : FnMut(ty::Region, ty::DebruijnIndex) -> ty::Region,
+    where T: TypeFoldable<'tcx>,
+          F: FnMut(ty::Region, ty::DebruijnIndex) -> ty::Region,
 {
     unbound_value.fold_with(&mut ty_fold::RegionFolder::new(tcx, &mut |region, current_depth| {
         // we should only be encountering "escaping" late-bound regions here,
