@@ -446,16 +446,16 @@ It gives us this error:
 error: aborting due to previous error
 ```
 
-It mentions that "captured outer variable in an `FnMut` closure".
-Because we declared the closure as a moving closure, and it referred
-to `numbers`, the closure will try to take ownership of the
-vector. But the closure itself is created in a loop, and hence we will
-actually create three closures, one for every iteration of the
-loop. This means that all three of those closures would try to own
-`numbers`, which is impossible -- `numbers` must have just one
-owner. Rust detects this and gives us the error: we claim that
-`numbers` has ownership, but our code tries to make three owners. This
-may cause a safety problem, so Rust disallows it.
+This is a little confusing because there are two closures here: the one passed
+to `map`, and the one passed to `thread::scoped`. In this case, the closure for
+`thread::scoped` is attempting to reference `numbers`, a `Vec<i32>`. This
+closure is a `FnOnce` closure, as that’s what `thread::scoped` takes as an
+argument. `FnOnce` closures take ownership of their environment. That’s fine,
+but there’s one detail: because of `map`, we’re going to make three of these
+closures. And since all three try to take ownership of `numbers`, that would be
+a problem. That’s what it means by ‘cannot move out of captured outer
+variable’: our `thread::scoped` closure wants to take ownership, and it can’t,
+because the closure for `map` won’t let it.
 
 What to do here? Rust has two types that helps us: `Arc<T>` and `Mutex<T>`.
 *Arc* stands for "atomically reference counted". In other words, an Arc will
