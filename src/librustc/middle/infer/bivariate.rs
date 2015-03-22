@@ -25,66 +25,54 @@
 //! In particular, it might be enough to say (A,B) are bivariant for
 //! all (A,B).
 
-use middle::ty::BuiltinBounds;
+use super::combine::{self, CombineFields};
+use super::type_variable::{BiTo};
+
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
-use middle::infer::combine::*;
-use middle::infer::CombineResult;
-use middle::infer::type_variable::BiTo;
-use util::ppaux::Repr;
+use middle::ty_relate::{Relate, RelateResult, TypeRelation};
+use util::ppaux::{Repr};
 
-pub struct Bivariate<'f, 'tcx: 'f> {
-    fields: CombineFields<'f, 'tcx>
+pub struct Bivariate<'a, 'tcx: 'a> {
+    fields: CombineFields<'a, 'tcx>
 }
 
-#[allow(non_snake_case)]
-pub fn Bivariate<'f, 'tcx>(cf: CombineFields<'f, 'tcx>) -> Bivariate<'f, 'tcx> {
-    Bivariate { fields: cf }
+impl<'a, 'tcx> Bivariate<'a, 'tcx> {
+    pub fn new(fields: CombineFields<'a, 'tcx>) -> Bivariate<'a, 'tcx> {
+        Bivariate { fields: fields }
+    }
 }
 
-impl<'f, 'tcx> Combine<'tcx> for Bivariate<'f, 'tcx> {
-    fn tag(&self) -> String { "Bivariate".to_string() }
-    fn fields<'a>(&'a self) -> &'a CombineFields<'a, 'tcx> { &self.fields }
+impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Bivariate<'a, 'tcx> {
+    fn tag(&self) -> &'static str { "Bivariate" }
 
-    fn tys_with_variance(&self, v: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
-                         -> CombineResult<'tcx, Ty<'tcx>>
+    fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.fields.tcx() }
+
+    fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
+
+    fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
+                                               variance: ty::Variance,
+                                               a: &T,
+                                               b: &T)
+                                               -> RelateResult<'tcx, T>
     {
-        match v {
-            ty::Invariant => self.equate().tys(a, b),
-            ty::Covariant => self.tys(a, b),
-            ty::Contravariant => self.tys(a, b),
-            ty::Bivariant => self.tys(a, b),
+        match variance {
+            // If we have Foo<A> and Foo is invariant w/r/t A,
+            // and we want to assert that
+            //
+            //     Foo<A> <: Foo<B> ||
+            //     Foo<B> <: Foo<A>
+            //
+            // then still A must equal B.
+            ty::Invariant => self.relate(a, b),
+
+            ty::Covariant => self.relate(a, b),
+            ty::Bivariant => self.relate(a, b),
+            ty::Contravariant => self.relate(a, b),
         }
     }
 
-    fn regions_with_variance(&self, v: ty::Variance, a: ty::Region, b: ty::Region)
-                             -> CombineResult<'tcx, ty::Region>
-    {
-        match v {
-            ty::Invariant => self.equate().regions(a, b),
-            ty::Covariant => self.regions(a, b),
-            ty::Contravariant => self.regions(a, b),
-            ty::Bivariant => self.regions(a, b),
-        }
-    }
-
-    fn regions(&self, a: ty::Region, _: ty::Region) -> CombineResult<'tcx, ty::Region> {
-        Ok(a)
-    }
-
-    fn builtin_bounds(&self,
-                      a: BuiltinBounds,
-                      b: BuiltinBounds)
-                      -> CombineResult<'tcx, BuiltinBounds>
-    {
-        if a != b {
-            Err(ty::terr_builtin_bounds(expected_found(self, a, b)))
-        } else {
-            Ok(a)
-        }
-    }
-
-    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CombineResult<'tcx, Ty<'tcx>> {
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         debug!("{}.tys({}, {})", self.tag(),
                a.repr(self.fields.infcx.tcx), b.repr(self.fields.infcx.tcx));
         if a == b { return Ok(a); }
@@ -109,17 +97,22 @@ impl<'f, 'tcx> Combine<'tcx> for Bivariate<'f, 'tcx> {
             }
 
             _ => {
-                super_tys(self, a, b)
+                combine::super_combine_tys(self.fields.infcx, self, a, b)
             }
         }
     }
 
-    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> CombineResult<'tcx, ty::Binder<T>>
-        where T : Combineable<'tcx>
+    fn regions(&mut self, a: ty::Region, _: ty::Region) -> RelateResult<'tcx, ty::Region> {
+        Ok(a)
+    }
+
+    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
+                  -> RelateResult<'tcx, ty::Binder<T>>
+        where T: Relate<'a,'tcx>
     {
         let a1 = ty::erase_late_bound_regions(self.tcx(), a);
         let b1 = ty::erase_late_bound_regions(self.tcx(), b);
-        let c = try!(Combineable::combine(self, &a1, &b1));
+        let c = try!(self.relate(&a1, &b1));
         Ok(ty::Binder(c))
     }
 }

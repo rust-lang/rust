@@ -122,6 +122,7 @@ pub mod middle {
     pub mod traits;
     pub mod ty;
     pub mod ty_fold;
+    pub mod ty_relate;
     pub mod ty_walk;
     pub mod weak_lang_items;
 }

@@ -8,64 +8,49 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::combine::*;
-use super::CombineResult;
+use super::combine::{self, CombineFields};
 use super::higher_ranked::HigherRankedRelations;
 use super::Subtype;
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
-use util::ppaux::Repr;
+use middle::ty_relate::{Relate, RelateResult, TypeRelation};
+use util::ppaux::{Repr};
 
 /// "Greatest lower bound" (common subtype)
-pub struct Sub<'f, 'tcx: 'f> {
-    fields: CombineFields<'f, 'tcx>
+pub struct Sub<'a, 'tcx: 'a> {
+    fields: CombineFields<'a, 'tcx>
 }
 
-#[allow(non_snake_case)]
-pub fn Sub<'f, 'tcx>(cf: CombineFields<'f, 'tcx>) -> Sub<'f, 'tcx> {
-    Sub { fields: cf }
+impl<'a, 'tcx> Sub<'a, 'tcx> {
+    pub fn new(f: CombineFields<'a, 'tcx>) -> Sub<'a, 'tcx> {
+        Sub { fields: f }
+    }
 }
 
-impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
-    fn tag(&self) -> String { "Sub".to_string() }
-    fn fields<'a>(&'a self) -> &'a CombineFields<'a, 'tcx> { &self.fields }
+impl<'a, 'tcx> TypeRelation<'a, 'tcx> for Sub<'a, 'tcx> {
+    fn tag(&self) -> &'static str { "Sub" }
+    fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.fields.infcx.tcx }
+    fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
 
-    fn tys_with_variance(&self, v: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
-                         -> CombineResult<'tcx, Ty<'tcx>>
+    fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
+                                               variance: ty::Variance,
+                                               a: &T,
+                                               b: &T)
+                                               -> RelateResult<'tcx, T>
     {
-        match v {
-            ty::Invariant => self.equate().tys(a, b),
-            ty::Covariant => self.tys(a, b),
-            ty::Bivariant => self.bivariate().tys(a, b),
-            ty::Contravariant => Sub(self.fields.switch_expected()).tys(b, a),
+        match variance {
+            ty::Invariant => self.fields.equate().relate(a, b),
+            ty::Covariant => self.relate(a, b),
+            ty::Bivariant => self.fields.bivariate().relate(a, b),
+            ty::Contravariant => self.fields.switch_expected().sub().relate(b, a),
         }
     }
 
-    fn regions_with_variance(&self, v: ty::Variance, a: ty::Region, b: ty::Region)
-                             -> CombineResult<'tcx, ty::Region>
-    {
-        match v {
-            ty::Invariant => self.equate().regions(a, b),
-            ty::Covariant => self.regions(a, b),
-            ty::Bivariant => self.bivariate().regions(a, b),
-            ty::Contravariant => Sub(self.fields.switch_expected()).regions(b, a),
-        }
-    }
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        debug!("{}.tys({}, {})", self.tag(), a.repr(self.tcx()), b.repr(self.tcx()));
 
-    fn regions(&self, a: ty::Region, b: ty::Region) -> CombineResult<'tcx, ty::Region> {
-        debug!("{}.regions({}, {})",
-               self.tag(),
-               a.repr(self.tcx()),
-               b.repr(self.tcx()));
-        self.infcx().region_vars.make_subregion(Subtype(self.trace()), a, b);
-        Ok(a)
-    }
-
-    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CombineResult<'tcx, Ty<'tcx>> {
-        debug!("{}.tys({}, {})", self.tag(),
-               a.repr(self.tcx()), b.repr(self.tcx()));
         if a == b { return Ok(a); }
 
         let infcx = self.fields.infcx;
@@ -80,8 +65,8 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
             }
             (&ty::ty_infer(TyVar(a_id)), _) => {
                 try!(self.fields
-                       .switch_expected()
-                       .instantiate(b, SupertypeOf, a_id));
+                         .switch_expected()
+                         .instantiate(b, SupertypeOf, a_id));
                 Ok(a)
             }
             (_, &ty::ty_infer(TyVar(b_id))) => {
@@ -94,14 +79,25 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
             }
 
             _ => {
-                super_tys(self, a, b)
+                combine::super_combine_tys(self.fields.infcx, self, a, b)
             }
         }
     }
 
-    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> CombineResult<'tcx, ty::Binder<T>>
-        where T : Combineable<'tcx>
+    fn regions(&mut self, a: ty::Region, b: ty::Region) -> RelateResult<'tcx, ty::Region> {
+        debug!("{}.regions({}, {})",
+               self.tag(),
+               a.repr(self.tcx()),
+               b.repr(self.tcx()));
+        let origin = Subtype(self.fields.trace.clone());
+        self.fields.infcx.region_vars.make_subregion(origin, a, b);
+        Ok(a)
+    }
+
+    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
+                  -> RelateResult<'tcx, ty::Binder<T>>
+        where T: Relate<'a,'tcx>
     {
-        self.higher_ranked_sub(a, b)
+        self.fields.higher_ranked_sub(a, b)
     }
 }

@@ -39,6 +39,8 @@ use middle::subst::VecPerParamSpace;
 use middle::ty::{self, Ty};
 use middle::traits;
 use std::rc::Rc;
+use syntax::abi;
+use syntax::ast;
 use syntax::owned_slice::OwnedSlice;
 use util::ppaux::Repr;
 
@@ -47,7 +49,7 @@ use util::ppaux::Repr;
 
 /// The TypeFoldable trait is implemented for every type that can be folded.
 /// Basically, every type that has a corresponding method in TypeFolder.
-pub trait TypeFoldable<'tcx> {
+pub trait TypeFoldable<'tcx>: Repr<'tcx> + Clone {
     fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> Self;
 }
 
@@ -149,11 +151,19 @@ pub trait TypeFolder<'tcx> : Sized {
 // can easily refactor the folding into the TypeFolder trait as
 // needed.
 
-impl<'tcx> TypeFoldable<'tcx> for () {
-    fn fold_with<F:TypeFolder<'tcx>>(&self, _: &mut F) -> () {
-        ()
+macro_rules! CopyImpls {
+    ($($ty:ty),+) => {
+        $(
+            impl<'tcx> TypeFoldable<'tcx> for $ty {
+                fn fold_with<F:TypeFolder<'tcx>>(&self, _: &mut F) -> $ty {
+                    *self
+                }
+            }
+        )+
     }
 }
+
+CopyImpls! { (), ast::Unsafety, abi::Abi }
 
 impl<'tcx, T:TypeFoldable<'tcx>, U:TypeFoldable<'tcx>> TypeFoldable<'tcx> for (T, U) {
     fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> (T, U) {

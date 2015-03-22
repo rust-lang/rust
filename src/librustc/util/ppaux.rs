@@ -1532,3 +1532,9 @@ impl<'tcx> UserString<'tcx> for ty::Predicate<'tcx> {
         }
     }
 }
+
+impl<'tcx> Repr<'tcx> for ast::Unsafety {
+    fn repr(&self, _: &ctxt<'tcx>) -> String {
+        format!("{:?}", *self)
+    }
+}
