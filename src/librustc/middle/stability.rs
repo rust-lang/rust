@@ -319,7 +319,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
         // individually as it's possible to have a stable trait with unstable
         // items.
         ast::ItemImpl(_, _, _, Some(ref t), _, ref impl_items) => {
-            let trait_did = tcx.def_map.borrow()[t.ref_id].def_id();
+            let trait_did = tcx.def_map.borrow().get(&t.ref_id).unwrap().def_id();
             let trait_items = ty::trait_items(tcx, trait_did);
 
             for impl_item in impl_items {

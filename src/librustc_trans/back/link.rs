@@ -1141,9 +1141,9 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
     // involves just passing the right -l flag.
 
     let data = if dylib {
-        &trans.crate_formats[config::CrateTypeDylib]
+        trans.crate_formats.get(&config::CrateTypeDylib).unwrap()
     } else {
-        &trans.crate_formats[config::CrateTypeExecutable]
+        trans.crate_formats.get(&config::CrateTypeExecutable).unwrap()
     };
 
     // Invoke get_used_crates to ensure that we get a topological sorting of

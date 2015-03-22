@@ -486,7 +486,7 @@ impl<'tcx> MoveData<'tcx> {
             match path.loan_path.kind {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = path.loan_path.kill_scope(tcx);
-                    let path = self.path_map.borrow()[path.loan_path];
+                    let path = *self.path_map.borrow().get(&path.loan_path).unwrap();
                     self.kill_moves(path, kill_scope.node_id(), dfcx_moves);
                 }
                 LpExtend(..) => {}

@@ -264,7 +264,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///     Some(x) => *x = "b",
     ///     None => (),
     /// }
-    /// assert_eq!(map[1], "b");
+    /// assert_eq!(map[&1], "b");
     /// ```
     // See `get` for implementation notes, this is basically a copy-paste with mut's added
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -326,7 +326,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// map.insert(37, "b");
     /// assert_eq!(map.insert(37, "c"), Some("b"));
-    /// assert_eq!(map[37], "c");
+    /// assert_eq!(map[&37], "c");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, mut key: K, mut value: V) -> Option<V> {

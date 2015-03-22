@@ -126,7 +126,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         return datum.store_to_dest(bcx, dest, expr.id);
     }
 
-    let qualif = bcx.tcx().const_qualif_map.borrow()[expr.id];
+    let qualif = *bcx.tcx().const_qualif_map.borrow().get(&expr.id).unwrap();
     if !qualif.intersects(check_const::NOT_CONST | check_const::NEEDS_DROP) {
         if !qualif.intersects(check_const::PREFER_IN_PLACE) {
             if let SaveIn(lldest) = dest {
@@ -209,7 +209,7 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let mut bcx = bcx;
     let fcx = bcx.fcx;
-    let qualif = bcx.tcx().const_qualif_map.borrow()[expr.id];
+    let qualif = *bcx.tcx().const_qualif_map.borrow().get(&expr.id).unwrap();
     let adjusted_global = !qualif.intersects(check_const::NON_STATIC_BORROWS);
     let global = if !qualif.intersects(check_const::NOT_CONST | check_const::NEEDS_DROP) {
         let global = consts::get_const_expr_as_global(bcx.ccx(), expr, qualif,
@@ -1405,7 +1405,7 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
                         ty.repr(tcx)));
                 }
                 Some(node_id) => {
-                    let def = tcx.def_map.borrow()[node_id].full_def();
+                    let def = tcx.def_map.borrow().get(&node_id).unwrap().full_def();
                     match def {
                         def::DefVariant(enum_id, variant_id, _) => {
                             let variant_info = ty::enum_variant_with_id(tcx, enum_id, variant_id);
@@ -1961,7 +1961,7 @@ fn trans_overloaded_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    dest: Option<Dest>,
                                    autoref: bool)
                                    -> Result<'blk, 'tcx> {
-    let method_ty = (*bcx.tcx().method_map.borrow())[method_call].ty;
+    let method_ty = bcx.tcx().method_map.borrow().get(&method_call).unwrap().ty;
     callee::trans_call_inner(bcx,
                              expr.debug_loc(),
                              monomorphize_type(bcx, method_ty),
@@ -1982,10 +1982,12 @@ fn trans_overloaded_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                          dest: Option<Dest>)
                                          -> Block<'blk, 'tcx> {
     let method_call = MethodCall::expr(expr.id);
-    let method_type = (*bcx.tcx()
-                           .method_map
-                           .borrow())[method_call]
-                           .ty;
+    let method_type = bcx.tcx()
+                         .method_map
+                         .borrow()
+                         .get(&method_call)
+                         .unwrap()
+                         .ty;
     let mut all_args = vec!(callee);
     all_args.extend(args.iter().map(|e| &**e));
     unpack_result!(bcx,

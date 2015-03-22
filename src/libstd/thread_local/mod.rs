@@ -745,7 +745,7 @@ mod dynamic_tests {
         thread_local!(static FOO: RefCell<HashMap<i32, i32>> = map());
 
         FOO.with(|map| {
-            assert_eq!(map.borrow()[1], 2);
+            assert_eq!(map.borrow()[&1], 2);
         });
     }
 

@@ -513,7 +513,7 @@ impl<'a, 'b> Context<'a, 'b> {
             let lname = self.ecx.ident_of(&format!("__arg{}",
                                                   *name));
             pats.push(self.ecx.pat_ident(e.span, lname));
-            names[self.name_positions[*name]] =
+            names[*self.name_positions.get(name).unwrap()] =
                 Some(Context::format_arg(self.ecx, e.span, arg_ty,
                                          self.ecx.expr_ident(e.span, lname)));
             heads.push(self.ecx.expr_addr_of(e.span, e));

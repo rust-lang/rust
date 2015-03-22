@@ -854,10 +854,10 @@ fn confirm_impl_candidate<'cx,'tcx>(
     let impl_items_map = selcx.tcx().impl_items.borrow();
     let impl_or_trait_items_map = selcx.tcx().impl_or_trait_items.borrow();
 
-    let impl_items = &impl_items_map[impl_vtable.impl_def_id];
+    let impl_items = impl_items_map.get(&impl_vtable.impl_def_id).unwrap();
     let mut impl_ty = None;
     for impl_item in impl_items {
-        let assoc_type = match impl_or_trait_items_map[impl_item.def_id()] {
+        let assoc_type = match *impl_or_trait_items_map.get(&impl_item.def_id()).unwrap() {
             ty::TypeTraitItem(ref assoc_type) => assoc_type.clone(),
             ty::MethodTraitItem(..) => { continue; }
         };

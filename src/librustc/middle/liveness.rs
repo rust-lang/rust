@@ -448,7 +448,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       ast::ExprPath(..) => {
-        let def = ir.tcx.def_map.borrow()[expr.id].full_def();
+        let def = ir.tcx.def_map.borrow().get(&expr.id).unwrap().full_def();
         debug!("expr {}: path that leads to {:?}", expr.id, def);
         if let DefLocal(..) = def {
             ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -1302,7 +1302,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn access_path(&mut self, expr: &Expr, succ: LiveNode, acc: u32)
                    -> LiveNode {
-        match self.ir.tcx.def_map.borrow()[expr.id].full_def() {
+        match self.ir.tcx.def_map.borrow().get(&expr.id).unwrap().full_def() {
           DefLocal(nid) => {
             let ln = self.live_node(expr.id, expr.span);
             if acc != 0 {
@@ -1564,7 +1564,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_lvalue(&mut self, expr: &Expr) {
         match expr.node {
             ast::ExprPath(..) => {
-                if let DefLocal(nid) = self.ir.tcx.def_map.borrow()[expr.id].full_def() {
+                if let DefLocal(nid) = self.ir.tcx.def_map.borrow().get(&expr.id)
+                                                                   .unwrap()
+                                                                   .full_def() {
                     // Assignment to an immutable variable or argument: only legal
                     // if there is no later assignment. If this local is actually
                     // mutable, then check for a reassignment to flag the mutability

@@ -2667,7 +2667,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind {
-        self.closure_kinds.borrow()[def_id]
+        *self.closure_kinds.borrow().get(&def_id).unwrap()
     }
 
     pub fn closure_type(&self,
@@ -2675,14 +2675,14 @@ impl<'tcx> ctxt<'tcx> {
                         substs: &subst::Substs<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {
-        self.closure_tys.borrow()[def_id].subst(self, substs)
+        self.closure_tys.borrow().get(&def_id).unwrap().subst(self, substs)
     }
 
     pub fn type_parameter_def(&self,
                               node_id: ast::NodeId)
                               -> TypeParameterDef<'tcx>
     {
-        self.ty_param_defs.borrow()[node_id].clone()
+        self.ty_param_defs.borrow().get(&node_id).unwrap().clone()
     }
 }
 
@@ -6540,7 +6540,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
-        Some(self.upvar_capture_map.borrow()[upvar_id].clone())
+        Some(self.upvar_capture_map.borrow().get(&upvar_id).unwrap().clone())
     }
 }
 
