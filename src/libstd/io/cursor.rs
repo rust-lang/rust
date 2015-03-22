@@ -17,17 +17,14 @@ use iter::repeat;
 use num::Int;
 use slice;
 
-/// A `Cursor` is a type which wraps another I/O object to provide a `Seek`
+/// A `Cursor` is a type which wraps a non-I/O object to provide a `Seek`
 /// implementation.
 ///
-/// Cursors are currently typically used with memory buffer objects in order to
-/// allow `Seek` plus `Read` and `Write` implementations. For example, common
-/// cursor types include:
+/// Cursors are typically used with memory buffer objects in order to allow
+/// `Seek`, `Read`, and `Write` implementations. For example, common cursor types
+/// include `Cursor<Vec<u8>>` and `Cursor<&[u8]>`.
 ///
-/// * `Cursor<Vec<u8>>`
-/// * `Cursor<&[u8]>`
-///
-/// Implementations of the I/O traits for `Cursor<T>` are not currently generic
+/// Implementations of the I/O traits for `Cursor<T>` are currently not generic
 /// over `T` itself. Instead, specific implementations are provided for various
 /// in-memory buffer types like `Vec<u8>` and `&[u8]`.
 #[stable(feature = "rust1", since = "1.0.0")]
