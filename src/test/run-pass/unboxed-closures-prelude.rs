@@ -10,6 +10,8 @@
 
 // Tests that the reexports of `FnOnce` et al from the prelude work.
 
+// pretty-expanded FIXME #23616
+
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 #![feature(unboxed_closures, core)]

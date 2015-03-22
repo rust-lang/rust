@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // pp-exact - Make sure we print all the attributes
+// pretty-expanded FIXME #23616
+
 #![allow(unused_attribute)]
 #![feature(custom_attribute)]
 

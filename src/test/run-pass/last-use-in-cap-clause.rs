@@ -10,6 +10,8 @@
 
 // Make sure #1399 stays fixed
 
+// pretty-expanded FIXME #23616
+
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 #![feature(unboxed_closures, core)]

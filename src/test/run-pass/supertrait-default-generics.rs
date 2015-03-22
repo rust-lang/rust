@@ -10,6 +10,8 @@
 
 // There is some other borrowck bug, so we make the stuff not mut.
 
+// pretty-expanded FIXME #23616
+
 use std::ops::Add;
 
 trait Positioned<S> {

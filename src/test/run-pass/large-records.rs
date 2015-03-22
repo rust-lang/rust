@@ -12,6 +12,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 struct Large {a: int,
              b: int,
              c: int,

@@ -10,6 +10,8 @@
 
 // Test that we can coerce an `@Object` to an `&Object`
 
+// pretty-expanded FIXME #23616
+
 trait Foo {
     fn foo(&self) -> uint;
     fn bar(&mut self) -> uint;

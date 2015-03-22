@@ -17,6 +17,8 @@
 // This is covariant with respect to 'a, meaning that
 // Covariant<'foo> <: Covariant<'static> because
 // 'foo <= 'static
+// pretty-expanded FIXME #23616
+
 struct Covariant<'a> {
     f: extern "Rust" fn(&'a int)
 }

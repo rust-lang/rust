@@ -11,6 +11,8 @@
 // Testing that we can cast to a subtrait and call subtrait
 // methods. Not testing supertrait methods
 
+// pretty-expanded FIXME #23616
+
 trait Foo {
     fn f(&self) -> int;
 }

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 pub fn main()
 {
     let all_nuls1 = "\0\x00\u{0}\u{0}";

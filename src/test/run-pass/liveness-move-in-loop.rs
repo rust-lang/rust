@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 fn take(x: int) -> int {x}
 
 fn the_loop() {

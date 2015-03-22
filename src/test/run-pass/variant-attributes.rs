@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // pp-exact - Make sure we actually print the attributes
+// pretty-expanded FIXME #23616
+
 #![feature(custom_attribute)]
 
 enum crew_of_enterprise_d {

@@ -12,6 +12,8 @@
 // Issue Name: Unused move causes a crash
 // Abstract: zero-fill to block after drop
 
+// pretty-expanded FIXME #23616
+
 #![allow(path_statement)]
 #![allow(unknown_features)]
 #![feature(box_syntax)]

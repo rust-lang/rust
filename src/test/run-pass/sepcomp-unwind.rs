@@ -19,6 +19,8 @@
 // In any case, this test should let us know if enabling parallel codegen ever
 // breaks unwinding.
 
+// pretty-expanded FIXME #23616
+
 use std::thread;
 
 fn pad() -> uint { 0 }

@@ -10,6 +10,8 @@
 
 // Test for issue #4183: use of Self in supertraits.
 
+// pretty-expanded FIXME #23616
+
 use std::num::Float as StdFloat;
 
 pub static FUZZY_EPSILON: f64 = 0.1;

@@ -10,6 +10,8 @@
 
 // Test paths to associated types using the type-parameter-only sugar.
 
+// pretty-expanded FIXME #23616
+
 pub trait Foo {
     type A;
     fn boo(&self) -> Self::A;

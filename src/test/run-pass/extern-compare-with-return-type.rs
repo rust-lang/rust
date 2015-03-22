@@ -10,6 +10,8 @@
 
 // Tests that we can compare various kinds of extern fn signatures.
 
+// pretty-expanded FIXME #23616
+
 extern fn voidret1() {}
 extern fn voidret2() {}
 

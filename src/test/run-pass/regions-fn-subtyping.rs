@@ -10,6 +10,8 @@
 
 // Issue #2263.
 
+// pretty-expanded FIXME #23616
+
 #![allow(dead_assignment)]
 #![allow(unused_variable)]
 #![allow(unknown_features)]

@@ -10,6 +10,8 @@
 
 // aux-build:issue-16643.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate "issue-16643" as i;
 
 pub fn main() {

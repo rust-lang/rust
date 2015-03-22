@@ -21,6 +21,8 @@
 // longer happens by enabling logging for *this* crate and then invoking a
 // function in an external crate which will panic when logging is enabled.
 
+// pretty-expanded FIXME #23616
+
 extern crate logging_right_crate;
 
 pub fn main() {

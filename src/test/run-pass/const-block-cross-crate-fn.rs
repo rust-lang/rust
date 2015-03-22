@@ -10,6 +10,8 @@
 
 // aux-build:cci_const_block.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate cci_const_block;
 
 pub fn main() {

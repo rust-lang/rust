@@ -11,6 +11,8 @@
 // Test to see that the element type of .cloned() can be inferred
 // properly. Previously this would fail to deduce the type of `sum`.
 
+// pretty-expanded FIXME #23616
+
 #![feature(core)]
 
 use std::iter::AdditiveIterator;

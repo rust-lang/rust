@@ -12,6 +12,8 @@
 // statics cannot. This ensures that there's some form of error if this is
 // attempted.
 
+// pretty-expanded FIXME #23616
+
 #![feature(libc)]
 
 extern crate libc;

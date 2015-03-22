@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 extern "C" {
     fn pow(x: f64, y: f64) -> f64;
 }

@@ -11,6 +11,8 @@
 // defining static with struct that contains enum
 // with &'static str variant used to cause ICE
 
+// pretty-expanded FIXME #23616
+
 pub enum Foo {
     Bar,
     Baz(&'static str),

@@ -10,6 +10,8 @@
 
 // Issue #1761
 
+// pretty-expanded FIXME #23616
+
 impl foo for int { fn foo(&self) -> int { 10 } }
 trait foo { fn foo(&self) -> int; }
 pub fn main() {}

@@ -12,6 +12,8 @@
 //
 // (Compare with compile-fail/move-out-of-array-1.rs)
 
+// pretty-expanded FIXME #23616
+
 struct C { _x: u8 }
 
 impl Copy for C { }

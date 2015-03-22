@@ -10,6 +10,8 @@
 
 // Test a function that takes/returns a u8.
 
+// pretty-expanded FIXME #23616
+
 #[link(name = "rust_test_helpers")]
 extern {
     pub fn rust_dbg_extern_identity_u8(v: u8) -> u8;

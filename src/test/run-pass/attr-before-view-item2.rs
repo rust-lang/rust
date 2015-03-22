@@ -10,6 +10,8 @@
 
 // error-pattern:expected item
 
+// pretty-expanded FIXME #23616
+
 #![feature(custom_attribute, test)]
 
 mod m {

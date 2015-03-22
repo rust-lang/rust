@@ -10,6 +10,8 @@
 
 // Test that a `&mut` inside of an `&` is freezable.
 
+// pretty-expanded FIXME #23616
+
 struct MutSlice<'a, T:'a> {
     data: &'a mut [T]
 }

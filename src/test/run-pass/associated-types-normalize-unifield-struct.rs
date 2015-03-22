@@ -12,6 +12,8 @@
 // various special paths in the `type_is_immediate` function.
 
 
+// pretty-expanded FIXME #23616
+
 pub trait OffsetState: Sized {}
 pub trait Offset {
     type State: OffsetState;

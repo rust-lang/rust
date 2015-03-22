@@ -10,6 +10,8 @@
 
 // aux-build:issue_20389.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate issue_20389;
 
 struct Foo;

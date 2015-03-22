@@ -11,6 +11,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     let x: int = 15;
     let y: int = 5;

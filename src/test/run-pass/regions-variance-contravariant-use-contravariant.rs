@@ -14,6 +14,8 @@
 // Note: see compile-fail/variance-regions-*.rs for the tests that check that the
 // variance inference works in the first place.
 
+// pretty-expanded FIXME #23616
+
 struct Contravariant<'a> {
     f: &'a int
 }

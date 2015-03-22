@@ -11,6 +11,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     let mut x: i8 = -12;
     let y: i8 = -12;

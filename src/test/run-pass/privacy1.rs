@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 pub mod test2 {
     // This used to generate an ICE (make sure that default functions are
     // parented to their trait to find the first private thing as the trait).

@@ -11,6 +11,8 @@
 // Test that the precedence of ranges is correct
 
 
+// pretty-expanded FIXME #23616
+
 struct Foo {
     foo: uint,
 }

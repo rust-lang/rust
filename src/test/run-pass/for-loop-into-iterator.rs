@@ -10,6 +10,8 @@
 
 // Test that for loops can do what RFC #235 claims
 
+// pretty-expanded FIXME #23616
+
 fn main() {
     let mut v = vec![1];
 
