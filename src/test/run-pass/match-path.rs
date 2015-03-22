@@ -10,6 +10,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 mod m1 {
     pub enum foo { foo1, foo2, }
 }

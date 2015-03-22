@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 pub fn f() -> int { return 1; }
 
 pub mod foo {

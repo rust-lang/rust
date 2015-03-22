@@ -12,6 +12,8 @@
 // Doing it incorrectly causes massive slowdown in LLVM during
 // optimisation.
 
+// pretty-expanded FIXME #23616
+
 #![feature(intrinsics, std_misc)]
 
 use std::thread::Thread;

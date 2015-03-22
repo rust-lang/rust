@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 fn test_int() {
     fn f() -> int { 10 }
     assert_eq!(f(), 10);

@@ -22,6 +22,8 @@
 // doing region-folding, when really all clients of the region-folding
 // case only want to see FREE lifetime variables, not bound ones.
 
+// pretty-expanded FIXME #23616
+
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 

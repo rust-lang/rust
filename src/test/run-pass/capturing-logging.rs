@@ -10,6 +10,8 @@
 
 // exec-env:RUST_LOG=info
 
+// pretty-expanded FIXME #23616
+
 #![allow(unknown_features)]
 #![feature(box_syntax, old_io, rustc_private, std_misc)]
 

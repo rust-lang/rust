@@ -12,6 +12,8 @@
 
 // Test references to static items across compilation units.
 
+// pretty-expanded FIXME #23616
+
 fn pad() -> uint { 0 }
 
 const ONE: uint = 1;

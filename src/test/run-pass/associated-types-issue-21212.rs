@@ -13,6 +13,8 @@
 // where clauses in the environment which in turn required normalizing
 // `Self::Input`.
 
+// pretty-expanded FIXME #23616
+
 pub trait Parser {
     type Input;
 

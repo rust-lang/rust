@@ -10,6 +10,8 @@
 
 // As dst-struct.rs, but the unsized field is the only field in the struct.
 
+// pretty-expanded FIXME #23616
+
 struct Fat<T: ?Sized> {
     ptr: T
 }

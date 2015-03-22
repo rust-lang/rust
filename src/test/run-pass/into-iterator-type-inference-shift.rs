@@ -13,6 +13,8 @@
 // propagation yet, and so we just saw a type variable, yielding an
 // error.
 
+// pretty-expanded FIXME #23616
+
 #![feature(core)]
 
 use std::u8;

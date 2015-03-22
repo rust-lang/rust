@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 pub struct Foo<'a, 'b: 'a> { foo: &'a &'b int }
 pub fn foo<'a, 'b>(x: Foo<'a, 'b>, _o: Option<&   &   ()>) { let _y = x.foo; }
 fn main() {}

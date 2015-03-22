@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     const S: uint = 23 as uint; [0; S]; ()
 }

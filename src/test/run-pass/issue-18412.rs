@@ -11,6 +11,8 @@
 // Test that non-static methods can be assigned to local variables as
 // function pointers.
 
+// pretty-expanded FIXME #23616
+
 trait Foo {
     fn foo(&self) -> uint;
 }

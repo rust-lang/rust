@@ -11,6 +11,8 @@
 // Ensure that we can do a destructuring bind of a fixed-size array,
 // even when the element type has a destructor.
 
+// pretty-expanded FIXME #23616
+
 struct D { x: u8 }
 
 impl Drop for D { fn drop(&mut self) { } }

@@ -10,6 +10,8 @@
 //
 // regression test for the model lexer handling the DOTDOTDOT syntax (#15877)
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     match 5_usize {
       1_usize...5_usize => {}

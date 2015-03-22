@@ -11,6 +11,8 @@
 // Test that we normalize associated types that appear in a bound that
 // contains a binding. Issue #21664.
 
+// pretty-expanded FIXME #23616
+
 #![feature(core)]
 #![allow(dead_code)]
 

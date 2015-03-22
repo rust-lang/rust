@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // aux-build:issue_3979_traits.rs
+// pretty-expanded FIXME #23616
+
 extern crate issue_3979_traits;
 use issue_3979_traits::{Positioned, Movable};
 

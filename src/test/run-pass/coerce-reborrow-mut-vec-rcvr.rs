@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 fn bar(v: &mut [uint]) {
     v.reverse();
     v.reverse();

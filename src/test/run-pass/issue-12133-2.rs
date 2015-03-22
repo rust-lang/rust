@@ -12,6 +12,8 @@
 // aux-build:issue-12133-dylib.rs
 // no-prefer-dynamic
 
+// pretty-expanded FIXME #23616
+
 extern crate "issue-12133-rlib" as a;
 extern crate "issue-12133-dylib" as b;
 

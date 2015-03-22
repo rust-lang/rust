@@ -10,6 +10,8 @@
 
 // Test unboxed closure sugar used in object types.
 
+// pretty-expanded FIXME #23616
+
 #![allow(dead_code)]
 #![feature(unboxed_closures)]
 

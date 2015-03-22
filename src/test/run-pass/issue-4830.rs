@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 pub struct Scheduler {
     /// The event loop used to drive the scheduler and perform I/O
     event_loop: Box<int>

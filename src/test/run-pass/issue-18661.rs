@@ -11,6 +11,8 @@
 // Test that param substitutions from the correct environment are
 // used when translating unboxed closure calls.
 
+// pretty-expanded FIXME #23616
+
 #![feature(unboxed_closures, core)]
 
 pub fn inside<F: Fn()>(c: F) {

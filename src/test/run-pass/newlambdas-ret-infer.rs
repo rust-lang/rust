@@ -12,6 +12,8 @@
 // expression
 
 // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+// pretty-expanded FIXME #23616
+
 fn unique() -> Box<FnMut()+'static> { return Box::new(|| ()); }
 
 pub fn main() {

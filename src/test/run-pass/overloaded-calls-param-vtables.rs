@@ -10,6 +10,8 @@
 
 // Tests that nested vtables work with overloaded calls.
 
+// pretty-expanded FIXME #23616
+
 #![feature(unboxed_closures, core)]
 
 use std::marker::PhantomData;

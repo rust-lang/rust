@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 fn swap<F>(f: F) -> Vec<int> where F: FnOnce(Vec<int>) -> Vec<int> {
     let x = vec!(1, 2, 3);
     f(x)

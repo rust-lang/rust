@@ -10,6 +10,8 @@
 
 // Issue #5192
 
+// pretty-expanded FIXME #23616
+
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 

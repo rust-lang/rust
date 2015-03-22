@@ -11,6 +11,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 fn f() -> int { return 42; }
 
 pub fn main() {

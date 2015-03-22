@@ -13,6 +13,8 @@
 // value was coerced to a trait object. (v.clone() returns Box<B1>
 // which is coerced to Box<A>).
 
+// pretty-expanded FIXME #23616
+
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 

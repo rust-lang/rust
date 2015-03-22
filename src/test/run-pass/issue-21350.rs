@@ -10,6 +10,8 @@
 
 // Make sure that "bare sequences" don't ICE in follow checking
 
+// pretty-expanded FIXME #23616
+
 macro_rules! bare {
     $($id:expr),+ => ( $($id)+ )
 }

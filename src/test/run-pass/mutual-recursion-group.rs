@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 enum colour { red, green, blue, }
 
 enum tree { children(Box<list>), leaf(colour), }

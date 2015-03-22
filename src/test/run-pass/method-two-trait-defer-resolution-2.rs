@@ -16,6 +16,8 @@
 // version will run (note that the `push` occurs after the call to
 // `foo()`).
 
+// pretty-expanded FIXME #23616
+
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
