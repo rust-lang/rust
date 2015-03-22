@@ -15,10 +15,10 @@ struct Foo {
     y: isize,
 }
 
-impl Index<String> for Foo {
+impl<'a> Index<&'a String> for Foo {
     type Output = isize;
 
-    fn index<'a>(&'a self, z: &String) -> &'a isize {
+    fn index(&self, z: &String) -> &isize {
         if *z == "x" {
             &self.x
         } else {
@@ -27,8 +27,8 @@ impl Index<String> for Foo {
     }
 }
 
-impl IndexMut<String> for Foo {
-    fn index_mut<'a>(&'a mut self, z: &String) -> &'a mut isize {
+impl<'a> IndexMut<&'a String> for Foo {
+    fn index_mut(&mut self, z: &String) -> &mut isize {
         if *z == "x" {
             &mut self.x
         } else {
@@ -44,7 +44,7 @@ struct Bar {
 impl Index<isize> for Bar {
     type Output = isize;
 
-    fn index<'a>(&'a self, z: &isize) -> &'a isize {
+    fn index<'a>(&'a self, z: isize) -> &'a isize {
         &self.x
     }
 }
@@ -56,9 +56,9 @@ fn main() {
     };
     let mut s = "hello".to_string();
     let rs = &mut s;
-    println!("{}", f[s]);
+    println!("{}", f[&s]);
     //~^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
-    f[s] = 10;
+    f[&s] = 10;
     //~^ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
     let s = Bar {
         x: 1,
