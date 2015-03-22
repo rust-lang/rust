@@ -1017,7 +1017,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         None => {
             let data = &m[0].data;
             for &(ref ident, ref value_ptr) in &m[0].bound_ptrs {
-                let binfo = data.bindings_map[*ident];
+                let binfo = *data.bindings_map.get(ident).unwrap();
                 call_lifetime_start(bcx, binfo.llmatch);
                 if binfo.trmode == TrByRef && type_is_fat_ptr(bcx.tcx(), binfo.ty) {
                     expr::copy_fat_ptr(bcx, *value_ptr, binfo.llmatch);

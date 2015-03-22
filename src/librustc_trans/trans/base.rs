@@ -269,7 +269,7 @@ pub fn self_type_for_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 }
 
 pub fn kind_for_closure(ccx: &CrateContext, closure_id: ast::DefId) -> ty::ClosureKind {
-    ccx.tcx().closure_kinds.borrow()[closure_id]
+    *ccx.tcx().closure_kinds.borrow().get(&closure_id).unwrap()
 }
 
 pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -2322,7 +2322,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
                                          static");
               }
 
-              let v = ccx.static_values().borrow()[item.id].clone();
+              let v = ccx.static_values().borrow().get(&item.id).unwrap().clone();
               unsafe {
                   if !(llvm::LLVMConstIntGetZExtValue(v) != 0) {
                       ccx.sess().span_fatal(expr.span, "static assertion failed");

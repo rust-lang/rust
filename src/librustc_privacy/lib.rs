@@ -253,7 +253,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             ast::ItemImpl(_, _, _, _, ref ty, ref impl_items) => {
                 let public_ty = match ty.node {
                     ast::TyPath(..) => {
-                        match self.tcx.def_map.borrow()[ty.id].full_def() {
+                        match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
                             def::DefPrimTy(..) => true,
                             def => {
                                 let did = def.def_id();
@@ -317,7 +317,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
 
             ast::ItemTy(ref ty, _) if public_first => {
                 if let ast::TyPath(..) = ty.node {
-                    match self.tcx.def_map.borrow()[ty.id].full_def() {
+                    match self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def() {
                         def::DefPrimTy(..) | def::DefTyParam(..) => {},
                         def => {
                             let did = def.def_id();
@@ -349,7 +349,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
         // crate module gets processed as well.
         if self.prev_exported {
             assert!(self.export_map.contains_key(&id), "wut {}", id);
-            for export in &self.export_map[id] {
+            for export in self.export_map.get(&id).unwrap() {
                 if is_local(export.def_id) {
                     self.reexports.insert(export.def_id.node);
                 }
@@ -525,7 +525,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             // if we've reached the root, then everything was allowable and this
             // access is public.
             if closest_private_id == ast::CRATE_NODE_ID { return Allowable }
-            closest_private_id = self.parents[closest_private_id];
+            closest_private_id = *self.parents.get(&closest_private_id).unwrap();
 
             // If we reached the top, then we were public all the way down and
             // we can allow this access.
@@ -543,7 +543,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     /// whether the node is accessible by the current module that iteration is
     /// inside.
     fn private_accessible(&self, id: ast::NodeId) -> bool {
-        let parent = self.parents[id];
+        let parent = *self.parents.get(&id).unwrap();
         debug!("privacy - accessible parent {}", self.nodestr(parent));
 
         // After finding `did`'s closest private member, we roll ourselves back
@@ -567,7 +567,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 _ => {}
             }
 
-            cur = self.parents[cur];
+            cur = *self.parents.get(&cur).unwrap();
         }
     }
 
@@ -622,7 +622,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                             ast::TyPath(..) => {}
                             _ => return Some((err_span, err_msg, None)),
                         };
-                        let def = self.tcx.def_map.borrow()[ty.id].full_def();
+                        let def = self.tcx.def_map.borrow().get(&ty.id).unwrap().full_def();
                         let did = def.def_id();
                         assert!(is_local(did));
                         match self.tcx.map.get(did.node) {
@@ -708,7 +708,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     // Checks that a path is in scope.
     fn check_path(&mut self, span: Span, path_id: ast::NodeId, last: ast::Ident) {
         debug!("privacy - path {}", self.nodestr(path_id));
-        let path_res = self.tcx.def_map.borrow()[path_id];
+        let path_res = *self.tcx.def_map.borrow().get(&path_id).unwrap();
         let ck = |tyname: &str| {
             let ck_public = |def: ast::DefId| {
                 debug!("privacy - ck_public {:?}", def);
@@ -881,7 +881,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                         }
                     }
                     ty::ty_enum(_, _) => {
-                        match self.tcx.def_map.borrow()[expr.id].full_def() {
+                        match self.tcx.def_map.borrow().get(&expr.id).unwrap().full_def() {
                             def::DefVariant(_, variant_id, _) => {
                                 for field in fields {
                                     self.check_field(expr.span, variant_id,
