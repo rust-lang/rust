@@ -1575,55 +1575,6 @@ fn copy_args_to_allocas<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     bcx
 }
 
-fn copy_closure_args_to_allocas<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
-                                            arg_scope: cleanup::CustomScopeIndex,
-                                            args: &[ast::Arg],
-                                            arg_datums: Vec<RvalueDatum<'tcx>>,
-                                            monomorphized_arg_types: &[Ty<'tcx>])
-                                            -> Block<'blk, 'tcx> {
-    let _icx = push_ctxt("copy_closure_args_to_allocas");
-    let arg_scope_id = cleanup::CustomScope(arg_scope);
-
-    assert_eq!(arg_datums.len(), 1);
-
-    let arg_datum = arg_datums.into_iter().next().unwrap();
-
-    // Untuple the rest of the arguments.
-    let tuple_datum =
-        unpack_datum!(bcx,
-                      arg_datum.to_lvalue_datum_in_scope(bcx,
-                                                         "argtuple",
-                                                         arg_scope_id));
-    let untupled_arg_types = match monomorphized_arg_types[0].sty {
-        ty::ty_tup(ref types) => &types[..],
-        _ => {
-            bcx.tcx().sess.span_bug(args[0].pat.span,
-                                    "first arg to `rust-call` ABI function \
-                                     wasn't a tuple?!")
-        }
-    };
-    for j in 0..args.len() {
-        let tuple_element_type = untupled_arg_types[j];
-        let tuple_element_datum =
-            tuple_datum.get_element(bcx,
-                                    tuple_element_type,
-                                    |llval| GEPi(bcx, llval, &[0, j]));
-        let tuple_element_datum = tuple_element_datum.to_expr_datum();
-        let tuple_element_datum =
-            unpack_datum!(bcx,
-                          tuple_element_datum.to_rvalue_datum(bcx,
-                                                              "arg"));
-        bcx = _match::store_arg(bcx,
-                                &*args[j].pat,
-                                tuple_element_datum,
-                                arg_scope_id);
-
-        debuginfo::create_argument_metadata(bcx, &args[j]);
-    }
-
-    bcx
-}
-
 // Ties up the llstaticallocas -> llloadenv -> lltop edges,
 // and builds the return block.
 pub fn finish_fn<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>,
@@ -1781,32 +1732,17 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("trans_closure: function lltype: {}",
            bcx.fcx.ccx.tn().val_to_string(bcx.fcx.llfn));
 
-    let arg_datums = if abi != RustCall {
-        create_datums_for_fn_args(&fcx,
-                                  &monomorphized_arg_types[..])
-    } else {
-        create_datums_for_fn_args_under_call_abi(
-            bcx,
-            arg_scope,
-            &monomorphized_arg_types[..])
+    let arg_datums = match closure_env {
+        closure::ClosureEnv::NotClosure if abi == RustCall => {
+            create_datums_for_fn_args_under_call_abi(bcx, arg_scope, &monomorphized_arg_types[..])
+        }
+        _ => {
+            let arg_tys = untuple_arguments_if_necessary(ccx, &monomorphized_arg_types, abi);
+            create_datums_for_fn_args(&fcx, &arg_tys)
+        }
     };
 
-    bcx = match closure_env {
-        closure::ClosureEnv::NotClosure => {
-            copy_args_to_allocas(bcx,
-                                 arg_scope,
-                                 &decl.inputs,
-                                 arg_datums)
-        }
-        closure::ClosureEnv::Closure(_) => {
-            copy_closure_args_to_allocas(
-                bcx,
-                arg_scope,
-                &decl.inputs,
-                arg_datums,
-                &monomorphized_arg_types[..])
-        }
-    };
+    bcx = copy_args_to_allocas(bcx, arg_scope, &decl.inputs, arg_datums);
 
     bcx = closure_env.load(bcx, cleanup::CustomScope(arg_scope));
 
