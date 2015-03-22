@@ -558,6 +558,12 @@ pub trait BufRead: Read {
     /// This function does not perform any I/O, it simply informs this object
     /// that some amount of its buffer, returned from `fill_buf`, has been
     /// consumed and should no longer be returned.
+    ///
+    /// This function is used to tell the buffer how many bytes you've consumed
+    /// from the return value of `fill_buf`, and so may do odd things if
+    /// `fill_buf` isn't called before calling this.
+    ///
+    /// The `amt` must be `<=` the number of bytes in the buffer returned by `fill_buf`.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn consume(&mut self, amt: usize);
 
