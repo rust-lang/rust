@@ -18,7 +18,8 @@
 fn id<T>(x: T) -> T { x }
 
 fn main() {
-    let x = 2_i8 >> id(17); // signals overflow when checking is on
+    // this signals overflow when checking is on
+    let x = 2_i8 >> id(17);
 
     // ... but when checking is off, the fallback will truncate the
     // input to its lower three bits (= 1). Note that this is *not*
