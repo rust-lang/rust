@@ -10,6 +10,8 @@
 
 // Test that vec is now covariant in its argument type.
 
+// pretty-expanded FIXME #23616
+
 #![allow(dead_code)]
 #![feature(core)]
 

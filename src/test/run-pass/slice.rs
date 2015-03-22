@@ -10,6 +10,8 @@
 
 // Test slicing sugar.
 
+// pretty-expanded FIXME #23616
+
 #![feature(core)]
 
 extern crate core;

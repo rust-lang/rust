@@ -13,6 +13,8 @@
 
 // When all branches of a match expression result in panic, the entire
 // match expression results in panic.
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     let _x =
         match true {

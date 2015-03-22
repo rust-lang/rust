@@ -10,6 +10,8 @@
 
 // Test associated types appearing in struct-like enum variants.
 
+// pretty-expanded FIXME #23616
+
 use self::VarValue::*;
 
 pub trait UnifyKey {

@@ -16,6 +16,8 @@
 // shows a similar setup, but restricts `f` so that the struct `C<'a>`
 // is force-fed a lifetime equal to that of the borrowed arena.
 
+// pretty-expanded FIXME #23616
+
 #![allow(unstable)]
 #![feature(unsafe_destructor, rustc_private)]
 

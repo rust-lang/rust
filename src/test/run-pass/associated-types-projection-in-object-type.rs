@@ -13,6 +13,8 @@
 // appear in associated type bindings in object types, which were not
 // being properly flagged.
 
+// pretty-expanded FIXME #23616
+
 use std::ops::{Shl, Shr};
 use std::cell::RefCell;
 

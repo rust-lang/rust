@@ -10,6 +10,8 @@
 
 // Testing that this impl turns A into a Quux, because
 // A is already a Foo Bar Baz
+// pretty-expanded FIXME #23616
+
 impl<T:Foo + Bar + Baz> Quux for T { }
 
 trait Foo { fn f(&self) -> int; }

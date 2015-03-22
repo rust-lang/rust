@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 fn region_identity(x: &uint) -> &uint { x }
 
 fn apply<T, F>(t: T, f: F) -> T where F: FnOnce(T) -> T { f(t) }

@@ -13,6 +13,8 @@
 // check that cfg correctly chooses between the macro impls (see also
 // cfg-macros-notfoo.rs)
 
+// pretty-expanded FIXME #23616
+
 #[cfg(foo)]
 #[macro_use]
 mod foo {

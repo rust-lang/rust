@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 fn main() {
     let x: (int, &[int]) = (2, &[1, 2]);
     assert_eq!(match x {

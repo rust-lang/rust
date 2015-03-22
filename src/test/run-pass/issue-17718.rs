@@ -10,6 +10,8 @@
 
 // aux-build:issue-17718.rs
 
+// pretty-expanded FIXME #23616
+
 #![feature(core)]
 
 extern crate "issue-17718" as other;

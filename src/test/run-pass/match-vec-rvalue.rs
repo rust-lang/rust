@@ -11,6 +11,8 @@
 // Tests that matching rvalues with drops does not crash.
 
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     match vec!(1, 2, 3) {
         x => {

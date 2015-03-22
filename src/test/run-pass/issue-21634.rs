@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 fn main() {
     if let Ok(x) = "3.1415".parse() {
         assert_eq!(false, x <= 0.0);

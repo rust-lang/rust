@@ -11,6 +11,8 @@
 // This test can't be a unit test in std,
 // because it needs TempDir, which is in extra
 
+// pretty-expanded FIXME #23616
+
 #![feature(tempdir, path_ext)]
 
 use std::ffi::CString;

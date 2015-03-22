@@ -12,6 +12,8 @@
 // Issue #787
 // Don't try to clean up uninitialized locals
 
+// pretty-expanded FIXME #23616
+
 use std::thread;
 
 fn test_break() { loop { let _x: Box<int> = break; } }

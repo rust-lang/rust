@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     fn id_i8(n: i8) -> i8 { n }
     fn id_i16(n: i16) -> i16 { n }

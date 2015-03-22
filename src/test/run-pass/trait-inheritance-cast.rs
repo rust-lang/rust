@@ -10,6 +10,8 @@
 
 // Testing that supertrait methods can be called on subtrait object types
 
+// pretty-expanded FIXME #23616
+
 trait Foo {
     fn f(&self) -> int;
 }

@@ -10,6 +10,8 @@
 
 // Regression test for Issue #20343.
 
+// pretty-expanded FIXME #23616
+
 #![deny(dead_code)]
 
 struct B { b: u32 }

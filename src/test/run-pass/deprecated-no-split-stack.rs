@@ -9,6 +9,8 @@
 // except according to those terms.
 
 //~ WARNING no_split_stack is a deprecated synonym for no_stack_check
+// pretty-expanded FIXME #23616
+
 #[no_split_stack]
 fn main() {
 }

@@ -12,6 +12,8 @@
 // attempting to bootstrap librustc with new destructor lifetime
 // semantics.
 
+// pretty-expanded FIXME #23616
+
 use std::collections::HashMap;
 use std::cell::RefCell;
 

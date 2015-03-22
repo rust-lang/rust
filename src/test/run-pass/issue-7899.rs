@@ -10,6 +10,8 @@
 
 // aux-build:issue-7899.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate "issue-7899" as testcrate;
 
 fn main() {

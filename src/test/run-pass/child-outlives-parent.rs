@@ -10,6 +10,8 @@
 
 // Reported as issue #126, child leaks the string.
 
+// pretty-expanded FIXME #23616
+
 #![feature(std_misc)]
 
 use std::thread::Thread;

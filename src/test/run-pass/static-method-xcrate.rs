@@ -10,6 +10,8 @@
 
 // aux-build:static-methods-crate.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate static_methods_crate;
 
 use static_methods_crate::read;

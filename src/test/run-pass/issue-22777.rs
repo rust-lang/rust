@@ -12,6 +12,8 @@
 // can successfully deal with a "deep" structure, which the drop-check
 // was hitting a recursion limit on at one point.
 
+// pretty-expanded FIXME #23616
+
 #![allow(non_camel_case_types)]
 
 pub fn noop_fold_impl_item() -> SmallVector<ImplItem> {

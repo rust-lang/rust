@@ -12,6 +12,8 @@
 // making method calls, but only if there aren't any matches without
 // it.
 
+// pretty-expanded FIXME #23616
+
 #![feature(unboxed_closures)]
 
 trait iterable<A> {

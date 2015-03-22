@@ -10,6 +10,8 @@
 
 // no-pretty-expanded FIXME #15189
 
+// pretty-expanded FIXME #23616
+
 #![feature(core)]
 
 use std::iter::Unfold;

@@ -10,6 +10,8 @@
 
 // GetLastError doesn't seem to work with stack switching
 
+// pretty-expanded FIXME #23616
+
 #[cfg(windows)]
 mod kernel32 {
   extern "system" {

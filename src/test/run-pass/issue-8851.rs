@@ -13,6 +13,8 @@
 // doesn't cause capture. Making this macro hygienic (as I've done)
 // could very well make this test case completely pointless....
 
+// pretty-expanded FIXME #23616
+
 enum T {
     A(int),
     B(uint)

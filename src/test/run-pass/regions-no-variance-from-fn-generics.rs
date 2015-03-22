@@ -12,6 +12,8 @@
 // should not upset the variance inference for actual occurrences of
 // that lifetime in type expressions.
 
+// pretty-expanded FIXME #23616
+
 pub trait HasLife<'a> {
     fn dummy(&'a self) { } // just to induce a variance on 'a
 }

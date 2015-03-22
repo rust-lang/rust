@@ -11,6 +11,8 @@
 // Test that type IDs correctly account for higher-rank lifetimes
 // Also acts as a regression test for an ICE (issue #19791)
 
+// pretty-expanded FIXME #23616
+
 #![feature(unboxed_closures, core)]
 
 use std::any::TypeId;

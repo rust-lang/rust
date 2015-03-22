@@ -10,6 +10,8 @@
 
 // ABI is cdecl by default
 
+// pretty-expanded FIXME #23616
+
 #![feature(libc)]
 
 mod rustrt {

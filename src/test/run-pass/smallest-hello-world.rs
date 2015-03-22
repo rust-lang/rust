@@ -10,6 +10,8 @@
 
 // Smallest "hello world" with a libc runtime
 
+// pretty-expanded FIXME #23616
+
 #![feature(intrinsics, lang_items, start, no_std, libc)]
 #![no_std]
 

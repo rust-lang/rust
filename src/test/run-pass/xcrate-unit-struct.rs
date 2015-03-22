@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // aux-build:xcrate_unit_struct.rs
+// pretty-expanded FIXME #23616
+
 extern crate xcrate_unit_struct;
 
 const s1: xcrate_unit_struct::Struct = xcrate_unit_struct::Struct;

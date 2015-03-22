@@ -11,6 +11,8 @@
 // Test overloading of the `[]` operator.  In particular test that it
 // takes its argument *by reference*.
 
+// pretty-expanded FIXME #23616
+
 #![feature(core)]
 
 use std::ops::Index;
