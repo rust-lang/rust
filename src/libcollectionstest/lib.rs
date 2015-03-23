@@ -20,6 +20,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unsafe_destructor)]
+#![feature(into_cow)]
 #![cfg_attr(test, feature(str_char))]
 
 #[macro_use] extern crate log;

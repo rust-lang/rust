@@ -770,7 +770,7 @@ mod tests {
         // test changing to the parent of os::getcwd() because we know
         // the path exists (and os::getcwd() is not expected to be root)
         let parent_dir = os::getcwd().unwrap().dir_path();
-        let result = pwd_cmd().current_dir(&parent_dir).output().unwrap();
+        let result = pwd_cmd().current_dir(parent_dir.as_str().unwrap()).output().unwrap();
 
         let output = String::from_utf8(result.stdout).unwrap();
         let child_dir = old_path::Path::new(output.trim());

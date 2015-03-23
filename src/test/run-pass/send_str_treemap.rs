@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(collections)]
+#![feature(collections, into_cow)]
 
 extern crate collections;
 

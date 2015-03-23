@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A growable list type with heap-allocated contents, written `Vec<T>` but pronounced 'vector.'
+//! A growable list type with heap-allocated contents, written `Vec<T>` but
+//! pronounced 'vector.'
 //!
 //! Vectors have `O(1)` indexing, push (to the end) and pop (from the end).
 //!
@@ -124,17 +125,19 @@ use borrow::{Cow, IntoCow};
 ///
 /// # Capacity and reallocation
 ///
-/// The capacity of a vector is the amount of space allocated for any future elements that will be
-/// added onto the vector. This is not to be confused with the *length* of a vector, which
-/// specifies the number of actual elements within the vector. If a vector's length exceeds its
-/// capacity, its capacity will automatically be increased, but its elements will have to be
+/// The capacity of a vector is the amount of space allocated for any future
+/// elements that will be added onto the vector. This is not to be confused with
+/// the *length* of a vector, which specifies the number of actual elements
+/// within the vector. If a vector's length exceeds its capacity, its capacity
+/// will automatically be increased, but its elements will have to be
 /// reallocated.
 ///
-/// For example, a vector with capacity 10 and length 0 would be an empty vector with space for 10
-/// more elements. Pushing 10 or fewer elements onto the vector will not change its capacity or
-/// cause reallocation to occur. However, if the vector's length is increased to 11, it will have
-/// to reallocate, which can be slow. For this reason, it is recommended to use
-/// `Vec::with_capacity` whenever possible to specify how big the vector is expected to get.
+/// For example, a vector with capacity 10 and length 0 would be an empty vector
+/// with space for 10 more elements. Pushing 10 or fewer elements onto the
+/// vector will not change its capacity or cause reallocation to occur. However,
+/// if the vector's length is increased to 11, it will have to reallocate, which
+/// can be slow. For this reason, it is recommended to use `Vec::with_capacity`
+/// whenever possible to specify how big the vector is expected to get.
 #[unsafe_no_drop_flag]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Vec<T> {
@@ -1429,7 +1432,7 @@ impl<T> ops::Index<ops::RangeFull> for Vec<T> {
     #[cfg(not(stage0))]
     #[inline]
     fn index(&self, _index: ops::RangeFull) -> &[T] {
-        self.as_slice()
+        self
     }
 }
 
@@ -1733,15 +1736,20 @@ impl<T> AsRef<[T]> for Vec<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Clone> From<&'a [T]> for Vec<T> {
+    #[cfg(not(test))]
     fn from(s: &'a [T]) -> Vec<T> {
         s.to_vec()
+    }
+    #[cfg(test)]
+    fn from(s: &'a [T]) -> Vec<T> {
+        ::slice::to_vec(s)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&'a str> for Vec<u8> {
     fn from(s: &'a str) -> Vec<u8> {
-        s.as_bytes().to_vec()
+        From::from(s.as_bytes())
     }
 }
 
