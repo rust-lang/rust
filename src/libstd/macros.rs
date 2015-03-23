@@ -90,8 +90,7 @@ macro_rules! println {
 }
 
 /// Helper macro for unwrapping `Result` values while returning early with an
-/// error if the value of the expression is `Err`. For more information, see
-/// `std::io`.
+/// error if the value of the expression is `Err`.
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! try {
