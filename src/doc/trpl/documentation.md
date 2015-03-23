@@ -333,6 +333,41 @@ By repeating all parts of the example, you can ensure that your example still
 compiles, while only showing the parts that are relevant to that part of your
 explanation.
 
+### Documenting macros
+
+Here’s an example of documenting a macro:
+
+```
+/// Panic with a given message unless an expression evaluates to true.
+///
+/// # Examples
+///
+/// ```
+/// # #[macro_use] extern crate foo;
+/// # fn main() {
+/// panic_unless!(1 + 1 == 2, “Math is broken.”);
+/// # }
+/// ```
+///
+/// ```should_fail
+/// # #[macro_use] extern crate foo;
+/// # fn main() {
+/// panic_unless!(true == false, “I’m broken.”);
+/// # }
+/// ```
+#[macro_export]
+macro_rules! panic_unless {
+    ($condition:expr, $($rest:expr),+) => ({ if ! $condition { panic!($($rest),+); } });
+} 
+```
+
+You’ll note three things: we need to add our own `extern crate` line, so that
+we can add the `#[macro_use]` attribute. Second, we’ll need to add our own
+`main()` as well. Finally, a judicious use of `#` to comment out those two
+things, so they don’t show up in the output.
+
+### Running documentation tests
+
 To run the tests, either
 
 ```bash
