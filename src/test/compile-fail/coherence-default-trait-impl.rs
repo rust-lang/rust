@@ -21,4 +21,14 @@ impl MyTrait for .. {}
 impl MyTrait for .. {}
 //~^ ERROR conflicting implementations for trait `MyTrait`
 
+trait MySafeTrait: MarkerTrait {}
+
+unsafe impl MySafeTrait for .. {}
+//~^ ERROR implementing the trait `MySafeTrait` is not unsafe
+
+unsafe trait MyUnsafeTrait: MarkerTrait {}
+
+impl MyUnsafeTrait for .. {}
+//~^ ERROR the trait `MyUnsafeTrait` requires an `unsafe impl` declaration
+
 fn main() {}
