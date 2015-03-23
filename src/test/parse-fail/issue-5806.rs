@@ -11,6 +11,7 @@
 // ignore-windows
 // ignore-freebsd
 // ignore-openbsd
+// ignore-bitrig
 
 #[path = "../compile-fail"]
 mod foo; //~ ERROR: a directory

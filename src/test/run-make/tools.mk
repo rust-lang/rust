@@ -55,15 +55,21 @@ endif
 ifdef IS_WINDOWS
 	EXTRACFLAGS := -lws2_32 -luserenv
 else
-ifeq ($(shell uname),Darwin)
+ifeq ($(UNAME),Darwin)
 else
-ifeq ($(shell uname),FreeBSD)
+ifeq ($(UNAME),FreeBSD)
 	EXTRACFLAGS := -lm -lpthread -lgcc_s
 else
-ifeq ($(shell uname),OpenBSD)
+ifeq ($(UNAME),Bitrig)
+	EXTRACFLAGS := -lm -lpthread
+	EXTRACXXFLAGS := -lc++ -lc++abi
+else
+ifeq ($(UNAME),OpenBSD)
 	EXTRACFLAGS := -lm -lpthread
 else
 	EXTRACFLAGS := -lm -lrt -ldl -lpthread
+	EXTRACXXFLAGS := -lstdc++
+endif
 endif
 endif
 endif
