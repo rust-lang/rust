@@ -1428,7 +1428,7 @@ mod bench {
             let mut v = Vec::<u8>::with_capacity(1024);
             unsafe {
                 let vp = v.as_mut_ptr();
-                ptr::set_memory(vp, 0, 1024);
+                ptr::write_bytes(vp, 0, 1024);
                 v.set_len(1024);
             }
             v

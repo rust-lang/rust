@@ -107,27 +107,13 @@ use cmp::Ordering::{self, Less, Equal, Greater};
 // FIXME #19649: intrinsic docs don't render, so these have no docs :(
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use intrinsics::copy_nonoverlapping_memory as copy_nonoverlapping;
+pub use intrinsics::copy_nonoverlapping;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use intrinsics::copy_memory as copy;
+pub use intrinsics::copy;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use intrinsics::set_memory as write_bytes;
-
-extern "rust-intrinsic" {
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0", reason = "renamed to `copy_nonoverlapping`")]
-    pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0", reason = "renamed to `copy`")]
-    pub fn copy_memory<T>(dst: *mut T, src: *const T, count: usize);
-
-    #[unstable(feature = "core",
-               reason = "uncertain about naming and semantics")]
-    #[deprecated(since = "1.0.0", reason = "renamed to `write_bytes`")]
-    pub fn set_memory<T>(dst: *mut T, val: u8, count: usize);
-}
+pub use intrinsics::write_bytes;
 
 /// Creates a null raw pointer.
 ///

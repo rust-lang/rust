@@ -159,7 +159,7 @@ pub fn u64_to_be_bytes<T, F>(n: u64, size: uint, f: F) -> T where
 ///           that many bytes are parsed. For example, if `size` is 4, then a
 ///           32-bit value is parsed.
 pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
-    use ptr::{copy_nonoverlapping_memory};
+    use ptr::{copy_nonoverlapping};
 
     assert!(size <= 8);
 
@@ -171,7 +171,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
     unsafe {
         let ptr = data.as_ptr().offset(start as int);
         let out = buf.as_mut_ptr();
-        copy_nonoverlapping_memory(out.offset((8 - size) as int), ptr, size);
+        copy_nonoverlapping(out.offset((8 - size) as int), ptr, size);
         (*(out as *const u64)).to_be()
     }
 }
