@@ -87,7 +87,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
         if env::args().len() < 3 {
             src = env::current_dir().unwrap().clone();
         } else {
-            src = PathBuf::new(&env::args().nth(2).unwrap());
+            src = PathBuf::from(&env::args().nth(2).unwrap());
         }
         // preprocess the markdown, rerouting markdown references to html references
         let mut markdown_data = String::new();
@@ -164,13 +164,13 @@ impl Subcommand for Build {
         if env::args().len() < 3 {
             src = cwd.clone();
         } else {
-            src = PathBuf::new(&env::args().nth(2).unwrap());
+            src = PathBuf::from(&env::args().nth(2).unwrap());
         }
 
         if env::args().len() < 4 {
             tgt = cwd.join("_book");
         } else {
-            tgt = PathBuf::new(&env::args().nth(3).unwrap());
+            tgt = PathBuf::from(&env::args().nth(3).unwrap());
         }
 
         try!(fs::create_dir(&tgt));

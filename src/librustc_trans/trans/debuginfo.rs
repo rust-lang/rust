@@ -1695,7 +1695,7 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     let name = CString::new(name.as_bytes()).unwrap();
-    match (variable_access, [].as_slice()) {
+    match (variable_access, &[][..]) {
         (DirectVariable { alloca }, address_operations) |
         (IndirectVariable {alloca, address_operations}, _) => {
             let metadata = unsafe {

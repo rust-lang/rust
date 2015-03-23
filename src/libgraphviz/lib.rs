@@ -280,6 +280,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 #![feature(int_uint)]
 #![feature(collections)]
+#![feature(into_cow)]
 
 use self::LabelText::*;
 

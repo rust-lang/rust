@@ -38,6 +38,7 @@ use self::MapError::*;
 
 use boxed::Box;
 use clone::Clone;
+use convert::From;
 use env;
 use error::{FromError, Error};
 use ffi::{OsString, OsStr};
@@ -79,12 +80,12 @@ fn err2old(new: ::io::Error) -> IoError {
 
 #[cfg(windows)]
 fn path2new(path: &Path) -> PathBuf {
-    PathBuf::new(path.as_str().unwrap())
+    PathBuf::from(path.as_str().unwrap())
 }
 #[cfg(unix)]
 fn path2new(path: &Path) -> PathBuf {
     use os::unix::prelude::*;
-    PathBuf::new(<OsStr as OsStrExt>::from_bytes(path.as_vec()))
+    PathBuf::from(<OsStr as OsStrExt>::from_bytes(path.as_vec()))
 }
 
 #[cfg(unix)]

@@ -45,6 +45,7 @@
 #![feature(libc)]
 #![feature(set_stdio)]
 #![feature(os)]
+#![feature(convert)]
 
 extern crate getopts;
 extern crate serialize;
@@ -382,7 +383,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let run_ignored = matches.opt_present("ignored");
 
     let logfile = matches.opt_str("logfile");
-    let logfile = logfile.map(|s| PathBuf::new(&s));
+    let logfile = logfile.map(|s| PathBuf::from(&s));
 
     let run_benchmarks = matches.opt_present("bench");
     let run_tests = ! run_benchmarks ||
@@ -696,7 +697,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::Res
     match tests.iter().max_by(|t|len_if_padded(*t)) {
         Some(t) => {
             let n = t.desc.name.as_slice();
-            st.max_name_len = n.as_slice().len();
+            st.max_name_len = n.len();
         },
         None => {}
     }

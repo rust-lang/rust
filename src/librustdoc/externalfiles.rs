@@ -47,7 +47,7 @@ pub fn load_string(input: &Path) -> io::Result<Option<String>> {
 macro_rules! load_or_return {
     ($input: expr, $cant_read: expr, $not_utf8: expr) => {
         {
-            let input = PathBuf::new($input);
+            let input = PathBuf::from(&$input[..]);
             match ::externalfiles::load_string(&input) {
                 Err(e) => {
                     let _ = writeln!(&mut io::stderr(),

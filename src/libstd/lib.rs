@@ -126,8 +126,10 @@
 #![feature(hash)]
 #![feature(int_uint)]
 #![feature(unique)]
+#![feature(convert)]
 #![feature(allow_internal_unstable)]
 #![feature(str_char)]
+#![feature(into_cow)]
 #![cfg_attr(test, feature(test, rustc_private))]
 
 // Don't link to std. We are std.
@@ -169,6 +171,7 @@ pub use core::any;
 pub use core::cell;
 pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;
+pub use core::convert;
 pub use core::default;
 #[allow(deprecated)]
 pub use core::finally;
