@@ -85,30 +85,6 @@ impl LintPass for WhileTrue {
 }
 
 declare_lint! {
-    UNUSED_TYPECASTS,
-    Allow,
-    "detects unnecessary type casts that can be removed"
-}
-
-#[derive(Copy)]
-pub struct UnusedCasts;
-
-impl LintPass for UnusedCasts {
-    fn get_lints(&self) -> LintArray {
-        lint_array!(UNUSED_TYPECASTS)
-    }
-
-    fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        if let ast::ExprCast(ref expr, ref ty) = e.node {
-            let t_t = ty::expr_ty(cx.tcx, e);
-            if ty::expr_ty(cx.tcx, &**expr) == t_t {
-                cx.span_lint(UNUSED_TYPECASTS, ty.span, "unnecessary type cast");
-            }
-        }
-    }
-}
-
-declare_lint! {
     UNSIGNED_NEGATION,
     Warn,
     "using an unary minus operator on unsigned type"

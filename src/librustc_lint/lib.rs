@@ -89,7 +89,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     add_builtin!(sess,
                  HardwiredLints,
                  WhileTrue,
-                 UnusedCasts,
                  ImproperCTypes,
                  BoxPointers,
                  UnusedAttributes,
