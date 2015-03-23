@@ -13,12 +13,14 @@
 use core::prelude::*;
 
 use cmp;
+use dynamic_lib::DynamicLibrary;
 use ffi::CString;
 use io;
 use libc::consts::os::posix01::PTHREAD_STACK_MIN;
 use libc;
 use mem;
 use ptr;
+use sync::{Once, ONCE_INIT};
 use sys::os;
 use thunk::Thunk;
 use time::Duration;
@@ -314,26 +316,36 @@ pub fn sleep(dur: Duration) {
 // is created in an application with big thread-local storage requirements.
 // See #6233 for rationale and details.
 //
-// Link weakly to the symbol for compatibility with older versions of glibc.
-// Assumes that we've been dynamically linked to libpthread but that is
-// currently always the case.  Note that you need to check that the symbol
-// is non-null before calling it!
+// Use dlsym to get the symbol value at runtime, both for
+// compatibility with older versions of glibc, and to avoid creating
+// dependencies on GLIBC_PRIVATE symbols.  Assumes that we've been
+// dynamically linked to libpthread but that is currently always the
+// case.  We previously used weak linkage (under the same assumption),
+// but that caused Debian to detect an unnecessarily strict versioned
+// dependency on libc6 (#23628).
 #[cfg(target_os = "linux")]
 fn min_stack_size(attr: *const libc::pthread_attr_t) -> libc::size_t {
     type F = unsafe extern "C" fn(*const libc::pthread_attr_t) -> libc::size_t;
-    extern {
-        #[linkage = "extern_weak"]
-        static __pthread_get_minstack: *const ();
-    }
-    if __pthread_get_minstack.is_null() {
-        PTHREAD_STACK_MIN
-    } else {
-        unsafe { mem::transmute::<*const (), F>(__pthread_get_minstack)(attr) }
+    static INIT: Once = ONCE_INIT;
+    static mut __pthread_get_minstack: Option<F> = None;
+
+    INIT.call_once(|| {
+        let lib = DynamicLibrary::open(None).unwrap();
+        unsafe {
+            if let Ok(f) = lib.symbol("__pthread_get_minstack") {
+                __pthread_get_minstack = Some(mem::transmute::<*const (), F>(f));
+            }
+        }
+    });
+
+    match unsafe { __pthread_get_minstack } {
+        None => PTHREAD_STACK_MIN,
+        Some(f) => unsafe { f(attr) },
     }
 }
 
-// __pthread_get_minstack() is marked as weak but extern_weak linkage is
-// not supported on OS X, hence this kludge...
+// No point in looking up __pthread_get_minstack() on non-glibc
+// platforms.
 #[cfg(not(target_os = "linux"))]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> libc::size_t {
     PTHREAD_STACK_MIN
