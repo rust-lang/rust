@@ -375,7 +375,7 @@ fn encode_reexported_static_base_methods(ecx: &EncodeContext,
     match ecx.tcx.inherent_impls.borrow().get(&exp.def_id) {
         Some(implementations) => {
             for base_impl_did in &**implementations {
-                for &method_did in &*(*impl_items)[*base_impl_did] {
+                for &method_did in impl_items.get(base_impl_did).unwrap() {
                     let impl_item = ty::impl_or_trait_item(
                         ecx.tcx,
                         method_did.def_id());
@@ -1175,7 +1175,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // We need to encode information about the default methods we
         // have inherited, so we drive this based on the impl structure.
         let impl_items = tcx.impl_items.borrow();
-        let items = &(*impl_items)[def_id];
+        let items = impl_items.get(&def_id).unwrap();
 
         add_to_index(item, rbml_w, index);
         rbml_w.start_tag(tag_items_data_item);
@@ -1816,7 +1816,7 @@ struct ImplVisitor<'a, 'b:'a, 'c:'a, 'tcx:'b> {
 impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'b, 'c, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
         if let ast::ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node {
-            let def_id = self.ecx.tcx.def_map.borrow()[trait_ref.ref_id].def_id();
+            let def_id = self.ecx.tcx.def_map.borrow().get(&trait_ref.ref_id).unwrap().def_id();
 
             // Load eagerly if this is an implementation of the Drop trait
             // or if the trait is not defined in this crate.

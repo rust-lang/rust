@@ -1533,7 +1533,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     ConstrainVarSubReg(_, region) => {
                         state.result.push(RegionAndOrigin {
                             region: region,
-                            origin: this.constraints.borrow()[edge.data].clone()
+                            origin: this.constraints.borrow().get(&edge.data).unwrap().clone()
                         });
                     }
                 }

@@ -19,7 +19,7 @@ struct MyVec<T> {
 impl<T> Index<usize> for MyVec<T> {
     type Output = T;
 
-    fn index(&self, &i: &usize) -> &T {
+    fn index(&self, i: usize) -> &T {
         &self.data[i]
     }
 }

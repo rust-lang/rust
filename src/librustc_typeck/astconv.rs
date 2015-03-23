@@ -1046,7 +1046,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         return (tcx.types.err, ty_path_def);
     };
 
-    let ty_param_name = tcx.ty_param_defs.borrow()[ty_param_node_id].name;
+    let ty_param_name = tcx.ty_param_defs.borrow().get(&ty_param_node_id).unwrap().name;
 
     let bounds = match this.get_type_parameter_bounds(span, ty_param_node_id) {
         Ok(v) => v,

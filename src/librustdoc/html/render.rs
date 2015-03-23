@@ -1404,8 +1404,8 @@ impl<'a> Item<'a> {
         // located, then we return `None`.
         } else {
             let cache = cache();
-            let path = &cache.external_paths[self.item.def_id];
-            let root = match cache.extern_locations[self.item.def_id.krate] {
+            let path = &cache.external_paths[&self.item.def_id];
+            let root = match cache.extern_locations[&self.item.def_id.krate] {
                 Remote(ref s) => s.to_string(),
                 Local => self.cx.root_path.clone(),
                 Unknown => return None,
@@ -1863,7 +1863,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 path = if ast_util::is_local(it.def_id) {
                     cx.current.connect("/")
                 } else {
-                    let path = &cache.external_paths[it.def_id];
+                    let path = &cache.external_paths[&it.def_id];
                     path[..path.len() - 1].connect("/")
                 },
                 ty = shortty(it).to_static_str(),

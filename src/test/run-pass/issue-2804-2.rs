@@ -16,7 +16,7 @@ extern crate collections;
 use std::collections::HashMap;
 
 fn add_interfaces(managed_ip: String, device: HashMap<String, int>)  {
-     println!("{}, {}", managed_ip, device["interfaces".to_string()]);
+     println!("{}, {}", managed_ip, device["interfaces"]);
 }
 
 pub fn main() {}
