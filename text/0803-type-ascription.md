@@ -172,16 +172,18 @@ lvalue position), then we don't have the soundness problem, but we do get the
 unexpected result that `&(x: T)` is not in fact a reference to `x`, but a
 reference to a temporary copy of `x`.
 
-The proposed solution is that type ascription expressions are lvalues, where
-the type ascription expression is in reference context, then we require the
-ascribed type to exactly match the type of the expression, i.e., neither
-subtyping nor coercion is allowed. These contexts are:
+The proposed solution is that type ascription expressions are lvalues. If the
+type ascription expression is in reference context, then we require the ascribed
+type to exactly match the type of the expression, i.e., neither subtyping nor
+coercion is allowed. These reference contexts are as follows (where <expr> is a
+type ascription expression):
 
 ```
 &[mut] <expr>
 let ref [mut] x = <expr>
 match <expr> { .. ref [mut] x .. => { .. } .. }
 <expr>.foo() // due to autoref
+<expr> = ...;
 ```
 
 # Drawbacks
