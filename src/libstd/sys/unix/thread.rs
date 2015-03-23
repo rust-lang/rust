@@ -229,19 +229,16 @@ pub unsafe fn create(stack: usize, p: Thunk) -> io::Result<rust_thread> {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub unsafe fn set_name(name: &str) {
-    // pthread_setname_np() since glibc 2.12
-    // availability autodetected via weak linkage
-    type F = unsafe extern fn(libc::pthread_t, *const libc::c_char)
-                              -> libc::c_int;
+    // pthread wrapper only appeared in glibc 2.12, so we use syscall directly.
     extern {
-        #[linkage = "extern_weak"]
-        static pthread_setname_np: *const ();
+        fn prctl(option: libc::c_int, arg2: libc::c_ulong, arg3: libc::c_ulong,
+                 arg4: libc::c_ulong, arg5: libc::c_ulong) -> libc::c_int;
     }
-    if !pthread_setname_np.is_null() {
-        let cname = CString::new(name).unwrap();
-        mem::transmute::<*const (), F>(pthread_setname_np)(pthread_self(),
-                                                           cname.as_ptr());
-    }
+    const PR_SET_NAME: libc::c_int = 15;
+    let cname = CString::new(name).unwrap_or_else(|_| {
+        panic!("thread name may not contain interior null bytes")
+    });
+    prctl(PR_SET_NAME, cname.as_ptr() as libc::c_ulong, 0, 0, 0);
 }
 
 #[cfg(any(target_os = "freebsd",
