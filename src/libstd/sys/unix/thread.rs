@@ -343,8 +343,8 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> libc::size_t {
     }
 }
 
-// __pthread_get_minstack() is marked as weak but extern_weak linkage is
-// not supported on OS X, hence this kludge...
+// No point in looking up __pthread_get_minstack() on non-glibc
+// platforms.
 #[cfg(not(target_os = "linux"))]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> libc::size_t {
     PTHREAD_STACK_MIN
