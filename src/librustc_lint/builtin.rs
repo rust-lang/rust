@@ -1781,7 +1781,7 @@ impl LintPass for UnconditionalRecursion {
     fn check_fn(&mut self, cx: &Context, fn_kind: visit::FnKind, _: &ast::FnDecl,
                 blk: &ast::Block, sp: Span, id: ast::NodeId) {
         // FIXME(#23542) Replace with type ascription.
-        #![allow(trivial_cast)]
+        #![allow(trivial_casts)]
 
         type F = for<'tcx> fn(&ty::ctxt<'tcx>,
                               ast::NodeId, ast::NodeId, ast::Ident, ast::NodeId) -> bool;

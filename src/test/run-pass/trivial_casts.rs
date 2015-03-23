@@ -10,7 +10,7 @@
 
 // Test that all coercions can actually be done using casts (modulo the lints).
 
-#![allow(trivial_cast, trivial_numeric_cast)]
+#![allow(trivial_casts, trivial_numeric_casts)]
 
 trait Foo {
     fn foo(&self) {}

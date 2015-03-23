@@ -14,7 +14,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
-#![allow(trivial_numeric_cast)]
+#![allow(trivial_numeric_casts)]
 
 use self::wrapping::{OverflowingOps, WrappingOps};
 

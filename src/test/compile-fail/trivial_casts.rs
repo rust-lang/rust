@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test the trivial_cast and trivial_numeric_cast lints. For each error we also
+// Test the trivial_casts and trivial_numeric_casts lints. For each error we also
 // check that the cast can be done using just coercion.
 
-#![deny(trivial_cast, trivial_numeric_cast)]
+#![deny(trivial_casts, trivial_numeric_casts)]
 
 trait Foo {
     fn foo(&self) {}
