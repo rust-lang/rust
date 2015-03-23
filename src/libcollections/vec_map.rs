@@ -67,26 +67,28 @@ pub struct VecMap<V> {
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
-#[unstable(feature = "collections",
-           reason = "precise API still under development")]
+
+#[stable(feature = "rust1", since = "1.0.0")]
 pub enum Entry<'a, V:'a> {
     /// A vacant Entry
+    #[stable(feature = "rust1", since = "1.0.0")]
     Vacant(VacantEntry<'a, V>),
+
     /// An occupied Entry
+    #[stable(feature = "rust1", since = "1.0.0")]
     Occupied(OccupiedEntry<'a, V>),
 }
 
 /// A vacant Entry.
-#[unstable(feature = "collections",
-           reason = "precise API still under development")]
+
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct VacantEntry<'a, V:'a> {
     map: &'a mut VecMap<V>,
     index: usize,
 }
 
 /// An occupied Entry.
-#[unstable(feature = "collections",
-           reason = "precise API still under development")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct OccupiedEntry<'a, V:'a> {
     map: &'a mut VecMap<V>,
     index: usize,
@@ -651,7 +653,7 @@ impl<V> VecMap<V> {
 
 impl<'a, V> Entry<'a, V> {
     #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+               reason = "will soon be replaced by or_insert")]
     /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
     pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, V>> {
         match self {
