@@ -832,6 +832,8 @@ impl<A> DoubleEndedIterator for IntoIter<A> {
     fn next_back(&mut self) -> Option<A> { self.list.pop_back() }
 }
 
+impl<A> ExactSizeIterator for IntoIter<A> {}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> FromIterator<A> for LinkedList<A> {
     fn from_iter<T: IntoIterator<Item=A>>(iter: T) -> LinkedList<A> {
