@@ -46,7 +46,7 @@ pub fn run(input: &str,
            mut test_args: Vec<String>,
            crate_name: Option<String>)
            -> int {
-    let input_path = PathBuf::new(input);
+    let input_path = PathBuf::from(input);
     let input = config::Input::File(input_path.clone());
 
     let sessopts = config::Options {

@@ -39,6 +39,7 @@
 #![feature(io)]
 #![feature(set_stdio)]
 #![feature(unicode)]
+#![feature(convert)]
 
 extern crate arena;
 extern crate flate;
@@ -163,8 +164,8 @@ pub fn run_compiler<'a>(args: &[String],
 
 // Extract output directory and file from matches.
 fn make_output(matches: &getopts::Matches) -> (Option<PathBuf>, Option<PathBuf>) {
-    let odir = matches.opt_str("out-dir").map(|o| PathBuf::new(&o));
-    let ofile = matches.opt_str("o").map(|o| PathBuf::new(&o));
+    let odir = matches.opt_str("out-dir").map(|o| PathBuf::from(&o));
+    let ofile = matches.opt_str("o").map(|o| PathBuf::from(&o));
     (odir, ofile)
 }
 
@@ -177,7 +178,7 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>)> {
             io::stdin().read_to_string(&mut src).unwrap();
             Some((Input::Str(src), None))
         } else {
-            Some((Input::File(PathBuf::new(ifile)), Some(PathBuf::new(ifile))))
+            Some((Input::File(PathBuf::from(ifile)), Some(PathBuf::from(ifile))))
         }
     } else {
         None
@@ -858,9 +859,9 @@ pub fn diagnostics_registry() -> diagnostics::registry::Registry {
     use syntax::diagnostics::registry::Registry;
 
     let all_errors = Vec::new() +
-        rustc::diagnostics::DIAGNOSTICS.as_slice() +
-        rustc_typeck::diagnostics::DIAGNOSTICS.as_slice() +
-        rustc_resolve::diagnostics::DIAGNOSTICS.as_slice();
+        &rustc::diagnostics::DIAGNOSTICS[..] +
+        &rustc_typeck::diagnostics::DIAGNOSTICS[..] +
+        &rustc_resolve::diagnostics::DIAGNOSTICS[..];
 
     Registry::new(&*all_errors)
 }

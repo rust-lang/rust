@@ -36,7 +36,7 @@ const BUF_BYTES: usize = 2048;
 const TMPBUF_SZ: usize = 128;
 
 fn bytes2path(b: &[u8]) -> PathBuf {
-    PathBuf::new(<OsStr as OsStrExt>::from_bytes(b))
+    PathBuf::from(<OsStr as OsStrExt>::from_bytes(b))
 }
 
 fn os2path(os: OsString) -> PathBuf {
@@ -253,7 +253,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         let err = _NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
         if err != 0 { return Err(io::Error::last_os_error()); }
         v.set_len(sz as uint - 1); // chop off trailing NUL
-        Ok(PathBuf::new(OsString::from_vec(v)))
+        Ok(PathBuf::from(OsString::from_vec(v)))
     }
 }
 
@@ -466,9 +466,9 @@ pub fn page_size() -> usize {
 pub fn temp_dir() -> PathBuf {
     getenv("TMPDIR".as_os_str()).map(os2path).unwrap_or_else(|| {
         if cfg!(target_os = "android") {
-            PathBuf::new("/data/local/tmp")
+            PathBuf::from("/data/local/tmp")
         } else {
-            PathBuf::new("/tmp")
+            PathBuf::from("/tmp")
         }
     })
 }

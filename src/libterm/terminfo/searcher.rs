@@ -31,7 +31,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<PathBuf>> {
 
     // Find search directory
     match env::var_os("TERMINFO") {
-        Some(dir) => dirs_to_search.push(PathBuf::new(&dir)),
+        Some(dir) => dirs_to_search.push(PathBuf::from(dir)),
         None => {
             if homedir.is_some() {
                 // ncurses compatibility;
@@ -40,9 +40,9 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<PathBuf>> {
             match env::var("TERMINFO_DIRS") {
                 Ok(dirs) => for i in dirs.split(':') {
                     if i == "" {
-                        dirs_to_search.push(PathBuf::new("/usr/share/terminfo"));
+                        dirs_to_search.push(PathBuf::from("/usr/share/terminfo"));
                     } else {
-                        dirs_to_search.push(PathBuf::new(i));
+                        dirs_to_search.push(PathBuf::from(i));
                     }
                 },
                 // Found nothing in TERMINFO_DIRS, use the default paths:
@@ -50,9 +50,9 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<PathBuf>> {
                 // ~/.terminfo, ncurses will search /etc/terminfo, then
                 // /lib/terminfo, and eventually /usr/share/terminfo.
                 Err(..) => {
-                    dirs_to_search.push(PathBuf::new("/etc/terminfo"));
-                    dirs_to_search.push(PathBuf::new("/lib/terminfo"));
-                    dirs_to_search.push(PathBuf::new("/usr/share/terminfo"));
+                    dirs_to_search.push(PathBuf::from("/etc/terminfo"));
+                    dirs_to_search.push(PathBuf::from("/lib/terminfo"));
+                    dirs_to_search.push(PathBuf::from("/usr/share/terminfo"));
                 }
             }
         }

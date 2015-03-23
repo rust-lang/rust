@@ -319,7 +319,7 @@ impl<'a> ArchiveBuilder<'a> {
             };
             let new_filename = self.work_dir.path().join(&filename[..]);
             try!(fs::rename(&file, &new_filename));
-            self.members.push(PathBuf::new(&filename));
+            self.members.push(PathBuf::from(filename));
         }
         Ok(())
     }

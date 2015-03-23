@@ -5064,8 +5064,8 @@ impl<'a> Parser<'a> {
                     outer_attrs: &[ast::Attribute],
                     id_sp: Span)
                     -> (ast::Item_, Vec<ast::Attribute> ) {
-        let mut prefix = PathBuf::new(&self.sess.span_diagnostic.cm
-                                           .span_to_filename(self.span));
+        let mut prefix = PathBuf::from(&self.sess.span_diagnostic.cm
+                                            .span_to_filename(self.span));
         prefix.pop();
         let mut dir_path = prefix;
         for part in &self.mod_path_stack {

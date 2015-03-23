@@ -38,6 +38,7 @@
 #![feature(file_path)]
 #![feature(path_ext)]
 #![feature(path_relative_from)]
+#![feature(convert)]
 
 extern crate arena;
 extern crate getopts;
@@ -251,7 +252,7 @@ pub fn main_args(args: &[String]) -> int {
     let should_test = matches.opt_present("test");
     let markdown_input = input.ends_with(".md") || input.ends_with(".markdown");
 
-    let output = matches.opt_str("o").map(|s| PathBuf::new(&s));
+    let output = matches.opt_str("o").map(|s| PathBuf::from(&s));
     let cfgs = matches.opt_strs("cfg");
 
     let external_html = match ExternalHtml::load(
@@ -271,7 +272,7 @@ pub fn main_args(args: &[String]) -> int {
             return test::run(input, cfgs, libs, externs, test_args, crate_name)
         }
         (false, true) => return markdown::render(input,
-                                                 output.unwrap_or(PathBuf::new("doc")),
+                                                 output.unwrap_or(PathBuf::from("doc")),
                                                  &matches, &external_html,
                                                  !matches.opt_present("markdown-no-toc")),
         (false, false) => {}
@@ -289,7 +290,7 @@ pub fn main_args(args: &[String]) -> int {
     match matches.opt_str("w").as_ref().map(|s| &**s) {
         Some("html") | None => {
             match html::render::run(krate, &external_html,
-                                    output.unwrap_or(PathBuf::new("doc")),
+                                    output.unwrap_or(PathBuf::from("doc")),
                                     passes.into_iter().collect()) {
                 Ok(()) => {}
                 Err(e) => panic!("failed to generate documentation: {}", e),
@@ -297,7 +298,7 @@ pub fn main_args(args: &[String]) -> int {
         }
         Some("json") => {
             match json_output(krate, json_plugins,
-                              output.unwrap_or(PathBuf::new("doc.json"))) {
+                              output.unwrap_or(PathBuf::from("doc.json"))) {
                 Ok(()) => {}
                 Err(e) => panic!("failed to write json: {}", e),
             }
@@ -376,7 +377,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     let cfgs = matches.opt_strs("cfg");
     let triple = matches.opt_str("target");
 
-    let cr = PathBuf::new(cratefile);
+    let cr = PathBuf::from(cratefile);
     info!("starting to run rustc");
 
     let (tx, rx) = channel();

@@ -2056,7 +2056,7 @@ impl LintPass for InvalidNoMangleItems {
                 }
             },
             ast::ItemStatic(..) => {
-                if attr::contains_name(it.attrs.as_slice(), "no_mangle") &&
+                if attr::contains_name(&it.attrs, "no_mangle") &&
                        !cx.exported_items.contains(&it.id) {
                     let msg = format!("static {} is marked #[no_mangle], but not exported",
                                       it.ident);
@@ -2064,7 +2064,7 @@ impl LintPass for InvalidNoMangleItems {
                 }
             },
             ast::ItemConst(..) => {
-                if attr::contains_name(it.attrs.as_slice(), "no_mangle") {
+                if attr::contains_name(&it.attrs, "no_mangle") {
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
                     let msg = "const items should never be #[no_mangle], consider instead using \

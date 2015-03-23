@@ -328,10 +328,10 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
 
 fn parse_pp_exact(line: &str, testfile: &Path) -> Option<PathBuf> {
     match parse_name_value_directive(line, "pp-exact") {
-      Some(s) => Some(PathBuf::new(&s)),
+      Some(s) => Some(PathBuf::from(&s)),
       None => {
         if parse_name_directive(line, "pp-exact") {
-            testfile.file_name().map(|s| PathBuf::new(s))
+            testfile.file_name().map(|s| PathBuf::from(s))
         } else {
             None
         }
