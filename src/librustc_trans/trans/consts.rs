@@ -376,7 +376,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let signed = ty::type_is_signed(intype);
 
             let (te2, _) = const_expr(cx, &**e2, param_substs);
-            let te2 = base::cast_shift_const_rhs(b, te1, te2);
+            let te2 = base::cast_shift_const_rhs(b.node, te1, te2);
 
             match b.node {
               ast::BiAdd   => {
