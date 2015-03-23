@@ -101,13 +101,13 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub TRIVIAL_CAST,
+    pub TRIVIAL_CASTS,
     Warn,
     "detects trivial casts which could be removed"
 }
 
 declare_lint! {
-    pub TRIVIAL_NUMERIC_CAST,
+    pub TRIVIAL_NUMERIC_CASTS,
     Warn,
     "detects trivial casts of numeric types which could be removed"
 }
@@ -133,8 +133,8 @@ impl LintPass for HardwiredLints {
             UNKNOWN_CRATE_TYPES,
             VARIANT_SIZE_DIFFERENCES,
             FAT_PTR_TRANSMUTES,
-            TRIVIAL_CAST,
-            TRIVIAL_NUMERIC_CAST
+            TRIVIAL_CASTS,
+            TRIVIAL_NUMERIC_CASTS
         )
     }
 }

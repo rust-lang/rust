@@ -47,8 +47,8 @@
 #![feature(into_cow)]
 #![cfg_attr(test, feature(test))]
 
-#![allow(trivial_cast)]
-#![allow(trivial_numeric_cast)]
+#![allow(trivial_casts)]
+#![allow(trivial_numeric_casts)]
 
 extern crate arena;
 extern crate flate;

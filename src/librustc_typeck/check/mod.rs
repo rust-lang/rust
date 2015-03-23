@@ -1088,14 +1088,14 @@ fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
     if !ty::type_has_ty_infer(t_1) {
         if let Ok(()) = coercion::mk_assignty(fcx, e, t_e, t_1) {
             if ty::type_is_numeric(t_1) && ty::type_is_numeric(t_e) {
-                fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_NUMERIC_CAST,
+                fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_NUMERIC_CASTS,
                                         e.id,
                                         span,
                                         format!("trivial numeric cast: `{}` as `{}`",
                                                 fcx.infcx().ty_to_string(t_e),
                                                 fcx.infcx().ty_to_string(t_1)));
             } else {
-                fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_CAST,
+                fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_CASTS,
                                         e.id,
                                         span,
                                         format!("trivial cast: `{}` as `{}`",
@@ -4581,7 +4581,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                      ty: attr::IntType,
                      disr: ty::Disr) -> bool {
         fn uint_in_range(ccx: &CrateCtxt, ty: ast::UintTy, disr: ty::Disr) -> bool {
-            #![allow(trivial_numeric_cast)]
+            #![allow(trivial_numeric_casts)]
 
             match ty {
                 ast::TyU8 => disr as u8 as Disr == disr,
@@ -4611,7 +4611,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                           id: ast::NodeId,
                           hint: attr::ReprAttr)
                           -> Vec<Rc<ty::VariantInfo<'tcx>>> {
-        #![allow(trivial_numeric_cast)]
+        #![allow(trivial_numeric_casts)]
         use std::num::Int;
 
         let rty = ty::node_id_to_type(ccx.tcx, id);

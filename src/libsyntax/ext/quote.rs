@@ -262,7 +262,7 @@ pub mod rt {
         (unsigned, $t:ty, $tag:expr) => (
             impl ToSource for $t {
                 fn to_source(&self) -> String {
-                    #![allow(trivial_numeric_cast)]
+                    #![allow(trivial_numeric_casts)]
                     let lit = ast::LitInt(*self as u64, ast::UnsignedIntLit($tag));
                     pprust::lit_to_string(&dummy_spanned(lit))
                 }
