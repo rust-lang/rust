@@ -1322,7 +1322,8 @@ pub enum Type {
     /// For parameterized types, so the consumer of the JSON don't go
     /// looking for types which don't exist anywhere.
     Generic(String),
-    /// Primitives are just the fixed-size numeric types (plus int/uint/float), and char.
+    /// Primitives are the fixed-size numeric types (plus int/uint/float), char,
+    /// arrays, slices, and tuples.
     Primitive(PrimitiveType),
     /// extern "ABI" fn
     BareFunction(Box<BareFunctionDecl>),
@@ -1362,6 +1363,7 @@ pub enum PrimitiveType {
     Bool,
     Str,
     Slice,
+    Array,
     PrimitiveTuple,
 }
 
@@ -1396,6 +1398,7 @@ impl PrimitiveType {
             "str" => Some(Str),
             "f32" => Some(F32),
             "f64" => Some(F64),
+            "array" => Some(Array),
             "slice" => Some(Slice),
             "tuple" => Some(PrimitiveTuple),
             _ => None,
@@ -1440,6 +1443,7 @@ impl PrimitiveType {
             Str => "str",
             Bool => "bool",
             Char => "char",
+            Array => "array",
             Slice => "slice",
             PrimitiveTuple => "tuple",
         }
