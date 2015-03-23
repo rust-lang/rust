@@ -572,7 +572,7 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     let path = path.as_ref();
-    if path.is_dir() { return Ok(()) }
+    if path == Path::new("") || path.is_dir() { return Ok(()) }
     if let Some(p) = path.parent() { try!(create_dir_all(p)) }
     create_dir(path)
 }
