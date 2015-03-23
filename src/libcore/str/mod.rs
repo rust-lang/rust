@@ -17,6 +17,8 @@
 #![doc(primitive = "str")]
 
 use self::OldSearcher::{TwoWay, TwoWayLong};
+use self::pattern::Pattern;
+use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 
 use char::CharExt;
 use clone::Clone;
@@ -34,10 +36,7 @@ use result::Result::{self, Ok, Err};
 use slice::{self, SliceExt};
 use usize;
 
-pub use self::pattern::Pattern;
-pub use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher, SearchStep};
-
-mod pattern;
+pub mod pattern;
 
 /// A trait to abstract the idea of creating a new instance of a type from a
 /// string.

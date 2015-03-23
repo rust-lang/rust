@@ -471,29 +471,28 @@ fn str_search_step<F, G>(mut m: &mut StrSearcher,
 
 macro_rules! pattern_methods {
     ($t:ty, $pmap:expr, $smap:expr) => {
-        // FIXME: #22463
-        //type Searcher = $t;
+        type Searcher = $t;
 
         #[inline]
         fn into_searcher(self, haystack: &'a str) -> $t {
-            $smap($pmap(self).into_searcher(haystack))
+            ($smap)(($pmap)(self).into_searcher(haystack))
         }
 
         #[inline]
         fn is_contained_in(self, haystack: &'a str) -> bool {
-            $pmap(self).is_contained_in(haystack)
+            ($pmap)(self).is_contained_in(haystack)
         }
 
         #[inline]
         fn is_prefix_of(self, haystack: &'a str) -> bool {
-            $pmap(self).is_prefix_of(haystack)
+            ($pmap)(self).is_prefix_of(haystack)
         }
 
         #[inline]
         fn is_suffix_of(self, haystack: &'a str) -> bool
             where $t: ReverseSearcher<'a>
         {
-            $pmap(self).is_suffix_of(haystack)
+            ($pmap)(self).is_suffix_of(haystack)
         }
     }
 }
@@ -553,7 +552,6 @@ impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
 
 /// Searches for chars that are equal to a given char
 impl<'a> Pattern<'a> for char {
-    type Searcher =  CharSearcher<'a>;
     pattern_methods!(CharSearcher<'a>, CharEqPattern, CharSearcher);
 }
 
@@ -579,7 +577,6 @@ impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
 
 /// Searches for chars that are equal to any of the chars in the array
 impl<'a, 'b> Pattern<'a> for &'b [char] {
-    type Searcher =  CharSliceSearcher<'a, 'b>;
     pattern_methods!(CharSliceSearcher<'a, 'b>, CharEqPattern, CharSliceSearcher);
 }
 
@@ -609,6 +606,14 @@ impl<'a, F> DoubleEndedSearcher<'a> for CharPredicateSearcher<'a, F>
 
 /// Searches for chars that match the given predicate
 impl<'a, F> Pattern<'a> for F where F: FnMut(char) -> bool {
-    type Searcher =  CharPredicateSearcher<'a, F>;
     pattern_methods!(CharPredicateSearcher<'a, F>, CharEqPattern, CharPredicateSearcher);
+}
+
+/////////////////////////////////////////////////////////////////////////////
+// Impl for &&str
+/////////////////////////////////////////////////////////////////////////////
+
+/// Delegates to the `&str` impl.
+impl<'a, 'b> Pattern<'a> for &'b &'b str {
+    pattern_methods!(StrSearcher<'a, 'b>, |&s| s, |s| s);
 }
