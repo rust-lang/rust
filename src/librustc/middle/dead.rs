@@ -346,6 +346,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
             ast::ItemTrait(_, _, _, ref trait_items) => {
                 for trait_item in trait_items {
                     match trait_item.node {
+                        ast::ConstTraitItem(_, Some(_)) |
                         ast::MethodTraitItem(_, Some(_)) => {
                             if has_allow_dead_code_or_lang_attr(&trait_item.attrs) {
                                 self.worklist.push(trait_item.id);
@@ -358,7 +359,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
             ast::ItemImpl(_, _, _, ref opt_trait, _, ref impl_items) => {
                 for impl_item in impl_items {
                     match impl_item.node {
-                        ast::ConstImplItem(..) => {}
+                        ast::ConstImplItem(..) |
                         ast::MethodImplItem(..) => {
                             if opt_trait.is_some() ||
                                     has_allow_dead_code_or_lang_attr(&impl_item.attrs) {
@@ -400,7 +401,7 @@ fn create_and_seed_worklist(tcx: &ty::ctxt,
         None => ()
     }
 
-    // Seed implemented trait methods
+    // Seed implemented trait items
     let mut life_seeder = LifeSeeder {
         worklist: worklist
     };
@@ -481,7 +482,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
                              |ctor| self.live_symbols.contains(&ctor)) {
             return true;
         }
-        // If it's a type whose methods are live, then it's live, too.
+        // If it's a type whose items are live, then it's live, too.
         // This is done to handle the case where, for example, the static
         // method of a private type is used, but the type itself is never
         // called directly.
@@ -551,21 +552,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
         visit::walk_foreign_item(self, fi);
     }
 
-    fn visit_fn(&mut self, fk: visit::FnKind<'v>,
-                _: &'v ast::FnDecl, block: &'v ast::Block,
-                span: codemap::Span, id: ast::NodeId) {
-        // Have to warn method here because methods are not ast::Item
-        match fk {
-            visit::FkMethod(name, _, _) => {
-                if !self.symbol_is_live(id, None) {
-                    self.warn_dead_code(id, span, name.name, "method");
-                }
-            }
-            _ => ()
-        }
-        visit::walk_block(self, block);
-    }
-
     fn visit_struct_field(&mut self, field: &ast::StructField) {
         if self.should_warn_about_field(&field.node) {
             self.warn_dead_code(field.node.id, field.span,
@@ -575,13 +561,37 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
         visit::walk_struct_field(self, field);
     }
 
-    // Overwrite so that we don't warn the trait method itself.
-    fn visit_trait_item(&mut self, trait_method: &ast::TraitItem) {
-        match trait_method.node {
-            ast::ConstTraitItem(_, _) => {}
+    fn visit_impl_item(&mut self, impl_item: &ast::ImplItem) {
+        match impl_item.node {
+            ast::ConstImplItem(_, ref expr) => {
+                if !self.symbol_is_live(impl_item.id, None) {
+                    self.warn_dead_code(impl_item.id, impl_item.span,
+                                        impl_item.ident.name, "associated const");
+                }
+                visit::walk_expr(self, expr)
+            }
+            ast::MethodImplItem(_, ref body) => {
+                if !self.symbol_is_live(impl_item.id, None) {
+                    self.warn_dead_code(impl_item.id, impl_item.span,
+                                        impl_item.ident.name, "method");
+                }
+                visit::walk_block(self, body)
+            }
+            ast::TypeImplItem(..) |
+            ast::MacImplItem(..) => {}
+        }
+    }
+
+    // Overwrite so that we don't warn the trait item itself.
+    fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
+        match trait_item.node {
+            ast::ConstTraitItem(_, Some(ref expr)) => {
+                visit::walk_expr(self, expr)
+            }
             ast::MethodTraitItem(_, Some(ref body)) => {
                 visit::walk_block(self, body)
             }
+            ast::ConstTraitItem(_, None) |
             ast::MethodTraitItem(_, None) |
             ast::TypeTraitItem(..) => {}
         }

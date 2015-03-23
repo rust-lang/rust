@@ -10,14 +10,13 @@
 
 #![deny(dead_code)]
 
-const GLOBAL_BAR: u32 = 1;
+struct MyFoo;
 
-struct Foo;
-
-impl Foo {
-    const BAR: u32 = GLOBAL_BAR;
+impl MyFoo {
+    const BAR: u32 = 1;
+    //~^ ERROR associated const is never used: `BAR`
 }
 
-pub fn main() {
-    let _: u32 = Foo::BAR;
+fn main() {
+    let _: MyFoo = MyFoo;
 }
