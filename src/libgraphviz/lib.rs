@@ -47,13 +47,13 @@
 //! which is cyclic.
 //!
 //! ```rust
-//! # #![feature(rustc_private, core)]
+//! # #![feature(rustc_private, core, into_cow)]
 //! use std::borrow::IntoCow;
 //! use std::io::Write;
 //! use graphviz as dot;
 //!
-//! type Nd = int;
-//! type Ed = (int,int);
+//! type Nd = isize;
+//! type Ed = (isize,isize);
 //! struct Edges(Vec<Ed>);
 //!
 //! pub fn render_to<W: Write>(output: &mut W) {
@@ -133,7 +133,7 @@
 //! direct reference to the `(source,target)` pair stored in the graph's
 //! internal vector (rather than passing around a copy of the pair
 //! itself). Note that this implies that `fn edges(&'a self)` must
-//! construct a fresh `Vec<&'a (uint,uint)>` from the `Vec<(uint,uint)>`
+//! construct a fresh `Vec<&'a (usize,usize)>` from the `Vec<(usize,usize)>`
 //! edges stored in `self`.
 //!
 //! Since both the set of nodes and the set of edges are always
@@ -149,14 +149,14 @@
 //! entity `&sube`).
 //!
 //! ```rust
-//! # #![feature(rustc_private, core)]
+//! # #![feature(rustc_private, core, into_cow)]
 //! use std::borrow::IntoCow;
 //! use std::io::Write;
 //! use graphviz as dot;
 //!
-//! type Nd = uint;
-//! type Ed<'a> = &'a (uint, uint);
-//! struct Graph { nodes: Vec<&'static str>, edges: Vec<(uint,uint)> }
+//! type Nd = usize;
+//! type Ed<'a> = &'a (usize, usize);
+//! struct Graph { nodes: Vec<&'static str>, edges: Vec<(usize,usize)> }
 //!
 //! pub fn render_to<W: Write>(output: &mut W) {
 //!     let nodes = vec!("{x,y}","{x}","{y}","{}");
@@ -207,14 +207,14 @@
 //! Hasse-diagram for the subsets of the set `{x, y}`.
 //!
 //! ```rust
-//! # #![feature(rustc_private, core)]
+//! # #![feature(rustc_private, core, into_cow)]
 //! use std::borrow::IntoCow;
 //! use std::io::Write;
 //! use graphviz as dot;
 //!
-//! type Nd<'a> = (uint, &'a str);
+//! type Nd<'a> = (usize, &'a str);
 //! type Ed<'a> = (Nd<'a>, Nd<'a>);
-//! struct Graph { nodes: Vec<&'static str>, edges: Vec<(uint,uint)> }
+//! struct Graph { nodes: Vec<&'static str>, edges: Vec<(usize,usize)> }
 //!
 //! pub fn render_to<W: Write>(output: &mut W) {
 //!     let nodes = vec!("{x,y}","{x}","{y}","{}");
@@ -231,7 +231,7 @@
 //!     }
 //!     fn node_label<'b>(&'b self, n: &Nd<'b>) -> dot::LabelText<'b> {
 //!         let &(i, _) = n;
-//!         dot::LabelText::LabelStr(self.nodes[i].as_slice().into_cow())
+//!         dot::LabelText::LabelStr(self.nodes[i].into_cow())
 //!     }
 //!     fn edge_label<'b>(&'b self, _: &Ed<'b>) -> dot::LabelText<'b> {
 //!         dot::LabelText::LabelStr("&sube;".into_cow())
@@ -240,12 +240,12 @@
 //!
 //! impl<'a> dot::GraphWalk<'a, Nd<'a>, Ed<'a>> for Graph {
 //!     fn nodes(&'a self) -> dot::Nodes<'a,Nd<'a>> {
-//!         self.nodes.iter().map(|s|s.as_slice()).enumerate().collect()
+//!         self.nodes.iter().map(|s| &s[..]).enumerate().collect()
 //!     }
 //!     fn edges(&'a self) -> dot::Edges<'a,Ed<'a>> {
 //!         self.edges.iter()
-//!             .map(|&(i,j)|((i, self.nodes[i].as_slice()),
-//!                           (j, self.nodes[j].as_slice())))
+//!             .map(|&(i,j)|((i, &self.nodes[i][..]),
+//!                           (j, &self.nodes[j][..])))
 //!             .collect()
 //!     }
 //!     fn source(&self, e: &Ed<'a>) -> Nd<'a> { let &(s,_) = e; s }
@@ -385,7 +385,7 @@ impl<'a> Id<'a> {
             is_letter_or_underscore(c) || in_range('0', c, '9')
         }
         fn in_range(low: char, c: char, high: char) -> bool {
-            low as uint <= c as uint && c as uint <= high as uint
+            low as usize <= c as usize && c as usize <= high as usize
         }
     }
 
@@ -602,12 +602,12 @@ mod tests {
     use std::iter::repeat;
 
     /// each node is an index in a vector in the graph.
-    type Node = uint;
+    type Node = usize;
     struct Edge {
-        from: uint, to: uint, label: &'static str
+        from: usize, to: usize, label: &'static str
     }
 
-    fn edge(from: uint, to: uint, label: &'static str) -> Edge {
+    fn edge(from: usize, to: usize, label: &'static str) -> Edge {
         Edge { from: from, to: to, label: label }
     }
 
@@ -637,7 +637,7 @@ mod tests {
 
     enum NodeLabels<L> {
         AllNodesLabelled(Vec<L>),
-        UnlabelledNodes(uint),
+        UnlabelledNodes(usize),
         SomeNodesLabelled(Vec<Option<L>>),
     }
 

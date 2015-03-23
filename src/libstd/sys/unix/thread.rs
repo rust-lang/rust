@@ -13,14 +13,12 @@
 use core::prelude::*;
 
 use cmp;
-use dynamic_lib::DynamicLibrary;
 use ffi::CString;
 use io;
 use libc::consts::os::posix01::PTHREAD_STACK_MIN;
 use libc;
 use mem;
 use ptr;
-use sync::{Once, ONCE_INIT};
 use sys::os;
 use thunk::Thunk;
 use time::Duration;
@@ -322,6 +320,9 @@ pub fn sleep(dur: Duration) {
 // dependency on libc6 (#23628).
 #[cfg(target_os = "linux")]
 fn min_stack_size(attr: *const libc::pthread_attr_t) -> libc::size_t {
+    use dynamic_lib::DynamicLibrary;
+    use sync::{Once, ONCE_INIT};
+
     type F = unsafe extern "C" fn(*const libc::pthread_attr_t) -> libc::size_t;
     static INIT: Once = ONCE_INIT;
     static mut __pthread_get_minstack: Option<F> = None;

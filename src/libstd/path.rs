@@ -35,9 +35,10 @@
 //! To build or modify paths, use `PathBuf`:
 //!
 //! ```rust
+//! # #![feature(convert)]
 //! use std::path::PathBuf;
 //!
-//! let mut path = PathBuf::new("c:\\");
+//! let mut path = PathBuf::from("c:\\");
 //! path.push("windows");
 //! path.push("system32");
 //! path.set_extension("dll");
@@ -892,9 +893,10 @@ impl<'a> cmp::Ord for Components<'a> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(convert)]
 /// use std::path::PathBuf;
 ///
-/// let mut path = PathBuf::new("c:\\");
+/// let mut path = PathBuf::from("c:\\");
 /// path.push("windows");
 /// path.push("system32");
 /// path.set_extension("dll");
@@ -983,15 +985,16 @@ impl PathBuf {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(convert)]
     /// use std::path::PathBuf;
     ///
-    /// let mut buf = PathBuf::new("/");
+    /// let mut buf = PathBuf::from("/");
     /// assert!(buf.file_name() == None);
     /// buf.set_file_name("bar");
-    /// assert!(buf == PathBuf::new("/bar"));
+    /// assert!(buf == PathBuf::from("/bar"));
     /// assert!(buf.file_name().is_some());
     /// buf.set_file_name("baz.txt");
-    /// assert!(buf == PathBuf::new("/baz.txt"));
+    /// assert!(buf == PathBuf::from("/baz.txt"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_file_name<S: AsRef<OsStr>>(&mut self, file_name: S) {
@@ -1661,7 +1664,7 @@ mod tests {
 
         let static_path = Path::new("/home/foo");
         let static_cow_path: Cow<'static, Path> = static_path.into_cow();
-        let pathbuf = PathBuf::new("/home/foo");
+        let pathbuf = PathBuf::from("/home/foo");
 
         {
             let path: &Path = &pathbuf;
@@ -2543,7 +2546,7 @@ mod tests {
     pub fn test_push() {
         macro_rules! tp(
             ($path:expr, $push:expr, $expected:expr) => ( {
-                let mut actual = PathBuf::new($path);
+                let mut actual = PathBuf::from($path);
                 actual.push($push);
                 assert!(actual.to_str() == Some($expected),
                         "pushing {:?} onto {:?}: Expected {:?}, got {:?}",
@@ -2631,7 +2634,7 @@ mod tests {
     pub fn test_pop() {
         macro_rules! tp(
             ($path:expr, $expected:expr, $output:expr) => ( {
-                let mut actual = PathBuf::new($path);
+                let mut actual = PathBuf::from($path);
                 let output = actual.pop();
                 assert!(actual.to_str() == Some($expected) && output == $output,
                         "popping from {:?}: Expected {:?}/{:?}, got {:?}/{:?}",
@@ -2685,7 +2688,7 @@ mod tests {
     pub fn test_set_file_name() {
         macro_rules! tfn(
                 ($path:expr, $file:expr, $expected:expr) => ( {
-                let mut p = PathBuf::new($path);
+                let mut p = PathBuf::from($path);
                 p.set_file_name($file);
                 assert!(p.to_str() == Some($expected),
                         "setting file name of {:?} to {:?}: Expected {:?}, got {:?}",
@@ -2719,7 +2722,7 @@ mod tests {
     pub fn test_set_extension() {
         macro_rules! tfe(
                 ($path:expr, $ext:expr, $expected:expr, $output:expr) => ( {
-                let mut p = PathBuf::new($path);
+                let mut p = PathBuf::from($path);
                 let output = p.set_extension($ext);
                 assert!(p.to_str() == Some($expected) && output == $output,
                         "setting extension of {:?} to {:?}: Expected {:?}/{:?}, got {:?}/{:?}",

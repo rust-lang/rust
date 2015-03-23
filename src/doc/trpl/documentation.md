@@ -361,7 +361,8 @@ Here’s an example of documenting a macro:
 #[macro_export]
 macro_rules! panic_unless {
     ($condition:expr, $($rest:expr),+) => ({ if ! $condition { panic!($($rest),+); } });
-} 
+}
+# fn main() {}
 ```
 
 You’ll note three things: we need to add our own `extern crate` line, so that

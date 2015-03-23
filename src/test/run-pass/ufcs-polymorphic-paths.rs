@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(collections, rand)]
+#![feature(collections, rand, into_cow)]
 
 use std::borrow::{Cow, IntoCow};
 use std::collections::BitVec;

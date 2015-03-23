@@ -47,7 +47,6 @@
 #![feature(rand)]
 #![feature(path_ext)]
 #![feature(std_misc)]
-#![feature(path_relative_from)]
 #![feature(step_by)]
 #![feature(convert)]
 #![cfg_attr(test, feature(test, rand))]

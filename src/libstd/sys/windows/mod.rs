@@ -304,9 +304,7 @@ fn fill_utf16_buf_new<F1, F2, T>(f1: F1, f2: F2) -> io::Result<T>
 }
 
 fn os2path(s: &[u16]) -> PathBuf {
-    let os = <OsString as OsStringExt>::from_wide(s);
-    // FIXME(#22751) should consume `os`
-    PathBuf::new(&os)
+    PathBuf::from(OsString::from_wide(s))
 }
 
 pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {

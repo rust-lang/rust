@@ -228,7 +228,7 @@ mod test {
                 used_crates: Vec::new(),
                 has_rpath: true,
                 is_like_osx: true,
-                out_filename: PathBuf::new("bin/rustc"),
+                out_filename: PathBuf::from("bin/rustc"),
                 get_install_prefix_lib_path: &mut || panic!(),
                 realpath: &mut |p| Ok(p.to_path_buf()),
             };
@@ -238,7 +238,7 @@ mod test {
         } else {
             let config = &mut RPathConfig {
                 used_crates: Vec::new(),
-                out_filename: PathBuf::new("bin/rustc"),
+                out_filename: PathBuf::from("bin/rustc"),
                 get_install_prefix_lib_path: &mut || panic!(),
                 has_rpath: true,
                 is_like_osx: false,

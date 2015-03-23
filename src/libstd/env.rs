@@ -327,12 +327,13 @@ pub struct JoinPathsError {
 /// # Examples
 ///
 /// ```
+/// # #![feature(convert)]
 /// use std::env;
 /// use std::path::PathBuf;
 ///
 /// if let Some(path) = env::var_os("PATH") {
 ///     let mut paths = env::split_paths(&path).collect::<Vec<_>>();
-///     paths.push(PathBuf::new("/home/xyz/bin"));
+///     paths.push(PathBuf::from("/home/xyz/bin"));
 ///     let new_path = env::join_paths(paths.iter()).unwrap();
 ///     env::set_var("PATH", &new_path);
 /// }
@@ -853,7 +854,7 @@ mod tests {
     fn split_paths_unix() {
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
             split_paths(unparsed).collect::<Vec<_>>() ==
-                parsed.iter().map(|s| PathBuf::new(*s)).collect::<Vec<_>>()
+                parsed.iter().map(|s| PathBuf::from(*s)).collect::<Vec<_>>()
         }
 
         assert!(check_parse("", &mut [""]));
