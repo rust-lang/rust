@@ -115,7 +115,7 @@ fn path_relative_from(path: &Path, base: &Path) -> Option<PathBuf> {
 
     if path.is_absolute() != base.is_absolute() {
         if path.is_absolute() {
-            Some(PathBuf::new(path))
+            Some(PathBuf::from(path))
         } else {
             None
         }

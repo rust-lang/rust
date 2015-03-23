@@ -23,7 +23,7 @@ use error::Error;
 use ffi::{OsString, AsOsStr};
 use fmt;
 use io;
-use path::{self, Path, PathBuf};
+use path::{Path, PathBuf};
 use sync::atomic::{AtomicIsize, ATOMIC_ISIZE_INIT, Ordering};
 use sync::{StaticMutex, MUTEX_INIT};
 use sys::os as os_imp;
