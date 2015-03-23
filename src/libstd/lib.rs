@@ -212,6 +212,9 @@ pub mod prelude;
 
 /* Primitive types */
 
+// NB: slice and str are primitive types too, but their module docs + primitive doc pages
+// are inlined from the public re-exports of core_collections::{slice, str} above.
+
 #[path = "num/float_macros.rs"]
 #[macro_use]
 mod float_macros;
@@ -285,8 +288,9 @@ pub mod sync;
 pub mod rt;
 mod panicking;
 
-// Documentation for primitive types
+// Modules that exist purely to document + host impl docs for primitive types
 
+mod array;
 mod bool;
 mod unit;
 mod tuple;
