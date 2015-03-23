@@ -14,6 +14,8 @@
 
 #![unstable(feature = "core")] // not yet reviewed
 
+#![doc(primitive = "array")]
+
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use fmt;
