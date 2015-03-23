@@ -31,6 +31,7 @@ use slice;
 /// over `T` itself. Instead, specific implementations are provided for various
 /// in-memory buffer types like `Vec<u8>` and `&[u8]`.
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Clone, Debug)]
 pub struct Cursor<T> {
     inner: T,
     pos: u64,
