@@ -1573,6 +1573,7 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
 /// A by-value VecDeque iterator
+#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     inner: VecDeque<T>,
