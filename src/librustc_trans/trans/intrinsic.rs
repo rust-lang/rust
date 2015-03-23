@@ -446,10 +446,15 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                              call_debug_location)
         }
         (_, "volatile_load") => {
-            VolatileLoad(bcx, llargs[0])
+            let tp_ty = *substs.types.get(FnSpace, 0);
+            let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
+            from_arg_ty(bcx, VolatileLoad(bcx, ptr), tp_ty)
         },
         (_, "volatile_store") => {
-            VolatileStore(bcx, llargs[1], llargs[0]);
+            let tp_ty = *substs.types.get(FnSpace, 0);
+            let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
+            let val = to_arg_ty(bcx, llargs[1], tp_ty);
+            VolatileStore(bcx, val, ptr);
             C_nil(ccx)
         },
 
@@ -709,8 +714,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                             llvm::SequentiallyConsistent
                     };
 
-                    let res = AtomicCmpXchg(bcx, llargs[0], llargs[1],
-                                            llargs[2], order,
+                    let tp_ty = *substs.types.get(FnSpace, 0);
+                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
+                    let cmp = to_arg_ty(bcx, llargs[1], tp_ty);
+                    let src = to_arg_ty(bcx, llargs[2], tp_ty);
+                    let res = AtomicCmpXchg(bcx, ptr, cmp, src, order,
                                             strongest_failure_ordering);
                     if unsafe { llvm::LLVMVersionMinor() >= 5 } {
                         ExtractValue(bcx, res, 0)
@@ -720,10 +728,15 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 }
 
                 "load" => {
-                    AtomicLoad(bcx, llargs[0], order)
+                    let tp_ty = *substs.types.get(FnSpace, 0);
+                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
+                    from_arg_ty(bcx, AtomicLoad(bcx, ptr, order), tp_ty)
                 }
                 "store" => {
-                    AtomicStore(bcx, llargs[1], llargs[0], order);
+                    let tp_ty = *substs.types.get(FnSpace, 0);
+                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
+                    let val = to_arg_ty(bcx, llargs[1], tp_ty);
+                    AtomicStore(bcx, val, ptr, order);
                     C_nil(ccx)
                 }
 
@@ -749,7 +762,10 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                         _ => ccx.sess().fatal("unknown atomic operation")
                     };
 
-                    AtomicRMW(bcx, atom_op, llargs[0], llargs[1], order)
+                    let tp_ty = *substs.types.get(FnSpace, 0);
+                    let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
+                    let val = to_arg_ty(bcx, llargs[1], tp_ty);
+                    AtomicRMW(bcx, atom_op, ptr, val, order)
                 }
             }
 
