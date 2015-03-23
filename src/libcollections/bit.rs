@@ -1792,12 +1792,16 @@ struct TwoBitPositions<'a> {
     next_idx: usize
 }
 
+#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a>(TwoBitPositions<'a>);
+#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a>(Take<TwoBitPositions<'a>>);
+#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a>(TwoBitPositions<'a>);
+#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a>(TwoBitPositions<'a>);
 
