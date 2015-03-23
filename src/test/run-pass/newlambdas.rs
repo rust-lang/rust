@@ -10,6 +10,8 @@
 
 // Tests for the new |args| expr lambda syntax
 
+// pretty-expanded FIXME #23616
+
 fn f<F>(i: int, f: F) -> int where F: FnOnce(int) -> int { f(i) }
 
 fn g<G>(_g: G) where G: FnOnce() { }

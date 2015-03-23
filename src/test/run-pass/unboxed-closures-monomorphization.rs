@@ -13,7 +13,7 @@
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, core)]
 
 fn main(){
     fn bar<'a, T:Clone+'a> (t: T) -> Box<FnMut()->T + 'a> {

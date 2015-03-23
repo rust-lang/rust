@@ -10,7 +10,7 @@
 
 // ignore-android: FIXME (#20004)
 
-#![feature(asm)]
+#![feature(asm, old_io)]
 
 use std::old_io::process::Command;
 use std::env;

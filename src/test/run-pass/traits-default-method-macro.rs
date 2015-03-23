@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 trait Foo {
     fn bar(&self) -> String {
         format!("test")

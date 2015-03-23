@@ -11,6 +11,8 @@
 // Test that a partially specified trait object with unspecified associated
 // type does not ICE.
 
+// pretty-expanded FIXME #23616
+
 trait Foo {
     type A;
 

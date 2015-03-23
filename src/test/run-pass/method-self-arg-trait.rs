@@ -10,6 +10,8 @@
 
 // Test method calls with self as an argument
 
+// pretty-expanded FIXME #23616
+
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 

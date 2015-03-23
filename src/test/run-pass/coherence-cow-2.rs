@@ -13,6 +13,8 @@
 // Test that it's ok for T to appear second in the self-type, as long
 // as it's covered somewhere.
 
+// pretty-expanded FIXME #23616
+
 extern crate "coherence-lib" as lib;
 use lib::{Remote,Pair};
 

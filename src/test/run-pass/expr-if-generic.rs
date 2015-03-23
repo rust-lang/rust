@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 fn test_generic<T, F>(expected: T, not_expected: T, eq: F) where
     T: Clone,
     F: FnOnce(T, T) -> bool,

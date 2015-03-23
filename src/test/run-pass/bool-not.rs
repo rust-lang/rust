@@ -11,6 +11,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     if !false { assert!((true)); } else { assert!((false)); }
     if !true { assert!((false)); } else { assert!((true)); }

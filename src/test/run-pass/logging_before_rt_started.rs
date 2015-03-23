@@ -16,4 +16,6 @@
 // this test will trigger "output during runtime initialization" to make sure
 // that the bug isn't re-introduced.
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {}

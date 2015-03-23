@@ -323,6 +323,7 @@ impl<T:?Sized> MarkerTrait for T { }
 /// `MarkerTrait`:
 ///
 /// ```
+/// # #![feature(core)]
 /// use std::marker::MarkerTrait;
 /// trait Even : MarkerTrait { }
 /// ```

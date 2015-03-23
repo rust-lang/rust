@@ -10,6 +10,8 @@
 
 // aux-build:reexport-should-still-link.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate "reexport-should-still-link" as foo;
 
 pub fn main() {

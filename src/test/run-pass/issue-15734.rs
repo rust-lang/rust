@@ -11,7 +11,9 @@
 // If `Index` used an associated type for its output, this test would
 // work more smoothly.
 
-#![feature(old_orphan_check)]
+// pretty-expanded FIXME #23616
+
+#![feature(old_orphan_check, core)]
 
 use std::ops::Index;
 

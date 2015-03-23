@@ -10,6 +10,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     if 1 == 2 {
         assert!((false));

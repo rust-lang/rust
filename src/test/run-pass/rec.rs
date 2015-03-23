@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 #[derive(Copy)]
 struct Rect {x: int, y: int, w: int, h: int}
 

@@ -276,6 +276,7 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let mut x = Some("Diamonds");
     /// {
     ///     let v = x.as_mut_slice();
@@ -471,6 +472,7 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let x = Some("foo");
     /// assert_eq!(x.ok_or(0), Ok("foo"));
     ///
@@ -492,6 +494,7 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let x = Some("foo");
     /// assert_eq!(x.ok_or_else(|| 0), Ok("foo"));
     ///
@@ -533,6 +536,7 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let mut x = Some(4);
     /// match x.iter_mut().next() {
     ///     Some(&mut ref mut v) => *v = 42,

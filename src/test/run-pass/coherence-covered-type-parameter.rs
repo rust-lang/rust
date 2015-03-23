@@ -10,6 +10,8 @@
 
 // aux-build:coherence-lib.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate "coherence-lib" as lib;
 use lib::Remote;
 

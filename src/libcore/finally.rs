@@ -19,6 +19,7 @@
 //! # Examples
 //!
 //! ```
+//! # #![feature(core)]
 //! # #![feature(unboxed_closures)]
 //!
 //! use std::finally::Finally;
@@ -70,6 +71,7 @@ impl<T, F> Finally<T> for F where F: FnMut() -> T {
 /// # Examples
 ///
 /// ```
+/// # #![feature(core)]
 /// use std::finally::try_finally;
 ///
 /// struct State<'a> { buffer: &'a mut [u8], len: usize }

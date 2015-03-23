@@ -17,6 +17,7 @@
 // intact.
 
 // ignore-aarch64
+#![feature(path, fs, os, io, old_path)]
 
 use std::io::prelude::*;
 use std::io;

@@ -60,6 +60,7 @@ impl Rand for Exp1 {
 /// # Examples
 ///
 /// ```
+/// # #![feature(rand)]
 /// use std::rand;
 /// use std::rand::distributions::{Exp, IndependentSample};
 ///

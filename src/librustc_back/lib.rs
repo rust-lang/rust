@@ -50,6 +50,7 @@
 #![feature(path_relative_from)]
 #![feature(step_by)]
 #![feature(convert)]
+#![cfg_attr(test, feature(test, rand))]
 
 extern crate syntax;
 extern crate serialize;

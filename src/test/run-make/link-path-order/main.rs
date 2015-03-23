@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(libc, os)]
+
 extern crate libc;
 
 #[link(name="foo")]

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 fn test<F>(f: F) -> uint where F: FnOnce(uint) -> uint {
     return f(22);
 }

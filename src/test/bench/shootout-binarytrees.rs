@@ -38,6 +38,8 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![feature(rustc_private, core)]
+
 extern crate arena;
 
 use std::iter::range_step;

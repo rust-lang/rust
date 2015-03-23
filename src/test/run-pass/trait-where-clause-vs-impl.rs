@@ -13,6 +13,8 @@
 //
 // Issue #18453.
 
+// pretty-expanded FIXME #23616
+
 use std::rc::Rc;
 
 pub trait Foo<M> {

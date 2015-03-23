@@ -14,6 +14,8 @@
 
 // aux-build:static_mut_xc.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate static_mut_xc;
 
 unsafe fn static_bound(_: &'static int) {}

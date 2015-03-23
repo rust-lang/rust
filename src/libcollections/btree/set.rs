@@ -116,6 +116,7 @@ impl<T> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().cloned().collect();
@@ -137,6 +138,7 @@ impl<T> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().cloned().collect();
@@ -162,6 +164,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::BTreeSet;
     /// use std::collections::Bound::{Included, Unbounded};
     ///
@@ -190,6 +193,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
@@ -213,6 +217,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
@@ -237,6 +242,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
@@ -261,6 +267,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
@@ -333,6 +340,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let set: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
@@ -350,6 +358,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let a: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
@@ -371,6 +380,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let sup: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
@@ -413,6 +423,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let sub: BTreeSet<_> = [1, 2].iter().cloned().collect();

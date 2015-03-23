@@ -12,6 +12,8 @@
 // good as the old one. Check out issue #21672, #21595 and #21649 for
 // more details.
 
+// pretty-expanded FIXME #23616
+
 fn main() {
     let xs = (0..8).map(|i| i == 1u64).collect::<Vec<_>>();
     assert_eq!(xs[1], true);

@@ -13,6 +13,8 @@
 
 // no-reformat
 
+// pretty-expanded FIXME #23616
+
 /*
  *
  *  When you write a block-expression thing followed by

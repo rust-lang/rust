@@ -544,6 +544,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// assert!("hello".contains_char('e'));
     ///
     /// assert!(!"hello".contains_char('z'));
@@ -762,6 +763,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".match_indices("abc").collect();
     /// assert_eq!(v, [(0,3), (6,9), (12,15)]);
     ///
@@ -784,6 +786,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let v: Vec<&str> = "abcXXXabcYYYabc".split_str("abc").collect();
     /// assert_eq!(v, ["", "XXX", "YYY", ""]);
     ///
@@ -892,6 +895,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.slice_chars(0, 4), "Löwe");
@@ -1042,6 +1046,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(str_char)]
     /// let s = "Löwe 老虎 Léopard";
     /// assert!(s.is_char_boundary(0));
     /// // start of `老`
@@ -1078,6 +1083,7 @@ impl str {
     /// done by `.chars()` or `.char_indices()`.
     ///
     /// ```
+    /// # #![feature(str_char, core)]
     /// use std::str::CharRange;
     ///
     /// let s = "中华Việt Nam";
@@ -1128,6 +1134,7 @@ impl str {
     /// done by `.chars().rev()` or `.char_indices()`.
     ///
     /// ```
+    /// # #![feature(str_char, core)]
     /// use std::str::CharRange;
     ///
     /// let s = "中华Việt Nam";
@@ -1171,6 +1178,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(str_char)]
     /// let s = "abπc";
     /// assert_eq!(s.char_at(1), 'b');
     /// assert_eq!(s.char_at(2), 'π');
@@ -1195,6 +1203,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(str_char)]
     /// let s = "abπc";
     /// assert_eq!(s.char_at_reverse(1), 'a');
     /// assert_eq!(s.char_at_reverse(2), 'b');
@@ -1309,6 +1318,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.find_str("老虎 L"), Some(6));
@@ -1330,6 +1340,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(str_char)]
     /// let s = "Löwe 老虎 Léopard";
     /// let (c, s1) = s.slice_shift_char().unwrap();
     ///
@@ -1358,6 +1369,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let string = "a\nb\nc";
     /// let lines: Vec<&str> = string.lines().collect();
     ///
@@ -1457,6 +1469,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(unicode, core)]
     /// let gr1 = "a\u{310}e\u{301}o\u{308}\u{332}".graphemes(true).collect::<Vec<&str>>();
     /// let b: &[_] = &["a\u{310}", "e\u{301}", "o\u{308}\u{332}"];
     ///
@@ -1479,6 +1492,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(unicode, core)]
     /// let gr_inds = "a̐éö̲\r\n".grapheme_indices(true).collect::<Vec<(usize, &str)>>();
     /// let b: &[_] = &[(0, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
     ///
@@ -1498,6 +1512,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(str_words)]
     /// let some_words = " Mary   had\ta little  \n\t lamb";
     /// let v: Vec<&str> = some_words.words().collect();
     ///

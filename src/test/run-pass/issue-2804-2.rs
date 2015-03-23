@@ -11,6 +11,8 @@
 // Minimized version of issue-2804.rs. Both check that callee IDs don't
 // clobber the previous node ID in a macro expr
 
+#![feature(collections)]
+
 extern crate collections;
 
 use std::collections::HashMap;

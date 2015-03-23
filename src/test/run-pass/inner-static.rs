@@ -10,6 +10,8 @@
 
 // aux-build:inner_static.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate inner_static;
 
 pub fn main() {

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![crate_name="foreign_lib"]
+#![feature(libc)]
 
 pub mod rustrt {
     extern crate libc;

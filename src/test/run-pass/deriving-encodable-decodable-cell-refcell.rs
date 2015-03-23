@@ -11,7 +11,9 @@
 // This briefly tests the capability of `Cell` and `RefCell` to implement the
 // `Encodable` and `Decodable` traits via `#[derive(Encodable, Decodable)]`
 
-#![feature(old_orphan_check)]
+// pretty-expanded FIXME #23616
+
+#![feature(old_orphan_check, rustc_private)]
 
 extern crate serialize;
 

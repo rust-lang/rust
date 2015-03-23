@@ -633,6 +633,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(path_ext)]
 /// use std::io;
 /// use std::fs::{self, PathExt, DirEntry};
 /// use std::path::Path;
@@ -771,6 +772,7 @@ pub fn set_file_times<P: AsRef<Path>>(path: P, accessed: u64,
 /// # Examples
 ///
 /// ```
+/// # #![feature(fs)]
 /// # fn foo() -> std::io::Result<()> {
 /// use std::fs;
 ///

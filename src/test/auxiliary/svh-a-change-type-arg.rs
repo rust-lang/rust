@@ -14,6 +14,7 @@
 //! (#14132).
 
 #![crate_name = "a"]
+#![feature(core)]
 
 use std::marker::MarkerTrait;
 

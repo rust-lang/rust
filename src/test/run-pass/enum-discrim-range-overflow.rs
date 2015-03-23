@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 pub enum E64 {
     H64 = 0x7FFF_FFFF_FFFF_FFFF,
     L64 = 0x8000_0000_0000_0000

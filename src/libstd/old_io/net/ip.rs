@@ -414,6 +414,7 @@ pub struct ParseError;
 /// Some examples:
 ///
 /// ```rust,no_run
+/// # #![feature(old_io, core)]
 /// # #![allow(unused_must_use)]
 ///
 /// use std::old_io::{TcpStream, TcpListener};

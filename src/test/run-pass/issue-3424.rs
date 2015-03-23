@@ -11,7 +11,7 @@
 // rustc --test ignores2.rs && ./ignores2
 
 #![allow(unknown_features)]
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, old_path, std_misc)]
 
 use std::old_path::{Path};
 use std::old_path;

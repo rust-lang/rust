@@ -10,6 +10,8 @@
 
 // Test DST raw pointers
 
+// pretty-expanded FIXME #23616
+
 trait Trait {
     fn foo(&self) -> int;
 }

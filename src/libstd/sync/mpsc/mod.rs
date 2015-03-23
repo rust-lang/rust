@@ -119,6 +119,7 @@
 //! after 10 seconds no matter what:
 //!
 //! ```no_run
+//! # #![feature(std_misc, old_io)]
 //! use std::sync::mpsc::channel;
 //! use std::old_io::timer::Timer;
 //! use std::time::Duration;
@@ -143,6 +144,7 @@
 //! has been inactive for 5 seconds:
 //!
 //! ```no_run
+//! # #![feature(std_misc, old_io)]
 //! use std::sync::mpsc::channel;
 //! use std::old_io::timer::Timer;
 //! use std::time::Duration;

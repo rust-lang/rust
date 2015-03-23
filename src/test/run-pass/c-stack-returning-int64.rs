@@ -9,6 +9,10 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
+#![feature(libc, std_misc)]
+
 extern crate libc;
 
 use std::ffi::CString;

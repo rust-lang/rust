@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 type Big = [u64; 8];
 struct Pair<'a> { a: int, b: &'a Big }
 const x: &'static Big = &([13, 14, 10, 13, 11, 14, 14, 15]);

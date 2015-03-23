@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     let (&x, &y) = (&3, &'a');
     assert_eq!(x, 3);

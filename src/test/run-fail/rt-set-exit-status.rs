@@ -10,6 +10,8 @@
 
 // error-pattern:whatever
 
+#![feature(rustc_private, os)]
+
 #[macro_use] extern crate log;
 use std::os;
 

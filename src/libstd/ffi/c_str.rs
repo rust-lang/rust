@@ -45,6 +45,7 @@ use vec::Vec;
 /// # Examples
 ///
 /// ```no_run
+/// # #![feature(libc)]
 /// # extern crate libc;
 /// # fn main() {
 /// use std::ffi::CString;
@@ -83,6 +84,7 @@ pub struct CString {
 /// Inspecting a foreign C string
 ///
 /// ```no_run
+/// # #![feature(libc)]
 /// extern crate libc;
 /// use std::ffi::CStr;
 ///
@@ -99,6 +101,7 @@ pub struct CString {
 /// Passing a Rust-originating C string
 ///
 /// ```no_run
+/// # #![feature(libc)]
 /// extern crate libc;
 /// use std::ffi::{CString, CStr};
 ///
@@ -147,6 +150,7 @@ impl CString {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(libc)]
     /// extern crate libc;
     /// use std::ffi::CString;
     ///
@@ -182,6 +186,7 @@ impl CString {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(libc)]
     /// extern crate libc;
     /// use std::ffi::CString;
     ///
@@ -332,6 +337,7 @@ impl CStr {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(libc)]
     /// # extern crate libc;
     /// # fn main() {
     /// use std::ffi::CStr;

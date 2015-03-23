@@ -10,6 +10,8 @@
 
 // aux-build:priv-impl-prim-ty.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate "priv-impl-prim-ty" as bar;
 
 pub fn main() {

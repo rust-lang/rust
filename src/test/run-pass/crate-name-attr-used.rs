@@ -10,6 +10,8 @@
 
 // compile-flags:--crate-name crate-name-attr-used -F unused-attributes
 
+// pretty-expanded FIXME #23616
+
 #![crate_name = "crate-name-attr-used"]
 
 fn main() {}

@@ -13,6 +13,8 @@
 //
 // Issue #8587
 
+// pretty-expanded FIXME #23616
+
 pub struct X;
 
 impl X {

@@ -145,6 +145,7 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::collections::HashSet;
     /// use std::collections::hash_map::RandomState;
     ///
@@ -169,6 +170,7 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::collections::HashSet;
     /// use std::collections::hash_map::RandomState;
     ///
@@ -295,6 +297,7 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::HashSet;
     /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
@@ -325,6 +328,7 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::HashSet;
     /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
@@ -351,6 +355,7 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::HashSet;
     /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
@@ -376,6 +381,7 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::HashSet;
     /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
@@ -458,6 +464,7 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::HashSet;
     ///
     /// let set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
@@ -477,6 +484,7 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::HashSet;
     ///
     /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
@@ -498,6 +506,7 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::HashSet;
     ///
     /// let sup: HashSet<_> = [1, 2, 3].iter().cloned().collect();
@@ -519,6 +528,7 @@ impl<T, S> HashSet<T, S>
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::HashSet;
     ///
     /// let sub: HashSet<_> = [1, 2].iter().cloned().collect();

@@ -18,6 +18,7 @@
 //! # Examples
 //!
 //! ```rust
+//! # #![feature(old_io)]
 //! # #![allow(unused_must_use)]
 //! use std::old_io;
 //! use std::old_io::*;
@@ -140,6 +141,7 @@ impl StdinReader {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(old_io)]
     /// use std::old_io;
     /// use std::old_io::*;
     ///

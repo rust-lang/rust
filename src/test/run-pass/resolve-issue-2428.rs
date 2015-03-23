@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 const foo: int = 4 >> 1;
 enum bs { thing = foo }
 pub fn main() { assert!((bs::thing as int == foo)); }

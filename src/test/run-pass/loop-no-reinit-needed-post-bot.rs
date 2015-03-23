@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 struct S;
 // Ensure S is moved, not copied, on assignment.
 impl Drop for S { fn drop(&mut self) { } }

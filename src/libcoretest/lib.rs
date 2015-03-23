@@ -24,6 +24,8 @@
 #![feature(io)]
 #![feature(collections)]
 #![feature(debug_builders)]
+#![feature(unique)]
+#![feature(step_by)]
 #![allow(deprecated)] // rand
 
 extern crate core;

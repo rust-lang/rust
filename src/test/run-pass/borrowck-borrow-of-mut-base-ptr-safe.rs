@@ -13,6 +13,8 @@
 //
 // Example from src/librustc_borrowck/borrowck/README.md
 
+// pretty-expanded FIXME #23616
+
 fn foo<'a>(mut t0: &'a mut int,
            mut t1: &'a mut int) {
     let p: &int = &*t0; // Freezes `*t0`

@@ -11,6 +11,8 @@
 // Check that we do not ICE when compiling this
 // macro, which reuses the expression `$id`
 
+// pretty-expanded FIXME #23616
+
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 

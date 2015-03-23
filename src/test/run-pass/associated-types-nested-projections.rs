@@ -10,6 +10,10 @@
 
 // Test that we can resolve nested projection types. Issue #20666.
 
+// pretty-expanded FIXME #23616
+
+#![feature(core)]
+
 use std::marker::MarkerTrait;
 use std::slice;
 

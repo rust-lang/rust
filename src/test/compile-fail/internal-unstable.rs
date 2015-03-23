@@ -10,7 +10,7 @@
 
 // aux-build:internal_unstable.rs
 
-#![feature(rustc_attrs, allow_internal_unstable)]
+#![feature(allow_internal_unstable)]
 
 #[macro_use]
 extern crate internal_unstable;
@@ -19,7 +19,7 @@ macro_rules! foo {
     ($e: expr, $f: expr) => {{
         $e;
         $f;
-        internal_unstable::unstable(); //~ WARN use of unstable
+        internal_unstable::unstable(); //~ ERROR use of unstable
     }}
 }
 
@@ -32,20 +32,19 @@ macro_rules! bar {
     }}
 }
 
-#[rustc_error]
-fn main() { //~ ERROR
+fn main() {
     // ok, the instability is contained.
     call_unstable_allow!();
     construct_unstable_allow!(0);
 
     // bad.
-    pass_through_allow!(internal_unstable::unstable()); //~ WARN use of unstable
+    pass_through_allow!(internal_unstable::unstable()); //~ ERROR use of unstable
 
-    pass_through_noallow!(internal_unstable::unstable()); //~ WARN use of unstable
+    pass_through_noallow!(internal_unstable::unstable()); //~ ERROR use of unstable
 
 
 
-    println!("{:?}", internal_unstable::unstable()); //~ WARN use of unstable
+    println!("{:?}", internal_unstable::unstable()); //~ ERROR use of unstable
 
-    bar!(internal_unstable::unstable()); //~ WARN use of unstable
+    bar!(internal_unstable::unstable()); //~ ERROR use of unstable
 }

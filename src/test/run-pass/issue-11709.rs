@@ -15,6 +15,8 @@
 // when this bug was opened. The cases where the compiler
 // panics before the fix have a comment.
 
+#![feature(std_misc)]
+
 use std::thunk::Thunk;
 
 struct S {x:()}

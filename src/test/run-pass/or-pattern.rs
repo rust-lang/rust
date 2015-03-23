@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 enum blah { a(int, int, uint), b(int, int), c, }
 
 fn or_alt(q: blah) -> int {
