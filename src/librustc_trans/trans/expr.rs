@@ -1770,7 +1770,6 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
     let is_float = ty::type_is_fp(intype);
     let is_signed = ty::type_is_signed(intype);
-    let rhs = base::cast_shift_expr_rhs(bcx, op, lhs, rhs);
     let info = expr_info(binop_expr);
 
     let binop_debug_loc = binop_expr.debug_loc();
@@ -1843,13 +1842,17 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       ast::BiBitOr => Or(bcx, lhs, rhs, binop_debug_loc),
       ast::BiBitAnd => And(bcx, lhs, rhs, binop_debug_loc),
       ast::BiBitXor => Xor(bcx, lhs, rhs, binop_debug_loc),
-      ast::BiShl => Shl(bcx, lhs, rhs, binop_debug_loc),
+      ast::BiShl => {
+          let (newbcx, res) = with_overflow_check(
+              bcx, OverflowOp::Shl, info, lhs_t, lhs, rhs, binop_debug_loc);
+          bcx = newbcx;
+          res
+      }
       ast::BiShr => {
-        if is_signed {
-            AShr(bcx, lhs, rhs, binop_debug_loc)
-        } else {
-            LShr(bcx, lhs, rhs, binop_debug_loc)
-        }
+          let (newbcx, res) = with_overflow_check(
+              bcx, OverflowOp::Shr, info, lhs_t, lhs, rhs, binop_debug_loc);
+          bcx = newbcx;
+          res
       }
       ast::BiEq | ast::BiNe | ast::BiLt | ast::BiGe | ast::BiLe | ast::BiGt => {
         if is_simd {
@@ -2389,9 +2392,38 @@ enum OverflowOp {
     Add,
     Sub,
     Mul,
+    Shl,
+    Shr,
 }
 
 impl OverflowOp {
+    fn codegen_strategy(&self) -> OverflowCodegen {
+        use self::OverflowCodegen::{ViaIntrinsic, ViaInputCheck};
+        match *self {
+            OverflowOp::Add => ViaIntrinsic(OverflowOpViaIntrinsic::Add),
+            OverflowOp::Sub => ViaIntrinsic(OverflowOpViaIntrinsic::Sub),
+            OverflowOp::Mul => ViaIntrinsic(OverflowOpViaIntrinsic::Mul),
+
+            OverflowOp::Shl => ViaInputCheck(OverflowOpViaInputCheck::Shl),
+            OverflowOp::Shr => ViaInputCheck(OverflowOpViaInputCheck::Shr),
+        }
+    }
+}
+
+enum OverflowCodegen {
+    ViaIntrinsic(OverflowOpViaIntrinsic),
+    ViaInputCheck(OverflowOpViaInputCheck),
+}
+
+enum OverflowOpViaInputCheck { Shl, Shr, }
+
+enum OverflowOpViaIntrinsic { Add, Sub, Mul, }
+
+impl OverflowOpViaIntrinsic {
+    fn to_intrinsic<'blk, 'tcx>(&self, bcx: Block<'blk, 'tcx>, lhs_ty: Ty) -> ValueRef {
+        let name = self.to_intrinsic_name(bcx.tcx(), lhs_ty);
+        bcx.ccx().get_intrinsic(&name)
+    }
     fn to_intrinsic_name(&self, tcx: &ty::ctxt, ty: Ty) -> &'static str {
         use syntax::ast::IntTy::*;
         use syntax::ast::UintTy::*;
@@ -2413,7 +2445,7 @@ impl OverflowOp {
         };
 
         match *self {
-            OverflowOp::Add => match new_sty {
+            OverflowOpViaIntrinsic::Add => match new_sty {
                 ty_int(TyI8) => "llvm.sadd.with.overflow.i8",
                 ty_int(TyI16) => "llvm.sadd.with.overflow.i16",
                 ty_int(TyI32) => "llvm.sadd.with.overflow.i32",
@@ -2426,7 +2458,7 @@ impl OverflowOp {
 
                 _ => unreachable!(),
             },
-            OverflowOp::Sub => match new_sty {
+            OverflowOpViaIntrinsic::Sub => match new_sty {
                 ty_int(TyI8) => "llvm.ssub.with.overflow.i8",
                 ty_int(TyI16) => "llvm.ssub.with.overflow.i16",
                 ty_int(TyI32) => "llvm.ssub.with.overflow.i32",
@@ -2439,7 +2471,7 @@ impl OverflowOp {
 
                 _ => unreachable!(),
             },
-            OverflowOp::Mul => match new_sty {
+            OverflowOpViaIntrinsic::Mul => match new_sty {
                 ty_int(TyI8) => "llvm.smul.with.overflow.i8",
                 ty_int(TyI16) => "llvm.smul.with.overflow.i16",
                 ty_int(TyI32) => "llvm.smul.with.overflow.i32",
@@ -2454,16 +2486,14 @@ impl OverflowOp {
             },
         }
     }
-}
 
-
-fn with_overflow_check<'a, 'b>(bcx: Block<'a, 'b>, oop: OverflowOp, info: NodeIdAndSpan,
-                               lhs_t: Ty, lhs: ValueRef, rhs: ValueRef, binop_debug_loc: DebugLoc)
-                               -> (Block<'a, 'b>, ValueRef) {
-    if bcx.unreachable.get() { return (bcx, _Undef(lhs)); }
-    if bcx.ccx().check_overflow() {
-        let name = oop.to_intrinsic_name(bcx.tcx(), lhs_t);
-        let llfn = bcx.ccx().get_intrinsic(&name);
+    fn build_intrinsic_call<'blk, 'tcx>(&self, bcx: Block<'blk, 'tcx>,
+                                        info: NodeIdAndSpan,
+                                        lhs_t: Ty<'tcx>, lhs: ValueRef,
+                                        rhs: ValueRef,
+                                        binop_debug_loc: DebugLoc)
+                                        -> (Block<'blk, 'tcx>, ValueRef) {
+        let llfn = self.to_intrinsic(bcx, lhs_t);
 
         let val = Call(bcx, llfn, &[lhs, rhs], None, binop_debug_loc);
         let result = ExtractValue(bcx, val, 0); // iN operation result
@@ -2482,11 +2512,118 @@ fn with_overflow_check<'a, 'b>(bcx: Block<'a, 'b>, oop: OverflowOp, info: NodeId
                     InternedString::new("arithmetic operation overflowed")));
 
         (bcx, result)
+    }
+}
+
+impl OverflowOpViaInputCheck {
+    fn build_with_input_check<'blk, 'tcx>(&self,
+                                          bcx: Block<'blk, 'tcx>,
+                                          info: NodeIdAndSpan,
+                                          lhs_t: Ty<'tcx>,
+                                          lhs: ValueRef,
+                                          rhs: ValueRef,
+                                          binop_debug_loc: DebugLoc)
+                                          -> (Block<'blk, 'tcx>, ValueRef)
+    {
+        let lhs_llty = val_ty(lhs);
+        let rhs_llty = val_ty(rhs);
+
+        // Panic if any bits are set outside of bits that we always
+        // mask in.
+        //
+        // Note that the mask's value is derived from the LHS type
+        // (since that is where the 32/64 distinction is relevant) but
+        // the mask's type must match the RHS type (since they will
+        // both be fed into a and-binop)
+        let invert_mask = !shift_mask_val(lhs_llty);
+        let invert_mask = C_integral(rhs_llty, invert_mask, true);
+
+        let outer_bits = And(bcx, rhs, invert_mask, binop_debug_loc);
+        let cond = ICmp(bcx, llvm::IntNE, outer_bits,
+                        C_integral(rhs_llty, 0, false), binop_debug_loc);
+        let result = match *self {
+            OverflowOpViaInputCheck::Shl =>
+                build_unchecked_lshift(bcx, lhs, rhs, binop_debug_loc),
+            OverflowOpViaInputCheck::Shr =>
+                build_unchecked_rshift(bcx, lhs_t, lhs, rhs, binop_debug_loc),
+        };
+        let bcx =
+            base::with_cond(bcx, cond, |bcx|
+                controlflow::trans_fail(bcx, info,
+                    InternedString::new("shift operation overflowed")));
+
+        (bcx, result)
+    }
+}
+
+fn shift_mask_val(llty: Type) -> u64 {
+    // i8/u8 can shift by at most 7, i16/u16 by at most 15, etc.
+    llty.int_width() - 1
+}
+
+// To avoid UB from LLVM, these two functions mask RHS with an
+// appropriate mask unconditionally (i.e. the fallback behavior for
+// all shifts). For 32- and 64-bit types, this matches the semantics
+// of Java. (See related discussion on #1877 and #10183.)
+
+fn build_unchecked_lshift<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                      lhs: ValueRef,
+                                      rhs: ValueRef,
+                                      binop_debug_loc: DebugLoc) -> ValueRef {
+    let rhs = base::cast_shift_expr_rhs(bcx, ast::BinOp_::BiShl, lhs, rhs);
+    // #1877, #10183: Ensure that input is always valid
+    let rhs = shift_mask_rhs(bcx, rhs, binop_debug_loc);
+    Shl(bcx, lhs, rhs, binop_debug_loc)
+}
+
+fn build_unchecked_rshift<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                      lhs_t: Ty<'tcx>,
+                                      lhs: ValueRef,
+                                      rhs: ValueRef,
+                                      binop_debug_loc: DebugLoc) -> ValueRef {
+    let rhs = base::cast_shift_expr_rhs(bcx, ast::BinOp_::BiShr, lhs, rhs);
+    // #1877, #10183: Ensure that input is always valid
+    let rhs = shift_mask_rhs(bcx, rhs, binop_debug_loc);
+    let is_signed = ty::type_is_signed(lhs_t);
+    if is_signed {
+        AShr(bcx, lhs, rhs, binop_debug_loc)
+    } else {
+        LShr(bcx, lhs, rhs, binop_debug_loc)
+    }
+}
+
+fn shift_mask_rhs<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                              rhs: ValueRef,
+                              debug_loc: DebugLoc) -> ValueRef {
+    let rhs_llty = val_ty(rhs);
+    let mask = shift_mask_val(rhs_llty);
+    And(bcx, rhs, C_integral(rhs_llty, mask, false), debug_loc)
+}
+
+fn with_overflow_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, oop: OverflowOp, info: NodeIdAndSpan,
+                                   lhs_t: Ty<'tcx>, lhs: ValueRef,
+                                   rhs: ValueRef,
+                                   binop_debug_loc: DebugLoc)
+                                   -> (Block<'blk, 'tcx>, ValueRef) {
+    if bcx.unreachable.get() { return (bcx, _Undef(lhs)); }
+    if bcx.ccx().check_overflow() {
+
+        match oop.codegen_strategy() {
+            OverflowCodegen::ViaIntrinsic(oop) =>
+                oop.build_intrinsic_call(bcx, info, lhs_t, lhs, rhs, binop_debug_loc),
+            OverflowCodegen::ViaInputCheck(oop) =>
+                oop.build_with_input_check(bcx, info, lhs_t, lhs, rhs, binop_debug_loc),
+        }
     } else {
         let res = match oop {
             OverflowOp::Add => Add(bcx, lhs, rhs, binop_debug_loc),
             OverflowOp::Sub => Sub(bcx, lhs, rhs, binop_debug_loc),
             OverflowOp::Mul => Mul(bcx, lhs, rhs, binop_debug_loc),
+
+            OverflowOp::Shl =>
+                build_unchecked_lshift(bcx, lhs, rhs, binop_debug_loc),
+            OverflowOp::Shr =>
+                build_unchecked_rshift(bcx, lhs_t, lhs, rhs, binop_debug_loc),
         };
         (bcx, res)
     }
