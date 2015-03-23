@@ -119,6 +119,24 @@ pub fn pat_contains_bindings(dm: &DefMap, pat: &ast::Pat) -> bool {
     contains_bindings
 }
 
+/// Checks if the pattern contains any `ref` or `ref mut` bindings.
+pub fn pat_contains_ref_binding(dm: &DefMap, pat: &ast::Pat) -> bool {
+    let mut result = false;
+    pat_bindings(dm, pat, |mode, _, _, _| {
+        match mode {
+            ast::BindingMode::BindByRef(_) => { result = true; }
+            ast::BindingMode::BindByValue(_) => { }
+        }
+    });
+    result
+}
+
+/// Checks if the patterns for this arm contain any `ref` or `ref mut`
+/// bindings.
+pub fn arm_contains_ref_binding(dm: &DefMap, arm: &ast::Arm) -> bool {
+    arm.pats.iter().any(|pat| pat_contains_ref_binding(dm, pat))
+}
+
 /// Checks if the pattern contains any patterns that bind something to
 /// an ident or wildcard, e.g. `foo`, or `Foo(_)`, `foo @ Bar(..)`,
 pub fn pat_contains_bindings_or_wild(dm: &DefMap, pat: &ast::Pat) -> bool {

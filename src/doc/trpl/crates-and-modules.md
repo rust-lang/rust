@@ -430,7 +430,7 @@ fn main() {
 }
 ```
 
-But it is not idiomatic. This is significantly more likely to introducing a
+But it is not idiomatic. This is significantly more likely to introduce a
 naming conflict. In our short program, it's not a big deal, but as it grows, it
 becomes a problem. If we have conflicting names, Rust will give a compilation
 error. For example, if we made the `japanese` functions public, and tried to do
