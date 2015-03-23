@@ -26,6 +26,9 @@ pub unsafe fn allocate(size: usize, align: usize) -> *mut u8 {
 ///
 /// On failure, return a null pointer and leave the original allocation intact.
 ///
+/// If the allocation was relocated, the memory at the passed-in pointer is
+/// undefined after the call.
+///
 /// Behavior is undefined if the requested size is 0 or the alignment is not a
 /// power of 2. The alignment must be no larger than the largest supported page
 /// size on the platform.
