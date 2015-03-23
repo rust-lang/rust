@@ -1091,14 +1091,14 @@ fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
                 fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_NUMERIC_CAST,
                                         e.id,
                                         span,
-                                        format!("trivial numeric cast: {} as {}",
+                                        format!("trivial numeric cast: `{}` as `{}`",
                                                 fcx.infcx().ty_to_string(t_e),
                                                 fcx.infcx().ty_to_string(t_1)));
             } else {
                 fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_CAST,
                                         e.id,
                                         span,
-                                        format!("trivial cast: {} as {}",
+                                        format!("trivial cast: `{}` as `{}`",
                                                 fcx.infcx().ty_to_string(t_e),
                                                 fcx.infcx().ty_to_string(t_1)));
             }
