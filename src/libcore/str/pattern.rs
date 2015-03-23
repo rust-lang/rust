@@ -474,22 +474,16 @@ impl<'a, 'b> Pattern<'a> for &'b [char] {
                       s, CharEqPattern(s));
 }
 
+/// A convenience impl that delegates to the impl for `&str`
+impl<'a, 'b> Pattern<'a> for &'b &'b str {
+    type Searcher =   <&'b str as Pattern<'a>>::Searcher;
+    associated_items!(<&'b str as Pattern<'a>>::Searcher,
+                      s, (*s));
+}
+
 /// Searches for chars that match the given predicate
 impl<'a, F> Pattern<'a> for F where F: FnMut(char) -> bool {
     type Searcher =   <CharEqPattern<Self> as Pattern<'a>>::Searcher;
     associated_items!(<CharEqPattern<Self> as Pattern<'a>>::Searcher,
                       s, CharEqPattern(s));
-}
-
-// Deref-forward impl
-
-use ops::Deref;
-
-/// Delegates to the next deref coercion of `Self` that implements `Pattern`
-impl<'a, 'b, P: 'b + ?Sized, T: Deref<Target = P> + ?Sized> Pattern<'a> for &'b T
-    where &'b P: Pattern<'a>
-{
-    type Searcher =   <&'b P as Pattern<'a>>::Searcher;
-    associated_items!(<&'b P as Pattern<'a>>::Searcher,
-                      s, (&**s));
 }

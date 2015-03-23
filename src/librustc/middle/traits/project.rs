@@ -11,9 +11,9 @@
 //! Code for projecting associated types out of trait references.
 
 use super::elaborate_predicates;
+use super::report_overflow_error;
 use super::Obligation;
 use super::ObligationCause;
-use super::Overflow;
 use super::PredicateObligation;
 use super::SelectionContext;
 use super::SelectionError;
@@ -442,7 +442,7 @@ fn project_type<'cx,'tcx>(
     let recursion_limit = selcx.tcx().sess.recursion_limit.get();
     if obligation.recursion_depth >= recursion_limit {
         debug!("project: overflow!");
-        return Err(ProjectionTyError::TraitSelectionError(Overflow));
+        report_overflow_error(selcx.infcx(), &obligation);
     }
 
     let obligation_trait_ref =
