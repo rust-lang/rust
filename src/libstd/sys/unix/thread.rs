@@ -316,11 +316,12 @@ pub fn sleep(dur: Duration) {
 // is created in an application with big thread-local storage requirements.
 // See #6233 for rationale and details.
 //
-// Use dlsym to get the symbol value at runtime, for compatibility
-// with older versions of glibc.  Assumes that we've been dynamically
-// linked to libpthread but that is currently always the case.  We
-// previously used weak linkage (under the same assumption), but that
-// caused Debian to detect an unnecessarily strict versioned
+// Use dlsym to get the symbol value at runtime, both for
+// compatibility with older versions of glibc, and to avoid creating
+// dependencies on GLIBC_PRIVATE symbols.  Assumes that we've been
+// dynamically linked to libpthread but that is currently always the
+// case.  We previously used weak linkage (under the same assumption),
+// but that caused Debian to detect an unnecessarily strict versioned
 // dependency on libc6 (#23628).
 #[cfg(target_os = "linux")]
 fn min_stack_size(attr: *const libc::pthread_attr_t) -> libc::size_t {
