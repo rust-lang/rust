@@ -173,12 +173,15 @@ pub unsafe fn zeroed<T>() -> T {
 #[inline]
 #[unstable(feature = "filling_drop")]
 pub unsafe fn dropped<T>() -> T {
-    let mut x: T = uninitialized();
-    let p: *mut u8 = transmute(&mut x as *mut T);
-    for i in 0..size_of::<T>() {
-        *p.offset(i as isize) = POST_DROP_U8;
-    }
-    x
+    #[cfg(stage0)]
+    #[inline(always)]
+    unsafe fn dropped_impl<T>() -> T { zeroed() }
+
+    #[cfg(not(stage0))]
+    #[inline(always)]
+    unsafe fn dropped_impl<T>() -> T { intrinsics::init_dropped() }
+
+    dropped_impl()
 }
 
 /// Create an uninitialized value.
