@@ -82,16 +82,21 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use prelude::*;
-use fmt::Display;
+use fmt::{Debug, Display};
 
 /// Base functionality for all errors in Rust.
-#[unstable(feature = "core",
-           reason = "the exact API of this trait may change")]
-pub trait Error: Display {
-    /// A short description of the error; usually a static string.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub trait Error: Debug + Display + Send {
+    /// A short description of the error.
+    ///
+    /// The description should not contain newlines or sentence-ending
+    /// punctuation, to facilitate embedding in larger user-facing
+    /// strings.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn description(&self) -> &str;
 
     /// The lower-level cause of this error, if any.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn cause(&self) -> Option<&Error> { None }
 }
 
