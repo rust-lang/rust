@@ -1326,6 +1326,7 @@ trait TraversalImpl {
 
 /// A `TraversalImpl` that actually is backed by two iterators. This works in the non-moving case,
 /// as no deallocation needs to be done.
+#[derive(Clone)]
 struct ElemsAndEdges<Elems, Edges>(Elems, Edges);
 
 impl<K, V, E, Elems: DoubleEndedIterator, Edges: DoubleEndedIterator>
@@ -1404,6 +1405,7 @@ impl<K, V> Drop for MoveTraversalImpl<K, V> {
 }
 
 /// An abstraction over all the different kinds of traversals a node supports
+#[derive(Clone)]
 struct AbsTraversal<Impl> {
     inner: Impl,
     head_is_edge: bool,

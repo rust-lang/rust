@@ -78,6 +78,7 @@ pub struct BTreeMap<K, V> {
 }
 
 /// An abstract base over-which all other BTree iterators are built.
+#[derive(Clone)]
 struct AbsIter<T> {
     traversals: VecDeque<T>,
     size: usize,
@@ -1040,6 +1041,9 @@ impl<K, V, E, T> DoubleEndedIterator for AbsIter<T> where
     }
 }
 
+impl<'a, K, V> Clone for Iter<'a, K, V> {
+    fn clone(&self) -> Iter<'a, K, V> { Iter { inner: self.inner.clone() } }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
@@ -1082,6 +1086,9 @@ impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> ExactSizeIterator for IntoIter<K, V> {}
 
+impl<'a, K, V> Clone for Keys<'a, K, V> {
+    fn clone(&self) -> Keys<'a, K, V> { Keys { inner: self.inner.clone() } }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Keys<'a, K, V> {
     type Item = &'a K;
@@ -1097,6 +1104,9 @@ impl<'a, K, V> DoubleEndedIterator for Keys<'a, K, V> {
 impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {}
 
 
+impl<'a, K, V> Clone for Values<'a, K, V> {
+    fn clone(&self) -> Values<'a, K, V> { Values { inner: self.inner.clone() } }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
@@ -1111,6 +1121,9 @@ impl<'a, K, V> DoubleEndedIterator for Values<'a, K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {}
 
+impl<'a, K, V> Clone for Range<'a, K, V> {
+    fn clone(&self) -> Range<'a, K, V> { Range { inner: self.inner.clone() } }
+}
 impl<'a, K, V> Iterator for Range<'a, K, V> {
     type Item = (&'a K, &'a V);
 
