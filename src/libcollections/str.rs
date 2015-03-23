@@ -58,6 +58,8 @@ use core::iter::{Iterator, Extend};
 use core::option::Option::{self, Some, None};
 use core::result::Result;
 use core::str as core_str;
+use core::str::pattern::Pattern;
+use core::str::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 use unicode::str::{UnicodeStr, Utf16Encoder};
 
 use core::convert::AsRef;
@@ -78,8 +80,7 @@ pub use core::str::{MatchIndices, RMatchIndices};
 pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
 pub use core::str::{from_utf8_unchecked, ParseBoolError};
 pub use unicode::str::{Words, Graphemes, GraphemeIndices};
-pub use core::str::Pattern;
-pub use core::str::{Searcher, ReverseSearcher, DoubleEndedSearcher, SearchStep};
+pub use core::str::pattern;
 
 /*
 Section: Creating a string
