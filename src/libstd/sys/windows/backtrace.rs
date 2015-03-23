@@ -23,7 +23,6 @@
 //! this takes the route of using StackWalk64 in order to walk the stack.
 
 #![allow(dead_code)]
-#![allow(deprecated)] // for old path for dynamic lib
 
 use prelude::v1::*;
 use io::prelude::*;
@@ -34,7 +33,7 @@ use intrinsics;
 use io;
 use libc;
 use mem;
-use old_path::Path;
+use path::Path;
 use ptr;
 use str;
 use sync::{StaticMutex, MUTEX_INIT};
