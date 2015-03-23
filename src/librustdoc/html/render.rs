@@ -1026,7 +1026,8 @@ impl DocFolder for Cache {
                 match item {
                     clean::Item{ attrs, inner: clean::ImplItem(i), .. } => {
                         use clean::{Primitive, Vector, ResolvedPath, BorrowedRef};
-                        use clean::{FixedVector, Slice, Tuple, PrimitiveTuple};
+                        use clean::PrimitiveType::{Array, Slice, PrimitiveTuple};
+                        use clean::{FixedVector, Tuple};
 
                         // extract relevant documentation for this impl
                         let dox = match attrs.into_iter().find(|a| {
@@ -1056,12 +1057,16 @@ impl DocFolder for Cache {
                                 Some(ast_util::local_def(p.to_node_id()))
                             }
 
-                            // In a DST world, we may only need
-                            // Vector/FixedVector, but for now we also pick up
-                            // borrowed references
-                            Vector(..) | FixedVector(..) |
-                                BorrowedRef{ type_: box Vector(..), ..  } |
-                                BorrowedRef{ type_: box FixedVector(..), .. } =>
+                            FixedVector(..) |
+                                BorrowedRef { type_: box FixedVector(..), .. } =>
+                            {
+                                Some(ast_util::local_def(Array.to_node_id()))
+                            }
+
+                            // In a DST world, we may only need Vector, but for now we
+                            // also pick up borrowed references
+                            Vector(..) |
+                                BorrowedRef{ type_: box Vector(..), ..  } =>
                             {
                                 Some(ast_util::local_def(Slice.to_node_id()))
                             }

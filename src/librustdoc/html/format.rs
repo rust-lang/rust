@@ -486,7 +486,7 @@ impl fmt::Display for clean::Type {
                 primitive_link(f, clean::Slice, &format!("[{}]", **t))
             }
             clean::FixedVector(ref t, ref s) => {
-                primitive_link(f, clean::Slice,
+                primitive_link(f, clean::PrimitiveType::Array,
                                &format!("[{}; {}]", **t, *s))
             }
             clean::Bottom => f.write_str("!"),
