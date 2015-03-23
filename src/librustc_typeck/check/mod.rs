@@ -4242,11 +4242,27 @@ impl<'tcx> Repr<'tcx> for Expectation<'tcx> {
 }
 
 pub fn check_decl_initializer<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                                       nid: ast::NodeId,
+                                       local: &'tcx ast::Local,
                                        init: &'tcx ast::Expr)
 {
-    let local_ty = fcx.local_ty(init.span, nid);
-    check_expr_coercable_to_type(fcx, init, local_ty)
+    let ref_bindings = fcx.tcx().pat_contains_ref_binding(&local.pat);
+
+    let local_ty = fcx.local_ty(init.span, local.id);
+    if !ref_bindings {
+        check_expr_coercable_to_type(fcx, init, local_ty)
+    } else {
+        // Somewhat subtle: if we have a `ref` binding in the pattern,
+        // we want to avoid introducing coercions for the RHS. This is
+        // both because it helps preserve sanity and, in the case of
+        // ref mut, for soundness (issue #23116). In particular, in
+        // the latter case, we need to be clear that the type of the
+        // referent for the reference that results is *equal to* the
+        // type of the lvalue it is referencing, and not some
+        // supertype thereof.
+        check_expr(fcx, init);
+        let init_ty = fcx.expr_ty(init);
+        demand::eqtype(fcx, init.span, init_ty, local_ty);
+    };
 }
 
 pub fn check_decl_local<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, local: &'tcx ast::Local)  {
@@ -4256,7 +4272,7 @@ pub fn check_decl_local<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, local: &'tcx ast::Local)
     fcx.write_ty(local.id, t);
 
     if let Some(ref init) = local.init {
-        check_decl_initializer(fcx, local.id, &**init);
+        check_decl_initializer(fcx, local, &**init);
         let init_ty = fcx.expr_ty(&**init);
         if ty::type_is_error(init_ty) {
             fcx.write_ty(local.id, init_ty);
