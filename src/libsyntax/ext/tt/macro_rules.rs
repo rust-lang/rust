@@ -236,7 +236,7 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
                                      argument_gram);
 
     // Extract the arguments:
-    let lhses = match *argument_map[lhs_nm] {
+    let lhses = match **argument_map.get(&lhs_nm).unwrap() {
         MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
         _ => cx.span_bug(def.span, "wrong-structured lhs")
     };
@@ -245,7 +245,7 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
         check_lhs_nt_follows(cx, &**lhs, def.span);
     }
 
-    let rhses = match *argument_map[rhs_nm] {
+    let rhses = match **argument_map.get(&rhs_nm).unwrap() {
         MatchedSeq(ref s, _) => /* FIXME (#2543) */ (*s).clone(),
         _ => cx.span_bug(def.span, "wrong-structured rhs")
     };

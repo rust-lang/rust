@@ -368,7 +368,7 @@ impl<'a, 'tcx> ty::ClosureTyper<'tcx> for FnCtxt<'a, 'tcx> {
                     substs: &subst::Substs<'tcx>)
                     -> ty::ClosureTy<'tcx>
     {
-        self.inh.closure_tys.borrow()[def_id].subst(self.tcx(), substs)
+        self.inh.closure_tys.borrow().get(&def_id).unwrap().subst(self.tcx(), substs)
     }
 
     fn closure_upvars(&self,
@@ -549,7 +549,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         debug!("Local variable {} is assigned type {}",
                self.fcx.pat_to_string(&*local.pat),
                self.fcx.infcx().ty_to_string(
-                   self.fcx.inh.locals.borrow()[local.id].clone()));
+                   self.fcx.inh.locals.borrow().get(&local.id).unwrap().clone()));
         visit::walk_local(self, local);
     }
 
@@ -565,7 +565,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 debug!("Pattern binding {} is assigned to {} with type {}",
                        token::get_ident(path1.node),
                        self.fcx.infcx().ty_to_string(
-                           self.fcx.inh.locals.borrow()[p.id].clone()),
+                           self.fcx.inh.locals.borrow().get(&p.id).unwrap().clone()),
                        var_ty.repr(self.fcx.tcx()));
             }
         }
@@ -3327,7 +3327,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 let mut missing_fields = Vec::new();
                 for class_field in field_types {
                     let name = class_field.name;
-                    let (_, seen) = class_field_map[name];
+                    let (_, seen) = *class_field_map.get(&name).unwrap();
                     if !seen {
                         missing_fields.push(
                             format!("`{}`", &token::get_name(name)))
@@ -4444,7 +4444,7 @@ fn check_const<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let inh = static_inherited_fields(ccx);
     let rty = ty::node_id_to_type(ccx.tcx, id);
     let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(rty), e.id);
-    let declty = (*fcx.ccx.tcx.tcache.borrow())[local_def(id)].ty;
+    let declty = fcx.ccx.tcx.tcache.borrow().get(&local_def(id)).unwrap().ty;
     check_const_with_ty(&fcx, sp, e, declty);
 }
 

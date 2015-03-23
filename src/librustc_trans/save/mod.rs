@@ -219,7 +219,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             self.sess.bug(&format!("def_map has no key for {} in lookup_type_ref",
                                   ref_id));
         }
-        let def = self.analysis.ty_cx.def_map.borrow()[ref_id].full_def();
+        let def = self.analysis.ty_cx.def_map.borrow().get(&ref_id).unwrap().full_def();
         match def {
             def::DefPrimTy(_) => None,
             _ => Some(def.def_id()),
@@ -232,7 +232,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             self.sess.span_bug(span, &format!("def_map has no key for {} in lookup_def_kind",
                                              ref_id));
         }
-        let def = def_map[ref_id].full_def();
+        let def = def_map.get(&ref_id).unwrap().full_def();
         match def {
             def::DefMod(_) |
             def::DefForeignMod(_) => Some(recorder::ModRef),
@@ -269,8 +269,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             self.collecting = false;
             let span_utils = self.span.clone();
             for &(id, ref p, _, _) in &self.collected_paths {
-                let typ = ppaux::ty_to_string(&self.analysis.ty_cx,
-                    (*self.analysis.ty_cx.node_types.borrow())[id]);
+                let typ =
+                    ppaux::ty_to_string(
+                        &self.analysis.ty_cx,
+                        *self.analysis.ty_cx.node_types.borrow().get(&id).unwrap());
                 // get the span only for the name of the variable (I hope the path is only ever a
                 // variable name, but who knows?)
                 self.fmt.formal_str(p.span,
@@ -431,8 +433,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             ast::NamedField(ident, _) => {
                 let name = get_ident(ident);
                 let qualname = format!("{}::{}", qualname, name);
-                let typ = ppaux::ty_to_string(&self.analysis.ty_cx,
-                    (*self.analysis.ty_cx.node_types.borrow())[field.node.id]);
+                let typ =
+                    ppaux::ty_to_string(
+                        &self.analysis.ty_cx,
+                        *self.analysis.ty_cx.node_types.borrow().get(&field.node.id).unwrap());
                 match self.span.sub_span_before_token(field.span, token::Colon) {
                     Some(sub_span) => self.fmt.field_str(field.span,
                                                          Some(sub_span),
@@ -789,7 +793,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             self.sess.span_bug(span,
                                &format!("def_map has no key for {} in visit_expr", id));
         }
-        let def = def_map[id].full_def();
+        let def = def_map.get(&id).unwrap().full_def();
         let sub_span = self.span.span_for_last_ident(span);
         match def {
             def::DefUpvar(..) |
@@ -832,7 +836,8 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                                  .ty_cx
                                                  .impl_items
                                                  .borrow();
-                            Some((*impl_items)[def_id]
+                            Some(impl_items.get(&def_id)
+                                           .unwrap()
                                            .iter()
                                            .find(|mr| {
                                                 ty::impl_or_trait_item(
@@ -941,7 +946,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                            ex: &ast::Expr,
                            args: &Vec<P<ast::Expr>>) {
         let method_map = self.analysis.ty_cx.method_map.borrow();
-        let method_callee = &(*method_map)[ty::MethodCall::expr(ex.id)];
+        let method_callee = method_map.get(&ty::MethodCall::expr(ex.id)).unwrap();
         let (def_id, decl_id) = match method_callee.origin {
             ty::MethodStatic(def_id) |
             ty::MethodStaticClosure(def_id) => {
@@ -1001,7 +1006,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 self.collected_paths.push((p.id, path.clone(), false, recorder::StructRef));
                 visit::walk_path(self, path);
 
-                let def = self.analysis.ty_cx.def_map.borrow()[p.id].full_def();
+                let def = self.analysis.ty_cx.def_map.borrow().get(&p.id).unwrap().full_def();
                 let struct_def = match def {
                     def::DefConst(..) => None,
                     def::DefVariant(_, variant_id, _) => Some(variant_id),
@@ -1113,7 +1118,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                         let glob_map = &self.analysis.glob_map;
                         let glob_map = glob_map.as_ref().unwrap();
                         if glob_map.contains_key(&item.id) {
-                            for n in &glob_map[item.id] {
+                            for n in glob_map.get(&item.id).unwrap() {
                                 if name_string.len() > 0 {
                                     name_string.push_str(", ");
                                 }
@@ -1406,7 +1411,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                    &format!("def_map has no key for {} in visit_arm",
                                            id));
             }
-            let def = def_map[id].full_def();
+            let def = def_map.get(&id).unwrap().full_def();
             match def {
                 def::DefLocal(id)  => {
                     let value = if *immut {
@@ -1467,7 +1472,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         for &(id, ref p, ref immut, _) in &self.collected_paths {
             let value = if *immut { value.to_string() } else { "<mutable>".to_string() };
             let types = self.analysis.ty_cx.node_types.borrow();
-            let typ = ppaux::ty_to_string(&self.analysis.ty_cx, (*types)[id]);
+            let typ = ppaux::ty_to_string(&self.analysis.ty_cx, *types.get(&id).unwrap());
             // Get the span only for the name of the variable (I hope the path
             // is only ever a variable name, but who knows?).
             let sub_span = self.span.span_for_last_ident(p.span);

@@ -187,7 +187,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Special-case constants to cache a common global for all uses.
     match expr.node {
         ast::ExprPath(..) => {
-            let def = ccx.tcx().def_map.borrow()[expr.id].full_def();
+            let def = ccx.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
             match def {
                 def::DefConst(def_id) => {
                     if !ccx.tcx().adjustments.borrow().contains_key(&expr.id) {
@@ -665,7 +665,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
           }
           ast::ExprPath(..) => {
-            let def = cx.tcx().def_map.borrow()[e.id].full_def();
+            let def = cx.tcx().def_map.borrow().get(&e.id).unwrap().full_def();
             match def {
                 def::DefFn(..) | def::DefMethod(..) => {
                     expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
@@ -751,7 +751,7 @@ pub fn trans_static(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) {
         let g = base::get_item_val(ccx, id);
         // At this point, get_item_val has already translated the
         // constant's initializer to determine its LLVM type.
-        let v = ccx.static_values().borrow()[id].clone();
+        let v = ccx.static_values().borrow().get(&id).unwrap().clone();
         // boolean SSA values are i1, but they have to be stored in i8 slots,
         // otherwise some LLVM optimization passes don't work as expected
         let v = if llvm::LLVMTypeOf(v) == Type::i1(ccx).to_ref() {

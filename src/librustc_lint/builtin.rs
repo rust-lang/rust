@@ -418,7 +418,7 @@ struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_def(&mut self, sp: Span, id: ast::NodeId) {
-        match self.cx.tcx.def_map.borrow()[id].full_def() {
+        match self.cx.tcx.def_map.borrow().get(&id).unwrap().full_def() {
             def::DefPrimTy(ast::TyInt(ast::TyIs(_))) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
                                   "found rust type `isize` in foreign module, while \

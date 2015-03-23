@@ -25,8 +25,8 @@ struct Bar {
 impl Index<int> for Foo {
     type Output = int;
 
-    fn index(&self, z: &int) -> &int {
-        if *z == 0 {
+    fn index(&self, z: int) -> &int {
+        if z == 0 {
             &self.x
         } else {
             &self.y

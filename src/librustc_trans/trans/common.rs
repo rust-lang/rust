@@ -709,7 +709,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 
     fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
-        Some(self.tcx().upvar_capture_map.borrow()[upvar_id].clone())
+        Some(self.tcx().upvar_capture_map.borrow().get(&upvar_id).unwrap().clone())
     }
 
     fn type_moves_by_default(&self, span: Span, ty: Ty<'tcx>) -> bool {
@@ -1206,7 +1206,7 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             ty::node_id_item_substs(tcx, id).substs
         }
         MethodCallKey(method_call) => {
-            (*tcx.method_map.borrow())[method_call].substs.clone()
+            tcx.method_map.borrow().get(&method_call).unwrap().substs.clone()
         }
     };
 

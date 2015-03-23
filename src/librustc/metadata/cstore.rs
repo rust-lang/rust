@@ -111,7 +111,7 @@ impl CStore {
     }
 
     pub fn get_crate_data(&self, cnum: ast::CrateNum) -> Rc<crate_metadata> {
-        (*self.metas.borrow())[cnum].clone()
+        self.metas.borrow().get(&cnum).unwrap().clone()
     }
 
     pub fn get_crate_hash(&self, cnum: ast::CrateNum) -> Svh {
