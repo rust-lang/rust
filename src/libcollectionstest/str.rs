@@ -911,6 +911,34 @@ fn test_split_char_iterator_no_trailing() {
 }
 
 #[test]
+fn test_rsplit() {
+    let data = "\nMäry häd ä little lämb\nLittle lämb\n";
+
+    let split: Vec<&str> = data.rsplit(' ').collect();
+    assert_eq!(split, ["lämb\n", "lämb\nLittle", "little", "ä", "häd", "\nMäry"]);
+
+    let split: Vec<&str> = data.rsplit("lämb").collect();
+    assert_eq!(split, ["\n", "\nLittle ", "\nMäry häd ä little "]);
+
+    let split: Vec<&str> = data.rsplit(|c: char| c == 'ä').collect();
+    assert_eq!(split, ["mb\n", "mb\nLittle l", " little l", "d ", "ry h", "\nM"]);
+}
+
+#[test]
+fn test_rsplitn() {
+    let data = "\nMäry häd ä little lämb\nLittle lämb\n";
+
+    let split: Vec<&str> = data.rsplitn(1, ' ').collect();
+    assert_eq!(split, ["lämb\n", "\nMäry häd ä little lämb\nLittle"]);
+
+    let split: Vec<&str> = data.rsplitn(1, "lämb").collect();
+    assert_eq!(split, ["\n", "\nMäry häd ä little lämb\nLittle "]);
+
+    let split: Vec<&str> = data.rsplitn(1, |c: char| c == 'ä').collect();
+    assert_eq!(split, ["mb\n", "\nMäry häd ä little lämb\nLittle l"]);
+}
+
+#[test]
 fn test_words() {
     let data = "\n \tMäry   häd\tä  little lämb\nLittle lämb\n";
     let words: Vec<&str> = data.words().collect();

@@ -74,8 +74,8 @@ use slice::SliceConcatExt;
 
 pub use core::str::{FromStr, Utf8Error, Str};
 pub use core::str::{Lines, LinesAny, MatchIndices, SplitStr, CharRange};
-pub use core::str::{Split, SplitTerminator};
-pub use core::str::{SplitN, RSplitN};
+pub use core::str::{Split, SplitTerminator, SplitN};
+pub use core::str::{RSplit, RSplitN};
 pub use core::str::{from_utf8, CharEq, Chars, CharIndices, Bytes};
 pub use core::str::{from_utf8_unchecked, from_c_str, ParseBoolError};
 pub use unicode::str::{Words, Graphemes, GraphemeIndices};
@@ -699,23 +699,48 @@ impl str {
         core_str::StrExt::split_terminator(&self[..], pat)
     }
 
-    /// An iterator over substrings of `self`, separated by characters matched by a pattern,
+    /// An iterator over substrings of `self`, separated by a pattern,
     /// starting from the end of the string.
-    ///
-    /// Restricted to splitting at most `count` times.
-    ///
-    /// The pattern can be a simple `&str`, or a closure that determines the split.
     ///
     /// # Examples
     ///
-    /// Simple `&str` patterns:
+    /// Simple patterns:
+    ///
+    /// ```
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplit(' ').collect();
+    /// assert_eq!(v, ["lamb", "little", "a", "had", "Mary"]);
+    ///
+    /// let v: Vec<&str> = "lion::tiger::leopard".rsplit("::").collect();
+    /// assert_eq!(v, ["leopard", "tiger", "lion"]);
+    /// ```
+    ///
+    /// More complex patterns with a lambda:
+    ///
+    /// ```
+    /// let v: Vec<&str> = "abc1def2ghi".rsplit(|c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, ["ghi", "def", "abc"]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        core_str::StrExt::rsplit(&self[..], pat)
+    }
+
+    /// An iterator over substrings of `self`, separated by a pattern,
+    /// starting from the end of the string, restricted to splitting
+    /// at most `count` times.
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
     ///
     /// ```
     /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(2, ' ').collect();
     /// assert_eq!(v, ["lamb", "little", "Mary had a"]);
     ///
-    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
-    /// assert_eq!(v, ["leopard", "tiger", "lionX"]);
+    /// let v: Vec<&str> = "lion::tiger::leopard".rsplitn(1, "::").collect();
+    /// assert_eq!(v, ["leopard", "lion::tiger"]);
     /// ```
     ///
     /// More complex patterns with a lambda:
@@ -725,7 +750,9 @@ impl str {
     /// assert_eq!(v, ["ghi", "abc1def"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P> {
+    pub fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
         core_str::StrExt::rsplitn(&self[..], count, pat)
     }
 
