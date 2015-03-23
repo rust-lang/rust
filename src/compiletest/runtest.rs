@@ -382,7 +382,8 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
 
             // write debugger script
             let mut script_str = String::with_capacity(2048);
-            script_str.push_str("set charset UTF-8\n");
+            let charset = if cfg!(target_os = "bitrig") { "auto" } else { "UTF-8" };
+            script_str.push_str(&format!("set charset {}\n", charset));
             script_str.push_str(&format!("file {}\n", exe_file.to_str().unwrap()));
             script_str.push_str("target remote :5039\n");
             script_str.push_str(&format!("set solib-search-path \
@@ -516,8 +517,8 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                                                        .to_string();
             // write debugger script
             let mut script_str = String::with_capacity(2048);
-
-            script_str.push_str("set charset UTF-8\n");
+            let charset = if cfg!(target_os = "bitrig") { "auto" } else { "UTF-8" };
+            script_str.push_str(&format!("set charset {}\n", charset));
             script_str.push_str("show version\n");
 
             match config.gdb_version {
