@@ -11,7 +11,7 @@
 // no-prefer-dynamic
 
 #![crate_type = "rlib"]
-#![feature(plugin_registrar)]
+#![feature(plugin_registrar, rustc_private)]
 
 extern crate rustc;
 

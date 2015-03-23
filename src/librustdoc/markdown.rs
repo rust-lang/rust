@@ -143,7 +143,7 @@ pub fn test(input: &str, libs: SearchPaths, externs: core::Externs,
             mut test_args: Vec<String>) -> int {
     let input_str = load_or_return!(input, 1, 2);
 
-    let mut collector = Collector::new(input.to_string(), libs, externs, true);
+    let mut collector = Collector::new(input.to_string(), libs, externs, true, false);
     find_testable_code(&input_str, &mut collector);
     test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(&test_args, collector.tests);

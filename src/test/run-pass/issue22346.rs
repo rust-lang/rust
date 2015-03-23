@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
+#![feature(core)]
+
 // This used to cause an ICE because the retslot for the "return" had the wrong type
 fn testcase<'a>() -> Box<Iterator<Item=usize> + 'a> {
     return Box::new((0..3).map(|i| { return i; }));

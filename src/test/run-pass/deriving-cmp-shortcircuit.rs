@@ -12,6 +12,8 @@
 // where possible, by having a type that panics when compared as the
 // second element, so this passes iff the instances shortcircuit.
 
+// pretty-expanded FIXME #23616
+
 use std::cmp::Ordering;
 
 pub struct FailCmp;

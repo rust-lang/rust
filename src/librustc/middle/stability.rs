@@ -26,7 +26,7 @@ use syntax::ast::{Item, Generics, StructField};
 use syntax::ast_util::is_local;
 use syntax::attr::{Stability, AttrMetaMethods};
 use syntax::visit::{FnKind, Visitor};
-use syntax::feature_gate::emit_feature_warn;
+use syntax::feature_gate::emit_feature_err;
 use util::nodemap::{NodeMap, DefIdMap, FnvHashSet, FnvHashMap};
 use util::ppaux::Repr;
 
@@ -237,7 +237,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                         None => format!("use of unstable library feature '{}'", &feature)
                     };
 
-                    emit_feature_warn(&self.tcx.sess.parse_sess.span_diagnostic,
+                    emit_feature_err(&self.tcx.sess.parse_sess.span_diagnostic,
                                       &feature, span, &msg);
                 }
             }

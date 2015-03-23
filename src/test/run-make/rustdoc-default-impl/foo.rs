@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(optin_builtin_traits)]
+#![feature(core)]
 
 pub mod bar {
     use std::marker;

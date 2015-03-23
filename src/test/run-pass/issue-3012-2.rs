@@ -10,8 +10,10 @@
 
 // aux-build:issue-3012-1.rs
 
+// pretty-expanded FIXME #23616
+
 #![allow(unknown_features)]
-#![feature(box_syntax)]
+#![feature(box_syntax, libc)]
 
 extern crate socketlib;
 extern crate libc;

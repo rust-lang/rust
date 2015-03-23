@@ -10,6 +10,8 @@
 
 // no-pretty-expanded FIXME #15189
 
+// pretty-expanded FIXME #23616
+
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 enum ES<T> {
     ES1 { x: T },

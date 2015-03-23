@@ -105,6 +105,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
+#![doc(test(no_crate_inject))]
 
 #![feature(alloc)]
 #![feature(box_syntax)]
@@ -130,7 +131,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(str_char)]
 #![feature(into_cow)]
-#![cfg_attr(test, feature(test, rustc_private))]
+#![cfg_attr(test, feature(test, rustc_private, std_misc))]
 
 // Don't link to std. We are std.
 #![feature(no_std)]

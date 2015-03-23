@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 trait Foo { fn f(&self) -> int; }
 trait Bar : Foo { fn g(&self) -> int; }
 

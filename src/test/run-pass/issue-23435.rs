@@ -15,6 +15,8 @@
 // instantiates all the methods, even those that could not otherwise
 // be called.
 
+// pretty-expanded FIXME #23616
+
 struct Foo {
     x: i32
 }

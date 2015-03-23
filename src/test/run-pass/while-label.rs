@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     let mut i = 100;
     'w: while 1 + 1 == 2 {

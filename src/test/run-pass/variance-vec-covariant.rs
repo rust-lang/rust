@@ -10,7 +10,10 @@
 
 // Test that vec is now covariant in its argument type.
 
+// pretty-expanded FIXME #23616
+
 #![allow(dead_code)]
+#![feature(core)]
 
 fn foo<'a,'b>(v1: Vec<&'a i32>, v2: Vec<&'b i32>) -> i32 {
     bar(v1, v2).cloned().unwrap_or(0) // only type checks if we can intersect 'a and 'b

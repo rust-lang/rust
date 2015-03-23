@@ -10,6 +10,8 @@
 
 // Basic boolean tests
 
+// pretty-expanded FIXME #23616
+
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::ops::{BitAnd, BitOr, BitXor};
 

@@ -33,6 +33,7 @@ use vec::Vec;
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io, old_path)]
 /// use std::old_io::*;
 /// use std::old_path::Path;
 ///
@@ -137,6 +138,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io, old_path)]
 /// use std::old_io::*;
 /// use std::old_path::Path;
 ///
@@ -324,6 +326,7 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io, old_path)]
 /// # #![allow(unused_must_use)]
 /// use std::old_io::*;
 /// use std::old_path::Path;

@@ -11,6 +11,8 @@
 // Tests that you can use a fn lifetime parameter as part of
 // the value for a type parameter in a bound.
 
+// pretty-expanded FIXME #23616
+
 trait Get<T> {
     fn get(&self) -> T;
 }

@@ -14,6 +14,8 @@
 // boxes. Make sure that we don't free the box as we match the
 // pattern.
 
+// pretty-expanded FIXME #23616
+
 #![allow(unknown_features)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]

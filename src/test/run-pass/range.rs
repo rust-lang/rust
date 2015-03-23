@@ -10,6 +10,8 @@
 
 // Test range syntax.
 
+// pretty-expanded FIXME #23616
+
 fn foo() -> int { 42 }
 
 // Test that range syntax works in return statements

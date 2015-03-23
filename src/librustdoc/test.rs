@@ -76,6 +76,8 @@ pub fn run(input: &str,
                                                      "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
+    let inject_crate = should_inject_crate(&krate);
+
     let ctx = core::DocContext {
         krate: &krate,
         maybe_typed: core::NotTyped(sess),
@@ -100,7 +102,8 @@ pub fn run(input: &str,
     let mut collector = Collector::new(krate.name.to_string(),
                                        libs,
                                        externs,
-                                       false);
+                                       false,
+                                       inject_crate);
     collector.fold_crate(krate);
 
     test_args.insert(0, "rustdoctest".to_string());
@@ -110,13 +113,42 @@ pub fn run(input: &str,
     0
 }
 
+// Look for #![doc(test(no_crate_inject))], used by crates in the std facade
+fn should_inject_crate(krate: &::syntax::ast::Crate) -> bool {
+    use syntax::attr::AttrMetaMethods;
+
+    let mut inject_crate = true;
+
+    for attr in &krate.attrs {
+        if attr.check_name("doc") {
+            for list in attr.meta_item_list().into_iter() {
+                for attr in list {
+                    if attr.check_name("test") {
+                        for list in attr.meta_item_list().into_iter() {
+                            for attr in list {
+                                if attr.check_name("no_crate_inject") {
+                                    inject_crate = false;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return inject_crate;
+}
+
 #[allow(deprecated)]
 fn runtest(test: &str, cratename: &str, libs: SearchPaths,
            externs: core::Externs,
-           should_panic: bool, no_run: bool, as_test_harness: bool) {
+           should_panic: bool, no_run: bool, as_test_harness: bool,
+           inject_crate: bool) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
-    let test = maketest(test, Some(cratename), true, as_test_harness);
+    let test = maketest(test, Some(cratename), true, as_test_harness,
+                        inject_crate);
     let input = config::Input::Str(test.to_string());
 
     let sessopts = config::Options {
@@ -218,8 +250,16 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     }
 }
 
-pub fn maketest(s: &str, cratename: Option<&str>, lints: bool, dont_insert_main: bool) -> String {
+pub fn maketest(s: &str, cratename: Option<&str>, lints: bool,
+                dont_insert_main: bool, inject_crate: bool) -> String {
+    let (crate_attrs, everything_else) = partition_source(s);
+
     let mut prog = String::new();
+
+    // First push any outer attributes from the example, assuming they
+    // are intended to be crate attributes.
+    prog.push_str(&crate_attrs);
+
     if lints {
         prog.push_str(r"
 #![allow(unused_variables, unused_assignments, unused_mut, unused_attributes, dead_code)]
@@ -228,7 +268,7 @@ pub fn maketest(s: &str, cratename: Option<&str>, lints: bool, dont_insert_main:
 
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
-    if !s.contains("extern crate") && cratename != Some("std") {
+    if !s.contains("extern crate") && inject_crate {
         match cratename {
             Some(cratename) => {
                 if s.contains(cratename) {
@@ -240,14 +280,40 @@ pub fn maketest(s: &str, cratename: Option<&str>, lints: bool, dont_insert_main:
         }
     }
     if dont_insert_main || s.contains("fn main") {
-        prog.push_str(s);
+        prog.push_str(&everything_else);
     } else {
         prog.push_str("fn main() {\n    ");
-        prog.push_str(&s.replace("\n", "\n    "));
+        prog.push_str(&everything_else.replace("\n", "\n    "));
         prog.push_str("\n}");
     }
 
+    info!("final test program: {}", prog);
+
     return prog
+}
+
+fn partition_source(s: &str) -> (String, String) {
+    use unicode::str::UnicodeStr;
+
+    let mut after_header = false;
+    let mut before = String::new();
+    let mut after = String::new();
+
+    for line in s.lines() {
+        let trimline = line.trim();
+        let header = trimline.is_whitespace() ||
+            trimline.starts_with("#![feature");
+        if !header || after_header {
+            after_header = true;
+            after.push_str(line);
+            after.push_str("\n");
+        } else {
+            before.push_str(line);
+            before.push_str("\n");
+        }
+    }
+
+    return (before, after);
 }
 
 pub struct Collector {
@@ -259,11 +325,12 @@ pub struct Collector {
     use_headers: bool,
     current_header: Option<String>,
     cratename: String,
+    inject_crate: bool
 }
 
 impl Collector {
     pub fn new(cratename: String, libs: SearchPaths, externs: core::Externs,
-               use_headers: bool) -> Collector {
+               use_headers: bool, inject_crate: bool) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -273,11 +340,13 @@ impl Collector {
             use_headers: use_headers,
             current_header: None,
             cratename: cratename,
+            inject_crate: inject_crate
         }
     }
 
     pub fn add_test(&mut self, test: String,
-                    should_panic: bool, no_run: bool, should_ignore: bool, as_test_harness: bool) {
+                    should_panic: bool, no_run: bool, should_ignore: bool,
+                    as_test_harness: bool) {
         let name = if self.use_headers {
             let s = self.current_header.as_ref().map(|s| &**s).unwrap_or("");
             format!("{}_{}", s, self.cnt)
@@ -288,6 +357,7 @@ impl Collector {
         let libs = self.libs.clone();
         let externs = self.externs.clone();
         let cratename = self.cratename.to_string();
+        let inject_crate = self.inject_crate;
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -302,7 +372,8 @@ impl Collector {
                         externs,
                         should_panic,
                         no_run,
-                        as_test_harness);
+                        as_test_harness,
+                        inject_crate);
             }))
         });
     }

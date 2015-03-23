@@ -10,14 +10,12 @@
 
 // aux-build:internal_unstable.rs
 
-#![feature(rustc_attrs)]
 #![allow(dead_code)]
 
 extern crate internal_unstable;
 
 
 thread_local!(static FOO: () = ());
-thread_local!(static BAR: () = internal_unstable::unstable()); //~ WARN use of unstable
+thread_local!(static BAR: () = internal_unstable::unstable()); //~ ERROR use of unstable
 
-#[rustc_error]
-fn main() {} //~ ERROR
+fn main() {}

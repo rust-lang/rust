@@ -11,6 +11,8 @@
 // aux-build:issue-5521.rs
 
 
+// pretty-expanded FIXME #23616
+
 extern crate "issue-5521" as foo;
 
 fn bar(a: foo::map) {

@@ -10,6 +10,8 @@
 
 // rustc --test match_borrowed_str.rs.rs && ./match_borrowed_str.rs
 
+// pretty-expanded FIXME #23616
+
 fn compare(x: &str, y: &str) -> bool {
     match x {
         "foo" => y == "foo",

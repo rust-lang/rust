@@ -624,6 +624,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
+    /// # #![feature(debug_builders, core)]
     /// use std::fmt;
     ///
     /// struct Foo {
@@ -655,6 +656,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
+    /// # #![feature(debug_builders, core)]
     /// use std::fmt;
     ///
     /// struct Foo(i32, String);
@@ -683,6 +685,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
+    /// # #![feature(debug_builders, core)]
     /// use std::fmt;
     ///
     /// struct Foo(Vec<i32>);
@@ -712,6 +715,7 @@ impl<'a> Formatter<'a> {
     /// # Examples
     ///
     /// ```rust
+    /// # #![feature(debug_builders, core)]
     /// use std::fmt;
     ///
     /// struct Foo(Vec<(String, i32)>);

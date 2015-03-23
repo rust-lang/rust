@@ -12,6 +12,8 @@
 // attempting to bootstrap libsyntax; it is adapted from
 // `syntax::ext::tt::generic_extension`.
 
+// pretty-expanded FIXME #23616
+
 pub struct E<'a> {
     pub f: &'a u8,
 }

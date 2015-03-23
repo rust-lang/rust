@@ -11,6 +11,8 @@
 // Test for using an object with an associated type binding as the
 // instantiation for a generic type with a bound.
 
+// pretty-expanded FIXME #23616
+
 trait SomeTrait {
     type SomeType;
 

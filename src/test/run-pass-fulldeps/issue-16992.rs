@@ -11,7 +11,7 @@
 // ignore-pretty
 // ignore-android
 
-#![feature(quote)]
+#![feature(quote, rustc_private)]
 
 extern crate syntax;
 

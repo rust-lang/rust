@@ -9,6 +9,11 @@
 // except according to those terms.
 
 // aux-build:issue13507.rs
+
+// pretty-expanded FIXME #23616
+
+#![feature(core)]
+
 extern crate issue13507;
 use issue13507::testtypes;
 

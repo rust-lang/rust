@@ -10,6 +10,8 @@
 
 // Test that we can infer the Target based on the Self or vice versa.
 
+// pretty-expanded FIXME #23616
+
 use std::mem;
 
 trait Convert<Target> {

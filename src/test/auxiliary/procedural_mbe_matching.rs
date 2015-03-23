@@ -11,7 +11,7 @@
 // force-host
 
 #![crate_type="dylib"]
-#![feature(plugin_registrar, quote)]
+#![feature(plugin_registrar, quote, rustc_private)]
 
 extern crate syntax;
 extern crate rustc;

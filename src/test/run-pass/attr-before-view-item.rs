@@ -10,7 +10,9 @@
 
 // error-pattern:expected item
 
-#![feature(custom_attribute)]
+// pretty-expanded FIXME #23616
+
+#![feature(custom_attribute, test)]
 
 #[foo = "bar"]
 extern crate test;

@@ -177,6 +177,7 @@ Rust provides iterators for each of these situations:
 Usually, the `graphemes()` method on `&str` is what you want:
 
 ```
+# #![feature(unicode)]
 let s = "u͔n͈̰̎i̙̮͚̦c͚̉o̼̩̰͗d͔̆̓ͥé";
 
 for l in s.graphemes(true) {

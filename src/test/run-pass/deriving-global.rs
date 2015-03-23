@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(old_orphan_check)]
+#![feature(old_orphan_check, rand, rustc_private)]
 
 extern crate serialize;
 extern crate rand;

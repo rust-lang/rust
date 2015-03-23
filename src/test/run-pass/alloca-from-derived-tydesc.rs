@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 enum option<T> { some(T), none, }
 
 struct R<T> {v: Vec<option<T>> }

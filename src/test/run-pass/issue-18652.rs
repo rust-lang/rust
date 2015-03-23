@@ -12,6 +12,8 @@
 // once closure as an optimization by trans.  This used to hit an
 // incorrect assert.
 
+// pretty-expanded FIXME #23616
+
 #![feature(unboxed_closures)]
 
 fn main() {

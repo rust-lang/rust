@@ -32,6 +32,7 @@
 //! and have the `Owner` remain allocated as long as any `Gadget` points at it.
 //!
 //! ```rust
+//! # #![feature(alloc, collections)]
 //! use std::rc::Rc;
 //!
 //! struct Owner {
@@ -88,6 +89,7 @@
 //! Read the `Cell` documentation for more details on interior mutability.
 //!
 //! ```rust
+//! # #![feature(alloc)]
 //! use std::rc::Rc;
 //! use std::rc::Weak;
 //! use std::cell::RefCell;
@@ -218,6 +220,7 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -247,6 +250,7 @@ pub fn strong_count<T>(this: &Rc<T>) -> usize { this.strong() }
 /// # Examples
 ///
 /// ```
+/// # #![feature(alloc)]
 /// use std::rc;
 /// use std::rc::Rc;
 ///
@@ -267,6 +271,7 @@ pub fn is_unique<T>(rc: &Rc<T>) -> bool {
 /// # Examples
 ///
 /// ```
+/// # #![feature(alloc)]
 /// use std::rc::{self, Rc};
 ///
 /// let x = Rc::new(3);
@@ -301,6 +306,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(alloc)]
 /// use std::rc::{self, Rc};
 ///
 /// let mut x = Rc::new(3);
@@ -330,6 +336,7 @@ impl<T: Clone> Rc<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::rc::Rc;
     ///
     /// let mut five = Rc::new(5);
@@ -372,6 +379,7 @@ impl<T> Drop for Rc<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::rc::Rc;
     ///
     /// {
@@ -420,6 +428,7 @@ impl<T> Clone for Rc<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -648,6 +657,7 @@ impl<T> Weak<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -676,6 +686,7 @@ impl<T> Drop for Weak<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::rc::Rc;
     ///
     /// {
@@ -721,6 +732,7 @@ impl<T> Clone for Weak<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc)]
     /// use std::rc::Rc;
     ///
     /// let weak_five = Rc::new(5).downgrade();

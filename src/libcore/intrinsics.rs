@@ -262,6 +262,7 @@ extern "rust-intrinsic" {
     /// A safe swap function:
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::mem;
     /// use std::ptr;
     ///
@@ -301,6 +302,7 @@ extern "rust-intrinsic" {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::ptr;
     ///
     /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: uint) -> Vec<T> {

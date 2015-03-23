@@ -10,6 +10,10 @@
 
 // Extending Num and using inherited static methods
 
+// pretty-expanded FIXME #23616
+
+#![feature(core)]
+
 use std::cmp::PartialOrd;
 use std::num::NumCast;
 

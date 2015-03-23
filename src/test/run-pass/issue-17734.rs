@@ -10,6 +10,8 @@
 
 // Test that generating drop glue for Box<str> doesn't ICE
 
+// pretty-expanded FIXME #23616
+
 fn f(s: Box<str>) -> Box<str> {
     s
 }

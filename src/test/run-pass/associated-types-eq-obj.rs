@@ -10,6 +10,8 @@
 
 // Test equality constraints on associated types inside of an object type
 
+// pretty-expanded FIXME #23616
+
 pub trait Foo {
     type A;
     fn boo(&self) -> <Self as Foo>::A;

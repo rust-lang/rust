@@ -10,6 +10,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     let a = 1.5e6f64;
     let b = 1.5E6f64;

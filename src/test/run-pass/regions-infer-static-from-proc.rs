@@ -12,6 +12,8 @@
 // region variables contained within (otherwise, region inference will
 // give `x` a very short lifetime).
 
+// pretty-expanded FIXME #23616
+
 static i: uint = 3;
 fn foo<F:FnOnce()+'static>(_: F) {}
 fn read(_: uint) { }

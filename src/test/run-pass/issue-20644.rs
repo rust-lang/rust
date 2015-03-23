@@ -11,6 +11,10 @@
 // A reduced version of the rustbook ice. The problem this encountered
 // had to do with trans ignoring binders.
 
+// pretty-expanded FIXME #23616
+
+#![feature(os)]
+
 use std::iter;
 use std::os;
 use std::fs::File;

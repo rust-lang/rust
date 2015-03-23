@@ -10,7 +10,9 @@
 
 // Smallest "hello world" with a libc runtime
 
-#![feature(intrinsics, lang_items, start, no_std)]
+// pretty-expanded FIXME #23616
+
+#![feature(intrinsics, lang_items, start, no_std, libc)]
 #![no_std]
 
 extern crate libc;

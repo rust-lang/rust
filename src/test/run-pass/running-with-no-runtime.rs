@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(start)]
+#![feature(start, os, std_misc, old_io)]
 
 use std::ffi;
 use std::old_io::process::{Command, ProcessOutput};
