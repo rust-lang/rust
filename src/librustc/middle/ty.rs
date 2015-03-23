@@ -52,6 +52,7 @@ use middle::mem_categorization as mc;
 use middle::region;
 use middle::resolve_lifetime;
 use middle::infer;
+use middle::pat_util;
 use middle::stability;
 use middle::subst::{self, ParamSpace, Subst, Substs, VecPerParamSpace};
 use middle::traits;
@@ -2683,6 +2684,14 @@ impl<'tcx> ctxt<'tcx> {
                               -> TypeParameterDef<'tcx>
     {
         self.ty_param_defs.borrow()[node_id].clone()
+    }
+
+    pub fn pat_contains_ref_binding(&self, pat: &ast::Pat) -> bool {
+        pat_util::pat_contains_ref_binding(&self.def_map, pat)
+    }
+
+    pub fn arm_contains_ref_binding(&self, arm: &ast::Arm) -> bool {
+        pat_util::arm_contains_ref_binding(&self.def_map, arm)
     }
 }
 
