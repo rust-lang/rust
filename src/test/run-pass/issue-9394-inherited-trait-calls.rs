@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 trait Base: Base2 + Base3{
     fn foo(&self) -> String;
     fn foo1(&self) -> String;

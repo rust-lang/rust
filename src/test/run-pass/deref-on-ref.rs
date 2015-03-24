@@ -10,6 +10,8 @@
 
 // Test that `&T` and `&mut T` implement `Deref<T>`
 
+// pretty-expanded FIXME #23616
+
 use std::ops::Deref;
 
 fn deref<U:Copy,T:Deref<Target=U>>(t: T) -> U {

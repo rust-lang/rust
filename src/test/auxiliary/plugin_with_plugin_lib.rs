@@ -10,7 +10,7 @@
 
 // force-host
 
-#![feature(plugin_registrar)]
+#![feature(plugin_registrar, rustc_private)]
 #![deny(plugin_as_library)] // should have no effect in a plugin crate
 
 extern crate macro_crate_test;

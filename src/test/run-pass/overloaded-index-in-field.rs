@@ -11,6 +11,10 @@
 // Test using overloaded indexing when the "map" is stored in a
 // field. This caused problems at some point.
 
+// pretty-expanded FIXME #23616
+
+#![feature(core)]
+
 use std::ops::Index;
 
 struct Foo {

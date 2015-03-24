@@ -220,6 +220,7 @@ impl<T:Copy> Cell<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::cell::Cell;
     ///
     /// let c = Cell::new(5);

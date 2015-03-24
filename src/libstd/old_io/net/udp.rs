@@ -31,6 +31,7 @@ use sys_common;
 /// # Examples
 ///
 /// ```rust,no_run
+/// # #![feature(old_io)]
 /// # #![allow(unused_must_use)]
 ///
 /// use std::old_io::net::udp::UdpSocket;

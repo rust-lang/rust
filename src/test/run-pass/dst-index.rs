@@ -11,6 +11,10 @@
 // Test that overloaded index expressions with DST result types
 // work and don't ICE.
 
+// pretty-expanded FIXME #23616
+
+#![feature(core)]
+
 use std::ops::Index;
 use std::fmt::Debug;
 

@@ -10,6 +10,8 @@
 
 // Test syntax checks for `?Sized` syntax.
 
+// pretty-expanded FIXME #23616
+
 use std::marker::{PhantomData, PhantomFn};
 
 trait T1 : PhantomFn<Self> { }

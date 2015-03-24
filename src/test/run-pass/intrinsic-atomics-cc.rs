@@ -10,6 +10,8 @@
 
 // aux-build:cci_intrinsic.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate cci_intrinsic;
 use cci_intrinsic::atomic_xchg;
 

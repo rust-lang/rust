@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 fn each<T, F>(x: &[T], mut f: F) where F: FnMut(&T) {
     for val in x {
         f(val)

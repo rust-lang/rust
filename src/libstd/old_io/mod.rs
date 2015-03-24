@@ -48,6 +48,7 @@
 //! * Read lines from stdin
 //!
 //!     ```rust
+//!     # #![feature(old_io, old_path)]
 //!     use std::old_io as io;
 //!     use std::old_io::*;
 //!
@@ -60,6 +61,7 @@
 //! * Read a complete file
 //!
 //!     ```rust
+//!     # #![feature(old_io, old_path)]
 //!     use std::old_io::*;
 //!     use std::old_path::Path;
 //!
@@ -69,6 +71,7 @@
 //! * Write a line to a file
 //!
 //!     ```rust
+//!     # #![feature(old_io, old_path)]
 //!     # #![allow(unused_must_use)]
 //!     use std::old_io::*;
 //!     use std::old_path::Path;
@@ -82,6 +85,7 @@
 //! * Iterate over the lines of a file
 //!
 //!     ```rust,no_run
+//!     # #![feature(old_io, old_path)]
 //!     use std::old_io::*;
 //!     use std::old_path::Path;
 //!
@@ -95,6 +99,7 @@
 //! * Pull the lines of a file into a vector of strings
 //!
 //!     ```rust,no_run
+//!     # #![feature(old_io, old_path)]
 //!     use std::old_io::*;
 //!     use std::old_path::Path;
 //!
@@ -106,6 +111,7 @@
 //! * Make a simple TCP client connection and request
 //!
 //!     ```rust
+//!     # #![feature(old_io)]
 //!     # #![allow(unused_must_use)]
 //!     use std::old_io::*;
 //!
@@ -122,6 +128,7 @@
 //! * Make a simple TCP server
 //!
 //!     ```rust
+//!     # #![feature(old_io)]
 //!     # fn main() { }
 //!     # fn foo() {
 //!     # #![allow(dead_code)]
@@ -186,6 +193,7 @@
 //! If you wanted to handle the error though you might write:
 //!
 //! ```rust
+//! # #![feature(old_io, old_path)]
 //! # #![allow(unused_must_use)]
 //! use std::old_io::*;
 //! use std::old_path::Path;
@@ -221,6 +229,7 @@
 //! If you wanted to read several `u32`s from a file and return their product:
 //!
 //! ```rust
+//! # #![feature(old_io, old_path)]
 //! use std::old_io::*;
 //! use std::old_path::Path;
 //!
@@ -948,6 +957,7 @@ unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: uint, end: uint) -
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io)]
 /// use std::old_io as io;
 /// use std::old_io::*;
 /// use std::old_io::util::LimitReader;
@@ -1282,6 +1292,7 @@ impl<'a> Writer for &'a mut (Writer+'a) {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io)]
 /// use std::old_io::util::TeeReader;
 /// use std::old_io::*;
 ///
@@ -1407,6 +1418,7 @@ pub trait Buffer: Reader {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(old_io)]
     /// use std::old_io::*;
     ///
     /// let mut reader = BufReader::new(b"hello\nworld");
@@ -1631,6 +1643,7 @@ impl<'a, T, A: ?Sized + Acceptor<T>> Iterator for IncomingConnections<'a, A> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io)]
 /// use std::old_io as io;
 ///
 /// let eof = io::standard_error(io::EndOfFile);
@@ -1719,6 +1732,7 @@ pub enum FileType {
 /// # Examples
 ///
 /// ```no_run
+/// # #![feature(old_io, old_path)]
 ///
 /// use std::old_io::fs::PathExtensions;
 /// use std::old_path::Path;

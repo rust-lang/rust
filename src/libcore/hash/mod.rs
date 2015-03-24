@@ -16,6 +16,7 @@
 //! # Examples
 //!
 //! ```rust
+//! # #![feature(hash)]
 //! use std::hash::{hash, Hash, SipHasher};
 //!
 //! #[derive(Hash)]
@@ -35,6 +36,7 @@
 //! the trait `Hash`:
 //!
 //! ```rust
+//! # #![feature(hash)]
 //! use std::hash::{hash, Hash, Hasher, SipHasher};
 //!
 //! struct Person {

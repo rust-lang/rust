@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // shouldn't affect evaluation of $ex:
+// pretty-expanded FIXME #23616
+
 macro_rules! bad_macro {
     ($ex:expr) => ({let _x = 9; $ex})
 }

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 enum E { V1(int), V0 }
 const C: &'static [E] = &[E::V0, E::V1(0xDEADBEE)];
 static C0: E = C[0];

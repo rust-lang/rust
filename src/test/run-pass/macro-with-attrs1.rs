@@ -10,6 +10,8 @@
 
 // compile-flags: --cfg foo
 
+// pretty-expanded FIXME #23616
+
 #[cfg(foo)]
 macro_rules! foo { () => (1) }
 

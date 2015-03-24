@@ -481,19 +481,24 @@ impl<'a> Iterator for Utf16Items<'a> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(unicode)]
+/// extern crate unicode;
+///
 /// use unicode::str::Utf16Item::{ScalarValue, LoneSurrogate};
 ///
-/// // 𝄞mus<invalid>ic<invalid>
-/// let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
-///          0x0073, 0xDD1E, 0x0069, 0x0063,
-///          0xD834];
+/// fn main() {
+///     // 𝄞mus<invalid>ic<invalid>
+///     let v = [0xD834, 0xDD1E, 0x006d, 0x0075,
+///              0x0073, 0xDD1E, 0x0069, 0x0063,
+///              0xD834];
 ///
-/// assert_eq!(unicode::str::utf16_items(&v).collect::<Vec<_>>(),
-///            vec![ScalarValue('𝄞'),
-///                 ScalarValue('m'), ScalarValue('u'), ScalarValue('s'),
-///                 LoneSurrogate(0xDD1E),
-///                 ScalarValue('i'), ScalarValue('c'),
-///                 LoneSurrogate(0xD834)]);
+///     assert_eq!(unicode::str::utf16_items(&v).collect::<Vec<_>>(),
+///                vec![ScalarValue('𝄞'),
+///                     ScalarValue('m'), ScalarValue('u'), ScalarValue('s'),
+///                     LoneSurrogate(0xDD1E),
+///                     ScalarValue('i'), ScalarValue('c'),
+///                     LoneSurrogate(0xD834)]);
+/// }
 /// ```
 pub fn utf16_items<'a>(v: &'a [u16]) -> Utf16Items<'a> {
     Utf16Items { iter : v.iter() }

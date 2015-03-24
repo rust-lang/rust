@@ -11,6 +11,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 fn foo(_f: fn(int) -> int) { }
 
 fn id(x: int) -> int { return x; }

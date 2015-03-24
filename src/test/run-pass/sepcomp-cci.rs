@@ -13,6 +13,8 @@
 
 // Test accessing cross-crate inlined items from multiple compilation units.
 
+// pretty-expanded FIXME #23616
+
 extern crate sepcomp_cci_lib;
 use sepcomp_cci_lib::{cci_fn, CCI_STATIC};
 

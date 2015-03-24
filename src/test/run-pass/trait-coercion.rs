@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
+#![allow(unknown_features)]
+#![feature(box_syntax, old_io, io)]
 
 use std::io::{self, Write};
 

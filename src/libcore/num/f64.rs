@@ -289,7 +289,8 @@ impl Float for f64 {
     /// The fractional part of the number, satisfying:
     ///
     /// ```
-    /// use core::num::Float;
+    /// # #![feature(core)]
+    /// use std::num::Float;
     ///
     /// let x = 1.65f64;
     /// assert!(x == x.trunc() + x.fract())

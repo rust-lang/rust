@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     let v: Vec<int> = vec!(10, 20);
     assert_eq!(v[0], 10);

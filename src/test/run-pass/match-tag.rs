@@ -11,6 +11,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 enum color {
     rgb(int, int, int),
     rgba(int, int, int, int),

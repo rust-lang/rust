@@ -11,6 +11,8 @@
 // Tests calls to closure arguments where the closure takes 0 arguments.
 // This is a bit tricky due to rust-call ABI.
 
+// pretty-expanded FIXME #23616
+
 fn foo(f: &mut FnMut() -> int) -> int {
     f()
 }

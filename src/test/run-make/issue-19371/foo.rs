@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rustc_private, path)]
+
 extern crate rustc;
 extern crate rustc_driver;
 extern crate rustc_lint;

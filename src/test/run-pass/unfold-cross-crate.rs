@@ -10,6 +10,10 @@
 
 // no-pretty-expanded FIXME #15189
 
+// pretty-expanded FIXME #23616
+
+#![feature(core)]
+
 use std::iter::Unfold;
 
 // Unfold had a bug with 'a that mean it didn't work

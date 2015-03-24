@@ -10,6 +10,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 mod a {
     pub mod b {
         pub type t = int;

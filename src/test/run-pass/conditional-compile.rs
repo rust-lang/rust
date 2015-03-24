@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // Crate use statements
+// pretty-expanded FIXME #23616
+
 #[cfg(bogus)]
 use flippity;
 

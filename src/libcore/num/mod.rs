@@ -85,6 +85,7 @@ pub trait Int
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Int;
     ///
     /// let n = 0b01001100u8;
@@ -100,6 +101,7 @@ pub trait Int
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Int;
     ///
     /// let n = 0b01001100u8;
@@ -119,6 +121,7 @@ pub trait Int
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Int;
     ///
     /// let n = 0b0101000u16;
@@ -135,6 +138,7 @@ pub trait Int
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Int;
     ///
     /// let n = 0b0101000u16;
@@ -151,6 +155,7 @@ pub trait Int
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Int;
     ///
     /// let n = 0x0123456789ABCDEFu64;
@@ -168,6 +173,7 @@ pub trait Int
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Int;
     ///
     /// let n = 0x0123456789ABCDEFu64;
@@ -392,6 +398,7 @@ pub trait Int
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Int;
     ///
     /// assert_eq!(2.pow(4), 16);
@@ -787,6 +794,7 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// let n = 0b01001100u8;
@@ -803,6 +811,7 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// let n = 0b01001100u8;
@@ -822,6 +831,7 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// let n = 0b0101000u16;
@@ -841,6 +851,7 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// let n = 0b0101000u16;
@@ -860,6 +871,7 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// let n = 0x0123456789ABCDEFu64;
@@ -881,6 +893,7 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// let n = 0x0123456789ABCDEFu64;
@@ -1112,6 +1125,7 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// assert_eq!(2.pow(4), 16);
@@ -1277,6 +1291,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// let n = 0b01001100u8;
@@ -1295,6 +1310,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// let n = 0b01001100u8;
@@ -1314,6 +1330,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// let n = 0b0101000u16;
@@ -1333,6 +1350,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// let n = 0b0101000u16;
@@ -1352,6 +1370,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// let n = 0x0123456789ABCDEFu64;
@@ -1375,6 +1394,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// let n = 0x0123456789ABCDEFu64;
@@ -1606,6 +1626,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
+        /// # #![feature(core)]
         /// use std::num::Int;
         ///
         /// assert_eq!(2.pow(4), 16);
@@ -2266,6 +2287,7 @@ impl_from_primitive! { f64, to_f64 }
 /// # Examples
 ///
 /// ```
+/// # #![feature(core)]
 /// use std::num;
 ///
 /// let twenty: f32 = num::cast(0x14).unwrap();

@@ -58,6 +58,7 @@
 //! # Examples
 //!
 //! ```rust
+//! # #![feature(rand)]
 //! use std::rand;
 //! use std::rand::Rng;
 //!
@@ -68,6 +69,7 @@
 //! ```
 //!
 //! ```rust
+//! # #![feature(rand)]
 //! use std::rand;
 //!
 //! let tuple = rand::random::<(f64, char)>();
@@ -92,6 +94,7 @@
 //! multiply this fraction by 4.
 //!
 //! ```
+//! # #![feature(rand)]
 //! use std::rand;
 //! use std::rand::distributions::{IndependentSample, Range};
 //!
@@ -134,6 +137,7 @@
 //! [Monty Hall Problem]: http://en.wikipedia.org/wiki/Monty_Hall_problem
 //!
 //! ```
+//! # #![feature(rand)]
 //! use std::rand;
 //! use std::rand::Rng;
 //! use std::rand::distributions::{IndependentSample, Range};
@@ -384,6 +388,7 @@ impl Rng for ThreadRng {
 /// # Examples
 ///
 /// ```
+/// # #![feature(rand)]
 /// use std::rand;
 ///
 /// let x: u8 = rand::random();
@@ -400,6 +405,7 @@ impl Rng for ThreadRng {
 /// Caching the thread local random number generator:
 ///
 /// ```
+/// # #![feature(rand)]
 /// use std::rand;
 /// use std::rand::Rng;
 ///
@@ -427,6 +433,7 @@ pub fn random<T: Rand>() -> T {
 /// # Examples
 ///
 /// ```
+/// # #![feature(rand)]
 /// use std::rand::{thread_rng, sample};
 ///
 /// let mut rng = thread_rng();

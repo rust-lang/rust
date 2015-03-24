@@ -10,6 +10,10 @@
 
 // Regression test for #20797.
 
+// pretty-expanded FIXME #23616
+
+#![feature(old_io, old_path)]
+
 use std::default::Default;
 use std::io;
 use std::fs;

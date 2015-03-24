@@ -11,6 +11,8 @@
 // aux-build:issue-12612-1.rs
 // aux-build:issue-12612-2.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate "issue-12612-1" as foo;
 extern crate "issue-12612-2" as bar;
 

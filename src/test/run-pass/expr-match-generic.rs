@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 type compare<T> = extern "Rust" fn(T, T) -> bool;
 
 fn test_generic<T:Clone>(expected: T, eq: compare<T>) {

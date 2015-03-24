@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // aux-build:reexported_static_methods.rs
+// pretty-expanded FIXME #23616
+
 extern crate reexported_static_methods;
 
 use reexported_static_methods::Foo;

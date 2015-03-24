@@ -11,6 +11,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 fn f() -> int {
     if true {
         let _s: String = "should not leak".to_string();

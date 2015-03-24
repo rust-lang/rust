@@ -11,6 +11,8 @@
 // Test that when instantiating trait default methods, typeck handles
 // lifetime parameters defined on the method bound correctly.
 
+// pretty-expanded FIXME #23616
+
 pub trait Foo {
     fn bar<'a, I: Iterator<Item=&'a ()>>(&self, it: I) -> uint {
         let mut xs = it.filter(|_| true);

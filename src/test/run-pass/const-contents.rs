@@ -10,6 +10,8 @@
 
 // Issue #570
 
+// pretty-expanded FIXME #23616
+
 static lsl : int = 1 << 2;
 static add : int = 1 + 2;
 static addf : f64 = 1.0 + 2.0;

@@ -10,6 +10,8 @@
 
 // aux-build:issue-14421.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate "issue-14421" as bug_lib;
 
 use bug_lib::B;

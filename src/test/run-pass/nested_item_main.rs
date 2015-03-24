@@ -10,6 +10,8 @@
 
 // aux-build:nested_item.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate nested_item;
 
 pub fn main() {

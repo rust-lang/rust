@@ -34,6 +34,7 @@ use vec::Vec;
 /// # Examples
 ///
 /// ```
+/// # #![feature(collections)]
 /// use std::collections::VecMap;
 ///
 /// let mut months = VecMap::new();
@@ -132,6 +133,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     /// let mut map: VecMap<&str> = VecMap::new();
     /// ```
@@ -144,6 +146,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     /// let mut map: VecMap<&str> = VecMap::with_capacity(10);
     /// ```
@@ -158,6 +161,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     /// let map: VecMap<String> = VecMap::with_capacity(10);
     /// assert!(map.capacity() >= 10);
@@ -177,6 +181,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     /// let mut map: VecMap<&str> = VecMap::new();
     /// map.reserve_len(10);
@@ -201,6 +206,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     /// let mut map: VecMap<&str> = VecMap::new();
     /// map.reserve_len_exact(10);
@@ -240,6 +246,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -268,6 +275,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -299,6 +307,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -325,6 +334,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut a = VecMap::new();
@@ -360,6 +370,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut a = VecMap::new();
@@ -416,6 +427,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -443,6 +455,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut a = VecMap::new();
@@ -460,6 +473,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut a = VecMap::new();
@@ -477,6 +491,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut a = VecMap::new();
@@ -492,6 +507,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -516,6 +532,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -534,6 +551,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -562,6 +580,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -587,6 +606,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -608,6 +628,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     /// use std::collections::vec_map::Entry;
     ///

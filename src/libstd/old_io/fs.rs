@@ -30,6 +30,7 @@
 //! # Examples
 //!
 //! ```rust
+//! # #![feature(old_io, io, old_path)]
 //! # #![allow(unused_must_use)]
 //! use std::old_io::fs::PathExtensions;
 //! use std::old_io::*;
@@ -105,6 +106,7 @@ impl File {
     /// # Examples
     ///
     /// ```rust,should_fail
+    /// # #![feature(old_io, old_path)]
     /// use std::old_io::*;
     /// use std::old_path::Path;
     ///
@@ -177,6 +179,7 @@ impl File {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(old_io, old_path)]
     /// use std::old_io::*;
     /// use std::old_path::Path;
     ///
@@ -197,6 +200,7 @@ impl File {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(old_io, old_path, io)]
     /// # #![allow(unused_must_use)]
     /// use std::old_io::*;
     /// use std::old_path::Path;
@@ -289,6 +293,7 @@ impl File {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io, old_path)]
 /// # #![allow(unused_must_use)]
 /// use std::old_io::*;
 /// use std::old_path::Path;
@@ -321,6 +326,7 @@ pub fn unlink(path: &Path) -> IoResult<()> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io, old_path)]
 /// use std::old_io::*;
 /// use std::old_path::Path;
 ///
@@ -364,6 +370,7 @@ pub fn lstat(path: &Path) -> IoResult<FileStat> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io, old_path)]
 /// # #![allow(unused_must_use)]
 /// use std::old_io::*;
 /// use std::old_path::Path;
@@ -393,6 +400,7 @@ pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io, old_path)]
 /// # #![allow(unused_must_use)]
 /// use std::old_io::*;
 /// use std::old_path::Path;
@@ -444,6 +452,7 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io, old_path)]
 /// # #![allow(unused_must_use)]
 /// use std::old_io;
 /// use std::old_io::*;
@@ -516,6 +525,7 @@ pub fn readlink(path: &Path) -> IoResult<Path> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io, old_path, old_fs)]
 /// # #![allow(unused_must_use)]
 /// use std::old_io;
 /// use std::old_io::*;
@@ -541,6 +551,7 @@ pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io, old_path)]
 /// # #![allow(unused_must_use)]
 /// use std::old_io::*;
 /// use std::old_path::Path;
@@ -566,6 +577,7 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io, old_path)]
 /// use std::old_io::fs::PathExtensions;
 /// use std::old_io;
 /// use std::old_io::*;

@@ -31,6 +31,7 @@ use sys::timer::Timer as TimerImp;
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io, std_misc)]
 /// # fn foo() {
 /// use std::old_io::Timer;
 /// use std::time::Duration;
@@ -54,6 +55,7 @@ use sys::timer::Timer as TimerImp;
 /// the `old_io::timer` module.
 ///
 /// ```
+/// # #![feature(old_io, std_misc)]
 /// # fn foo() {
 /// use std::old_io::timer;
 /// use std::time::Duration;
@@ -116,6 +118,7 @@ impl Timer {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(old_io, std_misc)]
     /// use std::old_io::Timer;
     /// use std::time::Duration;
     ///
@@ -129,6 +132,7 @@ impl Timer {
     /// ```
     ///
     /// ```
+    /// # #![feature(old_io, std_misc)]
     /// use std::old_io::Timer;
     /// use std::time::Duration;
     ///
@@ -168,6 +172,7 @@ impl Timer {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(old_io, std_misc)]
     /// use std::old_io::Timer;
     /// use std::time::Duration;
     ///
@@ -187,6 +192,7 @@ impl Timer {
     /// ```
     ///
     /// ```
+    /// # #![feature(old_io, std_misc)]
     /// use std::old_io::Timer;
     /// use std::time::Duration;
     ///

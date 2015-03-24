@@ -10,6 +10,7 @@
 
 #![crate_name="externcallback"]
 #![crate_type = "lib"]
+#![feature(libc)]
 
 extern crate libc;
 

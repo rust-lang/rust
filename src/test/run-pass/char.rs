@@ -10,6 +10,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     let c: char = 'x';
     let d: char = 'x';

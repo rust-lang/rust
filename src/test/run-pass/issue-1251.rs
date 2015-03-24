@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
+#![feature(libc)]
+
 #![crate_id="rust_get_test_int"]
 
 mod rustrt {

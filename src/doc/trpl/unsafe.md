@@ -187,6 +187,7 @@ As an example, we give a reimplementation of owned boxes by wrapping
 reimplementation is as safe as the `Box` type.
 
 ```
+# #![feature(libc)]
 #![feature(unsafe_destructor)]
 
 extern crate libc;
@@ -443,6 +444,7 @@ The function marked `#[start]` is passed the command line parameters
 in the same format as C:
 
 ```
+# #![feature(libc)]
 #![feature(lang_items, start, no_std)]
 #![no_std]
 
@@ -470,6 +472,7 @@ correct ABI and the correct name, which requires overriding the
 compiler's name mangling too:
 
 ```ignore
+# #![feature(libc)]
 #![feature(no_std)]
 #![no_std]
 #![no_main]
@@ -526,6 +529,7 @@ As an example, here is a program that will calculate the dot product of two
 vectors provided from C, using idiomatic Rust practices.
 
 ```
+# #![feature(libc, core)]
 #![feature(lang_items, start, no_std)]
 #![no_std]
 
@@ -650,6 +654,7 @@ and one for deallocation. A freestanding program that uses the `Box`
 sugar for dynamic allocations via `malloc` and `free`:
 
 ```
+# #![feature(libc)]
 #![feature(lang_items, box_syntax, start, no_std)]
 #![no_std]
 

@@ -11,6 +11,8 @@
 // Test that we don't panic on a RefCell borrow conflict in certain
 // code paths involving unboxed closures.
 
+// pretty-expanded FIXME #23616
+
 #![feature(unboxed_closures)]
 
 // aux-build:issue-18711.rs

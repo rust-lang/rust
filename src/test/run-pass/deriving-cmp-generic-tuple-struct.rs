@@ -10,6 +10,8 @@
 
 // no-pretty-expanded FIXME #15189
 
+// pretty-expanded FIXME #23616
+
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 struct TS<T>(T,T);
 

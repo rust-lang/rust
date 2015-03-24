@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // aux-build:static-function-pointer-aux.rs
+// pretty-expanded FIXME #23616
+
 extern crate "static-function-pointer-aux" as aux;
 
 fn f(x: int) -> int { x }

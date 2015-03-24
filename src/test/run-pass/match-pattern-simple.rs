@@ -10,6 +10,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 fn altsimple(f: int) { match f { _x => () } }
 
 pub fn main() { }

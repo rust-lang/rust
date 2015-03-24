@@ -10,6 +10,8 @@
 
 // aux-build:cci_const.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate cci_const;
 use cci_const::bar;
 static foo: extern "C" fn() = bar;

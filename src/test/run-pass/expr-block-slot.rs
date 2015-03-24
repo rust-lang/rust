@@ -10,6 +10,8 @@
 
 // Regression test for issue #377
 
+// pretty-expanded FIXME #23616
+
 struct A { a: int }
 struct V { v: int }
 
