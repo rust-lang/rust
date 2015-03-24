@@ -12,6 +12,7 @@ use prelude::v1::*;
 use io::prelude::*;
 
 use cmp;
+use ops::Deref;
 use io::{self, SeekFrom, Error, ErrorKind};
 use iter::repeat;
 use num::Int;
@@ -27,7 +28,7 @@ use slice;
 /// * `Cursor<Vec<u8>>`
 /// * `Cursor<&[u8]>`
 ///
-/// Implementations of the I/O traits for `Cursor<T>` are not currently generic
+/// The implementation of the `Write` trait for `Cursor<T>` is currently not generic
 /// over `T` itself. Instead, specific implementations are provided for various
 /// in-memory buffer types like `Vec<u8>` and `&[u8]`.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -67,67 +68,43 @@ impl<T> Cursor<T> {
     pub fn set_position(&mut self, pos: u64) { self.pos = pos; }
 }
 
-macro_rules! seek {
-    () => {
-        fn seek(&mut self, style: SeekFrom) -> io::Result<u64> {
-            let pos = match style {
-                SeekFrom::Start(n) => { self.pos = n; return Ok(n) }
-                SeekFrom::End(n) => self.inner.len() as i64 + n,
-                SeekFrom::Current(n) => self.pos as i64 + n,
-            };
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> io::Seek for Cursor<T> where T: Deref<Target=[u8]> {
+    fn seek(&mut self, style: SeekFrom) -> io::Result<u64> {
+        let pos = match style {
+            SeekFrom::Start(n) => { self.pos = n; return Ok(n) }
+            SeekFrom::End(n) => self.inner.len() as i64 + n,
+            SeekFrom::Current(n) => self.pos as i64 + n,
+        };
 
-            if pos < 0 {
-                Err(Error::new(ErrorKind::InvalidInput,
-                               "invalid seek to a negative position",
-                               None))
-            } else {
-                self.pos = pos as u64;
-                Ok(self.pos)
-            }
+        if pos < 0 {
+            Err(Error::new(ErrorKind::InvalidInput,
+                           "invalid seek to a negative position",
+                           None))
+        } else {
+            self.pos = pos as u64;
+            Ok(self.pos)
         }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> io::Seek for Cursor<&'a [u8]> { seek!(); }
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> io::Seek for Cursor<&'a mut [u8]> { seek!(); }
-#[stable(feature = "rust1", since = "1.0.0")]
-impl io::Seek for Cursor<Vec<u8>> { seek!(); }
-
-macro_rules! read {
-    () => {
-        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-            let n = try!(Read::read(&mut try!(self.fill_buf()), buf));
-            self.pos += n as u64;
-            Ok(n)
-        }
+impl<T> Read for Cursor<T> where T: Deref<Target=[u8]> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let n = try!(Read::read(&mut try!(self.fill_buf()), buf));
+        self.pos += n as u64;
+        Ok(n)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Read for Cursor<&'a [u8]> { read!(); }
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Read for Cursor<&'a mut [u8]> { read!(); }
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Read for Cursor<Vec<u8>> { read!(); }
-
-macro_rules! buffer {
-    () => {
-        fn fill_buf(&mut self) -> io::Result<&[u8]> {
-            let amt = cmp::min(self.pos, self.inner.len() as u64);
-            Ok(&self.inner[(amt as usize)..])
-        }
-        fn consume(&mut self, amt: usize) { self.pos += amt as u64; }
+impl<T> BufRead for Cursor<T> where T: Deref<Target=[u8]> {
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        let amt = cmp::min(self.pos, self.inner.len() as u64);
+        Ok(&self.inner[(amt as usize)..])
     }
+    fn consume(&mut self, amt: usize) { self.pos += amt as u64; }
 }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> BufRead for Cursor<&'a [u8]> { buffer!(); }
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> BufRead for Cursor<&'a mut [u8]> { buffer!(); }
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> BufRead for Cursor<Vec<u8>> { buffer!(); }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for Cursor<&'a mut [u8]> {
@@ -282,21 +259,23 @@ mod tests {
     }
 
     #[test]
-    fn test_slice_reader() {
-        let in_buf = vec![0, 1, 2, 3, 4, 5, 6, 7];
-        let mut reader = &mut in_buf.as_slice();
+    fn test_boxed_reader() {
+        let mut reader = Cursor::new(
+            vec![0, 1, 2, 3, 4, 5, 6, 7].into_boxed_slice(),
+        );
         let mut buf = [];
         assert_eq!(reader.read(&mut buf), Ok(0));
+        assert_eq!(reader.position(), 0);
         let mut buf = [0];
         assert_eq!(reader.read(&mut buf), Ok(1));
-        assert_eq!(reader.len(), 7);
+        assert_eq!(reader.position(), 1);
         let b: &[_] = &[0];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
         let mut buf = [0; 4];
         assert_eq!(reader.read(&mut buf), Ok(4));
-        assert_eq!(reader.len(), 3);
+        assert_eq!(reader.position(), 5);
         let b: &[_] = &[1, 2, 3, 4];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
         assert_eq!(reader.read(&mut buf), Ok(3));
         let b: &[_] = &[5, 6, 7];
         assert_eq!(&buf[..3], b);
