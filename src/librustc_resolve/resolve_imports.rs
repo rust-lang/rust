@@ -304,7 +304,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
                module_to_string(&*module_));
 
         // First, resolve the module path for the directive, if necessary.
-        let container = if module_path.len() == 0 {
+        let container = if module_path.is_empty() {
             // Use the crate root.
             Some((self.resolver.graph_root.get_module(), LastMod(AllPublic)))
         } else {

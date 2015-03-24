@@ -2017,7 +2017,7 @@ struct StructMemberDescriptionFactory<'tcx> {
 impl<'tcx> StructMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
-        if self.fields.len() == 0 {
+        if self.fields.is_empty() {
             return Vec::new();
         }
 
@@ -2210,7 +2210,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
             adt::Univariant(ref struct_def, _) => {
                 assert!(self.variants.len() <= 1);
 
-                if self.variants.len() == 0 {
+                if self.variants.is_empty() {
                     vec![]
                 } else {
                     let (variant_type_metadata,

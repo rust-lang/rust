@@ -1248,7 +1248,7 @@ impl<'a> MethodDef<'a> {
 
             match_arms.push(catch_all_match_arm);
 
-        } else if variants.len() == 0 {
+        } else if variants.is_empty() {
             // As an additional wrinkle, For a zero-variant enum A,
             // currently the compiler
             // will accept `fn (a: &Self) { match   *a   { } }`

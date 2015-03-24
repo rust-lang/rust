@@ -1097,7 +1097,7 @@ impl<K, V> Node<K, V> {
     /// When a node has no keys or values and only a single edge, extract that edge.
     pub fn hoist_lone_child(&mut self) {
         // Necessary for correctness, but in a private module
-        debug_assert!(self.len() == 0);
+        debug_assert!(self.is_empty());
         debug_assert!(!self.is_leaf());
 
         unsafe {

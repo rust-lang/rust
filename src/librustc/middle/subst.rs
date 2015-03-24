@@ -361,7 +361,7 @@ impl<T> VecPerParamSpace<T> {
     pub fn get_self<'a>(&'a self) -> Option<&'a T> {
         let v = self.get_slice(SelfSpace);
         assert!(v.len() <= 1);
-        if v.len() == 0 { None } else { Some(&v[0]) }
+        if v.is_empty() { None } else { Some(&v[0]) }
     }
 
     pub fn len(&self, space: ParamSpace) -> usize {

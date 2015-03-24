@@ -1241,7 +1241,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                             let lifetimes =
                                 path.segments.last().unwrap().parameters.lifetimes();
                             let mut insert = Vec::new();
-                            if lifetimes.len() == 0 {
+                            if lifetimes.is_empty() {
                                 let anon = self.cur_anon.get();
                                 for (i, a) in (anon..anon+expected).enumerate() {
                                     if anon_nums.contains(&a) {
@@ -1361,7 +1361,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
 
             ast::AngleBracketedParameters(ref data) => {
                 let mut new_lts = Vec::new();
-                if data.lifetimes.len() == 0 {
+                if data.lifetimes.is_empty() {
                     // traverse once to see if there's a need to insert lifetime
                     let need_insert = (0..expected).any(|i| {
                         indexes.contains(&i)

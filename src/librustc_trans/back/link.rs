@@ -463,7 +463,7 @@ pub fn filename_for_input(sess: &Session,
         }
         config::CrateTypeExecutable => {
             let suffix = &sess.target.target.options.exe_suffix;
-            if suffix.len() == 0 {
+            if suffix.is_empty() {
                 out_filename.to_path_buf()
             } else {
                 out_filename.with_extension(&suffix[1..])

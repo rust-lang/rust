@@ -1125,7 +1125,7 @@ fn one_bound_for_assoc_type<'tcx>(tcx: &ty::ctxt<'tcx>,
                                   span: Span)
     -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
 {
-    if bounds.len() == 0 {
+    if bounds.is_empty() {
         span_err!(tcx.sess, span, E0220,
                   "associated type `{}` not found for `{}`",
                   assoc_name,
@@ -2042,7 +2042,7 @@ fn compute_object_lifetime_bound<'tcx>(
 
     // If there are no derived region bounds, then report back that we
     // can find no region bound.
-    if derived_region_bounds.len() == 0 {
+    if derived_region_bounds.is_empty() {
         match rscope.object_lifetime_default(span) {
             Some(r) => { return r; }
             None => {

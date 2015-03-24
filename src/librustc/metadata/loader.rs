@@ -517,7 +517,7 @@ impl<'a> Context<'a> {
             //                library's metadata sections. In theory we should
             //                read both, but reading dylib metadata is quite
             //                slow.
-            if m.len() == 0 {
+            if m.is_empty() {
                 return None
             } else if m.len() == 1 {
                 return Some(m.into_iter().next().unwrap())

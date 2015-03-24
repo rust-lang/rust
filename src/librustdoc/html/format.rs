@@ -94,7 +94,7 @@ impl<'a> fmt::Display for TyParamBounds<'a> {
 
 impl fmt::Display for clean::Generics {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.lifetimes.len() == 0 && self.type_params.len() == 0 { return Ok(()) }
+        if self.lifetimes.is_empty() && self.type_params.is_empty() { return Ok(()) }
         try!(f.write_str("&lt;"));
 
         for (i, life) in self.lifetimes.iter().enumerate() {
@@ -132,7 +132,7 @@ impl fmt::Display for clean::Generics {
 impl<'a> fmt::Display for WhereClause<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let &WhereClause(gens) = self;
-        if gens.where_predicates.len() == 0 {
+        if gens.where_predicates.is_empty() {
             return Ok(());
         }
         try!(f.write_str(" <span class='where'>where "));

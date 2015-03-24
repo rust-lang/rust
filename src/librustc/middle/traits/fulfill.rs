@@ -298,7 +298,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
                self.predicates.len(),
                errors.len());
 
-        if errors.len() == 0 {
+        if errors.is_empty() {
             Ok(())
         } else {
             Err(errors)

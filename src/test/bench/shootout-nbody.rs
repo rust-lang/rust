@@ -196,7 +196,7 @@ fn shift_mut_ref<'a, T>(r: &mut &'a mut [T]) -> Option<&'a mut T> {
     use std::mem;
     use std::raw::Repr;
 
-    if r.len() == 0 { return None }
+    if r.is_empty() { return None }
     unsafe {
         let mut raw = r.repr();
         let ret = raw.data as *mut T;

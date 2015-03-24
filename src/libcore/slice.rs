@@ -204,7 +204,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn first(&self) -> Option<&T> {
-        if self.len() == 0 { None } else { Some(&self[0]) }
+        if self.is_empty() { None } else { Some(&self[0]) }
     }
 
     #[inline]
@@ -217,7 +217,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn last(&self) -> Option<&T> {
-        if self.len() == 0 { None } else { Some(&self[self.len() - 1]) }
+        if self.is_empty() { None } else { Some(&self[self.len() - 1]) }
     }
 
     #[inline]
@@ -296,7 +296,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn first_mut(&mut self) -> Option<&mut T> {
-        if self.len() == 0 { None } else { Some(&mut self[0]) }
+        if self.is_empty() { None } else { Some(&mut self[0]) }
     }
 
     #[inline]
@@ -1306,7 +1306,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a [T]> {
-        if self.v.len() == 0 {
+        if self.v.is_empty() {
             None
         } else {
             let chunksz = cmp::min(self.v.len(), self.size);
@@ -1318,7 +1318,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.v.len() == 0 {
+        if self.v.is_empty() {
             (0, Some(0))
         } else {
             let n = self.v.len() / self.size;
@@ -1333,7 +1333,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
 impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
-        if self.v.len() == 0 {
+        if self.v.is_empty() {
             None
         } else {
             let remainder = self.v.len() % self.size;
@@ -1384,7 +1384,7 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a mut [T]> {
-        if self.v.len() == 0 {
+        if self.v.is_empty() {
             None
         } else {
             let sz = cmp::min(self.v.len(), self.chunk_size);
@@ -1397,7 +1397,7 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.v.len() == 0 {
+        if self.v.is_empty() {
             (0, Some(0))
         } else {
             let n = self.v.len() / self.chunk_size;
@@ -1412,7 +1412,7 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
 impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
-        if self.v.len() == 0 {
+        if self.v.is_empty() {
             None
         } else {
             let remainder = self.v.len() % self.chunk_size;

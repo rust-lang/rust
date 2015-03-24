@@ -1751,7 +1751,7 @@ fn encode_codemap(ecx: &EncodeContext, rbml_w: &mut Encoder) {
 
     for filemap in &codemap.files.borrow()[..] {
 
-        if filemap.lines.borrow().len() == 0 || filemap.is_imported() {
+        if filemap.lines.borrow().is_empty() || filemap.is_imported() {
             // No need to export empty filemaps, as they can't contain spans
             // that need translation.
             // Also no need to re-export imported filemaps, as any downstream

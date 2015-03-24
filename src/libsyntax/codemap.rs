@@ -652,7 +652,7 @@ impl CodeMap {
     }
 
     pub fn span_to_string(&self, sp: Span) -> String {
-        if self.files.borrow().len() == 0 && sp == DUMMY_SP {
+        if self.files.borrow().is_empty() && sp == DUMMY_SP {
             return "no-location".to_string();
         }
 

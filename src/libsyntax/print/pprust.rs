@@ -2546,7 +2546,7 @@ impl<'a> State<'a> {
 
     pub fn print_where_clause(&mut self, where_clause: &ast::WhereClause)
                               -> io::Result<()> {
-        if where_clause.predicates.len() == 0 {
+        if where_clause.predicates.is_empty() {
             return Ok(())
         }
 

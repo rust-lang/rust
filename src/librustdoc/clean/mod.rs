@@ -1820,7 +1820,7 @@ impl<'tcx> Clean<Item> for ty::VariantInfo<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
         // use syntax::parse::token::special_idents::unnamed_field;
         let kind = match self.arg_names.as_ref().map(|s| &**s) {
-            None | Some([]) if self.args.len() == 0 => CLikeVariant,
+            None | Some([]) if self.args.is_empty() => CLikeVariant,
             None | Some([]) => {
                 TupleVariant(self.args.clean(cx))
             }
@@ -1874,7 +1874,7 @@ impl Clean<VariantKind> for ast::VariantKind {
     fn clean(&self, cx: &DocContext) -> VariantKind {
         match self {
             &ast::TupleVariantKind(ref args) => {
-                if args.len() == 0 {
+                if args.is_empty() {
                     CLikeVariant
                 } else {
                     TupleVariant(args.iter().map(|x| x.ty.clean(cx)).collect())

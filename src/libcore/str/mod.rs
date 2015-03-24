@@ -1119,7 +1119,7 @@ enum OldSearcher {
 impl OldSearcher {
     #[allow(dead_code)]
     fn new(haystack: &[u8], needle: &[u8]) -> OldSearcher {
-        if needle.len() == 0 {
+        if needle.is_empty() {
             // Handle specially
             unimplemented!()
         // FIXME: Tune this.

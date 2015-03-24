@@ -902,7 +902,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     };
     output_types.sort();
     output_types.dedup();
-    if output_types.len() == 0 {
+    if output_types.is_empty() {
         output_types.push(OutputTypeExe);
     }
 

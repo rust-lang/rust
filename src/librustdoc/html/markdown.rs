@@ -305,7 +305,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         let text = format!(r##"<h{lvl} id="{id}" class='section-header'><a
                            href="#{id}">{sec}{}</a></h{lvl}>"##,
                            s, lvl = level, id = id,
-                           sec = if sec.len() == 0 {
+                           sec = if sec.is_empty() {
                                sec.to_string()
                            } else {
                                format!("{} ", sec)
@@ -491,7 +491,7 @@ impl<'a> fmt::Display for Markdown<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let Markdown(md) = *self;
         // This is actually common enough to special-case
-        if md.len() == 0 { return Ok(()) }
+        if md.is_empty() { return Ok(()) }
         render(fmt, md, false)
     }
 }

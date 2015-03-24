@@ -2172,7 +2172,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // check that all of the arms in an or-pattern have exactly the
     // same set of bindings, with the same binding modes for each.
     fn check_consistent_bindings(&mut self, arm: &Arm) {
-        if arm.pats.len() == 0 {
+        if arm.pats.is_empty() {
             return
         }
         let map_0 = self.binding_mode_map(&*arm.pats[0]);
@@ -3522,7 +3522,7 @@ fn module_to_string(module: &Module) -> String {
     }
     collect_mod(&mut names, module);
 
-    if names.len() == 0 {
+    if names.is_empty() {
         return "???".to_string();
     }
     names_to_string(&names.into_iter().rev().collect::<Vec<ast::Name>>())
