@@ -1265,7 +1265,7 @@ be undesired.
 * Sending signals
 * Accessing/modifying the file system
 * Unsigned integer overflow (well-defined as wrapping)
-* Signed integer overflow (well-defined as two's complement representation
+* Signed integer overflow (well-defined as two’s complement representation
   wrapping)
 
 #### Diverging functions
@@ -2961,10 +2961,10 @@ meaning of the operators on standard types is given here.
   : Exclusive or.
     Calls the `bitxor` method of the `std::ops::BitXor` trait.
 * `<<`
-  : Logical left shift.
+  : Left shift.
     Calls the `shl` method of the `std::ops::Shl` trait.
 * `>>`
-  : Logical right shift.
+  : Right shift.
     Calls the `shr` method of the `std::ops::Shr` trait.
 
 #### Lazy boolean operators
