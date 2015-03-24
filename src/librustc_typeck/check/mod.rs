@@ -490,6 +490,20 @@ pub fn check_item_types(ccx: &CrateCtxt) {
     visit::walk_crate(&mut visit, krate);
 
     ccx.tcx.sess.abort_if_errors();
+
+    for drop_method_did in ccx.tcx.destructors.borrow().iter() {
+        if drop_method_did.krate == ast::LOCAL_CRATE {
+            let drop_impl_did = ccx.tcx.map.get_parent_did(drop_method_did.node);
+            match dropck::check_drop_impl(ccx.tcx, drop_impl_did) {
+                Ok(()) => {}
+                Err(()) => {
+                    assert!(ccx.tcx.sess.has_errors());
+                }
+            }
+        }
+    }
+
+    ccx.tcx.sess.abort_if_errors();
 }
 
 fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
