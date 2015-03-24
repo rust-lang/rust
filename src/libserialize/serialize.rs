@@ -579,7 +579,7 @@ impl Encodable for path::PathBuf {
 impl Decodable for path::PathBuf {
     fn decode<D: Decoder>(d: &mut D) -> Result<path::PathBuf, D::Error> {
         let bytes: String = try!(Decodable::decode(d));
-        Ok(path::PathBuf::new(&bytes))
+        Ok(path::PathBuf::from(bytes))
     }
 }
 

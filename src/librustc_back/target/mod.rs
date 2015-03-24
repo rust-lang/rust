@@ -393,11 +393,11 @@ impl Target {
         let path = {
             let mut target = target.to_string();
             target.push_str(".json");
-            PathBuf::new(&target)
+            PathBuf::from(target)
         };
 
         let target_path = env::var_os("RUST_TARGET_PATH")
-                              .unwrap_or(OsString::from_str(""));
+                              .unwrap_or(OsString::new());
 
         // FIXME 16351: add a sane default search path?
 

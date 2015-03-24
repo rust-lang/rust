@@ -300,7 +300,7 @@ pub fn run(mut krate: clean::Crate,
            passes: HashSet<String>) -> io::Result<()> {
     let src_root = match krate.src.parent() {
         Some(p) => p.to_path_buf(),
-        None => PathBuf::new(""),
+        None => PathBuf::new(),
     };
     let mut cx = Context {
         dst: dst,
@@ -784,7 +784,7 @@ impl<'a> DocFolder for SourceCollector<'a> {
 impl<'a> SourceCollector<'a> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &str) -> io::Result<()> {
-        let p = PathBuf::new(filename);
+        let p = PathBuf::from(filename);
 
         // If we couldn't open this file, then just returns because it
         // probably means that it's some standard library macro thing and we
@@ -819,7 +819,7 @@ impl<'a> SourceCollector<'a> {
         let mut fname = p.file_name().expect("source has no filename")
                          .to_os_string();
         fname.push(".html");
-        cur.push(&fname);
+        cur.push(&fname[..]);
         let mut w = BufWriter::new(try!(File::create(&cur)));
 
         let title = format!("{} -- source", cur.file_name().unwrap()

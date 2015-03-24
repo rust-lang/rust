@@ -194,7 +194,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 fn res_rel_file(cx: &mut ExtCtxt, sp: codemap::Span, arg: &Path) -> PathBuf {
     // NB: relative paths are resolved relative to the compilation unit
     if !arg.is_absolute() {
-        let mut cu = PathBuf::new(&cx.codemap().span_to_filename(sp));
+        let mut cu = PathBuf::from(&cx.codemap().span_to_filename(sp));
         cu.pop();
         cu.push(arg);
         cu

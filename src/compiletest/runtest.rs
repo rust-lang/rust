@@ -1440,7 +1440,7 @@ fn aux_output_dir_name(config: &Config, testfile: &Path) -> PathBuf {
 }
 
 fn output_testname(testfile: &Path) -> PathBuf {
-    PathBuf::new(testfile.file_stem().unwrap())
+    PathBuf::from(testfile.file_stem().unwrap())
 }
 
 fn output_base_name(config: &Config, testfile: &Path) -> PathBuf {

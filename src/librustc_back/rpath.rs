@@ -106,7 +106,7 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig, lib: &Path) -> String 
 }
 
 fn relativize(path: &Path, rel: &Path) -> PathBuf {
-    let mut res = PathBuf::new("");
+    let mut res = PathBuf::new();
     let mut cur = rel;
     while !path.starts_with(cur) {
         res.push("..");
@@ -200,7 +200,7 @@ mod test {
                 used_crates: Vec::new(),
                 has_rpath: true,
                 is_like_osx: true,
-                out_filename: PathBuf::new("bin/rustc"),
+                out_filename: PathBuf::from("bin/rustc"),
                 get_install_prefix_lib_path: &mut || panic!(),
                 realpath: &mut |p| Ok(p.to_path_buf()),
             };
@@ -210,7 +210,7 @@ mod test {
         } else {
             let config = &mut RPathConfig {
                 used_crates: Vec::new(),
-                out_filename: PathBuf::new("bin/rustc"),
+                out_filename: PathBuf::from("bin/rustc"),
                 get_install_prefix_lib_path: &mut || panic!(),
                 has_rpath: true,
                 is_like_osx: false,

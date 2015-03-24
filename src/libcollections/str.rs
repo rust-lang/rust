@@ -61,10 +61,10 @@ use core::iter::AdditiveIterator;
 use core::iter::{Iterator, IteratorExt, Extend};
 use core::option::Option::{self, Some, None};
 use core::result::Result;
-use core::slice::AsSlice;
 use core::str as core_str;
 use unicode::str::{UnicodeStr, Utf16Encoder};
 
+use core::convert::AsRef;
 use vec_deque::VecDeque;
 use borrow::{Borrow, ToOwned};
 use string::String;
@@ -86,51 +86,47 @@ pub use core::str::{Searcher, ReverseSearcher, DoubleEndedSearcher, SearchStep};
 Section: Creating a string
 */
 
-impl<S: Str> SliceConcatExt<str, String> for [S] {
+impl<S: AsRef<str>> SliceConcatExt<str, String> for [S] {
     fn concat(&self) -> String {
-        let s = self.as_slice();
-
-        if s.is_empty() {
+        if self.is_empty() {
             return String::new();
         }
 
         // `len` calculation may overflow but push_str will check boundaries
-        let len = s.iter().map(|s| s.as_slice().len()).sum();
+        let len = self.iter().map(|s| s.as_ref().len()).sum();
         let mut result = String::with_capacity(len);
 
-        for s in s {
-            result.push_str(s.as_slice())
+        for s in self {
+            result.push_str(s.as_ref())
         }
 
         result
     }
 
     fn connect(&self, sep: &str) -> String {
-        let s = self.as_slice();
-
-        if s.is_empty() {
+        if self.is_empty() {
             return String::new();
         }
 
         // concat is faster
         if sep.is_empty() {
-            return s.concat();
+            return self.concat();
         }
 
         // this is wrong without the guarantee that `self` is non-empty
         // `len` calculation may overflow but push_str but will check boundaries
-        let len = sep.len() * (s.len() - 1)
-            + s.iter().map(|s| s.as_slice().len()).sum();
+        let len = sep.len() * (self.len() - 1)
+            + self.iter().map(|s| s.as_ref().len()).sum();
         let mut result = String::with_capacity(len);
         let mut first = true;
 
-        for s in s {
+        for s in self {
             if first {
                 first = false;
             } else {
                 result.push_str(sep);
             }
-            result.push_str(s.as_slice());
+            result.push_str(s.as_ref());
         }
         result
     }

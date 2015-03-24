@@ -95,7 +95,7 @@ impl<S: Strategy> Iterator for Subpaths<S> {
 }
 
 fn foo() {
-    let mut walker: Subpaths<Recursive> = Subpaths::walk(&PathBuf::new("/home")).unwrap();
+    let mut walker: Subpaths<Recursive> = Subpaths::walk(&PathBuf::from("/home")).unwrap();
 }
 
 fn main() {}

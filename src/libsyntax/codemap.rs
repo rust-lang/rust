@@ -351,8 +351,7 @@ impl Encodable for FileMap {
                         let max_line_length = if lines.len() == 1 {
                             0
                         } else {
-                            lines.as_slice()
-                                 .windows(2)
+                            lines.windows(2)
                                  .map(|w| w[1] - w[0])
                                  .map(|bp| bp.to_usize())
                                  .max()

@@ -10,6 +10,7 @@
 
 #![unstable(feature = "std_misc")]
 
+use convert::Into;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use error::{Error, FromError};
 use fmt;
@@ -130,6 +131,8 @@ pub struct NulError(usize, Vec<u8>);
 
 /// A conversion trait used by the constructor of `CString` for types that can
 /// be converted to a vector of bytes.
+#[deprecated(since = "1.0.0", reason = "use std::convert::Into<Vec<u8>> instead")]
+#[unstable(feature = "std_misc")]
 pub trait IntoBytes {
     /// Consumes this container, returning a vector of bytes.
     fn into_bytes(self) -> Vec<u8>;
@@ -163,8 +166,8 @@ impl CString {
     /// internal 0 byte. The error returned will contain the bytes as well as
     /// the position of the nul byte.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new<T: IntoBytes>(t: T) -> Result<CString, NulError> {
-        let bytes = t.into_bytes();
+    pub fn new<T: Into<Vec<u8>>>(t: T) -> Result<CString, NulError> {
+        let bytes = t.into();
         match bytes.iter().position(|x| *x == 0) {
             Some(i) => Err(NulError(i, bytes)),
             None => Ok(unsafe { CString::from_vec_unchecked(bytes) }),
@@ -433,15 +436,19 @@ pub unsafe fn c_str_to_bytes_with_nul<'a>(raw: &'a *const libc::c_char)
     slice::from_raw_parts(*(raw as *const _ as *const *const u8), len as usize)
 }
 
+#[allow(deprecated)]
 impl<'a> IntoBytes for &'a str {
     fn into_bytes(self) -> Vec<u8> { self.as_bytes().to_vec() }
 }
+#[allow(deprecated)]
 impl<'a> IntoBytes for &'a [u8] {
     fn into_bytes(self) -> Vec<u8> { self.to_vec() }
 }
+#[allow(deprecated)]
 impl IntoBytes for String {
     fn into_bytes(self) -> Vec<u8> { self.into_bytes() }
 }
+#[allow(deprecated)]
 impl IntoBytes for Vec<u8> {
     fn into_bytes(self) -> Vec<u8> { self }
 }

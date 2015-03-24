@@ -14,6 +14,7 @@
 
 use core::clone::Clone;
 use core::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
+use core::convert::AsRef;
 use core::hash::{Hash, Hasher};
 use core::marker::Sized;
 use core::ops::Deref;
@@ -291,16 +292,22 @@ impl<'a, B: ?Sized> Hash for Cow<'a, B> where B: Hash + ToOwned
 }
 
 /// Trait for moving into a `Cow`
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`")]
 pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
     /// Moves `self` into `Cow`
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn into_cow(self) -> Cow<'a, B>;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a,  B: ?Sized> IntoCow<'a, B> for Cow<'a, B> where B: ToOwned {
     fn into_cow(self) -> Cow<'a, B> {
+        self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, T: Clone> AsRef<T> for Cow<'a, T> {
+    fn as_ref(&self) -> &T {
         self
     }
 }
