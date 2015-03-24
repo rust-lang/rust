@@ -126,6 +126,7 @@
 // lldb-command:continue
 
 #![allow(unused_variables)]
+#![feature(old_io)]
 #![omit_gdb_pretty_printer_section]
 
 fn immediate_args(a: int, b: bool, c: f64) {
