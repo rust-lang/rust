@@ -361,7 +361,7 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
                   let unsized_part = unsized_part_of_type(cx.tcx(), ty);
                   let info_ty = match unsized_part.sty {
                       ty::ty_str | ty::ty_vec(..) => {
-                          Type::uint_from_ty(cx, ast::TyUs(false))
+                          Type::uint_from_ty(cx, ast::TyUs)
                       }
                       ty::ty_trait(_) => Type::vtable_ptr(cx),
                       _ => panic!("Unexpected type returned from \

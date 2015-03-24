@@ -744,15 +744,13 @@ impl PrimitiveTypeTable {
         table.intern("char",    TyChar);
         table.intern("f32",     TyFloat(TyF32));
         table.intern("f64",     TyFloat(TyF64));
-        table.intern("int",     TyInt(TyIs(true)));
-        table.intern("isize",   TyInt(TyIs(false)));
+        table.intern("isize",   TyInt(TyIs));
         table.intern("i8",      TyInt(TyI8));
         table.intern("i16",     TyInt(TyI16));
         table.intern("i32",     TyInt(TyI32));
         table.intern("i64",     TyInt(TyI64));
         table.intern("str",     TyStr);
-        table.intern("uint",    TyUint(TyUs(true)));
-        table.intern("usize",   TyUint(TyUs(false)));
+        table.intern("usize",   TyUint(TyUs));
         table.intern("u8",      TyUint(TyU8));
         table.intern("u16",     TyUint(TyU16));
         table.intern("u32",     TyUint(TyU32));
