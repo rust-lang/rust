@@ -532,7 +532,7 @@ impl<'tcx> TypeMap<'tcx> {
             // Maybe check that there is no self type here.
 
             let tps = substs.types.get_slice(subst::TypeSpace);
-            if tps.len() > 0 {
+            if !tps.is_empty() {
                 output.push('<');
 
                 for &type_parameter in tps {
@@ -1102,7 +1102,7 @@ pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         if let Ok(code_snippet) = code_snippet {
             let bytes = code_snippet.as_bytes();
 
-            if bytes.len() > 0 && &bytes[bytes.len()-1..] == b"}" {
+            if !bytes.is_empty() && &bytes[bytes.len()-1..] == b"}" {
                 cleanup_span = Span {
                     lo: node_span.hi - codemap::BytePos(1),
                     hi: node_span.hi,
@@ -3834,7 +3834,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             output.push_str("fn(");
 
             let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
-            if sig.inputs.len() > 0 {
+            if !sig.inputs.is_empty() {
                 for &parameter_type in &sig.inputs {
                     push_debuginfo_type_name(cx, parameter_type, true, output);
                     output.push_str(", ");
@@ -3844,7 +3844,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
 
             if sig.variadic {
-                if sig.inputs.len() > 0 {
+                if !sig.inputs.is_empty() {
                     output.push_str(", ...");
                 } else {
                     output.push_str("...");

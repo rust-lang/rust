@@ -912,7 +912,7 @@ impl<'a> MethodDef<'a> {
         }
 
         // transpose raw_fields
-        let fields = if raw_fields.len() > 0 {
+        let fields = if !raw_fields.is_empty() {
             let mut raw_fields = raw_fields.into_iter().map(|v| v.into_iter());
             let first_field = raw_fields.next().unwrap();
             let mut other_fields: Vec<vec::IntoIter<(Span, Option<Ident>, P<Expr>)>>

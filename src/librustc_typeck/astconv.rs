@@ -2025,7 +2025,7 @@ fn compute_object_lifetime_bound<'tcx>(
             "only a single explicit lifetime bound is permitted");
     }
 
-    if explicit_region_bounds.len() != 0 {
+    if !explicit_region_bounds.is_empty() {
         // Explicitly specified region bound. Use that.
         let r = explicit_region_bounds[0];
         return ast_region_to_region(tcx, r);
@@ -2130,11 +2130,11 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                                                      &mut builtin_bounds) {
                             let segments = &b.trait_ref.path.segments;
                             let parameters = &segments[segments.len() - 1].parameters;
-                            if parameters.types().len() > 0 {
+                            if !parameters.types().is_empty() {
                                 check_type_argument_count(tcx, b.trait_ref.path.span,
                                                           parameters.types().len(), 0, 0);
                             }
-                            if parameters.lifetimes().len() > 0 {
+                            if !parameters.lifetimes().is_empty() {
                                 report_lifetime_number_error(tcx, b.trait_ref.path.span,
                                                              parameters.lifetimes().len(), 0);
                             }

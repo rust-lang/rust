@@ -1527,7 +1527,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     // for nil return types, it is ok to not return a value expl.
                 } else {
                     let ends_with_stmt = match body.expr {
-                        None if body.stmts.len() > 0 =>
+                        None if !body.stmts.is_empty() =>
                             match body.stmts.first().unwrap().node {
                                 ast::StmtSemi(ref e, _) => {
                                     ty::expr_ty(self.ir.tcx, &**e) == t_ret

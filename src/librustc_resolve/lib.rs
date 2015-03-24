@@ -3072,7 +3072,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
-        if values.len() > 0 &&
+        if !values.is_empty() &&
             values[smallest] != usize::MAX &&
             values[smallest] < name.len() + 2 &&
             values[smallest] <= max_distance &&
@@ -3228,7 +3228,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         format!("to call `{}::{}`", path_str, path_name)
                                 };
 
-                                if msg.len() > 0 {
+                                if !msg.is_empty() {
                                     msg = format!(". Did you mean {}?", msg)
                                 }
 

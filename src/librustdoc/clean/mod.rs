@@ -712,7 +712,7 @@ impl<'tcx> Clean<Option<Vec<TyParamBound>>> for subst::Substs<'tcx> {
             trait_: t.clean(cx),
             lifetimes: vec![]
         }, ast::TraitBoundModifier::None)));
-        if v.len() > 0 {Some(v)} else {None}
+        if !v.is_empty() {Some(v)} else {None}
     }
 }
 

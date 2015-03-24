@@ -360,7 +360,7 @@ impl Encodable for FileMap {
                     // store the length
                     try! { s.emit_u32(lines.len() as u32) };
 
-                    if lines.len() > 0 {
+                    if !lines.is_empty() {
                         // In order to preserve some space, we exploit the fact that
                         // the lines list is sorted and individual lines are
                         // probably not that long. Because of that we can store lines
@@ -569,7 +569,7 @@ impl CodeMap {
         // accidentally overflowing into the next filemap in case the last byte
         // of span is also the last byte of filemap, which leads to incorrect
         // results from CodeMap.span_to_*.
-        if src.len() > 0 && !src.ends_with("\n") {
+        if !src.is_empty() && !src.ends_with("\n") {
             src.push('\n');
         }
 
@@ -808,7 +808,7 @@ impl CodeMap {
         loop {
             let lines = files[a].lines.borrow();
             let lines = lines;
-            if lines.len() > 0 {
+            if !lines.is_empty() {
                 break;
             }
             if a == 0 {

@@ -469,7 +469,7 @@ fn each_auxiliary_node_id<F>(item: &ast::Item, callback: F) -> bool where
         ast::ItemStruct(ref struct_def, _) => {
             // If this is a newtype struct, return the constructor.
             match struct_def.ctor_id {
-                Some(ctor_id) if struct_def.fields.len() > 0 &&
+                Some(ctor_id) if !struct_def.fields.is_empty() &&
                         struct_def.fields[0].node.kind.is_unnamed() => {
                     continue_ = callback(ctor_id);
                 }

@@ -104,8 +104,8 @@ impl fmt::Display for clean::Generics {
             try!(write!(f, "{}", *life));
         }
 
-        if self.type_params.len() > 0 {
-            if self.lifetimes.len() > 0 {
+        if !self.type_params.is_empty() {
+            if !self.lifetimes.is_empty() {
                 try!(f.write_str(", "));
             }
             for (i, tp) in self.type_params.iter().enumerate() {
@@ -114,7 +114,7 @@ impl fmt::Display for clean::Generics {
                 }
                 try!(f.write_str(&tp.name));
 
-                if tp.bounds.len() > 0 {
+                if !tp.bounds.is_empty() {
                     try!(write!(f, ": {}", TyParamBounds(&tp.bounds)));
                 }
 
@@ -175,7 +175,7 @@ impl fmt::Display for clean::Lifetime {
 
 impl fmt::Display for clean::PolyTrait {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.lifetimes.len() > 0 {
+        if !self.lifetimes.is_empty() {
             try!(f.write_str("for&lt;"));
             for (i, lt) in self.lifetimes.iter().enumerate() {
                 if i > 0 {
@@ -212,7 +212,7 @@ impl fmt::Display for clean::PathParameters {
             clean::PathParameters::AngleBracketed {
                 ref lifetimes, ref types, ref bindings
             } => {
-                if lifetimes.len() > 0 || types.len() > 0 || bindings.len() > 0 {
+                if !lifetimes.is_empty() || !types.is_empty() || !bindings.is_empty() {
                     try!(f.write_str("&lt;"));
                     let mut comma = false;
                     for lifetime in lifetimes {
@@ -541,7 +541,7 @@ impl fmt::Display for clean::Arguments {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for (i, input) in self.values.iter().enumerate() {
             if i > 0 { try!(write!(f, ", ")); }
-            if input.name.len() > 0 {
+            if !input.name.is_empty() {
                 try!(write!(f, "{}: ", input.name));
             }
             try!(write!(f, "{}", input.type_));
@@ -585,8 +585,8 @@ impl<'a> fmt::Display for Method<'a> {
             }
         }
         for (i, input) in d.inputs.values.iter().enumerate() {
-            if i > 0 || args.len() > 0 { args.push_str(", "); }
-            if input.name.len() > 0 {
+            if i > 0 || !args.is_empty() { args.push_str(", "); }
+            if !input.name.is_empty() {
                 args.push_str(&format!("{}: ", input.name));
             }
             args.push_str(&format!("{}", input.type_));
@@ -734,7 +734,7 @@ impl<'a> fmt::Display for ConciseStability<'a> {
                 };
                 write!(f, "<a class='stability {lvl}' title='{lvl}{colon}{reason}'></a>",
                        lvl = Escape(&*lvl),
-                       colon = if stability.reason.len() > 0 { ": " } else { "" },
+                       colon = if !stability.reason.is_empty() { ": " } else { "" },
                        reason = Escape(&*stability.reason))
             }
             None => {

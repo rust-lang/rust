@@ -1225,7 +1225,7 @@ impl<K, V> Node<K, V> {
     /// because we have one too many, and our parent now has one too few
     fn split(&mut self) -> (K, V, Node<K, V>) {
         // Necessary for correctness, but in a private function
-        debug_assert!(self.len() > 0);
+        debug_assert!(!self.is_empty());
 
         let mut right = if self.is_leaf() {
             Node::new_leaf(self.capacity())

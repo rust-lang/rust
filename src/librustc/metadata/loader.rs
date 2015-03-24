@@ -307,13 +307,13 @@ impl<'a> Context<'a> {
     }
 
     pub fn report_load_errs(&mut self) {
-        let message = if self.rejected_via_hash.len() > 0 {
+        let message = if !self.rejected_via_hash.is_empty() {
             format!("found possibly newer version of crate `{}`",
                     self.ident)
-        } else if self.rejected_via_triple.len() > 0 {
+        } else if !self.rejected_via_triple.is_empty() {
             format!("couldn't find crate `{}` with expected target triple {}",
                     self.ident, self.triple)
-        } else if self.rejected_via_kind.len() > 0 {
+        } else if !self.rejected_via_kind.is_empty() {
             format!("found staticlib `{}` instead of rlib or dylib", self.ident)
         } else {
             format!("can't find crate for `{}`", self.ident)
@@ -325,7 +325,7 @@ impl<'a> Context<'a> {
         };
         self.sess.span_err(self.span, &message[..]);
 
-        if self.rejected_via_triple.len() > 0 {
+        if !self.rejected_via_triple.is_empty() {
             let mismatches = self.rejected_via_triple.iter();
             for (i, &CrateMismatch{ ref path, ref got }) in mismatches.enumerate() {
                 self.sess.fileline_note(self.span,
@@ -333,7 +333,7 @@ impl<'a> Context<'a> {
                             self.ident, i+1, got, path.display()));
             }
         }
-        if self.rejected_via_hash.len() > 0 {
+        if !self.rejected_via_hash.is_empty() {
             self.sess.span_note(self.span, "perhaps this crate needs \
                                             to be recompiled?");
             let mismatches = self.rejected_via_hash.iter();
@@ -353,7 +353,7 @@ impl<'a> Context<'a> {
                 }
             }
         }
-        if self.rejected_via_kind.len() > 0 {
+        if !self.rejected_via_kind.is_empty() {
             self.sess.fileline_help(self.span, "please recompile this crate using \
                                             --crate-type lib");
             let mismatches = self.rejected_via_kind.iter();

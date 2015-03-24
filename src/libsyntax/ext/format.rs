@@ -688,7 +688,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
     loop {
         match parser.next() {
             Some(piece) => {
-                if parser.errors.len() > 0 { break }
+                if !parser.errors.is_empty() { break }
                 cx.verify_piece(&piece);
                 match cx.trans_piece(&piece) {
                     Some(piece) => {

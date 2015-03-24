@@ -1656,7 +1656,7 @@ impl<'a> State<'a> {
         try!(self.print_expr(&*args[0]));
         try!(word(&mut self.s, "."));
         try!(self.print_ident(ident.node));
-        if tys.len() > 0 {
+        if !tys.is_empty() {
             try!(word(&mut self.s, "::<"));
             try!(self.commasep(Inconsistent, tys,
                                |s, ty| s.print_type(&**ty)));
@@ -1956,7 +1956,7 @@ impl<'a> State<'a> {
                     options.push("intel");
                 }
 
-                if options.len() > 0 {
+                if !options.is_empty() {
                     try!(space(&mut self.s));
                     try!(self.word_space(":"));
                     try!(self.commasep(Inconsistent, &*options,
@@ -2214,7 +2214,7 @@ impl<'a> State<'a> {
                     },
                     |f| f.node.pat.span));
                 if etc {
-                    if fields.len() != 0 { try!(self.word_space(",")); }
+                    if !fields.is_empty() { try!(self.word_space(",")); }
                     try!(word(&mut self.s, ".."));
                 }
                 try!(space(&mut self.s));
@@ -2727,7 +2727,7 @@ impl<'a> State<'a> {
                        opt_explicit_self: Option<&ast::ExplicitSelf_>)
                        -> io::Result<()> {
         try!(self.ibox(indent_unit));
-        if generics.lifetimes.len() > 0 || generics.ty_params.len() > 0 {
+        if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
             try!(word(&mut self.s, "for"));
             try!(self.print_generics(generics));
         }
