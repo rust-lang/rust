@@ -32,3 +32,21 @@ extern fn eh_personality() {}
 pub trait Copy : PhantomFn<Self> {
     // Empty.
 }
+
+#[lang="rem"]
+pub trait Rem<RHS=Self> {
+    /// The resulting type after applying the `%` operator
+    #[stable(feature = "rust1", since = "1.0.0")]
+    type Output = Self;
+
+    /// The method for the `%` operator
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn rem(self, rhs: RHS) -> Self::Output;
+}
+
+impl Rem for i32 {
+    type Output = i32;
+
+    #[inline]
+    fn rem(self, other: i32) -> i32 { self % other }
+}

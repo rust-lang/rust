@@ -22,13 +22,13 @@ macro_rules! map_insert_rand_bench {
             let mut rng = rand::weak_rng();
 
             for _ in 0..n {
-                let i = rng.gen() % n;
+                let i = rng.gen::<usize>() % n;
                 map.insert(i, i);
             }
 
             // measure
             b.iter(|| {
-                let k = rng.gen() % n;
+                let k = rng.gen::<usize>() % n;
                 map.insert(k, k);
                 map.remove(&k);
             });
@@ -77,7 +77,7 @@ macro_rules! map_find_rand_bench {
 
             // setup
             let mut rng = rand::weak_rng();
-            let mut keys: Vec<_> = (0..n).map(|_| rng.gen() % n).collect();
+            let mut keys: Vec<_> = (0..n).map(|_| rng.gen::<usize>() % n).collect();
 
             for &k in &keys {
                 map.insert(k, k);

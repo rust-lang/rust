@@ -12,5 +12,5 @@
 // pretty-expanded FIXME #23616
 
 pub fn main() {
-    {|i| if 1 == i { }};
+    {|i: u32| if 1 == i { }};
 }

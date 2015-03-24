@@ -12,13 +12,13 @@
 // pretty-expanded FIXME #23616
 
 fn main() {
-    if let Ok(x) = "3.1415".parse() {
+    if let Ok(x) = "3.1415".parse::<f64>() {
         assert_eq!(false, x <= 0.0);
     }
-    if let Ok(x) = "3.1415".parse() {
+    if let Ok(x) = "3.1415".parse::<f64>() {
         assert_eq!(3.1415, x + 0.0);
     }
-    if let Ok(mut x) = "3.1415".parse() {
+    if let Ok(mut x) = "3.1415".parse::<f64>() {
         assert_eq!(8.1415, { x += 5.0; x });
     }
 }
