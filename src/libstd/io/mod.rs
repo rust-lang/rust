@@ -647,14 +647,14 @@ pub trait BufRead: Read {
 
 /// A `Write` adaptor which will write data to multiple locations.
 ///
-/// For more information, see `WriteExt::broadcast`.
-#[unstable(feature = "io", reason = "awaiting stability of WriteExt::broadcast")]
+/// For more information, see `Write::broadcast`.
+#[unstable(feature = "io", reason = "awaiting stability of Write::broadcast")]
 pub struct Broadcast<T, U> {
     first: T,
     second: U,
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of WriteExt::broadcast")]
+#[unstable(feature = "io", reason = "awaiting stability of Write::broadcast")]
 impl<T: Write, U: Write> Write for Broadcast<T, U> {
     fn write(&mut self, data: &[u8]) -> Result<usize> {
         let n = try!(self.first.write(data));
@@ -670,7 +670,7 @@ impl<T: Write, U: Write> Write for Broadcast<T, U> {
 
 /// Adaptor to chain together two instances of `Read`.
 ///
-/// For more information, see `ReadExt::chain`.
+/// For more information, see `Read::chain`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chain<T, U> {
     first: T,
@@ -693,7 +693,7 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
 
 /// Reader adaptor which limits the bytes read from an underlying reader.
 ///
-/// For more information, see `ReadExt::take`.
+/// For more information, see `Read::take`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Take<T> {
     inner: T,
@@ -746,14 +746,14 @@ impl<T: BufRead> BufRead for Take<T> {
 
 /// An adaptor which will emit all read data to a specified writer as well.
 ///
-/// For more information see `ReadExt::tee`
-#[unstable(feature = "io", reason = "awaiting stability of ReadExt::tee")]
+/// For more information see `Read::tee`
+#[unstable(feature = "io", reason = "awaiting stability of Read::tee")]
 pub struct Tee<R, W> {
     reader: R,
     writer: W,
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of ReadExt::tee")]
+#[unstable(feature = "io", reason = "awaiting stability of Read::tee")]
 impl<R: Read, W: Write> Read for Tee<R, W> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
         let n = try!(self.reader.read(buf));
@@ -765,7 +765,7 @@ impl<R: Read, W: Write> Read for Tee<R, W> {
 
 /// A bridge from implementations of `Read` to an `Iterator` of `u8`.
 ///
-/// See `ReadExt::bytes` for more information.
+/// See `Read::bytes` for more information.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Bytes<R> {
     inner: R,
@@ -787,8 +787,8 @@ impl<R: Read> Iterator for Bytes<R> {
 
 /// A bridge from implementations of `Read` to an `Iterator` of `char`.
 ///
-/// See `ReadExt::chars` for more information.
-#[unstable(feature = "io", reason = "awaiting stability of ReadExt::chars")]
+/// See `Read::chars` for more information.
+#[unstable(feature = "io", reason = "awaiting stability of Read::chars")]
 pub struct Chars<R> {
     inner: R,
 }
@@ -796,7 +796,7 @@ pub struct Chars<R> {
 /// An enumeration of possible errors that can be generated from the `Chars`
 /// adapter.
 #[derive(PartialEq, Clone, Debug)]
-#[unstable(feature = "io", reason = "awaiting stability of ReadExt::chars")]
+#[unstable(feature = "io", reason = "awaiting stability of Read::chars")]
 pub enum CharsError {
     /// Variant representing that the underlying stream was read successfully
     /// but it did not contain valid utf8 data.
@@ -806,7 +806,7 @@ pub enum CharsError {
     Other(Error),
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of ReadExt::chars")]
+#[unstable(feature = "io", reason = "awaiting stability of Read::chars")]
 impl<R: Read> Iterator for Chars<R> {
     type Item = result::Result<char, CharsError>;
 
@@ -838,7 +838,7 @@ impl<R: Read> Iterator for Chars<R> {
     }
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of ReadExt::chars")]
+#[unstable(feature = "io", reason = "awaiting stability of Read::chars")]
 impl std_error::Error for CharsError {
     fn description(&self) -> &str {
         match *self {
@@ -854,7 +854,7 @@ impl std_error::Error for CharsError {
     }
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of ReadExt::chars")]
+#[unstable(feature = "io", reason = "awaiting stability of Read::chars")]
 impl fmt::Display for CharsError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
