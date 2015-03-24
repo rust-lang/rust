@@ -27,6 +27,14 @@ use marker::Sized;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Clone : Sized {
     /// Returns a copy of the value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let hello = "Hello"; // &str implements Clone
+    ///
+    /// assert_eq!("Hello", hello.clone());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn clone(&self) -> Self;
 
