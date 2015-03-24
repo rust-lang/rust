@@ -15,7 +15,6 @@ use middle::traits::report_fulfillment_errors;
 use middle::ty::{self, Ty, AsPredicate};
 use syntax::ast;
 use syntax::codemap::Span;
-use util::nodemap::FnvHashSet;
 use util::ppaux::{Repr, UserString};
 
 
@@ -134,44 +133,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.register_predicate(projection_obligation);
     }
 
-    // Finally, check that there IS a projection predicate for every associated type.
-    check_object_type_binds_all_associated_types(fcx.tcx(),
-                                                 span,
-                                                 object_trait);
-
     object_trait_ref
-}
-
-fn check_object_type_binds_all_associated_types<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                                      span: Span,
-                                                      object_trait: &ty::TyTrait<'tcx>)
-{
-    let object_trait_ref =
-        object_trait.principal_trait_ref_with_self_ty(tcx, tcx.types.err);
-
-    let mut associated_types: FnvHashSet<(ast::DefId, ast::Name)> =
-        traits::supertraits(tcx, object_trait_ref.clone())
-        .flat_map(|tr| {
-            let trait_def = ty::lookup_trait_def(tcx, tr.def_id());
-            trait_def.associated_type_names
-                .clone()
-                .into_iter()
-                .map(move |associated_type_name| (tr.def_id(), associated_type_name))
-        })
-        .collect();
-
-    for projection_bound in &object_trait.bounds.projection_bounds {
-        let pair = (projection_bound.0.projection_ty.trait_ref.def_id,
-                    projection_bound.0.projection_ty.item_name);
-        associated_types.remove(&pair);
-    }
-
-    for (trait_def_id, name) in associated_types {
-        span_err!(tcx.sess, span, E0191,
-            "the value of the associated type `{}` (from the trait `{}`) must be specified",
-                    name.user_string(tcx),
-                    ty::item_path_str(tcx, trait_def_id));
-    }
 }
 
 pub fn select_all_fcx_obligations_and_apply_defaults(fcx: &FnCtxt) {

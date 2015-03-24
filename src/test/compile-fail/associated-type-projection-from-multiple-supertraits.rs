@@ -34,6 +34,8 @@ fn dent<C:BoxCar>(c: C, color: C::Color) {
 
 fn dent_object<COLOR>(c: BoxCar<Color=COLOR>) {
     //~^ ERROR ambiguous associated type
+    //~| ERROR the associated type `Color` (from the trait `Box`) must be specified
+    //~| ERROR the associated type `Color` (from the trait `Vehicle`) must be specified
 }
 
 fn paint<C:BoxCar>(c: C, d: C::Color) {
