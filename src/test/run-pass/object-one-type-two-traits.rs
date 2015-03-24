@@ -35,7 +35,7 @@ fn is<T:'static>(x: &Any) -> bool {
 }
 
 fn main() {
-    let x = box 22 as Box<Wrap>;
+    let x = box 22isize as Box<Wrap>;
     println!("x={}", x.get());
     let y = x.wrap();
 }

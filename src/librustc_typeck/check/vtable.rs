@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use check::{FnCtxt};
-use check::demand;
 use middle::traits::{self, ObjectSafetyViolation, MethodViolationCode};
 use middle::traits::{Obligation, ObligationCause};
 use middle::traits::report_fulfillment_errors;
@@ -19,83 +18,6 @@ use syntax::codemap::Span;
 use util::nodemap::FnvHashSet;
 use util::ppaux::{Repr, UserString};
 
-pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                   cast_expr: &ast::Expr,
-                                   source_expr: &ast::Expr,
-                                   target_object_ty: Ty<'tcx>)
-{
-    let tcx = fcx.tcx();
-    debug!("check_object_cast(cast_expr={}, target_object_ty={})",
-           cast_expr.repr(tcx),
-           target_object_ty.repr(tcx));
-
-    // Look up vtables for the type we're casting to,
-    // passing in the source and target type.  The source
-    // must be a pointer type suitable to the object sigil,
-    // e.g.: `&x as &Trait` or `box x as Box<Trait>`
-
-    // First, construct a fresh type that we can feed into `<expr>`
-    // within `<expr> as <type>` to inform type inference (e.g. to
-    // tell it that we are expecting a `Box<_>` or an `&_`).
-    let fresh_ty = fcx.infcx().next_ty_var();
-    let (object_trait_ty, source_expected_ty) = match target_object_ty.sty {
-        ty::ty_uniq(object_trait_ty) => {
-            (object_trait_ty, ty::mk_uniq(fcx.tcx(), fresh_ty))
-        }
-        ty::ty_rptr(target_region, ty::mt { ty: object_trait_ty,
-                                            mutbl: target_mutbl }) => {
-            (object_trait_ty,
-             ty::mk_rptr(fcx.tcx(),
-                         target_region, ty::mt { ty: fresh_ty,
-                                                 mutbl: target_mutbl }))
-        }
-        _ => {
-            fcx.tcx().sess.span_bug(source_expr.span, "expected object type");
-        }
-    };
-
-    let source_ty = fcx.expr_ty(source_expr);
-    debug!("check_object_cast pre unify source_ty={}", source_ty.repr(tcx));
-
-    // This ensures that the source_ty <: source_expected_ty, which
-    // will ensure e.g. that &'a T <: &'b T when doing `&'a T as &'b Trait`
-    //
-    // FIXME (pnkfelix): do we need to use suptype_with_fn in order to
-    // override the error message emitted when the types do not work
-    // out in the manner desired?
-    demand::suptype(fcx, source_expr.span, source_expected_ty, source_ty);
-
-    debug!("check_object_cast postunify source_ty={}", source_ty.repr(tcx));
-
-    let object_trait = object_trait(&object_trait_ty);
-
-    // Ensure that if Ptr<T> is cast to Ptr<Trait>, then T : Trait.
-    push_cast_obligation(fcx, cast_expr, object_trait, fresh_ty);
-    check_object_safety(tcx, object_trait, source_expr.span);
-
-    fn object_trait<'a, 'tcx>(t: &'a Ty<'tcx>) -> &'a ty::TyTrait<'tcx> {
-        match t.sty {
-            ty::ty_trait(ref ty_trait) => &**ty_trait,
-            _ => panic!("expected ty_trait")
-        }
-    }
-
-    fn push_cast_obligation<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                      cast_expr: &ast::Expr,
-                                      object_trait: &ty::TyTrait<'tcx>,
-                                      referent_ty: Ty<'tcx>) {
-        let object_trait_ref =
-            register_object_cast_obligations(fcx,
-                                             cast_expr.span,
-                                             object_trait,
-                                             referent_ty);
-
-        // Finally record the object_trait_ref for use during trans
-        // (it would prob be better not to do this, but it's just kind
-        // of a pain to have to reconstruct it).
-        fcx.write_object_cast(cast_expr.id, object_trait_ref);
-    }
-}
 
 // Check that a trait is 'object-safe'. This should be checked whenever a trait object
 // is created (by casting or coercion, etc.). A trait is object-safe if all its

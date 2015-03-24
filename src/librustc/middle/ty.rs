@@ -968,7 +968,7 @@ impl<'tcx> Eq for TyS<'tcx> {}
 
 impl<'tcx> Hash for TyS<'tcx> {
     fn hash<H: Hasher>(&self, s: &mut H) {
-        (self as *const _).hash(s)
+        (self as *const TyS).hash(s)
     }
 }
 
@@ -2738,7 +2738,7 @@ fn intern_ty<'tcx>(type_arena: &'tcx TypedArena<TyS<'tcx>>,
     };
 
     debug!("Interned type: {:?} Pointer: {:?}",
-           ty, ty as *const _);
+           ty, ty as *const TyS);
 
     interner.insert(InternedTy { ty: ty }, ty);
 
@@ -4823,32 +4823,6 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             RvalueDpsExpr
         }
 
-        ast::ExprCast(..) => {
-            match tcx.node_types.borrow().get(&expr.id) {
-                Some(&ty) => {
-                    if type_is_trait(ty) {
-                        RvalueDpsExpr
-                    } else {
-                        RvalueDatumExpr
-                    }
-                }
-                None => {
-                    // Technically, it should not happen that the expr is not
-                    // present within the table.  However, it DOES happen
-                    // during type check, because the final types from the
-                    // expressions are not yet recorded in the tcx.  At that
-                    // time, though, we are only interested in knowing lvalue
-                    // vs rvalue.  It would be better to base this decision on
-                    // the AST type in cast node---but (at the time of this
-                    // writing) it's not easy to distinguish casts to traits
-                    // from other casts based on the AST.  This should be
-                    // easier in the future, when casts to traits
-                    // would like @Foo, Box<Foo>, or &Foo.
-                    RvalueDatumExpr
-                }
-            }
-        }
-
         ast::ExprBreak(..) |
         ast::ExprAgain(..) |
         ast::ExprRet(..) |
@@ -4864,7 +4838,8 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         ast::ExprUnary(..) |
         ast::ExprBox(None, _) |
         ast::ExprAddrOf(..) |
-        ast::ExprBinary(..) => {
+        ast::ExprBinary(..) |
+        ast::ExprCast(..) => {
             RvalueDatumExpr
         }
 

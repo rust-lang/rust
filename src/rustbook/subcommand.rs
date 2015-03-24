@@ -32,11 +32,11 @@ pub trait Subcommand {
 
 /// Create a Subcommand object based on its name.
 pub fn parse_name(name: &str) -> Option<Box<Subcommand>> {
-    for parser in [
-        help::parse_cmd as fn(&str) -> Option<Box<Subcommand>>,
-        build::parse_cmd as fn(&str) -> Option<Box<Subcommand>>,
-        serve::parse_cmd as fn(&str) -> Option<Box<Subcommand>>,
-        test::parse_cmd as fn(&str) -> Option<Box<Subcommand>>].iter() {
+    let cmds: [fn(&str) -> Option<Box<Subcommand>>; 4] = [help::parse_cmd,
+                                                          build::parse_cmd,
+                                                          serve::parse_cmd,
+                                                          test::parse_cmd];
+    for parser in cmds.iter() {
         let parsed = (*parser)(name);
         if parsed.is_some() { return parsed }
     }

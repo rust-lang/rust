@@ -84,9 +84,9 @@ fn test_as_ref() {
         assert_eq!(q.as_ref().unwrap(), &2);
 
         // Lifetime inference
-        let u = 2;
+        let u = 2isize;
         {
-            let p: *const int = &u as *const _;
+            let p = &u as *const int;
             assert_eq!(p.as_ref().unwrap(), &2);
         }
     }
@@ -102,9 +102,9 @@ fn test_as_mut() {
         assert!(q.as_mut().unwrap() == &mut 2);
 
         // Lifetime inference
-        let mut u = 2;
+        let mut u = 2isize;
         {
-            let p: *mut int = &mut u as *mut _;
+            let p = &mut u as *mut int;
             assert!(p.as_mut().unwrap() == &mut 2);
         }
     }
@@ -170,9 +170,9 @@ fn test_set_memory() {
 
 #[test]
 fn test_unsized_unique() {
-    let xs: &mut [_] = &mut [1, 2, 3];
-    let ptr = unsafe { Unique::new(xs as *mut [_]) };
+    let xs: &mut [i32] = &mut [1, 2, 3];
+    let ptr = unsafe { Unique::new(xs as *mut [i32]) };
     let ys = unsafe { &mut **ptr };
-    let zs: &mut [_] = &mut [1, 2, 3];
+    let zs: &mut [i32] = &mut [1, 2, 3];
     assert!(ys == zs);
 }

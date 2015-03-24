@@ -184,6 +184,8 @@ pub struct Inherited<'a, 'tcx: 'a> {
     // def-id of the closure, so that once we decide, we can easily go
     // back and process them.
     deferred_call_resolutions: RefCell<DefIdMap<Vec<DeferredCallResolutionHandler<'tcx>>>>,
+
+    deferred_cast_checks: RefCell<Vec<CastCheck<'tcx>>>,
 }
 
 trait DeferredCallResolution<'tcx> {
@@ -191,6 +193,15 @@ trait DeferredCallResolution<'tcx> {
 }
 
 type DeferredCallResolutionHandler<'tcx> = Box<DeferredCallResolution<'tcx>+'tcx>;
+
+/// Reifies a cast check to be checked once we have full type information for
+/// a function context.
+struct CastCheck<'tcx> {
+    expr: ast::Expr,
+    expr_ty: Ty<'tcx>,
+    cast_ty: Ty<'tcx>,
+    span: Span,
+}
 
 /// When type-checking an expression, we propagate downward
 /// whatever type hint we are able in the form of an `Expectation`.
@@ -399,6 +410,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             fn_sig_map: RefCell::new(NodeMap()),
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
             deferred_call_resolutions: RefCell::new(DefIdMap()),
+            deferred_cast_checks: RefCell::new(Vec::new()),
         }
     }
 
@@ -508,6 +520,7 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             vtable::select_all_fcx_obligations_and_apply_defaults(&fcx);
             upvar::closure_analyze_fn(&fcx, fn_id, decl, body);
             vtable::select_all_fcx_obligations_or_error(&fcx);
+            fcx.check_casts();
             regionck::regionck_fn(&fcx, fn_id, fn_span, decl, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
         }
@@ -1053,11 +1066,7 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 }
 
 
-fn check_cast_inner<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                              span: Span,
-                              t_1: Ty<'tcx>,
-                              t_e: Ty<'tcx>,
-                              e: &ast::Expr) {
+fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
     fn cast_through_integer_err<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                           span: Span,
                                           t_1: Ty<'tcx>,
@@ -1068,6 +1077,33 @@ fn check_cast_inner<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     actual,
                     fcx.infcx().ty_to_string(t_1))
         }, t_e, None);
+    }
+
+    let span = cast.span;
+    let e = &cast.expr;
+    let t_e = structurally_resolved_type(fcx, span, cast.expr_ty);
+    let t_1 = structurally_resolved_type(fcx, span, cast.cast_ty);
+
+    // Check for trivial casts.
+    if !ty::type_has_ty_infer(t_1) {
+        if let Ok(()) = coercion::mk_assignty(fcx, e, t_e, t_1) {
+            if ty::type_is_numeric(t_1) && ty::type_is_numeric(t_e) {
+                fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_NUMERIC_CASTS,
+                                        e.id,
+                                        span,
+                                        format!("trivial numeric cast: `{}` as `{}`",
+                                                fcx.infcx().ty_to_string(t_e),
+                                                fcx.infcx().ty_to_string(t_1)));
+            } else {
+                fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_CASTS,
+                                        e.id,
+                                        span,
+                                        format!("trivial cast: `{}` as `{}`",
+                                                fcx.infcx().ty_to_string(t_e),
+                                                fcx.infcx().ty_to_string(t_1)));
+            }
+            return;
+        }
     }
 
     let t_e_is_bare_fn_item = ty::type_is_bare_fn_item(t_e);
@@ -1085,18 +1121,17 @@ fn check_cast_inner<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let t_1_is_trivial = t_1_is_scalar && !t_1_is_char && !t_1_is_bare_fn;
 
     if t_e_is_bare_fn_item && t_1_is_bare_fn {
-        demand::coerce(fcx, e.span, t_1, &*e);
+        demand::coerce(fcx, e.span, t_1, &e);
     } else if t_1_is_char {
         let t_e = fcx.infcx().shallow_resolve(t_e);
         if t_e.sty != ty::ty_uint(ast::TyU8) {
             fcx.type_error_message(span, |actual| {
-                format!("only `u8` can be cast as \
-                         `char`, not `{}`", actual)
+                format!("only `u8` can be cast as `char`, not `{}`", actual)
             }, t_e, None);
         }
     } else if t_1.sty == ty::ty_bool {
         span_err!(fcx.tcx().sess, span, E0054,
-            "cannot cast as `bool`, compare with zero instead");
+                  "cannot cast as `bool`, compare with zero instead");
     } else if t_1_is_float && (t_e_is_scalar || t_e_is_c_enum) && !(
         t_e_is_integral || t_e_is_float || t_e.sty == ty::ty_bool) {
         // Casts to float must go through an integer or boolean
@@ -1145,7 +1180,7 @@ fn check_cast_inner<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 /* this case is allowed */
             }
             _ => {
-                demand::coerce(fcx, e.span, t_1, &*e);
+                demand::coerce(fcx, e.span, t_1, &e);
             }
         }
     } else if !(t_e_is_scalar && t_1_is_trivial) {
@@ -1160,49 +1195,6 @@ fn check_cast_inner<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     fcx.infcx().ty_to_string(t_1))
         }, t_e, None);
     }
-}
-
-fn check_cast<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                       cast_expr: &ast::Expr,
-                       e: &'tcx ast::Expr,
-                       t: &ast::Ty) {
-    let id = cast_expr.id;
-    let span = cast_expr.span;
-
-    // Find the type of `e`. Supply hints based on the type we are casting to,
-    // if appropriate.
-    let t_1 = fcx.to_ty(t);
-    let t_1 = structurally_resolved_type(fcx, span, t_1);
-
-    check_expr_with_expectation(fcx, e, ExpectCastableToType(t_1));
-
-    let t_e = fcx.expr_ty(e);
-
-    debug!("t_1={}", fcx.infcx().ty_to_string(t_1));
-    debug!("t_e={}", fcx.infcx().ty_to_string(t_e));
-
-    if ty::type_is_error(t_e) {
-        fcx.write_error(id);
-        return
-    }
-
-    if !fcx.type_is_known_to_be_sized(t_1, cast_expr.span) {
-        report_cast_to_unsized_type(fcx, span, t.span, e.span, t_1, t_e, id);
-        return
-    }
-
-    if ty::type_is_trait(t_1) {
-        // This will be looked up later on.
-        vtable::check_object_cast(fcx, cast_expr, e, t_1);
-        fcx.write_ty(id, t_1);
-        return
-    }
-
-    let t_1 = structurally_resolved_type(fcx, span, t_1);
-    let t_e = structurally_resolved_type(fcx, span, t_e);
-
-    check_cast_inner(fcx, span, t_1, t_e, e);
-    fcx.write_ty(id, t_1);
 }
 
 impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
@@ -1372,7 +1364,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn tag(&self) -> String {
-        format!("{:?}", self as *const FnCtxt)
+        let self_ptr: *const FnCtxt = self;
+        format!("{:?}", self_ptr)
     }
 
     pub fn local_ty(&self, span: Span, nid: ast::NodeId) -> Ty<'tcx> {
@@ -1414,14 +1407,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("write_ty({}, {}) in fcx {}",
                node_id, ppaux::ty_to_string(self.tcx(), ty), self.tag());
         self.inh.node_types.borrow_mut().insert(node_id, ty);
-    }
-
-    pub fn write_object_cast(&self,
-                             key: ast::NodeId,
-                             trait_ref: ty::PolyTraitRef<'tcx>) {
-        debug!("write_object_cast key={} trait_ref={}",
-               key, trait_ref.repr(self.tcx()));
-        self.inh.object_cast_map.borrow_mut().insert(key, trait_ref);
     }
 
     pub fn write_substs(&self, node_id: ast::NodeId, substs: ty::ItemSubsts<'tcx>) {
@@ -1922,6 +1907,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let o_field = if idx < items.len() { Some(&items[idx]) } else { None };
         o_field.map(|f| ty::lookup_field_type(self.tcx(), class_id, f.id, substs))
                .map(|t| self.normalize_associated_types_in(span, &t))
+    }
+
+    fn check_casts(&self) {
+        let mut deferred_cast_checks = self.inh.deferred_cast_checks.borrow_mut();
+        for check in deferred_cast_checks.iter() {
+            check_cast(self, check);
+        }
+
+        deferred_cast_checks.clear();
     }
 }
 
@@ -3828,7 +3822,33 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         if let ast::TyFixedLengthVec(_, ref count_expr) = t.node {
             check_expr_with_hint(fcx, &**count_expr, tcx.types.uint);
         }
-        check_cast(fcx, expr, &**e, &**t);
+
+        // Find the type of `e`. Supply hints based on the type we are casting to,
+        // if appropriate.
+        let t_1 = fcx.to_ty(t);
+        let t_1 = structurally_resolved_type(fcx, expr.span, t_1);
+        check_expr_with_expectation(fcx, e, ExpectCastableToType(t_1));
+        let t_e = fcx.expr_ty(e);
+
+        // Eagerly check for some obvious errors.
+        if ty::type_is_error(t_e) {
+            fcx.write_error(id);
+        } else if !fcx.type_is_known_to_be_sized(t_1, expr.span) {
+            report_cast_to_unsized_type(fcx, expr.span, t.span, e.span, t_1, t_e, id);
+        } else {
+            // Write a type for the whole expression, assuming everything is going
+            // to work out Ok.
+            fcx.write_ty(id, t_1);
+
+            // Defer other checks until we're done type checking.
+            let mut deferred_cast_checks = fcx.inh.deferred_cast_checks.borrow_mut();
+            deferred_cast_checks.push(CastCheck {
+                expr: (**e).clone(),
+                expr_ty: t_e,
+                cast_ty: t_1,
+                span: expr.span,
+            });
+        }
       }
       ast::ExprVec(ref args) => {
         let uty = expected.to_option(fcx).and_then(|uty| {
@@ -4461,6 +4481,7 @@ fn check_const_with_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     check_expr_with_hint(fcx, e, declty);
     demand::coerce(fcx, e.span, declty, e);
     vtable::select_all_fcx_obligations_or_error(fcx);
+    fcx.check_casts();
     regionck::regionck_expr(fcx, e);
     writeback::resolve_type_vars_in_expr(fcx, e);
 }
@@ -4560,6 +4581,8 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                      ty: attr::IntType,
                      disr: ty::Disr) -> bool {
         fn uint_in_range(ccx: &CrateCtxt, ty: ast::UintTy, disr: ty::Disr) -> bool {
+            #![allow(trivial_numeric_casts)]
+
             match ty {
                 ast::TyU8 => disr as u8 as Disr == disr,
                 ast::TyU16 => disr as u16 as Disr == disr,
@@ -4588,6 +4611,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                           id: ast::NodeId,
                           hint: attr::ReprAttr)
                           -> Vec<Rc<ty::VariantInfo<'tcx>>> {
+        #![allow(trivial_numeric_casts)]
         use std::num::Int;
 
         let rty = ty::node_id_to_type(ccx.tcx, id);

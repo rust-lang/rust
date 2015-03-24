@@ -1227,22 +1227,9 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             trans_overloaded_op(bcx, expr, MethodCall::expr(expr.id), base,
                                 vec![(idx_datum, idx.id)], Some(dest), true).bcx
         }
-        ast::ExprCast(ref val, _) => {
-            // DPS output mode means this is a trait cast:
-            if ty::type_is_trait(node_id_type(bcx, expr.id)) {
-                let trait_ref =
-                    bcx.tcx().object_cast_map.borrow()
-                                             .get(&expr.id)
-                                             .cloned()
-                                             .unwrap();
-                let trait_ref = bcx.monomorphize(&trait_ref);
-                let datum = unpack_datum!(bcx, trans(bcx, &**val));
-                meth::trans_trait_cast(bcx, datum, expr.id,
-                                       trait_ref, dest)
-            } else {
-                bcx.tcx().sess.span_bug(expr.span,
-                                        "expr_cast of non-trait");
-            }
+        ast::ExprCast(..) => {
+            // Trait casts used to come this way, now they should be coercions.
+            bcx.tcx().sess.span_bug(expr.span, "DPS expr_cast (residual trait cast?)")
         }
         ast::ExprAssignOp(op, ref dst, ref src) => {
             trans_assign_op(bcx, expr, op, &**dst, &**src)
@@ -2091,7 +2078,7 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut bcx = bcx;
     let ccx = bcx.ccx();
 
-    let t_in = expr_ty(bcx, expr);
+    let t_in = expr_ty_adjusted(bcx, expr);
     let t_out = node_id_type(bcx, id);
     let k_in = cast_type_kind(bcx.tcx(), t_in);
     let k_out = cast_type_kind(bcx.tcx(), t_out);
@@ -2103,7 +2090,8 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     // by-value as appropriate given its type:
     let mut datum = unpack_datum!(bcx, trans(bcx, expr));
 
-    if cast_is_noop(datum.ty, t_out) {
+    let datum_ty = monomorphize_type(bcx, datum.ty);
+    if cast_is_noop(datum_ty, t_out) {
         datum.ty = t_out;
         return DatumBlock::new(bcx, datum);
     }

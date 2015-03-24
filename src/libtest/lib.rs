@@ -1021,7 +1021,7 @@ impl MetricMap {
         let MetricMap(ref mm) = *self;
         let v : Vec<String> = mm.iter()
             .map(|(k,v)| format!("{}: {} (+/- {})", *k,
-                                 v.value as f64, v.noise as f64))
+                                 v.value, v.noise))
             .collect();
         v.connect(", ")
     }
