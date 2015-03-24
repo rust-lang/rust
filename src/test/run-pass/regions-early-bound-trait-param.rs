@@ -83,7 +83,10 @@ impl<'s> Trait<'s> for (int,int) {
 }
 
 impl<'t> MakerTrait for Box<Trait<'t>+'static> {
-    fn mk() -> Box<Trait<'t>+'static> { box() (4,5) as Box<Trait> }
+    fn mk() -> Box<Trait<'t>+'static> {
+        let tup: Box<(int, int)> = box() (4,5);
+        tup as Box<Trait>
+    }
 }
 
 enum List<'l> {

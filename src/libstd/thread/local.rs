@@ -176,6 +176,7 @@ macro_rules! __thread_local_inner {
             }
         };
 
+        #[allow(trivial_casts)]
         #[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
         const _INIT: ::std::thread::__local::__impl::KeyInner<$t> = {
             ::std::thread::__local::__impl::KeyInner {

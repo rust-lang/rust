@@ -169,7 +169,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 // Weird, but useful for X-macros.
                 return box ParserAnyMacro {
                     parser: RefCell::new(p),
-                } as Box<MacResult+'cx>
+                }
               }
               Failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
                 best_fail_spot = sp;

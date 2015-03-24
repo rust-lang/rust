@@ -291,15 +291,15 @@ fn main() {
     let slice2 = &*vec2;
 
     // Trait Objects
-    let box_trait = (box 0) as Box<Trait1>;
-    let ref_trait = &0 as &Trait1;
-    let mut mut_int1 = 0;
+    let box_trait = (box 0_isize) as Box<Trait1>;
+    let ref_trait = &0_isize as &Trait1;
+    let mut mut_int1 = 0_isize;
     let mut_ref_trait = (&mut mut_int1) as &mut Trait1;
 
-    let generic_box_trait = (box 0) as Box<Trait2<i32, Mod1::Struct2>>;
-    let generic_ref_trait  = (&0) as &Trait2<Struct1, Struct1>;
+    let generic_box_trait = (box 0_isize) as Box<Trait2<i32, Mod1::Struct2>>;
+    let generic_ref_trait  = (&0_isize) as &Trait2<Struct1, Struct1>;
 
-    let mut generic_mut_ref_trait_impl = 0;
+    let mut generic_mut_ref_trait_impl = 0_isize;
     let generic_mut_ref_trait = (&mut generic_mut_ref_trait_impl) as
         &mut Trait2<Mod1::Mod2::Struct3, GenericStruct<usize, isize>>;
 

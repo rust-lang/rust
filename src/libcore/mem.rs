@@ -313,6 +313,8 @@ pub fn drop<T>(_x: T) { }
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
+    // FIXME(#23542) Replace with type ascription.
+    #![allow(trivial_casts)]
     ptr::read(src as *const T as *const U)
 }
 

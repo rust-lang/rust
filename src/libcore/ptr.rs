@@ -529,7 +529,7 @@ impl<T: ?Sized> Unique<T> {
     /// Create a new `Unique`.
     #[unstable(feature = "unique")]
     pub unsafe fn new(ptr: *mut T) -> Unique<T> {
-        Unique { pointer: NonZero::new(ptr as *const T), _marker: PhantomData }
+        Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
     }
 
     /// Dereference the content.
