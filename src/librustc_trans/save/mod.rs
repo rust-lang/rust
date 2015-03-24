@@ -1165,7 +1165,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 let name = get_ident(item.ident);
                 let name = &name;
                 let location = match *s {
-                    Some((ref s, _)) => s.to_string(),
+                    Some(s) => s.to_string(),
                     None => name.to_string(),
                 };
                 let alias_span = self.span.span_for_last_ident(item.span);

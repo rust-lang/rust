@@ -13,7 +13,7 @@
 
 extern crate core;
 extern crate rand;
-extern crate "serialize" as rustc_serialize;
+extern crate serialize as rustc_serialize;
 
 #[derive(Rand)]  //~ ERROR this trait cannot be derived
 //~^ WARNING `#[derive(Rand)]` is deprecated

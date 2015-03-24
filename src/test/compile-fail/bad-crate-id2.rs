@@ -9,5 +9,6 @@
 // except according to those terms.
 
 extern crate "#a" as bar; //~ ERROR: invalid character `#` in crate name: `#a`
+//~^ WARNING: obsolete syntax
 
 fn main() {}

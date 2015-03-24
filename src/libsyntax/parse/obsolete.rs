@@ -24,6 +24,7 @@ use ptr::P;
 pub enum ObsoleteSyntax {
     ClosureKind,
     EmptyIndex,
+    ExternCrateString,
 }
 
 pub trait ParserObsoleteMethods {
@@ -54,6 +55,11 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             ObsoleteSyntax::EmptyIndex => (
                 "[]",
                 "write `[..]` instead",
+                false, // warning for now
+            ),
+            ObsoleteSyntax::ExternCrateString => (
+                "\"crate-name\"",
+                "use an identifier not in quotes instead",
                 false, // warning for now
             ),
         };
