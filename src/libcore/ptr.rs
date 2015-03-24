@@ -15,12 +15,9 @@
 //! Working with unsafe pointers in Rust is uncommon,
 //! typically limited to a few patterns.
 //!
-//! Use the [`null` function](fn.null.html) to create null pointers,
-//! the [`is_null`](trait.PtrExt.html#tymethod.is_null)
-//! methods of the [`PtrExt` trait](trait.PtrExt.html) to check for null.
-//! The `PtrExt` trait is imported by the prelude, so `is_null` etc.
-//! work everywhere. The `PtrExt` also defines the `offset` method,
-//! for pointer math.
+//! Use the [`null` function](fn.null.html) to create null pointers, and
+//! the `is_null` method of the `*const T` type  to check for null.
+//! The `*const T` type also defines the `offset` method, for pointer math.
 //!
 //! # Common ways to create unsafe pointers
 //!

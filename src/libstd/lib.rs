@@ -40,11 +40,11 @@
 //!
 //! ## Vectors, slices and strings
 //!
-//! The common container type, `Vec`, a growable vector backed by an
-//! array, lives in the [`vec`](vec/index.html) module. References to
-//! arrays, `&[T]`, more commonly called "slices", are built-in types
-//! for which the [`slice`](slice/index.html) module defines many
-//! methods.
+//! The common container type, `Vec`, a growable vector backed by an array,
+//! lives in the [`vec`](vec/index.html) module. Contiguous, unsized regions
+//! of memory, `[T]`, commonly called "slices", and their borrowed versions,
+//! `&[T]`, commonly called "borrowed slices", are built-in types for which the
+//! for which the [`slice`](slice/index.html) module defines many methods.
 //!
 //! `&str`, a UTF-8 string, is a built-in type, and the standard library
 //! defines methods for it on a variety of traits in the
@@ -75,7 +75,7 @@
 //!
 //! The [`thread`](thread/index.html) module contains Rust's threading abstractions.
 //! [`sync`](sync/index.html) contains further, primitive, shared memory types,
-//! including [`atomic`](sync/atomic/index.html), and [`mpsc`](sync/mpmc/index.html),
+//! including [`atomic`](sync/atomic/index.html), and [`mpsc`](sync/mpsc/index.html),
 //! which contains the channel types for message passing.
 //!
 //! Common types of I/O, including files, TCP, UDP, pipes, Unix domain sockets,
