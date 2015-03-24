@@ -678,7 +678,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             trans_def(bcx, expr, bcx.def(expr.id))
         }
         ast::ExprField(ref base, ident) => {
-            trans_rec_field(bcx, &**base, ident.node)
+            trans_rec_field(bcx, &**base, ident.node.name)
         }
         ast::ExprTupField(ref base, idx) => {
             trans_rec_tup_field(bcx, &**base, idx.node)
@@ -777,9 +777,9 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 /// Translates `base.field`.
 fn trans_rec_field<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                base: &ast::Expr,
-                               field: ast::Ident)
+                               field: ast::Name)
                                -> DatumBlock<'blk, 'tcx, Expr> {
-    trans_field(bcx, base, |tcx, field_tys| ty::field_idx_strict(tcx, field.name, field_tys))
+    trans_field(bcx, base, |tcx, field_tys| ty::field_idx_strict(tcx, field, field_tys))
 }
 
 /// Translates `base.<idx>`.

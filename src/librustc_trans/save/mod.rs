@@ -288,7 +288,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
     fn process_method(&mut self, sig: &ast::MethodSig,
                       body: Option<&ast::Block>,
-                      id: ast::NodeId, ident: ast::Ident,
+                      id: ast::NodeId, name: ast::Name,
                       span: Span) {
         if generated_code(span) {
             return;
@@ -354,7 +354,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             },
         };
 
-        let qualname = &format!("{}::{}", qualname, &get_ident(ident));
+        let qualname = &format!("{}::{}", qualname, &token::get_name(name));
 
         // record the decl for this def (if it has one)
         let decl_id = ty::trait_item_of_item(&self.analysis.ty_cx,
@@ -1238,7 +1238,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         match trait_item.node {
             ast::MethodTraitItem(ref sig, ref body) => {
                 self.process_method(sig, body.as_ref().map(|x| &**x),
-                                    trait_item.id, trait_item.ident, trait_item.span);
+                                    trait_item.id, trait_item.ident.name, trait_item.span);
             }
             ast::TypeTraitItem(..) => {}
         }
@@ -1248,7 +1248,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         match impl_item.node {
             ast::MethodImplItem(ref sig, ref body) => {
                 self.process_method(sig, Some(body), impl_item.id,
-                                    impl_item.ident, impl_item.span);
+                                    impl_item.ident.name, impl_item.span);
             }
             ast::TypeImplItem(_) |
             ast::MacImplItem(_) => {}
