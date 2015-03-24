@@ -112,7 +112,7 @@ impl<M: Send> Helper<M> {
                     self.cond.notify_one()
                 });
 
-                rt::at_exit(move || { self.shutdown() });
+                let _ = rt::at_exit(move || { self.shutdown() });
                 *self.initialized.get() = true;
             } else if *self.chan.get() as uint == 1 {
                 panic!("cannot continue usage after shutdown");
