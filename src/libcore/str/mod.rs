@@ -164,8 +164,7 @@ impl FromStr for bool {
     /// assert!(<bool as FromStr>::from_str("not even a boolean").is_err());
     /// ```
     ///
-    /// Note, in many cases, the StrExt::parse() which is based on
-    /// this FromStr::from_str() is more proper.
+    /// Note, in many cases, the `.parse()` method on `str` is more proper.
     ///
     /// ```
     /// assert_eq!("true".parse(), Ok(true));
@@ -530,7 +529,7 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
 /// External iterator for a string's bytes.
 /// Use with the `std::iter` module.
 ///
-/// Created with `StrExt::bytes`
+/// Created with `str::bytes`
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Bytes<'a>(Map<slice::Iter<'a, u8>, BytesDeref>);
@@ -1461,27 +1460,27 @@ impl<'a, S: ?Sized> Str for &'a S where S: Str {
     fn as_slice(&self) -> &str { Str::as_slice(*self) }
 }
 
-/// Return type of `StrExt::split`
+/// Return type of `str::split`
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Split<'a, P: Pattern<'a>>(CharSplits<'a, P>);
 delegate_iter!{pattern &'a str : Split<'a, P>}
 
-/// Return type of `StrExt::split_terminator`
+/// Return type of `str::split_terminator`
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitTerminator<'a, P: Pattern<'a>>(CharSplits<'a, P>);
 delegate_iter!{pattern &'a str : SplitTerminator<'a, P>}
 
-/// Return type of `StrExt::splitn`
+/// Return type of `str::splitn`
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitN<'a, P: Pattern<'a>>(CharSplitsN<'a, P>);
 delegate_iter!{pattern forward &'a str : SplitN<'a, P>}
 
-/// Return type of `StrExt::rsplit`
+/// Return type of `str::rsplit`
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplit<'a, P: Pattern<'a>>(RCharSplits<'a, P>);
 delegate_iter!{pattern reverse &'a str : RSplit<'a, P>}
 
-/// Return type of `StrExt::rsplitn`
+/// Return type of `str::rsplitn`
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplitN<'a, P: Pattern<'a>>(RCharSplitsN<'a, P>);
 delegate_iter!{pattern reverse &'a str : RSplitN<'a, P>}
