@@ -409,7 +409,7 @@ impl Collector {
 impl DocFolder for Collector {
     fn fold_item(&mut self, item: clean::Item) -> Option<clean::Item> {
         let pushed = match item.name {
-            Some(ref name) if name.len() == 0 => false,
+            Some(ref name) if name.is_empty() => false,
             Some(ref name) => { self.names.push(name.to_string()); true }
             None => false
         };

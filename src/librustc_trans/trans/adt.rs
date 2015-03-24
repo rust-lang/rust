@@ -235,7 +235,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             let dtor = ty::ty_dtor(cx.tcx(), def_id).has_drop_flag();
 
-            if cases.len() == 0 {
+            if cases.is_empty() {
                 // Uninhabitable; represent as unit
                 // (Typechecking will reject discriminant-sizing attrs.)
                 assert_eq!(hint, attr::ReprAny);
@@ -244,7 +244,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                   dtor_to_init_u8(dtor));
             }
 
-            if !dtor && cases.iter().all(|c| c.tys.len() == 0) {
+            if !dtor && cases.iter().all(|c| c.tys.is_empty()) {
                 // All bodies empty -> intlike
                 let discrs: Vec<u64> = cases.iter().map(|c| c.discr).collect();
                 let bounds = IntBounds {

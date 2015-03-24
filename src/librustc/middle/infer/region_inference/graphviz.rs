@@ -88,7 +88,7 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
             Err(_) => "/tmp/constraints.node%.dot".to_string(),
         };
 
-        if output_template.len() == 0 {
+        if output_template.is_empty() {
             tcx.sess.bug("empty string provided as RUST_REGION_GRAPH");
         }
 

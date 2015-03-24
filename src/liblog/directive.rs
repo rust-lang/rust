@@ -45,7 +45,7 @@ pub fn parse_logging_spec(spec: &str) -> (Vec<LogDirective>, Option<String>) {
         return (dirs, None);
     }
     mods.map(|m| { for s in m.split(',') {
-        if s.len() == 0 { continue }
+        if s.is_empty() { continue }
         let mut parts = s.split('=');
         let (log_level, name) = match (parts.next(), parts.next().map(|s| s.trim()), parts.next()) {
             (Some(part0), None, None) => {

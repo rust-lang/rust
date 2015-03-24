@@ -3788,7 +3788,7 @@ its type parameters are types:
 
 ```ignore
 fn map<A: Clone, B: Clone>(f: |A| -> B, xs: &[A]) -> Vec<B> {
-    if xs.len() == 0 {
+    if xs.is_empty() {
        return vec![];
     }
     let first: B = f(xs[0].clone());

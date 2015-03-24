@@ -215,9 +215,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 match i.inner {
                     // emptied modules/impls have no need to exist
                     clean::ModuleItem(ref m)
-                        if m.items.len() == 0 &&
+                        if m.items.is_empty() &&
                            i.doc_value().is_none() => None,
-                    clean::ImplItem(ref i) if i.items.len() == 0 => None,
+                    clean::ImplItem(ref i) if i.items.is_empty() => None,
                     _ => {
                         self.retained.insert(i.def_id.node);
                         Some(i)

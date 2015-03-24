@@ -449,7 +449,7 @@ impl<'a> Parser<'a> {
                     (format!("expected one of {}, found `{}`",
                              expect,
                              actual))
-                } else if expected.len() == 0 {
+                } else if expected.is_empty() {
                     (format!("unexpected token: `{}`",
                              actual))
                 } else {
@@ -1244,7 +1244,7 @@ impl<'a> Parser<'a> {
 
         // In type grammar, `+` is treated like a binary operator,
         // and hence both L and R side are required.
-        if bounds.len() == 0 {
+        if bounds.is_empty() {
             let last_span = self.last_span;
             self.span_err(last_span,
                           "at least one type parameter bound \
@@ -2191,7 +2191,7 @@ impl<'a> Parser<'a> {
                                                  &[token::CloseDelim(token::Brace)]));
                             }
 
-                            if fields.len() == 0 && base.is_none() {
+                            if fields.is_empty() && base.is_none() {
                                 let last_span = self.last_span;
                                 self.span_err(last_span,
                                               "structure literal must either \
@@ -3914,7 +3914,7 @@ impl<'a> Parser<'a> {
                         let hi = self.span.hi;
                         let span = mk_sp(lo, hi);
 
-                        if bounds.len() == 0 {
+                        if bounds.is_empty() {
                             self.span_err(span,
                                           "each predicate in a `where` clause must have \
                                            at least one bound in it");
@@ -4572,7 +4572,7 @@ impl<'a> Parser<'a> {
                 fields.push(try!(self.parse_struct_decl_field(true)));
             }
 
-            if fields.len() == 0 {
+            if fields.is_empty() {
                 return Err(self.fatal(&format!("unit-like struct definition should be \
                     written as `struct {};`",
                     token::get_ident(class_name.clone()))));
@@ -4611,7 +4611,7 @@ impl<'a> Parser<'a> {
                     Ok(spanned(lo, p.span.hi, struct_field_))
                 }));
 
-            if fields.len() == 0 {
+            if fields.is_empty() {
                 return Err(self.fatal(&format!("unit-like struct definition should be \
                     written as `struct {};`",
                     token::get_ident(class_name.clone()))));
@@ -5023,7 +5023,7 @@ impl<'a> Parser<'a> {
                 all_nullary = false;
                 let start_span = self.span;
                 let struct_def = try!(self.parse_struct_def());
-                if struct_def.fields.len() == 0 {
+                if struct_def.fields.is_empty() {
                     self.span_err(start_span,
                         &format!("unit-like struct variant should be written \
                                  without braces, as `{},`",

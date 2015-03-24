@@ -381,7 +381,7 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> Vec<u16> {
         // it will be dropped entirely when parsed on the other end.
         let arg_bytes = &arg.as_inner().inner.as_inner();
         let quote = arg_bytes.iter().any(|c| *c == b' ' || *c == b'\t')
-            || arg_bytes.len() == 0;
+            || arg_bytes.is_empty();
         if quote {
             cmd.push('"' as u16);
         }

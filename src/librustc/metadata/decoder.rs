@@ -767,7 +767,7 @@ pub fn get_enum_variants<'tcx>(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::Nod
                         get_type(cdata, field_ty.id.node, tcx).ty
                     })
                     .collect();
-                let arg_names = if arg_names.len() == 0 { None } else { Some(arg_names) };
+                let arg_names = if arg_names.is_empty() { None } else { Some(arg_names) };
 
                 (None, arg_tys, arg_names)
             }
@@ -1383,7 +1383,7 @@ pub fn get_dylib_dependency_formats(cdata: Cmd)
 
     debug!("found dylib deps: {}", formats.as_str_slice());
     for spec in formats.as_str_slice().split(',') {
-        if spec.len() == 0 { continue }
+        if spec.is_empty() { continue }
         let cnum = spec.split(':').nth(0).unwrap();
         let link = spec.split(':').nth(1).unwrap();
         let cnum: ast::CrateNum = cnum.parse().unwrap();

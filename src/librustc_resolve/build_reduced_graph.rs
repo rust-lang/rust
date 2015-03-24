@@ -767,7 +767,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 f.name
             }).collect::<Vec<_>>();
 
-            if fields.len() == 0 {
+            if fields.is_empty() {
                 child_name_bindings.define_value(def, DUMMY_SP, modifiers);
             }
 

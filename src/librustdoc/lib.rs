@@ -219,7 +219,7 @@ pub fn main_args(args: &[String]) -> isize {
         return 0;
     }
 
-    if matches.free.len() == 0 {
+    if matches.free.is_empty() {
         println!("expected an input file to act on");
         return 1;
     } if matches.free.len() > 1 {

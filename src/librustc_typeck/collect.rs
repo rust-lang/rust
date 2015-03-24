@@ -1035,7 +1035,7 @@ fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     match struct_def.ctor_id {
         None => {}
         Some(ctor_id) => {
-            if struct_def.fields.len() == 0 {
+            if struct_def.fields.is_empty() {
                 // Enum-like.
                 write_ty_to_tcx(tcx, ctor_id, selfty);
 
@@ -1893,7 +1893,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                   .flat_map(|predicate| {
                       match *predicate {
                           ast::WherePredicate::BoundPredicate(ref data) => {
-                              if data.bound_lifetimes.len() == 0 &&
+                              if data.bound_lifetimes.is_empty() &&
                                   is_param(ccx.tcx, &data.bounded_ty, param_id)
                               {
                                   from_bounds(ccx, &data.bounds).into_iter()

@@ -912,7 +912,7 @@ impl DocFolder for Cache {
                      false)
                 }
                 clean::MethodItem(..) => {
-                    if self.parent_stack.len() == 0 {
+                    if self.parent_stack.is_empty() {
                         ((None, None), false)
                     } else {
                         let last = self.parent_stack.last().unwrap();
@@ -1115,7 +1115,7 @@ impl Context {
     fn recurse<T, F>(&mut self, s: String, f: F) -> T where
         F: FnOnce(&mut Context) -> T,
     {
-        if s.len() == 0 {
+        if s.is_empty() {
             panic!("Unexpected empty destination: {:?}", self.current);
         }
         let prev = self.dst.clone();
@@ -1343,7 +1343,7 @@ impl Context {
     fn ignore_private_item(&self, it: &clean::Item) -> bool {
         match it.inner {
             clean::ModuleItem(ref m) => {
-                (m.items.len() == 0 &&
+                (m.items.is_empty() &&
                  it.doc_value().is_none() &&
                  it.visibility != Some(ast::Public)) ||
                 (self.passes.contains("strip-private") && it.visibility != Some(ast::Public))
@@ -1690,7 +1690,7 @@ struct Initializer<'a>(&'a str);
 impl<'a> fmt::Display for Initializer<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Initializer(s) = *self;
-        if s.len() == 0 { return Ok(()); }
+        if s.is_empty() { return Ok(()); }
         try!(write!(f, "<code> = </code>"));
         write!(f, "<code>{}</code>", s)
     }
@@ -1766,7 +1766,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         match m.inner { clean::MethodItem(_) => true, _ => false }
     }).collect::<Vec<_>>();
 
-    if t.items.len() == 0 {
+    if t.items.is_empty() {
         try!(write!(w, "{{ }}"));
     } else {
         try!(write!(w, "{{\n"));
@@ -1986,7 +1986,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
                   it.name.as_ref().unwrap(),
                   e.generics,
                   WhereClause(&e.generics)));
-    if e.variants.len() == 0 && !e.variants_stripped {
+    if e.variants.is_empty() && !e.variants_stripped {
         try!(write!(w, " {{}}"));
     } else {
         try!(write!(w, " {{\n"));

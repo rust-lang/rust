@@ -676,7 +676,7 @@ fn print_flowgraph<W: Write>(variants: Vec<borrowck_dot::Variant>,
     };
 
     match code {
-        _ if variants.len() == 0 => {
+        _ if variants.is_empty() => {
             let r = dot::render(&lcfg, &mut out);
             return expand_err_details(r);
         }

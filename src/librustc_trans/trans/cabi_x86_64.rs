@@ -70,7 +70,7 @@ trait ClassList {
 
 impl ClassList for [RegClass] {
     fn is_pass_byval(&self) -> bool {
-        if self.len() == 0 { return false; }
+        if self.is_empty() { return false; }
 
         let class = self[0];
            class == Memory
@@ -79,7 +79,7 @@ impl ClassList for [RegClass] {
     }
 
     fn is_ret_bysret(&self) -> bool {
-        if self.len() == 0 { return false; }
+        if self.is_empty() { return false; }
 
         self[0] == Memory
     }

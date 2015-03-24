@@ -3036,7 +3036,7 @@ pub fn mk_trait<'tcx>(cx: &ctxt<'tcx>,
 }
 
 fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
-    bounds.len() == 0 ||
+    bounds.is_empty() ||
         bounds[1..].iter().enumerate().all(
             |(index, bound)| bounds[index].sort_key() <= bound.sort_key())
 }
@@ -3687,7 +3687,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                             if variants.len() == 2 {
                                 let mut data_idx = 0;
 
-                                if variants[0].args.len() == 0 {
+                                if variants[0].args.is_empty() {
                                     data_idx = 1;
                                 }
 
@@ -4200,10 +4200,10 @@ pub fn type_is_c_like_enum(cx: &ctxt, ty: Ty) -> bool {
     match ty.sty {
         ty_enum(did, _) => {
             let variants = enum_variants(cx, did);
-            if variants.len() == 0 {
+            if variants.is_empty() {
                 false
             } else {
-                variants.iter().all(|v| v.args.len() == 0)
+                variants.iter().all(|v| v.args.is_empty())
             }
         }
         _ => false
