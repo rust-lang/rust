@@ -36,7 +36,7 @@ pub fn init() {
                                 &mut data);
         assert_eq!(ret, 0);
 
-        rt::at_exit(|| { c::WSACleanup(); })
+        let _ = rt::at_exit(|| { c::WSACleanup(); });
     });
 }
 

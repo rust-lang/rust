@@ -2439,6 +2439,7 @@ pub mod consts {
         }
         pub mod posix88 {
             use types::os::arch::c95::c_int;
+            use types::os::arch::posix88::mode_t;
 
             pub const O_RDONLY : c_int = 0;
             pub const O_WRONLY : c_int = 1;

@@ -133,9 +133,8 @@ unsafe fn init_dtors() {
     if !DTORS.is_null() { return }
 
     let dtors = box Vec::<(Key, Dtor)>::new();
-    DTORS = boxed::into_raw(dtors);
 
-    rt::at_exit(move|| {
+    let res = rt::at_exit(move|| {
         DTOR_LOCK.lock();
         let dtors = DTORS;
         DTORS = 1 as *mut _;
@@ -143,6 +142,11 @@ unsafe fn init_dtors() {
         assert!(DTORS as uint == 1); // can't re-init after destructing
         DTOR_LOCK.unlock();
     });
+    if res.is_ok() {
+        DTORS = boxed::into_raw(dtors);
+    } else {
+        DTORS = 1 as *mut _;
+    }
 }
 
 unsafe fn register_dtor(key: Key, dtor: Dtor) {

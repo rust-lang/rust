@@ -352,7 +352,7 @@ pub mod reader {
             let i = (val >> 28) as uint;
             let (shift, mask) = SHIFT_MASK_TABLE[i];
             Ok(Res {
-                val: ((val >> shift) & mask) as uint,
+                val: ((val >> shift) & mask) as usize,
                 next: start + ((32 - shift) >> 3),
             })
         }
