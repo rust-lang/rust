@@ -1771,8 +1771,8 @@ pub struct Item {
 pub enum Item_ {
     /// An`extern crate` item, with optional original crate name,
     ///
-    /// e.g. `extern crate foo` or `extern crate "foo-bar" as foo`
-    ItemExternCrate(Option<(InternedString, StrStyle)>),
+    /// e.g. `extern crate foo` or `extern crate foo_bar as foo`
+    ItemExternCrate(Option<Name>),
     /// A `use` or `pub use` item
     ItemUse(P<ViewPath>),
 

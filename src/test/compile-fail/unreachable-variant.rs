@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:unreachable-variant.rs
+// aux-build:unreachable_variant.rs
 
-extern crate "unreachable-variant" as other;
+extern crate unreachable_variant as other;
 
 fn main() {
     let _x = other::super_sekrit::sooper_sekrit::baz; //~ ERROR is private

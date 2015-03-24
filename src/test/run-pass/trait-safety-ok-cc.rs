@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:trait-safety-lib.rs
+// aux-build:trait_safety_lib.rs
 
 // Simple smoke test that unsafe traits can be compiled across crates.
 
 // pretty-expanded FIXME #23616
 
-extern crate "trait-safety-lib" as lib;
+extern crate trait_safety_lib as lib;
 
 use lib::Foo;
 

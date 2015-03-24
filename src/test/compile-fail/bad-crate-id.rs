@@ -9,5 +9,6 @@
 // except according to those terms.
 
 extern crate "" as foo; //~ ERROR: crate name must not be empty
+//~^ WARNING: obsolete syntax
 
 fn main() {}
