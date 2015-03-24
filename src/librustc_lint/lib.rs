@@ -40,7 +40,6 @@
 #![feature(rustc_private)]
 #![feature(unsafe_destructor)]
 #![feature(staged_api)]
-#![feature(std_misc)]
 #![feature(str_char)]
 #![cfg_attr(test, feature(test))]
 
