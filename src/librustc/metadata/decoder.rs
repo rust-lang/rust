@@ -763,7 +763,7 @@ pub fn get_enum_variants<'tcx>(intr: Rc<IdentInterner>, cdata: Cmd, id: ast::Nod
                 let arg_tys = get_struct_fields(intr.clone(), cdata, did.node)
                     .iter()
                     .map(|field_ty| {
-                        arg_names.push(ast::Ident::new(field_ty.name));
+                        arg_names.push(field_ty.name);
                         get_type(cdata, field_ty.id.node, tcx).ty
                     })
                     .collect();

@@ -80,7 +80,7 @@ use std::vec::IntoIter;
 use collections::enum_set::{EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
-use syntax::ast::{CrateNum, DefId, Ident, ItemTrait, LOCAL_CRATE};
+use syntax::ast::{CrateNum, DefId, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{StmtExpr, StmtSemi, StructField, UnnamedField, Visibility};
 use syntax::ast_util::{self, is_local, lit_is_str, local_def};
@@ -4361,8 +4361,8 @@ pub fn named_element_ty<'tcx>(cx: &ctxt<'tcx>,
             variant_info.arg_names.as_ref()
                 .expect("must have struct enum variant if accessing a named fields")
                 .iter().zip(variant_info.args.iter())
-                .find(|&(ident, _)| ident.name == n)
-                .map(|(_ident, arg_t)| arg_t.subst(cx, substs))
+                .find(|&(&name, _)| name == n)
+                .map(|(_name, arg_t)| arg_t.subst(cx, substs))
         }
         _ => None
     }
@@ -5341,7 +5341,7 @@ pub fn ty_to_def_id(ty: Ty) -> Option<ast::DefId> {
 #[derive(Clone)]
 pub struct VariantInfo<'tcx> {
     pub args: Vec<Ty<'tcx>>,
-    pub arg_names: Option<Vec<ast::Ident>>,
+    pub arg_names: Option<Vec<ast::Name>>,
     pub ctor_ty: Option<Ty<'tcx>>,
     pub name: ast::Name,
     pub id: ast::DefId,
@@ -5388,7 +5388,7 @@ impl<'tcx> VariantInfo<'tcx> {
                     .map(|field| node_id_to_type(cx, field.node.id)).collect();
                 let arg_names = fields.iter().map(|field| {
                     match field.node.kind {
-                        NamedField(ident, _) => ident,
+                        NamedField(ident, _) => ident.name,
                         UnnamedField(..) => cx.sess.bug(
                             "enum_variants: all fields in struct must have a name")
                     }

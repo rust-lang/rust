@@ -48,7 +48,6 @@ use std::ffi::CString;
 use std::cell::{Cell, RefCell};
 use std::result::Result as StdResult;
 use std::vec::Vec;
-use syntax::ast::Ident;
 use syntax::ast;
 use syntax::ast_map::{PathElem, PathName};
 use syntax::codemap::{DUMMY_SP, Span};
@@ -622,8 +621,8 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     }
     pub fn sess(&self) -> &'blk Session { self.fcx.ccx.sess() }
 
-    pub fn ident(&self, ident: Ident) -> String {
-        token::get_ident(ident).to_string()
+    pub fn name(&self, name: ast::Name) -> String {
+        token::get_name(name).to_string()
     }
 
     pub fn node_id_to_string(&self, id: ast::NodeId) -> String {
