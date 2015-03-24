@@ -18,6 +18,8 @@
 
 */
 
+#![feature(std_misc, rustc_private)]
+
 extern crate getopts;
 
 use std::sync::mpsc::{channel, Sender};

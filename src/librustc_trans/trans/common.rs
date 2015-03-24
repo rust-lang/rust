@@ -709,7 +709,7 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 
     fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
-        Some(self.tcx().upvar_capture_map.borrow()[upvar_id].clone())
+        Some(self.tcx().upvar_capture_map.borrow().get(&upvar_id).unwrap().clone())
     }
 
     fn type_moves_by_default(&self, span: Span, ty: Ty<'tcx>) -> bool {
@@ -1025,8 +1025,9 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // shallow result we are looking for -- that is, what specific impl.
     let typer = NormalizingClosureTyper::new(tcx);
     let mut selcx = traits::SelectionContext::new(&infcx, &typer);
-    let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
-                                             trait_ref.to_poly_trait_predicate());
+    let obligation =
+        traits::Obligation::new(traits::ObligationCause::misc(span, ast::DUMMY_NODE_ID),
+                                trait_ref.to_poly_trait_predicate());
     let selection = match selcx.select(&obligation) {
         Ok(Some(selection)) => selection,
         Ok(None) => {
@@ -1081,7 +1082,7 @@ pub fn predicates_hold<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let obligation = traits::Obligation::new(traits::ObligationCause::dummy(), predicate);
         fulfill_cx.register_predicate_obligation(&infcx, obligation);
     }
-    drain_fulfillment_cx(DUMMY_SP, &infcx, &mut fulfill_cx, &()).is_ok()
+    drain_fulfillment_cx(&infcx, &mut fulfill_cx, &()).is_ok()
 }
 
 pub struct NormalizingClosureTyper<'a,'tcx:'a> {
@@ -1138,7 +1139,7 @@ pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
                                                 -> T
     where T : TypeFoldable<'tcx> + Repr<'tcx>
 {
-    match drain_fulfillment_cx(span, infcx, fulfill_cx, result) {
+    match drain_fulfillment_cx(infcx, fulfill_cx, result) {
         Ok(v) => v,
         Err(errors) => {
             infcx.tcx.sess.span_bug(
@@ -1156,8 +1157,7 @@ pub fn drain_fulfillment_cx_or_panic<'a,'tcx,T>(span: Span,
 /// inference variables that appear in `result` to be unified, and
 /// hence we need to process those obligations to get the complete
 /// picture of the type.
-pub fn drain_fulfillment_cx<'a,'tcx,T>(span: Span,
-                                       infcx: &infer::InferCtxt<'a,'tcx>,
+pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &infer::InferCtxt<'a,'tcx>,
                                        fulfill_cx: &mut traits::FulfillmentContext<'tcx>,
                                        result: &T)
                                        -> StdResult<T,Vec<traits::FulfillmentError<'tcx>>>
@@ -1173,14 +1173,7 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(span: Span,
     match fulfill_cx.select_all_or_error(infcx, &typer) {
         Ok(()) => { }
         Err(errors) => {
-            // We always want to surface any overflow errors, no matter what.
-            if errors.iter().all(|e| e.is_overflow()) {
-                infcx.tcx.sess.span_fatal(
-                    span,
-                    "reached the recursion limit during monomorphization");
-            } else {
-                return Err(errors);
-            }
+            return Err(errors);
         }
     }
 
@@ -1213,7 +1206,7 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             ty::node_id_item_substs(tcx, id).substs
         }
         MethodCallKey(method_call) => {
-            (*tcx.method_map.borrow())[method_call].substs.clone()
+            tcx.method_map.borrow().get(&method_call).unwrap().substs.clone()
         }
     };
 

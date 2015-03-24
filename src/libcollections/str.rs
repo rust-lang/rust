@@ -61,10 +61,10 @@ use core::iter::AdditiveIterator;
 use core::iter::{Iterator, IteratorExt, Extend};
 use core::option::Option::{self, Some, None};
 use core::result::Result;
-use core::slice::AsSlice;
 use core::str as core_str;
 use unicode::str::{UnicodeStr, Utf16Encoder};
 
+use core::convert::AsRef;
 use vec_deque::VecDeque;
 use borrow::{Borrow, ToOwned};
 use string::String;
@@ -74,8 +74,8 @@ use slice::SliceConcatExt;
 
 pub use core::str::{FromStr, Utf8Error, Str};
 pub use core::str::{Lines, LinesAny, MatchIndices, SplitStr, CharRange};
-pub use core::str::{Split, SplitTerminator};
-pub use core::str::{SplitN, RSplitN};
+pub use core::str::{Split, SplitTerminator, SplitN};
+pub use core::str::{RSplit, RSplitN};
 pub use core::str::{from_utf8, CharEq, Chars, CharIndices, Bytes};
 pub use core::str::{from_utf8_unchecked, from_c_str, ParseBoolError};
 pub use unicode::str::{Words, Graphemes, GraphemeIndices};
@@ -86,51 +86,47 @@ pub use core::str::{Searcher, ReverseSearcher, DoubleEndedSearcher, SearchStep};
 Section: Creating a string
 */
 
-impl<S: Str> SliceConcatExt<str, String> for [S] {
+impl<S: AsRef<str>> SliceConcatExt<str, String> for [S] {
     fn concat(&self) -> String {
-        let s = self.as_slice();
-
-        if s.is_empty() {
+        if self.is_empty() {
             return String::new();
         }
 
         // `len` calculation may overflow but push_str will check boundaries
-        let len = s.iter().map(|s| s.as_slice().len()).sum();
+        let len = self.iter().map(|s| s.as_ref().len()).sum();
         let mut result = String::with_capacity(len);
 
-        for s in s {
-            result.push_str(s.as_slice())
+        for s in self {
+            result.push_str(s.as_ref())
         }
 
         result
     }
 
     fn connect(&self, sep: &str) -> String {
-        let s = self.as_slice();
-
-        if s.is_empty() {
+        if self.is_empty() {
             return String::new();
         }
 
         // concat is faster
         if sep.is_empty() {
-            return s.concat();
+            return self.concat();
         }
 
         // this is wrong without the guarantee that `self` is non-empty
         // `len` calculation may overflow but push_str but will check boundaries
-        let len = sep.len() * (s.len() - 1)
-            + s.iter().map(|s| s.as_slice().len()).sum();
+        let len = sep.len() * (self.len() - 1)
+            + self.iter().map(|s| s.as_ref().len()).sum();
         let mut result = String::with_capacity(len);
         let mut first = true;
 
-        for s in s {
+        for s in self {
             if first {
                 first = false;
             } else {
                 result.push_str(sep);
             }
-            result.push_str(s.as_slice());
+            result.push_str(s.as_ref());
         }
         result
     }
@@ -548,6 +544,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// assert!("hello".contains_char('e'));
     ///
     /// assert!(!"hello".contains_char('z'));
@@ -699,23 +696,48 @@ impl str {
         core_str::StrExt::split_terminator(&self[..], pat)
     }
 
-    /// An iterator over substrings of `self`, separated by characters matched by a pattern,
+    /// An iterator over substrings of `self`, separated by a pattern,
     /// starting from the end of the string.
-    ///
-    /// Restricted to splitting at most `count` times.
-    ///
-    /// The pattern can be a simple `&str`, or a closure that determines the split.
     ///
     /// # Examples
     ///
-    /// Simple `&str` patterns:
+    /// Simple patterns:
+    ///
+    /// ```
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplit(' ').collect();
+    /// assert_eq!(v, ["lamb", "little", "a", "had", "Mary"]);
+    ///
+    /// let v: Vec<&str> = "lion::tiger::leopard".rsplit("::").collect();
+    /// assert_eq!(v, ["leopard", "tiger", "lion"]);
+    /// ```
+    ///
+    /// More complex patterns with a lambda:
+    ///
+    /// ```
+    /// let v: Vec<&str> = "abc1def2ghi".rsplit(|c: char| c.is_numeric()).collect();
+    /// assert_eq!(v, ["ghi", "def", "abc"]);
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        core_str::StrExt::rsplit(&self[..], pat)
+    }
+
+    /// An iterator over substrings of `self`, separated by a pattern,
+    /// starting from the end of the string, restricted to splitting
+    /// at most `count` times.
+    ///
+    /// # Examples
+    ///
+    /// Simple patterns:
     ///
     /// ```
     /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(2, ' ').collect();
     /// assert_eq!(v, ["lamb", "little", "Mary had a"]);
     ///
-    /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
-    /// assert_eq!(v, ["leopard", "tiger", "lionX"]);
+    /// let v: Vec<&str> = "lion::tiger::leopard".rsplitn(1, "::").collect();
+    /// assert_eq!(v, ["leopard", "lion::tiger"]);
     /// ```
     ///
     /// More complex patterns with a lambda:
@@ -725,7 +747,9 @@ impl str {
     /// assert_eq!(v, ["ghi", "abc1def"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P> {
+    pub fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
         core_str::StrExt::rsplitn(&self[..], count, pat)
     }
 
@@ -739,6 +763,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".match_indices("abc").collect();
     /// assert_eq!(v, [(0,3), (6,9), (12,15)]);
     ///
@@ -761,6 +786,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let v: Vec<&str> = "abcXXXabcYYYabc".split_str("abc").collect();
     /// assert_eq!(v, ["", "XXX", "YYY", ""]);
     ///
@@ -869,6 +895,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.slice_chars(0, 4), "Löwe");
@@ -1019,6 +1046,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(str_char)]
     /// let s = "Löwe 老虎 Léopard";
     /// assert!(s.is_char_boundary(0));
     /// // start of `老`
@@ -1055,6 +1083,7 @@ impl str {
     /// done by `.chars()` or `.char_indices()`.
     ///
     /// ```
+    /// # #![feature(str_char, core)]
     /// use std::str::CharRange;
     ///
     /// let s = "中华Việt Nam";
@@ -1105,6 +1134,7 @@ impl str {
     /// done by `.chars().rev()` or `.char_indices()`.
     ///
     /// ```
+    /// # #![feature(str_char, core)]
     /// use std::str::CharRange;
     ///
     /// let s = "中华Việt Nam";
@@ -1148,6 +1178,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(str_char)]
     /// let s = "abπc";
     /// assert_eq!(s.char_at(1), 'b');
     /// assert_eq!(s.char_at(2), 'π');
@@ -1172,6 +1203,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(str_char)]
     /// let s = "abπc";
     /// assert_eq!(s.char_at_reverse(1), 'a');
     /// assert_eq!(s.char_at_reverse(2), 'b');
@@ -1286,6 +1318,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.find_str("老虎 L"), Some(6));
@@ -1307,6 +1340,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(str_char)]
     /// let s = "Löwe 老虎 Léopard";
     /// let (c, s1) = s.slice_shift_char().unwrap();
     ///
@@ -1335,6 +1369,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let string = "a\nb\nc";
     /// let lines: Vec<&str> = string.lines().collect();
     ///
@@ -1434,6 +1469,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(unicode, core)]
     /// let gr1 = "a\u{310}e\u{301}o\u{308}\u{332}".graphemes(true).collect::<Vec<&str>>();
     /// let b: &[_] = &["a\u{310}", "e\u{301}", "o\u{308}\u{332}"];
     ///
@@ -1456,6 +1492,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(unicode, core)]
     /// let gr_inds = "a̐éö̲\r\n".grapheme_indices(true).collect::<Vec<(usize, &str)>>();
     /// let b: &[_] = &[(0, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
     ///
@@ -1475,6 +1512,7 @@ impl str {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(str_words)]
     /// let some_words = " Mary   had\ta little  \n\t lamb";
     /// let v: Vec<&str> = some_words.words().collect();
     ///

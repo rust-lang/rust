@@ -22,9 +22,6 @@ use ptr::P;
 /// The specific types of unsupported syntax
 #[derive(Copy, PartialEq, Eq, Hash)]
 pub enum ObsoleteSyntax {
-    Sized,
-    ForSized,
-    ClosureType,
     ClosureKind,
     EmptyIndex,
 }
@@ -49,25 +46,9 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
     /// Reports an obsolete syntax non-fatal error.
     fn obsolete(&mut self, sp: Span, kind: ObsoleteSyntax) {
         let (kind_str, desc, error) = match kind {
-            ObsoleteSyntax::ForSized => (
-                "for Sized?",
-                "no longer required. Traits (and their `Self` type) do not have the `Sized` bound \
-                 by default",
-                true,
-            ),
-            ObsoleteSyntax::ClosureType => (
-                "`|usize| -> bool` closure type",
-                "use unboxed closures instead, no type annotation needed",
-                true,
-            ),
             ObsoleteSyntax::ClosureKind => (
                 "`:`, `&mut:`, or `&:`",
                 "rely on inference instead",
-                true,
-            ),
-            ObsoleteSyntax::Sized => (
-                "`Sized? T` for removing the `Sized` bound",
-                "write `T: ?Sized` instead",
                 true,
             ),
             ObsoleteSyntax::EmptyIndex => (

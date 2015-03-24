@@ -8,25 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
+// Check that when making a ref mut binding with type `&mut T`, the
+// type `T` must match precisely the type `U` of the value being
+// matched, and in particular cannot be some supertype of `U`. Issue
+// #23116. This test focuses on a `match`.
 
-use std::ops::Index;
-
-struct MyVec<T> {
-    data: Vec<T>,
-}
-
-impl<T> Index<usize> for MyVec<T> {
-    type Output = T;
-
-    fn index(&self, &i: &usize) -> &T {
-        &self.data[i]
+#![allow(dead_code)]
+struct S<'b>(&'b i32);
+impl<'b> S<'b> {
+    fn bar<'a>(&'a mut self) -> &'a mut &'a i32 {
+        match self.0 { ref mut x => x } //~ ERROR mismatched types
     }
 }
 
-fn main() {
-    let v = MyVec::<Box<_>> { data: vec!(box 1, box 2, box 3) };
-    let good = &v[0]; // Shouldn't fail here
-    let bad = v[0];
-    //~^ ERROR cannot move out of indexed content
-}
+fn main() {}

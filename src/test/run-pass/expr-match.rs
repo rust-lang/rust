@@ -13,6 +13,8 @@
 
 
 // Tests for using match as an expression
+// pretty-expanded FIXME #23616
+
 fn test_basic() {
     let mut rs: bool = match true { true => { true } false => { false } };
     assert!((rs));

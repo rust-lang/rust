@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 const X1: &'static [u8] = &[b'1'];
 const X2: &'static [u8] = b"1";
 const X3: &'static [u8; 1] = &[b'1'];

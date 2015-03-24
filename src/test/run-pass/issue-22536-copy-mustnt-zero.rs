@@ -11,6 +11,8 @@
 // Regression test for Issue #22536: If a type implements Copy, then
 // moving it must not zero the original memory.
 
+// pretty-expanded FIXME #23616
+
 trait Resources {
     type Buffer: Copy;
     fn foo(&self) {}

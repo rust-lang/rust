@@ -95,6 +95,7 @@
 //! by the [`Writer`](../io/trait.Writer.html) trait:
 //!
 //! ```
+//! # #![feature(old_io)]
 //! use std::old_io::IoError;
 //!
 //! trait Writer {
@@ -110,6 +111,7 @@
 //! something like this:
 //!
 //! ```{.ignore}
+//! # #![feature(old_io)]
 //! use std::old_io::*;
 //! use std::old_path::Path;
 //!
@@ -129,6 +131,7 @@
 //! a marginally useful message indicating why:
 //!
 //! ```{.no_run}
+//! # #![feature(old_io, old_path)]
 //! use std::old_io::*;
 //! use std::old_path::Path;
 //!
@@ -140,6 +143,7 @@
 //! You might also simply assert success:
 //!
 //! ```{.no_run}
+//! # #![feature(old_io, old_path)]
 //! # use std::old_io::*;
 //! # use std::old_path::Path;
 //!
@@ -151,6 +155,7 @@
 //! Or propagate the error up the call stack with `try!`:
 //!
 //! ```
+//! # #![feature(old_io, old_path)]
 //! # use std::old_io::*;
 //! # use std::old_path::Path;
 //! fn write_message() -> Result<(), IoError> {
@@ -171,6 +176,7 @@
 //! It replaces this:
 //!
 //! ```
+//! # #![feature(old_io, old_path)]
 //! use std::old_io::*;
 //! use std::old_path::Path;
 //!
@@ -196,6 +202,7 @@
 //! With this:
 //!
 //! ```
+//! # #![feature(old_io, old_path)]
 //! use std::old_io::*;
 //! use std::old_path::Path;
 //!
@@ -240,6 +247,7 @@ use iter::{Iterator, IteratorExt, DoubleEndedIterator,
            FromIterator, ExactSizeIterator, IntoIterator};
 use ops::{FnMut, FnOnce};
 use option::Option::{self, None, Some};
+#[allow(deprecated)]
 use slice::AsSlice;
 use slice;
 
@@ -408,9 +416,24 @@ impl<T, E> Result<T, E> {
         }
     }
 
+    /// Convert from `Result<T, E>` to `&[T]` (without copying)
+    #[inline]
+    #[unstable(feature = "as_slice", since = "unsure of the utility here")]
+    pub fn as_slice(&self) -> &[T] {
+        match *self {
+            Ok(ref x) => slice::ref_slice(x),
+            Err(_) => {
+                // work around lack of implicit coercion from fixed-size array to slice
+                let emp: &[_] = &[];
+                emp
+            }
+        }
+    }
+
     /// Convert from `Result<T, E>` to `&mut [T]` (without copying)
     ///
     /// ```
+    /// # #![feature(core)]
     /// let mut x: Result<&str, u32> = Ok("Gold");
     /// {
     ///     let v = x.as_mut_slice();
@@ -452,6 +475,7 @@ impl<T, E> Result<T, E> {
     /// ignoring I/O and parse errors:
     ///
     /// ```
+    /// # #![feature(old_io)]
     /// use std::old_io::*;
     ///
     /// let mut buffer: &[u8] = b"1\n2\n3\n4\n";
@@ -788,10 +812,14 @@ impl<T: fmt::Debug, E> Result<T, E> {
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
 
+#[unstable(feature = "core",
+           reason = "waiting on the stability of the trait itself")]
+#[deprecated(since = "1.0.0",
+             reason = "use inherent method instead")]
+#[allow(deprecated)]
 impl<T, E> AsSlice<T> for Result<T, E> {
     /// Convert from `Result<T, E>` to `&[T]` (without copying)
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice<'a>(&'a self) -> &'a [T] {
         match *self {
             Ok(ref x) => slice::ref_slice(x),

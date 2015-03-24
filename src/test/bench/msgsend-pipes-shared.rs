@@ -18,6 +18,8 @@
 // different scalability characteristics compared to the select
 // version.
 
+#![feature(std_misc)]
+
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::env;
 use std::thread;

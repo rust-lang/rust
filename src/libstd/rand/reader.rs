@@ -24,6 +24,7 @@ use result::Result::{Ok, Err};
 /// # Examples
 ///
 /// ```
+/// # #![feature(rand, old_io)]
 /// use std::rand::{reader, Rng};
 /// use std::old_io::MemReader;
 ///

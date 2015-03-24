@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // aux-build:cci_class.rs
+// pretty-expanded FIXME #23616
+
 extern crate cci_class;
 use cci_class::kitties::cat;
 

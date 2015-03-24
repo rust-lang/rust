@@ -10,7 +10,7 @@
 //
 // ignore-lexer-test FIXME #15883
 
-#![feature(unsafe_destructor)]
+#![feature(unsafe_destructor, std_misc)]
 
 pub type Task = int;
 

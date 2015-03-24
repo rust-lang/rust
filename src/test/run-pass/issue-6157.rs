@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 pub trait OpInt { fn call(&mut self, int, int) -> int; }
 
 impl<F> OpInt for F where F: FnMut(int, int) -> int {

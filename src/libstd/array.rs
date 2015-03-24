@@ -8,10 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we generate obsolete syntax errors around usages of `for Sized?`
+//! The fixed-size array type (`[T; n]`).
 
-trait Foo for Sized? {} //~ ERROR obsolete syntax: for Sized?
-
-trait Bar for ?Sized {} //~ ERROR obsolete syntax: for Sized?
-
-fn main() { }
+#![doc(primitive = "array")]

@@ -20,6 +20,8 @@
 
 // Test that cleanups for the RHS of shortcircuiting operators work.
 
+// pretty-expanded FIXME #23616
+
 use std::env;
 
 pub fn main() {

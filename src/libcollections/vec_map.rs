@@ -34,6 +34,7 @@ use vec::Vec;
 /// # Examples
 ///
 /// ```
+/// # #![feature(collections)]
 /// use std::collections::VecMap;
 ///
 /// let mut months = VecMap::new();
@@ -67,26 +68,28 @@ pub struct VecMap<V> {
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
-#[unstable(feature = "collections",
-           reason = "precise API still under development")]
+
+#[stable(feature = "rust1", since = "1.0.0")]
 pub enum Entry<'a, V:'a> {
     /// A vacant Entry
+    #[stable(feature = "rust1", since = "1.0.0")]
     Vacant(VacantEntry<'a, V>),
+
     /// An occupied Entry
+    #[stable(feature = "rust1", since = "1.0.0")]
     Occupied(OccupiedEntry<'a, V>),
 }
 
 /// A vacant Entry.
-#[unstable(feature = "collections",
-           reason = "precise API still under development")]
+
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct VacantEntry<'a, V:'a> {
     map: &'a mut VecMap<V>,
     index: usize,
 }
 
 /// An occupied Entry.
-#[unstable(feature = "collections",
-           reason = "precise API still under development")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct OccupiedEntry<'a, V:'a> {
     map: &'a mut VecMap<V>,
     index: usize,
@@ -132,6 +135,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     /// let mut map: VecMap<&str> = VecMap::new();
     /// ```
@@ -144,6 +148,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     /// let mut map: VecMap<&str> = VecMap::with_capacity(10);
     /// ```
@@ -158,6 +163,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     /// let map: VecMap<String> = VecMap::with_capacity(10);
     /// assert!(map.capacity() >= 10);
@@ -177,6 +183,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     /// let mut map: VecMap<&str> = VecMap::new();
     /// map.reserve_len(10);
@@ -201,6 +208,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     /// let mut map: VecMap<&str> = VecMap::new();
     /// map.reserve_len_exact(10);
@@ -240,6 +248,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -268,6 +277,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -299,6 +309,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -325,6 +336,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut a = VecMap::new();
@@ -360,6 +372,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut a = VecMap::new();
@@ -416,6 +429,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -443,6 +457,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut a = VecMap::new();
@@ -460,6 +475,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut a = VecMap::new();
@@ -477,6 +493,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut a = VecMap::new();
@@ -492,6 +509,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -516,6 +534,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -534,6 +553,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -562,6 +582,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -587,6 +608,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     ///
     /// let mut map = VecMap::new();
@@ -608,6 +630,7 @@ impl<V> VecMap<V> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecMap;
     /// use std::collections::vec_map::Entry;
     ///
@@ -651,7 +674,7 @@ impl<V> VecMap<V> {
 
 impl<'a, V> Entry<'a, V> {
     #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+               reason = "will soon be replaced by or_insert")]
     /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
     pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, V>> {
         match self {
@@ -798,6 +821,7 @@ impl<V> Extend<(usize, V)> for VecMap<V> {
     }
 }
 
+#[cfg(stage0)]
 impl<V> Index<usize> for VecMap<V> {
     type Output = V;
 
@@ -807,10 +831,49 @@ impl<V> Index<usize> for VecMap<V> {
     }
 }
 
+#[cfg(not(stage0))]
+impl<V> Index<usize> for VecMap<V> {
+    type Output = V;
+
+    #[inline]
+    fn index<'a>(&'a self, i: usize) -> &'a V {
+        self.get(&i).expect("key not present")
+    }
+}
+
+#[cfg(not(stage0))]
+impl<'a,V> Index<&'a usize> for VecMap<V> {
+    type Output = V;
+
+    #[inline]
+    fn index(&self, i: &usize) -> &V {
+        self.get(i).expect("key not present")
+    }
+}
+
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<V> IndexMut<usize> for VecMap<V> {
     #[inline]
-    fn index_mut<'a>(&'a mut self, i: &usize) -> &'a mut V {
+    fn index_mut(&mut self, i: &usize) -> &mut V {
+        self.get_mut(&i).expect("key not present")
+    }
+}
+
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<V> IndexMut<usize> for VecMap<V> {
+    #[inline]
+    fn index_mut(&mut self, i: usize) -> &mut V {
+        self.get_mut(&i).expect("key not present")
+    }
+}
+
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, V> IndexMut<&'a usize> for VecMap<V> {
+    #[inline]
+    fn index_mut(&mut self, i: &usize) -> &mut V {
         self.get_mut(i).expect("key not present")
     }
 }

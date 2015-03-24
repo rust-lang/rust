@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 fn ho<F>(f: F) -> int where F: FnOnce(int) -> int { let n: int = f(3); return n; }
 
 fn direct(x: int) -> int { return x + 1; }

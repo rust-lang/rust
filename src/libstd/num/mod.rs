@@ -55,6 +55,7 @@ pub trait Float
     /// Returns the `NaN` value.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let nan: f32 = Float::nan();
@@ -67,6 +68,7 @@ pub trait Float
     /// Returns the infinite value.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f32;
     ///
@@ -82,6 +84,7 @@ pub trait Float
     /// Returns the negative infinite value.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f32;
     ///
@@ -97,6 +100,7 @@ pub trait Float
     /// Returns `0.0`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let inf: f32 = Float::infinity();
@@ -113,6 +117,7 @@ pub trait Float
     /// Returns `-0.0`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let inf: f32 = Float::infinity();
@@ -129,6 +134,7 @@ pub trait Float
     /// Returns `1.0`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let one: f32 = Float::one();
@@ -182,6 +188,7 @@ pub trait Float
     /// Returns the smallest finite value that this type can represent.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -199,6 +206,7 @@ pub trait Float
     /// Returns the largest finite value that this type can represent.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -211,6 +219,7 @@ pub trait Float
     /// Returns `true` if this value is `NaN` and false otherwise.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -226,6 +235,7 @@ pub trait Float
     /// false otherwise.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f32;
     ///
@@ -245,6 +255,7 @@ pub trait Float
     /// Returns `true` if this number is neither infinite nor `NaN`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f32;
     ///
@@ -265,6 +276,7 @@ pub trait Float
     /// [subnormal][subnormal], or `NaN`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f32;
     ///
@@ -291,6 +303,7 @@ pub trait Float
     /// predicate instead.
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::{Float, FpCategory};
     /// use std::f32;
     ///
@@ -308,6 +321,7 @@ pub trait Float
     /// The floating point encoding is documented in the [Reference][floating-point].
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let num = 2.0f32;
@@ -399,6 +413,7 @@ pub trait Float
     /// number is `Float::nan()`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -422,6 +437,7 @@ pub trait Float
     /// - `Float::nan()` if the number is `Float::nan()`
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -478,6 +494,7 @@ pub trait Float
     /// a separate multiplication operation followed by an add.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let m = 10.0;
@@ -495,6 +512,7 @@ pub trait Float
     /// Take the reciprocal (inverse) of a number, `1/x`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 2.0;
@@ -537,6 +555,7 @@ pub trait Float
     /// Returns NaN if `self` is a negative number.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let positive = 4.0;
@@ -553,6 +572,7 @@ pub trait Float
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let f = 4.0;
@@ -662,6 +682,7 @@ pub trait Float
     /// Convert radians to degrees.
     ///
     /// ```
+    /// # #![feature(std_misc, core)]
     /// use std::num::Float;
     /// use std::f64::consts;
     ///
@@ -676,6 +697,7 @@ pub trait Float
     /// Convert degrees to radians.
     ///
     /// ```
+    /// # #![feature(std_misc, core)]
     /// use std::num::Float;
     /// use std::f64::consts;
     ///
@@ -690,6 +712,7 @@ pub trait Float
     /// Constructs a floating point number of `x*2^exp`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// // 3*2^2 - 12 == 0
@@ -707,6 +730,7 @@ pub trait Float
     ///  * `0.5 <= abs(x) < 1.0`
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 4.0;
@@ -726,6 +750,7 @@ pub trait Float
     /// `other`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 1.0f32;
@@ -769,6 +794,7 @@ pub trait Float
     /// * Else: `self - other`
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 3.0;
@@ -785,6 +811,7 @@ pub trait Float
     /// Take the cubic root of a number.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 8.0;
@@ -800,6 +827,7 @@ pub trait Float
     /// legs of length `x` and `y`.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 2.0;
@@ -817,6 +845,7 @@ pub trait Float
     /// Computes the sine of a number (in radians).
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -831,6 +860,7 @@ pub trait Float
     /// Computes the cosine of a number (in radians).
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -845,6 +875,7 @@ pub trait Float
     /// Computes the tangent of a number (in radians).
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -860,6 +891,7 @@ pub trait Float
     /// [-1, 1].
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -877,6 +909,7 @@ pub trait Float
     /// [-1, 1].
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -912,6 +945,7 @@ pub trait Float
     /// * `y < 0`: `arctan(y/x) - pi` -> `(-pi, -pi/2)`
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -937,6 +971,7 @@ pub trait Float
     /// `(sin(x), cos(x))`.
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -956,6 +991,7 @@ pub trait Float
     /// number is close to zero.
     ///
     /// ```
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     ///
     /// let x = 7.0;
@@ -971,6 +1007,7 @@ pub trait Float
     /// the operations were performed separately.
     ///
     /// ```
+    /// # #![feature(std_misc, core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -987,6 +1024,7 @@ pub trait Float
     /// Hyperbolic sine function.
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1005,6 +1043,7 @@ pub trait Float
     /// Hyperbolic cosine function.
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1023,6 +1062,7 @@ pub trait Float
     /// Hyperbolic tangent function.
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1069,6 +1109,7 @@ pub trait Float
     /// Inverse hyperbolic tangent function.
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///

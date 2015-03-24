@@ -40,6 +40,8 @@
 
 // no-pretty-expanded FIXME #15189
 
+#![feature(core)]
+
 use std::iter::repeat;
 use std::sync::Arc;
 use std::sync::mpsc::channel;

@@ -26,7 +26,7 @@ use syntax::ast::{Item, Generics, StructField};
 use syntax::ast_util::is_local;
 use syntax::attr::{Stability, AttrMetaMethods};
 use syntax::visit::{FnKind, Visitor};
-use syntax::feature_gate::emit_feature_warn;
+use syntax::feature_gate::emit_feature_err;
 use util::nodemap::{NodeMap, DefIdMap, FnvHashSet, FnvHashMap};
 use util::ppaux::Repr;
 
@@ -237,7 +237,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                         None => format!("use of unstable library feature '{}'", &feature)
                     };
 
-                    emit_feature_warn(&self.tcx.sess.parse_sess.span_diagnostic,
+                    emit_feature_err(&self.tcx.sess.parse_sess.span_diagnostic,
                                       &feature, span, &msg);
                 }
             }
@@ -319,7 +319,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
         // individually as it's possible to have a stable trait with unstable
         // items.
         ast::ItemImpl(_, _, _, Some(ref t), _, ref impl_items) => {
-            let trait_did = tcx.def_map.borrow()[t.ref_id].def_id();
+            let trait_did = tcx.def_map.borrow().get(&t.ref_id).unwrap().def_id();
             let trait_items = ty::trait_items(tcx, trait_did);
 
             for impl_item in impl_items {

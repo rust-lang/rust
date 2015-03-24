@@ -14,6 +14,8 @@
 
 // aux-build:go_trait.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate go_trait;
 
 use go_trait::{Go, GoMut, GoOnce, go, go_mut, go_once};

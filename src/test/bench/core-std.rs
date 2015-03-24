@@ -11,7 +11,7 @@
 // ignore-lexer-test FIXME #15679
 // Microbenchmarks for various functions in std and extra
 
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, rand, old_io, old_path, std_misc, collections)]
 
 use std::old_io::*;
 use std::old_path::{Path, GenericPath};

@@ -300,7 +300,7 @@ pub fn run(mut krate: clean::Crate,
            passes: HashSet<String>) -> io::Result<()> {
     let src_root = match krate.src.parent() {
         Some(p) => p.to_path_buf(),
-        None => PathBuf::new(""),
+        None => PathBuf::new(),
     };
     let mut cx = Context {
         dst: dst,
@@ -784,7 +784,7 @@ impl<'a> DocFolder for SourceCollector<'a> {
 impl<'a> SourceCollector<'a> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(&mut self, filename: &str) -> io::Result<()> {
-        let p = PathBuf::new(filename);
+        let p = PathBuf::from(filename);
 
         // If we couldn't open this file, then just returns because it
         // probably means that it's some standard library macro thing and we
@@ -819,7 +819,7 @@ impl<'a> SourceCollector<'a> {
         let mut fname = p.file_name().expect("source has no filename")
                          .to_os_string();
         fname.push(".html");
-        cur.push(&fname);
+        cur.push(&fname[..]);
         let mut w = BufWriter::new(try!(File::create(&cur)));
 
         let title = format!("{} -- source", cur.file_name().unwrap()
@@ -1026,7 +1026,8 @@ impl DocFolder for Cache {
                 match item {
                     clean::Item{ attrs, inner: clean::ImplItem(i), .. } => {
                         use clean::{Primitive, Vector, ResolvedPath, BorrowedRef};
-                        use clean::{FixedVector, Slice, Tuple, PrimitiveTuple};
+                        use clean::PrimitiveType::{Array, Slice, PrimitiveTuple};
+                        use clean::{FixedVector, Tuple};
 
                         // extract relevant documentation for this impl
                         let dox = match attrs.into_iter().find(|a| {
@@ -1056,12 +1057,16 @@ impl DocFolder for Cache {
                                 Some(ast_util::local_def(p.to_node_id()))
                             }
 
-                            // In a DST world, we may only need
-                            // Vector/FixedVector, but for now we also pick up
-                            // borrowed references
-                            Vector(..) | FixedVector(..) |
-                                BorrowedRef{ type_: box Vector(..), ..  } |
-                                BorrowedRef{ type_: box FixedVector(..), .. } =>
+                            FixedVector(..) |
+                                BorrowedRef { type_: box FixedVector(..), .. } =>
+                            {
+                                Some(ast_util::local_def(Array.to_node_id()))
+                            }
+
+                            // In a DST world, we may only need Vector, but for now we
+                            // also pick up borrowed references
+                            Vector(..) |
+                                BorrowedRef{ type_: box Vector(..), ..  } =>
                             {
                                 Some(ast_util::local_def(Slice.to_node_id()))
                             }
@@ -1404,8 +1409,8 @@ impl<'a> Item<'a> {
         // located, then we return `None`.
         } else {
             let cache = cache();
-            let path = &cache.external_paths[self.item.def_id];
-            let root = match cache.extern_locations[self.item.def_id.krate] {
+            let path = &cache.external_paths[&self.item.def_id];
+            let root = match cache.extern_locations[&self.item.def_id.krate] {
                 Remote(ref s) => s.to_string(),
                 Local => self.cx.root_path.clone(),
                 Unknown => return None,
@@ -1863,7 +1868,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 path = if ast_util::is_local(it.def_id) {
                     cx.current.connect("/")
                 } else {
-                    let path = &cache.external_paths[it.def_id];
+                    let path = &cache.external_paths[&it.def_id];
                     path[..path.len() - 1].connect("/")
                 },
                 ty = shortty(it).to_static_str(),

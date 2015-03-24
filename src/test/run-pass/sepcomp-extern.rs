@@ -13,6 +13,8 @@
 
 // Test accessing external items from multiple compilation units.
 
+// pretty-expanded FIXME #23616
+
 #[link(name = "sepcomp-extern-lib")]
 extern {
     #[allow(ctypes)]

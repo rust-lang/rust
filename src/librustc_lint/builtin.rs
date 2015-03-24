@@ -418,7 +418,7 @@ struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_def(&mut self, sp: Span, id: ast::NodeId) {
-        match self.cx.tcx.def_map.borrow()[id].full_def() {
+        match self.cx.tcx.def_map.borrow().get(&id).unwrap().full_def() {
             def::DefPrimTy(ast::TyInt(ast::TyIs(_))) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
                                   "found rust type `isize` in foreign module, while \
@@ -2056,7 +2056,7 @@ impl LintPass for InvalidNoMangleItems {
                 }
             },
             ast::ItemStatic(..) => {
-                if attr::contains_name(it.attrs.as_slice(), "no_mangle") &&
+                if attr::contains_name(&it.attrs, "no_mangle") &&
                        !cx.exported_items.contains(&it.id) {
                     let msg = format!("static {} is marked #[no_mangle], but not exported",
                                       it.ident);
@@ -2064,7 +2064,7 @@ impl LintPass for InvalidNoMangleItems {
                 }
             },
             ast::ItemConst(..) => {
-                if attr::contains_name(it.attrs.as_slice(), "no_mangle") {
+                if attr::contains_name(&it.attrs, "no_mangle") {
                     // Const items do not refer to a particular location in memory, and therefore
                     // don't have anything to attach a symbol to
                     let msg = "const items should never be #[no_mangle], consider instead using \

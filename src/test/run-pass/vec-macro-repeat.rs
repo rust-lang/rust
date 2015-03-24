@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     assert_eq!(vec![1; 3], vec![1, 1, 1]);
     assert_eq!(vec![1; 2], vec![1, 1]);

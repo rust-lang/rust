@@ -11,7 +11,9 @@
 // Test that we are able to infer that the type of `x` is `int` based
 // on the expected type from the object.
 
-#![feature(unboxed_closures)]
+// pretty-expanded FIXME #23616
+
+#![feature(unboxed_closures, core)]
 
 use std::num::ToPrimitive;
 

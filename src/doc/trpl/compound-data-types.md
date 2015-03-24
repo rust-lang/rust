@@ -47,7 +47,7 @@ This pattern is very powerful, and we'll see it repeated more later.
 
 There are also a few things you can do with a tuple as a whole, without
 destructuring. You can assign one tuple into another, if they have the same
-contained types and arity. Tuples have the same arity when they have the same
+contained types and [arity]. Tuples have the same arity when they have the same
 length.
 
 ```rust
@@ -196,8 +196,9 @@ Now, we have actual names, rather than positions. Good names are important,
 and with a struct, we have actual names.
 
 There _is_ one case when a tuple struct is very useful, though, and that's a
-tuple struct with only one element. We call this a *newtype*, because it lets
-you create a new type that's similar to another one:
+tuple struct with only one element. We call this the *newtype* pattern, because
+it allows you to create a new type, distinct from that of its contained value
+and expressing its own semantic meaning:
 
 ```{rust}
 struct Inches(i32);
@@ -216,7 +217,7 @@ destructuring `let`, as we discussed previously in 'tuples.' In this case, the
 
 Finally, Rust has a "sum type", an *enum*. Enums are an incredibly useful
 feature of Rust, and are used throughout the standard library. An `enum` is
-a type which ties a set of alternates to a specific name. For example, below
+a type which relates a set of alternates to a specific name. For example, below
 we define `Character` to be either a `Digit` or something else. These
 can be used via their fully scoped names: `Character::Other` (more about `::`
 below).
@@ -228,8 +229,8 @@ enum Character {
 }
 ```
 
-An `enum` variant can be defined as most normal types. Below are some example
-types which also would be allowed in an `enum`.
+Most normal types are allowed as the variant components of an `enum`. Here are
+some examples:
 
 ```rust
 struct Empty;
@@ -239,15 +240,15 @@ struct Status { Health: i32, Mana: i32, Attack: i32, Defense: i32 }
 struct HeightDatabase(Vec<i32>);
 ```
 
-So you see that depending on the sub-datastructure, the `enum` variant, same as
-a struct, may or may not hold data. That is, in `Character`, `Digit` is a name
-tied to an `i32` where `Other` is just a name. However, the fact that they are
-distinct makes this very useful.
+You see that, depending on its type, an `enum` variant may or may not hold data.
+In `Character`, for instance, `Digit` gives a meaningful name for an `i32`
+value, where `Other` is only a name. However, the fact that they represent
+distinct categories of `Character` is a very useful property.
 
-As with structures, enums don't by default have access to operators such as
-compare ( `==` and `!=`), binary operations (`*` and `+`), and order
-(`<` and `>=`). As such, using the previous `Character` type, the
-following code is invalid:
+As with structures, the variants of an enum by default are not comparable with
+equality operators (`==`, `!=`), have no ordering (`<`, `>=`, etc.), and do not
+support other binary operations such as `*` and `+`. As such, the following code
+is invalid for the example `Character` type:
 
 ```{rust,ignore}
 // These assignments both succeed
@@ -265,9 +266,10 @@ let four_equals_ten = four == ten;
 ```
 
 This may seem rather limiting, but it's a limitation which we can overcome.
-There are two ways: by implementing equality ourselves, or by using the
-[`match`][match] keyword. We don't know enough about Rust to implement equality
-yet, but we can use the `Ordering` enum from the standard library, which does:
+There are two ways: by implementing equality ourselves, or by pattern matching
+variants with [`match`][match] expressions, which you'll learn in the next
+chapter. We don't know enough about Rust to implement equality yet, but we can
+use the `Ordering` enum from the standard library, which does:
 
 ```
 enum Ordering {
@@ -277,9 +279,8 @@ enum Ordering {
 }
 ```
 
-Because we did not define `Ordering`, we must import it (from the std
-library) with the `use` keyword. Here's an example of how `Ordering` is
-used:
+Because `Ordering` has already been defined for us, we will import it with the
+`use` keyword. Here's an example of how it is used:
 
 ```{rust}
 use std::cmp::Ordering;
@@ -313,17 +314,17 @@ the standard library if you need them.
 
 Okay, let's talk about the actual code in the example. `cmp` is a function that
 compares two things, and returns an `Ordering`. We return either
-`Ordering::Less`, `Ordering::Greater`, or `Ordering::Equal`, depending on if
-the two values are less, greater, or equal. Note that each variant of the
-`enum` is namespaced under the `enum` itself: it's `Ordering::Greater` not
-`Greater`.
+`Ordering::Less`, `Ordering::Greater`, or `Ordering::Equal`, depending on
+whether the first value is less than, greater than, or equal to the second. Note
+that each variant of the `enum` is namespaced under the `enum` itself: it's
+`Ordering::Greater`, not `Greater`.
 
 The `ordering` variable has the type `Ordering`, and so contains one of the
 three values. We then do a bunch of `if`/`else` comparisons to check which
 one it is.
 
-This `Ordering::Greater` notation is too long. Let's use `use` to import the
-`enum` variants instead. This will avoid full scoping:
+This `Ordering::Greater` notation is too long. Let's use another form of `use`
+to import the `enum` variants instead. This will avoid full scoping:
 
 ```{rust}
 use std::cmp::Ordering::{self, Equal, Less, Greater};
@@ -347,16 +348,18 @@ fn main() {
 ```
 
 Importing variants is convenient and compact, but can also cause name conflicts,
-so do this with caution. It's considered good style to rarely import variants
-for this reason.
+so do this with caution. For this reason, it's normally considered better style
+to `use` an enum rather than its variants directly.
 
-As you can see, `enum`s are quite a powerful tool for data representation, and are
-even more useful when they're [generic][generics] across types. Before we
-get to generics, though, let's talk about how to use them with pattern matching, a
-tool that will let us deconstruct this sum type (the type theory term for enums)
-in a very elegant way and avoid all these messy `if`/`else`s.
+As you can see, `enum`s are quite a powerful tool for data representation, and
+are even more useful when they're [generic][generics] across types. Before we
+get to generics, though, let's talk about how to use enums with pattern
+matching, a tool that will let us deconstruct sum types (the type theory term
+for enums) like `Ordering` in a very elegant way that avoids all these messy
+and brittle `if`/`else`s.
 
 
+[arity]: ./glossary.html#arity
 [match]: ./match.html
 [game]: ./guessing-game.html#comparing-guesses
 [generics]: ./generics.html

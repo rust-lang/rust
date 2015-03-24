@@ -48,6 +48,7 @@ use mem;
 /// # Examples
 ///
 /// ```
+/// # #![feature(core)]
 /// use std::raw::{self, Repr};
 ///
 /// let slice: &[u16] = &[1, 2, 3, 4];
@@ -106,6 +107,7 @@ pub struct Closure {
 /// # Examples
 ///
 /// ```
+/// # #![feature(core)]
 /// use std::mem;
 /// use std::raw;
 ///

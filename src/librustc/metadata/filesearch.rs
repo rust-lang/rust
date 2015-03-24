@@ -156,7 +156,7 @@ impl<'a> FileSearch<'a> {
 
     // Returns a list of directories where target-specific tool binaries are located.
     pub fn get_tools_search_paths(&self) -> Vec<PathBuf> {
-        let mut p = PathBuf::new(self.sysroot);
+        let mut p = PathBuf::from(self.sysroot);
         p.push(&find_libdir(self.sysroot));
         p.push(&rustlibdir());
         p.push(&self.triple);
@@ -166,7 +166,7 @@ impl<'a> FileSearch<'a> {
 }
 
 pub fn relative_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
-    let mut p = PathBuf::new(&find_libdir(sysroot));
+    let mut p = PathBuf::from(&find_libdir(sysroot));
     assert!(p.is_relative());
     p.push(&rustlibdir());
     p.push(target_triple);
@@ -224,7 +224,7 @@ pub fn rust_path() -> Vec<PathBuf> {
         Some(env_path) => {
             let env_path_components =
                 env_path.split(PATH_ENTRY_SEPARATOR);
-            env_path_components.map(|s| PathBuf::new(s)).collect()
+            env_path_components.map(|s| PathBuf::from(s)).collect()
         }
         None => Vec::new()
     };

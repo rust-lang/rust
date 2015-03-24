@@ -12,6 +12,8 @@
 
 // Test linking against a library built with -C codegen-units > 1
 
+// pretty-expanded FIXME #23616
+
 extern crate sepcomp_lib;
 use sepcomp_lib::a::one;
 use sepcomp_lib::b::two;

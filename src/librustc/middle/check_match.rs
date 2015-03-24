@@ -874,7 +874,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
 
         ast::PatEnum(_, ref args) => {
-            let def = cx.tcx.def_map.borrow()[pat_id].full_def();
+            let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
             match def {
                 DefConst(..) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
@@ -892,7 +892,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
 
         ast::PatStruct(_, ref pattern_fields, _) => {
             // Is this a struct or an enum variant?
-            let def = cx.tcx.def_map.borrow()[pat_id].full_def();
+            let def = cx.tcx.def_map.borrow().get(&pat_id).unwrap().full_def();
             let class_id = match def {
                 DefConst(..) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \

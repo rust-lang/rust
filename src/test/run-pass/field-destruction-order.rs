@@ -21,6 +21,8 @@
 // declarations, but we currently run them top-to-bottom. I don't think the
 // order really matters that much as long as we define what it is.
 
+// pretty-expanded FIXME #23616
+
 struct A;
 struct B;
 struct C {

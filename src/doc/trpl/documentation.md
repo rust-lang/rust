@@ -237,14 +237,17 @@ fn main() {
 }
 ```
 
-Here's the full algorithm:
+Here's the full algorithm rustdoc uses to postprocess examples:
 
-1. Given a code block, if it does not contain `fn main()`, it is wrapped in
-   `fn main() { your_code }`
-2. Given that result, if it contains no `extern crate` directives but it also
-   contains the name of the crate being tested, then `extern crate <name>` is
-   injected at the top.
-3. Some common allow attributes are added for documentation examples at the top.
+1. Any leading `#![foo]` attributes are left intact as crate attributes.
+2. Some common `allow` attributes are inserted, including
+   `unused_variables`, `unused_assignments`, `unused_mut`,
+   `unused_attributes`, and `dead_code`. Small examples often trigger
+   these lints.
+3. If the example does not contain `extern crate`, then `extern crate
+   <mycrate>;` is inserted.
+2. Finally, if the example does not contain `fn main`, the remainder of the
+   text is wrapped in `fn main() { your_code }`
 
 Sometimes, this isn't enough, though. For example, all of these code samples
 with `///` we've been talking about? The raw text:
@@ -332,6 +335,42 @@ Here's the same explanation, in raw text:
 By repeating all parts of the example, you can ensure that your example still
 compiles, while only showing the parts that are relevant to that part of your
 explanation.
+
+### Documenting macros
+
+Here’s an example of documenting a macro:
+
+```
+/// Panic with a given message unless an expression evaluates to true.
+///
+/// # Examples
+///
+/// ```
+/// # #[macro_use] extern crate foo;
+/// # fn main() {
+/// panic_unless!(1 + 1 == 2, “Math is broken.”);
+/// # }
+/// ```
+///
+/// ```should_fail
+/// # #[macro_use] extern crate foo;
+/// # fn main() {
+/// panic_unless!(true == false, “I’m broken.”);
+/// # }
+/// ```
+#[macro_export]
+macro_rules! panic_unless {
+    ($condition:expr, $($rest:expr),+) => ({ if ! $condition { panic!($($rest),+); } });
+}
+# fn main() {}
+```
+
+You’ll note three things: we need to add our own `extern crate` line, so that
+we can add the `#[macro_use]` attribute. Second, we’ll need to add our own
+`main()` as well. Finally, a judicious use of `#` to comment out those two
+things, so they don’t show up in the output.
+
+### Running documentation tests
 
 To run the tests, either
 

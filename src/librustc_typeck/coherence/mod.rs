@@ -269,7 +269,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
     fn get_self_type_for_implementation(&self, impl_did: DefId)
                                         -> TypeScheme<'tcx> {
-        self.crate_context.tcx.tcache.borrow()[impl_did].clone()
+        self.crate_context.tcx.tcache.borrow().get(&impl_did).unwrap().clone()
     }
 
     // Converts an implementation in the AST to a vector of items.
@@ -387,7 +387,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
         };
 
         for &impl_did in &*trait_impls.borrow() {
-            let items = &(*impl_items)[impl_did];
+            let items = impl_items.get(&impl_did).unwrap();
             if items.len() < 1 {
                 // We'll error out later. For now, just don't ICE.
                 continue;

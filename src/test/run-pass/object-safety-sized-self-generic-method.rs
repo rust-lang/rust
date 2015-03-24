@@ -11,6 +11,8 @@
 // Check that a trait is still object-safe (and usable) if it has
 // generic methods so long as they require `Self : Sized`.
 
+// pretty-expanded FIXME #23616
+
 trait Counter {
     fn tick(&mut self) -> u32;
     fn with<F:FnOnce(u32)>(&self, f: F) where Self : Sized;

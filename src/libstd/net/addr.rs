@@ -263,6 +263,7 @@ impl hash::Hash for SocketAddrV6 {
 /// Some examples:
 ///
 /// ```no_run
+/// # #![feature(net)]
 /// use std::net::{SocketAddrV4, TcpStream, UdpSocket, TcpListener, Ipv4Addr};
 ///
 /// fn main() {

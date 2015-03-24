@@ -20,6 +20,8 @@
 // then we simply express the enum as just a pointer and not wrap it
 // in a struct.
 
+// pretty-expanded FIXME #23616
+
 use std::mem;
 
 #[inline(never)]

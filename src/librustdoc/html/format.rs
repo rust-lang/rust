@@ -290,7 +290,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, p: &clean::Path,
             if ast_util::is_local(did) || cache.inlined.contains(&did) {
                 Some(repeat("../").take(loc.len()).collect::<String>())
             } else {
-                match cache.extern_locations[did.krate] {
+                match cache.extern_locations[&did.krate] {
                     render::Remote(ref s) => Some(s.to_string()),
                     render::Local => {
                         Some(repeat("../").take(loc.len()).collect::<String>())
@@ -404,11 +404,11 @@ fn primitive_link(f: &mut fmt::Formatter,
             needs_termination = true;
         }
         Some(&cnum) => {
-            let path = &m.paths[ast::DefId {
+            let path = &m.paths[&ast::DefId {
                 krate: cnum,
                 node: ast::CRATE_NODE_ID,
             }];
-            let loc = match m.extern_locations[cnum] {
+            let loc = match m.extern_locations[&cnum] {
                 render::Remote(ref s) => Some(s.to_string()),
                 render::Local => {
                     let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
@@ -486,7 +486,7 @@ impl fmt::Display for clean::Type {
                 primitive_link(f, clean::Slice, &format!("[{}]", **t))
             }
             clean::FixedVector(ref t, ref s) => {
-                primitive_link(f, clean::Slice,
+                primitive_link(f, clean::PrimitiveType::Array,
                                &format!("[{}; {}]", **t, *s))
             }
             clean::Bottom => f.write_str("!"),

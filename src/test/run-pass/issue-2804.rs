@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(collections)]
+#![feature(rustc_private)]
+
 extern crate collections;
 extern crate serialize;
 
@@ -56,8 +59,7 @@ fn add_interface(_store: int, managed_ip: String, data: json::Json) -> (String, 
 
 fn add_interfaces(store: int, managed_ip: String, device: HashMap<String, json::Json>)
 -> Vec<(String, object)> {
-    match device["interfaces".to_string()]
-    {
+    match device["interfaces"] {
         Json::Array(ref interfaces) =>
         {
           interfaces.iter().map(|interface| {
@@ -67,7 +69,7 @@ fn add_interfaces(store: int, managed_ip: String, device: HashMap<String, json::
         _ =>
         {
             println!("Expected list for {} interfaces, found {}", managed_ip,
-                   device["interfaces".to_string()]);
+                     device["interfaces"]);
             Vec::new()
         }
     }

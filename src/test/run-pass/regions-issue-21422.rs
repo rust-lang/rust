@@ -12,6 +12,8 @@
 // add inference constraints that the operands of a binary operator
 // should outlive the binary operation itself.
 
+// pretty-expanded FIXME #23616
+
 pub struct P<'a> {
     _ptr: *const &'a u8,
 }

@@ -12,6 +12,8 @@
 // See https://github.com/nsf/pnoise for timings and alternative implementations.
 // ignore-lexer-test FIXME #15679
 
+#![feature(rand, core)]
+
 use std::f32::consts::PI;
 use std::num::Float;
 use std::rand::{Rng, StdRng};

@@ -16,6 +16,7 @@
 //! # Examples
 //!
 //! ```rust
+//! # #![feature(hash)]
 //! use std::hash::{hash, Hash, SipHasher};
 //!
 //! #[derive(Hash)]
@@ -35,6 +36,7 @@
 //! the trait `Hash`:
 //!
 //! ```rust
+//! # #![feature(hash)]
 //! use std::hash::{hash, Hash, Hasher, SipHasher};
 //!
 //! struct Person {
@@ -90,7 +92,7 @@ pub trait Hash {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hasher {
     /// Completes a round of hashing, producing the output hash generated.
-    #[unstable(feature = "hash", reason = "module was recently redesigned")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn finish(&self) -> u64;
 
     /// Writes some data into this `Hasher`

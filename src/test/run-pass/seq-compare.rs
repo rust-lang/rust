@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     assert!(("hello".to_string() < "hellr".to_string()));
     assert!(("hello ".to_string() > "hello".to_string()));

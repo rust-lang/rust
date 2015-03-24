@@ -40,7 +40,7 @@
 #![feature(unicode)]
 #![feature(path_ext)]
 #![feature(fs)]
-#![feature(hash)]
+#![feature(convert)]
 #![feature(path_relative_from)]
 
 extern crate arena;

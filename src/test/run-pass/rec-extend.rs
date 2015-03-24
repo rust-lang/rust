@@ -11,6 +11,8 @@
 
 
 
+// pretty-expanded FIXME #23616
+
 struct Point {x: int, y: int}
 
 pub fn main() {

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 use std::rc::Rc;
 
 // Examples from the "deref coercions" RFC, at rust-lang/rfcs#241.

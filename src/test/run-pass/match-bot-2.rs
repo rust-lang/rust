@@ -9,5 +9,7 @@
 // except according to those terms.
 
 // n.b. This was only ever failing with optimization disabled.
+// pretty-expanded FIXME #23616
+
 fn a() -> int { match return 1 { 2 => 3, _ => panic!() } }
 pub fn main() { a(); }

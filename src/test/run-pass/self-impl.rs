@@ -10,6 +10,8 @@
 
 // Test that we can use `Self` types in impls in the expected way.
 
+// pretty-expanded FIXME #23616
+
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 

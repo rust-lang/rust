@@ -10,6 +10,8 @@
 
 // aux-build:issue-17662.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate "issue-17662" as i;
 
 use std::marker;

@@ -11,6 +11,8 @@
 // compile-flags: --cfg fooA --cfg fooB
 
 // fooA AND !bar
+// pretty-expanded FIXME #23616
+
 #[cfg(all(fooA, not(bar)))]
 fn foo1() -> int { 1 }
 

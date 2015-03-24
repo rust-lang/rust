@@ -20,6 +20,7 @@ pub type CommandError = Box<Error + 'static>;
 pub type CommandResult<T> = Result<T, CommandError>;
 
 pub fn err(s: &str) -> CliError {
+    #[derive(Debug)]
     struct E(String);
 
     impl Error for E {

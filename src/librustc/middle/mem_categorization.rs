@@ -531,7 +531,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           }
 
           ast::ExprPath(..) => {
-            let def = self.tcx().def_map.borrow()[expr.id].full_def();
+            let def = self.tcx().def_map.borrow().get(&expr.id).unwrap().full_def();
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 

@@ -11,7 +11,9 @@
 // If `Index` used an associated type for its output, this test would
 // work more smoothly.
 
-#![feature(old_orphan_check)]
+// pretty-expanded FIXME #23616
+
+#![feature(old_orphan_check, core)]
 
 use std::ops::Index;
 
@@ -29,7 +31,7 @@ impl<T> Mat<T> {
 impl<T> Index<(uint, uint)> for Mat<T> {
     type Output = T;
 
-    fn index<'a>(&'a self, &(row, col): &(uint, uint)) -> &'a T {
+    fn index<'a>(&'a self, (row, col): (uint, uint)) -> &'a T {
         &self.data[row * self.cols + col]
     }
 }
@@ -37,7 +39,7 @@ impl<T> Index<(uint, uint)> for Mat<T> {
 impl<'a, T> Index<(uint, uint)> for &'a Mat<T> {
     type Output = T;
 
-    fn index<'b>(&'b self, index: &(uint, uint)) -> &'b T {
+    fn index<'b>(&'b self, index: (uint, uint)) -> &'b T {
         (*self).index(index)
     }
 }
@@ -47,8 +49,8 @@ struct Row<M> { mat: M, row: uint, }
 impl<T, M: Index<(uint, uint), Output=T>> Index<uint> for Row<M> {
     type Output = T;
 
-    fn index<'a>(&'a self, col: &uint) -> &'a T {
-        &self.mat[(self.row, *col)]
+    fn index<'a>(&'a self, col: uint) -> &'a T {
+        &self.mat[(self.row, col)]
     }
 }
 
@@ -56,7 +58,7 @@ fn main() {
     let m = Mat::new(vec!(1, 2, 3, 4, 5, 6), 3);
     let r = m.row(1);
 
-    assert!(r.index(&2) == &6);
+    assert!(r.index(2) == &6);
     assert!(r[2] == 6);
     assert!(r[2] == 6);
     assert!(6 == r[2]);

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(old_io, old_path)]
+
 use std::env;
 use std::fs::File;
 use std::process::Command;

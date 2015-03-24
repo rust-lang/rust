@@ -12,6 +12,7 @@
 // error-pattern:explicit failure
 // Testing that runtime failure doesn't cause callbacks to abort abnormally.
 // Instead the failure will be delivered after the callbacks return.
+#![feature(std_misc, libc)]
 
 extern crate libc;
 use std::task;

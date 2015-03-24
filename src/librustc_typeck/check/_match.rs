@@ -119,7 +119,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             demand::eqtype(fcx, pat.span, expected, lhs_ty);
         }
         ast::PatEnum(..) | ast::PatIdent(..) if pat_is_const(&tcx.def_map, pat) => {
-            let const_did = tcx.def_map.borrow()[pat.id].def_id();
+            let const_did = tcx.def_map.borrow().get(&pat.id).unwrap().def_id();
             let const_scheme = ty::lookup_item_type(tcx, const_did);
             assert!(const_scheme.generics.is_empty());
             let const_ty = pcx.fcx.instantiate_type_scheme(pat.span,
@@ -163,7 +163,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 
             // if there are multiple arms, make sure they all agree on
             // what the type of the binding `x` ought to be
-            let canon_id = pcx.map[path.node];
+            let canon_id = *pcx.map.get(&path.node).unwrap();
             if canon_id != pat.id {
                 let ct = fcx.local_ty(pat.span, canon_id);
                 demand::eqtype(fcx, pat.span, ct, typ);
@@ -287,10 +287,11 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     // (nmatsakis) an hour or two debugging to remember, so I thought
     // I'd write them down this time.
     //
-    // 1. Most importantly, there is no loss of expressiveness
-    // here. What we are saying is that the type of `x`
-    // becomes *exactly* what is expected. This might seem
-    // like it will cause errors in a case like this:
+    // 1. There is no loss of expressiveness here, though it does
+    // cause some inconvenience. What we are saying is that the type
+    // of `x` becomes *exactly* what is expected. This can cause unnecessary
+    // errors in some cases, such as this one:
+    // it will cause errors in a case like this:
     //
     // ```
     // fn foo<'x>(x: &'x int) {
@@ -361,8 +362,21 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              match_src: ast::MatchSource) {
     let tcx = fcx.ccx.tcx;
 
-    let discrim_ty = fcx.infcx().next_ty_var();
-    check_expr_has_type(fcx, discrim, discrim_ty);
+    // Not entirely obvious: if matches may create ref bindings, we
+    // want to use the *precise* type of the discriminant, *not* some
+    // supertype, as the "discriminant type" (issue #23116).
+    let contains_ref_bindings = arms.iter().any(|a| tcx.arm_contains_ref_binding(a));
+    let discrim_ty;
+    if contains_ref_bindings {
+        check_expr(fcx, discrim);
+        discrim_ty = fcx.expr_ty(discrim);
+    } else {
+        // ...but otherwise we want to use any supertype of the
+        // discriminant. This is sort of a workaround, see note (*) in
+        // `check_pat` for some details.
+        discrim_ty = fcx.infcx().next_ty_var();
+        check_expr_has_type(fcx, discrim, discrim_ty);
+    };
 
     // Typecheck the patterns first, so that we get types for all the
     // bindings.
@@ -449,7 +463,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    let def = tcx.def_map.borrow()[pat.id].full_def();
+    let def = tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
     let (enum_def_id, variant_def_id) = match def {
         def::DefTrait(_) => {
             let name = pprust::path_to_string(path);
@@ -518,7 +532,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    let def = tcx.def_map.borrow()[pat.id].full_def();
+    let def = tcx.def_map.borrow().get(&pat.id).unwrap().full_def();
     let enum_def = def.variant_def_ids()
         .map_or_else(|| def.def_id(), |(enum_def, _)| enum_def);
 

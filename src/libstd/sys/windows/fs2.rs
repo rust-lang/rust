@@ -372,7 +372,7 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
                                   sz - 1,
                                   libc::VOLUME_NAME_DOS)
     }, |s| OsStringExt::from_wide(s)));
-    Ok(PathBuf::new(&ret))
+    Ok(PathBuf::from(&ret))
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {

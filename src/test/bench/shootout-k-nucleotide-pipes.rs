@@ -13,7 +13,7 @@
 
 // multi tasking k-nucleotide
 
-#![feature(box_syntax)]
+#![feature(box_syntax, std_misc, old_io, collections, os)]
 
 use std::ascii::{AsciiExt, OwnedAsciiExt};
 use std::cmp::Ordering::{self, Less, Greater, Equal};

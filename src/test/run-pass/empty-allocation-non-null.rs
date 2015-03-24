@@ -10,6 +10,8 @@
 
 // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
 
+// pretty-expanded FIXME #23616
+
 pub fn main() {
     assert!(Some(Box::new(())).is_some());
 

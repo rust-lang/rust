@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A growable list type with heap-allocated contents, written `Vec<T>` but pronounced 'vector.'
+//! A growable list type with heap-allocated contents, written `Vec<T>` but
+//! pronounced 'vector.'
 //!
 //! Vectors have `O(1)` indexing, push (to the end) and pop (from the end).
 //!
@@ -73,6 +74,7 @@ use borrow::{Cow, IntoCow};
 /// # Examples
 ///
 /// ```
+/// # #![feature(collections)]
 /// let mut vec = Vec::new();
 /// vec.push(1);
 /// vec.push(2);
@@ -123,17 +125,19 @@ use borrow::{Cow, IntoCow};
 ///
 /// # Capacity and reallocation
 ///
-/// The capacity of a vector is the amount of space allocated for any future elements that will be
-/// added onto the vector. This is not to be confused with the *length* of a vector, which
-/// specifies the number of actual elements within the vector. If a vector's length exceeds its
-/// capacity, its capacity will automatically be increased, but its elements will have to be
+/// The capacity of a vector is the amount of space allocated for any future
+/// elements that will be added onto the vector. This is not to be confused with
+/// the *length* of a vector, which specifies the number of actual elements
+/// within the vector. If a vector's length exceeds its capacity, its capacity
+/// will automatically be increased, but its elements will have to be
 /// reallocated.
 ///
-/// For example, a vector with capacity 10 and length 0 would be an empty vector with space for 10
-/// more elements. Pushing 10 or fewer elements onto the vector will not change its capacity or
-/// cause reallocation to occur. However, if the vector's length is increased to 11, it will have
-/// to reallocate, which can be slow. For this reason, it is recommended to use
-/// `Vec::with_capacity` whenever possible to specify how big the vector is expected to get.
+/// For example, a vector with capacity 10 and length 0 would be an empty vector
+/// with space for 10 more elements. Pushing 10 or fewer elements onto the
+/// vector will not change its capacity or cause reallocation to occur. However,
+/// if the vector's length is increased to 11, it will have to reallocate, which
+/// can be slow. For this reason, it is recommended to use `Vec::with_capacity`
+/// whenever possible to specify how big the vector is expected to get.
 #[unsafe_no_drop_flag]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Vec<T> {
@@ -345,6 +349,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut vec = Vec::with_capacity(10);
     /// vec.push_all(&[1, 2, 3]);
     /// assert_eq!(vec.capacity(), 10);
@@ -400,6 +405,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut vec = vec![1, 2, 3, 4];
     /// vec.truncate(2);
     /// assert_eq!(vec, [1, 2]);
@@ -565,6 +571,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut v = vec![1, 2, 3];
     /// assert_eq!(v.remove(1), 2);
     /// assert_eq!(v, [1, 3]);
@@ -696,6 +703,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut vec = vec![1, 2, 3];
     /// let mut vec2 = vec![4, 5, 6];
     /// vec.append(&mut vec2);
@@ -732,6 +740,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut v = vec!["a".to_string(), "b".to_string()];
     /// for s in v.drain() {
     ///     // s has type String, not &String
@@ -813,6 +822,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections, core)]
     /// let v = vec![0, 1, 2];
     /// let w = v.map_in_place(|i| i + 3);
     /// assert_eq!(w.as_slice(), [3, 4, 5].as_slice());
@@ -1015,6 +1025,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut vec = vec![1,2,3];
     /// let vec2 = vec.split_off(1);
     /// assert_eq!(vec, [1]);
@@ -1053,6 +1064,7 @@ impl<T: Clone> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut vec = vec!["hello"];
     /// vec.resize(3, "world");
     /// assert_eq!(vec, ["hello", "world", "world"]);
@@ -1081,6 +1093,7 @@ impl<T: Clone> Vec<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut vec = vec![1];
     /// vec.push_all(&[2, 3, 4]);
     /// assert_eq!(vec, [1, 2, 3, 4]);
@@ -1323,19 +1336,37 @@ impl<T: Hash> Hash for Vec<T> {
 impl<T> Index<usize> for Vec<T> {
     type Output = T;
 
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, index: &usize) -> &T {
         // NB built-in indexing via `&[T]`
         &(**self)[*index]
     }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, index: usize) -> &T {
+        // NB built-in indexing via `&[T]`
+        &(**self)[index]
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> IndexMut<usize> for Vec<T> {
+
+    #[cfg(stage0)]
     #[inline]
     fn index_mut(&mut self, index: &usize) -> &mut T {
         // NB built-in indexing via `&mut [T]`
         &mut (**self)[*index]
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index_mut(&mut self, index: usize) -> &mut T {
+        // NB built-in indexing via `&mut [T]`
+        &mut (**self)[index]
     }
 }
 
@@ -1343,61 +1374,125 @@ impl<T> IndexMut<usize> for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::Range<usize>> for Vec<T> {
     type Output = [T];
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, index: &ops::Range<usize>) -> &[T] {
+        Index::index(&**self, index)
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, index: ops::Range<usize>) -> &[T] {
         Index::index(&**self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::RangeTo<usize>> for Vec<T> {
     type Output = [T];
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, index: &ops::RangeTo<usize>) -> &[T] {
+        Index::index(&**self, index)
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, index: ops::RangeTo<usize>) -> &[T] {
         Index::index(&**self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::RangeFrom<usize>> for Vec<T> {
     type Output = [T];
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, index: &ops::RangeFrom<usize>) -> &[T] {
+        Index::index(&**self, index)
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, index: ops::RangeFrom<usize>) -> &[T] {
         Index::index(&**self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::RangeFull> for Vec<T> {
     type Output = [T];
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, _index: &ops::RangeFull) -> &[T] {
-        self.as_slice()
+        self
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, _index: ops::RangeFull) -> &[T] {
+        self
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::Range<usize>> for Vec<T> {
+
+    #[cfg(stage0)]
     #[inline]
     fn index_mut(&mut self, index: &ops::Range<usize>) -> &mut [T] {
+        IndexMut::index_mut(&mut **self, index)
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index_mut(&mut self, index: ops::Range<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeTo<usize>> for Vec<T> {
+
+    #[cfg(stage0)]
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeTo<usize>) -> &mut [T] {
+        IndexMut::index_mut(&mut **self, index)
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeFrom<usize>> for Vec<T> {
+
+    #[cfg(stage0)]
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeFrom<usize>) -> &mut [T] {
+        IndexMut::index_mut(&mut **self, index)
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeFull> for Vec<T> {
+
+    #[cfg(stage0)]
     #[inline]
     fn index_mut(&mut self, _index: &ops::RangeFull) -> &mut [T] {
+        self.as_mut_slice()
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index_mut(&mut self, _index: ops::RangeFull) -> &mut [T] {
         self.as_mut_slice()
     }
 }
@@ -1406,7 +1501,13 @@ impl<T> ops::IndexMut<ops::RangeFull> for Vec<T> {
 impl<T> ops::Deref for Vec<T> {
     type Target = [T];
 
-    fn deref(&self) -> &[T] { self.as_slice() }
+    fn deref(&self) -> &[T] {
+        unsafe {
+            let p = *self.ptr;
+            assume(p != 0 as *mut T);
+            slice::from_raw_parts(p, self.len)
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1548,12 +1649,14 @@ impl<T: Ord> Ord for Vec<T> {
     }
 }
 
+#[allow(deprecated)]
 impl<T> AsSlice<T> for Vec<T> {
     /// Returns a slice into `self`.
     ///
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// fn foo(slice: &[i32]) {}
     ///
     /// let vec = vec![1, 2];
@@ -1562,11 +1665,7 @@ impl<T> AsSlice<T> for Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice(&self) -> &[T] {
-        unsafe {
-            let p = *self.ptr;
-            assume(p != 0 as *mut T);
-            slice::from_raw_parts(p, self.len)
-        }
+        self
     }
 }
 
@@ -1611,6 +1710,46 @@ impl<T> Default for Vec<T> {
 impl<T: fmt::Debug> fmt::Debug for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> AsRef<Vec<T>> for Vec<T> {
+    fn as_ref(&self) -> &Vec<T> {
+        self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> Into<Vec<T>> for Vec<T> {
+    fn into(self) -> Vec<T> {
+        self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> AsRef<[T]> for Vec<T> {
+    fn as_ref(&self) -> &[T] {
+        self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, T: Clone> From<&'a [T]> for Vec<T> {
+    #[cfg(not(test))]
+    fn from(s: &'a [T]) -> Vec<T> {
+        s.to_vec()
+    }
+    #[cfg(test)]
+    fn from(s: &'a [T]) -> Vec<T> {
+        ::slice::to_vec(s)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&'a str> for Vec<u8> {
+    fn from(s: &'a str) -> Vec<u8> {
+        From::from(s.as_bytes())
     }
 }
 

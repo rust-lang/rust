@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 fn borrow(_v: &int) {}
 
 fn borrow_from_arg_imm_ref(v: Box<int>) {

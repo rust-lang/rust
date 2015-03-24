@@ -63,16 +63,18 @@ pub struct OsStr {
 impl OsString {
     /// Constructs an `OsString` at no cost by consuming a `String`.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", reason = "use `from` instead")]
     pub fn from_string(s: String) -> OsString {
-        OsString { inner: Buf::from_string(s) }
+        OsString::from(s)
     }
 
     /// Constructs an `OsString` by copying from a `&str` slice.
     ///
     /// Equivalent to: `OsString::from_string(String::from_str(s))`.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", reason = "use `from` instead")]
     pub fn from_str(s: &str) -> OsString {
-        OsString { inner: Buf::from_str(s) }
+        OsString::from(s)
     }
 
     /// Constructs a new empty `OsString`.
@@ -98,17 +100,57 @@ impl OsString {
 
     /// Extend the string with the given `&OsStr` slice.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn push<T: AsOsStr + ?Sized>(&mut self, s: &T) {
-        self.inner.push_slice(&s.as_os_str().inner)
+    pub fn push<T: AsRef<OsStr>>(&mut self, s: T) {
+        self.inner.push_slice(&s.as_ref().inner)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl From<String> for OsString {
+    fn from(s: String) -> OsString {
+        OsString { inner: Buf::from_string(s) }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&'a String> for OsString {
+    fn from(s: &'a String) -> OsString {
+        OsString { inner: Buf::from_str(s) }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&'a str> for OsString {
+    fn from(s: &'a str) -> OsString {
+        OsString { inner: Buf::from_str(s) }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&'a OsStr> for OsString {
+    fn from(s: &'a OsStr) -> OsString {
+        OsString { inner: s.inner.to_owned() }
+    }
+}
+
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeFull> for OsString {
     type Output = OsStr;
 
     #[inline]
     fn index(&self, _index: &ops::RangeFull) -> &OsStr {
+        unsafe { mem::transmute(self.inner.as_slice()) }
+    }
+}
+
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl ops::Index<ops::RangeFull> for OsString {
+    type Output = OsStr;
+
+    #[inline]
+    fn index(&self, _index: ops::RangeFull) -> &OsStr {
         unsafe { mem::transmute(self.inner.as_slice()) }
     }
 }
@@ -316,37 +358,76 @@ impl ToOwned for OsStr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
 impl<'a, T: AsOsStr + ?Sized> AsOsStr for &'a T {
     fn as_os_str(&self) -> &OsStr {
         (*self).as_os_str()
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
 impl AsOsStr for OsStr {
     fn as_os_str(&self) -> &OsStr {
         self
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
 impl AsOsStr for OsString {
     fn as_os_str(&self) -> &OsStr {
         &self[..]
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
 impl AsOsStr for str {
     fn as_os_str(&self) -> &OsStr {
         OsStr::from_str(self)
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
 impl AsOsStr for String {
     fn as_os_str(&self) -> &OsStr {
         OsStr::from_str(&self[..])
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<OsStr> for OsStr {
+    fn as_ref(&self) -> &OsStr {
+        self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<OsStr> for OsString {
+    fn as_ref(&self) -> &OsStr {
+        self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<OsStr> for str {
+    fn as_ref(&self) -> &OsStr {
+        OsStr::from_str(self)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<OsStr> for String {
+    fn as_ref(&self) -> &OsStr {
+        OsStr::from_str(&self[..])
+    }
+}
+
 #[allow(deprecated)]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
 impl AsOsStr for Path {
     #[cfg(unix)]
     fn as_os_str(&self) -> &OsStr {

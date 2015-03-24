@@ -40,11 +40,11 @@
 //!
 //! ## Vectors, slices and strings
 //!
-//! The common container type, `Vec`, a growable vector backed by an
-//! array, lives in the [`vec`](vec/index.html) module. References to
-//! arrays, `&[T]`, more commonly called "slices", are built-in types
-//! for which the [`slice`](slice/index.html) module defines many
-//! methods.
+//! The common container type, `Vec`, a growable vector backed by an array,
+//! lives in the [`vec`](vec/index.html) module. Contiguous, unsized regions
+//! of memory, `[T]`, commonly called "slices", and their borrowed versions,
+//! `&[T]`, commonly called "borrowed slices", are built-in types for which the
+//! for which the [`slice`](slice/index.html) module defines many methods.
 //!
 //! `&str`, a UTF-8 string, is a built-in type, and the standard library
 //! defines methods for it on a variety of traits in the
@@ -75,7 +75,7 @@
 //!
 //! The [`thread`](thread/index.html) module contains Rust's threading abstractions.
 //! [`sync`](sync/index.html) contains further, primitive, shared memory types,
-//! including [`atomic`](sync/atomic/index.html), and [`mpsc`](sync/mpmc/index.html),
+//! including [`atomic`](sync/atomic/index.html), and [`mpsc`](sync/mpsc/index.html),
 //! which contains the channel types for message passing.
 //!
 //! Common types of I/O, including files, TCP, UDP, pipes, Unix domain sockets,
@@ -105,12 +105,12 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
+#![doc(test(no_crate_inject))]
 
 #![feature(alloc)]
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(hash)]
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(linkage, thread_local, asm)]
@@ -123,12 +123,13 @@
 #![feature(unsafe_destructor)]
 #![feature(unsafe_no_drop_flag)]
 #![feature(macro_reexport)]
-#![feature(hash)]
 #![feature(int_uint)]
 #![feature(unique)]
+#![feature(convert)]
 #![feature(allow_internal_unstable)]
 #![feature(str_char)]
-#![cfg_attr(test, feature(test, rustc_private))]
+#![feature(into_cow)]
+#![cfg_attr(test, feature(test, rustc_private, std_misc))]
 
 // Don't link to std. We are std.
 #![feature(no_std)]
@@ -169,6 +170,7 @@ pub use core::any;
 pub use core::cell;
 pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;
+pub use core::convert;
 pub use core::default;
 #[allow(deprecated)]
 pub use core::finally;
@@ -212,6 +214,9 @@ pub mod prelude;
 
 /* Primitive types */
 
+// NB: slice and str are primitive types too, but their module docs + primitive doc pages
+// are inlined from the public re-exports of core_collections::{slice, str} above.
+
 #[path = "num/float_macros.rs"]
 #[macro_use]
 mod float_macros;
@@ -249,30 +254,23 @@ pub mod num;
 /* Runtime and platform support */
 
 #[macro_use]
-pub mod thread_local;
-
-pub mod dynamic_lib;
-pub mod ffi;
-pub mod old_io;
-pub mod io;
-pub mod fs;
-pub mod net;
-pub mod os;
-pub mod env;
-pub mod path;
-pub mod old_path;
-pub mod process;
-pub mod rand;
-pub mod time;
-
-/* Common data structures */
+pub mod thread;
 
 pub mod collections;
-
-/* Threads and communication */
-
-pub mod thread;
+pub mod dynamic_lib;
+pub mod env;
+pub mod ffi;
+pub mod fs;
+pub mod io;
+pub mod net;
+pub mod old_io;
+pub mod old_path;
+pub mod os;
+pub mod path;
+pub mod process;
+pub mod rand;
 pub mod sync;
+pub mod time;
 
 #[macro_use]
 #[path = "sys/common/mod.rs"] mod sys_common;
@@ -285,8 +283,9 @@ pub mod sync;
 pub mod rt;
 mod panicking;
 
-// Documentation for primitive types
+// Modules that exist purely to document + host impl docs for primitive types
 
+mod array;
 mod bool;
 mod unit;
 mod tuple;
@@ -305,7 +304,7 @@ mod std {
     pub use rt; // used for panic!()
     pub use vec; // used for vec![]
     pub use cell; // used for tls!
-    pub use thread_local; // used for thread_local!
+    pub use thread; // used for thread_local!
     pub use marker;  // used for tls!
     pub use ops; // used for bitflags!
 

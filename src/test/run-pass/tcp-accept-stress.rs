@@ -13,6 +13,8 @@
 //              quite quickly and it takes a few seconds for the sockets to get
 //              recycled.
 
+#![feature(old_io, io, std_misc)]
+
 use std::old_io::{TcpListener, Listener, Acceptor, EndOfFile, TcpStream};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

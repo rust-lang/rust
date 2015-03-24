@@ -235,6 +235,7 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::LinkedList;
     ///
     /// let mut a = LinkedList::new();
@@ -483,6 +484,7 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::LinkedList;
     ///
     /// let mut dl = LinkedList::new();
@@ -530,6 +532,7 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::LinkedList;
     ///
     /// let mut d = LinkedList::new();
@@ -548,6 +551,7 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::LinkedList;
     ///
     /// let mut d = LinkedList::new();
@@ -573,6 +577,7 @@ impl<T> LinkedList<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::LinkedList;
     ///
     /// let mut d = LinkedList::new();
@@ -765,6 +770,7 @@ impl<'a, A> IterMut<'a, A> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::LinkedList;
     ///
     /// let mut list: LinkedList<_> = vec![1, 3, 4].into_iter().collect();
@@ -792,6 +798,7 @@ impl<'a, A> IterMut<'a, A> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::LinkedList;
     ///
     /// let mut list: LinkedList<_> = vec![1, 2, 3].into_iter().collect();
@@ -831,6 +838,8 @@ impl<A> DoubleEndedIterator for IntoIter<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.list.pop_back() }
 }
+
+impl<A> ExactSizeIterator for IntoIter<A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> FromIterator<A> for LinkedList<A> {

@@ -38,6 +38,8 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#![feature(core, old_io, io, core)]
+
 use std::cmp::min;
 use std::old_io::*;
 use std::iter::repeat;

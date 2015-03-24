@@ -11,6 +11,10 @@
 // Test using overloaded indexing when the "map" is stored in a
 // field. This caused problems at some point.
 
+// pretty-expanded FIXME #23616
+
+#![feature(core)]
+
 use std::ops::Index;
 
 struct Foo {
@@ -25,8 +29,8 @@ struct Bar {
 impl Index<int> for Foo {
     type Output = int;
 
-    fn index(&self, z: &int) -> &int {
-        if *z == 0 {
+    fn index(&self, z: int) -> &int {
+        if z == 0 {
             &self.x
         } else {
             &self.y

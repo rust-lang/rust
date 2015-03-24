@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
+#![feature(io, process_capture)]
+
 use std::env;
 use std::io::prelude::*;
 use std::io;

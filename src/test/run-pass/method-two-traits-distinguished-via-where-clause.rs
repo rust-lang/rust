@@ -11,6 +11,10 @@
 // Test that we select between traits A and B. To do that, we must
 // consider the `Sized` bound.
 
+// pretty-expanded FIXME #23616
+
+#![feature(core)]
+
 trait A {
     fn foo(self);
 }

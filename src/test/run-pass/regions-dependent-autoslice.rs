@@ -12,6 +12,8 @@
 // Issue #3148.
 
 
+// pretty-expanded FIXME #23616
+
 fn subslice1<'r>(v: &'r [uint]) -> &'r [uint] { v }
 
 fn both<'r>(v: &'r [uint]) -> &'r [uint] {

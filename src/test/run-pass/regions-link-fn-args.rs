@@ -11,6 +11,8 @@
 // Test that region inference correctly links up the regions when a
 // `ref` borrow occurs inside a fn argument.
 
+// pretty-expanded FIXME #23616
+
 #![allow(dead_code)]
 
 fn with<'a, F>(_: F) where F: FnOnce(&'a Vec<int>) -> &'a Vec<int> { }

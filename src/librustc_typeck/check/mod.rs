@@ -368,7 +368,7 @@ impl<'a, 'tcx> ty::ClosureTyper<'tcx> for FnCtxt<'a, 'tcx> {
                     substs: &subst::Substs<'tcx>)
                     -> ty::ClosureTy<'tcx>
     {
-        self.inh.closure_tys.borrow()[def_id].subst(self.tcx(), substs)
+        self.inh.closure_tys.borrow().get(&def_id).unwrap().subst(self.tcx(), substs)
     }
 
     fn closure_upvars(&self,
@@ -549,7 +549,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         debug!("Local variable {} is assigned type {}",
                self.fcx.pat_to_string(&*local.pat),
                self.fcx.infcx().ty_to_string(
-                   self.fcx.inh.locals.borrow()[local.id].clone()));
+                   self.fcx.inh.locals.borrow().get(&local.id).unwrap().clone()));
         visit::walk_local(self, local);
     }
 
@@ -565,7 +565,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
                 debug!("Pattern binding {} is assigned to {} with type {}",
                        token::get_ident(path1.node),
                        self.fcx.infcx().ty_to_string(
-                           self.fcx.inh.locals.borrow()[p.id].clone()),
+                           self.fcx.inh.locals.borrow().get(&p.id).unwrap().clone()),
                        var_ty.repr(self.fcx.tcx()));
             }
         }
@@ -3327,7 +3327,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 let mut missing_fields = Vec::new();
                 for class_field in field_types {
                     let name = class_field.name;
-                    let (_, seen) = class_field_map[name];
+                    let (_, seen) = *class_field_map.get(&name).unwrap();
                     if !seen {
                         missing_fields.push(
                             format!("`{}`", &token::get_name(name)))
@@ -4242,11 +4242,27 @@ impl<'tcx> Repr<'tcx> for Expectation<'tcx> {
 }
 
 pub fn check_decl_initializer<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                                       nid: ast::NodeId,
+                                       local: &'tcx ast::Local,
                                        init: &'tcx ast::Expr)
 {
-    let local_ty = fcx.local_ty(init.span, nid);
-    check_expr_coercable_to_type(fcx, init, local_ty)
+    let ref_bindings = fcx.tcx().pat_contains_ref_binding(&local.pat);
+
+    let local_ty = fcx.local_ty(init.span, local.id);
+    if !ref_bindings {
+        check_expr_coercable_to_type(fcx, init, local_ty)
+    } else {
+        // Somewhat subtle: if we have a `ref` binding in the pattern,
+        // we want to avoid introducing coercions for the RHS. This is
+        // both because it helps preserve sanity and, in the case of
+        // ref mut, for soundness (issue #23116). In particular, in
+        // the latter case, we need to be clear that the type of the
+        // referent for the reference that results is *equal to* the
+        // type of the lvalue it is referencing, and not some
+        // supertype thereof.
+        check_expr(fcx, init);
+        let init_ty = fcx.expr_ty(init);
+        demand::eqtype(fcx, init.span, init_ty, local_ty);
+    };
 }
 
 pub fn check_decl_local<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, local: &'tcx ast::Local)  {
@@ -4256,7 +4272,7 @@ pub fn check_decl_local<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>, local: &'tcx ast::Local)
     fcx.write_ty(local.id, t);
 
     if let Some(ref init) = local.init {
-        check_decl_initializer(fcx, local.id, &**init);
+        check_decl_initializer(fcx, local, &**init);
         let init_ty = fcx.expr_ty(&**init);
         if ty::type_is_error(init_ty) {
             fcx.write_ty(local.id, init_ty);
@@ -4428,7 +4444,7 @@ fn check_const<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let inh = static_inherited_fields(ccx);
     let rty = ty::node_id_to_type(ccx.tcx, id);
     let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(rty), e.id);
-    let declty = (*fcx.ccx.tcx.tcache.borrow())[local_def(id)].ty;
+    let declty = fcx.ccx.tcx.tcache.borrow().get(&local_def(id)).unwrap().ty;
     check_const_with_ty(&fcx, sp, e, declty);
 }
 
@@ -5365,7 +5381,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                    mutbl: ast::MutImmutable
                }))
             }
-            "copy_memory" | "copy_nonoverlapping_memory" |
+            "copy" | "copy_nonoverlapping" |
             "volatile_copy_memory" | "volatile_copy_nonoverlapping_memory" => {
               (1,
                vec!(
@@ -5381,7 +5397,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                ),
                ty::mk_nil(tcx))
             }
-            "set_memory" | "volatile_set_memory" => {
+            "write_bytes" | "volatile_set_memory" => {
               (1,
                vec!(
                   ty::mk_ptr(tcx, ty::mt {

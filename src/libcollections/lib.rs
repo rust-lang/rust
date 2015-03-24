@@ -22,6 +22,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
+#![doc(test(no_crate_inject))]
 
 #![feature(alloc)]
 #![feature(box_syntax)]
@@ -36,7 +37,8 @@
 #![feature(unsafe_no_drop_flag)]
 #![feature(step_by)]
 #![feature(str_char)]
-#![cfg_attr(test, feature(rand, rustc_private, test))]
+#![feature(convert)]
+#![cfg_attr(test, feature(rand, rustc_private, test, hash, collections))]
 #![cfg_attr(test, allow(deprecated))] // rand
 
 #![feature(no_std)]

@@ -116,6 +116,7 @@ impl<T> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().cloned().collect();
@@ -137,6 +138,7 @@ impl<T> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().cloned().collect();
@@ -162,6 +164,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::BTreeSet;
     /// use std::collections::Bound::{Included, Unbounded};
     ///
@@ -190,6 +193,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
@@ -213,6 +217,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
@@ -237,6 +242,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
@@ -261,6 +267,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
@@ -333,6 +340,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let set: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
@@ -350,6 +358,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let a: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
@@ -371,6 +380,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let sup: BTreeSet<_> = [1, 2, 3].iter().cloned().collect();
@@ -413,6 +423,7 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::BTreeSet;
     ///
     /// let sub: BTreeSet<_> = [1, 2].iter().cloned().collect();
@@ -628,6 +639,9 @@ impl<T: Debug> Debug for BTreeSet<T> {
     }
 }
 
+impl<'a, T> Clone for Iter<'a, T> {
+    fn clone(&self) -> Iter<'a, T> { Iter { iter: self.iter.clone() } }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
@@ -658,6 +672,9 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 
+impl<'a, T> Clone for Range<'a, T> {
+    fn clone(&self) -> Range<'a, T> { Range { iter: self.iter.clone() } }
+}
 impl<'a, T> Iterator for Range<'a, T> {
     type Item = &'a T;
 
@@ -677,6 +694,11 @@ fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>,
     }
 }
 
+impl<'a, T> Clone for Difference<'a, T> {
+    fn clone(&self) -> Difference<'a, T> {
+        Difference { a: self.a.clone(), b: self.b.clone() }
+    }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for Difference<'a, T> {
     type Item = &'a T;
@@ -692,6 +714,11 @@ impl<'a, T: Ord> Iterator for Difference<'a, T> {
     }
 }
 
+impl<'a, T> Clone for SymmetricDifference<'a, T> {
+    fn clone(&self) -> SymmetricDifference<'a, T> {
+        SymmetricDifference { a: self.a.clone(), b: self.b.clone() }
+    }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
     type Item = &'a T;
@@ -707,6 +734,11 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
     }
 }
 
+impl<'a, T> Clone for Intersection<'a, T> {
+    fn clone(&self) -> Intersection<'a, T> {
+        Intersection { a: self.a.clone(), b: self.b.clone() }
+    }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for Intersection<'a, T> {
     type Item = &'a T;
@@ -728,6 +760,11 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
     }
 }
 
+impl<'a, T> Clone for Union<'a, T> {
+    fn clone(&self) -> Union<'a, T> {
+        Union { a: self.a.clone(), b: self.b.clone() }
+    }
+}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for Union<'a, T> {
     type Item = &'a T;

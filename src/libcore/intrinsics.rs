@@ -44,6 +44,10 @@
 
 use marker::Sized;
 
+#[cfg(stage0)] pub use self::copy_memory as copy;
+#[cfg(stage0)] pub use self::set_memory as write_bytes;
+#[cfg(stage0)] pub use self::copy_nonoverlapping_memory as copy_nonoverlapping;
+
 extern "rust-intrinsic" {
 
     // NB: These intrinsics take unsafe pointers because they mutate aliased
@@ -246,7 +250,7 @@ extern "rust-intrinsic" {
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
     /// and destination may *not* overlap.
     ///
-    /// `copy_nonoverlapping_memory` is semantically equivalent to C's `memcpy`.
+    /// `copy_nonoverlapping` is semantically equivalent to C's `memcpy`.
     ///
     /// # Safety
     ///
@@ -262,6 +266,7 @@ extern "rust-intrinsic" {
     /// A safe swap function:
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::mem;
     /// use std::ptr;
     ///
@@ -271,9 +276,9 @@ extern "rust-intrinsic" {
     ///         let mut t: T = mem::uninitialized();
     ///
     ///         // Perform the swap, `&mut` pointers never alias
-    ///         ptr::copy_nonoverlapping_memory(&mut t, &*x, 1);
-    ///         ptr::copy_nonoverlapping_memory(x, &*y, 1);
-    ///         ptr::copy_nonoverlapping_memory(y, &t, 1);
+    ///         ptr::copy_nonoverlapping(&mut t, &*x, 1);
+    ///         ptr::copy_nonoverlapping(x, &*y, 1);
+    ///         ptr::copy_nonoverlapping(y, &t, 1);
     ///
     ///         // y and t now point to the same thing, but we need to completely forget `tmp`
     ///         // because it's no longer relevant.
@@ -282,12 +287,18 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(not(stage0))]
+    pub fn copy_nonoverlapping<T>(dst: *mut T, src: *const T, count: usize);
+
+    /// dox
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(stage0)]
     pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
 
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
     /// and destination may overlap.
     ///
-    /// `copy_memory` is semantically equivalent to C's `memmove`.
+    /// `copy` is semantically equivalent to C's `memmove`.
     ///
     /// # Safety
     ///
@@ -301,21 +312,34 @@ extern "rust-intrinsic" {
     /// Efficiently create a Rust vector from an unsafe buffer:
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::ptr;
     ///
     /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: uint) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
     ///     dst.set_len(elts);
-    ///     ptr::copy_memory(dst.as_mut_ptr(), ptr, elts);
+    ///     ptr::copy(dst.as_mut_ptr(), ptr, elts);
     ///     dst
     /// }
     /// ```
     ///
+    #[cfg(not(stage0))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn copy<T>(dst: *mut T, src: *const T, count: usize);
+
+    /// dox
+    #[cfg(stage0)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn copy_memory<T>(dst: *mut T, src: *const T, count: usize);
 
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
     /// bytes of memory starting at `dst` to `c`.
+    #[cfg(not(stage0))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
+
+    /// dox
+    #[cfg(stage0)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_memory<T>(dst: *mut T, val: u8, count: usize);
 

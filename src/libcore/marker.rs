@@ -39,6 +39,8 @@ pub unsafe trait Send : MarkerTrait {
     // empty.
 }
 
+unsafe impl Send for .. { }
+
 impl<T> !Send for *const T { }
 impl<T> !Send for *mut T { }
 impl !Send for Managed { }
@@ -203,6 +205,8 @@ pub unsafe trait Sync : MarkerTrait {
     // Empty
 }
 
+unsafe impl Sync for .. { }
+
 impl<T> !Sync for *const T { }
 impl<T> !Sync for *mut T { }
 impl !Sync for Managed { }
@@ -270,6 +274,7 @@ macro_rules! impls{
 /// any methods, but instead is used to gate access to data.
 ///
 /// FIXME. Better documentation needed here!
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait MarkerTrait : PhantomFn<Self,Self> { }
 //                                    ~~~~~ <-- FIXME(#22806)?
 //
@@ -319,6 +324,7 @@ impl<T:?Sized> MarkerTrait for T { }
 /// `MarkerTrait`:
 ///
 /// ```
+/// # #![feature(core)]
 /// use std::marker::MarkerTrait;
 /// trait Even : MarkerTrait { }
 /// ```

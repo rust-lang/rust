@@ -24,6 +24,7 @@
 //! # Examples
 //!
 //! ```
+//! # #![feature(scoped_tls)]
 //! scoped_thread_local!(static FOO: u32);
 //!
 //! // Initially each scoped slot is empty.
@@ -38,9 +39,7 @@
 //! });
 //! ```
 
-#![unstable(feature = "std_misc",
-            reason = "scoped TLS has yet to have wide enough use to fully consider \
-                      stabilizing its interface")]
+#![unstable(feature = "thread_local_internals")]
 
 use prelude::v1::*;
 
@@ -58,7 +57,10 @@ pub mod __impl {
 /// type `T` scoped to a particular lifetime. Keys provides two methods, `set`
 /// and `with`, both of which currently use closures to control the scope of
 /// their contents.
-pub struct Key<T> { #[doc(hidden)] pub inner: __impl::KeyInner<T> }
+#[unstable(feature = "scoped_tls",
+           reason = "scoped TLS has yet to have wide enough use to fully consider \
+                     stabilizing its interface")]
+pub struct ScopedKey<T> { #[doc(hidden)] pub inner: __impl::KeyInner<T> }
 
 /// Declare a new scoped thread local storage key.
 ///
@@ -86,7 +88,7 @@ macro_rules! __scoped_thread_local_inner {
                            target_os = "openbsd",
                            target_arch = "aarch64")),
                    thread_local)]
-        static $name: ::std::thread_local::scoped::Key<$t> =
+        static $name: ::std::thread::ScopedKey<$t> =
             __scoped_thread_local_inner!($t);
     );
     (pub static $name:ident: $t:ty) => (
@@ -96,11 +98,11 @@ macro_rules! __scoped_thread_local_inner {
                            target_os = "openbsd",
                            target_arch = "aarch64")),
                    thread_local)]
-        pub static $name: ::std::thread_local::scoped::Key<$t> =
+        pub static $name: ::std::thread::ScopedKey<$t> =
             __scoped_thread_local_inner!($t);
     );
     ($t:ty) => ({
-        use std::thread_local::scoped::Key as __Key;
+        use std::thread::ScopedKey as __Key;
 
         #[cfg(not(any(windows,
                       target_os = "android",
@@ -108,7 +110,7 @@ macro_rules! __scoped_thread_local_inner {
                       target_os = "openbsd",
                       target_arch = "aarch64")))]
         const _INIT: __Key<$t> = __Key {
-            inner: ::std::thread_local::scoped::__impl::KeyInner {
+            inner: ::std::thread::__scoped::__impl::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: 0 as *mut _ },
             }
         };
@@ -119,8 +121,8 @@ macro_rules! __scoped_thread_local_inner {
                   target_os = "openbsd",
                   target_arch = "aarch64"))]
         const _INIT: __Key<$t> = __Key {
-            inner: ::std::thread_local::scoped::__impl::KeyInner {
-                inner: ::std::thread_local::scoped::__impl::OS_INIT,
+            inner: ::std::thread::__scoped::__impl::KeyInner {
+                inner: ::std::thread::__scoped::__impl::OS_INIT,
                 marker: ::std::marker::PhantomData::<::std::cell::Cell<$t>>,
             }
         };
@@ -129,7 +131,10 @@ macro_rules! __scoped_thread_local_inner {
     })
 }
 
-impl<T> Key<T> {
+#[unstable(feature = "scoped_tls",
+           reason = "scoped TLS has yet to have wide enough use to fully consider \
+                     stabilizing its interface")]
+impl<T> ScopedKey<T> {
     /// Insert a value into this scoped thread local storage slot for a
     /// duration of a closure.
     ///
@@ -142,6 +147,7 @@ impl<T> Key<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(scoped_tls)]
     /// scoped_thread_local!(static FOO: u32);
     ///
     /// FOO.set(&100, || {
@@ -194,6 +200,7 @@ impl<T> Key<T> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(scoped_tls)]
     /// scoped_thread_local!(static FOO: u32);
     ///
     /// FOO.with(|slot| {

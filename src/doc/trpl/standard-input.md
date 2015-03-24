@@ -5,7 +5,7 @@ we haven't seen before. Here's a simple program that reads some input,
 and then prints it back out:
 
 ```{rust,ignore}
-fn main() {
+corefn main() {
     println!("Type something!");
 
     let input = std::old_io::stdin().read_line().ok().expect("Failed to read line");
@@ -28,6 +28,7 @@ Since writing the fully qualified name all the time is annoying, we can use
 the `use` statement to import it in:
 
 ```{rust}
+# #![feature(old_io)]
 use std::old_io::stdin;
 
 stdin();
@@ -37,6 +38,7 @@ However, it's considered better practice to not import individual functions, but
 to import the module, and only use one level of qualification:
 
 ```{rust}
+# #![feature(old_io)]
 use std::old_io;
 
 old_io::stdin();
@@ -115,8 +117,9 @@ doesn't work, so we're okay with that. In most cases, we would want to handle
 the error case explicitly. `expect()` allows us to give an error message if
 this crash happens.
 
-We will cover the exact details of how all of this works later in the Guide.
-For now, this gives you enough of a basic understanding to work with.
+We will cover the exact details of how all of this works later in the Guide in
+[Error Handling]. For now, this gives you enough of a basic understanding to
+work with.
 
 Back to the code we were working on! Here's a refresher:
 
@@ -157,3 +160,6 @@ here.
 
 That's all you need to get basic input from the standard input! It's not too
 complicated, but there are a number of small parts.
+
+
+[Error Handling]: ./error-handling.html

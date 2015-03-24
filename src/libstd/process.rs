@@ -19,8 +19,8 @@ use io::prelude::*;
 use ffi::AsOsStr;
 use fmt;
 use io::{self, Error, ErrorKind};
-use path::AsPath;
 use libc;
+use path;
 use sync::mpsc::{channel, Receiver};
 use sys::pipe2::{self, AnonPipe};
 use sys::process2::Process as ProcessImp;
@@ -198,8 +198,8 @@ impl Command {
 
     /// Set the working directory for the child process.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn current_dir<P: AsPath>(&mut self, dir: P) -> &mut Command {
-        self.inner.cwd(dir.as_path().as_os_str());
+    pub fn current_dir<P: AsRef<path::Path>>(&mut self, dir: P) -> &mut Command {
+        self.inner.cwd(dir.as_ref().as_os_str());
         self
     }
 
@@ -770,7 +770,7 @@ mod tests {
         // test changing to the parent of os::getcwd() because we know
         // the path exists (and os::getcwd() is not expected to be root)
         let parent_dir = os::getcwd().unwrap().dir_path();
-        let result = pwd_cmd().current_dir(&parent_dir).output().unwrap();
+        let result = pwd_cmd().current_dir(parent_dir.as_str().unwrap()).output().unwrap();
 
         let output = String::from_utf8(result.stdout).unwrap();
         let child_dir = old_path::Path::new(output.trim());

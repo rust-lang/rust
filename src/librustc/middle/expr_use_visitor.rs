@@ -442,7 +442,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 if !self.walk_overloaded_operator(expr,
                                                   &**lhs,
                                                   vec![&**rhs],
-                                                  PassArgs::ByRef) {
+                                                  PassArgs::ByValue) {
                     self.select_from_expr(&**lhs);
                     self.consume_expr(&**rhs);
                 }
@@ -1012,7 +1012,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
 
                 // Each match binding is effectively an assignment to the
                 // binding being produced.
-                let def = def_map.borrow()[pat.id].full_def();
+                let def = def_map.borrow().get(&pat.id).unwrap().full_def();
                 match mc.cat_def(pat.id, pat.span, pat_ty, def) {
                     Ok(binding_cmt) => {
                         delegate.mutate(pat.id, pat.span, binding_cmt, Init);

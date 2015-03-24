@@ -14,6 +14,8 @@
 //
 // I *think* it's the same, more or less.
 
+#![feature(std_misc)]
+
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::env;
 use std::thread;

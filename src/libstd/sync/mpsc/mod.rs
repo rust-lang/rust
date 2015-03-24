@@ -119,6 +119,7 @@
 //! after 10 seconds no matter what:
 //!
 //! ```no_run
+//! # #![feature(std_misc, old_io)]
 //! use std::sync::mpsc::channel;
 //! use std::old_io::timer::Timer;
 //! use std::time::Duration;
@@ -143,6 +144,7 @@
 //! has been inactive for 5 seconds:
 //!
 //! ```no_run
+//! # #![feature(std_misc, old_io)]
 //! use std::sync::mpsc::channel;
 //! use std::old_io::timer::Timer;
 //! use std::time::Duration;
@@ -977,7 +979,7 @@ impl<T> fmt::Display for SendError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> error::Error for SendError<T> {
+impl<T: Send> error::Error for SendError<T> {
 
     fn description(&self) -> &str {
         "sending on a closed channel"
@@ -1013,7 +1015,7 @@ impl<T> fmt::Display for TrySendError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> error::Error for TrySendError<T> {
+impl<T: Send> error::Error for TrySendError<T> {
 
     fn description(&self) -> &str {
         match *self {

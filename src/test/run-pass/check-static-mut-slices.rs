@@ -10,6 +10,8 @@
 
 // Checks that mutable static items can have mutable slices
 
+// pretty-expanded FIXME #23616
+
 static mut TEST: &'static mut [int] = &mut [1];
 
 pub fn main() {

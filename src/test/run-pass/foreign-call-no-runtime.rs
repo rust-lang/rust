@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-aarch64
+#![feature(libc)]
 
 extern crate libc;
 

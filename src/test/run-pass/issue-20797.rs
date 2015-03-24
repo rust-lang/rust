@@ -10,10 +10,14 @@
 
 // Regression test for #20797.
 
+// pretty-expanded FIXME #23616
+
+#![feature(convert)]
+
 use std::default::Default;
 use std::io;
 use std::fs;
-use std::path::{PathBuf, Path};
+use std::path::PathBuf;
 
 pub trait PathExtensions {
     fn is_dir(&self) -> bool { false }
@@ -94,8 +98,8 @@ impl<S: Strategy> Iterator for Subpaths<S> {
     }
 }
 
-fn foo() {
-    let mut walker: Subpaths<Recursive> = Subpaths::walk(&PathBuf::new("/home")).unwrap();
+fn _foo() {
+    let _walker: Subpaths<Recursive> = Subpaths::walk(&PathBuf::from("/home")).unwrap();
 }
 
 fn main() {}

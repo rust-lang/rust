@@ -13,6 +13,8 @@
 
 ///////////////////////////////////////////////////////////////////////////
 
+// pretty-expanded FIXME #23616
+
 trait MakeString {
     fn make_string(&self) -> String;
 }

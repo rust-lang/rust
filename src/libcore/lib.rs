@@ -56,6 +56,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
+#![doc(test(no_crate_inject))]
 
 #![feature(no_std)]
 #![no_std]
@@ -125,6 +126,7 @@ pub mod ops;
 pub mod cmp;
 pub mod clone;
 pub mod default;
+pub mod convert;
 
 /* Core types and methods on primitives */
 

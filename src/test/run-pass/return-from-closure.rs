@@ -10,6 +10,8 @@
 
 // just to make sure that `return` is only returning from the closure,
 // not the surrounding function.
+// pretty-expanded FIXME #23616
+
 static mut calls: uint = 0;
 
 fn surrounding() {

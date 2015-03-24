@@ -9,6 +9,10 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
+#![feature(libc)]
+
 extern crate libc;
 
 mod bar {

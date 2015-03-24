@@ -10,6 +10,8 @@
 
 // Check that functions can modify local state.
 
+// pretty-expanded FIXME #23616
+
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 

@@ -10,6 +10,8 @@
 
 // Issue #1818
 
+// pretty-expanded FIXME #23616
+
 fn lp<T, F>(s: String, mut f: F) -> T where F: FnMut(String) -> T {
     while false {
         let r = f(s);

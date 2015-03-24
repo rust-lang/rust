@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 #![allow(dead_code)]
 
 // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.

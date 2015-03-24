@@ -24,7 +24,7 @@ extern crate lint_stability;
 
 mod cross_crate {
     extern crate stability_cfg1;
-    extern crate stability_cfg2; //~ WARNING: use of unstable library feature
+    extern crate stability_cfg2; //~ ERROR use of unstable library feature
 
     use lint_stability::*;
 
@@ -51,64 +51,64 @@ mod cross_crate {
         <Foo as Trait>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item: text
 
         deprecated_unstable(); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         foo.method_deprecated_unstable(); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         Foo::method_deprecated_unstable(&foo); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         <Foo>::method_deprecated_unstable(&foo); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         foo.trait_deprecated_unstable(); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         Trait::trait_deprecated_unstable(&foo); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         <Foo>::trait_deprecated_unstable(&foo); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         <Foo as Trait>::trait_deprecated_unstable(&foo); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
 
         deprecated_unstable_text(); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         foo.method_deprecated_unstable_text(); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         Foo::method_deprecated_unstable_text(&foo); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         <Foo>::method_deprecated_unstable_text(&foo); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         foo.trait_deprecated_unstable_text(); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         Trait::trait_deprecated_unstable_text(&foo); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         <Foo>::trait_deprecated_unstable_text(&foo); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         <Foo as Trait>::trait_deprecated_unstable_text(&foo); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
 
-        unstable(); //~ WARNING use of unstable library feature
-        foo.method_unstable(); //~ WARNING use of unstable library feature
-        Foo::method_unstable(&foo); //~ WARNING use of unstable library feature
-        <Foo>::method_unstable(&foo); //~ WARNING use of unstable library feature
-        foo.trait_unstable(); //~ WARNING use of unstable library feature
-        Trait::trait_unstable(&foo); //~ WARNING use of unstable library feature
-        <Foo>::trait_unstable(&foo); //~ WARNING use of unstable library feature
-        <Foo as Trait>::trait_unstable(&foo); //~ WARNING use of unstable library feature
+        unstable(); //~ ERROR use of unstable library feature
+        foo.method_unstable(); //~ ERROR use of unstable library feature
+        Foo::method_unstable(&foo); //~ ERROR use of unstable library feature
+        <Foo>::method_unstable(&foo); //~ ERROR use of unstable library feature
+        foo.trait_unstable(); //~ ERROR use of unstable library feature
+        Trait::trait_unstable(&foo); //~ ERROR use of unstable library feature
+        <Foo>::trait_unstable(&foo); //~ ERROR use of unstable library feature
+        <Foo as Trait>::trait_unstable(&foo); //~ ERROR use of unstable library feature
 
         unstable_text();
-        //~^ WARNING use of unstable library feature 'test_feature': text
+        //~^ ERROR use of unstable library feature 'test_feature': text
         foo.method_unstable_text();
-        //~^ WARNING use of unstable library feature 'test_feature': text
+        //~^ ERROR use of unstable library feature 'test_feature': text
         Foo::method_unstable_text(&foo);
-        //~^ WARNING use of unstable library feature 'test_feature': text
+        //~^ ERROR use of unstable library feature 'test_feature': text
         <Foo>::method_unstable_text(&foo);
-        //~^ WARNING use of unstable library feature 'test_feature': text
+        //~^ ERROR use of unstable library feature 'test_feature': text
         foo.trait_unstable_text();
-        //~^ WARNING use of unstable library feature 'test_feature': text
+        //~^ ERROR use of unstable library feature 'test_feature': text
         Trait::trait_unstable_text(&foo);
-        //~^ WARNING use of unstable library feature 'test_feature': text
+        //~^ ERROR use of unstable library feature 'test_feature': text
         <Foo>::trait_unstable_text(&foo);
-        //~^ WARNING use of unstable library feature 'test_feature': text
+        //~^ ERROR use of unstable library feature 'test_feature': text
         <Foo as Trait>::trait_unstable_text(&foo);
-        //~^ WARNING use of unstable library feature 'test_feature': text
+        //~^ ERROR use of unstable library feature 'test_feature': text
 
         stable();
         foo.method_stable();
@@ -130,26 +130,26 @@ mod cross_crate {
 
         let _ = DeprecatedStruct { i: 0 }; //~ ERROR use of deprecated item
         let _ = DeprecatedUnstableStruct { i: 0 }; //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
-        let _ = UnstableStruct { i: 0 }; //~ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
+        let _ = UnstableStruct { i: 0 }; //~ ERROR use of unstable library feature
         let _ = StableStruct { i: 0 };
 
         let _ = DeprecatedUnitStruct; //~ ERROR use of deprecated item
         let _ = DeprecatedUnstableUnitStruct; //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
-        let _ = UnstableUnitStruct; //~ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
+        let _ = UnstableUnitStruct; //~ ERROR use of unstable library feature
         let _ = StableUnitStruct;
 
         let _ = Enum::DeprecatedVariant; //~ ERROR use of deprecated item
         let _ = Enum::DeprecatedUnstableVariant; //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
-        let _ = Enum::UnstableVariant; //~ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
+        let _ = Enum::UnstableVariant; //~ ERROR use of unstable library feature
         let _ = Enum::StableVariant;
 
         let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated item
         let _ = DeprecatedUnstableTupleStruct (1); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
-        let _ = UnstableTupleStruct (1); //~ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
+        let _ = UnstableTupleStruct (1); //~ ERROR use of unstable library feature
         let _ = StableTupleStruct (1);
 
         // At the moment, the lint checker only checks stability in
@@ -159,7 +159,7 @@ mod cross_crate {
         // on macros themselves are not yet linted.
         macro_test_arg!(deprecated_text()); //~ ERROR use of deprecated item: text
         macro_test_arg!(deprecated_unstable_text()); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         macro_test_arg!(macro_test_arg!(deprecated_text())); //~ ERROR use of deprecated item: text
     }
 
@@ -173,33 +173,33 @@ mod cross_crate {
         <Foo>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item: text
         <Foo as Trait>::trait_deprecated_text(&foo); //~ ERROR use of deprecated item: text
         foo.trait_deprecated_unstable(); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         Trait::trait_deprecated_unstable(&foo); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         <Foo>::trait_deprecated_unstable(&foo); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         <Foo as Trait>::trait_deprecated_unstable(&foo); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         foo.trait_deprecated_unstable_text(); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         Trait::trait_deprecated_unstable_text(&foo); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         <Foo>::trait_deprecated_unstable_text(&foo); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         <Foo as Trait>::trait_deprecated_unstable_text(&foo); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
-        foo.trait_unstable(); //~ WARNING use of unstable library feature
-        Trait::trait_unstable(&foo); //~ WARNING use of unstable library feature
-        <Foo>::trait_unstable(&foo); //~ WARNING use of unstable library feature
-        <Foo as Trait>::trait_unstable(&foo); //~ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
+        foo.trait_unstable(); //~ ERROR use of unstable library feature
+        Trait::trait_unstable(&foo); //~ ERROR use of unstable library feature
+        <Foo>::trait_unstable(&foo); //~ ERROR use of unstable library feature
+        <Foo as Trait>::trait_unstable(&foo); //~ ERROR use of unstable library feature
         foo.trait_unstable_text();
-        //~^ WARNING use of unstable library feature 'test_feature': text
+        //~^ ERROR use of unstable library feature 'test_feature': text
         Trait::trait_unstable_text(&foo);
-        //~^ WARNING use of unstable library feature 'test_feature': text
+        //~^ ERROR use of unstable library feature 'test_feature': text
         <Foo>::trait_unstable_text(&foo);
-        //~^ WARNING use of unstable library feature 'test_feature': text
+        //~^ ERROR use of unstable library feature 'test_feature': text
         <Foo as Trait>::trait_unstable_text(&foo);
-        //~^ WARNING use of unstable library feature 'test_feature': text
+        //~^ ERROR use of unstable library feature 'test_feature': text
         foo.trait_stable();
         Trait::trait_stable(&foo);
         <Foo>::trait_stable(&foo);
@@ -210,46 +210,46 @@ mod cross_crate {
         foo.trait_deprecated(); //~ ERROR use of deprecated item
         foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
         foo.trait_deprecated_unstable(); //~ ERROR use of deprecated item
-        //~^ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
         foo.trait_deprecated_unstable_text(); //~ ERROR use of deprecated item: text
-        //~^ WARNING use of unstable library feature
-        foo.trait_unstable(); //~ WARNING use of unstable library feature
+        //~^ ERROR use of unstable library feature
+        foo.trait_unstable(); //~ ERROR use of unstable library feature
         foo.trait_unstable_text();
-        //~^ WARNING use of unstable library feature 'test_feature': text
+        //~^ ERROR use of unstable library feature 'test_feature': text
         foo.trait_stable();
     }
 
     struct S;
 
-    impl UnstableTrait for S { } //~ WARNING use of unstable library feature
+    impl UnstableTrait for S { } //~ ERROR use of unstable library feature
 
-    trait LocalTrait : UnstableTrait { } //~ WARNING use of unstable library feature
+    trait LocalTrait : UnstableTrait { } //~ ERROR use of unstable library feature
 
     impl Trait for S {
         fn trait_stable(&self) {}
-        fn trait_unstable(&self) {} //~ WARNING use of unstable library feature
+        fn trait_unstable(&self) {} //~ ERROR use of unstable library feature
     }
 }
 
 mod inheritance {
-    extern crate inherited_stability; //~ WARNING: use of unstable library feature
-    use self::inherited_stability::*; //~ WARNING: use of unstable library feature
+    extern crate inherited_stability; //~ ERROR use of unstable library feature
+    use self::inherited_stability::*; //~ ERROR use of unstable library feature
 
     fn test_inheritance() {
-        unstable(); //~ WARNING use of unstable library feature
+        unstable(); //~ ERROR use of unstable library feature
         stable();
 
-        stable_mod::unstable(); //~ WARNING use of unstable library feature
+        stable_mod::unstable(); //~ ERROR use of unstable library feature
         stable_mod::stable();
 
         unstable_mod::deprecated(); //~ ERROR use of deprecated item
-        unstable_mod::unstable(); //~ WARNING use of unstable library feature
+        unstable_mod::unstable(); //~ ERROR use of unstable library feature
 
-        let _ = Unstable::UnstableVariant; //~ WARNING use of unstable library feature
+        let _ = Unstable::UnstableVariant; //~ ERROR use of unstable library feature
         let _ = Unstable::StableVariant;
 
         let x: usize = 0;
-        x.unstable(); //~ WARNING use of unstable library feature
+        x.unstable(); //~ ERROR use of unstable library feature
         x.stable();
     }
 }

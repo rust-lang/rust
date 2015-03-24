@@ -230,7 +230,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                         stripped_filtered_line(l).unwrap_or(l)
                     }).collect::<Vec<&str>>().connect("\n");
                     let krate = krate.as_ref().map(|s| &**s);
-                    let test = test::maketest(&test, krate, false, false);
+                    let test = test::maketest(&test, krate, false, false, true);
                     s.push_str(&format!("<span class='rusttest'>{}</span>", Escape(&test)));
                 });
                 s.push_str(&highlight::highlight(&text,

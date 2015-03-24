@@ -10,6 +10,8 @@
 
 // Just testing that panic!() type checks in statement or expr
 
+// pretty-expanded FIXME #23616
+
 #![allow(unreachable_code)]
 
 fn f() {

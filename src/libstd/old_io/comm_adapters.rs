@@ -23,6 +23,7 @@ use vec::Vec;
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io)]
 /// use std::sync::mpsc::channel;
 /// use std::old_io::*;
 ///
@@ -114,6 +115,7 @@ impl Reader for ChanReader {
 /// # Examples
 ///
 /// ```
+/// # #![feature(old_io, io)]
 /// # #![allow(unused_must_use)]
 /// use std::sync::mpsc::channel;
 /// use std::old_io::*;

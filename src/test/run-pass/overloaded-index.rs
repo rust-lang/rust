@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
+#![feature(core)]
+
 use std::ops::{Index, IndexMut};
 
 struct Foo {
@@ -18,8 +22,8 @@ struct Foo {
 impl Index<int> for Foo {
     type Output = int;
 
-    fn index(&self, z: &int) -> &int {
-        if *z == 0 {
+    fn index(&self, z: int) -> &int {
+        if z == 0 {
             &self.x
         } else {
             &self.y
@@ -28,8 +32,8 @@ impl Index<int> for Foo {
 }
 
 impl IndexMut<int> for Foo {
-    fn index_mut(&mut self, z: &int) -> &mut int {
-        if *z == 0 {
+    fn index_mut(&mut self, z: int) -> &mut int {
+        if z == 0 {
             &mut self.x
         } else {
             &mut self.y

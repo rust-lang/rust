@@ -10,6 +10,8 @@
 
 //aux-build:extern-crosscrate-source.rs
 
+#![feature(libc)]
+
 extern crate externcallback;
 extern crate libc;
 

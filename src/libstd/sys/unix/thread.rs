@@ -227,19 +227,16 @@ pub unsafe fn create(stack: usize, p: Thunk) -> io::Result<rust_thread> {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub unsafe fn set_name(name: &str) {
-    // pthread_setname_np() since glibc 2.12
-    // availability autodetected via weak linkage
-    type F = unsafe extern fn(libc::pthread_t, *const libc::c_char)
-                              -> libc::c_int;
+    // pthread wrapper only appeared in glibc 2.12, so we use syscall directly.
     extern {
-        #[linkage = "extern_weak"]
-        static pthread_setname_np: *const ();
+        fn prctl(option: libc::c_int, arg2: libc::c_ulong, arg3: libc::c_ulong,
+                 arg4: libc::c_ulong, arg5: libc::c_ulong) -> libc::c_int;
     }
-    if !pthread_setname_np.is_null() {
-        let cname = CString::new(name).unwrap();
-        mem::transmute::<*const (), F>(pthread_setname_np)(pthread_self(),
-                                                           cname.as_ptr());
-    }
+    const PR_SET_NAME: libc::c_int = 15;
+    let cname = CString::new(name).unwrap_or_else(|_| {
+        panic!("thread name may not contain interior null bytes")
+    });
+    prctl(PR_SET_NAME, cname.as_ptr() as libc::c_ulong, 0, 0, 0);
 }
 
 #[cfg(any(target_os = "freebsd",
@@ -314,26 +311,39 @@ pub fn sleep(dur: Duration) {
 // is created in an application with big thread-local storage requirements.
 // See #6233 for rationale and details.
 //
-// Link weakly to the symbol for compatibility with older versions of glibc.
-// Assumes that we've been dynamically linked to libpthread but that is
-// currently always the case.  Note that you need to check that the symbol
-// is non-null before calling it!
+// Use dlsym to get the symbol value at runtime, both for
+// compatibility with older versions of glibc, and to avoid creating
+// dependencies on GLIBC_PRIVATE symbols.  Assumes that we've been
+// dynamically linked to libpthread but that is currently always the
+// case.  We previously used weak linkage (under the same assumption),
+// but that caused Debian to detect an unnecessarily strict versioned
+// dependency on libc6 (#23628).
 #[cfg(target_os = "linux")]
 fn min_stack_size(attr: *const libc::pthread_attr_t) -> libc::size_t {
+    use dynamic_lib::DynamicLibrary;
+    use sync::{Once, ONCE_INIT};
+
     type F = unsafe extern "C" fn(*const libc::pthread_attr_t) -> libc::size_t;
-    extern {
-        #[linkage = "extern_weak"]
-        static __pthread_get_minstack: *const ();
-    }
-    if __pthread_get_minstack.is_null() {
-        PTHREAD_STACK_MIN
-    } else {
-        unsafe { mem::transmute::<*const (), F>(__pthread_get_minstack)(attr) }
+    static INIT: Once = ONCE_INIT;
+    static mut __pthread_get_minstack: Option<F> = None;
+
+    INIT.call_once(|| {
+        let lib = DynamicLibrary::open(None).unwrap();
+        unsafe {
+            if let Ok(f) = lib.symbol("__pthread_get_minstack") {
+                __pthread_get_minstack = Some(mem::transmute::<*const (), F>(f));
+            }
+        }
+    });
+
+    match unsafe { __pthread_get_minstack } {
+        None => PTHREAD_STACK_MIN,
+        Some(f) => unsafe { f(attr) },
     }
 }
 
-// __pthread_get_minstack() is marked as weak but extern_weak linkage is
-// not supported on OS X, hence this kludge...
+// No point in looking up __pthread_get_minstack() on non-glibc
+// platforms.
 #[cfg(not(target_os = "linux"))]
 fn min_stack_size(_: *const libc::pthread_attr_t) -> libc::size_t {
     PTHREAD_STACK_MIN

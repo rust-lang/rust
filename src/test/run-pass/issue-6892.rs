@@ -11,6 +11,8 @@
 // Ensures that destructors are run for expressions of the form "let _ = e;"
 // where `e` is a type which requires a destructor.
 
+// pretty-expanded FIXME #23616
+
 struct Foo;
 struct Bar { x: int }
 struct Baz(int);

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![crate_name="anonexternmod"]
+#![feature(libc)]
 
 extern crate libc;
 
