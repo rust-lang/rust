@@ -20,10 +20,14 @@ struct S {
 }
 
 impl FnMut<()> for S {
-    type Output = i32;
     extern "rust-call" fn call_mut(&mut self, (): ()) -> i32 {
         self.x * self.y
     }
+}
+
+impl FnOnce<()> for S {
+    type Output = i32;
+    extern "rust-call" fn call_once(mut self, args: ()) -> i32 { self.call_mut(args) }
 }
 
 fn main() {

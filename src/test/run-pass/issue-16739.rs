@@ -20,18 +20,34 @@
 struct Foo { foo: u32 }
 
 impl FnMut<()> for Foo {
-    type Output = u32;
     extern "rust-call" fn call_mut(&mut self, _: ()) -> u32 { self.foo }
 }
 
-impl FnMut<(u32,)> for Foo {
+impl FnOnce<()> for Foo {
     type Output = u32;
+    extern "rust-call" fn call_once(mut self, _: ()) -> u32 { self.call_mut(()) }
+}
+
+/////////////////////////////////////////////////////////////////////////
+
+impl FnMut<(u32,)> for Foo {
     extern "rust-call" fn call_mut(&mut self, (x,): (u32,)) -> u32 { self.foo + x }
 }
 
-impl FnMut<(u32,u32)> for Foo {
+impl FnOnce<(u32,)> for Foo {
     type Output = u32;
+    extern "rust-call" fn call_once(mut self, args: (u32,)) -> u32 { self.call_mut(args) }
+}
+
+/////////////////////////////////////////////////////////////////////////
+
+impl FnMut<(u32,u32)> for Foo {
     extern "rust-call" fn call_mut(&mut self, (x, y): (u32, u32)) -> u32 { self.foo + x + y }
+}
+
+impl FnOnce<(u32,u32)> for Foo {
+    type Output = u32;
+    extern "rust-call" fn call_once(mut self, args: (u32,u32)) -> u32 { self.call_mut(args) }
 }
 
 fn main() {

@@ -17,11 +17,13 @@ use middle::subst::Substs;
 use middle::subst::VecPerParamSpace;
 use middle::subst;
 use middle::traits;
+use middle::ty::ClosureTyper;
 use trans::base::*;
 use trans::build::*;
 use trans::callee::*;
 use trans::callee;
 use trans::cleanup;
+use trans::closure;
 use trans::common::*;
 use trans::consts;
 use trans::datum::*;
@@ -358,19 +360,21 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         traits::VtableClosure(closure_def_id, substs) => {
             // The substitutions should have no type parameters remaining
             // after passing through fulfill_obligation
-            let llfn = trans_fn_ref_with_substs(bcx.ccx(),
-                                                closure_def_id,
-                                                MethodCallKey(method_call),
-                                                bcx.fcx.param_substs,
-                                                substs).val;
-
+            let trait_closure_kind = bcx.tcx().lang_items.fn_trait_kind(trait_id).unwrap();
+            let llfn = closure::trans_closure_method(bcx.ccx(),
+                                                     closure_def_id,
+                                                     substs,
+                                                     MethodCallKey(method_call),
+                                                     bcx.fcx.param_substs,
+                                                     trait_closure_kind);
             Callee {
                 bcx: bcx,
                 data: Fn(llfn),
             }
         }
         traits::VtableFnPointer(fn_ty) => {
-            let llfn = trans_fn_pointer_shim(bcx.ccx(), fn_ty);
+            let trait_closure_kind = bcx.tcx().lang_items.fn_trait_kind(trait_id).unwrap();
+            let llfn = trans_fn_pointer_shim(bcx.ccx(), trait_closure_kind, fn_ty);
             Callee { bcx: bcx, data: Fn(llfn) }
         }
         traits::VtableObject(ref data) => {
@@ -645,9 +649,6 @@ pub fn trans_object_shim<'a, 'tcx>(
 
     assert!(!fcx.needs_ret_allocas);
 
-    let sig =
-        ty::erase_late_bound_regions(bcx.tcx(), &fty.sig);
-
     let dest =
         fcx.llretslotptr.get().map(
             |_| expr::SaveIn(fcx.get_ret_slot(bcx, sig.output, "ret_slot")));
@@ -714,17 +715,18 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 emit_vtable_methods(ccx, id, substs, param_substs).into_iter()
             }
             traits::VtableClosure(closure_def_id, substs) => {
-                let llfn = trans_fn_ref_with_substs(
-                    ccx,
-                    closure_def_id,
-                    ExprId(0),
-                    param_substs,
-                    substs).val;
-
+                let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_ref.def_id()).unwrap();
+                let llfn = closure::trans_closure_method(ccx,
+                                                         closure_def_id,
+                                                         substs,
+                                                         ExprId(0),
+                                                         param_substs,
+                                                         trait_closure_kind);
                 vec![llfn].into_iter()
             }
             traits::VtableFnPointer(bare_fn_ty) => {
-                vec![trans_fn_pointer_shim(ccx, bare_fn_ty)].into_iter()
+                let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_ref.def_id()).unwrap();
+                vec![trans_fn_pointer_shim(ccx, trait_closure_kind, bare_fn_ty)].into_iter()
             }
             traits::VtableObject(ref data) => {
                 // this would imply that the Self type being erased is

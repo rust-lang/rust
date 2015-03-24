@@ -36,9 +36,21 @@ impl Alloy {
 }
 
 impl<'b> Fn<(&'b mut (Response+'b),)> for SendFile {
+    extern "rust-call" fn call(&self, (_res,): (&'b mut (Response+'b),)) {}
+}
+
+impl<'b> FnMut<(&'b mut (Response+'b),)> for SendFile {
+    extern "rust-call" fn call_mut(&mut self, (_res,): (&'b mut (Response+'b),)) {
+        self.call((_res,))
+    }
+}
+
+impl<'b> FnOnce<(&'b mut (Response+'b),)> for SendFile {
     type Output = ();
 
-    extern "rust-call" fn call(&self, (_res,): (&'b mut (Response+'b),)) {}
+    extern "rust-call" fn call_once(self, (_res,): (&'b mut (Response+'b),)) {
+        self.call((_res,))
+    }
 }
 
 impl<Rq: Request, Rs: Response> Ingot<Rq, Rs> for HelloWorld {
