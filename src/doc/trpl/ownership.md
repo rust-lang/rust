@@ -513,8 +513,8 @@ Otherwise, it is an error to elide an output lifetime.
 
 ### Examples
 
-Here are some examples of functions with elided lifetimes, and the version of
-what the elided lifetimes are expand to:
+Here are some examples of functions with elided lifetimes.  We've paired each
+example of an elided lifetime with its expanded form.
 
 ```{rust,ignore}
 fn print(s: &str); // elided
