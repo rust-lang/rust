@@ -2462,8 +2462,11 @@ pub struct ItemSubsts<'tcx> {
     pub substs: Substs<'tcx>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable)]
 pub enum ClosureKind {
+    // Warning: Ordering is significant here! The ordering is chosen
+    // because the trait Fn is a subtrait of FnMut and so in turn, and
+    // hence we order it so that Fn < FnMut < FnOnce.
     FnClosureKind,
     FnMutClosureKind,
     FnOnceClosureKind,
@@ -2483,6 +2486,20 @@ impl ClosureKind {
         match result {
             Ok(trait_did) => trait_did,
             Err(err) => cx.sess.fatal(&err[..]),
+        }
+    }
+
+    /// True if this a type that impls this closure kind
+    /// must also implement `other`.
+    pub fn extends(self, other: ty::ClosureKind) -> bool {
+        match (self, other) {
+            (FnClosureKind, FnClosureKind) => true,
+            (FnClosureKind, FnMutClosureKind) => true,
+            (FnClosureKind, FnOnceClosureKind) => true,
+            (FnMutClosureKind, FnMutClosureKind) => true,
+            (FnMutClosureKind, FnOnceClosureKind) => true,
+            (FnOnceClosureKind, FnOnceClosureKind) => true,
+            _ => false,
         }
     }
 }

@@ -1148,6 +1148,7 @@ impl<'a, T: ?Sized> DerefMut for &'a mut T {
 #[lang="fn"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
+#[cfg(stage0)]
 pub trait Fn<Args> {
     /// The returned type after the call operator is used.
     type Output;
@@ -1156,14 +1157,35 @@ pub trait Fn<Args> {
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
 }
 
+/// A version of the call operator that takes an immutable receiver.
+#[lang="fn"]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_paren_sugar]
+#[cfg(not(stage0))]
+pub trait Fn<Args> : FnMut<Args> {
+    /// This is called when the call operator is used.
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+}
+
 /// A version of the call operator that takes a mutable receiver.
 #[lang="fn_mut"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
+#[cfg(stage0)]
 pub trait FnMut<Args> {
     /// The returned type after the call operator is used.
     type Output;
 
+    /// This is called when the call operator is used.
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
+}
+
+/// A version of the call operator that takes a mutable receiver.
+#[lang="fn_mut"]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_paren_sugar]
+#[cfg(not(stage0))]
+pub trait FnMut<Args> : FnOnce<Args> {
     /// This is called when the call operator is used.
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
@@ -1180,6 +1202,7 @@ pub trait FnOnce<Args> {
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
 }
 
+#[cfg(stage0)]
 impl<F: ?Sized, A> FnMut<A> for F
     where F : Fn<A>
 {
@@ -1190,6 +1213,7 @@ impl<F: ?Sized, A> FnMut<A> for F
     }
 }
 
+#[cfg(stage0)]
 impl<F,A> FnOnce<A> for F
     where F : FnMut<A>
 {

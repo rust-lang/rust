@@ -16,9 +16,17 @@
 struct Foo;
 
 impl<'a> Fn<(&'a (),)> for Foo {
+    extern "rust-call" fn call(&self, (_,): (&(),)) {}
+}
+
+impl<'a> FnMut<(&'a (),)> for Foo {
+    extern "rust-call" fn call_mut(&mut self, (_,): (&(),)) {}
+}
+
+impl<'a> FnOnce<(&'a (),)> for Foo {
     type Output = ();
 
-    extern "rust-call" fn call(&self, (_,): (&(),)) {}
+    extern "rust-call" fn call_once(self, (_,): (&(),)) {}
 }
 
 fn main() {}
