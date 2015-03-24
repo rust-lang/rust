@@ -11,6 +11,8 @@
 // Given `<expr> as Box<Trait>`, we should be able to infer that a
 // `Box<_>` is the expected type.
 
+// pretty-expanded FIXME #23616
+
 trait Foo { fn foo(&self) -> u32; }
 impl Foo for u32 { fn foo(&self) -> u32 { *self } }
 

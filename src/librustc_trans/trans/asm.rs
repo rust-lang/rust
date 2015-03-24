@@ -76,43 +76,33 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     // no failure occurred preparing operands, no need to cleanup
     fcx.pop_custom_cleanup_scope(temp_scope);
 
-    let mut constraints = constraints.iter()
-                                     .map(|s| s.to_string())
-                                     .chain(ext_constraints.into_iter())
-                                     .collect::<Vec<String>>()
-                                     .connect(",");
+    let clobbers = ia.clobbers.iter()
+                              .map(|s| format!("~{{{}}}", &s));
 
-    let mut clobbers = ia.clobbers.iter()
-                                  .map(|s| format!("~{{{}}}", &s))
-                                  .collect::<Vec<String>>()
-                                  .connect(",");
-    let more_clobbers = get_clobbers();
-    if !more_clobbers.is_empty() {
-        if !clobbers.is_empty() {
-            clobbers.push(',');
-        }
-        clobbers.push_str(&more_clobbers[..]);
-    }
+    // Default per-arch clobbers
+    // Basically what clang does
+    let arch_clobbers = match &bcx.sess().target.target.arch[..] {
+        "x86" | "x86_64" => vec!("~{dirflag}", "~{fpsr}", "~{flags}"),
+        _                => Vec::new()
+    };
 
-    // Add the clobbers to our constraints list
-    if clobbers.len() != 0 && constraints.len() != 0 {
-        constraints.push(',');
-        constraints.push_str(&clobbers[..]);
-    } else {
-        constraints.push_str(&clobbers[..]);
-    }
+    let all_constraints= constraints.iter()
+                                    .map(|s| s.to_string())
+                                    .chain(ext_constraints.into_iter())
+                                    .chain(clobbers)
+                                    .chain(arch_clobbers.iter()
+                                               .map(|s| s.to_string()))
+                                    .collect::<Vec<String>>()
+                                    .connect(",");
 
-    debug!("Asm Constraints: {}", &constraints[..]);
-
-    let num_outputs = outputs.len();
+    debug!("Asm Constraints: {}", &all_constraints[..]);
 
     // Depending on how many outputs we have, the return type is different
-    let output_type = if num_outputs == 0 {
-        Type::void(bcx.ccx())
-    } else if num_outputs == 1 {
-        output_types[0]
-    } else {
-        Type::struct_(bcx.ccx(), &output_types[..], false)
+    let num_outputs = outputs.len();
+    let output_type = match num_outputs {
+        0 => Type::void(bcx.ccx()),
+        1 => output_types[0],
+        _ => Type::struct_(bcx.ccx(), &output_types[..], false)
     };
 
     let dialect = match ia.dialect {
@@ -121,10 +111,10 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     };
 
     let asm = CString::new(ia.asm.as_bytes()).unwrap();
-    let constraints = CString::new(constraints).unwrap();
+    let constraint_cstr = CString::new(all_constraints).unwrap();
     let r = InlineAsmCall(bcx,
                           asm.as_ptr(),
-                          constraints.as_ptr(),
+                          constraint_cstr.as_ptr(),
                           &inputs,
                           output_type,
                           ia.volatile,
@@ -158,15 +148,3 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
 
 }
 
-// Default per-arch clobbers
-// Basically what clang does
-
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64")))]
-fn get_clobbers() -> String {
-    "".to_string()
-}
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn get_clobbers() -> String {
-    "~{dirflag},~{fpsr},~{flags}".to_string()
-}

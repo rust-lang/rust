@@ -40,7 +40,7 @@
 
 // ignore-android see #10393 #13206
 
-#![feature(box_syntax)]
+#![feature(box_syntax, std_misc, collections)]
 
 use std::ascii::OwnedAsciiExt;
 use std::env;

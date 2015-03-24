@@ -10,6 +10,8 @@
 
 // Test to make sure that explicit self params work inside closures
 
+// pretty-expanded FIXME #23616
+
 struct Box {
     x: uint
 }

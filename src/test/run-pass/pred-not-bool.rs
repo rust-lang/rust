@@ -11,6 +11,8 @@
 // this checks that a pred with a non-bool return
 // type is rejected, even if the pred is never used
 
+// pretty-expanded FIXME #23616
+
 fn bad(_a: int) -> int { return 37; } //~ ERROR Non-boolean return type
 
 pub fn main() { }

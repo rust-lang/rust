@@ -634,11 +634,35 @@ impl Wtf8 {
 ///
 /// Panics when `begin` and `end` do not point to code point boundaries,
 /// or point beyond the end of the string.
+#[cfg(stage0)]
 impl ops::Index<ops::Range<usize>> for Wtf8 {
     type Output = Wtf8;
 
     #[inline]
     fn index(&self, range: &ops::Range<usize>) -> &Wtf8 {
+        // is_code_point_boundary checks that the index is in [0, .len()]
+        if range.start <= range.end &&
+           is_code_point_boundary(self, range.start) &&
+           is_code_point_boundary(self, range.end) {
+            unsafe { slice_unchecked(self, range.start, range.end) }
+        } else {
+            slice_error_fail(self, range.start, range.end)
+        }
+    }
+}
+
+/// Return a slice of the given string for the byte range [`begin`..`end`).
+///
+/// # Panics
+///
+/// Panics when `begin` and `end` do not point to code point boundaries,
+/// or point beyond the end of the string.
+#[cfg(not(stage0))]
+impl ops::Index<ops::Range<usize>> for Wtf8 {
+    type Output = Wtf8;
+
+    #[inline]
+    fn index(&self, range: ops::Range<usize>) -> &Wtf8 {
         // is_code_point_boundary checks that the index is in [0, .len()]
         if range.start <= range.end &&
            is_code_point_boundary(self, range.start) &&
@@ -656,11 +680,33 @@ impl ops::Index<ops::Range<usize>> for Wtf8 {
 ///
 /// Panics when `begin` is not at a code point boundary,
 /// or is beyond the end of the string.
+#[cfg(stage0)]
 impl ops::Index<ops::RangeFrom<usize>> for Wtf8 {
     type Output = Wtf8;
 
     #[inline]
     fn index(&self, range: &ops::RangeFrom<usize>) -> &Wtf8 {
+        // is_code_point_boundary checks that the index is in [0, .len()]
+        if is_code_point_boundary(self, range.start) {
+            unsafe { slice_unchecked(self, range.start, self.len()) }
+        } else {
+            slice_error_fail(self, range.start, self.len())
+        }
+    }
+}
+
+/// Return a slice of the given string from byte `begin` to its end.
+///
+/// # Panics
+///
+/// Panics when `begin` is not at a code point boundary,
+/// or is beyond the end of the string.
+#[cfg(not(stage0))]
+impl ops::Index<ops::RangeFrom<usize>> for Wtf8 {
+    type Output = Wtf8;
+
+    #[inline]
+    fn index(&self, range: ops::RangeFrom<usize>) -> &Wtf8 {
         // is_code_point_boundary checks that the index is in [0, .len()]
         if is_code_point_boundary(self, range.start) {
             unsafe { slice_unchecked(self, range.start, self.len()) }
@@ -676,6 +722,7 @@ impl ops::Index<ops::RangeFrom<usize>> for Wtf8 {
 ///
 /// Panics when `end` is not at a code point boundary,
 /// or is beyond the end of the string.
+#[cfg(stage0)]
 impl ops::Index<ops::RangeTo<usize>> for Wtf8 {
     type Output = Wtf8;
 
@@ -690,11 +737,43 @@ impl ops::Index<ops::RangeTo<usize>> for Wtf8 {
     }
 }
 
+/// Return a slice of the given string from its beginning to byte `end`.
+///
+/// # Panics
+///
+/// Panics when `end` is not at a code point boundary,
+/// or is beyond the end of the string.
+#[cfg(not(stage0))]
+impl ops::Index<ops::RangeTo<usize>> for Wtf8 {
+    type Output = Wtf8;
+
+    #[inline]
+    fn index(&self, range: ops::RangeTo<usize>) -> &Wtf8 {
+        // is_code_point_boundary checks that the index is in [0, .len()]
+        if is_code_point_boundary(self, range.end) {
+            unsafe { slice_unchecked(self, 0, range.end) }
+        } else {
+            slice_error_fail(self, 0, range.end)
+        }
+    }
+}
+
+#[cfg(stage0)]
 impl ops::Index<ops::RangeFull> for Wtf8 {
     type Output = Wtf8;
 
     #[inline]
     fn index(&self, _range: &ops::RangeFull) -> &Wtf8 {
+        self
+    }
+}
+
+#[cfg(not(stage0))]
+impl ops::Index<ops::RangeFull> for Wtf8 {
+    type Output = Wtf8;
+
+    #[inline]
+    fn index(&self, _range: ops::RangeFull) -> &Wtf8 {
         self
     }
 }

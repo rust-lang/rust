@@ -363,10 +363,7 @@ pub fn temp_dir() -> PathBuf {
 pub fn home_dir() -> Option<PathBuf> {
     getenv("HOME".as_os_str()).or_else(|| {
         getenv("USERPROFILE".as_os_str())
-    }).map(|os| {
-        // FIXME(#22751) should consume `os`
-        PathBuf::new(&os)
-    }).or_else(|| unsafe {
+    }).map(PathBuf::from).or_else(|| unsafe {
         let me = c::GetCurrentProcess();
         let mut token = ptr::null_mut();
         if c::OpenProcessToken(me, c::TOKEN_READ, &mut token) == 0 {

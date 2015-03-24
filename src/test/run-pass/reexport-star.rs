@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 mod a {
     pub fn f() {}
     pub fn g() {}

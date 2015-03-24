@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 #![forbid(warnings)]
+#![feature(std_misc)]
 
 // Pretty printing tests complain about `use std::predule::*`
 #![allow(unused_imports)]

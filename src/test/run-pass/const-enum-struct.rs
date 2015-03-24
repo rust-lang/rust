@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 enum E { V16(u16), V32(u32) }
 struct S { a: E, b: u16, c: u16 }
 static C: S = S { a: E::V16(0xDEAD), b: 0x600D, c: 0xBAD };

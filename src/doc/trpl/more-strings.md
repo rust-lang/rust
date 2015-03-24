@@ -12,7 +12,7 @@ Additionally, strings are not null-terminated and can contain null bytes.
 
 Rust has two main types of strings: `&str` and `String`.
 
-# &str
+# `&str`
 
 The first kind is a `&str`. This is pronounced a 'string slice'.
 String literals are of the type `&str`:
@@ -36,7 +36,36 @@ Like vector slices, string slices are simply a pointer plus a length. This
 means that they're a 'view' into an already-allocated string, such as a
 string literal or a `String`.
 
-# String
+## `str`
+
+You may occasionally see references to a `str` type, without the `&`. While
+this type does exist, it’s not something you want to use yourself. Sometimes,
+people confuse `str` for `String`, and write this:
+
+```rust
+struct S {
+    s: str,
+}
+```
+
+This leads to ugly errors:
+
+```text
+error: the trait `core::marker::Sized` is not implemented for the type `str` [E0277]
+note: `str` does not have a constant size known at compile-time
+```
+
+Instead, this `struct` should be
+
+```rust
+struct S {
+    s: String,
+}
+```
+
+So let’s talk about `String`s.
+
+# `String`
 
 A `String` is a heap-allocated string. This string is growable, and is
 also guaranteed to be UTF-8. `String`s are commonly created by
@@ -148,6 +177,7 @@ Rust provides iterators for each of these situations:
 Usually, the `graphemes()` method on `&str` is what you want:
 
 ```
+# #![feature(unicode)]
 let s = "u͔n͈̰̎i̙̮͚̦c͚̉o̼̩̰͗d͔̆̓ͥé";
 
 for l in s.graphemes(true) {

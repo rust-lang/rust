@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 pub mod two_tuple {
     pub trait T { fn dummy(&self) { } }
     pub struct P<'a>(&'a (T + 'a), &'a (T + 'a));

@@ -65,6 +65,7 @@ use core::raw::TraitObject;
 /// The following two examples are equivalent:
 ///
 /// ```
+/// # #![feature(alloc)]
 /// #![feature(box_syntax)]
 /// use std::boxed::HEAP;
 ///
@@ -135,6 +136,7 @@ impl<T : ?Sized> Box<T> {
 ///
 /// # Examples
 /// ```
+/// # #![feature(alloc)]
 /// use std::boxed;
 ///
 /// let seventeen = Box::new(17u32);
@@ -178,6 +180,7 @@ impl<T: Clone> Clone for Box<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc, core)]
     /// let x = Box::new(5);
     /// let mut y = Box::new(10);
     ///

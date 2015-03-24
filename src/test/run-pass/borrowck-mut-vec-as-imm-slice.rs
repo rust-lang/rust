@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 fn want_slice(v: &[int]) -> int {
     let mut sum = 0;
     for i in v { sum += *i; }

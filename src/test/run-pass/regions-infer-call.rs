@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// pretty-expanded FIXME #23616
+
 fn takes_two(x: &int, y: &int) -> int { *x + *y }
 
 fn has_two<'a,'b>(x: &'a int, y: &'b int) -> int {

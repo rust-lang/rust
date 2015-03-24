@@ -8,8 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(tempdir)]
 
-#[deriving(Clone)] //~ ERROR `deriving` has been renamed to `derive`
-struct Foo;
+use std::env;
+use std::fs::{self, TempDir};
 
-fn main() {}
+fn main() {
+    let td = TempDir::new("create-dir-all-bare").unwrap();
+    env::set_current_dir(td.path()).unwrap();
+    fs::create_dir_all("create-dir-all-bare").unwrap();
+}

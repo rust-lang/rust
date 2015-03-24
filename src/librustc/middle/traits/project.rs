@@ -11,9 +11,9 @@
 //! Code for projecting associated types out of trait references.
 
 use super::elaborate_predicates;
+use super::report_overflow_error;
 use super::Obligation;
 use super::ObligationCause;
-use super::Overflow;
 use super::PredicateObligation;
 use super::SelectionContext;
 use super::SelectionError;
@@ -442,7 +442,7 @@ fn project_type<'cx,'tcx>(
     let recursion_limit = selcx.tcx().sess.recursion_limit.get();
     if obligation.recursion_depth >= recursion_limit {
         debug!("project: overflow!");
-        return Err(ProjectionTyError::TraitSelectionError(Overflow));
+        report_overflow_error(selcx.infcx(), &obligation);
     }
 
     let obligation_trait_ref =
@@ -854,10 +854,10 @@ fn confirm_impl_candidate<'cx,'tcx>(
     let impl_items_map = selcx.tcx().impl_items.borrow();
     let impl_or_trait_items_map = selcx.tcx().impl_or_trait_items.borrow();
 
-    let impl_items = &impl_items_map[impl_vtable.impl_def_id];
+    let impl_items = impl_items_map.get(&impl_vtable.impl_def_id).unwrap();
     let mut impl_ty = None;
     for impl_item in impl_items {
-        let assoc_type = match impl_or_trait_items_map[impl_item.def_id()] {
+        let assoc_type = match *impl_or_trait_items_map.get(&impl_item.def_id()).unwrap() {
             ty::TypeTraitItem(ref assoc_type) => assoc_type.clone(),
             ty::MethodTraitItem(..) => { continue; }
         };

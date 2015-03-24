@@ -498,13 +498,10 @@ they go out of scope:
 However, boxes do _not_ use reference counting or garbage collection. Boxes are
 what's called an *affine type*. This means that the Rust compiler, at compile
 time, determines when the box comes into and goes out of scope, and inserts the
-appropriate calls there. Furthermore, boxes are a specific kind of affine type,
-known as a *region*. You can read more about regions [in this paper on the
-Cyclone programming
-language](http://www.cs.umd.edu/projects/cyclone/papers/cyclone-regions.pdf).
+appropriate calls there.
 
-You don't need to fully grok the theory of affine types or regions to grok
-boxes, though. As a rough approximation, you can treat this Rust code:
+You don't need to fully grok the theory of affine types to grok boxes, though.
+As a rough approximation, you can treat this Rust code:
 
 ```{rust}
 {

@@ -514,9 +514,6 @@ impl<'tcx> Repr<'tcx> for super::VtableObjectData<'tcx> {
 impl<'tcx> Repr<'tcx> for super::SelectionError<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
-            super::Overflow =>
-                format!("Overflow"),
-
             super::Unimplemented =>
                 format!("Unimplemented"),
 

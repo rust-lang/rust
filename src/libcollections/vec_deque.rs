@@ -257,6 +257,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -284,6 +285,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let buf: VecDeque<i32> = VecDeque::with_capacity(10);
@@ -307,6 +309,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf: VecDeque<i32> = vec![1].into_iter().collect();
@@ -328,6 +331,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf: VecDeque<i32> = vec![1].into_iter().collect();
@@ -403,6 +407,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::with_capacity(15);
@@ -489,6 +494,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -512,6 +518,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -535,6 +542,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -556,7 +564,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Consumes the list into an iterator yielding elements by value.
+    /// Consumes the list into a front-to-back iterator yielding elements by value.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<T> {
         IntoIter {
@@ -644,6 +652,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut v = VecDeque::new();
@@ -882,6 +891,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -915,6 +925,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -948,6 +959,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Examples
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -1321,6 +1333,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf: VecDeque<_> = vec![1,2,3].into_iter().collect();
@@ -1383,6 +1396,7 @@ impl<T> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf: VecDeque<_> = vec![1, 2, 3].into_iter().collect();
@@ -1407,6 +1421,7 @@ impl<T: Clone> VecDeque<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// use std::collections::VecDeque;
     ///
     /// let mut buf = VecDeque::new();
@@ -1573,6 +1588,7 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
 /// A by-value VecDeque iterator
+#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     inner: VecDeque<T>,
@@ -1689,17 +1705,31 @@ impl<A: Hash> Hash for VecDeque<A> {
 impl<A> Index<usize> for VecDeque<A> {
     type Output = A;
 
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, i: &usize) -> &A {
         self.get(*i).expect("Out of bounds access")
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, i: usize) -> &A {
+        self.get(i).expect("Out of bounds access")
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> IndexMut<usize> for VecDeque<A> {
+    #[cfg(stage0)]
     #[inline]
     fn index_mut(&mut self, i: &usize) -> &mut A {
         self.get_mut(*i).expect("Out of bounds access")
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index_mut(&mut self, i: usize) -> &mut A {
+        self.get_mut(i).expect("Out of bounds access")
     }
 }
 

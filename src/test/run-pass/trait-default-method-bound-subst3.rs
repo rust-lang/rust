@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 trait A {
     fn g<T>(&self, x: T, y: T) -> (T, T) { (x, y) }
 }

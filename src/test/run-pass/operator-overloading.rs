@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(core)]
+
 use std::cmp;
 use std::ops;
 
@@ -52,8 +54,8 @@ impl ops::Not for Point {
 impl ops::Index<bool> for Point {
     type Output = int;
 
-    fn index(&self, x: &bool) -> &int {
-        if *x {
+    fn index(&self, x: bool) -> &int {
+        if x {
             &self.x
         } else {
             &self.y

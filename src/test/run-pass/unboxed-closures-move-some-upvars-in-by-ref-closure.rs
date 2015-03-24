@@ -11,6 +11,8 @@
 // Test that in a by-ref once closure we move some variables even as
 // we capture others by mutable reference.
 
+// pretty-expanded FIXME #23616
+
 fn call<F>(f: F) where F : FnOnce() {
     f();
 }

@@ -628,7 +628,7 @@ impl<'a> Context<'a> {
         let mut rlibs = HashMap::new();
         let mut dylibs = HashMap::new();
         {
-            let locs = locs.iter().map(|l| PathBuf::new(&l[..])).filter(|loc| {
+            let locs = locs.iter().map(|l| PathBuf::from(l)).filter(|loc| {
                 if !loc.exists() {
                     sess.err(&format!("extern location for {} does not exist: {}",
                                      self.crate_name, loc.display()));

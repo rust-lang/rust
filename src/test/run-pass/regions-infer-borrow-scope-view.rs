@@ -9,6 +9,8 @@
 // except according to those terms.
 
 
+// pretty-expanded FIXME #23616
+
 fn view<T>(x: &[T]) -> &[T] {x}
 
 pub fn main() {

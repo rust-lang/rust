@@ -61,6 +61,7 @@ impl<'a> Drop for Sentinel<'a> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(std_misc, core)]
 /// use std::sync::TaskPool;
 /// use std::iter::AdditiveIterator;
 /// use std::sync::mpsc::channel;

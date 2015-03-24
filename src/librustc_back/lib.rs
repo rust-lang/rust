@@ -36,7 +36,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(old_fs)]
-#![feature(hash)]
 #![feature(int_uint)]
 #![feature(io)]
 #![feature(old_io)]
@@ -47,8 +46,9 @@
 #![feature(rand)]
 #![feature(path_ext)]
 #![feature(std_misc)]
-#![feature(path_relative_from)]
 #![feature(step_by)]
+#![feature(convert)]
+#![cfg_attr(test, feature(test, rand))]
 
 extern crate syntax;
 extern crate serialize;

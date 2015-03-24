@@ -10,8 +10,10 @@
 
 // Test overloaded indexing combined with autoderef.
 
+// pretty-expanded FIXME #23616
+
 #![allow(unknown_features)]
-#![feature(box_syntax)]
+#![feature(box_syntax, core)]
 
 use std::ops::{Index, IndexMut};
 
@@ -23,8 +25,8 @@ struct Foo {
 impl Index<int> for Foo {
     type Output = int;
 
-    fn index(&self, z: &int) -> &int {
-        if *z == 0 {
+    fn index(&self, z: int) -> &int {
+        if z == 0 {
             &self.x
         } else {
             &self.y
@@ -33,8 +35,8 @@ impl Index<int> for Foo {
 }
 
 impl IndexMut<int> for Foo {
-    fn index_mut(&mut self, z: &int) -> &mut int {
-        if *z == 0 {
+    fn index_mut(&mut self, z: int) -> &mut int {
+        if z == 0 {
             &mut self.x
         } else {
             &mut self.y

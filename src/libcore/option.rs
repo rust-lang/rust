@@ -154,6 +154,7 @@ use mem;
 use ops::{Deref, FnOnce};
 use result::Result::{Ok, Err};
 use result::Result;
+#[allow(deprecated)]
 use slice::AsSlice;
 use slice;
 
@@ -275,6 +276,7 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let mut x = Some("Diamonds");
     /// {
     ///     let v = x.as_mut_slice();
@@ -470,6 +472,7 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let x = Some("foo");
     /// assert_eq!(x.ok_or(0), Ok("foo"));
     ///
@@ -491,6 +494,7 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let x = Some("foo");
     /// assert_eq!(x.ok_or_else(|| 0), Ok("foo"));
     ///
@@ -532,6 +536,7 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// let mut x = Some(4);
     /// match x.iter_mut().next() {
     ///     Some(&mut ref mut v) => *v = 42,
@@ -701,6 +706,19 @@ impl<T> Option<T> {
     pub fn take(&mut self) -> Option<T> {
         mem::replace(self, None)
     }
+
+    /// Convert from `Option<T>` to `&[T]` (without copying)
+    #[inline]
+    #[unstable(feature = "as_slice", since = "unsure of the utility here")]
+    pub fn as_slice<'a>(&'a self) -> &'a [T] {
+        match *self {
+            Some(ref x) => slice::ref_slice(x),
+            None => {
+                let result: &[_] = &[];
+                result
+            }
+        }
+    }
 }
 
 impl<'a, T: Clone, D: Deref<Target=T>> Option<D> {
@@ -752,6 +770,9 @@ impl<T: Default> Option<T> {
 
 #[unstable(feature = "core",
            reason = "waiting on the stability of the trait itself")]
+#[deprecated(since = "1.0.0",
+             reason = "use the inherent method instead")]
+#[allow(deprecated)]
 impl<T> AsSlice<T> for Option<T> {
     /// Convert from `Option<T>` to `&[T]` (without copying)
     #[inline]

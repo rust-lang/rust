@@ -13,6 +13,8 @@
 
 
 // Issue #45: infer type parameters in function applications
+// pretty-expanded FIXME #23616
+
 fn id<T>(x: T) -> T { return x; }
 
 pub fn main() { let x: int = 42; let y: int = id(x); assert!((x == y)); }

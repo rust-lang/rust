@@ -40,8 +40,8 @@ pub struct TestProps {
     pub check_stdout: bool,
     // Don't force a --crate-type=dylib flag on the command line
     pub no_prefer_dynamic: bool,
-    // Don't run --pretty expanded when running pretty printing tests
-    pub no_pretty_expanded: bool,
+    // Run --pretty expanded when running pretty printing tests
+    pub pretty_expanded: bool,
     // Which pretty mode are we testing with, default to 'normal'
     pub pretty_mode: String,
     // Only compare pretty output and don't try compiling
@@ -62,7 +62,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
     let mut force_host = false;
     let mut check_stdout = false;
     let mut no_prefer_dynamic = false;
-    let mut no_pretty_expanded = false;
+    let mut pretty_expanded = false;
     let mut pretty_mode = None;
     let mut pretty_compare_only = false;
     let mut forbid_output = Vec::new();
@@ -96,8 +96,8 @@ pub fn load_props(testfile: &Path) -> TestProps {
             no_prefer_dynamic = parse_no_prefer_dynamic(ln);
         }
 
-        if !no_pretty_expanded {
-            no_pretty_expanded = parse_no_pretty_expanded(ln);
+        if !pretty_expanded {
+            pretty_expanded = parse_pretty_expanded(ln);
         }
 
         if pretty_mode.is_none() {
@@ -152,7 +152,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
         force_host: force_host,
         check_stdout: check_stdout,
         no_prefer_dynamic: no_prefer_dynamic,
-        no_pretty_expanded: no_pretty_expanded,
+        pretty_expanded: pretty_expanded,
         pretty_mode: pretty_mode.unwrap_or("normal".to_string()),
         pretty_compare_only: pretty_compare_only,
         forbid_output: forbid_output,
@@ -295,8 +295,8 @@ fn parse_no_prefer_dynamic(line: &str) -> bool {
     parse_name_directive(line, "no-prefer-dynamic")
 }
 
-fn parse_no_pretty_expanded(line: &str) -> bool {
-    parse_name_directive(line, "no-pretty-expanded")
+fn parse_pretty_expanded(line: &str) -> bool {
+    parse_name_directive(line, "pretty-expanded")
 }
 
 fn parse_pretty_mode(line: &str) -> Option<String> {
@@ -328,10 +328,10 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
 
 fn parse_pp_exact(line: &str, testfile: &Path) -> Option<PathBuf> {
     match parse_name_value_directive(line, "pp-exact") {
-      Some(s) => Some(PathBuf::new(&s)),
+      Some(s) => Some(PathBuf::from(&s)),
       None => {
         if parse_name_directive(line, "pp-exact") {
-            testfile.file_name().map(|s| PathBuf::new(s))
+            testfile.file_name().map(|s| PathBuf::from(s))
         } else {
             None
         }
@@ -340,7 +340,8 @@ fn parse_pp_exact(line: &str, testfile: &Path) -> Option<PathBuf> {
 }
 
 fn parse_name_directive(line: &str, directive: &str) -> bool {
-    line.contains(directive)
+    // This 'no-' rule is a quick hack to allow pretty-expanded and no-pretty-expanded to coexist
+    line.contains(directive) && !line.contains(&("no-".to_string() + directive))
 }
 
 pub fn parse_name_value_directive(line: &str, directive: &str)

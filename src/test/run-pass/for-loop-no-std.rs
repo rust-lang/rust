@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, start, no_std)]
+// pretty-expanded FIXME #23616
+
+#![feature(lang_items, start, no_std, core, collections)]
 #![no_std]
 
 extern crate "std" as other;

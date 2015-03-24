@@ -479,10 +479,19 @@ esac
 # Detect 64 bit linux systems with 32 bit userland and force 32 bit compilation
 if [ $CFG_OSTYPE = unknown-linux-gnu -a $CFG_CPUTYPE = x86_64 ]
 then
-    file -L "$SHELL" | grep -q "x86[_-]64"
-    if [ $? != 0 ]; then
-        CFG_CPUTYPE=i686
+    # $SHELL does not exist in standard 'sh', so probably only exists
+    # if configure is running in an interactive bash shell. /usr/bin/env
+    # exists *everywhere*.
+    BIN_TO_PROBE="$SHELL"
+    if [ -z "$BIN_TO_PROBE" -a -e "/usr/bin/env" ]; then
+       BIN_TO_PROBE="/usr/bin/env"
     fi
+    if [ -n "$BIN_TO_PROBE" ]; then
+       file -L "$BIN_TO_PROBE" | grep -q "x86[_-]64"
+       if [ $? != 0 ]; then
+            CFG_CPUTYPE=i686
+       fi
+     fi
 fi
 
 

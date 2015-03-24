@@ -37,7 +37,8 @@ Core encoding and decoding interfaces.
 #![feature(std_misc)]
 #![feature(unicode)]
 #![feature(str_char)]
-#![cfg_attr(test, feature(test))]
+#![feature(convert)]
+#![cfg_attr(test, feature(test, old_io))]
 
 // test harness access
 #[cfg(test)] extern crate test;

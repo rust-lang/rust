@@ -25,6 +25,7 @@ use core::mem;
 use core::ops::{self, Deref, Add, Index};
 use core::ptr;
 use core::slice;
+use core::str::Pattern;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
 
@@ -90,6 +91,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections, core)]
     /// let s = String::from_str("hello");
     /// assert_eq!(s.as_slice(), "hello");
     /// ```
@@ -122,6 +124,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core)]
     /// use std::str::Utf8Error;
     ///
     /// let hello_vec = vec![104, 101, 108, 108, 111];
@@ -350,6 +353,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let s = String::from_str("hello");
     /// let bytes = s.into_bytes();
     /// assert_eq!(bytes, [104, 101, 108, 108, 111]);
@@ -365,6 +369,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("foo");
     /// s.push_str("bar");
     /// assert_eq!(s, "foobar");
@@ -441,6 +446,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("foo");
     /// s.reserve(100);
     /// assert!(s.capacity() >= 100);
@@ -458,6 +464,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("abc");
     /// s.push('1');
     /// s.push('2');
@@ -493,6 +500,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let s = String::from_str("hello");
     /// let b: &[_] = &[104, 101, 108, 108, 111];
     /// assert_eq!(s.as_bytes(), b);
@@ -513,6 +521,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("hello");
     /// s.truncate(2);
     /// assert_eq!(s, "he");
@@ -530,6 +539,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("foo");
     /// assert_eq!(s.pop(), Some('o'));
     /// assert_eq!(s.pop(), Some('o'));
@@ -567,6 +577,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("foo");
     /// assert_eq!(s.remove(0), 'f');
     /// assert_eq!(s.remove(1), 'o');
@@ -629,6 +640,7 @@ impl String {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(collections)]
     /// let mut s = String::from_str("hello");
     /// unsafe {
     ///     let vec = s.as_mut_vec();
@@ -765,6 +777,25 @@ impl<'a> Extend<&'a str> for String {
     }
 }
 
+/// A convenience impl that delegates to the impl for `&str`
+impl<'a, 'b> Pattern<'a> for &'b String {
+    type Searcher = <&'b str as Pattern<'a>>::Searcher;
+
+    fn into_searcher(self, haystack: &'a str) -> <&'b str as Pattern<'a>>::Searcher {
+        self[..].into_searcher(haystack)
+    }
+
+    #[inline]
+    fn is_contained_in(self, haystack: &'a str) -> bool {
+        self[..].is_contained_in(haystack)
+    }
+
+    #[inline]
+    fn is_prefix_of(self, haystack: &'a str) -> bool {
+        self[..].is_prefix_of(haystack)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for String {
     #[inline]
@@ -814,6 +845,7 @@ impl<'a, 'b> PartialEq<Cow<'a, str>> for &'b str {
 }
 
 #[unstable(feature = "collections", reason = "waiting on Str stabilization")]
+#[allow(deprecated)]
 impl Str for String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -870,32 +902,64 @@ impl<'a> Add<&'a str> for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::Range<usize>> for String {
     type Output = str;
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, index: &ops::Range<usize>) -> &str {
         &self[..][*index]
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, index: ops::Range<usize>) -> &str {
+        &self[..][index]
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeTo<usize>> for String {
     type Output = str;
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, index: &ops::RangeTo<usize>) -> &str {
         &self[..][*index]
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, index: ops::RangeTo<usize>) -> &str {
+        &self[..][index]
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeFrom<usize>> for String {
     type Output = str;
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, index: &ops::RangeFrom<usize>) -> &str {
         &self[..][*index]
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, index: ops::RangeFrom<usize>) -> &str {
+        &self[..][index]
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeFull> for String {
     type Output = str;
+
+    #[cfg(stage0)]
     #[inline]
     fn index(&self, _index: &ops::RangeFull) -> &str {
+        unsafe { mem::transmute(&*self.vec) }
+    }
+
+    #[cfg(not(stage0))]
+    #[inline]
+    fn index(&self, _index: ops::RangeFull) -> &str {
         unsafe { mem::transmute(&*self.vec) }
     }
 }
@@ -930,6 +994,7 @@ impl<'a> Deref for DerefString<'a> {
 /// # Examples
 ///
 /// ```
+/// # #![feature(collections)]
 /// use std::string::as_string;
 ///
 /// fn string_consumer(s: String) {
@@ -974,6 +1039,27 @@ impl<T: fmt::Display + ?Sized> ToString for T {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl AsRef<str> for String {
+    fn as_ref(&self) -> &str {
+        self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&'a str> for String {
+    fn from(s: &'a str) -> String {
+        s.to_string()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Into<Vec<u8>> for String {
+    fn into(self) -> Vec<u8> {
+        self.into_bytes()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl IntoCow<'static, str> for String {
     #[inline]
     fn into_cow(self) -> Cow<'static, str> {
@@ -989,6 +1075,7 @@ impl<'a> IntoCow<'a, str> for &'a str {
     }
 }
 
+#[allow(deprecated)]
 impl<'a> Str for Cow<'a, str> {
     #[inline]
     fn as_slice<'b>(&'b self) -> &'b str {

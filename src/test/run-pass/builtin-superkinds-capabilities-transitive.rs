@@ -14,6 +14,8 @@
 // a Send. Basically this just makes sure rustc is using
 // each_bound_trait_and_supertraits in type_contents correctly.
 
+// pretty-expanded FIXME #23616
+
 use std::sync::mpsc::{channel, Sender};
 
 trait Bar : Send { }

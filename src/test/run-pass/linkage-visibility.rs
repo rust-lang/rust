@@ -12,6 +12,8 @@
 // ignore-android: FIXME(#10379)
 // ignore-windows: std::dynamic_lib does not work on Windows well
 
+#![feature(std_misc, old_path)]
+
 extern crate "linkage-visibility" as foo;
 
 pub fn main() {

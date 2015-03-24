@@ -546,6 +546,8 @@ is an opaque "black box" to the optimizer and so forces it to consider any
 argument as used.
 
 ```rust
+# #![feature(test)]
+
 extern crate test;
 
 # fn main() {

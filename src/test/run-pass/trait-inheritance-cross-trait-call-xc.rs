@@ -10,6 +10,8 @@
 
 // aux-build:trait_inheritance_cross_trait_call_xc_aux.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate "trait_inheritance_cross_trait_call_xc_aux" as aux;
 
 use aux::Foo;

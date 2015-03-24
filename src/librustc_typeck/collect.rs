@@ -194,7 +194,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
 
     fn method_ty(&self, method_id: ast::NodeId) -> Rc<ty::Method<'tcx>> {
         let def_id = local_def(method_id);
-        match self.tcx.impl_or_trait_items.borrow()[def_id] {
+        match *self.tcx.impl_or_trait_items.borrow().get(&def_id).unwrap() {
             ty::MethodTraitItem(ref mty) => mty.clone(),
             ty::TypeTraitItem(..) => {
                 self.tcx.sess.bug(&format!("method with id {} has the wrong type", method_id));
@@ -545,7 +545,7 @@ fn is_param<'tcx>(tcx: &ty::ctxt<'tcx>,
                   -> bool
 {
     if let ast::TyPath(None, _) = ast_ty.node {
-        let path_res = tcx.def_map.borrow()[ast_ty.id];
+        let path_res = *tcx.def_map.borrow().get(&ast_ty.id).unwrap();
         match path_res.base_def {
             def::DefSelfTy(node_id) =>
                 path_res.depth == 0 && node_id == param_id,
@@ -690,7 +690,7 @@ fn convert_field<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn convert_associated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+fn as_refsociated_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                      container: ImplOrTraitItemContainer,
                                      ident: ast::Ident,
                                      id: ast::NodeId,
@@ -835,7 +835,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                                               "associated items are not allowed in inherent impls");
                         }
 
-                        convert_associated_type(ccx, ImplContainer(local_def(it.id)),
+                        as_refsociated_type(ccx, ImplContainer(local_def(it.id)),
                                                 impl_item.ident, impl_item.id, impl_item.vis);
 
                         let typ = ccx.icx(&ty_predicates).to_ty(&ExplicitRscope, ty);
@@ -917,7 +917,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                 match trait_item.node {
                     ast::MethodTraitItem(..) => {}
                     ast::TypeTraitItem(..) => {
-                        convert_associated_type(ccx, TraitContainer(local_def(it.id)),
+                        as_refsociated_type(ccx, TraitContainer(local_def(it.id)),
                                                 trait_item.ident, trait_item.id, ast::Public);
                     }
                 }
@@ -1040,9 +1040,13 @@ fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 tcx.predicates.borrow_mut().insert(local_def(ctor_id), predicates);
             } else if struct_def.fields[0].node.kind.is_unnamed() {
                 // Tuple-like.
-                let inputs: Vec<_> = struct_def.fields.iter().map(
-                        |field| (*tcx.tcache.borrow())[
-                            local_def(field.node.id)].ty).collect();
+                let inputs: Vec<_> =
+                    struct_def.fields
+                              .iter()
+                              .map(|field| tcx.tcache.borrow().get(&local_def(field.node.id))
+                                                              .unwrap()
+                                                              .ty)
+                              .collect();
                 let ctor_fn_ty = ty::mk_ctor_fn(tcx,
                                                 local_def(ctor_id),
                                                 &inputs[..],
@@ -1987,7 +1991,7 @@ fn conv_param_bounds<'a,'tcx>(astconv: &AstConv<'tcx>,
         builtin_bounds,
         trait_bounds,
         region_bounds
-    } = astconv::partition_bounds(tcx, span, ast_bounds.as_slice());
+    } = astconv::partition_bounds(tcx, span, &ast_bounds);
 
     let mut projection_bounds = Vec::new();
 

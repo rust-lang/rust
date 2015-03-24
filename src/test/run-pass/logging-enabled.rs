@@ -10,6 +10,10 @@
 
 // exec-env:RUST_LOG=logging-enabled=info
 
+// pretty-expanded FIXME #23616
+
+#![feature(rustc_private)]
+
 #[macro_use]
 extern crate log;
 

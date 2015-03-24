@@ -15,12 +15,9 @@
 //! Working with unsafe pointers in Rust is uncommon,
 //! typically limited to a few patterns.
 //!
-//! Use the [`null` function](fn.null.html) to create null pointers,
-//! the [`is_null`](trait.PtrExt.html#tymethod.is_null)
-//! methods of the [`PtrExt` trait](trait.PtrExt.html) to check for null.
-//! The `PtrExt` trait is imported by the prelude, so `is_null` etc.
-//! work everywhere. The `PtrExt` also defines the `offset` method,
-//! for pointer math.
+//! Use the [`null` function](fn.null.html) to create null pointers, and
+//! the `is_null` method of the `*const T` type  to check for null.
+//! The `*const T` type also defines the `offset` method, for pointer math.
 //!
 //! # Common ways to create unsafe pointers
 //!
@@ -52,6 +49,7 @@
 //! the raw pointer. It doesn't destroy `T` or deallocate any memory.
 //!
 //! ```
+//! # #![feature(alloc)]
 //! use std::boxed;
 //!
 //! unsafe {
@@ -70,6 +68,7 @@
 //! ## 3. Get it from C.
 //!
 //! ```
+//! # #![feature(libc)]
 //! extern crate libc;
 //!
 //! use std::mem;
@@ -105,27 +104,13 @@ use cmp::Ordering::{self, Less, Equal, Greater};
 // FIXME #19649: intrinsic docs don't render, so these have no docs :(
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use intrinsics::copy_nonoverlapping_memory as copy_nonoverlapping;
+pub use intrinsics::copy_nonoverlapping;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use intrinsics::copy_memory as copy;
+pub use intrinsics::copy;
 
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use intrinsics::set_memory as write_bytes;
-
-extern "rust-intrinsic" {
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0", reason = "renamed to `copy_nonoverlapping`")]
-    pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0", reason = "renamed to `copy`")]
-    pub fn copy_memory<T>(dst: *mut T, src: *const T, count: usize);
-
-    #[unstable(feature = "core",
-               reason = "uncertain about naming and semantics")]
-    #[deprecated(since = "1.0.0", reason = "renamed to `write_bytes`")]
-    pub fn set_memory<T>(dst: *mut T, val: u8, count: usize);
-}
+pub use intrinsics::write_bytes;
 
 /// Creates a null raw pointer.
 ///

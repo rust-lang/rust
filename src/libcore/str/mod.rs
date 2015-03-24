@@ -111,7 +111,24 @@ macro_rules! delegate_iter {
                 self.0.size_hint()
             }
         }
-    }
+    };
+    (pattern reverse $te:ty : $ti:ty) => {
+        #[stable(feature = "rust1", since = "1.0.0")]
+        impl<'a, P: Pattern<'a>> Iterator for $ti
+            where P::Searcher: ReverseSearcher<'a>
+        {
+            type Item = $te;
+
+            #[inline]
+            fn next(&mut self) -> Option<$te> {
+                self.0.next()
+            }
+            #[inline]
+            fn size_hint(&self) -> (usize, Option<usize>) {
+                self.0.size_hint()
+            }
+        }
+    };
 }
 
 /// A trait to abstract the idea of creating a new instance of a type from a
@@ -550,7 +567,26 @@ struct CharSplitsN<'a, P: Pattern<'a>> {
     iter: CharSplits<'a, P>,
     /// The number of splits remaining
     count: usize,
-    invert: bool,
+}
+
+/// An iterator over the substrings of a string, separated by a
+/// pattern, in reverse order.
+struct RCharSplits<'a, P: Pattern<'a>> {
+    /// The slice remaining to be iterated
+    start: usize,
+    end: usize,
+    matcher: P::Searcher,
+    /// Whether an empty string at the end of iteration is allowed
+    allow_final_empty: bool,
+    finished: bool,
+}
+
+/// An iterator over the substrings of a string, separated by a
+/// pattern, splitting at most `count` times, in reverse order.
+struct RCharSplitsN<'a, P: Pattern<'a>> {
+    iter: RCharSplits<'a, P>,
+    /// The number of splits remaining
+    count: usize,
 }
 
 /// An iterator over the lines of a string, separated by `\n`.
@@ -631,17 +667,70 @@ where P::Searcher: DoubleEndedSearcher<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: Pattern<'a>> Iterator for CharSplitsN<'a, P>
-where P::Searcher: DoubleEndedSearcher<'a> {
+impl<'a, P: Pattern<'a>> Iterator for CharSplitsN<'a, P> {
     type Item = &'a str;
 
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         if self.count != 0 {
             self.count -= 1;
-            if self.invert { self.iter.next_back() } else { self.iter.next() }
+            self.iter.next()
         } else {
             self.iter.get_end()
+        }
+    }
+}
+
+impl<'a, P: Pattern<'a>> RCharSplits<'a, P> {
+    #[inline]
+    fn get_remainder(&mut self) -> Option<&'a str> {
+        if !self.finished && (self.allow_final_empty || self.end - self.start > 0) {
+            self.finished = true;
+            unsafe {
+                let string = self.matcher.haystack().slice_unchecked(self.start, self.end);
+                Some(string)
+            }
+        } else {
+            None
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, P: Pattern<'a>> Iterator for RCharSplits<'a, P>
+    where P::Searcher: ReverseSearcher<'a>
+{
+    type Item = &'a str;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a str> {
+        if self.finished { return None }
+
+        let haystack = self.matcher.haystack();
+        match self.matcher.next_match_back() {
+            Some((a, b)) => unsafe {
+                let elt = haystack.slice_unchecked(b, self.end);
+                self.end = a;
+                Some(elt)
+            },
+            None => self.get_remainder(),
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, P: Pattern<'a>> Iterator for RCharSplitsN<'a, P>
+    where P::Searcher: ReverseSearcher<'a>
+{
+    type Item = &'a str;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a str> {
+        if self.count != 0 {
+            self.count -= 1;
+            self.iter.next()
+        } else {
+            self.iter.get_remainder()
         }
     }
 }
@@ -1203,11 +1292,55 @@ mod traits {
     /// // byte 100 is outside the string
     /// // &s[3 .. 100];
     /// ```
+    #[cfg(stage0)]
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::Range<usize>> for str {
         type Output = str;
         #[inline]
         fn index(&self, index: &ops::Range<usize>) -> &str {
+            // is_char_boundary checks that the index is in [0, .len()]
+            if index.start <= index.end &&
+               self.is_char_boundary(index.start) &&
+               self.is_char_boundary(index.end) {
+                unsafe { self.slice_unchecked(index.start, index.end) }
+            } else {
+                super::slice_error_fail(self, index.start, index.end)
+            }
+        }
+    }
+
+    /// Returns a slice of the given string from the byte range
+    /// [`begin`..`end`).
+    ///
+    /// This operation is `O(1)`.
+    ///
+    /// Panics when `begin` and `end` do not point to valid characters
+    /// or point beyond the last character of the string.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let s = "Löwe 老虎 Léopard";
+    /// assert_eq!(&s[0 .. 1], "L");
+    ///
+    /// assert_eq!(&s[1 .. 9], "öwe 老");
+    ///
+    /// // these will panic:
+    /// // byte 2 lies within `ö`:
+    /// // &s[2 ..3];
+    ///
+    /// // byte 8 lies within `老`
+    /// // &s[1 .. 8];
+    ///
+    /// // byte 100 is outside the string
+    /// // &s[3 .. 100];
+    /// ```
+    #[cfg(not(stage0))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl ops::Index<ops::Range<usize>> for str {
+        type Output = str;
+        #[inline]
+        fn index(&self, index: ops::Range<usize>) -> &str {
             // is_char_boundary checks that the index is in [0, .len()]
             if index.start <= index.end &&
                self.is_char_boundary(index.start) &&
@@ -1229,8 +1362,21 @@ mod traits {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeTo<usize>> for str {
         type Output = str;
+
+        #[cfg(stage0)]
         #[inline]
         fn index(&self, index: &ops::RangeTo<usize>) -> &str {
+            // is_char_boundary checks that the index is in [0, .len()]
+            if self.is_char_boundary(index.end) {
+                unsafe { self.slice_unchecked(0, index.end) }
+            } else {
+                super::slice_error_fail(self, 0, index.end)
+            }
+        }
+
+        #[cfg(not(stage0))]
+        #[inline]
+        fn index(&self, index: ops::RangeTo<usize>) -> &str {
             // is_char_boundary checks that the index is in [0, .len()]
             if self.is_char_boundary(index.end) {
                 unsafe { self.slice_unchecked(0, index.end) }
@@ -1249,8 +1395,21 @@ mod traits {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeFrom<usize>> for str {
         type Output = str;
+
+        #[cfg(stage0)]
         #[inline]
         fn index(&self, index: &ops::RangeFrom<usize>) -> &str {
+            // is_char_boundary checks that the index is in [0, .len()]
+            if self.is_char_boundary(index.start) {
+                unsafe { self.slice_unchecked(index.start, self.len()) }
+            } else {
+                super::slice_error_fail(self, index.start, self.len())
+            }
+        }
+
+        #[cfg(not(stage0))]
+        #[inline]
+        fn index(&self, index: ops::RangeFrom<usize>) -> &str {
             // is_char_boundary checks that the index is in [0, .len()]
             if self.is_char_boundary(index.start) {
                 unsafe { self.slice_unchecked(index.start, self.len()) }
@@ -1263,8 +1422,16 @@ mod traits {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeFull> for str {
         type Output = str;
+
+        #[cfg(stage0)]
         #[inline]
         fn index(&self, _index: &ops::RangeFull) -> &str {
+            self
+        }
+
+        #[cfg(not(stage0))]
+        #[inline]
+        fn index(&self, _index: ops::RangeFull) -> &str {
             self
         }
     }
@@ -1275,16 +1442,20 @@ mod traits {
            reason = "Instead of taking this bound generically, this trait will be \
                      replaced with one of slicing syntax (&foo[..]), deref coercions, or \
                      a more generic conversion trait")]
+#[deprecated(since = "1.0.0",
+             reason = "use std::convert::AsRef<str> instead")]
 pub trait Str {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a str;
 }
 
+#[allow(deprecated)]
 impl Str for str {
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a str { self }
 }
 
+#[allow(deprecated)]
 impl<'a, S: ?Sized> Str for &'a S where S: Str {
     #[inline]
     fn as_slice(&self) -> &str { Str::as_slice(*self) }
@@ -1293,23 +1464,7 @@ impl<'a, S: ?Sized> Str for &'a S where S: Str {
 /// Return type of `StrExt::split`
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Split<'a, P: Pattern<'a>>(CharSplits<'a, P>);
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: Pattern<'a>> Iterator for Split<'a, P> {
-    type Item = &'a str;
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        self.0.next()
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, P: Pattern<'a>> DoubleEndedIterator for Split<'a, P>
-where P::Searcher: DoubleEndedSearcher<'a> {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a str> {
-        self.0.next_back()
-    }
-}
+delegate_iter!{pattern &'a str : Split<'a, P>}
 
 /// Return type of `StrExt::split_terminator`
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1321,10 +1476,15 @@ delegate_iter!{pattern &'a str : SplitTerminator<'a, P>}
 pub struct SplitN<'a, P: Pattern<'a>>(CharSplitsN<'a, P>);
 delegate_iter!{pattern forward &'a str : SplitN<'a, P>}
 
+/// Return type of `StrExt::rsplit`
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct RSplit<'a, P: Pattern<'a>>(RCharSplits<'a, P>);
+delegate_iter!{pattern reverse &'a str : RSplit<'a, P>}
+
 /// Return type of `StrExt::rsplitn`
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct RSplitN<'a, P: Pattern<'a>>(CharSplitsN<'a, P>);
-delegate_iter!{pattern forward &'a str : RSplitN<'a, P>}
+pub struct RSplitN<'a, P: Pattern<'a>>(RCharSplitsN<'a, P>);
+delegate_iter!{pattern reverse &'a str : RSplitN<'a, P>}
 
 /// Methods for string slices
 #[allow(missing_docs)]
@@ -1340,7 +1500,10 @@ pub trait StrExt {
     fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P>;
     fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P>;
     fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P>;
-    fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>;
+    fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
+        where P::Searcher: ReverseSearcher<'a>;
+    fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
+        where P::Searcher: ReverseSearcher<'a>;
     fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P>;
     #[allow(deprecated) /* for SplitStr */]
     fn split_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitStr<'a, P>;
@@ -1424,7 +1587,6 @@ impl StrExt for str {
         SplitN(CharSplitsN {
             iter: self.split(pat).0,
             count: count,
-            invert: false,
         })
     }
 
@@ -1437,11 +1599,25 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P> {
-        RSplitN(CharSplitsN {
-            iter: self.split(pat).0,
+    fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        RSplit(RCharSplits {
+            start: 0,
+            end: self.len(),
+            matcher: pat.into_searcher(self),
+            allow_final_empty: true,
+            finished: false,
+        })
+    }
+
+    #[inline]
+    fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        RSplitN(RCharSplitsN {
+            iter: self.rsplit(pat).0,
             count: count,
-            invert: true,
         })
     }
 

@@ -111,7 +111,7 @@ impl CStore {
     }
 
     pub fn get_crate_data(&self, cnum: ast::CrateNum) -> Rc<crate_metadata> {
-        (*self.metas.borrow())[cnum].clone()
+        self.metas.borrow().get(&cnum).unwrap().clone()
     }
 
     pub fn get_crate_hash(&self, cnum: ast::CrateNum) -> Svh {
@@ -243,7 +243,7 @@ impl crate_metadata {
 impl MetadataBlob {
     pub fn as_slice<'a>(&'a self) -> &'a [u8] {
         let slice = match *self {
-            MetadataVec(ref vec) => vec.as_slice(),
+            MetadataVec(ref vec) => &vec[..],
             MetadataArchive(ref ar) => ar.as_slice(),
         };
         if slice.len() < 4 {

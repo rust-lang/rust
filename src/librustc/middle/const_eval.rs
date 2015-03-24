@@ -150,7 +150,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<ast::Pat>
             ast::PatTup(exprs.iter().map(|expr| const_expr_to_pat(tcx, &**expr, span)).collect()),
 
         ast::ExprCall(ref callee, ref args) => {
-            let def = tcx.def_map.borrow()[callee.id];
+            let def = *tcx.def_map.borrow().get(&callee.id).unwrap();
             if let Vacant(entry) = tcx.def_map.borrow_mut().entry(expr.id) {
                entry.insert(def);
             }

@@ -10,6 +10,8 @@
 
 // exec-env:TEST_EXEC_ENV=22
 
+// pretty-expanded FIXME #23616
+
 use std::env;
 
 pub fn main() {

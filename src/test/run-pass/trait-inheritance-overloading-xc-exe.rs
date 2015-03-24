@@ -10,6 +10,8 @@
 
 // aux-build:trait_inheritance_overloading_xc.rs
 
+// pretty-expanded FIXME #23616
+
 extern crate trait_inheritance_overloading_xc;
 use trait_inheritance_overloading_xc::{MyNum, MyInt};
 

@@ -12,7 +12,7 @@
 // ignore-windows FIXME #13259
 
 #![feature(unboxed_closures)]
-#![feature(unsafe_destructor)]
+#![feature(unsafe_destructor, old_io, collections)]
 
 use std::env;
 use std::old_io::process::Command;

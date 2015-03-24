@@ -448,7 +448,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
 
         let closure_def_id = ast_util::local_def(closure_id);
         let mut closure_kinds = self.fcx.inh.closure_kinds.borrow_mut();
-        let existing_kind = closure_kinds[closure_def_id];
+        let existing_kind = *closure_kinds.get(&closure_def_id).unwrap();
 
         debug!("adjust_closure_kind: closure_id={}, existing_kind={:?}, new_kind={:?}",
                closure_id, existing_kind, new_kind);

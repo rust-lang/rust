@@ -10,6 +10,8 @@
 
 // Test explicit coercions from a fn item type to a fn pointer type.
 
+// pretty-expanded FIXME #23616
+
 fn foo(x: int) -> int { x * 2 }
 fn bar(x: int) -> int { x * 4 }
 type IntMap = fn(int) -> int;

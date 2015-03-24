@@ -557,18 +557,7 @@ pub fn super_tys<'tcx, C>(this: &C,
 
         (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) => {
             let r = try!(this.regions_with_variance(ty::Contravariant, *a_r, *b_r));
-
-            // FIXME(14985)  If we have mutable references to trait objects, we
-            // used to use covariant subtyping. I have preserved this behaviour,
-            // even though it is probably incorrect. So don't go down the usual
-            // path which would require invariance.
-            let mt = match (&a_mt.ty.sty, &b_mt.ty.sty) {
-                (&ty::ty_trait(..), &ty::ty_trait(..)) if a_mt.mutbl == b_mt.mutbl => {
-                    let ty = try!(this.tys(a_mt.ty, b_mt.ty));
-                    ty::mt { ty: ty, mutbl: a_mt.mutbl }
-                }
-                _ => try!(this.mts(a_mt, b_mt))
-            };
+            let mt = try!(this.mts(a_mt, b_mt));
             Ok(ty::mk_rptr(tcx, tcx.mk_region(r), mt))
         }
 

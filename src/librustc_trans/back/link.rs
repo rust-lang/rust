@@ -877,7 +877,7 @@ fn link_args(cmd: &mut Command,
         if t.options.is_like_osx {
             let morestack = lib_path.join("libmorestack.a");
 
-            let mut v = OsString::from_str("-Wl,-force_load,");
+            let mut v = OsString::from("-Wl,-force_load,");
             v.push(&morestack);
             cmd.arg(&v);
         } else {
@@ -1002,7 +1002,7 @@ fn link_args(cmd: &mut Command,
             cmd.args(&["-dynamiclib", "-Wl,-dylib"]);
 
             if sess.opts.cg.rpath {
-                let mut v = OsString::from_str("-Wl,-install_name,@rpath/");
+                let mut v = OsString::from("-Wl,-install_name,@rpath/");
                 v.push(out_filename.file_name().unwrap());
                 cmd.arg(&v);
             }
@@ -1020,7 +1020,7 @@ fn link_args(cmd: &mut Command,
         let mut get_install_prefix_lib_path = || {
             let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
             let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
-            let mut path = PathBuf::new(install_prefix);
+            let mut path = PathBuf::from(install_prefix);
             path.push(&tlib);
 
             path
@@ -1102,7 +1102,7 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
                                             &sess.target.target.options.staticlib_suffix,
                                             &search_path[..],
                                             &sess.diagnostic().handler);
-            let mut v = OsString::from_str("-Wl,-force_load,");
+            let mut v = OsString::from("-Wl,-force_load,");
             v.push(&lib);
             cmd.arg(&v);
         }
@@ -1141,9 +1141,9 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
     // involves just passing the right -l flag.
 
     let data = if dylib {
-        &trans.crate_formats[config::CrateTypeDylib]
+        trans.crate_formats.get(&config::CrateTypeDylib).unwrap()
     } else {
-        &trans.crate_formats[config::CrateTypeExecutable]
+        trans.crate_formats.get(&config::CrateTypeExecutable).unwrap()
     };
 
     // Invoke get_used_crates to ensure that we get a topological sorting of

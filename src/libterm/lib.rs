@@ -19,6 +19,7 @@
 //! # Examples
 //!
 //! ```no_run
+//! # #![feature(rustc_private)]
 //! extern crate term;
 //!
 //! use std::io::prelude::*;
@@ -62,6 +63,7 @@
 #![feature(std_misc)]
 #![feature(str_char)]
 #![feature(path_ext)]
+#![feature(convert)]
 #![cfg_attr(windows, feature(libc))]
 
 #[macro_use] extern crate log;
