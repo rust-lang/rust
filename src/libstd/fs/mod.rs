@@ -128,6 +128,17 @@ impl File {
     ///
     /// This function will return an error if `path` does not already exist.
     /// Other errors may also be returned according to `OpenOptions::open`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut f = try!(File::open("foo.txt"));
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn open<P: AsRef<Path>>(path: P) -> io::Result<File> {
         OpenOptions::new().read(true).open(path)
@@ -139,6 +150,17 @@ impl File {
     /// and will truncate it if it does.
     ///
     /// See the `OpenOptions::open` function for more details.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut f = try!(File::create("foo.txt"));
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn create<P: AsRef<Path>>(path: P) -> io::Result<File> {
         OpenOptions::new().write(true).create(true).truncate(true).open(path)
@@ -156,6 +178,20 @@ impl File {
     ///
     /// This function will attempt to ensure that all in-core data reaches the
     /// filesystem before returning.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut f = try!(File::create("foo.txt"));
+    /// try!(f.write_all(b"Hello, world!"));
+    ///
+    /// try!(f.sync_all());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn sync_all(&self) -> io::Result<()> {
         self.inner.fsync()
@@ -170,6 +206,20 @@ impl File {
     ///
     /// Note that some platforms may simply implement this in terms of
     /// `sync_all`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut f = try!(File::create("foo.txt"));
+    /// try!(f.write_all(b"Hello, world!"));
+    ///
+    /// try!(f.sync_data());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn sync_data(&self) -> io::Result<()> {
         self.inner.datasync()
@@ -182,12 +232,36 @@ impl File {
     /// be shrunk. If it is greater than the current file's size, then the file
     /// will be extended to `size` and have all of the intermediate data filled
     /// in with 0s.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut f = try!(File::open("foo.txt"));
+    /// try!(f.set_len(0));
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_len(&self, size: u64) -> io::Result<()> {
         self.inner.truncate(size)
     }
 
     /// Queries metadata about the underlying file.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// let mut f = try!(File::open("foo.txt"));
+    /// let metadata = try!(f.metadata());
+    /// # Ok(())
+    /// # }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn metadata(&self) -> io::Result<Metadata> {
         self.inner.file_attr().map(Metadata)
