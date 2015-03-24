@@ -778,7 +778,7 @@ impl NonCamelCaseTypes {
 
             // start with a non-lowercase letter rather than non-uppercase
             // ones (some scripts don't have a concept of upper/lowercase)
-            ident.len() > 0 && !ident.char_at(0).is_lowercase() && !ident.contains('_')
+            !ident.is_empty() && !ident.char_at(0).is_lowercase() && !ident.contains('_')
         }
 
         fn to_camel_case(s: &str) -> String {
@@ -1900,7 +1900,7 @@ impl LintPass for UnconditionalRecursion {
         // doesn't return (e.g. calls a `-> !` function or `loop { /*
         // no break */ }`) shouldn't be linted unless it actually
         // recurs.
-        if !reached_exit_without_self_call && self_call_spans.len() > 0 {
+        if !reached_exit_without_self_call && !self_call_spans.is_empty() {
             cx.span_lint(UNCONDITIONAL_RECURSION, sp,
                          "function cannot return without recurring");
 

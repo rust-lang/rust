@@ -184,7 +184,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                                                     bcx.fcx.param_substs);
 
                 // Nullary variants are not callable
-                assert!(vinfo.args.len() > 0);
+                assert!(!vinfo.args.is_empty());
 
                 Callee {
                     bcx: bcx,
@@ -495,7 +495,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
 
         match map_node {
             ast_map::NodeVariant(v) => match v.node.kind {
-                ast::TupleVariantKind(ref args) => args.len() > 0,
+                ast::TupleVariantKind(ref args) => !args.is_empty(),
                 _ => false
             },
             ast_map::NodeStructCtor(_) => true,

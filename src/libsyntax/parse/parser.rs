@@ -2254,7 +2254,7 @@ impl<'a> Parser<'a> {
                         (Vec::new(), Vec::new(), Vec::new())
                     };
 
-                    if bindings.len() > 0 {
+                    if !bindings.is_empty() {
                         let last_span = self.last_span;
                         self.span_err(last_span, "type bindings are only permitted on trait paths");
                     }
@@ -3024,7 +3024,7 @@ impl<'a> Parser<'a> {
                 try!(self.expect(&token::Comma));
 
                 if self.token == token::CloseDelim(token::Bracket)
-                        && (before_slice || after.len() != 0) {
+                        && (before_slice || !after.is_empty()) {
                     break
                 }
             }

@@ -266,7 +266,7 @@ pub fn outer_mark(ctxt: SyntaxContext) -> Mrk {
 /// Push a name... unless it matches the one on top, in which
 /// case pop and discard (so two of the same marks cancel)
 fn xor_push(marks: &mut Vec<Mrk>, mark: Mrk) {
-    if (marks.len() > 0) && (*marks.last().unwrap() == mark) {
+    if (!marks.is_empty()) && (*marks.last().unwrap() == mark) {
         marks.pop().unwrap();
     } else {
         marks.push(mark);

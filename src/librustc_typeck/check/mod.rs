@@ -4258,7 +4258,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     //
     // The first step then is to categorize the segments appropriately.
 
-    assert!(segments.len() >= 1);
+    assert!(!segments.is_empty());
 
     let mut ufcs_method = None;
     let mut segment_spaces: Vec<_>;
@@ -4480,7 +4480,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
         }
 
-        if data.bindings.len() > 0 {
+        if !data.bindings.is_empty() {
             span_err!(fcx.tcx().sess, data.bindings[0].span, E0182,
                       "unexpected binding of associated item in expression path \
                        (only allowed in type paths)");

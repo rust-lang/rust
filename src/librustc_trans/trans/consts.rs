@@ -781,7 +781,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     let vinfo = ty::enum_variant_with_id(cx.tcx(),
                                                          enum_did,
                                                          variant_did);
-                    if vinfo.args.len() > 0 {
+                    if !vinfo.args.is_empty() {
                         // N-ary variant.
                         expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                     } else {

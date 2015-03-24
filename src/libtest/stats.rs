@@ -196,17 +196,17 @@ impl<T: Float + FromPrimitive> Stats<T> for [T] {
     }
 
     fn min(&self) -> T {
-        assert!(self.len() != 0);
+        assert!(!self.is_empty());
         self.iter().fold(self[0], |p, q| p.min(*q))
     }
 
     fn max(&self) -> T {
-        assert!(self.len() != 0);
+        assert!(!self.is_empty());
         self.iter().fold(self[0], |p, q| p.max(*q))
     }
 
     fn mean(&self) -> T {
-        assert!(self.len() != 0);
+        assert!(!self.is_empty());
         self.sum() / FromPrimitive::from_usize(self.len()).unwrap()
     }
 
@@ -284,7 +284,7 @@ impl<T: Float + FromPrimitive> Stats<T> for [T] {
 // linear interpolation. If samples are not sorted, return nonsensical value.
 fn percentile_of_sorted<T: Float + FromPrimitive>(sorted_samples: &[T],
                                                              pct: T) -> T {
-    assert!(sorted_samples.len() != 0);
+    assert!(!sorted_samples.is_empty());
     if sorted_samples.len() == 1 {
         return sorted_samples[0];
     }

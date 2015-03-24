@@ -558,7 +558,7 @@ pub fn parameterized<'tcx,GG>(cx: &ctxt<'tcx>,
                     &strs[0][..]
                 },
                 tail)
-    } else if strs.len() > 0 {
+    } else if !strs.is_empty() {
         format!("{}<{}>", base, strs.connect(", "))
     } else {
         format!("{}", base)

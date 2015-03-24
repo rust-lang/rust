@@ -966,7 +966,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
     fn pick_lifetime(&self,
                      region_names: &HashSet<ast::Name>)
                      -> (ast::Lifetime, FreshOrKept) {
-        if region_names.len() > 0 {
+        if !region_names.is_empty() {
             // It's not necessary to convert the set of region names to a
             // vector of string and then sort them. However, it makes the
             // choice of lifetime name deterministic and thus easier to test.

@@ -43,7 +43,7 @@ fn maybe_run_test<F>(argv: &[String], name: String, test: F) where F: FnOnce() {
 
     if env::var_os("RUST_BENCH").is_some() {
         run_test = true
-    } else if argv.len() > 0 {
+    } else if !argv.is_empty() {
         run_test = argv.iter().any(|x| x == &"all".to_string()) || argv.iter().any(|x| x == &name)
     }
 
@@ -60,7 +60,7 @@ fn shift_push() {
     let mut v1 = repeat(1).take(30000).collect::<Vec<_>>();
     let mut v2 = Vec::new();
 
-    while v1.len() > 0 {
+    while !v1.is_empty() {
         v2.push(v1.remove(0));
     }
 }

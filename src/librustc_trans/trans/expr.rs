@@ -1135,7 +1135,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     match def {
         def::DefVariant(tid, vid, _) => {
             let variant_info = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
-            if variant_info.args.len() > 0 {
+            if !variant_info.args.is_empty() {
                 // N-ary variant.
                 let llfn = callee::trans_fn_ref(bcx.ccx(), vid,
                                                 ExprId(ref_expr.id),

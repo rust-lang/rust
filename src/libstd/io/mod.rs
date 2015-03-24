@@ -349,7 +349,7 @@ pub trait Write {
     /// This function will return the first error that `write` returns.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_all(&mut self, mut buf: &[u8]) -> Result<()> {
-        while buf.len() > 0 {
+        while !buf.is_empty() {
             match self.write(buf) {
                 Ok(0) => return Err(Error::new(ErrorKind::WriteZero,
                                                "failed to write whole buffer")),

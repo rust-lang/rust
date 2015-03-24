@@ -252,7 +252,7 @@ fn generate_frequencies(mut input: &[u8], frame: usize) -> Table {
     }
     frequencies.lookup(code, BumpCallback);
 
-    while input.len() != 0 && input[0] != ('>' as u8) {
+    while !input.is_empty() && input[0] != ('>' as u8) {
         code = code.rotate(input[0], frame);
         frequencies.lookup(code, BumpCallback);
         input = &input[1..];

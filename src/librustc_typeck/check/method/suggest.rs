@@ -67,7 +67,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 }
             }
 
-            if static_sources.len() > 0 {
+            if !static_sources.is_empty() {
                 fcx.tcx().sess.fileline_note(
                     span,
                     "found defined static methods, maybe a `self` is missing?");
@@ -200,7 +200,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         })
         .collect::<Vec<_>>();
 
-    if candidates.len() > 0 {
+    if !candidates.is_empty() {
         // sort from most relevant to least relevant
         candidates.sort_by(|a, b| a.cmp(b).reverse());
         candidates.dedup();

@@ -227,7 +227,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                                                                                ref bounds,
                                                                                ref bound_lifetimes,
                                                                                .. }) => {
-                    if bound_lifetimes.len() > 0 {
+                    if !bound_lifetimes.is_empty() {
                         self.trait_ref_hack = true;
                         let result = self.with(LateScope(bound_lifetimes, self.scope),
                                                |old_scope, this| {
@@ -267,7 +267,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                             _modifier: &ast::TraitBoundModifier) {
         debug!("visit_poly_trait_ref trait_ref={:?}", trait_ref);
 
-        if !self.trait_ref_hack || trait_ref.bound_lifetimes.len() > 0 {
+        if !self.trait_ref_hack || !trait_ref.bound_lifetimes.is_empty() {
             if self.trait_ref_hack {
                 println!("{:?}", trait_ref.span);
                 span_err!(self.sess, trait_ref.span, E0316,

@@ -544,7 +544,7 @@ pub fn super_relate_tys<'a,'tcx:'a,R>(relation: &mut R,
                                  .map(|(a, b)| relation.relate(a, b))
                                  .collect::<Result<_, _>>());
                 Ok(ty::mk_tup(tcx, ts))
-            } else if as_.len() != 0 && bs.len() != 0 {
+            } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(ty::terr_tuple_size(
                     expected_found(relation, &as_.len(), &bs.len())))
             } else {

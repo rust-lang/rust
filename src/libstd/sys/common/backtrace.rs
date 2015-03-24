@@ -76,7 +76,7 @@ pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
         try!(writer.write_all(s.as_bytes()));
     } else {
         let mut first = true;
-        while inner.len() > 0 {
+        while !inner.is_empty() {
             if !first {
                 try!(writer.write_all(b"::"));
             } else {
@@ -89,7 +89,7 @@ pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
             let i: usize = inner[.. (inner.len() - rest.len())].parse().unwrap();
             inner = &rest[i..];
             rest = &rest[..i];
-            while rest.len() > 0 {
+            while !rest.is_empty() {
                 if rest.starts_with("$") {
                     macro_rules! demangle {
                         ($($pat:expr, => $demangled:expr),*) => ({

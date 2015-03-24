@@ -44,5 +44,5 @@ pub fn main()
                     "foo".to_string(), "foo".to_string(), "foo".to_string(),
                     "foo".to_string());
     let v = format!("{:?}", u);    // this is the line that causes the seg fault
-    assert!(v.len() > 0);
+    assert!(!v.is_empty());
 }

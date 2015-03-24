@@ -973,7 +973,7 @@ impl DocFolder for Cache {
         // Keep track of the fully qualified path for this item.
         let pushed = if item.name.is_some() {
             let n = item.name.as_ref().unwrap();
-            if n.len() > 0 {
+            if !n.is_empty() {
                 self.stack.push(n.to_string());
                 true
             } else { false }
@@ -1208,7 +1208,7 @@ impl Context {
 
             let mut title = cx.current.connect("::");
             if pushname {
-                if title.len() > 0 {
+                if !title.is_empty() {
                     title.push_str("::");
                 }
                 title.push_str(it.name.as_ref().unwrap());
@@ -1736,8 +1736,8 @@ fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
 fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
               t: &clean::Trait) -> fmt::Result {
     let mut bounds = String::new();
-    if t.bounds.len() > 0 {
-        if bounds.len() > 0 {
+    if !t.bounds.is_empty() {
+        if !bounds.is_empty() {
             bounds.push(' ');
         }
         bounds.push_str(": ");
@@ -1775,7 +1775,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             try!(render_method(w, t, MethodLink::Anchor));
             try!(write!(w, ";\n"));
         }
-        if types.len() > 0 && required.len() > 0 {
+        if !types.is_empty() && !required.is_empty() {
             try!(w.write_str("\n"));
         }
         for m in &required {
@@ -1783,7 +1783,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             try!(render_method(w, m, MethodLink::Anchor));
             try!(write!(w, ";\n"));
         }
-        if required.len() > 0 && provided.len() > 0 {
+        if !required.is_empty() && !provided.is_empty() {
             try!(w.write_str("\n"));
         }
         for m in &provided {
@@ -1810,7 +1810,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         Ok(())
     }
 
-    if types.len() > 0 {
+    if !types.is_empty() {
         try!(write!(w, "
             <h2 id='associated-types'>Associated Types</h2>
             <div class='methods'>
@@ -1822,7 +1822,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }
 
     // Output the documentation for each function individually
-    if required.len() > 0 {
+    if !required.is_empty() {
         try!(write!(w, "
             <h2 id='required-methods'>Required Methods</h2>
             <div class='methods'>
@@ -1832,7 +1832,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         try!(write!(w, "</div>"));
     }
-    if provided.len() > 0 {
+    if !provided.is_empty() {
         try!(write!(w, "
             <h2 id='provided-methods'>Provided Methods</h2>
             <div class='methods'>
@@ -1882,7 +1882,7 @@ fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
               default: &Option<clean::Type>)
               -> fmt::Result {
     try!(write!(w, "type {}", it.name.as_ref().unwrap()));
-    if bounds.len() > 0 {
+    if !bounds.is_empty() {
         try!(write!(w, ": {}", TyParamBounds(bounds)))
     }
     if let Some(ref default) = *default {
@@ -2031,7 +2031,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
     try!(write!(w, "</pre>"));
 
     try!(document(w, it));
-    if e.variants.len() > 0 {
+    if !e.variants.is_empty() {
         try!(write!(w, "<h2 class='variants'>Variants</h2>\n<table>"));
         for variant in &e.variants {
             try!(write!(w, "<tr><td id='variant.{name}'>{stab}<code>{name}</code></td><td>",
@@ -2170,13 +2170,13 @@ fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
     };
     let (non_trait, traits): (Vec<_>, _) = v.into_iter()
         .partition(|i| i.impl_.trait_.is_none());
-    if non_trait.len() > 0 {
+    if !non_trait.is_empty() {
         try!(write!(w, "<h2 id='methods'>Methods</h2>"));
         for i in &non_trait {
             try!(render_impl(w, i, MethodLink::Anchor));
         }
     }
-    if traits.len() > 0 {
+    if !traits.is_empty() {
         try!(write!(w, "<h2 id='implementations'>Trait \
                           Implementations</h2>"));
         let (derived, manual): (Vec<_>, _) = traits.into_iter()
@@ -2185,7 +2185,7 @@ fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
             let did = i.trait_did().unwrap();
             try!(render_impl(w, i, MethodLink::GotoSource(did)));
         }
-        if derived.len() > 0 {
+        if !derived.is_empty() {
             try!(write!(w, "<h3 id='derived_implementations'>\
                 Derived Implementations \
             </h3>"));

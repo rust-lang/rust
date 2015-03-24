@@ -182,7 +182,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn mark_live_symbols(&mut self) {
         let mut scanned = HashSet::new();
-        while self.worklist.len() > 0 {
+        while !self.worklist.is_empty() {
             let id = self.worklist.pop().unwrap();
             if scanned.contains(&id) {
                 continue
