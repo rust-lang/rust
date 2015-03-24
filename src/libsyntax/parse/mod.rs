@@ -1060,7 +1060,7 @@ mod test {
         let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[..], ex_s);
 
-        let ex_s = "extern crate \"foo\" as bar;";
+        let ex_s = "extern crate foo as bar;";
         let vitem = string_to_item(ex_s.to_string()).unwrap();
         let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[..], ex_s);
