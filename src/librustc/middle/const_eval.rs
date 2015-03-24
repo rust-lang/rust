@@ -396,7 +396,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                     Some(&ty::ty_int(int_ty)) => int_ty,
                     _ => return false
                 };
-                let int_ty = if let ast::TyIs(_) = int_ty {
+                let int_ty = if let ast::TyIs = int_ty {
                     tcx.sess.target.int_type
                 } else {
                     int_ty
@@ -406,7 +406,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                     ast::TyI16 =>  (a as i16) == i16::MIN,
                     ast::TyI32 =>  (a as i32) == i32::MIN,
                     ast::TyI64 =>  (a as i64) == i64::MIN,
-                    ast::TyIs(_) => unreachable!()
+                    ast::TyIs => unreachable!()
                 }
             };
             match op.node {
@@ -628,12 +628,12 @@ fn cast_const(val: const_val, ty: Ty) -> Result<const_val, ErrKind> {
     }
 
     define_casts!{
-        ty::ty_int(ast::TyIs(_)) => (int, const_int, i64),
+        ty::ty_int(ast::TyIs) => (int, const_int, i64),
         ty::ty_int(ast::TyI8) => (i8, const_int, i64),
         ty::ty_int(ast::TyI16) => (i16, const_int, i64),
         ty::ty_int(ast::TyI32) => (i32, const_int, i64),
         ty::ty_int(ast::TyI64) => (i64, const_int, i64),
-        ty::ty_uint(ast::TyUs(_)) => (uint, const_uint, u64),
+        ty::ty_uint(ast::TyUs) => (uint, const_uint, u64),
         ty::ty_uint(ast::TyU8) => (u8, const_uint, u64),
         ty::ty_uint(ast::TyU16) => (u16, const_uint, u64),
         ty::ty_uint(ast::TyU32) => (u32, const_uint, u64),

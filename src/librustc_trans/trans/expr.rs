@@ -2426,12 +2426,12 @@ impl OverflowOpViaIntrinsic {
         use middle::ty::{ty_int, ty_uint};
 
         let new_sty = match ty.sty {
-            ty_int(TyIs(_)) => match &tcx.sess.target.target.target_pointer_width[..] {
+            ty_int(TyIs) => match &tcx.sess.target.target.target_pointer_width[..] {
                 "32" => ty_int(TyI32),
                 "64" => ty_int(TyI64),
                 _ => panic!("unsupported target word size")
             },
-            ty_uint(TyUs(_)) => match &tcx.sess.target.target.target_pointer_width[..] {
+            ty_uint(TyUs) => match &tcx.sess.target.target.target_pointer_width[..] {
                 "32" => ty_uint(TyU32),
                 "64" => ty_uint(TyU64),
                 _ => panic!("unsupported target word size")
