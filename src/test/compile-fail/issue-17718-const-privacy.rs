@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-17718-const-privacy.rs
+// aux-build:issue_17718_const_privacy.rs
 
-extern crate "issue-17718-const-privacy" as other;
+extern crate issue_17718_const_privacy as other;
 
 use a::B; //~ ERROR: const `B` is private
 use other::{

@@ -10,7 +10,7 @@
 
 // aux-build:pub_static_array.rs
 
-extern crate "pub_static_array" as array;
+extern crate pub_static_array as array;
 
 use array::ARRAY;
 

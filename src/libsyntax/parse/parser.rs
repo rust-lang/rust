@@ -4986,37 +4986,28 @@ impl<'a> Parser<'a> {
                                 attrs: Vec<Attribute>)
                                 -> P<Item> {
 
-        let span = self.span;
         let (maybe_path, ident) = match self.token {
             token::Ident(..) => {
-                let the_ident = self.parse_ident();
-                let path = if self.eat_keyword_noexpect(keywords::As) {
-                    // skip the ident if there is one
-                    if self.token.is_ident() { self.bump(); }
-
-                    self.span_err(span, "expected `;`, found `as`");
-                    self.fileline_help(span,
-                                   &format!("perhaps you meant to enclose the crate name `{}` in \
-                                           a string?",
-                                          the_ident.as_str()));
-                    None
+                let crate_name = self.parse_ident();
+                if self.eat_keyword(keywords::As) {
+                    (Some(crate_name.name), self.parse_ident())
                 } else {
-                    None
-                };
-                self.expect(&token::Semi);
-                (path, the_ident)
+                    (None, crate_name)
+                }
             },
-            token::Literal(token::Str_(..), suf) | token::Literal(token::StrRaw(..), suf) => {
+            token::Literal(token::Str_(..), suf) |
+            token::Literal(token::StrRaw(..), suf) => {
                 let sp = self.span;
                 self.expect_no_suffix(sp, "extern crate name", suf);
                 // forgo the internal suffix check of `parse_str` to
                 // avoid repeats (this unwrap will always succeed due
                 // to the restriction of the `match`)
-                let (s, style, _) = self.parse_optional_str().unwrap();
+                let (s, _, _) = self.parse_optional_str().unwrap();
                 self.expect_keyword(keywords::As);
                 let the_ident = self.parse_ident();
-                self.expect(&token::Semi);
-                (Some((s, style)), the_ident)
+                self.obsolete(sp, ObsoleteSyntax::ExternCrateString);
+                let s = token::intern(&s);
+                (Some(s), the_ident)
             },
             _ => {
                 let span = self.span;
@@ -5027,6 +5018,7 @@ impl<'a> Parser<'a> {
                                         token_str));
             }
         };
+        self.expect(&token::Semi);
 
         let last_span = self.last_span;
         self.mk_item(lo,

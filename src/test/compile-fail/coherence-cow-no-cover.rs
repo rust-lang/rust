@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:coherence-lib.rs
+// aux-build:coherence_lib.rs
 
 // Test that it's not ok for U to appear uncovered
 
-extern crate "coherence-lib" as lib;
+extern crate coherence_lib as lib;
 use lib::{Remote,Pair};
 
 pub struct Cover<T>(T);

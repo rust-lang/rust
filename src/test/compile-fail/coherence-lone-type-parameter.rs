@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:coherence-lib.rs
+// aux-build:coherence_lib.rs
 
-extern crate "coherence-lib" as lib;
+extern crate coherence_lib as lib;
 use lib::Remote;
 
 impl<T> Remote for T { }
