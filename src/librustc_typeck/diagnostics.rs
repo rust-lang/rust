@@ -177,7 +177,9 @@ register_diagnostics! {
     E0319, // trait impls for defaulted traits allowed just for structs/enums
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
-    E0322  // cannot implement Sized explicitly
+    E0322, // cannot implement Sized explicitly
+    E0366, // dropck forbid specialization to concrete type or region
+    E0367  // dropck forbid specialization to predicate not in struct/enum
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }

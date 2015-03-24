@@ -38,7 +38,7 @@ use thread;
 ///
 /// The fields of this helper are all public, but they should not be used, this
 /// is for static initialization.
-pub struct Helper<M> {
+pub struct Helper<M:Send> {
     /// Internal lock which protects the remaining fields
     pub lock: StaticMutex,
     pub cond: StaticCondvar,

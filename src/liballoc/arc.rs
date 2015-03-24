@@ -321,7 +321,7 @@ impl<T: Send + Sync + Clone> Arc<T> {
 
 #[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Sync + Send> Drop for Arc<T> {
+impl<T> Drop for Arc<T> {
     /// Drops the `Arc<T>`.
     ///
     /// This will decrement the strong reference count. If the strong reference
@@ -388,7 +388,7 @@ impl<T: Sync + Send> Drop for Arc<T> {
 
 #[unstable(feature = "alloc",
            reason = "Weak pointers may not belong in this module.")]
-impl<T: Sync + Send> Weak<T> {
+impl<T> Weak<T> {
     /// Upgrades a weak reference to a strong reference.
     ///
     /// Upgrades the `Weak<T>` reference to an `Arc<T>`, if possible.
@@ -454,7 +454,7 @@ impl<T: Sync + Send> Clone for Weak<T> {
 
 #[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Sync + Send> Drop for Weak<T> {
+impl<T> Drop for Weak<T> {
     /// Drops the `Weak<T>`.
     ///
     /// This will decrement the weak reference count.
