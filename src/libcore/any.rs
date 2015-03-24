@@ -82,11 +82,11 @@ use marker::Sized;
 // Any trait
 ///////////////////////////////////////////////////////////////////////////////
 
-/// The `Any` trait is implemented by all `'static` types, and can be used for
-/// dynamic typing
+/// A type to emulate dynamic typing. See the [module-level documentation][mod] for more details.
 ///
-/// Every type with no non-`'static` references implements `Any`, so `Any` can
-/// be used as a trait object to emulate the effects dynamic typing.
+/// Every type with no non-`'static` references implements `Any`.
+///
+/// [mod]: ../index.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Any: 'static {
     /// Get the `TypeId` of `self`
