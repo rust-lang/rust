@@ -639,6 +639,20 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, value: T) {
+        #[cold]
+        #[inline(never)]
+        fn resize<T>(vec: &mut Vec<T>) {
+            let old_size = vec.cap * mem::size_of::<T>();
+            let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
+            if old_size > size { panic!("capacity overflow") }
+            unsafe {
+                let ptr = alloc_or_realloc(*vec.ptr, old_size, size);
+                if ptr.is_null() { ::alloc::oom() }
+                vec.ptr = Unique::new(ptr);
+            }
+            vec.cap = max(vec.cap, 2) * 2;
+        }
+
         if mem::size_of::<T>() == 0 {
             // zero-size types consume no memory, so we can't rely on the
             // address space running out
@@ -646,16 +660,9 @@ impl<T> Vec<T> {
             unsafe { mem::forget(value); }
             return
         }
+
         if self.len == self.cap {
-            let old_size = self.cap * mem::size_of::<T>();
-            let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
-            if old_size > size { panic!("capacity overflow") }
-            unsafe {
-                let ptr = alloc_or_realloc(*self.ptr, old_size, size);
-                if ptr.is_null() { ::alloc::oom() }
-                self.ptr = Unique::new(ptr);
-            }
-            self.cap = max(self.cap, 2) * 2;
+            resize(self);
         }
 
         unsafe {
