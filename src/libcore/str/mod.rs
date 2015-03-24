@@ -28,6 +28,7 @@ use iter::ExactSizeIterator;
 use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
 use marker::Sized;
 use mem;
+#[allow(deprecated)]
 use num::Int;
 use ops::{Fn, FnMut, FnOnce};
 use option::Option::{self, None, Some};
