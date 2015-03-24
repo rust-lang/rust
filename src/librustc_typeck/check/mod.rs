@@ -79,7 +79,6 @@ type parameter).
 pub use self::LvaluePreference::*;
 pub use self::Expectation::*;
 pub use self::compare_method::compare_impl_method;
-use self::IsBinopAssignment::*;
 use self::TupleArgumentsFlag::*;
 
 use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv, PathParamMode};
@@ -142,6 +141,7 @@ pub mod wf;
 mod closure;
 mod callee;
 mod compare_method;
+mod op;
 
 /// closures defined within the function.  For example:
 ///
@@ -286,15 +286,6 @@ impl UnsafetyState {
             }
         }
     }
-}
-
-/// Whether `check_binop` is part of an assignment or not.
-/// Used to know whether we allow user overloads and to print
-/// better messages on error.
-#[derive(PartialEq)]
-enum IsBinopAssignment{
-    SimpleBinop,
-    BinopAssignment,
 }
 
 #[derive(Clone)]
@@ -1325,14 +1316,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// version, this version will also select obligations if it seems
     /// useful, in an effort to get more type information.
     fn resolve_type_vars_if_possible(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+        debug!("resolve_type_vars_if_possible(ty={})", ty.repr(self.tcx()));
+
         // No ty::infer()? Nothing needs doing.
         if !ty::type_has_ty_infer(ty) {
+            debug!("resolve_type_vars_if_possible: ty={}", ty.repr(self.tcx()));
             return ty;
         }
 
         // If `ty` is a type variable, see whether we already know what it is.
         ty = self.infcx().resolve_type_vars_if_possible(&ty);
         if !ty::type_has_ty_infer(ty) {
+            debug!("resolve_type_vars_if_possible: ty={}", ty.repr(self.tcx()));
             return ty;
         }
 
@@ -1340,6 +1335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         vtable::select_new_fcx_obligations(self);
         ty = self.infcx().resolve_type_vars_if_possible(&ty);
         if !ty::type_has_ty_infer(ty) {
+            debug!("resolve_type_vars_if_possible: ty={}", ty.repr(self.tcx()));
             return ty;
         }
 
@@ -1348,7 +1344,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // indirect dependencies that don't seem worth tracking
         // precisely.
         vtable::select_fcx_obligations_where_possible(self);
-        self.infcx().resolve_type_vars_if_possible(&ty)
+        ty = self.infcx().resolve_type_vars_if_possible(&ty);
+
+        debug!("resolve_type_vars_if_possible: ty={}", ty.repr(self.tcx()));
+        ty
     }
 
     /// Resolves all type variables in `t` and then, if any were left
@@ -2092,24 +2091,17 @@ fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 {
     match method {
         Some(method) => {
-            let ref_ty = // invoked methods have all LB regions instantiated
-                ty::no_late_bound_regions(
-                    fcx.tcx(), &ty::ty_fn_ret(method.ty)).unwrap();
-            match method_call {
-                Some(method_call) => {
-                    fcx.inh.method_map.borrow_mut().insert(method_call,
-                                                           method);
-                }
-                None => {}
+            // extract method method return type, which will be &T;
+            // all LB regions should have been instantiated during method lookup
+            let ret_ty = ty::ty_fn_ret(method.ty);
+            let ret_ty = ty::no_late_bound_regions(fcx.tcx(), &ret_ty).unwrap().unwrap();
+
+            if let Some(method_call) = method_call {
+                fcx.inh.method_map.borrow_mut().insert(method_call, method);
             }
-            match ref_ty {
-                ty::FnConverging(ref_ty) => {
-                    ty::deref(ref_ty, true)
-                }
-                ty::FnDiverging => {
-                    fcx.tcx().sess.bug("index/deref traits do not define a `!` return")
-                }
-            }
+
+            // method returns &T, but the type as visible to user is T, so deref
+            ty::deref(ret_ty, true)
         }
         None => None,
     }
@@ -2238,7 +2230,6 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          method_fn_ty: Ty<'tcx>,
                                          callee_expr: &'tcx ast::Expr,
                                          args_no_rcvr: &'tcx [P<ast::Expr>],
-                                         autoref_args: AutorefArgs,
                                          tuple_arguments: TupleArgumentsFlag,
                                          expected: Expectation<'tcx>)
                                          -> ty::FnOutput<'tcx> {
@@ -2255,7 +2246,6 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              &err_inputs[..],
                              &[],
                              args_no_rcvr,
-                             autoref_args,
                              false,
                              tuple_arguments);
         ty::FnConverging(fcx.tcx().types.err)
@@ -2273,7 +2263,6 @@ fn check_method_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                      &fty.sig.0.inputs[1..],
                                      &expected_arg_tys[..],
                                      args_no_rcvr,
-                                     autoref_args,
                                      fty.sig.0.variadic,
                                      tuple_arguments);
                 fty.sig.0.output
@@ -2293,7 +2282,6 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   fn_inputs: &[Ty<'tcx>],
                                   expected_arg_tys: &[Ty<'tcx>],
                                   args: &'tcx [P<ast::Expr>],
-                                  autoref_args: AutorefArgs,
                                   variadic: bool,
                                   tuple_arguments: TupleArgumentsFlag) {
     let tcx = fcx.ccx.tcx;
@@ -2406,26 +2394,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
             if is_block == check_blocks {
                 debug!("checking the argument");
-                let mut formal_ty = formal_tys[i];
-
-                match autoref_args {
-                    AutorefArgs::Yes => {
-                        match formal_ty.sty {
-                            ty::ty_rptr(_, mt) => formal_ty = mt.ty,
-                            ty::ty_err => (),
-                            _ => {
-                                // So we hit this case when one implements the
-                                // operator traits but leaves an argument as
-                                // just T instead of &T. We'll catch it in the
-                                // mismatch impl/trait method phase no need to
-                                // ICE here.
-                                // See: #11450
-                                formal_ty = tcx.types.err;
-                            }
-                        }
-                    }
-                    AutorefArgs::No => {}
-                }
+                let formal_ty = formal_tys[i];
 
                 // The special-cased logic below has three functions:
                 // 1. Provide as good of an expected type as possible.
@@ -2622,14 +2591,6 @@ pub fn impl_self_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     TypeAndSubsts { substs: substs, ty: substd_ty }
 }
 
-// Controls whether the arguments are automatically referenced. This is useful
-// for overloaded binary and unary operators.
-#[derive(Copy, PartialEq)]
-pub enum AutorefArgs {
-    Yes,
-    No,
-}
-
 /// Controls whether the arguments are tupled. This is used for the call
 /// operator.
 ///
@@ -2755,7 +2716,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                  fn_ty,
                                                  expr,
                                                  &args[1..],
-                                                 AutorefArgs::No,
                                                  DontTupleArguments,
                                                  expected);
 
@@ -2804,277 +2764,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         };
 
         fcx.write_ty(id, if_ty);
-    }
-
-    fn lookup_op_method<'a, 'tcx, F>(fcx: &'a FnCtxt<'a, 'tcx>,
-                                     op_ex: &'tcx ast::Expr,
-                                     lhs_ty: Ty<'tcx>,
-                                     opname: ast::Name,
-                                     trait_did: Option<ast::DefId>,
-                                     lhs: &'a ast::Expr,
-                                     rhs: Option<&'tcx P<ast::Expr>>,
-                                     unbound_method: F,
-                                     autoref_args: AutorefArgs) -> Ty<'tcx> where
-        F: FnOnce(),
-    {
-        let method = match trait_did {
-            Some(trait_did) => {
-                // We do eager coercions to make using operators
-                // more ergonomic:
-                //
-                // - If the input is of type &'a T (resp. &'a mut T),
-                //   then reborrow it to &'b T (resp. &'b mut T) where
-                //   'b <= 'a.  This makes things like `x == y`, where
-                //   `x` and `y` are both region pointers, work.  We
-                //   could also solve this with variance or different
-                //   traits that don't force left and right to have same
-                //   type.
-                let (adj_ty, adjustment) = match lhs_ty.sty {
-                    ty::ty_rptr(r_in, mt) => {
-                        let r_adj = fcx.infcx().next_region_var(infer::Autoref(lhs.span));
-                        fcx.mk_subr(infer::Reborrow(lhs.span), r_adj, *r_in);
-                        let adjusted_ty = ty::mk_rptr(fcx.tcx(), fcx.tcx().mk_region(r_adj), mt);
-                        let autoptr = ty::AutoPtr(r_adj, mt.mutbl, None);
-                        let adjustment = ty::AutoDerefRef { autoderefs: 1, autoref: Some(autoptr) };
-                        (adjusted_ty, adjustment)
-                    }
-                    _ => {
-                        (lhs_ty, ty::AutoDerefRef { autoderefs: 0, autoref: None })
-                    }
-                };
-
-                debug!("adjusted_ty={} adjustment={:?}",
-                       adj_ty.repr(fcx.tcx()),
-                       adjustment);
-
-                method::lookup_in_trait_adjusted(fcx, op_ex.span, Some(lhs), opname,
-                                                 trait_did, adjustment, adj_ty, None)
-            }
-            None => None
-        };
-        let args = match rhs {
-            Some(rhs) => slice::ref_slice(rhs),
-            None => &[][..]
-        };
-        match method {
-            Some(method) => {
-                let method_ty = method.ty;
-                // HACK(eddyb) Fully qualified path to work around a resolve bug.
-                let method_call = ::middle::ty::MethodCall::expr(op_ex.id);
-                fcx.inh.method_map.borrow_mut().insert(method_call, method);
-                match check_method_argument_types(fcx,
-                                                  op_ex.span,
-                                                  method_ty,
-                                                  op_ex,
-                                                  args,
-                                                  autoref_args,
-                                                  DontTupleArguments,
-                                                  NoExpectation) {
-                    ty::FnConverging(result_type) => result_type,
-                    ty::FnDiverging => fcx.tcx().types.err
-                }
-            }
-            None => {
-                unbound_method();
-                // Check the args anyway
-                // so we get all the error messages
-                let expected_ty = fcx.tcx().types.err;
-                check_method_argument_types(fcx,
-                                            op_ex.span,
-                                            expected_ty,
-                                            op_ex,
-                                            args,
-                                            autoref_args,
-                                            DontTupleArguments,
-                                            NoExpectation);
-                fcx.tcx().types.err
-            }
-        }
-    }
-
-    // could be either an expr_binop or an expr_assign_binop
-    fn check_binop<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                            expr: &'tcx ast::Expr,
-                            op: ast::BinOp,
-                            lhs: &'tcx ast::Expr,
-                            rhs: &'tcx P<ast::Expr>,
-                            is_binop_assignment: IsBinopAssignment) {
-        let tcx = fcx.ccx.tcx;
-
-        let lvalue_pref = match is_binop_assignment {
-            BinopAssignment => PreferMutLvalue,
-            SimpleBinop => NoPreference
-        };
-        check_expr_with_lvalue_pref(fcx, lhs, lvalue_pref);
-
-        // Callee does bot / err checking
-        let lhs_t =
-            structurally_resolve_type_or_else(fcx, lhs.span, fcx.expr_ty(lhs), || {
-                if ast_util::is_symmetric_binop(op.node) {
-                    // Try RHS first
-                    check_expr(fcx, &**rhs);
-                    fcx.expr_ty(&**rhs)
-                } else {
-                    fcx.tcx().types.err
-                }
-            });
-
-        if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op.node) {
-            // Shift is a special case: rhs must be usize, no matter what lhs is
-            check_expr(fcx, &**rhs);
-            let rhs_ty = fcx.expr_ty(&**rhs);
-            let rhs_ty = structurally_resolved_type(fcx, rhs.span, rhs_ty);
-            if ty::type_is_integral(rhs_ty) {
-                fcx.write_ty(expr.id, lhs_t);
-            } else {
-                fcx.type_error_message(
-                    expr.span,
-                    |actual| {
-                        format!(
-                            "right-hand-side of a shift operation must have integral type, \
-                             not `{}`",
-                            actual)
-                    },
-                    rhs_ty,
-                    None);
-                fcx.write_ty(expr.id, fcx.tcx().types.err);
-            }
-            return;
-        }
-
-        if ty::is_binopable(tcx, lhs_t, op) {
-            let tvar = fcx.infcx().next_ty_var();
-            demand::suptype(fcx, expr.span, tvar, lhs_t);
-            check_expr_has_type(fcx, &**rhs, tvar);
-
-            let result_t = match op.node {
-                ast::BiEq | ast::BiNe | ast::BiLt | ast::BiLe | ast::BiGe |
-                ast::BiGt => {
-                    if ty::type_is_simd(tcx, lhs_t) {
-                        if ty::type_is_fp(ty::simd_type(tcx, lhs_t)) {
-                            fcx.type_error_message(expr.span,
-                                |actual| {
-                                    format!("binary comparison \
-                                             operation `{}` not \
-                                             supported for floating \
-                                             point SIMD vector `{}`",
-                                            ast_util::binop_to_string(op.node),
-                                            actual)
-                                },
-                                lhs_t,
-                                None
-                            );
-                            fcx.tcx().types.err
-                        } else {
-                            lhs_t
-                        }
-                    } else {
-                        fcx.tcx().types.bool
-                    }
-                },
-                _ => lhs_t,
-            };
-
-            fcx.write_ty(expr.id, result_t);
-            return;
-        }
-
-        if op.node == ast::BiOr || op.node == ast::BiAnd {
-            // This is an error; one of the operands must have the wrong
-            // type
-            fcx.write_error(expr.id);
-            fcx.write_error(rhs.id);
-            fcx.type_error_message(expr.span,
-                                   |actual| {
-                    format!("binary operation `{}` cannot be applied \
-                             to type `{}`",
-                            ast_util::binop_to_string(op.node),
-                            actual)
-                },
-                lhs_t,
-                None)
-        }
-
-        // Check for overloaded operators if not an assignment.
-        let result_t = if is_binop_assignment == SimpleBinop {
-            check_user_binop(fcx, expr, lhs, lhs_t, op, rhs)
-        } else {
-            fcx.type_error_message(expr.span,
-                                   |actual| {
-                                        format!("binary assignment \
-                                                 operation `{}=` \
-                                                 cannot be applied to \
-                                                 type `{}`",
-                                                ast_util::binop_to_string(op.node),
-                                                actual)
-                                   },
-                                   lhs_t,
-                                   None);
-            check_expr(fcx, &**rhs);
-            fcx.tcx().types.err
-        };
-
-        fcx.write_ty(expr.id, result_t);
-        if ty::type_is_error(result_t) {
-            fcx.write_ty(rhs.id, result_t);
-        }
-    }
-
-    fn check_user_binop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                  ex: &'tcx ast::Expr,
-                                  lhs_expr: &'tcx ast::Expr,
-                                  lhs_resolved_t: Ty<'tcx>,
-                                  op: ast::BinOp,
-                                  rhs: &'tcx P<ast::Expr>) -> Ty<'tcx> {
-        let tcx = fcx.ccx.tcx;
-        let lang = &tcx.lang_items;
-        let (name, trait_did) = match op.node {
-            ast::BiAdd => ("add", lang.add_trait()),
-            ast::BiSub => ("sub", lang.sub_trait()),
-            ast::BiMul => ("mul", lang.mul_trait()),
-            ast::BiDiv => ("div", lang.div_trait()),
-            ast::BiRem => ("rem", lang.rem_trait()),
-            ast::BiBitXor => ("bitxor", lang.bitxor_trait()),
-            ast::BiBitAnd => ("bitand", lang.bitand_trait()),
-            ast::BiBitOr => ("bitor", lang.bitor_trait()),
-            ast::BiShl => ("shl", lang.shl_trait()),
-            ast::BiShr => ("shr", lang.shr_trait()),
-            ast::BiLt => ("lt", lang.ord_trait()),
-            ast::BiLe => ("le", lang.ord_trait()),
-            ast::BiGe => ("ge", lang.ord_trait()),
-            ast::BiGt => ("gt", lang.ord_trait()),
-            ast::BiEq => ("eq", lang.eq_trait()),
-            ast::BiNe => ("ne", lang.eq_trait()),
-            ast::BiAnd | ast::BiOr => {
-                check_expr(fcx, &**rhs);
-                return tcx.types.err;
-            }
-        };
-        lookup_op_method(fcx, ex, lhs_resolved_t, token::intern(name),
-                         trait_did, lhs_expr, Some(rhs), || {
-            fcx.type_error_message(ex.span, |actual| {
-                format!("binary operation `{}` cannot be applied to type `{}`",
-                        ast_util::binop_to_string(op.node),
-                        actual)
-            }, lhs_resolved_t, None)
-        }, if ast_util::is_by_value_binop(op.node) { AutorefArgs::No } else { AutorefArgs::Yes })
-    }
-
-    fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                 op_str: &str,
-                                 mname: &str,
-                                 trait_did: Option<ast::DefId>,
-                                 ex: &'tcx ast::Expr,
-                                 rhs_expr: &'tcx ast::Expr,
-                                 rhs_t: Ty<'tcx>,
-                                 op: ast::UnOp) -> Ty<'tcx> {
-       lookup_op_method(fcx, ex, rhs_t, token::intern(mname),
-                        trait_did, rhs_expr, None, || {
-            fcx.type_error_message(ex.span, |actual| {
-                format!("cannot apply unary operator `{}` to type `{}`",
-                        op_str, actual)
-            }, rhs_t, None);
-        }, if ast_util::is_by_value_unop(op) { AutorefArgs::No } else { AutorefArgs::Yes })
     }
 
     // Check field access expressions
@@ -3479,35 +3168,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.write_ty(id, typ);
       }
       ast::ExprBinary(op, ref lhs, ref rhs) => {
-        check_binop(fcx, expr, op, &**lhs, rhs, SimpleBinop);
-
-        let lhs_ty = fcx.expr_ty(&**lhs);
-        let rhs_ty = fcx.expr_ty(&**rhs);
-        if ty::type_is_error(lhs_ty) ||
-            ty::type_is_error(rhs_ty) {
-            fcx.write_error(id);
-        }
+        op::check_binop(fcx, expr, op, lhs, rhs);
       }
       ast::ExprAssignOp(op, ref lhs, ref rhs) => {
-        check_binop(fcx, expr, op, &**lhs, rhs, BinopAssignment);
-
-        let lhs_t = fcx.expr_ty(&**lhs);
-        let result_t = fcx.expr_ty(expr);
-        demand::suptype(fcx, expr.span, result_t, lhs_t);
-
-        let tcx = fcx.tcx();
-        if !ty::expr_is_lval(tcx, &**lhs) {
-            span_err!(tcx.sess, lhs.span, E0067, "illegal left-hand side expression");
-        }
-
-        fcx.require_expr_have_sized_type(&**lhs, traits::AssignmentLhsSized);
-
-        // Overwrite result of check_binop...this preserves existing behavior
-        // but seems quite dubious with regard to user-defined methods
-        // and so forth. - Niko
-        if !ty::type_is_error(result_t) {
-            fcx.write_nil(expr.id);
-        }
+        op::check_binop_assign(fcx, expr, op, lhs, rhs);
       }
       ast::ExprUnary(unop, ref oprnd) => {
         let expected_inner = expected.to_option(fcx).map_or(NoExpectation, |ty| {
@@ -3580,9 +3244,9 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                          oprnd_t);
                     if !(ty::type_is_integral(oprnd_t) ||
                          oprnd_t.sty == ty::ty_bool) {
-                        oprnd_t = check_user_unop(fcx, "!", "not",
-                                                  tcx.lang_items.not_trait(),
-                                                  expr, &**oprnd, oprnd_t, unop);
+                        oprnd_t = op::check_user_unop(fcx, "!", "not",
+                                                      tcx.lang_items.not_trait(),
+                                                      expr, &**oprnd, oprnd_t, unop);
                     }
                 }
                 ast::UnNeg => {
@@ -3590,9 +3254,9 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                          oprnd_t);
                     if !(ty::type_is_integral(oprnd_t) ||
                          ty::type_is_fp(oprnd_t)) {
-                        oprnd_t = check_user_unop(fcx, "-", "neg",
-                                                  tcx.lang_items.neg_trait(),
-                                                  expr, &**oprnd, oprnd_t, unop);
+                        oprnd_t = op::check_user_unop(fcx, "-", "neg",
+                                                      tcx.lang_items.neg_trait(),
+                                                      expr, &**oprnd, oprnd_t, unop);
                     }
                 }
             }
@@ -4073,9 +3737,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
                   match result {
                       Some((index_ty, element_ty)) => {
-                          // FIXME: we've already checked idx above, we should
-                          // probably just demand subtype or something here.
-                          check_expr_has_type(fcx, &**idx, index_ty);
+                          let idx_expr_ty = fcx.expr_ty(idx);
+                          demand::eqtype(fcx, expr.span, index_ty, idx_expr_ty);
                           fcx.write_ty(id, element_ty);
                       }
                       _ => {
