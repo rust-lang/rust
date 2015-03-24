@@ -183,6 +183,7 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io::prelude::*;
     ///
     /// # fn foo() -> std::io::Result<()> {
     /// let mut f = try!(File::create("foo.txt"));
@@ -211,6 +212,7 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io::prelude::*;
     ///
     /// # fn foo() -> std::io::Result<()> {
     /// let mut f = try!(File::create("foo.txt"));
