@@ -1,4 +1,4 @@
-- Feature Name: dst-coercions
+- Feature Name: dst_coercions
 - Start Date: 2015-03-16
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -51,7 +51,7 @@ An example implementation:
 
 ```
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
-impl<T: ?Sized+CoerceUnsized<U>, U: ?Sized> NonZero<U> for NonZero<T> {}
+impl<T: ?Sized+CoerceUnsized<U>, U: ?Sized> CoerceUnsized<NonZero<U>> for NonZero<T> {}
 
 // For reference, the definitions of Rc and NonZero:
 pub struct Rc<T: ?Sized> {
@@ -107,7 +107,9 @@ not a general `Coerce` trait.
 * If the impl is for a built-in pointer type, we check nothing, otherwise...
 * The compiler checks that the `Self` type is a struct or tuple struct and that
 the `Target` type is a simple substitution of type parameters from the `Self`
-type (one day, with HKT, this could be a regular part of type checking, for now
+type (i.e., That `Self` is `Foo<Ts>`, `Target` is `Foo<Us>` and that there exist
+`Vs` and `Xs` (where `Xs` are all type parameters) such that `Target = [Vs/Xs]Self`.
+One day, with HKT, this could be a regular part of type checking, for now
 it must be an ad hoc check). We might enforce that this substitution is of the
 form `X/Y` where `X` and `Y` are both formal type parameters of the
 implementation (I don't think this is necessary, but it makes checking coercions
@@ -115,7 +117,8 @@ easier and is satisfied for all smart pointers).
 * The compiler checks each field in the `Self` type against the corresponding field
 in the `Target` type. Assuming `Fs` is the type of a field in `Self` and `Ft` is
 the type of the corresponding field in `Target`, then either `Ft <: Fs` or
-`Fs: CoerceUnsized<Ft>` (note that this includes built-in coercions).
+`Fs: CoerceUnsized<Ft>` (note that this includes some built-in coercions, coercions
+unrelated to unsizing are excluded, these could probably be added later, if needed).
 * There must be only one field that is coerced.
 * We record for each impl, the index of the field in the `Self` type which is
 coerced.
@@ -156,8 +159,7 @@ all now, since all checking is postponed until trans or relies on traits and imp
 
 # Drawbacks
 
-Not as flexible as the previous proposal. Can't handle pointer-like types like
-`Option<Box<T>>`.
+Not as flexible as the previous proposal.
 
 # Alternatives
 
