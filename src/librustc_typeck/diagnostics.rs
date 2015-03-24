@@ -179,7 +179,9 @@ register_diagnostics! {
     E0321, // extended coherence rules for defaulted traits violated
     E0322, // cannot implement Sized explicitly
     E0366, // dropck forbid specialization to concrete type or region
-    E0367  // dropck forbid specialization to predicate not in struct/enum
+    E0367, // dropck forbid specialization to predicate not in struct/enum
+    E0368, // binary operation `<op>=` cannot be applied to types
+    E0369  // binary operation `<op>` cannot be applied to types
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }

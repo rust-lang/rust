@@ -2384,6 +2384,7 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
+#[derive(Debug)]
 enum OverflowOp {
     Add,
     Sub,
@@ -2413,6 +2414,7 @@ enum OverflowCodegen {
 
 enum OverflowOpViaInputCheck { Shl, Shr, }
 
+#[derive(Debug)]
 enum OverflowOpViaIntrinsic { Add, Sub, Mul, }
 
 impl OverflowOpViaIntrinsic {
@@ -2437,7 +2439,8 @@ impl OverflowOpViaIntrinsic {
                 _ => panic!("unsupported target word size")
             },
             ref t @ ty_uint(_) | ref t @ ty_int(_) => t.clone(),
-            _ => panic!("tried to get overflow intrinsic for non-int type")
+            _ => panic!("tried to get overflow intrinsic for {:?} applied to non-int type",
+                        *self)
         };
 
         match *self {

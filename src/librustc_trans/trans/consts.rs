@@ -351,7 +351,14 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    e: &ast::Expr,
                                    ety: Ty<'tcx>,
-                                   param_substs: &'tcx Substs<'tcx>) -> ValueRef {
+                                   param_substs: &'tcx Substs<'tcx>)
+                                   -> ValueRef
+{
+    debug!("const_expr_unadjusted(e={}, ety={}, param_substs={})",
+           e.repr(cx.tcx()),
+           ety.repr(cx.tcx()),
+           param_substs.repr(cx.tcx()));
+
     let map_list = |exprs: &[P<ast::Expr>]| {
         exprs.iter().map(|e| const_expr(cx, &**e, param_substs).0)
              .fold(Vec::new(), |mut l, val| { l.push(val); l })
@@ -366,6 +373,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             /* Neither type is bottom, and we expect them to be unified
              * already, so the following is safe. */
             let (te1, ty) = const_expr(cx, &**e1, param_substs);
+            debug!("const_expr_unadjusted: te1={}, ty={}",
+                   cx.tn().val_to_string(te1),
+                   ty.repr(cx.tcx()));
             let is_simd = ty::type_is_simd(cx.tcx(), ty);
             let intype = if is_simd {
                 ty::simd_type(cx.tcx(), ty)

@@ -560,7 +560,7 @@ pub fn compare_scalar_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 _ => bcx.sess().bug("compare_scalar_types: must be a comparison operator")
             }
         }
-        ty::ty_bool | ty::ty_uint(_) | ty::ty_char => {
+        ty::ty_bare_fn(..) | ty::ty_bool | ty::ty_uint(_) | ty::ty_char => {
             ICmp(bcx, bin_op_to_icmp_predicate(bcx.ccx(), op, false), lhs, rhs, debug_loc)
         }
         ty::ty_ptr(mt) if common::type_is_sized(bcx.tcx(), mt.ty) => {

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use super::autoderef;
-use super::AutorefArgs;
 use super::check_argument_types;
 use super::check_expr;
 use super::check_method_argument_types;
@@ -258,7 +257,6 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                          &fn_sig.inputs,
                          &expected_arg_tys[..],
                          arg_exprs,
-                         AutorefArgs::No,
                          fn_sig.variadic,
                          TupleArgumentsFlag::DontTupleArguments);
 
@@ -288,7 +286,6 @@ fn confirm_deferred_closure_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                          &*fn_sig.inputs,
                          &*expected_arg_tys,
                          arg_exprs,
-                         AutorefArgs::No,
                          fn_sig.variadic,
                          TupleArgumentsFlag::TupleArguments);
 
@@ -308,7 +305,6 @@ fn confirm_overloaded_call<'a,'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                     method_callee.ty,
                                     callee_expr,
                                     arg_exprs,
-                                    AutorefArgs::No,
                                     TupleArgumentsFlag::TupleArguments,
                                     expected);
     write_call(fcx, call_expr, output_type);
