@@ -10,7 +10,7 @@
 
 #![feature(core)]
 
-use std::any::TypeId;
+use std::any::{Any, TypeId};
 
 pub struct A;
 pub struct B(Option<A>);
@@ -31,4 +31,4 @@ pub unsafe fn id_F() -> TypeId { TypeId::of::<F>() }
 pub unsafe fn id_G() -> TypeId { TypeId::of::<G>() }
 pub unsafe fn id_H() -> TypeId { TypeId::of::<H>() }
 
-pub unsafe fn foo<T: 'static>() -> TypeId { TypeId::of::<T>() }
+pub unsafe fn foo<T:Any>() -> TypeId { TypeId::of::<T>() }
