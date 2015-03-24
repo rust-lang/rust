@@ -138,6 +138,7 @@ enum SelectionCandidate<'tcx> {
     ParamCandidate(ty::PolyTraitRef<'tcx>),
     ImplCandidate(ast::DefId),
     DefaultImplCandidate(ast::DefId),
+    DefaultImplObjectCandidate(ast::DefId),
 
     /// This is a trait matching with a projected type as `Self`, and
     /// we found an applicable bound in the trait definition.
@@ -1160,7 +1161,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         if ty::trait_has_default_impl(self.tcx(), def_id) {
             match self_ty.sty {
-                ty::ty_trait(..) |
+                ty::ty_trait(..) => {
+                    // For object types, we don't know what the closed
+                    // over types are. For most traits, this means we
+                    // conservatively say nothing; a candidate may be
+                    // added by `assemble_candidates_from_object_ty`.
+                    // However, for the kind of magic reflect trait,
+                    // we consider it to be implemented even for
+                    // object types, because it just lets you reflect
+                    // onto the object type, not into the object's
+                    // interior.
+                    if ty::has_attr(self.tcx(), def_id, "rustc_reflect_like") {
+                        candidates.vec.push(DefaultImplObjectCandidate(def_id));
+                    }
+                }
                 ty::ty_param(..) |
                 ty::ty_projection(..) => {
                     // In these cases, we don't know what the actual
@@ -1798,7 +1812,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             DefaultImplCandidate(trait_def_id) => {
-                let data = try!(self.confirm_default_impl_candidate(obligation, trait_def_id));
+                let data = self.confirm_default_impl_candidate(obligation, trait_def_id);
+                Ok(VtableDefaultImpl(data))
+            }
+
+            DefaultImplObjectCandidate(trait_def_id) => {
+                let data = self.confirm_default_impl_object_candidate(obligation, trait_def_id);
                 Ok(VtableDefaultImpl(data))
             }
 
@@ -1927,21 +1946,53 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// 2. For each where-clause `C` declared on `Foo`, `[Self => X] C` holds.
     fn confirm_default_impl_candidate(&mut self,
                                       obligation: &TraitObligation<'tcx>,
-                                      impl_def_id: ast::DefId)
-                              -> Result<VtableDefaultImplData<PredicateObligation<'tcx>>,
-                                        SelectionError<'tcx>>
+                                      trait_def_id: ast::DefId)
+                                      -> VtableDefaultImplData<PredicateObligation<'tcx>>
     {
         debug!("confirm_default_impl_candidate({}, {})",
                obligation.repr(self.tcx()),
-               impl_def_id.repr(self.tcx()));
+               trait_def_id.repr(self.tcx()));
 
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.0.self_ty());
         match self.constituent_types_for_ty(self_ty) {
-            Some(types) => Ok(self.vtable_default_impl(obligation, impl_def_id, types)),
+            Some(types) => self.vtable_default_impl(obligation, trait_def_id, types),
             None => {
                 self.tcx().sess.bug(
                     &format!(
                         "asked to confirm default implementation for ambiguous type: {}",
+                        self_ty.repr(self.tcx())));
+            }
+        }
+    }
+
+    fn confirm_default_impl_object_candidate(&mut self,
+                                             obligation: &TraitObligation<'tcx>,
+                                             trait_def_id: ast::DefId)
+                                             -> VtableDefaultImplData<PredicateObligation<'tcx>>
+    {
+        debug!("confirm_default_impl_object_candidate({}, {})",
+               obligation.repr(self.tcx()),
+               trait_def_id.repr(self.tcx()));
+
+        assert!(ty::has_attr(self.tcx(), trait_def_id, "rustc_reflect_like"));
+
+        let self_ty = self.infcx.shallow_resolve(obligation.predicate.0.self_ty());
+        match self_ty.sty {
+            ty::ty_trait(ref data) => {
+                // OK to skip the binder, since vtable_default_impl reintroduces it
+                let input_types = data.principal.skip_binder().substs.types.get_slice(TypeSpace);
+                let assoc_types = data.bounds.projection_bounds
+                                             .iter()
+                                             .map(|pb| pb.skip_binder().ty);
+                let all_types: Vec<_> = input_types.iter().cloned()
+                                                          .chain(assoc_types)
+                                                          .collect();
+                self.vtable_default_impl(obligation, trait_def_id, all_types)
+            }
+            _ => {
+                self.tcx().sess.bug(
+                    &format!(
+                        "asked to confirm default object implementation for non-object type: {}",
                         self_ty.repr(self.tcx())));
             }
         }
@@ -2530,6 +2581,7 @@ impl<'tcx> Repr<'tcx> for SelectionCandidate<'tcx> {
             ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr(tcx)),
             ImplCandidate(a) => format!("ImplCandidate({})", a.repr(tcx)),
             DefaultImplCandidate(t) => format!("DefaultImplCandidate({:?})", t),
+            DefaultImplObjectCandidate(t) => format!("DefaultImplObjectCandidate({:?})", t),
             ProjectionCandidate => format!("ProjectionCandidate"),
             FnPointerCandidate => format!("FnPointerCandidate"),
             ObjectCandidate => format!("ObjectCandidate"),

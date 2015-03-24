@@ -55,7 +55,7 @@
 //! }
 //!
 //! // This function wants to log its parameter out prior to doing work with it.
-//! fn do_work<T: Debug + 'static>(value: &T) {
+//! fn do_work<T: Any + Debug>(value: &T) {
 //!     log(value);
 //!     // ...do some other work
 //! }
@@ -76,7 +76,7 @@ use mem::transmute;
 use option::Option::{self, Some, None};
 use raw::TraitObject;
 use intrinsics;
-use marker::Sized;
+use marker::{Reflect, Sized};
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -88,14 +88,16 @@ use marker::Sized;
 ///
 /// [mod]: ../index.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Any: 'static {
+pub trait Any: Reflect + 'static {
     /// Get the `TypeId` of `self`
     #[unstable(feature = "core",
                reason = "this method will likely be replaced by an associated static")]
     fn get_type_id(&self) -> TypeId;
 }
 
-impl<T: 'static> Any for T {
+impl<T> Any for T
+    where T: Reflect + 'static
+{
     fn get_type_id(&self) -> TypeId { TypeId::of::<T>() }
 }
 
@@ -107,7 +109,7 @@ impl Any {
     /// Returns true if the boxed type is the same as `T`
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is<T: 'static>(&self) -> bool {
+    pub fn is<T: Any>(&self) -> bool {
         // Get TypeId of the type this function is instantiated with
         let t = TypeId::of::<T>();
 
@@ -122,7 +124,7 @@ impl Any {
     /// `None` if it isn't.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn downcast_ref<T: 'static>(&self) -> Option<&T> {
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -140,7 +142,7 @@ impl Any {
     /// `None` if it isn't.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn downcast_mut<T: 'static>(&mut self) -> Option<&mut T> {
+    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -159,21 +161,21 @@ impl Any+Send {
     /// Forwards to the method defined on the type `Any`.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn is<T: 'static>(&self) -> bool {
+    pub fn is<T: Any>(&self) -> bool {
         Any::is::<T>(self)
     }
 
     /// Forwards to the method defined on the type `Any`.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn downcast_ref<T: 'static>(&self) -> Option<&T> {
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
         Any::downcast_ref::<T>(self)
     }
 
     /// Forwards to the method defined on the type `Any`.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn downcast_mut<T: 'static>(&mut self) -> Option<&mut T> {
+    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         Any::downcast_mut::<T>(self)
     }
 }
@@ -202,7 +204,7 @@ impl TypeId {
     /// instantiated with
     #[unstable(feature = "core",
                reason = "may grow a `Reflect` bound soon via marker traits")]
-    pub fn of<T: ?Sized + 'static>() -> TypeId {
+    pub fn of<T: ?Sized + Any>() -> TypeId {
         TypeId {
             t: unsafe { intrinsics::type_id::<T>() },
         }
