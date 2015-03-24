@@ -16,13 +16,12 @@ use cmp;
 use unicode::str as core_str;
 use error as std_error;
 use fmt;
-use iter::Iterator;
+use iter::{self, Iterator, IteratorExt, Extend};
 use marker::Sized;
 use ops::{Drop, FnOnce};
 use option::Option::{self, Some, None};
 use result::Result::{Ok, Err};
 use result;
-use slice;
 use string::String;
 use str;
 use vec::Vec;
@@ -50,41 +49,26 @@ mod stdio;
 const DEFAULT_BUF_SIZE: usize = 64 * 1024;
 
 // Acquires a slice of the vector `v` from its length to its capacity
-// (uninitialized data), reads into it, and then updates the length.
+// (after initializing the data), reads into it, and then updates the length.
 //
 // This function is leveraged to efficiently read some bytes into a destination
 // vector without extra copying and taking advantage of the space that's already
 // in `v`.
-//
-// The buffer we're passing down, however, is pointing at uninitialized data
-// (the end of a `Vec`), and many operations will be *much* faster if we don't
-// have to zero it out. In order to prevent LLVM from generating an `undef`
-// value when reads happen from this uninitialized memory, we force LLVM to
-// think it's initialized by sending it through a black box. This should prevent
-// actual undefined behavior after optimizations.
 fn with_end_to_cap<F>(v: &mut Vec<u8>, f: F) -> Result<usize>
     where F: FnOnce(&mut [u8]) -> Result<usize>
 {
-    unsafe {
-        let n = try!(f({
-            let base = v.as_mut_ptr().offset(v.len() as isize);
-            black_box(slice::from_raw_parts_mut(base,
-                                                v.capacity() - v.len()))
-        }));
-
-        // If the closure (typically a `read` implementation) reported that it
-        // read a larger number of bytes than the vector actually has, we need
-        // to be sure to clamp the vector to at most its capacity.
-        let new_len = cmp::min(v.capacity(), v.len() + n);
-        v.set_len(new_len);
-        return Ok(n);
-    }
-
-    // Semi-hack used to prevent LLVM from retaining any assumptions about
-    // `dummy` over this function call
-    unsafe fn black_box<T>(mut dummy: T) -> T {
-        asm!("" :: "r"(&mut dummy) : "memory");
-        dummy
+    let len = v.len();
+    let new_area = v.capacity() - len;
+    v.extend(iter::repeat(0).take(new_area));
+    match f(&mut v[len..]) {
+        Ok(n) => {
+            v.truncate(len + n);
+            Ok(n)
+        }
+        Err(e) => {
+            v.truncate(len);
+            Err(e)
+        }
     }
 }
 
