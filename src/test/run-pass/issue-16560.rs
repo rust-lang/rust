@@ -17,7 +17,7 @@ use std::mem;
 
 fn main() {
     let y = 0u8;
-    let closure = move |x| y + x;
+    let closure = move |x: u8| y + x;
 
     // Check that both closures are capturing by value
     assert_eq!(1, mem::size_of_val(&closure));
