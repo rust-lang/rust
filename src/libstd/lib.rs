@@ -121,7 +121,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unsafe_destructor)]
-#![feature(unsafe_no_drop_flag)]
+#![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(macro_reexport)]
 #![feature(int_uint)]
 #![feature(unique)]

@@ -337,19 +337,28 @@ macro_rules! repeat_u8_as_u64 {
 // But having the sign bit set is a pain, so 0x1d is probably better.
 //
 // And of course, 0x00 brings back the old world of zero'ing on drop.
-#[cfg(not(stage0))] pub const POST_DROP_U8: u8 = 0x1d;
-#[cfg(not(stage0))] pub const POST_DROP_U32: u32 = repeat_u8_as_u32!(POST_DROP_U8);
-#[cfg(not(stage0))] pub const POST_DROP_U64: u64 = repeat_u8_as_u64!(POST_DROP_U8);
+#[cfg(not(stage0))] #[unstable(feature = "filling_drop")]
+pub const POST_DROP_U8: u8 = 0x1d;
+#[cfg(not(stage0))] #[unstable(feature = "filling_drop")]
+pub const POST_DROP_U32: u32 = repeat_u8_as_u32!(POST_DROP_U8);
+#[cfg(not(stage0))]  #[unstable(feature = "filling_drop")]
+pub const POST_DROP_U64: u64 = repeat_u8_as_u64!(POST_DROP_U8);
 
 #[cfg(target_pointer_width = "32")]
-#[cfg(not(stage0))] pub const POST_DROP_USIZE: usize = POST_DROP_U32 as usize;
+#[cfg(not(stage0))]  #[unstable(feature = "filling_drop")]
+pub const POST_DROP_USIZE: usize = POST_DROP_U32 as usize;
 #[cfg(target_pointer_width = "64")]
-#[cfg(not(stage0))] pub const POST_DROP_USIZE: usize = POST_DROP_U64 as usize;
+#[cfg(not(stage0))]  #[unstable(feature = "filling_drop")]
+pub const POST_DROP_USIZE: usize = POST_DROP_U64 as usize;
 
-#[cfg(stage0)] pub const POST_DROP_U8: u8 = 0;
-#[cfg(stage0)] pub const POST_DROP_U32: u32 = 0;
-#[cfg(stage0)] pub const POST_DROP_U64: u64 = 0;
-#[cfg(stage0)] pub const POST_DROP_USIZE: usize = 0;
+#[cfg(stage0)]  #[unstable(feature = "filling_drop")]
+pub const POST_DROP_U8: u8 = 0;
+#[cfg(stage0)]  #[unstable(feature = "filling_drop")]
+pub const POST_DROP_U32: u32 = 0;
+#[cfg(stage0)]  #[unstable(feature = "filling_drop")]
+pub const POST_DROP_U64: u64 = 0;
+#[cfg(stage0)]  #[unstable(feature = "filling_drop")]
+pub const POST_DROP_USIZE: usize = 0;
 
 /// Interprets `src` as `&U`, and then reads `src` without moving the contained value.
 ///
