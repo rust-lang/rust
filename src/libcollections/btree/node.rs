@@ -585,6 +585,9 @@ impl <K, V> Node<K, V> {
         self._len
     }
 
+    /// Does the node not contain any key-value pairs
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
     /// How many key-value pairs the node can fit
     pub fn capacity(&self) -> usize {
         self._capacity
