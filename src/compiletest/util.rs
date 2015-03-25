@@ -13,33 +13,33 @@ use common::Config;
 
 /// Conversion table from triple OS name to Rust SYSNAME
 const OS_TABLE: &'static [(&'static str, &'static str)] = &[
+    ("android", "android"),
+    ("bitrig", "bitrig"),
+    ("darwin", "macos"),
+    ("dragonfly", "dragonfly"),
+    ("freebsd", "freebsd"),
+    ("linux", "linux"),
     ("mingw32", "windows"),
+    ("openbsd", "openbsd"),
     ("win32", "windows"),
     ("windows", "windows"),
-    ("darwin", "macos"),
-    ("android", "android"),
-    ("linux", "linux"),
-    ("freebsd", "freebsd"),
-    ("dragonfly", "dragonfly"),
-    ("bitrig", "bitrig"),
-    ("openbsd", "openbsd"),
 ];
 
 const ARCH_TABLE: &'static [(&'static str, &'static str)] = &[
+    ("aarch64", "aarch64"),
+    ("amd64", "x86_64"),
+    ("arm", "arm"),
+    ("arm64", "aarch64"),
+    ("hexagon", "hexagon"),
     ("i386", "x86"),
     ("i686", "x86"),
-    ("amd64", "x86_64"),
-    ("x86_64", "x86_64"),
-    ("sparc", "sparc"),
-    ("powerpc", "powerpc"),
-    ("arm64", "aarch64"),
-    ("arm", "arm"),
-    ("aarch64", "aarch64"),
     ("mips", "mips"),
-    ("xcore", "xcore"),
     ("msp430", "msp430"),
-    ("hexagon", "hexagon"),
+    ("powerpc", "powerpc"),
     ("s390x", "systemz"),
+    ("sparc", "sparc"),
+    ("x86_64", "x86_64"),
+    ("xcore", "xcore"),
 ];
 
 pub fn get_os(triple: &str) -> &'static str {
