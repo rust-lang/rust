@@ -10,12 +10,13 @@
 
 // ignore-windows failing on 64-bit bots FIXME #17638
 // ignore-lldb
+// ignore-aarch64
 
 // compile-flags:-g
 
 // gdb-command:run
 // gdb-command:next
-// gdb-check:[...]33[...]s
+// gdb-check:[...]34[...]s
 // gdb-command:continue
 
 #![omit_gdb_pretty_printer_section]
