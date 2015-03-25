@@ -19,7 +19,7 @@
 //! are owned elsewhere.
 //!
 //! Basic operations are implemented directly by the compiler, but more advanced
-//! operations are defined on the [`StrExt`](trait.StrExt.html) trait.
+//! operations are defined as methods on the `str` type.
 //!
 //! # Examples
 //!

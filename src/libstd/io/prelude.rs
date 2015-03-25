@@ -18,7 +18,7 @@
 //! ```
 //!
 //! This module contains reexports of many core I/O traits such as `Read`,
-//! `Write`, `ReadExt`, and `WriteExt`. Structures and functions are not
+//! `Write` and `BufRead`. Structures and functions are not
 //! contained in this module.
 
 #![stable(feature = "rust1", since = "1.0.0")]

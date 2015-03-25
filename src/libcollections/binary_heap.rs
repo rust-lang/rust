@@ -563,6 +563,8 @@ impl<T: Ord> BinaryHeap<T> {
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Clears the binary heap, returning an iterator over the removed elements.
+    ///
+    /// The elements are removed in arbitrary order.
     #[inline]
     #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
