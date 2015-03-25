@@ -18,6 +18,7 @@ const OS_TABLE: &'static [(&'static str, &'static str)] = &[
     ("darwin", "macos"),
     ("dragonfly", "dragonfly"),
     ("freebsd", "freebsd"),
+    ("ios", "ios"),
     ("linux", "linux"),
     ("mingw32", "windows"),
     ("openbsd", "openbsd"),
