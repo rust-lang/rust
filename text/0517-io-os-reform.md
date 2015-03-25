@@ -1608,7 +1608,7 @@ impl TcpStream {
     fn peer_addr(&self) -> io::Result<SocketAddr>;
     fn local_addr(&self) -> io::Result<SocketAddr>;
     fn shutdown(&self, how: Shutdown) -> io::Result<()>;
-    fn duplicate(&self) -> io::Result<TcpStream>;
+    fn try_clone(&self) -> io::Result<TcpStream>;
 }
 
 impl Read for TcpStream { ... }
@@ -1619,8 +1619,8 @@ impl<'a> Write for &'a TcpStream { ... }
 #[cfg(windows)] impl AsRawSocket for TcpStream { ... }
 ```
 
-* `clone` has been replaced with a `duplicate` function. The implementation of
-  `duplicate` will map to using `dup` on Unix platforms and
+* `clone` has been replaced with a `try_clone` function. The implementation of
+  `try_clone` will map to using `dup` on Unix platforms and
   `WSADuplicateSocket` on Windows platforms. The `TcpStream` itself will no
    longer be reference counted itself under the hood.
 * `close_{read,write}` are both removed in favor of binding the `shutdown`
@@ -1646,7 +1646,7 @@ into the `TcpListener` structure. Specifically, this will be the resulting API:
 impl TcpListener {
     fn bind<A: ToSocketAddrs>(addr: &A) -> io::Result<TcpListener>;
     fn local_addr(&self) -> io::Result<SocketAddr>;
-    fn duplicate(&self) -> io::Result<TcpListener>;
+    fn try_clone(&self) -> io::Result<TcpListener>;
     fn accept(&self) -> io::Result<(TcpStream, SocketAddr)>;
     fn incoming(&self) -> Incoming;
 }
@@ -1663,7 +1663,7 @@ Some major changes from today's API include:
 
 * The static distinction between `TcpAcceptor` and `TcpListener` has been
   removed (more on this in the [socket][Sockets] section).
-* The `clone` functionality has been removed in favor of `duplicate` (same
+* The `clone` functionality has been removed in favor of `try_clone` (same
   caveats as `TcpStream`).
 * The `close_accept` functionality is removed entirely. This is not currently
   implemented via `shutdown` (not supported well across platforms) and is
@@ -1690,7 +1690,7 @@ impl UdpSocket {
     fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)>;
     fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: &A) -> io::Result<usize>;
     fn local_addr(&self) -> io::Result<SocketAddr>;
-    fn duplicate(&self) -> io::Result<UdpSocket>;
+    fn try_clone(&self) -> io::Result<UdpSocket>;
 }
 
 #[cfg(unix)]    impl AsRawFd for UdpSocket { ... }
@@ -1705,7 +1705,7 @@ Some important points of note are:
   `#[unstable]` for now.
 * All timeout support is removed. This may come back in the form of `setsockopt`
   (as with TCP streams) or with a more general implementation of `select`.
-* `clone` functionality has been replaced with `duplicate`.
+* `clone` functionality has been replaced with `try_clone`.
 
 The `UdpSocket` type will adhere to both `Send` and `Sync`.
 
