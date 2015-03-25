@@ -443,7 +443,7 @@ The function marked `#[start]` is passed the command line parameters
 in the same format as C:
 
 ```
-#![feature(lang_items, start, no_std)]
+#![feature(lang_items, start, no_std, libc)]
 #![no_std]
 
 // Pull in the system libc library for what crt0.o likely requires
