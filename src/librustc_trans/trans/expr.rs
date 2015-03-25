@@ -1779,6 +1779,8 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       ast::BiAdd => {
         if is_float {
             FAdd(bcx, lhs, rhs, binop_debug_loc)
+        } else if is_simd {
+            Add(bcx, lhs, rhs, binop_debug_loc)
         } else {
             let (newbcx, res) = with_overflow_check(
                 bcx, OverflowOp::Add, info, lhs_t, lhs, rhs, binop_debug_loc);
@@ -1789,6 +1791,8 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       ast::BiSub => {
         if is_float {
             FSub(bcx, lhs, rhs, binop_debug_loc)
+        } else if is_simd {
+            Sub(bcx, lhs, rhs, binop_debug_loc)
         } else {
             let (newbcx, res) = with_overflow_check(
                 bcx, OverflowOp::Sub, info, lhs_t, lhs, rhs, binop_debug_loc);
@@ -1799,6 +1803,8 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       ast::BiMul => {
         if is_float {
             FMul(bcx, lhs, rhs, binop_debug_loc)
+        } else if is_simd {
+            Mul(bcx, lhs, rhs, binop_debug_loc)
         } else {
             let (newbcx, res) = with_overflow_check(
                 bcx, OverflowOp::Mul, info, lhs_t, lhs, rhs, binop_debug_loc);
