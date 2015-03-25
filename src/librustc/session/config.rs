@@ -606,7 +606,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     force_overflow_checks: Option<bool> = (None, parse_opt_bool,
           "Force overflow checks on or off"),
     trace_macros: bool = (false, parse_bool,
-          "Trace all macro invocations"),
+          "For every macro invocation, print its name and token arguments"),
 }
 
 pub fn default_lib_output() -> CrateType {
