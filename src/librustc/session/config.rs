@@ -605,6 +605,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "Print the size of enums and their variants"),
     force_overflow_checks: Option<bool> = (None, parse_opt_bool,
           "Force overflow checks on or off"),
+    force_dropflag_checks: Option<bool> = (None, parse_opt_bool,
+          "Force drop flag checks on or off"),
 }
 
 pub fn default_lib_output() -> CrateType {

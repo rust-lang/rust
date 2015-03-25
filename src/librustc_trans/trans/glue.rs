@@ -40,7 +40,6 @@ use util::ppaux;
 
 use arena::TypedArena;
 use libc::c_uint;
-use session::config::NoDebugInfo;
 use syntax::ast;
 
 pub fn trans_exchange_free_dyn<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
@@ -237,7 +236,7 @@ fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let drop_flag_llty = type_of(bcx.fcx.ccx, bcx.tcx().dtor_type());
     let init_val = C_integral(drop_flag_llty, adt::DTOR_NEEDED as u64, false);
 
-    let bcx = if bcx.tcx().sess.opts.debuginfo == NoDebugInfo {
+    let bcx = if !bcx.ccx().check_drop_flag_for_sanity() {
         bcx
     } else {
         let drop_flag_llty = type_of(bcx.fcx.ccx, bcx.tcx().dtor_type());
