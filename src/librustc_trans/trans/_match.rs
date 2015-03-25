@@ -1352,12 +1352,12 @@ impl<'tcx> euv::Delegate<'tcx> for ReassignmentChecker {
     fn mutate(&mut self, _: ast::NodeId, _: Span, cmt: mc::cmt, _: euv::MutateMode) {
         match cmt.cat {
             mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
-            mc::cat_local(vid) => self.reassigned = self.node == vid,
+            mc::cat_local(vid) => self.reassigned |= self.node == vid,
             mc::cat_interior(ref base_cmt, mc::InteriorField(field)) => {
                 match base_cmt.cat {
                     mc::cat_upvar(mc::Upvar { id: ty::UpvarId { var_id: vid, .. }, .. }) |
                     mc::cat_local(vid) => {
-                        self.reassigned = self.node == vid && Some(field) == self.field
+                        self.reassigned |= self.node == vid && Some(field) == self.field
                     },
                     _ => {}
                 }
