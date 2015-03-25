@@ -619,9 +619,11 @@ impl<T> [T] {
         core_slice::SliceExt::get_mut(self, index)
     }
 
-    /// Work with `self` as a mut slice.
-    /// Primarily intended for getting a &mut [T] from a [T; N].
-    #[stable(feature = "rust1", since = "1.0.0")]
+    /// Deprecated: use `&mut s[..]` instead.
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &mut s[..] instead")]
+    #[allow(deprecated)]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         core_slice::SliceExt::as_mut_slice(self)
     }
