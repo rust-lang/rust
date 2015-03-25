@@ -41,7 +41,7 @@ use middle::cfg;
 use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::weak_lang_items;
 use middle::subst::{Subst, Substs};
-use middle::ty::{self, Ty, ClosureTyper};
+use middle::ty::{self, Ty, ClosureTyper, type_is_simd, simd_size};
 use session::config::{self, NoDebugInfo};
 use session::Session;
 use trans::_match;
@@ -52,7 +52,7 @@ use trans::callee;
 use trans::cleanup::CleanupMethods;
 use trans::cleanup;
 use trans::closure;
-use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_integral};
+use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_int, C_integral};
 use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
 use trans::common::{CrateContext, ExternMap, FunctionContext};
 use trans::common::{Result, NodeIdAndSpan};
@@ -823,6 +823,15 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
         ty::ty_uint(t) => {
             let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0, false);
             (ICmp(cx, llvm::IntEQ, rhs, zero, debug_loc), false)
+        }
+        ty::ty_struct(_, _) if type_is_simd(cx.tcx(), rhs_t) => {
+            let mut res = C_bool(cx.ccx(), false);
+            for i in 0 .. simd_size(cx.tcx(), rhs_t) {
+                res = Or(cx, res,
+                         IsNull(cx,
+                                ExtractElement(cx, rhs, C_int(cx.ccx(), i as i64))), debug_loc);
+            }
+            (res, false)
         }
         _ => {
             cx.sess().bug(&format!("fail-if-zero on unexpected type: {}",
