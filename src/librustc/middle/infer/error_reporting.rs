@@ -1481,38 +1481,38 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
             infer::Subtype(ref trace) => {
                 let desc = match trace.origin {
                     infer::Misc(_) => {
-                        format!("types are compatible")
+                        "types are compatible"
                     }
                     infer::MethodCompatCheck(_) => {
-                        format!("method type is compatible with trait")
+                        "method type is compatible with trait"
                     }
                     infer::ExprAssignable(_) => {
-                        format!("expression is assignable")
+                        "expression is assignable"
                     }
                     infer::RelateTraitRefs(_) => {
-                        format!("traits are compatible")
+                        "traits are compatible"
                     }
                     infer::RelateSelfType(_) => {
-                        format!("self type matches impl self type")
+                        "self type matches impl self type"
                     }
                     infer::RelateOutputImplTypes(_) => {
-                        format!("trait type parameters matches those \
-                                 specified on the impl")
+                        "trait type parameters matches those \
+                                 specified on the impl"
                     }
                     infer::MatchExpressionArm(_, _) => {
-                        format!("match arms have compatible types")
+                        "match arms have compatible types"
                     }
                     infer::IfExpression(_) => {
-                        format!("if and else have compatible types")
+                        "if and else have compatible types"
                     }
                     infer::IfExpressionWithNoElse(_) => {
-                        format!("if may be missing an else clause")
+                        "if may be missing an else clause"
                     }
                     infer::RangeExpression(_) => {
-                        format!("start and end of range have compatible types")
+                        "start and end of range have compatible types"
                     }
                     infer::EquatePredicate(_) => {
-                        format!("equality where clause is satisfied")
+                        "equality where clause is satisfied"
                     }
                 };
 
@@ -1652,8 +1652,8 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
             infer::RelateRegionParamBound(span) => {
                 self.tcx.sess.span_note(
                     span,
-                    &format!("...so that the declared lifetime parameter bounds \
-                                are satisfied"));
+                    "...so that the declared lifetime parameter bounds \
+                                are satisfied");
             }
             infer::SafeDestructor(span) => {
                 self.tcx.sess.span_note(
