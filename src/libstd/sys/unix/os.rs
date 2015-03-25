@@ -345,7 +345,7 @@ pub fn args() -> Args {
             let utf_c_str: *const libc::c_char =
                 mem::transmute(objc_msgSend(tmp, utf8_sel));
             let bytes = CStr::from_ptr(utf_c_str).to_bytes();
-            res.push(OsString::from_str(str::from_utf8(bytes).unwrap()))
+            res.push(OsString::from(str::from_utf8(bytes).unwrap()))
         }
     }
 
