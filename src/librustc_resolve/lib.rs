@@ -41,6 +41,7 @@ use self::TypeParameters::*;
 use self::RibKind::*;
 use self::UseLexicalScopeFlag::*;
 use self::ModulePrefixResult::*;
+use self::AssocItemResolveResult::*;
 use self::NameSearchType::*;
 use self::BareIdentifierPatternResolution::*;
 use self::ParentLink::*;
@@ -70,7 +71,7 @@ use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
 use syntax::ast::{ItemFn, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
 use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use syntax::ast::{Local, MethodImplItem, Name, NodeId};
-use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
+use syntax::ast::{Pat, PatEnum, PatIdent, PatLit, PatQPath};
 use syntax::ast::{PatRange, PatStruct, Path, PrimTy};
 use syntax::ast::{TraitRef, Ty, TyBool, TyChar, TyF32};
 use syntax::ast::{TyF64, TyFloat, TyIs, TyI8, TyI16, TyI32, TyI64, TyInt};
@@ -329,6 +330,15 @@ enum UseLexicalScopeFlag {
 enum ModulePrefixResult {
     NoPrefixFound,
     PrefixFound(Rc<Module>, usize)
+}
+
+#[derive(Copy, Clone)]
+enum AssocItemResolveResult {
+    /// Syntax such as `<T>::item`, which can't be resolved until type
+    /// checking.
+    TypecheckRequired,
+    /// We should have been able to resolve the associated item.
+    ResolveAttempt(Option<PathResolution>),
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -2305,31 +2315,21 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_type(&mut self, ty: &Ty) {
         match ty.node {
-            // `<T>::a::b::c` is resolved by typeck alone.
-            TyPath(Some(ast::QSelf { position: 0, .. }), _) => {}
-
             TyPath(ref maybe_qself, ref path) => {
-                let max_assoc_types = if let Some(ref qself) = *maybe_qself {
-                    // Make sure the trait is valid.
-                    let _ = self.resolve_trait_reference(ty.id, path, 1);
-                    path.segments.len() - qself.position
-                } else {
-                    path.segments.len()
-                };
-
-                let mut resolution = None;
-                for depth in 0..max_assoc_types {
-                    self.with_no_errors(|this| {
-                        resolution = this.resolve_path(ty.id, path, depth, TypeNS, true);
-                    });
-                    if resolution.is_some() {
-                        break;
-                    }
-                }
-                if let Some(DefMod(_)) = resolution.map(|r| r.base_def) {
-                    // A module is not a valid type.
-                    resolution = None;
-                }
+                let resolution =
+                    match self.resolve_possibly_assoc_item(ty.id,
+                                                           maybe_qself.as_ref(),
+                                                           path,
+                                                           TypeNS,
+                                                           true) {
+                        // `<T>::a::b::c` is resolved by typeck alone.
+                        TypecheckRequired => {
+                            // Resolve embedded types.
+                            visit::walk_ty(self, ty);
+                            return;
+                        }
+                        ResolveAttempt(resolution) => resolution,
+                    };
 
                 // This is a path in the type namespace. Walk through scopes
                 // looking for it.
@@ -2489,10 +2489,24 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 PatEnum(ref path, _) => {
                     // This must be an enum variant, struct or const.
-                    if let Some(path_res) = self.resolve_path(pat_id, path, 0, ValueNS, false) {
+                    let resolution =
+                        match self.resolve_possibly_assoc_item(pat_id, None,
+                                                               path, ValueNS,
+                                                               false) {
+                            // The below shouldn't happen because all
+                            // qualified paths should be in PatQPath.
+                            TypecheckRequired =>
+                                self.session.span_bug(
+                                    path.span,
+                                    "resolve_possibly_assoc_item claimed
+                                     that a path in PatEnum requires typecheck
+                                     to resolve, but qualified paths should be
+                                     PatQPath"),
+                            ResolveAttempt(resolution) => resolution,
+                        };
+                    if let Some(path_res) = resolution {
                         match path_res.base_def {
-                            DefVariant(..) | DefStruct(..) | DefConst(..) |
-                            DefAssociatedConst(..) => {
+                            DefVariant(..) | DefStruct(..) | DefConst(..) => {
                                 self.record_def(pattern.id, path_res);
                             }
                             DefStatic(..) => {
@@ -2502,10 +2516,20 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                     use a `const` instead");
                             }
                             _ => {
-                                self.resolve_error(path.span,
-                                    &format!("`{}` is not an enum variant, struct or const",
-                                        token::get_ident(
-                                            path.segments.last().unwrap().identifier)));
+                                // If anything ends up here entirely resolved,
+                                // it's an error. If anything ends up here
+                                // partially resolved, that's OK, because it may
+                                // be a `T::CONST` that typeck will resolve to
+                                // an inherent impl.
+                                if path_res.depth == 0 {
+                                    self.resolve_error(
+                                        path.span,
+                                        &format!("`{}` is not an enum variant, struct or const",
+                                                 token::get_ident(
+                                                     path.segments.last().unwrap().identifier)));
+                                } else {
+                                    self.record_def(pattern.id, path_res);
+                                }
                             }
                         }
                     } else {
@@ -2514,6 +2538,47 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 token::get_ident(path.segments.last().unwrap().identifier)));
                     }
                     visit::walk_path(self, path);
+                }
+
+                PatQPath(ref qself, ref path) => {
+                    // Associated constants only.
+                    let resolution =
+                        match self.resolve_possibly_assoc_item(pat_id, Some(qself),
+                                                               path, ValueNS,
+                                                               false) {
+                            TypecheckRequired => {
+                                // All `<T>::CONST` should end up here, and will
+                                // require use of the trait map to resolve
+                                // during typechecking.
+                                let const_name = path.segments.last().unwrap()
+                                                     .identifier.name;
+                                let traits = self.get_traits_containing_item(const_name);
+                                self.trait_map.insert(pattern.id, traits);
+                                visit::walk_pat(self, pattern);
+                                return true;
+                            }
+                            ResolveAttempt(resolution) => resolution,
+                        };
+                    if let Some(path_res) = resolution {
+                        match path_res.base_def {
+                            // All `<T as Trait>::CONST` should end up here, and
+                            // have the trait already selected.
+                            DefAssociatedConst(..) => {
+                                self.record_def(pattern.id, path_res);
+                            }
+                            _ => {
+                                self.resolve_error(path.span,
+                                    &format!("`{}` is not an associated const",
+                                        token::get_ident(
+                                            path.segments.last().unwrap().identifier)));
+                            }
+                        }
+                    } else {
+                        self.resolve_error(path.span,
+                            &format!("unresolved associated const `{}`",
+                                token::get_ident(path.segments.last().unwrap().identifier)));
+                    }
+                    visit::walk_pat(self, pattern);
                 }
 
                 PatStruct(ref path, _, _) => {
@@ -2603,6 +2668,47 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 return BareIdentifierPatternUnresolved;
             }
         }
+    }
+
+    /// Handles paths that may refer to associated items
+    fn resolve_possibly_assoc_item(&mut self,
+                                   id: NodeId,
+                                   maybe_qself: Option<&ast::QSelf>,
+                                   path: &Path,
+                                   namespace: Namespace,
+                                   check_ribs: bool)
+                                   -> AssocItemResolveResult
+    {
+        match maybe_qself {
+            Some(&ast::QSelf { position: 0, .. }) =>
+                return TypecheckRequired,
+            _ => {}
+        }
+        let max_assoc_types = if let Some(qself) = maybe_qself {
+            // Make sure the trait is valid.
+            let _ = self.resolve_trait_reference(id, path, 1);
+            path.segments.len() - qself.position
+        } else {
+            path.segments.len()
+        };
+
+        let mut resolution = self.with_no_errors(|this| {
+            this.resolve_path(id, path, 0, namespace, check_ribs)
+        });
+        for depth in 1..max_assoc_types {
+            if resolution.is_some() {
+                break;
+            }
+            self.with_no_errors(|this| {
+                resolution = this.resolve_path(id, path, depth,
+                                               TypeNS, true);
+            });
+        }
+        if let Some(DefMod(_)) = resolution.map(|r| r.base_def) {
+            // A module is not a valid type or value.
+            resolution = None;
+        }
+        ResolveAttempt(resolution)
     }
 
     /// If `check_ribs` is true, checks the local definitions first; i.e.
@@ -3119,38 +3225,23 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Next, resolve the node.
         match expr.node {
-            // `<T>::a::b::c` is resolved by typeck alone.
-            ExprPath(Some(ast::QSelf { position: 0, .. }), ref path) => {
-                let method_name = path.segments.last().unwrap().identifier.name;
-                let traits = self.search_for_traits_containing_method(method_name);
-                self.trait_map.insert(expr.id, traits);
-                visit::walk_expr(self, expr);
-            }
-
             ExprPath(ref maybe_qself, ref path) => {
-                let max_assoc_types = if let Some(ref qself) = *maybe_qself {
-                    // Make sure the trait is valid.
-                    let _ = self.resolve_trait_reference(expr.id, path, 1);
-                    path.segments.len() - qself.position
-                } else {
-                    path.segments.len()
-                };
-
-                let mut resolution = self.with_no_errors(|this| {
-                    this.resolve_path(expr.id, path, 0, ValueNS, true)
-                });
-                for depth in 1..max_assoc_types {
-                    if resolution.is_some() {
-                        break;
-                    }
-                    self.with_no_errors(|this| {
-                        resolution = this.resolve_path(expr.id, path, depth, TypeNS, true);
-                    });
-                }
-                if let Some(DefMod(_)) = resolution.map(|r| r.base_def) {
-                    // A module is not a valid type or value.
-                    resolution = None;
-                }
+                let resolution =
+                    match self.resolve_possibly_assoc_item(expr.id,
+                                                           maybe_qself.as_ref(),
+                                                           path,
+                                                           ValueNS,
+                                                           true) {
+                        // `<T>::a::b::c` is resolved by typeck alone.
+                        TypecheckRequired => {
+                            let method_name = path.segments.last().unwrap().identifier.name;
+                            let traits = self.get_traits_containing_item(method_name);
+                            self.trait_map.insert(expr.id, traits);
+                            visit::walk_expr(self, expr);
+                            return;
+                        }
+                        ResolveAttempt(resolution) => resolution,
+                    };
 
                 // This is a local path in the value namespace. Walk through
                 // scopes looking for it.
@@ -3181,7 +3272,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // so they can be completed during typeck.
                         if path_res.depth != 0 {
                             let method_name = path.segments.last().unwrap().identifier.name;
-                            let traits = self.search_for_traits_containing_method(method_name);
+                            let traits = self.get_traits_containing_item(method_name);
                             self.trait_map.insert(expr.id, traits);
                         }
 
@@ -3339,14 +3430,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // field, we need to add any trait methods we find that match
                 // the field name so that we can do some nice error reporting
                 // later on in typeck.
-                let traits = self.search_for_traits_containing_method(ident.node.name);
+                let traits = self.get_traits_containing_item(ident.node.name);
                 self.trait_map.insert(expr.id, traits);
             }
             ExprMethodCall(ident, _, _) => {
                 debug!("(recording candidate traits for expr) recording \
                         traits for {}",
                        expr.id);
-                let traits = self.search_for_traits_containing_method(ident.node.name);
+                let traits = self.get_traits_containing_item(ident.node.name);
                 self.trait_map.insert(expr.id, traits);
             }
             _ => {
@@ -3355,8 +3446,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
     }
 
-    fn search_for_traits_containing_method(&mut self, name: Name) -> Vec<DefId> {
-        debug!("(searching for traits containing method) looking for '{}'",
+    fn get_traits_containing_item(&mut self, name: Name) -> Vec<DefId> {
+        debug!("(getting traits containing item) looking for '{}'",
                token::get_name(name));
 
         fn add_trait_info(found_traits: &mut Vec<DefId>,

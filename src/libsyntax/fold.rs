@@ -1134,6 +1134,10 @@ pub fn noop_fold_pat<T: Folder>(p: P<Pat>, folder: &mut T) -> P<Pat> {
                 PatEnum(folder.fold_path(pth),
                         pats.map(|pats| pats.move_map(|x| folder.fold_pat(x))))
             }
+            PatQPath(qself, pth) => {
+                let qself = QSelf {ty: folder.fold_ty(qself.ty), .. qself};
+                PatQPath(qself, folder.fold_path(pth))
+            }
             PatStruct(pth, fields, etc) => {
                 let pth = folder.fold_path(pth);
                 let fs = fields.move_map(|f| {

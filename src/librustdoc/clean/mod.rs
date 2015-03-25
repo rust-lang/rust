@@ -2522,6 +2522,8 @@ fn name_from_pat(p: &ast::Pat) -> String {
         PatWild(PatWildMulti) => "..".to_string(),
         PatIdent(_, ref p, _) => token::get_ident(p.node).to_string(),
         PatEnum(ref p, _) => path_to_string(p),
+        PatQPath(..) => panic!("tried to get argument name from PatQPath, \
+                                which is not allowed in function arguments"),
         PatStruct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", path_to_string(name),
                 fields.iter().map(|&Spanned { node: ref fp, .. }|

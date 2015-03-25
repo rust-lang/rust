@@ -3230,53 +3230,20 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                 &format!("unbound path {}", expr.repr(tcx)))
           };
 
-          let def = path_res.base_def;
-          if path_res.depth == 0 {
+          if let Some((opt_ty, segments, def)) =
+                  resolve_ty_and_def_ufcs(fcx, path_res, opt_self_ty, path,
+                                          expr.span, expr.id) {
               let (scheme, predicates) = type_scheme_and_predicates_for_def(fcx,
                                                                             expr.span,
                                                                             def);
               instantiate_path(fcx,
-                               &path.segments,
+                               segments,
                                scheme,
                                &predicates,
-                               opt_self_ty,
+                               opt_ty,
                                def,
                                expr.span,
                                id);
-          } else {
-              let ty_segments = path.segments.init();
-              let base_ty_end = path.segments.len() - path_res.depth;
-              let ty = astconv::finish_resolving_def_to_ty(fcx,
-                                                           fcx,
-                                                           expr.span,
-                                                           PathParamMode::Optional,
-                                                           &def,
-                                                           opt_self_ty,
-                                                           &ty_segments[..base_ty_end],
-                                                           &ty_segments[base_ty_end..]);
-              let method_segment = path.segments.last().unwrap();
-              let method_name = method_segment.identifier.name;
-              match method::resolve_ufcs(fcx, expr.span, method_name, ty, id) {
-                  Ok((def, lp)) => {
-                      // Write back the new resolution.
-                      tcx.def_map.borrow_mut().insert(id, def::PathResolution {
-                          base_def: def,
-                          last_private: path_res.last_private.or(lp),
-                          depth: 0
-                      });
-
-                      let (scheme, predicates) =
-                          type_scheme_and_predicates_for_def(fcx, expr.span, def);
-                      instantiate_path(fcx, slice::ref_slice(method_segment),
-                                       scheme, &predicates,
-                                       Some(ty), def, expr.span, id);
-                  }
-                  Err(error) => {
-                      method::report_error(fcx, expr.span, ty,
-                                           method_name, None, error);
-                      fcx.write_error(id);
-                  }
-              }
           }
 
           // We always require that the type provided as the value for
@@ -3736,6 +3703,52 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
            expected.repr(tcx));
 
     unifier();
+}
+
+pub fn resolve_ty_and_def_ufcs<'a, 'b, 'tcx>(fcx: &FnCtxt<'b, 'tcx>,
+                                             path_res: def::PathResolution,
+                                             opt_self_ty: Option<Ty<'tcx>>,
+                                             path: &'a ast::Path,
+                                             span: Span,
+                                             node_id: ast::NodeId)
+                                             -> Option<(Option<Ty<'tcx>>,
+                                                        &'a [ast::PathSegment],
+                                                        def::Def)>
+{
+    // If fully resolved already, we don't have to do anything.
+    if path_res.depth == 0 {
+        Some((opt_self_ty, &path.segments, path_res.base_def))
+    } else {
+        let mut def = path_res.base_def;
+        let ty_segments = path.segments.init();
+        let base_ty_end = path.segments.len() - path_res.depth;
+        let ty = astconv::finish_resolving_def_to_ty(fcx, fcx, span,
+                                                     PathParamMode::Optional,
+                                                     &mut def,
+                                                     opt_self_ty,
+                                                     &ty_segments[..base_ty_end],
+                                                     &ty_segments[base_ty_end..]);
+        let item_segment = path.segments.last().unwrap();
+        let item_name = item_segment.identifier.name;
+        match method::resolve_ufcs(fcx, span, item_name, ty, node_id) {
+            Ok((def, lp)) => {
+                // Write back the new resolution.
+                fcx.ccx.tcx.def_map.borrow_mut()
+                       .insert(node_id, def::PathResolution {
+                   base_def: def,
+                   last_private: path_res.last_private.or(lp),
+                   depth: 0
+                });
+                Some((Some(ty), slice::ref_slice(item_segment), def))
+            }
+            Err(error) => {
+                method::report_error(fcx, span, ty,
+                                     item_name, None, error);
+                fcx.write_error(node_id);
+                None
+            }
+        }
+    }
 }
 
 fn constrain_path_type_parameters(fcx: &FnCtxt,

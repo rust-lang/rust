@@ -3437,6 +3437,10 @@ fn create_scope_map(cx: &CrateContext,
                 }
             }
 
+            ast::PatQPath(..) => {
+                scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
+            }
+
             ast::PatStruct(_, ref field_pats, _) => {
                 scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 

@@ -1299,6 +1299,10 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             }
           }
 
+          ast::PatQPath(..) => {
+              // Lone constant: ignore
+          }
+
           ast::PatIdent(_, _, Some(ref subpat)) => {
               try!(self.cat_pattern_(cmt, &**subpat, op));
           }
