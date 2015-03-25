@@ -79,7 +79,9 @@ this is not considered a strong enough threshold to mark the function as
 * The `main` function of binary programs could optionally be typed as `fn() ->
   i32` instead of just `fn()`. This would be a backwards-compatible change, but
   does somewhat add complexity. It may strike some as odd to be able to define
-  the `main` function with two different signatures in Rust.
+  the `main` function with two different signatures in Rust. Additionally, it's
+  likely that the `exit` functionality proposed will be desired regardless of
+  whether the main function can return a code or not.
 
 # Unresolved questions
 
