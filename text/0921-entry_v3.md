@@ -99,7 +99,7 @@ let val = map.entry(key).or_insert_with(|| expensive(big, data));
 Look at all that ergonomics. *Look at it*. This pushes us more into the "one right way"
 territory, since this is unambiguously clearer and easier than a full `match` or abusing Result.
 Novices don't really need to learn the entry API at all with this. They can just learn the
-`.entry(key).default(value)` incantation to start, and work their way up to more complex
+`.entry(key).or_insert(value)` incantation to start, and work their way up to more complex
 usage later.
 
 Oh hey look this entire RFC is already implemented with all of `rust-lang/rust`'s `entry`
