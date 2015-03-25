@@ -206,7 +206,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         if err != 0 { return Err(io::Error::last_os_error()); }
         if sz == 0 { return Err(io::Error::last_os_error()); }
         v.set_len(sz as uint - 1); // chop off trailing NUL
-        Ok(PathBuf::new::<OsString>(OsStringExt::from_vec(v)))
+        Ok(PathBuf::from(OsString::from_vec(v)))
     }
 }
 
@@ -232,7 +232,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
             Err(io::Error::last_os_error())
         } else {
             let vec = CStr::from_ptr(v).to_bytes().to_vec();
-            Ok(PathBuf::new::<OsString>(OsStringExt::from_vec(vec)))
+            Ok(PathBuf::from(OsString::from_vec(vec)))
         }
     }
 }
@@ -345,7 +345,7 @@ pub fn args() -> Args {
             let utf_c_str: *const libc::c_char =
                 mem::transmute(objc_msgSend(tmp, utf8_sel));
             let bytes = CStr::from_ptr(utf_c_str).to_bytes();
-            res.push(OsString::from_str(str::from_utf8(bytes).unwrap()))
+            res.push(OsString::from(str::from_utf8(bytes).unwrap()))
         }
     }
 
