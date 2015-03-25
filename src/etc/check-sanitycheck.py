@@ -29,7 +29,7 @@ def only_on(platforms):
     def decorator(func):
         @functools.wraps(func)
         def inner():
-            if sys.platform in platforms:
+            if any(map(lambda x: sys.platform.startswith(x), platforms)):
                 func()
         return inner
     return decorator
