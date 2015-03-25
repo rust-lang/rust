@@ -1433,6 +1433,7 @@ pub struct ExpansionConfig<'feat> {
     pub crate_name: String,
     pub features: Option<&'feat Features>,
     pub recursion_limit: usize,
+    pub trace_mac: bool,
 }
 
 macro_rules! feature_tests {
@@ -1454,6 +1455,7 @@ impl<'feat> ExpansionConfig<'feat> {
             crate_name: crate_name,
             features: None,
             recursion_limit: 64,
+            trace_mac: false,
         }
     }
 
