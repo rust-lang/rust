@@ -70,7 +70,7 @@ this is not considered a strong enough threshold to mark the function as
   reasons for not pursuing this route, however, have been outlined in the
   motivation.
 
-* The `main` function of binary programs could be altered to either require an
+* The `main` function of binary programs could be altered to require an
   `i32` return value. This would greatly lessen the need to stabilize this
   function as-is today as it would be possible to exit with a nonzero code by
   returning a nonzero value from `main`. This is a backwards-incompatible
