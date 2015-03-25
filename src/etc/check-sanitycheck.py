@@ -35,7 +35,7 @@ def only_on(platforms):
     return decorator
 
 
-@only_on(('linux', 'darwin'))
+@only_on(('linux', 'darwin', 'freebsd', 'openbsd'))
 def check_rlimit_core():
     soft, hard = resource.getrlimit(resource.RLIMIT_CORE)
     if soft > 0:
