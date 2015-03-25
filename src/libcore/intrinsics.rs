@@ -44,10 +44,6 @@
 
 use marker::Sized;
 
-#[cfg(stage0)] pub use self::copy_memory as copy;
-#[cfg(stage0)] pub use self::set_memory as write_bytes;
-#[cfg(stage0)] pub use self::copy_nonoverlapping_memory as copy_nonoverlapping;
-
 extern "rust-intrinsic" {
 
     // NB: These intrinsics take unsafe pointers because they mutate aliased
@@ -183,7 +179,6 @@ extern "rust-intrinsic" {
     pub fn pref_align_of<T>() -> usize;
 
     /// Gets a static string slice containing the name of a type.
-    #[cfg(not(stage0))]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
     /// Gets an identifier which is globally unique to the specified type. This
@@ -287,13 +282,7 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg(not(stage0))]
     pub fn copy_nonoverlapping<T>(dst: *mut T, src: *const T, count: usize);
-
-    /// dox
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg(stage0)]
-    pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
 
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
     /// and destination may overlap.
@@ -323,25 +312,13 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     ///
-    #[cfg(not(stage0))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn copy<T>(dst: *mut T, src: *const T, count: usize);
 
-    /// dox
-    #[cfg(stage0)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn copy_memory<T>(dst: *mut T, src: *const T, count: usize);
-
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
     /// bytes of memory starting at `dst` to `c`.
-    #[cfg(not(stage0))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
-
-    /// dox
-    #[cfg(stage0)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn set_memory<T>(dst: *mut T, val: u8, count: usize);
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of

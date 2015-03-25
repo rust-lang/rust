@@ -1247,22 +1247,6 @@ impl<K, V, S> Default for HashMap<K, V, S>
     }
 }
 
-#[cfg(stage0)]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<K, Q: ?Sized, V, S> Index<Q> for HashMap<K, V, S>
-    where K: Eq + Hash + Borrow<Q>,
-          Q: Eq + Hash,
-          S: HashState,
-{
-    type Output = V;
-
-    #[inline]
-    fn index<'a>(&'a self, index: &Q) -> &'a V {
-        self.get(index).expect("no entry found for key")
-    }
-}
-
-#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, Q: ?Sized, V, S> Index<&'a Q> for HashMap<K, V, S>
     where K: Eq + Hash + Borrow<Q>,
