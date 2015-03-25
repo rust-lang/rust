@@ -3029,6 +3029,12 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
         tcx.sess.opts.debug_assertions
     };
 
+    let check_dropflag = if let Some(v) = tcx.sess.opts.debugging_opts.force_dropflag_checks {
+        v
+    } else {
+        tcx.sess.opts.debug_assertions
+    };
+
     // Before we touch LLVM, make sure that multithreading is enabled.
     unsafe {
         use std::sync::{Once, ONCE_INIT};
@@ -3057,7 +3063,8 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
                                              Sha256::new(),
                                              link_meta.clone(),
                                              reachable,
-                                             check_overflow);
+                                             check_overflow,
+                                             check_dropflag);
 
     {
         let ccx = shared_ccx.get_ccx(0);
