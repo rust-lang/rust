@@ -21,6 +21,16 @@ use libc;
 use sys_common::{AsInner, FromInner};
 use net::{hton, ntoh};
 
+/// An IP address, either a IPv4 or IPv6 address.
+#[unstable(feature = "ip_addr", reason = "recent addition")]
+#[derive(Copy, Clone, Eq, PartialEq, Debug, Hash, PartialOrd, Ord)]
+pub enum IpAddr {
+    /// Representation of an IPv4 address.
+    V4(Ipv4Addr),
+    /// Representation of an IPv6 address.
+    V6(Ipv6Addr),
+}
+
 /// Representation of an IPv4 address.
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -137,6 +147,16 @@ impl Ipv4Addr {
                       ((self.octets()[2] as u16) << 8) | self.octets()[3] as u16)
     }
 
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Display for IpAddr {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            IpAddr::V4(ref a) => a.fmt(fmt),
+            IpAddr::V6(ref a) => a.fmt(fmt),
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
