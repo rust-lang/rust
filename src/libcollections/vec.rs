@@ -1199,8 +1199,8 @@ impl<T: PartialEq> Vec<T> {
 
             // Avoid bounds checks by using unsafe pointers.
             let p = self.as_mut_ptr();
-            let mut r = 1;
-            let mut w = 1;
+            let mut r: usize = 1;
+            let mut w: usize = 1;
 
             while r < ln {
                 let p_r = p.offset(r as isize);

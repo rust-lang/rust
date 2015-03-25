@@ -28,11 +28,16 @@ impl<F,A,R> YCombinator<F,A,R> {
 }
 
 impl<A,R,F : FnMut(&mut FnMut(A) -> R, A) -> R> FnMut<(A,)> for YCombinator<F,A,R> {
-    type Output = R;
-
     extern "rust-call" fn call_mut(&mut self, (arg,): (A,)) -> R {
         (self.func)(self, arg)
             //~^ ERROR cannot borrow `*self` as mutable more than once at a time
+    }
+}
+
+impl<A,R,F : FnMut(&mut FnMut(A) -> R, A) -> R> FnOnce<(A,)> for YCombinator<F,A,R> {
+    type Output = R;
+    extern "rust-call" fn call_once(mut self, args: (A,)) -> R {
+        self.call_mut(args)
     }
 }
 

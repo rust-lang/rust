@@ -112,7 +112,7 @@ use fmt;
 /// *guard += 1;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Mutex<T> {
+pub struct Mutex<T: Send> {
     // Note that this static mutex is in a *box*, not inlined into the struct
     // itself. Once a native mutex has been used once, its address can never
     // change (it can't be moved). This mutex type can be safely moved at any
@@ -366,7 +366,7 @@ mod test {
     use sync::{Arc, Mutex, StaticMutex, MUTEX_INIT, Condvar};
     use thread;
 
-    struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
+    struct Packet<T: Send>(Arc<(Mutex<T>, Condvar)>);
 
     unsafe impl<T: Send> Send for Packet<T> {}
     unsafe impl<T> Sync for Packet<T> {}

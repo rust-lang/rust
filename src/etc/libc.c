@@ -165,6 +165,16 @@ void posix88_consts() {
   put_const(S_IWUSR, int);
   put_const(S_IRUSR, int);
 
+  put_const(S_IRWXG, int);
+  put_const(S_IXGRP, int);
+  put_const(S_IWGRP, int);
+  put_const(S_IRGRP, int);
+
+  put_const(S_IRWXO, int);
+  put_const(S_IXOTH, int);
+  put_const(S_IWOTH, int);
+  put_const(S_IROTH, int);
+
 #ifdef F_OK
   put_const(F_OK, int);
 #endif

@@ -100,6 +100,17 @@ declare_lint! {
     "detects transmutes of fat pointers"
 }
 
+declare_lint! {
+    pub TRIVIAL_CASTS,
+    Warn,
+    "detects trivial casts which could be removed"
+}
+
+declare_lint! {
+    pub TRIVIAL_NUMERIC_CASTS,
+    Warn,
+    "detects trivial casts of numeric types which could be removed"
+}
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy)]
@@ -121,7 +132,9 @@ impl LintPass for HardwiredLints {
             STABLE_FEATURES,
             UNKNOWN_CRATE_TYPES,
             VARIANT_SIZE_DIFFERENCES,
-            FAT_PTR_TRANSMUTES
+            FAT_PTR_TRANSMUTES,
+            TRIVIAL_CASTS,
+            TRIVIAL_NUMERIC_CASTS
         )
     }
 }

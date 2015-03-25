@@ -471,15 +471,6 @@ impl<'tcx> Datum<'tcx, Expr> {
             })
     }
 
-    /// Ensures that `self` will get cleaned up, if it is not an lvalue already.
-    pub fn clean<'blk>(self,
-                       bcx: Block<'blk, 'tcx>,
-                       name: &'static str,
-                       expr_id: ast::NodeId)
-                       -> Block<'blk, 'tcx> {
-        self.to_lvalue_datum(bcx, name, expr_id).bcx
-    }
-
     pub fn to_lvalue_datum<'blk>(self,
                                  bcx: Block<'blk, 'tcx>,
                                  name: &str,

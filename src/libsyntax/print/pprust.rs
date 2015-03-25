@@ -2836,7 +2836,7 @@ impl<'a> State<'a> {
             ast::LitBinary(ref v) => {
                 let mut escaped: String = String::new();
                 for &ch in &**v {
-                    escaped.extend(ascii::escape_default(ch as u8)
+                    escaped.extend(ascii::escape_default(ch)
                                          .map(|c| c as char));
                 }
                 word(&mut self.s, &format!("b\"{}\"", escaped))

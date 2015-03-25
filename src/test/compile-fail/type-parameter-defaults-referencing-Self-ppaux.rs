@@ -20,7 +20,7 @@ impl MyAdd for i32 {
 }
 
 fn main() {
-    let x = 5;
+    let x: i32 = 5;
     let y = x as MyAdd<i32>;
     //~^ ERROR as `MyAdd<i32>`
 }

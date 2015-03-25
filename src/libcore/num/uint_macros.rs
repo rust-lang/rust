@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![doc(hidden)]
+#![allow(trivial_numeric_casts)]
 
 macro_rules! uint_module { ($T:ty, $T_SIGNED:ty, $bits:expr) => (
 

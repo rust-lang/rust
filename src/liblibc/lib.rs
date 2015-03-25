@@ -2439,6 +2439,7 @@ pub mod consts {
         }
         pub mod posix88 {
             use types::os::arch::c95::c_int;
+            use types::os::arch::posix88::mode_t;
 
             pub const O_RDONLY : c_int = 0;
             pub const O_WRONLY : c_int = 1;
@@ -2461,6 +2462,14 @@ pub mod consts {
             pub const S_IXUSR : c_int = 64;
             pub const S_IWUSR : c_int = 128;
             pub const S_IRUSR : c_int = 256;
+            pub const S_IRWXG : mode_t = 56;
+            pub const S_IXGRP : mode_t = 8;
+            pub const S_IWGRP : mode_t = 16;
+            pub const S_IRGRP : mode_t = 32;
+            pub const S_IRWXO : mode_t = 7;
+            pub const S_IXOTH : mode_t = 1;
+            pub const S_IWOTH : mode_t = 2;
+            pub const S_IROTH : mode_t = 4;
             pub const F_OK : c_int = 0;
             pub const R_OK : c_int = 4;
             pub const W_OK : c_int = 2;
@@ -2811,6 +2820,14 @@ pub mod consts {
             pub const S_IXUSR : mode_t = 64;
             pub const S_IWUSR : mode_t = 128;
             pub const S_IRUSR : mode_t = 256;
+            pub const S_IRWXG : mode_t = 56;
+            pub const S_IXGRP : mode_t = 8;
+            pub const S_IWGRP : mode_t = 16;
+            pub const S_IRGRP : mode_t = 32;
+            pub const S_IRWXO : mode_t = 7;
+            pub const S_IXOTH : mode_t = 1;
+            pub const S_IWOTH : mode_t = 2;
+            pub const S_IROTH : mode_t = 4;
             pub const F_OK : c_int = 0;
             pub const R_OK : c_int = 4;
             pub const W_OK : c_int = 2;
@@ -3024,6 +3041,14 @@ pub mod consts {
             pub const S_IXUSR : mode_t = 64;
             pub const S_IWUSR : mode_t = 128;
             pub const S_IRUSR : mode_t = 256;
+            pub const S_IRWXG : mode_t = 56;
+            pub const S_IXGRP : mode_t = 8;
+            pub const S_IWGRP : mode_t = 16;
+            pub const S_IRGRP : mode_t = 32;
+            pub const S_IRWXO : mode_t = 7;
+            pub const S_IXOTH : mode_t = 1;
+            pub const S_IWOTH : mode_t = 2;
+            pub const S_IROTH : mode_t = 4;
             pub const F_OK : c_int = 0;
             pub const R_OK : c_int = 4;
             pub const W_OK : c_int = 2;
@@ -3752,6 +3777,14 @@ pub mod consts {
             pub const S_IXUSR : mode_t = 64;
             pub const S_IWUSR : mode_t = 128;
             pub const S_IRUSR : mode_t = 256;
+            pub const S_IRWXG : mode_t = 56;
+            pub const S_IXGRP : mode_t = 8;
+            pub const S_IWGRP : mode_t = 16;
+            pub const S_IRGRP : mode_t = 32;
+            pub const S_IRWXO : mode_t = 7;
+            pub const S_IXOTH : mode_t = 1;
+            pub const S_IWOTH : mode_t = 2;
+            pub const S_IROTH : mode_t = 4;
             pub const F_OK : c_int = 0;
             pub const R_OK : c_int = 4;
             pub const W_OK : c_int = 2;
@@ -4198,6 +4231,14 @@ pub mod consts {
             pub const S_IXUSR : mode_t = 64;
             pub const S_IWUSR : mode_t = 128;
             pub const S_IRUSR : mode_t = 256;
+            pub const S_IRWXG : mode_t = 56;
+            pub const S_IXGRP : mode_t = 8;
+            pub const S_IWGRP : mode_t = 16;
+            pub const S_IRGRP : mode_t = 32;
+            pub const S_IRWXO : mode_t = 7;
+            pub const S_IXOTH : mode_t = 1;
+            pub const S_IWOTH : mode_t = 2;
+            pub const S_IROTH : mode_t = 4;
             pub const F_OK : c_int = 0;
             pub const R_OK : c_int = 4;
             pub const W_OK : c_int = 2;
@@ -4610,6 +4651,14 @@ pub mod consts {
             pub const S_IXUSR : mode_t = 64;
             pub const S_IWUSR : mode_t = 128;
             pub const S_IRUSR : mode_t = 256;
+            pub const S_IRWXG : mode_t = 56;
+            pub const S_IXGRP : mode_t = 8;
+            pub const S_IWGRP : mode_t = 16;
+            pub const S_IRGRP : mode_t = 32;
+            pub const S_IRWXO : mode_t = 7;
+            pub const S_IXOTH : mode_t = 1;
+            pub const S_IWOTH : mode_t = 2;
+            pub const S_IROTH : mode_t = 4;
             pub const F_OK : c_int = 0;
             pub const R_OK : c_int = 4;
             pub const W_OK : c_int = 2;

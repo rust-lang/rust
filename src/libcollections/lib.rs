@@ -24,6 +24,8 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![doc(test(no_crate_inject))]
 
+#![allow(trivial_casts)]
+#![allow(trivial_numeric_casts)]
 #![feature(alloc)]
 #![feature(box_syntax)]
 #![feature(box_patterns)]

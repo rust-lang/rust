@@ -162,7 +162,7 @@ pub mod pipes {
         }
     }
 
-    pub struct send_packet<T> {
+    pub struct send_packet<T:Send> {
         p: Option<*const packet<T>>,
     }
 
@@ -192,7 +192,7 @@ pub mod pipes {
         }
     }
 
-    pub struct recv_packet<T> {
+    pub struct recv_packet<T:Send> {
         p: Option<*const packet<T>>,
     }
 

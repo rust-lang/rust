@@ -25,7 +25,7 @@ impl Bar for BarImpl {
 }
 
 
-struct Foo<B>(B);
+struct Foo<B: Bar>(B);
 
 #[unsafe_destructor]
 impl<B: Bar> Drop for Foo<B> {

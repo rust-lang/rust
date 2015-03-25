@@ -35,25 +35,33 @@ impl<T: Send + Sync + 'static> Lazy<T> {
     pub fn get(&'static self) -> Option<Arc<T>> {
         let _g = self.lock.lock();
         unsafe {
-            let mut ptr = *self.ptr.get();
+            let ptr = *self.ptr.get();
             if ptr.is_null() {
-                ptr = boxed::into_raw(self.init());
-                *self.ptr.get() = ptr;
+                Some(self.init())
             } else if ptr as usize == 1 {
-                return None
+                None
+            } else {
+                Some((*ptr).clone())
             }
-            Some((*ptr).clone())
         }
     }
 
-    fn init(&'static self) -> Box<Arc<T>> {
-        rt::at_exit(move || unsafe {
+    unsafe fn init(&'static self) -> Arc<T> {
+        // If we successfully register an at exit handler, then we cache the
+        // `Arc` allocation in our own internal box (it will get deallocated by
+        // the at exit handler). Otherwise we just return the freshly allocated
+        // `Arc`.
+        let registered = rt::at_exit(move || {
             let g = self.lock.lock();
             let ptr = *self.ptr.get();
             *self.ptr.get() = 1 as *mut _;
             drop(g);
             drop(Box::from_raw(ptr))
         });
-        Box::new((self.init)())
+        let ret = (self.init)();
+        if registered.is_ok() {
+            *self.ptr.get() = boxed::into_raw(Box::new(ret.clone()));
+        }
+        return ret
     }
 }

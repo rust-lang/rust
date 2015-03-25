@@ -17,16 +17,18 @@ use middle::subst::Substs;
 use middle::subst::VecPerParamSpace;
 use middle::subst;
 use middle::traits;
+use middle::ty::ClosureTyper;
 use trans::base::*;
 use trans::build::*;
 use trans::callee::*;
 use trans::callee;
 use trans::cleanup;
+use trans::closure;
 use trans::common::*;
 use trans::consts;
 use trans::datum::*;
 use trans::debuginfo::DebugLoc;
-use trans::expr::{SaveIn, Ignore};
+use trans::expr::SaveIn;
 use trans::expr;
 use trans::glue;
 use trans::machine;
@@ -358,19 +360,21 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         traits::VtableClosure(closure_def_id, substs) => {
             // The substitutions should have no type parameters remaining
             // after passing through fulfill_obligation
-            let llfn = trans_fn_ref_with_substs(bcx.ccx(),
-                                                closure_def_id,
-                                                MethodCallKey(method_call),
-                                                bcx.fcx.param_substs,
-                                                substs).val;
-
+            let trait_closure_kind = bcx.tcx().lang_items.fn_trait_kind(trait_id).unwrap();
+            let llfn = closure::trans_closure_method(bcx.ccx(),
+                                                     closure_def_id,
+                                                     substs,
+                                                     MethodCallKey(method_call),
+                                                     bcx.fcx.param_substs,
+                                                     trait_closure_kind);
             Callee {
                 bcx: bcx,
                 data: Fn(llfn),
             }
         }
         traits::VtableFnPointer(fn_ty) => {
-            let llfn = trans_fn_pointer_shim(bcx.ccx(), fn_ty);
+            let trait_closure_kind = bcx.tcx().lang_items.fn_trait_kind(trait_id).unwrap();
+            let llfn = trans_fn_pointer_shim(bcx.ccx(), trait_closure_kind, fn_ty);
             Callee { bcx: bcx, data: Fn(llfn) }
         }
         traits::VtableObject(ref data) => {
@@ -645,9 +649,6 @@ pub fn trans_object_shim<'a, 'tcx>(
 
     assert!(!fcx.needs_ret_allocas);
 
-    let sig =
-        ty::erase_late_bound_regions(bcx.tcx(), &fty.sig);
-
     let dest =
         fcx.llretslotptr.get().map(
             |_| expr::SaveIn(fcx.get_ret_slot(bcx, sig.output, "ret_slot")));
@@ -714,17 +715,18 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 emit_vtable_methods(ccx, id, substs, param_substs).into_iter()
             }
             traits::VtableClosure(closure_def_id, substs) => {
-                let llfn = trans_fn_ref_with_substs(
-                    ccx,
-                    closure_def_id,
-                    ExprId(0),
-                    param_substs,
-                    substs).val;
-
+                let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_ref.def_id()).unwrap();
+                let llfn = closure::trans_closure_method(ccx,
+                                                         closure_def_id,
+                                                         substs,
+                                                         ExprId(0),
+                                                         param_substs,
+                                                         trait_closure_kind);
                 vec![llfn].into_iter()
             }
             traits::VtableFnPointer(bare_fn_ty) => {
-                vec![trans_fn_pointer_shim(ccx, bare_fn_ty)].into_iter()
+                let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_ref.def_id()).unwrap();
+                vec![trans_fn_pointer_shim(ccx, trait_closure_kind, bare_fn_ty)].into_iter()
             }
             traits::VtableObject(ref data) => {
                 // this would imply that the Self type being erased is
@@ -859,44 +861,6 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      substs.clone()).val
         })
         .collect()
-}
-
-/// Generates the code to convert from a pointer (`Box<T>`, `&T`, etc) into an object
-/// (`Box<Trait>`, `&Trait`, etc). This means creating a pair where the first word is the vtable
-/// and the second word is the pointer.
-pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    datum: Datum<'tcx, Expr>,
-                                    id: ast::NodeId,
-                                    trait_ref: ty::PolyTraitRef<'tcx>,
-                                    dest: expr::Dest)
-                                    -> Block<'blk, 'tcx> {
-    let mut bcx = bcx;
-    let _icx = push_ctxt("meth::trans_trait_cast");
-
-    let lldest = match dest {
-        Ignore => {
-            return datum.clean(bcx, "trait_trait_cast", id);
-        }
-        SaveIn(dest) => dest
-    };
-
-    debug!("trans_trait_cast: trait_ref={}",
-           trait_ref.repr(bcx.tcx()));
-
-    let llty = type_of(bcx.ccx(), datum.ty);
-
-    // Store the pointer into the first half of pair.
-    let llboxdest = GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]);
-    let llboxdest = PointerCast(bcx, llboxdest, llty.ptr_to());
-    bcx = datum.store_to(bcx, llboxdest);
-
-    // Store the vtable into the second half of pair.
-    let vtable = get_vtable(bcx.ccx(), trait_ref, bcx.fcx.param_substs);
-    let llvtabledest = GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]);
-    let llvtabledest = PointerCast(bcx, llvtabledest, val_ty(vtable).ptr_to());
-    Store(bcx, vtable, llvtabledest);
-
-    bcx
 }
 
 /// Replace the self type (&Self or Box<Self>) with an opaque pointer.

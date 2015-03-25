@@ -28,8 +28,9 @@ use iter::ExactSizeIterator;
 use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
 use marker::Sized;
 use mem;
+#[allow(deprecated)]
 use num::Int;
-use ops::{Fn, FnMut};
+use ops::{Fn, FnMut, FnOnce};
 use option::Option::{self, None, Some};
 use raw::{Repr, Slice};
 use result::Result::{self, Ok, Err};
@@ -261,7 +262,7 @@ pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
              reason = "use std::ffi::c_str_to_bytes + str::from_utf8")]
 pub unsafe fn from_c_str(s: *const i8) -> &'static str {
     let s = s as *const u8;
-    let mut len = 0;
+    let mut len: usize = 0;
     while *s.offset(len as isize) != 0 {
         len += 1;
     }
@@ -541,12 +542,39 @@ delegate_iter!{exact u8 : Bytes<'a>}
 #[derive(Copy, Clone)]
 struct BytesDeref;
 
+#[cfg(stage0)]
 impl<'a> Fn<(&'a u8,)> for BytesDeref {
     type Output = u8;
 
     #[inline]
     extern "rust-call" fn call(&self, (ptr,): (&'a u8,)) -> u8 {
         *ptr
+    }
+}
+
+#[cfg(not(stage0))]
+impl<'a> Fn<(&'a u8,)> for BytesDeref {
+    #[inline]
+    extern "rust-call" fn call(&self, (ptr,): (&'a u8,)) -> u8 {
+        *ptr
+    }
+}
+
+#[cfg(not(stage0))]
+impl<'a> FnMut<(&'a u8,)> for BytesDeref {
+    #[inline]
+    extern "rust-call" fn call_mut(&mut self, (ptr,): (&'a u8,)) -> u8 {
+        Fn::call(&*self, (ptr,))
+    }
+}
+
+#[cfg(not(stage0))]
+impl<'a> FnOnce<(&'a u8,)> for BytesDeref {
+    type Output = u8;
+
+    #[inline]
+    extern "rust-call" fn call_once(self, (ptr,): (&'a u8,)) -> u8 {
+        Fn::call(&self, (ptr,))
     }
 }
 

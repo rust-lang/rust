@@ -24,6 +24,7 @@ impl<'a, T> X for B<'a, T> {}
 
 fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
     box B(&*v) as Box<X> //~ ERROR the parameter type `T` may not live long enough
+        //~^ ERROR the parameter type `T` may not live long enough
 }
 
 fn main() {}

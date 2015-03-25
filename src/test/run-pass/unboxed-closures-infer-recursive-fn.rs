@@ -32,11 +32,18 @@ impl<F,A,R> YCombinator<F,A,R> {
 }
 
 impl<A,R,F : Fn(&Fn(A) -> R, A) -> R> Fn<(A,)> for YCombinator<F,A,R> {
-    type Output = R;
-
     extern "rust-call" fn call(&self, (arg,): (A,)) -> R {
         (self.func)(self, arg)
     }
+}
+
+impl<A,R,F : Fn(&Fn(A) -> R, A) -> R> FnMut<(A,)> for YCombinator<F,A,R> {
+    extern "rust-call" fn call_mut(&mut self, args: (A,)) -> R { self.call(args) }
+}
+
+impl<A,R,F : Fn(&Fn(A) -> R, A) -> R> FnOnce<(A,)> for YCombinator<F,A,R> {
+    type Output = R;
+    extern "rust-call" fn call_once(self, args: (A,)) -> R { self.call(args) }
 }
 
 fn main() {

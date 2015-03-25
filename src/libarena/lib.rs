@@ -429,7 +429,8 @@ impl<T> TypedArenaChunk<T> {
         // Destroy the next chunk.
         let next = self.next;
         let size = calculate_size::<T>(self.capacity);
-        deallocate(self as *mut TypedArenaChunk<T> as *mut u8, size,
+        let self_ptr: *mut TypedArenaChunk<T> = self;
+        deallocate(self_ptr as *mut u8, size,
                    mem::min_align_of::<TypedArenaChunk<T>>());
         if !next.is_null() {
             let capacity = (*next).capacity;
