@@ -129,22 +129,27 @@ pub enum TypeOrigin {
     EquatePredicate(Span),
 }
 
-impl fmt::Display for TypeOrigin {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(),fmt::Error> {
-        let msg = match self {
-            &TypeOrigin::Misc(_) => "mismatched types",
-            &TypeOrigin::MethodCompatCheck(_) => "method not compatible with trait",
+impl TypeOrigin {
+    fn as_str(&self) -> &'static str {
+        match self {
+            &TypeOrigin::Misc(_) |
+            &TypeOrigin::RelateSelfType(_) |
+            &TypeOrigin::RelateOutputImplTypes(_) |
             &TypeOrigin::ExprAssignable(_) => "mismatched types",
             &TypeOrigin::RelateTraitRefs(_) => "mismatched traits",
-            &TypeOrigin::RelateSelfType(_) => "mismatched types",
-            &TypeOrigin::RelateOutputImplTypes(_) => "mismatched types",
+            &TypeOrigin::MethodCompatCheck(_) => "method not compatible with trait",
             &TypeOrigin::MatchExpressionArm(_, _) => "match arms have incompatible types",
             &TypeOrigin::IfExpression(_) => "if and else have incompatible types",
             &TypeOrigin::IfExpressionWithNoElse(_) => "if may be missing an else clause",
             &TypeOrigin::RangeExpression(_) => "start and end of range have incompatible types",
             &TypeOrigin::EquatePredicate(_) => "equality predicate not satisfied",
-        };
-        fmt::Display::fmt(msg, f)
+        }
+    }
+}
+
+impl fmt::Display for TypeOrigin {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(),fmt::Error> {
+        fmt::Display::fmt(self.as_str(), f)
     }
 }
 
