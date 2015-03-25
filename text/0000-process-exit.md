@@ -50,7 +50,7 @@ and the [`ExitProcess` function][win] on windows.
 [win]: https://msdn.microsoft.com/en-us/library/windows/desktop/ms682658%28v=vs.85%29.aspx
 
 This function is also not marked `unsafe`, despite the risk of leaking
-allocated resources (e.g. destructor smany not be run). It is already possible
+allocated resources (e.g. destructors may not be run). It is already possible
 to safely create memory leaks in Rust, however, (with `Rc` + `RefCell`), so
 this is not considered a strong enough threshold to mark the function as
 `unsafe`.
