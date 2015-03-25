@@ -231,7 +231,7 @@ pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
 }
 
 /// Variant of read_and_zero that writes the specific drop-flag byte
-/// (which may be more apropriate than zero).
+/// (which may be more appropriate than zero).
 #[inline(always)]
 #[unstable(feature = "core",
            reason = "may play a larger role in std::ptr future extensions")]
