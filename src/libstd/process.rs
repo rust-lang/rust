@@ -748,6 +748,7 @@ mod tests {
         cmd
     }
 
+    #[cfg(not(target_arch = "aarch64"))]
     #[test]
     fn test_keep_current_working_dir() {
         use os;
