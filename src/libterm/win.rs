@@ -126,7 +126,7 @@ impl<T: Write+Send+'static> WinConsole<T> {
         }
         Some(box WinConsole { buf: out,
                               def_foreground: fg, def_background: bg,
-                              foreground: fg, background: bg } as Box<Terminal<T>+Send>)
+                              foreground: fg, background: bg })
     }
 }
 

@@ -18,11 +18,18 @@ struct SFn {
 }
 
 impl Fn<(isize,)> for SFn {
-    type Output = isize;
-
     extern "rust-call" fn call(&self, (z,): (isize,)) -> isize {
         self.x * self.y * z
     }
+}
+
+impl FnMut<(isize,)> for SFn {
+    extern "rust-call" fn call_mut(&mut self, args: (isize,)) -> isize { self.call(args) }
+}
+
+impl FnOnce<(isize,)> for SFn {
+    type Output = isize;
+    extern "rust-call" fn call_once(self, args: (isize,)) -> isize { self.call(args) }
 }
 
 struct SFnMut {
@@ -31,11 +38,14 @@ struct SFnMut {
 }
 
 impl FnMut<(isize,)> for SFnMut {
-    type Output = isize;
-
     extern "rust-call" fn call_mut(&mut self, (z,): (isize,)) -> isize {
         self.x * self.y * z
     }
+}
+
+impl FnOnce<(isize,)> for SFnMut {
+    type Output = isize;
+    extern "rust-call" fn call_once(mut self, args: (isize,)) -> isize { self.call_mut(args) }
 }
 
 struct SFnOnce {

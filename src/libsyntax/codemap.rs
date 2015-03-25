@@ -284,7 +284,7 @@ pub const COMMAND_LINE_EXPN: ExpnId = ExpnId(-2);
 
 impl ExpnId {
     pub fn from_llvm_cookie(cookie: c_uint) -> ExpnId {
-        ExpnId(cookie as u32)
+        ExpnId(cookie)
     }
 
     pub fn to_llvm_cookie(self) -> i32 {
@@ -376,7 +376,7 @@ impl Encodable for FileMap {
                         match bytes_per_diff {
                             1 => for diff in diff_iter { try! { (diff.0 as u8).encode(s) } },
                             2 => for diff in diff_iter { try! { (diff.0 as u16).encode(s) } },
-                            4 => for diff in diff_iter { try! { (diff.0 as u32).encode(s) } },
+                            4 => for diff in diff_iter { try! { diff.0.encode(s) } },
                             _ => unreachable!()
                         }
                     }
@@ -650,7 +650,7 @@ impl CodeMap {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
         let mut lines = Vec::new();
-        for i in lo.line - 1..hi.line as usize {
+        for i in lo.line - 1..hi.line {
             lines.push(i);
         };
         FileLines {file: lo.file, lines: lines}

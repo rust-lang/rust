@@ -186,7 +186,7 @@ pub fn parse(file: &mut Read, longnames: bool)
     let magic = try!(read_le_u16(file));
     if magic != 0x011A {
         return Err(format!("invalid magic number: expected {:x}, found {:x}",
-                           0x011A as usize, magic as usize));
+                           0x011A_usize, magic as usize));
     }
 
     let names_bytes          = try!(read_le_u16(file)) as int;

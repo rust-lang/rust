@@ -758,7 +758,7 @@ impl<'a> StringReader<'a> {
                 self.err_span_char(self.last_pos, self.pos,
                               "illegal character in numeric character escape", c);
                 0
-            }) as u32;
+            });
             self.bump();
         }
 
@@ -887,7 +887,7 @@ impl<'a> StringReader<'a> {
                     self.fatal_span_char(self.last_pos, self.pos,
                                    "illegal character in unicode escape", c);
                 }
-            }) as u32;
+            });
             self.bump();
             count += 1;
         }

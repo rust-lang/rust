@@ -40,7 +40,7 @@ const MAX_STEALS: isize = 5;
 #[cfg(not(test))]
 const MAX_STEALS: isize = 1 << 20;
 
-pub struct Packet<T> {
+pub struct Packet<T: Send> {
     queue: mpsc::Queue<T>,
     cnt: AtomicIsize, // How many items are on this channel
     steals: isize, // How many times has a port received without blocking?

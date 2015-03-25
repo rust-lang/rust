@@ -22,6 +22,7 @@
     * [More Strings](more-strings.md)
     * [Patterns](patterns.md)
     * [Method Syntax](method-syntax.md)
+    * [Associated Types](associated-types.md)
     * [Closures](closures.md)
     * [Iterators](iterators.md)
     * [Generics](generics.md)

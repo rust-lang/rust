@@ -725,7 +725,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             };
 
             // this closure doesn't implement the right kind of `Fn` trait
-            if closure_kind != kind {
+            if !closure_kind.extends(kind) {
                 continue;
             }
 

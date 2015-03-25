@@ -16,5 +16,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "usize")]
+#![allow(trivial_numeric_casts)]
 
 uint_module! { usize, isize, ::isize::BITS }

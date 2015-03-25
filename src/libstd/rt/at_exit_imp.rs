@@ -12,6 +12,10 @@
 //!
 //! Documentation can be found on the `rt::at_exit` function.
 
+// FIXME: switch this to use atexit. Currently this
+// segfaults (the queue's memory is mysteriously gone), so
+// instead the cleanup is tied to the `std::rt` entry point.
+
 use boxed;
 use boxed::Box;
 use vec::Vec;
@@ -27,47 +31,56 @@ type Queue = Vec<Thunk<'static>>;
 static LOCK: Mutex = MUTEX_INIT;
 static mut QUEUE: *mut Queue = 0 as *mut Queue;
 
-unsafe fn init() {
+// The maximum number of times the cleanup routines will be run. While running
+// the at_exit closures new ones may be registered, and this count is the number
+// of times the new closures will be allowed to register successfully. After
+// this number of iterations all new registrations will return `false`.
+const ITERS: usize = 10;
+
+unsafe fn init() -> bool {
     if QUEUE.is_null() {
         let state: Box<Queue> = box Vec::new();
         QUEUE = boxed::into_raw(state);
-    } else {
+    } else if QUEUE as usize == 1 {
         // can't re-init after a cleanup
-        rtassert!(QUEUE as uint != 1);
+        return false
     }
 
-    // FIXME: switch this to use atexit as below. Currently this
-    // segfaults (the queue's memory is mysteriously gone), so
-    // instead the cleanup is tied to the `std::rt` entry point.
-    //
-    // ::libc::atexit(cleanup);
+    return true
 }
 
 pub fn cleanup() {
-    unsafe {
-        LOCK.lock();
-        let queue = QUEUE;
-        QUEUE = 1 as *mut _;
-        LOCK.unlock();
+    for i in 0..ITERS {
+        unsafe {
+            LOCK.lock();
+            let queue = QUEUE;
+            QUEUE = if i == ITERS - 1 {1} else {0} as *mut _;
+            LOCK.unlock();
 
-        // make sure we're not recursively cleaning up
-        rtassert!(queue as uint != 1);
+            // make sure we're not recursively cleaning up
+            rtassert!(queue as usize != 1);
 
-        // If we never called init, not need to cleanup!
-        if queue as uint != 0 {
-            let queue: Box<Queue> = Box::from_raw(queue);
-            for to_run in *queue {
-                to_run.invoke(());
+            // If we never called init, not need to cleanup!
+            if queue as usize != 0 {
+                let queue: Box<Queue> = Box::from_raw(queue);
+                for to_run in *queue {
+                    to_run.invoke(());
+                }
             }
         }
     }
 }
 
-pub fn push(f: Thunk<'static>) {
+pub fn push(f: Thunk<'static>) -> bool {
+    let mut ret = true;
     unsafe {
         LOCK.lock();
-        init();
-        (*QUEUE).push(f);
+        if init() {
+            (*QUEUE).push(f);
+        } else {
+            ret = false;
+        }
         LOCK.unlock();
     }
+    return ret
 }

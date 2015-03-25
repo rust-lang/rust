@@ -38,7 +38,7 @@ use thread;
 ///
 /// The fields of this helper are all public, but they should not be used, this
 /// is for static initialization.
-pub struct Helper<M> {
+pub struct Helper<M:Send> {
     /// Internal lock which protects the remaining fields
     pub lock: StaticMutex,
     pub cond: StaticCondvar,
@@ -112,7 +112,7 @@ impl<M: Send> Helper<M> {
                     self.cond.notify_one()
                 });
 
-                rt::at_exit(move || { self.shutdown() });
+                let _ = rt::at_exit(move || { self.shutdown() });
                 *self.initialized.get() = true;
             } else if *self.chan.get() as uint == 1 {
                 panic!("cannot continue usage after shutdown");

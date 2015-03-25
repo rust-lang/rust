@@ -789,10 +789,13 @@ fn confirm_callable_candidate<'cx,'tcx>(
            obligation.repr(tcx),
            fn_sig.repr(tcx));
 
+    // the `Output` associated type is declared on `FnOnce`
+    let fn_once_def_id = tcx.lang_items.fn_once_trait().unwrap();
+
     // Note: we unwrap the binder here but re-create it below (1)
     let ty::Binder((trait_ref, ret_type)) =
         util::closure_trait_ref_and_return_type(tcx,
-                                                obligation.predicate.trait_ref.def_id,
+                                                fn_once_def_id,
                                                 obligation.predicate.trait_ref.self_ty(),
                                                 fn_sig,
                                                 flag);

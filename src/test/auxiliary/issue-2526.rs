@@ -15,7 +15,7 @@
 
 use std::marker;
 
-struct arc_destruct<T> {
+struct arc_destruct<T: Sync> {
     _data: int,
     _marker: marker::PhantomData<T>
 }

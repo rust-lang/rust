@@ -190,7 +190,7 @@ impl<T: Write+Send+'static> TerminfoTerminal<T> {
                         out: out,
                         ti: msys_terminfo(),
                         num_colors: 8,
-                    } as Box<Terminal<T>+Send>)
+                    })
                 },
                 _ => {
                     debug!("error finding terminfo entry: {:?}", err);
@@ -213,7 +213,7 @@ impl<T: Write+Send+'static> TerminfoTerminal<T> {
 
         return Some(box TerminfoTerminal {out: out,
                                           ti: inf,
-                                          num_colors: nc} as Box<Terminal<T>+Send>);
+                                          num_colors: nc});
     }
 
     fn dim_if_necessary(&self, color: color::Color) -> color::Color {

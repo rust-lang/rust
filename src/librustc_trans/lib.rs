@@ -43,6 +43,9 @@
 #![feature(convert)]
 #![feature(path_relative_from)]
 
+#![allow(trivial_casts)]
+#![allow(trivial_numeric_casts)]
+
 extern crate arena;
 extern crate flate;
 extern crate getopts;
