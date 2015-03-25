@@ -30,7 +30,7 @@ pub fn pat_id_map(dm: &DefMap, pat: &ast::Pat) -> PatIdMap {
 
 pub fn pat_is_refutable(dm: &DefMap, pat: &ast::Pat) -> bool {
     match pat.node {
-        ast::PatLit(_) | ast::PatRange(_, _) => true,
+        ast::PatLit(_) | ast::PatRange(_, _) | ast::PatQPath(..) => true,
         ast::PatEnum(_, _) |
         ast::PatIdent(_, _, None) |
         ast::PatStruct(..) => {
@@ -60,8 +60,24 @@ pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &ast::Pat) -> bool {
 
 pub fn pat_is_const(dm: &DefMap, pat: &ast::Pat) -> bool {
     match pat.node {
-        ast::PatIdent(_, _, None) | ast::PatEnum(..) => {
+        ast::PatIdent(_, _, None) | ast::PatEnum(..) | ast::PatQPath(..) => {
             match dm.borrow().get(&pat.id).map(|d| d.full_def()) {
+                Some(DefConst(..)) | Some(DefAssociatedConst(..)) => true,
+                _ => false
+            }
+        }
+        _ => false
+    }
+}
+
+// Same as above, except that partially-resolved defs cause `false` to be
+// returned instead of a panic.
+pub fn pat_is_resolved_const(dm: &DefMap, pat: &ast::Pat) -> bool {
+    match pat.node {
+        ast::PatIdent(_, _, None) | ast::PatEnum(..) | ast::PatQPath(..) => {
+            match dm.borrow().get(&pat.id)
+                    .and_then(|d| if d.depth == 0 { Some(d.base_def) }
+                                  else { None } ) {
                 Some(DefConst(..)) | Some(DefAssociatedConst(..)) => true,
                 _ => false
             }

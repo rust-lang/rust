@@ -180,6 +180,7 @@ register_diagnostics! {
     E0324, // implemented a method when another trait item expected
     E0325, // implemented an associated type when another trait item expected
     E0326, // associated const implemented with different type from trait
+    E0327, // referred to method instead of constant in match pattern
     E0366, // dropck forbid specialization to concrete type or region
     E0367, // dropck forbid specialization to predicate not in struct/enum
     E0368, // binary operation `<op>=` cannot be applied to types

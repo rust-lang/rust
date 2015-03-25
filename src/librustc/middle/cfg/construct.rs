@@ -105,6 +105,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         match pat.node {
             ast::PatIdent(_, _, None) |
             ast::PatEnum(_, None) |
+            ast::PatQPath(..) |
             ast::PatLit(..) |
             ast::PatRange(..) |
             ast::PatWild(_) => {

@@ -439,7 +439,7 @@ impl<'map> ast_util::IdVisitingOperation for RenamingRecorder<'map> {
 impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
     fn fold_pat(&mut self, pat: P<Pat>) -> P<Pat> {
         return match pat.node {
-            ast::PatIdent(..) | ast::PatEnum(..) => {
+            ast::PatIdent(..) | ast::PatEnum(..) | ast::PatQPath(..) => {
                 let def = self.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def());
                 match def {
                     Some(DefAssociatedConst(did, _)) |
@@ -762,6 +762,9 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
                 Some(DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!(Single)
             },
+        ast::PatQPath(..) =>
+            cx.tcx.sess.span_bug(pat.span, "const pattern should've \
+                                            been rewritten"),
         ast::PatStruct(..) =>
             match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
                 Some(DefConst(..)) | Some(DefAssociatedConst(..)) =>
@@ -889,6 +892,11 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 }
                 _ => None
             }
+        }
+
+        ast::PatQPath(_, _) => {
+            cx.tcx.sess.span_bug(pat_span, "const pattern should've \
+                                            been rewritten")
         }
 
         ast::PatStruct(_, ref pattern_fields, _) => {

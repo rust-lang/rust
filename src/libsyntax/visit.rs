@@ -464,6 +464,10 @@ pub fn walk_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v Pat) {
                 }
             }
         }
+        PatQPath(ref qself, ref path) => {
+            visitor.visit_ty(&qself.ty);
+            visitor.visit_path(path, pattern.id)
+        }
         PatStruct(ref path, ref fields, _) => {
             visitor.visit_path(path, pattern.id);
             for field in fields {

@@ -1147,7 +1147,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             let tcx = typer.tcx();
 
             match pat.node {
-                ast::PatEnum(_, _) | ast::PatIdent(_, _, None) | ast::PatStruct(..) => {
+                ast::PatEnum(_, _) | ast::PatQPath(..) |
+                ast::PatIdent(_, _, None) | ast::PatStruct(..) => {
                     match def_map.get(&pat.id).map(|d| d.full_def()) {
                         None => {
                             // no definition found: pat is not a

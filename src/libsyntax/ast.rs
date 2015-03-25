@@ -599,6 +599,12 @@ pub enum Pat_ {
     /// "None" means a * pattern where we don't bind the fields to names.
     PatEnum(Path, Option<Vec<P<Pat>>>),
 
+    /// An associated const named using the qualified path `<T>::CONST` or
+    /// `<T as Trait>::CONST`. Associated consts from inherent impls can be
+    /// refered to as simply `T::CONST`, in which case they will end up as
+    /// PatEnum, and the resolver will have to sort that out.
+    PatQPath(QSelf, Path),
+
     /// Destructuring of a struct, e.g. `Foo {x, y, ..}`
     /// The `bool` is `true` in the presence of a `..`
     PatStruct(Path, Vec<Spanned<FieldPat>>, bool),

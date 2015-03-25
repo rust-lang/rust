@@ -1044,7 +1044,8 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     }
                 }
             }
-            ast::PatEnum(ref path, _) => {
+            ast::PatEnum(ref path, _) |
+            ast::PatQPath(_, ref path) => {
                 self.collected_paths.push((p.id, path.clone(), false, recorder::VarRef));
                 visit::walk_pat(self, p);
             }

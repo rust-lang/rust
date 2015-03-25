@@ -1809,7 +1809,8 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::PatMac(..) => {
             bcx.sess().span_bug(pat.span, "unexpanded macro");
         }
-        ast::PatWild(_) | ast::PatLit(_) | ast::PatRange(_, _) => ()
+        ast::PatQPath(..) | ast::PatWild(_) | ast::PatLit(_) |
+        ast::PatRange(_, _) => ()
     }
     return bcx;
 }

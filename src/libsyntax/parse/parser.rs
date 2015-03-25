@@ -40,8 +40,9 @@ use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchSource};
 use ast::{MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
-use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatMac, PatRange, PatRegion};
-use ast::{PatStruct, PatTup, PatVec, PatWild, PatWildMulti, PatWildSingle};
+use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatQPath, PatMac, PatRange};
+use ast::{PatRegion, PatStruct, PatTup, PatVec, PatWild, PatWildMulti};
+use ast::PatWildSingle;
 use ast::{PolyTraitRef, QSelf};
 use ast::{Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
@@ -107,6 +108,15 @@ pub enum PathParsingMode {
     /// A path with a lifetime and type parameters with double colons before
     /// the type parameters; e.g. `foo::bar::<'a>::Baz::<T>`
     LifetimeAndTypesWithColons,
+}
+
+/// How to parse a qualified path, whether to allow trailing parameters.
+#[derive(Copy, Clone, PartialEq)]
+pub enum QPathParsingMode {
+    /// No trailing parameters, e.g. `<T as Trait>::Item`
+    NoParameters,
+    /// Optional parameters, e.g. `<T as Trait>::item::<'a, U>`
+    MaybeParameters,
 }
 
 /// How to parse a bound, whether to allow bound modifiers such as `?`.
@@ -1345,36 +1355,9 @@ impl<'a> Parser<'a> {
             try!(self.expect(&token::CloseDelim(token::Paren)));
             TyTypeof(e)
         } else if try!(self.eat_lt()) {
-            // QUALIFIED PATH `<TYPE as TRAIT_REF>::item`
-            let self_type = try!(self.parse_ty_sum());
 
-            let mut path = if try!(self.eat_keyword(keywords::As) ){
-                try!(self.parse_path(LifetimeAndTypesWithoutColons))
-            } else {
-                ast::Path {
-                    span: self.span,
-                    global: false,
-                    segments: vec![]
-                }
-            };
-
-            let qself = QSelf {
-                ty: self_type,
-                position: path.segments.len()
-            };
-
-            try!(self.expect(&token::Gt));
-            try!(self.expect(&token::ModSep));
-
-            path.segments.push(ast::PathSegment {
-                identifier: try!(self.parse_ident()),
-                parameters: ast::PathParameters::none()
-            });
-
-            if path.segments.len() == 1 {
-                path.span.lo = self.last_span.lo;
-            }
-            path.span.hi = self.last_span.hi;
+            let (qself, path) =
+                 try!(self.parse_qualified_path(QPathParsingMode::NoParameters));
 
             TyPath(Some(qself), path)
         } else if self.check(&token::ModSep) ||
@@ -1589,6 +1572,61 @@ impl<'a> Parser<'a> {
         } else {
             Ok(expr)
         }
+    }
+
+    // QUALIFIED PATH `<TYPE [as TRAIT_REF]>::IDENT[::<PARAMS>]`
+    // Assumes that the leading `<` has been parsed already.
+    pub fn parse_qualified_path(&mut self, mode: QPathParsingMode)
+                                -> PResult<(QSelf, ast::Path)> {
+        let self_type = try!(self.parse_ty_sum());
+        let mut path = if try!(self.eat_keyword(keywords::As)) {
+            try!(self.parse_path(LifetimeAndTypesWithoutColons))
+        } else {
+            ast::Path {
+                span: self.span,
+                global: false,
+                segments: vec![]
+            }
+        };
+
+        let qself = QSelf {
+            ty: self_type,
+            position: path.segments.len()
+        };
+
+        try!(self.expect(&token::Gt));
+        try!(self.expect(&token::ModSep));
+
+        let item_name = try!(self.parse_ident());
+        let parameters = match mode {
+            QPathParsingMode::NoParameters => ast::PathParameters::none(),
+            QPathParsingMode::MaybeParameters => {
+                if try!(self.eat(&token::ModSep)) {
+                    try!(self.expect_lt());
+                    // Consumed `item::<`, go look for types
+                    let (lifetimes, types, bindings) =
+                        try!(self.parse_generic_values_after_lt());
+                    ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
+                        lifetimes: lifetimes,
+                        types: OwnedSlice::from_vec(types),
+                        bindings: OwnedSlice::from_vec(bindings),
+                    })
+                } else {
+                    ast::PathParameters::none()
+                }
+            }
+        };
+        path.segments.push(ast::PathSegment {
+            identifier: item_name,
+            parameters: parameters
+        });
+
+        if path.segments.len() == 1 {
+            path.span.lo = self.last_span.lo;
+        }
+        path.span.hi = self.last_span.hi;
+
+        Ok((qself, path))
     }
 
     /// Parses a path and optional type parameter bounds, depending on the
@@ -2054,49 +2092,10 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 if try!(self.eat_lt()){
-                    // QUALIFIED PATH `<TYPE as TRAIT_REF>::item::<'a, T>`
-                    let self_type = try!(self.parse_ty_sum());
-                    let mut path = if try!(self.eat_keyword(keywords::As) ){
-                        try!(self.parse_path(LifetimeAndTypesWithoutColons))
-                    } else {
-                        ast::Path {
-                            span: self.span,
-                            global: false,
-                            segments: vec![]
-                        }
-                    };
-                    let qself = QSelf {
-                        ty: self_type,
-                        position: path.segments.len()
-                    };
-                    try!(self.expect(&token::Gt));
-                    try!(self.expect(&token::ModSep));
 
-                    let item_name = try!(self.parse_ident());
-                    let parameters = if try!(self.eat(&token::ModSep) ){
-                        try!(self.expect_lt());
-                        // Consumed `item::<`, go look for types
-                        let (lifetimes, types, bindings) =
-                            try!(self.parse_generic_values_after_lt());
-                        ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
-                            lifetimes: lifetimes,
-                            types: OwnedSlice::from_vec(types),
-                            bindings: OwnedSlice::from_vec(bindings),
-                        })
-                    } else {
-                        ast::PathParameters::none()
-                    };
-                    path.segments.push(ast::PathSegment {
-                        identifier: item_name,
-                        parameters: parameters
-                    });
+                    let (qself, path) =
+                        try!(self.parse_qualified_path(QPathParsingMode::MaybeParameters));
 
-                    if path.segments.len() == 1 {
-                        path.span.lo = self.last_span.lo;
-                    }
-                    path.span.hi = self.last_span.hi;
-
-                    let hi = self.span.hi;
                     return Ok(self.mk_expr(lo, hi, ExprPath(Some(qself), path)));
                 }
                 if try!(self.eat_keyword(keywords::Move) ){
@@ -3167,16 +3166,25 @@ impl<'a> Parser<'a> {
     fn parse_pat_range_end(&mut self) -> PResult<P<Expr>> {
         if self.is_path_start() {
             let lo = self.span.lo;
-            let path = try!(self.parse_path(LifetimeAndTypesWithColons));
+            let (qself, path) = if try!(self.eat_lt()) {
+                // Parse a qualified path
+                let (qself, path) =
+                    try!(self.parse_qualified_path(QPathParsingMode::NoParameters));
+                (Some(qself), path)
+            } else {
+                // Parse an unqualified path
+                (None, try!(self.parse_path(LifetimeAndTypesWithColons)))
+            };
             let hi = self.last_span.hi;
-            Ok(self.mk_expr(lo, hi, ExprPath(None, path)))
+            Ok(self.mk_expr(lo, hi, ExprPath(qself, path)))
         } else {
             self.parse_literal_maybe_minus()
         }
     }
 
     fn is_path_start(&self) -> bool {
-        (self.token == token::ModSep || self.token.is_ident() || self.token.is_path())
+        (self.token == token::Lt || self.token == token::ModSep
+            || self.token.is_ident() || self.token.is_path())
             && !self.token.is_keyword(keywords::True) && !self.token.is_keyword(keywords::False)
     }
 
@@ -3252,25 +3260,44 @@ impl<'a> Parser<'a> {
                         pat = try!(self.parse_pat_ident(BindByValue(MutImmutable)));
                     }
                 } else {
-                    // Parse as a general path
-                    let path = try!(self.parse_path(LifetimeAndTypesWithColons));
+                    let (qself, path) = if try!(self.eat_lt()) {
+                        // Parse a qualified path
+                        let (qself, path) =
+                            try!(self.parse_qualified_path(QPathParsingMode::NoParameters));
+                        (Some(qself), path)
+                    } else {
+                        // Parse an unqualified path
+                        (None, try!(self.parse_path(LifetimeAndTypesWithColons)))
+                    };
                     match self.token {
                       token::DotDotDot => {
                         // Parse range
                         let hi = self.last_span.hi;
-                        let begin = self.mk_expr(lo, hi, ExprPath(None, path));
+                        let begin = self.mk_expr(lo, hi, ExprPath(qself, path));
                         try!(self.bump());
                         let end = try!(self.parse_pat_range_end());
                         pat = PatRange(begin, end);
                       }
                       token::OpenDelim(token::Brace) => {
-                        // Parse struct pattern
+                         if qself.is_some() {
+                            let span = self.span;
+                            self.span_err(span,
+                                          "unexpected `{` after qualified path");
+                            self.abort_if_errors();
+                        }
+                       // Parse struct pattern
                         try!(self.bump());
                         let (fields, etc) = try!(self.parse_pat_fields());
                         try!(self.bump());
                         pat = PatStruct(path, fields, etc);
                       }
                       token::OpenDelim(token::Paren) => {
+                        if qself.is_some() {
+                            let span = self.span;
+                            self.span_err(span,
+                                          "unexpected `(` after qualified path");
+                            self.abort_if_errors();
+                        }
                         // Parse tuple struct or enum pattern
                         if self.look_ahead(1, |t| *t == token::DotDot) {
                             // This is a "top constructor only" pat
@@ -3286,6 +3313,10 @@ impl<'a> Parser<'a> {
                                     |p| p.parse_pat_nopanic()));
                             pat = PatEnum(path, Some(args));
                         }
+                      }
+                      _ if qself.is_some() => {
+                        // Parse qualified path
+                        pat = PatQPath(qself.unwrap(), path);
                       }
                       _ => {
                         // Parse nullary enum

@@ -2220,6 +2220,9 @@ impl<'a> State<'a> {
                     }
                 }
             }
+            ast::PatQPath(ref qself, ref path) => {
+                try!(self.print_qpath(path, qself, false));
+            }
             ast::PatStruct(ref path, ref fields, etc) => {
                 try!(self.print_path(path, true, 0));
                 try!(self.nbsp());
