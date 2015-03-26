@@ -1,3 +1,4 @@
+- Feature Name: convert
 - Start Date: 2014-11-21
 - RFC PR: [rust-lang/rfcs#529](https://github.com/rust-lang/rfcs/pull/529)
 - Rust Issue: [rust-lang/rust#23567](https://github.com/rust-lang/rust/issues/23567)
@@ -37,7 +38,7 @@ For example, the
 introduce an `AsPath` trait to make various path operations ergonomic:
 
 ```rust
-pub trait AsPath for Sized? {
+pub trait AsPath {
     fn as_path(&self) -> &Path;
 }
 
@@ -106,23 +107,19 @@ more detail below, and merits community discussion.
 ## Basic design
 
 The design is fairly simple, although perhaps not as simple as one
-might expect: we introduce a total of *five* traits:
+might expect: we introduce a total of *four* traits:
 
 ```rust
-trait As<Sized? T> for Sized? {
-    fn convert_as(&self) -> &T;
+trait AsRef<T: ?Sized> {
+    fn as_ref(&self) -> &T;
 }
 
-trait AsMut<Sized? T> for Sized? {
-    fn convert_as_mut(&mut self) -> &mut T;
-}
-
-trait To<T> for Sized? {
-    fn convert_to(&self) -> T;
+trait AsMut<T: ?Sized> {
+    fn as_mut(&mut self) -> &mut T;
 }
 
 trait Into<T> {
-    fn convert_into(self) -> T;
+    fn into(self) -> T;
 }
 
 trait From<T> {
@@ -130,16 +127,16 @@ trait From<T> {
 }
 ```
 
-The first three traits mirror our `as`/`to`/`into` conventions, but
+The first three traits mirror our `as`/`into` conventions, but
 add a bit more structure to them: `as`-style conversions are from
-references to references, `to`-style conversions are from references
-to arbitrary types, and `into`-style conversions are between arbitrary
-types (consuming their argument).
+references to references and `into`-style conversions are between
+arbitrary types (consuming their argument).
 
-The final trait, `From`, mimics the `from` constructors. Unlike the
-other traits, its method is not prefixed with `convert`. This is
-because, again unlike the other traits, this trait is expected to
-outright replace most custom `from` constructors. See below.
+A `To` trait, following our `to` conventions and converting from
+references to arbitrary types, is possible but is deferred for now.
+
+The final trait, `From`, mimics the `from` constructors. This trait is
+expected to outright replace most custom `from` constructors. See below.
 
 **Why the reference restrictions?**
 
@@ -185,7 +182,7 @@ lifetime linking explained above. In addition, however, it is a basic
 principle of Rust's libraries that conversions are distinguished by
 cost and consumption, and having multiple traits makes it possible to
 (by convention) restrict attention to e.g. "free" `as`-style conversions
-by bounding only by `As`.
+by bounding only by `AsRef`.
 
 Why have both `Into` and `From`? There are a few reasons:
 
@@ -201,30 +198,16 @@ Given the above trait design, there are a few straightforward blanket
 `impl`s as one would expect:
 
 ```rust
-// As implies To
-impl<'a, Sized? T, Sized? U> To<&'a U> for &'a T where T: As<U> {
-    fn convert_to(&self) -> &'a U {
-        self.convert_as()
-    }
-}
-
-// To implies Into
-impl<'a, T, U> Into<U> for &'a T where T: To<U> {
-    fn convert_into(self) -> U {
-        self.convert_to()
-    }
-}
-
 // AsMut implies Into
 impl<'a, T, U> Into<&'a mut U> for &'a mut T where T: AsMut<U> {
-    fn convert_into(self) -> &'a mut U {
-        self.convert_as_mut()
+    fn into(self) -> &'a mut U {
+        self.as_mut()
     }
 }
 
 // Into implies From
 impl<T, U> From<T> for U where T: Into<U> {
-    fn from(t: T) -> U { t.cvt_into() }
+    fn from(t: T) -> U { t.into() }
 }
 ```
 
@@ -233,28 +216,28 @@ impl<T, U> From<T> for U where T: Into<U> {
 Using all of the above, here are some example `impl`s and their use:
 
 ```rust
-impl As<str> for String {
-    fn convert_as(&self) -> &str {
+impl AsRef<str> for String {
+    fn as_ref(&self) -> &str {
         self.as_slice()
     }
 }
-impl As<[u8]> for String {
-    fn convert_as(&self) -> &[u8] {
+impl AsRef<[u8]> for String {
+    fn as_ref(&self) -> &[u8] {
         self.as_bytes()
     }
 }
 
 impl Into<Vec<u8>> for String {
-    fn convert_into(self) -> Vec<u8> {
+    fn into(self) -> Vec<u8> {
         self.into_bytes()
     }
 }
 
 fn main() {
     let a = format!("hello");
-    let b: &[u8] = a.convert_as();
-    let c: &str = a.convert_as();
-    let d: Vec<u8> = a.convert_into();
+    let b: &[u8] = a.as_ref();
+    let c: &str = a.as_ref();
+    let d: Vec<u8> = a.into();
 }
 ```
 
@@ -265,8 +248,8 @@ be rare, however; usually the traits are used for generic functions:
 impl Path {
     fn join_path_inner(&self, p: &Path) -> PathBuf { ... }
 
-    pub fn join_path<P: As<Path>>(&self, p: &P) -> PathBuf {
-        self.join_path_inner(p.convert_as())
+    pub fn join_path<P: AsRef<Path>>(&self, p: &P) -> PathBuf {
+        self.join_path_inner(p.as_ref())
     }
 }
 ```
@@ -292,14 +275,15 @@ impl Path {
 ```
 
 that would desugar into exactly the above (assuming that the `~` sigil
-was restricted to `As` conversions). Such a feature is out of scope
+was restricted to `AsRef` conversions). Such a feature is out of scope
 for this RFC, but it's a natural and highly ergonomic extension of the
 traits being proposed here.
 
 ## Preliminary conventions
 
 Would *all* conversion traits be replaced by the proposed ones?
-Probably not, due to the combination of two factors:
+Probably not, due to the combination of two factors (using the example
+of `To`, despite its being deferred for now):
 
 * You still want blanket `impl`s like `ToString` for `Show`, but:
 * This RFC proposes that specific conversion *methods* like
@@ -355,9 +339,9 @@ So a rough, preliminary convention would be the following:
 *All* of the conversion traits are added to the prelude. There are two
  reasons for doing so:
 
-* For `As`/`To`/`Into`, the reasoning is similar to the inclusion of
-  `PartialEq` and friends: they are expected to appear ubiquitously as
-  bounds.
+* For `AsRef`/`AsMut`/`Into`, the reasoning is similar to the
+  inclusion of `PartialEq` and friends: they are expected to appear
+  ubiquitously as bounds.
 
 * For `From`, bounds are somewhat less common but the use of the
   `from` constructor is expected to be rather widespread.
@@ -380,6 +364,14 @@ There are a few drawbacks to the design as proposed:
   language extensions that make it ergonomic *and* avoid code bloat.
 
 # Alternatives
+
+The original form of this RFC used the names `As.convert_as`,
+`AsMut.convert_as_mut`, `To.convert_to` and `Into.convert_into` (though
+still `From.from`). After discussion `As` was changed to `AsRef`,
+removing the keyword collision of a method named `as`, and the
+`convert_` prefixes were removed.
+
+---
 
 The main alternative is one that attempts to provide methods that
 *completely replace* ad hoc conversion methods. To make this work, a
@@ -422,47 +414,47 @@ the author to discard this alternative design.
 
 // Immutable views
 
-trait ShiftViewFrom<Sized? T> for Sized? {
+trait ShiftViewFrom<T: ?Sized> {
     fn shift_view_from(&T) -> &Self;
 }
 
-trait ShiftView for Sized? {
-    fn shift_view<Sized? T>(&self) -> &T where T: ShiftViewFrom<Self>;
+trait ShiftView {
+    fn shift_view<T: ?Sized>(&self) -> &T where T: ShiftViewFrom<Self>;
 }
 
-impl<Sized? T> ShiftView for T {
-    fn shift_view<Sized? U: ShiftViewFrom<T>>(&self) -> &U {
+impl<T: ?Sized> ShiftView for T {
+    fn shift_view<U: ?Sized + ShiftViewFrom<T>>(&self) -> &U {
         ShiftViewFrom::shift_view_from(self)
     }
 }
 
 // Mutable coercions
 
-trait ShiftViewFromMut<Sized? T> for Sized? {
+trait ShiftViewFromMut<T: ?Sized> {
     fn shift_view_from_mut(&mut T) -> &mut Self;
 }
 
-trait ShiftViewMut for Sized? {
-    fn shift_view_mut<Sized? T>(&mut self) -> &mut T where T: ShiftViewFromMut<Self>;
+trait ShiftViewMut {
+    fn shift_view_mut<T: ?Sized>(&mut self) -> &mut T where T: ShiftViewFromMut<Self>;
 }
 
-impl<Sized? T> ShiftViewMut for T {
-    fn shift_view_mut<Sized? U: ShiftViewFromMut<T>>(&mut self) -> &mut U {
+impl<T: ?Sized> ShiftViewMut for T {
+    fn shift_view_mut<U: ?Sized + ShiftViewFromMut<T>>(&mut self) -> &mut U {
         ShiftViewFromMut::shift_view_from_mut(self)
     }
 }
 
 // CONVERSIONS
 
-trait ConvertFrom<Sized? T> for Sized? {
+trait ConvertFrom<T: ?Sized> {
     fn convert_from(&T) -> Self;
 }
 
-trait Convert for Sized? {
+trait Convert {
     fn convert<T>(&self) -> T where T: ConvertFrom<Self>;
 }
 
-impl<Sized? T> Convert for T {
+impl<T: ?Sized> Convert for T {
     fn convert<U>(&self) -> U where U: ConvertFrom<T> {
         ConvertFrom::convert_from(self)
     }
@@ -524,5 +516,33 @@ impl ShiftViewFrom<String> for [u8] {
 fn main() {
     let s = format!("hello");
     let b = s.shift_view::<[u8]>();
+}
+```
+
+## Possible further work
+
+We could add a `To` trait.
+
+```rust
+trait To<T> {
+    fn to(&self) -> T;
+}
+```
+
+As far as blanket `impl`s are concerned, there are a few simple ones:
+
+```rust
+// AsRef implies To
+impl<'a, T: ?Sized, U: ?Sized> To<&'a U> for &'a T where T: AsRef<U> {
+    fn to(&self) -> &'a U {
+        self.as_ref()
+    }
+}
+
+// To implies Into
+impl<'a, T, U> Into<U> for &'a T where T: To<U> {
+    fn into(self) -> U {
+        self.to()
+    }
 }
 ```

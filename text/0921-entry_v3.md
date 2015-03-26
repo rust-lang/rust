@@ -27,7 +27,7 @@ match map.entry(key) => {
 }
 ```
 
-This code is noisy, and is visibly fighting the Entry API a bit, such as having to supress
+This code is noisy, and is visibly fighting the Entry API a bit, such as having to suppress
 the return value of insert. It requires the `Entry` enum to be imported into scope. It requires
 the user to learn a whole new API. It also introduces a "many ways to do it" stylistic ambiguity:
 
@@ -53,7 +53,7 @@ map.entry(key).get().unwrap_or_else(|entry| entry.insert(vec![])).push(val);
 
 This is certainly *nicer*. No imports are needed, the Occupied case is handled, and we're closer
 to a "only one way". However this is still fairly tedious and arcane. `get` provides little
-meaning for what is done; unwrap_or_else is long and scary-sounding; and VacantEntry litterally
+meaning for what is done; `unwrap_or_else` is long and scary-sounding; and VacantEntry literally
 *only* supports `insert`, so having to call it seems redundant.
 
 # Detailed design
@@ -63,7 +63,7 @@ Replace `Entry::get` with the following two methods:
 ```
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
-    pub fn or_insert(self. default: V) -> &'a mut V {
+    pub fn or_insert(self, default: V) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default),
@@ -72,7 +72,7 @@ Replace `Entry::get` with the following two methods:
 
     /// Ensures a value is in the entry by inserting the result of the default function if empty,
     /// and returns a mutable reference to the value in the entry.
-    pub fn or_insert_with<F: FnOnce() -> V>(self. default: F) -> &'a mut V {
+    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default()),
@@ -107,7 +107,7 @@ usage audited and updated: https://github.com/rust-lang/rust/pull/22930
 
 # Drawbacks
 
-Replaces the composability of just mapping to a Result with more adhoc specialty methods. This
+Replaces the composability of just mapping to a Result with more ad hoc specialty methods. This
 is hardly a drawback for the reasons stated in the RFC. Maybe someone was really leveraging
 the Result-ness in an exotic way, but it was likely an abuse of the API. Regardless, the `get`
 method is trivial to write as a consumer of the API.
