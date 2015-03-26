@@ -126,12 +126,9 @@ follows. The intention is that the defined results are the same as the
 defined results today. The only change is that now a panic may result.
 
 - The operations `+`, `-`, `*`, `/`, `%` can underflow and
-  overflow. Shift operations (`<<`, `>>`) can shift a value of width `N` by more
-  than `N` bits. In these cases, the result is the same as the pre-existing,
-  wrapping semantics.
-- When truncating, the casting operation `as` can overflow if the
-  truncated bits contain non-zero values. If no panic occurs, the
-  result of such an operation is defined to be the same as wrapping.
+  overflow.
+- Shift operations (`<<`, `>>`) can shift a value of width `N` by more
+  than `N` bits.
 
 ## Enabling overflow checking
 
@@ -146,9 +143,9 @@ The goal of this rule is to ensure that, during debugging and normal
 development, overflow detection is on, so that users can be alerted to
 potential overflow (and, in particular, for code where overflow is
 expected and normal, they will be immediately guided to use the
-`WrappingOps` traits introduced below). However, because these checks
-will be compiled out whenever an optimized build is produced, final
-code wilil not pay a performance penalty.
+wrapping methods introduced below). However, because these checks will
+be compiled out whenever an optimized build is produced, final code
+wilil not pay a performance penalty.
 
 In the future, we may add additional means to control when overflow is
 checked, such as scoped attributes or a global, independent
@@ -168,15 +165,15 @@ coallesced into a single check. Another useful example might be that,
 when summing a vector, the final overflow check could be deferred
 until the summation is complete.
 
-## `WrappingOps` trait for explicit wrapping arithmetic
+## Methods for explicit wrapping arithmetic
 
 For those use cases where explicit wraparound on overflow is required,
 such as hash functions, we must provide operations with such
-semantics. Accomplish this by providing the following trait and impls
-in the `std::num` module.
+semantics. Accomplish this by providing the following methods defined
+in the inherent impls for the various integral types.
 
 ```rust
-pub trait WrappingOps {
+impl i32 { // and i8, i16, i64, isize, u8, u32, u64, usize
     fn wrapping_add(self, rhs: Self) -> Self;
     fn wrapping_sub(self, rhs: Self) -> Self;
     fn wrapping_mul(self, rhs: Self) -> Self;
@@ -185,30 +182,7 @@ pub trait WrappingOps {
 
     fn wrapping_lshift(self, amount: u32) -> Self;
     fn wrapping_rshift(self, amount: u32) -> Self;
-
-    fn wrapping_as_u8(self, rhs: Self) -> u8;
-    fn wrapping_as_u16(self, rhs: Self) -> u16;
-    fn wrapping_as_u32(self, rhs: Self) -> u32
-    fn wrapping_as_u64(self, rhs: Self) -> u64;
-    fn wrapping_as_usize(self, rhs: Self) -> usize;
-
-    fn wrapping_as_i8(self, rhs: Self) -> i8;
-    fn wrapping_as_i16(self, rhs: Self) -> i16;
-    fn wrapping_as_i32(self, rhs: Self) -> i32
-    fn wrapping_as_i64(self, rhs: Self) -> i64;
-    fn wrapping_as_isize(self, rhs: Self) -> isize;
 }
-
-impl WrappingOps for isize
-impl WrappingOps for usize
-impl WrappingOps for i8
-impl WrappingOps for u8
-impl WrappingOps for i16
-impl WrappingOps for u16
-impl WrappingOps for i32
-impl WrappingOps for u32
-impl WrappingOps for i64
-impl WrappingOps for u64
 ```
 
 These are implemented to preserve the pre-existing, wrapping semantics
@@ -448,6 +422,33 @@ Reasons this was not pursued: Wrong defaults. Doesn't enable distinguishing
 
 Reasons this was not pursued: My brain melted. :(
 
+## Making `as` be checked
+
+The RFC originally specified that using `as` to convert between types
+would cause checked semantics. However, we now use `as` as a primitive
+type operator. This decision was discussed on the
+[discuss message board][as].
+
+The key points in favor of reverting `as` to its original semantics
+were:
+
+1. `as` is already a fairly low-level operator that can be used (for
+   example) to convert between `*mut T` and `*mut U`.
+2. `as` is the only way to convert types in constants, and hence it is
+   important that it covers all possibilities that constants might
+   need (eventually, [const fn][911] or other approaches may change
+   this, but those are not going to be stable for 1.0).
+3. The [type ascription RFC][803] set the precedent that `as` is used
+   for "dangerous" coercions that require care.
+4. Eventually, checked numeric conversions (and perhaps most or all
+   uses of `as`) can be ergonomically added as methods.  The precise
+   form of this will be resolved in the future. [const fn][911] can
+   then allow these to be used in constant expressions.
+
+[as]: http://internals.rust-lang.org/t/on-casts-and-checked-overflow/1710/
+[803]: https://github.com/rust-lang/rfcs/pull/803
+[911]: https://github.com/rust-lang/rfcs/pull/911
+
 # Unresolved questions
 
 The C semantics of wrapping operations in some cases are undefined:
@@ -480,7 +481,18 @@ overflow.
 [CZ22]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010483.html
 [JR23_2]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010527.html
 
-## Acknowledgements and further reading
+# Updates since being accepted
+
+Since it was accepted, the RFC has been updated as follows:
+
+1. The wrapping methods were moved to be inherent, since we gained the
+   capability for libstd to declare inherent methods on primitive
+   integral types.
+2. `as` was changed to restore the behavior before the RFC (that is,
+   it truncates, as a C cast would).
+   
+
+# Acknowledgements and further reading
 
 This RFC was [initially written by Gábor Lehel][GH] and was since
 edited by Nicholas Matsakis into its current form. Although the text
