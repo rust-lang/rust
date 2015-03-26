@@ -174,40 +174,39 @@ struct Circle {
 }
 
 impl Circle {
+    fn new() -> Circle {
+        Circle { x: 0.0, y: 0.0, radius: 0.0, }
+    }
+
     fn area(&self) -> f64 {
         std::f64::consts::PI * (self.radius * self.radius)
     }
-}
 
-struct CircleBuilder {
-    coordinate: f64,
-    radius: f64,
-}
-
-impl CircleBuilder {
-    fn new() -> CircleBuilder {
-        CircleBuilder { coordinate: 0.0, radius: 0.0, }
-    }
-
-    fn coordinate(&mut self, coordinate: f64) -> &mut CircleBuilder {
-        self.coordinate = coordinate;
+    fn set_x(&mut self, coordinate: f64) -> &mut Circle {
+        self.x = coordinate;
         self
     }
 
-    fn radius(&mut self, radius: f64) -> &mut CircleBuilder {
+    fn set_y(&mut self, coordinate: f64) -> &mut Circle {
+        self.y = coordinate;
+        self
+    }
+
+    fn set_radius(&mut self, radius: f64) -> &mut Circle {
         self.radius = radius;
         self
     }
 
     fn finalize(&self) -> Circle {
-        Circle { x: self.coordinate, y: self.coordinate, radius: self.radius }
+        Circle { x: self.x, y: self.y, radius: self.radius }
     }
 }
 
 fn main() {
-    let c = CircleBuilder::new()
-                .coordinate(10.0)
-                .radius(5.0)
+    let c = Circle::new()
+                .set_x(1.0)
+                .set_y(2.0)
+                .set_radius(2.0)
                 .finalize();
 
 
@@ -215,9 +214,8 @@ fn main() {
 }
 ```
 
-What we've done here is make another struct, `CircleBuilder`. We've defined our
-builder methods on it. We've also defined our `area()` method on `Circle`. We
-also made one more method on `CircleBuilder`: `finalize()`. This method creates
+What we've done here is define our builder methods on our struct. We
+also added a method: `finalize()`. This method creates
 our final `Circle` from the builder. Now, we've used the type system to enforce
-our concerns: we can use the methods on `CircleBuilder` to constrain making
+our concerns: we can use these methods to constrain making
 `Circle`s in any way we choose.
