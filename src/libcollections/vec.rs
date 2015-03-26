@@ -423,24 +423,13 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Returns a mutable slice of the elements of `self`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// fn foo(slice: &mut [i32]) {}
-    ///
-    /// let mut vec = vec![1, 2];
-    /// foo(vec.as_mut_slice());
-    /// ```
+    /// Deprecated: use `&mut s[..]` instead.
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &mut s[..] instead")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe {
-            let ptr = *self.ptr;
-            assume(!ptr.is_null());
-            slice::from_raw_parts_mut(ptr, self.len)
-        }
+        &mut self[..]
     }
 
     /// Creates a consuming iterator, that is, one that moves each value out of
@@ -1494,13 +1483,13 @@ impl<T> ops::IndexMut<ops::RangeFull> for Vec<T> {
     #[cfg(stage0)]
     #[inline]
     fn index_mut(&mut self, _index: &ops::RangeFull) -> &mut [T] {
-        self.as_mut_slice()
+        self
     }
 
     #[cfg(not(stage0))]
     #[inline]
     fn index_mut(&mut self, _index: ops::RangeFull) -> &mut [T] {
-        self.as_mut_slice()
+        self
     }
 }
 
@@ -1519,7 +1508,13 @@ impl<T> ops::Deref for Vec<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::DerefMut for Vec<T> {
-    fn deref_mut(&mut self) -> &mut [T] { self.as_mut_slice() }
+    fn deref_mut(&mut self) -> &mut [T] {
+        unsafe {
+            let ptr = *self.ptr;
+            assume(!ptr.is_null());
+            slice::from_raw_parts_mut(ptr, self.len)
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1656,21 +1651,13 @@ impl<T: Ord> Ord for Vec<T> {
     }
 }
 
+#[unstable(feature = "collections",
+           reason = "will be replaced by slice syntax")]
+#[deprecated(since = "1.0.0", reason = "use &mut s[..] instead")]
 #[allow(deprecated)]
 impl<T> AsSlice<T> for Vec<T> {
-    /// Returns a slice into `self`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![feature(core)]
-    /// fn foo(slice: &[i32]) {}
-    ///
-    /// let vec = vec![1, 2];
-    /// foo(vec.as_slice());
-    /// ```
+    /// Deprecated: use `&mut s[..]` instead.
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice(&self) -> &[T] {
         self
     }
