@@ -54,7 +54,6 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("non_ascii_idents", "1.0.0", Active),
     ("thread_local", "1.0.0", Active),
     ("link_args", "1.0.0", Active),
-    ("phase", "1.0.0", Removed),
     ("plugin_registrar", "1.0.0", Active),
     ("log_syntax", "1.0.0", Active),
     ("trace_macros", "1.0.0", Active),
