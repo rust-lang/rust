@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(std_misc, libc)]
+#![feature(libc)]
 
 extern crate libc;
-use std::thread::Thread;
+use std::thread;
 
 mod rustrt {
     extern crate libc;
@@ -42,9 +42,9 @@ fn count(n: libc::uintptr_t) -> libc::uintptr_t {
 pub fn main() {
     // Make sure we're on a task with small Rust stacks (main currently
     // has a large stack)
-    let _t = Thread::spawn(move|| {
+    thread::scoped(move|| {
         let result = count(1000);
         println!("result = {}", result);
         assert_eq!(result, 1000);
-    });
+    }).join();
 }
