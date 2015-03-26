@@ -681,7 +681,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn dont_panic_in_drop_on_panicked_flush() {
         struct FailFlushWriter;
 
