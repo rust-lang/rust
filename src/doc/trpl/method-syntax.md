@@ -100,8 +100,8 @@ impl Circle {
         std::f64::consts::PI * (self.radius * self.radius)
     }
 
-    fn grow(&self) -> Circle {
-        Circle { x: self.x, y: self.y, radius: (self.radius * 10.0) }
+    fn grow(&self, increment: f64) -> Circle {
+        Circle { x: self.x, y: self.y, radius: self.radius + increment }
     }
 }
 
@@ -109,7 +109,7 @@ fn main() {
     let c = Circle { x: 0.0, y: 0.0, radius: 2.0 };
     println!("{}", c.area());
 
-    let d = c.grow().area();
+    let d = c.grow(2.0).area();
     println!("{}", d);
 }
 ```
@@ -124,7 +124,7 @@ fn grow(&self) -> Circle {
 ```
 
 We just say we're returning a `Circle`. With this method, we can grow a new
-circle with an area that's 100 times larger than the old one.
+circle to any arbitrary size.
 
 ## Static methods
 
