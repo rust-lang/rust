@@ -16,12 +16,12 @@ use std::iter::repeat;
 fn test() {
     unsafe {
         struct Pair {
-            fst: int,
-            snd: int
+            fst: isize,
+            snd: isize
         };
         let mut p = Pair {fst: 10, snd: 20};
         let pptr: *mut Pair = &mut p;
-        let iptr: *mut int = mem::transmute(pptr);
+        let iptr: *mut isize = mem::transmute(pptr);
         assert_eq!(*iptr, 10);
         *iptr = 30;
         assert_eq!(*iptr, 30);
@@ -55,13 +55,13 @@ fn test() {
 
 #[test]
 fn test_is_null() {
-    let p: *const int = null();
+    let p: *const isize = null();
     assert!(p.is_null());
 
     let q = unsafe { p.offset(1) };
     assert!(!q.is_null());
 
-    let mp: *mut int = null_mut();
+    let mp: *mut isize = null_mut();
     assert!(mp.is_null());
 
     let mq = unsafe { mp.offset(1) };
@@ -71,22 +71,22 @@ fn test_is_null() {
 #[test]
 fn test_as_ref() {
     unsafe {
-        let p: *const int = null();
+        let p: *const isize = null();
         assert_eq!(p.as_ref(), None);
 
-        let q: *const int = &2;
+        let q: *const isize = &2;
         assert_eq!(q.as_ref().unwrap(), &2);
 
-        let p: *mut int = null_mut();
+        let p: *mut isize = null_mut();
         assert_eq!(p.as_ref(), None);
 
-        let q: *mut int = &mut 2;
+        let q: *mut isize = &mut 2;
         assert_eq!(q.as_ref().unwrap(), &2);
 
         // Lifetime inference
         let u = 2isize;
         {
-            let p = &u as *const int;
+            let p = &u as *const isize;
             assert_eq!(p.as_ref().unwrap(), &2);
         }
     }
@@ -95,16 +95,16 @@ fn test_as_ref() {
 #[test]
 fn test_as_mut() {
     unsafe {
-        let p: *mut int = null_mut();
+        let p: *mut isize = null_mut();
         assert!(p.as_mut() == None);
 
-        let q: *mut int = &mut 2;
+        let q: *mut isize = &mut 2;
         assert!(q.as_mut().unwrap() == &mut 2);
 
         // Lifetime inference
         let mut u = 2isize;
         {
-            let p = &mut u as *mut int;
+            let p = &mut u as *mut isize;
             assert!(p.as_mut().unwrap() == &mut 2);
         }
     }
@@ -143,7 +143,7 @@ fn test_ptr_subtraction() {
         let ptr = xs.as_ptr();
 
         while idx >= 0 {
-            assert_eq!(*(ptr.offset(idx as int)), idx as int);
+            assert_eq!(*(ptr.offset(idx as isize)), idx as isize);
             idx = idx - 1;
         }
 

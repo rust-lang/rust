@@ -12,7 +12,7 @@
 
 #![crate_type = "lib"]
 
-pub struct NameVal { pub name: String, pub val: int }
+pub struct NameVal { pub name: String, pub val: isize }
 pub fn struct_nameval() -> NameVal {
     NameVal { name: "crateresolve5".to_string(), val: 10 }
 }
@@ -30,4 +30,4 @@ pub fn nominal() -> e { e_val }
 
 pub fn nominal_neq(_e1: e, _e2: e) -> bool { false }
 
-pub fn f() -> int { 20 }
+pub fn f() -> isize { 20 }

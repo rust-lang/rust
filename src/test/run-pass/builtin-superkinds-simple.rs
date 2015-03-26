@@ -14,6 +14,6 @@
 
 trait Foo : Send { }
 
-impl Foo for int { }
+impl Foo for isize { }
 
 pub fn main() { }

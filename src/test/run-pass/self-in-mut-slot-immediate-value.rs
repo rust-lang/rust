@@ -15,7 +15,7 @@
 
 #[derive(Copy)]
 struct Value {
-    n: int
+    n: isize
 }
 
 impl Value {

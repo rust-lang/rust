@@ -15,12 +15,12 @@
 struct Foo {
     #[cfg(fail)]
     bar: baz,
-    foo: int,
+    foo: isize,
 }
 
 struct Foo2 {
     #[cfg(foo)]
-    foo: int,
+    foo: isize,
 }
 
 enum Bar1 {
@@ -37,8 +37,8 @@ enum Bar2 {
 enum Bar3 {
     Bar3_1 {
         #[cfg(fail)]
-        foo: int,
-        bar: int,
+        foo: isize,
+        bar: isize,
     }
 }
 

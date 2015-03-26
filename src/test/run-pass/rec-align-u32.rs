@@ -16,8 +16,8 @@ use std::mem;
 
 mod rusti {
     extern "rust-intrinsic" {
-        pub fn pref_align_of<T>() -> uint;
-        pub fn min_align_of<T>() -> uint;
+        pub fn pref_align_of<T>() -> usize;
+        pub fn min_align_of<T>() -> usize;
     }
 }
 
@@ -38,14 +38,14 @@ struct Outer {
 
 #[cfg(any(target_arch = "x86", target_arch = "arm", target_arch = "aarch64"))]
 mod m {
-    pub fn align() -> uint { 4 }
-    pub fn size() -> uint { 8 }
+    pub fn align() -> usize { 4 }
+    pub fn size() -> usize { 8 }
 }
 
 #[cfg(target_arch = "x86_64")]
 mod m {
-    pub fn align() -> uint { 4 }
-    pub fn size() -> uint { 8 }
+    pub fn align() -> usize { 4 }
+    pub fn size() -> usize { 8 }
 }
 
 pub fn main() {

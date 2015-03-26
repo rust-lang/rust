@@ -39,7 +39,7 @@ const VARIANT2_NORTH: EnumWithStructVariants = EnumWithStructVariants::Variant2 
 
 pub mod glfw {
     #[derive(Copy)]
-    pub struct InputState(uint);
+    pub struct InputState(usize);
 
     pub const RELEASE  : InputState = InputState(0);
     pub const PRESS    : InputState = InputState(1);
@@ -101,7 +101,7 @@ fn issue_13731() {
 fn issue_15393() {
     #![allow(dead_code)]
     struct Flags {
-        bits: uint
+        bits: usize
     }
 
     const FOO: Flags = Flags { bits: 0x01 };

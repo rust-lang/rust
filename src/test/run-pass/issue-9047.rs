@@ -10,7 +10,7 @@
 
 fn decode() -> String {
     'outer: loop {
-        let mut ch_start: uint;
+        let mut ch_start: usize;
         break 'outer;
     }
     "".to_string()

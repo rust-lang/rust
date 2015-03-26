@@ -91,13 +91,13 @@ fn helper(input: libc::HANDLE, messages: Receiver<Req>, _: ()) {
             }
         } else {
             let remove = {
-                match &mut chans[idx as uint - 1] {
+                match &mut chans[idx as usize - 1] {
                     &mut (ref mut c, oneshot) => { c.call(); oneshot }
                 }
             };
             if remove {
-                drop(objs.remove(idx as uint));
-                drop(chans.remove(idx as uint - 1));
+                drop(objs.remove(idx as usize));
+                drop(chans.remove(idx as usize - 1));
             }
         }
     }

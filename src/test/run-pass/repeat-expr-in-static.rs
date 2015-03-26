@@ -10,8 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
-static FOO: [int; 4] = [32; 4];
-static BAR: [int; 4] = [32, 32, 32, 32];
+static FOO: [isize; 4] = [32; 4];
+static BAR: [isize; 4] = [32, 32, 32, 32];
 
 pub fn main() {
     assert!(FOO == BAR);

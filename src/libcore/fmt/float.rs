@@ -125,7 +125,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
     // otherwise as well.
     let mut buf = [0; 1536];
     let mut end = 0;
-    let radix_gen: T = cast(radix as int).unwrap();
+    let radix_gen: T = cast(radix as isize).unwrap();
 
     let (num, exp) = match exp_format {
         ExpNone => (num, 0),
@@ -235,7 +235,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
             let extra_digit = ascii2value(buf[end - 1]);
             end -= 1;
             if extra_digit >= radix / 2 { // -> need to round
-                let mut i: int = end as int - 1;
+                let mut i: isize = end as isize - 1;
                 loop {
                     // If reached left end of number, have to
                     // insert additional digit:

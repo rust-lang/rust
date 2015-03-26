@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[derive(PartialEq, Debug)]
-struct Foo(uint);
+struct Foo(usize);
 
 fn foo() -> Foo {
     Foo(42)

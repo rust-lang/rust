@@ -20,7 +20,7 @@ pub fn main() {
 mod foo {
 }
 
-fn bar() -> int {
+fn bar() -> isize {
     match 0 {
       _ => { 0 }
     }

@@ -1109,13 +1109,13 @@ mod test {
 
     #[test]
     fn drop_full() {
-        let (tx, _rx) = channel::<Box<int>>();
+        let (tx, _rx) = channel::<Box<isize>>();
         tx.send(box 1).unwrap();
     }
 
     #[test]
     fn drop_full_shared() {
-        let (tx, _rx) = channel::<Box<int>>();
+        let (tx, _rx) = channel::<Box<isize>>();
         drop(tx.clone());
         drop(tx.clone());
         tx.send(box 1).unwrap();
@@ -1454,7 +1454,7 @@ mod test {
     #[test]
     fn oneshot_multi_thread_send_recv_stress() {
         for _ in 0..stress_factor() {
-            let (tx, rx) = channel::<Box<int>>();
+            let (tx, rx) = channel::<Box<isize>>();
             let _t = thread::spawn(move|| {
                 tx.send(box 10).unwrap();
             });
@@ -1631,7 +1631,7 @@ mod sync_tests {
 
     #[test]
     fn drop_full() {
-        let (tx, _rx) = sync_channel::<Box<int>>(1);
+        let (tx, _rx) = sync_channel::<Box<isize>>(1);
         tx.send(box 1).unwrap();
     }
 

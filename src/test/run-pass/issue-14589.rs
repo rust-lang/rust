@@ -31,5 +31,5 @@ impl<T> Test<T> {
 }
 
 trait Foo { fn dummy(&self) { }}
-struct Output(int);
+struct Output(isize);
 impl Foo for Output {}

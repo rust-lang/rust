@@ -17,18 +17,18 @@
 #![feature(box_syntax)]
 
 struct Foo {
-    x: Box<uint>,
-    y: Box<uint>,
+    x: Box<usize>,
+    y: Box<usize>,
 }
 
-fn foo(Foo {x, ..}: Foo) -> *const uint {
-    let addr: *const uint = &*x;
+fn foo(Foo {x, ..}: Foo) -> *const usize {
+    let addr: *const usize = &*x;
     addr
 }
 
 pub fn main() {
     let obj: Box<_> = box 1;
-    let objptr: *const uint = &*obj;
+    let objptr: *const usize = &*obj;
     let f = Foo {x: obj, y: box 2};
     let xptr = foo(f);
     assert_eq!(objptr, xptr);

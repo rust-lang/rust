@@ -12,8 +12,8 @@ pub use Foo::*;
 
 pub enum Foo {
     A,
-    B(int),
-    C { a: int },
+    B(isize),
+    C { a: isize },
 }
 
 impl Foo {
@@ -25,8 +25,8 @@ pub mod nest {
 
     pub enum Bar {
         D,
-        E(int),
-        F { a: int },
+        E(isize),
+        F { a: isize },
     }
 
     impl Bar {

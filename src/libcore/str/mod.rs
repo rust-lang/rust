@@ -1704,7 +1704,7 @@ impl StrExt for str {
     #[inline]
     unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str {
         mem::transmute(Slice {
-            data: self.as_ptr().offset(begin as int),
+            data: self.as_ptr().offset(begin as isize),
             len: end - begin,
         })
     }

@@ -11,11 +11,11 @@
 
 // pretty-expanded FIXME #23616
 
-fn region_identity(x: &uint) -> &uint { x }
+fn region_identity(x: &usize) -> &usize { x }
 
 fn apply<T, F>(t: T, f: F) -> T where F: FnOnce(T) -> T { f(t) }
 
-fn parameterized(x: &uint) -> uint {
+fn parameterized(x: &usize) -> usize {
     let z = apply(x, ({|y|
         region_identity(y)
     }));

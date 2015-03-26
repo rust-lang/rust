@@ -13,7 +13,7 @@
 #[repr(packed)]
 struct Foo {
     bar: u8,
-    baz: uint
+    baz: usize
 }
 
 pub fn main() {

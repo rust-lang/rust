@@ -325,18 +325,18 @@ enum Univariant {
     Unit(i32)
 }
 
-struct TupleStruct (f64, int);
+struct TupleStruct (f64, isize);
 
 
-fn simple_tuple((a, b): (int, bool)) {
+fn simple_tuple((a, b): (isize, bool)) {
     zzz(); // #break
 }
 
-fn nested_tuple((a, (b, c)): (int, (u16, u16))) {
+fn nested_tuple((a, (b, c)): (isize, (u16, u16))) {
     zzz(); // #break
 }
 
-fn destructure_only_first_level((a, b): (int, (u32, u32))) {
+fn destructure_only_first_level((a, b): (isize, (u32, u32))) {
     zzz(); // #break
 }
 
@@ -348,7 +348,7 @@ fn struct_pattern(Struct { a: k, b: l }: Struct) {
     zzz(); // #break
 }
 
-fn ignored_tuple_element((m, _, n): (int, u16, i32)) {
+fn ignored_tuple_element((m, _, n): (isize, u16, i32)) {
     zzz(); // #break
 }
 
@@ -370,27 +370,27 @@ fn complex_nesting(((u,   v  ), ((w,   (x,   Struct { a: y, b: z})), Struct { a:
     zzz(); // #break
 }
 
-fn managed_box(&aa: &(int, int)) {
+fn managed_box(&aa: &(isize, isize)) {
     zzz(); // #break
 }
 
-fn borrowed_pointer(&bb: &(int, int)) {
+fn borrowed_pointer(&bb: &(isize, isize)) {
     zzz(); // #break
 }
 
-fn contained_borrowed_pointer((&cc, _): (&int, int)) {
+fn contained_borrowed_pointer((&cc, _): (&isize, isize)) {
     zzz(); // #break
 }
 
-fn unique_pointer(box dd: Box<(int, int, int)>) {
+fn unique_pointer(box dd: Box<(isize, isize, isize)>) {
     zzz(); // #break
 }
 
-fn ref_binding(ref ee: (int, int, int)) {
+fn ref_binding(ref ee: (isize, isize, isize)) {
     zzz(); // #break
 }
 
-fn ref_binding_in_tuple((ref ff, gg): (int, (int, int))) {
+fn ref_binding_in_tuple((ref ff, gg): (isize, (isize, isize))) {
     zzz(); // #break
 }
 
@@ -414,7 +414,7 @@ fn tuple_struct_with_ref_binding(TupleStruct(mm, ref nn): TupleStruct) {
     zzz(); // #break
 }
 
-fn multiple_arguments((oo, pp): (int, int), qq : int) {
+fn multiple_arguments((oo, pp): (isize, isize), qq : isize) {
     zzz(); // #break
 }
 
@@ -442,7 +442,7 @@ fn main() {
     tuple_struct_with_ref_binding(TupleStruct(55.0, 56));
     multiple_arguments((57, 58), 59);
 
-    fn nested_function(rr: int, (ss, tt): (int, int)) {
+    fn nested_function(rr: isize, (ss, tt): (isize, isize)) {
         zzz(); // #break
     }
 

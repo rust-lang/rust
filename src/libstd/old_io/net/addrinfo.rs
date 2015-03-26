@@ -63,19 +63,19 @@ pub enum Protocol {
 /// `man -s 3 getaddrinfo`
 #[derive(Copy, Debug)]
 pub struct Hint {
-    pub family: uint,
+    pub family: usize,
     pub socktype: Option<SocketType>,
     pub protocol: Option<Protocol>,
-    pub flags: uint,
+    pub flags: usize,
 }
 
 #[derive(Copy, Debug)]
 pub struct Info {
     pub address: SocketAddr,
-    pub family: uint,
+    pub family: usize,
     pub socktype: Option<SocketType>,
     pub protocol: Option<Protocol>,
-    pub flags: uint,
+    pub flags: usize,
 }
 
 /// Easy name resolution. Given a hostname, returns the list of IP addresses for

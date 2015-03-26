@@ -22,8 +22,8 @@ fn wrap<A>(x:A, which: &'static str, history: &mut History) -> A {
 macro_rules! demo {
     ( $output_constraint:tt ) => {
         {
-            let mut x: int = 0;
-            let y: int = 1;
+            let mut x: isize = 0;
+            let y: isize = 1;
 
             let mut history: History = vec!();
             unsafe {

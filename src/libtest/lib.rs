@@ -38,7 +38,6 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(int_uint)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(std_misc)]
@@ -129,7 +128,7 @@ enum NamePadding {
 }
 
 impl TestDesc {
-    fn padded_name(&self, column_count: uint, align: NamePadding) -> String {
+    fn padded_name(&self, column_count: usize, align: NamePadding) -> String {
         let mut name = String::from_str(self.name.as_slice());
         let fill = column_count.saturating_sub(name.len());
         let mut pad = repeat(" ").take(fill).collect::<String>();
@@ -421,7 +420,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 #[derive(Clone, PartialEq)]
 pub struct BenchSamples {
     ns_iter_summ: stats::Summary<f64>,
-    mb_s: uint,
+    mb_s: usize,
 }
 
 #[derive(Clone, PartialEq)]
@@ -444,14 +443,14 @@ struct ConsoleTestState<T> {
     log_out: Option<File>,
     out: OutputLocation<T>,
     use_color: bool,
-    total: uint,
-    passed: uint,
-    failed: uint,
-    ignored: uint,
-    measured: uint,
+    total: usize,
+    passed: usize,
+    failed: usize,
+    ignored: usize,
+    measured: usize,
     metrics: MetricMap,
     failures: Vec<(TestDesc, Vec<u8> )> ,
-    max_name_len: uint, // number of columns to fill when aligning names
+    max_name_len: usize, // number of columns to fill when aligning names
 }
 
 impl<T: Write> ConsoleTestState<T> {
@@ -535,7 +534,7 @@ impl<T: Write> ConsoleTestState<T> {
         }
     }
 
-    pub fn write_run_start(&mut self, len: uint) -> io::Result<()> {
+    pub fn write_run_start(&mut self, len: usize) -> io::Result<()> {
         self.total = len;
         let noun = if len != 1 { "tests" } else { "test" };
         self.write_plain(&format!("\nrunning {} {}\n", len, noun))
@@ -635,13 +634,13 @@ impl<T: Write> ConsoleTestState<T> {
 pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
     if bs.mb_s != 0 {
         format!("{:>9} ns/iter (+/- {}) = {} MB/s",
-             bs.ns_iter_summ.median as uint,
-             (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint,
+             bs.ns_iter_summ.median as usize,
+             (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize,
              bs.mb_s)
     } else {
         format!("{:>9} ns/iter (+/- {})",
-             bs.ns_iter_summ.median as uint,
-             (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as uint)
+             bs.ns_iter_summ.median as usize,
+             (bs.ns_iter_summ.max - bs.ns_iter_summ.min) as usize)
     }
 }
 
@@ -689,7 +688,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::Res
     }
 
     let mut st = try!(ConsoleTestState::new(opts, None::<io::Stdout>));
-    fn len_if_padded(t: &TestDescAndFn) -> uint {
+    fn len_if_padded(t: &TestDescAndFn) -> usize {
         match t.testfn.padding() {
             PadNone => 0,
             PadOnLeft | PadOnRight => t.desc.name.as_slice().len(),
@@ -845,10 +844,10 @@ fn run_tests<F>(opts: &TestOpts,
 }
 
 #[allow(deprecated)]
-fn get_concurrency() -> uint {
+fn get_concurrency() -> usize {
     match env::var("RUST_TEST_THREADS") {
         Ok(s) => {
-            let opt_n: Option<uint> = s.parse().ok();
+            let opt_n: Option<usize> = s.parse().ok();
             match opt_n {
                 Some(n) if n > 0 => n,
                 _ => panic!("RUST_TEST_THREADS is `{}`, should be a positive integer.", s)
@@ -1164,7 +1163,7 @@ pub mod bench {
 
         BenchSamples {
             ns_iter_summ: ns_iter_summ,
-            mb_s: mb_s as uint
+            mb_s: mb_s as usize
         }
     }
 }
@@ -1333,8 +1332,8 @@ mod tests {
 
         let names =
             vec!("sha1::test".to_string(),
-                 "int::test_to_str".to_string(),
-                 "int::test_pow".to_string(),
+                 "isize::test_to_str".to_string(),
+                 "isize::test_pow".to_string(),
                  "test::do_not_run_ignored_tests".to_string(),
                  "test::ignored_tests_result_in_ignored".to_string(),
                  "test::first_free_arg_should_be_a_filter".to_string(),
@@ -1361,8 +1360,8 @@ mod tests {
         let filtered = filter_tests(&opts, tests);
 
         let expected =
-            vec!("int::test_pow".to_string(),
-                 "int::test_to_str".to_string(),
+            vec!("isize::test_pow".to_string(),
+                 "isize::test_to_str".to_string(),
                  "sha1::test".to_string(),
                  "test::do_not_run_ignored_tests".to_string(),
                  "test::filter_for_ignored_option".to_string(),

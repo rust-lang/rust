@@ -315,7 +315,7 @@ extern "rust-intrinsic" {
     /// # #![feature(core)]
     /// use std::ptr;
     ///
-    /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: uint) -> Vec<T> {
+    /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
     ///     dst.set_len(elts);
     ///     ptr::copy(dst.as_mut_ptr(), ptr, elts);

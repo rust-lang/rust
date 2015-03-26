@@ -35,9 +35,9 @@ use util::snapshot_vec as sv;
 pub trait UnifyKey : Clone + Debug + PartialEq {
     type Value : UnifyValue;
 
-    fn index(&self) -> uint;
+    fn index(&self) -> usize;
 
-    fn from_index(u: uint) -> Self;
+    fn from_index(u: usize) -> Self;
 
     // Given an inference context, returns the unification table
     // appropriate to this key type.
@@ -67,7 +67,7 @@ pub trait UnifyValue : Clone + PartialEq + Debug {
 #[derive(PartialEq,Clone,Debug)]
 pub enum VarValue<K:UnifyKey> {
     Redirect(K),
-    Root(K::Value, uint),
+    Root(K::Value, usize),
 }
 
 /// Table of unification keys and their values.
@@ -89,7 +89,7 @@ pub struct Snapshot<K:UnifyKey> {
 pub struct Node<K:UnifyKey> {
     pub key: K,
     pub value: K::Value,
-    pub rank: uint,
+    pub rank: usize,
 }
 
 #[derive(Copy)]
@@ -186,7 +186,7 @@ impl<K:UnifyKey> UnificationTable<K> {
                        tcx: &ty::ctxt<'tcx>,
                        node_a: &Node<K>,
                        node_b: &Node<K>)
-                       -> (K, uint)
+                       -> (K, usize)
     {
         debug!("unify(node_a(id={:?}, rank={:?}), node_b(id={:?}, rank={:?}))",
                node_a.key,
@@ -358,9 +358,9 @@ impl<'a,'tcx,V,K> InferCtxtMethodsForSimplyUnifiableTypes<'tcx,K,V> for InferCtx
 impl UnifyKey for ty::IntVid {
     type Value = Option<IntVarValue>;
 
-    fn index(&self) -> uint { self.index as uint }
+    fn index(&self) -> usize { self.index as usize }
 
-    fn from_index(i: uint) -> ty::IntVid { ty::IntVid { index: i as u32 } }
+    fn from_index(i: usize) -> ty::IntVid { ty::IntVid { index: i as u32 } }
 
     fn unification_table<'v>(infcx: &'v InferCtxt) -> &'v RefCell<UnificationTable<ty::IntVid>> {
         return &infcx.int_unification_table;
@@ -391,9 +391,9 @@ impl UnifyValue for Option<IntVarValue> { }
 impl UnifyKey for ty::FloatVid {
     type Value = Option<ast::FloatTy>;
 
-    fn index(&self) -> uint { self.index as uint }
+    fn index(&self) -> usize { self.index as usize }
 
-    fn from_index(i: uint) -> ty::FloatVid { ty::FloatVid { index: i as u32 } }
+    fn from_index(i: usize) -> ty::FloatVid { ty::FloatVid { index: i as u32 } }
 
     fn unification_table<'v>(infcx: &'v InferCtxt) -> &'v RefCell<UnificationTable<ty::FloatVid>> {
         return &infcx.float_unification_table;

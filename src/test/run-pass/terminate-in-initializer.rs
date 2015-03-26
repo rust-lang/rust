@@ -16,20 +16,20 @@
 
 use std::thread;
 
-fn test_break() { loop { let _x: Box<int> = break; } }
+fn test_break() { loop { let _x: Box<isize> = break; } }
 
-fn test_cont() { let mut i = 0; while i < 1 { i += 1; let _x: Box<int> = continue; } }
+fn test_cont() { let mut i = 0; while i < 1 { i += 1; let _x: Box<isize> = continue; } }
 
-fn test_ret() { let _x: Box<int> = return; }
+fn test_ret() { let _x: Box<isize> = return; }
 
 fn test_panic() {
-    fn f() { let _x: Box<int> = panic!(); }
+    fn f() { let _x: Box<isize> = panic!(); }
     thread::spawn(move|| f() ).join().err().unwrap();
 }
 
 fn test_panic_indirect() {
     fn f() -> ! { panic!(); }
-    fn g() { let _x: Box<int> = f(); }
+    fn g() { let _x: Box<isize> = f(); }
     thread::spawn(move|| g() ).join().err().unwrap();
 }
 

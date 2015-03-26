@@ -185,7 +185,7 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     }
 }
 
-thread_local!(static USED_HEADER_MAP: RefCell<HashMap<String, uint>> = {
+thread_local!(static USED_HEADER_MAP: RefCell<HashMap<String, usize>> = {
     RefCell::new(HashMap::new())
 });
 

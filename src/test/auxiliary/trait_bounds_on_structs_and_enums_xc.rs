@@ -17,7 +17,7 @@ pub struct Foo<T:Trait> {
 }
 
 pub enum Bar<T:Trait> {
-    ABar(int),
+    ABar(isize),
     BBar(T),
-    CBar(uint),
+    CBar(usize),
 }

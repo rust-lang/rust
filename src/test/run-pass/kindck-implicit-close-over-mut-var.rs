@@ -12,7 +12,7 @@
 
 use std::thread::Thread;
 
-fn user(_i: int) {}
+fn user(_i: isize) {}
 
 fn foo() {
     // Here, i is *copied* into the proc (heap closure).

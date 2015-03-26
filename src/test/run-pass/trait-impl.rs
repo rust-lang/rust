@@ -16,7 +16,7 @@
 extern crate traitimpl;
 use traitimpl::Bar;
 
-static mut COUNT: uint = 1;
+static mut COUNT: usize = 1;
 
 trait T {
     fn t(&self) {}
@@ -31,7 +31,7 @@ impl<'a> T+'a {
     }
 }
 
-impl T for int {}
+impl T for isize {}
 
 struct Foo;
 impl<'a> Bar<'a> for Foo {}

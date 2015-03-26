@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 pub fn main() {
-    struct Foo { x: int, y: int }
+    struct Foo { x: isize, y: isize }
     let mut f = Foo { x: 10, y: 0 };
     match f {
         Foo { ref mut x, .. } => *x = 11,

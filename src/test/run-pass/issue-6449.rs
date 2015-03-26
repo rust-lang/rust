@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 enum Foo {
-    Bar(int),
+    Bar(isize),
     Baz,
 }
 

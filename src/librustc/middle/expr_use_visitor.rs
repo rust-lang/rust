@@ -823,7 +823,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     /// `deref()` is declared with `&self`, this is an autoref of `x`.
     fn walk_autoderefs(&mut self,
                        expr: &ast::Expr,
-                       autoderefs: uint) {
+                       autoderefs: usize) {
         debug!("walk_autoderefs expr={} autoderefs={}", expr.repr(self.tcx()), autoderefs);
 
         for i in 0..autoderefs {
@@ -855,7 +855,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     fn walk_autoref(&mut self,
                     expr: &ast::Expr,
                     autoref: &ty::AutoRef,
-                    n: uint) {
+                    n: usize) {
         debug!("walk_autoref expr={}", expr.repr(self.tcx()));
 
         match *autoref {

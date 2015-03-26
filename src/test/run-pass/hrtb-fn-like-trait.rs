@@ -25,7 +25,7 @@ impl<'a, T> FnLike<&'a T, &'a T> for Identity {
 }
 
 fn call_repeatedly<F>(f: F)
-    where F : for<'a> FnLike<&'a int, &'a int>
+    where F : for<'a> FnLike<&'a isize, &'a isize>
 {
     let x = 3;
     let y = f.call(&x);

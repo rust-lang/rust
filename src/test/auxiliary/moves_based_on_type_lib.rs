@@ -11,7 +11,7 @@
 #![crate_type="lib"]
 
 pub struct S {
-    x: int,
+    x: isize,
 }
 
 impl Drop for S {

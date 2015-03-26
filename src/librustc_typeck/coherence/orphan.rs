@@ -143,7 +143,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                                   "i64",
                                                   item.span);
                     }
-                    ty::ty_int(ast::TyIs(_)) => {
+                    ty::ty_int(ast::TyIs) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.isize_impl(),
                                                   "isize",
@@ -178,7 +178,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                                                   "u64",
                                                   item.span);
                     }
-                    ty::ty_uint(ast::TyUs(_)) => {
+                    ty::ty_uint(ast::TyUs) => {
                         self.check_primitive_impl(def_id,
                                                   self.tcx.lang_items.usize_impl(),
                                                   "usize",

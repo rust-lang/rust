@@ -40,7 +40,7 @@ macro_rules! ident_pat {
     )
 }
 
-fn f(c: Option<char>) -> uint {
+fn f(c: Option<char>) -> usize {
     match c {
         Some('x') => 1,
         mypat!() => 2,

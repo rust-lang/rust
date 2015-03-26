@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub type oint = Option<int>;
+pub type oint = Option<isize>;
 pub fn foo() -> oint { Some(3) }

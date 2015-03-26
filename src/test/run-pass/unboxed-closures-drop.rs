@@ -15,16 +15,16 @@
 
 #![feature(unboxed_closures)]
 
-static mut DROP_COUNT: uint = 0;
+static mut DROP_COUNT: usize = 0;
 
-fn drop_count() -> uint {
+fn drop_count() -> usize {
     unsafe {
         DROP_COUNT
     }
 }
 
 struct Droppable {
-    x: int,
+    x: isize,
 }
 
 impl Droppable {
@@ -43,27 +43,27 @@ impl Drop for Droppable {
     }
 }
 
-fn a<F:Fn(int, int) -> int>(f: F) -> int {
+fn a<F:Fn(isize, isize) -> isize>(f: F) -> isize {
     f(1, 2)
 }
 
-fn b<F:FnMut(int, int) -> int>(mut f: F) -> int {
+fn b<F:FnMut(isize, isize) -> isize>(mut f: F) -> isize {
     f(3, 4)
 }
 
-fn c<F:FnOnce(int, int) -> int>(f: F) -> int {
+fn c<F:FnOnce(isize, isize) -> isize>(f: F) -> isize {
     f(5, 6)
 }
 
 fn test_fn() {
     {
-        a(move |a: int, b| { a + b });
+        a(move |a: isize, b| { a + b });
     }
     assert_eq!(drop_count(), 0);
 
     {
         let z = &Droppable::new();
-        a(move |a: int, b| { z; a + b });
+        a(move |a: isize, b| { z; a + b });
         assert_eq!(drop_count(), 0);
     }
     assert_eq!(drop_count(), 1);
@@ -71,7 +71,7 @@ fn test_fn() {
     {
         let z = &Droppable::new();
         let zz = &Droppable::new();
-        a(move |a: int, b| { z; zz; a + b });
+        a(move |a: isize, b| { z; zz; a + b });
         assert_eq!(drop_count(), 1);
     }
     assert_eq!(drop_count(), 3);
@@ -79,13 +79,13 @@ fn test_fn() {
 
 fn test_fn_mut() {
     {
-        b(move |a: int, b| { a + b });
+        b(move |a: isize, b| { a + b });
     }
     assert_eq!(drop_count(), 3);
 
     {
         let z = &Droppable::new();
-        b(move |a: int, b| { z; a + b });
+        b(move |a: isize, b| { z; a + b });
         assert_eq!(drop_count(), 3);
     }
     assert_eq!(drop_count(), 4);
@@ -93,7 +93,7 @@ fn test_fn_mut() {
     {
         let z = &Droppable::new();
         let zz = &Droppable::new();
-        b(move |a: int, b| { z; zz; a + b });
+        b(move |a: isize, b| { z; zz; a + b });
         assert_eq!(drop_count(), 4);
     }
     assert_eq!(drop_count(), 6);
@@ -101,13 +101,13 @@ fn test_fn_mut() {
 
 fn test_fn_once() {
     {
-        c(move |a: int, b| { a + b });
+        c(move |a: isize, b| { a + b });
     }
     assert_eq!(drop_count(), 6);
 
     {
         let z = Droppable::new();
-        c(move |a: int, b| { z; a + b });
+        c(move |a: isize, b| { z; a + b });
         assert_eq!(drop_count(), 7);
     }
     assert_eq!(drop_count(), 7);
@@ -115,7 +115,7 @@ fn test_fn_once() {
     {
         let z = Droppable::new();
         let zz = Droppable::new();
-        c(move |a: int, b| { z; zz; a + b });
+        c(move |a: isize, b| { z; zz; a + b });
         assert_eq!(drop_count(), 9);
     }
     assert_eq!(drop_count(), 9);

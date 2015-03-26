@@ -13,7 +13,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn foo(f: &mut FnMut() -> int) -> int {
+fn foo(f: &mut FnMut() -> isize) -> isize {
     f()
 }
 

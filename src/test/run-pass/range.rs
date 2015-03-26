@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn foo() -> int { 42 }
+fn foo() -> isize { 42 }
 
 // Test that range syntax works in return statements
 fn return_range_to() -> ::std::ops::RangeTo<i32> { return ..1; }

@@ -339,8 +339,8 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
     ty_root: ty::Ty<'tcx>,
     span: Span,
     scope: region::CodeExtent,
-    depth: uint,
-    xref_depth: uint) -> Result<(), Error<'tcx>>
+    depth: usize,
+    xref_depth: usize) -> Result<(), Error<'tcx>>
 {
     // Issue #22443: Watch out for overflow. While we are careful to
     // handle regular types properly, non-regular ones cause problems.

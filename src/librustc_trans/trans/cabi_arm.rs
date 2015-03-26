@@ -23,20 +23,20 @@ pub enum Flavor {
     Ios
 }
 
-type TyAlignFn = fn(ty: Type) -> uint;
+type TyAlignFn = fn(ty: Type) -> usize;
 
-fn align_up_to(off: uint, a: uint) -> uint {
+fn align_up_to(off: usize, a: usize) -> usize {
     return (off + a - 1) / a * a;
 }
 
-fn align(off: uint, ty: Type, align_fn: TyAlignFn) -> uint {
+fn align(off: usize, ty: Type, align_fn: TyAlignFn) -> usize {
     let a = align_fn(ty);
     return align_up_to(off, a);
 }
 
-fn general_ty_align(ty: Type) -> uint {
+fn general_ty_align(ty: Type) -> usize {
     match ty.kind() {
-        Integer => ((ty.int_width() as uint) + 7) / 8,
+        Integer => ((ty.int_width() as usize) + 7) / 8,
         Pointer => 4,
         Float => 4,
         Double => 8,
@@ -68,9 +68,9 @@ fn general_ty_align(ty: Type) -> uint {
 // ARMv6
 // https://developer.apple.com/library/ios/documentation/Xcode/Conceptual
 //    /iPhoneOSABIReference/Articles/ARMv6FunctionCallingConventions.html
-fn ios_ty_align(ty: Type) -> uint {
+fn ios_ty_align(ty: Type) -> usize {
     match ty.kind() {
-        Integer => cmp::min(4, ((ty.int_width() as uint) + 7) / 8),
+        Integer => cmp::min(4, ((ty.int_width() as usize) + 7) / 8),
         Pointer => 4,
         Float => 4,
         Double => 4,
@@ -95,9 +95,9 @@ fn ios_ty_align(ty: Type) -> uint {
     }
 }
 
-fn ty_size(ty: Type, align_fn: TyAlignFn) -> uint {
+fn ty_size(ty: Type, align_fn: TyAlignFn) -> usize {
     match ty.kind() {
-        Integer => ((ty.int_width() as uint) + 7) / 8,
+        Integer => ((ty.int_width() as usize) + 7) / 8,
         Pointer => 4,
         Float => 4,
         Double => 8,

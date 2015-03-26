@@ -11,19 +11,19 @@
 extern crate cci_lib;
 use cci_lib::{cci_fn};
 
-fn call1() -> uint {
+fn call1() -> usize {
     cci_fn()
 }
 
 mod a {
     use cci_lib::cci_fn;
-    pub fn call2() -> uint {
+    pub fn call2() -> usize {
         cci_fn()
     }
 }
 
 mod b {
-    pub fn call3() -> uint {
+    pub fn call3() -> usize {
         0
     }
 }

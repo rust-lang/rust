@@ -10,8 +10,8 @@
 
 
 
-fn foo<T>(o: myoption<T>) -> int {
-    let mut x: int;
+fn foo<T>(o: myoption<T>) -> isize {
+    let mut x: isize;
     match o {
         myoption::none::<T> => { panic!(); }
         myoption::some::<T>(_t) => { x = 5; }

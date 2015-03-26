@@ -12,7 +12,6 @@
 
 #![feature(box_syntax)]
 #![feature(collections)]
-#![feature(int_uint)]
 #![feature(old_io)]
 #![feature(old_path)]
 #![feature(rustc_private)]

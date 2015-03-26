@@ -21,13 +21,13 @@
 use std::boxed::{Box, HEAP};
 
 struct Structure {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 pub fn main() {
-    let x: Box<int> = box(HEAP) 2;
-    let y: Box<int> = box 2;
-    let b: Box<int> = box()(1 + 2);
+    let x: Box<isize> = box(HEAP) 2;
+    let y: Box<isize> = box 2;
+    let b: Box<isize> = box()(1 + 2);
     let c = box()(3 + 4);
 }

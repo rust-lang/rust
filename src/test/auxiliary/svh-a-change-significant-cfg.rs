@@ -27,14 +27,14 @@ pub trait V : MarkerTrait {}
 impl U for () {}
 impl V for () {}
 
-static A_CONSTANT : int = 2;
+static A_CONSTANT : isize = 2;
 
 #[cfg(some_flag)]
-pub fn foo<T:U>(_: int) -> int {
+pub fn foo<T:U>(_: isize) -> isize {
     3
 }
 
 #[cfg(not(some_flag))]
-pub fn an_unused_name() -> int {
+pub fn an_unused_name() -> isize {
     4
 }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[derive(PartialEq, Debug)]
-struct Point { x : int }
+struct Point { x : isize }
 
 pub fn main() {
     assert_eq!(14,14);

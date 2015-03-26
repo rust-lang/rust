@@ -29,7 +29,7 @@
 // contained in the output, after calling `next` just once, we can be sure that we did not stop in
 // unwrap(). (The testing framework doesn't allow for checking that some text is *not* contained in
 // the output, which is why we have to make the test in this kind of roundabout way)
-fn bar() -> int {
+fn bar() -> isize {
     let s = Some(5).unwrap(); // #break
     s
 }

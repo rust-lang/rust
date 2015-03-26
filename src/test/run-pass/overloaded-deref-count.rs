@@ -15,8 +15,8 @@ use std::ops::{Deref, DerefMut};
 use std::vec::Vec;
 
 struct DerefCounter<T> {
-    count_imm: Cell<uint>,
-    count_mut: uint,
+    count_imm: Cell<usize>,
+    count_mut: usize,
     value: T
 }
 
@@ -29,7 +29,7 @@ impl<T> DerefCounter<T> {
         }
     }
 
-    fn counts(&self) -> (uint, uint) {
+    fn counts(&self) -> (usize, usize) {
         (self.count_imm.get(), self.count_mut)
     }
 }

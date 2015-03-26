@@ -233,7 +233,7 @@ pub type Object = BTreeMap<string::String, Json>;
 pub struct PrettyJson<'a> { inner: &'a Json }
 
 pub struct AsJson<'a, T: 'a> { inner: &'a T }
-pub struct AsPrettyJson<'a, T: 'a> { inner: &'a T, indent: Option<uint> }
+pub struct AsPrettyJson<'a, T: 'a> { inner: &'a T, indent: Option<usize> }
 
 /// The errors that can arise while parsing a JSON stream.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -260,7 +260,7 @@ pub enum ErrorCode {
 #[derive(Clone, PartialEq, Debug)]
 pub enum ParserError {
     /// msg, line, col
-    SyntaxError(ErrorCode, uint, uint),
+    SyntaxError(ErrorCode, usize, usize),
     IoError(io::ErrorKind, String),
 }
 
@@ -441,7 +441,7 @@ fn escape_char(writer: &mut fmt::Write, v: char) -> EncodeResult {
     escape_str(writer, buf)
 }
 
-fn spaces(wr: &mut fmt::Write, mut n: uint) -> EncodeResult {
+fn spaces(wr: &mut fmt::Write, mut n: usize) -> EncodeResult {
     const BUF: &'static str = "                ";
 
     while n >= BUF.len() {
@@ -498,13 +498,13 @@ impl<'a> ::Encoder for Encoder<'a> {
         Ok(())
     }
 
-    fn emit_uint(&mut self, v: uint) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_uint(&mut self, v: usize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u64(&mut self, v: u64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u32(&mut self, v: u32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u16(&mut self, v: u16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u8(&mut self, v: u8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
 
-    fn emit_int(&mut self, v: int) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_int(&mut self, v: isize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_i64(&mut self, v: i64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_i32(&mut self, v: i32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_i16(&mut self, v: i16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
@@ -542,8 +542,8 @@ impl<'a> ::Encoder for Encoder<'a> {
 
     fn emit_enum_variant<F>(&mut self,
                             name: &str,
-                            _id: uint,
-                            cnt: uint,
+                            _id: usize,
+                            cnt: usize,
                             f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
@@ -563,7 +563,7 @@ impl<'a> ::Encoder for Encoder<'a> {
         }
     }
 
-    fn emit_enum_variant_arg<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+    fn emit_enum_variant_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -575,8 +575,8 @@ impl<'a> ::Encoder for Encoder<'a> {
 
     fn emit_enum_struct_variant<F>(&mut self,
                                    name: &str,
-                                   id: uint,
-                                   cnt: uint,
+                                   id: usize,
+                                   cnt: usize,
                                    f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
@@ -586,7 +586,7 @@ impl<'a> ::Encoder for Encoder<'a> {
 
     fn emit_enum_struct_variant_field<F>(&mut self,
                                          _: &str,
-                                         idx: uint,
+                                         idx: usize,
                                          f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
@@ -594,7 +594,7 @@ impl<'a> ::Encoder for Encoder<'a> {
         self.emit_enum_variant_arg(idx, f)
     }
 
-    fn emit_struct<F>(&mut self, _: &str, _: uint, f: F) -> EncodeResult where
+    fn emit_struct<F>(&mut self, _: &str, _: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -604,7 +604,7 @@ impl<'a> ::Encoder for Encoder<'a> {
         Ok(())
     }
 
-    fn emit_struct_field<F>(&mut self, name: &str, idx: uint, f: F) -> EncodeResult where
+    fn emit_struct_field<F>(&mut self, name: &str, idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -614,26 +614,26 @@ impl<'a> ::Encoder for Encoder<'a> {
         f(self)
     }
 
-    fn emit_tuple<F>(&mut self, len: uint, f: F) -> EncodeResult where
+    fn emit_tuple<F>(&mut self, len: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         self.emit_seq(len, f)
     }
-    fn emit_tuple_arg<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+    fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_tuple_struct<F>(&mut self, _name: &str, len: uint, f: F) -> EncodeResult where
+    fn emit_tuple_struct<F>(&mut self, _name: &str, len: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         self.emit_seq(len, f)
     }
-    fn emit_tuple_struct_arg<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+    fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -657,7 +657,7 @@ impl<'a> ::Encoder for Encoder<'a> {
         f(self)
     }
 
-    fn emit_seq<F>(&mut self, _len: uint, f: F) -> EncodeResult where
+    fn emit_seq<F>(&mut self, _len: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -667,7 +667,7 @@ impl<'a> ::Encoder for Encoder<'a> {
         Ok(())
     }
 
-    fn emit_seq_elt<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+    fn emit_seq_elt<F>(&mut self, idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -677,7 +677,7 @@ impl<'a> ::Encoder for Encoder<'a> {
         f(self)
     }
 
-    fn emit_map<F>(&mut self, _len: uint, f: F) -> EncodeResult where
+    fn emit_map<F>(&mut self, _len: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -687,7 +687,7 @@ impl<'a> ::Encoder for Encoder<'a> {
         Ok(())
     }
 
-    fn emit_map_elt_key<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+    fn emit_map_elt_key<F>(&mut self, idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -698,7 +698,7 @@ impl<'a> ::Encoder for Encoder<'a> {
         Ok(())
     }
 
-    fn emit_map_elt_val<F>(&mut self, _idx: uint, f: F) -> EncodeResult where
+    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut Encoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -711,8 +711,8 @@ impl<'a> ::Encoder for Encoder<'a> {
 /// compact data
 pub struct PrettyEncoder<'a> {
     writer: &'a mut (fmt::Write+'a),
-    curr_indent: uint,
-    indent: uint,
+    curr_indent: usize,
+    indent: usize,
     is_emitting_map_key: bool,
 }
 
@@ -729,7 +729,7 @@ impl<'a> PrettyEncoder<'a> {
 
     /// Set the number of spaces to indent for each level.
     /// This is safe to set during encoding.
-    pub fn set_indent(&mut self, indent: uint) {
+    pub fn set_indent(&mut self, indent: usize) {
         // self.indent very well could be 0 so we need to use checked division.
         let level = self.curr_indent.checked_div(self.indent).unwrap_or(0);
         self.indent = indent;
@@ -746,13 +746,13 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_uint(&mut self, v: uint) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_uint(&mut self, v: usize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u64(&mut self, v: u64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u32(&mut self, v: u32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u16(&mut self, v: u16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_u8(&mut self, v: u8) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
 
-    fn emit_int(&mut self, v: int) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
+    fn emit_int(&mut self, v: isize) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_i64(&mut self, v: i64) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_i32(&mut self, v: i32) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
     fn emit_i16(&mut self, v: i16) -> EncodeResult { emit_enquoted_if_mapkey!(self, v) }
@@ -790,8 +790,8 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
 
     fn emit_enum_variant<F>(&mut self,
                             name: &str,
-                            _id: uint,
-                            cnt: uint,
+                            _id: usize,
+                            cnt: usize,
                             f: F)
                             -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
@@ -821,7 +821,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         }
     }
 
-    fn emit_enum_variant_arg<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+    fn emit_enum_variant_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -834,8 +834,8 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
 
     fn emit_enum_struct_variant<F>(&mut self,
                                    name: &str,
-                                   id: uint,
-                                   cnt: uint,
+                                   id: usize,
+                                   cnt: usize,
                                    f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
@@ -845,7 +845,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
 
     fn emit_enum_struct_variant_field<F>(&mut self,
                                          _: &str,
-                                         idx: uint,
+                                         idx: usize,
                                          f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
@@ -854,7 +854,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
     }
 
 
-    fn emit_struct<F>(&mut self, _: &str, len: uint, f: F) -> EncodeResult where
+    fn emit_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -872,7 +872,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_struct_field<F>(&mut self, name: &str, idx: uint, f: F) -> EncodeResult where
+    fn emit_struct_field<F>(&mut self, name: &str, idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -887,26 +887,26 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         f(self)
     }
 
-    fn emit_tuple<F>(&mut self, len: uint, f: F) -> EncodeResult where
+    fn emit_tuple<F>(&mut self, len: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         self.emit_seq(len, f)
     }
-    fn emit_tuple_arg<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+    fn emit_tuple_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         self.emit_seq_elt(idx, f)
     }
 
-    fn emit_tuple_struct<F>(&mut self, _: &str, len: uint, f: F) -> EncodeResult where
+    fn emit_tuple_struct<F>(&mut self, _: &str, len: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
         self.emit_seq(len, f)
     }
-    fn emit_tuple_struct_arg<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+    fn emit_tuple_struct_arg<F>(&mut self, idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -930,7 +930,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         f(self)
     }
 
-    fn emit_seq<F>(&mut self, len: uint, f: F) -> EncodeResult where
+    fn emit_seq<F>(&mut self, len: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -948,7 +948,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_seq_elt<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+    fn emit_seq_elt<F>(&mut self, idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -961,7 +961,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         f(self)
     }
 
-    fn emit_map<F>(&mut self, len: uint, f: F) -> EncodeResult where
+    fn emit_map<F>(&mut self, len: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -979,7 +979,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_map_elt_key<F>(&mut self, idx: uint, f: F) -> EncodeResult where
+    fn emit_map_elt_key<F>(&mut self, idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -995,7 +995,7 @@ impl<'a> ::Encoder for PrettyEncoder<'a> {
         Ok(())
     }
 
-    fn emit_map_elt_val<F>(&mut self, _idx: uint, f: F) -> EncodeResult where
+    fn emit_map_elt_val<F>(&mut self, _idx: usize, f: F) -> EncodeResult where
         F: FnOnce(&mut PrettyEncoder<'a>) -> EncodeResult,
     {
         if self.is_emitting_map_key { return Err(EncoderError::BadHashmapKey); }
@@ -1237,25 +1237,25 @@ impl<'a> Index<&'a str>  for Json {
 }
 
 #[cfg(stage0)]
-impl Index<uint> for Json {
+impl Index<usize> for Json {
     type Output = Json;
 
-    fn index<'a>(&'a self, idx: &uint) -> &'a Json {
+    fn index<'a>(&'a self, idx: &usize) -> &'a Json {
         match self {
             &Json::Array(ref v) => &v[*idx],
-            _ => panic!("can only index Json with uint if it is an array")
+            _ => panic!("can only index Json with usize if it is an array")
         }
     }
 }
 
 #[cfg(not(stage0))]
-impl Index<uint> for Json {
+impl Index<usize> for Json {
     type Output = Json;
 
-    fn index<'a>(&'a self, idx: uint) -> &'a Json {
+    fn index<'a>(&'a self, idx: usize) -> &'a Json {
         match self {
             &Json::Array(ref v) => &v[idx],
-            _ => panic!("can only index Json with uint if it is an array")
+            _ => panic!("can only index Json with usize if it is an array")
         }
     }
 }
@@ -1326,7 +1326,7 @@ impl Stack {
     }
 
     /// Returns The number of elements in the Stack.
-    pub fn len(&self) -> uint { self.stack.len() }
+    pub fn len(&self) -> usize { self.stack.len() }
 
     /// Returns true if the stack is empty.
     pub fn is_empty(&self) -> bool { self.stack.is_empty() }
@@ -1334,12 +1334,12 @@ impl Stack {
     /// Provides access to the StackElement at a given index.
     /// lower indices are at the bottom of the stack while higher indices are
     /// at the top.
-    pub fn get<'l>(&'l self, idx: uint) -> StackElement<'l> {
+    pub fn get<'l>(&'l self, idx: usize) -> StackElement<'l> {
         match self.stack[idx] {
             InternalIndex(i) => StackElement::Index(i),
             InternalKey(start, size) => {
                 StackElement::Key(str::from_utf8(
-                    &self.str_buffer[start as uint .. start as uint + size as uint])
+                    &self.str_buffer[start as usize .. start as usize + size as usize])
                         .unwrap())
             }
         }
@@ -1382,7 +1382,7 @@ impl Stack {
             Some(&InternalIndex(i)) => Some(StackElement::Index(i)),
             Some(&InternalKey(start, size)) => {
                 Some(StackElement::Key(str::from_utf8(
-                    &self.str_buffer[start as uint .. (start+size) as uint]
+                    &self.str_buffer[start as usize .. (start+size) as usize]
                 ).unwrap()))
             }
         }
@@ -1406,7 +1406,7 @@ impl Stack {
         assert!(!self.is_empty());
         match *self.stack.last().unwrap() {
             InternalKey(_, sz) => {
-                let new_size = self.str_buffer.len() - sz as uint;
+                let new_size = self.str_buffer.len() - sz as usize;
                 self.str_buffer.truncate(new_size);
             }
             InternalIndex(_) => {}
@@ -1439,8 +1439,8 @@ impl Stack {
 pub struct Parser<T> {
     rdr: T,
     ch: Option<char>,
-    line: uint,
-    col: uint,
+    line: usize,
+    col: usize,
     // We maintain a stack representing where we are in the logical structure
     // of the JSON stream.
     stack: Stack,
@@ -1625,7 +1625,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
             match self.ch_or_null() {
                 c @ '0' ... '9' => {
                     dec /= 10.0;
-                    res += (((c as int) - ('0' as int)) as f64) * dec;
+                    res += (((c as isize) - ('0' as isize)) as f64) * dec;
                     self.bump();
                 }
                 _ => break,
@@ -1657,7 +1657,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
             match self.ch_or_null() {
                 c @ '0' ... '9' => {
                     exp *= 10;
-                    exp += (c as uint) - ('0' as uint);
+                    exp += (c as usize) - ('0' as usize);
 
                     self.bump();
                 }
@@ -1769,7 +1769,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
     // information to return a JsonEvent.
     // Manages an internal state so that parsing can be interrupted and resumed.
     // Also keeps track of the position in the logical structure of the json
-    // stream int the form of a stack that can be queried by the user using the
+    // stream isize the form of a stack that can be queried by the user using the
     // stack() method.
     fn parse(&mut self) -> JsonEvent {
         loop {
@@ -2150,7 +2150,7 @@ macro_rules! read_primitive {
                     None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
                 },
                 Json::F64(f) => Err(ExpectedError("Integer".to_string(), format!("{}", f))),
-                // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
+                // re: #12967.. a type w/ numeric keys (ie HashMap<usize, V> etc)
                 // is going to have a string here, as per JSON spec.
                 Json::String(s) => match s.parse().ok() {
                     Some(f) => Ok(f),
@@ -2169,12 +2169,12 @@ impl ::Decoder for Decoder {
         expect!(self.pop(), Null)
     }
 
-    read_primitive! { read_uint, uint }
+    read_primitive! { read_uint, usize }
     read_primitive! { read_u8, u8 }
     read_primitive! { read_u16, u16 }
     read_primitive! { read_u32, u32 }
     read_primitive! { read_u64, u64 }
-    read_primitive! { read_int, int }
+    read_primitive! { read_int, isize }
     read_primitive! { read_i8, i8 }
     read_primitive! { read_i16, i16 }
     read_primitive! { read_i32, i32 }
@@ -2188,7 +2188,7 @@ impl ::Decoder for Decoder {
             Json::U64(f) => Ok(f as f64),
             Json::F64(f) => Ok(f),
             Json::String(s) => {
-                // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
+                // re: #12967.. a type w/ numeric keys (ie HashMap<usize, V> etc)
                 // is going to have a string here, as per JSON spec.
                 match s.parse().ok() {
                     Some(f) => Ok(f),
@@ -2229,7 +2229,7 @@ impl ::Decoder for Decoder {
 
     fn read_enum_variant<T, F>(&mut self, names: &[&str],
                                mut f: F) -> DecodeResult<T>
-        where F: FnMut(&mut Decoder, uint) -> DecodeResult<T>,
+        where F: FnMut(&mut Decoder, usize) -> DecodeResult<T>,
     {
         let name = match self.pop() {
             Json::String(s) => s,
@@ -2269,14 +2269,14 @@ impl ::Decoder for Decoder {
         f(self, idx)
     }
 
-    fn read_enum_variant_arg<T, F>(&mut self, _idx: uint, f: F) -> DecodeResult<T> where
+    fn read_enum_variant_arg<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
     fn read_enum_struct_variant<T, F>(&mut self, names: &[&str], f: F) -> DecodeResult<T> where
-        F: FnMut(&mut Decoder, uint) -> DecodeResult<T>,
+        F: FnMut(&mut Decoder, usize) -> DecodeResult<T>,
     {
         self.read_enum_variant(names, f)
     }
@@ -2284,7 +2284,7 @@ impl ::Decoder for Decoder {
 
     fn read_enum_struct_variant_field<T, F>(&mut self,
                                          _name: &str,
-                                         idx: uint,
+                                         idx: usize,
                                          f: F)
                                          -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
@@ -2292,7 +2292,7 @@ impl ::Decoder for Decoder {
         self.read_enum_variant_arg(idx, f)
     }
 
-    fn read_struct<T, F>(&mut self, _name: &str, _len: uint, f: F) -> DecodeResult<T> where
+    fn read_struct<T, F>(&mut self, _name: &str, _len: usize, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         let value = try!(f(self));
@@ -2302,7 +2302,7 @@ impl ::Decoder for Decoder {
 
     fn read_struct_field<T, F>(&mut self,
                                name: &str,
-                               _idx: uint,
+                               _idx: usize,
                                f: F)
                                -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
@@ -2328,7 +2328,7 @@ impl ::Decoder for Decoder {
         Ok(value)
     }
 
-    fn read_tuple<T, F>(&mut self, tuple_len: uint, f: F) -> DecodeResult<T> where
+    fn read_tuple<T, F>(&mut self, tuple_len: usize, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         self.read_seq(move |d, len| {
@@ -2340,7 +2340,7 @@ impl ::Decoder for Decoder {
         })
     }
 
-    fn read_tuple_arg<T, F>(&mut self, idx: uint, f: F) -> DecodeResult<T> where
+    fn read_tuple_arg<T, F>(&mut self, idx: usize, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         self.read_seq_elt(idx, f)
@@ -2348,7 +2348,7 @@ impl ::Decoder for Decoder {
 
     fn read_tuple_struct<T, F>(&mut self,
                                _name: &str,
-                               len: uint,
+                               len: usize,
                                f: F)
                                -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
@@ -2357,7 +2357,7 @@ impl ::Decoder for Decoder {
     }
 
     fn read_tuple_struct_arg<T, F>(&mut self,
-                                   idx: uint,
+                                   idx: usize,
                                    f: F)
                                    -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
@@ -2375,7 +2375,7 @@ impl ::Decoder for Decoder {
     }
 
     fn read_seq<T, F>(&mut self, f: F) -> DecodeResult<T> where
-        F: FnOnce(&mut Decoder, uint) -> DecodeResult<T>,
+        F: FnOnce(&mut Decoder, usize) -> DecodeResult<T>,
     {
         let array = try!(expect!(self.pop(), Array));
         let len = array.len();
@@ -2385,14 +2385,14 @@ impl ::Decoder for Decoder {
         f(self, len)
     }
 
-    fn read_seq_elt<T, F>(&mut self, _idx: uint, f: F) -> DecodeResult<T> where
+    fn read_seq_elt<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T> where
         F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
     fn read_map<T, F>(&mut self, f: F) -> DecodeResult<T> where
-        F: FnOnce(&mut Decoder, uint) -> DecodeResult<T>,
+        F: FnOnce(&mut Decoder, usize) -> DecodeResult<T>,
     {
         let obj = try!(expect!(self.pop(), Object));
         let len = obj.len();
@@ -2403,13 +2403,13 @@ impl ::Decoder for Decoder {
         f(self, len)
     }
 
-    fn read_map_elt_key<T, F>(&mut self, _idx: uint, f: F) -> DecodeResult<T> where
+    fn read_map_elt_key<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T> where
        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
     }
 
-    fn read_map_elt_val<T, F>(&mut self, _idx: uint, f: F) -> DecodeResult<T> where
+    fn read_map_elt_val<T, F>(&mut self, _idx: usize, f: F) -> DecodeResult<T> where
        F: FnOnce(&mut Decoder) -> DecodeResult<T>,
     {
         f(self)
@@ -2437,7 +2437,7 @@ macro_rules! to_json_impl_i64 {
     )
 }
 
-to_json_impl_i64! { int, i8, i16, i32, i64 }
+to_json_impl_i64! { isize, i8, i16, i32, i64 }
 
 macro_rules! to_json_impl_u64 {
     ($($t:ty), +) => (
@@ -2450,7 +2450,7 @@ macro_rules! to_json_impl_u64 {
     )
 }
 
-to_json_impl_u64! { uint, u8, u16, u32, u64 }
+to_json_impl_u64! { usize, u8, u16, u32, u64 }
 
 impl ToJson for Json {
     fn to_json(&self) -> Json { self.clone() }
@@ -2605,7 +2605,7 @@ impl<'a, T: Encodable> fmt::Display for AsJson<'a, T> {
 
 impl<'a, T> AsPrettyJson<'a, T> {
     /// Set the indentation level for the emitted JSON
-    pub fn indent(mut self, indent: uint) -> AsPrettyJson<'a, T> {
+    pub fn indent(mut self, indent: usize) -> AsPrettyJson<'a, T> {
         self.indent = Some(indent);
         self
     }
@@ -2655,7 +2655,7 @@ mod tests {
 
     #[derive(RustcDecodable, Eq, PartialEq, Debug)]
     struct OptionData {
-        opt: Option<uint>,
+        opt: Option<usize>,
     }
 
     #[test]
@@ -2683,13 +2683,13 @@ mod tests {
     #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
     enum Animal {
         Dog,
-        Frog(string::String, int)
+        Frog(string::String, isize)
     }
 
     #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
     struct Inner {
         a: (),
-        b: uint,
+        b: usize,
         c: Vec<string::String>,
     }
 
@@ -3113,30 +3113,30 @@ mod tests {
         let v: Vec<bool> = super::decode("[true]").unwrap();
         assert_eq!(v, [true]);
 
-        let v: Vec<int> = super::decode("[3, 1]").unwrap();
+        let v: Vec<isize> = super::decode("[3, 1]").unwrap();
         assert_eq!(v, [3, 1]);
 
-        let v: Vec<Vec<uint>> = super::decode("[[3], [1, 2]]").unwrap();
+        let v: Vec<Vec<usize>> = super::decode("[[3], [1, 2]]").unwrap();
         assert_eq!(v, [vec![3], vec![1, 2]]);
     }
 
     #[test]
     fn test_decode_tuple() {
-        let t: (uint, uint, uint) = super::decode("[1, 2, 3]").unwrap();
+        let t: (usize, usize, usize) = super::decode("[1, 2, 3]").unwrap();
         assert_eq!(t, (1, 2, 3));
 
-        let t: (uint, string::String) = super::decode("[1, \"two\"]").unwrap();
+        let t: (usize, string::String) = super::decode("[1, \"two\"]").unwrap();
         assert_eq!(t, (1, "two".to_string()));
     }
 
     #[test]
     fn test_decode_tuple_malformed_types() {
-        assert!(super::decode::<(uint, string::String)>("[1, 2]").is_err());
+        assert!(super::decode::<(usize, string::String)>("[1, 2]").is_err());
     }
 
     #[test]
     fn test_decode_tuple_malformed_length() {
-        assert!(super::decode::<(uint, uint)>("[1, 2, 3]").is_err());
+        assert!(super::decode::<(usize, usize)>("[1, 2, 3]").is_err());
     }
 
     #[test]
@@ -3488,7 +3488,7 @@ mod tests {
         use std::str::from_utf8;
         use std::old_io::Writer;
         use std::collections::HashMap;
-        let mut hm: HashMap<uint, bool> = HashMap::new();
+        let mut hm: HashMap<usize, bool> = HashMap::new();
         hm.insert(1, true);
         let mut mem_buf = Vec::new();
         write!(&mut mem_buf, "{}", super::as_pretty_json(&hm)).unwrap();
@@ -3504,7 +3504,7 @@ mod tests {
         use std::str::from_utf8;
         use std::old_io::Writer;
         use std::collections::HashMap;
-        let mut hm: HashMap<uint, bool> = HashMap::new();
+        let mut hm: HashMap<usize, bool> = HashMap::new();
         hm.insert(1, true);
         let mut mem_buf = Vec::new();
         write!(&mut mem_buf, "{}", super::as_pretty_json(&hm)).unwrap();
@@ -3537,7 +3537,7 @@ mod tests {
         );
 
         // Helper function for counting indents
-        fn indents(source: &str) -> uint {
+        fn indents(source: &str) -> usize {
             let trimmed = source.trim_left_matches(' ');
             source.len() - trimmed.len()
         }
@@ -3595,7 +3595,7 @@ mod tests {
             Ok(o) => o
         };
         let mut decoder = Decoder::new(json_obj);
-        let _hm: HashMap<uint, bool> = Decodable::decode(&mut decoder).unwrap();
+        let _hm: HashMap<usize, bool> = Decodable::decode(&mut decoder).unwrap();
     }
 
     #[test]
@@ -3608,7 +3608,7 @@ mod tests {
             Ok(o) => o
         };
         let mut decoder = Decoder::new(json_obj);
-        let result: Result<HashMap<uint, bool>, DecoderError> = Decodable::decode(&mut decoder);
+        let result: Result<HashMap<usize, bool>, DecoderError> = Decodable::decode(&mut decoder);
         assert_eq!(result, Err(ExpectedError("Number".to_string(), "a".to_string())));
     }
 
@@ -3971,14 +3971,14 @@ mod tests {
         assert_eq!(hash_map.to_json(), object);
         assert_eq!(Some(15).to_json(), I64(15));
         assert_eq!(Some(15 as usize).to_json(), U64(15));
-        assert_eq!(None::<int>.to_json(), Null);
+        assert_eq!(None::<isize>.to_json(), Null);
     }
 
     #[test]
     fn test_encode_hashmap_with_arbitrary_key() {
         use std::collections::HashMap;
         #[derive(PartialEq, Eq, Hash, RustcEncodable)]
-        struct ArbitraryType(uint);
+        struct ArbitraryType(usize);
         let mut hm: HashMap<ArbitraryType, bool> = HashMap::new();
         hm.insert(ArbitraryType(1), true);
         let mut mem_buf = string::String::new();

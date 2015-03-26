@@ -19,13 +19,13 @@ trait MakeString {
     fn make_string(&self) -> String;
 }
 
-impl MakeString for int {
+impl MakeString for isize {
     fn make_string(&self) -> String {
         format!("{}", *self)
     }
 }
 
-impl MakeString for uint {
+impl MakeString for usize {
     fn make_string(&self) -> String {
         format!("{}", *self)
     }
@@ -46,13 +46,13 @@ fn foo<F:Foo>(f: &F) -> String {
 ///////////////////////////////////////////////////////////////////////////
 
 struct SomeStruct {
-    field: int,
+    field: isize,
 }
 
 impl Foo for SomeStruct {
-    type F = int;
+    type F = isize;
 
-    fn get(&self) -> &int {
+    fn get(&self) -> &isize {
         &self.field
     }
 }
@@ -60,13 +60,13 @@ impl Foo for SomeStruct {
 ///////////////////////////////////////////////////////////////////////////
 
 struct SomeOtherStruct {
-    field: uint,
+    field: usize,
 }
 
 impl Foo for SomeOtherStruct {
-    type F = uint;
+    type F = usize;
 
-    fn get(&self) -> &uint {
+    fn get(&self) -> &usize {
         &self.field
     }
 }

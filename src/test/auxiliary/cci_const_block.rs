@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub static BLOCK_FN_DEF: fn(uint) -> uint = {
-    fn foo(a: uint) -> uint {
+pub static BLOCK_FN_DEF: fn(usize) -> usize = {
+    fn foo(a: usize) -> usize {
         a + 10
     }
     foo

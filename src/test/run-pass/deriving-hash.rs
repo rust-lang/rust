@@ -16,9 +16,9 @@ use std::hash::{Hash, SipHasher};
 
 #[derive(Hash)]
 struct Person {
-    id: uint,
+    id: usize,
     name: String,
-    phone: uint,
+    phone: usize,
 }
 
 fn hash<T: Hash>(t: &T) -> u64 {

@@ -21,7 +21,7 @@ enum Enum {
 }
 
 #[inline(never)]
-fn foo(x: Enum) -> int {
+fn foo(x: Enum) -> isize {
     match x {
         Enum::Variant1(true) => 1,
         Enum::Variant1(false) => 2,

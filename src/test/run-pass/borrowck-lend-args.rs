@@ -11,17 +11,17 @@
 
 // pretty-expanded FIXME #23616
 
-fn borrow(_v: &int) {}
+fn borrow(_v: &isize) {}
 
-fn borrow_from_arg_imm_ref(v: Box<int>) {
+fn borrow_from_arg_imm_ref(v: Box<isize>) {
     borrow(&*v);
 }
 
-fn borrow_from_arg_mut_ref(v: &mut Box<int>) {
+fn borrow_from_arg_mut_ref(v: &mut Box<isize>) {
     borrow(&**v);
 }
 
-fn borrow_from_arg_copy(v: Box<int>) {
+fn borrow_from_arg_copy(v: Box<isize>) {
     borrow(&*v);
 }
 

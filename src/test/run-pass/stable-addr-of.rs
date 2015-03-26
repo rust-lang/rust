@@ -13,6 +13,6 @@
 // pretty-expanded FIXME #23616
 
 pub fn main() {
-    let foo: int = 1;
-    assert_eq!(&foo as *const int, &foo as *const int);
+    let foo: isize = 1;
+    assert_eq!(&foo as *const isize, &foo as *const isize);
 }

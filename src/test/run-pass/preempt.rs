@@ -14,11 +14,11 @@
 // note: halfway done porting to modern rust
 use std::comm;
 
-fn starve_main(alive: Receiver<int>) {
+fn starve_main(alive: Receiver<isize>) {
     println!("signalling main");
     alive.recv();
     println!("starving main");
-    let mut i: int = 0;
+    let mut i: isize = 0;
     loop { i += 1; }
 }
 
@@ -29,7 +29,7 @@ pub fn main() {
     spawn(move|| {
         starve_main(port);
     });
-    let mut i: int = 0;
+    let mut i: isize = 0;
     println!("main waiting for alive signal");
     chan.send(i);
     println!("main got alive signal");

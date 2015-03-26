@@ -13,8 +13,8 @@
 use std::sync::mpsc::{channel, Sender};
 use std::thread::Thread;
 
-fn start(tx: &Sender<int>, start: int, number_of_messages: int) {
-    let mut i: int = 0;
+fn start(tx: &Sender<isize>, start: isize, number_of_messages: isize) {
+    let mut i: isize = 0;
     while i< number_of_messages { tx.send(start + i).unwrap(); i += 1; }
 }
 

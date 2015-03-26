@@ -53,9 +53,9 @@ fn test_alias<I: Iterator>(i: Option<<I as Iterator>::Item>) {
     let y = x.1;
 }
 
-struct TupStruct(int, int, Box<str>);
+struct TupStruct(isize, isize, Box<str>);
 
-fn test_tup_struct(x: TupStruct) -> int {
+fn test_tup_struct(x: TupStruct) -> isize {
     x.1
 }
 

@@ -14,7 +14,7 @@
 #![feature(box_syntax)]
 
 struct X {
-    a: int
+    a: isize
 }
 
 trait Changer {

@@ -13,7 +13,7 @@
 
 extern crate "static-function-pointer-aux" as aux;
 
-fn f(x: int) -> int { x }
+fn f(x: isize) -> isize { x }
 
 pub fn main() {
     assert_eq!(aux::F(42), -42);

@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo<A = (int, char)> {
+struct Foo<A = (isize, char)> {
     a: A
 }
 
-impl Foo<int> {
-    fn bar_int(&self) -> int {
+impl Foo<isize> {
+    fn bar_int(&self) -> isize {
         self.a
     }
 }
@@ -26,7 +26,7 @@ impl Foo<char> {
 
 impl Foo {
     fn bar(&self) {
-        let (i, c): (int, char) = self.a;
+        let (i, c): (isize, char) = self.a;
         assert_eq!(Foo { a: i }.bar_int(), i);
         assert_eq!(Foo { a: c }.bar_char(), c);
     }
@@ -39,7 +39,7 @@ impl<A: Clone> Foo<A> {
 }
 
 fn default_foo(x: Foo) {
-    let (i, c): (int, char) = x.a;
+    let (i, c): (isize, char) = x.a;
     assert_eq!(i, 1);
     assert_eq!(c, 'a');
 

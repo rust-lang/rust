@@ -20,13 +20,13 @@ macro_rules! foo {
         if $tag == $string {
             let element: Box<_> = box Element;
             unsafe {
-                return std::mem::transmute::<_, uint>(element);
+                return std::mem::transmute::<_, usize>(element);
             }
         }
     }
 }
 
-fn bar() -> uint {
+fn bar() -> usize {
     foo!("a", "b");
     0
 }

@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 struct Foo {
-    new: int,
+    new: isize,
 }
 
 pub fn main() {

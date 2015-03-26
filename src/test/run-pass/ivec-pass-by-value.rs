@@ -11,5 +11,5 @@
 
 // pretty-expanded FIXME #23616
 
-fn f(_a: Vec<int> ) { }
+fn f(_a: Vec<isize> ) { }
 pub fn main() { f(vec!(1, 2, 3, 4, 5)); }

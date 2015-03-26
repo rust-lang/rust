@@ -11,7 +11,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn take(x: int) -> int {x}
+fn take(x: isize) -> isize {x}
 
 fn the_loop() {
     let mut list = Vec::new();

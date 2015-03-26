@@ -44,7 +44,7 @@ fn main() {
 
 fn zzz() {()}
 
-fn some_function(a: int, b: int) {
+fn some_function(a: isize, b: isize) {
     let some_variable = Struct { a: 11, b: 22 };
     let some_other_variable = 23;
 
@@ -53,4 +53,4 @@ fn some_function(a: int, b: int) {
     }
 }
 
-fn some_other_function(a: int, b: int) -> bool { true }
+fn some_other_function(a: isize, b: isize) -> bool { true }

@@ -11,15 +11,15 @@
 // error-pattern:fail
 
 
-fn build1() -> Vec<int> {
+fn build1() -> Vec<isize> {
     vec!(0,0,0,0,0,0,0)
 }
 
-fn build2() -> Vec<int> {
+fn build2() -> Vec<isize> {
     panic!();
 }
 
-struct Blk { node: Vec<int> , span: Vec<int> }
+struct Blk { node: Vec<isize> , span: Vec<isize> }
 
 fn main() {
     let _blk = Blk {

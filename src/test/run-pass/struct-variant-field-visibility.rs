@@ -12,7 +12,7 @@
 
 mod foo {
     pub enum Foo {
-        Bar { a: int }
+        Bar { a: isize }
     }
 }
 

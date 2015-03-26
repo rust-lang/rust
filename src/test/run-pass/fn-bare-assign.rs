@@ -10,12 +10,12 @@
 
 // pretty-expanded FIXME #23616
 
-fn f(i: int, called: &mut bool) {
+fn f(i: isize, called: &mut bool) {
     assert_eq!(i, 10);
     *called = true;
 }
 
-fn g(f: fn(int, v: &mut bool), called: &mut bool) {
+fn g(f: fn(isize, v: &mut bool), called: &mut bool) {
     f(10, called);
 }
 

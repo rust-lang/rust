@@ -79,7 +79,6 @@ This API is completely unstable and subject to change.
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(int_uint)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -281,10 +280,10 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
                 abi: abi::Rust,
                 sig: ty::Binder(ty::FnSig {
                     inputs: vec!(
-                        tcx.types.int,
+                        tcx.types.isize,
                         ty::mk_imm_ptr(tcx, ty::mk_imm_ptr(tcx, tcx.types.u8))
                     ),
-                    output: ty::FnConverging(tcx.types.int),
+                    output: ty::FnConverging(tcx.types.isize),
                     variadic: false,
                 }),
             }));

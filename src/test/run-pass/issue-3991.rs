@@ -12,7 +12,7 @@
 // pretty-expanded FIXME #23616
 
 struct HasNested {
-    nest: Vec<Vec<int> > ,
+    nest: Vec<Vec<isize> > ,
 }
 
 impl HasNested {

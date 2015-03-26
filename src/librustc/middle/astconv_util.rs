@@ -19,10 +19,10 @@ use middle::ty::{self, Ty};
 use syntax::ast;
 use util::ppaux::Repr;
 
-pub const NO_REGIONS: uint = 1;
-pub const NO_TPS: uint = 2;
+pub const NO_REGIONS: usize = 1;
+pub const NO_TPS: usize = 2;
 
-pub fn check_path_args(tcx: &ty::ctxt, segments: &[ast::PathSegment], flags: uint) {
+pub fn check_path_args(tcx: &ty::ctxt, segments: &[ast::PathSegment], flags: usize) {
     for segment in segments {
         if (flags & NO_TPS) != 0 {
             for typ in segment.parameters.types() {

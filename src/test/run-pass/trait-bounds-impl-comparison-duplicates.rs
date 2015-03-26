@@ -18,7 +18,7 @@ trait A {
     fn foo<T: Eq + Ord>(&self);
 }
 
-impl A for int {
+impl A for isize {
     fn foo<T: Ord>(&self) {} // Ord implies Eq, so this is ok.
 }
 

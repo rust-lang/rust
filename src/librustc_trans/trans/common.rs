@@ -459,7 +459,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
-    pub fn arg_pos(&self, arg: uint) -> uint {
+    pub fn arg_pos(&self, arg: usize) -> usize {
         let arg = self.env_arg_pos() + arg;
         if self.llenv.is_some() {
             arg + 1
@@ -468,7 +468,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         }
     }
 
-    pub fn env_arg_pos(&self) -> uint {
+    pub fn env_arg_pos(&self) -> usize {
         if self.caller_expects_out_pointer {
             1
         } else {
@@ -846,13 +846,13 @@ pub trait AsU64 { fn as_u64(self) -> u64; }
 // are host-architecture-dependent
 impl AsI64 for i64 { fn as_i64(self) -> i64 { self as i64 }}
 impl AsI64 for i32 { fn as_i64(self) -> i64 { self as i64 }}
-impl AsI64 for int { fn as_i64(self) -> i64 { self as i64 }}
+impl AsI64 for isize { fn as_i64(self) -> i64 { self as i64 }}
 
 impl AsU64 for u64  { fn as_u64(self) -> u64 { self as u64 }}
 impl AsU64 for u32  { fn as_u64(self) -> u64 { self as u64 }}
-impl AsU64 for uint { fn as_u64(self) -> u64 { self as u64 }}
+impl AsU64 for usize { fn as_u64(self) -> u64 { self as u64 }}
 
-pub fn C_u8(ccx: &CrateContext, i: uint) -> ValueRef {
+pub fn C_u8(ccx: &CrateContext, i: usize) -> ValueRef {
     C_integral(Type::i8(ccx), i as u64, false)
 }
 

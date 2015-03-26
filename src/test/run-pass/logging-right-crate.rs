@@ -27,5 +27,5 @@ extern crate logging_right_crate;
 
 pub fn main() {
     // this function panicks if logging is turned on
-    logging_right_crate::foo::<int>();
+    logging_right_crate::foo::<isize>();
 }

@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 pub fn main() {
-    let i: int = 'Q' as int;
+    let i: isize = 'Q' as isize;
     assert_eq!(i, 0x51);
     let u: u32 = i as u32;
     assert_eq!(u, 0x51 as u32);

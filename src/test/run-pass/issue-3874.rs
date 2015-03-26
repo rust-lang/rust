@@ -10,9 +10,9 @@
 
 // pretty-expanded FIXME #23616
 
-enum PureCounter { PureCounterVariant(uint) }
+enum PureCounter { PureCounterVariant(usize) }
 
-fn each<F>(thing: PureCounter, blk: F) where F: FnOnce(&uint) {
+fn each<F>(thing: PureCounter, blk: F) where F: FnOnce(&usize) {
     let PureCounter::PureCounterVariant(ref x) = thing;
     blk(x);
 }

@@ -17,7 +17,7 @@ trait Foo {
 }
 
 struct BarTy {
-    x : int,
+    x : isize,
     y : f64,
 }
 
@@ -68,34 +68,34 @@ impl Foo for Box<BarTy> {
 }
 
 // If these fail, it's necessary to update rustc_resolve and the cfail tests.
-impl Foo for *const int {
+impl Foo for *const isize {
     fn bar(&self) {
         self.baz();
-        Foo::bah(None::<*const int>);
+        Foo::bah(None::<*const isize>);
     }
 }
 
 // If these fail, it's necessary to update rustc_resolve and the cfail tests.
-impl<'a> Foo for &'a int {
+impl<'a> Foo for &'a isize {
     fn bar(&self) {
         self.baz();
-        Foo::bah(None::<&int>);
+        Foo::bah(None::<&isize>);
     }
 }
 
 // If these fail, it's necessary to update rustc_resolve and the cfail tests.
-impl<'a> Foo for &'a mut int {
+impl<'a> Foo for &'a mut isize {
     fn bar(&self) {
         self.baz();
-        Foo::bah(None::<&mut int>);
+        Foo::bah(None::<&mut isize>);
     }
 }
 
 // If these fail, it's necessary to update rustc_resolve and the cfail tests.
-impl Foo for Box<int> {
+impl Foo for Box<isize> {
     fn bar(&self) {
         self.baz();
-        Foo::bah(None::<Box<int>>);
+        Foo::bah(None::<Box<isize>>);
     }
 }
 

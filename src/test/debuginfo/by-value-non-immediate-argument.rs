@@ -74,7 +74,7 @@
 
 #[derive(Clone)]
 struct Struct {
-    a: int,
+    a: isize,
     b: f64
 }
 
@@ -92,11 +92,11 @@ fn fun_fun(StructStruct { a: x, b: Struct { a: y, b: z } }: StructStruct) {
     zzz(); // #break
 }
 
-fn tup(a: (int, uint, f64, f64)) {
+fn tup(a: (isize, usize, f64, f64)) {
     zzz(); // #break
 }
 
-struct Newtype(f64, f64, int, uint);
+struct Newtype(f64, f64, isize, usize);
 
 fn new_type(a: Newtype) {
     zzz(); // #break

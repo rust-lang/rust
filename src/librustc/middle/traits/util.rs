@@ -278,7 +278,7 @@ impl<'tcx> fmt::Debug for super::VtableObjectData<'tcx> {
 /// See `super::obligations_for_generics`
 pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      cause: ObligationCause<'tcx>,
-                                     recursion_depth: uint,
+                                     recursion_depth: usize,
                                      generic_bounds: &ty::InstantiatedPredicates<'tcx>)
                                      -> VecPerParamSpace<PredicateObligation<'tcx>>
 {
@@ -316,7 +316,7 @@ pub fn trait_ref_for_builtin_bound<'tcx>(
 pub fn predicate_for_trait_ref<'tcx>(
     cause: ObligationCause<'tcx>,
     trait_ref: Rc<ty::TraitRef<'tcx>>,
-    recursion_depth: uint)
+    recursion_depth: usize)
     -> Result<PredicateObligation<'tcx>, ErrorReported>
 {
     Ok(Obligation {
@@ -330,7 +330,7 @@ pub fn predicate_for_trait_def<'tcx>(
     tcx: &ty::ctxt<'tcx>,
     cause: ObligationCause<'tcx>,
     trait_def_id: ast::DefId,
-    recursion_depth: uint,
+    recursion_depth: usize,
     param_ty: Ty<'tcx>)
     -> Result<PredicateObligation<'tcx>, ErrorReported>
 {
@@ -345,7 +345,7 @@ pub fn predicate_for_builtin_bound<'tcx>(
     tcx: &ty::ctxt<'tcx>,
     cause: ObligationCause<'tcx>,
     builtin_bound: ty::BuiltinBound,
-    recursion_depth: uint,
+    recursion_depth: usize,
     param_ty: Ty<'tcx>)
     -> Result<PredicateObligation<'tcx>, ErrorReported>
 {
@@ -377,7 +377,7 @@ pub fn upcast<'tcx>(tcx: &ty::ctxt<'tcx>,
 pub fn get_vtable_index_of_object_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                object_trait_ref: ty::PolyTraitRef<'tcx>,
                                                trait_def_id: ast::DefId,
-                                               method_offset_in_trait: uint) -> uint {
+                                               method_offset_in_trait: usize) -> usize {
     // We need to figure the "real index" of the method in a
     // listing of all the methods of an object. We do this by
     // iterating down the supertraits of the object's trait until
