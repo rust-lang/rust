@@ -202,7 +202,7 @@ impl UnixListener {
     }
 }
 
-impl Listener<UnixStream, UnixAcceptor> for UnixListener {
+impl Listener<UnixAcceptor> for UnixListener {
     fn listen(self) -> IoResult<UnixAcceptor> {
         self.inner.listen()
             .map(|inner| UnixAcceptor { inner: inner })
@@ -250,7 +250,8 @@ impl UnixAcceptor {
     }
 }
 
-impl Acceptor<UnixStream> for UnixAcceptor {
+impl Acceptor for UnixAcceptor {
+    type Connection = UnixStream;
     fn accept(&mut self) -> IoResult<UnixStream> {
         self.inner.accept().map(|s| {
             UnixStream { inner: s }
