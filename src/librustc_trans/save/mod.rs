@@ -272,7 +272,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 let typ =
                     ppaux::ty_to_string(
                         &self.analysis.ty_cx,
-                        *self.analysis.ty_cx.node_types.borrow().get(&id).unwrap());
+                        *self.analysis.ty_cx.node_types().get(&id).unwrap());
                 // get the span only for the name of the variable (I hope the path is only ever a
                 // variable name, but who knows?)
                 self.fmt.formal_str(p.span,
@@ -436,7 +436,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 let typ =
                     ppaux::ty_to_string(
                         &self.analysis.ty_cx,
-                        *self.analysis.ty_cx.node_types.borrow().get(&field.node.id).unwrap());
+                        *self.analysis.ty_cx.node_types().get(&field.node.id).unwrap());
                 match self.span.sub_span_before_token(field.span, token::Colon) {
                     Some(sub_span) => self.fmt.field_str(field.span,
                                                          Some(sub_span),
@@ -1471,7 +1471,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
 
         for &(id, ref p, ref immut, _) in &self.collected_paths {
             let value = if *immut { value.to_string() } else { "<mutable>".to_string() };
-            let types = self.analysis.ty_cx.node_types.borrow();
+            let types = self.analysis.ty_cx.node_types();
             let typ = ppaux::ty_to_string(&self.analysis.ty_cx, *types.get(&id).unwrap());
             // Get the span only for the name of the variable (I hope the path
             // is only ever a variable name, but who knows?).

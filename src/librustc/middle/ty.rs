@@ -68,7 +68,7 @@ use util::nodemap::FnvHashMap;
 
 use arena::TypedArena;
 use std::borrow::{Borrow, Cow};
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, RefCell, Ref};
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, SipHasher, Hasher};
@@ -689,7 +689,7 @@ pub struct ctxt<'tcx> {
     /// Stores the types for various nodes in the AST.  Note that this table
     /// is not guaranteed to be populated until after typeck.  See
     /// typeck::check::fn_ctxt for details.
-    pub node_types: RefCell<NodeMap<Ty<'tcx>>>,
+    node_types: RefCell<NodeMap<Ty<'tcx>>>,
 
     /// Stores the type parameters which were substituted to obtain the type
     /// of this node.  This only applies to nodes that refer to entities
@@ -852,6 +852,13 @@ pub struct ctxt<'tcx> {
 
     /// Maps Expr NodeId's to their constant qualification.
     pub const_qualif_map: RefCell<NodeMap<check_const::ConstQualif>>,
+}
+
+impl<'tcx> ctxt<'tcx> {
+    pub fn node_types(&self) -> Ref<NodeMap<Ty<'tcx>>> { self.node_types.borrow() }
+    pub fn node_type_insert(&self, id: NodeId, ty: Ty<'tcx>) {
+        self.node_types.borrow_mut().insert(id, ty);
+    }
 }
 
 // Flags that we track on types. These flags are propagated upwards
