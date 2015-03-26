@@ -5,7 +5,8 @@ we haven't seen before. Here's a simple program that reads some input,
 and then prints it back out:
 
 ```{rust,ignore}
-corefn main() {
+# #![feature(old_io)]
+fn main() {
     println!("Type something!");
 
     let input = std::old_io::stdin().read_line().ok().expect("Failed to read line");
