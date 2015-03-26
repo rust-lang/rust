@@ -19,7 +19,7 @@ use num::{SignedInt, Int};
 use rt;
 use sync::{Once, ONCE_INIT};
 use sys::c;
-use sys_common::AsInner;
+use sys_common::{AsInner, FromInner};
 
 pub type wrlen_t = i32;
 
@@ -123,10 +123,14 @@ impl Socket {
 
 impl Drop for Socket {
     fn drop(&mut self) {
-        unsafe { cvt(libc::closesocket(self.0)).unwrap(); }
+        let _ = unsafe { libc::closesocket(self.0) };
     }
 }
 
 impl AsInner<libc::SOCKET> for Socket {
     fn as_inner(&self) -> &libc::SOCKET { &self.0 }
+}
+
+impl FromInner<libc::SOCKET> for Socket {
+    fn from_inner(sock: libc::SOCKET) -> Socket { Socket(sock) }
 }

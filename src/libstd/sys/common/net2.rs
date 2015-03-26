@@ -222,6 +222,12 @@ impl TcpStream {
     }
 }
 
+impl FromInner<Socket> for TcpStream {
+    fn from_inner(socket: Socket) -> TcpStream {
+        TcpStream { inner: socket }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // TCP listeners
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,6 +278,12 @@ impl TcpListener {
 
     pub fn duplicate(&self) -> io::Result<TcpListener> {
         self.inner.duplicate().map(|s| TcpListener { inner: s })
+    }
+}
+
+impl FromInner<Socket> for TcpListener {
+    fn from_inner(socket: Socket) -> TcpListener {
+        TcpListener { inner: socket }
     }
 }
 
@@ -385,5 +397,11 @@ impl UdpSocket {
 
     pub fn duplicate(&self) -> io::Result<UdpSocket> {
         self.inner.duplicate().map(|s| UdpSocket { inner: s })
+    }
+}
+
+impl FromInner<Socket> for UdpSocket {
+    fn from_inner(socket: Socket) -> UdpSocket {
+        UdpSocket { inner: socket }
     }
 }
