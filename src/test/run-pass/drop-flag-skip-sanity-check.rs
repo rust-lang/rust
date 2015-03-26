@@ -17,6 +17,8 @@
 //
 // See also drop-flag-sanity-check.rs.
 
+#![feature(old_io)]
+
 use std::env;
 use std::old_io::process::{Command, ExitSignal, ExitStatus};
 
