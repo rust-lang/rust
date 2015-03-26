@@ -1038,44 +1038,9 @@ impl PathBuf {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a Path> for PathBuf {
-    fn from(s: &'a Path) -> PathBuf {
-        s.to_path_buf()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a str> for PathBuf {
-    fn from(s: &'a str) -> PathBuf {
-        PathBuf::from(OsString::from(s))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a String> for PathBuf {
-    fn from(s: &'a String) -> PathBuf {
-        PathBuf::from(OsString::from(s))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl From<String> for PathBuf {
-    fn from(s: String) -> PathBuf {
-        PathBuf::from(OsString::from(s))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a OsStr> for PathBuf {
-    fn from(s: &'a OsStr) -> PathBuf {
-        PathBuf::from(OsString::from(s))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a OsString> for PathBuf {
-    fn from(s: &'a OsString) -> PathBuf {
-        PathBuf::from(s.to_os_string())
+impl<'a, T: ?Sized + AsRef<OsStr>> From<&'a T> for PathBuf {
+    fn from(s: &'a T) -> PathBuf {
+        PathBuf::from(s.as_ref().to_os_string())
     }
 }
 
@@ -1083,6 +1048,13 @@ impl<'a> From<&'a OsString> for PathBuf {
 impl From<OsString> for PathBuf {
     fn from(s: OsString) -> PathBuf {
         PathBuf { inner: s }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl From<String> for PathBuf {
+    fn from(s: String) -> PathBuf {
+        PathBuf::from(OsString::from(s))
     }
 }
 
