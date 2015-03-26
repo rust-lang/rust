@@ -164,6 +164,8 @@ impl<'tcx> FulfillmentContext<'tcx> {
         // debug output much nicer to read and so on.
         let obligation = infcx.resolve_type_vars_if_possible(&obligation);
 
+        assert!(!obligation.has_escaping_regions());
+
         if !self.duplicate_set.insert(obligation.predicate.clone()) {
             debug!("register_predicate({}) -- already seen, skip", obligation.repr(infcx.tcx));
             return;

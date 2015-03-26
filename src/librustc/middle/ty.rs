@@ -1108,16 +1108,16 @@ pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
 
 impl<'tcx> PolyFnSig<'tcx> {
     pub fn inputs(&self) -> ty::Binder<Vec<Ty<'tcx>>> {
-        ty::Binder(self.0.inputs.clone())
+        self.map_bound_ref(|fn_sig| fn_sig.inputs.clone())
     }
     pub fn input(&self, index: uint) -> ty::Binder<Ty<'tcx>> {
-        ty::Binder(self.0.inputs[index])
+        self.map_bound_ref(|fn_sig| fn_sig.inputs[index])
     }
     pub fn output(&self) -> ty::Binder<FnOutput<'tcx>> {
-        ty::Binder(self.0.output.clone())
+        self.map_bound_ref(|fn_sig| fn_sig.output.clone())
     }
     pub fn variadic(&self) -> bool {
-        self.0.variadic
+        self.skip_binder().variadic
     }
 }
 
@@ -1518,6 +1518,22 @@ impl<T> Binder<T> {
     ///   a type parameter `X`, since the type `X`  does not reference any regions
     pub fn skip_binder(&self) -> &T {
         &self.0
+    }
+
+    pub fn as_ref(&self) -> Binder<&T> {
+        ty::Binder(&self.0)
+    }
+
+    pub fn map_bound_ref<F,U>(&self, f: F) -> Binder<U>
+        where F: FnOnce(&T) -> U
+    {
+        self.as_ref().map_bound(f)
+    }
+
+    pub fn map_bound<F,U>(self, f: F) -> Binder<U>
+        where F: FnOnce(T) -> U
+    {
+        ty::Binder(f(self.0))
     }
 }
 
@@ -2062,8 +2078,7 @@ impl<'tcx> ToPolyTraitRef<'tcx> for Rc<TraitRef<'tcx>> {
 
 impl<'tcx> ToPolyTraitRef<'tcx> for PolyTraitPredicate<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
-        // We are just preserving the binder levels here
-        ty::Binder(self.0.trait_ref.clone())
+        self.map_bound_ref(|trait_pred| trait_pred.trait_ref.clone())
     }
 }
 
@@ -6755,6 +6770,30 @@ pub fn binds_late_bound_regions<'tcx, T>(
     count_late_bound_regions(tcx, value) > 0
 }
 
+/// Flattens two binding levels into one. So `for<'a> for<'b> Foo`
+/// becomes `for<'a,'b> Foo`.
+pub fn flatten_late_bound_regions<'tcx, T>(
+    tcx: &ty::ctxt<'tcx>,
+    bound2_value: &Binder<Binder<T>>)
+    -> Binder<T>
+    where T: TypeFoldable<'tcx> + Repr<'tcx>
+{
+    let bound0_value = bound2_value.skip_binder().skip_binder();
+    let value = ty_fold::fold_regions(tcx, bound0_value, |region, current_depth| {
+        match region {
+            ty::ReLateBound(debruijn, br) if debruijn.depth >= current_depth => {
+                // should be true if no escaping regions from bound2_value
+                assert!(debruijn.depth - current_depth <= 1);
+                ty::ReLateBound(DebruijnIndex::new(current_depth), br)
+            }
+            _ => {
+                region
+            }
+        }
+    });
+    Binder(value)
+}
+
 pub fn no_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     value: &Binder<T>)
@@ -7090,6 +7129,12 @@ impl<'tcx> RegionEscape for Predicate<'tcx> {
             Predicate::TypeOutlives(ref data) => data.has_regions_escaping_depth(depth),
             Predicate::Projection(ref data) => data.has_regions_escaping_depth(depth),
         }
+    }
+}
+
+impl<'tcx,P:RegionEscape> RegionEscape for traits::Obligation<'tcx,P> {
+    fn has_regions_escaping_depth(&self, depth: u32) -> bool {
+        self.predicate.has_regions_escaping_depth(depth)
     }
 }
 
