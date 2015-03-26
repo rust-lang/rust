@@ -92,7 +92,7 @@
 //! useful value.
 //!
 //! Consider the `write_line` method defined for I/O types
-//! by the [`Writer`](../io/trait.Writer.html) trait:
+//! by the [`Writer`](../old_io/trait.Writer.html) trait:
 //!
 //! ```
 //! # #![feature(old_io)]
