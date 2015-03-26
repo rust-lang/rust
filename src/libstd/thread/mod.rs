@@ -434,6 +434,55 @@ pub fn panicking() -> bool {
     unwind::panicking()
 }
 
+/// Invoke a closure, capturing the cause of panic if one occurs.
+///
+/// This function will return `Ok(())` if the closure does not panic, and will
+/// return `Err(cause)` if the closure panics. The `cause` returned is the
+/// object with which panic was originally invoked.
+///
+/// It is currently undefined behavior to unwind from Rust code into foreign
+/// code, so this function is particularly useful when Rust is called from
+/// another language (normally C). This can run arbitrary Rust code, capturing a
+/// panic and allowing a graceful handling of the error.
+///
+/// It is **not** recommended to use this function for a general try/catch
+/// mechanism. The `Result` type is more appropriate to use for functions that
+/// can fail on a regular basis.
+///
+/// The closure provided is required to adhere to the `'static` bound to ensure
+/// that it cannot reference data in the parent stack frame, mitigating problems
+/// with exception safety. Furthermore, a `Send` bound is also required,
+/// providing the same safety guarantees as `thread::spawn` (ensuring the
+/// closure is properly isolated from the parent).
+///
+/// # Examples
+///
+/// ```
+/// # #![feature(catch_panic)]
+/// use std::thread;
+///
+/// let result = thread::catch_panic(|| {
+///     println!("hello!");
+/// });
+/// assert!(result.is_ok());
+///
+/// let result = thread::catch_panic(|| {
+///     panic!("oh no!");
+/// });
+/// assert!(result.is_err());
+/// ```
+#[unstable(feature = "catch_panic", reason = "recent API addition")]
+pub fn catch_panic<F, R>(f: F) -> Result<R>
+    where F: FnOnce() -> R + Send + 'static
+{
+    let mut result = None;
+    unsafe {
+        let result = &mut result;
+        try!(::rt::unwind::try(move || *result = Some(f())))
+    }
+    Ok(result.unwrap())
+}
+
 /// Put the current thread to sleep for the specified amount of time.
 ///
 /// The thread may sleep longer than the duration specified due to scheduling
