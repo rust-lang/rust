@@ -1237,7 +1237,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // self-type from one of the other inputs. Without this check,
         // these cases wind up being considered ambiguous due to a
         // (spurious) ambiguity introduced here.
-        if !object_safety::is_object_safe(self.tcx(), obligation.predicate.to_poly_trait_ref()) {
+        let predicate_trait_ref = obligation.predicate.to_poly_trait_ref();
+        if !object_safety::is_object_safe(self.tcx(), predicate_trait_ref.def_id()) {
             return;
         }
 
