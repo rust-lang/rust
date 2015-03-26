@@ -195,7 +195,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("no_mangle", Normal),
     ("no_link", Normal),
     ("derive", Normal),
-    ("should_fail", Normal),
     ("should_panic", Normal),
     ("ignore", Normal),
     ("no_implicit_prelude", Normal),

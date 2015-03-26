@@ -60,7 +60,7 @@ use thread;
 ///
 /// # Examples
 ///
-/// ```should_fail
+/// ```should_panic
 /// # #![feature(old_io)]
 /// use std::old_io::*;
 ///

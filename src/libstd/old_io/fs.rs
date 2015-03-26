@@ -105,7 +105,7 @@ impl File {
     ///
     /// # Examples
     ///
-    /// ```rust,should_fail
+    /// ```rust,should_panic
     /// # #![feature(old_io, old_path)]
     /// use std::old_io::*;
     /// use std::old_path::Path;

@@ -356,7 +356,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             });
             let text = lines.collect::<Vec<&str>>().connect("\n");
             tests.add_test(text.to_string(),
-                           block_info.should_fail, block_info.no_run,
+                           block_info.should_panic, block_info.no_run,
                            block_info.ignore, block_info.test_harness);
         }
     }
@@ -397,7 +397,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 struct LangString {
-    should_fail: bool,
+    should_panic: bool,
     no_run: bool,
     ignore: bool,
     rust: bool,
@@ -407,7 +407,7 @@ struct LangString {
 impl LangString {
     fn all_false() -> LangString {
         LangString {
-            should_fail: false,
+            should_panic: false,
             no_run: false,
             ignore: false,
             rust: true,  // NB This used to be `notrust = false`
@@ -427,7 +427,7 @@ impl LangString {
         for token in tokens {
             match token {
                 "" => {},
-                "should_fail" => { data.should_fail = true; seen_rust_tags = true; },
+                "should_panic" => { data.should_panic = true; seen_rust_tags = true; },
                 "no_run" => { data.no_run = true; seen_rust_tags = true; },
                 "ignore" => { data.ignore = true; seen_rust_tags = true; },
                 "rust" => { data.rust = true; seen_rust_tags = true; },
@@ -528,9 +528,9 @@ mod tests {
     #[test]
     fn test_lang_string_parse() {
         fn t(s: &str,
-            should_fail: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool) {
+            should_panic: bool, no_run: bool, ignore: bool, rust: bool, test_harness: bool) {
             assert_eq!(LangString::parse(s), LangString {
-                should_fail: should_fail,
+                should_panic: should_panic,
                 no_run: no_run,
                 ignore: ignore,
                 rust: rust,
@@ -538,16 +538,16 @@ mod tests {
             })
         }
 
-        // marker                | should_fail | no_run | ignore | rust | test_harness
+        // marker                | should_panic| no_run | ignore | rust | test_harness
         t("",                      false,        false,   false,   true,  false);
         t("rust",                  false,        false,   false,   true,  false);
         t("sh",                    false,        false,   false,   false, false);
         t("ignore",                false,        false,   true,    true,  false);
-        t("should_fail",           true,         false,   false,   true,  false);
+        t("should_panic",          true,         false,   false,   true,  false);
         t("no_run",                false,        true,    false,   true,  false);
         t("test_harness",          false,        false,   false,   true,  true);
         t("{.no_run .example}",    false,        true,    false,   true,  false);
-        t("{.sh .should_fail}",    true,         false,   false,   true,  false);
+        t("{.sh .should_panic}",   true,         false,   false,   true,  false);
         t("{.example .rust}",      false,        false,   false,   true,  false);
         t("{.test_harness .rust}", false,        false,   false,   true,  true);
     }
