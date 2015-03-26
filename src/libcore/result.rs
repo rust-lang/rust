@@ -762,7 +762,7 @@ impl<T, E: fmt::Debug> Result<T, E> {
     /// assert_eq!(x.unwrap(), 2);
     /// ```
     ///
-    /// ```{.should_fail}
+    /// ```{.should_panic}
     /// let x: Result<u32, &str> = Err("emergency failure");
     /// x.unwrap(); // panics with `emergency failure`
     /// ```
@@ -788,7 +788,7 @@ impl<T: fmt::Debug, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// ```{.should_fail}
+    /// ```{.should_panic}
     /// let x: Result<u32, &str> = Ok(2);
     /// x.unwrap_err(); // panics with `2`
     /// ```

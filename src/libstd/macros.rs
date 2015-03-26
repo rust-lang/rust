@@ -28,7 +28,7 @@
 ///
 /// # Examples
 ///
-/// ```should_fail
+/// ```should_panic
 /// # #![allow(unreachable_code)]
 /// panic!();
 /// panic!("this is a terrible mistake!");
