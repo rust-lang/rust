@@ -431,7 +431,8 @@ impl<T> Clone for Rc<T> {
 
     /// Makes a clone of the `Rc<T>`.
     ///
-    /// This increases the strong reference count.
+    /// When you clone an `Rc<T>`, it will create another pointer to the data and
+    /// increase the strong reference counter.
     ///
     /// # Examples
     ///
