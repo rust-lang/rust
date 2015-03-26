@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_consts)]
+
 #![deny(dead_code)]
 
 const GLOBAL_BAR: u32 = 1;

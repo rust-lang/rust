@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_consts)]
+
 use std::marker::MarkerTrait;
 
 trait Foo: MarkerTrait {
