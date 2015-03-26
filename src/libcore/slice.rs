@@ -88,6 +88,9 @@ pub trait SliceExt {
     fn len(&self) -> usize;
     fn is_empty(&self) -> bool { self.len() == 0 }
     fn get_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut Self::Item>;
+    #[unstable(feature = "core",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &mut s[..] instead")]
     fn as_mut_slice<'a>(&'a mut self) -> &'a mut [Self::Item];
     fn iter_mut<'a>(&'a mut self) -> IterMut<'a, Self::Item>;
     fn first_mut<'a>(&'a mut self) -> Option<&'a mut Self::Item>;
@@ -261,6 +264,9 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
+    #[unstable(feature = "core",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &mut s[..] instead")]
     fn as_mut_slice(&mut self) -> &mut [T] { self }
 
     #[cfg(stage0)]

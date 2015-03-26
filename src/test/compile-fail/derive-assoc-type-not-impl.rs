@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name="struct_variant_xc_aux"]
-#![crate_type = "lib"]
+trait Foo {
+    type X;
+    fn method(&self) {}
+}
 
-#[derive(Copy)]
-pub enum Enum {
-    Variant(u8),
-    StructVariant { arg: u8 }
+#[derive(Clone)]
+struct Bar<T: Foo> {
+    x: T::X,
+}
+
+struct NotClone;
+
+impl Foo for NotClone {
+    type X = i8;
+}
+
+fn main() {
+    Bar::<NotClone> { x: 1 }.clone(); //~ ERROR
 }

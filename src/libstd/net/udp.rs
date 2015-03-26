@@ -14,7 +14,7 @@
 use prelude::v1::*;
 
 use io::{self, Error, ErrorKind};
-use net::{ToSocketAddrs, SocketAddr};
+use net::{ToSocketAddrs, SocketAddr, IpAddr};
 use sys_common::net2 as net_imp;
 use sys_common::AsInner;
 
@@ -116,12 +116,12 @@ impl UdpSocket {
     }
 
     /// Joins a multicast IP address (becomes a member of it)
-    pub fn join_multicast(&self, multi: &SocketAddr) -> io::Result<()> {
+    pub fn join_multicast(&self, multi: &IpAddr) -> io::Result<()> {
         self.0.join_multicast(multi)
     }
 
     /// Leaves a multicast IP address (drops membership from it)
-    pub fn leave_multicast(&self, multi: &SocketAddr) -> io::Result<()> {
+    pub fn leave_multicast(&self, multi: &IpAddr) -> io::Result<()> {
         self.0.leave_multicast(multi)
     }
 
