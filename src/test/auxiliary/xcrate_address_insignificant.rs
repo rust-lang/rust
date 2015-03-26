@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn foo<T>() -> int {
-    static a: int = 3;
+pub fn foo<T>() -> isize {
+    static a: isize = 3;
     a
 }
 
-pub fn bar() -> int {
-    foo::<int>()
+pub fn bar() -> isize {
+    foo::<isize>()
 }

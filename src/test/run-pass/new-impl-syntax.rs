@@ -11,8 +11,8 @@
 use std::fmt;
 
 struct Thingy {
-    x: int,
-    y: int
+    x: isize,
+    y: isize
 }
 
 impl fmt::Debug for Thingy {

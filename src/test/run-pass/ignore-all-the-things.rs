@@ -12,8 +12,8 @@
 
 #![feature(advanced_slice_patterns)]
 
-struct Foo(int, int, int, int);
-struct Bar{a: int, b: int, c: int, d: int}
+struct Foo(isize, isize, isize, isize);
+struct Bar{a: isize, b: isize, c: isize, d: isize}
 
 pub fn main() {
     let Foo(..) = Foo(5, 5, 5, 5);

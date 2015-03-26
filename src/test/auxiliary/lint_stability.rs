@@ -101,20 +101,20 @@ pub trait UnstableTrait { fn dummy(&self) { } }
 #[stable(feature = "test_feature", since = "1.0.0")]
 #[deprecated(since = "1.0.0")]
 pub struct DeprecatedStruct {
-    #[stable(feature = "test_feature", since = "1.0.0")] pub i: int
+    #[stable(feature = "test_feature", since = "1.0.0")] pub i: isize
 }
 #[unstable(feature = "test_feature")]
 #[deprecated(since = "1.0.0")]
 pub struct DeprecatedUnstableStruct {
-    #[stable(feature = "test_feature", since = "1.0.0")] pub i: int
+    #[stable(feature = "test_feature", since = "1.0.0")] pub i: isize
 }
 #[unstable(feature = "test_feature")]
 pub struct UnstableStruct {
-    #[stable(feature = "test_feature", since = "1.0.0")] pub i: int
+    #[stable(feature = "test_feature", since = "1.0.0")] pub i: isize
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StableStruct {
-    #[stable(feature = "test_feature", since = "1.0.0")] pub i: int
+    #[stable(feature = "test_feature", since = "1.0.0")] pub i: isize
 }
 
 #[stable(feature = "test_feature", since = "1.0.0")]
@@ -145,14 +145,14 @@ pub enum Enum {
 
 #[stable(feature = "test_feature", since = "1.0.0")]
 #[deprecated(since = "1.0.0")]
-pub struct DeprecatedTupleStruct(#[stable(feature = "rust1", since = "1.0.0")] pub int);
+pub struct DeprecatedTupleStruct(#[stable(feature = "rust1", since = "1.0.0")] pub isize);
 #[unstable(feature = "test_feature")]
 #[deprecated(since = "1.0.0")]
-pub struct DeprecatedUnstableTupleStruct(#[stable(feature = "rust1", since = "1.0.0")] pub int);
+pub struct DeprecatedUnstableTupleStruct(#[stable(feature = "rust1", since = "1.0.0")] pub isize);
 #[unstable(feature = "test_feature")]
-pub struct UnstableTupleStruct(#[stable(feature = "rust1", since = "1.0.0")] pub int);
+pub struct UnstableTupleStruct(#[stable(feature = "rust1", since = "1.0.0")] pub isize);
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct StableTupleStruct(#[stable(feature = "rust1", since = "1.0.0")] pub int);
+pub struct StableTupleStruct(#[stable(feature = "rust1", since = "1.0.0")] pub isize);
 
 #[macro_export]
 macro_rules! macro_test {

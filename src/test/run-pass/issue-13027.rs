@@ -13,9 +13,9 @@
 // Tests that match expression handles overlapped literal and range
 // properly in the presence of guard function.
 
-fn val() -> uint { 1 }
+fn val() -> usize { 1 }
 
-static CONST: uint = 1;
+static CONST: usize = 1;
 
 pub fn main() {
     lit_shadow_range();
@@ -174,7 +174,7 @@ fn range_shadow_multi_pats() {
 
 fn misc() {
     enum Foo {
-        Bar(uint, bool)
+        Bar(usize, bool)
     }
     // This test basically mimics how trace_macros! macro is implemented,
     // which is a rare combination of vector patterns, multiple wild-card

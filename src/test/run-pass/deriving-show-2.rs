@@ -15,19 +15,19 @@ enum A {}
 #[derive(Debug)]
 enum B { B1, B2, B3 }
 #[derive(Debug)]
-enum C { C1(int), C2(B), C3(String) }
+enum C { C1(isize), C2(B), C3(String) }
 #[derive(Debug)]
-enum D { D1{ a: int } }
+enum D { D1{ a: isize } }
 #[derive(Debug)]
 struct E;
 #[derive(Debug)]
-struct F(int);
+struct F(isize);
 #[derive(Debug)]
-struct G(int, int);
+struct G(isize, isize);
 #[derive(Debug)]
-struct H { a: int }
+struct H { a: isize }
 #[derive(Debug)]
-struct I { a: int, b: int }
+struct I { a: isize, b: isize }
 #[derive(Debug)]
 struct J(Custom);
 

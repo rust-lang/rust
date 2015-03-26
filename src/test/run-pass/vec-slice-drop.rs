@@ -16,7 +16,7 @@ use std::cell::Cell;
 
 // Make sure that destructors get run on slice literals
 struct foo<'a> {
-    x: &'a Cell<int>,
+    x: &'a Cell<isize>,
 }
 
 #[unsafe_destructor]
@@ -26,7 +26,7 @@ impl<'a> Drop for foo<'a> {
     }
 }
 
-fn foo(x: &Cell<int>) -> foo {
+fn foo(x: &Cell<isize>) -> foo {
     foo {
         x: x
     }

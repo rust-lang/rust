@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 trait Foo {
-    fn foo(&self, mut x: int) -> int {
+    fn foo(&self, mut x: isize) -> isize {
         let val = x;
         x = 37 * x;
         val + x
@@ -32,7 +32,7 @@ pub fn main() {
     assert_eq!(X.foo(2), 76);
 
     enum Bar {
-       Foo(int),
+       Foo(isize),
        Baz(f32, u8)
     }
 
@@ -63,14 +63,14 @@ pub fn main() {
         }
     }
 
-    fn foo1((x, mut y): (f64, int), mut z: int) -> int {
+    fn foo1((x, mut y): (f64, isize), mut z: isize) -> isize {
         y = 2 * 6;
-        z = y + (x as int);
+        z = y + (x as isize);
         y - z
     }
 
     struct A {
-        x: int
+        x: isize
     }
     let A { x: mut x } = A { x: 10 };
     assert_eq!(x, 10);

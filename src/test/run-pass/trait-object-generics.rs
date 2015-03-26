@@ -42,11 +42,11 @@ impl<A1, A2, A3> Impl<A1, A2, A3> {
 enum Type<T> { Constant(T) }
 
 trait Trait<K,V> {
-    fn method(&self,Type<(K,V)>) -> int;
+    fn method(&self,Type<(K,V)>) -> isize;
 }
 
 impl<V> Trait<u8,V> for () {
-    fn method(&self, _x: Type<(u8,V)>) -> int { 0 }
+    fn method(&self, _x: Type<(u8,V)>) -> isize { 0 }
 }
 
 pub fn main() {

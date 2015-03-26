@@ -39,7 +39,7 @@ use vec::Vec;
 /// ```
 pub struct ChanReader {
     buf: Vec<u8>,          // A buffer of bytes received but not consumed.
-    pos: uint,             // How many of the buffered bytes have already be consumed.
+    pos: usize,             // How many of the buffered bytes have already be consumed.
     rx: Receiver<Vec<u8>>, // The Receiver to pull data from.
     closed: bool,          // Whether the channel this Receiver connects to has been closed.
 }
@@ -77,14 +77,14 @@ impl Buffer for ChanReader {
         }
     }
 
-    fn consume(&mut self, amt: uint) {
+    fn consume(&mut self, amt: usize) {
         self.pos += amt;
         assert!(self.pos <= self.buf.len());
     }
 }
 
 impl Reader for ChanReader {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         let mut num_read = 0;
         loop {
             let count = match self.fill_buf().ok() {

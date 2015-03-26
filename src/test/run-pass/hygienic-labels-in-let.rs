@@ -34,7 +34,7 @@ macro_rules! run_once {
 pub fn main() {
     let mut i = 0;
 
-    let j: int = {
+    let j: isize = {
         'x: loop {
             // this 'x should refer to the outer loop, lexically
             loop_x!(break 'x);
@@ -44,7 +44,7 @@ pub fn main() {
     };
     assert_eq!(j, 1);
 
-    let k: int = {
+    let k: isize = {
         'x: for _ in 0..1 {
             // ditto
             loop_x!(break 'x);
@@ -54,7 +54,7 @@ pub fn main() {
     };
     assert_eq!(k, 1);
 
-    let l: int = {
+    let l: isize = {
         'x: for _ in 0..1 {
             // ditto
             while_true!(break 'x);
@@ -64,7 +64,7 @@ pub fn main() {
     };
     assert_eq!(l, 1);
 
-    let n: int = {
+    let n: isize = {
         'x: for _ in 0..1 {
             // ditto
             run_once!(continue 'x);

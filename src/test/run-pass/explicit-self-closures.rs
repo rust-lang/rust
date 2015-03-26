@@ -13,11 +13,11 @@
 // pretty-expanded FIXME #23616
 
 struct Box {
-    x: uint
+    x: usize
 }
 
 impl Box {
-    pub fn set_many(&mut self, xs: &[uint]) {
+    pub fn set_many(&mut self, xs: &[usize]) {
         for x in xs { self.x = *x; }
     }
 }

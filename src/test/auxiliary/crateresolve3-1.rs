@@ -12,4 +12,4 @@
 
 #![crate_type = "lib"]
 
-pub fn f() -> int { 10 }
+pub fn f() -> isize { 10 }

@@ -24,7 +24,7 @@ impl<T:Foo> Foo for Box<T> {
     }
 }
 
-impl Foo for uint {
+impl Foo for usize {
     fn foo(&self) -> String {
         format!("{}", *self)
     }

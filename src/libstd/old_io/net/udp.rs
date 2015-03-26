@@ -73,7 +73,7 @@ impl UdpSocket {
 
     /// Receives data from the socket. On success, returns the number of bytes
     /// read and the address from whence the data came.
-    pub fn recv_from(&mut self, buf: &mut [u8]) -> IoResult<(uint, SocketAddr)> {
+    pub fn recv_from(&mut self, buf: &mut [u8]) -> IoResult<(usize, SocketAddr)> {
         self.inner.recv_from(buf)
     }
 
@@ -113,13 +113,13 @@ impl UdpSocket {
 
     /// Sets the multicast TTL
     #[unstable(feature = "io")]
-    pub fn set_multicast_ttl(&mut self, ttl: int) -> IoResult<()> {
+    pub fn set_multicast_ttl(&mut self, ttl: isize) -> IoResult<()> {
         self.inner.multicast_time_to_live(ttl)
     }
 
     /// Sets this socket's TTL
     #[unstable(feature = "io")]
-    pub fn set_ttl(&mut self, ttl: int) -> IoResult<()> {
+    pub fn set_ttl(&mut self, ttl: isize) -> IoResult<()> {
         self.inner.time_to_live(ttl)
     }
 

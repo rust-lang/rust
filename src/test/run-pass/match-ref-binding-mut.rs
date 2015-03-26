@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 struct Rec {
-    f: int
+    f: isize
 }
 
 fn destructure(x: &mut Rec) {

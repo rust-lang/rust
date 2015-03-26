@@ -13,8 +13,8 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-struct A { a: int, b: Box<int> }
-struct B { a: Box<int>, b: Box<int> }
+struct A { a: isize, b: Box<isize> }
+struct B { a: Box<isize>, b: Box<isize> }
 
 fn move_after_copy() {
     let x = A { a: 1, b: box 2 };

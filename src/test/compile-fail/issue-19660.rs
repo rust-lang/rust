@@ -21,6 +21,6 @@ impl<A:?Sized, R:?Sized, U:?Sized> PhantomFn<A,R> for U { }
 trait Sized : PhantomFn<Self> {}
 
 #[start]
-fn main(_: int, _: *const *const u8) -> int {
+fn main(_: isize, _: *const *const u8) -> isize {
     0
 }

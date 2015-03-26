@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 pub fn main() {
-    let f = |(x, y): (int, int)| {
+    let f = |(x, y): (isize, isize)| {
         assert_eq!(x, 1);
         assert_eq!(y, 2);
     };

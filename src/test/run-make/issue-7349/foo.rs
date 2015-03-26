@@ -23,8 +23,8 @@ extern "C" fn outer_foreign<T>() {
 }
 
 fn main() {
-    outer::<int>();
-    outer::<uint>();
-    outer_foreign::<int>();
-    outer_foreign::<uint>();
+    outer::<isize>();
+    outer::<usize>();
+    outer_foreign::<isize>();
+    outer_foreign::<usize>();
 }

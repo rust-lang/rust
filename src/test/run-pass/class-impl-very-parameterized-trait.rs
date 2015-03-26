@@ -16,20 +16,20 @@ enum cat_type { tuxedo, tabby, tortoiseshell }
 
 impl cmp::PartialEq for cat_type {
     fn eq(&self, other: &cat_type) -> bool {
-        ((*self) as uint) == ((*other) as uint)
+        ((*self) as usize) == ((*other) as usize)
     }
     fn ne(&self, other: &cat_type) -> bool { !(*self).eq(other) }
 }
 
 // Very silly -- this just returns the value of the name field
-// for any int value that's less than the meows field
+// for any isize value that's less than the meows field
 
 // ok: T should be in scope when resolving the trait ref for map
 struct cat<T> {
     // Yes, you can have negative meows
-    meows : int,
+    meows : isize,
 
-    how_hungry : int,
+    how_hungry : isize,
     name : T,
 }
 
@@ -46,26 +46,26 @@ impl<T> cat<T> {
             return false;
         }
     }
-    fn len(&self) -> uint { self.meows as uint }
+    fn len(&self) -> usize { self.meows as usize }
     fn is_empty(&self) -> bool { self.meows == 0 }
     fn clear(&mut self) {}
-    fn contains_key(&self, k: &int) -> bool { *k <= self.meows }
+    fn contains_key(&self, k: &isize) -> bool { *k <= self.meows }
 
-    fn find(&self, k: &int) -> Option<&T> {
+    fn find(&self, k: &isize) -> Option<&T> {
         if *k <= self.meows {
             Some(&self.name)
         } else {
             None
         }
     }
-    fn insert(&mut self, k: int, _: T) -> bool {
+    fn insert(&mut self, k: isize, _: T) -> bool {
         self.meows += k;
         true
     }
 
-    fn find_mut(&mut self, _k: &int) -> Option<&mut T> { panic!() }
+    fn find_mut(&mut self, _k: &isize) -> Option<&mut T> { panic!() }
 
-    fn remove(&mut self, k: &int) -> bool {
+    fn remove(&mut self, k: &isize) -> bool {
         if self.find(k).is_some() {
             self.meows -= *k; true
         } else {
@@ -73,20 +73,20 @@ impl<T> cat<T> {
         }
     }
 
-    fn pop(&mut self, _k: &int) -> Option<T> { panic!() }
+    fn pop(&mut self, _k: &isize) -> Option<T> { panic!() }
 
-    fn swap(&mut self, _k: int, _v: T) -> Option<T> { panic!() }
+    fn swap(&mut self, _k: isize, _v: T) -> Option<T> { panic!() }
 }
 
 impl<T> cat<T> {
-    pub fn get(&self, k: &int) -> &T {
+    pub fn get(&self, k: &isize) -> &T {
         match self.find(k) {
           Some(v) => { v }
           None    => { panic!("epic fail"); }
         }
     }
 
-    pub fn new(in_x: int, in_y: int, in_name: T) -> cat<T> {
+    pub fn new(in_x: isize, in_y: isize, in_name: T) -> cat<T> {
         cat{meows: in_x, how_hungry: in_y, name: in_name }
     }
 }

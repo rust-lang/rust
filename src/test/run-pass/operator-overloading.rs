@@ -15,8 +15,8 @@ use std::ops;
 
 #[derive(Copy, Debug)]
 struct Point {
-    x: int,
-    y: int
+    x: isize,
+    y: isize
 }
 
 impl ops::Add for Point {
@@ -52,9 +52,9 @@ impl ops::Not for Point {
 }
 
 impl ops::Index<bool> for Point {
-    type Output = int;
+    type Output = isize;
 
-    fn index(&self, x: bool) -> &int {
+    fn index(&self, x: bool) -> &isize {
         if x {
             &self.x
         } else {
@@ -87,4 +87,4 @@ pub fn main() {
     result(p[true]);
 }
 
-fn result(i: int) { }
+fn result(i: isize) { }

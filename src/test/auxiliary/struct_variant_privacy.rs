@@ -9,5 +9,5 @@
 // except according to those terms.
 
 enum Bar {
-    Baz { a: int }
+    Baz { a: isize }
 }

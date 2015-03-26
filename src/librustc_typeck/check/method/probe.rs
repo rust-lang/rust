@@ -60,7 +60,7 @@ struct Candidate<'tcx> {
 
 enum CandidateKind<'tcx> {
     InherentImplCandidate(/* Impl */ ast::DefId, subst::Substs<'tcx>),
-    ObjectCandidate(/* Trait */ ast::DefId, /* method_num */ uint, /* vtable index */ uint),
+    ObjectCandidate(/* Trait */ ast::DefId, /* method_num */ usize, /* vtable index */ usize),
     ExtensionImplCandidate(/* Impl */ ast::DefId, Rc<ty::TraitRef<'tcx>>,
                            subst::Substs<'tcx>, MethodIndex),
     ClosureCandidate(/* Trait */ ast::DefId, MethodIndex),
@@ -77,7 +77,7 @@ pub struct Pick<'tcx> {
 #[derive(Clone,Debug)]
 pub enum PickKind<'tcx> {
     InherentImplPick(/* Impl */ ast::DefId),
-    ObjectPick(/* Trait */ ast::DefId, /* method_num */ uint, /* real_index */ uint),
+    ObjectPick(/* Trait */ ast::DefId, /* method_num */ usize, /* real_index */ usize),
     ExtensionImplPick(/* Impl */ ast::DefId, MethodIndex),
     TraitPick(/* Trait */ ast::DefId, MethodIndex),
     WhereClausePick(/* Trait */ ty::PolyTraitRef<'tcx>, MethodIndex),
@@ -94,14 +94,14 @@ pub enum PickAdjustment {
     // Indicates that the source expression should be autoderef'd N times
     //
     // A = expr | *expr | **expr
-    AutoDeref(uint),
+    AutoDeref(usize),
 
     // Indicates that the source expression should be autoderef'd N
     // times and then "unsized". This should probably eventually go
     // away in favor of just coercing method receivers.
     //
     // A = unsize(expr | *expr | **expr)
-    AutoUnsizeLength(/* number of autoderefs */ uint, /* length*/ uint),
+    AutoUnsizeLength(/* number of autoderefs */ usize, /* length*/ usize),
 
     // Indicates that an autoref is applied after some number of other adjustments
     //
@@ -526,7 +526,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             &mut ProbeContext<'b, 'tcx>,
             ty::PolyTraitRef<'tcx>,
             Rc<ty::Method<'tcx>>,
-            uint,
+            usize,
         ),
     {
         debug!("elaborate_bounds(bounds={})", bounds.repr(self.tcx()));
@@ -625,7 +625,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn assemble_extension_candidates_for_trait_impls(&mut self,
                                                      trait_def_id: ast::DefId,
                                                      method: Rc<ty::Method<'tcx>>,
-                                                     method_index: uint)
+                                                     method_index: usize)
     {
         ty::populate_implementations_for_trait_if_necessary(self.tcx(),
                                                             trait_def_id);
@@ -692,7 +692,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn assemble_closure_candidates(&mut self,
                                    trait_def_id: ast::DefId,
                                    method_ty: Rc<ty::Method<'tcx>>,
-                                   method_index: uint)
+                                   method_index: usize)
                                    -> Result<(),MethodError>
     {
         // Check if this is one of the Fn,FnMut,FnOnce traits.
@@ -754,7 +754,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn assemble_projection_candidates(&mut self,
                                       trait_def_id: ast::DefId,
                                       method: Rc<ty::Method<'tcx>>,
-                                      method_index: uint)
+                                      method_index: usize)
     {
         debug!("assemble_projection_candidates(\
                trait_def_id={}, \
@@ -815,7 +815,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn assemble_where_clause_candidates(&mut self,
                                         trait_def_id: ast::DefId,
                                         method_ty: Rc<ty::Method<'tcx>>,
-                                        method_index: uint)
+                                        method_index: usize)
     {
         debug!("assemble_where_clause_candidates(trait_def_id={})",
                trait_def_id.repr(self.tcx()));
@@ -933,7 +933,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         return self.pick_method(step.self_ty).map(|r| self.adjust(r, adjustment.clone()));
 
-        fn consider_reborrow<'tcx>(ty: Ty<'tcx>, d: uint) -> PickAdjustment {
+        fn consider_reborrow<'tcx>(ty: Ty<'tcx>, d: usize) -> PickAdjustment {
             // Insert a `&*` or `&mut *` if this is a reference type:
             match ty.sty {
                 ty::ty_rptr(_, ref mt) => AutoRef(mt.mutbl, box AutoDeref(d+1)),
@@ -1100,7 +1100,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     /// ```
     /// trait Foo { ... }
     /// impl Foo for Vec<int> { ... }
-    /// impl Foo for Vec<uint> { ... }
+    /// impl Foo for Vec<usize> { ... }
     /// ```
     ///
     /// Now imagine the receiver is `Vec<_>`. It doesn't really matter at this time which impl we
@@ -1281,7 +1281,7 @@ fn impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                       trait_def_id: ast::DefId,
                       method_name: ast::Name)
-                      -> Option<(uint, Rc<ty::Method<'tcx>>)>
+                      -> Option<(usize, Rc<ty::Method<'tcx>>)>
 {
     let trait_items = ty::trait_items(tcx, trait_def_id);
     debug!("trait_method; items: {:?}", trait_items);

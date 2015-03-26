@@ -180,7 +180,7 @@ impl LintPass for TypeLimits {
                             if let ast::LitInt(shift, _) = lit.node { shift >= bits }
                             else { false }
                         } else {
-                            match eval_const_expr_partial(cx.tcx, &**r, Some(cx.tcx.types.uint)) {
+                            match eval_const_expr_partial(cx.tcx, &**r, Some(cx.tcx.types.usize)) {
                                 Ok(const_int(shift)) => { shift as u64 >= bits },
                                 Ok(const_uint(shift)) => { shift >= bits },
                                 _ => { false }

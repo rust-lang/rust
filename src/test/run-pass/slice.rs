@@ -17,7 +17,7 @@
 extern crate core;
 use core::ops::{Index, IndexMut, Range, RangeTo, RangeFrom, RangeFull};
 
-static mut COUNT: uint = 0;
+static mut COUNT: usize = 0;
 
 struct Foo;
 

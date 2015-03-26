@@ -18,15 +18,15 @@
 
 fn main() {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-    let task: Box<Fn(int) -> int> = Box::new(|x| x);
+    let task: Box<Fn(isize) -> isize> = Box::new(|x| x);
     task.call((0, ));
 
-    let mut task: Box<FnMut(int) -> int> = Box::new(|x| x);
+    let mut task: Box<FnMut(isize) -> isize> = Box::new(|x| x);
     task(0);
 
     call(|x| x, 22);
 }
 
-fn call<F:FnOnce(int) -> int>(f: F, x: int) -> int {
+fn call<F:FnOnce(isize) -> isize>(f: F, x: isize) -> isize {
     f(x)
 }

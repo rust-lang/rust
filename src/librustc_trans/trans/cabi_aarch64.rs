@@ -18,18 +18,18 @@ use trans::type_::Type;
 
 use std::cmp;
 
-fn align_up_to(off: uint, a: uint) -> uint {
+fn align_up_to(off: usize, a: usize) -> usize {
     return (off + a - 1) / a * a;
 }
 
-fn align(off: uint, ty: Type) -> uint {
+fn align(off: usize, ty: Type) -> usize {
     let a = ty_align(ty);
     return align_up_to(off, a);
 }
 
-fn ty_align(ty: Type) -> uint {
+fn ty_align(ty: Type) -> usize {
     match ty.kind() {
-        Integer => ((ty.int_width() as uint) + 7) / 8,
+        Integer => ((ty.int_width() as usize) + 7) / 8,
         Pointer => 8,
         Float => 4,
         Double => 8,
@@ -54,9 +54,9 @@ fn ty_align(ty: Type) -> uint {
     }
 }
 
-fn ty_size(ty: Type) -> uint {
+fn ty_size(ty: Type) -> usize {
     match ty.kind() {
-        Integer => ((ty.int_width() as uint) + 7) / 8,
+        Integer => ((ty.int_width() as usize) + 7) / 8,
         Pointer => 8,
         Float => 4,
         Double => 8,

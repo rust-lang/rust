@@ -30,10 +30,10 @@ pub enum UndoLog<D:SnapshotVecDelegate> {
     CommittedSnapshot,
 
     /// New variable with given index was created.
-    NewElem(uint),
+    NewElem(usize),
 
     /// Variable with given index was changed *from* the given value.
-    SetElem(uint, D::Value),
+    SetElem(usize, D::Value),
 
     /// Extensible set of actions
     Other(D::Undo)
@@ -48,7 +48,7 @@ pub struct SnapshotVec<D:SnapshotVecDelegate> {
 // Snapshots are tokens that should be created/consumed linearly.
 pub struct Snapshot {
     // Length of the undo log at the time the snapshot was taken.
-    length: uint,
+    length: usize,
 }
 
 pub trait SnapshotVecDelegate {
@@ -77,7 +77,7 @@ impl<D:SnapshotVecDelegate> SnapshotVec<D> {
         }
     }
 
-    pub fn push(&mut self, elem: D::Value) -> uint {
+    pub fn push(&mut self, elem: D::Value) -> usize {
         let len = self.values.len();
         self.values.push(elem);
 
@@ -88,20 +88,20 @@ impl<D:SnapshotVecDelegate> SnapshotVec<D> {
         len
     }
 
-    pub fn get<'a>(&'a self, index: uint) -> &'a D::Value {
+    pub fn get<'a>(&'a self, index: usize) -> &'a D::Value {
         &self.values[index]
     }
 
     /// Returns a mutable pointer into the vec; whatever changes you make here cannot be undone
     /// automatically, so you should be sure call `record()` with some sort of suitable undo
     /// action.
-    pub fn get_mut<'a>(&'a mut self, index: uint) -> &'a mut D::Value {
+    pub fn get_mut<'a>(&'a mut self, index: usize) -> &'a mut D::Value {
         &mut self.values[index]
     }
 
     /// Updates the element at the given index. The old value will saved (and perhaps restored) if
     /// a snapshot is active.
-    pub fn set(&mut self, index: uint, new_elem: D::Value) {
+    pub fn set(&mut self, index: usize, new_elem: D::Value) {
         let old_elem = mem::replace(&mut self.values[index], new_elem);
         if self.in_snapshot() {
             self.undo_log.push(SetElem(index, old_elem));

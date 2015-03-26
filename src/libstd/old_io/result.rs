@@ -35,7 +35,7 @@ impl<W: Writer> Writer for IoResult<W> {
 }
 
 impl<R: Reader> Reader for IoResult<R> {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         match *self {
             Ok(ref mut reader) => reader.read(buf),
             Err(ref e) => Err(e.clone()),

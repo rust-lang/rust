@@ -17,7 +17,7 @@
 // pretty-expanded FIXME #23616
 
 mod m {
-    pub fn f() -> Vec<int> { Vec::new() }
+    pub fn f() -> Vec<isize> { Vec::new() }
 }
 
 pub fn main() { let _x = m::f(); }

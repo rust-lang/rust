@@ -13,7 +13,7 @@
 // pretty-expanded FIXME #23616
 
 fn test_fn() {
-    fn ten() -> int { return 10; }
+    fn ten() -> isize { return 10; }
     let rs = ten;
     assert!((rs() == 10));
 }

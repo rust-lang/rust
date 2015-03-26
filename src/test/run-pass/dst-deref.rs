@@ -15,20 +15,20 @@
 use std::ops::Deref;
 
 pub struct Arr {
-    ptr: Box<[uint]>
+    ptr: Box<[usize]>
 }
 
 impl Deref for Arr {
-    type Target = [uint];
+    type Target = [usize];
 
-    fn deref(&self) -> &[uint] {
+    fn deref(&self) -> &[usize] {
         &*self.ptr
     }
 }
 
 pub fn foo(arr: &Arr) {
     assert!(arr.len() == 3);
-    let x: &[uint] = &**arr;
+    let x: &[usize] = &**arr;
     assert!(x[0] == 1);
     assert!(x[1] == 2);
     assert!(x[2] == 3);

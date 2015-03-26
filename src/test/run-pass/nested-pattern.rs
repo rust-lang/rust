@@ -12,13 +12,13 @@
 
 // a bug was causing this to complain about leaked memory on exit
 
-enum t { foo(int, uint), bar(int, Option<int>), }
+enum t { foo(isize, usize), bar(isize, Option<isize>), }
 
 fn nested(o: t) {
     match o {
-        t::bar(_i, Some::<int>(_)) => { println!("wrong pattern matched"); panic!(); }
+        t::bar(_i, Some::<isize>(_)) => { println!("wrong pattern matched"); panic!(); }
         _ => { println!("succeeded"); }
     }
 }
 
-pub fn main() { nested(t::bar(1, None::<int>)); }
+pub fn main() { nested(t::bar(1, None::<isize>)); }

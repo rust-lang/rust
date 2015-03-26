@@ -17,6 +17,6 @@
 
 use std::marker::MarkerTrait;
 
-impl X for f64 { type Y = int; }
+impl X for f64 { type Y = isize; }
 trait X : MarkerTrait { type Y; }
 fn main() {}

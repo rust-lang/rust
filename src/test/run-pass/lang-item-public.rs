@@ -45,6 +45,6 @@ extern {}
 extern {}
 
 #[start]
-fn main(_: int, _: *const *const u8) -> int {
+fn main(_: isize, _: *const *const u8) -> isize {
     1 % 1
 }

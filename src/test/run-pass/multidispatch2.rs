@@ -27,11 +27,11 @@ impl<T> MyTrait<T> for T
 
 #[derive(Copy)]
 struct MyType {
-    dummy: uint
+    dummy: usize
 }
 
-impl MyTrait<uint> for MyType {
-    fn get(&self) -> uint { self.dummy }
+impl MyTrait<usize> for MyType {
+    fn get(&self) -> usize { self.dummy }
 }
 
 fn test_eq<T,M>(m: M, v: T)

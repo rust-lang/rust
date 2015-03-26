@@ -27,13 +27,13 @@ pub trait V : MarkerTrait {}
 impl U for () {}
 impl V for () {}
 
-static A_CONSTANT : int = 2;
+static A_CONSTANT : isize = 2;
 
-pub fn foo<T:U>(_: int) -> int {
+pub fn foo<T:U>(_: isize) -> isize {
     // a comment does not affect the svh
     3
 }
 
-pub fn an_unused_name() -> int {
+pub fn an_unused_name() -> isize {
     4
 }

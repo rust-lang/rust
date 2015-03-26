@@ -62,10 +62,10 @@ impl JSRef {
 struct Node;
 
 impl Node {
-    fn RemoveChild(&self, _a: uint) {
+    fn RemoveChild(&self, _a: usize) {
     }
 
-    fn AddChild(&self, _a: uint) {
+    fn AddChild(&self, _a: usize) {
     }
 }
 

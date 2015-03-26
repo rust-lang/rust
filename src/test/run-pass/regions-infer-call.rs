@@ -10,9 +10,9 @@
 
 // pretty-expanded FIXME #23616
 
-fn takes_two(x: &int, y: &int) -> int { *x + *y }
+fn takes_two(x: &isize, y: &isize) -> isize { *x + *y }
 
-fn has_two<'a,'b>(x: &'a int, y: &'b int) -> int {
+fn has_two<'a,'b>(x: &'a isize, y: &'b isize) -> isize {
     takes_two(x, y)
 }
 

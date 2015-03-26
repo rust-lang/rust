@@ -328,12 +328,12 @@ pub mod rt {
     impl_to_tokens! { () }
     impl_to_tokens! { char }
     impl_to_tokens! { bool }
-    impl_to_tokens! { int }
+    impl_to_tokens! { isize }
     impl_to_tokens! { i8 }
     impl_to_tokens! { i16 }
     impl_to_tokens! { i32 }
     impl_to_tokens! { i64 }
-    impl_to_tokens! { uint }
+    impl_to_tokens! { usize }
     impl_to_tokens! { u8 }
     impl_to_tokens! { u16 }
     impl_to_tokens! { u32 }

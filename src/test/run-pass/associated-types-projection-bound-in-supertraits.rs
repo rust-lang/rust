@@ -20,8 +20,8 @@ trait Not {
 }
 
 trait Int: Not<Result=Self> + Sized {
-    fn count_ones(self) -> uint;
-    fn count_zeros(self) -> uint {
+    fn count_ones(self) -> usize;
+    fn count_zeros(self) -> usize {
         // neither works
         let x: Self = self.not();
         0

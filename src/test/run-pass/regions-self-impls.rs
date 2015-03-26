@@ -9,15 +9,15 @@
 // except according to those terms.
 
 struct Clam<'a> {
-    chowder: &'a int
+    chowder: &'a isize
 }
 
 trait get_chowder<'a> {
-    fn get_chowder(&self) -> &'a int;
+    fn get_chowder(&self) -> &'a isize;
 }
 
 impl<'a> get_chowder<'a> for Clam<'a> {
-    fn get_chowder(&self) -> &'a int { return self.chowder; }
+    fn get_chowder(&self) -> &'a isize { return self.chowder; }
 }
 
 pub fn main() {

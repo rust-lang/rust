@@ -12,6 +12,6 @@
 
 #![crate_type = "dylib"]
 
-pub fn the_answer() -> int {
+pub fn the_answer() -> isize {
     2
 }

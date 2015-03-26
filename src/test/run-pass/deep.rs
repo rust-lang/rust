@@ -13,8 +13,8 @@
 
 // pretty-expanded FIXME #23616
 
-fn f(x: int) -> int {
-    if x == 1 { return 1; } else { let y: int = 1 + f(x - 1); return y; }
+fn f(x: isize) -> isize {
+    if x == 1 { return 1; } else { let y: isize = 1 + f(x - 1); return y; }
 }
 
 pub fn main() { assert!((f(5000) == 5000)); }

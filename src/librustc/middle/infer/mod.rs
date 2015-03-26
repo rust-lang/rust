@@ -811,7 +811,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty::mk_var(self.tcx, self.next_ty_var_id(true))
     }
 
-    pub fn next_ty_vars(&self, n: uint) -> Vec<Ty<'tcx>> {
+    pub fn next_ty_vars(&self, n: usize) -> Vec<Ty<'tcx>> {
         (0..n).map(|_i| self.next_ty_var()).collect()
     }
 

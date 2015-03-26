@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn foo<T>() -> &'static int {
+pub fn foo<T>() -> &'static isize {
     if false {
-        static a: int = 4;
+        static a: isize = 4;
         return &a;
     } else {
-        static a: int = 5;
+        static a: isize = 5;
         return &a;
     }
 }
 
-pub fn bar() -> &'static int {
-    foo::<int>()
+pub fn bar() -> &'static isize {
+    foo::<isize>()
 }

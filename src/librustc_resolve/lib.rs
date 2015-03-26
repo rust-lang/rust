@@ -22,7 +22,6 @@
 #![feature(alloc)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(int_uint)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -327,7 +326,7 @@ enum UseLexicalScopeFlag {
 
 enum ModulePrefixResult {
     NoPrefixFound,
-    PrefixFound(Rc<Module>, uint)
+    PrefixFound(Rc<Module>, usize)
 }
 
 #[derive(Copy, PartialEq)]
@@ -415,10 +414,10 @@ pub struct Module {
     import_resolutions: RefCell<HashMap<Name, ImportResolution>>,
 
     // The number of unresolved globs that this module exports.
-    glob_count: Cell<uint>,
+    glob_count: Cell<usize>,
 
     // The index of the import we're resolving.
-    resolved_import_count: Cell<uint>,
+    resolved_import_count: Cell<usize>,
 
     // Whether this module is populated. If not populated, any attempt to
     // access the children must be preceded with a
@@ -777,7 +776,7 @@ pub struct Resolver<'a, 'tcx:'a> {
     structs: FnvHashMap<DefId, Vec<Name>>,
 
     // The number of imports that are currently unresolved.
-    unresolved_imports: uint,
+    unresolved_imports: usize,
 
     // The module that represents the current item scope.
     current_module: Rc<Module>,
@@ -959,7 +958,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn resolve_module_path_from_root(&mut self,
                                      module_: Rc<Module>,
                                      module_path: &[Name],
-                                     index: uint,
+                                     index: usize,
                                      span: Span,
                                      name_search_type: NameSearchType,
                                      lp: LastPrivate)
@@ -3053,12 +3052,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         NoSuggestion
     }
 
-    fn find_best_match_for_name(&mut self, name: &str, max_distance: uint)
+    fn find_best_match_for_name(&mut self, name: &str, max_distance: usize)
                                 -> Option<String> {
         let this = &mut *self;
 
         let mut maybes: Vec<token::InternedString> = Vec::new();
-        let mut values: Vec<uint> = Vec::new();
+        let mut values: Vec<usize> = Vec::new();
 
         for rib in this.value_ribs.iter().rev() {
             for (&k, _) in &rib.bindings {

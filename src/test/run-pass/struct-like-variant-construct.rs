@@ -12,8 +12,8 @@
 
 enum Foo {
     Bar {
-        a: int,
-        b: int
+        a: isize,
+        b: isize
     },
     Baz {
         c: f64,

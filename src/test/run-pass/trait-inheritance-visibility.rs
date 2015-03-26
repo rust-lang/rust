@@ -11,9 +11,9 @@
 // pretty-expanded FIXME #23616
 
 mod traits {
-    pub trait Foo { fn f(&self) -> int; }
+    pub trait Foo { fn f(&self) -> isize; }
 
-    impl Foo for int { fn f(&self) -> int { 10 } }
+    impl Foo for isize { fn f(&self) -> isize { 10 } }
 }
 
 trait Quux: traits::Foo { }

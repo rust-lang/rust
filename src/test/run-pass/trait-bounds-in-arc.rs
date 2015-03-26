@@ -23,41 +23,41 @@ use std::thread::Thread;
 
 trait Pet {
     fn name(&self, blk: Box<FnMut(&str)>);
-    fn num_legs(&self) -> uint;
+    fn num_legs(&self) -> usize;
     fn of_good_pedigree(&self) -> bool;
 }
 
 struct Catte {
-    num_whiskers: uint,
+    num_whiskers: usize,
     name: String,
 }
 
 struct Dogge {
-    bark_decibels: uint,
-    tricks_known: uint,
+    bark_decibels: usize,
+    tricks_known: usize,
     name: String,
 }
 
 struct Goldfyshe {
-    swim_speed: uint,
+    swim_speed: usize,
     name: String,
 }
 
 impl Pet for Catte {
     fn name(&self, mut blk: Box<FnMut(&str)>) { blk(&self.name) }
-    fn num_legs(&self) -> uint { 4 }
+    fn num_legs(&self) -> usize { 4 }
     fn of_good_pedigree(&self) -> bool { self.num_whiskers >= 4 }
 }
 impl Pet for Dogge {
     fn name(&self, mut blk: Box<FnMut(&str)>) { blk(&self.name) }
-    fn num_legs(&self) -> uint { 4 }
+    fn num_legs(&self) -> usize { 4 }
     fn of_good_pedigree(&self) -> bool {
         self.bark_decibels < 70 || self.tricks_known > 20
     }
 }
 impl Pet for Goldfyshe {
     fn name(&self, mut blk: Box<FnMut(&str)>) { blk(&self.name) }
-    fn num_legs(&self) -> uint { 0 }
+    fn num_legs(&self) -> usize { 0 }
     fn of_good_pedigree(&self) -> bool { self.swim_speed >= 500 }
 }
 

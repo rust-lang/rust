@@ -172,7 +172,6 @@
 #![feature(alloc)]
 #![feature(staged_api)]
 #![feature(box_syntax)]
-#![feature(int_uint)]
 #![feature(core)]
 #![feature(std_misc)]
 
@@ -246,7 +245,7 @@ pub struct LogLevel(pub u32);
 impl fmt::Display for LogLevel {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let LogLevel(level) = *self;
-        match LOG_LEVEL_NAMES.get(level as uint - 1) {
+        match LOG_LEVEL_NAMES.get(level as usize - 1) {
             Some(ref name) => fmt::Display::fmt(name, fmt),
             None => fmt::Display::fmt(&level, fmt)
         }
@@ -289,7 +288,7 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
     // is one.
     unsafe {
         let _g = LOCK.lock();
-        match FILTER as uint {
+        match FILTER as usize {
             0 => {}
             1 => panic!("cannot log after main thread has exited"),
             n => {
@@ -383,8 +382,8 @@ pub fn mod_enabled(level: u32, module: &str) -> bool {
 
     let _g = LOCK.lock();
     unsafe {
-        assert!(DIRECTIVES as uint != 0);
-        assert!(DIRECTIVES as uint != 1,
+        assert!(DIRECTIVES as usize != 0);
+        assert!(DIRECTIVES as usize != 1,
                 "cannot log after the main thread has exited");
 
         enabled(level, module, (*DIRECTIVES).iter())

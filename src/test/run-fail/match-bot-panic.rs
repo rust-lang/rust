@@ -17,6 +17,6 @@ fn foo(s: String) { }
 
 fn main() {
     let i =
-        match Some::<int>(3) { None::<int> => { panic!() } Some::<int>(_) => { panic!() } };
+        match Some::<isize>(3) { None::<isize> => { panic!() } Some::<isize>(_) => { panic!() } };
     foo(i);
 }

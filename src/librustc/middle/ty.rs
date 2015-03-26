@@ -261,8 +261,8 @@ pub struct field_ty {
 #[derive(Copy, PartialEq, Eq, Hash)]
 pub struct creader_cache_key {
     pub cnum: CrateNum,
-    pub pos: uint,
-    pub len: uint
+    pub pos: usize,
+    pub len: usize
 }
 
 #[derive(Clone, PartialEq, RustcDecodable, RustcEncodable)]
@@ -288,18 +288,18 @@ pub enum AutoAdjustment<'tcx> {
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum UnsizeKind<'tcx> {
-    // [T, ..n] -> [T], the uint field is n.
-    UnsizeLength(uint),
+    // [T, ..n] -> [T], the usize field is n.
+    UnsizeLength(usize),
     // An unsize coercion applied to the tail field of a struct.
-    // The uint is the index of the type parameter which is unsized.
-    UnsizeStruct(Box<UnsizeKind<'tcx>>, uint),
+    // The usize is the index of the type parameter which is unsized.
+    UnsizeStruct(Box<UnsizeKind<'tcx>>, usize),
     UnsizeVtable(TyTrait<'tcx>, /* the self type of the trait */ Ty<'tcx>),
     UnsizeUpcast(Ty<'tcx>),
 }
 
 #[derive(Clone, Debug)]
 pub struct AutoDerefRef<'tcx> {
-    pub autoderefs: uint,
+    pub autoderefs: usize,
     pub autoref: Option<AutoRef<'tcx>>
 }
 
@@ -423,7 +423,7 @@ pub fn type_of_adjust<'tcx>(cx: &ctxt<'tcx>, adj: &AutoAdjustment<'tcx>) -> Opti
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Debug)]
 pub struct param_index {
     pub space: subst::ParamSpace,
-    pub index: uint
+    pub index: usize
 }
 
 #[derive(Clone, Debug)]
@@ -452,10 +452,10 @@ pub struct MethodParam<'tcx> {
     // instantiated with fresh variables at this point.
     pub trait_ref: Rc<ty::TraitRef<'tcx>>,
 
-    // index of uint in the list of trait items. Note that this is NOT
+    // index of usize in the list of trait items. Note that this is NOT
     // the index into the vtable, because the list of trait items
     // includes associated types.
-    pub method_num: uint,
+    pub method_num: usize,
 
     /// The impl for the trait from which the method comes. This
     /// should only be used for certain linting/heuristic purposes
@@ -474,13 +474,13 @@ pub struct MethodObject<'tcx> {
     pub object_trait_id: ast::DefId,
 
     // index of the method to be invoked amongst the trait's items
-    pub method_num: uint,
+    pub method_num: usize,
 
     // index into the actual runtime vtable.
     // the vtable is formed by concatenating together the method lists of
     // the base object trait and all supertraits; this is the index into
     // that vtable
-    pub vtable_index: uint,
+    pub vtable_index: usize,
 }
 
 #[derive(Clone)]
@@ -511,7 +511,7 @@ pub struct MethodCall {
 #[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, Copy)]
 pub enum ExprAdjustment {
     NoAdjustment,
-    AutoDeref(uint),
+    AutoDeref(usize),
     AutoObject
 }
 
@@ -530,7 +530,7 @@ impl MethodCall {
         }
     }
 
-    pub fn autoderef(expr_id: ast::NodeId, autoderef: uint) -> MethodCall {
+    pub fn autoderef(expr_id: ast::NodeId, autoderef: usize) -> MethodCall {
         MethodCall {
             expr_id: expr_id,
             adjustment: AutoDeref(1 + autoderef)
@@ -564,7 +564,7 @@ pub enum vtable_origin<'tcx> {
       The first argument is the param index (identifying T in the example),
       and the second is the bound number (identifying baz)
      */
-    vtable_param(param_index, uint),
+    vtable_param(param_index, usize),
 
     /*
       Vtable automatically generated for a closure. The def ID is the
@@ -639,12 +639,12 @@ impl<'tcx> CtxtArenas<'tcx> {
 pub struct CommonTypes<'tcx> {
     pub bool: Ty<'tcx>,
     pub char: Ty<'tcx>,
-    pub int: Ty<'tcx>,
+    pub isize: Ty<'tcx>,
     pub i8: Ty<'tcx>,
     pub i16: Ty<'tcx>,
     pub i32: Ty<'tcx>,
     pub i64: Ty<'tcx>,
-    pub uint: Ty<'tcx>,
+    pub usize: Ty<'tcx>,
     pub u8: Ty<'tcx>,
     pub u16: Ty<'tcx>,
     pub u32: Ty<'tcx>,
@@ -877,10 +877,10 @@ macro_rules! sty_debug_print {
             use middle::ty;
             #[derive(Copy)]
             struct DebugStat {
-                total: uint,
-                region_infer: uint,
-                ty_infer: uint,
-                both_infer: uint,
+                total: usize,
+                region_infer: usize,
+                ty_infer: usize,
+                both_infer: usize,
             }
 
             pub fn go(tcx: &ty::ctxt) {
@@ -1024,7 +1024,7 @@ pub fn type_has_late_bound_regions(ty: Ty) -> bool {
 ///
 /// So, for example, consider a type like the following, which has two binders:
 ///
-///    for<'a> fn(x: for<'b> fn(&'a int, &'b int))
+///    for<'a> fn(x: for<'b> fn(&'a isize, &'b isize))
 ///    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ outer scope
 ///                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~  inner scope
 ///
@@ -1110,7 +1110,7 @@ impl<'tcx> PolyFnSig<'tcx> {
     pub fn inputs(&self) -> ty::Binder<Vec<Ty<'tcx>>> {
         ty::Binder(self.0.inputs.clone())
     }
-    pub fn input(&self, index: uint) -> ty::Binder<Ty<'tcx>> {
+    pub fn input(&self, index: usize) -> ty::Binder<Ty<'tcx>> {
         ty::Binder(self.0.inputs[index])
     }
     pub fn output(&self) -> ty::Binder<FnOutput<'tcx>> {
@@ -1132,7 +1132,7 @@ pub struct ParamTy {
 /// regions (and perhaps later types) in a higher-ranked setting. In
 /// particular, imagine a type like this:
 ///
-///     for<'a> fn(for<'b> fn(&'b int, &'a int), &'a char)
+///     for<'a> fn(for<'b> fn(&'b isize, &'a isize), &'a char)
 ///     ^          ^            |        |         |
 ///     |          |            |        |         |
 ///     |          +------------+ 1      |         |
@@ -1149,11 +1149,11 @@ pub struct ParamTy {
 /// count the number of binders, inside out. Some examples should help
 /// clarify what I mean.
 ///
-/// Let's start with the reference type `&'b int` that is the first
+/// Let's start with the reference type `&'b isize` that is the first
 /// argument to the inner function. This region `'b` is assigned a De
 /// Bruijn index of 1, meaning "the innermost binder" (in this case, a
 /// fn). The region `'a` that appears in the second argument type (`&'a
-/// int`) would then be assigned a De Bruijn index of 2, meaning "the
+/// isize`) would then be assigned a De Bruijn index of 2, meaning "the
 /// second-innermost binder". (These indices are written on the arrays
 /// in the diagram).
 ///
@@ -1234,14 +1234,14 @@ pub enum BorrowKind {
     /// implicit closure bindings. It is needed when you the closure
     /// is borrowing or mutating a mutable referent, e.g.:
     ///
-    ///    let x: &mut int = ...;
+    ///    let x: &mut isize = ...;
     ///    let y = || *x += 5;
     ///
     /// If we were to try to translate this closure into a more explicit
     /// form, we'd encounter an error with the code as written:
     ///
-    ///    struct Env { x: & &mut int }
-    ///    let x: &mut int = ...;
+    ///    struct Env { x: & &mut isize }
+    ///    let x: &mut isize = ...;
     ///    let y = (&mut Env { &x }, fn_ptr);  // Closure is pair of env and fn
     ///    fn fn_ptr(env: &mut Env) { **env.x += 5; }
     ///
@@ -1249,8 +1249,8 @@ pub enum BorrowKind {
     /// in an aliasable location. To solve, you'd have to translate with
     /// an `&mut` borrow:
     ///
-    ///    struct Env { x: & &mut int }
-    ///    let x: &mut int = ...;
+    ///    struct Env { x: & &mut isize }
+    ///    let x: &mut isize = ...;
     ///    let y = (&mut Env { &mut x }, fn_ptr); // changed from &x to &mut x
     ///    fn fn_ptr(env: &mut Env) { **env.x += 5; }
     ///
@@ -1361,7 +1361,7 @@ pub enum sty<'tcx> {
     ty_enum(DefId, &'tcx Substs<'tcx>),
     ty_uniq(Ty<'tcx>),
     ty_str,
-    ty_vec(Ty<'tcx>, Option<uint>), // Second field is length.
+    ty_vec(Ty<'tcx>, Option<usize>), // Second field is length.
     ty_ptr(mt<'tcx>),
     ty_rptr(&'tcx Region, mt<'tcx>),
 
@@ -1491,7 +1491,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
 }
 
 /// Binder is a binder for higher-ranked lifetimes. It is part of the
-/// compiler's representation for things like `for<'a> Fn(&'a int)`
+/// compiler's representation for things like `for<'a> Fn(&'a isize)`
 /// (which would be represented by the type `PolyTraitRef ==
 /// Binder<TraitRef>`). Note that when we skolemize, instantiate,
 /// erase, or otherwise "discharge" these bound regions, we change the
@@ -1552,9 +1552,9 @@ pub enum type_err<'tcx> {
     terr_ptr_mutability,
     terr_ref_mutability,
     terr_vec_mutability,
-    terr_tuple_size(expected_found<uint>),
-    terr_fixed_array_size(expected_found<uint>),
-    terr_ty_param_size(expected_found<uint>),
+    terr_tuple_size(expected_found<usize>),
+    terr_fixed_array_size(expected_found<usize>),
+    terr_ty_param_size(expected_found<usize>),
     terr_arg_count,
     terr_regions_does_not_outlive(Region, Region),
     terr_regions_not_same(Region, Region),
@@ -1571,7 +1571,7 @@ pub enum type_err<'tcx> {
     terr_cyclic_ty,
     terr_convergence_mismatch(expected_found<bool>),
     terr_projection_name_mismatched(expected_found<ast::Name>),
-    terr_projection_bounds_length(expected_found<uint>),
+    terr_projection_bounds_length(expected_found<usize>),
 }
 
 /// Bounds suitable for a named type parameter like `A` in `fn foo<A>`
@@ -1600,7 +1600,7 @@ pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
 #[derive(Clone, RustcEncodable, PartialEq, Eq, RustcDecodable, Hash,
            Debug, Copy)]
-#[repr(uint)]
+#[repr(usize)]
 pub enum BuiltinBound {
     BoundSend,
     BoundSized,
@@ -1628,10 +1628,10 @@ pub fn region_existential_bound<'tcx>(r: ty::Region) -> ExistentialBounds<'tcx> 
 }
 
 impl CLike for BuiltinBound {
-    fn to_usize(&self) -> uint {
-        *self as uint
+    fn to_usize(&self) -> usize {
+        *self as usize
     }
-    fn from_usize(v: uint) -> BuiltinBound {
+    fn from_usize(v: usize) -> BuiltinBound {
         unsafe { mem::transmute(v) }
     }
 }
@@ -2202,8 +2202,8 @@ impl<'tcx> Predicate<'tcx> {
 ///
 /// Here, the `GenericPredicates` for `Foo` would contain a list of bounds like
 /// `[[], [U:Bar<T>]]`.  Now if there were some particular reference
-/// like `Foo<int,uint>`, then the `InstantiatedPredicates` would be `[[],
-/// [uint:Bar<int>]]`.
+/// like `Foo<isize,usize>`, then the `InstantiatedPredicates` would be `[[],
+/// [usize:Bar<isize>]]`.
 #[derive(Clone, Debug)]
 pub struct InstantiatedPredicates<'tcx> {
     pub predicates: VecPerParamSpace<Predicate<'tcx>>,
@@ -2545,12 +2545,12 @@ impl<'tcx> CommonTypes<'tcx> {
             bool: intern_ty(arena, interner, ty_bool),
             char: intern_ty(arena, interner, ty_char),
             err: intern_ty(arena, interner, ty_err),
-            int: intern_ty(arena, interner, ty_int(ast::TyIs)),
+            isize: intern_ty(arena, interner, ty_int(ast::TyIs)),
             i8: intern_ty(arena, interner, ty_int(ast::TyI8)),
             i16: intern_ty(arena, interner, ty_int(ast::TyI16)),
             i32: intern_ty(arena, interner, ty_int(ast::TyI32)),
             i64: intern_ty(arena, interner, ty_int(ast::TyI64)),
-            uint: intern_ty(arena, interner, ty_uint(ast::TyUs)),
+            usize: intern_ty(arena, interner, ty_uint(ast::TyUs)),
             u8: intern_ty(arena, interner, ty_uint(ast::TyU8)),
             u16: intern_ty(arena, interner, ty_uint(ast::TyU16)),
             u32: intern_ty(arena, interner, ty_uint(ast::TyU32)),
@@ -2935,7 +2935,7 @@ impl FlagComputation {
 
 pub fn mk_mach_int<'tcx>(tcx: &ctxt<'tcx>, tm: ast::IntTy) -> Ty<'tcx> {
     match tm {
-        ast::TyIs   => tcx.types.int,
+        ast::TyIs   => tcx.types.isize,
         ast::TyI8   => tcx.types.i8,
         ast::TyI16  => tcx.types.i16,
         ast::TyI32  => tcx.types.i32,
@@ -2945,7 +2945,7 @@ pub fn mk_mach_int<'tcx>(tcx: &ctxt<'tcx>, tm: ast::IntTy) -> Ty<'tcx> {
 
 pub fn mk_mach_uint<'tcx>(tcx: &ctxt<'tcx>, tm: ast::UintTy) -> Ty<'tcx> {
     match tm {
-        ast::TyUs   => tcx.types.uint,
+        ast::TyUs   => tcx.types.usize,
         ast::TyU8   => tcx.types.u8,
         ast::TyU16  => tcx.types.u16,
         ast::TyU32  => tcx.types.u32,
@@ -3004,7 +3004,7 @@ pub fn mk_nil_ptr<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
     mk_ptr(cx, mt {ty: mk_nil(cx), mutbl: ast::MutImmutable})
 }
 
-pub fn mk_vec<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, sz: Option<uint>) -> Ty<'tcx> {
+pub fn mk_vec<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, sz: Option<usize>) -> Ty<'tcx> {
     mk_t(cx, ty_vec(ty, sz))
 }
 
@@ -3130,9 +3130,9 @@ impl<'tcx> TyS<'tcx> {
     /// structs or variants. For example:
     ///
     /// ```notrust
-    /// int => { int }
-    /// Foo<Bar<int>> => { Foo<Bar<int>>, Bar<int>, int }
-    /// [int] => { [int], int }
+    /// isize => { isize }
+    /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
+    /// [isize] => { [isize], isize }
     /// ```
     pub fn walk(&'tcx self) -> TypeWalker<'tcx> {
         TypeWalker::new(self)
@@ -3143,9 +3143,9 @@ impl<'tcx> TyS<'tcx> {
     /// example:
     ///
     /// ```notrust
-    /// int => { }
-    /// Foo<Bar<int>> => { Bar<int>, int }
-    /// [int] => { int }
+    /// isize => { }
+    /// Foo<Bar<isize>> => { Bar<isize>, isize }
+    /// [isize] => { isize }
     /// ```
     pub fn walk_children(&'tcx self) -> TypeWalker<'tcx> {
         // Walks type reachable from `self` but not `self
@@ -3343,7 +3343,7 @@ pub fn simd_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     }
 }
 
-pub fn simd_size(cx: &ctxt, ty: Ty) -> uint {
+pub fn simd_size(cx: &ctxt, ty: Ty) -> usize {
     match ty.sty {
         ty_struct(did, _) => {
             let fields = lookup_struct_fields(cx, did);
@@ -3611,7 +3611,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
         cache.insert(ty, TC::None);
 
         let result = match ty.sty {
-            // uint and int are ffi-unsafe
+            // usize and isize are ffi-unsafe
             ty_uint(ast::TyUs) | ty_int(ast::TyIs) => {
                 TC::ReachesFfiUnsafe
             }
@@ -4292,7 +4292,7 @@ pub fn array_element_ty<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>
 /// For an enum `t`, `variant` is None only if `t` is a univariant enum.
 pub fn positional_element_ty<'tcx>(cx: &ctxt<'tcx>,
                                    ty: Ty<'tcx>,
-                                   i: uint,
+                                   i: usize,
                                    variant: Option<ast::DefId>) -> Option<Ty<'tcx>> {
 
     match (&ty.sty, variant) {
@@ -4468,8 +4468,8 @@ pub fn pat_ty_opt<'tcx>(cx: &ctxt<'tcx>, pat: &ast::Pat) -> Option<Ty<'tcx>> {
 // adjustments.  See `expr_ty_adjusted()` instead.
 //
 // NB (2): This type doesn't provide type parameter substitutions; e.g. if you
-// ask for the type of "id" in "id(3)", it will return "fn(&int) -> int"
-// instead of "fn(ty) -> T with T = int".
+// ask for the type of "id" in "id(3)", it will return "fn(&isize) -> isize"
+// instead of "fn(ty) -> T with T = isize".
 pub fn expr_ty<'tcx>(cx: &ctxt<'tcx>, expr: &ast::Expr) -> Ty<'tcx> {
     return node_id_to_type(cx, expr.id);
 }
@@ -4879,7 +4879,7 @@ pub fn stmt_node_id(s: &ast::Stmt) -> ast::NodeId {
 }
 
 pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
-                     -> uint {
+                     -> usize {
     let mut i = 0;
     for f in fields { if f.name == name { return i; } i += 1; }
     tcx.sess.bug(&format!(
@@ -4891,7 +4891,7 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
 }
 
 pub fn impl_or_trait_item_idx(id: ast::Name, trait_items: &[ImplOrTraitItem])
-                              -> Option<uint> {
+                              -> Option<usize> {
     trait_items.iter().position(|m| m.name() == id)
 }
 
@@ -5163,7 +5163,7 @@ fn lookup_locally_or_in_crate_store<V, F>(descr: &str,
     v
 }
 
-pub fn trait_item<'tcx>(cx: &ctxt<'tcx>, trait_did: ast::DefId, idx: uint)
+pub fn trait_item<'tcx>(cx: &ctxt<'tcx>, trait_did: ast::DefId, idx: usize)
                         -> ImplOrTraitItem<'tcx> {
     let method_def_id = (*ty::trait_item_def_ids(cx, trait_did))[idx].def_id();
     impl_or_trait_item(cx, method_def_id)
@@ -5238,10 +5238,10 @@ pub fn is_associated_type(cx: &ctxt, id: ast::DefId) -> bool {
 pub fn associated_type_parameter_index(cx: &ctxt,
                                        trait_def: &TraitDef,
                                        associated_type_id: ast::DefId)
-                                       -> uint {
+                                       -> usize {
     for type_parameter_def in trait_def.generics.types.iter() {
         if type_parameter_def.def_id == associated_type_id {
-            return type_parameter_def.index as uint
+            return type_parameter_def.index as usize
         }
     }
     cx.sess.bug("couldn't find associated type parameter index")
@@ -5794,24 +5794,24 @@ pub fn closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
 
 pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool {
     #![allow(non_upper_case_globals)]
-    const tycat_other: int = 0;
-    const tycat_bool: int = 1;
-    const tycat_char: int = 2;
-    const tycat_int: int = 3;
-    const tycat_float: int = 4;
-    const tycat_raw_ptr: int = 6;
+    const tycat_other: isize = 0;
+    const tycat_bool: isize = 1;
+    const tycat_char: isize = 2;
+    const tycat_int: isize = 3;
+    const tycat_float: isize = 4;
+    const tycat_raw_ptr: isize = 6;
 
-    const opcat_add: int = 0;
-    const opcat_sub: int = 1;
-    const opcat_mult: int = 2;
-    const opcat_shift: int = 3;
-    const opcat_rel: int = 4;
-    const opcat_eq: int = 5;
-    const opcat_bit: int = 6;
-    const opcat_logic: int = 7;
-    const opcat_mod: int = 8;
+    const opcat_add: isize = 0;
+    const opcat_sub: isize = 1;
+    const opcat_mult: isize = 2;
+    const opcat_shift: isize = 3;
+    const opcat_rel: isize = 4;
+    const opcat_eq: isize = 5;
+    const opcat_bit: isize = 6;
+    const opcat_logic: isize = 7;
+    const opcat_mod: isize = 8;
 
-    fn opcat(op: ast::BinOp) -> int {
+    fn opcat(op: ast::BinOp) -> isize {
         match op.node {
           ast::BiAdd => opcat_add,
           ast::BiSub => opcat_sub,
@@ -5834,7 +5834,7 @@ pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool
         }
     }
 
-    fn tycat<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> int {
+    fn tycat<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> isize {
         if type_is_simd(cx, ty) {
             return tycat(cx, simd_type(cx, ty))
         }
@@ -5856,21 +5856,21 @@ pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool
     /*other*/   [f, f, f, f,     f,   f,  f,   f,     f],
     /*bool*/    [f, f, f, f,     t,   t,  t,   t,     f],
     /*char*/    [f, f, f, f,     t,   t,  f,   f,     f],
-    /*int*/     [t, t, t, t,     t,   t,  t,   f,     t],
+    /*isize*/     [t, t, t, t,     t,   t,  t,   f,     t],
     /*float*/   [t, t, t, f,     t,   t,  f,   f,     f],
     /*bot*/     [t, t, t, t,     t,   t,  t,   t,     t],
     /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f,     f]];
 
-    return tbl[tycat(cx, ty) as uint ][opcat(op) as uint];
+    return tbl[tycat(cx, ty) as usize ][opcat(op) as usize];
 }
 
 // Returns the repeat count for a repeating vector expression.
-pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
-    match const_eval::eval_const_expr_partial(tcx, count_expr, Some(tcx.types.uint)) {
+pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> usize {
+    match const_eval::eval_const_expr_partial(tcx, count_expr, Some(tcx.types.usize)) {
         Ok(val) => {
             let found = match val {
-                const_eval::const_uint(count) => return count as uint,
-                const_eval::const_int(count) if count >= 0 => return count as uint,
+                const_eval::const_uint(count) => return count as usize,
+                const_eval::const_int(count) if count >= 0 => return count as usize,
                 const_eval::const_int(_) => "negative integer",
                 const_eval::const_float(_) => "float",
                 const_eval::const_str(_) => "string",
@@ -6739,7 +6739,7 @@ pub fn liberate_late_bound_regions<'tcx, T>(
 pub fn count_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     value: &Binder<T>)
-    -> uint
+    -> usize
     where T : TypeFoldable<'tcx> + Repr<'tcx>
 {
     let (_, skol_map) = replace_late_bound_regions(tcx, value, |_| ty::ReStatic);
@@ -6785,8 +6785,8 @@ pub fn erase_late_bound_regions<'tcx, T>(
 ///
 /// The chief purpose of this function is to canonicalize regions so that two
 /// `FnSig`s or `TraitRef`s which are equivalent up to region naming will become
-/// structurally identical.  For example, `for<'a, 'b> fn(&'a int, &'b int)` and
-/// `for<'a, 'b> fn(&'b int, &'a int)` will become identical after anonymization.
+/// structurally identical.  For example, `for<'a, 'b> fn(&'a isize, &'b isize)` and
+/// `for<'a, 'b> fn(&'b isize, &'a isize)` will become identical after anonymization.
 pub fn anonymize_late_bound_regions<'tcx, T>(
     tcx: &ctxt<'tcx>,
     sig: &Binder<T>)

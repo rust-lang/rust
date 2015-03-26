@@ -10,9 +10,9 @@
 
 #[derive(PartialEq, Hash, Debug)]
 struct Foo<T> {
-    x: int,
+    x: isize,
     y: T,
-    z: int
+    z: isize
 }
 
 pub fn main() {

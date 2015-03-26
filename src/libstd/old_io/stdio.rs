@@ -182,7 +182,7 @@ impl StdinReader {
 }
 
 impl Reader for StdinReader {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         self.inner.lock().unwrap().0.read(buf)
     }
 
@@ -190,11 +190,11 @@ impl Reader for StdinReader {
     // read more than once and we don't want those calls to interleave (or
     // incur the costs of repeated locking).
 
-    fn read_at_least(&mut self, min: uint, buf: &mut [u8]) -> IoResult<uint> {
+    fn read_at_least(&mut self, min: usize, buf: &mut [u8]) -> IoResult<usize> {
         self.inner.lock().unwrap().0.read_at_least(min, buf)
     }
 
-    fn push_at_least(&mut self, min: uint, len: uint, buf: &mut Vec<u8>) -> IoResult<uint> {
+    fn push_at_least(&mut self, min: usize, len: usize, buf: &mut Vec<u8>) -> IoResult<usize> {
         self.inner.lock().unwrap().0.push_at_least(min, len, buf)
     }
 
@@ -202,11 +202,11 @@ impl Reader for StdinReader {
         self.inner.lock().unwrap().0.read_to_end()
     }
 
-    fn read_le_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
+    fn read_le_uint_n(&mut self, nbytes: usize) -> IoResult<u64> {
         self.inner.lock().unwrap().0.read_le_uint_n(nbytes)
     }
 
-    fn read_be_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
+    fn read_be_uint_n(&mut self, nbytes: usize) -> IoResult<u64> {
         self.inner.lock().unwrap().0.read_be_uint_n(nbytes)
     }
 }
@@ -410,16 +410,16 @@ impl StdReader {
 }
 
 impl Reader for StdReader {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         let ret = match self.inner {
             TTY(ref mut tty) => {
                 // Flush the task-local stdout so that weird issues like a
                 // print!'d prompt not being shown until after the user hits
                 // enter.
                 flush();
-                tty.read(buf).map(|i| i as uint)
+                tty.read(buf).map(|i| i as usize)
             },
-            File(ref mut file) => file.read(buf).map(|i| i as uint),
+            File(ref mut file) => file.read(buf).map(|i| i as usize),
         };
         match ret {
             // When reading a piped stdin, libuv will return 0-length reads when
@@ -452,7 +452,7 @@ impl StdWriter {
     ///
     /// This function will return an error if the output stream is not actually
     /// connected to a TTY instance, or if querying the TTY instance fails.
-    pub fn winsize(&mut self) -> IoResult<(int, int)> {
+    pub fn winsize(&mut self) -> IoResult<(isize, isize)> {
         match self.inner {
             TTY(ref mut tty) => {
                 tty.get_winsize()

@@ -12,10 +12,10 @@
 
 use std::marker::PhantomData;
 
-fn test00_start(ch: chan_t<int>, message: int) { send(ch, message); }
+fn test00_start(ch: chan_t<isize>, message: isize) { send(ch, message); }
 
-type task_id = int;
-type port_id = int;
+type task_id = isize;
+type port_id = isize;
 
 struct chan_t<T> {
     task: task_id,

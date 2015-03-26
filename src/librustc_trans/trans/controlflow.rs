@@ -293,7 +293,7 @@ pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     expr: &ast::Expr,
                                     opt_label: Option<Ident>,
-                                    exit: uint)
+                                    exit: usize)
                                     -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_break_cont");
     let fcx = bcx.fcx;

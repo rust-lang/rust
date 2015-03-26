@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static mut DROP_RAN: int = 0;
+static mut DROP_RAN: isize = 0;
 
 struct Foo;
 impl Drop for Foo {

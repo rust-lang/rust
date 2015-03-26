@@ -25,5 +25,5 @@ pub fn main() {
         static C: E = E::V;
     }
 
-    f::<int>(&mut None);
+    f::<isize>(&mut None);
 }

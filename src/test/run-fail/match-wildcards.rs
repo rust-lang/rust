@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // error-pattern:squirrelcupcake
-fn cmp() -> int {
+fn cmp() -> isize {
     match (Some('a'), None::<char>) {
         (Some(_), _) => { panic!("squirrelcupcake"); }
         (_, Some(_)) => { panic!(); }

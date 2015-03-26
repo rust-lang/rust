@@ -16,7 +16,7 @@
 
 use std::cell::Cell;
 
-struct Foo<'a>(&'a Cell<int>);
+struct Foo<'a>(&'a Cell<isize>);
 
 #[unsafe_destructor]
 impl<'a> Drop for Foo<'a> {

@@ -36,8 +36,8 @@ pub enum TestName {
 }
 
 pub enum TestFn {
-    DynTestFn(int),
-    DynBenchFn(int),
+    DynTestFn(isize),
+    DynBenchFn(isize),
 }
 
 pub struct TestDesc {

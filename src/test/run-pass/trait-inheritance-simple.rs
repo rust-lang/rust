@@ -10,19 +10,19 @@
 
 // pretty-expanded FIXME #23616
 
-trait Foo { fn f(&self) -> int; }
-trait Bar : Foo { fn g(&self) -> int; }
+trait Foo { fn f(&self) -> isize; }
+trait Bar : Foo { fn g(&self) -> isize; }
 
-struct A { x: int }
+struct A { x: isize }
 
-impl Foo for A { fn f(&self) -> int { 10 } }
-impl Bar for A { fn g(&self) -> int { 20 } }
+impl Foo for A { fn f(&self) -> isize { 10 } }
+impl Bar for A { fn g(&self) -> isize { 20 } }
 
-fn ff<T:Foo>(a: &T) -> int {
+fn ff<T:Foo>(a: &T) -> isize {
     a.f()
 }
 
-fn gg<T:Bar>(a: &T) -> int {
+fn gg<T:Bar>(a: &T) -> isize {
     a.g()
 }
 

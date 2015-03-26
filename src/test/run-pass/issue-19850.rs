@@ -15,7 +15,7 @@
 
 trait Int {
     fn one() -> Self;
-    fn leading_zeros(self) -> uint;
+    fn leading_zeros(self) -> usize;
 }
 
 trait Foo {

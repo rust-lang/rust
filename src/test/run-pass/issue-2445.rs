@@ -30,6 +30,6 @@ impl<T> c1<T> {
 
 
 pub fn main() {
-    c1::<int>(3).f1(4);
-    c1::<int>(3).f2(4);
+    c1::<isize>(3).f1(4);
+    c1::<isize>(3).f2(4);
 }

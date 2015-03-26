@@ -17,21 +17,21 @@
 // compilation unit as the top-level module.
 // pretty-expanded FIXME #23616
 
-fn pad() -> uint { 0 }
+fn pad() -> usize { 0 }
 
 mod b {
-    pub fn three() -> uint {
+    pub fn three() -> usize {
         ::one() + ::a::two()
     }
 }
 
 mod a {
-    pub fn two() -> uint {
+    pub fn two() -> usize {
         ::one() + ::one()
     }
 }
 
-fn one() -> uint {
+fn one() -> usize {
     1
 }
 

@@ -10,13 +10,13 @@
 
 use std::sync::atomic;
 
-pub const C1: uint = 1;
+pub const C1: usize = 1;
 pub const C2: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
 pub const C3: fn() = foo;
-pub const C4: uint = C1 * C1 + C1 / C1;
-pub const C5: &'static uint = &C4;
+pub const C4: usize = C1 * C1 + C1 / C1;
+pub const C5: &'static usize = &C4;
 
-pub static S1: uint = 3;
+pub static S1: usize = 3;
 pub static S2: atomic::AtomicUsize = atomic::ATOMIC_USIZE_INIT;
 
 fn foo() {}

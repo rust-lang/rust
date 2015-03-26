@@ -13,10 +13,10 @@
 extern crate "trait_default_method_xc_aux" as aux;
 use aux::A;
 
-pub struct a_struct { pub x: int }
+pub struct a_struct { pub x: isize }
 
 impl A for a_struct {
-    fn f(&self) -> int { 10 }
+    fn f(&self) -> isize { 10 }
 }
 
 // This function will need to get inlined, and badness may result.

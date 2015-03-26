@@ -13,10 +13,10 @@
 #![deny(type_limits)]
 
 pub fn main() {
-    let i: uint = 0;
+    let i: usize = 0;
     assert!(i <= 0xFFFF_FFFF);
 
-    let i: int = 0;
+    let i: isize = 0;
     assert!(i >= -0x8000_0000);
     assert!(i <= 0x7FFF_FFFF);
 }

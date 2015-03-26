@@ -258,18 +258,18 @@ enum Univariant {
     Unit(i32)
 }
 
-struct TupleStruct (f64, int);
+struct TupleStruct (f64, isize);
 
 
 fn main() {
     // simple tuple
-    let (a, b) : (int, bool) = (1, false);
+    let (a, b) : (isize, bool) = (1, false);
 
     // nested tuple
-    let (c, (d, e)) : (int, (u16, u16)) = (2, (3, 4));
+    let (c, (d, e)) : (isize, (u16, u16)) = (2, (3, 4));
 
     // bind tuple-typed value to one name (destructure only first level)
-    let (f, g) : (int, (u32, u32)) = (5, (6, 7));
+    let (f, g) : (isize, (u32, u32)) = (5, (6, 7));
 
     // struct as tuple element
     let (h, i, j) : (i16, Struct, i16) = (8, Struct { a: 9, b: 10 }, 11);

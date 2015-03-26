@@ -47,7 +47,7 @@ use syntax::codemap::DUMMY_SP;
 use syntax::ptr::P;
 
 // drop_glue pointer, size, align.
-const VTABLE_OFFSET: uint = 3;
+const VTABLE_OFFSET: usize = 3;
 
 /// The main "translation" pass for methods.  Generates code
 /// for non-monomorphized methods only.  Other methods will
@@ -325,7 +325,7 @@ fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
 fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           method_call: MethodCall,
                                           trait_id: ast::DefId,
-                                          n_method: uint,
+                                          n_method: usize,
                                           vtable: traits::Vtable<'tcx, ()>)
                                           -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_monomorphized_callee");
@@ -437,7 +437,7 @@ fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// extract the self data and vtable out of the pair.
 fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   method_ty: Ty<'tcx>,
-                                  vtable_index: uint,
+                                  vtable_index: usize,
                                   self_expr: &ast::Expr,
                                   arg_cleanup_scope: cleanup::ScopeId)
                                   -> Callee<'blk, 'tcx> {
@@ -474,7 +474,7 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// pair.
 pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                  callee_ty: Ty<'tcx>,
-                                                 vtable_index: uint,
+                                                 vtable_index: usize,
                                                  llpair: ValueRef)
                                                  -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_trait_callee");
@@ -547,7 +547,7 @@ pub fn trans_object_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
     object_ty: Ty<'tcx>,
     upcast_trait_ref: ty::PolyTraitRef<'tcx>,
-    method_offset_in_trait: uint)
+    method_offset_in_trait: usize)
     -> (ValueRef, Ty<'tcx>)
 {
     let _icx = push_ctxt("trans_object_shim");

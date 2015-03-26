@@ -32,7 +32,7 @@ struct Foo {
 
 #[derive(Encodable)]
 struct Bar {
-    froboz: uint,
+    froboz: usize,
 }
 
 enum WireProtocol {
