@@ -1126,7 +1126,7 @@ impl<'a> Parser<'a> {
                     p.parse_arg_general(false)
                 });
 
-                p.parse_where_clause(&mut generics);
+                generics.where_clause = p.parse_where_clause();
                 let sig = ast::MethodSig {
                     unsafety: style,
                     decl: d,
@@ -3932,9 +3932,14 @@ impl<'a> Parser<'a> {
     /// ```
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
-    fn parse_where_clause(&mut self, generics: &mut ast::Generics) {
+    fn parse_where_clause(&mut self) -> ast::WhereClause {
+        let mut where_clause = WhereClause {
+            id: ast::DUMMY_NODE_ID,
+            predicates: Vec::new(),
+        };
+
         if !self.eat_keyword(keywords::Where) {
-            return
+            return where_clause;
         }
 
         let mut parsed_something = false;
@@ -3957,7 +3962,7 @@ impl<'a> Parser<'a> {
                     let hi = self.span.hi;
                     let span = mk_sp(lo, hi);
 
-                    generics.where_clause.predicates.push(ast::WherePredicate::RegionPredicate(
+                    where_clause.predicates.push(ast::WherePredicate::RegionPredicate(
                         ast::WhereRegionPredicate {
                             span: span,
                             lifetime: bounded_lifetime,
@@ -3992,7 +3997,7 @@ impl<'a> Parser<'a> {
                                            at least one bound in it");
                         }
 
-                        generics.where_clause.predicates.push(ast::WherePredicate::BoundPredicate(
+                        where_clause.predicates.push(ast::WherePredicate::BoundPredicate(
                                 ast::WhereBoundPredicate {
                                     span: span,
                                     bound_lifetimes: bound_lifetimes,
@@ -4005,7 +4010,7 @@ impl<'a> Parser<'a> {
                         // let ty = self.parse_ty();
                         let hi = self.span.hi;
                         let span = mk_sp(lo, hi);
-                        // generics.where_clause.predicates.push(
+                        // where_clause.predicates.push(
                         //     ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
                         //         id: ast::DUMMY_NODE_ID,
                         //         span: span,
@@ -4036,6 +4041,8 @@ impl<'a> Parser<'a> {
                           "a `where` clause must have at least one predicate \
                            in it");
         }
+
+        where_clause
     }
 
     fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool)
@@ -4354,7 +4361,7 @@ impl<'a> Parser<'a> {
     fn parse_item_fn(&mut self, unsafety: Unsafety, abi: abi::Abi) -> ItemInfo {
         let (ident, mut generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl(false);
-        self.parse_where_clause(&mut generics);
+        generics.where_clause = self.parse_where_clause();
         let (inner_attrs, body) = self.parse_inner_attrs_and_block();
         (ident, ItemFn(decl, unsafety, abi, generics, body), Some(inner_attrs))
     }
@@ -4439,7 +4446,7 @@ impl<'a> Parser<'a> {
             let (explicit_self, decl) = self.parse_fn_decl_with_self(|p| {
                     p.parse_arg()
                 });
-            self.parse_where_clause(&mut generics);
+            generics.where_clause = self.parse_where_clause();
             let (inner_attrs, body) = self.parse_inner_attrs_and_block();
             (ident, inner_attrs, MethodImplItem(ast::MethodSig {
                 generics: generics,
@@ -4460,7 +4467,7 @@ impl<'a> Parser<'a> {
         // Parse supertrait bounds.
         let bounds = self.parse_colon_then_ty_param_bounds(BoundParsingMode::Bare);
 
-        self.parse_where_clause(&mut tps);
+        tps.where_clause = self.parse_where_clause();
 
         let meths = self.parse_trait_items();
         (ident, ItemTrait(unsafety, tps, bounds, meths), None)
@@ -4531,7 +4538,7 @@ impl<'a> Parser<'a> {
             if opt_trait.is_some() {
                 ty = self.parse_ty_sum();
             }
-            self.parse_where_clause(&mut generics);
+            generics.where_clause = self.parse_where_clause();
 
             self.expect(&token::OpenDelim(token::Brace));
             let attrs = self.parse_inner_attributes();
@@ -4603,7 +4610,7 @@ impl<'a> Parser<'a> {
         // struct.
 
         let (fields, ctor_id) = if self.token.is_keyword(keywords::Where) {
-            self.parse_where_clause(&mut generics);
+            generics.where_clause = self.parse_where_clause();
             if self.eat(&token::Semi) {
                 // If we see a: `struct Foo<T> where T: Copy;` style decl.
                 (Vec::new(), Some(ast::DUMMY_NODE_ID))
@@ -4684,12 +4691,12 @@ impl<'a> Parser<'a> {
                     token::get_ident(class_name.clone())));
             }
 
-            self.parse_where_clause(generics);
+            generics.where_clause = self.parse_where_clause();
             self.expect(&token::Semi);
             fields
         // This is the case where we just see struct Foo<T> where T: Copy;
         } else if self.token.is_keyword(keywords::Where) {
-            self.parse_where_clause(generics);
+            generics.where_clause = self.parse_where_clause();
             self.expect(&token::Semi);
             Vec::new()
         // This case is where we see: `struct Foo<T>;`
@@ -4937,7 +4944,7 @@ impl<'a> Parser<'a> {
 
         let (ident, mut generics) = self.parse_fn_header();
         let decl = self.parse_fn_decl(true);
-        self.parse_where_clause(&mut generics);
+        generics.where_clause = self.parse_where_clause();
         let hi = self.span.hi;
         self.expect(&token::Semi);
         P(ast::ForeignItem {
@@ -5074,7 +5081,7 @@ impl<'a> Parser<'a> {
     fn parse_item_type(&mut self) -> ItemInfo {
         let ident = self.parse_ident();
         let mut tps = self.parse_generics();
-        self.parse_where_clause(&mut tps);
+        tps.where_clause = self.parse_where_clause();
         self.expect(&token::Eq);
         let ty = self.parse_ty_sum();
         self.expect(&token::Semi);
@@ -5174,7 +5181,7 @@ impl<'a> Parser<'a> {
     fn parse_item_enum(&mut self) -> ItemInfo {
         let id = self.parse_ident();
         let mut generics = self.parse_generics();
-        self.parse_where_clause(&mut generics);
+        generics.where_clause = self.parse_where_clause();
         self.expect(&token::OpenDelim(token::Brace));
 
         let enum_definition = self.parse_enum_def(&generics);
