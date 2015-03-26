@@ -367,6 +367,10 @@ pub fn generics_to_string(generics: &ast::Generics) -> String {
     $to_string(|s| s.print_generics(generics))
 }
 
+pub fn where_clause_to_string(i: &ast::WhereClause) -> String {
+    $to_string(|s| s.print_where_clause(i))
+}
+
 pub fn fn_block_to_string(p: &ast::FnDecl) -> String {
     $to_string(|s| s.print_fn_block_args(p))
 }
@@ -917,7 +921,7 @@ impl<'a> State<'a> {
                 try!(space(&mut self.s));
                 try!(self.word_space("="));
                 try!(self.print_type(&**ty));
-                try!(self.print_where_clause(params));
+                try!(self.print_where_clause(&params.where_clause));
                 try!(word(&mut self.s, ";"));
                 try!(self.end()); // end the outer ibox
             }
@@ -980,7 +984,7 @@ impl<'a> State<'a> {
                 }
 
                 try!(self.print_type(&**ty));
-                try!(self.print_where_clause(generics));
+                try!(self.print_where_clause(&generics.where_clause));
 
                 try!(space(&mut self.s));
                 try!(self.bopen());
@@ -1008,7 +1012,7 @@ impl<'a> State<'a> {
                     }
                 }
                 try!(self.print_bounds(":", &real_bounds[..]));
-                try!(self.print_where_clause(generics));
+                try!(self.print_where_clause(&generics.where_clause));
                 try!(word(&mut self.s, " "));
                 try!(self.bopen());
                 for trait_item in trait_items {
@@ -1066,7 +1070,7 @@ impl<'a> State<'a> {
         try!(self.head(&visibility_qualified(visibility, "enum")));
         try!(self.print_ident(ident));
         try!(self.print_generics(generics));
-        try!(self.print_where_clause(generics));
+        try!(self.print_where_clause(&generics.where_clause));
         try!(space(&mut self.s));
         self.print_variants(&enum_definition.variants, span)
     }
@@ -1120,12 +1124,12 @@ impl<'a> State<'a> {
                 ));
                 try!(self.pclose());
             }
-            try!(self.print_where_clause(generics));
+            try!(self.print_where_clause(&generics.where_clause));
             try!(word(&mut self.s, ";"));
             try!(self.end());
             self.end() // close the outer-box
         } else {
-            try!(self.print_where_clause(generics));
+            try!(self.print_where_clause(&generics.where_clause));
             try!(self.nbsp());
             try!(self.bopen());
             try!(self.hardbreak_if_not_bol());
@@ -2348,7 +2352,7 @@ impl<'a> State<'a> {
         }
         try!(self.print_generics(generics));
         try!(self.print_fn_args_and_ret(decl, opt_explicit_self));
-        self.print_where_clause(generics)
+        self.print_where_clause(&generics.where_clause)
     }
 
     pub fn print_fn_args(&mut self, decl: &ast::FnDecl,
@@ -2531,19 +2535,16 @@ impl<'a> State<'a> {
         }
     }
 
-    pub fn print_where_clause(&mut self, generics: &ast::Generics)
+    pub fn print_where_clause(&mut self, where_clause: &ast::WhereClause)
                               -> io::Result<()> {
-        if generics.where_clause.predicates.len() == 0 {
+        if where_clause.predicates.len() == 0 {
             return Ok(())
         }
 
         try!(space(&mut self.s));
         try!(self.word_space("where"));
 
-        for (i, predicate) in generics.where_clause
-                                      .predicates
-                                      .iter()
-                                      .enumerate() {
+        for (i, predicate) in where_clause.predicates.iter().enumerate() {
             if i != 0 {
                 try!(self.word_space(","));
             }
