@@ -25,7 +25,7 @@ times. There are number of interrelated issues:
   program. It is even more useful if those constant values do not have
   a known address, because that means the compiler is free to replicate
   them as it wishes. Moreover, if a constant is inlined into downstream
-  crates, than they must be recompiled whenever that constant changes.
+  crates, then they must be recompiled whenever that constant changes.
 - *Read-only memory:* Whenever possible, we'd like to place large
   constants into read-only memory. But this means that the data must
   be truly immutable, or else a segfault will result.
@@ -59,7 +59,7 @@ Some concrete problems with this design are:
   illegal. To resolve this, there is an alternative proposal which
   makes access to `static mut` be considered safe if the type of the
   static mut meets the `Sync` trait.
-- The signifiance (no pun intended) of the `#[inline(never)]` annotation
+- The significance (no pun intended) of the `#[inline(never)]` annotation
   is not intuitive.
 - There is no way to have a generic type constant.
 
