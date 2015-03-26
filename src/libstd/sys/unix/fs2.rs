@@ -280,6 +280,12 @@ fn cstr(path: &Path) -> io::Result<CString> {
     Ok(cstring)
 }
 
+impl FromInner<c_int> for File {
+    fn from_inner(fd: c_int) -> File {
+        File(FileDesc::new(fd))
+    }
+}
+
 pub fn mkdir(p: &Path) -> io::Result<()> {
     let p = try!(cstr(p));
     try!(cvt(unsafe { libc::mkdir(p.as_ptr(), 0o777) }));
