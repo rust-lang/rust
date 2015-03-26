@@ -609,8 +609,7 @@ pub trait BufRead: Read {
     ///
     /// This function will yield errors whenever `read_until` would have also
     /// yielded an error.
-    #[unstable(feature = "io", reason = "may be renamed to not conflict with \
-                                         SliceExt::split")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn split(self, byte: u8) -> Split<Self> where Self: Sized {
         Split { buf: self, delim: byte }
     }
@@ -854,13 +853,13 @@ impl fmt::Display for CharsError {
 /// particular byte.
 ///
 /// See `BufReadExt::split` for more information.
-#[unstable(feature = "io", reason = "awaiting stability of BufReadExt::split")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Split<B> {
     buf: B,
     delim: u8,
 }
 
-#[unstable(feature = "io", reason = "awaiting stability of BufReadExt::split")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<B: BufRead> Iterator for Split<B> {
     type Item = Result<Vec<u8>>;
 
