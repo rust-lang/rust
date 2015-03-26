@@ -102,9 +102,6 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // A way to temporarily opt out of the new orphan rules. This will *never* be accepted.
     ("old_orphan_check", "1.0.0", Deprecated),
 
-    // A way to temporarily opt out of the new impl rules. This will *never* be accepted.
-    ("old_impl_check", "1.0.0", Deprecated),
-
     // OIBIT specific features
     ("optin_builtin_traits", "1.0.0", Active),
 
@@ -280,7 +277,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
 
     // FIXME: #19470 this shouldn't be needed forever
     ("old_orphan_check", Whitelisted),
-    ("old_impl_check", Whitelisted),
     ("rustc_paren_sugar", Whitelisted), // FIXME: #18101 temporary unboxed closure hack
 
     // Crate level attributes
@@ -594,13 +590,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                         "old_orphan_check",
                         i.span,
                         "the new orphan check rules will eventually be strictly enforced");
-                }
-
-                if attr::contains_name(&i.attrs[..],
-                                       "old_impl_check") {
-                    self.gate_feature("old_impl_check",
-                                      i.span,
-                                      "`#[old_impl_check]` will be removed in the future");
                 }
             }
 
