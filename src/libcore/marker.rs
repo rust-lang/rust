@@ -154,7 +154,7 @@ pub trait Sized : MarkerTrait {
 /// change: that second example would fail to compile if we made `Foo` non-`Copy`.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang="copy"]
-pub trait Copy : MarkerTrait {
+pub trait Copy : Clone {
     // Empty.
 }
 
