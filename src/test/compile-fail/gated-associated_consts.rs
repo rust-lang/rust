@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_consts)]
-#![deny(dead_code)]
+use std::marker::MarkerTrait;
 
-struct MyFoo;
-
-impl MyFoo {
-    const BAR: u32 = 1;
-    //~^ ERROR associated const is never used: `BAR`
+trait MyTrait: MarkerTrait {
+    const C: bool;
+    //~^ associated constants are experimental
+    //~| add #![feature(associated_consts)] to the crate attributes to enable
 }
 
-fn main() {
-    let _: MyFoo = MyFoo;
+struct Foo;
+
+impl Foo {
+    const C: bool = true;
+    //~^ associated constants are experimental
+    //~| add #![feature(associated_consts)] to the crate attributes to enable
 }
