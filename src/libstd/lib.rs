@@ -67,9 +67,8 @@
 //! module encapsulates the platform-specific rules for dealing
 //! with file paths.
 //!
-//! `std` also includes modules for interoperating with the
-//! C language: [`c_str`](c_str/index.html) and
-//! [`c_vec`](c_vec/index.html).
+//! `std` also includes the [`ffi`](ffi/index.html) module for interoperating
+//! with the C language.
 //!
 //! ## Concurrency, I/O, and the runtime
 //!
