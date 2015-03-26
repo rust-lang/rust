@@ -98,7 +98,7 @@ impl<R: Read> BufRead for BufReader<R> {
         self.buf.fill_buf()
     }
 
-    fn consume(&mut self, amt: uint) {
+    fn consume(&mut self, amt: usize) {
         self.buf.consume(amt)
     }
 }
@@ -427,7 +427,7 @@ impl<S: Read + Write> BufStream<S> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<S: Read + Write> BufRead for BufStream<S> {
     fn fill_buf(&mut self) -> io::Result<&[u8]> { self.inner.fill_buf() }
-    fn consume(&mut self, amt: uint) { self.inner.consume(amt) }
+    fn consume(&mut self, amt: usize) { self.inner.consume(amt) }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

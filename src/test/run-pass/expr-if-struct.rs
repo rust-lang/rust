@@ -15,7 +15,7 @@
 // Tests for if as expressions returning nominal types
 
 #[derive(Copy)]
-struct I { i: int }
+struct I { i: isize }
 
 fn test_rec() {
     let rs = if true { I {i: 100} } else { I {i: 101} };
@@ -27,7 +27,7 @@ enum mood { happy, sad, }
 
 impl PartialEq for mood {
     fn eq(&self, other: &mood) -> bool {
-        ((*self) as uint) == ((*other) as uint)
+        ((*self) as usize) == ((*other) as usize)
     }
     fn ne(&self, other: &mood) -> bool { !(*self).eq(other) }
 }

@@ -21,7 +21,7 @@ extern crate "std" as other;
 use core::slice::SliceExt;
 
 #[start]
-fn start(_argc: int, _argv: *const *const u8) -> int {
+fn start(_argc: isize, _argv: *const *const u8) -> isize {
     for _ in [1,2,3].iter() { }
     0
 }

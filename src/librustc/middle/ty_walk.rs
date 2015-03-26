@@ -15,7 +15,7 @@ use std::iter::Iterator;
 
 pub struct TypeWalker<'tcx> {
     stack: Vec<Ty<'tcx>>,
-    last_subtree: uint,
+    last_subtree: usize,
 }
 
 impl<'tcx> TypeWalker<'tcx> {
@@ -80,14 +80,14 @@ impl<'tcx> TypeWalker<'tcx> {
     /// Skips the subtree of types corresponding to the last type
     /// returned by `next()`.
     ///
-    /// Example: Imagine you are walking `Foo<Bar<int>, uint>`.
+    /// Example: Imagine you are walking `Foo<Bar<int>, usize>`.
     ///
     /// ```
     /// let mut iter: TypeWalker = ...;
     /// iter.next(); // yields Foo
     /// iter.next(); // yields Bar<int>
     /// iter.skip_current_subtree(); // skips int
-    /// iter.next(); // yields uint
+    /// iter.next(); // yields usize
     /// ```
     pub fn skip_current_subtree(&mut self) {
         self.stack.truncate(self.last_subtree);

@@ -13,7 +13,7 @@
 use std::mem::size_of;
 
 pub fn main() {
-    let x: [int; 4] = [1, 2, 3, 4];
+    let x: [isize; 4] = [1, 2, 3, 4];
     assert_eq!(x[0], 1);
     assert_eq!(x[1], 2);
     assert_eq!(x[2], 3);

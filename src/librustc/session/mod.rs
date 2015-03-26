@@ -58,7 +58,7 @@ pub struct Session {
 
     /// The maximum recursion limit for potentially infinitely recursive
     /// operations such as auto-dereference and monomorphization.
-    pub recursion_limit: Cell<uint>,
+    pub recursion_limit: Cell<usize>,
 
     pub can_print_warnings: bool
 }
@@ -106,7 +106,7 @@ impl Session {
         }
         self.diagnostic().handler().err(msg)
     }
-    pub fn err_count(&self) -> uint {
+    pub fn err_count(&self) -> usize {
         self.diagnostic().handler().err_count()
     }
     pub fn has_errors(&self) -> bool {

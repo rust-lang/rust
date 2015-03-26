@@ -14,10 +14,10 @@ use io::prelude::*;
 use io;
 
 #[cfg(target_pointer_width = "64")]
-pub const HEX_WIDTH: uint = 18;
+pub const HEX_WIDTH: usize = 18;
 
 #[cfg(target_pointer_width = "32")]
-pub const HEX_WIDTH: uint = 10;
+pub const HEX_WIDTH: usize = 10;
 
 // All rust symbols are in theory lists of "::"-separated identifiers. Some
 // assemblers, however, can't handle these characters in symbol names. To get
@@ -57,7 +57,7 @@ pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
             let mut i = 0;
             for c in chars.by_ref() {
                 if c.is_numeric() {
-                    i = i * 10 + c as uint - '0' as uint;
+                    i = i * 10 + c as usize - '0' as usize;
                 } else {
                     break
                 }
@@ -86,7 +86,7 @@ pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
             while rest.char_at(0).is_numeric() {
                 rest = &rest[1..];
             }
-            let i: uint = inner[.. (inner.len() - rest.len())].parse().unwrap();
+            let i: usize = inner[.. (inner.len() - rest.len())].parse().unwrap();
             inner = &rest[i..];
             rest = &rest[..i];
             while rest.len() > 0 {

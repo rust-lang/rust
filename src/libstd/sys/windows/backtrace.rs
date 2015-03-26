@@ -63,7 +63,7 @@ type StackWalk64Fn =
                        *mut libc::c_void, *mut libc::c_void,
                        *mut libc::c_void, *mut libc::c_void) -> libc::BOOL;
 
-const MAX_SYM_NAME: uint = 2000;
+const MAX_SYM_NAME: usize = 2000;
 const IMAGE_FILE_MACHINE_I386: libc::DWORD = 0x014c;
 const IMAGE_FILE_MACHINE_IA64: libc::DWORD = 0x0200;
 const IMAGE_FILE_MACHINE_AMD64: libc::DWORD = 0x8664;
@@ -138,7 +138,7 @@ struct KDHELP64 {
 mod arch {
     use libc;
 
-    const MAXIMUM_SUPPORTED_EXTENSION: uint = 512;
+    const MAXIMUM_SUPPORTED_EXTENSION: usize = 512;
 
     #[repr(C)]
     pub struct CONTEXT {

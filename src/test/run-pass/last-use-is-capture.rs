@@ -13,7 +13,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-struct A { a: Box<int> }
+struct A { a: Box<isize> }
 
 pub fn main() {
     fn invoke<F>(f: F) where F: FnOnce() { f(); }

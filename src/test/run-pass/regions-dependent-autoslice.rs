@@ -14,9 +14,9 @@
 
 // pretty-expanded FIXME #23616
 
-fn subslice1<'r>(v: &'r [uint]) -> &'r [uint] { v }
+fn subslice1<'r>(v: &'r [usize]) -> &'r [usize] { v }
 
-fn both<'r>(v: &'r [uint]) -> &'r [uint] {
+fn both<'r>(v: &'r [usize]) -> &'r [usize] {
     subslice1(subslice1(v))
 }
 

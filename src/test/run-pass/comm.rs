@@ -22,7 +22,7 @@ pub fn main() {
     assert_eq!(y, 10);
 }
 
-fn child(c: &Sender<int>) {
+fn child(c: &Sender<isize>) {
     println!("sending");
     c.send(10).unwrap();
     println!("value sent");

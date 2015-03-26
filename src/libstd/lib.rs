@@ -123,7 +123,6 @@
 #![feature(unsafe_destructor)]
 #![feature(unsafe_no_drop_flag)]
 #![feature(macro_reexport)]
-#![feature(int_uint)]
 #![feature(unique)]
 #![feature(convert)]
 #![feature(allow_internal_unstable)]

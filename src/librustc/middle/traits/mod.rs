@@ -68,7 +68,7 @@ mod util;
 #[derive(Clone, PartialEq, Eq)]
 pub struct Obligation<'tcx, T> {
     pub cause: ObligationCause<'tcx>,
-    pub recursion_depth: uint,
+    pub recursion_depth: usize,
     pub predicate: T,
 }
 
@@ -482,7 +482,7 @@ impl<'tcx,O> Obligation<'tcx,O> {
     }
 
     fn with_depth(cause: ObligationCause<'tcx>,
-                  recursion_depth: uint,
+                  recursion_depth: usize,
                   trait_ref: O)
                   -> Obligation<'tcx, O>
     {

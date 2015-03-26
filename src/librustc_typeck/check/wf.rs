@@ -528,7 +528,7 @@ pub struct BoundsChecker<'cx,'tcx:'cx> {
     // has left it as a NodeId rather than porting to CodeExtent.
     scope: ast::NodeId,
 
-    binding_count: uint,
+    binding_count: usize,
     cache: Option<&'cx mut HashSet<Ty<'tcx>>>,
 }
 

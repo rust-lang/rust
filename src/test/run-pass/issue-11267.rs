@@ -15,11 +15,11 @@ struct Empty;
 trait T<U> {
     fn next(&mut self) -> Option<U>;
 }
-impl T<int> for Empty {
-    fn next(&mut self) -> Option<int> { None }
+impl T<isize> for Empty {
+    fn next(&mut self) -> Option<isize> { None }
 }
 
-fn do_something_with(a : &mut T<int>) {
+fn do_something_with(a : &mut T<isize>) {
     println!("{:?}", a.next())
 }
 

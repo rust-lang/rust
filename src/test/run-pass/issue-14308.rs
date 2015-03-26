@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-struct A(int);
+struct A(isize);
 struct B;
 
 fn main() {

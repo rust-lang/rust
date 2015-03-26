@@ -18,7 +18,7 @@ use std::env;
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() > 1 && args[1] == "segfault" {
-        unsafe { *(0 as *mut int) = 1 }; // trigger a segfault
+        unsafe { *(0 as *mut isize) = 1 }; // trigger a segfault
     } else {
         let segfault = Command::new(&args[0]).arg("segfault").output().unwrap();
         assert!(!segfault.status.success());

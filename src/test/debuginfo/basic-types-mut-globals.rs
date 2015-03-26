@@ -85,13 +85,13 @@
 #![omit_gdb_pretty_printer_section]
 
 static mut B: bool = false;
-static mut I: int = -1;
+static mut I: isize = -1;
 static mut C: char = 'a';
 static mut I8: i8 = 68;
 static mut I16: i16 = -16;
 static mut I32: i32 = -32;
 static mut I64: i64 = -64;
-static mut U: uint = 1;
+static mut U: usize = 1;
 static mut U8: u8 = 100;
 static mut U16: u16 = 16;
 static mut U32: u32 = 32;

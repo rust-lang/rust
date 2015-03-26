@@ -11,11 +11,11 @@
 
 // pretty-expanded FIXME #23616
 
-fn reverse(v: &mut [uint]) {
+fn reverse(v: &mut [usize]) {
     v.reverse();
 }
 
-fn bar(v: &mut [uint]) {
+fn bar(v: &mut [usize]) {
     reverse(v);
     reverse(v);
     reverse(v);

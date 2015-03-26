@@ -12,11 +12,11 @@
 // resolved when we finish typechecking the ||.
 
 
-struct Refs { refs: Vec<int> , n: int }
+struct Refs { refs: Vec<isize> , n: isize }
 
 pub fn main() {
     let mut e = Refs{refs: vec!(), n: 0};
     let _f = || println!("{}", e.n);
-    let x: &[int] = &e.refs;
+    let x: &[isize] = &e.refs;
     assert_eq!(x.len(), 0);
 }

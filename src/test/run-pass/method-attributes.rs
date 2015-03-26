@@ -23,7 +23,7 @@ trait frobable {
 }
 
 #[int_frobable]
-impl frobable for int {
+impl frobable for isize {
     #[frob_attr1]
     fn frob(&self) {
         #![frob_attr2]

@@ -18,25 +18,25 @@
 pub struct X;
 
 impl X {
-    fn f(&self) -> int {
+    fn f(&self) -> isize {
         #[inline(never)]
-        fn inner() -> int {
+        fn inner() -> isize {
             0
         }
         inner()
     }
 
-    fn g(&self) -> int {
+    fn g(&self) -> isize {
         #[inline(never)]
-        fn inner_2() -> int {
+        fn inner_2() -> isize {
             1
         }
         inner_2()
     }
 
-    fn h(&self) -> int {
+    fn h(&self) -> isize {
         #[inline(never)]
-        fn inner() -> int {
+        fn inner() -> isize {
             2
         }
         inner()

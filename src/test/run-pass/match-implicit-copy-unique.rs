@@ -13,7 +13,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-struct Pair { a: Box<int>, b: Box<int> }
+struct Pair { a: Box<isize>, b: Box<isize> }
 
 pub fn main() {
     let mut x: Box<_> = box Pair {a: box 10, b: box 20};

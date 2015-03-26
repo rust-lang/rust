@@ -27,7 +27,7 @@ struct Fcx<'a> {
 }
 
 struct Ccx {
-    x: int
+    x: isize
 }
 
 fn alloc<'a>(_bcx : &'a arena) -> &'a Bcx<'a> {

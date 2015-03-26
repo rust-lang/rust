@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn select<'r>(x: &'r Option<int>, y: &'r Option<int>) -> &'r Option<int> {
+fn select<'r>(x: &'r Option<isize>, y: &'r Option<isize>) -> &'r Option<isize> {
     match (x, y) {
         (&None, &None) => x,
         (&Some(_), _) => x,

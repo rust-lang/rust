@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn foo<'a, I>(mut it: I) where I: Iterator<Item=&'a int> {}
+fn foo<'a, I>(mut it: I) where I: Iterator<Item=&'a isize> {}
 
 fn main() {
     foo([1, 2].iter());

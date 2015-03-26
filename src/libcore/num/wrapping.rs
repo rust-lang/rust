@@ -64,7 +64,7 @@ macro_rules! wrapping_impl {
     )*)
 }
 
-wrapping_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
+wrapping_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
 #[unstable(feature = "core", reason = "may be removed, renamed, or relocated")]
 #[derive(PartialEq,Eq,PartialOrd,Ord,Clone,Copy)]
@@ -132,20 +132,20 @@ impl<T:WrappingOps+BitAnd<Output=T>> BitAnd for Wrapping<T> {
     }
 }
 
-impl<T:WrappingOps+Shl<uint,Output=T>> Shl<uint> for Wrapping<T> {
+impl<T:WrappingOps+Shl<usize,Output=T>> Shl<usize> for Wrapping<T> {
     type Output = Wrapping<T>;
 
     #[inline(always)]
-    fn shl(self, other: uint) -> Wrapping<T> {
+    fn shl(self, other: usize) -> Wrapping<T> {
         Wrapping(self.0 << other)
     }
 }
 
-impl<T:WrappingOps+Shr<uint,Output=T>> Shr<uint> for Wrapping<T> {
+impl<T:WrappingOps+Shr<usize,Output=T>> Shr<usize> for Wrapping<T> {
     type Output = Wrapping<T>;
 
     #[inline(always)]
-    fn shr(self, other: uint) -> Wrapping<T> {
+    fn shr(self, other: usize) -> Wrapping<T> {
         Wrapping(self.0 >> other)
     }
 }

@@ -15,11 +15,11 @@
 pub fn main() {
     let one = || {
         enum r { a };
-        r::a as uint
+        r::a as usize
     };
     let two = || {
         enum r { a };
-        r::a as uint
+        r::a as usize
     };
     one(); two();
 }

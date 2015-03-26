@@ -49,8 +49,8 @@ use vec::Vec;
 pub struct BufferedReader<R> {
     inner: R,
     buf: Vec<u8>,
-    pos: uint,
-    cap: uint,
+    pos: usize,
+    cap: usize,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -63,7 +63,7 @@ impl<R> fmt::Debug for BufferedReader<R> where R: fmt::Debug {
 
 impl<R: Reader> BufferedReader<R> {
     /// Creates a new `BufferedReader` with the specified buffer capacity
-    pub fn with_capacity(cap: uint, inner: R) -> BufferedReader<R> {
+    pub fn with_capacity(cap: usize, inner: R) -> BufferedReader<R> {
         BufferedReader {
             inner: inner,
             // We can't use the same trick here as we do for BufferedWriter,
@@ -104,14 +104,14 @@ impl<R: Reader> Buffer for BufferedReader<R> {
         Ok(&self.buf[self.pos..self.cap])
     }
 
-    fn consume(&mut self, amt: uint) {
+    fn consume(&mut self, amt: usize) {
         self.pos += amt;
         assert!(self.pos <= self.cap);
     }
 }
 
 impl<R: Reader> Reader for BufferedReader<R> {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         if self.pos == self.cap && buf.len() >= self.buf.len() {
             return self.inner.read(buf);
         }
@@ -151,7 +151,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
 pub struct BufferedWriter<W: Writer> {
     inner: Option<W>,
     buf: Vec<u8>,
-    pos: uint
+    pos: usize
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -164,7 +164,7 @@ impl<W: Writer> fmt::Debug for BufferedWriter<W> where W: fmt::Debug {
 
 impl<W: Writer> BufferedWriter<W> {
     /// Creates a new `BufferedWriter` with the specified buffer capacity
-    pub fn with_capacity(cap: uint, inner: W) -> BufferedWriter<W> {
+    pub fn with_capacity(cap: usize, inner: W) -> BufferedWriter<W> {
         // It's *much* faster to create an uninitialized buffer than it is to
         // fill everything in with 0. This buffer is entirely an implementation
         // detail and is never exposed, so we're safe to not initialize
@@ -309,7 +309,7 @@ impl<W: Writer> InternalBufferedWriter<W> {
 }
 
 impl<W: Reader + Writer> Reader for InternalBufferedWriter<W> {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         self.get_mut().inner.as_mut().unwrap().read(buf)
     }
 }
@@ -362,7 +362,7 @@ impl<S: Writer> fmt::Debug for BufferedStream<S> where S: fmt::Debug {
 impl<S: Stream> BufferedStream<S> {
     /// Creates a new buffered stream with explicitly listed capacities for the
     /// reader/writer buffer.
-    pub fn with_capacities(reader_cap: uint, writer_cap: uint, inner: S)
+    pub fn with_capacities(reader_cap: usize, writer_cap: usize, inner: S)
                            -> BufferedStream<S> {
         let writer = BufferedWriter::with_capacity(writer_cap, inner);
         let internal_writer = InternalBufferedWriter(writer);
@@ -407,11 +407,11 @@ impl<S: Stream> BufferedStream<S> {
 
 impl<S: Stream> Buffer for BufferedStream<S> {
     fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> { self.inner.fill_buf() }
-    fn consume(&mut self, amt: uint) { self.inner.consume(amt) }
+    fn consume(&mut self, amt: usize) { self.inner.consume(amt) }
 }
 
 impl<S: Stream> Reader for BufferedStream<S> {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         self.inner.read(buf)
     }
 }
@@ -442,7 +442,7 @@ mod test {
     pub struct NullStream;
 
     impl Reader for NullStream {
-        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<uint> {
+        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<usize> {
             Err(old_io::standard_error(old_io::EndOfFile))
         }
     }
@@ -453,11 +453,11 @@ mod test {
 
     /// A dummy reader intended at testing short-reads propagation.
     pub struct ShortReader {
-        lengths: Vec<uint>,
+        lengths: Vec<usize>,
     }
 
     impl Reader for ShortReader {
-        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<uint> {
+        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<usize> {
             if self.lengths.is_empty() {
                 Err(old_io::standard_error(old_io::EndOfFile))
             } else {
@@ -565,7 +565,7 @@ mod test {
         }
 
         impl old_io::Reader for S {
-            fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<uint> {
+            fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<usize> {
                 Err(old_io::standard_error(old_io::EndOfFile))
             }
         }

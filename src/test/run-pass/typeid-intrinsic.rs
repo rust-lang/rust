@@ -48,18 +48,18 @@ pub fn main() {
         assert_eq!(other1::id_G(), other2::id_G());
         assert_eq!(other1::id_H(), other2::id_H());
 
-        assert_eq!(TypeId::of::<int>(), other2::foo::<int>());
-        assert_eq!(TypeId::of::<int>(), other1::foo::<int>());
-        assert_eq!(other2::foo::<int>(), other1::foo::<int>());
+        assert_eq!(TypeId::of::<isize>(), other2::foo::<isize>());
+        assert_eq!(TypeId::of::<isize>(), other1::foo::<isize>());
+        assert_eq!(other2::foo::<isize>(), other1::foo::<isize>());
         assert_eq!(TypeId::of::<A>(), other2::foo::<A>());
         assert_eq!(TypeId::of::<A>(), other1::foo::<A>());
         assert_eq!(other2::foo::<A>(), other1::foo::<A>());
     }
 
     // sanity test of TypeId
-    let (a, b, c) = (TypeId::of::<uint>(), TypeId::of::<&'static str>(),
+    let (a, b, c) = (TypeId::of::<usize>(), TypeId::of::<&'static str>(),
                      TypeId::of::<Test>());
-    let (d, e, f) = (TypeId::of::<uint>(), TypeId::of::<&'static str>(),
+    let (d, e, f) = (TypeId::of::<usize>(), TypeId::of::<&'static str>(),
                      TypeId::of::<Test>());
 
     assert!(a != b);
@@ -71,7 +71,7 @@ pub fn main() {
     assert_eq!(c, f);
 
     // check it has a hash
-    let (a, b) = (TypeId::of::<uint>(), TypeId::of::<uint>());
+    let (a, b) = (TypeId::of::<usize>(), TypeId::of::<usize>());
 
     assert_eq!(hash::hash::<TypeId, SipHasher>(&a),
                hash::hash::<TypeId, SipHasher>(&b));

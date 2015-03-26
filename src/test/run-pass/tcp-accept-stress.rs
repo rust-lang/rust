@@ -21,8 +21,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::channel;
 use std::thread::Thread;
 
-static N: uint = 8;
-static M: uint = 20;
+static N: usize = 8;
+static M: usize = 20;
 
 fn main() {
     test();

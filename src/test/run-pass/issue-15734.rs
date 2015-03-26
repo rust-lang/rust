@@ -17,39 +17,39 @@
 
 use std::ops::Index;
 
-struct Mat<T> { data: Vec<T>, cols: uint, }
+struct Mat<T> { data: Vec<T>, cols: usize, }
 
 impl<T> Mat<T> {
-    fn new(data: Vec<T>, cols: uint) -> Mat<T> {
+    fn new(data: Vec<T>, cols: usize) -> Mat<T> {
         Mat { data: data, cols: cols }
     }
-    fn row<'a>(&'a self, row: uint) -> Row<&'a Mat<T>> {
+    fn row<'a>(&'a self, row: usize) -> Row<&'a Mat<T>> {
         Row { mat: self, row: row, }
     }
 }
 
-impl<T> Index<(uint, uint)> for Mat<T> {
+impl<T> Index<(usize, usize)> for Mat<T> {
     type Output = T;
 
-    fn index<'a>(&'a self, (row, col): (uint, uint)) -> &'a T {
+    fn index<'a>(&'a self, (row, col): (usize, usize)) -> &'a T {
         &self.data[row * self.cols + col]
     }
 }
 
-impl<'a, T> Index<(uint, uint)> for &'a Mat<T> {
+impl<'a, T> Index<(usize, usize)> for &'a Mat<T> {
     type Output = T;
 
-    fn index<'b>(&'b self, index: (uint, uint)) -> &'b T {
+    fn index<'b>(&'b self, index: (usize, usize)) -> &'b T {
         (*self).index(index)
     }
 }
 
-struct Row<M> { mat: M, row: uint, }
+struct Row<M> { mat: M, row: usize, }
 
-impl<T, M: Index<(uint, uint), Output=T>> Index<uint> for Row<M> {
+impl<T, M: Index<(usize, usize), Output=T>> Index<usize> for Row<M> {
     type Output = T;
 
-    fn index<'a>(&'a self, col: uint) -> &'a T {
+    fn index<'a>(&'a self, col: usize) -> &'a T {
         &self.mat[(self.row, col)]
     }
 }
@@ -66,6 +66,6 @@ fn main() {
     let e = r[2];
     assert!(e == 6);
 
-    let e: uint = r[2];
+    let e: usize = r[2];
     assert!(e == 6);
 }

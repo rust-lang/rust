@@ -13,12 +13,12 @@
 #![crate_type = "lib"]
 
 pub trait Positioned {
-  fn SetX(&mut self, int);
-  fn X(&self) -> int;
+  fn SetX(&mut self, isize);
+  fn X(&self) -> isize;
 }
 
 pub trait Movable: Positioned {
-  fn translate(&mut self, dx: int) {
+  fn translate(&mut self, dx: isize) {
     let x = self.X() + dx;
     self.SetX(x);
   }

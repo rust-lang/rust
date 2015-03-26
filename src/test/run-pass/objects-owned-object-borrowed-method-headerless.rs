@@ -19,15 +19,15 @@
 
 
 trait FooTrait {
-    fn foo(&self) -> uint;
+    fn foo(&self) -> usize;
 }
 
 struct BarStruct {
-    x: uint
+    x: usize
 }
 
 impl FooTrait for BarStruct {
-    fn foo(&self) -> uint {
+    fn foo(&self) -> usize {
         self.x
     }
 }

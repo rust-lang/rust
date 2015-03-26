@@ -16,14 +16,14 @@ use std::thread::Thread;
 use std::sync::mpsc::channel;
 
 struct test {
-  f: int,
+  f: isize,
 }
 
 impl Drop for test {
     fn drop(&mut self) {}
 }
 
-fn test(f: int) -> test {
+fn test(f: isize) -> test {
     test {
         f: f
     }

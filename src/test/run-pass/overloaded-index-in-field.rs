@@ -18,18 +18,18 @@
 use std::ops::Index;
 
 struct Foo {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 struct Bar {
     foo: Foo
 }
 
-impl Index<int> for Foo {
-    type Output = int;
+impl Index<isize> for Foo {
+    type Output = isize;
 
-    fn index(&self, z: int) -> &int {
+    fn index(&self, z: isize) -> &isize {
         if z == 0 {
             &self.x
         } else {
@@ -39,14 +39,14 @@ impl Index<int> for Foo {
 }
 
 trait Int {
-    fn get(self) -> int;
-    fn get_from_ref(&self) -> int;
+    fn get(self) -> isize;
+    fn get_from_ref(&self) -> isize;
     fn inc(&mut self);
 }
 
-impl Int for int {
-    fn get(self) -> int { self }
-    fn get_from_ref(&self) -> int { *self }
+impl Int for isize {
+    fn get(self) -> isize { self }
+    fn get_from_ref(&self) -> isize { *self }
     fn inc(&mut self) { *self += 1; }
 }
 

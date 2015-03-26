@@ -15,7 +15,7 @@
 use std::sync::mpsc::{channel, Sender};
 use std::thread::Thread;
 
-fn start(tx: &Sender<Sender<int>>) {
+fn start(tx: &Sender<Sender<isize>>) {
     let (tx2, _rx) = channel();
     tx.send(tx2).unwrap();
 }

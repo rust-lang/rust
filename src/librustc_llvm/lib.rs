@@ -28,7 +28,6 @@
 
 #![feature(box_syntax)]
 #![feature(collections)]
-#![feature(int_uint)]
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(staged_api)]
@@ -77,7 +76,7 @@ pub type Bool = c_uint;
 pub const True: Bool = 1 as Bool;
 pub const False: Bool = 0 as Bool;
 
-// Consts for the LLVM CallConv type, pre-cast to uint.
+// Consts for the LLVM CallConv type, pre-cast to usize.
 
 #[derive(Copy, PartialEq)]
 pub enum CallConv {
@@ -242,7 +241,7 @@ impl AttrHelper for SpecialAttribute {
 }
 
 pub struct AttrBuilder {
-    attrs: Vec<(uint, Box<AttrHelper+'static>)>
+    attrs: Vec<(usize, Box<AttrHelper+'static>)>
 }
 
 impl AttrBuilder {
@@ -252,13 +251,13 @@ impl AttrBuilder {
         }
     }
 
-    pub fn arg<'a, T: AttrHelper + 'static>(&'a mut self, idx: uint, a: T) -> &'a mut AttrBuilder {
+    pub fn arg<'a, T: AttrHelper + 'static>(&'a mut self, idx: usize, a: T) -> &'a mut AttrBuilder {
         self.attrs.push((idx, box a as Box<AttrHelper+'static>));
         self
     }
 
     pub fn ret<'a, T: AttrHelper + 'static>(&'a mut self, a: T) -> &'a mut AttrBuilder {
-        self.attrs.push((ReturnIndex as uint, box a as Box<AttrHelper+'static>));
+        self.attrs.push((ReturnIndex as usize, box a as Box<AttrHelper+'static>));
         self
     }
 
@@ -693,7 +692,7 @@ extern {
                          -> ValueRef;
     pub fn LLVMConstFCmp(Pred: c_ushort, V1: ValueRef, V2: ValueRef)
                          -> ValueRef;
-    /* only for int/vector */
+    /* only for isize/vector */
     pub fn LLVMGetUndef(Ty: TypeRef) -> ValueRef;
     pub fn LLVMIsConstant(Val: ValueRef) -> Bool;
     pub fn LLVMIsNull(Val: ValueRef) -> Bool;
@@ -2167,7 +2166,7 @@ impl ObjectFile {
     pub fn new(llmb: MemoryBufferRef) -> Option<ObjectFile> {
         unsafe {
             let llof = LLVMCreateObjectFile(llmb);
-            if llof as int == 0 {
+            if llof as isize == 0 {
                 // LLVMCreateObjectFile took ownership of llmb
                 return None
             }
@@ -2227,7 +2226,7 @@ type RustStringRepr = *mut RefCell<Vec<u8>>;
 pub unsafe extern "C" fn rust_llvm_string_write_impl(sr: RustStringRef,
                                                      ptr: *const c_char,
                                                      size: size_t) {
-    let slice = slice::from_raw_parts(ptr as *const u8, size as uint);
+    let slice = slice::from_raw_parts(ptr as *const u8, size as usize);
 
     let sr: RustStringRepr = mem::transmute(sr);
     (*sr).borrow_mut().push_all(slice);

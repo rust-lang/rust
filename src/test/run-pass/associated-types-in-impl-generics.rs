@@ -16,12 +16,12 @@ trait Get {
 }
 
 struct Struct {
-    x: int,
+    x: isize,
 }
 
 impl Get for Struct {
-    type Value = int;
-    fn get(&self) -> &int {
+    type Value = isize;
+    fn get(&self) -> &isize {
         &self.x
     }
 }

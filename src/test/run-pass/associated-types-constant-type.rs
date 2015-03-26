@@ -15,23 +15,23 @@ trait SignedUnsigned {
     fn convert(self) -> Self::Opposite;
 }
 
-impl SignedUnsigned for int {
-    type Opposite = uint;
+impl SignedUnsigned for isize {
+    type Opposite = usize;
 
-    fn convert(self) -> uint {
-        self as uint
+    fn convert(self) -> usize {
+        self as usize
     }
 }
 
-impl SignedUnsigned for uint {
-    type Opposite = int;
+impl SignedUnsigned for usize {
+    type Opposite = isize;
 
-    fn convert(self) -> int {
-        self as int
+    fn convert(self) -> isize {
+        self as isize
     }
 }
 
-fn get(x: int) -> <int as SignedUnsigned>::Opposite {
+fn get(x: isize) -> <isize as SignedUnsigned>::Opposite {
     x.convert()
 }
 

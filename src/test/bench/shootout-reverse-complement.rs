@@ -92,12 +92,12 @@ impl Tables {
 
     /// Retrieves the complement for `i`.
     fn cpl8(&self, i: u8) -> u8 {
-        self.table8[i as uint]
+        self.table8[i as usize]
     }
 
     /// Retrieves the complement for `i`.
     fn cpl16(&self, i: u16) -> u16 {
-        self.table16[i as uint]
+        self.table16[i as usize]
     }
 }
 
@@ -107,7 +107,7 @@ fn read_to_end<R: Reader>(r: &mut R) -> IoResult<Vec<u8>> {
     // Reader::read_to_end() with a fast growing policy to limit
     // recopies.  If MREMAP_RETAIN is implemented in the linux kernel
     // and jemalloc use it, this trick will become useless.
-    const CHUNK: uint = 64 * 1024;
+    const CHUNK: usize = 64 * 1024;
 
     let mut vec = Vec::with_capacity(CHUNK);
     loop {
@@ -132,7 +132,7 @@ fn read_to_end<R: Reader>(r: &mut R) -> IoResult<Vec<u8>> {
 }
 
 /// Finds the first position at which `b` occurs in `s`.
-fn memchr(h: &[u8], n: u8) -> Option<uint> {
+fn memchr(h: &[u8], n: u8) -> Option<usize> {
     use libc::{c_void, c_int, size_t};
     let res = unsafe {
         libc::memchr(h.as_ptr() as *const c_void, n as c_int, h.len() as size_t)
@@ -140,7 +140,7 @@ fn memchr(h: &[u8], n: u8) -> Option<uint> {
     if res.is_null() {
         None
     } else {
-        Some(res as uint - h.as_ptr() as uint)
+        Some(res as usize - h.as_ptr() as usize)
     }
 }
 
@@ -171,7 +171,7 @@ impl<'a> Iterator for MutDnaSeqs<'a> {
 }
 
 /// Length of a normal line without the terminating \n.
-const LINE_LEN: uint = 60;
+const LINE_LEN: usize = 60;
 
 /// Compute the reverse complement.
 fn reverse_complement(seq: &mut [u8], tables: &Tables) {
@@ -181,8 +181,8 @@ fn reverse_complement(seq: &mut [u8], tables: &Tables) {
     let mut i = LINE_LEN;
     while i < len {
         unsafe {
-            copy(seq.as_mut_ptr().offset((i - off + 1) as int),
-                 seq.as_ptr().offset((i - off) as int), off);
+            copy(seq.as_mut_ptr().offset((i - off + 1) as isize),
+                 seq.as_ptr().offset((i - off) as isize), off);
             *seq.get_unchecked_mut(i - off) = b'\n';
         }
         i += LINE_LEN + 1;
@@ -193,8 +193,8 @@ fn reverse_complement(seq: &mut [u8], tables: &Tables) {
     unsafe {
         let mut left = seq.as_mut_ptr() as *mut u16;
         // This is slow if len % 2 != 0 but still faster than bytewise operations.
-        let mut right = seq.as_mut_ptr().offset(len as int - 2) as *mut u16;
-        let end = left.offset(div as int);
+        let mut right = seq.as_mut_ptr().offset(len as isize - 2) as *mut u16;
+        let end = left.offset(div as isize);
         while left != end {
             let tmp = tables.cpl16(*left);
             *left = tables.cpl16(*right);

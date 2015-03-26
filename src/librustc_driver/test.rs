@@ -88,13 +88,13 @@ impl Emitter for ExpectErrorEmitter {
     }
 }
 
-fn errors(msgs: &[&str]) -> (Box<Emitter+Send>, uint) {
+fn errors(msgs: &[&str]) -> (Box<Emitter+Send>, usize) {
     let v = msgs.iter().map(|m| m.to_string()).collect();
     (box ExpectErrorEmitter { messages: v } as Box<Emitter+Send>, msgs.len())
 }
 
 fn test_env<F>(source_string: &str,
-               (emitter, expected_err_count): (Box<Emitter+Send>, uint),
+               (emitter, expected_err_count): (Box<Emitter+Send>, usize),
                body: F) where
     F: FnOnce(Env),
 {
@@ -178,7 +178,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
         fn search_mod(this: &Env,
                       m: &ast::Mod,
-                      idx: uint,
+                      idx: usize,
                       names: &[String])
                       -> Option<ast::NodeId> {
             assert!(idx < names.len());
@@ -192,7 +192,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
         fn search(this: &Env,
                   it: &ast::Item,
-                  idx: uint,
+                  idx: usize,
                   names: &[String])
                   -> Option<ast::NodeId> {
             if idx == names.len() {
@@ -300,14 +300,14 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     pub fn t_rptr(&self, r: ty::Region) -> Ty<'tcx> {
         ty::mk_imm_rptr(self.infcx.tcx,
                         self.infcx.tcx.mk_region(r),
-                        self.tcx().types.int)
+                        self.tcx().types.isize)
     }
 
     pub fn t_rptr_late_bound(&self, id: u32) -> Ty<'tcx> {
         let r = self.re_late_bound_with_debruijn(id, ty::DebruijnIndex::new(1));
         ty::mk_imm_rptr(self.infcx.tcx,
                         self.infcx.tcx.mk_region(r),
-                        self.tcx().types.int)
+                        self.tcx().types.isize)
     }
 
     pub fn t_rptr_late_bound_with_debruijn(&self,
@@ -317,13 +317,13 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         let r = self.re_late_bound_with_debruijn(id, debruijn);
         ty::mk_imm_rptr(self.infcx.tcx,
                         self.infcx.tcx.mk_region(r),
-                        self.tcx().types.int)
+                        self.tcx().types.isize)
     }
 
     pub fn t_rptr_scope(&self, id: ast::NodeId) -> Ty<'tcx> {
         let r = ty::ReScope(CodeExtent::from_node_id(id));
         ty::mk_imm_rptr(self.infcx.tcx, self.infcx.tcx.mk_region(r),
-                        self.tcx().types.int)
+                        self.tcx().types.isize)
     }
 
     pub fn re_free(&self, nid: ast::NodeId, id: u32) -> ty::Region {
@@ -335,13 +335,13 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
         let r = self.re_free(nid, id);
         ty::mk_imm_rptr(self.infcx.tcx,
                         self.infcx.tcx.mk_region(r),
-                        self.tcx().types.int)
+                        self.tcx().types.isize)
     }
 
     pub fn t_rptr_static(&self) -> Ty<'tcx> {
         ty::mk_imm_rptr(self.infcx.tcx,
                         self.infcx.tcx.mk_region(ty::ReStatic),
-                        self.tcx().types.int)
+                        self.tcx().types.isize)
     }
 
     pub fn dummy_type_trace(&self) -> infer::TypeTrace<'tcx> {
@@ -464,15 +464,15 @@ fn contravariant_region_ptr_err() {
 fn sub_free_bound_false() {
     //! Test that:
     //!
-    //!     fn(&'a int) <: for<'b> fn(&'b int)
+    //!     fn(&'a isize) <: for<'b> fn(&'b isize)
     //!
     //! does NOT hold.
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_free1 = env.t_rptr_free(0, 1);
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
-        env.check_not_sub(env.t_fn(&[t_rptr_free1], env.tcx().types.int),
-                          env.t_fn(&[t_rptr_bound1], env.tcx().types.int));
+        env.check_not_sub(env.t_fn(&[t_rptr_free1], env.tcx().types.isize),
+                          env.t_fn(&[t_rptr_bound1], env.tcx().types.isize));
     })
 }
 
@@ -480,15 +480,15 @@ fn sub_free_bound_false() {
 fn sub_bound_free_true() {
     //! Test that:
     //!
-    //!     for<'a> fn(&'a int) <: fn(&'b int)
+    //!     for<'a> fn(&'a isize) <: fn(&'b isize)
     //!
     //! DOES hold.
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         let t_rptr_free1 = env.t_rptr_free(0, 1);
-        env.check_sub(env.t_fn(&[t_rptr_bound1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_free1], env.tcx().types.int));
+        env.check_sub(env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_free1], env.tcx().types.isize));
     })
 }
 
@@ -496,15 +496,15 @@ fn sub_bound_free_true() {
 fn sub_free_bound_false_infer() {
     //! Test that:
     //!
-    //!     fn(_#1) <: for<'b> fn(&'b int)
+    //!     fn(_#1) <: for<'b> fn(&'b isize)
     //!
     //! does NOT hold for any instantiation of `_#1`.
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_infer1 = env.infcx.next_ty_var();
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
-        env.check_not_sub(env.t_fn(&[t_infer1], env.tcx().types.int),
-                          env.t_fn(&[t_rptr_bound1], env.tcx().types.int));
+        env.check_not_sub(env.t_fn(&[t_infer1], env.tcx().types.isize),
+                          env.t_fn(&[t_rptr_bound1], env.tcx().types.isize));
     })
 }
 
@@ -512,19 +512,19 @@ fn sub_free_bound_false_infer() {
 fn lub_free_bound_infer() {
     //! Test result of:
     //!
-    //!     LUB(fn(_#1), for<'b> fn(&'b int))
+    //!     LUB(fn(_#1), for<'b> fn(&'b isize))
     //!
-    //! This should yield `fn(&'_ int)`. We check
-    //! that it yields `fn(&'x int)` for some free `'x`,
+    //! This should yield `fn(&'_ isize)`. We check
+    //! that it yields `fn(&'x isize)` for some free `'x`,
     //! anyhow.
 
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_infer1 = env.infcx.next_ty_var();
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         let t_rptr_free1 = env.t_rptr_free(0, 1);
-        env.check_lub(env.t_fn(&[t_infer1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_bound1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_free1], env.tcx().types.int));
+        env.check_lub(env.t_fn(&[t_infer1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_free1], env.tcx().types.isize));
     });
 }
 
@@ -533,9 +533,9 @@ fn lub_bound_bound() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         let t_rptr_bound2 = env.t_rptr_late_bound(2);
-        env.check_lub(env.t_fn(&[t_rptr_bound1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_bound2], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_bound1], env.tcx().types.int));
+        env.check_lub(env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_bound2], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_bound1], env.tcx().types.isize));
     })
 }
 
@@ -544,9 +544,9 @@ fn lub_bound_free() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         let t_rptr_free1 = env.t_rptr_free(0, 1);
-        env.check_lub(env.t_fn(&[t_rptr_bound1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_free1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_free1], env.tcx().types.int));
+        env.check_lub(env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_free1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_free1], env.tcx().types.isize));
     })
 }
 
@@ -555,9 +555,9 @@ fn lub_bound_static() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         let t_rptr_static = env.t_rptr_static();
-        env.check_lub(env.t_fn(&[t_rptr_bound1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_static], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_static], env.tcx().types.int));
+        env.check_lub(env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_static], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_static], env.tcx().types.isize));
     })
 }
 
@@ -578,9 +578,9 @@ fn lub_free_free() {
         let t_rptr_free1 = env.t_rptr_free(0, 1);
         let t_rptr_free2 = env.t_rptr_free(0, 2);
         let t_rptr_static = env.t_rptr_static();
-        env.check_lub(env.t_fn(&[t_rptr_free1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_free2], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_static], env.tcx().types.int));
+        env.check_lub(env.t_fn(&[t_rptr_free1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_free2], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_static], env.tcx().types.isize));
     })
 }
 
@@ -603,9 +603,9 @@ fn glb_free_free_with_common_scope() {
         let t_rptr_free1 = env.t_rptr_free(0, 1);
         let t_rptr_free2 = env.t_rptr_free(0, 2);
         let t_rptr_scope = env.t_rptr_scope(0);
-        env.check_glb(env.t_fn(&[t_rptr_free1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_free2], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_scope], env.tcx().types.int));
+        env.check_glb(env.t_fn(&[t_rptr_free1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_free2], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_scope], env.tcx().types.isize));
     })
 }
 
@@ -614,9 +614,9 @@ fn glb_bound_bound() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         let t_rptr_bound2 = env.t_rptr_late_bound(2);
-        env.check_glb(env.t_fn(&[t_rptr_bound1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_bound2], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_bound1], env.tcx().types.int));
+        env.check_glb(env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_bound2], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_bound1], env.tcx().types.isize));
     })
 }
 
@@ -625,9 +625,9 @@ fn glb_bound_free() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         let t_rptr_free1 = env.t_rptr_free(0, 1);
-        env.check_glb(env.t_fn(&[t_rptr_bound1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_free1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_bound1], env.tcx().types.int));
+        env.check_glb(env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_free1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_bound1], env.tcx().types.isize));
     })
 }
 
@@ -637,14 +637,14 @@ fn glb_bound_free_infer() {
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         let t_infer1 = env.infcx.next_ty_var();
 
-        // compute GLB(fn(_) -> int, for<'b> fn(&'b int) -> int),
-        // which should yield for<'b> fn(&'b int) -> int
-        env.check_glb(env.t_fn(&[t_rptr_bound1], env.tcx().types.int),
-                      env.t_fn(&[t_infer1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_bound1], env.tcx().types.int));
+        // compute GLB(fn(_) -> isize, for<'b> fn(&'b isize) -> isize),
+        // which should yield for<'b> fn(&'b isize) -> isize
+        env.check_glb(env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
+                      env.t_fn(&[t_infer1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_bound1], env.tcx().types.isize));
 
         // as a side-effect, computing GLB should unify `_` with
-        // `&'_ int`
+        // `&'_ isize`
         let t_resolve1 = env.infcx.shallow_resolve(t_infer1);
         match t_resolve1.sty {
             ty::ty_rptr(..) => { }
@@ -658,9 +658,9 @@ fn glb_bound_static() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let t_rptr_bound1 = env.t_rptr_late_bound(1);
         let t_rptr_static = env.t_rptr_static();
-        env.check_glb(env.t_fn(&[t_rptr_bound1], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_static], env.tcx().types.int),
-                      env.t_fn(&[t_rptr_bound1], env.tcx().types.int));
+        env.check_glb(env.t_fn(&[t_rptr_bound1], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_static], env.tcx().types.isize),
+                      env.t_fn(&[t_rptr_bound1], env.tcx().types.isize));
     })
 }
 
@@ -684,7 +684,7 @@ fn subst_ty_renumber_bound() {
         let substs = subst::Substs::new_type(vec![t_rptr_bound1], vec![]);
         let t_substituted = t_source.subst(env.infcx.tcx, &substs);
 
-        // t_expected = fn(&'a int)
+        // t_expected = fn(&'a isize)
         let t_expected = {
             let t_ptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, ty::DebruijnIndex::new(2));
             env.t_fn(&[t_ptr_bound2], env.t_nil())
@@ -719,7 +719,7 @@ fn subst_ty_renumber_some_bounds() {
         let substs = subst::Substs::new_type(vec![t_rptr_bound1], vec![]);
         let t_substituted = t_source.subst(env.infcx.tcx, &substs);
 
-        // t_expected = (&'a int, fn(&'a int))
+        // t_expected = (&'a isize, fn(&'a isize))
         //
         // but not that the Debruijn index is different in the different cases.
         let t_expected = {
@@ -771,7 +771,7 @@ fn subst_region_renumber_region() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let re_bound1 = env.re_late_bound_with_debruijn(1, ty::DebruijnIndex::new(1));
 
-        // type t_source<'a> = fn(&'a int)
+        // type t_source<'a> = fn(&'a isize)
         let t_source = {
             let re_early = env.re_early_bound(subst::TypeSpace, 0, "'a");
             env.t_fn(&[env.t_rptr(re_early)], env.t_nil())
@@ -780,7 +780,7 @@ fn subst_region_renumber_region() {
         let substs = subst::Substs::new_type(vec![], vec![re_bound1]);
         let t_substituted = t_source.subst(env.infcx.tcx, &substs);
 
-        // t_expected = fn(&'a int)
+        // t_expected = fn(&'a isize)
         //
         // but not that the Debruijn index is different in the different cases.
         let t_expected = {
@@ -802,8 +802,8 @@ fn subst_region_renumber_region() {
 fn walk_ty() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let tcx = env.infcx.tcx;
-        let int_ty = tcx.types.int;
-        let uint_ty = tcx.types.uint;
+        let int_ty = tcx.types.isize;
+        let uint_ty = tcx.types.usize;
         let tup1_ty = ty::mk_tup(tcx, vec!(int_ty, uint_ty, int_ty, uint_ty));
         let tup2_ty = ty::mk_tup(tcx, vec!(tup1_ty, tup1_ty, uint_ty));
         let uniq_ty = ty::mk_uniq(tcx, tup2_ty);
@@ -821,8 +821,8 @@ fn walk_ty() {
 fn walk_ty_skip_subtree() {
     test_env(EMPTY_SOURCE_STR, errors(&[]), |env| {
         let tcx = env.infcx.tcx;
-        let int_ty = tcx.types.int;
-        let uint_ty = tcx.types.uint;
+        let int_ty = tcx.types.isize;
+        let uint_ty = tcx.types.usize;
         let tup1_ty = ty::mk_tup(tcx, vec!(int_ty, uint_ty, int_ty, uint_ty));
         let tup2_ty = ty::mk_tup(tcx, vec!(tup1_ty, tup1_ty, uint_ty));
         let uniq_ty = ty::mk_uniq(tcx, tup2_ty);
@@ -836,7 +836,7 @@ fn walk_ty_skip_subtree() {
                                 (uint_ty, false),
                                 (int_ty, false),
                                 (uint_ty, false),
-                                (tup1_ty, true), // skip the int/uint/int/uint
+                                (tup1_ty, true), // skip the isize/usize/isize/usize
                                 (uint_ty, false));
         expected.reverse();
 

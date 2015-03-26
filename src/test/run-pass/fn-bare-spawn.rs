@@ -16,7 +16,7 @@ fn spawn<T:Send>(val: T, f: fn(T)) {
     f(val);
 }
 
-fn f(i: int) {
+fn f(i: isize) {
     assert_eq!(i, 100);
 }
 

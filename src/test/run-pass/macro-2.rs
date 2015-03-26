@@ -14,7 +14,7 @@ pub fn main() {
 
     macro_rules! mylambda_tt {
         ($x:ident, $body:expr) => ({
-            fn f($x: int) -> int { return $body; };
+            fn f($x: isize) -> isize { return $body; };
             f
         })
     }

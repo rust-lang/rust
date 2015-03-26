@@ -20,7 +20,7 @@
 // pretty-expanded FIXME #23616
 
 struct Covariant<'a> {
-    f: extern "Rust" fn(&'a int)
+    f: extern "Rust" fn(&'a isize)
 }
 
 fn use_<'a>(c: Covariant<'a>) {

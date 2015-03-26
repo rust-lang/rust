@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[derive(PartialEq, Debug)]
-struct Foo(int, int, String);
+struct Foo(isize, isize, String);
 
 pub fn main() {
   let a1 = Foo(5, 6, "abc".to_string());

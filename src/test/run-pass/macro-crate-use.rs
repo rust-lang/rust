@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-pub fn increment(x: uint) -> uint {
+pub fn increment(x: usize) -> usize {
     x + 1
 }
 

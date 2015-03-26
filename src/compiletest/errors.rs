@@ -15,13 +15,13 @@ use std::io::prelude::*;
 use std::path::Path;
 
 pub struct ExpectedError {
-    pub line: uint,
+    pub line: usize,
     pub kind: String,
     pub msg: String,
 }
 
 #[derive(PartialEq, Debug)]
-enum WhichLine { ThisLine, FollowPrevious(uint), AdjustBackward(uint) }
+enum WhichLine { ThisLine, FollowPrevious(usize), AdjustBackward(usize) }
 
 /// Looks for either "//~| KIND MESSAGE" or "//~^^... KIND MESSAGE"
 /// The former is a "follow" that inherits its target from the preceding line;
@@ -58,8 +58,8 @@ pub fn load_errors(testfile: &Path) -> Vec<ExpectedError> {
     }).collect()
 }
 
-fn parse_expected(last_nonfollow_error: Option<uint>,
-                  line_num: uint,
+fn parse_expected(last_nonfollow_error: Option<usize>,
+                  line_num: usize,
                   line: &str) -> Option<(WhichLine, ExpectedError)> {
     let start = match line.find("//~") { Some(i) => i, None => return None };
     let (follow, adjusts) = if line.char_at(start + 3) == '|' {

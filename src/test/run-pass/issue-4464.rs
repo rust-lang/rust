@@ -10,6 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-fn broken(v: &[u8], i: uint, j: uint) -> &[u8] { &v[i..j] }
+fn broken(v: &[u8], i: usize, j: usize) -> &[u8] { &v[i..j] }
 
 pub fn main() {}

@@ -18,15 +18,15 @@
 #![feature(box_syntax)]
 
 trait FooTrait {
-    fn foo(self: Box<Self>) -> uint;
+    fn foo(self: Box<Self>) -> usize;
 }
 
 struct BarStruct {
-    x: uint
+    x: usize
 }
 
 impl FooTrait for BarStruct {
-    fn foo(self: Box<BarStruct>) -> uint {
+    fn foo(self: Box<BarStruct>) -> usize {
         self.x
     }
 }

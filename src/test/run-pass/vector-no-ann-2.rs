@@ -13,4 +13,4 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-pub fn main() { let _quux: Box<Vec<uint>> = box Vec::new(); }
+pub fn main() { let _quux: Box<Vec<usize>> = box Vec::new(); }

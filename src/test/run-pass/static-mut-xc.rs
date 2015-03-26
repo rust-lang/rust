@@ -18,9 +18,9 @@
 
 extern crate static_mut_xc;
 
-unsafe fn static_bound(_: &'static int) {}
+unsafe fn static_bound(_: &'static isize) {}
 
-fn static_bound_set(a: &'static mut int) {
+fn static_bound_set(a: &'static mut isize) {
     *a = 3;
 }
 
@@ -43,5 +43,5 @@ pub fn main() {
 }
 
 pub mod inner {
-    pub static mut a: int = 4;
+    pub static mut a: isize = 4;
 }

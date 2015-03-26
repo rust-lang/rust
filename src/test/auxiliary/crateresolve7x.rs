@@ -14,10 +14,10 @@
 // These both have the same version but differ in other metadata
 pub mod a {
     extern crate cr_1 (name = "crateresolve_calories", vers = "0.1", calories="100");
-    pub fn f() -> int { cr_1::f() }
+    pub fn f() -> isize { cr_1::f() }
 }
 
 pub mod b {
     extern crate cr_2 (name = "crateresolve_calories", vers = "0.1", calories="200");
-    pub fn f() -> int { cr_2::f() }
+    pub fn f() -> isize { cr_2::f() }
 }

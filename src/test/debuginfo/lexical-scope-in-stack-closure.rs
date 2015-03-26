@@ -78,7 +78,7 @@ fn main() {
     zzz(); // #break
     sentinel();
 
-    let closure = |x: int| {
+    let closure = |x: isize| {
         zzz(); // #break
         sentinel();
 

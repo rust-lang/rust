@@ -440,14 +440,14 @@ macro_rules! options {
             }
         }
 
-        fn parse_uint(slot: &mut uint, v: Option<&str>) -> bool {
+        fn parse_uint(slot: &mut usize, v: Option<&str>) -> bool {
             match v.and_then(|s| s.parse().ok()) {
                 Some(i) => { *slot = i; true },
                 None => false
             }
         }
 
-        fn parse_opt_uint(slot: &mut Option<uint>, v: Option<&str>) -> bool {
+        fn parse_opt_uint(slot: &mut Option<usize>, v: Option<&str>) -> bool {
             match v {
                 Some(s) => { *slot = s.parse().ok(); slot.is_some() }
                 None => { *slot = None; true }
@@ -519,16 +519,16 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
          "metadata to mangle symbol names with"),
     extra_filename: String = ("".to_string(), parse_string,
          "extra data to put in each output filename"),
-    codegen_units: uint = (1, parse_uint,
+    codegen_units: usize = (1, parse_uint,
         "divide crate into N units to optimize in parallel"),
     remark: Passes = (SomePasses(Vec::new()), parse_passes,
         "print remarks for these optimization passes (space separated, or \"all\")"),
     no_stack_check: bool = (false, parse_bool,
         "disable checks for stack exhaustion (a memory-safety hazard!)"),
-    debuginfo: Option<uint> = (None, parse_opt_uint,
+    debuginfo: Option<usize> = (None, parse_opt_uint,
         "debug info emission level, 0 = no debug info, 1 = line tables only, \
          2 = full debug info with variable and type information"),
-    opt_level: Option<uint> = (None, parse_opt_uint,
+    opt_level: Option<usize> = (None, parse_opt_uint,
         "Optimize with possible levels 0-3"),
     debug_assertions: Option<bool> = (None, parse_opt_bool,
         "explicitly enable the cfg(debug_assertions) directive"),

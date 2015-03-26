@@ -319,7 +319,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     /// This method populates the region map's `free_region_map`. It walks over the transformed
     /// argument and return types for each function just before we check the body of that function,
     /// looking for types where you have a borrowed pointer to other borrowed data (e.g., `&'a &'b
-    /// [uint]`.  We do not allow references to outlive the things they point at, so we can assume
+    /// [usize]`.  We do not allow references to outlive the things they point at, so we can assume
     /// that `'a <= 'b`. This holds for both the argument and return types, basically because, on
     /// the caller side, the caller is responsible for checking that the type of every expression
     /// (including the actual values for the arguments, as well as the return type of the fn call)
@@ -862,7 +862,7 @@ fn constrain_call<'a, I: Iterator<Item=&'a ast::Expr>>(rcx: &mut Rcx,
 /// dereferenced, the lifetime of the pointer includes the deref expr.
 fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                   deref_expr: &ast::Expr,
-                                  derefs: uint,
+                                  derefs: usize,
                                   mut derefd_ty: Ty<'tcx>)
 {
     debug!("constrain_autoderefs(deref_expr={}, derefs={}, derefd_ty={})",
@@ -1118,7 +1118,7 @@ fn link_pattern<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 /// autoref'd.
 fn link_autoref(rcx: &Rcx,
                 expr: &ast::Expr,
-                autoderefs: uint,
+                autoderefs: usize,
                 autoref: &ty::AutoRef) {
 
     debug!("link_autoref(autoref={:?})", autoref);

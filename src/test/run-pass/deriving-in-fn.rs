@@ -11,7 +11,7 @@
 pub fn main() {
     #[derive(Debug)]
     struct Foo {
-        foo: int,
+        foo: isize,
     }
 
     let f = Foo { foo: 10 };

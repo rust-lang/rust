@@ -23,6 +23,6 @@ fn main() {
     let v2: Vec<_> = arr.iter().map(copy).collect();
 
     let m1: HashMap<_, _> = arr.iter().map(copy).collect();
-    let m2: HashMap<int, _> = arr.iter().map(copy).collect();
-    let m3: HashMap<_, uint> = arr.iter().map(copy).collect();
+    let m2: HashMap<isize, _> = arr.iter().map(copy).collect();
+    let m3: HashMap<_, usize> = arr.iter().map(copy).collect();
 }

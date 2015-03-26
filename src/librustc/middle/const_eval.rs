@@ -262,8 +262,8 @@ impl ConstEvalErr {
             CannotCastTo(s) => format!("can't cast this type to {}", s).into_cow(),
             InvalidOpForBools(_) =>  "can't do this op on bools".into_cow(),
             InvalidOpForFloats(_) => "can't do this op on floats".into_cow(),
-            InvalidOpForIntUint(..) => "can't do this op on an int and uint".into_cow(),
-            InvalidOpForUintInt(..) => "can't do this op on a uint and int".into_cow(),
+            InvalidOpForIntUint(..) => "can't do this op on an isize and usize".into_cow(),
+            InvalidOpForUintInt(..) => "can't do this op on a usize and isize".into_cow(),
             NegateOnString => "negate on string".into_cow(),
             NegateOnBoolean => "negate on boolean".into_cow(),
             NegateOnBinary => "negate on binary literal".into_cow(),
@@ -369,7 +369,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
       }
       ast::ExprBinary(op, ref a, ref b) => {
         let b_ty = match op.node {
-            ast::BiShl | ast::BiShr => Some(tcx.types.uint),
+            ast::BiShl | ast::BiShr => Some(tcx.types.usize),
             _ => ety
         };
         match (try!(eval_const_expr_partial(tcx, &**a, ety)),
@@ -434,8 +434,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               ast::BiAnd | ast::BiBitAnd => const_int(a & b),
               ast::BiOr | ast::BiBitOr => const_int(a | b),
               ast::BiBitXor => const_int(a ^ b),
-              ast::BiShl => const_int(a << b as uint),
-              ast::BiShr => const_int(a >> b as uint),
+              ast::BiShl => const_int(a << b as usize),
+              ast::BiShr => const_int(a >> b as usize),
               ast::BiEq => fromb(a == b),
               ast::BiLt => fromb(a < b),
               ast::BiLe => fromb(a <= b),
@@ -456,8 +456,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
               ast::BiAnd | ast::BiBitAnd => const_uint(a & b),
               ast::BiOr | ast::BiBitOr => const_uint(a | b),
               ast::BiBitXor => const_uint(a ^ b),
-              ast::BiShl => const_uint(a << b as uint),
-              ast::BiShr => const_uint(a >> b as uint),
+              ast::BiShl => const_uint(a << b as usize),
+              ast::BiShr => const_uint(a >> b as usize),
               ast::BiEq => fromb(a == b),
               ast::BiLt => fromb(a < b),
               ast::BiLe => fromb(a <= b),
@@ -469,15 +469,15 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           // shifts can have any integral type as their rhs
           (const_int(a), const_uint(b)) => {
             match op.node {
-              ast::BiShl => const_int(a << b as uint),
-              ast::BiShr => const_int(a >> b as uint),
+              ast::BiShl => const_int(a << b as usize),
+              ast::BiShr => const_int(a >> b as usize),
               _ => signal!(e, InvalidOpForIntUint(op.node)),
             }
           }
           (const_uint(a), const_int(b)) => {
             match op.node {
-              ast::BiShl => const_uint(a << b as uint),
-              ast::BiShr => const_uint(a >> b as uint),
+              ast::BiShl => const_uint(a << b as usize),
+              ast::BiShr => const_uint(a >> b as usize),
               _ => signal!(e, InvalidOpForUintInt(op.node)),
             }
           }
@@ -628,12 +628,12 @@ fn cast_const(val: const_val, ty: Ty) -> Result<const_val, ErrKind> {
     }
 
     define_casts!{
-        ty::ty_int(ast::TyIs) => (int, const_int, i64),
+        ty::ty_int(ast::TyIs) => (isize, const_int, i64),
         ty::ty_int(ast::TyI8) => (i8, const_int, i64),
         ty::ty_int(ast::TyI16) => (i16, const_int, i64),
         ty::ty_int(ast::TyI32) => (i32, const_int, i64),
         ty::ty_int(ast::TyI64) => (i64, const_int, i64),
-        ty::ty_uint(ast::TyUs) => (uint, const_uint, u64),
+        ty::ty_uint(ast::TyUs) => (usize, const_uint, u64),
         ty::ty_uint(ast::TyU8) => (u8, const_uint, u64),
         ty::ty_uint(ast::TyU16) => (u16, const_uint, u64),
         ty::ty_uint(ast::TyU32) => (u32, const_uint, u64),

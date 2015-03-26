@@ -18,7 +18,7 @@ trait Foo {
 }
 
 struct S {
-    x: int
+    x: isize
 }
 
 impl Foo for S {

@@ -898,7 +898,7 @@ fn run_work_singlethreaded(sess: &Session,
 
 fn run_work_multithreaded(sess: &Session,
                           work_items: Vec<WorkItem>,
-                          num_workers: uint) {
+                          num_workers: usize) {
     // Run some workers to process the work items.
     let work_items_arc = Arc::new(Mutex::new(work_items));
     let mut diag_emitter = SharedEmitter::new();

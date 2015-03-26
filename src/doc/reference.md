@@ -2440,9 +2440,6 @@ The currently implemented features of the reference compiler are:
 * `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
                  are inherently unstable and no promise about them is made.
 
-* `int_uint` - Allows the use of the `int` and `uint` types, which are deprecated.
-               Use `isize` and `usize` instead.
-
 * `lang_items` - Allows use of the `#[lang]` attribute. Like `intrinsics`,
                  lang items are inherently unstable and no promise about them
                  is made.
@@ -2759,7 +2756,7 @@ The following are examples of structure expressions:
 ```
 # struct Point { x: f64, y: f64 }
 # struct TuplePoint(f64, f64);
-# mod game { pub struct User<'a> { pub name: &'a str, pub age: u32, pub score: uint } }
+# mod game { pub struct User<'a> { pub name: &'a str, pub age: u32, pub score: usize } }
 # struct Cookie; fn some_fn<T>(t: T) {}
 Point {x: 10.0, y: 20.0};
 TuplePoint(10.0, 20.0);
@@ -3402,7 +3399,7 @@ subpattern`. For example:
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 
-enum List { Nil, Cons(uint, Box<List>) }
+enum List { Nil, Cons(u32, Box<List>) }
 
 fn is_sorted(list: &List) -> bool {
     match *list {

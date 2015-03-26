@@ -115,7 +115,7 @@ impl Event {
                                initial_state as libc::BOOL,
                                ptr::null())
         };
-        if event as uint == 0 {
+        if event as usize == 0 {
             Err(super::last_error())
         } else {
             Ok(Event(event))
@@ -181,7 +181,7 @@ unsafe fn pipe(name: *const u16, init: bool) -> libc::HANDLE {
 }
 
 pub fn await(handle: libc::HANDLE, deadline: u64,
-             events: &[libc::HANDLE]) -> IoResult<uint> {
+             events: &[libc::HANDLE]) -> IoResult<usize> {
     use libc::consts::os::extra::{WAIT_FAILED, WAIT_TIMEOUT, WAIT_OBJECT_0};
 
     // If we've got a timeout, use WaitForSingleObject in tandem with CancelIo
@@ -204,7 +204,7 @@ pub fn await(handle: libc::HANDLE, deadline: u64,
             let _ = c::CancelIo(handle);
             Err(sys_common::timeout("operation timed out"))
         },
-        n => Ok((n - WAIT_OBJECT_0) as uint)
+        n => Ok((n - WAIT_OBJECT_0) as usize)
     }
 }
 
@@ -314,7 +314,7 @@ impl UnixStream {
             // `WaitNamedPipe` function, and this is indicated with an error
             // code of ERROR_PIPE_BUSY.
             let code = unsafe { libc::GetLastError() };
-            if code as int != libc::ERROR_PIPE_BUSY as int {
+            if code as isize != libc::ERROR_PIPE_BUSY as isize {
                 return Err(super::last_error())
             }
 
@@ -362,7 +362,7 @@ impl UnixStream {
         }
     }
 
-    pub fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    pub fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         if self.read.is_none() {
             self.read = Some(try!(Event::new(true, false)));
         }
@@ -390,7 +390,7 @@ impl UnixStream {
                            &mut bytes_read,
                            &mut overlapped)
         };
-        if ret != 0 { return Ok(bytes_read as uint) }
+        if ret != 0 { return Ok(bytes_read as usize) }
 
         // If our errno doesn't say that the I/O is pending, then we hit some
         // legitimate error and return immediately.
@@ -418,7 +418,7 @@ impl UnixStream {
             };
             // If we succeeded, or we failed for some reason other than
             // CancelIoEx, return immediately
-            if ret != 0 { return Ok(bytes_read as uint) }
+            if ret != 0 { return Ok(bytes_read as usize) }
             if os::errno() != libc::ERROR_OPERATION_ABORTED as i32 {
                 return Err(super::last_error())
             }
@@ -487,7 +487,7 @@ impl UnixStream {
                         return Err(super::last_error())
                     }
                     if !wait_succeeded.is_ok() {
-                        let amt = offset + bytes_written as uint;
+                        let amt = offset + bytes_written as usize;
                         return if amt > 0 {
                             Err(IoError {
                                 kind: old_io::ShortWrite(amt),
@@ -504,7 +504,7 @@ impl UnixStream {
                     continue // retry
                 }
             }
-            offset += bytes_written as uint;
+            offset += bytes_written as usize;
         }
         Ok(())
     }

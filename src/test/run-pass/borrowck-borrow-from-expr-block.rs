@@ -13,14 +13,14 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-fn borrow<F>(x: &int, f: F) where F: FnOnce(&int) {
+fn borrow<F>(x: &isize, f: F) where F: FnOnce(&isize) {
     f(x)
 }
 
-fn test1(x: &Box<int>) {
+fn test1(x: &Box<isize>) {
     borrow(&*(*x).clone(), |p| {
-        let x_a = &**x as *const int;
-        assert!((x_a as uint) != (p as *const int as uint));
+        let x_a = &**x as *const isize;
+        assert!((x_a as usize) != (p as *const isize as usize));
         assert_eq!(unsafe{*x_a}, *p);
     })
 }

@@ -18,7 +18,7 @@
 mod foo {
     use foo::bar::*;
     pub mod bar {
-        pub static a : int = 10;
+        pub static a : isize = 10;
     }
     pub fn zum() {
         let _b = a;

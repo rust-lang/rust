@@ -15,14 +15,14 @@
 // pretty-expanded FIXME #23616
 
 struct Box {
-    x: uint
+    x: usize
 }
 
 impl Box {
-    fn get(&self) -> &uint {
+    fn get(&self) -> &usize {
         &self.x
     }
-    fn set(&mut self, x: uint) {
+    fn set(&mut self, x: usize) {
         self.x = x;
     }
 }

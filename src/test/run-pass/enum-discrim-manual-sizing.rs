@@ -60,13 +60,13 @@ enum Eu64 {
     Bu64 = 1
 }
 
-#[repr(int)]
+#[repr(isize)]
 enum Eint {
     Aint = 0,
     Bint = 1
 }
 
-#[repr(uint)]
+#[repr(usize)]
 enum Euint {
     Auint = 0,
     Buint = 1
@@ -81,6 +81,6 @@ pub fn main() {
     assert_eq!(size_of::<Eu32>(), 4);
     assert_eq!(size_of::<Ei64>(), 8);
     assert_eq!(size_of::<Eu64>(), 8);
-    assert_eq!(size_of::<Eint>(), size_of::<int>());
-    assert_eq!(size_of::<Euint>(), size_of::<uint>());
+    assert_eq!(size_of::<Eint>(), size_of::<isize>());
+    assert_eq!(size_of::<Euint>(), size_of::<usize>());
 }

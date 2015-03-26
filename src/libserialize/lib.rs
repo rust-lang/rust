@@ -30,7 +30,6 @@ Core encoding and decoding interfaces.
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(int_uint)]
 #![feature(old_path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]

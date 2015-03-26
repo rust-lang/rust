@@ -9,9 +9,9 @@
 // except according to those terms.
 
 #[inline]
-pub fn cci_fn() -> uint {
+pub fn cci_fn() -> usize {
     1200
 }
 
 #[inline]
-pub static CCI_STATIC: uint = 34;
+pub static CCI_STATIC: usize = 34;

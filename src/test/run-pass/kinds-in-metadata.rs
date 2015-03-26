@@ -22,5 +22,5 @@ extern crate kinds_in_metadata;
 use kinds_in_metadata::f;
 
 pub fn main() {
-    f::<int>();
+    f::<isize>();
 }

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[no_mangle]
-pub fn test(x: int, y: int) -> int {
+pub fn test(x: isize, y: isize) -> isize {
     match x {
         1 => y,
         2 => y*2,

@@ -350,14 +350,14 @@
 #![allow(unused_assignments)]
 #![omit_gdb_pretty_printer_section]
 
-static mut MUT_INT: int = 0;
+static mut MUT_INT: isize = 0;
 
 struct Point {
-    x: int,
-    y: int
+    x: isize,
+    y: isize
 }
 
-fn a_function(x: int) -> int {
+fn a_function(x: isize) -> isize {
     x + 1
 }
 
@@ -502,7 +502,7 @@ fn main() {
         zzz(); // #break
         sentinel();
 
-        val as uint
+        val as usize
     }];
 
     zzz(); // #break

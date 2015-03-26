@@ -9,10 +9,10 @@
 // except according to those terms.
 
 pub trait Trait {
-    fn method(&self) -> int;
+    fn method(&self) -> isize;
 }
 
 #[no_mangle]
-pub fn test(t: &Trait) -> int {
+pub fn test(t: &Trait) -> isize {
     t.method()
 }
