@@ -21,7 +21,7 @@ use io::{self, Error, ErrorKind};
 use num::Int;
 use sys_common::net2 as net_imp;
 
-pub use self::ip::{Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
+pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
 pub use self::addr::{SocketAddr, SocketAddrV4, SocketAddrV6, ToSocketAddrs};
 pub use self::tcp::{TcpStream, TcpListener};
 pub use self::udp::UdpSocket;
@@ -74,10 +74,14 @@ fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
 }
 
 /// An iterator over `SocketAddr` values returned from a host lookup operation.
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "lookup_host", reason = "unsure about the returned \
+                                              iterator and returning socket \
+                                              addresses")]
 pub struct LookupHost(net_imp::LookupHost);
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "lookup_host", reason = "unsure about the returned \
+                                              iterator and returning socket \
+                                              addresses")]
 impl Iterator for LookupHost {
     type Item = io::Result<SocketAddr>;
     fn next(&mut self) -> Option<io::Result<SocketAddr>> { self.0.next() }
@@ -91,7 +95,7 @@ impl Iterator for LookupHost {
 /// # Examples
 ///
 /// ```no_run
-/// # #![feature(net)]
+/// # #![feature(lookup_host)]
 /// use std::net;
 ///
 /// # fn foo() -> std::io::Result<()> {
@@ -101,7 +105,9 @@ impl Iterator for LookupHost {
 /// # Ok(())
 /// # }
 /// ```
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "lookup_host", reason = "unsure about the returned \
+                                              iterator and returning socket \
+                                              addresses")]
 pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
     net_imp::lookup_host(host).map(LookupHost)
 }
