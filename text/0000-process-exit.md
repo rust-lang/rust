@@ -21,8 +21,8 @@ calls `env::set_exit_status`, then the process is not guaranteed to exit with
 that status (e.g. Rust was called from C).
 
 The purpose of this RFC is to provide at least one method on the path to
-stabilization which will provide a method to exit a process with a nonzero exit
-code.
+stabilization which will provide a method to exit a process with an arbitrary
+exit code.
 
 # Detailed design
 
