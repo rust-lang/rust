@@ -1,0 +1,9 @@
+# This test verifies that "-Z trace-macros"  works as it should. The traditional
+# "hello world" program provides a small example of this as not only println! is
+# listed, but also print! (since println! expands to this)
+
+-include ../tools.mk
+
+all:
+	$(RUSTC) -o $(TMPDIR)/hello -Z trace-macros hello.rs &> $(TMPDIR)/hello.trace
+	diff -u $(TMPDIR)/hello.trace hello.trace
