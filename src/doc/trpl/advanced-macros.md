@@ -206,8 +206,6 @@ the [Bitwise Cyclic Tag](http://esolangs.org/wiki/Bitwise_Cyclic_Tag) automaton
 within Rust's macro system.
 
 ```rust
-#![feature(trace_macros)]
-
 macro_rules! bct {
     // cmd 0:  d ... => ...
     (0, $($ps:tt),* ; $_d:tt)
@@ -228,13 +226,6 @@ macro_rules! bct {
     // halt on empty data string
     ( $($ps:tt),* ; )
         => (());
-}
-
-fn main() {
-    trace_macros!(true);
-# /* just check the definition
-    bct!(0, 0, 1, 1, 1 ; 1, 0, 1);
-# */
 }
 ```
 
