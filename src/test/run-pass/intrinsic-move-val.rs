@@ -13,6 +13,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 #![feature(intrinsics)]
+#![feature(filling_drop)] // needed to check for drop fill word.
 
 use std::mem::{self, transmute};
 
