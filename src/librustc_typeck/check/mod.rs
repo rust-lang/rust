@@ -1104,14 +1104,18 @@ fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
                 fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_NUMERIC_CASTS,
                                         e.id,
                                         span,
-                                        format!("trivial numeric cast: `{}` as `{}`",
+                                        format!("trivial numeric cast: `{}` as `{}`. Cast can be \
+                                                 replaced by coercion, this might require type \
+                                                 ascription or a temporary variable",
                                                 fcx.infcx().ty_to_string(t_e),
                                                 fcx.infcx().ty_to_string(t_1)));
             } else {
                 fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_CASTS,
                                         e.id,
                                         span,
-                                        format!("trivial cast: `{}` as `{}`",
+                                        format!("trivial cast: `{}` as `{}`. Cast can be \
+                                                 replaced by coercion, this might require type \
+                                                 ascription or a temporary variable",
                                                 fcx.infcx().ty_to_string(t_e),
                                                 fcx.infcx().ty_to_string(t_1)));
             }
@@ -4590,8 +4594,6 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                      ty: attr::IntType,
                      disr: ty::Disr) -> bool {
         fn uint_in_range(ccx: &CrateCtxt, ty: ast::UintTy, disr: ty::Disr) -> bool {
-            #![allow(trivial_numeric_casts)]
-
             match ty {
                 ast::TyU8 => disr as u8 as Disr == disr,
                 ast::TyU16 => disr as u16 as Disr == disr,
@@ -4620,7 +4622,6 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                           id: ast::NodeId,
                           hint: attr::ReprAttr)
                           -> Vec<Rc<ty::VariantInfo<'tcx>>> {
-        #![allow(trivial_numeric_casts)]
         use std::num::Int;
 
         let rty = ty::node_id_to_type(ccx.tcx, id);

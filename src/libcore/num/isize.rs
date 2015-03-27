@@ -16,7 +16,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "isize")]
-#![allow(trivial_numeric_casts)]
 
 #[cfg(target_pointer_width = "32")]
 int_module! { isize, 32 }
