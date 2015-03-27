@@ -94,6 +94,9 @@ use heap::deallocate;
 /// With simple pipes, without `Arc`, a copy would have to be made for each
 /// task.
 ///
+/// When you clone an `Arc<T>`, it will create another pointer to the data and
+/// increase the reference counter.
+///
 /// ```
 /// # #![feature(alloc, core)]
 /// use std::sync::Arc;
