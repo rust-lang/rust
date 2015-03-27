@@ -177,22 +177,54 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     }
 }
 
-/// A struct to help with `fmt::Debug` implementations.
-///
-/// Constructed by the `Formatter::debug_set` method.
-#[must_use]
-pub struct DebugSet<'a, 'b: 'a> {
+struct DebugInner<'a, 'b: 'a> {
     fmt: &'a mut fmt::Formatter<'b>,
     result: fmt::Result,
     has_fields: bool,
 }
 
-pub fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> DebugSet<'a, 'b> {
-    let result = write!(fmt, "{} {{", name);
+impl<'a, 'b: 'a> DebugInner<'a, 'b> {
+    fn entry(&mut self, entry: &fmt::Debug) {
+        self.result = self.result.and_then(|_| {
+            if self.is_pretty() {
+                let mut writer = PadAdapter::new(self.fmt);
+                let prefix = if self.has_fields { "," } else { "" };
+                fmt::write(&mut writer, format_args!("{}\n{:#?}", prefix, entry))
+            } else {
+                let prefix = if self.has_fields { ", " } else { "" };
+                write!(self.fmt, "{}{:?}", prefix, entry)
+            }
+        });
+
+        self.has_fields = true;
+    }
+
+    pub fn finish(&mut self) {
+        let prefix = if self.is_pretty() && self.has_fields { "\n" } else { "" };
+        self.result = self.result.and_then(|_| self.fmt.write_str(prefix));
+    }
+
+    fn is_pretty(&self) -> bool {
+        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+    }
+}
+
+/// A struct to help with `fmt::Debug` implementations.
+///
+/// Constructed by the `Formatter::debug_set` method.
+#[must_use]
+pub struct DebugSet<'a, 'b: 'a> {
+    inner: DebugInner<'a, 'b>,
+}
+
+pub fn debug_set_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugSet<'a, 'b> {
+    let result = write!(fmt, "{{");
     DebugSet {
-        fmt: fmt,
-        result: result,
-        has_fields: false,
+        inner: DebugInner {
+            fmt: fmt,
+            result: result,
+            has_fields: false,
+        }
     }
 }
 
@@ -200,41 +232,52 @@ impl<'a, 'b: 'a> DebugSet<'a, 'b> {
     /// Adds a new entry to the set output.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn entry(mut self, entry: &fmt::Debug) -> DebugSet<'a, 'b> {
-        self.result = self.result.and_then(|_| {
-            let prefix = if self.has_fields {
-                ","
-            } else {
-                ""
-            };
-
-            if self.is_pretty() {
-                let mut writer = PadAdapter::new(self.fmt);
-                fmt::write(&mut writer, format_args!("{}\n{:#?}", prefix, entry))
-            } else {
-                write!(self.fmt, "{} {:?}", prefix, entry)
-            }
-        });
-
-        self.has_fields = true;
+        self.inner.entry(entry);
         self
     }
 
     /// Consumes the `DebugSet`, finishing output and returning any error
     /// encountered.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
-    pub fn finish(self) -> fmt::Result {
-        self.result.and_then(|_| {
-            let end = match (self.has_fields, self.is_pretty()) {
-                (false, _) => "}",
-                (true, false) => " }",
-                (true, true) => "\n}",
-            };
-            self.fmt.write_str(end)
-        })
+    pub fn finish(mut self) -> fmt::Result {
+        self.inner.finish();
+        self.inner.result.and_then(|_| self.inner.fmt.write_str("}"))
+    }
+}
+
+/// A struct to help with `fmt::Debug` implementations.
+///
+/// Constructed by the `Formatter::debug_list` method.
+#[must_use]
+pub struct DebugList<'a, 'b: 'a> {
+    inner: DebugInner<'a, 'b>,
+}
+
+pub fn debug_list_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugList<'a, 'b> {
+    let result = write!(fmt, "[");
+    DebugList {
+        inner: DebugInner {
+            fmt: fmt,
+            result: result,
+            has_fields: false,
+        }
+    }
+}
+
+impl<'a, 'b: 'a> DebugList<'a, 'b> {
+    /// Adds a new entry to the set output.
+    #[unstable(feature = "debug_builders", reason = "method was just created")]
+    pub fn entry(mut self, entry: &fmt::Debug) -> DebugList<'a, 'b> {
+        self.inner.entry(entry);
+        self
     }
 
-    fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+    /// Consumes the `DebugSet`, finishing output and returning any error
+    /// encountered.
+    #[unstable(feature = "debug_builders", reason = "method was just created")]
+    pub fn finish(mut self) -> fmt::Result {
+        self.inner.finish();
+        self.inner.result.and_then(|_| self.inner.fmt.write_str("]"))
     }
 }
 
@@ -248,8 +291,8 @@ pub struct DebugMap<'a, 'b: 'a> {
     has_fields: bool,
 }
 
-pub fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>, name: &str) -> DebugMap<'a, 'b> {
-    let result = write!(fmt, "{} {{", name);
+pub fn debug_map_new<'a, 'b>(fmt: &'a mut fmt::Formatter<'b>) -> DebugMap<'a, 'b> {
+    let result = write!(fmt, "{{");
     DebugMap {
         fmt: fmt,
         result: result,
@@ -262,22 +305,17 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn entry(mut self, key: &fmt::Debug, value: &fmt::Debug) -> DebugMap<'a, 'b> {
         self.result = self.result.and_then(|_| {
-            let prefix = if self.has_fields {
-                ","
-            } else {
-                ""
-            };
-
             if self.is_pretty() {
                 let mut writer = PadAdapter::new(self.fmt);
+                let prefix = if self.has_fields { "," } else { "" };
                 fmt::write(&mut writer, format_args!("{}\n{:#?}: {:#?}", prefix, key, value))
             } else {
-                write!(self.fmt, "{} {:?}: {:?}", prefix, key, value)
+                let prefix = if self.has_fields { ", " } else { "" };
+                write!(self.fmt, "{}{:?}: {:?}", prefix, key, value)
             }
         });
 
         self.has_fields = true;
-
         self
     }
 
@@ -285,14 +323,8 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     /// encountered.
     #[unstable(feature = "debug_builders", reason = "method was just created")]
     pub fn finish(self) -> fmt::Result {
-        self.result.and_then(|_| {
-            let end = match (self.has_fields, self.is_pretty()) {
-                (false, _) => "}",
-                (true, false) => " }",
-                (true, true) => "\n}",
-            };
-            self.fmt.write_str(end)
-        })
+        let prefix = if self.is_pretty() && self.has_fields { "\n" } else { "" };
+        self.result.and_then(|_| write!(self.fmt, "{}}}", prefix))
     }
 
     fn is_pretty(&self) -> bool {
