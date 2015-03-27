@@ -18,6 +18,7 @@
 
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
+use convert::{AsRef, AsMut};
 use fmt;
 use hash::{Hash, self};
 use iter::IntoIterator;
@@ -49,6 +50,24 @@ macro_rules! array_impls {
                 }
                 #[inline]
                 fn as_mut_slice(&mut self) -> &mut [T] {
+                    &mut self[..]
+                }
+            }
+
+            #[unstable(feature = "array_as_ref",
+                       reason = "should ideally be implemented for all fixed-sized arrays")]
+            impl<T> AsRef<[T]> for [T; $N] {
+                #[inline]
+                fn as_ref(&self) -> &[T] {
+                    &self[..]
+                }
+            }
+
+            #[unstable(feature = "array_as_ref",
+                       reason = "should ideally be implemented for all fixed-sized arrays")]
+            impl<T> AsMut<[T]> for [T; $N] {
+                #[inline]
+                fn as_mut(&mut self) -> &mut [T] {
                     &mut self[..]
                 }
             }
