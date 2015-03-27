@@ -15,7 +15,7 @@
 extern crate graphviz;
 // A simple rust project
 
-extern crate "flate" as myflate;
+extern crate flate as myflate;
 
 use std::collections::{HashMap,HashSet};
 use std::cell::RefCell;

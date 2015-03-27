@@ -10,6 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-#[macro_use] extern crate "std" as std2;
+#[macro_use] extern crate std as std2;
 
 fn main() {}
