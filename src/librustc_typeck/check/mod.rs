@@ -5379,7 +5379,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "breakpoint" => (0, Vec::new(), ty::mk_nil(tcx)),
             "size_of" |
             "pref_align_of" | "min_align_of" => (1, Vec::new(), ccx.tcx.types.uint),
-            "init" => (1, Vec::new(), param(ccx, 0)),
+            "init" | "init_dropped" => (1, Vec::new(), param(ccx, 0)),
             "uninit" => (1, Vec::new(), param(ccx, 0)),
             "forget" => (1, vec!( param(ccx, 0) ), ty::mk_nil(tcx)),
             "transmute" => (2, vec!( param(ccx, 0) ), param(ccx, 1)),
