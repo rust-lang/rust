@@ -21,7 +21,6 @@
 
 #![allow(non_camel_case_types)]
 
-#![feature(core)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]

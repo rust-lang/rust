@@ -151,7 +151,7 @@ use default::Default;
 use iter::{ExactSizeIterator};
 use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, IntoIterator};
 use mem;
-use ops::{Deref, FnOnce};
+use ops::FnOnce;
 use result::Result::{Ok, Err};
 use result::Result;
 #[allow(deprecated)]
