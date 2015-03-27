@@ -10,7 +10,7 @@
 
 // ignore-macos
 // ignore-ios
-// compile-flags:-l foo:framework
+// compile-flags:-l framework=foo
 // error-pattern: native frameworks are only available on OSX targets
 
 fn main() {
