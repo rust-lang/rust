@@ -480,7 +480,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.ok_or(0), Err(0));
     /// ```
     #[inline]
-    #[unstable(feature = "core")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ok_or<E>(self, err: E) -> Result<T, E> {
         match self {
             Some(v) => Ok(v),
@@ -502,7 +502,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.ok_or_else(|| 0), Err(0));
     /// ```
     #[inline]
-    #[unstable(feature = "core")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn ok_or_else<E, F: FnOnce() -> E>(self, err: F) -> Result<T, E> {
         match self {
             Some(v) => Ok(v),
@@ -548,8 +548,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.iter_mut().next(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "core",
-               reason = "waiting for iterator conventions")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<T> {
         IterMut { inner: Item { opt: self.as_mut() } }
     }
@@ -721,13 +720,11 @@ impl<T> Option<T> {
     }
 }
 
-impl<'a, T: Clone, D: Deref<Target=T>> Option<D> {
-    /// Maps an Option<D> to an Option<T> by dereffing and cloning the contents of the Option.
-    /// Useful for converting an Option<&T> to an Option<T>.
-    #[unstable(feature = "core",
-               reason = "recently added as part of collections reform")]
+impl<'a, T: Clone> Option<&'a T> {
+    /// Maps an Option<&T> to an Option<T> by cloning the contents of the Option.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn cloned(self) -> Option<T> {
-        self.map(|t| t.deref().clone())
+        self.map(|t| t.clone())
     }
 }
 
