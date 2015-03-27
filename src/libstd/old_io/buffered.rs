@@ -510,37 +510,37 @@ mod test {
 
         writer.write_all(&[0, 1]).unwrap();
         let b: &[_] = &[];
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
 
         writer.write_all(&[2]).unwrap();
         let b: &[_] = &[0, 1];
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
 
         writer.write_all(&[3]).unwrap();
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
 
         writer.flush().unwrap();
         let a: &[_] = &[0, 1, 2, 3];
-        assert_eq!(a, &writer.get_ref()[]);
+        assert_eq!(a, &writer.get_ref()[..]);
 
         writer.write_all(&[4]).unwrap();
         writer.write_all(&[5]).unwrap();
-        assert_eq!(a, &writer.get_ref()[]);
+        assert_eq!(a, &writer.get_ref()[..]);
 
         writer.write_all(&[6]).unwrap();
         let a: &[_] = &[0, 1, 2, 3, 4, 5];
-        assert_eq!(a, &writer.get_ref()[]);
+        assert_eq!(a, &writer.get_ref()[..]);
 
         writer.write_all(&[7, 8]).unwrap();
         let a: &[_] = &[0, 1, 2, 3, 4, 5, 6];
-        assert_eq!(a, &writer.get_ref()[]);
+        assert_eq!(a, &writer.get_ref()[..]);
 
         writer.write_all(&[9, 10, 11]).unwrap();
         let a: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
-        assert_eq!(a, &writer.get_ref()[]);
+        assert_eq!(a, &writer.get_ref()[..]);
 
         writer.flush().unwrap();
-        assert_eq!(a, &writer.get_ref()[]);
+        assert_eq!(a, &writer.get_ref()[..]);
     }
 
     #[test]
@@ -548,7 +548,7 @@ mod test {
         let mut w = BufferedWriter::with_capacity(3, Vec::new());
         w.write_all(&[0, 1]).unwrap();
         let a: &[_] = &[];
-        assert_eq!(a, &w.get_ref()[]);
+        assert_eq!(a, &w.get_ref()[..]);
         let w = w.into_inner();
         let a: &[_] = &[0, 1];
         assert_eq!(a, &w[..]);
@@ -593,21 +593,21 @@ mod test {
         let mut writer = LineBufferedWriter::new(Vec::new());
         writer.write_all(&[0]).unwrap();
         let b: &[_] = &[];
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
         writer.write_all(&[1]).unwrap();
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
         writer.flush().unwrap();
         let b: &[_] = &[0, 1];
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
         writer.write_all(&[0, b'\n', 1, b'\n', 2]).unwrap();
         let b: &[_] = &[0, 1, 0, b'\n', 1, b'\n'];
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
         writer.flush().unwrap();
         let b: &[_] = &[0, 1, 0, b'\n', 1, b'\n', 2];
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
         writer.write_all(&[3, b'\n']).unwrap();
         let b: &[_] = &[0, 1, 0, b'\n', 1, b'\n', 2, 3, b'\n'];
-        assert_eq!(&writer.get_ref()[], b);
+        assert_eq!(&writer.get_ref()[..], b);
     }
 
     #[test]
