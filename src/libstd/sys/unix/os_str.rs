@@ -46,10 +46,6 @@ impl Buf {
         Buf { inner: s.into_bytes() }
     }
 
-    pub fn from_str(s: &str) -> Buf {
-        Buf { inner: s.as_bytes().to_vec() }
-    }
-
     pub fn as_slice(&self) -> &Slice {
         unsafe { mem::transmute(&*self.inner) }
     }
