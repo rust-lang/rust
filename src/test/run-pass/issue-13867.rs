@@ -14,7 +14,7 @@
 // pretty-expanded FIXME #23616
 
 enum Foo {
-    FooUint(uint),
+    FooUint(usize),
     FooNullary,
 }
 

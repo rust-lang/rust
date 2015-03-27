@@ -60,7 +60,7 @@
 // lldb-check:[...]$1 = -1
 
 // NOTE: LLDB does not support 32bit chars
-// d ebugger:print (uint)(c)
+// d ebugger:print (usize)(c)
 // c heck:$3 = 97
 
 // lldb-command:print i8
@@ -91,13 +91,13 @@
 
 fn main() {
     let b: bool = false;
-    let i: int = -1;
+    let i: isize = -1;
     let c: char = 'a';
     let i8: i8 = 68;
     let i16: i16 = -16;
     let i32: i32 = -32;
     let i64: i64 = -64;
-    let u: uint = 1;
+    let u: usize = 1;
     let u8: u8 = 100;
     let u16: u16 = 16;
     let u32: u32 = 32;

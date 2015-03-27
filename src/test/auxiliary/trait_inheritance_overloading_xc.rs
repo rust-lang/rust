@@ -16,7 +16,7 @@ pub trait MyNum : Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + Parti
 
 #[derive(Clone, Debug)]
 pub struct MyInt {
-    pub val: int
+    pub val: isize
 }
 
 impl Add for MyInt {
@@ -45,4 +45,4 @@ impl PartialEq for MyInt {
 
 impl MyNum for MyInt {}
 
-fn mi(v: int) -> MyInt { MyInt { val: v } }
+fn mi(v: isize) -> MyInt { MyInt { val: v } }

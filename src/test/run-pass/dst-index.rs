@@ -20,21 +20,21 @@ use std::fmt::Debug;
 
 struct S;
 
-impl Index<uint> for S {
+impl Index<usize> for S {
     type Output = str;
 
-    fn index<'a>(&'a self, _: uint) -> &'a str {
+    fn index<'a>(&'a self, _: usize) -> &'a str {
         "hello"
     }
 }
 
 struct T;
 
-impl Index<uint> for T {
+impl Index<usize> for T {
     type Output = Debug + 'static;
 
-    fn index<'a>(&'a self, idx: uint) -> &'a (Debug + 'static) {
-        static X: uint = 42;
+    fn index<'a>(&'a self, idx: usize) -> &'a (Debug + 'static) {
+        static X: usize = 42;
         &X as &(Debug + 'static)
     }
 }

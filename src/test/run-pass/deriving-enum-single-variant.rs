@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-pub type task_id = int;
+pub type task_id = isize;
 
 #[derive(PartialEq)]
 pub enum Task {

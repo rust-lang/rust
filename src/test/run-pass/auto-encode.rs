@@ -43,7 +43,7 @@ fn test_rbml<'a, 'b, A:
 
 #[derive(Decodable, Encodable)]
 enum Expr {
-    Val(uint),
+    Val(usize),
     Plus(@Expr, @Expr),
     Minus(@Expr, @Expr)
 }
@@ -103,23 +103,23 @@ impl<T:cmp::Eq> cmp::Eq for Quark<T> {
 
 impl cmp::Eq for CLike {
     fn eq(&self, other: &CLike) -> bool {
-        (*self) as int == *other as int
+        (*self) as isize == *other as isize
     }
     fn ne(&self, other: &CLike) -> bool { !self.eq(other) }
 }
 
 #[derive(Decodable, Encodable, Eq)]
 struct Spanned<T> {
-    lo: uint,
-    hi: uint,
+    lo: usize,
+    hi: usize,
     node: T,
 }
 
 #[derive(Decodable, Encodable)]
-struct SomeStruct { v: Vec<uint> }
+struct SomeStruct { v: Vec<usize> }
 
 #[derive(Decodable, Encodable)]
-struct Point {x: uint, y: uint}
+struct Point {x: usize, y: usize}
 
 #[derive(Decodable, Encodable)]
 enum Quark<T> {

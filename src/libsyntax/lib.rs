@@ -29,7 +29,6 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(int_uint)]
 #![feature(libc)]
 #![feature(old_path)]
 #![feature(quote, unsafe_destructor)]

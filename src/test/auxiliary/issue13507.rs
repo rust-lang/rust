@@ -41,10 +41,10 @@ pub mod testtypes {
     pub type FooChar = char;
 
     // Tests ty_int (does not test all variants of IntTy)
-    pub type FooInt = int;
+    pub type FooInt = isize;
 
     // Tests ty_uint (does not test all variants of UintTy)
-    pub type FooUint = uint;
+    pub type FooUint = usize;
 
     // Tests ty_float (does not test all variants of FloatTy)
     pub type FooFloat = f64;
@@ -53,8 +53,8 @@ pub mod testtypes {
 
     // Tests ty_enum
     pub enum FooEnum {
-        VarA(uint),
-        VarB(uint, uint)
+        VarA(usize),
+        VarB(usize, usize)
     }
 
     // Tests ty_uniq (of u8)
@@ -71,14 +71,14 @@ pub mod testtypes {
 
     // Tests ty_trait
     pub trait FooTrait {
-        fn foo_method(&self) -> uint;
-        fn foo_static_method() -> uint;
+        fn foo_method(&self) -> usize;
+        fn foo_static_method() -> usize;
     }
 
     // Tests ty_struct
     pub struct FooStruct {
-        pub pub_foo_field: uint,
-        foo_field: uint
+        pub pub_foo_field: usize,
+        foo_field: usize
     }
 
     // Tests ty_tup

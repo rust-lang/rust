@@ -12,7 +12,7 @@
 
 macro_rules! myfn {
     ( $f:ident, ( $( $x:ident ),* ), $body:block ) => (
-        fn $f( $( $x : int),* ) -> int $body
+        fn $f( $( $x : isize),* ) -> isize $body
     )
 }
 

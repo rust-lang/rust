@@ -11,7 +11,7 @@
 // ignore-test
 // error-pattern:index out of bounds
 
-use std::uint;
+use std::usize;
 
 fn main() {
     let x = vec!(1_usize,2_usize,3_usize);
@@ -21,7 +21,7 @@ fn main() {
     // length (in bytes), because the scaling of the index will cause it to
     // wrap around to a small number.
 
-    let idx = uint::MAX & !(uint::MAX >> 1_usize);
+    let idx = usize::MAX & !(usize::MAX >> 1_usize);
     println!("ov2 idx = 0x%x", idx);
 
     // This should panic.

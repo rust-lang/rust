@@ -10,9 +10,9 @@
 
 pub mod kitties {
     pub struct cat {
-        meows : uint,
+        meows : usize,
 
-        pub how_hungry : int,
+        pub how_hungry : isize,
         pub name : String,
     }
 
@@ -41,7 +41,7 @@ pub mod kitties {
         }
     }
 
-    pub fn cat(in_x : uint, in_y : int, in_name: String) -> cat {
+    pub fn cat(in_x : usize, in_y : isize, in_name: String) -> cat {
         cat {
             meows: in_x,
             how_hungry: in_y,

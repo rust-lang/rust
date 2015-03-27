@@ -12,12 +12,12 @@
 
 // Test that (safe) nested calls with `&mut` receivers are permitted.
 
-struct Foo {a: uint, b: uint}
+struct Foo {a: usize, b: usize}
 
 impl Foo {
-    pub fn inc_a(&mut self, v: uint) { self.a += v; }
+    pub fn inc_a(&mut self, v: usize) { self.a += v; }
 
-    pub fn next_b(&mut self) -> uint {
+    pub fn next_b(&mut self) -> usize {
         let b = self.b;
         self.b += 1;
         b

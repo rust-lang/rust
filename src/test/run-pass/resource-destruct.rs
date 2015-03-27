@@ -13,7 +13,7 @@
 use std::cell::Cell;
 
 struct shrinky_pointer<'a> {
-  i: &'a Cell<int>,
+  i: &'a Cell<isize>,
 }
 
 #[unsafe_destructor]
@@ -24,10 +24,10 @@ impl<'a> Drop for shrinky_pointer<'a> {
 }
 
 impl<'a> shrinky_pointer<'a> {
-    pub fn look_at(&self) -> int { return self.i.get(); }
+    pub fn look_at(&self) -> isize { return self.i.get(); }
 }
 
-fn shrinky_pointer(i: &Cell<int>) -> shrinky_pointer {
+fn shrinky_pointer(i: &Cell<isize>) -> shrinky_pointer {
     shrinky_pointer {
         i: i
     }

@@ -19,6 +19,6 @@ macro_rules! spath {
 }
 
 fn main() {
-    assert_eq!(sty!(int), "int");
+    assert_eq!(sty!(isize), "isize");
     assert_eq!(spath!(std::option), "std::option");
 }

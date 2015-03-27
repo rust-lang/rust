@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 trait Foo {
-    fn bar(&self, int) {}
+    fn bar(&self, isize) {}
 }
 
 fn main() {}

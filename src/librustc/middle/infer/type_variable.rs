@@ -69,11 +69,11 @@ impl<'tcx> TypeVariableTable<'tcx> {
     }
 
     fn relations<'a>(&'a mut self, a: ty::TyVid) -> &'a mut Vec<Relation> {
-        relations(self.values.get_mut(a.index as uint))
+        relations(self.values.get_mut(a.index as usize))
     }
 
     pub fn var_diverges<'a>(&'a self, vid: ty::TyVid) -> bool {
-        self.values.get(vid.index as uint).diverging
+        self.values.get(vid.index as usize).diverging
     }
 
     /// Records that `a <: b`, `a :> b`, or `a == b`, depending on `dir`.
@@ -97,7 +97,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         stack: &mut Vec<(Ty<'tcx>, RelationDir, ty::TyVid)>)
     {
         let old_value = {
-            let value_ptr = &mut self.values.get_mut(vid.index as uint).value;
+            let value_ptr = &mut self.values.get_mut(vid.index as usize).value;
             mem::replace(value_ptr, Known(ty))
         };
 
@@ -123,7 +123,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     }
 
     pub fn probe(&self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
-        match self.values.get(vid.index as uint).value {
+        match self.values.get(vid.index as usize).value {
             Bounded(..) => None,
             Known(t) => Some(t)
         }
@@ -206,12 +206,12 @@ impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
                action: UndoEntry) {
         match action {
             SpecifyVar(vid, relations) => {
-                values[vid.index as uint].value = Bounded(relations);
+                values[vid.index as usize].value = Bounded(relations);
             }
 
             Relate(a, b) => {
-                relations(&mut (*values)[a.index as uint]).pop();
-                relations(&mut (*values)[b.index as uint]).pop();
+                relations(&mut (*values)[a.index as usize]).pop();
+                relations(&mut (*values)[b.index as usize]).pop();
             }
         }
     }

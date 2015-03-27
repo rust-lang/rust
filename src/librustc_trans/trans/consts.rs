@@ -53,7 +53,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
                 }
                 _ => cx.sess().span_bug(lit.span,
                         &format!("integer literal has type {} (expected int \
-                                 or uint)",
+                                 or usize)",
                                 ty_to_string(cx.tcx(), lit_int_ty)))
             }
         }
@@ -652,8 +652,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let unit_ty = ty::sequence_element_type(cx.tcx(), ety);
             let llunitty = type_of::type_of(cx, unit_ty);
             let n = match const_eval::eval_const_expr_partial(cx.tcx(), &**count, None) {
-                Ok(const_eval::const_int(i))  => i as uint,
-                Ok(const_eval::const_uint(i)) => i as uint,
+                Ok(const_eval::const_int(i))  => i as usize,
+                Ok(const_eval::const_uint(i)) => i as usize,
                 _ => cx.sess().span_bug(count.span, "count must be integral const expression.")
             };
             let unit_val = const_expr(cx, &**elem, param_substs).0;

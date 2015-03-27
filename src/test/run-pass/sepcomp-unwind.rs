@@ -23,7 +23,7 @@
 
 use std::thread;
 
-fn pad() -> uint { 0 }
+fn pad() -> usize { 0 }
 
 mod a {
     pub fn f() {

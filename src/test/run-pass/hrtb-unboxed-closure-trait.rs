@@ -12,11 +12,11 @@
 
 #![feature(unboxed_closures)]
 
-fn foo<F:Fn(&int)>(f: F) {
+fn foo<F:Fn(&isize)>(f: F) {
     let x = 22;
     f(&x);
 }
 
 fn main() {
-    foo(|x: &int| println!("{}", *x));
+    foo(|x: &isize| println!("{}", *x));
 }

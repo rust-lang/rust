@@ -34,26 +34,26 @@
 #![omit_gdb_pretty_printer_section]
 
 struct Struct {
-    x: int
+    x: isize
 }
 
 impl Struct {
 
-    fn static_method<T1, T2>(arg1: T1, arg2: T2) -> int {
+    fn static_method<T1, T2>(arg1: T1, arg2: T2) -> isize {
         zzz(); // #break
         return 0;
     }
 }
 
 enum Enum {
-    Variant1 { x: int },
+    Variant1 { x: isize },
     Variant2,
-    Variant3(f64, int, char),
+    Variant3(f64, isize, char),
 }
 
 impl Enum {
 
-    fn static_method<T1, T2, T3>(arg1: T1, arg2: T2, arg3: T3) -> int {
+    fn static_method<T1, T2, T3>(arg1: T1, arg2: T2, arg3: T3) -> isize {
         zzz(); // #break
         return 1;
     }

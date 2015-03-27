@@ -9,8 +9,8 @@
 // except according to those terms.
 
 struct Foo {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 pub fn main() {

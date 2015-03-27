@@ -29,7 +29,7 @@ pub fn main() {
     unsafe {
         let x: Box<_> = box 1;
         let mut y = rusti::init();
-        let mut z: *const uint = transmute(&x);
+        let mut z: *const usize = transmute(&x);
         rusti::move_val_init(&mut y, x);
         assert_eq!(*y, 1);
         // `x` is nulled out, not directly visible

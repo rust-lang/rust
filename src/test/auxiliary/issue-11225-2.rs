@@ -25,7 +25,7 @@ pub trait Outer {
     fn foo<T: Trait>(&self, t: T) { t.f(); }
 }
 
-impl Outer for int {}
+impl Outer for isize {}
 
 pub fn foo<T: Outer>(t: T) {
     t.foo(inner::Foo);

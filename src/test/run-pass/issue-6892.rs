@@ -14,11 +14,11 @@
 // pretty-expanded FIXME #23616
 
 struct Foo;
-struct Bar { x: int }
-struct Baz(int);
-enum FooBar { _Foo(Foo), _Bar(uint) }
+struct Bar { x: isize }
+struct Baz(isize);
+enum FooBar { _Foo(Foo), _Bar(usize) }
 
-static mut NUM_DROPS: uint = 0;
+static mut NUM_DROPS: usize = 0;
 
 impl Drop for Foo {
     fn drop(&mut self) {

@@ -11,16 +11,16 @@
 #![allow(dead_assignment)]
 
 pub fn main() {
-    let x : &[int] = &[1,2,3,4,5];
-    let mut z : &[int] = &[1,2,3,4,5];
+    let x : &[isize] = &[1,2,3,4,5];
+    let mut z : &[isize] = &[1,2,3,4,5];
     z = x;
     assert_eq!(z[0], 1);
     assert_eq!(z[4], 5);
 
-    let a : &[int] = &[1,1,1,1,1];
-    let b : &[int] = &[2,2,2,2,2];
-    let c : &[int] = &[2,2,2,2,3];
-    let cc : &[int] = &[2,2,2,2,2,2];
+    let a : &[isize] = &[1,1,1,1,1];
+    let b : &[isize] = &[2,2,2,2,2];
+    let c : &[isize] = &[2,2,2,2,3];
+    let cc : &[isize] = &[2,2,2,2,2,2];
 
     println!("{:?}", a);
 

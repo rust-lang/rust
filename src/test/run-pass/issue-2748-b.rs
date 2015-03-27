@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn thing<'r>(x: &'r [int]) -> &'r [int] { x }
+fn thing<'r>(x: &'r [isize]) -> &'r [isize] { x }
 
 pub fn main() {
     let x = &[1,2,3];

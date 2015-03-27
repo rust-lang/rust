@@ -114,7 +114,7 @@ fn test_user_defined_eq() {
 
     // Our type.
     struct SketchyNum {
-        num : int
+        num : isize
     }
 
     // Our implementation of `PartialEq` to support `==` and `!=`.

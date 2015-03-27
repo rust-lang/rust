@@ -13,7 +13,7 @@
 
 use std::ops::FnMut;
 
-fn make_adder(x: int) -> Box<FnMut(int)->int + 'static> {
+fn make_adder(x: isize) -> Box<FnMut(isize)->isize + 'static> {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     Box::new(move |y| { x + y })
 }

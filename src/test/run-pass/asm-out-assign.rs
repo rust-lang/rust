@@ -14,7 +14,7 @@
 
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub fn main() {
-    let x: int;
+    let x: isize;
     unsafe {
         // Treat the output as initialization.
         asm!("mov $1, $0" : "=r"(x) : "r"(5_usize));

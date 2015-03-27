@@ -13,7 +13,7 @@
 
 // pretty-expanded FIXME #23616
 
-struct Foo(int);
+struct Foo(isize);
 pub fn main() {
     // Here the lifetime of the `&` should be at least the
     // block, since a ref binding is created to the interior.

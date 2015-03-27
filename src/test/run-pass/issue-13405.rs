@@ -12,11 +12,11 @@
 
 struct Foo<'a> {
     i: &'a bool,
-    j: Option<&'a int>,
+    j: Option<&'a isize>,
 }
 
 impl<'a> Foo<'a> {
-    fn bar(&mut self, j: &int) {
+    fn bar(&mut self, j: &isize) {
         let child = Foo {
             i: self.i,
             j: Some(j)

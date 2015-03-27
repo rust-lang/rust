@@ -32,7 +32,7 @@ fn main(){
     assert_eq!(f.call_mut(()), &x);
 
     #[derive(Clone, Copy, Debug, PartialEq)]
-    struct Foo(uint, &'static str);
+    struct Foo(usize, &'static str);
 
     let x = Foo(42, "forty-two");
     let mut f = bar(x);

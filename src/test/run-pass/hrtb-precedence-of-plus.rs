@@ -13,11 +13,11 @@
 #![allow(unknown_features)]
 #![feature(unboxed_closures)]
 
-// Test that `Fn(int) -> int + 'static` parses as `(Fn(int) -> int) +
-// 'static` and not `Fn(int) -> (int + 'static)`. The latter would
+// Test that `Fn(isize) -> isize + 'static` parses as `(Fn(isize) -> isize) +
+// 'static` and not `Fn(isize) -> (isize + 'static)`. The latter would
 // cause a compilation error. Issue #18772.
 
-fn adder(y: int) -> Box<Fn(int) -> int + 'static> {
+fn adder(y: isize) -> Box<Fn(isize) -> isize + 'static> {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     Box::new(move |x| y + x)
 }

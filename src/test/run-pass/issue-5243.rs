@@ -15,7 +15,7 @@
 // pretty-expanded FIXME #23616
 
 struct S<'a> {
-    v: &'a int
+    v: &'a isize
 }
 
 fn f<'lt>(_s: &'lt S<'lt>) {}

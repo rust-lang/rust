@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 mod m {
-    pub type t = int;
+    pub type t = isize;
 }
 
 macro_rules! foo {

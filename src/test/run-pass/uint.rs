@@ -13,4 +13,4 @@
 
 // pretty-expanded FIXME #23616
 
-pub fn main() { let _x: uint = 10 as uint; }
+pub fn main() { let _x: usize = 10 as usize; }

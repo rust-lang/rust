@@ -16,7 +16,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-fn work(_: Box<int>) {}
+fn work(_: Box<isize>) {}
 fn foo<F:FnOnce()>(_: F) {}
 
 pub fn main() {

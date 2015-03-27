@@ -10,6 +10,6 @@
 
 
 
-static i: int = 10;
+static i: isize = 10;
 
 pub fn main() { println!("{}", i); }

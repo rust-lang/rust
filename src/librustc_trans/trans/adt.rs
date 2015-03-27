@@ -391,7 +391,7 @@ struct Case<'tcx> {
 }
 
 /// This represents the (GEP) indices to follow to get to the discriminant field
-pub type DiscrField = Vec<uint>;
+pub type DiscrField = Vec<usize>;
 
 fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
                                     ty: Ty<'tcx>,
@@ -828,7 +828,7 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     assert_eq!(val_ty(ptr), llty.ptr_to());
     let bits = machine::llbitsize_of_real(bcx.ccx(), llty);
     assert!(bits <= 64);
-    let  bits = bits as uint;
+    let  bits = bits as usize;
     let mask = (-1u64 >> (64 - bits)) as Disr;
     // For a (max) discr of -1, max will be `-1 as usize`, which overflows.
     // However, that is fine here (it would still represent the full range),
@@ -884,7 +884,7 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
         General(ity, ref cases, dtor) => {
             if dtor_active(dtor) {
                 let ptr = trans_field_ptr(bcx, r, val, discr,
-                                          cases[discr as uint].fields.len() - 2);
+                                          cases[discr as usize].fields.len() - 2);
                 Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED as usize), ptr);
             }
             Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true),
@@ -922,7 +922,7 @@ fn assert_discr_in_range(ity: IntType, min: Disr, max: Disr, discr: Disr) {
 
 /// The number of fields in a given case; for use when obtaining this
 /// information from the type or definition is less convenient.
-pub fn num_args(r: &Repr, discr: Disr) -> uint {
+pub fn num_args(r: &Repr, discr: Disr) -> usize {
     match *r {
         CEnum(..) => 0,
         Univariant(ref st, dtor) => {
@@ -930,7 +930,7 @@ pub fn num_args(r: &Repr, discr: Disr) -> uint {
             st.fields.len() - (if dtor_active(dtor) { 1 } else { 0 })
         }
         General(_, ref cases, dtor) => {
-            cases[discr as uint].fields.len() - 1 - (if dtor_active(dtor) { 1 } else { 0 })
+            cases[discr as usize].fields.len() - 1 - (if dtor_active(dtor) { 1 } else { 0 })
         }
         RawNullablePointer { nndiscr, ref nullfields, .. } => {
             if discr == nndiscr { 1 } else { nullfields.len() }
@@ -944,7 +944,7 @@ pub fn num_args(r: &Repr, discr: Disr) -> uint {
 
 /// Access a field, at a point when the value's case is known.
 pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
-                                   val: ValueRef, discr: Disr, ix: uint) -> ValueRef {
+                                   val: ValueRef, discr: Disr, ix: usize) -> ValueRef {
     // Note: if this ever needs to generate conditionals (e.g., if we
     // decide to do some kind of cdr-coding-like non-unique repr
     // someday), it will need to return a possibly-new bcx as well.
@@ -957,7 +957,7 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
             struct_field_ptr(bcx, st, val, ix, false)
         }
         General(_, ref cases, _) => {
-            struct_field_ptr(bcx, &cases[discr as uint], val, ix + 1, true)
+            struct_field_ptr(bcx, &cases[discr as usize], val, ix + 1, true)
         }
         RawNullablePointer { nndiscr, ref nullfields, .. } |
         StructWrappedNullablePointer { nndiscr, ref nullfields, .. } if discr != nndiscr => {
@@ -983,7 +983,7 @@ pub fn trans_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
 }
 
 pub fn struct_field_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, st: &Struct<'tcx>, val: ValueRef,
-                                    ix: uint, needs_cast: bool) -> ValueRef {
+                                    ix: usize, needs_cast: bool) -> ValueRef {
     let val = if needs_cast {
         let ccx = bcx.ccx();
         let fields = st.fields.iter().map(|&ty| type_of::type_of(ccx, ty)).collect::<Vec<_>>();
@@ -1098,7 +1098,7 @@ pub fn trans_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, r: &Repr<'tcx>, discr
             C_integral(ll_inttype(ccx, ity), discr as u64, true)
         }
         General(ity, ref cases, _) => {
-            let case = &cases[discr as uint];
+            let case = &cases[discr as usize];
             let (max_sz, _) = union_size_and_align(&cases[..]);
             let lldiscr = C_integral(ll_inttype(ccx, ity), discr as u64, true);
             let mut f = vec![lldiscr];
@@ -1236,7 +1236,7 @@ pub fn const_get_discrim(ccx: &CrateContext, r: &Repr, val: ValueRef) -> Disr {
 /// (Not to be confused with `common::const_get_elt`, which operates on
 /// raw LLVM-level structs and arrays.)
 pub fn const_get_field(ccx: &CrateContext, r: &Repr, val: ValueRef,
-                       _discr: Disr, ix: uint) -> ValueRef {
+                       _discr: Disr, ix: usize) -> ValueRef {
     match *r {
         CEnum(..) => ccx.sess().bug("element access in C-like enum const"),
         Univariant(..) => const_struct_field(ccx, val, ix),
@@ -1250,7 +1250,7 @@ pub fn const_get_field(ccx: &CrateContext, r: &Repr, val: ValueRef,
 }
 
 /// Extract field of struct-like const, skipping our alignment padding.
-fn const_struct_field(ccx: &CrateContext, val: ValueRef, ix: uint) -> ValueRef {
+fn const_struct_field(ccx: &CrateContext, val: ValueRef, ix: usize) -> ValueRef {
     // Get the ix-th non-undef element of the struct.
     let mut real_ix = 0; // actual position in the struct
     let mut ix = ix; // logical index relative to real_ix

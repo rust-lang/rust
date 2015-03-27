@@ -15,7 +15,7 @@ trait to_str {
     fn to_string_(&self) -> String;
 }
 
-impl to_str for int {
+impl to_str for isize {
     fn to_string_(&self) -> String { self.to_string() }
 }
 

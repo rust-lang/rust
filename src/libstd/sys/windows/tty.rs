@@ -92,7 +92,7 @@ impl TTY {
         }
     }
 
-    pub fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    pub fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         // Read more if the buffer is empty
         if self.utf8.eof() {
             let mut utf16: Vec<u16> = repeat(0u16).take(0x1000).collect();
@@ -105,7 +105,7 @@ impl TTY {
                 0 => return Err(super::last_error()),
                 _ => (),
             };
-            utf16.truncate(num as uint);
+            utf16.truncate(num as usize);
             let utf8 = match String::from_utf16(&utf16) {
                 Ok(utf8) => utf8.into_bytes(),
                 Err(..) => return Err(invalid_encoding()),
@@ -149,12 +149,12 @@ impl TTY {
         }
     }
 
-    pub fn get_winsize(&mut self) -> IoResult<(int, int)> {
+    pub fn get_winsize(&mut self) -> IoResult<(isize, isize)> {
         let mut info: CONSOLE_SCREEN_BUFFER_INFO = unsafe { mem::zeroed() };
         match unsafe { GetConsoleScreenBufferInfo(self.handle, &mut info as *mut _) } {
             0 => Err(super::last_error()),
-            _ => Ok(((info.srWindow.Right + 1 - info.srWindow.Left) as int,
-                     (info.srWindow.Bottom + 1 - info.srWindow.Top) as int)),
+            _ => Ok(((info.srWindow.Right + 1 - info.srWindow.Left) as isize,
+                     (info.srWindow.Bottom + 1 - info.srWindow.Top) as isize)),
         }
     }
 }

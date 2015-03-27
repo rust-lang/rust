@@ -565,10 +565,8 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
         "u32" => Some(UnsignedInt(ast::TyU32)),
         "i64" => Some(SignedInt(ast::TyI64)),
         "u64" => Some(UnsignedInt(ast::TyU64)),
-        "int" => Some(SignedInt(ast::TyIs(true))),
-        "uint" => Some(UnsignedInt(ast::TyUs(true))),
-        "isize" => Some(SignedInt(ast::TyIs(false))),
-        "usize" => Some(UnsignedInt(ast::TyUs(false))),
+        "isize" => Some(SignedInt(ast::TyIs)),
+        "usize" => Some(UnsignedInt(ast::TyUs)),
         _ => None
     }
 }
@@ -612,7 +610,7 @@ impl IntType {
             SignedInt(ast::TyI16) | UnsignedInt(ast::TyU16) |
             SignedInt(ast::TyI32) | UnsignedInt(ast::TyU32) |
             SignedInt(ast::TyI64) | UnsignedInt(ast::TyU64) => true,
-            SignedInt(ast::TyIs(_)) | UnsignedInt(ast::TyUs(_)) => false
+            SignedInt(ast::TyIs) | UnsignedInt(ast::TyUs) => false
         }
     }
 }

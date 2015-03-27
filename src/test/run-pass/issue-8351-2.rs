@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 enum E {
-    Foo{f: int, b: bool},
+    Foo{f: isize, b: bool},
     Bar,
 }
 

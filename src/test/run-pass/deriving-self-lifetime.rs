@@ -12,7 +12,7 @@
 
 #[derive(Eq,Ord)]
 struct A<'a> {
-    x: &'a int
+    x: &'a isize
 }
 
 pub fn main() {

@@ -20,7 +20,7 @@ use std::cell::Cell;
 // as a move unless the stored thing is used afterwards.
 
 struct r<'a> {
-    i: &'a Cell<int>,
+    i: &'a Cell<isize>,
 }
 
 struct BoxR<'a> { x: r<'a> }
@@ -32,7 +32,7 @@ impl<'a> Drop for r<'a> {
     }
 }
 
-fn r(i: &Cell<int>) -> r {
+fn r(i: &Cell<isize>) -> r {
     r {
         i: i
     }

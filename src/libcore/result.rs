@@ -60,22 +60,22 @@
 //! that make working with it more succinct.
 //!
 //! ```
-//! let good_result: Result<int, int> = Ok(10);
-//! let bad_result: Result<int, int> = Err(10);
+//! let good_result: Result<i32, i32> = Ok(10);
+//! let bad_result: Result<i32, i32> = Err(10);
 //!
 //! // The `is_ok` and `is_err` methods do what they say.
 //! assert!(good_result.is_ok() && !good_result.is_err());
 //! assert!(bad_result.is_err() && !bad_result.is_ok());
 //!
 //! // `map` consumes the `Result` and produces another.
-//! let good_result: Result<int, int> = good_result.map(|i| i + 1);
-//! let bad_result: Result<int, int> = bad_result.map(|i| i - 1);
+//! let good_result: Result<i32, i32> = good_result.map(|i| i + 1);
+//! let bad_result: Result<i32, i32> = bad_result.map(|i| i - 1);
 //!
 //! // Use `and_then` to continue the computation.
-//! let good_result: Result<bool, int> = good_result.and_then(|i| Ok(i == 11));
+//! let good_result: Result<bool, i32> = good_result.and_then(|i| Ok(i == 11));
 //!
 //! // Use `or_else` to handle the error.
-//! let bad_result: Result<int, int> = bad_result.or_else(|i| Ok(11));
+//! let bad_result: Result<i32, i32> = bad_result.or_else(|i| Ok(11));
 //!
 //! // Consume the result and return the contents with `unwrap`.
 //! let final_awesome_result = good_result.unwrap();
@@ -182,8 +182,8 @@
 //!
 //! struct Info {
 //!     name: String,
-//!     age: int,
-//!     rating: int
+//!     age: i32,
+//!     rating: i32,
 //! }
 //!
 //! fn write_info(info: &Info) -> Result<(), IoError> {
@@ -208,8 +208,8 @@
 //!
 //! struct Info {
 //!     name: String,
-//!     age: int,
-//!     rating: int
+//!     age: i32,
+//!     rating: i32,
 //! }
 //!
 //! fn write_info(info: &Info) -> Result<(), IoError> {
@@ -282,10 +282,10 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// let x: Result<int, &str> = Ok(-3);
+    /// let x: Result<i32, &str> = Ok(-3);
     /// assert_eq!(x.is_ok(), true);
     ///
-    /// let x: Result<int, &str> = Err("Some error message");
+    /// let x: Result<i32, &str> = Err("Some error message");
     /// assert_eq!(x.is_ok(), false);
     /// ```
     #[inline]
@@ -302,10 +302,10 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
-    /// let x: Result<int, &str> = Ok(-3);
+    /// let x: Result<i32, &str> = Ok(-3);
     /// assert_eq!(x.is_err(), false);
     ///
-    /// let x: Result<int, &str> = Err("Some error message");
+    /// let x: Result<i32, &str> = Err("Some error message");
     /// assert_eq!(x.is_err(), true);
     /// ```
     #[inline]
@@ -392,18 +392,18 @@ impl<T, E> Result<T, E> {
     /// Convert from `Result<T, E>` to `Result<&mut T, &mut E>`
     ///
     /// ```
-    /// fn mutate(r: &mut Result<int, int>) {
+    /// fn mutate(r: &mut Result<i32, i32>) {
     ///     match r.as_mut() {
     ///         Ok(&mut ref mut v) => *v = 42,
     ///         Err(&mut ref mut e) => *e = 0,
     ///     }
     /// }
     ///
-    /// let mut x: Result<int, int> = Ok(2);
+    /// let mut x: Result<i32, i32> = Ok(2);
     /// mutate(&mut x);
     /// assert_eq!(x.unwrap(), 42);
     ///
-    /// let mut x: Result<int, int> = Err(13);
+    /// let mut x: Result<i32, i32> = Err(13);
     /// mutate(&mut x);
     /// assert_eq!(x.unwrap_err(), 0);
     /// ```
@@ -486,8 +486,8 @@ impl<T, E> Result<T, E> {
     /// while !buffer.is_empty() {
     ///     let line: IoResult<String> = buffer.read_line();
     ///     // Convert the string line to a number using `map` and `from_str`
-    ///     let val: IoResult<int> = line.map(|line| {
-    ///         line.trim_right().parse::<int>().unwrap_or(0)
+    ///     let val: IoResult<i32> = line.map(|line| {
+    ///         line.trim_right().parse::<i32>().unwrap_or(0)
     ///     });
     ///     // Add the value if there were no errors, otherwise add 0
     ///     sum += val.unwrap_or(0);

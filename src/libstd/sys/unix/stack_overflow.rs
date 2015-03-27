@@ -60,7 +60,7 @@ mod imp {
 
 
     // This is initialized in init() and only read from after
-    static mut PAGE_SIZE: uint = 0;
+    static mut PAGE_SIZE: usize = 0;
 
     #[no_stack_check]
     unsafe extern fn signal_handler(signum: libc::c_int,
@@ -82,7 +82,7 @@ mod imp {
         stack::record_sp_limit(0);
 
         let guard = thread_info::stack_guard();
-        let addr = (*info).si_addr as uint;
+        let addr = (*info).si_addr as usize;
 
         if guard == 0 || addr < guard - PAGE_SIZE || addr >= guard {
             term(signum);
@@ -101,7 +101,7 @@ mod imp {
             panic!("failed to get page size");
         }
 
-        PAGE_SIZE = psize as uint;
+        PAGE_SIZE = psize as usize;
 
         let mut action: sigaction = mem::zeroed();
         action.sa_flags = SA_SIGINFO | SA_ONSTACK;

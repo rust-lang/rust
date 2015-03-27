@@ -22,7 +22,7 @@ use slice::bytes::MutableByteVector;
 #[deprecated(since = "1.0.0", reason = "use std::io::Take")]
 #[unstable(feature = "old_io")]
 pub struct LimitReader<R> {
-    limit: uint,
+    limit: usize,
     inner: R
 }
 
@@ -32,7 +32,7 @@ impl<R: Reader> LimitReader<R> {
     /// Creates a new `LimitReader`
     #[deprecated(since = "1.0.0", reason = "use std::io's take method instead")]
     #[unstable(feature = "old_io")]
-    pub fn new(r: R, limit: uint) -> LimitReader<R> {
+    pub fn new(r: R, limit: usize) -> LimitReader<R> {
         LimitReader { limit: limit, inner: r }
     }
 
@@ -46,13 +46,13 @@ impl<R: Reader> LimitReader<R> {
     ///
     /// The reader may reach EOF after reading fewer bytes than indicated by
     /// this method if the underlying reader reaches EOF.
-    pub fn limit(&self) -> uint { self.limit }
+    pub fn limit(&self) -> usize { self.limit }
 }
 
 #[deprecated(since = "1.0.0", reason = "use std::io's take method instead")]
 #[unstable(feature = "old_io")]
 impl<R: Reader> Reader for LimitReader<R> {
-    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<usize> {
         if self.limit == 0 {
             return Err(old_io::standard_error(old_io::EndOfFile));
         }
@@ -80,7 +80,7 @@ impl<R: Buffer> Buffer for LimitReader<R> {
         }
     }
 
-    fn consume(&mut self, amt: uint) {
+    fn consume(&mut self, amt: usize) {
         // Don't let callers reset the limit by passing an overlarge value
         let amt = cmp::min(amt, self.limit);
         self.limit -= amt;
@@ -112,7 +112,7 @@ pub struct ZeroReader;
 #[unstable(feature = "old_io")]
 impl Reader for ZeroReader {
     #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<usize> {
         buf.set_memory(0);
         Ok(buf.len())
     }
@@ -126,7 +126,7 @@ impl Buffer for ZeroReader {
         Ok(&DATA)
     }
 
-    fn consume(&mut self, _amt: uint) {}
+    fn consume(&mut self, _amt: usize) {}
 }
 
 /// A `Reader` which is always at EOF, like /dev/null.
@@ -139,7 +139,7 @@ pub struct NullReader;
 #[unstable(feature = "old_io")]
 impl Reader for NullReader {
     #[inline]
-    fn read(&mut self, _buf: &mut [u8]) -> old_io::IoResult<uint> {
+    fn read(&mut self, _buf: &mut [u8]) -> old_io::IoResult<usize> {
         Err(old_io::standard_error(old_io::EndOfFile))
     }
 }
@@ -150,7 +150,7 @@ impl Buffer for NullReader {
     fn fill_buf<'a>(&'a mut self) -> old_io::IoResult<&'a [u8]> {
         Err(old_io::standard_error(old_io::EndOfFile))
     }
-    fn consume(&mut self, _amt: uint) {}
+    fn consume(&mut self, _amt: usize) {}
 }
 
 /// A `Writer` which multiplexes writes to a set of `Writer`s.
@@ -216,7 +216,7 @@ impl<R: Reader, I: Iterator<Item=R>> ChainedReader<I, R> {
 #[deprecated(since = "1.0.0", reason = "use std::io::Chain instead")]
 #[unstable(feature = "old_io")]
 impl<R: Reader, I: Iterator<Item=R>> Reader for ChainedReader<I, R> {
-    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<usize> {
         loop {
             let err = match self.cur_reader {
                 Some(ref mut r) => {
@@ -269,7 +269,7 @@ impl<R: Reader, W: Writer> TeeReader<R, W> {
 #[deprecated(since = "1.0.0", reason = "use std::io::Tee instead")]
 #[unstable(feature = "old_io")]
 impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
-    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<usize> {
         self.reader.read(buf).and_then(|len| {
             self.writer.write_all(&mut buf[..len]).map(|()| len)
         })
@@ -307,7 +307,7 @@ impl<T: Iterator<Item=u8>> IterReader<T> {
 
 impl<T: Iterator<Item=u8>> Reader for IterReader<T> {
     #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<usize> {
         let mut len = 0;
         for (slot, elt) in buf.iter_mut().zip(self.iter.by_ref()) {
             *slot = elt;
@@ -392,8 +392,8 @@ mod test {
 
     #[test]
     fn test_multi_writer() {
-        static mut writes: uint = 0;
-        static mut flushes: uint = 0;
+        static mut writes: usize = 0;
+        static mut flushes: usize = 0;
 
         struct TestWriter;
         impl Writer for TestWriter {

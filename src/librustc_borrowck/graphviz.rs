@@ -79,7 +79,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
                                         cfgidx: CFGIndex,
                                         dfcx: &DataFlowContext<'a, 'tcx, O>,
                                         mut to_lp: F) -> String where
-        F: FnMut(uint) -> Rc<LoanPath<'tcx>>,
+        F: FnMut(usize) -> Rc<LoanPath<'tcx>>,
     {
         let mut saw_some = false;
         let mut set = "{".to_string();

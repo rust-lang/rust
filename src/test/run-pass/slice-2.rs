@@ -13,59 +13,59 @@
 // pretty-expanded FIXME #23616
 
 fn main() {
-    let x: &[int] = &[1, 2, 3, 4, 5];
-    let cmp: &[int] = &[1, 2, 3, 4, 5];
+    let x: &[isize] = &[1, 2, 3, 4, 5];
+    let cmp: &[isize] = &[1, 2, 3, 4, 5];
     assert!(&x[..] == cmp);
-    let cmp: &[int] = &[3, 4, 5];
+    let cmp: &[isize] = &[3, 4, 5];
     assert!(&x[2..] == cmp);
-    let cmp: &[int] = &[1, 2, 3];
+    let cmp: &[isize] = &[1, 2, 3];
     assert!(&x[..3] == cmp);
-    let cmp: &[int] = &[2, 3, 4];
+    let cmp: &[isize] = &[2, 3, 4];
     assert!(&x[1..4] == cmp);
 
-    let x: Vec<int> = vec![1, 2, 3, 4, 5];
-    let cmp: &[int] = &[1, 2, 3, 4, 5];
+    let x: Vec<isize> = vec![1, 2, 3, 4, 5];
+    let cmp: &[isize] = &[1, 2, 3, 4, 5];
     assert!(&x[..] == cmp);
-    let cmp: &[int] = &[3, 4, 5];
+    let cmp: &[isize] = &[3, 4, 5];
     assert!(&x[2..] == cmp);
-    let cmp: &[int] = &[1, 2, 3];
+    let cmp: &[isize] = &[1, 2, 3];
     assert!(&x[..3] == cmp);
-    let cmp: &[int] = &[2, 3, 4];
+    let cmp: &[isize] = &[2, 3, 4];
     assert!(&x[1..4] == cmp);
 
-    let x: &mut [int] = &mut [1, 2, 3, 4, 5];
+    let x: &mut [isize] = &mut [1, 2, 3, 4, 5];
     {
-        let cmp: &mut [int] = &mut [1, 2, 3, 4, 5];
+        let cmp: &mut [isize] = &mut [1, 2, 3, 4, 5];
         assert!(&mut x[..] == cmp);
     }
     {
-        let cmp: &mut [int] = &mut [3, 4, 5];
+        let cmp: &mut [isize] = &mut [3, 4, 5];
         assert!(&mut x[2..] == cmp);
     }
     {
-        let cmp: &mut [int] = &mut [1, 2, 3];
+        let cmp: &mut [isize] = &mut [1, 2, 3];
         assert!(&mut x[..3] == cmp);
     }
     {
-        let cmp: &mut [int] = &mut [2, 3, 4];
+        let cmp: &mut [isize] = &mut [2, 3, 4];
         assert!(&mut x[1..4] == cmp);
     }
 
-    let mut x: Vec<int> = vec![1, 2, 3, 4, 5];
+    let mut x: Vec<isize> = vec![1, 2, 3, 4, 5];
     {
-        let cmp: &mut [int] = &mut [1, 2, 3, 4, 5];
+        let cmp: &mut [isize] = &mut [1, 2, 3, 4, 5];
         assert!(&mut x[..] == cmp);
     }
     {
-        let cmp: &mut [int] = &mut [3, 4, 5];
+        let cmp: &mut [isize] = &mut [3, 4, 5];
         assert!(&mut x[2..] == cmp);
     }
     {
-        let cmp: &mut [int] = &mut [1, 2, 3];
+        let cmp: &mut [isize] = &mut [1, 2, 3];
         assert!(&mut x[..3] == cmp);
     }
     {
-        let cmp: &mut [int] = &mut [2, 3, 4];
+        let cmp: &mut [isize] = &mut [2, 3, 4];
         assert!(&mut x[1..4] == cmp);
     }
 }

@@ -12,7 +12,7 @@
 // binding of a for loop
 // pretty-expanded FIXME #23616
 
-fn foo<'a>(v: &'a [uint]) -> &'a uint {
+fn foo<'a>(v: &'a [usize]) -> &'a usize {
     for &ref x in v { return x; }
     unreachable!()
 }

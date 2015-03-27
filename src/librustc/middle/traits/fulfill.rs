@@ -53,7 +53,7 @@ pub struct FulfillmentContext<'tcx> {
     // Remembers the count of trait obligations that we have already
     // attempted to select. This is used to avoid repeating work
     // when `select_new_obligations` is called.
-    attempted_mark: uint,
+    attempted_mark: usize,
 
     // A set of constraints that regionck must validate. Each
     // constraint has the form `T:'a`, meaning "some type `T` must

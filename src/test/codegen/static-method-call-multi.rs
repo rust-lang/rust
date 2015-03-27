@@ -9,11 +9,11 @@
 // except according to those terms.
 
 pub struct Struct {
-    field: int
+    field: isize
 }
 
 impl Struct {
-    fn method(&self, x: int) -> int {
+    fn method(&self, x: isize) -> isize {
         self.field + x
     }
 }
@@ -23,6 +23,6 @@ pub fn test(a: &Struct,
             b: &Struct,
             c: &Struct,
             d: &Struct,
-            e: &Struct) -> int {
+            e: &Struct) -> isize {
     a.method(b.method(c.method(d.method(e.method(1)))))
 }

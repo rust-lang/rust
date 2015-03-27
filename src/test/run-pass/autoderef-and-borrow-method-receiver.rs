@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 struct Foo {
-    x: int,
+    x: isize,
 }
 
 impl Foo {

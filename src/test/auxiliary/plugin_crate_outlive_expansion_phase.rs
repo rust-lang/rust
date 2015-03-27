@@ -20,7 +20,7 @@ use std::cell::RefCell;
 use rustc::plugin::Registry;
 
 struct Foo {
-    foo: int
+    foo: isize
 }
 
 impl Drop for Foo {

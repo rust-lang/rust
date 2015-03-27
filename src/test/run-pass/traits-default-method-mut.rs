@@ -14,7 +14,7 @@
 #![allow(unused_variable)]
 
 trait Foo {
-    fn foo(&self, mut v: int) { v = 1; }
+    fn foo(&self, mut v: isize) { v = 1; }
 }
 
 pub fn main() {}

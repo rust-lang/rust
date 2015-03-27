@@ -19,8 +19,8 @@ use std::fmt::Debug;
 // rvalue expressions to be unsized. See #20169 for more information.
 
 pub fn main() {
-    // FIXME #22405: We cannot infer the type `Box<[int; k]>` for
-    // the r-value expression from the context `Box<[int]>`, and
+    // FIXME #22405: We cannot infer the type `Box<[isize; k]>` for
+    // the r-value expression from the context `Box<[isize]>`, and
     // therefore the `box EXPR` desugaring breaks down.
     //
     // One could reasonably claim that the `box EXPR` desugaring is
@@ -28,24 +28,24 @@ pub fn main() {
     // eventually fix that, at which point the `Box::new` calls below
     // should be replaced wth uses of `box`.
 
-    let _: Box<[int]> = Box::new({ [1, 2, 3] });
-    let _: Box<[int]> = Box::new(if true { [1, 2, 3] } else { [1, 3, 4] });
-    let _: Box<[int]> = Box::new(match true { true => [1, 2, 3], false => [1, 3, 4] });
-    let _: Box<Fn(int) -> _> = Box::new({ |x| (x as u8) });
+    let _: Box<[isize]> = Box::new({ [1, 2, 3] });
+    let _: Box<[isize]> = Box::new(if true { [1, 2, 3] } else { [1, 3, 4] });
+    let _: Box<[isize]> = Box::new(match true { true => [1, 2, 3], false => [1, 3, 4] });
+    let _: Box<Fn(isize) -> _> = Box::new({ |x| (x as u8) });
     let _: Box<Debug> = Box::new(if true { false } else { true });
     let _: Box<Debug> = Box::new(match true { true => 'a', false => 'b' });
 
-    let _: &[int] = &{ [1, 2, 3] };
-    let _: &[int] = &if true { [1, 2, 3] } else { [1, 3, 4] };
-    let _: &[int] = &match true { true => [1, 2, 3], false => [1, 3, 4] };
-    let _: &Fn(int) -> _ = &{ |x| (x as u8) };
+    let _: &[isize] = &{ [1, 2, 3] };
+    let _: &[isize] = &if true { [1, 2, 3] } else { [1, 3, 4] };
+    let _: &[isize] = &match true { true => [1, 2, 3], false => [1, 3, 4] };
+    let _: &Fn(isize) -> _ = &{ |x| (x as u8) };
     let _: &Debug = &if true { false } else { true };
     let _: &Debug = &match true { true => 'a', false => 'b' };
 
-    let _: Box<[int]> = Box::new([1, 2, 3]);
-    let _: Box<Fn(int) -> _> = Box::new(|x| (x as u8));
+    let _: Box<[isize]> = Box::new([1, 2, 3]);
+    let _: Box<Fn(isize) -> _> = Box::new(|x| (x as u8));
 
-    let _: Vec<Box<Fn(int) -> _>> = vec![
+    let _: Vec<Box<Fn(isize) -> _>> = vec![
         Box::new(|x| (x as u8)),
         Box::new(|x| (x as i16 as u8)),
     ];

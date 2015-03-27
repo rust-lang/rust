@@ -11,14 +11,14 @@
 // pretty-expanded FIXME #23616
 
 struct SpeechMaker {
-    speeches: uint
+    speeches: usize
 }
 
 impl SpeechMaker {
-    pub fn how_many(&self) -> uint { self.speeches }
+    pub fn how_many(&self) -> usize { self.speeches }
 }
 
-fn foo(speaker: &SpeechMaker) -> uint {
+fn foo(speaker: &SpeechMaker) -> usize {
     speaker.how_many() + 33
 }
 

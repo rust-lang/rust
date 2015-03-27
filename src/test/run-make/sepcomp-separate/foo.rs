@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn magic_fn() -> uint {
+fn magic_fn() -> usize {
     1234
 }
 
 mod a {
-    pub fn magic_fn() -> uint {
+    pub fn magic_fn() -> usize {
         2345
     }
 }
 
 mod b {
-    pub fn magic_fn() -> uint {
+    pub fn magic_fn() -> usize {
         3456
     }
 }

@@ -14,11 +14,11 @@
 // pretty-expanded FIXME #23616
 
 struct Foo {
-    foo: uint,
+    foo: usize,
 }
 
 impl Foo {
-    fn bar(&self) -> uint { 5 }
+    fn bar(&self) -> usize { 5 }
 }
 
 fn main() {

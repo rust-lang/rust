@@ -465,7 +465,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         // However full span is the entire enum/fn/struct block, so we only want
         // the first few to match the number of generics we're looking for.
         let param_sub_spans = self.span.spans_for_ty_params(full_span,
-                                                           (generics.ty_params.len() as int));
+                                                           (generics.ty_params.len() as isize));
         for (param, param_ss) in generics.ty_params.iter().zip(param_sub_spans.iter()) {
             // Append $id to name to make sure each one is unique
             let name = format!("{}::{}${}",

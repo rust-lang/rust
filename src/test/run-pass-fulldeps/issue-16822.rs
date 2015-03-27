@@ -15,7 +15,7 @@ extern crate "issue-16822" as lib;
 use std::cell::RefCell;
 
 struct App {
-    i: int
+    i: isize
 }
 
 impl lib::Update for App {

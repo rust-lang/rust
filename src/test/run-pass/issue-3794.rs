@@ -17,7 +17,7 @@ trait T {
 
 #[derive(Debug)]
 struct S {
-    s: int,
+    s: isize,
 }
 
 impl T for S {

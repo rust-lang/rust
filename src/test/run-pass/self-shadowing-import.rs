@@ -13,7 +13,7 @@
 mod a {
     pub mod b {
         pub mod a {
-            pub fn foo() -> int { return 1; }
+            pub fn foo() -> isize { return 1; }
         }
     }
 }

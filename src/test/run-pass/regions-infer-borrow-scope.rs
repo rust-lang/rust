@@ -13,9 +13,9 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-struct Point {x: int, y: int}
+struct Point {x: isize, y: isize}
 
-fn x_coord(p: &Point) -> &int {
+fn x_coord(p: &Point) -> &isize {
     return &p.x;
 }
 

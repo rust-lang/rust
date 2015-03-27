@@ -19,7 +19,7 @@
 
 struct Temporary;
 
-static mut DROPPED: int = 0;
+static mut DROPPED: isize = 0;
 
 impl Drop for Temporary {
     fn drop(&mut self) {

@@ -24,7 +24,7 @@ impl PartialEq for Fool {
     }
 }
 
-struct Int(int);
+struct Int(isize);
 
 impl PartialEq for Int {
     fn eq(&self, other: &Int) -> bool {
@@ -42,7 +42,7 @@ impl PartialOrd for Int {
     }
 }
 
-struct RevInt(int);
+struct RevInt(isize);
 
 impl PartialEq for RevInt {
     fn eq(&self, other: &RevInt) -> bool {

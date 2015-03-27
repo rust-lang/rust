@@ -218,7 +218,7 @@ macro_rules! writeln {
 /// Match arms:
 ///
 /// ```
-/// fn foo(x: Option<int>) {
+/// fn foo(x: Option<i32>) {
 ///     match x {
 ///         Some(n) if n >= 0 => println!("Some(Non-negative)"),
 ///         Some(n) if n <  0 => println!("Some(Negative)"),

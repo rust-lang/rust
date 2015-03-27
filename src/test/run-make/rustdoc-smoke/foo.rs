@@ -29,8 +29,8 @@ pub mod bar {
     pub trait Doge { fn dummy(&self) { } }
 
     // @has foo/bar/struct.Foo.html
-    pub struct Foo { x: int, y: uint }
+    pub struct Foo { x: isize, y: usize }
 
     // @has foo/bar/fn.prawns.html
-    pub fn prawns((a, b): (int, uint), Foo { x, y }: Foo) { }
+    pub fn prawns((a, b): (isize, usize), Foo { x, y }: Foo) { }
 }

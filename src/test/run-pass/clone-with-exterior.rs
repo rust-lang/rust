@@ -16,8 +16,8 @@
 use std::thread::Thread;
 
 struct Pair {
-    a: int,
-    b: int
+    a: isize,
+    b: isize
 }
 
 pub fn main() {

@@ -18,17 +18,17 @@ trait Foo<T> {
 }
 
 struct S {
-    x: int
+    x: isize
 }
 
-impl Foo<int> for S {
-    fn get(&self) -> int {
+impl Foo<isize> for S {
+    fn get(&self) -> isize {
         self.x
     }
 }
 
 pub fn main() {
     let x = box S { x: 1 };
-    let y = x as Box<Foo<int>>;
+    let y = x as Box<Foo<isize>>;
     assert_eq!(y.get(), 1);
 }

@@ -15,23 +15,23 @@ extern crate extra;
 use extra::net::tcp::TcpSocketBuf;
 
 use std::io;
-use std::int;
+use std::isize;
 
 use std::io::{ReaderUtil,WriterUtil};
 
 enum Result {
   Nil,
-  Int(int),
+  Int(isize),
   Data(~[u8]),
   List(~[Result]),
   Error(String),
   Status(String)
 }
 
-priv fn parse_data(len: uint, io: @io::Reader) -> Result {
+priv fn parse_data(len: usize, io: @io::Reader) -> Result {
   let res =
       if (len > 0) {
-      let bytes = io.read_bytes(len as uint);
+      let bytes = io.read_bytes(len as usize);
       assert_eq!(bytes.len(), len);
       Data(bytes)
   } else {
@@ -42,7 +42,7 @@ priv fn parse_data(len: uint, io: @io::Reader) -> Result {
   return res;
 }
 
-priv fn parse_list(len: uint, io: @io::Reader) -> Result {
+priv fn parse_list(len: usize, io: @io::Reader) -> Result {
     let mut list: ~[Result] = ~[];
     for _ in 0..len {
         let v = match io.read_char() {
@@ -60,26 +60,26 @@ priv fn chop(s: String) -> String {
 }
 
 priv fn parse_bulk(io: @io::Reader) -> Result {
-    match from_str::<int>(chop(io.read_line())) {
+    match from_str::<isize>(chop(io.read_line())) {
     None => panic!(),
     Some(-1) => Nil,
-    Some(len) if len >= 0 => parse_data(len as uint, io),
+    Some(len) if len >= 0 => parse_data(len as usize, io),
     Some(_) => panic!()
     }
 }
 
 priv fn parse_multi(io: @io::Reader) -> Result {
-    match from_str::<int>(chop(io.read_line())) {
+    match from_str::<isize>(chop(io.read_line())) {
     None => panic!(),
     Some(-1) => Nil,
     Some(0) => List(~[]),
-    Some(len) if len >= 0 => parse_list(len as uint, io),
+    Some(len) if len >= 0 => parse_list(len as usize, io),
     Some(_) => panic!()
     }
 }
 
 priv fn parse_int(io: @io::Reader) -> Result {
-    match from_str::<int>(chop(io.read_line())) {
+    match from_str::<isize>(chop(io.read_line())) {
     None => panic!(),
     Some(i) => Int(i)
     }

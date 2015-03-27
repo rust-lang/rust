@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn increment(x: uint) -> uint {
+pub fn increment(x: usize) -> usize {
     x + 1
 }
 

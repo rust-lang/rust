@@ -11,9 +11,9 @@
 // pretty-expanded FIXME #23616
 
 struct cat {
-    meows : uint,
+    meows : usize,
 
-    how_hungry : int,
+    how_hungry : isize,
 }
 
 impl cat {
@@ -27,7 +27,7 @@ impl cat {
     fn nap(&mut self) { for _ in 1_usize..10_usize { } }
 }
 
-fn cat(in_x : uint, in_y : int) -> cat {
+fn cat(in_x : usize, in_y : isize) -> cat {
     cat {
         meows: in_x,
         how_hungry: in_y

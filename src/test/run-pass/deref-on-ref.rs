@@ -19,11 +19,11 @@ fn deref<U:Copy,T:Deref<Target=U>>(t: T) -> U {
 }
 
 fn main() {
-    let x: int = 3;
+    let x: isize = 3;
     let y = deref(&x);
     assert_eq!(y, 3);
 
-    let mut x: int = 4;
+    let mut x: isize = 4;
     let y = deref(&mut x);
     assert_eq!(y, 4);
 }
