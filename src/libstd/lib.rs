@@ -127,6 +127,7 @@
 #![feature(str_char)]
 #![feature(into_cow)]
 #![feature(slice_patterns)]
+#![feature(std_misc)]
 #![cfg_attr(test, feature(test, rustc_private, std_misc))]
 
 // Don't link to std. We are std.
