@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "issue-16643" as i;
+extern crate issue_16643 as i;
 
 pub fn main() {
     i::TreeBuilder { h: 3u }.process_token();

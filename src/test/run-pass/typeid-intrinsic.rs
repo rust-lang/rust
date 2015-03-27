@@ -15,8 +15,8 @@
 
 #![feature(hash, core)]
 
-extern crate "typeid-intrinsic" as other1;
-extern crate "typeid-intrinsic2" as other2;
+extern crate typeid_intrinsic as other1;
+extern crate typeid_intrinsic2 as other2;
 
 use std::hash::{self, SipHasher};
 use std::any::TypeId;

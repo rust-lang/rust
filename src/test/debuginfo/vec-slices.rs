@@ -49,9 +49,9 @@
 // gdb-command:print padded_struct.data_ptr[1]
 // gdb-check:$13 = {x = 13, y = 14, z = 15}
 
-// gdb-command:print 'vec-slices::MUT_VECT_SLICE'.length
+// gdb-command:print 'vec_slices::MUT_VECT_SLICE'.length
 // gdb-check:$14 = 2
-// gdb-command:print *((int64_t[2]*)('vec-slices::MUT_VECT_SLICE'.data_ptr))
+// gdb-command:print *((int64_t[2]*)('vec_slices::MUT_VECT_SLICE'.data_ptr))
 // gdb-check:$15 = {64, 65}
 
 
