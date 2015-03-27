@@ -182,8 +182,15 @@ extern "rust-intrinsic" {
     pub fn min_align_of<T>() -> usize;
     pub fn pref_align_of<T>() -> usize;
 
+    #[cfg(not(stage0))] // SNAP c64d671
+    pub fn size_of_val<T: ?Sized>(_: &T) -> usize;
+    #[cfg(not(stage0))] // SNAP c64d671
+    pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
+    #[cfg(not(stage0))] // SNAP c64d671
+    pub fn drop_in_place<T: ?Sized>(_: *mut T);
+
     /// Gets a static string slice containing the name of a type.
-    #[cfg(not(stage0))]
+    #[cfg(not(stage0))] // SNAP c64d671
     pub fn type_name<T: ?Sized>() -> &'static str;
 
     /// Gets an identifier which is globally unique to the specified type. This

@@ -5317,6 +5317,14 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "breakpoint" => (0, Vec::new(), ty::mk_nil(tcx)),
             "size_of" |
             "pref_align_of" | "min_align_of" => (1, Vec::new(), ccx.tcx.types.uint),
+            "size_of_val" |  "min_align_of_val" => {
+                (1, vec![
+                    ty::mk_imm_rptr(tcx,
+                                    tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
+                                                                  ty::BrAnon(0))),
+                                    param(ccx, 0))
+                 ], ccx.tcx.types.uint)
+            }
             "init" => (1, Vec::new(), param(ccx, 0)),
             "uninit" => (1, Vec::new(), param(ccx, 0)),
             "forget" => (1, vec!( param(ccx, 0) ), ty::mk_nil(tcx)),
@@ -5331,6 +5339,9 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                     param(ccx, 0)
                   ),
                ty::mk_nil(tcx))
+            }
+            "drop_in_place" => {
+                (1, vec![ty::mk_mut_ptr(tcx, param(ccx, 0))], ty::mk_nil(tcx))
             }
             "needs_drop" => (1, Vec::new(), ccx.tcx.types.bool),
             "owns_managed" => (1, Vec::new(), ccx.tcx.types.bool),
