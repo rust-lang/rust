@@ -58,7 +58,7 @@ impl<S: Seek> Seek for IoResult<S> {
     }
 }
 
-impl<T, A: Acceptor<T>, L: Listener<T, A>> Listener<T, A> for IoResult<L> {
+impl<A: Acceptor, L: Listener<A>> Listener<A> for IoResult<L> {
     fn listen(self) -> IoResult<A> {
         match self {
             Ok(listener) => listener.listen(),
@@ -67,8 +67,9 @@ impl<T, A: Acceptor<T>, L: Listener<T, A>> Listener<T, A> for IoResult<L> {
     }
 }
 
-impl<T, A: Acceptor<T>> Acceptor<T> for IoResult<A> {
-    fn accept(&mut self) -> IoResult<T> {
+impl<A: Acceptor> Acceptor for IoResult<A> {
+    type Connection = A::Connection;
+    fn accept(&mut self) -> IoResult<A::Connection> {
         match *self {
             Ok(ref mut acceptor) => acceptor.accept(),
             Err(ref e) => Err(e.clone()),

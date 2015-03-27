@@ -1588,9 +1588,7 @@ pub trait Seek {
 /// connections.
 ///
 /// Doing so produces some sort of Acceptor.
-pub trait Listener<T, A: Acceptor<T>>
-    : PhantomFn<T,T> // FIXME should be an assoc type anyhow
-{
+pub trait Listener<A: Acceptor> {
     /// Spin up the listener and start queuing incoming connections
     ///
     /// # Error
@@ -1601,13 +1599,16 @@ pub trait Listener<T, A: Acceptor<T>>
 }
 
 /// An acceptor is a value that presents incoming connections
-pub trait Acceptor<T> {
+pub trait Acceptor {
+    /// Type of connection that is accepted by this acceptor.
+    type Connection;
+
     /// Wait for and accept an incoming connection
     ///
     /// # Error
     ///
     /// Returns `Err` if an I/O error is encountered.
-    fn accept(&mut self) -> IoResult<T>;
+    fn accept(&mut self) -> IoResult<Self::Connection>;
 
     /// Create an iterator over incoming connection attempts.
     ///
@@ -1628,11 +1629,10 @@ pub struct IncomingConnections<'a, A: ?Sized +'a> {
     inc: &'a mut A,
 }
 
-#[old_impl_check]
-impl<'a, T, A: ?Sized + Acceptor<T>> Iterator for IncomingConnections<'a, A> {
-    type Item = IoResult<T>;
+impl<'a, A: ?Sized + Acceptor> Iterator for IncomingConnections<'a, A> {
+    type Item = IoResult<A::Connection>;
 
-    fn next(&mut self) -> Option<IoResult<T>> {
+    fn next(&mut self) -> Option<IoResult<A::Connection>> {
         Some(self.inc.accept())
     }
 }
