@@ -159,11 +159,19 @@ pub fn find_crate_name(sess: Option<&Session>,
     }
     if let Input::File(ref path) = *input {
         if let Some(s) = path.file_stem().and_then(|s| s.to_str()) {
-            return validate(s.to_string(), None);
+            if s.starts_with("-") {
+                let msg = format!("crate names cannot start with a `-`, but \
+                                   `{}` has a leading hyphen", s);
+                if let Some(sess) = sess {
+                    sess.err(&msg);
+                }
+            } else {
+                return validate(s.replace("-", "_"), None);
+            }
         }
     }
 
-    "rust-out".to_string()
+    "rust_out".to_string()
 }
 
 pub fn build_link_meta(sess: &Session, krate: &ast::Crate,
@@ -455,7 +463,11 @@ pub fn filename_for_input(sess: &Session,
         }
         config::CrateTypeExecutable => {
             let suffix = &sess.target.target.options.exe_suffix;
-            out_filename.with_file_name(&format!("{}{}", libname, suffix))
+            if suffix.len() == 0 {
+                out_filename.to_path_buf()
+            } else {
+                out_filename.with_extension(&suffix[1..])
+            }
         }
     }
 }

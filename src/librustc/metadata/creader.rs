@@ -73,24 +73,20 @@ struct CrateInfo {
 }
 
 pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
-    let say = |s: &str, warn: bool| {
+    let say = |s: &str| {
         match (sp, sess) {
             (_, None) => panic!("{}", s),
-            (Some(sp), Some(sess)) if warn => sess.span_warn(sp, s),
             (Some(sp), Some(sess)) => sess.span_err(sp, s),
-            (None, Some(sess)) if warn => sess.warn(s),
             (None, Some(sess)) => sess.err(s),
         }
     };
     if s.len() == 0 {
-        say("crate name must not be empty", false);
-    } else if s.contains("-") {
-        say(&format!("crate names soon cannot contain hyphens: {}", s), true);
+        say("crate name must not be empty");
     }
     for c in s.chars() {
         if c.is_alphanumeric() { continue }
-        if c == '_' || c == '-' { continue }
-        say(&format!("invalid character `{}` in crate name: `{}`", c, s), false);
+        if c == '_'  { continue }
+        say(&format!("invalid character `{}` in crate name: `{}`", c, s));
     }
     match sess {
         Some(sess) => sess.abort_if_errors(),
@@ -306,13 +302,7 @@ impl<'a> CrateReader<'a> {
                       -> Option<ast::CrateNum> {
         let mut ret = None;
         self.sess.cstore.iter_crate_data(|cnum, data| {
-            // For now we do a "fuzzy match" on crate names by considering
-            // hyphens equal to underscores. This is purely meant to be a
-            // transitionary feature while we deprecate the quote syntax of
-            // `extern crate` statements.
-            if data.name != name.replace("-", "_") {
-                return
-            }
+            if data.name != name { return }
 
             match hash {
                 Some(hash) if *hash == data.hash() => { ret = Some(cnum); return }

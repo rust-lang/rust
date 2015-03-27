@@ -4977,46 +4977,19 @@ impl<'a> Parser<'a> {
     ///
     /// # Examples
     ///
-    /// extern crate url;
-    /// extern crate foo = "bar"; //deprecated
-    /// extern crate "bar" as foo;
+    /// extern crate foo;
+    /// extern crate bar as foo;
     fn parse_item_extern_crate(&mut self,
-                                lo: BytePos,
-                                visibility: Visibility,
-                                attrs: Vec<Attribute>)
+                               lo: BytePos,
+                               visibility: Visibility,
+                               attrs: Vec<Attribute>)
                                 -> P<Item> {
 
-        let (maybe_path, ident) = match self.token {
-            token::Ident(..) => {
-                let crate_name = self.parse_ident();
-                if self.eat_keyword(keywords::As) {
-                    (Some(crate_name.name), self.parse_ident())
-                } else {
-                    (None, crate_name)
-                }
-            },
-            token::Literal(token::Str_(..), suf) |
-            token::Literal(token::StrRaw(..), suf) => {
-                let sp = self.span;
-                self.expect_no_suffix(sp, "extern crate name", suf);
-                // forgo the internal suffix check of `parse_str` to
-                // avoid repeats (this unwrap will always succeed due
-                // to the restriction of the `match`)
-                let (s, _, _) = self.parse_optional_str().unwrap();
-                self.expect_keyword(keywords::As);
-                let the_ident = self.parse_ident();
-                self.obsolete(sp, ObsoleteSyntax::ExternCrateString);
-                let s = token::intern(&s);
-                (Some(s), the_ident)
-            },
-            _ => {
-                let span = self.span;
-                let token_str = self.this_token_to_string();
-                self.span_fatal(span,
-                                &format!("expected extern crate name but \
-                                         found `{}`",
-                                        token_str));
-            }
+        let crate_name = self.parse_ident();
+        let (maybe_path, ident) = if self.eat_keyword(keywords::As) {
+            (Some(crate_name.name), self.parse_ident())
+        } else {
+            (None, crate_name)
         };
         self.expect(&token::Semi);
 
