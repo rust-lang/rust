@@ -458,6 +458,7 @@ pub struct InvariantType<T>;
 /// that function. Here is an example:
 ///
 /// ```
+/// #![feature(core)]
 /// use std::marker::Reflect;
 /// use std::any::Any;
 /// fn foo<T:Reflect+'static>(x: &T) {
