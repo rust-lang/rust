@@ -1069,17 +1069,30 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     vtable
 }
 
-pub fn predicates_hold<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                 predicates: Vec<ty::Predicate<'tcx>>)
-                                 -> bool
+/// Normalizes the predicates and checks whether they hold.  If this
+/// returns false, then either normalize encountered an error or one
+/// of the predicates did not hold. Used when creating vtables to
+/// check for unsatisfiable methods.
+pub fn normalize_and_test_predicates<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                               predicates: Vec<ty::Predicate<'tcx>>)
+                                               -> bool
 {
-    debug!("predicates_hold(predicates={})",
+    debug!("normalize_and_test_predicates(predicates={})",
            predicates.repr(ccx.tcx()));
 
-    let infcx = infer::new_infer_ctxt(ccx.tcx());
+    let tcx = ccx.tcx();
+    let infcx = infer::new_infer_ctxt(tcx);
+    let typer = NormalizingClosureTyper::new(tcx);
+    let mut selcx = traits::SelectionContext::new(&infcx, &typer);
     let mut fulfill_cx = traits::FulfillmentContext::new();
+    let cause = traits::ObligationCause::dummy();
+    let traits::Normalized { value: predicates, obligations } =
+        traits::normalize(&mut selcx, cause.clone(), &predicates);
+    for obligation in obligations {
+        fulfill_cx.register_predicate_obligation(&infcx, obligation);
+    }
     for predicate in predicates {
-        let obligation = traits::Obligation::new(traits::ObligationCause::dummy(), predicate);
+        let obligation = traits::Obligation::new(cause.clone(), predicate);
         fulfill_cx.register_predicate_obligation(&infcx, obligation);
     }
     drain_fulfillment_cx(&infcx, &mut fulfill_cx, &()).is_ok()
