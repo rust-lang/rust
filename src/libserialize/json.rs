@@ -1218,16 +1218,6 @@ impl Json {
     }
 }
 
-#[cfg(stage0)]
-impl<'a> Index<&'a str>  for Json {
-    type Output = Json;
-
-    fn index(&self, idx: & &str) -> &Json {
-        self.find(*idx).unwrap()
-    }
-}
-
-#[cfg(not(stage0))]
 impl<'a> Index<&'a str>  for Json {
     type Output = Json;
 
@@ -1236,19 +1226,6 @@ impl<'a> Index<&'a str>  for Json {
     }
 }
 
-#[cfg(stage0)]
-impl Index<uint> for Json {
-    type Output = Json;
-
-    fn index<'a>(&'a self, idx: &uint) -> &'a Json {
-        match self {
-            &Json::Array(ref v) => &v[*idx],
-            _ => panic!("can only index Json with uint if it is an array")
-        }
-    }
-}
-
-#[cfg(not(stage0))]
 impl Index<uint> for Json {
     type Output = Json;
 
