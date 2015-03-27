@@ -18,12 +18,11 @@ use ext::deriving::generic::ty::*;
 use parse::token;
 use ptr::P;
 
-pub fn expand_deriving_show<F>(cx: &mut ExtCtxt,
-                               span: Span,
-                               mitem: &MetaItem,
-                               item: &Item,
-                               push: F) where
-    F: FnOnce(P<Item>),
+pub fn expand_deriving_show(cx: &mut ExtCtxt,
+                            span: Span,
+                            mitem: &MetaItem,
+                            item: &Item,
+                            push: &mut FnMut(P<Item>))
 {
     // &mut ::std::fmt::Formatter
     let fmtr = Ptr(box Literal(path_std!(cx, core::fmt::Formatter)),

@@ -21,33 +21,30 @@ use parse::token::InternedString;
 use parse::token;
 use ptr::P;
 
-pub fn expand_deriving_rustc_decodable<F>(cx: &mut ExtCtxt,
-                                          span: Span,
-                                          mitem: &MetaItem,
-                                          item: &Item,
-                                          push: F) where
-    F: FnOnce(P<Item>),
+pub fn expand_deriving_rustc_decodable(cx: &mut ExtCtxt,
+                                       span: Span,
+                                       mitem: &MetaItem,
+                                       item: &Item,
+                                       push: &mut FnMut(P<Item>))
 {
     expand_deriving_decodable_imp(cx, span, mitem, item, push, "rustc_serialize")
 }
 
-pub fn expand_deriving_decodable<F>(cx: &mut ExtCtxt,
-                                    span: Span,
-                                    mitem: &MetaItem,
-                                    item: &Item,
-                                    push: F) where
-    F: FnOnce(P<Item>),
+pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
+                                 span: Span,
+                                 mitem: &MetaItem,
+                                 item: &Item,
+                                 push: &mut FnMut(P<Item>))
 {
     expand_deriving_decodable_imp(cx, span, mitem, item, push, "serialize")
 }
 
-fn expand_deriving_decodable_imp<F>(cx: &mut ExtCtxt,
-                                    span: Span,
-                                    mitem: &MetaItem,
-                                    item: &Item,
-                                    push: F,
-                                    krate: &'static str) where
-    F: FnOnce(P<Item>),
+fn expand_deriving_decodable_imp(cx: &mut ExtCtxt,
+                                 span: Span,
+                                 mitem: &MetaItem,
+                                 item: &Item,
+                                 push: &mut FnMut(P<Item>),
+                                 krate: &'static str)
 {
     if !cx.use_std {
         // FIXME(#21880): lift this requirement.

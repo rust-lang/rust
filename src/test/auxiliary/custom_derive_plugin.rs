@@ -70,5 +70,5 @@ fn expand(cx: &mut ExtCtxt,
         ],
     };
 
-    trait_def.expand(cx, mitem, item, |i| push(i))
+    trait_def.expand(cx, mitem, item, push)
 }
