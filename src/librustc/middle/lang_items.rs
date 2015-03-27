@@ -259,6 +259,7 @@ lets_do_this! {
 
     SendTraitLangItem,               "send",                    send_trait;
     SizedTraitLangItem,              "sized",                   sized_trait;
+    UnsizeTraitLangItem,             "unsize",                  unsize_trait;
     CopyTraitLangItem,               "copy",                    copy_trait;
     SyncTraitLangItem,               "sync",                    sync_trait;
 

@@ -68,6 +68,7 @@ register_diagnostics! {
     E0019,
     E0020,
     E0022,
+    E0038,
     E0109,
     E0110,
     E0133,

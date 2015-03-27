@@ -94,7 +94,7 @@ use middle::pat_util::{self, pat_id_map};
 use middle::privacy::{AllPublic, LastMod};
 use middle::region::{self, CodeExtent};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace};
-use middle::traits;
+use middle::traits::{self, report_fulfillment_errors};
 use middle::ty::{FnSig, GenericPredicates, VariantInfo, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{self, HasProjectionTypes, RegionEscape, ToPolyTraitRef, Ty};
@@ -131,7 +131,6 @@ use syntax::visit::{self, Visitor};
 mod assoc;
 pub mod dropck;
 pub mod _match;
-pub mod vtable;
 pub mod writeback;
 pub mod implicator;
 pub mod regionck;
@@ -531,9 +530,9 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let fcx = check_fn(ccx, fn_ty.unsafety, fn_id, &fn_sig,
                                decl, fn_id, body, &inh);
 
-            vtable::select_all_fcx_obligations_and_apply_defaults(&fcx);
+            fcx.select_all_obligations_and_apply_defaults();
             upvar::closure_analyze_fn(&fcx, fn_id, decl, body);
-            vtable::select_all_fcx_obligations_or_error(&fcx);
+            fcx.select_all_obligations_or_error();
             fcx.check_casts();
             regionck::regionck_fn(&fcx, fn_id, fn_span, decl, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
@@ -1334,7 +1333,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // If not, try resolving any new fcx obligations that have cropped up.
-        vtable::select_new_fcx_obligations(self);
+        self.select_new_obligations();
         ty = self.infcx().resolve_type_vars_if_possible(&ty);
         if !ty::type_has_ty_infer(ty) {
             return ty;
@@ -1344,7 +1343,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // possible. This can help substantially when there are
         // indirect dependencies that don't seem worth tracking
         // precisely.
-        vtable::select_fcx_obligations_where_possible(self);
+        self.select_obligations_where_possible();
         self.infcx().resolve_type_vars_if_possible(&ty)
     }
 
@@ -1854,6 +1853,56 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         deferred_cast_checks.clear();
     }
+
+    fn select_all_obligations_and_apply_defaults(&self) {
+        debug!("select_all_obligations_and_apply_defaults");
+
+        self.select_obligations_where_possible();
+        self.default_type_parameters();
+        self.select_obligations_where_possible();
+    }
+
+    fn select_all_obligations_or_error(&self) {
+        debug!("select_all_obligations_or_error");
+
+        // upvar inference should have ensured that all deferred call
+        // resolutions are handled by now.
+        assert!(self.inh.deferred_call_resolutions.borrow().is_empty());
+
+        self.select_all_obligations_and_apply_defaults();
+        let mut fulfillment_cx = self.inh.fulfillment_cx.borrow_mut();
+        match fulfillment_cx.select_all_or_error(self.infcx(), self) {
+            Ok(()) => { }
+            Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
+        }
+    }
+
+    /// Select as many obligations as we can at present.
+    fn select_obligations_where_possible(&self) {
+        match
+            self.inh.fulfillment_cx
+            .borrow_mut()
+            .select_where_possible(self.infcx(), self)
+        {
+            Ok(()) => { }
+            Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
+        }
+    }
+
+    /// Try to select any fcx obligation that we haven't tried yet, in an effort to improve inference.
+    /// You could just call `select_obligations_where_possible` except that it leads to repeated
+    /// work.
+    fn select_new_obligations(&self) {
+        match
+            self.inh.fulfillment_cx
+            .borrow_mut()
+            .select_new_obligations(self.infcx(), self)
+        {
+            Ok(()) => { }
+            Err(errors) => { report_fulfillment_errors(self.infcx(), &errors); }
+        }
+    }
+
 }
 
 impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
@@ -2311,7 +2360,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // an "opportunistic" vtable resolution of any trait bounds on
         // the call. This helps coercions.
         if check_blocks {
-            vtable::select_new_fcx_obligations(fcx);
+            fcx.select_new_obligations();
         }
 
         // For variadic functions, we don't have a declared type for all of
@@ -4378,7 +4427,7 @@ fn check_const_with_ty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     check_expr_with_hint(fcx, e, declty);
     demand::coerce(fcx, e.span, declty, e);
-    vtable::select_all_fcx_obligations_or_error(fcx);
+    fcx.select_all_obligations_or_error();
     fcx.check_casts();
     regionck::regionck_expr(fcx, e);
     writeback::resolve_type_vars_in_expr(fcx, e);

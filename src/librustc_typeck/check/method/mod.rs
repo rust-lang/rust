@@ -12,8 +12,6 @@
 
 use astconv::AstConv;
 use check::{FnCtxt};
-use check::vtable;
-use check::vtable::select_new_fcx_obligations;
 use middle::def;
 use middle::privacy::{AllPublic, DependsOn, LastPrivate, LastMod};
 use middle::subst;
@@ -233,7 +231,7 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // FIXME(#18653) -- Try to resolve obligations, giving us more
     // typing information, which can sometimes be needed to avoid
     // pathological region inference failures.
-    vtable::select_new_fcx_obligations(fcx);
+    fcx.select_new_obligations();
 
     // Insert any adjustments needed (always an autoref of some mutability).
     match self_expr {

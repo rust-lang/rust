@@ -313,17 +313,17 @@ pub fn trait_ref_for_builtin_bound<'tcx>(
 }
 
 
-pub fn predicate_for_trait_ref<'tcx>(
+fn predicate_for_trait_ref<'tcx>(
     cause: ObligationCause<'tcx>,
     trait_ref: Rc<ty::TraitRef<'tcx>>,
     recursion_depth: uint)
-    -> Result<PredicateObligation<'tcx>, ErrorReported>
+    -> PredicateObligation<'tcx>
 {
-    Ok(Obligation {
+    Obligation {
         cause: cause,
         recursion_depth: recursion_depth,
         predicate: trait_ref.as_predicate(),
-    })
+    }
 }
 
 pub fn predicate_for_trait_def<'tcx>(
@@ -331,12 +331,13 @@ pub fn predicate_for_trait_def<'tcx>(
     cause: ObligationCause<'tcx>,
     trait_def_id: ast::DefId,
     recursion_depth: uint,
-    param_ty: Ty<'tcx>)
-    -> Result<PredicateObligation<'tcx>, ErrorReported>
+    param_ty: Ty<'tcx>,
+    ty_params: Vec<Ty<'tcx>>)
+    -> PredicateObligation<'tcx>
 {
     let trait_ref = Rc::new(ty::TraitRef {
         def_id: trait_def_id,
-        substs: tcx.mk_substs(Substs::empty().with_self_ty(param_ty))
+        substs: tcx.mk_substs(Substs::new_trait(ty_params, vec![], param_ty))
     });
     predicate_for_trait_ref(cause, trait_ref, recursion_depth)
 }
@@ -350,7 +351,7 @@ pub fn predicate_for_builtin_bound<'tcx>(
     -> Result<PredicateObligation<'tcx>, ErrorReported>
 {
     let trait_ref = try!(trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty));
-    predicate_for_trait_ref(cause, trait_ref, recursion_depth)
+    Ok(predicate_for_trait_ref(cause, trait_ref, recursion_depth))
 }
 
 /// Cast a trait reference into a reference to one of its super
@@ -522,6 +523,10 @@ impl<'tcx> Repr<'tcx> for super::SelectionError<'tcx> {
                         a.repr(tcx),
                         b.repr(tcx),
                         c.repr(tcx)),
+
+            super::TraitNotObjectSafe(ref tr) =>
+                format!("TraitNotObjectSafe({})",
+                        tr.repr(tcx))
         }
     }
 }

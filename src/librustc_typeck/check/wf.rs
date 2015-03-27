@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use astconv::AstConv;
-use check::{FnCtxt, Inherited, blank_fn_ctxt, vtable, regionck};
+use check::{FnCtxt, Inherited, blank_fn_ctxt, regionck};
 use constrained_type_params::identify_constrained_type_params;
 use CrateCtxt;
 use middle::region;
@@ -157,7 +157,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         let inh = Inherited::new(ccx.tcx, param_env);
         let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(type_scheme.ty), item.id);
         f(self, &fcx);
-        vtable::select_all_fcx_obligations_or_error(&fcx);
+        fcx.select_all_obligations_or_error();
         regionck::regionck_item(&fcx, item);
     }
 

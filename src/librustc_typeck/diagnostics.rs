@@ -23,7 +23,6 @@ register_diagnostics! {
     E0034,
     E0035,
     E0036,
-    E0038,
     E0040, // explicit use of destructor method
     E0044,
     E0045,
@@ -178,6 +177,7 @@ register_diagnostics! {
     E0320, // recursive overflow during dropck
     E0321, // extended coherence rules for defaulted traits violated
     E0322, // cannot implement Sized explicitly
+    E0323, // cannot implement Unsize explicitly
     E0366, // dropck forbid specialization to concrete type or region
     E0367  // dropck forbid specialization to predicate not in struct/enum
 }

@@ -24,6 +24,8 @@ use super::{PredicateObligation, TraitObligation, ObligationCause};
 use super::{report_overflow_error};
 use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
 use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
+use super::{ObjectCastObligation, Obligation};
+use super::TraitNotObjectSafe;
 use super::{Selection};
 use super::{SelectionResult};
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
@@ -34,7 +36,7 @@ use super::{util};
 
 use middle::fast_reject;
 use middle::subst::{Subst, Substs, TypeSpace, VecPerParamSpace};
-use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty};
+use middle::ty::{self, AsPredicate, RegionEscape, ToPolyTraitRef, Ty};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
@@ -154,6 +156,8 @@ enum SelectionCandidate<'tcx> {
     ObjectCandidate,
 
     BuiltinObjectCandidate,
+
+    BuiltinUnsizeCandidate,
 
     ErrorCandidate,
 }
@@ -834,6 +838,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 try!(self.assemble_builtin_bound_candidates(bound, stack, &mut candidates));
             }
 
+            None if self.tcx().lang_items.unsize_trait() ==
+                    Some(obligation.predicate.def_id()) => {
+                self.assemble_candidates_for_unsizing(obligation, &mut candidates);
+            }
+
             Some(ty::BoundSend) |
             Some(ty::BoundSync) |
             None => {
@@ -1265,6 +1274,63 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    /// Search for unsizing that might apply to `obligation`.
+    fn assemble_candidates_for_unsizing(&mut self,
+                                        obligation: &TraitObligation<'tcx>,
+                                        candidates: &mut SelectionCandidateSet<'tcx>) {
+        let source = self.infcx.shallow_resolve(obligation.self_ty());
+        let target = self.infcx.shallow_resolve(obligation.predicate.0.input_types()[0]);
+
+        debug!("assemble_candidates_for_unsizing(source={}, target={})",
+               source.repr(self.tcx()), target.repr(self.tcx()));
+
+        let may_apply = match (&source.sty, &target.sty) {
+            // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
+            (&ty::ty_trait(ref data_a), &ty::ty_trait(ref data_b)) => {
+                // Upcasts permit two things:
+                //
+                // 1. Dropping builtin bounds, e.g. `Foo+Send` to `Foo`
+                // 2. Tightening the region bound, e.g. `Foo+'a` to `Foo+'b` if `'a : 'b`
+                //
+                // Note that neither of these changes requires any
+                // change at runtime.  Eventually this will be
+                // generalized.
+                //
+                // We always upcast when we can because of reason
+                // #2 (region bounds).
+                data_a.principal.def_id() == data_a.principal.def_id() &&
+                data_a.bounds.builtin_bounds.is_superset(&data_b.bounds.builtin_bounds)
+            }
+
+            // T -> Trait.
+            (_, &ty::ty_trait(_)) => true,
+
+            // Ambiguous handling is below T -> Trait, because inference
+            // variables can still implement Unsize<Trait> and nested
+            // obligations will have the final say (likely deferred).
+            (&ty::ty_infer(ty::TyVar(_)), _) |
+            (_, &ty::ty_infer(ty::TyVar(_))) => {
+                debug!("assemble_candidates_for_unsizing: ambiguous");
+                candidates.ambiguous = true;
+                false
+            }
+
+            // [T; n] -> [T].
+            (&ty::ty_vec(_, Some(_)), &ty::ty_vec(_, None)) => true,
+
+            // Struct<T> -> Struct<U>.
+            (&ty::ty_struct(def_id_a, _), &ty::ty_struct(def_id_b, _)) => {
+                def_id_a == def_id_b
+            }
+
+            _ => false
+        };
+
+        if may_apply {
+            candidates.vec.push(BuiltinUnsizeCandidate);
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // WINNOW
     //
@@ -1320,6 +1386,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (&ClosureCandidate(..), &ParamCandidate(..)) |
             (&FnPointerCandidate(..), &ParamCandidate(..)) |
             (&BuiltinObjectCandidate(..), &ParamCandidate(_)) |
+            (&BuiltinUnsizeCandidate(..), &ParamCandidate(_)) |
             (&BuiltinCandidate(..), &ParamCandidate(..)) => {
                 // We basically prefer always prefer to use a
                 // where-clause over another option. Where clauses
@@ -1747,12 +1814,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         derived_cause.clone(),
                         trait_def_id,
                         obligation.recursion_depth + 1,
-                        skol_ty);
-                match skol_predicate {
-                    Ok(skol_predicate) => Ok(self.infcx().plug_leaks(skol_map, snapshot,
-                                                                     &skol_predicate)),
-                    Err(ErrorReported) => Err(ErrorReported)
-                }
+                        skol_ty,
+                        vec![]);
+                Ok(self.infcx().plug_leaks(skol_map, snapshot, &skol_predicate))
             })
         }).collect::<Result<Vec<PredicateObligation<'tcx>>, _>>();
 
@@ -1836,6 +1900,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ProjectionCandidate => {
                 self.confirm_projection_candidate(obligation);
                 Ok(VtableParam(Vec::new()))
+            }
+
+            BuiltinUnsizeCandidate => {
+                self.infcx.try(|_| {
+                    self.confirm_builtin_unsize_candidate(obligation)
+                })
             }
         }
     }
@@ -2166,6 +2236,158 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Ok(()) => Ok(()),
             Err(e) => Err(OutputTypeParameterMismatch(expected_trait_ref, obligation_trait_ref, e))
         }
+    }
+
+    fn confirm_builtin_unsize_candidate(&mut self,
+                                        obligation: &TraitObligation<'tcx>,)
+                                        -> Result<Selection<'tcx>,
+                                                  SelectionError<'tcx>> {
+        let tcx = self.tcx();
+
+        let source = self.infcx.shallow_resolve(obligation.self_ty());
+        let target = self.infcx.shallow_resolve(obligation.predicate.0.input_types()[0]);
+
+        debug!("confirm_builtin_unsize_candidate(source={}, target={})",
+               source.repr(tcx), target.repr(tcx));
+
+        let mut nested = vec![];
+        match (&source.sty, &target.sty) {
+            // Trait+Kx+'a -> Trait+Ky+'b (upcasts).
+            (&ty::ty_trait(ref data_a), &ty::ty_trait(ref data_b)) => {
+                // See assemble_candidates_for_unsizing for more info.
+                let bounds = ty::ExistentialBounds {
+                    region_bound: data_b.bounds.region_bound,
+                    builtin_bounds: data_b.bounds.builtin_bounds,
+                    projection_bounds: data_a.bounds.projection_bounds.clone(),
+                };
+
+                let new_trait = ty::mk_trait(tcx, data_a.principal.clone(), bounds);
+                let origin = infer::Misc(obligation.cause.span);
+                if self.infcx.sub_types(false, origin, new_trait, target).is_err() {
+                    return Err(Unimplemented);
+                }
+
+                // Register one obligation for 'a: 'b.
+                let cause = ObligationCause::new(obligation.cause.span,
+                                                 obligation.cause.body_id,
+                                                 ObjectCastObligation(target));
+                let outlives = ty::OutlivesPredicate(data_a.bounds.region_bound,
+                                                     data_b.bounds.region_bound);
+                nested.push(Obligation::with_depth(cause,
+                                                   obligation.recursion_depth + 1,
+                                                   ty::Binder(outlives).as_predicate()));
+            }
+
+            // T -> Trait.
+            (_, &ty::ty_trait(ref data)) => {
+                let object = data.principal_trait_ref_with_self_ty(tcx, tcx.types.err);
+                if !object_safety::is_object_safe(tcx, object.clone()) {
+                    return Err(TraitNotObjectSafe(object));
+                }
+
+                let cause = ObligationCause::new(obligation.cause.span,
+                                                 obligation.cause.body_id,
+                                                 ObjectCastObligation(target));
+                let mut push = |predicate| {
+                    nested.push(Obligation::with_depth(cause.clone(),
+                                                       obligation.recursion_depth + 1,
+                                                       predicate));
+                };
+
+                // Create the obligation for casting from T to Trait.
+                push(data.principal_trait_ref_with_self_ty(tcx, source).as_predicate());
+
+                // We can only make objects from sized types.
+                let mut builtin_bounds = data.bounds.builtin_bounds;
+                builtin_bounds.insert(ty::BoundSized);
+
+                // Create additional obligations for all the various builtin
+                // bounds attached to the object cast. (In other words, if the
+                // object type is Foo+Send, this would create an obligation
+                // for the Send check.)
+                for bound in &builtin_bounds {
+                    if let Ok(tr) = util::trait_ref_for_builtin_bound(tcx, bound, source) {
+                        push(tr.as_predicate());
+                    } else {
+                        return Err(Unimplemented);
+                    }
+                }
+
+                // Create obligations for the projection predicates.
+                for bound in data.projection_bounds_with_self_ty(tcx, source) {
+                    push(bound.as_predicate());
+                }
+
+                // If the type is `Foo+'a`, ensures that the type
+                // being cast to `Foo+'a` outlives `'a`:
+                let outlives = ty::OutlivesPredicate(source,
+                                                     data.bounds.region_bound);
+                push(ty::Binder(outlives).as_predicate());
+            }
+
+            // [T; n] -> [T].
+            (&ty::ty_vec(a, Some(_)), &ty::ty_vec(b, None)) => {
+                let origin = infer::Misc(obligation.cause.span);
+                if self.infcx.sub_types(false, origin, a, b).is_err() {
+                    return Err(Unimplemented);
+                }
+            }
+
+            // Struct<T> -> Struct<U>.
+            (&ty::ty_struct(def_id, substs_a), &ty::ty_struct(_, substs_b)) => {
+                let fields = ty::lookup_struct_fields(tcx, def_id).iter().map(|f| {
+                    ty::lookup_field_type_unsubstituted(tcx, def_id, f.id)
+                }).collect::<Vec<_>>();
+
+                // The last field of the structure has to exist and be a
+                // type parameter (for now, to avoid tracking edge cases).
+                let i = if let Some(&ty::ty_param(p)) = fields.last().map(|ty| &ty.sty) {
+                    assert!(p.space == TypeSpace);
+                    p.idx as usize
+                } else {
+                    return Err(Unimplemented);
+                };
+
+                // Replace the type parameter chosen for unsizing with
+                // ty_err and ensure it does not affect any other fields.
+                // This could be checked after type collection for any struct
+                // with a potentially unsized trailing field.
+                let mut new_substs = substs_a.clone();
+                new_substs.types.get_mut_slice(TypeSpace)[i] = tcx.types.err;
+                for &ty in fields.init() {
+                    if ty::type_is_error(ty.subst(tcx, &new_substs)) {
+                        return Err(Unimplemented);
+                    }
+                }
+
+                // Extract T and U from Struct<T> and Struct<U>.
+                let inner_source = *substs_a.types.get(TypeSpace, i);
+                let inner_target = *substs_b.types.get(TypeSpace, i);
+
+                // Check that all the source structure with the unsized
+                // type parameter is a subtype of the target.
+                new_substs.types.get_mut_slice(TypeSpace)[i] = inner_target;
+                let new_struct = ty::mk_struct(tcx, def_id, tcx.mk_substs(new_substs));
+                let origin = infer::Misc(obligation.cause.span);
+                if self.infcx.sub_types(false, origin, new_struct, target).is_err() {
+                    return Err(Unimplemented);
+                }
+
+                // Construct the nested T: Unsize<U> predicate.
+                nested.push(util::predicate_for_trait_def(tcx,
+                    obligation.cause.clone(),
+                    obligation.predicate.def_id(),
+                    obligation.recursion_depth + 1,
+                    inner_source,
+                    vec![inner_target]));
+            }
+
+            _ => unreachable!()
+        };
+
+        Ok(VtableBuiltin(VtableBuiltinData {
+            nested: VecPerParamSpace::new(nested, vec![], vec![])
+        }))
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -2527,6 +2749,7 @@ impl<'tcx> Repr<'tcx> for SelectionCandidate<'tcx> {
             ErrorCandidate => format!("ErrorCandidate"),
             BuiltinCandidate(b) => format!("BuiltinCandidate({:?})", b),
             BuiltinObjectCandidate => format!("BuiltinObjectCandidate"),
+            BuiltinUnsizeCandidate => format!("BuiltinUnsizeCandidate"),
             ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr(tcx)),
             ImplCandidate(a) => format!("ImplCandidate({})", a.repr(tcx)),
             DefaultImplCandidate(t) => format!("DefaultImplCandidate({:?})", t),
@@ -2580,7 +2803,8 @@ impl<'tcx> EvaluationResult<'tcx> {
         match *self {
             EvaluatedToOk |
             EvaluatedToAmbig |
-            EvaluatedToErr(OutputTypeParameterMismatch(..)) =>
+            EvaluatedToErr(OutputTypeParameterMismatch(..)) |
+            EvaluatedToErr(TraitNotObjectSafe(_)) =>
                 true,
 
             EvaluatedToErr(Unimplemented) =>

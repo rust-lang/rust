@@ -53,6 +53,14 @@ pub trait Sized : MarkerTrait {
     // Empty.
 }
 
+/// Types that can be "unsized" to a dynamically sized type.
+#[unstable(feature = "core")]
+#[cfg(not(stage0))] // SNAP c64d671
+#[lang="unsize"]
+pub trait Unsize<T> : PhantomFn<Self, T> {
+    // Empty.
+}
+
 /// Types that can be copied by simply copying bits (i.e. `memcpy`).
 ///
 /// By default, variable bindings have 'move semantics.' In other

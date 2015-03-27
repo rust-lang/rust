@@ -22,7 +22,7 @@ fn foo2<'a:'b,'b>(x: &'b mut (Dummy+'a)) -> &'b mut (Dummy+'b) {
 
 fn foo3<'a,'b>(x: &'a mut Dummy) -> &'b mut Dummy {
     // Without knowing 'a:'b, we can't coerce
-    x //~ ERROR mismatched types
+    x //~ ERROR lifetime bound not satisfied
      //~^ ERROR cannot infer
 }
 

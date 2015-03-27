@@ -86,7 +86,6 @@ use astconv::AstConv;
 use check::dropck;
 use check::FnCtxt;
 use check::implicator;
-use check::vtable;
 use middle::mem_categorization as mc;
 use middle::region::CodeExtent;
 use middle::subst::Substs;
@@ -294,7 +293,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         // region checking can introduce new pending obligations
         // which, when processed, might generate new region
         // obligations. So make sure we process those.
-        vtable::select_all_fcx_obligations_or_error(self.fcx);
+        self.fcx.select_all_obligations_or_error();
 
         // Make a copy of the region obligations vec because we'll need
         // to be able to borrow the fulfillment-cx below when projecting.

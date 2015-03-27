@@ -15,8 +15,12 @@ use super::{
     Obligation,
     ObligationCauseCode,
     OutputTypeParameterMismatch,
+    TraitNotObjectSafe,
     PredicateObligation,
     SelectionError,
+    ObjectSafetyViolation,
+    MethodViolationCode,
+    object_safety_violations,
 };
 
 use fmt_macros::{Parser, Piece, Position};
@@ -246,6 +250,55 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                     note_obligation_cause(infcx, obligation);
             }
         }
+
+        TraitNotObjectSafe(ref trait_ref) => {
+            span_err!(infcx.tcx.sess, obligation.cause.span, E0038,
+                "cannot convert to a trait object because trait `{}` is not object-safe",
+                ty::item_path_str(infcx.tcx, trait_ref.def_id()));
+
+                for violation in object_safety_violations(infcx.tcx, trait_ref.clone()) {
+                    match violation {
+                        ObjectSafetyViolation::SizedSelf => {
+                            infcx.tcx.sess.span_note(
+                                obligation.cause.span,
+                                "the trait cannot require that `Self : Sized`");
+                        }
+
+                        ObjectSafetyViolation::SupertraitSelf => {
+                            infcx.tcx.sess.span_note(
+                                obligation.cause.span,
+                                "the trait cannot use `Self` as a type parameter \
+                                in the supertrait listing");
+                        }
+
+                        ObjectSafetyViolation::Method(method,
+                                MethodViolationCode::StaticMethod) => {
+                            infcx.tcx.sess.span_note(
+                                obligation.cause.span,
+                                &format!("method `{}` has no receiver",
+                                        method.name.user_string(infcx.tcx)));
+                        }
+
+                        ObjectSafetyViolation::Method(method,
+                                MethodViolationCode::ReferencesSelf) => {
+                            infcx.tcx.sess.span_note(
+                                obligation.cause.span,
+                                &format!("method `{}` references the `Self` type \
+                                        in its arguments or return type",
+                                        method.name.user_string(infcx.tcx)));
+                        }
+
+                        ObjectSafetyViolation::Method(method,
+                                MethodViolationCode::Generic) => {
+                            infcx.tcx.sess.span_note(
+                                obligation.cause.span,
+                                &format!("method `{}` has generic type parameters",
+                                        method.name.user_string(infcx.tcx)));
+                        }
+                    }
+                }
+
+        }
     }
 }
 
@@ -396,10 +449,6 @@ fn note_obligation_cause_code<'a, 'tcx, T>(infcx: &InferCtxt<'a, 'tcx>,
             span_note!(tcx.sess, cause_span,
                        "only the last field of a struct or enum variant \
                        may have a dynamically sized type")
-        }
-        ObligationCauseCode::ObjectSized => {
-            span_note!(tcx.sess, cause_span,
-                       "only sized types can be made into objects");
         }
         ObligationCauseCode::SharedStatic => {
             span_note!(tcx.sess, cause_span,

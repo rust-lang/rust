@@ -5478,21 +5478,28 @@ pub fn lookup_repr_hints(tcx: &ctxt, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
 }
 
 // Look up a field ID, whether or not it's local
-// Takes a list of type substs in case the struct is generic
-pub fn lookup_field_type<'tcx>(tcx: &ctxt<'tcx>,
-                               struct_id: DefId,
-                               id: DefId,
-                               substs: &Substs<'tcx>)
-                               -> Ty<'tcx> {
-    let ty = if id.krate == ast::LOCAL_CRATE {
+pub fn lookup_field_type_unsubstituted<'tcx>(tcx: &ctxt<'tcx>,
+                                             struct_id: DefId,
+                                             id: DefId)
+                                             -> Ty<'tcx> {
+    if id.krate == ast::LOCAL_CRATE {
         node_id_to_type(tcx, id.node)
     } else {
         let mut tcache = tcx.tcache.borrow_mut();
         let pty = tcache.entry(id).get().unwrap_or_else(
             |vacant_entry| vacant_entry.insert(csearch::get_field_type(tcx, struct_id, id)));
         pty.ty
-    };
-    ty.subst(tcx, substs)
+    }
+}
+
+// Look up a field ID, whether or not it's local
+// Takes a list of type substs in case the struct is generic
+pub fn lookup_field_type<'tcx>(tcx: &ctxt<'tcx>,
+                               struct_id: DefId,
+                               id: DefId,
+                               substs: &Substs<'tcx>)
+                               -> Ty<'tcx> {
+    lookup_field_type_unsubstituted(tcx, struct_id, id).subst(tcx, substs)
 }
 
 // Look up the list of field names and IDs for a given struct.
