@@ -210,6 +210,47 @@ pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
+// Iterator over def-ids of supertraits
+
+pub struct SupertraitDefIds<'cx, 'tcx:'cx> {
+    tcx: &'cx ty::ctxt<'tcx>,
+    stack: Vec<ast::DefId>,
+    visited: FnvHashSet<ast::DefId>,
+}
+
+pub fn supertrait_def_ids<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
+                                     trait_def_id: ast::DefId)
+                                     -> SupertraitDefIds<'cx, 'tcx>
+{
+    SupertraitDefIds {
+        tcx: tcx,
+        stack: vec![trait_def_id],
+        visited: Some(trait_def_id).into_iter().collect(),
+    }
+}
+
+impl<'cx, 'tcx> Iterator for SupertraitDefIds<'cx, 'tcx> {
+    type Item = ast::DefId;
+
+    fn next(&mut self) -> Option<ast::DefId> {
+        let def_id = match self.stack.pop() {
+            Some(def_id) => def_id,
+            None => { return None; }
+        };
+
+        let predicates = ty::lookup_super_predicates(self.tcx, def_id);
+        let visited = &mut self.visited;
+        self.stack.extend(
+            predicates.predicates
+                      .iter()
+                      .filter_map(|p| p.to_opt_poly_trait_ref())
+                      .map(|t| t.def_id())
+                      .filter(|&super_def_id| visited.insert(super_def_id)));
+        Some(def_id)
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////
 // Other
 ///////////////////////////////////////////////////////////////////////////
 

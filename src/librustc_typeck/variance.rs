@@ -1059,14 +1059,29 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
 
                 ty::Predicate::Equate(ty::Binder(ref data)) => {
-                    self.add_constraints_from_ty(generics, data.0, variance);
-                    self.add_constraints_from_ty(generics, data.1, variance);
+                    // A == B is only true if A and B are the same
+                    // types, not subtypes of one another, so this is
+                    // an invariant position:
+                    self.add_constraints_from_ty(generics, data.0, self.invariant);
+                    self.add_constraints_from_ty(generics, data.1, self.invariant);
                 }
 
                 ty::Predicate::TypeOutlives(ty::Binder(ref data)) => {
-                    self.add_constraints_from_ty(generics, data.0, variance);
+                    // Why contravariant on both? Let's consider:
+                    //
+                    // Under what conditions is `(T:'t) <: (U:'u)`,
+                    // meaning that `(T:'t) => (U:'u)`. The answer is
+                    // if `U <: T` or `'u <= 't`. Let's see some examples:
+                    //
+                    //   (T: 'big) => (T: 'small)
+                    //   where 'small <= 'big
+                    //
+                    //   (&'small Foo: 't) => (&'big Foo: 't)
+                    //   where 'small <= 'big
+                    //   note that &'big Foo <: &'small Foo
 
                     let variance_r = self.xform(variance, self.contravariant);
+                    self.add_constraints_from_ty(generics, data.0, variance_r);
                     self.add_constraints_from_region(generics, data.1, variance_r);
                 }
 
@@ -1084,6 +1099,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                                         &*data.projection_ty.trait_ref,
                                                         variance);
 
+                    // as the equality predicate above, a binder is a
+                    // type equality relation, not a subtyping
+                    // relation
                     self.add_constraints_from_ty(generics, data.ty, self.invariant);
                 }
             }

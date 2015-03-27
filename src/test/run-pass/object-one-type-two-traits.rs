@@ -30,7 +30,7 @@ impl Wrap for int {
     }
 }
 
-fn is<T:'static>(x: &Any) -> bool {
+fn is<T:Any>(x: &Any) -> bool {
     x.is::<T>()
 }
 
