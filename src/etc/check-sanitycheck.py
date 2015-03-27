@@ -39,7 +39,7 @@ def only_on(platforms):
 def check_rlimit_core():
     soft, hard = resource.getrlimit(resource.RLIMIT_CORE)
     if soft > 0:
-        error_unless_permitted('ALLOW_NONZERO_ULIMIT',
+        error_unless_permitted('ALLOW_NONZERO_RLIMIT_CORE',
           ("The rust test suite will segfault many rustc's in the debuginfo phase.\n"
            "set ALLOW_NONZERO_ULIMIT to ignore this warning\n"))
 
