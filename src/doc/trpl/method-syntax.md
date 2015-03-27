@@ -51,7 +51,8 @@ You can think of this first parameter as being the `x` in `x.foo()`. The three
 variants correspond to the three kinds of thing `x` could be: `self` if it's
 just a value on the stack, `&self` if it's a reference, and `&mut self` if it's
 a mutable reference. We should default to using `&self`, as it's the most
-common. Here's an example of all three variants:
+common, as Rustaceans prefer borrowing over taking ownership, and references 
+over mutable references. Here's an example of all three variants:
 
 ```rust
 struct Circle {
