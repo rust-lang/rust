@@ -18,19 +18,6 @@ struct Foo {
     y: isize,
 }
 
-#[cfg(stage0)]
-impl Index<String> for Foo {
-    type Output = isize;
-
-    fn index<'a>(&'a self, z: &String) -> &'a isize {
-        if *z == "x" {
-            &self.x
-        } else {
-            &self.y
-        }
-    }
-}
-
 impl<'a> Index<&'a String> for Foo {
     type Output = isize;
 

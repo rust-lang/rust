@@ -1526,36 +1526,6 @@ macro_rules! node_slice_impl {
             }
 
             /// Returns a sub-slice with elements starting with `min_key`.
-            #[cfg(stage0)]
-            pub fn slice_from(self, min_key: &K) -> $NodeSlice<'a, K, V> {
-                //  _______________
-                // |_1_|_3_|_5_|_7_|
-                // |   |   |   |   |
-                // 0 0 1 1 2 2 3 3 4  index
-                // |   |   |   |   |
-                // \___|___|___|___/  slice_from(&0); pos = 0
-                //     \___|___|___/  slice_from(&2); pos = 1
-                //     |___|___|___/  slice_from(&3); pos = 1; result.head_is_edge = false
-                //         \___|___/  slice_from(&4); pos = 2
-                //             \___/  slice_from(&6); pos = 3
-                //                \|/ slice_from(&999); pos = 4
-                let (pos, pos_is_kv) = self.search_linear(min_key);
-                $NodeSlice {
-                    has_edges: self.has_edges,
-                    edges: if !self.has_edges {
-                        self.edges
-                    } else {
-                        self.edges.$index(&(pos ..))
-                    },
-                    keys: &self.keys[pos ..],
-                    vals: self.vals.$index(&(pos ..)),
-                    head_is_edge: !pos_is_kv,
-                    tail_is_edge: self.tail_is_edge,
-                }
-            }
-
-            /// Returns a sub-slice with elements starting with `min_key`.
-            #[cfg(not(stage0))]
             pub fn slice_from(self, min_key: &K) -> $NodeSlice<'a, K, V> {
                 //  _______________
                 // |_1_|_3_|_5_|_7_|
@@ -1584,37 +1554,6 @@ macro_rules! node_slice_impl {
             }
 
             /// Returns a sub-slice with elements up to and including `max_key`.
-            #[cfg(stage0)]
-            pub fn slice_to(self, max_key: &K) -> $NodeSlice<'a, K, V> {
-                //  _______________
-                // |_1_|_3_|_5_|_7_|
-                // |   |   |   |   |
-                // 0 0 1 1 2 2 3 3 4  index
-                // |   |   |   |   |
-                //\|/  |   |   |   |  slice_to(&0); pos = 0
-                // \___/   |   |   |  slice_to(&2); pos = 1
-                // \___|___|   |   |  slice_to(&3); pos = 1; result.tail_is_edge = false
-                // \___|___/   |   |  slice_to(&4); pos = 2
-                // \___|___|___/   |  slice_to(&6); pos = 3
-                // \___|___|___|___/  slice_to(&999); pos = 4
-                let (pos, pos_is_kv) = self.search_linear(max_key);
-                let pos = pos + if pos_is_kv { 1 } else { 0 };
-                $NodeSlice {
-                    has_edges: self.has_edges,
-                    edges: if !self.has_edges {
-                        self.edges
-                    } else {
-                        self.edges.$index(&(.. (pos + 1)))
-                    },
-                    keys: &self.keys[..pos],
-                    vals: self.vals.$index(&(.. pos)),
-                    head_is_edge: self.head_is_edge,
-                    tail_is_edge: !pos_is_kv,
-                }
-            }
-
-            /// Returns a sub-slice with elements up to and including `max_key`.
-            #[cfg(not(stage0))]
             pub fn slice_to(self, max_key: &K) -> $NodeSlice<'a, K, V> {
                 //  _______________
                 // |_1_|_3_|_5_|_7_|
