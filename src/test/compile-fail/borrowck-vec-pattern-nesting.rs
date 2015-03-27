@@ -11,6 +11,7 @@
 #![feature(advanced_slice_patterns)]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(slice_patterns)]
 
 fn a() {
     let mut vec = [box 1, box 2, box 3];

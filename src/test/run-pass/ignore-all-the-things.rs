@@ -11,6 +11,7 @@
 // pretty-expanded FIXME #23616
 
 #![feature(advanced_slice_patterns)]
+#![feature(slice_patterns)]
 
 struct Foo(int, int, int, int);
 struct Bar{a: int, b: int, c: int, d: int}

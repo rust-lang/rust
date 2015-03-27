@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(slice_patterns)]
+
 // The arity of `ref x` is always 1. If the pattern is compared to some non-structural type whose
 // arity is always 0, an ICE occurs.
 //

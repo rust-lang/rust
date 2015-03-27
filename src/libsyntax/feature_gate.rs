@@ -153,6 +153,9 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // below (it has to be checked before expansion possibly makes
     // macros disappear).
     ("allow_internal_unstable", "1.0.0", Active),
+
+    // #23121. Array patterns have some hazards yet.
+    ("slice_patterns", "1.0.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -693,6 +696,11 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   "multiple-element slice matches anywhere \
                                    but at the end of a slice (e.g. \
                                    `[0, ..xs, 0]` are experimental")
+            }
+            ast::PatVec(..) => {
+                self.gate_feature("slice_patterns",
+                                  pattern.span,
+                                  "slice pattern syntax is experimental");
             }
             ast::PatBox(..) => {
                 self.gate_feature("box_patterns",

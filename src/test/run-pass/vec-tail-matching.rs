@@ -11,6 +11,8 @@
 
 // pretty-expanded FIXME #23616
 
+#![feature(slice_patterns)]
+
 struct Foo {
     string: String
 }
