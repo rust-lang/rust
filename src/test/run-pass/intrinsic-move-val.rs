@@ -13,7 +13,8 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 #![feature(intrinsics)]
-#![feature(filling_drop)] // needed to check for drop fill word.
+// needed to check for drop fill word.
+#![feature(filling_drop)]
 
 use std::mem::{self, transmute};
 
@@ -31,6 +32,7 @@ pub fn main() {
         let mut z: *const uint = transmute(&x);
         rusti::move_val_init(&mut y, x);
         assert_eq!(*y, 1);
-        assert_eq!(*z, mem::POST_DROP_USIZE); // `x` is nulled out, not directly visible
+        // `x` is nulled out, not directly visible
+        assert_eq!(*z, mem::POST_DROP_USIZE);
     }
 }
