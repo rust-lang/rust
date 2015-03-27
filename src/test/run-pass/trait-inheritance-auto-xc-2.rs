@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "trait_inheritance_auto_xc_2_aux" as aux;
+extern crate trait_inheritance_auto_xc_2_aux as aux;
 
 // aux defines impls of Foo, Bar and Baz for A
 use aux::{Foo, Bar, Baz, A};

@@ -15,7 +15,7 @@
 
 // pretty-expanded FIXME #23616
 
-#[link(name = "sepcomp-extern-lib")]
+#[link(name = "sepcomp_extern_lib")]
 extern {
     #[allow(ctypes)]
     fn foo() -> usize;

@@ -16,7 +16,7 @@
 #![feature(unboxed_closures)]
 
 // aux-build:issue-18711.rs
-extern crate "issue-18711" as issue;
+extern crate issue_18711 as issue;
 
 fn main() {
     (|| issue::inner(()))();

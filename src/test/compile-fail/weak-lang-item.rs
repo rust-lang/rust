@@ -17,4 +17,4 @@
 #![no_std]
 
 extern crate core;
-extern crate "weak-lang-items" as other;
+extern crate weak_lang_items;

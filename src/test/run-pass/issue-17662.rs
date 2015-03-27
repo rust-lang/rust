@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "issue-17662" as i;
+extern crate issue_17662 as i;
 
 use std::marker;
 

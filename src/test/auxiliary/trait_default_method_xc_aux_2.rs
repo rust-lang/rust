@@ -10,7 +10,7 @@
 
 // aux-build:trait_default_method_xc_aux.rs
 
-extern crate "trait_default_method_xc_aux" as aux;
+extern crate trait_default_method_xc_aux as aux;
 use aux::A;
 
 pub struct a_struct { pub x: isize }

@@ -14,21 +14,21 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:print/d 'simple-tuple::NO_PADDING_8'
+// gdb-command:print/d 'simple_tuple::NO_PADDING_8'
 // gdb-check:$1 = {-50, 50}
-// gdb-command:print 'simple-tuple::NO_PADDING_16'
+// gdb-command:print 'simple_tuple::NO_PADDING_16'
 // gdb-check:$2 = {-1, 2, 3}
-// gdb-command:print 'simple-tuple::NO_PADDING_32'
+// gdb-command:print 'simple_tuple::NO_PADDING_32'
 // gdb-check:$3 = {4, 5, 6}
-// gdb-command:print 'simple-tuple::NO_PADDING_64'
+// gdb-command:print 'simple_tuple::NO_PADDING_64'
 // gdb-check:$4 = {7, 8, 9}
 
-// gdb-command:print 'simple-tuple::INTERNAL_PADDING_1'
+// gdb-command:print 'simple_tuple::INTERNAL_PADDING_1'
 // gdb-check:$5 = {10, 11}
-// gdb-command:print 'simple-tuple::INTERNAL_PADDING_2'
+// gdb-command:print 'simple_tuple::INTERNAL_PADDING_2'
 // gdb-check:$6 = {12, 13, 14, 15}
 
-// gdb-command:print 'simple-tuple::PADDING_AT_END'
+// gdb-command:print 'simple_tuple::PADDING_AT_END'
 // gdb-check:$7 = {16, 17}
 
 // gdb-command:run
@@ -50,21 +50,21 @@
 // gdb-command:print paddingAtEnd
 // gdb-check:$14 = {15, 16}
 
-// gdb-command:print/d 'simple-tuple::NO_PADDING_8'
+// gdb-command:print/d 'simple_tuple::NO_PADDING_8'
 // gdb-check:$15 = {-127, 127}
-// gdb-command:print 'simple-tuple::NO_PADDING_16'
+// gdb-command:print 'simple_tuple::NO_PADDING_16'
 // gdb-check:$16 = {-10, 10, 9}
-// gdb-command:print 'simple-tuple::NO_PADDING_32'
+// gdb-command:print 'simple_tuple::NO_PADDING_32'
 // gdb-check:$17 = {14, 15, 16}
-// gdb-command:print 'simple-tuple::NO_PADDING_64'
+// gdb-command:print 'simple_tuple::NO_PADDING_64'
 // gdb-check:$18 = {17, 18, 19}
 
-// gdb-command:print 'simple-tuple::INTERNAL_PADDING_1'
+// gdb-command:print 'simple_tuple::INTERNAL_PADDING_1'
 // gdb-check:$19 = {110, 111}
-// gdb-command:print 'simple-tuple::INTERNAL_PADDING_2'
+// gdb-command:print 'simple_tuple::INTERNAL_PADDING_2'
 // gdb-check:$20 = {112, 113, 114, 115}
 
-// gdb-command:print 'simple-tuple::PADDING_AT_END'
+// gdb-command:print 'simple_tuple::PADDING_AT_END'
 // gdb-check:$21 = {116, 117}
 
 

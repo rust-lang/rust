@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "issue-9968" as lib;
+extern crate issue_9968 as lib;
 
 use lib::{Trait, Struct};
 

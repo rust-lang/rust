@@ -14,7 +14,7 @@
 
 #![feature(core)]
 
-extern crate "issue-17718" as other;
+extern crate issue_17718 as other;
 
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 

@@ -14,7 +14,7 @@
 
 #![feature(std_misc, old_path)]
 
-extern crate "linkage-visibility" as foo;
+extern crate linkage_visibility as foo;
 
 pub fn main() {
     foo::test();

@@ -11,7 +11,7 @@
 // aux-build:static-function-pointer-aux.rs
 // pretty-expanded FIXME #23616
 
-extern crate "static-function-pointer-aux" as aux;
+extern crate static_function_pointer_aux as aux;
 
 fn f(x: isize) -> isize { x }
 
