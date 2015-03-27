@@ -320,7 +320,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.expect("the world is ending"), "value");
     /// ```
     ///
-    /// ```{.should_fail}
+    /// ```{.should_panic}
     /// let x: Option<&str> = None;
     /// x.expect("the world is ending"); // panics with `world is ending`
     /// ```
@@ -352,7 +352,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.unwrap(), "air");
     /// ```
     ///
-    /// ```{.should_fail}
+    /// ```{.should_panic}
     /// let x: Option<&str> = None;
     /// assert_eq!(x.unwrap(), "air"); // fails
     /// ```

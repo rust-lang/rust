@@ -134,7 +134,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
                         path: self.cx.path.clone(),
                         bench: is_bench_fn(&self.cx, &*i),
                         ignore: is_ignored(&*i),
-                        should_panic: should_panic(&*i, self.cx.span_diagnostic)
+                        should_panic: should_panic(&*i)
                     };
                     self.cx.testfns.push(test);
                     self.tests.push(i.ident);
@@ -386,16 +386,8 @@ fn is_ignored(i: &ast::Item) -> bool {
     i.attrs.iter().any(|attr| attr.check_name("ignore"))
 }
 
-fn should_panic(i: &ast::Item, diag: &diagnostic::SpanHandler) -> ShouldPanic {
-    match i.attrs.iter().find(|attr| {
-        if attr.check_name("should_panic") { return true; }
-        if attr.check_name("should_fail") {
-            diag.span_warn(attr.span, "`#[should_fail]` is deprecated. Use `#[should_panic]` \
-                                       instead");
-            return true;
-        }
-        false
-    }) {
+fn should_panic(i: &ast::Item) -> ShouldPanic {
+    match i.attrs.iter().find(|attr| attr.check_name("should_panic")) {
         Some(attr) => {
             let msg = attr.meta_item_list()
                 .and_then(|list| list.iter().find(|mi| mi.check_name("expected")))
