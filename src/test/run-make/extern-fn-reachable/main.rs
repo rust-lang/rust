@@ -12,7 +12,7 @@
 
 use std::dynamic_lib::DynamicLibrary;
 use std::os;
-use std::old_path::Path;
+use std::path::Path;
 
 pub fn main() {
     unsafe {

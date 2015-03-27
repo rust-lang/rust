@@ -265,7 +265,7 @@ mod dl {
     use libc;
     use libc::consts::os::extra::ERROR_CALL_NOT_IMPLEMENTED;
     use ops::FnOnce;
-    use os;
+    use sys::os;
     use os::windows::prelude::*;
     use option::Option::{self, Some, None};
     use ptr;

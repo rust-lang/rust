@@ -30,7 +30,7 @@ trait Iterator {
         Self::Item: Deref,
         <Self::Item as Deref>::Target: Clone,
     {
-        self.next().cloned()
+        self.next().map(|x| x.clone())
     }
 }
 
