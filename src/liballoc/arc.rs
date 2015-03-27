@@ -33,7 +33,7 @@
 //!
 //! Sharing some immutable data between tasks:
 //!
-//! ```
+//! ```no_run
 //! use std::sync::Arc;
 //! use std::thread;
 //!
@@ -50,7 +50,7 @@
 //!
 //! Sharing mutable data safely between tasks with a `Mutex`:
 //!
-//! ```
+//! ```no_run
 //! use std::sync::{Arc, Mutex};
 //! use std::thread;
 //!
