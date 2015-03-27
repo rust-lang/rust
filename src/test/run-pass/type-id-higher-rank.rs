@@ -15,7 +15,7 @@
 
 #![feature(unboxed_closures, core)]
 
-use std::any::TypeId;
+use std::any::{Any, TypeId};
 
 fn main() {
     // Bare fns
@@ -63,7 +63,7 @@ fn main() {
         assert!(a != b);
     }
 
-    fn id<T:'static>(_: T) -> TypeId {
+    fn id<T:Any>(_: T) -> TypeId {
         TypeId::of::<T>()
     }
 }

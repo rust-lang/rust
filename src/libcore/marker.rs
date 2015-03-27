@@ -450,3 +450,46 @@ pub struct CovariantType<T>;
 #[deprecated(since = "1.0.0", reason = "Replace with `PhantomData<Cell<T>>`")]
 #[lang="invariant_type"]
 pub struct InvariantType<T>;
+
+/// A marker trait indicates a type that can be reflected over. This
+/// trait is implemented for all types. Its purpose is to ensure that
+/// when you write a generic function that will employ reflection,
+/// that must be reflected (no pun intended) in the generic bounds of
+/// that function. Here is an example:
+///
+/// ```
+/// #![feature(core)]
+/// use std::marker::Reflect;
+/// use std::any::Any;
+/// fn foo<T:Reflect+'static>(x: &T) {
+///     let any: &Any = x;
+///     if any.is::<u32>() { println!("u32"); }
+/// }
+/// ```
+///
+/// Without the declaration `T:Reflect`, `foo` would not type check
+/// (note: as a matter of style, it would be preferable to to write
+/// `T:Any`, because `T:Any` implies `T:Reflect` and `T:'static`, but
+/// we use `Reflect` here to show how it works). The `Reflect` bound
+/// thus serves to alert `foo`'s caller to the fact that `foo` may
+/// behave differently depending on whether `T=u32` or not. In
+/// particular, thanks to the `Reflect` bound, callers know that a
+/// function declared like `fn bar<T>(...)` will always act in
+/// precisely the same way no matter what type `T` is supplied,
+/// beacuse there are no bounds declared on `T`. (The ability for a
+/// caller to reason about what a function may do based solely on what
+/// generic bounds are declared is often called the ["parametricity
+/// property"][1].)
+///
+/// [1]: http://en.wikipedia.org/wiki/Parametricity
+#[rustc_reflect_like]
+#[unstable(feature = "core", reason = "requires RFC and more experience")]
+pub trait Reflect : MarkerTrait {
+}
+
+#[cfg(stage0)]
+impl<T> Reflect for T { }
+
+#[cfg(not(stage0))]
+impl Reflect for .. { }
+

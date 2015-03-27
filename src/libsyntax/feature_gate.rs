@@ -74,6 +74,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     ("rustc_diagnostic_macros", "1.0.0", Active),
     ("unboxed_closures", "1.0.0", Active),
+    ("reflect", "1.0.0", Active),
     ("import_shadowing", "1.0.0", Removed),
     ("advanced_slice_patterns", "1.0.0", Active),
     ("tuple_indexing", "1.0.0", Accepted),
@@ -281,7 +282,11 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     // FIXME: #19470 this shouldn't be needed forever
     ("old_orphan_check", Whitelisted),
     ("old_impl_check", Whitelisted),
-    ("rustc_paren_sugar", Whitelisted), // FIXME: #18101 temporary unboxed closure hack
+
+    ("rustc_paren_sugar", Gated("unboxed_closures",
+                                "unboxed_closures are still evolving")),
+    ("rustc_reflect_like", Gated("reflect",
+                                 "defining reflective traits is still evolving")),
 
     // Crate level attributes
     ("crate_name", CrateLevel),
