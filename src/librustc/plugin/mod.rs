@@ -47,7 +47,7 @@
 //! #![plugin(myplugin)]
 //! ```
 //!
-//! See [the compiler plugin guide](../../guide-plugin.html)
+//! See the [Plugins Chapter](../../book/plugins.html) of the book
 //! for more examples.
 
 pub use self::registry::Registry;
