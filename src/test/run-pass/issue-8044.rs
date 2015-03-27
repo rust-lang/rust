@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "issue-8044" as minimal;
+extern crate issue_8044 as minimal;
 use minimal::{BTree, leaf};
 
 pub fn main() {

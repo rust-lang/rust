@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name="trait_default_method_xc_aux"]
-
 pub struct Something { pub x: int }
 
 pub trait A {
