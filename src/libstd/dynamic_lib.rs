@@ -21,8 +21,6 @@ use env;
 use ffi::{AsOsStr, CString, OsString};
 use mem;
 use path::{Path, PathBuf};
-#[cfg(not(target_os = "android"))] use os;
-#[cfg(not(target_os = "android"))] use str;
 
 pub struct DynamicLibrary {
     handle: *mut u8
