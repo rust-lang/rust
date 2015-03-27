@@ -18,14 +18,14 @@ pub fn main() {
     let y_diaeresis: char = 'ÿ'; // 0xff
     let pi: char = 'Π'; // 0x3a0
 
-    assert_eq!(yen as int, 0xa5);
-    assert_eq!(c_cedilla as int, 0xe7);
-    assert_eq!(thorn as int, 0xfe);
-    assert_eq!(y_diaeresis as int, 0xff);
-    assert_eq!(pi as int, 0x3a0);
+    assert_eq!(yen as isize, 0xa5);
+    assert_eq!(c_cedilla as isize, 0xe7);
+    assert_eq!(thorn as isize, 0xfe);
+    assert_eq!(y_diaeresis as isize, 0xff);
+    assert_eq!(pi as isize, 0x3a0);
 
-    assert_eq!(pi as int, '\u{3a0}' as int);
-    assert_eq!('\x0a' as int, '\n' as int);
+    assert_eq!(pi as isize, '\u{3a0}' as isize);
+    assert_eq!('\x0a' as isize, '\n' as isize);
 
     let bhutan: String = "འབྲུག་ཡུལ།".to_string();
     let japan: String = "日本".to_string();
@@ -40,14 +40,14 @@ pub fn main() {
     let austria_e: String = "\u{d6}sterreich".to_string();
 
     let oo: char = 'Ö';
-    assert_eq!(oo as int, 0xd6);
+    assert_eq!(oo as isize, 0xd6);
 
     fn check_str_eq(a: String, b: String) {
-        let mut i: int = 0;
+        let mut i: isize = 0;
         for ab in a.bytes() {
             println!("{}", i);
             println!("{}", ab);
-            let bb: u8 = b.as_bytes()[i as uint];
+            let bb: u8 = b.as_bytes()[i as usize];
             println!("{}", bb);
             assert_eq!(ab, bb);
             i += 1;

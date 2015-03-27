@@ -2312,46 +2312,13 @@ impl<'a> Parser<'a> {
               // expr[...]
               // Could be either an index expression or a slicing expression.
               token::OpenDelim(token::Bracket) => {
-                let bracket_pos = self.span.lo;
                 self.bump();
 
-                if self.eat(&token::CloseDelim(token::Bracket)) {
-                    // No expression, expand to a RangeFull
-                    // FIXME(#20516) It would be better to use a lang item or
-                    // something for RangeFull.
-                    hi = self.last_span.hi;
-
-                    let idents = vec![token::str_to_ident("std"),
-                                      token::str_to_ident("ops"),
-                                      token::str_to_ident("RangeFull")];
-                    let segments = idents.into_iter().map(|ident| {
-                        ast::PathSegment {
-                            identifier: ident,
-                            parameters: ast::PathParameters::none(),
-                        }
-                    }).collect();
-                    let span = mk_sp(lo, hi);
-                    let path = ast::Path {
-                        span: span,
-                        global: true,
-                        segments: segments,
-                    };
-
-                    let range = ExprStruct(path, vec![], None);
-                    let ix = self.mk_expr(bracket_pos, hi, range);
-                    let index = self.mk_index(e, ix);
-                    e = self.mk_expr(lo, hi, index);
-
-                    let obsolete_span = mk_sp(bracket_pos, hi);
-                    self.obsolete(obsolete_span, ObsoleteSyntax::EmptyIndex);
-                } else {
-                    let ix = self.parse_expr();
-                    hi = self.span.hi;
-                    self.commit_expr_expecting(&*ix, token::CloseDelim(token::Bracket));
-                    let index = self.mk_index(e, ix);
-                    e = self.mk_expr(lo, hi, index)
-                }
-
+                let ix = self.parse_expr();
+                hi = self.span.hi;
+                self.commit_expr_expecting(&*ix, token::CloseDelim(token::Bracket));
+                let index = self.mk_index(e, ix);
+                e = self.mk_expr(lo, hi, index)
               }
               _ => return e
             }
@@ -4984,46 +4951,19 @@ impl<'a> Parser<'a> {
     ///
     /// # Examples
     ///
-    /// extern crate url;
-    /// extern crate foo = "bar"; //deprecated
-    /// extern crate "bar" as foo;
+    /// extern crate foo;
+    /// extern crate bar as foo;
     fn parse_item_extern_crate(&mut self,
-                                lo: BytePos,
-                                visibility: Visibility,
-                                attrs: Vec<Attribute>)
+                               lo: BytePos,
+                               visibility: Visibility,
+                               attrs: Vec<Attribute>)
                                 -> P<Item> {
 
-        let (maybe_path, ident) = match self.token {
-            token::Ident(..) => {
-                let crate_name = self.parse_ident();
-                if self.eat_keyword(keywords::As) {
-                    (Some(crate_name.name), self.parse_ident())
-                } else {
-                    (None, crate_name)
-                }
-            },
-            token::Literal(token::Str_(..), suf) |
-            token::Literal(token::StrRaw(..), suf) => {
-                let sp = self.span;
-                self.expect_no_suffix(sp, "extern crate name", suf);
-                // forgo the internal suffix check of `parse_str` to
-                // avoid repeats (this unwrap will always succeed due
-                // to the restriction of the `match`)
-                let (s, _, _) = self.parse_optional_str().unwrap();
-                self.expect_keyword(keywords::As);
-                let the_ident = self.parse_ident();
-                self.obsolete(sp, ObsoleteSyntax::ExternCrateString);
-                let s = token::intern(&s);
-                (Some(s), the_ident)
-            },
-            _ => {
-                let span = self.span;
-                let token_str = self.this_token_to_string();
-                self.span_fatal(span,
-                                &format!("expected extern crate name but \
-                                         found `{}`",
-                                        token_str));
-            }
+        let crate_name = self.parse_ident();
+        let (maybe_path, ident) = if self.eat_keyword(keywords::As) {
+            (Some(crate_name.name), self.parse_ident())
+        } else {
+            (None, crate_name)
         };
         self.expect(&token::Semi);
 

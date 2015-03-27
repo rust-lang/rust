@@ -10,11 +10,11 @@
 
 // pretty-expanded FIXME #23616
 
-const FOO: int = 10;
-const BAR: int = 3;
+const FOO: isize = 10;
+const BAR: isize = 3;
 
 pub fn main() {
-    let x: int = 3;
+    let x: isize = 3;
     let y = match x {
         FOO => 1,
         BAR => 2,

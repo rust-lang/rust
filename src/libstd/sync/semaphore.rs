@@ -44,7 +44,7 @@ use sync::{Mutex, Condvar};
 /// sem.release();
 /// ```
 pub struct Semaphore {
-    lock: Mutex<int>,
+    lock: Mutex<isize>,
     cvar: Condvar,
 }
 
@@ -60,7 +60,7 @@ impl Semaphore {
     /// The count specified can be thought of as a number of resources, and a
     /// call to `acquire` or `access` will block until at least one resource is
     /// available. It is valid to initialize a semaphore with a negative count.
-    pub fn new(count: int) -> Semaphore {
+    pub fn new(count: isize) -> Semaphore {
         Semaphore {
             lock: Mutex::new(count),
             cvar: Condvar::new(),

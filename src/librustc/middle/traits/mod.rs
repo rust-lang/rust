@@ -39,6 +39,7 @@ pub use self::object_safety::is_object_safe;
 pub use self::object_safety::object_safety_violations;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::object_safety::MethodViolationCode;
+pub use self::object_safety::is_vtable_safe_method;
 pub use self::select::SelectionContext;
 pub use self::select::SelectionCache;
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
@@ -48,6 +49,8 @@ pub use self::util::get_vtable_index_of_object_method;
 pub use self::util::trait_ref_for_builtin_bound;
 pub use self::util::supertraits;
 pub use self::util::Supertraits;
+pub use self::util::supertrait_def_ids;
+pub use self::util::SupertraitDefIds;
 pub use self::util::transitive_bounds;
 pub use self::util::upcast;
 
@@ -68,7 +71,7 @@ mod util;
 #[derive(Clone, PartialEq, Eq)]
 pub struct Obligation<'tcx, T> {
     pub cause: ObligationCause<'tcx>,
-    pub recursion_depth: uint,
+    pub recursion_depth: usize,
     pub predicate: T,
 }
 
@@ -482,7 +485,7 @@ impl<'tcx,O> Obligation<'tcx,O> {
     }
 
     fn with_depth(cause: ObligationCause<'tcx>,
-                  recursion_depth: uint,
+                  recursion_depth: usize,
                   trait_ref: O)
                   -> Obligation<'tcx, O>
     {
@@ -640,7 +643,7 @@ impl<'tcx> FulfillmentError<'tcx> {
 }
 
 impl<'tcx> TraitObligation<'tcx> {
-    fn self_ty(&self) -> Ty<'tcx> {
-        self.predicate.0.self_ty()
+    fn self_ty(&self) -> ty::Binder<Ty<'tcx>> {
+        ty::Binder(self.predicate.skip_binder().self_ty())
     }
 }

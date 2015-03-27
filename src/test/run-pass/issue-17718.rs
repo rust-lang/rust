@@ -14,27 +14,27 @@
 
 #![feature(core)]
 
-extern crate "issue-17718" as other;
+extern crate issue_17718 as other;
 
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
-const C1: uint = 1;
+const C1: usize = 1;
 const C2: AtomicUsize = ATOMIC_USIZE_INIT;
 const C3: fn() = foo;
-const C4: uint = C1 * C1 + C1 / C1;
-const C5: &'static uint = &C4;
-const C6: uint = {
-    const C: uint = 3;
+const C4: usize = C1 * C1 + C1 / C1;
+const C5: &'static usize = &C4;
+const C6: usize = {
+    const C: usize = 3;
     C
 };
 
-static S1: uint = 3;
+static S1: usize = 3;
 static S2: AtomicUsize = ATOMIC_USIZE_INIT;
 
 mod test {
-    static A: uint = 4;
-    static B: &'static uint = &A;
-    static C: &'static uint = &(A);
+    static A: usize = 4;
+    static B: &'static usize = &A;
+    static C: &'static usize = &(A);
 }
 
 fn foo() {}

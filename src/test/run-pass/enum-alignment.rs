@@ -12,13 +12,13 @@
 
 use std::mem;
 
-fn addr_of<T>(ptr: &T) -> uint {
-    ptr as *const T as uint
+fn addr_of<T>(ptr: &T) -> usize {
+    ptr as *const T as usize
 }
 
 fn is_aligned<T>(ptr: &T) -> bool {
     unsafe {
-        let addr: uint = mem::transmute(ptr);
+        let addr: usize = mem::transmute(ptr);
         (addr % mem::min_align_of::<T>()) == 0
     }
 }

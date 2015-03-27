@@ -56,7 +56,7 @@ pub fn timeout(desc: &'static str) -> IoError {
 }
 
 #[allow(deprecated)]
-pub fn short_write(n: uint, desc: &'static str) -> IoError {
+pub fn short_write(n: usize, desc: &'static str) -> IoError {
     IoError {
         kind: if n == 0 { old_io::TimedOut } else { old_io::ShortWrite(n) },
         desc: desc,
@@ -84,7 +84,7 @@ pub fn mkerr_libc<T: Int>(ret: T) -> IoResult<()> {
 }
 
 pub fn keep_going<F>(data: &[u8], mut f: F) -> i64 where
-    F: FnMut(*const u8, uint) -> i64,
+    F: FnMut(*const u8, usize) -> i64,
 {
     let origamt = data.len();
     let mut data = data.as_ptr();
@@ -94,8 +94,8 @@ pub fn keep_going<F>(data: &[u8], mut f: F) -> i64 where
         if ret == 0 {
             break
         } else if ret != -1 {
-            amt -= ret as uint;
-            data = unsafe { data.offset(ret as int) };
+            amt -= ret as usize;
+            data = unsafe { data.offset(ret as isize) };
         } else {
             return ret;
         }
@@ -134,7 +134,7 @@ pub trait ProcessConfig<K: BytesContainer, V: BytesContainer> {
     fn args(&self) -> &[CString];
     fn env(&self) -> Option<&collections::HashMap<K, V>>;
     fn cwd(&self) -> Option<&CString>;
-    fn uid(&self) -> Option<uint>;
-    fn gid(&self) -> Option<uint>;
+    fn uid(&self) -> Option<usize>;
+    fn gid(&self) -> Option<usize>;
     fn detach(&self) -> bool;
 }

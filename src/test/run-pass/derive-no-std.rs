@@ -13,7 +13,7 @@
 
 extern crate core;
 extern crate rand;
-extern crate "serialize" as rustc_serialize;
+extern crate serialize as rustc_serialize;
 extern crate collections;
 
 // Issue #16803

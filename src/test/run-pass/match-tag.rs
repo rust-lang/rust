@@ -14,13 +14,13 @@
 // pretty-expanded FIXME #23616
 
 enum color {
-    rgb(int, int, int),
-    rgba(int, int, int, int),
-    hsl(int, int, int),
+    rgb(isize, isize, isize),
+    rgba(isize, isize, isize, isize),
+    hsl(isize, isize, isize),
 }
 
-fn process(c: color) -> int {
-    let mut x: int;
+fn process(c: color) -> isize {
+    let mut x: isize;
     match c {
       color::rgb(r, _, _) => { x = r; }
       color::rgba(_, _, _, a) => { x = a; }

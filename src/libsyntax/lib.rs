@@ -29,7 +29,6 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(int_uint)]
 #![feature(libc)]
 #![feature(old_path)]
 #![feature(quote, unsafe_destructor)]
@@ -40,6 +39,7 @@
 #![feature(str_char)]
 #![feature(convert)]
 #![feature(into_cow)]
+#![feature(slice_patterns)]
 
 extern crate arena;
 extern crate fmt_macros;
@@ -49,7 +49,7 @@ extern crate libc;
 #[macro_use] extern crate log;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 
-extern crate "serialize" as rustc_serialize; // used by deriving
+extern crate serialize as rustc_serialize; // used by deriving
 
 pub mod util {
     pub mod interner;

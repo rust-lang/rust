@@ -423,24 +423,13 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Returns a mutable slice of the elements of `self`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// fn foo(slice: &mut [i32]) {}
-    ///
-    /// let mut vec = vec![1, 2];
-    /// foo(vec.as_mut_slice());
-    /// ```
+    /// Deprecated: use `&mut s[..]` instead.
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &mut s[..] instead")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
-        unsafe {
-            let ptr = *self.ptr;
-            assume(!ptr.is_null());
-            slice::from_raw_parts_mut(ptr, self.len)
-        }
+        &mut self[..]
     }
 
     /// Creates a consuming iterator, that is, one that moves each value out of
@@ -1343,15 +1332,6 @@ impl<T: Hash> Hash for Vec<T> {
 impl<T> Index<usize> for Vec<T> {
     type Output = T;
 
-
-    #[cfg(stage0)]
-    #[inline]
-    fn index(&self, index: &usize) -> &T {
-        // NB built-in indexing via `&[T]`
-        &(**self)[*index]
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index(&self, index: usize) -> &T {
         // NB built-in indexing via `&[T]`
@@ -1361,15 +1341,6 @@ impl<T> Index<usize> for Vec<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> IndexMut<usize> for Vec<T> {
-
-    #[cfg(stage0)]
-    #[inline]
-    fn index_mut(&mut self, index: &usize) -> &mut T {
-        // NB built-in indexing via `&mut [T]`
-        &mut (**self)[*index]
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut T {
         // NB built-in indexing via `&mut [T]`
@@ -1382,13 +1353,6 @@ impl<T> IndexMut<usize> for Vec<T> {
 impl<T> ops::Index<ops::Range<usize>> for Vec<T> {
     type Output = [T];
 
-    #[cfg(stage0)]
-    #[inline]
-    fn index(&self, index: &ops::Range<usize>) -> &[T] {
-        Index::index(&**self, index)
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index(&self, index: ops::Range<usize>) -> &[T] {
         Index::index(&**self, index)
@@ -1398,13 +1362,6 @@ impl<T> ops::Index<ops::Range<usize>> for Vec<T> {
 impl<T> ops::Index<ops::RangeTo<usize>> for Vec<T> {
     type Output = [T];
 
-    #[cfg(stage0)]
-    #[inline]
-    fn index(&self, index: &ops::RangeTo<usize>) -> &[T] {
-        Index::index(&**self, index)
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index(&self, index: ops::RangeTo<usize>) -> &[T] {
         Index::index(&**self, index)
@@ -1414,13 +1371,6 @@ impl<T> ops::Index<ops::RangeTo<usize>> for Vec<T> {
 impl<T> ops::Index<ops::RangeFrom<usize>> for Vec<T> {
     type Output = [T];
 
-    #[cfg(stage0)]
-    #[inline]
-    fn index(&self, index: &ops::RangeFrom<usize>) -> &[T] {
-        Index::index(&**self, index)
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index(&self, index: ops::RangeFrom<usize>) -> &[T] {
         Index::index(&**self, index)
@@ -1430,13 +1380,6 @@ impl<T> ops::Index<ops::RangeFrom<usize>> for Vec<T> {
 impl<T> ops::Index<ops::RangeFull> for Vec<T> {
     type Output = [T];
 
-    #[cfg(stage0)]
-    #[inline]
-    fn index(&self, _index: &ops::RangeFull) -> &[T] {
-        self
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index(&self, _index: ops::RangeFull) -> &[T] {
         self
@@ -1446,13 +1389,6 @@ impl<T> ops::Index<ops::RangeFull> for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::Range<usize>> for Vec<T> {
 
-    #[cfg(stage0)]
-    #[inline]
-    fn index_mut(&mut self, index: &ops::Range<usize>) -> &mut [T] {
-        IndexMut::index_mut(&mut **self, index)
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index_mut(&mut self, index: ops::Range<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
@@ -1461,13 +1397,6 @@ impl<T> ops::IndexMut<ops::Range<usize>> for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeTo<usize>> for Vec<T> {
 
-    #[cfg(stage0)]
-    #[inline]
-    fn index_mut(&mut self, index: &ops::RangeTo<usize>) -> &mut [T] {
-        IndexMut::index_mut(&mut **self, index)
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
@@ -1476,13 +1405,6 @@ impl<T> ops::IndexMut<ops::RangeTo<usize>> for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeFrom<usize>> for Vec<T> {
 
-    #[cfg(stage0)]
-    #[inline]
-    fn index_mut(&mut self, index: &ops::RangeFrom<usize>) -> &mut [T] {
-        IndexMut::index_mut(&mut **self, index)
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
@@ -1491,16 +1413,9 @@ impl<T> ops::IndexMut<ops::RangeFrom<usize>> for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeFull> for Vec<T> {
 
-    #[cfg(stage0)]
-    #[inline]
-    fn index_mut(&mut self, _index: &ops::RangeFull) -> &mut [T] {
-        self.as_mut_slice()
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index_mut(&mut self, _index: ops::RangeFull) -> &mut [T] {
-        self.as_mut_slice()
+        self
     }
 }
 
@@ -1519,7 +1434,13 @@ impl<T> ops::Deref for Vec<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::DerefMut for Vec<T> {
-    fn deref_mut(&mut self) -> &mut [T] { self.as_mut_slice() }
+    fn deref_mut(&mut self) -> &mut [T] {
+        unsafe {
+            let ptr = *self.ptr;
+            assume(!ptr.is_null());
+            slice::from_raw_parts_mut(ptr, self.len)
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1656,21 +1577,13 @@ impl<T: Ord> Ord for Vec<T> {
     }
 }
 
+#[unstable(feature = "collections",
+           reason = "will be replaced by slice syntax")]
+#[deprecated(since = "1.0.0", reason = "use &mut s[..] instead")]
 #[allow(deprecated)]
 impl<T> AsSlice<T> for Vec<T> {
-    /// Returns a slice into `self`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![feature(core)]
-    /// fn foo(slice: &[i32]) {}
-    ///
-    /// let vec = vec![1, 2];
-    /// foo(vec.as_slice());
-    /// ```
+    /// Deprecated: use `&mut s[..]` instead.
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice(&self) -> &[T] {
         self
     }
@@ -1694,7 +1607,7 @@ impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
         // This is (and should always remain) a no-op if the fields are
         // zeroed (when moving out, because of #[unsafe_no_drop_flag]).
-        if self.cap != 0 {
+        if self.cap != 0 && self.cap != mem::POST_DROP_USIZE {
             unsafe {
                 for x in &*self {
                     ptr::read(x);
@@ -1977,7 +1890,7 @@ impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
-        // self.ptr == self.end == null if drop has already been called,
+        // self.ptr == self.end == mem::POST_DROP_USIZE if drop has already been called,
         // so we can use #[unsafe_no_drop_flag].
 
         // destroy the remaining elements

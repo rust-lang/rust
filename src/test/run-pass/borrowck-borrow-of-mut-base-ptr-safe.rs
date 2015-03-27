@@ -15,12 +15,12 @@
 
 // pretty-expanded FIXME #23616
 
-fn foo<'a>(mut t0: &'a mut int,
-           mut t1: &'a mut int) {
-    let p: &int = &*t0; // Freezes `*t0`
+fn foo<'a>(mut t0: &'a mut isize,
+           mut t1: &'a mut isize) {
+    let p: &isize = &*t0; // Freezes `*t0`
     let mut t2 = &t0;
-    let q: &int = &**t2; // Freezes `*t0`, but that's ok...
-    let r: &int = &*t0; // ...after all, could do same thing directly.
+    let q: &isize = &**t2; // Freezes `*t0`, but that's ok...
+    let r: &isize = &*t0; // ...after all, could do same thing directly.
 }
 
 pub fn main() {

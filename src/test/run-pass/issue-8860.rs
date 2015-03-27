@@ -10,9 +10,9 @@
 
 // pretty-expanded FIXME #23616
 
-static mut DROP: int = 0;
-static mut DROP_S: int = 0;
-static mut DROP_T: int = 0;
+static mut DROP: isize = 0;
+static mut DROP_S: isize = 0;
+static mut DROP_T: isize = 0;
 
 struct S;
 impl Drop for S {
@@ -25,7 +25,7 @@ impl Drop for S {
 }
 fn f(ref _s: S) {}
 
-struct T { i: int }
+struct T { i: isize }
 impl Drop for T {
     fn drop(&mut self) {
         unsafe {

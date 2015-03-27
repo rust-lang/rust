@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(slice_patterns)]
+
 pub fn pat_vec_7() {
     match [7, 77, 777, 7777] {
         [x, y, ..] => x + y

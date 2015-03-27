@@ -8,13 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test slicing &expr[] is deprecated and gives a helpful error message.
+// Check that `T:'a` is contravariant in T.
 
-struct Foo;
+#![feature(rustc_attrs)]
 
-fn main() {
-    let x = Foo;
-    &x[];
-    //~^ WARN obsolete syntax
-    //~| ERROR cannot index
+#[rustc_variance]
+trait Foo: 'static { //~ ERROR types=[[];[-];[]]
 }
+
+#[rustc_variance]
+trait Bar<T> { //~ ERROR types=[[+];[-];[]]
+    fn do_it(&self)
+        where T: 'static;
+}
+
+fn main() { }

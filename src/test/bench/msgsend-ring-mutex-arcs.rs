@@ -25,15 +25,15 @@ use std::sync::{Arc, Future, Mutex, Condvar};
 use std::time::Duration;
 
 // A poor man's pipe.
-type pipe = Arc<(Mutex<Vec<uint>>, Condvar)>;
+type pipe = Arc<(Mutex<Vec<usize>>, Condvar)>;
 
-fn send(p: &pipe, msg: uint) {
+fn send(p: &pipe, msg: usize) {
     let &(ref lock, ref cond) = &**p;
     let mut arr = lock.lock().unwrap();
     arr.push(msg);
     cond.notify_one();
 }
-fn recv(p: &pipe) -> uint {
+fn recv(p: &pipe) -> usize {
     let &(ref lock, ref cond) = &**p;
     let mut arr = lock.lock().unwrap();
     while arr.is_empty() {
@@ -48,7 +48,7 @@ fn init() -> (pipe,pipe) {
 }
 
 
-fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
+fn thread_ring(i: usize, count: usize, num_chan: pipe, num_port: pipe) {
     let mut num_chan = Some(num_chan);
     let mut num_port = Some(num_port);
     // Send/Receive lots of messages.
@@ -74,8 +74,8 @@ fn main() {
         args.collect()
     };
 
-    let num_tasks = args[1].parse::<uint>().unwrap();
-    let msg_per_task = args[2].parse::<uint>().unwrap();
+    let num_tasks = args[1].parse::<usize>().unwrap();
+    let msg_per_task = args[2].parse::<usize>().unwrap();
 
     let (num_chan, num_port) = init();
 

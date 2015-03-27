@@ -14,7 +14,7 @@
 // aux-build:unboxed-closures-cross-crate.rs
 // pretty-expanded FIXME #23616
 
-extern crate "unboxed-closures-cross-crate" as ubcc;
+extern crate unboxed_closures_cross_crate as ubcc;
 
 fn main() {
     assert_eq!(ubcc::has_closures(), 2_usize);

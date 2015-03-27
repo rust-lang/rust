@@ -309,7 +309,7 @@ pub struct FnCtxt<'a, 'tcx: 'a> {
     // checking this function. On exit, if we find that *more* errors
     // have been reported, we will skip regionck and other work that
     // expects the types within the function to be consistent.
-    err_count_on_creation: uint,
+    err_count_on_creation: usize,
 
     ret_ty: ty::FnOutput<'tcx>,
 
@@ -467,7 +467,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, t: &'tcx ast::Ty) {
         match t.node {
             ast::TyFixedLengthVec(_, ref expr) => {
-                check_const_in_type(self.ccx, &**expr, self.ccx.tcx.types.uint);
+                check_const_in_type(self.ccx, &**expr, self.ccx.tcx.types.usize);
             }
             _ => {}
         }
@@ -611,7 +611,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherLocalsVisitor<'a, 'tcx> {
         match t.node {
             ast::TyFixedLengthVec(ref ty, ref count_expr) => {
                 self.visit_ty(&**ty);
-                check_expr_with_hint(self.fcx, &**count_expr, self.fcx.tcx().types.uint);
+                check_expr_with_hint(self.fcx, &**count_expr, self.fcx.tcx().types.usize);
             }
             _ => visit::walk_ty(self, t)
         }
@@ -1104,14 +1104,18 @@ fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
                 fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_NUMERIC_CASTS,
                                         e.id,
                                         span,
-                                        format!("trivial numeric cast: `{}` as `{}`",
+                                        format!("trivial numeric cast: `{}` as `{}`. Cast can be \
+                                                 replaced by coercion, this might require type \
+                                                 ascription or a temporary variable",
                                                 fcx.infcx().ty_to_string(t_e),
                                                 fcx.infcx().ty_to_string(t_1)));
             } else {
                 fcx.tcx().sess.add_lint(lint::builtin::TRIVIAL_CASTS,
                                         e.id,
                                         span,
-                                        format!("trivial cast: `{}` as `{}`",
+                                        format!("trivial cast: `{}` as `{}`. Cast can be \
+                                                 replaced by coercion, this might require type \
+                                                 ascription or a temporary variable",
                                                 fcx.infcx().ty_to_string(t_e),
                                                 fcx.infcx().ty_to_string(t_1)));
             }
@@ -1313,7 +1317,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self.tcx().sess
     }
 
-    pub fn err_count_since_creation(&self) -> uint {
+    pub fn err_count_since_creation(&self) -> usize {
         self.ccx.tcx.sess.err_count() - self.err_count_on_creation
     }
 
@@ -1432,7 +1436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub fn write_autoderef_adjustment(&self,
                                       node_id: ast::NodeId,
                                       span: Span,
-                                      derefs: uint) {
+                                      derefs: usize) {
         if derefs == 0 { return; }
         self.write_adjustment(
             node_id,
@@ -1909,7 +1913,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                span: Span,
                                class_id: ast::DefId,
                                items: &[ty::field_ty],
-                               idx: uint,
+                               idx: usize,
                                substs: &subst::Substs<'tcx>)
                                -> Option<Ty<'tcx>>
     {
@@ -1940,8 +1944,8 @@ impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
         Some(self.infcx().next_region_var(infer::MiscVariable(span)))
     }
 
-    fn anon_regions(&self, span: Span, count: uint)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>> {
+    fn anon_regions(&self, span: Span, count: usize)
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>> {
         Ok((0..count).map(|_| {
             self.infcx().next_region_var(infer::MiscVariable(span))
         }).collect())
@@ -1977,8 +1981,8 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                                  unresolved_type_action: UnresolvedTypeAction,
                                  mut lvalue_pref: LvaluePreference,
                                  mut should_stop: F)
-                                 -> (Ty<'tcx>, uint, Option<T>)
-    where F: FnMut(Ty<'tcx>, uint) -> Option<T>,
+                                 -> (Ty<'tcx>, usize, Option<T>)
+    where F: FnMut(Ty<'tcx>, usize) -> Option<T>,
 {
     debug!("autoderef(base_ty={}, opt_expr={}, lvalue_pref={:?})",
            base_ty.repr(fcx.tcx()),
@@ -2181,10 +2185,10 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // First, try built-in indexing.
     match (ty::index(adjusted_ty), &index_ty.sty) {
-        (Some(ty), &ty::ty_uint(ast::TyUs(_))) | (Some(ty), &ty::ty_infer(ty::IntVar(_))) => {
+        (Some(ty), &ty::ty_uint(ast::TyUs)) | (Some(ty), &ty::ty_infer(ty::IntVar(_))) => {
             debug!("try_index_step: success, using built-in indexing");
             fcx.write_adjustment(base_expr.id, base_expr.span, ty::AdjustDerefRef(adjustment));
-            return Some((tcx.types.uint, ty));
+            return Some((tcx.types.usize, ty));
         }
         _ => {}
     }
@@ -2485,7 +2489,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 }
 
 // FIXME(#17596) Ty<'tcx> is incorrectly invariant w.r.t 'tcx.
-fn err_args<'tcx>(tcx: &ty::ctxt<'tcx>, len: uint) -> Vec<Ty<'tcx>> {
+fn err_args<'tcx>(tcx: &ty::ctxt<'tcx>, len: usize) -> Vec<Ty<'tcx>> {
     (0..len).map(|_| tcx.types.err).collect()
 }
 
@@ -2523,8 +2527,8 @@ fn check_lit<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 match ty.sty {
                     ty::ty_int(_) | ty::ty_uint(_) => Some(ty),
                     ty::ty_char => Some(tcx.types.u8),
-                    ty::ty_ptr(..) => Some(tcx.types.uint),
-                    ty::ty_bare_fn(..) => Some(tcx.types.uint),
+                    ty::ty_ptr(..) => Some(tcx.types.usize),
+                    ty::ty_bare_fn(..) => Some(tcx.types.usize),
                     _ => None
                 }
             });
@@ -2633,7 +2637,7 @@ pub enum AutorefArgs {
 /// passed as a single parameter. For example, if tupling is enabled, this
 /// function:
 ///
-///     fn f(x: (int, int))
+///     fn f(x: (isize, isize))
 ///
 /// Can be called as:
 ///
@@ -2916,7 +2920,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             });
 
         if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op.node) {
-            // Shift is a special case: rhs must be uint, no matter what lhs is
+            // Shift is a special case: rhs must be usize, no matter what lhs is
             check_expr(fcx, &**rhs);
             let rhs_ty = fcx.expr_ty(&**rhs);
             let rhs_ty = structurally_resolved_type(fcx, rhs.span, rhs_ty);
@@ -3179,7 +3183,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                 expr: &'tcx ast::Expr,
                                 lvalue_pref: LvaluePreference,
                                 base: &'tcx ast::Expr,
-                                idx: codemap::Spanned<uint>) {
+                                idx: codemap::Spanned<usize>) {
         let tcx = fcx.ccx.tcx;
         check_expr_with_lvalue_pref(fcx, base, lvalue_pref);
         let expr_t = structurally_resolved_type(fcx, expr.span,
@@ -3829,7 +3833,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       }
       ast::ExprCast(ref e, ref t) => {
         if let ast::TyFixedLengthVec(_, ref count_expr) = t.node {
-            check_expr_with_hint(fcx, &**count_expr, tcx.types.uint);
+            check_expr_with_hint(fcx, &**count_expr, tcx.types.usize);
         }
 
         // Find the type of `e`. Supply hints based on the type we are casting to,
@@ -3886,7 +3890,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         fcx.write_ty(id, typ);
       }
       ast::ExprRepeat(ref element, ref count_expr) => {
-        check_expr_has_type(fcx, &**count_expr, tcx.types.uint);
+        check_expr_has_type(fcx, &**count_expr, tcx.types.usize);
         let count = ty::eval_repeat_count(fcx.tcx(), &**count_expr);
 
         let uty = match expected {
@@ -4194,16 +4198,16 @@ impl<'tcx> Expectation<'tcx> {
     /// is useful in determining the concrete type.
     ///
     /// The primary use case is where the expected type is a fat pointer,
-    /// like `&[int]`. For example, consider the following statement:
+    /// like `&[isize]`. For example, consider the following statement:
     ///
-    ///    let x: &[int] = &[1, 2, 3];
+    ///    let x: &[isize] = &[1, 2, 3];
     ///
     /// In this case, the expected type for the `&[1, 2, 3]` expression is
-    /// `&[int]`. If however we were to say that `[1, 2, 3]` has the
-    /// expectation `ExpectHasType([int])`, that would be too strong --
-    /// `[1, 2, 3]` does not have the type `[int]` but rather `[int; 3]`.
+    /// `&[isize]`. If however we were to say that `[1, 2, 3]` has the
+    /// expectation `ExpectHasType([isize])`, that would be too strong --
+    /// `[1, 2, 3]` does not have the type `[isize]` but rather `[isize; 3]`.
     /// It is only the `&[1, 2, 3]` expression as a whole that can be coerced
-    /// to the type `&[int]`. Therefore, we propagate this more limited hint,
+    /// to the type `&[isize]`. Therefore, we propagate this more limited hint,
     /// which still is useful, because it informs integer literals and the like.
     /// See the test case `test/run-pass/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
@@ -4590,14 +4594,12 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                      ty: attr::IntType,
                      disr: ty::Disr) -> bool {
         fn uint_in_range(ccx: &CrateCtxt, ty: ast::UintTy, disr: ty::Disr) -> bool {
-            #![allow(trivial_numeric_casts)]
-
             match ty {
                 ast::TyU8 => disr as u8 as Disr == disr,
                 ast::TyU16 => disr as u16 as Disr == disr,
                 ast::TyU32 => disr as u32 as Disr == disr,
                 ast::TyU64 => disr as u64 as Disr == disr,
-                ast::TyUs(_) => uint_in_range(ccx, ccx.tcx.sess.target.uint_type, disr)
+                ast::TyUs => uint_in_range(ccx, ccx.tcx.sess.target.uint_type, disr)
             }
         }
         fn int_in_range(ccx: &CrateCtxt, ty: ast::IntTy, disr: ty::Disr) -> bool {
@@ -4606,7 +4608,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 ast::TyI16 => disr as i16 as Disr == disr,
                 ast::TyI32 => disr as i32 as Disr == disr,
                 ast::TyI64 => disr as i64 as Disr == disr,
-                ast::TyIs(_) => int_in_range(ccx, ccx.tcx.sess.target.int_type, disr)
+                ast::TyIs => int_in_range(ccx, ccx.tcx.sess.target.int_type, disr)
             }
         }
         match ty {
@@ -4620,7 +4622,6 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                           id: ast::NodeId,
                           hint: attr::ReprAttr)
                           -> Vec<Rc<ty::VariantInfo<'tcx>>> {
-        #![allow(trivial_numeric_casts)]
         use std::num::Int;
 
         let rty = ty::node_id_to_type(ccx.tcx, id);
@@ -4650,7 +4651,9 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                     let inh = static_inherited_fields(ccx);
                     let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(rty), e.id);
                     let declty = match hint {
-                        attr::ReprAny | attr::ReprPacked | attr::ReprExtern => fcx.tcx().types.int,
+                        attr::ReprAny | attr::ReprPacked |
+                        attr::ReprExtern => fcx.tcx().types.isize,
+
                         attr::ReprInt(_, attr::SignedInt(ity)) => {
                             ty::mk_mach_int(fcx.tcx(), ity)
                         }
@@ -5319,7 +5322,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             match t.sty {
                 ty::ty_param(ParamTy {idx, ..}) => {
                     debug!("Found use of ty param num {}", idx);
-                    tps_used[idx as uint] = true;
+                    tps_used[idx as usize] = true;
                 }
                 _ => ()
             }
@@ -5378,8 +5381,8 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         let (n_tps, inputs, output) = match &name[..] {
             "breakpoint" => (0, Vec::new(), ty::mk_nil(tcx)),
             "size_of" |
-            "pref_align_of" | "min_align_of" => (1, Vec::new(), ccx.tcx.types.uint),
-            "init" => (1, Vec::new(), param(ccx, 0)),
+            "pref_align_of" | "min_align_of" => (1, Vec::new(), ccx.tcx.types.usize),
+            "init" | "init_dropped" => (1, Vec::new(), param(ccx, 0)),
             "uninit" => (1, Vec::new(), param(ccx, 0)),
             "forget" => (1, vec!( param(ccx, 0) ), ty::mk_nil(tcx)),
             "transmute" => (2, vec!( param(ccx, 0) ), param(ccx, 1)),
@@ -5407,7 +5410,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                       ty: param(ccx, 0),
                       mutbl: ast::MutImmutable
                   }),
-                  ccx.tcx.types.int
+                  ccx.tcx.types.isize
                ),
                ty::mk_ptr(tcx, ty::mt {
                    ty: param(ccx, 0),
@@ -5426,7 +5429,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                       ty: param(ccx, 0),
                       mutbl: ast::MutImmutable
                   }),
-                  tcx.types.uint,
+                  tcx.types.usize,
                ),
                ty::mk_nil(tcx))
             }
@@ -5438,7 +5441,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                       mutbl: ast::MutMutable
                   }),
                   tcx.types.u8,
-                  tcx.types.uint,
+                  tcx.types.usize,
                ),
                ty::mk_nil(tcx))
             }

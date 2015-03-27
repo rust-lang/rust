@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait Foo { fn f(&self) -> int; }
-pub trait Bar { fn g(&self) -> int; }
-pub trait Baz { fn h(&self) -> int; }
+pub trait Foo { fn f(&self) -> isize; }
+pub trait Bar { fn g(&self) -> isize; }
+pub trait Baz { fn h(&self) -> isize; }
 
 pub trait Quux: Foo + Bar + Baz { }
 

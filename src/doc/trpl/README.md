@@ -11,8 +11,7 @@ navigate through the menu on the left.
 <h2 class="section-header"><a href="basic.html">Basics</a></h2>
 
 This section is a linear introduction to the basic syntax and semantics of
-Rust. It has individual sections on each part of Rust's syntax, and culminates
-in a small project: a guessing game.
+Rust. It has individual sections on each part of Rust's syntax.
 
 After reading "Basics," you will have a good foundation to learn more about
 Rust, and can write very simple programs.
@@ -29,7 +28,12 @@ and will be able to understand most Rust code and write more complex programs.
 
 In a similar fashion to "Intermediate," this section is full of individual,
 deep-dive chapters, which stand alone and can be read in any order. These
-chapters focus on the most complex features, as well as some things that
-are only available in upcoming versions of Rust.
+chapters focus on the most complex features,
 
-After reading "Advanced," you'll be a Rust expert!
+<h2 class="section-header"><a href="unstable.html">Unstable</a></h2>
+
+In a similar fashion to "Intermediate," this section is full of individual,
+deep-dive chapters, which stand alone and can be read in any order.
+
+This chapter contains things that are only available on the nightly channel of
+Rust.

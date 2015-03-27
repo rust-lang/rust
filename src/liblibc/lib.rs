@@ -76,7 +76,7 @@
 
 #![allow(bad_style, raw_pointer_derive)]
 #![cfg_attr(target_os = "nacl", allow(unused_imports))]
-#[cfg(feature = "cargo-build")] extern crate "std" as core;
+#[cfg(feature = "cargo-build")] extern crate std as core;
 #[cfg(not(feature = "cargo-build"))] extern crate core;
 
 #[cfg(test)] extern crate std;

@@ -12,8 +12,8 @@
 
 #[derive(Copy)]
 pub struct Foo {
-    f1: int,
-    _f2: int,
+    f1: isize,
+    _f2: isize,
 }
 
 #[inline(never)]

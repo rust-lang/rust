@@ -14,10 +14,10 @@
 
 struct S<T>(T);
 
-static s1: S<S<uint>>=S(S(0));
-static s2: S<uint>=S(0);
+static s1: S<S<usize>>=S(S(0));
+static s2: S<usize>=S(0);
 
 fn main() {
-    let foo: S<S<uint>>=S(S(0));
-    let foo: S<uint>=S(0);
+    let foo: S<S<usize>>=S(S(0));
+    let foo: S<usize>=S(0);
 }

@@ -99,7 +99,5 @@ You can also take a slice of a vector, `String`, or `&str`, because they are
 backed by arrays. Slices have type `&[T]`, which we'll talk about when we cover
 generics.
 
-We have now learned all of the most basic Rust concepts. We're ready to start
-building ourselves a guessing game, we just need to know one last thing: how to
-get input from the keyboard. You can't have a guessing game without the ability
-to guess!
+We have now learned all of the most basic Rust concepts. Next, we learn how to
+get input from the keyboard.

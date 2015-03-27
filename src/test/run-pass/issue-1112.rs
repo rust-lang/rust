@@ -24,7 +24,7 @@ struct X<T> {
 }
 
 pub fn main() {
-    let x: X<int> = X {
+    let x: X<isize> = X {
         a: 12345678,
         b: 9,
         c: true,

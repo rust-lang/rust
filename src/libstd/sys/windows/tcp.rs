@@ -77,7 +77,7 @@ impl TcpListener {
 
     pub fn socket(&self) -> sock_t { self.sock }
 
-    pub fn listen(self, backlog: int) -> IoResult<TcpAcceptor> {
+    pub fn listen(self, backlog: isize) -> IoResult<TcpAcceptor> {
         match unsafe { libc::listen(self.socket(), backlog as libc::c_int) } {
             -1 => Err(last_net_error()),
 

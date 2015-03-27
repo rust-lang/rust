@@ -12,9 +12,9 @@
 // pretty-expanded FIXME #23616
 
 pub fn main() {
-    let _: Box<int>;
+    let _: Box<isize>;
 }
 
-fn f(_i: Box<int>) -> Box<int> {
+fn f(_i: Box<isize>) -> Box<isize> {
     panic!();
 }

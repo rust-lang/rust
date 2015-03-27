@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn foo<T>(y: Option<T>) {
-    let mut x: int;
-    let mut rs: Vec<int> = Vec::new();
+    let mut x: isize;
+    let mut rs: Vec<isize> = Vec::new();
     /* tests that x doesn't get put in the precondition for the
        entire if expression */
 
@@ -25,4 +25,4 @@ fn foo<T>(y: Option<T>) {
     return;
 }
 
-pub fn main() { println!("hello"); foo::<int>(Some::<int>(5)); }
+pub fn main() { println!("hello"); foo::<isize>(Some::<isize>(5)); }

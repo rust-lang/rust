@@ -9,11 +9,11 @@
 // except according to those terms.
 
 struct A {
-    a: int,
-    pub b: int,
+    a: isize,
+    pub b: isize,
 }
 
 pub struct B {
-    pub a: int,
-    b: int,
+    pub a: isize,
+    b: isize,
 }

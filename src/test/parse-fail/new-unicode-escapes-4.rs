@@ -9,5 +9,8 @@
 // except according to those terms.
 
 pub fn main() {
-    let s = "\u{lol}"; //~ ERROR illegal character in unicode escape
+    let s = "\u{lol}";
+     //~^ ERROR illegal character in unicode escape: l
+     //~^^ ERROR illegal character in unicode escape: o
+     //~^^^ ERROR illegal character in unicode escape: l
 }

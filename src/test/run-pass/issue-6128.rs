@@ -23,16 +23,16 @@ trait Graph<Node, Edge> {
 
 }
 
-impl<E> Graph<int, E> for HashMap<int, int> {
+impl<E> Graph<isize, E> for HashMap<isize, isize> {
     fn f(&self, _e: E) {
         panic!();
     }
-    fn g(&self, _e: int) {
+    fn g(&self, _e: isize) {
         panic!();
     }
 }
 
 pub fn main() {
-    let g : Box<HashMap<int,int>> = box HashMap::new();
-    let _g2 : Box<Graph<int,int>> = g as Box<Graph<int,int>>;
+    let g : Box<HashMap<isize,isize>> = box HashMap::new();
+    let _g2 : Box<Graph<isize,isize>> = g as Box<Graph<isize,isize>>;
 }

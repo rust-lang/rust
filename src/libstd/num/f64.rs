@@ -101,27 +101,27 @@ impl Float for f64 {
 
     #[allow(deprecated)]
     #[inline]
-    fn mantissa_digits(unused_self: Option<f64>) -> uint {
+    fn mantissa_digits(unused_self: Option<f64>) -> usize {
         num::Float::mantissa_digits(unused_self)
     }
     #[allow(deprecated)]
     #[inline]
-    fn digits(unused_self: Option<f64>) -> uint { num::Float::digits(unused_self) }
+    fn digits(unused_self: Option<f64>) -> usize { num::Float::digits(unused_self) }
     #[allow(deprecated)]
     #[inline]
     fn epsilon() -> f64 { num::Float::epsilon() }
     #[allow(deprecated)]
     #[inline]
-    fn min_exp(unused_self: Option<f64>) -> int { num::Float::min_exp(unused_self) }
+    fn min_exp(unused_self: Option<f64>) -> isize { num::Float::min_exp(unused_self) }
     #[allow(deprecated)]
     #[inline]
-    fn max_exp(unused_self: Option<f64>) -> int { num::Float::max_exp(unused_self) }
+    fn max_exp(unused_self: Option<f64>) -> isize { num::Float::max_exp(unused_self) }
     #[allow(deprecated)]
     #[inline]
-    fn min_10_exp(unused_self: Option<f64>) -> int { num::Float::min_10_exp(unused_self) }
+    fn min_10_exp(unused_self: Option<f64>) -> isize { num::Float::min_10_exp(unused_self) }
     #[allow(deprecated)]
     #[inline]
-    fn max_10_exp(unused_self: Option<f64>) -> int { num::Float::max_10_exp(unused_self) }
+    fn max_10_exp(unused_self: Option<f64>) -> isize { num::Float::max_10_exp(unused_self) }
     #[allow(deprecated)]
     #[inline]
     fn min_value() -> f64 { num::Float::min_value() }
@@ -210,11 +210,11 @@ impl Float for f64 {
     /// - `self = x * pow(2, exp)`
     /// - `0.5 <= abs(x) < 1.0`
     #[inline]
-    fn frexp(self) -> (f64, int) {
+    fn frexp(self) -> (f64, isize) {
         unsafe {
             let mut exp = 0;
             let x = cmath::frexp(self, &mut exp);
-            (x, exp as int)
+            (x, exp as isize)
         }
     }
 
@@ -485,7 +485,7 @@ impl f64 {
                            `std::f64::MANTISSA_DIGITS` as appropriate")]
     #[allow(deprecated)]
     #[inline]
-    pub fn mantissa_digits(unused_self: Option<f64>) -> uint {
+    pub fn mantissa_digits(unused_self: Option<f64>) -> usize {
         num::Float::mantissa_digits(unused_self)
     }
 
@@ -495,7 +495,7 @@ impl f64 {
                  reason = "use `std::f32::DIGITS` or `std::f64::DIGITS` as appropriate")]
     #[allow(deprecated)]
     #[inline]
-    pub fn digits(unused_self: Option<f64>) -> uint { num::Float::digits(unused_self) }
+    pub fn digits(unused_self: Option<f64>) -> usize { num::Float::digits(unused_self) }
 
     /// Deprecated: use `std::f32::EPSILON` or `std::f64::EPSILON` instead.
     #[unstable(feature = "std_misc")]
@@ -511,7 +511,7 @@ impl f64 {
                  reason = "use `std::f32::MIN_EXP` or `std::f64::MIN_EXP` as appropriate")]
     #[allow(deprecated)]
     #[inline]
-    pub fn min_exp(unused_self: Option<f64>) -> int { num::Float::min_exp(unused_self) }
+    pub fn min_exp(unused_self: Option<f64>) -> isize { num::Float::min_exp(unused_self) }
 
     /// Deprecated: use `std::f32::MAX_EXP` or `std::f64::MAX_EXP` instead.
     #[unstable(feature = "std_misc")]
@@ -519,7 +519,7 @@ impl f64 {
                  reason = "use `std::f32::MAX_EXP` or `std::f64::MAX_EXP` as appropriate")]
     #[allow(deprecated)]
     #[inline]
-    pub fn max_exp(unused_self: Option<f64>) -> int { num::Float::max_exp(unused_self) }
+    pub fn max_exp(unused_self: Option<f64>) -> isize { num::Float::max_exp(unused_self) }
 
     /// Deprecated: use `std::f32::MIN_10_EXP` or `std::f64::MIN_10_EXP` instead.
     #[unstable(feature = "std_misc")]
@@ -527,7 +527,7 @@ impl f64 {
                  reason = "use `std::f32::MIN_10_EXP` or `std::f64::MIN_10_EXP` as appropriate")]
     #[allow(deprecated)]
     #[inline]
-    pub fn min_10_exp(unused_self: Option<f64>) -> int { num::Float::min_10_exp(unused_self) }
+    pub fn min_10_exp(unused_self: Option<f64>) -> isize { num::Float::min_10_exp(unused_self) }
 
     /// Deprecated: use `std::f32::MAX_10_EXP` or `std::f64::MAX_10_EXP` instead.
     #[unstable(feature = "std_misc")]
@@ -535,7 +535,7 @@ impl f64 {
                  reason = "use `std::f32::MAX_10_EXP` or `std::f64::MAX_10_EXP` as appropriate")]
     #[allow(deprecated)]
     #[inline]
-    pub fn max_10_exp(unused_self: Option<f64>) -> int { num::Float::max_10_exp(unused_self) }
+    pub fn max_10_exp(unused_self: Option<f64>) -> isize { num::Float::max_10_exp(unused_self) }
 
     /// Returns the smallest finite value that this type can represent.
     ///
@@ -1134,7 +1134,7 @@ impl f64 {
     #[unstable(feature = "std_misc",
                reason = "pending integer conventions")]
     #[inline]
-    pub fn ldexp(x: f64, exp: int) -> f64 {
+    pub fn ldexp(x: f64, exp: isize) -> f64 {
         unsafe { cmath::ldexp(x, exp as c_int) }
     }
 
@@ -1161,11 +1161,11 @@ impl f64 {
     #[unstable(feature = "std_misc",
                reason = "pending integer conventions")]
     #[inline]
-    pub fn frexp(self) -> (f64, int) {
+    pub fn frexp(self) -> (f64, isize) {
         unsafe {
             let mut exp = 0;
             let x = cmath::frexp(self, &mut exp);
-            (x, exp as int)
+            (x, exp as isize)
         }
     }
 
@@ -1687,7 +1687,7 @@ pub fn to_str_radix_special(num: f64, rdx: u32) -> (String, bool) {
 /// * digits - The number of significant digits
 #[inline]
 #[unstable(feature = "std_misc", reason = "may be removed or relocated")]
-pub fn to_str_exact(num: f64, dig: uint) -> String {
+pub fn to_str_exact(num: f64, dig: usize) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10, true, SignNeg, DigExact(dig), ExpNone, false);
     r
@@ -1702,7 +1702,7 @@ pub fn to_str_exact(num: f64, dig: uint) -> String {
 /// * digits - The number of significant digits
 #[inline]
 #[unstable(feature = "std_misc", reason = "may be removed or relocated")]
-pub fn to_str_digits(num: f64, dig: uint) -> String {
+pub fn to_str_digits(num: f64, dig: usize) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10, true, SignNeg, DigMax(dig), ExpNone, false);
     r
@@ -1718,7 +1718,7 @@ pub fn to_str_digits(num: f64, dig: uint) -> String {
 /// * upper - Use `E` instead of `e` for the exponent sign
 #[inline]
 #[unstable(feature = "std_misc", reason = "may be removed or relocated")]
-pub fn to_str_exp_exact(num: f64, dig: uint, upper: bool) -> String {
+pub fn to_str_exp_exact(num: f64, dig: usize, upper: bool) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10, true, SignNeg, DigExact(dig), ExpDec, upper);
     r
@@ -1734,7 +1734,7 @@ pub fn to_str_exp_exact(num: f64, dig: uint, upper: bool) -> String {
 /// * upper - Use `E` instead of `e` for the exponent sign
 #[inline]
 #[unstable(feature = "std_misc", reason = "may be removed or relocated")]
-pub fn to_str_exp_digits(num: f64, dig: uint, upper: bool) -> String {
+pub fn to_str_exp_digits(num: f64, dig: usize, upper: bool) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10, true, SignNeg, DigMax(dig), ExpDec, upper);
     r

@@ -14,13 +14,13 @@
 // pretty-expanded FIXME #23616
 
 pub struct Context<'tcx> {
-    vec: &'tcx Vec<int>
+    vec: &'tcx Vec<isize>
 }
 
-pub type Cmd<'a> = &'a int;
+pub type Cmd<'a> = &'a isize;
 
 pub type DecodeInlinedItem<'a> =
-    Box<for<'tcx> FnMut(Cmd, &Context<'tcx>) -> Result<&'tcx int, ()> + 'a>;
+    Box<for<'tcx> FnMut(Cmd, &Context<'tcx>) -> Result<&'tcx isize, ()> + 'a>;
 
 fn foo(d: DecodeInlinedItem) {
 }

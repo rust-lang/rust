@@ -44,9 +44,9 @@
 #![omit_gdb_pretty_printer_section]
 
 struct Struct {
-    a: int,
+    a: isize,
     b: f64,
-    c: uint
+    c: usize
 }
 
 fn main() {
@@ -80,7 +80,7 @@ fn main() {
     immedate_env();
 }
 
-fn do_something(_: &int, _:&int, _:&int) {
+fn do_something(_: &isize, _:&isize, _:&isize) {
 
 }
 

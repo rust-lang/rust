@@ -1,29 +1,5 @@
 % Compiler Plugins
 
-<div class="unstable-feature">
-
-<p>
-<b>Warning:</b> Plugins are an advanced, unstable feature! For many details,
-the only available documentation is the <a
-href="../syntax/index.html"><code>libsyntax</code></a> and <a
-href="../rustc/index.html"><code>librustc</code></a> API docs, or even the source
-code itself. These internal compiler APIs are also subject to change at any
-time.
-</p>
-
-<p>
-For defining new syntax it is often much easier to use Rust's <a
-href="macros.html">built-in macro system</a>.
-</p>
-
-<p style="margin-bottom: 0">
-The code in this document uses language features not covered in the Rust
-Guide.  See the <a href="../reference.html">Reference Manual</a> for more
-information.
-</p>
-
-</div>
-
 # Introduction
 
 `rustc` can load compiler plugins, which are user-provided libraries that

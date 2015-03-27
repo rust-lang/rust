@@ -9,6 +9,6 @@
 // except according to those terms.
 
 pub fn main() {
-    let x: int = 3;
-    println!("&x={:x}", (&x as *const int as uint));
+    let x: isize = 3;
+    println!("&x={:x}", (&x as *const isize as usize));
 }

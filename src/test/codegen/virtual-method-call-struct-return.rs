@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub struct Stuff {
-  a: int,
+  a: isize,
   b: f64
 }
 
@@ -18,6 +18,6 @@ pub trait Trait {
 }
 
 #[no_mangle]
-pub fn test(t: &Trait) -> int {
+pub fn test(t: &Trait) -> isize {
     t.method().a
 }

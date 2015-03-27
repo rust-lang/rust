@@ -694,7 +694,7 @@ impl FunctionDebugContext {
 struct FunctionDebugContextData {
     scope_map: RefCell<NodeMap<DIScope>>,
     fn_metadata: DISubprogram,
-    argument_counter: Cell<uint>,
+    argument_counter: Cell<usize>,
     source_locations_enabled: Cell<bool>,
     source_location_override: Cell<bool>,
 }
@@ -708,7 +708,7 @@ enum VariableAccess<'a> {
 }
 
 enum VariableKind {
-    ArgumentVariable(uint /*index*/),
+    ArgumentVariable(usize /*index*/),
     LocalVariable,
     CapturedVariable,
 }
@@ -876,7 +876,7 @@ pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
 pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                 node_id: ast::NodeId,
                                                 env_pointer: ValueRef,
-                                                env_index: uint,
+                                                env_index: usize,
                                                 captured_by_ref: bool,
                                                 span: Span) {
     if bcx.unreachable.get() ||
@@ -1814,14 +1814,14 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_bool => ("bool".to_string(), DW_ATE_boolean),
         ty::ty_char => ("char".to_string(), DW_ATE_unsigned_char),
         ty::ty_int(int_ty) => match int_ty {
-            ast::TyIs(_) => ("isize".to_string(), DW_ATE_signed),
+            ast::TyIs => ("isize".to_string(), DW_ATE_signed),
             ast::TyI8 => ("i8".to_string(), DW_ATE_signed),
             ast::TyI16 => ("i16".to_string(), DW_ATE_signed),
             ast::TyI32 => ("i32".to_string(), DW_ATE_signed),
             ast::TyI64 => ("i64".to_string(), DW_ATE_signed)
         },
         ty::ty_uint(uint_ty) => match uint_ty {
-            ast::TyUs(_) => ("usize".to_string(), DW_ATE_unsigned),
+            ast::TyUs => ("usize".to_string(), DW_ATE_unsigned),
             ast::TyU8 => ("u8".to_string(), DW_ATE_unsigned),
             ast::TyU16 => ("u16".to_string(), DW_ATE_unsigned),
             ast::TyU32 => ("u32".to_string(), DW_ATE_unsigned),
@@ -1873,7 +1873,7 @@ fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 //=-----------------------------------------------------------------------------
 
 enum MemberOffset {
-    FixedMemberOffset { bytes: uint },
+    FixedMemberOffset { bytes: usize },
     // For ComputedMemberOffset, the offset is read from the llvm type definition
     ComputedMemberOffset
 }
@@ -2022,7 +2022,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
         }
 
         let field_size = if self.is_simd {
-            machine::llsize_of_alloc(cx, type_of::type_of(cx, self.fields[0].mt.ty)) as uint
+            machine::llsize_of_alloc(cx, type_of::type_of(cx, self.fields[0].mt.ty)) as usize
         } else {
             0xdeadbeef
         };
@@ -2245,7 +2245,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // DWARF representation of enums uniform.
 
                 // First create a description of the artificial wrapper struct:
-                let non_null_variant = &(*self.variants)[non_null_variant_index as uint];
+                let non_null_variant = &(*self.variants)[non_null_variant_index as usize];
                 let non_null_variant_name = token::get_name(non_null_variant.name);
 
                 // The llvm type and metadata of the pointer
@@ -2290,7 +2290,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
 
                 // Encode the information about the null variant in the union
                 // member's name.
-                let null_variant_index = (1 - non_null_variant_index) as uint;
+                let null_variant_index = (1 - non_null_variant_index) as usize;
                 let null_variant_name = token::get_name((*self.variants)[null_variant_index].name);
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
                                                 0,
@@ -2316,7 +2316,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     describe_enum_variant(cx,
                                           self.enum_type,
                                           struct_def,
-                                          &*(*self.variants)[nndiscr as uint],
+                                          &*(*self.variants)[nndiscr as usize],
                                           OptimizedDiscriminant,
                                           self.containing_scope,
                                           self.span);
@@ -2331,7 +2331,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
 
                 // Encode the information about the null variant in the union
                 // member's name.
-                let null_variant_index = (1 - nndiscr) as uint;
+                let null_variant_index = (1 - nndiscr) as usize;
                 let null_variant_name = token::get_name((*self.variants)[null_variant_index].name);
                 let discrfield = discrfield.iter()
                                            .skip(1)
@@ -2813,7 +2813,7 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         MemberDescription {
             name: "length".to_string(),
             llvm_type: member_llvm_types[1],
-            type_metadata: type_metadata(cx, cx.tcx().types.uint, span),
+            type_metadata: type_metadata(cx, cx.tcx().types.usize, span),
             offset: ComputedMemberOffset,
             flags: FLAGS_NONE
         },
@@ -3108,12 +3108,12 @@ impl MetadataCreationResult {
 
 #[derive(Copy, PartialEq)]
 enum InternalDebugLocation {
-    KnownLocation { scope: DIScope, line: uint, col: uint },
+    KnownLocation { scope: DIScope, line: usize, col: usize },
     UnknownLocation
 }
 
 impl InternalDebugLocation {
-    fn new(scope: DIScope, line: uint, col: uint) -> InternalDebugLocation {
+    fn new(scope: DIScope, line: usize, col: usize) -> InternalDebugLocation {
         KnownLocation {
             scope: scope,
             line: line,
@@ -3745,12 +3745,12 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_bool              => output.push_str("bool"),
         ty::ty_char              => output.push_str("char"),
         ty::ty_str               => output.push_str("str"),
-        ty::ty_int(ast::TyIs(_))     => output.push_str("isize"),
+        ty::ty_int(ast::TyIs)     => output.push_str("isize"),
         ty::ty_int(ast::TyI8)    => output.push_str("i8"),
         ty::ty_int(ast::TyI16)   => output.push_str("i16"),
         ty::ty_int(ast::TyI32)   => output.push_str("i32"),
         ty::ty_int(ast::TyI64)   => output.push_str("i64"),
-        ty::ty_uint(ast::TyUs(_))    => output.push_str("usize"),
+        ty::ty_uint(ast::TyUs)    => output.push_str("usize"),
         ty::ty_uint(ast::TyU8)   => output.push_str("u8"),
         ty::ty_uint(ast::TyU16)  => output.push_str("u16"),
         ty::ty_uint(ast::TyU32)  => output.push_str("u32"),

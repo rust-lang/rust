@@ -15,7 +15,7 @@
 
 fn foo<T: Sync>(x: T) -> T { x }
 
-struct F { field: int }
+struct F { field: isize }
 
 pub fn main() {
     /*foo(1);

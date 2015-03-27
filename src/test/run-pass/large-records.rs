@@ -14,18 +14,18 @@
 
 // pretty-expanded FIXME #23616
 
-struct Large {a: int,
-             b: int,
-             c: int,
-             d: int,
-             e: int,
-             f: int,
-             g: int,
-             h: int,
-             i: int,
-             j: int,
-             k: int,
-             l: int}
+struct Large {a: isize,
+             b: isize,
+             c: isize,
+             d: isize,
+             e: isize,
+             f: isize,
+             g: isize,
+             h: isize,
+             i: isize,
+             j: isize,
+             k: isize,
+             l: isize}
 fn f() {
     let _foo: Large =
         Large {a: 0,

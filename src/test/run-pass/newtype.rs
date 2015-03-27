@@ -13,11 +13,11 @@ struct mytype(Mytype);
 
 #[derive(Copy)]
 struct Mytype {
-    compute: fn(mytype) -> int,
-    val: int,
+    compute: fn(mytype) -> isize,
+    val: isize,
 }
 
-fn compute(i: mytype) -> int {
+fn compute(i: mytype) -> isize {
     let mytype(m) = i;
     return m.val + 20;
 }

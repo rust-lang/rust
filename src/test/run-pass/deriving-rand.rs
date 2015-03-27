@@ -18,7 +18,7 @@ use std::rand;
 struct A;
 
 #[derive(Rand)]
-struct B(int, int);
+struct B(isize, isize);
 
 #[derive(Rand)]
 struct C {
@@ -29,7 +29,7 @@ struct C {
 #[derive(Rand)]
 enum D {
     D0,
-    D1(uint),
+    D1(usize),
     D2 { x: (), y: () }
 }
 

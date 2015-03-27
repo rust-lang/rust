@@ -169,7 +169,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
         match t.node {
             ast::TyFixedLengthVec(ref ty, ref count_expr) => {
                 self.visit_ty(&**ty);
-                write_ty_to_tcx(self.tcx(), count_expr.id, self.tcx().types.uint);
+                write_ty_to_tcx(self.tcx(), count_expr.id, self.tcx().types.usize);
             }
             _ => visit::walk_ty(self, t)
         }

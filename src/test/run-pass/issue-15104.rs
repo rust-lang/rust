@@ -10,11 +10,13 @@
 
 // pretty-expanded FIXME #23616
 
+#![feature(slice_patterns)]
+
 fn main() {
     assert_eq!(count_members(&[1, 2, 3, 4]), 4);
 }
 
-fn count_members(v: &[uint]) -> uint {
+fn count_members(v: &[usize]) -> usize {
     match v {
         []         => 0,
         [_]        => 1,

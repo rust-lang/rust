@@ -11,6 +11,7 @@
 // pretty-expanded FIXME #23616
 
 #![feature(advanced_slice_patterns)]
+#![feature(slice_patterns)]
 
 fn foldl<T, U, F>(values: &[T],
                   initial: U,

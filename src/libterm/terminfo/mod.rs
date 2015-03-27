@@ -82,7 +82,7 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
                                .get("setaf")
                                .unwrap()
                                ,
-                           &[Number(color as int)], &mut Variables::new());
+                           &[Number(color as isize)], &mut Variables::new());
             if s.is_ok() {
                 try!(self.out.write_all(&s.unwrap()));
                 return Ok(true)
@@ -99,7 +99,7 @@ impl<T: Write+Send+'static> Terminal<T> for TerminfoTerminal<T> {
                                .get("setab")
                                .unwrap()
                                ,
-                           &[Number(color as int)], &mut Variables::new());
+                           &[Number(color as isize)], &mut Variables::new());
             if s.is_ok() {
                 try!(self.out.write_all(&s.unwrap()));
                 return Ok(true)

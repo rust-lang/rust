@@ -16,7 +16,7 @@ use std::thread::Thread;
 pub fn main() {
     let (tx, rx) = channel();
 
-    // Spawn 10 tasks each sending us back one int.
+    // Spawn 10 tasks each sending us back one isize.
     let mut i = 10;
     while (i > 0) {
         println!("{}", i);
@@ -38,7 +38,7 @@ pub fn main() {
     println!("main thread exiting");
 }
 
-fn child(x: int, tx: &Sender<int>) {
+fn child(x: isize, tx: &Sender<isize>) {
     println!("{}", x);
     tx.send(x).unwrap();
 }

@@ -13,5 +13,5 @@
 pub trait Foo : ::std::marker::MarkerTrait {
 }
 
-impl Foo for int {
+impl Foo for isize {
 }

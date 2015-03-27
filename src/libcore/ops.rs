@@ -917,12 +917,6 @@ pub trait Index<Idx: ?Sized> {
     type Output: ?Sized;
 
     /// The method for the indexing (`Foo[Bar]`) operation
-    #[cfg(stage0)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn index<'a>(&'a self, index: &Idx) -> &'a Self::Output;
-
-    /// The method for the indexing (`Foo[Bar]`) operation
-    #[cfg(not(stage0))]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn index<'a>(&'a self, index: Idx) -> &'a Self::Output;
 }
@@ -966,12 +960,6 @@ pub trait Index<Idx: ?Sized> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     /// The method for the indexing (`Foo[Bar]`) operation
-    #[cfg(stage0)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn index_mut<'a>(&'a mut self, index: &Idx) -> &'a mut Self::Output;
-
-    /// The method for the indexing (`Foo[Bar]`) operation
-    #[cfg(not(stage0))]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn index_mut<'a>(&'a mut self, index: Idx) -> &'a mut Self::Output;
 }
@@ -1149,20 +1137,6 @@ impl<'a, T: ?Sized> DerefMut for &'a mut T {
 #[lang="fn"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
-#[cfg(stage0)]
-pub trait Fn<Args> {
-    /// The returned type after the call operator is used.
-    type Output;
-
-    /// This is called when the call operator is used.
-    extern "rust-call" fn call(&self, args: Args) -> Self::Output;
-}
-
-/// A version of the call operator that takes an immutable receiver.
-#[lang="fn"]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_paren_sugar]
-#[cfg(not(stage0))]
 pub trait Fn<Args> : FnMut<Args> {
     /// This is called when the call operator is used.
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
@@ -1172,20 +1146,6 @@ pub trait Fn<Args> : FnMut<Args> {
 #[lang="fn_mut"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
-#[cfg(stage0)]
-pub trait FnMut<Args> {
-    /// The returned type after the call operator is used.
-    type Output;
-
-    /// This is called when the call operator is used.
-    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
-}
-
-/// A version of the call operator that takes a mutable receiver.
-#[lang="fn_mut"]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_paren_sugar]
-#[cfg(not(stage0))]
 pub trait FnMut<Args> : FnOnce<Args> {
     /// This is called when the call operator is used.
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
@@ -1201,26 +1161,4 @@ pub trait FnOnce<Args> {
 
     /// This is called when the call operator is used.
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
-}
-
-#[cfg(stage0)]
-impl<F: ?Sized, A> FnMut<A> for F
-    where F : Fn<A>
-{
-    type Output = <F as Fn<A>>::Output;
-
-    extern "rust-call" fn call_mut(&mut self, args: A) -> <F as Fn<A>>::Output {
-        self.call(args)
-    }
-}
-
-#[cfg(stage0)]
-impl<F,A> FnOnce<A> for F
-    where F : FnMut<A>
-{
-    type Output = <F as FnMut<A>>::Output;
-
-    extern "rust-call" fn call_once(mut self, args: A) -> <F as FnMut<A>>::Output {
-        self.call_mut(args)
-    }
 }

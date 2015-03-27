@@ -23,7 +23,7 @@ use serialize::json;
 
 #[derive(Encodable, Decodable)]
 struct A {
-    baz: int
+    baz: isize
 }
 
 #[derive(Encodable, Decodable)]

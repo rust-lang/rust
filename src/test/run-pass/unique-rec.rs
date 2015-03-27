@@ -13,7 +13,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-struct X { x: int }
+struct X { x: isize }
 
 pub fn main() {
     let x: Box<_> = box X {x: 1};

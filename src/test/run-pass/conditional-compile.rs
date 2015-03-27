@@ -31,7 +31,7 @@ mod rustrt {
 }
 
 #[cfg(bogus)]
-type t = int;
+type t = isize;
 
 type t = bool;
 
@@ -42,21 +42,21 @@ enum tg { bar, }
 
 #[cfg(bogus)]
 struct r {
-  i: int,
+  i: isize,
 }
 
 #[cfg(bogus)]
-fn r(i:int) -> r {
+fn r(i:isize) -> r {
     r {
         i: i
     }
 }
 
 struct r {
-  i: int,
+  i: isize,
 }
 
-fn r(i:int) -> r {
+fn r(i:isize) -> r {
     r {
         i: i
     }
@@ -100,8 +100,8 @@ fn test_in_fn_ctxt() {
     f();
 
     #[cfg(bogus)]
-    static i: int = 0;
-    static i: int = 1;
+    static i: isize = 0;
+    static i: isize = 1;
     assert_eq!(i, 1);
 }
 
@@ -122,7 +122,7 @@ mod test_use_statements {
 
 mod test_methods {
     struct Foo {
-        bar: uint
+        bar: usize
     }
 
     impl Fooable for Foo {

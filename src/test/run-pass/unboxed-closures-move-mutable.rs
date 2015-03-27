@@ -18,7 +18,7 @@
 // mutably so we do not get a spurious warning about it not needing to
 // be declared mutable (issue #18336 and #18769)
 
-fn set(x: &mut uint) { *x = 42; }
+fn set(x: &mut usize) { *x = 42; }
 
 fn main() {
     {

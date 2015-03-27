@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 enum X {
-    Foo(uint),
+    Foo(usize),
     Bar(bool)
 }
 

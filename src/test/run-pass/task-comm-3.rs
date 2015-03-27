@@ -17,9 +17,9 @@ use std::sync::mpsc::{channel, Sender};
 
 pub fn main() { println!("===== WITHOUT THREADS ====="); test00(); }
 
-fn test00_start(ch: &Sender<int>, message: int, count: int) {
+fn test00_start(ch: &Sender<isize>, message: isize, count: isize) {
     println!("Starting test00_start");
-    let mut i: int = 0;
+    let mut i: isize = 0;
     while i < count {
         println!("Sending Message");
         ch.send(message + 0).unwrap();
@@ -29,14 +29,14 @@ fn test00_start(ch: &Sender<int>, message: int, count: int) {
 }
 
 fn test00() {
-    let number_of_tasks: int = 16;
-    let number_of_messages: int = 4;
+    let number_of_tasks: isize = 16;
+    let number_of_messages: isize = 4;
 
     println!("Creating tasks");
 
     let (tx, rx) = channel();
 
-    let mut i: int = 0;
+    let mut i: isize = 0;
 
     // Create and spawn tasks...
     let mut results = Vec::new();

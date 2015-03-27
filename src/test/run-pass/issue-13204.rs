@@ -14,7 +14,7 @@
 // pretty-expanded FIXME #23616
 
 pub trait Foo {
-    fn bar<'a, I: Iterator<Item=&'a ()>>(&self, it: I) -> uint {
+    fn bar<'a, I: Iterator<Item=&'a ()>>(&self, it: I) -> usize {
         let mut xs = it.filter(|_| true);
         xs.count()
     }

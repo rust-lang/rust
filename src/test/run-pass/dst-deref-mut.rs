@@ -15,25 +15,25 @@
 use std::ops::{Deref, DerefMut};
 
 pub struct Arr {
-    ptr: Box<[uint]>
+    ptr: Box<[usize]>
 }
 
 impl Deref for Arr {
-    type Target = [uint];
+    type Target = [usize];
 
-    fn deref(&self) -> &[uint] {
+    fn deref(&self) -> &[usize] {
         panic!();
     }
 }
 
 impl DerefMut for Arr {
-    fn deref_mut(&mut self) -> &mut [uint] {
+    fn deref_mut(&mut self) -> &mut [usize] {
         &mut *self.ptr
     }
 }
 
 pub fn foo(arr: &mut Arr) {
-    let x: &mut [uint] = &mut **arr;
+    let x: &mut [usize] = &mut **arr;
     assert!(x[0] == 1);
     assert!(x[1] == 2);
     assert!(x[2] == 3);

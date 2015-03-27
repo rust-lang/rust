@@ -13,7 +13,7 @@ use back::abi;
 use back::link;
 use llvm::{ValueRef, get_param};
 use metadata::csearch;
-use middle::subst::Substs;
+use middle::subst::{Subst, Substs};
 use middle::subst::VecPerParamSpace;
 use middle::subst;
 use middle::traits;
@@ -47,7 +47,7 @@ use syntax::codemap::DUMMY_SP;
 use syntax::ptr::P;
 
 // drop_glue pointer, size, align.
-const VTABLE_OFFSET: uint = 3;
+const VTABLE_OFFSET: usize = 3;
 
 /// The main "translation" pass for methods.  Generates code
 /// for non-monomorphized methods only.  Other methods will
@@ -325,7 +325,7 @@ fn method_with_name(ccx: &CrateContext, impl_id: ast::DefId, name: ast::Name)
 fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                           method_call: MethodCall,
                                           trait_id: ast::DefId,
-                                          n_method: uint,
+                                          n_method: usize,
                                           vtable: traits::Vtable<'tcx, ()>)
                                           -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_monomorphized_callee");
@@ -437,7 +437,7 @@ fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// extract the self data and vtable out of the pair.
 fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   method_ty: Ty<'tcx>,
-                                  vtable_index: uint,
+                                  vtable_index: usize,
                                   self_expr: &ast::Expr,
                                   arg_cleanup_scope: cleanup::ScopeId)
                                   -> Callee<'blk, 'tcx> {
@@ -474,7 +474,7 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// pair.
 pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                  callee_ty: Ty<'tcx>,
-                                                 vtable_index: uint,
+                                                 vtable_index: usize,
                                                  llpair: ValueRef)
                                                  -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_trait_callee");
@@ -547,7 +547,7 @@ pub fn trans_object_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
     object_ty: Ty<'tcx>,
     upcast_trait_ref: ty::PolyTraitRef<'tcx>,
-    method_offset_in_trait: uint)
+    method_offset_in_trait: usize)
     -> (ValueRef, Ty<'tcx>)
 {
     let _icx = push_ctxt("trans_object_shim");
@@ -784,6 +784,7 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     ty::populate_implementations_for_trait_if_necessary(tcx, trt_id);
 
+    let nullptr = C_null(Type::nil(ccx).ptr_to());
     let trait_item_def_ids = ty::trait_item_def_ids(tcx, trt_id);
     trait_item_def_ids
         .iter()
@@ -809,6 +810,12 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             };
             let name = trait_method_type.name;
 
+            // Some methods cannot be called on an object; skip those.
+            if !traits::is_vtable_safe_method(tcx, trt_id, &trait_method_type) {
+                debug!("emit_vtable_methods: not vtable safe");
+                return nullptr;
+            }
+
             debug!("emit_vtable_methods: trait_method_type={}",
                    trait_method_type.repr(tcx));
 
@@ -820,23 +827,8 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 ty::TypeTraitItem(_) => ccx.sess().bug("should be a method, not assoc type")
             };
 
-            debug!("emit_vtable_methods: m={}",
+            debug!("emit_vtable_methods: impl_method_type={}",
                    impl_method_type.repr(tcx));
-
-            let nullptr = C_null(Type::nil(ccx).ptr_to());
-
-            if impl_method_type.generics.has_type_params(subst::FnSpace) {
-                debug!("emit_vtable_methods: generic");
-                return nullptr;
-            }
-
-            let bare_fn_ty =
-                ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(impl_method_type.fty.clone()));
-            if ty::type_has_self(bare_fn_ty) {
-                debug!("emit_vtable_methods: type_has_self {}",
-                       bare_fn_ty.repr(tcx));
-                return nullptr;
-            }
 
             // If this is a default method, it's possible that it
             // relies on where clauses that do not hold for this
@@ -844,11 +836,8 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             // method could then never be called, so we do not want to
             // try and trans it, in that case. Issue #23435.
             if ty::provided_source(tcx, impl_method_def_id).is_some() {
-                let predicates =
-                    monomorphize::apply_param_substs(tcx,
-                                                     &substs,
-                                                     &impl_method_type.predicates.predicates);
-                if !predicates_hold(ccx, predicates.into_vec()) {
+                let predicates = impl_method_type.predicates.predicates.subst(tcx, &substs);
+                if !normalize_and_test_predicates(ccx, predicates.into_vec()) {
                     debug!("emit_vtable_methods: predicates do not hold");
                     return nullptr;
                 }

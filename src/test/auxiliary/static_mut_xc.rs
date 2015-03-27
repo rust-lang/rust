@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub static mut a: int = 3;
+pub static mut a: isize = 3;

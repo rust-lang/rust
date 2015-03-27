@@ -11,7 +11,7 @@
 // Issue #759
 // Whitespace under block opening should not expand forever
 
-fn a() -> uint {
+fn a() -> usize {
 
     1
 }

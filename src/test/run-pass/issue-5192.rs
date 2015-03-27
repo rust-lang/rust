@@ -18,7 +18,7 @@ pub trait EventLoop {
 }
 
 pub struct UvEventLoop {
-    uvio: int
+    uvio: isize
 }
 
 impl UvEventLoop {

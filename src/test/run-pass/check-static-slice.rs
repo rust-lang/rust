@@ -13,22 +13,22 @@
 
 // pretty-expanded FIXME #23616
 
-const aa: [int; 3] = [1, 2, 3];
-const ab: &'static [int; 3] = &aa;
-const ac: &'static [int] = ab;
-const ad: &'static [int] = &aa;
-const ae: &'static [int; 3] = &[1, 2, 3];
-const af: &'static [int] = &[1, 2, 3];
+const aa: [isize; 3] = [1, 2, 3];
+const ab: &'static [isize; 3] = &aa;
+const ac: &'static [isize] = ab;
+const ad: &'static [isize] = &aa;
+const ae: &'static [isize; 3] = &[1, 2, 3];
+const af: &'static [isize] = &[1, 2, 3];
 
-static ca: int = aa[0];
-static cb: int = ab[1];
-static cc: int = ac[2];
-static cd: int = ad[0];
-static ce: int = ae[1];
-static cf: int = af[2];
+static ca: isize = aa[0];
+static cb: isize = ab[1];
+static cc: isize = ac[2];
+static cd: isize = ad[0];
+static ce: isize = ae[1];
+static cf: isize = af[2];
 
 fn main () {
-    let b: &[int] = &[1, 2, 3];
+    let b: &[isize] = &[1, 2, 3];
     assert!(ac == b);
     assert!(ad == b);
     assert!(af == b);

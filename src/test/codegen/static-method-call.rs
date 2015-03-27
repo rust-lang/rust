@@ -9,16 +9,16 @@
 // except according to those terms.
 
 pub struct Struct {
-    field: int
+    field: isize
 }
 
 impl Struct {
-    fn method(&self) -> int {
+    fn method(&self) -> isize {
         self.field
     }
 }
 
 #[no_mangle]
-pub fn test(s: &Struct) -> int {
+pub fn test(s: &Struct) -> isize {
     s.method()
 }

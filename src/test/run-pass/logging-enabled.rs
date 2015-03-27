@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// exec-env:RUST_LOG=logging-enabled=info
+// exec-env:RUST_LOG=logging_enabled=info
 
 // pretty-expanded FIXME #23616
 

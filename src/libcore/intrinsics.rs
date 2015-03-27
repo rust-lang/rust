@@ -44,10 +44,6 @@
 
 use marker::Sized;
 
-#[cfg(stage0)] pub use self::copy_memory as copy;
-#[cfg(stage0)] pub use self::set_memory as write_bytes;
-#[cfg(stage0)] pub use self::copy_nonoverlapping_memory as copy_nonoverlapping;
-
 extern "rust-intrinsic" {
 
     // NB: These intrinsics take unsafe pointers because they mutate aliased
@@ -183,7 +179,6 @@ extern "rust-intrinsic" {
     pub fn pref_align_of<T>() -> usize;
 
     /// Gets a static string slice containing the name of a type.
-    #[cfg(not(stage0))]
     pub fn type_name<T: ?Sized>() -> &'static str;
 
     /// Gets an identifier which is globally unique to the specified type. This
@@ -191,13 +186,35 @@ extern "rust-intrinsic" {
     /// crate it is invoked in.
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
+    /// Create a value initialized to so that its drop flag,
+    /// if any, says that it has been dropped.
+    ///
+    /// `init_dropped` is unsafe because it returns a datum with all
+    /// of its bytes set to the drop flag, which generally does not
+    /// correspond to a valid value.
+    ///
+    /// This intrinsic is likely to be deprecated in the future when
+    /// Rust moves to non-zeroing dynamic drop (and thus removes the
+    /// embedded drop flags that are being established by this
+    /// intrinsic).
+    #[cfg(not(stage0))]
+    pub fn init_dropped<T>() -> T;
+
     /// Create a value initialized to zero.
     ///
     /// `init` is unsafe because it returns a zeroed-out datum,
-    /// which is unsafe unless T is Copy.
+    /// which is unsafe unless T is `Copy`.  Also, even if T is
+    /// `Copy`, an all-zero value may not correspond to any legitimate
+    /// state for the type in question.
     pub fn init<T>() -> T;
 
     /// Create an uninitialized value.
+    ///
+    /// `uninit` is unsafe because there is no guarantee of what its
+    /// contents are. In particular its drop-flag may be set to any
+    /// state, which means it may claim either dropped or
+    /// undropped. In the general case one must use `ptr::write` to
+    /// initialize memory previous set to the result of `uninit`.
     pub fn uninit<T>() -> T;
 
     /// Move a value out of scope without running drop glue.
@@ -287,13 +304,7 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg(not(stage0))]
     pub fn copy_nonoverlapping<T>(dst: *mut T, src: *const T, count: usize);
-
-    /// dox
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg(stage0)]
-    pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
 
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
     /// and destination may overlap.
@@ -315,7 +326,7 @@ extern "rust-intrinsic" {
     /// # #![feature(core)]
     /// use std::ptr;
     ///
-    /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: uint) -> Vec<T> {
+    /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
     ///     dst.set_len(elts);
     ///     ptr::copy(dst.as_mut_ptr(), ptr, elts);
@@ -323,25 +334,13 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     ///
-    #[cfg(not(stage0))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn copy<T>(dst: *mut T, src: *const T, count: usize);
 
-    /// dox
-    #[cfg(stage0)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn copy_memory<T>(dst: *mut T, src: *const T, count: usize);
-
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
     /// bytes of memory starting at `dst` to `c`.
-    #[cfg(not(stage0))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_bytes<T>(dst: *mut T, val: u8, count: usize);
-
-    /// dox
-    #[cfg(stage0)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn set_memory<T>(dst: *mut T, val: u8, count: usize);
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of

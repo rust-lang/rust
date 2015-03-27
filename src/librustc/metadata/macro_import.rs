@@ -79,15 +79,6 @@ impl<'a, 'v> Visitor<'v> for MacroLoader<'a> {
         for attr in &item.attrs {
             let mut used = true;
             match &attr.name()[..] {
-                "phase" => {
-                    self.sess.span_err(attr.span, "#[phase] is deprecated");
-                }
-                "plugin" => {
-                    self.sess.span_err(attr.span, "#[plugin] on `extern crate` is deprecated");
-                    self.sess.fileline_help(attr.span, &format!("use a crate attribute instead, \
-                                                            i.e. #![plugin({})]",
-                                                            item.ident.as_str()));
-                }
                 "macro_use" => {
                     let names = attr.meta_item_list();
                     if names.is_none() {

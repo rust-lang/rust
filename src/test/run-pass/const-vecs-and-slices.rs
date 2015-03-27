@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static x : [int; 4] = [1,2,3,4];
-static y : &'static [int] = &[1,2,3,4];
-static z : &'static [int; 4] = &[1,2,3,4];
-static zz : &'static [int] = &[1,2,3,4];
+static x : [isize; 4] = [1,2,3,4];
+static y : &'static [isize] = &[1,2,3,4];
+static z : &'static [isize; 4] = &[1,2,3,4];
+static zz : &'static [isize] = &[1,2,3,4];
 
 pub fn main() {
     println!("{}", x[1]);

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate "issue-13872-2" as bar;
+extern crate issue_13872_2 as bar;
 
 use bar::B;
 

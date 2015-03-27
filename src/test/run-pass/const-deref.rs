@@ -10,8 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
-const C: &'static int = &1000;
-static D: int = *C;
+const C: &'static isize = &1000;
+static D: isize = *C;
 
 pub fn main() {
     assert_eq!(D, 1000);

@@ -13,7 +13,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-fn foo(x: &uint) -> uint {
+fn foo(x: &usize) -> usize {
     *x
 }
 

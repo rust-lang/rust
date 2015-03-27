@@ -12,33 +12,33 @@
 
 // compile-flags:-g
 // gdb-command:run
-// gdb-command:whatis 'basic-types-globals-metadata::B'
+// gdb-command:whatis 'basic_types_globals_metadata::B'
 // gdb-check:type = bool
-// gdb-command:whatis 'basic-types-globals-metadata::I'
+// gdb-command:whatis 'basic_types_globals_metadata::I'
 // gdb-check:type = isize
-// gdb-command:whatis 'basic-types-globals-metadata::C'
+// gdb-command:whatis 'basic_types_globals_metadata::C'
 // gdb-check:type = char
-// gdb-command:whatis 'basic-types-globals-metadata::I8'
+// gdb-command:whatis 'basic_types_globals_metadata::I8'
 // gdb-check:type = i8
-// gdb-command:whatis 'basic-types-globals-metadata::I16'
+// gdb-command:whatis 'basic_types_globals_metadata::I16'
 // gdb-check:type = i16
-// gdb-command:whatis 'basic-types-globals-metadata::I32'
+// gdb-command:whatis 'basic_types_globals_metadata::I32'
 // gdb-check:type = i32
-// gdb-command:whatis 'basic-types-globals-metadata::I64'
+// gdb-command:whatis 'basic_types_globals_metadata::I64'
 // gdb-check:type = i64
-// gdb-command:whatis 'basic-types-globals-metadata::U'
+// gdb-command:whatis 'basic_types_globals_metadata::U'
 // gdb-check:type = usize
-// gdb-command:whatis 'basic-types-globals-metadata::U8'
+// gdb-command:whatis 'basic_types_globals_metadata::U8'
 // gdb-check:type = u8
-// gdb-command:whatis 'basic-types-globals-metadata::U16'
+// gdb-command:whatis 'basic_types_globals_metadata::U16'
 // gdb-check:type = u16
-// gdb-command:whatis 'basic-types-globals-metadata::U32'
+// gdb-command:whatis 'basic_types_globals_metadata::U32'
 // gdb-check:type = u32
-// gdb-command:whatis 'basic-types-globals-metadata::U64'
+// gdb-command:whatis 'basic_types_globals_metadata::U64'
 // gdb-check:type = u64
-// gdb-command:whatis 'basic-types-globals-metadata::F32'
+// gdb-command:whatis 'basic_types_globals_metadata::F32'
 // gdb-check:type = f32
-// gdb-command:whatis 'basic-types-globals-metadata::F64'
+// gdb-command:whatis 'basic_types_globals_metadata::F64'
 // gdb-check:type = f64
 // gdb-command:continue
 
@@ -48,13 +48,13 @@
 
 // N.B. These are `mut` only so they don't constant fold away.
 static mut B: bool = false;
-static mut I: int = -1;
+static mut I: isize = -1;
 static mut C: char = 'a';
 static mut I8: i8 = 68;
 static mut I16: i16 = -16;
 static mut I32: i32 = -32;
 static mut I64: i64 = -64;
-static mut U: uint = 1;
+static mut U: usize = 1;
 static mut U8: u8 = 100;
 static mut U16: u16 = 16;
 static mut U32: u32 = 32;

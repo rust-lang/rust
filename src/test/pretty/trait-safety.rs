@@ -14,7 +14,7 @@ unsafe trait UnsafeTrait {
     fn foo(&self);
 }
 
-unsafe impl UnsafeTrait for int {
+unsafe impl UnsafeTrait for isize {
     fn foo(&self) { }
 }
 

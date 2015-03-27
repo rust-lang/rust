@@ -10,6 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
+#![feature(slice_patterns)]
+
 pub fn main() {
     let x = [1, 2, 3];
     match x {

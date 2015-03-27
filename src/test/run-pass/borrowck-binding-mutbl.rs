@@ -11,9 +11,9 @@
 
 // pretty-expanded FIXME #23616
 
-struct F { f: Vec<int> }
+struct F { f: Vec<isize> }
 
-fn impure(_v: &[int]) {
+fn impure(_v: &[isize]) {
 }
 
 pub fn main() {

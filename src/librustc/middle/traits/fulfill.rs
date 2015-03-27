@@ -53,7 +53,7 @@ pub struct FulfillmentContext<'tcx> {
     // Remembers the count of trait obligations that we have already
     // attempted to select. This is used to avoid repeating work
     // when `select_new_obligations` is called.
-    attempted_mark: uint,
+    attempted_mark: usize,
 
     // A set of constraints that regionck must validate. Each
     // constraint has the form `T:'a`, meaning "some type `T` must
@@ -162,6 +162,8 @@ impl<'tcx> FulfillmentContext<'tcx> {
         // this helps to reduce duplicate errors, as well as making
         // debug output much nicer to read and so on.
         let obligation = infcx.resolve_type_vars_if_possible(&obligation);
+
+        assert!(!obligation.has_escaping_regions());
 
         if !self.duplicate_set.insert(obligation.predicate.clone()) {
             debug!("register_predicate({}) -- already seen, skip", obligation.repr(infcx.tcx));

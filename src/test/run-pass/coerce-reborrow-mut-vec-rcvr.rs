@@ -11,7 +11,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn bar(v: &mut [uint]) {
+fn bar(v: &mut [usize]) {
     v.reverse();
     v.reverse();
     v.reverse();

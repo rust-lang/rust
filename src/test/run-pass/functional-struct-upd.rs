@@ -10,8 +10,8 @@
 
 #[derive(Debug)]
 struct Foo {
-    x: int,
-    y: int
+    x: isize,
+    y: isize
 }
 
 pub fn main() {

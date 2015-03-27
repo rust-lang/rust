@@ -15,7 +15,7 @@
 use std::cell::Cell;
 
 struct r<'a> {
-    b: &'a Cell<int>,
+    b: &'a Cell<isize>,
 }
 
 #[unsafe_destructor]
@@ -25,7 +25,7 @@ impl<'a> Drop for r<'a> {
     }
 }
 
-fn r(b: &Cell<int>) -> r {
+fn r(b: &Cell<isize>) -> r {
     r {
         b: b
     }

@@ -12,7 +12,7 @@
 // ignore-stage1
 
 #[macro_use]
-extern crate "macro_crate_nonterminal" as new_name;
+extern crate macro_crate_nonterminal as new_name;
 
 pub fn main() {
     new_name::check_local();

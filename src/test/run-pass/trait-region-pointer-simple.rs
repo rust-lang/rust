@@ -9,15 +9,15 @@
 // except according to those terms.
 
 trait Foo {
-    fn f(&self) -> int;
+    fn f(&self) -> isize;
 }
 
 struct A {
-    x: int
+    x: isize
 }
 
 impl Foo for A {
-    fn f(&self) -> int {
+    fn f(&self) -> isize {
         println!("Today's number is {}", self.x);
         return self.x;
     }

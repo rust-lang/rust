@@ -12,9 +12,9 @@ pub mod kitties {
 
     pub struct cat<U> {
         info : Vec<U> ,
-        meows : uint,
+        meows : usize,
 
-        pub how_hungry : int,
+        pub how_hungry : isize,
     }
 
     impl<U> cat<U> {
@@ -22,10 +22,10 @@ pub mod kitties {
             self.meows += stuff.len();
         }
 
-        pub fn meow_count(&mut self) -> uint { self.meows }
+        pub fn meow_count(&mut self) -> usize { self.meows }
     }
 
-    pub fn cat<U>(in_x : uint, in_y : int, in_info: Vec<U> ) -> cat<U> {
+    pub fn cat<U>(in_x : usize, in_y : isize, in_info: Vec<U> ) -> cat<U> {
         cat {
             meows: in_x,
             how_hungry: in_y,

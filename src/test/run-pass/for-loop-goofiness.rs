@@ -15,7 +15,7 @@ enum BogusOption<T> {
     Some(T),
 }
 
-type Iterator = int;
+type Iterator = isize;
 
 pub fn main() {
     let x = [ 3, 3, 3 ];

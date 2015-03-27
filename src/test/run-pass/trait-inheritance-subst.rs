@@ -16,7 +16,7 @@ pub trait Add<RHS,Result> {
 
 trait MyNum : Add<Self,Self> { }
 
-struct MyInt { val: int }
+struct MyInt { val: isize }
 
 impl Add<MyInt, MyInt> for MyInt {
     fn add(&self, other: &MyInt) -> MyInt { mi(self.val + other.val) }
@@ -28,7 +28,7 @@ fn f<T:MyNum>(x: T, y: T) -> T {
     return x.add(&y);
 }
 
-fn mi(v: int) -> MyInt { MyInt { val: v } }
+fn mi(v: isize) -> MyInt { MyInt { val: v } }
 
 pub fn main() {
     let (x, y) = (mi(3), mi(5));

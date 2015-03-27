@@ -54,14 +54,14 @@ fn zombiejesus() {
 }
 
 fn notsure() {
-    let mut _x: int;
+    let mut _x: isize;
     let mut _y = (_x = 0) == (_x = 0);
     let mut _z = (_x = 0) < (_x = 0);
     let _a = (_x += 0) == (_x = 0);
     let _b = swap(&mut _y, &mut _z) == swap(&mut _y, &mut _z);
 }
 
-fn canttouchthis() -> uint {
+fn canttouchthis() -> usize {
     fn p() -> bool { true }
     let _a = (assert!((true)) == (assert!(p())));
     let _c = (assert!((p())) == ());

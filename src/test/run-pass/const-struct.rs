@@ -11,7 +11,7 @@
 use std::cmp;
 
 #[derive(Debug)]
-struct foo { a: int, b: int, c: int }
+struct foo { a: isize, b: isize, c: isize }
 
 impl cmp::PartialEq for foo {
     fn eq(&self, other: &foo) -> bool {

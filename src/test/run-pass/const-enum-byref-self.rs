@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-enum E { V, VV(int) }
+enum E { V, VV(isize) }
 static C: E = E::V;
 
 impl E {

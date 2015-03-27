@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn op1() -> Result<int, &'static str> { Ok(666) }
-pub fn op2() -> Result<int, &'static str> { Err("sadface") }
+pub fn op1() -> Result<isize, &'static str> { Ok(666) }
+pub fn op2() -> Result<isize, &'static str> { Err("sadface") }
 
 #[test]
 pub fn test_and() {
@@ -24,13 +24,13 @@ pub fn test_and() {
 
 #[test]
 pub fn test_and_then() {
-    assert_eq!(op1().and_then(|i| Ok::<int, &'static str>(i + 1)).unwrap(), 667);
-    assert_eq!(op1().and_then(|_| Err::<int, &'static str>("bad")).unwrap_err(),
+    assert_eq!(op1().and_then(|i| Ok::<isize, &'static str>(i + 1)).unwrap(), 667);
+    assert_eq!(op1().and_then(|_| Err::<isize, &'static str>("bad")).unwrap_err(),
                "bad");
 
-    assert_eq!(op2().and_then(|i| Ok::<int, &'static str>(i + 1)).unwrap_err(),
+    assert_eq!(op2().and_then(|i| Ok::<isize, &'static str>(i + 1)).unwrap_err(),
                "sadface");
-    assert_eq!(op2().and_then(|_| Err::<int, &'static str>("bad")).unwrap_err(),
+    assert_eq!(op2().and_then(|_| Err::<isize, &'static str>("bad")).unwrap_err(),
                "sadface");
 }
 
@@ -45,53 +45,53 @@ pub fn test_or() {
 
 #[test]
 pub fn test_or_else() {
-    assert_eq!(op1().or_else(|_| Ok::<int, &'static str>(667)).unwrap(), 666);
-    assert_eq!(op1().or_else(|e| Err::<int, &'static str>(e)).unwrap(), 666);
+    assert_eq!(op1().or_else(|_| Ok::<isize, &'static str>(667)).unwrap(), 666);
+    assert_eq!(op1().or_else(|e| Err::<isize, &'static str>(e)).unwrap(), 666);
 
-    assert_eq!(op2().or_else(|_| Ok::<int, &'static str>(667)).unwrap(), 667);
-    assert_eq!(op2().or_else(|e| Err::<int, &'static str>(e)).unwrap_err(),
+    assert_eq!(op2().or_else(|_| Ok::<isize, &'static str>(667)).unwrap(), 667);
+    assert_eq!(op2().or_else(|e| Err::<isize, &'static str>(e)).unwrap_err(),
                "sadface");
 }
 
 #[test]
 pub fn test_impl_map() {
-    assert!(Ok::<int, int>(1).map(|x| x + 1) == Ok(2));
-    assert!(Err::<int, int>(1).map(|x| x + 1) == Err(1));
+    assert!(Ok::<isize, isize>(1).map(|x| x + 1) == Ok(2));
+    assert!(Err::<isize, isize>(1).map(|x| x + 1) == Err(1));
 }
 
 #[test]
 pub fn test_impl_map_err() {
-    assert!(Ok::<int, int>(1).map_err(|x| x + 1) == Ok(1));
-    assert!(Err::<int, int>(1).map_err(|x| x + 1) == Err(2));
+    assert!(Ok::<isize, isize>(1).map_err(|x| x + 1) == Ok(1));
+    assert!(Err::<isize, isize>(1).map_err(|x| x + 1) == Err(2));
 }
 
 /* FIXME(#20575)
 #[test]
 fn test_collect() {
-    let v: Result<Vec<int>, ()> = (0..0).map(|_| Ok::<int, ()>(0)).collect();
+    let v: Result<Vec<isize>, ()> = (0..0).map(|_| Ok::<isize, ()>(0)).collect();
     assert!(v == Ok(vec![]));
 
-    let v: Result<Vec<int>, ()> = (0..3).map(|x| Ok::<int, ()>(x)).collect();
+    let v: Result<Vec<isize>, ()> = (0..3).map(|x| Ok::<isize, ()>(x)).collect();
     assert!(v == Ok(vec![0, 1, 2]));
 
-    let v: Result<Vec<int>, int> = (0..3).map(|x| {
+    let v: Result<Vec<isize>, isize> = (0..3).map(|x| {
         if x > 1 { Err(x) } else { Ok(x) }
     }).collect();
     assert!(v == Err(2));
 
     // test that it does not take more elements than it needs
-    let mut functions: [Box<Fn() -> Result<(), int>>; 3] =
+    let mut functions: [Box<Fn() -> Result<(), isize>>; 3] =
         [box || Ok(()), box || Err(1), box || panic!()];
 
-    let v: Result<Vec<()>, int> = functions.iter_mut().map(|f| (*f)()).collect();
+    let v: Result<Vec<()>, isize> = functions.iter_mut().map(|f| (*f)()).collect();
     assert!(v == Err(1));
 }
 */
 
 #[test]
 pub fn test_fmt_default() {
-    let ok: Result<int, &'static str> = Ok(100);
-    let err: Result<int, &'static str> = Err("Err");
+    let ok: Result<isize, &'static str> = Ok(100);
+    let err: Result<isize, &'static str> = Err("Err");
 
     let s = format!("{:?}", ok);
     assert_eq!(s, "Ok(100)");
@@ -101,8 +101,8 @@ pub fn test_fmt_default() {
 
 #[test]
 pub fn test_unwrap_or() {
-    let ok: Result<int, &'static str> = Ok(100);
-    let ok_err: Result<int, &'static str> = Err("Err");
+    let ok: Result<isize, &'static str> = Ok(100);
+    let ok_err: Result<isize, &'static str> = Err("Err");
 
     assert_eq!(ok.unwrap_or(50), 100);
     assert_eq!(ok_err.unwrap_or(50), 50);
@@ -110,7 +110,7 @@ pub fn test_unwrap_or() {
 
 #[test]
 pub fn test_unwrap_or_else() {
-    fn handler(msg: &'static str) -> int {
+    fn handler(msg: &'static str) -> isize {
         if msg == "I got this." {
             50
         } else {
@@ -118,8 +118,8 @@ pub fn test_unwrap_or_else() {
         }
     }
 
-    let ok: Result<int, &'static str> = Ok(100);
-    let ok_err: Result<int, &'static str> = Err("I got this.");
+    let ok: Result<isize, &'static str> = Ok(100);
+    let ok_err: Result<isize, &'static str> = Err("I got this.");
 
     assert_eq!(ok.unwrap_or_else(handler), 100);
     assert_eq!(ok_err.unwrap_or_else(handler), 50);
@@ -128,7 +128,7 @@ pub fn test_unwrap_or_else() {
 #[test]
 #[should_panic]
 pub fn test_unwrap_or_else_panic() {
-    fn handler(msg: &'static str) -> int {
+    fn handler(msg: &'static str) -> isize {
         if msg == "I got this." {
             50
         } else {
@@ -136,6 +136,6 @@ pub fn test_unwrap_or_else_panic() {
         }
     }
 
-    let bad_err: Result<int, &'static str> = Err("Unrecoverable mess.");
-    let _ : int = bad_err.unwrap_or_else(handler);
+    let bad_err: Result<isize, &'static str> = Err("Unrecoverable mess.");
+    let _ : isize = bad_err.unwrap_or_else(handler);
 }

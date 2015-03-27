@@ -13,6 +13,6 @@
 // pretty-expanded FIXME #23616
 
 #[forbid(non_camel_case_types)]
-type Foo_ = int;
+type Foo_ = isize;
 
 pub fn main() { }

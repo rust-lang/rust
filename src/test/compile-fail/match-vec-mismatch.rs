@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(slice_patterns)]
+
 fn main() {
     match "foo".to_string() {
         ['f', 'o', ..] => {} //~ ERROR mismatched types

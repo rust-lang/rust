@@ -14,7 +14,7 @@ use std::cell::Cell;
 
 #[derive(Copy)]
 struct Foo {
-    x: int
+    x: isize
 }
 
 impl Clone for Foo {

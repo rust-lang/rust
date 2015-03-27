@@ -45,10 +45,6 @@ impl Buf {
         Buf { inner: Wtf8Buf::from_string(s) }
     }
 
-    pub fn from_str(s: &str) -> Buf {
-        Buf { inner: Wtf8Buf::from_str(s) }
-    }
-
     pub fn as_slice(&self) -> &Slice {
         unsafe { mem::transmute(self.inner.as_slice()) }
     }

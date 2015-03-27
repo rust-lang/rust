@@ -28,18 +28,17 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
                                  object_trait: &ty::TyTrait<'tcx>,
                                  span: Span)
 {
-    let object_trait_ref =
-        object_trait.principal_trait_ref_with_self_ty(tcx, tcx.types.err);
+    let trait_def_id = object_trait.principal_def_id();
 
-    if traits::is_object_safe(tcx, object_trait_ref.clone()) {
+    if traits::is_object_safe(tcx, trait_def_id) {
         return;
     }
 
     span_err!(tcx.sess, span, E0038,
               "cannot convert to a trait object because trait `{}` is not object-safe",
-              ty::item_path_str(tcx, object_trait_ref.def_id()));
+              ty::item_path_str(tcx, trait_def_id));
 
-    let violations = traits::object_safety_violations(tcx, object_trait_ref.clone());
+    let violations = traits::object_safety_violations(tcx, trait_def_id);
     for violation in violations {
         match violation {
             ObjectSafetyViolation::SizedSelf => {

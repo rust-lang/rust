@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "priv-impl-prim-ty" as bar;
+extern crate priv_impl_prim_ty as bar;
 
 pub fn main() {
     bar::frob(1);

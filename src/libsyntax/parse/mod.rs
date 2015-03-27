@@ -700,18 +700,18 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
     if let Some(suf) = suffix {
         if suf.is_empty() { sd.span_bug(sp, "found empty literal suffix in Some")}
         ty = match suf {
-            "isize" => ast::SignedIntLit(ast::TyIs(false), ast::Plus),
+            "isize" => ast::SignedIntLit(ast::TyIs, ast::Plus),
             "i8"  => ast::SignedIntLit(ast::TyI8, ast::Plus),
             "i16" => ast::SignedIntLit(ast::TyI16, ast::Plus),
             "i32" => ast::SignedIntLit(ast::TyI32, ast::Plus),
             "i64" => ast::SignedIntLit(ast::TyI64, ast::Plus),
-            "usize" => ast::UnsignedIntLit(ast::TyUs(false)),
+            "usize" => ast::UnsignedIntLit(ast::TyUs),
             "u8"  => ast::UnsignedIntLit(ast::TyU8),
             "u16" => ast::UnsignedIntLit(ast::TyU16),
             "u32" => ast::UnsignedIntLit(ast::TyU32),
             "u64" => ast::UnsignedIntLit(ast::TyU64),
-            "i" | "is" => ast::SignedIntLit(ast::TyIs(true), ast::Plus),
-            "u" | "us" => ast::UnsignedIntLit(ast::TyUs(true)),
+            "is" => ast::SignedIntLit(ast::TyIs, ast::Plus),
+            "us" => ast::UnsignedIntLit(ast::TyUs),
             _ => {
                 // i<digits> and u<digits> look like widths, so lets
                 // give an error message along those lines

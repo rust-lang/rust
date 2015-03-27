@@ -14,7 +14,7 @@ use core::ops::{Range, RangeFull, RangeFrom, RangeTo};
 // Overhead of dtors
 
 struct HasDtor {
-    _x: int
+    _x: isize
 }
 
 impl Drop for HasDtor {
