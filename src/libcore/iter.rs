@@ -244,6 +244,20 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert_eq!(it.next().unwrap(), (&0, &1));
     /// assert!(it.next().is_none());
     /// ```
+    ///
+    /// `zip` can provide similar functionality to `enumerate`:
+    ///
+    /// ```
+    /// for pair in "foo".chars().enumerate() {
+    ///     println!("{:?}", pair);
+    /// }
+    ///
+    /// for pair in (0..).zip("foo".chars()) {
+    ///     println!("{:?}", pair);
+    /// }
+    /// ```
+    ///
+    /// both produce the same output.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn zip<U: Iterator>(self, other: U) -> Zip<Self, U> {
@@ -312,6 +326,9 @@ pub trait IteratorExt: Iterator + Sized {
 
     /// Creates an iterator that yields a pair of the value returned by this
     /// iterator plus the current index of iteration.
+    ///
+    /// `enumerate` keeps its count as a `usize`. If you want to count by a
+    /// different sized integer, the `zip` function provides similar functionality.
     ///
     /// # Examples
     ///
