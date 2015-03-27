@@ -179,7 +179,16 @@ register_diagnostics! {
     E0322, // cannot implement Sized explicitly
     E0323, // cannot implement Unsize explicitly
     E0366, // dropck forbid specialization to concrete type or region
-    E0367  // dropck forbid specialization to predicate not in struct/enum
+    E0367, // dropck forbid specialization to predicate not in struct/enum
+    E0370, // the trait `CoerceUnsized` may only be implemented for a coercion
+           // between structures with the same definition
+    E0371, // the trait `CoerceUnsized` may only be implemented for a coercion
+           // between structures with one field being coerced, none found
+    E0372, // the trait `CoerceUnsized` may only be implemented for a coercion
+           // between structures with one field being coerced, but multiple
+           // fields need coercions
+    E0373  // the trait `CoerceUnsized` may only be implemented for a coercion
+           // between structures
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }

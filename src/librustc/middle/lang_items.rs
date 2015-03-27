@@ -265,6 +265,8 @@ lets_do_this! {
 
     DropTraitLangItem,               "drop",                    drop_trait;
 
+    CoerceUnsizedTraitLangItem,      "coerce_unsized",          coerce_unsized_trait;
+
     AddTraitLangItem,                "add",                     add_trait;
     SubTraitLangItem,                "sub",                     sub_trait;
     MulTraitLangItem,                "mul",                     mul_trait;

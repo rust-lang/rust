@@ -470,6 +470,16 @@ pub fn get_impl_polarity<'tcx>(cdata: Cmd,
     }
 }
 
+pub fn get_custom_coerce_unsized_kind<'tcx>(cdata: Cmd,
+                                            id: ast::NodeId)
+                                            -> Option<ty::CustomCoerceUnsized> {
+    let item_doc = lookup_item(id, cdata.data());
+    reader::maybe_get_doc(item_doc, tag_impl_coerce_unsized_kind).map(|kind_doc| {
+        let mut decoder = reader::Decoder::new(kind_doc);
+        Decodable::decode(&mut decoder).unwrap()
+    })
+}
+
 pub fn get_impl_trait<'tcx>(cdata: Cmd,
                             id: ast::NodeId,
                             tcx: &ty::ctxt<'tcx>)

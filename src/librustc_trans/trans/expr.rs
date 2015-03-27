@@ -56,8 +56,10 @@ use back::abi;
 use llvm::{self, ValueRef};
 use middle::check_const;
 use middle::def;
+use middle::lang_items::CoerceUnsizedTraitLangItem;
 use middle::mem_categorization::Typer;
-use middle::subst::{self, Substs};
+use middle::subst::{Subst, Substs, VecPerParamSpace};
+use middle::traits;
 use trans::{_match, adt, asm, base, callee, closure, consts, controlflow};
 use trans::base::*;
 use trans::build::*;
@@ -299,7 +301,7 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
                                 source: Ty<'tcx>,
                                 target: Ty<'tcx>,
                                 old_info: Option<ValueRef>,
-                                param_substs: &'tcx subst::Substs<'tcx>)
+                                param_substs: &'tcx Substs<'tcx>)
                                 -> ValueRef {
     let (source, target) = ty::struct_lockstep_tails(ccx.tcx(), source, target);
     match (&source.sty, &target.sty) {
@@ -385,82 +387,155 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // (You might think there is a more elegant way to do this than a
             // skip_reborrows bool, but then you remember that the borrow checker exists).
             if skip_reborrows == 0 && adj.autoref.is_some() {
-                datum = unpack_datum!(bcx, apply_autoref(bcx, expr, datum));
+                if !type_is_sized(bcx.tcx(), datum.ty) {
+                    // Arrange cleanup
+                    let lval = unpack_datum!(bcx,
+                        datum.to_lvalue_datum(bcx, "ref_fat_ptr", expr.id));
+                    datum = unpack_datum!(bcx, ref_fat_ptr(bcx, lval));
+                } else {
+                    datum = unpack_datum!(bcx, auto_ref(bcx, datum, expr));
+                }
             }
 
             if let Some(target) = adj.unsize {
-                datum = unpack_datum!(bcx, unsize_pointer(bcx, datum,
-                                                          bcx.monomorphize(&target)));
+                // We do not arrange cleanup ourselves; if we already are an
+                // L-value, then cleanup will have already been scheduled (and
+                // the `datum.to_rvalue_datum` call below will emit code to zero
+                // the drop flag when moving out of the L-value). If we are an
+                // R-value, then we do not need to schedule cleanup.
+                let source_datum = unpack_datum!(bcx,
+                    datum.to_rvalue_datum(bcx, "__coerce_source"));
+
+                let target = bcx.monomorphize(&target);
+                let llty = type_of::type_of(bcx.ccx(), target);
+
+                // HACK(eddyb) get around issues with lifetime intrinsics.
+                let scratch = alloca_no_lifetime(bcx, llty, "__coerce_target");
+                let target_datum = Datum::new(scratch, target,
+                                              Rvalue::new(ByRef));
+                bcx = coerce_unsized(bcx, expr.span, source_datum, target_datum);
+                datum = Datum::new(scratch, target,
+                                   RvalueExpr(Rvalue::new(ByRef)));
             }
         }
     }
     debug!("after adjustments, datum={}", datum.to_string(bcx.ccx()));
-    return DatumBlock::new(bcx, datum);
+    DatumBlock::new(bcx, datum)
+}
 
-    fn apply_autoref<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                 expr: &ast::Expr,
-                                 datum: Datum<'tcx, Expr>)
-                                 -> DatumBlock<'blk, 'tcx, Expr> {
-        let mut bcx = bcx;
+fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                              span: codemap::Span,
+                              source: Datum<'tcx, Rvalue>,
+                              target: Datum<'tcx, Rvalue>)
+                              -> Block<'blk, 'tcx> {
+    let mut bcx = bcx;
+    debug!("coerce_unsized({} -> {})",
+           source.to_string(bcx.ccx()),
+           target.to_string(bcx.ccx()));
 
-        if !type_is_sized(bcx.tcx(), datum.ty) {
-            // Arrange cleanup
-            let lval = unpack_datum!(bcx,
-                datum.to_lvalue_datum(bcx, "ref_fat_ptr", expr.id));
-            ref_fat_ptr(bcx, lval)
-        } else {
-            auto_ref(bcx, datum, expr)
+    match (&source.ty.sty, &target.ty.sty) {
+        (&ty::ty_uniq(a), &ty::ty_uniq(b)) |
+        (&ty::ty_rptr(_, ty::mt { ty: a, .. }), &ty::ty_rptr(_, ty::mt { ty: b, .. })) |
+        (&ty::ty_rptr(_, ty::mt { ty: a, .. }), &ty::ty_ptr(ty::mt { ty: b, .. })) |
+        (&ty::ty_ptr(ty::mt { ty: a, .. }), &ty::ty_ptr(ty::mt { ty: b, .. })) => {
+            let (inner_source, inner_target) = (a, b);
+
+            let (base, old_info) = if !type_is_sized(bcx.tcx(), inner_source) {
+                // Normally, the source is a thin pointer and we are
+                // adding extra info to make a fat pointer. The exception
+                // is when we are upcasting an existing object fat pointer
+                // to use a different vtable. In that case, we want to
+                // load out the original data pointer so we can repackage
+                // it.
+                (Load(bcx, get_dataptr(bcx, source.val)),
+                Some(Load(bcx, get_len(bcx, source.val))))
+            } else {
+                let val = if source.kind.is_by_ref() {
+                    load_ty(bcx, source.val, source.ty)
+                } else {
+                    source.val
+                };
+                (val, None)
+            };
+
+            let info = unsized_info(bcx.ccx(), inner_source, inner_target,
+                                    old_info, bcx.fcx.param_substs);
+
+            // Compute the base pointer. This doesn't change the pointer value,
+            // but merely its type.
+            let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), inner_target).ptr_to();
+            let base = PointerCast(bcx, base, ptr_ty);
+
+            Store(bcx, base, get_dataptr(bcx, target.val));
+            Store(bcx, info, get_len(bcx, target.val));
         }
+
+        // This can be extended to enums and tuples in the future.
+        // (&ty::ty_enum(def_id_a, substs_a), &ty::ty_enum(def_id_b, substs_b)) |
+        (&ty::ty_struct(def_id_a, substs_a), &ty::ty_struct(def_id_b, substs_b)) => {
+            assert_eq!(def_id_a, def_id_b);
+
+            // The target is already by-ref because it's to be written to.
+            let source = unpack_datum!(bcx, source.to_ref_datum(bcx));
+            assert!(target.kind.is_by_ref());
+
+            let trait_substs = Substs::erased(VecPerParamSpace::new(vec![target.ty],
+                                                                    vec![source.ty],
+                                                                    Vec::new()));
+            let trait_ref = ty::Binder(Rc::new(ty::TraitRef {
+                def_id: langcall(bcx, Some(span), "coercion",
+                                 CoerceUnsizedTraitLangItem),
+                substs: bcx.tcx().mk_substs(trait_substs)
+            }));
+
+            let kind = match fulfill_obligation(bcx.ccx(), span, trait_ref) {
+                traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
+                    ty::custom_coerce_unsized_kind(bcx.tcx(), impl_def_id)
+                }
+                vtable => {
+                    bcx.sess().span_bug(span, &format!("invalid CoerceUnsized vtable: {}",
+                                                       vtable.repr(bcx.tcx())));
+                }
+            };
+
+            let repr_source = adt::represent_type(bcx.ccx(), source.ty);
+            let repr_target = adt::represent_type(bcx.ccx(), target.ty);
+            let fields = ty::lookup_struct_fields(bcx.tcx(), def_id_a);
+
+            let coerce_index = match kind {
+                ty::CustomCoerceUnsized::Struct(i) => i
+            };
+            assert!(coerce_index < fields.len());
+
+            for (i, field) in fields.iter().enumerate() {
+                let ll_source = adt::trans_field_ptr(bcx, &repr_source, source.val, 0, i);
+                let ll_target = adt::trans_field_ptr(bcx, &repr_target, target.val, 0, i);
+
+                let ty = ty::lookup_field_type_unsubstituted(bcx.tcx(),
+                                                             def_id_a,
+                                                             field.id);
+                let field_source = ty.subst(bcx.tcx(), substs_a);
+                let field_target = ty.subst(bcx.tcx(), substs_b);
+
+                // If this is the field we need to coerce, recurse on it.
+                if i == coerce_index {
+                    coerce_unsized(bcx, span,
+                                   Datum::new(ll_source, field_source,
+                                              Rvalue::new(ByRef)),
+                                   Datum::new(ll_target, field_target,
+                                              Rvalue::new(ByRef)));
+                } else {
+                    // Otherwise, simply copy the data from the source.
+                    assert_eq!(field_source, field_target);
+                    memcpy_ty(bcx, ll_target, ll_source, field_source);
+                }
+            }
+        }
+        _ => bcx.sess().bug(&format!("coerce_unsized: invalid coercion {} -> {}",
+                                     source.ty.repr(bcx.tcx()),
+                                     target.ty.repr(bcx.tcx())))
     }
-
-    fn unsize_pointer<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                  datum: Datum<'tcx, Expr>,
-                                  target: Ty<'tcx>)
-                                  -> DatumBlock<'blk, 'tcx, Expr> {
-        let mut bcx = bcx;
-        let unsized_ty = ty::deref(target, true)
-            .expect("expr::unsize got non-pointer target type").ty;
-        debug!("unsize_lvalue(unsized_ty={})", unsized_ty.repr(bcx.tcx()));
-
-        // We do not arrange cleanup ourselves; if we already are an
-        // L-value, then cleanup will have already been scheduled (and
-        // the `datum.to_rvalue_datum` call below will emit code to zero
-        // the drop flag when moving out of the L-value). If we are an
-        // R-value, then we do not need to schedule cleanup.
-        let datum = unpack_datum!(bcx, datum.to_rvalue_datum(bcx, "__unsize_ref"));
-
-        let pointee_ty = ty::deref(datum.ty, true)
-            .expect("expr::unsize got non-pointer datum type").ty;
-        let (base, old_info) = if !type_is_sized(bcx.tcx(), pointee_ty) {
-            // Normally, the source is a thin pointer and we are
-            // adding extra info to make a fat pointer. The exception
-            // is when we are upcasting an existing object fat pointer
-            // to use a different vtable. In that case, we want to
-            // load out the original data pointer so we can repackage
-            // it.
-            (Load(bcx, get_dataptr(bcx, datum.val)),
-             Some(Load(bcx, get_len(bcx, datum.val))))
-        } else {
-            (datum.val, None)
-        };
-
-        let info = unsized_info(bcx.ccx(), pointee_ty, unsized_ty,
-                                old_info, bcx.fcx.param_substs);
-
-        // Compute the base pointer. This doesn't change the pointer value,
-        // but merely its type.
-        let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), unsized_ty).ptr_to();
-        let base = PointerCast(bcx, base, ptr_ty);
-
-        let llty = type_of::type_of(bcx.ccx(), target);
-        // HACK(eddyb) get around issues with lifetime intrinsics.
-        let scratch = alloca_no_lifetime(bcx, llty, "__fat_ptr");
-        Store(bcx, base, get_dataptr(bcx, scratch));
-        Store(bcx, info, get_len(bcx, scratch));
-
-        DatumBlock::new(bcx, Datum::new(scratch, target,
-                                        RvalueExpr(Rvalue::new(ByRef))))
-    }
+    bcx
 }
 
 /// Translates an expression in "lvalue" mode -- meaning that it returns a reference to the memory
@@ -1174,7 +1249,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 pub fn trans_def_fn_unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                          ref_expr: &ast::Expr,
                                          def: def::Def,
-                                         param_substs: &'tcx subst::Substs<'tcx>)
+                                         param_substs: &'tcx Substs<'tcx>)
                                          -> Datum<'tcx, Rvalue> {
     let _icx = push_ctxt("trans_def_datum_unadjusted");
 

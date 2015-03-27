@@ -307,6 +307,12 @@ pub enum AutoRef<'tcx> {
     AutoUnsafe(ast::Mutability),
 }
 
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub enum CustomCoerceUnsized {
+    /// Records the index of the field being coerced.
+    Struct(usize)
+}
+
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Debug)]
 pub struct param_index {
     pub space: subst::ParamSpace,
@@ -721,6 +727,9 @@ pub struct ctxt<'tcx> {
 
     /// Maps Expr NodeId's to their constant qualification.
     pub const_qualif_map: RefCell<NodeMap<check_const::ConstQualif>>,
+
+    /// Caches CoerceUnsized kinds for impls on custom types.
+    pub custom_coerce_unsized_kinds: RefCell<DefIdMap<CustomCoerceUnsized>>,
 }
 
 // Flags that we track on types. These flags are propagated upwards
@@ -2513,6 +2522,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         type_impls_sized_cache: RefCell::new(HashMap::new()),
         object_safety_cache: RefCell::new(DefIdMap()),
         const_qualif_map: RefCell::new(NodeMap()),
+        custom_coerce_unsized_kinds: RefCell::new(DefIdMap()),
    }
 }
 
@@ -5020,6 +5030,26 @@ pub fn trait_impl_polarity<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
      } else {
          csearch::get_impl_polarity(cx, id)
      }
+}
+
+pub fn custom_coerce_unsized_kind<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
+                                        -> CustomCoerceUnsized {
+    memoized(&cx.custom_coerce_unsized_kinds, did, |did: DefId| {
+        let (kind, src) = if did.krate != ast::LOCAL_CRATE {
+            (csearch::get_custom_coerce_unsized_kind(cx, did), "external")
+        } else {
+            (None, "local")
+        };
+
+        match kind {
+            Some(kind) => kind,
+            None => {
+                cx.sess.bug(&format!("custom_coerce_unsized_kind: \
+                                      {} impl `{}` is missing its kind",
+                                     src, item_path_str(cx, did)));
+            }
+        }
+    })
 }
 
 pub fn impl_or_trait_item<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)

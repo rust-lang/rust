@@ -1186,6 +1186,16 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_attributes(rbml_w, &item.attrs);
         encode_unsafety(rbml_w, unsafety);
         encode_polarity(rbml_w, polarity);
+
+        match tcx.custom_coerce_unsized_kinds.borrow().get(&local_def(item.id)) {
+            Some(&kind) => {
+                rbml_w.start_tag(tag_impl_coerce_unsized_kind);
+                kind.encode(rbml_w);
+                rbml_w.end_tag();
+            }
+            None => {}
+        }
+
         match ty.node {
             ast::TyPath(None, ref path) if path.segments.len() == 1 => {
                 let ident = path.segments.last().unwrap().identifier;

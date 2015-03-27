@@ -272,6 +272,14 @@ pub fn get_impl_polarity<'tcx>(tcx: &ty::ctxt<'tcx>,
     decoder::get_impl_polarity(&*cdata, def.node)
 }
 
+pub fn get_custom_coerce_unsized_kind<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                            def: ast::DefId)
+                                            -> Option<ty::CustomCoerceUnsized> {
+    let cstore = &tcx.sess.cstore;
+    let cdata = cstore.get_crate_data(def.krate);
+    decoder::get_custom_coerce_unsized_kind(&*cdata, def.node)
+}
+
 // Given a def_id for an impl, return the trait it implements,
 // if there is one.
 pub fn get_impl_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
