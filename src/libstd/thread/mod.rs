@@ -870,13 +870,13 @@ mod test {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_scoped_panic() {
         thread::scoped(|| panic!()).join();
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_scoped_implicit_panic() {
         let _ = thread::scoped(|| panic!());
     }

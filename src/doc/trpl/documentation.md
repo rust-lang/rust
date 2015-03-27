@@ -352,7 +352,7 @@ Here’s an example of documenting a macro:
 /// # }
 /// ```
 ///
-/// ```should_fail
+/// ```should_panic
 /// # #[macro_use] extern crate foo;
 /// # fn main() {
 /// panic_unless!(true == false, “I’m broken.”);
