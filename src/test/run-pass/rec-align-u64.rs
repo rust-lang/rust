@@ -16,8 +16,8 @@ use std::mem;
 
 mod rusti {
     extern "rust-intrinsic" {
-        pub fn pref_align_of<T>() -> uint;
-        pub fn min_align_of<T>() -> uint;
+        pub fn pref_align_of<T>() -> usize;
+        pub fn min_align_of<T>() -> usize;
     }
 }
 
@@ -44,14 +44,14 @@ struct Outer {
 mod m {
     #[cfg(target_arch = "x86")]
     pub mod m {
-        pub fn align() -> uint { 4 }
-        pub fn size() -> uint { 12 }
+        pub fn align() -> usize { 4 }
+        pub fn size() -> usize { 12 }
     }
 
     #[cfg(any(target_arch = "x86_64", target_arch = "arm", target_arch = "aarch64"))]
     pub mod m {
-        pub fn align() -> uint { 8 }
-        pub fn size() -> uint { 16 }
+        pub fn align() -> usize { 8 }
+        pub fn size() -> usize { 16 }
     }
 }
 
@@ -59,8 +59,8 @@ mod m {
 mod m {
     #[cfg(target_arch = "x86_64")]
     pub mod m {
-        pub fn align() -> uint { 8 }
-        pub fn size() -> uint { 16 }
+        pub fn align() -> usize { 8 }
+        pub fn size() -> usize { 16 }
     }
 }
 
@@ -68,14 +68,14 @@ mod m {
 mod m {
     #[cfg(target_arch = "x86")]
     pub mod m {
-        pub fn align() -> uint { 8 }
-        pub fn size() -> uint { 16 }
+        pub fn align() -> usize { 8 }
+        pub fn size() -> usize { 16 }
     }
 
     #[cfg(target_arch = "x86_64")]
     pub mod m {
-        pub fn align() -> uint { 8 }
-        pub fn size() -> uint { 16 }
+        pub fn align() -> usize { 8 }
+        pub fn size() -> usize { 16 }
     }
 }
 
@@ -83,8 +83,8 @@ mod m {
 mod m {
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     pub mod m {
-        pub fn align() -> uint { 8 }
-        pub fn size() -> uint { 16 }
+        pub fn align() -> usize { 8 }
+        pub fn size() -> usize { 16 }
     }
 }
 

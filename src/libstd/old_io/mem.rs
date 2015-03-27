@@ -20,9 +20,9 @@ use old_io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
 use slice;
 use vec::Vec;
 
-const BUF_CAPACITY: uint = 128;
+const BUF_CAPACITY: usize = 128;
 
-fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> {
+fn combine(seek: SeekStyle, cur: usize, end: usize, offset: i64) -> IoResult<u64> {
     // compute offset as signed and clamp to prevent overflow
     let pos = match seek {
         old_io::SeekSet => 0,
@@ -82,7 +82,7 @@ impl MemWriter {
     /// Create a new `MemWriter`, allocating at least `n` bytes for
     /// the internal buffer.
     #[inline]
-    pub fn with_capacity(n: uint) -> MemWriter {
+    pub fn with_capacity(n: usize) -> MemWriter {
         MemWriter::from_vec(Vec::with_capacity(n))
     }
     /// Create a new `MemWriter` that will append to an existing `Vec`.
@@ -125,7 +125,7 @@ impl Writer for MemWriter {
 /// ```
 pub struct MemReader {
     buf: Vec<u8>,
-    pos: uint
+    pos: usize
 }
 
 impl MemReader {
@@ -160,7 +160,7 @@ impl MemReader {
 
 impl Reader for MemReader {
     #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         if self.eof() { return Err(old_io::standard_error(old_io::EndOfFile)) }
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
@@ -184,7 +184,7 @@ impl Seek for MemReader {
     #[inline]
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
         let new = try!(combine(style, self.pos, self.buf.len(), pos));
-        self.pos = new as uint;
+        self.pos = new as usize;
         Ok(())
     }
 }
@@ -200,12 +200,12 @@ impl Buffer for MemReader {
     }
 
     #[inline]
-    fn consume(&mut self, amt: uint) { self.pos += amt; }
+    fn consume(&mut self, amt: usize) { self.pos += amt; }
 }
 
 impl<'a> Reader for &'a [u8] {
     #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         if self.is_empty() { return Err(old_io::standard_error(old_io::EndOfFile)); }
 
         let write_len = min(buf.len(), self.len());
@@ -232,7 +232,7 @@ impl<'a> Buffer for &'a [u8] {
     }
 
     #[inline]
-    fn consume(&mut self, amt: uint) {
+    fn consume(&mut self, amt: usize) {
         *self = &self[amt..];
     }
 }
@@ -259,7 +259,7 @@ impl<'a> Buffer for &'a [u8] {
 /// ```
 pub struct BufWriter<'a> {
     buf: &'a mut [u8],
-    pos: uint
+    pos: usize
 }
 
 impl<'a> BufWriter<'a> {
@@ -309,7 +309,7 @@ impl<'a> Seek for BufWriter<'a> {
     #[inline]
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
         let new = try!(combine(style, self.pos, self.buf.len(), pos));
-        self.pos = min(new as uint, self.buf.len());
+        self.pos = min(new as usize, self.buf.len());
         Ok(())
     }
 }
@@ -330,7 +330,7 @@ impl<'a> Seek for BufWriter<'a> {
 /// ```
 pub struct BufReader<'a> {
     buf: &'a [u8],
-    pos: uint
+    pos: usize
 }
 
 impl<'a> BufReader<'a> {
@@ -352,7 +352,7 @@ impl<'a> BufReader<'a> {
 
 impl<'a> Reader for BufReader<'a> {
     #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         if self.eof() { return Err(old_io::standard_error(old_io::EndOfFile)) }
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
@@ -376,7 +376,7 @@ impl<'a> Seek for BufReader<'a> {
     #[inline]
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
         let new = try!(combine(style, self.pos, self.buf.len(), pos));
-        self.pos = new as uint;
+        self.pos = new as usize;
         Ok(())
     }
 }
@@ -392,7 +392,7 @@ impl<'a> Buffer for BufReader<'a> {
     }
 
     #[inline]
-    fn consume(&mut self, amt: uint) { self.pos += amt; }
+    fn consume(&mut self, amt: usize) { self.pos += amt; }
 }
 
 #[cfg(test)]
@@ -663,7 +663,7 @@ mod test {
         assert_eq!(buf, b);
     }
 
-    fn do_bench_mem_writer(b: &mut Bencher, times: uint, len: uint) {
+    fn do_bench_mem_writer(b: &mut Bencher, times: usize, len: usize) {
         let src: Vec<u8> = repeat(5).take(len).collect();
 
         b.bytes = (times * len) as u64;

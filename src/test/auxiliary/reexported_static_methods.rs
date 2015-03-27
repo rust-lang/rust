@@ -17,8 +17,8 @@ pub trait Bar {
     fn bar() -> Self;
 }
 
-impl Bar for int {
-    fn bar() -> int { 84 }
+impl Bar for isize {
+    fn bar() -> isize { 84 }
 }
 
 pub mod sub_foo {
@@ -26,8 +26,8 @@ pub mod sub_foo {
         fn foo() -> Self;
     }
 
-    impl Foo for int {
-        fn foo() -> int { 42 }
+    impl Foo for isize {
+        fn foo() -> isize { 42 }
     }
 
     pub struct Boz {
@@ -35,7 +35,7 @@ pub mod sub_foo {
     }
 
     impl Boz {
-        pub fn boz(i: int) -> bool {
+        pub fn boz(i: isize) -> bool {
             i > 0
         }
     }

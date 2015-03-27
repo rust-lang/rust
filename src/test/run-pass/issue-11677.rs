@@ -24,7 +24,7 @@ struct S<T> {f: Box<X<T>+'static>,
              g: Box<X<T>+'static>}
 
 struct F;
-impl X<int> for F {
+impl X<isize> for F {
 }
 
 fn main() {

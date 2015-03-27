@@ -11,7 +11,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn swap<F>(f: F) -> Vec<int> where F: FnOnce(Vec<int>) -> Vec<int> {
+fn swap<F>(f: F) -> Vec<isize> where F: FnOnce(Vec<isize>) -> Vec<isize> {
     let x = vec!(1, 2, 3);
     f(x)
 }

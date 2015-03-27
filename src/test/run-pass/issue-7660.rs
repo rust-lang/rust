@@ -19,10 +19,10 @@ extern crate collections;
 
 use std::collections::HashMap;
 
-struct A(int, int);
+struct A(isize, isize);
 
 pub fn main() {
-    let mut m: HashMap<int, A> = HashMap::new();
+    let mut m: HashMap<isize, A> = HashMap::new();
     m.insert(1, A(0, 0));
 
     let A(ref _a, ref _b) = m[&1];

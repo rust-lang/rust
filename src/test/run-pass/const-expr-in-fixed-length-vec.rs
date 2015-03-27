@@ -15,7 +15,7 @@
 
 pub fn main() {
 
-    const FOO: uint = 2;
-    let _v: [int; FOO*3];
+    const FOO: usize = 2;
+    let _v: [isize; FOO*3];
 
 }

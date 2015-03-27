@@ -38,7 +38,7 @@ impl Hasher for SipHasher {
     fn finish(&self) -> u64 { 4 }
 }
 
-impl Hash<SipHasher> for int {
+impl Hash<SipHasher> for isize {
     fn hash(&self, h: &mut SipHasher) {}
 }
 

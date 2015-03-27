@@ -58,7 +58,7 @@ fn main() {
     }
 }
 
-fn fun(x: int, y: bool) -> (int, bool) {
+fn fun(x: isize, y: bool) -> (isize, bool) {
     zzz(); // #break
 
     (x, y)

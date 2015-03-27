@@ -14,6 +14,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 
-fn foo(box (_x, _y): Box<(int, int)>) {}
+fn foo(box (_x, _y): Box<(isize, isize)>) {}
 
 pub fn main() {}

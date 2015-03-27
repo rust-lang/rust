@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 enum T {
-    A(int),
+    A(isize),
     B(f64)
 }
 

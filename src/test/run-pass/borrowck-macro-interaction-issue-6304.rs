@@ -17,11 +17,11 @@
 #![feature(box_syntax)]
 
 struct Foo {
-  a: int
+  a: isize
 }
 
 pub enum Bar {
-  Bar1, Bar2(int, Box<Bar>),
+  Bar1, Bar2(isize, Box<Bar>),
 }
 
 impl Foo {
@@ -38,7 +38,7 @@ impl Foo {
     }
   }
 
-  fn check_id(&mut self, s: int) { panic!() }
+  fn check_id(&mut self, s: isize) { panic!() }
 }
 
 pub fn main() { }

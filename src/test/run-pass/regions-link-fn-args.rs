@@ -15,7 +15,7 @@
 
 #![allow(dead_code)]
 
-fn with<'a, F>(_: F) where F: FnOnce(&'a Vec<int>) -> &'a Vec<int> { }
+fn with<'a, F>(_: F) where F: FnOnce(&'a Vec<isize>) -> &'a Vec<isize> { }
 
 fn foo() {
     with(|&ref ints| ints);

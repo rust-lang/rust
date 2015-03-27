@@ -14,11 +14,11 @@
 #![feature(box_syntax)]
 
 trait double {
-    fn double(self: Box<Self>) -> uint;
+    fn double(self: Box<Self>) -> usize;
 }
 
-impl double for Box<uint> {
-    fn double(self: Box<Box<uint>>) -> uint { **self * 2 }
+impl double for Box<usize> {
+    fn double(self: Box<Box<usize>>) -> usize { **self * 2 }
 }
 
 pub fn main() {

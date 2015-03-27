@@ -10,8 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
-struct A { a: int }
+struct A { a: isize }
 
-fn a(a: A) -> int { return a.a; }
+fn a(a: A) -> isize { return a.a; }
 
 pub fn main() { let x: A = A {a: 1}; assert!((a(x) == 1)); }

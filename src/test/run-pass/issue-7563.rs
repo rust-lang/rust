@@ -13,9 +13,9 @@ trait IDummy {
 }
 
 #[derive(Debug)]
-struct A { a: int }
+struct A { a: isize }
 #[derive(Debug)]
-struct B<'a> { b: int, pa: &'a A }
+struct B<'a> { b: isize, pa: &'a A }
 
     impl IDummy for A {
         fn do_nothing(&self) {

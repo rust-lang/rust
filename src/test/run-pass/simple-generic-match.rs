@@ -14,4 +14,4 @@
 
 enum clam<T> { a(T), }
 
-pub fn main() { let c = clam::a(2); match c { clam::a::<int>(_) => { } } }
+pub fn main() { let c = clam::a(2); match c { clam::a::<isize>(_) => { } } }

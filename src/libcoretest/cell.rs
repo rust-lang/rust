@@ -134,19 +134,19 @@ fn clone_ref_updates_flag() {
 
 #[test]
 fn as_unsafe_cell() {
-    let c1: Cell<uint> = Cell::new(0);
+    let c1: Cell<usize> = Cell::new(0);
     c1.set(1);
     assert_eq!(1, unsafe { *c1.as_unsafe_cell().get() });
 
-    let c2: Cell<uint> = Cell::new(0);
+    let c2: Cell<usize> = Cell::new(0);
     unsafe { *c2.as_unsafe_cell().get() = 1; }
     assert_eq!(1, c2.get());
 
-    let r1: RefCell<uint> = RefCell::new(0);
+    let r1: RefCell<usize> = RefCell::new(0);
     *r1.borrow_mut() = 1;
     assert_eq!(1, unsafe { *r1.as_unsafe_cell().get() });
 
-    let r2: RefCell<uint> = RefCell::new(0);
+    let r2: RefCell<usize> = RefCell::new(0);
     unsafe { *r2.as_unsafe_cell().get() = 1; }
     assert_eq!(1, *r2.borrow());
 }

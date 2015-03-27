@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn pairwise_sub<T:DoubleEndedIterator<Item=int>>(mut t: T) -> int {
+fn pairwise_sub<T:DoubleEndedIterator<Item=isize>>(mut t: T) -> isize {
     let mut result = 0;
     loop {
         let front = t.next();

@@ -9,27 +9,27 @@
 // except according to those terms.
 
 trait Product {
-    fn product(&self) -> int;
+    fn product(&self) -> isize;
 }
 
 struct Foo {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 impl Foo {
-    pub fn sum(&self) -> int {
+    pub fn sum(&self) -> isize {
         self.x + self.y
     }
 }
 
 impl Product for Foo {
-    fn product(&self) -> int {
+    fn product(&self) -> isize {
         self.x * self.y
     }
 }
 
-fn Foo(x: int, y: int) -> Foo {
+fn Foo(x: isize, y: isize) -> Foo {
     Foo { x: x, y: y }
 }
 

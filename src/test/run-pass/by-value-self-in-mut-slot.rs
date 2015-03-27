@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 struct X {
-    a: int
+    a: isize
 }
 
 trait Changer {

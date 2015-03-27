@@ -90,29 +90,29 @@ trait FixedBuffer {
 
     /// Zero the buffer up until the specified index. The buffer position currently must not be
     /// greater than that index.
-    fn zero_until(&mut self, idx: uint);
+    fn zero_until(&mut self, idx: usize);
 
     /// Get a slice of the buffer of the specified size. There must be at least that many bytes
     /// remaining in the buffer.
-    fn next<'s>(&'s mut self, len: uint) -> &'s mut [u8];
+    fn next<'s>(&'s mut self, len: usize) -> &'s mut [u8];
 
     /// Get the current buffer. The buffer must already be full. This clears the buffer as well.
     fn full_buffer<'s>(&'s mut self) -> &'s [u8];
 
     /// Get the current position of the buffer.
-    fn position(&self) -> uint;
+    fn position(&self) -> usize;
 
     /// Get the number of bytes remaining in the buffer until it is full.
-    fn remaining(&self) -> uint;
+    fn remaining(&self) -> usize;
 
     /// Get the size of the buffer
-    fn size(&self) -> uint;
+    fn size(&self) -> usize;
 }
 
 /// A FixedBuffer of 64 bytes useful for implementing Sha256 which has a 64 byte blocksize.
 struct FixedBuffer64 {
     buffer: [u8; 64],
-    buffer_idx: uint,
+    buffer_idx: usize,
 }
 
 impl FixedBuffer64 {
@@ -174,13 +174,13 @@ impl FixedBuffer for FixedBuffer64 {
         self.buffer_idx = 0;
     }
 
-    fn zero_until(&mut self, idx: uint) {
+    fn zero_until(&mut self, idx: usize) {
         assert!(idx >= self.buffer_idx);
         self.buffer[self.buffer_idx..idx].set_memory(0);
         self.buffer_idx = idx;
     }
 
-    fn next<'s>(&'s mut self, len: uint) -> &'s mut [u8] {
+    fn next<'s>(&'s mut self, len: usize) -> &'s mut [u8] {
         self.buffer_idx += len;
         return &mut self.buffer[self.buffer_idx - len..self.buffer_idx];
     }
@@ -191,11 +191,11 @@ impl FixedBuffer for FixedBuffer64 {
         return &self.buffer[..64];
     }
 
-    fn position(&self) -> uint { self.buffer_idx }
+    fn position(&self) -> usize { self.buffer_idx }
 
-    fn remaining(&self) -> uint { 64 - self.buffer_idx }
+    fn remaining(&self) -> usize { 64 - self.buffer_idx }
 
-    fn size(&self) -> uint { 64 }
+    fn size(&self) -> usize { 64 }
 }
 
 /// The StandardPadding trait adds a method useful for Sha256 to a FixedBuffer struct.
@@ -204,11 +204,11 @@ trait StandardPadding {
     /// guaranteed to have exactly rem remaining bytes when it returns. If there are not at least
     /// rem bytes available, the buffer will be zero padded, processed, cleared, and then filled
     /// with zeros again until only rem bytes are remaining.
-    fn standard_padding<F>(&mut self, rem: uint, func: F) where F: FnMut(&[u8]);
+    fn standard_padding<F>(&mut self, rem: usize, func: F) where F: FnMut(&[u8]);
 }
 
 impl <T: FixedBuffer> StandardPadding for T {
-    fn standard_padding<F>(&mut self, rem: uint, mut func: F) where F: FnMut(&[u8]) {
+    fn standard_padding<F>(&mut self, rem: usize, mut func: F) where F: FnMut(&[u8]) {
         let size = self.size();
 
         self.next(1)[0] = 128;
@@ -244,7 +244,7 @@ pub trait Digest {
     fn reset(&mut self);
 
     /// Get the output size in bits.
-    fn output_bits(&self) -> uint;
+    fn output_bits(&self) -> usize;
 
     /// Convenience function that feeds a string into a digest.
     ///
@@ -514,7 +514,7 @@ impl Digest for Sha256 {
         self.engine.reset(&H256);
     }
 
-    fn output_bits(&self) -> uint { 256 }
+    fn output_bits(&self) -> usize { 256 }
 }
 
 static H256: [u32; 8] = [
@@ -613,7 +613,7 @@ mod tests {
 
     /// Feed 1,000,000 'a's into the digest with varying input sizes and check that the result is
     /// correct.
-    fn test_digest_1million_random<D: Digest>(digest: &mut D, blocksize: uint, expected: &str) {
+    fn test_digest_1million_random<D: Digest>(digest: &mut D, blocksize: usize, expected: &str) {
         let total_size = 1000000;
         let buffer: Vec<u8> = repeat('a' as u8).take(blocksize * 2).collect();
         let mut rng = IsaacRng::new_unseeded();
@@ -622,7 +622,7 @@ mod tests {
         digest.reset();
 
         while count < total_size {
-            let next: uint = rng.gen_range(0, 2 * blocksize + 1);
+            let next: usize = rng.gen_range(0, 2 * blocksize + 1);
             let remaining = total_size - count;
             let size = if next > remaining { remaining } else { next };
             digest.input(&buffer[..size]);

@@ -19,16 +19,16 @@
 // compilation unit as the top-level module.
 // pretty-expanded FIXME #23616
 
-fn one() -> uint { 1 }
+fn one() -> usize { 1 }
 
 mod a {
-    pub fn two() -> uint {
+    pub fn two() -> usize {
         ::one() + ::one()
     }
 }
 
 mod b {
-    pub fn three() -> uint {
+    pub fn three() -> usize {
         ::one() + ::a::two()
     }
 }

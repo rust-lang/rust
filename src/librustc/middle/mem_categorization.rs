@@ -94,7 +94,7 @@ pub enum categorization<'tcx> {
     cat_static_item,
     cat_upvar(Upvar),                          // upvar referenced by closure env
     cat_local(ast::NodeId),                    // local variable
-    cat_deref(cmt<'tcx>, uint, PointerKind),   // deref of a ptr
+    cat_deref(cmt<'tcx>, usize, PointerKind),   // deref of a ptr
     cat_interior(cmt<'tcx>, InteriorKind),     // something interior: field, tuple, etc
     cat_downcast(cmt<'tcx>, ast::DefId),       // selects a particular enum variant (*1)
 
@@ -135,7 +135,7 @@ pub enum InteriorKind {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum FieldName {
     NamedField(ast::Name),
-    PositionalField(uint)
+    PositionalField(usize)
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -462,7 +462,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
     pub fn cat_expr_autoderefd(&self,
                                expr: &ast::Expr,
-                               autoderefs: uint)
+                               autoderefs: usize)
                                -> McResult<cmt<'tcx>> {
         let mut cmt = try!(self.cat_expr_unadjusted(expr));
         debug!("cat_expr_autoderefd: autoderefs={}, cmt={}",
@@ -868,7 +868,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     pub fn cat_tup_field<N:ast_node>(&self,
                                      node: &N,
                                      base_cmt: cmt<'tcx>,
-                                     f_idx: uint,
+                                     f_idx: usize,
                                      f_ty: Ty<'tcx>)
                                      -> cmt<'tcx> {
         Rc::new(cmt_ {
@@ -884,7 +884,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     fn cat_deref<N:ast_node>(&self,
                              node: &N,
                              base_cmt: cmt<'tcx>,
-                             deref_cnt: uint,
+                             deref_cnt: usize,
                              deref_context: DerefKindContext)
                              -> McResult<cmt<'tcx>> {
         let adjustment = match self.typer.adjustments().borrow().get(&node.id()) {
@@ -928,7 +928,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     fn cat_deref_common<N:ast_node>(&self,
                                     node: &N,
                                     base_cmt: cmt<'tcx>,
-                                    deref_cnt: uint,
+                                    deref_cnt: usize,
                                     deref_ty: Ty<'tcx>,
                                     deref_context: DerefKindContext,
                                     implicit: bool)

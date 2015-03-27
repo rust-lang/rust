@@ -21,15 +21,15 @@ fn size_of_basic() {
 #[test]
 #[cfg(target_pointer_width = "32")]
 fn size_of_32() {
-    assert_eq!(size_of::<uint>(), 4);
-    assert_eq!(size_of::<*const uint>(), 4);
+    assert_eq!(size_of::<usize>(), 4);
+    assert_eq!(size_of::<*const usize>(), 4);
 }
 
 #[test]
 #[cfg(target_pointer_width = "64")]
 fn size_of_64() {
-    assert_eq!(size_of::<uint>(), 8);
-    assert_eq!(size_of::<*const uint>(), 8);
+    assert_eq!(size_of::<usize>(), 8);
+    assert_eq!(size_of::<*const usize>(), 8);
 }
 
 #[test]
@@ -50,15 +50,15 @@ fn align_of_basic() {
 #[test]
 #[cfg(target_pointer_width = "32")]
 fn align_of_32() {
-    assert_eq!(align_of::<uint>(), 4);
-    assert_eq!(align_of::<*const uint>(), 4);
+    assert_eq!(align_of::<usize>(), 4);
+    assert_eq!(align_of::<*const usize>(), 4);
 }
 
 #[test]
 #[cfg(target_pointer_width = "64")]
 fn align_of_64() {
-    assert_eq!(align_of::<uint>(), 8);
-    assert_eq!(align_of::<*const uint>(), 8);
+    assert_eq!(align_of::<usize>(), 8);
+    assert_eq!(align_of::<*const usize>(), 8);
 }
 
 #[test]
@@ -93,12 +93,12 @@ fn test_transmute_copy() {
 #[test]
 fn test_transmute() {
     trait Foo { fn dummy(&self) { } }
-    impl Foo for int {}
+    impl Foo for isize {}
 
     let a = box 100isize as Box<Foo>;
     unsafe {
         let x: ::core::raw::TraitObject = transmute(a);
-        assert!(*(x.data as *const int) == 100);
+        assert!(*(x.data as *const isize) == 100);
         let _x: Box<Foo> = transmute(x);
     }
 
@@ -112,15 +112,15 @@ fn test_transmute() {
 // Static/dynamic method dispatch
 
 struct Struct {
-    field: int
+    field: isize
 }
 
 trait Trait {
-    fn method(&self) -> int;
+    fn method(&self) -> isize;
 }
 
 impl Trait for Struct {
-    fn method(&self) -> int {
+    fn method(&self) -> isize {
         self.field
     }
 }

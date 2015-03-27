@@ -12,7 +12,7 @@
 
 use std::mem;
 
-static mut DROP_COUNT: uint = 0;
+static mut DROP_COUNT: usize = 0;
 
 struct Fragment;
 

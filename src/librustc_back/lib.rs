@@ -36,7 +36,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(old_fs)]
-#![feature(int_uint)]
 #![feature(io)]
 #![feature(old_io)]
 #![feature(old_path)]

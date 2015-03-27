@@ -10,7 +10,7 @@
 
 
 
-fn altlit(f: int) -> int {
+fn altlit(f: isize) -> isize {
     match f {
       10 => { println!("case 10"); return 20; }
       11 => { println!("case 11"); return 22; }

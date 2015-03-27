@@ -12,13 +12,13 @@
 
 #[derive(Clone)]
 struct S {
-    _int: int,
+    _int: isize,
     _i8: i8,
     _i16: i16,
     _i32: i32,
     _i64: i64,
 
-    _uint: uint,
+    _uint: usize,
     _u8: u8,
     _u16: u16,
     _u32: u32,

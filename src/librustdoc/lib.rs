@@ -16,16 +16,15 @@
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/nightly/",
-       html_playground_url = "http://play.rust-lang.org/")]
+   html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+   html_root_url = "http://doc.rust-lang.org/nightly/",
+   html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
 #![feature(exit_status)]
-#![feature(int_uint)]
 #![feature(set_stdio)]
 #![feature(libc)]
 #![feature(old_path)]
@@ -195,7 +194,7 @@ pub fn usage(argv0: &str) {
                             &opts()));
 }
 
-pub fn main_args(args: &[String]) -> int {
+pub fn main_args(args: &[String]) -> isize {
     let matches = match getopts::getopts(args.tail(), &opts()) {
         Ok(m) => m,
         Err(err) => {

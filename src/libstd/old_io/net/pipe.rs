@@ -150,7 +150,7 @@ impl Clone for UnixStream {
 }
 
 impl Reader for UnixStream {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         self.inner.read(buf)
     }
 }

@@ -10,7 +10,7 @@
 
 #[derive(Debug)]
 struct Pair<T, U> { a: T, b: U }
-struct Triple { x: int, y: int, z: int }
+struct Triple { x: isize, y: isize, z: isize }
 
 fn f<T,U>(x: T, y: U) -> Pair<T, U> { return Pair {a: x, b: y}; }
 

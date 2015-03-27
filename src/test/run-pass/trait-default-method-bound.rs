@@ -12,10 +12,10 @@
 // pretty-expanded FIXME #23616
 
 trait A {
-    fn g(&self) -> int { 10 }
+    fn g(&self) -> isize { 10 }
 }
 
-impl A for int { }
+impl A for isize { }
 
 fn f<T:A>(i: T) {
     assert_eq!(i.g(), 10);

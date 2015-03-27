@@ -10,8 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
-const s: int = 1;
-const e: int = 42;
+const s: isize = 1;
+const e: isize = 42;
 
 pub fn main() {
     match 7 {

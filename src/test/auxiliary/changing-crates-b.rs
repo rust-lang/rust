@@ -12,4 +12,4 @@
 
 extern crate a;
 
-pub fn foo() { a::foo::<int>(); }
+pub fn foo() { a::foo::<isize>(); }

@@ -14,23 +14,23 @@
 // pretty-expanded FIXME #23616
 
 trait Foo {
-    fn f(&self) -> int;
+    fn f(&self) -> isize;
 }
 
 trait Bar : Foo {
-    fn g(&self) -> int;
+    fn g(&self) -> isize;
 }
 
 struct A {
-    x: int
+    x: isize
 }
 
 impl Foo for A {
-    fn f(&self) -> int { 10 }
+    fn f(&self) -> isize { 10 }
 }
 
 impl Bar for A {
-    fn g(&self) -> int { 20 }
+    fn g(&self) -> isize { 20 }
 }
 
 pub fn main() {

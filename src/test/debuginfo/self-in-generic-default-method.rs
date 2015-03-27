@@ -116,22 +116,22 @@
 
 #[derive(Copy)]
 struct Struct {
-    x: int
+    x: isize
 }
 
 trait Trait : Sized {
 
-    fn self_by_ref<T>(&self, arg1: int, arg2: T) -> int {
+    fn self_by_ref<T>(&self, arg1: isize, arg2: T) -> isize {
         zzz(); // #break
         arg1
     }
 
-    fn self_by_val<T>(self, arg1: int, arg2: T) -> int {
+    fn self_by_val<T>(self, arg1: isize, arg2: T) -> isize {
         zzz(); // #break
         arg1
     }
 
-    fn self_owned<T>(self: Box<Self>, arg1: int, arg2: T) -> int {
+    fn self_owned<T>(self: Box<Self>, arg1: isize, arg2: T) -> isize {
         zzz(); // #break
         arg1
     }

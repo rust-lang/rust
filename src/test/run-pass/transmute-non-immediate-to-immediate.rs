@@ -15,6 +15,6 @@
 
 pub fn main() {
     unsafe {
-        ::std::mem::transmute::<[int; 1],int>([1])
+        ::std::mem::transmute::<[isize; 1],isize>([1])
     };
 }

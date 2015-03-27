@@ -16,18 +16,18 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-static mut value: uint = 0;
+static mut value: usize = 0;
 
 struct Cat {
-    name : uint,
+    name : usize,
 }
 
 trait Dummy {
-    fn get(&self) -> uint;
+    fn get(&self) -> usize;
 }
 
 impl Dummy for Cat {
-    fn get(&self) -> uint { self.name }
+    fn get(&self) -> usize { self.name }
 }
 
 impl Drop for Cat {

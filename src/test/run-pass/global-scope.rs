@@ -11,10 +11,10 @@
 
 // pretty-expanded FIXME #23616
 
-pub fn f() -> int { return 1; }
+pub fn f() -> isize { return 1; }
 
 pub mod foo {
-    pub fn f() -> int { return 2; }
+    pub fn f() -> isize { return 2; }
     pub fn g() { assert!((f() == 2)); assert!((::f() == 1)); }
 }
 

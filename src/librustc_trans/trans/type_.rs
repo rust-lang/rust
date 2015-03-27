@@ -118,7 +118,7 @@ impl Type {
 
     pub fn int_from_ty(ccx: &CrateContext, t: ast::IntTy) -> Type {
         match t {
-            ast::TyIs(_) => ccx.int_type(),
+            ast::TyIs => ccx.int_type(),
             ast::TyI8 => Type::i8(ccx),
             ast::TyI16 => Type::i16(ccx),
             ast::TyI32 => Type::i32(ccx),
@@ -128,7 +128,7 @@ impl Type {
 
     pub fn uint_from_ty(ccx: &CrateContext, t: ast::UintTy) -> Type {
         match t {
-            ast::TyUs(_) => ccx.int_type(),
+            ast::TyUs => ccx.int_type(),
             ast::TyU8 => Type::i8(ccx),
             ast::TyU16 => Type::i16(ccx),
             ast::TyU32 => Type::i32(ccx),
@@ -239,21 +239,21 @@ impl Type {
     }
 
     /// Return the number of elements in `self` if it is a LLVM vector type.
-    pub fn vector_length(&self) -> uint {
+    pub fn vector_length(&self) -> usize {
         unsafe {
-            llvm::LLVMGetVectorSize(self.to_ref()) as uint
+            llvm::LLVMGetVectorSize(self.to_ref()) as usize
         }
     }
 
-    pub fn array_length(&self) -> uint {
+    pub fn array_length(&self) -> usize {
         unsafe {
-            llvm::LLVMGetArrayLength(self.to_ref()) as uint
+            llvm::LLVMGetArrayLength(self.to_ref()) as usize
         }
     }
 
     pub fn field_types(&self) -> Vec<Type> {
         unsafe {
-            let n_elts = llvm::LLVMCountStructElementTypes(self.to_ref()) as uint;
+            let n_elts = llvm::LLVMCountStructElementTypes(self.to_ref()) as usize;
             if n_elts == 0 {
                 return Vec::new();
             }
@@ -270,7 +270,7 @@ impl Type {
 
     pub fn func_params(&self) -> Vec<Type> {
         unsafe {
-            let n_args = llvm::LLVMCountParamTypes(self.to_ref()) as uint;
+            let n_args = llvm::LLVMCountParamTypes(self.to_ref()) as usize;
             let mut args: Vec<_> = repeat(Type { rf: ptr::null_mut() }).take(n_args).collect();
             llvm::LLVMGetParamTypes(self.to_ref(),
                                     args.as_mut_ptr() as *mut TypeRef);
@@ -278,7 +278,7 @@ impl Type {
         }
     }
 
-    pub fn float_width(&self) -> uint {
+    pub fn float_width(&self) -> usize {
         match self.kind() {
             Float => 32,
             Double => 64,

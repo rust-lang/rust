@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub struct Foo (pub int);
+pub struct Foo (pub isize);
 pub enum MyEnum {
     Foo(Foo),
 }

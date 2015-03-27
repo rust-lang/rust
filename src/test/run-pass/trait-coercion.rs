@@ -19,8 +19,8 @@ trait Trait {
 
 #[derive(Copy)]
 struct Struct {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 impl Trait for Struct {

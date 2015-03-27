@@ -14,7 +14,7 @@
 // preserved.  They are needed to disambiguate `{return n+1}; - 0` from
 // `({return n+1}-0)`.
 
-fn id<F>(f: F) -> int where F: Fn() -> int { f() }
+fn id<F>(f: F) -> isize where F: Fn() -> isize { f() }
 
-fn wsucc(_n: int) -> int { id(|| { 1 }) - 0 }
+fn wsucc(_n: isize) -> isize { id(|| { 1 }) - 0 }
 fn main() { }

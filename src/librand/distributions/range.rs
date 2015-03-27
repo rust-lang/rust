@@ -136,12 +136,12 @@ integer_impl! { i8, u8 }
 integer_impl! { i16, u16 }
 integer_impl! { i32, u32 }
 integer_impl! { i64, u64 }
-integer_impl! { int, uint }
+integer_impl! { isize, usize }
 integer_impl! { u8, u8 }
 integer_impl! { u16, u16 }
 integer_impl! { u32, u32 }
 integer_impl! { u64, u64 }
-integer_impl! { uint, uint }
+integer_impl! { usize, usize }
 
 macro_rules! float_impl {
     ($ty:ty) => {
@@ -202,8 +202,8 @@ mod tests {
                  )*
             }}
         }
-        t!(i8, i16, i32, i64, int,
-           u8, u16, u32, u64, uint)
+        t!(i8, i16, i32, i64, isize,
+           u8, u16, u32, u64, usize)
     }
 
     #[test]

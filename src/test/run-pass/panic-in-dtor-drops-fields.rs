@@ -19,7 +19,7 @@ struct A {
 }
 
 struct B {
-    foo: int,
+    foo: isize,
 }
 
 impl Drop for A {

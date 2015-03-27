@@ -15,7 +15,7 @@ use std::sync::mpsc::{channel, Sender};
 
 pub fn main() { test05(); }
 
-fn test05_start(tx : &Sender<int>) {
+fn test05_start(tx : &Sender<isize>) {
     tx.send(10).unwrap();
     println!("sent 10");
     tx.send(20).unwrap();
@@ -27,7 +27,7 @@ fn test05_start(tx : &Sender<int>) {
 fn test05() {
     let (tx, rx) = channel();
     let _t = Thread::spawn(move|| { test05_start(&tx) });
-    let mut value: int = rx.recv().unwrap();
+    let mut value: isize = rx.recv().unwrap();
     println!("{}", value);
     value = rx.recv().unwrap();
     println!("{}", value);

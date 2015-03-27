@@ -20,7 +20,7 @@ struct Foo<T> {
 
 pub fn main() {
     unsafe {
-        assert_eq!(type_name::<int>(), "isize");
-        assert_eq!(type_name::<Foo<uint>>(), "Foo<usize>");
+        assert_eq!(type_name::<isize>(), "isize");
+        assert_eq!(type_name::<Foo<usize>>(), "Foo<usize>");
     }
 }

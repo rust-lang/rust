@@ -108,9 +108,6 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // OIBIT specific features
     ("optin_builtin_traits", "1.0.0", Active),
 
-    // int and uint are now deprecated
-    ("int_uint", "1.0.0", Active),
-
     // macro reexport needs more discussion and stabilization
     ("macro_reexport", "1.0.0", Active),
 
@@ -363,7 +360,6 @@ struct Context<'a> {
     features: Vec<&'static str>,
     span_handler: &'a SpanHandler,
     cm: &'a CodeMap,
-    do_warnings: bool,
 }
 
 impl<'a> Context<'a> {
@@ -372,12 +368,6 @@ impl<'a> Context<'a> {
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", feature, span, has_feature);
         if !has_feature {
             emit_feature_err(self.span_handler, feature, span, explain);
-        }
-    }
-
-    fn warn_feature(&self, feature: &str, span: Span, explain: &str) {
-        if !self.has_feature(feature) && self.do_warnings {
-            emit_feature_warn(self.span_handler, feature, span, explain);
         }
     }
     fn has_feature(&self, feature: &str) -> bool {
@@ -627,35 +617,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         visit::walk_foreign_item(self, i)
     }
 
-    fn visit_ty(&mut self, t: &ast::Ty) {
-        match t.node {
-            ast::TyPath(None, ref p) => {
-                match &*p.segments {
-
-                    [ast::PathSegment { identifier, .. }] => {
-                        let name = token::get_ident(identifier);
-                        let msg = if name == "int" {
-                            Some("the `int` type is deprecated; \
-                                  use `isize` or a fixed-sized integer")
-                        } else if name == "uint" {
-                            Some("the `uint` type is deprecated; \
-                                  use `usize` or a fixed-sized integer")
-                        } else {
-                            None
-                        };
-
-                        if let Some(msg) = msg {
-                            self.context.warn_feature("int_uint", t.span, msg)
-                        }
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-        visit::walk_ty(self, t);
-    }
-
     fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
             ast::ExprBox(..) | ast::ExprUnary(ast::UnOp::UnUniq, _) => {
@@ -663,25 +624,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   e.span,
                                   "box expression syntax is experimental; \
                                    you can call `Box::new` instead.");
-            }
-            ast::ExprLit(ref lit) => {
-                match lit.node {
-                    ast::LitInt(_, ty) => {
-                        let msg = if let ast::SignedIntLit(ast::TyIs(true), _) = ty {
-                            Some("the `i` and `is` suffixes on integers are deprecated; \
-                                  use `isize` or one of the fixed-sized suffixes")
-                        } else if let ast::UnsignedIntLit(ast::TyUs(true)) = ty {
-                            Some("the `u` and `us` suffixes on integers are deprecated; \
-                                  use `usize` or one of the fixed-sized suffixes")
-                        } else {
-                            None
-                        };
-                        if let Some(msg) = msg {
-                            self.context.warn_feature("int_uint", e.span, msg);
-                        }
-                    }
-                    _ => {}
-                }
             }
             _ => {}
         }
@@ -725,8 +667,8 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 }
 
-fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate,
-                        do_warnings: bool,
+fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
+                        krate: &ast::Crate,
                         check: F)
                        -> Features
     where F: FnOnce(&mut Context, &ast::Crate)
@@ -734,7 +676,6 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
     let mut cx = Context {
         features: Vec::new(),
         span_handler: span_handler,
-        do_warnings: do_warnings,
         cm: cm,
     };
 
@@ -815,14 +756,14 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
 
 pub fn check_crate_macros(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
 -> Features {
-    check_crate_inner(cm, span_handler, krate, true,
+    check_crate_inner(cm, span_handler, krate,
                       |ctx, krate| visit::walk_crate(&mut MacroVisitor { context: ctx }, krate))
 }
 
-pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate,
-                   do_warnings: bool) -> Features
+pub fn check_crate(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::Crate)
+                   -> Features
 {
-    check_crate_inner(cm, span_handler, krate, do_warnings,
+    check_crate_inner(cm, span_handler, krate,
                       |ctx, krate| visit::walk_crate(&mut PostExpansionVisitor { context: ctx },
                                                      krate))
 }

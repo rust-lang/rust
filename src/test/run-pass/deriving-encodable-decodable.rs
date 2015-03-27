@@ -27,22 +27,22 @@ use serialize::{Encodable, Decodable};
 #[derive(Encodable, Decodable, Eq, Rand)]
 struct A;
 #[derive(Encodable, Decodable, Eq, Rand)]
-struct B(int);
+struct B(isize);
 #[derive(Encodable, Decodable, Eq, Rand)]
-struct C(int, int, uint);
+struct C(isize, isize, usize);
 
 #[derive(Encodable, Decodable, Eq, Rand)]
 struct D {
-    a: int,
-    b: uint,
+    a: isize,
+    b: usize,
 }
 
 #[derive(Encodable, Decodable, Eq, Rand)]
 enum E {
     E1,
-    E2(uint),
+    E2(usize),
     E3(D),
-    E4{ x: uint },
+    E4{ x: usize },
 }
 
 #[derive(Encodable, Decodable, Eq, Rand)]
@@ -74,6 +74,6 @@ pub fn main() {
     for _ in 0..20 {
         roundtrip::<E>();
         roundtrip::<F>();
-        roundtrip::<G<int>>();
+        roundtrip::<G<isize>>();
     }
 }

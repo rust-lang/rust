@@ -19,40 +19,40 @@ macro_rules! assert_approx_eq {
     })
 }
 
-static A: int = -4 + 3;
-static A2: uint = 3 + 3;
+static A: isize = -4 + 3;
+static A2: usize = 3 + 3;
 static B: f64 = 3.0 + 2.7;
 
-static C: int = 3 - 4;
-static D: uint = 3 - 3;
+static C: isize = 3 - 4;
+static D: usize = 3 - 3;
 static E: f64 = 3.0 - 2.7;
 
-static E2: int = -3 * 3;
-static F: uint = 3 * 3;
+static E2: isize = -3 * 3;
+static F: usize = 3 * 3;
 static G: f64 = 3.3 * 3.3;
 
-static H: int = 3 / -1;
-static I: uint = 3 / 3;
+static H: isize = 3 / -1;
+static I: usize = 3 / 3;
 static J: f64 = 3.3 / 3.3;
 
 static N: bool = true && false;
 
 static O: bool = true || false;
 
-static P: int = 3 & 1;
-static Q: uint = 1 & 3;
+static P: isize = 3 & 1;
+static Q: usize = 1 & 3;
 
-static R: int = 3 | 1;
-static S: uint = 1 | 3;
+static R: isize = 3 | 1;
+static S: usize = 1 | 3;
 
-static T: int = 3 ^ 1;
-static U: uint = 1 ^ 3;
+static T: isize = 3 ^ 1;
+static U: usize = 1 ^ 3;
 
-static V: int = 1 << 3;
+static V: isize = 1 << 3;
 
 // NOTE: better shr coverage
-static W: int = 1024 >> 4;
-static X: uint = 1024 >> 4;
+static W: isize = 1024 >> 4;
+static X: usize = 1024 >> 4;
 
 static Y: bool = 1 == 1;
 static Z: bool = 1.0f64 == 1.0;

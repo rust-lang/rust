@@ -13,8 +13,8 @@
 
 // pretty-expanded FIXME #23616
 
-fn foo(_f: fn(int) -> int) { }
+fn foo(_f: fn(isize) -> isize) { }
 
-fn id(x: int) -> int { return x; }
+fn id(x: isize) -> isize { return x; }
 
 pub fn main() { foo(id); }

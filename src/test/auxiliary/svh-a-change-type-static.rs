@@ -29,10 +29,10 @@ impl V for () {}
 
 static A_CONSTANT : i32 = 2;
 
-pub fn foo<T:U>(_: int) -> int {
+pub fn foo<T:U>(_: isize) -> isize {
     3
 }
 
-pub fn an_unused_name() -> int {
+pub fn an_unused_name() -> isize {
     4
 }

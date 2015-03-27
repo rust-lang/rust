@@ -92,7 +92,6 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![deny(missing_docs)]
-#![feature(int_uint)]
 #![feature(staged_api)]
 #![feature(str_words)]
 #![feature(str_char)]
@@ -311,7 +310,7 @@ impl Matches {
     }
 
     /// Returns the number of times an option was matched.
-    pub fn opt_count(&self, nm: &str) -> uint {
+    pub fn opt_count(&self, nm: &str) -> usize {
         self.opt_vals(nm).len()
     }
 
@@ -389,7 +388,7 @@ fn is_arg(arg: &str) -> bool {
     arg.len() > 1 && arg.as_bytes()[0] == b'-'
 }
 
-fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
+fn find_opt(opts: &[Opt], nm: Name) -> Option<usize> {
     // Search main options.
     let pos = opts.iter().position(|opt| opt.name == nm);
     if pos.is_some() {
@@ -587,7 +586,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
     let opts: Vec<Opt> = optgrps.iter().map(|x| x.long_to_short()).collect();
     let n_opts = opts.len();
 
-    fn f(_x: uint) -> Vec<Optval> { return Vec::new(); }
+    fn f(_x: usize) -> Vec<Optval> { return Vec::new(); }
 
     let mut vals: Vec<_> = (0..n_opts).map(f).collect();
     let mut free: Vec<String> = Vec::new();
@@ -873,7 +872,7 @@ enum LengthLimit {
 ///
 /// Panics during iteration if the string contains a non-whitespace
 /// sequence longer than the limit.
-fn each_split_within<F>(ss: &str, lim: uint, mut it: F) -> bool where
+fn each_split_within<F>(ss: &str, lim: usize, mut it: F) -> bool where
     F: FnMut(&str) -> bool
 {
     // Just for fun, let's write this as a state machine:
@@ -892,7 +891,7 @@ fn each_split_within<F>(ss: &str, lim: uint, mut it: F) -> bool where
         lim = fake_i;
     }
 
-    let mut machine = |cont: &mut bool, (i, c): (uint, char)| -> bool {
+    let mut machine = |cont: &mut bool, (i, c): (usize, char)| -> bool {
         let whitespace = if c.is_whitespace() { Ws }       else { Cr };
         let limit      = if (i - slice_start + 1) <= lim  { UnderLim } else { OverLim };
 
@@ -954,7 +953,7 @@ fn each_split_within<F>(ss: &str, lim: uint, mut it: F) -> bool where
 
 #[test]
 fn test_split_within() {
-    fn t(s: &str, i: uint, u: &[String]) {
+    fn t(s: &str, i: usize, u: &[String]) {
         let mut v = Vec::new();
         each_split_within(s, i, |s| { v.push(s.to_string()); true });
         assert!(v.iter().zip(u.iter()).all(|(a,b)| a == b));

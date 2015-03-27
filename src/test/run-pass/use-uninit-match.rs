@@ -10,8 +10,8 @@
 
 
 
-fn foo<T>(o: myoption<T>) -> int {
-    let mut x: int = 5;
+fn foo<T>(o: myoption<T>) -> isize {
+    let mut x: isize = 5;
     match o {
         myoption::none::<T> => { }
         myoption::some::<T>(_t) => { x += 1; }

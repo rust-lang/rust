@@ -81,7 +81,7 @@ use self::MixedEnum::{MixedEnumCStyleVar, MixedEnumTupleVar, MixedEnumStructVar}
 use self::NestedEnum::{NestedVariant1, NestedVariant2};
 
 struct RegularStruct {
-    the_first_field: int,
+    the_first_field: isize,
     the_second_field: f64,
     the_third_field: bool,
     the_fourth_field: &'static str,
@@ -140,7 +140,7 @@ fn main() {
     let mixed_enum_struct_var = MixedEnumStructVar { field1: 108.5, field2: 109 };
 
     let some = Some(110_usize);
-    let none: Option<int> = None;
+    let none: Option<isize> = None;
     let some_fat = Some("abc");
     let none_fat: Option<&'static str> = None;
 
@@ -177,7 +177,7 @@ fn main() {
         }
     };
 
-    let none_check1: Option<(uint, Vec<uint>)> = None;
+    let none_check1: Option<(usize, Vec<usize>)> = None;
     let none_check2: Option<String> = None;
 
     zzz(); // #break

@@ -44,7 +44,7 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
 /// Render `input` (e.g. "foo.md") into an HTML file in `output`
 /// (e.g. output = "bar" => "bar/foo.html").
 pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
-              external_html: &ExternalHtml, include_toc: bool) -> int {
+              external_html: &ExternalHtml, include_toc: bool) -> isize {
     let input_p = Path::new(input);
     output.push(input_p.file_stem().unwrap());
     output.set_extension("html");
@@ -140,7 +140,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
 
 /// Run any tests/code examples in the markdown file `input`.
 pub fn test(input: &str, libs: SearchPaths, externs: core::Externs,
-            mut test_args: Vec<String>) -> int {
+            mut test_args: Vec<String>) -> isize {
     let input_str = load_or_return!(input, 1, 2);
 
     let mut collector = Collector::new(input.to_string(), libs, externs, true, false);

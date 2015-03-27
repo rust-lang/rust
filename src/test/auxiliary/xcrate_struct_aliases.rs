@@ -9,8 +9,8 @@
 // except according to those terms.
 
 pub struct S {
-    pub x: int,
-    pub y: int,
+    pub x: isize,
+    pub y: isize,
 }
 
 pub type S2 = S;

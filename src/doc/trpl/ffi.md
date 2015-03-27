@@ -376,7 +376,7 @@ Unsafe functions, on the other hand, advertise it to the world. An unsafe functi
 this:
 
 ```
-unsafe fn kaboom(ptr: *const int) -> int { *ptr }
+unsafe fn kaboom(ptr: *const i32) -> i32 { *ptr }
 ```
 
 This function can only be called from an `unsafe` block or another `unsafe` function.
@@ -398,7 +398,7 @@ extern {
 
 fn main() {
     println!("You have readline version {} installed.",
-             rl_readline_version as int);
+             rl_readline_version as i32);
 }
 ```
 

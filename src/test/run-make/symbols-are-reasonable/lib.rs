@@ -12,9 +12,9 @@ pub static X: &'static str = "foobarbaz";
 pub static Y: &'static [u8] = include_bytes!("lib.rs");
 
 trait Foo { fn dummy(&self) { } }
-impl Foo for uint {}
+impl Foo for usize {}
 
 pub fn dummy() {
     // force the vtable to be created
-    let _x = &1u as &Foo;
+    let _x = &1us as &Foo;
 }

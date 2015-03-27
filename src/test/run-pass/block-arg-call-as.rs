@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn asBlock<F>(f: F) -> uint where F: FnOnce() -> uint {
+fn asBlock<F>(f: F) -> usize where F: FnOnce() -> usize {
    return f();
 }
 

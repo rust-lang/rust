@@ -16,16 +16,16 @@
 
 #[stable(feature = "test_feature", since = "1.0.0")]
 #[deprecated(since = "1.0.0")]
-pub fn foo() -> uint {
+pub fn foo() -> usize {
     20
 }
 
 #[unstable(feature = "test_feature")]
-pub fn bar() -> uint {
+pub fn bar() -> usize {
     40
 }
 
 #[unstable(feature = "test_feature")]
-pub fn baz() -> uint {
+pub fn baz() -> usize {
     30
 }

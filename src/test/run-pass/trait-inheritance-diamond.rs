@@ -12,17 +12,17 @@
 
 // pretty-expanded FIXME #23616
 
-trait A { fn a(&self) -> int; }
-trait B: A { fn b(&self) -> int; }
-trait C: A { fn c(&self) -> int; }
-trait D: B + C { fn d(&self) -> int; }
+trait A { fn a(&self) -> isize; }
+trait B: A { fn b(&self) -> isize; }
+trait C: A { fn c(&self) -> isize; }
+trait D: B + C { fn d(&self) -> isize; }
 
 struct S { bogus: () }
 
-impl A for S { fn a(&self) -> int { 10 } }
-impl B for S { fn b(&self) -> int { 20 } }
-impl C for S { fn c(&self) -> int { 30 } }
-impl D for S { fn d(&self) -> int { 40 } }
+impl A for S { fn a(&self) -> isize { 10 } }
+impl B for S { fn b(&self) -> isize { 20 } }
+impl C for S { fn c(&self) -> isize { 30 } }
+impl D for S { fn d(&self) -> isize { 40 } }
 
 fn f<T:D>(x: &T) {
     assert_eq!(x.a(), 10);

@@ -9,5 +9,5 @@
 // except according to those terms.
 
 pub struct Foo {
-    pub name: int
+    pub name: isize
 }

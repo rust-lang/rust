@@ -18,14 +18,14 @@ fn s_foo<T>(_shared: T) { }
 fn u_foo<T:Send>(_unique: T) { }
 
 struct r {
-  i: int,
+  i: isize,
 }
 
 impl Drop for r {
     fn drop(&mut self) {}
 }
 
-fn r(i:int) -> r {
+fn r(i:isize) -> r {
     r {
         i: i
     }

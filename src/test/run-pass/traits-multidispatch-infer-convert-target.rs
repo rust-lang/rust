@@ -30,7 +30,7 @@ impl Convert<i16> for u32 {
     }
 }
 
-fn test<T,U>(_: T, _: U, t_size: uint, u_size: uint)
+fn test<T,U>(_: T, _: U, t_size: usize, u_size: usize)
 where T : Convert<U>
 {
     assert_eq!(mem::size_of::<T>(), t_size);

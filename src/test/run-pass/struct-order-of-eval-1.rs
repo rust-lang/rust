@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-struct S { f0: String, f1: int }
+struct S { f0: String, f1: isize }
 
 pub fn main() {
     let s = "Hello, world!".to_string();

@@ -25,7 +25,7 @@ enum color {
 
 impl PartialEq for color {
     fn eq(&self, other: &color) -> bool {
-        ((*self) as uint) == ((*other) as uint)
+        ((*self) as usize) == ((*other) as usize)
     }
     fn ne(&self, other: &color) -> bool { !(*self).eq(other) }
 }
@@ -41,9 +41,9 @@ pub fn main() {
     test_color(orange, 4, "orange".to_string());
 }
 
-fn test_color(color: color, val: int, name: String) {
+fn test_color(color: color, val: isize, name: String) {
     //assert!(unsafe::transmute(color) == val);
-    assert_eq!(color as int, val);
+    assert_eq!(color as isize, val);
     assert!(get_color_alt(color) == name);
     assert!(get_color_if(color) == name);
 }
