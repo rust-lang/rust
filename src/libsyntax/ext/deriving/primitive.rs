@@ -18,12 +18,11 @@ use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 use ptr::P;
 
-pub fn expand_deriving_from_primitive<F>(cx: &mut ExtCtxt,
-                                         span: Span,
-                                         mitem: &MetaItem,
-                                         item: &Item,
-                                         push: F) where
-    F: FnOnce(P<Item>),
+pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
+                                      span: Span,
+                                      mitem: &MetaItem,
+                                      item: &Item,
+                                      push: &mut FnMut(P<Item>))
 {
     let inline = cx.meta_word(span, InternedString::new("inline"));
     let attrs = vec!(cx.attribute(span, inline));

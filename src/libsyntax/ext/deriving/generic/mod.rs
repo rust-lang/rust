@@ -374,12 +374,11 @@ fn find_type_parameters(ty: &ast::Ty, ty_param_names: &[ast::Name]) -> Vec<P<ast
 }
 
 impl<'a> TraitDef<'a> {
-    pub fn expand<F>(&self,
-                     cx: &mut ExtCtxt,
-                     mitem: &ast::MetaItem,
-                     item: &ast::Item,
-                     push: F) where
-        F: FnOnce(P<ast::Item>),
+    pub fn expand(&self,
+                  cx: &mut ExtCtxt,
+                  mitem: &ast::MetaItem,
+                  item: &ast::Item,
+                  push: &mut FnMut(P<ast::Item>))
     {
         let newitem = match item.node {
             ast::ItemStruct(ref struct_def, ref generics) => {
