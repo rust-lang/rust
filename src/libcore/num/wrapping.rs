@@ -67,7 +67,7 @@ macro_rules! wrapping_impl {
 wrapping_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 
 #[unstable(feature = "core", reason = "may be removed, renamed, or relocated")]
-#[derive(PartialEq,Eq,PartialOrd,Ord,Clone,Copy)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy)]
 pub struct Wrapping<T>(pub T);
 
 impl<T:WrappingOps> Add for Wrapping<T> {
