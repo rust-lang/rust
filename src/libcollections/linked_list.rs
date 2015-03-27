@@ -927,14 +927,11 @@ impl<A: Clone> Clone for LinkedList<A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: fmt::Debug> fmt::Debug for LinkedList<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "["));
-
-        for (i, e) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{:?}", *e));
+        let mut builder = f.debug_list();
+        for e in self {
+            builder = builder.entry(e);
         }
-
-        write!(f, "]")
+        builder.finish()
     }
 }
 
