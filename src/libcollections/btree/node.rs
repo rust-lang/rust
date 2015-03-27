@@ -280,9 +280,11 @@ impl<T> Drop for RawItems<T> {
 #[unsafe_destructor]
 impl<K, V> Drop for Node<K, V> {
     fn drop(&mut self) {
-        if self.keys.is_null() {
+        if self.keys.is_null() ||
+            (unsafe { self.keys.get() as *const K as usize == mem::POST_DROP_USIZE })
+        {
             // Since we have #[unsafe_no_drop_flag], we have to watch
-            // out for a null value being stored in self.keys. (Using
+            // out for the sentinel value being stored in self.keys. (Using
             // null is technically a violation of the `Unique`
             // requirements, though.)
             return;

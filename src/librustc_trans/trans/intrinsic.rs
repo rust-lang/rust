@@ -359,11 +359,18 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 &ccx.link_meta().crate_hash);
             C_u64(ccx, hash)
         }
+        (_, "init_dropped") => {
+            let tp_ty = *substs.types.get(FnSpace, 0);
+            if !return_type_is_void(ccx, tp_ty) {
+                drop_done_fill_mem(bcx, llresult, tp_ty);
+            }
+            C_nil(ccx)
+        }
         (_, "init") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             if !return_type_is_void(ccx, tp_ty) {
                 // Just zero out the stack slot. (See comment on base::memzero for explanation)
-                zero_mem(bcx, llresult, tp_ty);
+                init_zero_mem(bcx, llresult, tp_ty);
             }
             C_nil(ccx)
         }
