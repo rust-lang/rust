@@ -54,7 +54,7 @@ extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
 extern crate serialize;
-extern crate "rustc_llvm" as llvm;
+extern crate rustc_llvm as llvm;
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

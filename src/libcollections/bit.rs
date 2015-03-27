@@ -171,18 +171,6 @@ pub struct BitVec {
 impl Index<usize> for BitVec {
     type Output = bool;
 
-
-    #[cfg(stage0)]
-    #[inline]
-    fn index(&self, i: &usize) -> &bool {
-        if self.get(*i).expect("index out of bounds") {
-            &TRUE
-        } else {
-            &FALSE
-        }
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index(&self, i: usize) -> &bool {
         if self.get(i).expect("index out of bounds") {

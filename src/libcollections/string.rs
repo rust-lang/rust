@@ -903,13 +903,6 @@ impl<'a> Add<&'a str> for String {
 impl ops::Index<ops::Range<usize>> for String {
     type Output = str;
 
-    #[cfg(stage0)]
-    #[inline]
-    fn index(&self, index: &ops::Range<usize>) -> &str {
-        &self[..][*index]
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index(&self, index: ops::Range<usize>) -> &str {
         &self[..][index]
@@ -919,13 +912,6 @@ impl ops::Index<ops::Range<usize>> for String {
 impl ops::Index<ops::RangeTo<usize>> for String {
     type Output = str;
 
-    #[cfg(stage0)]
-    #[inline]
-    fn index(&self, index: &ops::RangeTo<usize>) -> &str {
-        &self[..][*index]
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index(&self, index: ops::RangeTo<usize>) -> &str {
         &self[..][index]
@@ -935,13 +921,6 @@ impl ops::Index<ops::RangeTo<usize>> for String {
 impl ops::Index<ops::RangeFrom<usize>> for String {
     type Output = str;
 
-    #[cfg(stage0)]
-    #[inline]
-    fn index(&self, index: &ops::RangeFrom<usize>) -> &str {
-        &self[..][*index]
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index(&self, index: ops::RangeFrom<usize>) -> &str {
         &self[..][index]
@@ -951,13 +930,6 @@ impl ops::Index<ops::RangeFrom<usize>> for String {
 impl ops::Index<ops::RangeFull> for String {
     type Output = str;
 
-    #[cfg(stage0)]
-    #[inline]
-    fn index(&self, _index: &ops::RangeFull) -> &str {
-        unsafe { mem::transmute(&*self.vec) }
-    }
-
-    #[cfg(not(stage0))]
     #[inline]
     fn index(&self, _index: ops::RangeFull) -> &str {
         unsafe { mem::transmute(&*self.vec) }
