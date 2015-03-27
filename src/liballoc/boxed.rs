@@ -244,13 +244,13 @@ pub trait BoxAny {
     /// Returns the boxed value if it is of type `T`, or
     /// `Err(Self)` if it isn't.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any>>;
+    fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>>;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl BoxAny for Box<Any> {
     #[inline]
-    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
+    fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -270,7 +270,7 @@ impl BoxAny for Box<Any> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl BoxAny for Box<Any+Send> {
     #[inline]
-    fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
+    fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
         <Box<Any>>::downcast(self)
     }
 }
