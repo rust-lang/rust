@@ -10,6 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "std" as mystd;
+extern crate std as mystd;
 
 pub fn main() {}

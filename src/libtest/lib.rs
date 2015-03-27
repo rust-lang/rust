@@ -50,7 +50,7 @@
 
 extern crate getopts;
 extern crate serialize;
-extern crate "serialize" as rustc_serialize;
+extern crate serialize as rustc_serialize;
 extern crate term;
 extern crate libc;
 

@@ -52,7 +52,7 @@ struct StandardLibraryInjector {
 impl fold::Folder for StandardLibraryInjector {
     fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
 
-        // The name to use in `extern crate "name" as std;`
+        // The name to use in `extern crate name as std;`
         let actual_crate_name = match self.alt_std_name {
             Some(ref s) => token::intern(&s),
             None => token::intern("std"),
