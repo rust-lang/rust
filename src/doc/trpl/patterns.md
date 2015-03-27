@@ -177,6 +177,7 @@ match origin {
 If you want to match against a slice or array, you can use `&`:
 
 ```{rust}
+# #![feature(slice_patterns)]
 fn main() {
     let v = vec!["match_this", "1"];
 

@@ -39,6 +39,7 @@
 #![feature(path_ext)]
 #![feature(path_relative_from)]
 #![feature(convert)]
+#![feature(slice_patterns)]
 
 extern crate arena;
 extern crate getopts;

@@ -12,6 +12,7 @@
 
 #![crate_type="dylib"]
 #![feature(plugin_registrar, rustc_private)]
+#![feature(slice_patterns)]
 
 extern crate syntax;
 extern crate rustc;
