@@ -17,12 +17,11 @@ use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 use ptr::P;
 
-pub fn expand_deriving_eq<F>(cx: &mut ExtCtxt,
-                             span: Span,
-                             mitem: &MetaItem,
-                             item: &Item,
-                             push: F) where
-    F: FnOnce(P<Item>),
+pub fn expand_deriving_eq(cx: &mut ExtCtxt,
+                          span: Span,
+                          mitem: &MetaItem,
+                          item: &Item,
+                          push: &mut FnMut(P<Item>))
 {
     fn cs_total_eq_assert(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
         cs_same_method(|cx, span, exprs| {

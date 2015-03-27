@@ -16,12 +16,11 @@ use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use ptr::P;
 
-pub fn expand_deriving_hash<F>(cx: &mut ExtCtxt,
-                               span: Span,
-                               mitem: &MetaItem,
-                               item: &Item,
-                               push: F) where
-    F: FnOnce(P<Item>),
+pub fn expand_deriving_hash(cx: &mut ExtCtxt,
+                            span: Span,
+                            mitem: &MetaItem,
+                            item: &Item,
+                            push: &mut FnMut(P<Item>))
 {
 
     let path = Path::new_(pathvec_std!(cx, core::hash::Hash), None,

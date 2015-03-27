@@ -118,7 +118,7 @@ fn expand_derive(cx: &mut ExtCtxt,
 }
 
 macro_rules! derive_traits {
-    ($( $name:expr => $func:path, )*) => {
+    ($( $name:expr => $func:path, )+) => {
         pub fn register_all(env: &mut SyntaxEnv) {
             // Define the #[derive_*] extensions.
             $({
@@ -132,13 +132,13 @@ macro_rules! derive_traits {
                               item: &Item,
                               push: &mut FnMut(P<Item>)) {
                         warn_if_deprecated(ecx, sp, $name);
-                        $func(ecx, sp, mitem, item, |i| push(i));
+                        $func(ecx, sp, mitem, item, push);
                     }
                 }
 
                 env.insert(intern(concat!("derive_", $name)),
                            Decorator(Box::new(DeriveExtension)));
-            })*
+            })+
 
             env.insert(intern("derive"),
                        Modifier(Box::new(expand_derive)));
@@ -146,7 +146,7 @@ macro_rules! derive_traits {
 
         fn is_builtin_trait(name: &str) -> bool {
             match name {
-                $( $name )|* => true,
+                $( $name )|+ => true,
                 _ => false,
             }
         }
