@@ -46,7 +46,7 @@ This will print `12.566371`.
 
 We've made a struct that represents a circle. We then write an `impl` block,
 and inside it, define a method, `area`. Methods take a  special first
-parameter, `&self`. There are three variants: `self`, `&self`, and `&mut self`.
+parameter, of which there are three variants: `self`, `&self`, and `&mut self`.
 You can think of this first parameter as being the `x` in `x.foo()`. The three
 variants correspond to the three kinds of thing `x` could be: `self` if it's
 just a value on the stack, `&self` if it's a reference, and `&mut self` if it's
