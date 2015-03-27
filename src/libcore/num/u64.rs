@@ -12,6 +12,5 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "u64")]
-#![allow(trivial_numeric_casts)]
 
 uint_module! { u64, i64, 64 }

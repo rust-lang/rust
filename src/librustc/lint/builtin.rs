@@ -102,13 +102,13 @@ declare_lint! {
 
 declare_lint! {
     pub TRIVIAL_CASTS,
-    Warn,
+    Allow,
     "detects trivial casts which could be removed"
 }
 
 declare_lint! {
     pub TRIVIAL_NUMERIC_CASTS,
-    Warn,
+    Allow,
     "detects trivial casts of numeric types which could be removed"
 }
 /// Does nothing as a lint pass, but registers some `Lint`s
