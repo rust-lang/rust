@@ -252,7 +252,8 @@ impl AtomicBool {
 
     /// Stores a value into the bool if the current value is the same as the expected value.
     ///
-    /// If the return value is equal to `old` then the value was updated.
+    /// The return value is always the previous value. If it is equal to `old`, then the value was
+    /// updated.
     ///
     /// `swap` also takes an `Ordering` argument which describes the memory ordering of this
     /// operation.
@@ -489,7 +490,8 @@ impl AtomicIsize {
 
     /// Stores a value into the isize if the current value is the same as the expected value.
     ///
-    /// If the return value is equal to `old` then the value was updated.
+    /// The return value is always the previous value. If it is equal to `old`, then the value was
+    /// updated.
     ///
     /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
     /// this operation.
@@ -676,7 +678,8 @@ impl AtomicUsize {
 
     /// Stores a value into the usize if the current value is the same as the expected value.
     ///
-    /// If the return value is equal to `old` then the value was updated.
+    /// The return value is always the previous value. If it is equal to `old`, then the value was
+    /// updated.
     ///
     /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
     /// this operation.
@@ -873,7 +876,8 @@ impl<T> AtomicPtr<T> {
 
     /// Stores a value into the pointer if the current value is the same as the expected value.
     ///
-    /// If the return value is equal to `old` then the value was updated.
+    /// The return value is always the previous value. If it is equal to `old`, then the value was
+    /// updated.
     ///
     /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
     /// this operation.
