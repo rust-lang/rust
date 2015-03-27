@@ -51,11 +51,11 @@ extern crate rustc_lint;
 extern crate rustc_back;
 extern crate serialize;
 extern crate syntax;
-extern crate "test" as testing;
+extern crate test as testing;
 extern crate unicode;
 #[macro_use] extern crate log;
 
-extern crate "serialize" as rustc_serialize; // used by deriving
+extern crate serialize as rustc_serialize; // used by deriving
 
 use std::cell::RefCell;
 use std::collections::HashMap;

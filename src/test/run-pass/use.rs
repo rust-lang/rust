@@ -15,7 +15,7 @@
 #![no_std]
 
 extern crate std;
-extern crate "std" as zed;
+extern crate std as zed;
 
 use std::str;
 use zed::str as x;
