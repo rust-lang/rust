@@ -31,7 +31,6 @@
 #![feature(core)]
 #![feature(hash)]
 #![feature(libc)]
-#![feature(old_path)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]

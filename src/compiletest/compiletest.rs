@@ -13,7 +13,6 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(old_io)]
-#![feature(old_path)]
 #![feature(rustc_private)]
 #![feature(unboxed_closures)]
 #![feature(std_misc)]

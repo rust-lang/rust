@@ -27,7 +27,6 @@
 #![feature(exit_status)]
 #![feature(set_stdio)]
 #![feature(libc)]
-#![feature(old_path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(std_misc)]
@@ -64,8 +63,6 @@ use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::mpsc::channel;
-
-#[allow(deprecated)] use std::old_path::Path;
 
 use externalfiles::ExternalHtml;
 use serialize::Decodable;
@@ -434,7 +431,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     // Load all plugins/passes into a PluginManager
     let path = matches.opt_str("plugin-path")
                       .unwrap_or("/tmp/rustdoc/plugins".to_string());
-    let mut pm = plugins::PluginManager::new(Path::new(path));
+    let mut pm = plugins::PluginManager::new(PathBuf::from(path));
     for pass in &passes {
         let plugin = match PASSES.iter()
                                  .position(|&(p, _, _)| {
