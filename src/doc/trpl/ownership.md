@@ -207,7 +207,8 @@ We have to change our `main` a bit too:
 
 ```rust
 fn main() {
-    let mut x = 5;
+    let mut x = 5; // FIXME: remove this line?
+    // let mut x = Box::new(5);  // This (box), used in previous exampl(s),  still works
 
     add_one(&mut x);
 
