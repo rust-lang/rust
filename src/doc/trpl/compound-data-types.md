@@ -361,5 +361,4 @@ and brittle `if`/`else`s.
 
 [arity]: ./glossary.html#arity
 [match]: ./match.html
-[game]: ./guessing-game.html#comparing-guesses
 [generics]: ./generics.html
