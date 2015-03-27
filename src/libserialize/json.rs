@@ -2430,7 +2430,6 @@ macro_rules! to_json_impl_i64 {
     ($($t:ty), +) => (
         $(impl ToJson for $t {
             fn to_json(&self) -> Json {
-                #![allow(trivial_numeric_casts)]
                 Json::I64(*self as i64)
             }
         })+
@@ -2443,7 +2442,6 @@ macro_rules! to_json_impl_u64 {
     ($($t:ty), +) => (
         $(impl ToJson for $t {
             fn to_json(&self) -> Json {
-                #![allow(trivial_numeric_casts)]
                 Json::U64(*self as u64)
             }
         })+
