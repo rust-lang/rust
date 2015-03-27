@@ -47,6 +47,15 @@ pub struct SocketAddrV4 { inner: libc::sockaddr_in }
 pub struct SocketAddrV6 { inner: libc::sockaddr_in6 }
 
 impl SocketAddr {
+    /// Creates a new socket address from the (ip, port) pair.
+    #[unstable(feature = "ip_addr", reason = "recent addition")]
+    pub fn new(ip: IpAddr, port: u16) -> SocketAddr {
+        match ip {
+            IpAddr::V4(a) => SocketAddr::V4(SocketAddrV4::new(a, port)),
+            IpAddr::V6(a) => SocketAddr::V6(SocketAddrV6::new(a, port, 0, 0)),
+        }
+    }
+
     /// Gets the IP address associated with this socket address.
     #[unstable(feature = "ip_addr", reason = "recent addition")]
     pub fn ip(&self) -> IpAddr {
