@@ -645,18 +645,7 @@ fn bar() {
 
 A number of minor features of Rust are not central enough to have their own
 syntax, and yet are not implementable as functions. Instead, they are given
-names, and invoked through a consistent syntax: `name!(...)`. Examples include:
-
-* `format!` : format data into a string
-* `env!` : look up an environment variable's value at compile time
-* `file!`: return the path to the file being compiled
-* `stringify!` : pretty-print the Rust expression given as an argument
-* `include!` : include the Rust expression in the given file
-* `include_str!` : include the contents of the given file as a string
-* `include_bytes!` : include the contents of the given file as a binary blob
-* `error!`, `warn!`, `info!`, `debug!` : provide diagnostic information.
-
-All of the above extensions are expressions with values.
+names, and invoked through a consistent syntax: `some_extension!(...)`.
 
 Users of `rustc` can define new syntax extensions in two ways:
 
@@ -743,38 +732,6 @@ Rust syntax is restricted in two ways:
    _name_ `:` _designator_. This requirement most often affects name-designator
    pairs when they occur at the beginning of, or immediately after, a `$(...)*`;
    requiring a distinctive token in front can solve the problem.
-
-## Syntax extensions useful in macros
-
-* `stringify!` : turn the identifier argument into a string literal
-* `concat!` : concatenates a comma-separated list of literals
-
-## Syntax extensions for macro debugging
-
-* `log_syntax!` : print out the arguments at compile time
-* `trace_macros!` : supply `true` or `false` to enable or disable macro expansion logging
-
-## Quasiquoting
-
-The following syntax extensions are used for quasiquoting Rust syntax trees,
-usually in [procedural macros](book/plugins.html#syntax-extensions):
-
-* `quote_expr!`
-* `quote_item!`
-* `quote_pat!`
-* `quote_stmt!`
-* `quote_tokens!`
-* `quote_matcher!`
-* `quote_ty!`
-* `quote_attr!`
-
-Keep in mind that when `$name : ident` appears in the input to
-`quote_tokens!`, the result contains unquoted `name` followed by two tokens.
-However, input of the same form passed to `quote_matcher!` becomes a
-quasiquoted MBE-matcher of a nonterminal. No unquotation happens. Otherwise
-the result of `quote_matcher!` is identical to that of `quote_tokens!`.
-
-Documentation is very limited at the moment.
 
 # Crates and source files
 
@@ -1520,22 +1477,6 @@ statics:
 
 Constants should in general be preferred over statics, unless large amounts of
 data are being stored, or single-address and mutability properties are required.
-
-```
-use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-
-// Note that ATOMIC_USIZE_INIT is a *const*, but it may be used to initialize a
-// static. This static can be modified, so it is not placed in read-only memory.
-static COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;
-
-// This table is a candidate to be placed in read-only memory.
-static TABLE: &'static [usize] = &[1, 2, 3, /* ... */];
-
-for slot in TABLE.iter() {
-    println!("{}", slot);
-}
-COUNTER.fetch_add(1, Ordering::SeqCst);
-```
 
 #### Mutable statics
 
@@ -2375,18 +2316,6 @@ impl<T: PartialEq> PartialEq for Foo<T> {
     }
 }
 ```
-
-Supported traits for `derive` are:
-
-* Comparison traits: `PartialEq`, `Eq`, `PartialOrd`, `Ord`.
-* Serialization: `Encodable`, `Decodable`. These require `serialize`.
-* `Clone`, to create `T` from `&T` via a copy.
-* `Default`, to create an empty instance of a data type.
-* `FromPrimitive`, to create an instance from a numeric primitive.
-* `Hash`, to iterate over the bytes in a data type.
-* `Rand`, to create a random instance of a data type.
-* `Debug`, to format a value using the `{:?}` formatter.
-* `Copy`, for "Plain Old Data" types which can be copied by simply moving bits.
 
 ### Compiler Features
 
@@ -3883,75 +3812,27 @@ impl Printable for String {
 `self` refers to the value of type `String` that is the receiver for a call to
 the method `make_string`.
 
-## Type kinds
+# The `Copy` trait
 
-Types in Rust are categorized into kinds, based on various properties of the
-components of the type. The kinds are:
+Rust has a special trait, `Copy`, which when implemented changes the semantics
+of a value. Values whose type implements `Copy` are copied rather than moved
+upon assignment.
 
-* `Send`
-  : Types of this kind can be safely sent between threads.
-    This kind includes scalars, boxes, procs, and
-    structural types containing only other owned types.
-    All `Send` types are `'static`.
-* `Copy`
-  : Types of this kind consist of "Plain Old Data"
-    which can be copied by simply moving bits.
-    All values of this kind can be implicitly copied.
-    This kind includes scalars and immutable references,
-    as well as structural types containing other `Copy` types.
-* `'static`
-  : Types of this kind do not contain any references (except for
-    references with the `static` lifetime, which are allowed).
-    This can be a useful guarantee for code
-    that breaks borrowing assumptions
-    using [`unsafe` operations](#unsafe-functions).
-* `Drop`
-  : This is not strictly a kind,
-    but its presence interacts with kinds:
-    the `Drop` trait provides a single method `drop`
-    that takes no parameters,
-    and is run when values of the type are dropped.
-    Such a method is called a "destructor",
-    and are always executed in "top-down" order:
-    a value is completely destroyed
-    before any of the values it owns run their destructors.
-    Only `Send` types can implement `Drop`.
+# The `Sized` trait
 
-* _Default_
-  : Types with destructors, closure environments,
-    and various other _non-first-class_ types,
-    are not copyable at all.
-    Such types can usually only be accessed through pointers,
-    or in some cases, moved between mutable locations.
+`Sized` is a special trait which indicates that the size of this type is known
+at compile-time.
 
-Kinds can be supplied as _bounds_ on type parameters, like traits, in which
-case the parameter is constrained to types satisfying that kind.
+# The `Drop` trait
 
-By default, type parameters do not carry any assumed kind-bounds at all. When
-instantiating a type parameter, the kind bounds on the parameter are checked to
-be the same or narrower than the kind of the type that it is instantiated with.
+The `Drop` trait provides a destructor, to be run whenever a value of this type
+is to be destroyed.
 
-Sending operations are not part of the Rust language, but are implemented in
-the library. Generic functions that send values bound the kind of these values
-to sendable.
+# Memory model
 
-# Memory and concurrency models
-
-Rust has a memory model centered around concurrently-executing _threads_. Thus
-its memory model and its concurrency model are best discussed simultaneously,
-as parts of each only make sense when considered from the perspective of the
-other.
-
-When reading about the memory model, keep in mind that it is partitioned in
-order to support threads; and when reading about threads, keep in mind that their
-isolation and communication mechanisms are only possible due to the ownership
-and lifetime semantics of the memory model.
-
-## Memory model
-
-A Rust program's memory consists of a static set of *items*, a set of
-[threads](#threads) each with its own *stack*, and a *heap*. Immutable portions of
-the heap may be shared between threads, mutable portions may not.
+A Rust program's memory consists of a static set of *items* and a *heap*.
+Immutable portions of the heap may be shared between threads, mutable portions
+may not.
 
 Allocations in the stack consist of *slots*, and allocations in the heap
 consist of *boxes*.
@@ -3962,10 +3843,6 @@ The _items_ of a program are those functions, modules and types that have their
 value calculated at compile-time and stored uniquely in the memory image of the
 rust process. Items are neither dynamically allocated nor freed.
 
-A thread's _stack_ consists of activation frames automatically allocated on entry
-to each function as the thread executes. A stack allocation is reclaimed when
-control leaves the frame containing it.
-
 The _heap_ is a general term that describes boxes.  The lifetime of an
 allocation in the heap depends on the lifetime of the box values pointing to
 it. Since box values may themselves be passed in and out of frames, or stored
@@ -3973,24 +3850,10 @@ in the heap, heap allocations may outlive the frame they are allocated within.
 
 ### Memory ownership
 
-A thread owns all memory it can *safely* reach through local variables, as well
-as boxes and references.
-
-When a thread sends a value that has the `Send` trait to another thread, it loses
-ownership of the value sent and can no longer refer to it. This is statically
-guaranteed by the combined use of "move semantics", and the compiler-checked
-_meaning_ of the `Send` trait: it is only instantiated for (transitively)
-sendable kinds of data constructor and pointers, never including references.
-
 When a stack frame is exited, its local allocations are all released, and its
 references to boxes are dropped.
 
-When a thread finishes, its stack is necessarily empty and it therefore has no
-references to any boxes; the remainder of its heap is immediately freed.
-
 ### Memory slots
-
-A thread's stack contains slots.
 
 A _slot_ is a component of a stack frame, either a function parameter, a
 [temporary](#lvalues,-rvalues-and-temporaries), or a local variable.
@@ -4020,86 +3883,6 @@ local variables are allocated at once, on frame-entry, in an uninitialized
 state. Subsequent statements within a function may or may not initialize the
 local variables. Local variables can be used only after they have been
 initialized; this is enforced by the compiler.
-
-### Boxes
-
-A _box_ is a reference to a heap allocation holding another value, which is
-constructed by the prefix operator `box`. When the standard library is in use,
-the type of a box is `std::owned::Box<T>`.
-
-An example of a box type and value:
-
-```
-let x: Box<i32> = Box::new(10);
-```
-
-Box values exist in 1:1 correspondence with their heap allocation, copying a
-box value makes a shallow copy of the pointer. Rust will consider a shallow
-copy of a box to move ownership of the value. After a value has been moved,
-the source location cannot be used unless it is reinitialized.
-
-```
-let x: Box<i32> = Box::new(10);
-let y = x;
-// attempting to use `x` will result in an error here
-```
-
-## Threads
-
-Rust's primary concurrency mechanism is called a **thread**.
-
-### Communication between threads
-
-Rust threads are isolated and generally unable to interfere with one another's
-memory directly, except through [`unsafe` code](#unsafe-functions).  All
-contact between threads is mediated by safe forms of ownership transfer, and data
-races on memory are prohibited by the type system.
-
-When you wish to send data between threads, the values are restricted to the
-[`Send` type-kind](#type-kinds). Restricting communication interfaces to this
-kind ensures that no references move between threads. Thus access to an entire
-data structure can be mediated through its owning "root" value; no further
-locking or copying is required to avoid data races within the substructure of
-such a value.
-
-### Thread
-
-The _lifecycle_ of a threads consists of a finite set of states and events that
-cause transitions between the states. The lifecycle states of a thread are:
-
-* running
-* blocked
-* panicked
-* dead
-
-A thread begins its lifecycle &mdash; once it has been spawned &mdash; in the
-*running* state. In this state it executes the statements of its entry
-function, and any functions called by the entry function.
-
-A thread may transition from the *running* state to the *blocked* state any time
-it makes a blocking communication call. When the call can be completed &mdash;
-when a message arrives at a sender, or a buffer opens to receive a message
-&mdash; then the blocked thread will unblock and transition back to *running*.
-
-A thread may transition to the *panicked* state at any time, due being killed by
-some external event or internally, from the evaluation of a `panic!()` macro.
-Once *panicking*, a thread unwinds its stack and transitions to the *dead* state.
-Unwinding the stack of a thread is done by the thread itself, on its own control
-stack. If a value with a destructor is freed during unwinding, the code for the
-destructor is run, also on the thread's control stack. Running the destructor
-code causes a temporary transition to a *running* state, and allows the
-destructor code to cause any subsequent state transitions. The original thread
-of unwinding and panicking thereby may suspend temporarily, and may involve
-(recursive) unwinding of the stack of a failed destructor. Nonetheless, the
-outermost unwinding activity will continue until the stack is unwound and the
-thread transitions to the *dead* state. There is no way to "recover" from thread
-panics. Once a thread has temporarily suspended its unwinding in the *panicking*
-state, a panic occurring from within this destructor results in *hard* panic.
-A hard panic currently results in the process aborting.
-
-A thread in the *dead* state cannot transition to other states; it exists only to
-have its termination status inspected by other threads, and/or to await
-reclamation when the last reference to it drops.
 
 # Runtime services, linkage and debugging
 
