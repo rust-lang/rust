@@ -85,7 +85,7 @@ use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv, PathParamMode};
 use check::_match::pat_ctxt;
 use fmt_macros::{Parser, Piece, Position};
 use middle::astconv_util::{check_path_args, NO_TPS, NO_REGIONS};
-use middle::{const_eval, def};
+use middle::def;
 use middle::infer;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
@@ -94,7 +94,7 @@ use middle::privacy::{AllPublic, LastMod};
 use middle::region::{self, CodeExtent};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace};
 use middle::traits;
-use middle::ty::{FnSig, GenericPredicates, VariantInfo, TypeScheme};
+use middle::ty::{FnSig, GenericPredicates, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{self, HasProjectionTypes, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::liberate_late_bound_regions;
@@ -4283,68 +4283,30 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     fn do_check<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                           vs: &'tcx [P<ast::Variant>],
                           id: ast::NodeId,
-                          hint: attr::ReprAttr)
-                          -> Vec<Rc<ty::VariantInfo<'tcx>>> {
+                          hint: attr::ReprAttr) {
         #![allow(trivial_numeric_casts)]
 
         let rty = ty::node_id_to_type(ccx.tcx, id);
-        let mut variants: Vec<Rc<ty::VariantInfo>> = Vec::new();
         let mut disr_vals: Vec<ty::Disr> = Vec::new();
-        let mut prev_disr_val: Option<ty::Disr> = None;
 
+        let inh = static_inherited_fields(ccx);
+        let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(rty), id);
+
+        let (_, repr_type_ty) = ty::enum_repr_type(ccx.tcx, Some(&hint));
         for v in vs {
+            if let Some(ref e) = v.node.disr_expr {
+                check_const_with_ty(&fcx, e.span, e, repr_type_ty);
+            }
+        }
 
-            // If the discriminant value is specified explicitly in the enum check whether the
-            // initialization expression is valid, otherwise use the last value plus one.
-            let mut current_disr_val = match prev_disr_val {
-                Some(prev_disr_val) => {
-                    if let Some(v) = prev_disr_val.checked_add(1) {
-                        v
-                    } else {
-                        ty::INITIAL_DISCRIMINANT_VALUE
-                    }
-                }
-                None => ty::INITIAL_DISCRIMINANT_VALUE
-            };
+        let def_id = local_def(id);
 
-            match v.node.disr_expr {
-                Some(ref e) => {
-                    debug!("disr expr, checking {}", pprust::expr_to_string(&**e));
+        // ty::enum_variants guards against discriminant overflows, so
+        // we need not check for that.
+        let variants = ty::enum_variants(ccx.tcx, def_id);
 
-                    let inh = static_inherited_fields(ccx);
-                    let fcx = blank_fn_ctxt(ccx, &inh, ty::FnConverging(rty), e.id);
-                    let declty = match hint {
-                        attr::ReprAny | attr::ReprPacked |
-                        attr::ReprExtern => fcx.tcx().types.isize,
-
-                        attr::ReprInt(_, attr::SignedInt(ity)) => {
-                            ty::mk_mach_int(fcx.tcx(), ity)
-                        }
-                        attr::ReprInt(_, attr::UnsignedInt(ity)) => {
-                            ty::mk_mach_uint(fcx.tcx(), ity)
-                        },
-                    };
-                    check_const_with_ty(&fcx, e.span, &**e, declty);
-                    // check_expr (from check_const pass) doesn't guarantee
-                    // that the expression is in a form that eval_const_expr can
-                    // handle, so we may still get an internal compiler error
-
-                    match const_eval::eval_const_expr_partial(ccx.tcx, &**e, Some(declty)) {
-                        Ok(const_eval::const_int(val)) => current_disr_val = val as Disr,
-                        Ok(const_eval::const_uint(val)) => current_disr_val = val as Disr,
-                        Ok(_) => {
-                            span_err!(ccx.tcx.sess, e.span, E0079,
-                                "expected signed integer constant");
-                        }
-                        Err(ref err) => {
-                            span_err!(ccx.tcx.sess, err.span, E0080,
-                                      "constant evaluation error: {}",
-                                      err.description());
-                        }
-                    }
-                },
-                None => ()
-            };
+        for (v, variant) in vs.iter().zip(variants.iter()) {
+            let current_disr_val = variant.disr_val;
 
             // Check for duplicate discriminant values
             match disr_vals.iter().position(|&x| x == current_disr_val) {
@@ -4372,15 +4334,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                 }
             }
             disr_vals.push(current_disr_val);
-
-            let variant_info = Rc::new(VariantInfo::from_ast_variant(ccx.tcx, &**v,
-                                                                     current_disr_val));
-            prev_disr_val = Some(current_disr_val);
-
-            variants.push(variant_info);
         }
-
-        return variants;
     }
 
     let hint = *ty::lookup_repr_hints(ccx.tcx, ast::DefId { krate: ast::LOCAL_CRATE, node: id })
@@ -4396,10 +4350,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         };
     }
 
-    let variants = do_check(ccx, vs, id, hint);
-
-    // cache so that ty::enum_variants won't repeat this work
-    ccx.tcx.enum_var_cache.borrow_mut().insert(local_def(id), Rc::new(variants));
+    do_check(ccx, vs, id, hint);
 
     check_representable(ccx.tcx, sp, id, "enum");
 
