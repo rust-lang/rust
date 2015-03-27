@@ -480,6 +480,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                 crate_name: crate_name.to_string(),
                 features: Some(&features),
                 recursion_limit: sess.recursion_limit.get(),
+                trace_mac: sess.opts.debugging_opts.trace_macros,
             };
             let ret = syntax::ext::expand::expand_crate(&sess.parse_sess,
                                               cfg,

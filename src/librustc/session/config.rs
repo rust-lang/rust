@@ -604,6 +604,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "Print the size of enums and their variants"),
     force_overflow_checks: Option<bool> = (None, parse_opt_bool,
           "Force overflow checks on or off"),
+    trace_macros: bool = (false, parse_bool,
+          "For every macro invocation, print its name and token arguments"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -665,7 +667,7 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
         Ok(t) => t,
         Err(e) => {
             sp.handler().fatal(&format!("Error loading target specification: {}", e));
-    }
+        }
     };
 
     let (int_type, uint_type) = match &target.target_pointer_width[..] {
