@@ -96,7 +96,7 @@ fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
         .flat_map(|item| {
             match *item {
                 ty::MethodTraitItem(ref m) => {
-                    object_safety_violations_for_method(tcx, trait_def_id, &**m)
+                    object_safety_violation_for_method(tcx, trait_def_id, &**m)
                         .map(|code| ObjectSafetyViolation::Method(m.clone(), code))
                         .into_iter()
                 }
@@ -193,10 +193,11 @@ fn generics_require_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
         })
 }
 
-fn object_safety_violations_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                             trait_def_id: ast::DefId,
-                                             method: &ty::Method<'tcx>)
-                                             -> Option<MethodViolationCode>
+/// Returns `Some(_)` if this method makes the containing trait not object safe.
+fn object_safety_violation_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                            trait_def_id: ast::DefId,
+                                            method: &ty::Method<'tcx>)
+                                            -> Option<MethodViolationCode>
 {
     // Any method that has a `Self : Sized` requisite is otherwise
     // exempt from the regulations.
@@ -204,6 +205,30 @@ fn object_safety_violations_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         return None;
     }
 
+    virtual_call_violation_for_method(tcx, trait_def_id, method)
+}
+
+/// We say a method is *vtable safe* if it can be invoked on a trait
+/// object.  Note that object-safe traits can have some
+/// non-vtable-safe methods, so long as they require `Self:Sized` or
+/// otherwise ensure that they cannot be used when `Self=Trait`.
+pub fn is_vtable_safe_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                   trait_def_id: ast::DefId,
+                                   method: &ty::Method<'tcx>)
+                                   -> bool
+{
+    virtual_call_violation_for_method(tcx, trait_def_id, method).is_none()
+}
+
+/// Returns `Some(_)` if this method cannot be called on a trait
+/// object; this does not necessarily imply that the enclosing trait
+/// is not object safe, because the method might have a where clause
+/// `Self:Sized`.
+fn virtual_call_violation_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                           trait_def_id: ast::DefId,
+                                           method: &ty::Method<'tcx>)
+                                           -> Option<MethodViolationCode>
+{
     // The method's first parameter must be something that derefs (or
     // autorefs) to `&self`. For now, we only accept `self`, `&self`
     // and `Box<Self>`.
