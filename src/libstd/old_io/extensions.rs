@@ -171,7 +171,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: usize, size: usize) -> u64 {
     unsafe {
         let ptr = data.as_ptr().offset(start as isize);
         let out = buf.as_mut_ptr();
-        copy_nonoverlapping(out.offset((8 - size) as isize), ptr, size);
+        copy_nonoverlapping(ptr, out.offset((8 - size) as isize), size);
         (*(out as *const u64)).to_be()
     }
 }

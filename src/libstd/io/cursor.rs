@@ -151,7 +151,7 @@ impl Write for Cursor<Vec<u8>> {
         // there (left), and what will be appended on the end (right)
         let space = self.inner.len() - pos as usize;
         let (left, right) = buf.split_at(cmp::min(space, buf.len()));
-        slice::bytes::copy_memory(&mut self.inner[(pos as usize)..], left);
+        slice::bytes::copy_memory(left, &mut self.inner[(pos as usize)..]);
         self.inner.push_all(right);
 
         // Bump us forward
