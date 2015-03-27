@@ -316,8 +316,8 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
 
             impl<'a> fmt::Write for Filler<'a> {
                 fn write_str(&mut self, s: &str) -> fmt::Result {
-                    slice::bytes::copy_memory(&mut self.buf[(*self.end)..],
-                                              s.as_bytes());
+                    slice::bytes::copy_memory(s.as_bytes(),
+                                              &mut self.buf[(*self.end)..]);
                     *self.end += s.len();
                     Ok(())
                 }

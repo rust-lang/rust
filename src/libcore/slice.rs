@@ -1577,14 +1577,14 @@ pub mod bytes {
     ///
     /// Panics if the length of `dst` is less than the length of `src`.
     #[inline]
-    pub fn copy_memory(dst: &mut [u8], src: &[u8]) {
+    pub fn copy_memory(src: &[u8], dst: &mut [u8]) {
         let len_src = src.len();
         assert!(dst.len() >= len_src);
         // `dst` is unaliasable, so we know statically it doesn't overlap
         // with `src`.
         unsafe {
-            ptr::copy_nonoverlapping(dst.as_mut_ptr(),
-                                     src.as_ptr(),
+            ptr::copy_nonoverlapping(src.as_ptr(),
+                                     dst.as_mut_ptr(),
                                      len_src);
         }
     }

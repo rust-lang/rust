@@ -480,8 +480,8 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> GapThenFull<K, V, M> {
     pub fn shift(mut self) -> Option<GapThenFull<K, V, M>> {
         unsafe {
             *self.gap.raw.hash = mem::replace(&mut *self.full.raw.hash, EMPTY_BUCKET);
-            ptr::copy_nonoverlapping(self.gap.raw.key, self.full.raw.key, 1);
-            ptr::copy_nonoverlapping(self.gap.raw.val, self.full.raw.val, 1);
+            ptr::copy_nonoverlapping(self.full.raw.key, self.gap.raw.key, 1);
+            ptr::copy_nonoverlapping(self.full.raw.val, self.gap.raw.val, 1);
         }
 
         let FullBucket { raw: prev_raw, idx: prev_idx, .. } = self.full;
