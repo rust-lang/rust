@@ -333,7 +333,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns the inner `T` of a `Some(T)`.
+    /// Moves the value `v` out of the `Option<T>` if the content of the `Option<T>` is a `Some(v)`.
     ///
     /// # Panics
     ///
