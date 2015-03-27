@@ -87,7 +87,7 @@ use fmt::{Debug, Display};
 
 /// Base functionality for all errors in Rust.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Error: Debug + Display + Send {
+pub trait Error: Debug + Display {
     /// A short description of the error.
     ///
     /// The description should not contain newlines or sentence-ending
