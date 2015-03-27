@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "xcrate_address_insignificant" as foo;
+extern crate xcrate_address_insignificant as foo;
 
 pub fn main() {
     assert_eq!(foo::foo::<f64>(), foo::bar());

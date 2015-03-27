@@ -149,9 +149,9 @@ extern crate core;
 
 #[macro_use]
 #[macro_reexport(vec, format)]
-extern crate "collections" as core_collections;
+extern crate collections as core_collections;
 
-#[allow(deprecated)] extern crate "rand" as core_rand;
+#[allow(deprecated)] extern crate rand as core_rand;
 extern crate alloc;
 extern crate unicode;
 extern crate libc;
@@ -159,7 +159,7 @@ extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 
 // Make std testable by not duplicating lang items. See #2912
-#[cfg(test)] extern crate "std" as realstd;
+#[cfg(test)] extern crate std as realstd;
 #[cfg(test)] pub use realstd::marker;
 #[cfg(test)] pub use realstd::ops;
 #[cfg(test)] pub use realstd::cmp;

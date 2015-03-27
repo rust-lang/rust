@@ -4986,7 +4986,7 @@ impl<'a> Parser<'a> {
     ///
     /// extern crate url;
     /// extern crate foo = "bar"; //deprecated
-    /// extern crate "bar" as foo;
+    /// extern crate bar as foo;
     fn parse_item_extern_crate(&mut self,
                                 lo: BytePos,
                                 visibility: Visibility,
