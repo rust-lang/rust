@@ -352,9 +352,7 @@ fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
             }
         };
         let name = name.to_string();
-        let locs = externs.entry(name).get().unwrap_or_else(
-            |vacant_entry| vacant_entry.insert(Vec::with_capacity(1)));
-        locs.push(location.to_string());
+        externs.entry(name).or_insert(vec![]).push(location.to_string());
     }
     Ok(externs)
 }

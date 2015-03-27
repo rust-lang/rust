@@ -836,11 +836,8 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         let is_public = import_directive.is_public;
 
         let mut import_resolutions = module_.import_resolutions.borrow_mut();
-        let dest_import_resolution = import_resolutions.entry(name).get().unwrap_or_else(
-            |vacant_entry| {
-                // Create a new import resolution from this child.
-                vacant_entry.insert(ImportResolution::new(id, is_public))
-            });
+        let dest_import_resolution = import_resolutions.entry(name)
+            .or_insert_with(|| ImportResolution::new(id, is_public));
 
         debug!("(resolving glob import) writing resolution `{}` in `{}` \
                to `{}`",

@@ -307,10 +307,7 @@
 //! let message = "she sells sea shells by the sea shore";
 //!
 //! for c in message.chars() {
-//!     match count.entry(c) {
-//!         Entry::Vacant(entry) => { entry.insert(1); },
-//!         Entry::Occupied(mut entry) => *entry.get_mut() += 1,
-//!     }
+//!     *count.entry(c).or_insert(0) += 1;
 //! }
 //!
 //! assert_eq!(count.get(&'s'), Some(&8));
@@ -343,10 +340,7 @@
 //! for id in orders.into_iter() {
 //!     // If this is the first time we've seen this customer, initialize them
 //!     // with no blood alcohol. Otherwise, just retrieve them.
-//!     let person = match blood_alcohol.entry(id) {
-//!         Entry::Vacant(entry) => entry.insert(Person{id: id, blood_alcohol: 0.0}),
-//!         Entry::Occupied(entry) => entry.into_mut(),
-//!     };
+//!     let person = blood_alcohol.entry(id).or_insert(Person{id: id, blood_alcohol: 0.0});
 //!
 //!     // Reduce their blood alcohol level. It takes time to order and drink a beer!
 //!     person.blood_alcohol *= 0.9;
