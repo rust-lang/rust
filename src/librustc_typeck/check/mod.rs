@@ -112,7 +112,6 @@ use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 use util::lev_distance::lev_distance;
 
 use std::cell::{Cell, Ref, RefCell};
-use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::mem::replace;
 use std::rc::Rc;
 use std::iter::repeat;
@@ -1362,11 +1361,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                        closure_def_id: ast::DefId,
                                        r: DeferredCallResolutionHandler<'tcx>) {
         let mut deferred_call_resolutions = self.inh.deferred_call_resolutions.borrow_mut();
-        let mut vec = match deferred_call_resolutions.entry(closure_def_id) {
-            Occupied(entry) => entry.into_mut(),
-            Vacant(entry) => entry.insert(Vec::new()),
-        };
-        vec.push(r);
+        deferred_call_resolutions.entry(closure_def_id).or_insert(vec![]).push(r);
     }
 
     fn remove_deferred_call_resolutions(&self,
