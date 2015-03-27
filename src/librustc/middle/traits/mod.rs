@@ -48,6 +48,8 @@ pub use self::util::get_vtable_index_of_object_method;
 pub use self::util::trait_ref_for_builtin_bound;
 pub use self::util::supertraits;
 pub use self::util::Supertraits;
+pub use self::util::supertrait_def_ids;
+pub use self::util::SupertraitDefIds;
 pub use self::util::transitive_bounds;
 pub use self::util::upcast;
 
@@ -640,7 +642,7 @@ impl<'tcx> FulfillmentError<'tcx> {
 }
 
 impl<'tcx> TraitObligation<'tcx> {
-    fn self_ty(&self) -> Ty<'tcx> {
-        self.predicate.0.self_ty()
+    fn self_ty(&self) -> ty::Binder<Ty<'tcx>> {
+        ty::Binder(self.predicate.skip_binder().self_ty())
     }
 }
