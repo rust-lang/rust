@@ -79,7 +79,7 @@ fn main() {
     zzz(); // #break
     sentinel();
 
-    let unique_closure = |x:int| {
+    let unique_closure = |x:isize| {
         zzz(); // #break
         sentinel();
 

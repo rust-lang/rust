@@ -12,8 +12,8 @@
 
 pub fn main() {
 
-    let y: int = 42;
-    let mut x: int;
+    let y: isize = 42;
+    let mut x: isize;
     x = y;
     assert_eq!(x, 42);
 }

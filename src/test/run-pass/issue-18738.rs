@@ -12,7 +12,7 @@
 
 #[derive(Eq, PartialEq, PartialOrd, Ord)]
 enum Test<'a> {
-    Int(&'a int),
+    Int(&'a isize),
     Slice(&'a [u8]),
 }
 

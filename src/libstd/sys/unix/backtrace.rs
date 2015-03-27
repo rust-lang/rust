@@ -128,7 +128,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
 
     // skipping the first one as it is write itself
     let iter = (1..cnt).map(|i| {
-        print(w, i as int, buf[i], buf[i])
+        print(w, i as isize, buf[i], buf[i])
     });
     result::fold(iter, (), |_, _| ())
 }
@@ -138,7 +138,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
                  // tracing
 pub fn write(w: &mut Write) -> io::Result<()> {
     struct Context<'a> {
-        idx: int,
+        idx: isize,
         writer: &'a mut (Write+'a),
         last_error: Option<io::Error>,
     }
@@ -222,7 +222,7 @@ pub fn write(w: &mut Write) -> io::Result<()> {
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
-fn print(w: &mut Write, idx: int, addr: *mut libc::c_void,
+fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
          _symaddr: *mut libc::c_void) -> io::Result<()> {
     use intrinsics;
     #[repr(C)]
@@ -248,7 +248,7 @@ fn print(w: &mut Write, idx: int, addr: *mut libc::c_void,
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
-fn print(w: &mut Write, idx: int, addr: *mut libc::c_void,
+fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
          symaddr: *mut libc::c_void) -> io::Result<()> {
     use env;
     use ffi::AsOsStr;
@@ -441,7 +441,7 @@ fn print(w: &mut Write, idx: int, addr: *mut libc::c_void,
 }
 
 // Finally, after all that work above, we can emit a symbol.
-fn output(w: &mut Write, idx: int, addr: *mut libc::c_void,
+fn output(w: &mut Write, idx: isize, addr: *mut libc::c_void,
           s: Option<&[u8]>) -> io::Result<()> {
     try!(write!(w, "  {:2}: {:2$?} - ", idx, addr, HEX_WIDTH));
     match s.and_then(|s| str::from_utf8(s).ok()) {

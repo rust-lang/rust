@@ -17,4 +17,4 @@ struct R<T> {v: Vec<option<T>> }
 
 fn f<T>() -> Vec<T> { return Vec::new(); }
 
-pub fn main() { let mut r: R<int> = R {v: Vec::new()}; r.v = f(); }
+pub fn main() { let mut r: R<isize> = R {v: Vec::new()}; r.v = f(); }

@@ -13,16 +13,16 @@
 // pretty-expanded FIXME #23616
 
 unsafe trait Foo {
-    fn foo(&self) -> int;
+    fn foo(&self) -> isize;
 }
 
-unsafe impl Foo for int {
-    fn foo(&self) -> int { *self }
+unsafe impl Foo for isize {
+    fn foo(&self) -> isize { *self }
 }
 
-fn take_foo<F:Foo>(f: &F) -> int { f.foo() }
+fn take_foo<F:Foo>(f: &F) -> isize { f.foo() }
 
 fn main() {
-    let x: int = 22;
+    let x: isize = 22;
     assert_eq!(22, take_foo(&x));
 }

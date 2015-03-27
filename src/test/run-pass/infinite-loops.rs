@@ -14,7 +14,7 @@
 */
 // ignore-test
 
-fn loopy(n: int) {
+fn loopy(n: isize) {
     if n > 0 { spawn(move|| { loopy(n - 1) }); spawn(move|| { loopy(n - 1) }); }
     loop { }
 }

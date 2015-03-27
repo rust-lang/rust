@@ -12,9 +12,9 @@
 
 #[derive(Hash)]
 struct Foo {
-    x: int,
-    y: int,
-    z: int
+    x: isize,
+    y: isize,
+    z: isize
 }
 
 pub fn main() {}

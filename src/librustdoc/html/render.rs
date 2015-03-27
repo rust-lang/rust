@@ -498,7 +498,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
             try!(write!(&mut w, ","));
         }
         try!(write!(&mut w, r#"[{},"{}","{}",{}"#,
-                    item.ty as uint, item.name, path,
+                    item.ty as usize, item.name, path,
                     item.desc.to_json().to_string()));
         match item.parent {
             Some(nodeid) => {
@@ -522,7 +522,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::Result<String> {
             try!(write!(&mut w, ","));
         }
         try!(write!(&mut w, r#"[{},"{}"]"#,
-                    short as uint, *fqp.last().unwrap()));
+                    short as usize, *fqp.last().unwrap()));
     }
 
     try!(write!(&mut w, "]}};"));
@@ -1409,8 +1409,8 @@ impl<'a> Item<'a> {
         // located, then we return `None`.
         } else {
             let cache = cache();
-            let path = &cache.external_paths[&self.item.def_id];
-            let root = match cache.extern_locations[&self.item.def_id.krate] {
+            let path = &cache.external_paths[self.item.def_id];
+            let root = match cache.extern_locations[self.item.def_id.krate] {
                 Remote(ref s) => s.to_string(),
                 Local => self.cx.root_path.clone(),
                 Unknown => return None,
@@ -1572,7 +1572,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
     let mut indices = (0..items.len()).filter(|i| {
         !cx.ignore_private_item(&items[*i])
-    }).collect::<Vec<uint>>();
+    }).collect::<Vec<usize>>();
 
     // the order of item types in the listing
     fn reorder(ty: ItemType) -> u8 {
@@ -1593,7 +1593,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         }
     }
 
-    fn cmp(i1: &clean::Item, i2: &clean::Item, idx1: uint, idx2: uint) -> Ordering {
+    fn cmp(i1: &clean::Item, i2: &clean::Item, idx1: usize, idx2: usize) -> Ordering {
         let ty1 = shortty(i1);
         let ty2 = shortty(i2);
         if ty1 == ty2 {
@@ -1868,7 +1868,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 path = if ast_util::is_local(it.def_id) {
                     cx.current.connect("/")
                 } else {
-                    let path = &cache.external_paths[&it.def_id];
+                    let path = &cache.external_paths[it.def_id];
                     path[..path.len() - 1].connect("/")
                 },
                 ty = shortty(it).to_static_str(),

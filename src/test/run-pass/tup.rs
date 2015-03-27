@@ -10,9 +10,9 @@
 
 // pretty-expanded FIXME #23616
 
-type point = (int, int);
+type point = (isize, isize);
 
-fn f(p: point, x: int, y: int) {
+fn f(p: point, x: isize, y: isize) {
     let (a, b) = p;
     assert_eq!(a, x);
     assert_eq!(b, y);

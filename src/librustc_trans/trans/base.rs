@@ -151,7 +151,7 @@ pub fn push_ctxt(s: &'static str) -> _InsnCtxt {
 pub struct StatRecorder<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
     name: Option<String>,
-    istart: uint,
+    istart: usize,
 }
 
 impl<'a, 'tcx> StatRecorder<'a, 'tcx> {
@@ -707,7 +707,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                                     substs, &mut f);
               }
               (_match::Switch, Some(lldiscrim_a)) => {
-                  cx = f(cx, lldiscrim_a, cx.tcx().types.int);
+                  cx = f(cx, lldiscrim_a, cx.tcx().types.isize);
                   let unr_cx = fcx.new_temp_block("enum-iter-unr");
                   Unreachable(unr_cx);
                   let llswitch = Switch(cx, lldiscrim_a, unr_cx.llbb,
@@ -847,8 +847,8 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
             ty::ty_int(t) => {
                 let llty = Type::int_from_ty(cx.ccx(), t);
                 let min = match t {
-                    ast::TyIs(_) if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
-                    ast::TyIs(_) => i64::MIN as u64,
+                    ast::TyIs if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
+                    ast::TyIs => i64::MIN as u64,
                     ast::TyI8 => i8::MIN as u64,
                     ast::TyI16 => i16::MIN as u64,
                     ast::TyI32 => i32::MIN as u64,

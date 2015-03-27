@@ -17,7 +17,7 @@ pub mod foo {
 }
 
 pub enum Bar {
-    Bar0 = 0 as int
+    Bar0 = 0 as isize
 }
 
 pub fn main() {}

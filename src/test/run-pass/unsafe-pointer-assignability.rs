@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn f(x: *const int) {
+fn f(x: *const isize) {
     unsafe {
         assert_eq!(*x, 3);
     }

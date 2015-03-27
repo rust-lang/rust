@@ -14,7 +14,7 @@
 #![feature(box_syntax)]
 
 #[derive(Copy)]
-struct LM { resize_at: uint, size: uint }
+struct LM { resize_at: usize, size: usize }
 
 enum HashMap<K,V> {
     HashMap_(LM, Vec<(K,V)>)
@@ -27,7 +27,7 @@ fn linear_map<K,V>() -> HashMap<K,V> {
 }
 
 impl<K,V> HashMap<K,V> {
-    pub fn len(&mut self) -> uint {
+    pub fn len(&mut self) -> usize {
         match *self {
             HashMap::HashMap_(ref l, _) => l.size
         }

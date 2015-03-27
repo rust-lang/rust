@@ -13,4 +13,4 @@
 
 #![crate_type = "lib"]
 
-pub fn f() -> int { 20 }
+pub fn f() -> isize { 20 }

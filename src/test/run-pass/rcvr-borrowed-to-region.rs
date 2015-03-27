@@ -12,14 +12,14 @@
 #![feature(box_syntax)]
 
 trait get {
-    fn get(self) -> int;
+    fn get(self) -> isize;
 }
 
 // Note: impl on a slice; we're checking that the pointers below
-// correctly get borrowed to `&`. (similar to impling for `int`, with
+// correctly get borrowed to `&`. (similar to impling for `isize`, with
 // `&self` instead of `self`.)
-impl<'a> get for &'a int {
-    fn get(self) -> int {
+impl<'a> get for &'a isize {
+    fn get(self) -> isize {
         return *self;
     }
 }

@@ -17,7 +17,7 @@ pub mod rusti {
 }
 
 #[inline(always)]
-pub fn atomic_xchg(dst: *mut int, src: int) -> int {
+pub fn atomic_xchg(dst: *mut isize, src: isize) -> isize {
     unsafe {
         rusti::atomic_xchg(dst, src)
     }

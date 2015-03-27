@@ -66,24 +66,24 @@ mod os {
 
     #[cfg(any(target_arch = "x86_64",
               target_arch = "aarch64"))]
-    const __PTHREAD_MUTEX_SIZE__: uint = 56;
+    const __PTHREAD_MUTEX_SIZE__: usize = 56;
     #[cfg(any(target_arch = "x86",
               target_arch = "arm"))]
-    const __PTHREAD_MUTEX_SIZE__: uint = 40;
+    const __PTHREAD_MUTEX_SIZE__: usize = 40;
 
     #[cfg(any(target_arch = "x86_64",
               target_arch = "aarch64"))]
-    const __PTHREAD_COND_SIZE__: uint = 40;
+    const __PTHREAD_COND_SIZE__: usize = 40;
     #[cfg(any(target_arch = "x86",
               target_arch = "arm"))]
-    const __PTHREAD_COND_SIZE__: uint = 24;
+    const __PTHREAD_COND_SIZE__: usize = 24;
 
     #[cfg(any(target_arch = "x86_64",
               target_arch = "aarch64"))]
-    const __PTHREAD_RWLOCK_SIZE__: uint = 192;
+    const __PTHREAD_RWLOCK_SIZE__: usize = 192;
     #[cfg(any(target_arch = "x86",
               target_arch = "arm"))]
-    const __PTHREAD_RWLOCK_SIZE__: uint = 124;
+    const __PTHREAD_RWLOCK_SIZE__: usize = 124;
 
     const _PTHREAD_MUTEX_SIG_INIT: libc::c_long = 0x32AAABA7;
     const _PTHREAD_COND_SIG_INIT: libc::c_long = 0x3CB0B1BB;
@@ -125,15 +125,15 @@ mod os {
 
     // minus 8 because we have an 'align' field
     #[cfg(target_arch = "x86_64")]
-    const __SIZEOF_PTHREAD_MUTEX_T: uint = 40 - 8;
+    const __SIZEOF_PTHREAD_MUTEX_T: usize = 40 - 8;
     #[cfg(any(target_arch = "x86",
               target_arch = "arm",
               target_arch = "mips",
               target_arch = "mipsel",
               target_arch = "powerpc"))]
-    const __SIZEOF_PTHREAD_MUTEX_T: uint = 24 - 8;
+    const __SIZEOF_PTHREAD_MUTEX_T: usize = 24 - 8;
     #[cfg(target_arch = "aarch64")]
-    const __SIZEOF_PTHREAD_MUTEX_T: uint = 48 - 8;
+    const __SIZEOF_PTHREAD_MUTEX_T: usize = 48 - 8;
 
     #[cfg(any(target_arch = "x86_64",
               target_arch = "x86",
@@ -142,18 +142,18 @@ mod os {
               target_arch = "mips",
               target_arch = "mipsel",
               target_arch = "powerpc"))]
-    const __SIZEOF_PTHREAD_COND_T: uint = 48 - 8;
+    const __SIZEOF_PTHREAD_COND_T: usize = 48 - 8;
 
     #[cfg(any(target_arch = "x86_64",
               target_arch = "aarch64"))]
-    const __SIZEOF_PTHREAD_RWLOCK_T: uint = 56 - 8;
+    const __SIZEOF_PTHREAD_RWLOCK_T: usize = 56 - 8;
 
     #[cfg(any(target_arch = "x86",
               target_arch = "arm",
               target_arch = "mips",
               target_arch = "mipsel",
               target_arch = "powerpc"))]
-    const __SIZEOF_PTHREAD_RWLOCK_T: uint = 32 - 8;
+    const __SIZEOF_PTHREAD_RWLOCK_T: usize = 32 - 8;
 
     #[repr(C)]
     pub struct pthread_mutex_t {

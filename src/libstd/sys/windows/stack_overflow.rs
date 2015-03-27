@@ -31,7 +31,7 @@ impl Drop for Handler {
 }
 
 // This is initialized in init() and only read from after
-static mut PAGE_SIZE: uint = 0;
+static mut PAGE_SIZE: usize = 0;
 
 #[no_stack_check]
 extern "system" fn vectored_handler(ExceptionInfo: *mut EXCEPTION_POINTERS) -> LONG {
@@ -56,7 +56,7 @@ extern "system" fn vectored_handler(ExceptionInfo: *mut EXCEPTION_POINTERS) -> L
 pub unsafe fn init() {
     let mut info = mem::zeroed();
     libc::GetSystemInfo(&mut info);
-    PAGE_SIZE = info.dwPageSize as uint;
+    PAGE_SIZE = info.dwPageSize as usize;
 
     if AddVectoredExceptionHandler(0, vectored_handler) == ptr::null_mut() {
         panic!("failed to install exception handler");
@@ -96,7 +96,7 @@ pub type PVECTORED_EXCEPTION_HANDLER = extern "system"
 pub type ULONG = libc::c_ulong;
 
 const EXCEPTION_CONTINUE_SEARCH: LONG = 0;
-const EXCEPTION_MAXIMUM_PARAMETERS: uint = 15;
+const EXCEPTION_MAXIMUM_PARAMETERS: usize = 15;
 const EXCEPTION_STACK_OVERFLOW: DWORD = 0xc00000fd;
 
 extern "system" {

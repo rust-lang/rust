@@ -21,4 +21,4 @@ pub fn main() {
     println!("main thread exiting");
 }
 
-fn child(x: int) { println!("{}", x); }
+fn child(x: isize) { println!("{}", x); }

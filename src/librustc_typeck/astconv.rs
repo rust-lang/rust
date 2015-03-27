@@ -504,9 +504,9 @@ fn convert_angle_bracketed_parameters<'tcx>(this: &AstConv<'tcx>,
 /// (if one exists) and a vector of the (pattern, number of lifetimes)
 /// corresponding to each input type/pattern.
 fn find_implied_output_region(input_tys: &[Ty], input_pats: Vec<String>)
-                              -> (Option<ty::Region>, Vec<(String, uint)>)
+                              -> (Option<ty::Region>, Vec<(String, usize)>)
 {
-    let mut lifetimes_for_params: Vec<(String, uint)> = Vec::new();
+    let mut lifetimes_for_params: Vec<(String, usize)> = Vec::new();
     let mut possible_implied_output_region = None;
 
     for (input_type, input_pat) in input_tys.iter().zip(input_pats.into_iter()) {
@@ -534,7 +534,7 @@ fn find_implied_output_region(input_tys: &[Ty], input_pats: Vec<String>)
 
 fn convert_ty_with_lifetime_elision<'tcx>(this: &AstConv<'tcx>,
                                           implied_output_region: Option<ty::Region>,
-                                          param_lifetimes: Vec<(String, uint)>,
+                                          param_lifetimes: Vec<(String, usize)>,
                                           ty: &ast::Ty)
                                           -> Ty<'tcx>
 {
@@ -1401,15 +1401,15 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             ty
         }
         ast::TyFixedLengthVec(ref ty, ref e) => {
-            match const_eval::eval_const_expr_partial(tcx, &**e, Some(tcx.types.uint)) {
+            match const_eval::eval_const_expr_partial(tcx, &**e, Some(tcx.types.usize)) {
                 Ok(r) => {
                     match r {
                         const_eval::const_int(i) =>
                             ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &**ty),
-                                        Some(i as uint)),
+                                        Some(i as usize)),
                         const_eval::const_uint(i) =>
                             ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &**ty),
-                                        Some(i as uint)),
+                                        Some(i as usize)),
                         _ => {
                             span_err!(tcx.sess, ast_ty.span, E0249,
                                       "expected constant expr for array length");
@@ -1666,7 +1666,7 @@ fn determine_explicit_self_category<'a, 'tcx>(this: &AstConv<'tcx>,
         }
     };
 
-    fn count_modifiers(ty: Ty) -> uint {
+    fn count_modifiers(ty: Ty) -> usize {
         match ty.sty {
             ty::ty_rptr(_, mt) => count_modifiers(mt.ty) + 1,
             ty::ty_uniq(t) => count_modifiers(t) + 1,

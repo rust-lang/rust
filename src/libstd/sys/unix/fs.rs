@@ -42,7 +42,7 @@ impl FileDesc {
         FileDesc { fd: fd, close_on_drop: close_on_drop }
     }
 
-    pub fn read(&self, buf: &mut [u8]) -> IoResult<uint> {
+    pub fn read(&self, buf: &mut [u8]) -> IoResult<usize> {
         let ret = retry(|| unsafe {
             libc::read(self.fd(),
                        buf.as_mut_ptr() as *mut libc::c_void,
@@ -53,7 +53,7 @@ impl FileDesc {
         } else if ret < 0 {
             Err(super::last_error())
         } else {
-            Ok(ret as uint)
+            Ok(ret as usize)
         }
     }
     pub fn write(&self, buf: &[u8]) -> IoResult<()> {
@@ -181,7 +181,7 @@ pub fn open(path: &Path, fm: FileMode, fa: FileAccess) -> IoResult<FileDesc> {
     }
 }
 
-pub fn mkdir(p: &Path, mode: uint) -> IoResult<()> {
+pub fn mkdir(p: &Path, mode: usize) -> IoResult<()> {
     let p = try!(cstr(p));
     mkerr_libc(unsafe { libc::mkdir(p.as_ptr(), mode as libc::mode_t) })
 }
@@ -204,13 +204,13 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
     }
 
     let size = unsafe { rust_dirent_t_size() };
-    let mut buf = Vec::<u8>::with_capacity(size as uint);
+    let mut buf = Vec::<u8>::with_capacity(size as usize);
     let ptr = buf.as_mut_ptr() as *mut dirent_t;
 
     let p = try!(CString::new(p.as_vec()));
     let dir_ptr = unsafe {opendir(p.as_ptr())};
 
-    if dir_ptr as uint != 0 {
+    if dir_ptr as usize != 0 {
         let mut paths = vec!();
         let mut entry_ptr = ptr::null_mut();
         while unsafe { readdir_r(dir_ptr, ptr, &mut entry_ptr) == 0 } {
@@ -239,7 +239,7 @@ pub fn rename(old: &Path, new: &Path) -> IoResult<()> {
     })
 }
 
-pub fn chmod(p: &Path, mode: uint) -> IoResult<()> {
+pub fn chmod(p: &Path, mode: usize) -> IoResult<()> {
     let p = try!(cstr(p));
     mkerr_libc(retry(|| unsafe {
         libc::chmod(p.as_ptr(), mode as libc::mode_t)
@@ -251,7 +251,7 @@ pub fn rmdir(p: &Path) -> IoResult<()> {
     mkerr_libc(unsafe { libc::rmdir(p.as_ptr()) })
 }
 
-pub fn chown(p: &Path, uid: int, gid: int) -> IoResult<()> {
+pub fn chown(p: &Path, uid: isize, gid: isize) -> IoResult<()> {
     let p = try!(cstr(p));
     mkerr_libc(retry(|| unsafe {
         libc::chown(p.as_ptr(), uid as libc::uid_t, gid as libc::gid_t)
@@ -265,7 +265,7 @@ pub fn readlink(p: &Path) -> IoResult<Path> {
     if len == -1 {
         len = 1024; // FIXME: read PATH_MAX from C ffi?
     }
-    let mut buf: Vec<u8> = Vec::with_capacity(len as uint);
+    let mut buf: Vec<u8> = Vec::with_capacity(len as usize);
     match unsafe {
         libc::readlink(p, buf.as_ptr() as *mut libc::c_char,
                        len as libc::size_t) as libc::c_int
@@ -273,7 +273,7 @@ pub fn readlink(p: &Path) -> IoResult<Path> {
         -1 => Err(super::last_error()),
         n => {
             assert!(n > 0);
-            unsafe { buf.set_len(n as uint); }
+            unsafe { buf.set_len(n as usize); }
             Ok(Path::new(buf))
         }
     }

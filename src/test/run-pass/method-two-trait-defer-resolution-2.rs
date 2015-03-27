@@ -22,25 +22,25 @@
 #![feature(box_syntax)]
 
 trait Foo {
-    fn foo(&self) -> int;
+    fn foo(&self) -> isize;
 }
 
 impl<T:Copy> Foo for Vec<T> {
-    fn foo(&self) -> int {1}
+    fn foo(&self) -> isize {1}
 }
 
 impl<T> Foo for Vec<Box<T>> {
-    fn foo(&self) -> int {2}
+    fn foo(&self) -> isize {2}
 }
 
-fn call_foo_copy() -> int {
+fn call_foo_copy() -> isize {
     let mut x = Vec::new();
     let y = x.foo();
     x.push(0_usize);
     y
 }
 
-fn call_foo_other() -> int {
+fn call_foo_other() -> isize {
     let mut x: Vec<Box<_>> = Vec::new();
     let y = x.foo();
     x.push(box 0);

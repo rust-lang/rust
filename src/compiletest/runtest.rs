@@ -758,7 +758,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
 struct DebuggerCommands {
     commands: Vec<String>,
     check_lines: Vec<String>,
-    breakpoint_lines: Vec<uint>,
+    breakpoint_lines: Vec<usize>,
 }
 
 fn parse_debugger_commands(file_path: &Path, debugger_prefix: &str)
@@ -1036,7 +1036,7 @@ fn is_compiler_error_or_warning(line: &str) -> bool {
          scan_string(line, "warning", &mut i));
 }
 
-fn scan_until_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
+fn scan_until_char(haystack: &str, needle: char, idx: &mut usize) -> bool {
     if *idx >= haystack.len() {
         return false;
     }
@@ -1048,7 +1048,7 @@ fn scan_until_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
     return true;
 }
 
-fn scan_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
+fn scan_char(haystack: &str, needle: char, idx: &mut usize) -> bool {
     if *idx >= haystack.len() {
         return false;
     }
@@ -1060,7 +1060,7 @@ fn scan_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
     return true;
 }
 
-fn scan_integer(haystack: &str, idx: &mut uint) -> bool {
+fn scan_integer(haystack: &str, idx: &mut usize) -> bool {
     let mut i = *idx;
     while i < haystack.len() {
         let ch = haystack.char_at(i);
@@ -1076,7 +1076,7 @@ fn scan_integer(haystack: &str, idx: &mut uint) -> bool {
     return true;
 }
 
-fn scan_string(haystack: &str, needle: &str, idx: &mut uint) -> bool {
+fn scan_string(haystack: &str, needle: &str, idx: &mut usize) -> bool {
     let mut haystack_i = *idx;
     let mut needle_i = 0;
     while needle_i < needle.len() {
@@ -1725,7 +1725,7 @@ fn disassemble_extract(config: &Config, _props: &TestProps,
 }
 
 
-fn count_extracted_lines(p: &Path) -> uint {
+fn count_extracted_lines(p: &Path) -> usize {
     let mut x = Vec::new();
     File::open(&p.with_extension("ll")).unwrap().read_to_end(&mut x).unwrap();
     let x = str::from_utf8(&x).unwrap();

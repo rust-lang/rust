@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 mod x {
-    pub fn g() -> uint {14}
+    pub fn g() -> usize {14}
 }
 
 pub fn main(){

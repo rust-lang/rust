@@ -15,8 +15,8 @@ use std::sync::mpsc::channel;
 pub fn main() { test00(); }
 
 fn test00() {
-    let mut r: int = 0;
-    let mut sum: int = 0;
+    let mut r: isize = 0;
+    let mut sum: isize = 0;
     let (tx, rx) = channel();
     tx.send(1).unwrap();
     tx.send(2).unwrap();

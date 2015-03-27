@@ -9,9 +9,9 @@
 // except according to those terms.
 
 fn main() {
-    let s: &[int] = &[0, 1, 2, 3, 4];
-    let ss: &&[int] = &s;
-    let sss: &&&[int] = &ss;
+    let s: &[isize] = &[0, 1, 2, 3, 4];
+    let ss: &&[isize] = &s;
+    let sss: &&&[isize] = &ss;
 
     println!("{:?}", &s[..3]);
     println!("{:?}", &ss[3..]);

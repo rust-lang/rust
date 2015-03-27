@@ -41,16 +41,16 @@ use thread;
 
 /// Signal a process to exit, without forcibly killing it. Corresponds to
 /// SIGTERM on unix platforms.
-#[cfg(windows)] pub const PleaseExitSignal: int = 15;
+#[cfg(windows)] pub const PleaseExitSignal: isize = 15;
 /// Signal a process to exit immediately, forcibly killing it. Corresponds to
 /// SIGKILL on unix platforms.
-#[cfg(windows)] pub const MustDieSignal: int = 9;
+#[cfg(windows)] pub const MustDieSignal: isize = 9;
 /// Signal a process to exit, without forcibly killing it. Corresponds to
 /// SIGTERM on unix platforms.
-#[cfg(not(windows))] pub const PleaseExitSignal: int = libc::SIGTERM as int;
+#[cfg(not(windows))] pub const PleaseExitSignal: isize = libc::SIGTERM as isize;
 /// Signal a process to exit immediately, forcibly killing it. Corresponds to
 /// SIGKILL on unix platforms.
-#[cfg(not(windows))] pub const MustDieSignal: int = libc::SIGKILL as int;
+#[cfg(not(windows))] pub const MustDieSignal: isize = libc::SIGKILL as isize;
 
 /// Representation of a running or exited child process.
 ///
@@ -60,7 +60,7 @@ use thread;
 ///
 /// # Examples
 ///
-/// ```should_fail
+/// ```should_panic
 /// # #![feature(old_io)]
 /// use std::old_io::*;
 ///
@@ -80,7 +80,7 @@ pub struct Process {
     exit_code: Option<ProcessExit>,
 
     /// Manually delivered signal
-    exit_signal: Option<int>,
+    exit_signal: Option<isize>,
 
     /// Deadline after which wait() will return
     deadline: u64,
@@ -186,8 +186,8 @@ pub struct Command {
     stdin: StdioContainer,
     stdout: StdioContainer,
     stderr: StdioContainer,
-    uid: Option<uint>,
-    gid: Option<uint>,
+    uid: Option<usize>,
+    gid: Option<usize>,
     detach: bool,
 }
 
@@ -321,14 +321,14 @@ impl Command {
     /// the child process. Setting this value on windows will cause the spawn to
     /// fail. Failure in the `setuid` call on unix will also cause the spawn to
     /// fail.
-    pub fn uid<'a>(&'a mut self, id: uint) -> &'a mut Command {
+    pub fn uid<'a>(&'a mut self, id: usize) -> &'a mut Command {
         self.uid = Some(id);
         self
     }
 
     /// Similar to `uid`, but sets the group id of the child process. This has
     /// the same semantics as the `uid` field.
-    pub fn gid<'a>(&'a mut self, id: uint) -> &'a mut Command {
+    pub fn gid<'a>(&'a mut self, id: usize) -> &'a mut Command {
         self.gid = Some(id);
         self
     }
@@ -458,10 +458,10 @@ impl sys::process::ProcessConfig<EnvKey, CString> for Command {
     fn cwd(&self) -> Option<&CString> {
         self.cwd.as_ref()
     }
-    fn uid(&self) -> Option<uint> {
+    fn uid(&self) -> Option<usize> {
         self.uid.clone()
     }
-    fn gid(&self) -> Option<uint> {
+    fn gid(&self) -> Option<usize> {
         self.gid.clone()
     }
     fn detach(&self) -> bool {
@@ -507,10 +507,10 @@ pub enum StdioContainer {
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum ProcessExit {
     /// Normal termination with an exit status.
-    ExitStatus(int),
+    ExitStatus(isize),
 
     /// Termination by signal, with the signal number.
-    ExitSignal(int),
+    ExitSignal(isize),
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -533,7 +533,7 @@ impl ProcessExit {
 
     /// Checks whether this ProcessExit matches the given exit status.
     /// Termination by signal will never match an exit code.
-    pub fn matches_exit_status(&self, wanted: int) -> bool {
+    pub fn matches_exit_status(&self, wanted: isize) -> bool {
         *self == ExitStatus(wanted)
     }
 }
@@ -549,7 +549,7 @@ impl Process {
     /// process. Note, though, that on some platforms signals will continue to
     /// be successfully delivered if the child has exited, but not yet been
     /// reaped.
-    pub fn kill(id: libc::pid_t, signal: int) -> IoResult<()> {
+    pub fn kill(id: libc::pid_t, signal: isize) -> IoResult<()> {
         unsafe { ProcessImp::killpid(id, signal) }
     }
 
@@ -571,7 +571,7 @@ impl Process {
     /// # Errors
     ///
     /// If the signal delivery fails, the corresponding error is returned.
-    pub fn signal(&mut self, signal: int) -> IoResult<()> {
+    pub fn signal(&mut self, signal: isize) -> IoResult<()> {
         #[cfg(unix)] fn collect_status(p: &mut Process) {
             // On Linux (and possibly other unices), a process that has exited will
             // continue to accept signals because it is "defunct". The delivery of
@@ -888,8 +888,8 @@ mod tests {
         use libc;
         let mut p = Command::new("/bin/sh")
                             .arg("-c").arg("true")
-                            .uid(unsafe { libc::getuid() as uint })
-                            .gid(unsafe { libc::getgid() as uint })
+                            .uid(unsafe { libc::getuid() as usize })
+                            .gid(unsafe { libc::getgid() as usize })
                             .spawn().unwrap();
         assert!(p.wait().unwrap().success());
     }

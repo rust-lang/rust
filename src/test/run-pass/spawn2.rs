@@ -15,7 +15,7 @@ pub fn main() {
     t.join().ok().unwrap(); // forget Err value, since it doesn't implement Debug
 }
 
-fn child(args: (int, int, int, int, int, int, int, int, int)) {
+fn child(args: (isize, isize, isize, isize, isize, isize, isize, isize, isize)) {
     let (i1, i2, i3, i4, i5, i6, i7, i8, i9) = args;
     println!("{}", i1);
     println!("{}", i2);

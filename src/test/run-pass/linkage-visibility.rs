@@ -18,6 +18,6 @@ extern crate "linkage-visibility" as foo;
 
 pub fn main() {
     foo::test();
-    foo::foo2::<int>();
+    foo::foo2::<isize>();
     foo::foo();
 }

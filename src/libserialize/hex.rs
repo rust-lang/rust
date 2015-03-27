@@ -44,8 +44,8 @@ impl ToHex for [u8] {
     fn to_hex(&self) -> String {
         let mut v = Vec::with_capacity(self.len() * 2);
         for &byte in self {
-            v.push(CHARS[(byte >> 4) as uint]);
-            v.push(CHARS[(byte & 0xf) as uint]);
+            v.push(CHARS[(byte >> 4) as usize]);
+            v.push(CHARS[(byte & 0xf) as usize]);
         }
 
         unsafe {
@@ -65,7 +65,7 @@ pub trait FromHex {
 #[derive(Copy, Debug)]
 pub enum FromHexError {
     /// The input contained a character not part of the hex format
-    InvalidHexCharacter(char, uint),
+    InvalidHexCharacter(char, usize),
     /// The input had an invalid length
     InvalidHexLength,
 }
@@ -188,7 +188,7 @@ mod tests {
     #[test]
     pub fn test_to_hex_all_bytes() {
         for i in 0..256 {
-            assert_eq!([i as u8].to_hex(), format!("{:02x}", i as uint));
+            assert_eq!([i as u8].to_hex(), format!("{:02x}", i as usize));
         }
     }
 
@@ -196,10 +196,10 @@ mod tests {
     pub fn test_from_hex_all_bytes() {
         for i in 0..256 {
             let ii: &[u8] = &[i as u8];
-            assert_eq!(format!("{:02x}", i as uint).from_hex()
+            assert_eq!(format!("{:02x}", i as usize).from_hex()
                                                    .unwrap(),
                        ii);
-            assert_eq!(format!("{:02X}", i as uint).from_hex()
+            assert_eq!(format!("{:02X}", i as usize).from_hex()
                                                    .unwrap(),
                        ii);
         }

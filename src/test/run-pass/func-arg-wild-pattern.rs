@@ -13,7 +13,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn foo((x, _): (int, int)) -> int {
+fn foo((x, _): (isize, isize)) -> isize {
     x
 }
 

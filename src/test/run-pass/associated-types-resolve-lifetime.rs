@@ -16,7 +16,7 @@ trait Get<T> {
 
 trait Trait<'a> {
     type T: 'static;
-    type U: Get<&'a int>;
+    type U: Get<&'a isize>;
 
     fn dummy(&'a self) { }
 }

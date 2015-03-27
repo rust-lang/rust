@@ -13,4 +13,4 @@
 // pretty-expanded FIXME #23616
 
 extern crate "issue-4545" as somelib;
-pub fn main() { somelib::mk::<int>(); }
+pub fn main() { somelib::mk::<isize>(); }

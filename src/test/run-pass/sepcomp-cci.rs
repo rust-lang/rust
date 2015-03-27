@@ -18,20 +18,20 @@
 extern crate sepcomp_cci_lib;
 use sepcomp_cci_lib::{cci_fn, CCI_STATIC};
 
-fn call1() -> uint {
+fn call1() -> usize {
     cci_fn() + CCI_STATIC
 }
 
 mod a {
     use sepcomp_cci_lib::{cci_fn, CCI_STATIC};
-    pub fn call2() -> uint {
+    pub fn call2() -> usize {
         cci_fn() + CCI_STATIC
     }
 }
 
 mod b {
     use sepcomp_cci_lib::{cci_fn, CCI_STATIC};
-    pub fn call3() -> uint {
+    pub fn call3() -> usize {
         cci_fn() + CCI_STATIC
     }
 }

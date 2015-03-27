@@ -74,7 +74,7 @@ impl fmt::Debug for Color {
 
 #[derive(Copy)]
 struct CreatureInfo {
-    name: uint,
+    name: usize,
     color: Color
 }
 
@@ -87,7 +87,7 @@ fn show_color_list(set: Vec<Color>) -> String {
     out
 }
 
-fn show_digit(nn: uint) -> &'static str {
+fn show_digit(nn: usize) -> &'static str {
     match nn {
         0 => {" zero"}
         1 => {" one"}
@@ -103,7 +103,7 @@ fn show_digit(nn: uint) -> &'static str {
     }
 }
 
-struct Number(uint);
+struct Number(usize);
 impl fmt::Debug for Number {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut out = vec![];
@@ -139,7 +139,7 @@ fn transform(aa: Color, bb: Color) -> Color {
 }
 
 fn creature(
-    name: uint,
+    name: usize,
     mut color: Color,
     from_rendezvous: Receiver<CreatureInfo>,
     to_rendezvous: Sender<CreatureInfo>,
@@ -172,7 +172,7 @@ fn creature(
     to_rendezvous_log.send(report).unwrap();
 }
 
-fn rendezvous(nn: uint, set: Vec<Color>) {
+fn rendezvous(nn: usize, set: Vec<Color>) {
     // these ports will allow us to hear from the creatures
     let (to_rendezvous, from_creatures) = channel::<CreatureInfo>();
 

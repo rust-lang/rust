@@ -11,5 +11,5 @@
 // pretty-expanded FIXME #23616
 
 pub fn main() {
-    static _x: int = 1<<2;
+    static _x: isize = 1<<2;
 }

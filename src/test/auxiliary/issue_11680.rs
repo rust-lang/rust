@@ -9,11 +9,11 @@
 // except according to those terms.
 
 enum Foo {
-    Bar(int)
+    Bar(isize)
 }
 
 pub mod test {
     enum Foo {
-        Bar(int)
+        Bar(isize)
     }
 }

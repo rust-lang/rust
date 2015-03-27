@@ -17,8 +17,8 @@ use std::num::ToPrimitive;
 
 #[derive(PartialEq, Debug)]
 struct Point {
-    x: int,
-    y: int
+    x: isize,
+    y: isize
 }
 
 pub fn main() {

@@ -155,12 +155,12 @@ pub struct CleanupScope<'blk, 'tcx: 'blk> {
 
 #[derive(Copy, Debug)]
 pub struct CustomScopeIndex {
-    index: uint
+    index: usize
 }
 
-pub const EXIT_BREAK: uint = 0;
-pub const EXIT_LOOP: uint = 1;
-pub const EXIT_MAX: uint = 2;
+pub const EXIT_BREAK: usize = 0;
+pub const EXIT_LOOP: usize = 1;
+pub const EXIT_MAX: usize = 2;
 
 pub enum CleanupScopeKind<'blk, 'tcx: 'blk> {
     CustomScopeKind,
@@ -188,7 +188,7 @@ impl<'blk, 'tcx: 'blk> fmt::Debug for CleanupScopeKind<'blk, 'tcx> {
 pub enum EarlyExitLabel {
     UnwindExit,
     ReturnExit,
-    LoopExit(ast::NodeId, uint)
+    LoopExit(ast::NodeId, usize)
 }
 
 #[derive(Copy)]
@@ -357,7 +357,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     /// break/continue (depending on `exit`) out of the loop with id `cleanup_scope`
     fn normal_exit_block(&'blk self,
                          cleanup_scope: ast::NodeId,
-                         exit: uint) -> BasicBlockRef {
+                         exit: usize) -> BasicBlockRef {
         self.trans_cleanups_to_exit_scope(LoopExit(cleanup_scope, exit))
     }
 
@@ -585,7 +585,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         None
     }
 
-    fn top_nonempty_cleanup_scope(&self) -> Option<uint> {
+    fn top_nonempty_cleanup_scope(&self) -> Option<usize> {
         self.scopes.borrow().iter().rev().position(|s| !s.cleanups.is_empty())
     }
 
@@ -614,7 +614,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
         bcx
     }
 
-    fn scopes_len(&self) -> uint {
+    fn scopes_len(&self) -> usize {
         self.scopes.borrow().len()
     }
 
@@ -962,7 +962,7 @@ impl<'blk, 'tcx> CleanupScopeKind<'blk, 'tcx> {
     /// If this is a loop scope with id `id`, return the early exit block `exit`, else `None`
     fn early_exit_block(&self,
                         id: ast::NodeId,
-                        exit: uint) -> Option<BasicBlockRef> {
+                        exit: usize) -> Option<BasicBlockRef> {
         match *self {
             LoopScopeKind(i, ref exits) if id == i => Some(exits[exit].llbb),
             _ => None,
@@ -1182,7 +1182,7 @@ pub trait CleanupMethods<'blk, 'tcx> {
     fn top_loop_scope(&self) -> ast::NodeId;
     fn normal_exit_block(&'blk self,
                          cleanup_scope: ast::NodeId,
-                         exit: uint) -> BasicBlockRef;
+                         exit: usize) -> BasicBlockRef;
     fn return_exit_block(&'blk self) -> BasicBlockRef;
     fn schedule_lifetime_end(&self,
                          cleanup_scope: ScopeId,
@@ -1225,7 +1225,7 @@ pub trait CleanupMethods<'blk, 'tcx> {
 
 trait CleanupHelperMethods<'blk, 'tcx> {
     fn top_ast_scope(&self) -> Option<ast::NodeId>;
-    fn top_nonempty_cleanup_scope(&self) -> Option<uint>;
+    fn top_nonempty_cleanup_scope(&self) -> Option<usize>;
     fn is_valid_to_pop_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool;
     fn is_valid_custom_scope(&self, custom_scope: CustomScopeIndex) -> bool;
     fn trans_scope_cleanups(&self,
@@ -1235,7 +1235,7 @@ trait CleanupHelperMethods<'blk, 'tcx> {
                                     label: EarlyExitLabel)
                                     -> BasicBlockRef;
     fn get_or_create_landing_pad(&'blk self) -> BasicBlockRef;
-    fn scopes_len(&self) -> uint;
+    fn scopes_len(&self) -> usize;
     fn push_scope(&self, scope: CleanupScope<'blk, 'tcx>);
     fn pop_scope(&self) -> CleanupScope<'blk, 'tcx>;
     fn top_scope<R, F>(&self, f: F) -> R where F: FnOnce(&CleanupScope<'blk, 'tcx>) -> R;

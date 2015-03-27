@@ -12,7 +12,7 @@
 
 use std::default::Default;
 
-struct X { pub x: uint }
+struct X { pub x: usize }
 impl Default for X {
     fn default() -> X {
         X { x: 42 }

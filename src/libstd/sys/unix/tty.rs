@@ -46,7 +46,7 @@ impl TTY {
         }
     }
 
-    pub fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    pub fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         self.fd.read(buf)
     }
     pub fn write(&mut self, buf: &[u8]) -> IoResult<()> {
@@ -56,7 +56,7 @@ impl TTY {
         Err(sys_common::unimpl())
     }
 
-    pub fn get_winsize(&mut self) -> IoResult<(int, int)> {
+    pub fn get_winsize(&mut self) -> IoResult<(isize, isize)> {
         unsafe {
             #[repr(C)]
             struct winsize {
@@ -74,7 +74,7 @@ impl TTY {
                     detail: None,
                 })
             } else {
-                Ok((size.ws_col as int, size.ws_row as int))
+                Ok((size.ws_col as isize, size.ws_row as isize))
             }
         }
     }

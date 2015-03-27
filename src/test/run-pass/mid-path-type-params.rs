@@ -27,11 +27,11 @@ trait Trait<T> {
 }
 
 struct S2 {
-    contents: int,
+    contents: isize,
 }
 
-impl Trait<int> for S2 {
-    fn new<U>(x: int, _: U) -> S2 {
+impl Trait<isize> for S2 {
+    fn new<U>(x: isize, _: U) -> S2 {
         S2 {
             contents: x,
         }
@@ -39,6 +39,6 @@ impl Trait<int> for S2 {
 }
 
 pub fn main() {
-    let _ = S::<int>::new::<f64>(1, 1.0);
-    let _: S2 = Trait::<int>::new::<f64>(1, 1.0);
+    let _ = S::<isize>::new::<f64>(1, 1.0);
+    let _: S2 = Trait::<isize>::new::<f64>(1, 1.0);
 }

@@ -10,6 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-const foo: int = 4 >> 1;
+const foo: isize = 4 >> 1;
 enum bs { thing = foo }
-pub fn main() { assert!((bs::thing as int == foo)); }
+pub fn main() { assert!((bs::thing as isize == foo)); }

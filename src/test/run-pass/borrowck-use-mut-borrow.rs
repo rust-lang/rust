@@ -13,7 +13,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-struct A { a: int, b: Box<int> }
+struct A { a: isize, b: Box<isize> }
 
 fn field_copy_after_field_borrow() {
     let mut x = A { a: 1, b: box 2 };

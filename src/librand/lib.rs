@@ -24,7 +24,6 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![feature(int_uint)]
 #![feature(no_std)]
 #![no_std]
 #![unstable(feature = "rand")]
@@ -99,8 +98,8 @@ pub trait Rng : Sized {
     /// See `Closed01` for the closed interval `[0,1]`, and
     /// `Open01` for the open interval `(0,1)`.
     fn next_f32(&mut self) -> f32 {
-        const MANTISSA_BITS: uint = 24;
-        const IGNORED_BITS: uint = 8;
+        const MANTISSA_BITS: usize = 24;
+        const IGNORED_BITS: usize = 8;
         const SCALE: f32 = (1u64 << MANTISSA_BITS) as f32;
 
         // using any more than `MANTISSA_BITS` bits will
@@ -121,8 +120,8 @@ pub trait Rng : Sized {
     /// See `Closed01` for the closed interval `[0,1]`, and
     /// `Open01` for the open interval `(0,1)`.
     fn next_f64(&mut self) -> f64 {
-        const MANTISSA_BITS: uint = 53;
-        const IGNORED_BITS: uint = 11;
+        const MANTISSA_BITS: usize = 53;
+        const IGNORED_BITS: usize = 11;
         const SCALE: f64 = (1u64 << MANTISSA_BITS) as f64;
 
         (self.next_u64() >> IGNORED_BITS) as f64 / SCALE
@@ -189,7 +188,7 @@ pub trait Rng : Sized {
     /// use std::rand::{thread_rng, Rng};
     ///
     /// let mut rng = thread_rng();
-    /// let x: uint = rng.gen();
+    /// let x: usize = rng.gen();
     /// println!("{}", x);
     /// println!("{:?}", rng.gen::<(f64, bool)>());
     /// ```
@@ -208,7 +207,7 @@ pub trait Rng : Sized {
     /// use std::rand::{thread_rng, Rng};
     ///
     /// let mut rng = thread_rng();
-    /// let x = rng.gen_iter::<uint>().take(10).collect::<Vec<uint>>();
+    /// let x = rng.gen_iter::<usize>().take(10).collect::<Vec<usize>>();
     /// println!("{:?}", x);
     /// println!("{:?}", rng.gen_iter::<(f64, bool)>().take(5)
     ///                     .collect::<Vec<(f64, bool)>>());
@@ -236,7 +235,7 @@ pub trait Rng : Sized {
     /// use std::rand::{thread_rng, Rng};
     ///
     /// let mut rng = thread_rng();
-    /// let n: uint = rng.gen_range(0, 10);
+    /// let n: usize = rng.gen_range(0, 10);
     /// println!("{}", n);
     /// let m: f64 = rng.gen_range(-40.0f64, 1.3e5f64);
     /// println!("{}", m);
@@ -257,7 +256,7 @@ pub trait Rng : Sized {
     /// let mut rng = thread_rng();
     /// println!("{}", rng.gen_weighted_bool(3));
     /// ```
-    fn gen_weighted_bool(&mut self, n: uint) -> bool {
+    fn gen_weighted_bool(&mut self, n: usize) -> bool {
         n <= 1 || self.gen_range(0, n) == 0
     }
 

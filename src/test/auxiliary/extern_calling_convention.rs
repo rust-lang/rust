@@ -13,7 +13,7 @@
 
 #[inline(never)]
 #[cfg(target_arch = "x86_64")]
-pub extern "win64" fn foo(a: int, b: int, c: int, d: int) {
+pub extern "win64" fn foo(a: isize, b: isize, c: isize, d: isize) {
     assert!(a == 1);
     assert!(b == 2);
     assert!(c == 3);
@@ -25,7 +25,7 @@ pub extern "win64" fn foo(a: int, b: int, c: int, d: int) {
 
 #[inline(never)]
 #[cfg(any(target_arch = "x86", target_arch = "arm", target_arch = "aarch64"))]
-pub extern fn foo(a: int, b: int, c: int, d: int) {
+pub extern fn foo(a: isize, b: isize, c: isize, d: isize) {
     assert!(a == 1);
     assert!(b == 2);
     assert!(c == 3);

@@ -14,8 +14,8 @@ use std::hash::{Hash, SipHasher};
 
 #[derive(PartialEq, Clone, Hash)]
 struct Foo {
-    bar: uint,
-    baz: int
+    bar: usize,
+    baz: isize
 }
 
 fn hash<T: Hash>(_t: &T) {}

@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-static toplevel_mod: int = -1;
+static toplevel_mod: isize = -1;
 
 pub fn main() {
     assert_eq!(toplevel_mod, -1);

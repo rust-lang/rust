@@ -11,30 +11,30 @@
 
 // pretty-expanded FIXME #23616
 
-pub fn foo() -> int {
+pub fn foo() -> isize {
     3
 }
-pub fn bar() -> int {
+pub fn bar() -> isize {
     4
 }
 
 pub mod baz {
     use {foo, bar};
-    pub fn quux() -> int {
+    pub fn quux() -> isize {
         foo() + bar()
     }
 }
 
 pub mod grault {
     use {foo};
-    pub fn garply() -> int {
+    pub fn garply() -> isize {
         foo()
     }
 }
 
 pub mod waldo {
     use {};
-    pub fn plugh() -> int {
+    pub fn plugh() -> isize {
         0
     }
 }

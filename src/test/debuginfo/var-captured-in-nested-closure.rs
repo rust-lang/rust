@@ -82,9 +82,9 @@
 #![omit_gdb_pretty_printer_section]
 
 struct Struct {
-    a: int,
+    a: isize,
     b: f64,
-    c: uint
+    c: usize
 }
 
 fn main() {

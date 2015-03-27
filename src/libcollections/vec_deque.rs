@@ -553,7 +553,7 @@ impl<T> VecDeque<T> {
     ///     *num = *num - 2;
     /// }
     /// let b: &[_] = &[&mut 3, &mut 1, &mut 2];
-    /// assert_eq!(&buf.iter_mut().collect::<Vec<&mut i32>>()[], b);
+    /// assert_eq!(&buf.iter_mut().collect::<Vec<&mut i32>>()[..], b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<T> {

@@ -13,10 +13,10 @@
 
 // pretty-expanded FIXME #23616
 
-fn foo<'a,'b>(x: &'a &'b mut int) -> &'a int {
-    let y = &*x; // should be inferred to have type &'a &'b mut int...
+fn foo<'a,'b>(x: &'a &'b mut isize) -> &'a isize {
+    let y = &*x; // should be inferred to have type &'a &'b mut isize...
 
-    // ...because if we inferred, say, &'x &'b mut int where 'x <= 'a,
+    // ...because if we inferred, say, &'x &'b mut isize where 'x <= 'a,
     // this reborrow would be illegal:
     &**y
 }

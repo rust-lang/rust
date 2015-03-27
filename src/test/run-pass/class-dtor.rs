@@ -11,8 +11,8 @@
 // pretty-expanded FIXME #23616
 
 struct cat {
-  done : extern fn(uint),
-  meows : uint,
+  done : extern fn(usize),
+  meows : usize,
 }
 
 impl Drop for cat {
@@ -21,7 +21,7 @@ impl Drop for cat {
     }
 }
 
-fn cat(done: extern fn(uint)) -> cat {
+fn cat(done: extern fn(usize)) -> cat {
     cat {
         meows: 0,
         done: done

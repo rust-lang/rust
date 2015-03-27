@@ -10,14 +10,14 @@
 
 // pretty-expanded FIXME #23616
 
-enum t1 { a(int), b(uint), }
-struct T2 {x: t1, y: int}
-enum t3 { c(T2, uint), }
+enum t1 { a(isize), b(usize), }
+struct T2 {x: t1, y: isize}
+enum t3 { c(T2, usize), }
 
-fn m(input: t3) -> int {
+fn m(input: t3) -> isize {
     match input {
       t3::c(T2 {x: t1::a(m), ..}, _) => { return m; }
-      t3::c(T2 {x: t1::b(m), y: y}, z) => { return ((m + z) as int) + y; }
+      t3::c(T2 {x: t1::b(m), y: y}, z) => { return ((m + z) as isize) + y; }
     }
 }
 

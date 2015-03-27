@@ -9,22 +9,22 @@
 // except according to those terms.
 
 #[inline(never)]
-pub static global: int = 3;
+pub static global: isize = 3;
 
 #[inline(never)]
-static global0: int = 4;
+static global0: isize = 4;
 
 #[inline(never)]
-pub static global2: &'static int = &global0;
+pub static global2: &'static isize = &global0;
 
-pub fn verify_same(a: &'static int) {
-    let a = a as *const int as uint;
-    let b = &global as *const int as uint;
+pub fn verify_same(a: &'static isize) {
+    let a = a as *const isize as usize;
+    let b = &global as *const isize as usize;
     assert_eq!(a, b);
 }
 
-pub fn verify_same2(a: &'static int) {
-    let a = a as *const int as uint;
-    let b = global2 as *const int as uint;
+pub fn verify_same2(a: &'static isize) {
+    let a = a as *const isize as usize;
+    let b = global2 as *const isize as usize;
     assert_eq!(a, b);
 }

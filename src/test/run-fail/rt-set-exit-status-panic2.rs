@@ -17,7 +17,7 @@ use std::os;
 use std::thread;
 
 struct r {
-  x:int,
+  x:isize,
 }
 
 // Setting the exit status after the runtime has already
@@ -29,7 +29,7 @@ impl Drop for r {
     }
 }
 
-fn r(x:int) -> r {
+fn r(x:isize) -> r {
     r {
         x: x
     }

@@ -9,13 +9,13 @@
 // except according to those terms.
 
 // error-pattern:Number is odd
-fn even(x: uint) -> bool {
+fn even(x: usize) -> bool {
     if x < 2 {
         return false;
     } else if x == 2 { return true; } else { return even(x - 2); }
 }
 
-fn foo(x: uint) {
+fn foo(x: usize) {
     if even(x) {
         println!("{}", x);
     } else {

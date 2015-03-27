@@ -18,7 +18,7 @@ use std::cmp::PartialOrd;
 use std::num::NumCast;
 
 pub trait Num {
-    fn from_int(i: int) -> Self;
+    fn from_int(i: isize) -> Self;
     fn gt(&self, other: &Self) -> bool;
 }
 

@@ -178,7 +178,7 @@ impl StaticKey {
         }
     }
 
-    unsafe fn lazy_init(&self) -> uint {
+    unsafe fn lazy_init(&self) -> usize {
         // POSIX allows the key created here to be 0, but the compare_and_swap
         // below relies on using 0 as a sentinel value to check who won the
         // race to set the shared TLS key. As far as I know, there is no
@@ -197,9 +197,9 @@ impl StaticKey {
             key2
         };
         assert!(key != 0);
-        match self.inner.key.compare_and_swap(0, key as uint, Ordering::SeqCst) {
+        match self.inner.key.compare_and_swap(0, key as usize, Ordering::SeqCst) {
             // The CAS succeeded, so we've created the actual key
-            0 => key as uint,
+            0 => key as usize,
             // If someone beat us to the punch, use their key instead
             n => { imp::destroy(key); n }
         }
@@ -261,8 +261,8 @@ mod tests {
         assert!(k2.get().is_null());
         k1.set(1 as *mut _);
         k2.set(2 as *mut _);
-        assert_eq!(k1.get() as uint, 1);
-        assert_eq!(k2.get() as uint, 2);
+        assert_eq!(k1.get() as usize, 1);
+        assert_eq!(k2.get() as usize, 2);
     }
 
     #[test]
@@ -275,8 +275,8 @@ mod tests {
             assert!(K2.get().is_null());
             K1.set(1 as *mut _);
             K2.set(2 as *mut _);
-            assert_eq!(K1.get() as uint, 1);
-            assert_eq!(K2.get() as uint, 2);
+            assert_eq!(K1.get() as usize, 1);
+            assert_eq!(K2.get() as usize, 2);
         }
     }
 }

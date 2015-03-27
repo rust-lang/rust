@@ -15,7 +15,7 @@
 
 struct Foo;
 
-fn uint_to_foo(_: uint) -> Foo {
+fn uint_to_foo(_: usize) -> Foo {
     Foo
 }
 

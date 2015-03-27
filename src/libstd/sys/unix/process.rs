@@ -49,11 +49,11 @@ impl Process {
         self.pid
     }
 
-    pub unsafe fn kill(&self, signal: int) -> IoResult<()> {
+    pub unsafe fn kill(&self, signal: isize) -> IoResult<()> {
         Process::killpid(self.pid, signal)
     }
 
-    pub unsafe fn killpid(pid: pid_t, signal: int) -> IoResult<()> {
+    pub unsafe fn killpid(pid: pid_t, signal: isize) -> IoResult<()> {
         let r = libc::funcs::posix88::signal::kill(pid, signal as c_int);
         mkerr_libc(r)
     }
@@ -454,7 +454,7 @@ impl Process {
                 // with process timeouts, but libgreen should get there first
                 // (currently libuv doesn't handle old signal handlers).
                 if drain(read_fd) {
-                    let i: uint = unsafe { mem::transmute(old.sa_handler) };
+                    let i: usize = unsafe { mem::transmute(old.sa_handler) };
                     if i != 0 {
                         assert!(old.sa_flags & c::SA_SIGINFO == 0);
                         (old.sa_handler)(c::SIGCHLD);
@@ -618,8 +618,8 @@ fn translate_status(status: c_int) -> ProcessExit {
     }
 
     if imp::WIFEXITED(status) {
-        ExitStatus(imp::WEXITSTATUS(status) as int)
+        ExitStatus(imp::WEXITSTATUS(status) as isize)
     } else {
-        ExitSignal(imp::WTERMSIG(status) as int)
+        ExitSignal(imp::WTERMSIG(status) as isize)
     }
 }

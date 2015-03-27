@@ -17,7 +17,7 @@ use kitty::cat;
 
 mod kitty {
     pub struct cat {
-        meows: uint,
+        meows: usize,
         name: String,
     }
 

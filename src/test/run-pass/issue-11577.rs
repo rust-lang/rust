@@ -13,10 +13,10 @@
 // Destructuring struct variants would ICE where regular structs wouldn't
 
 enum Foo {
-    VBar { num: int }
+    VBar { num: isize }
 }
 
-struct SBar { num: int }
+struct SBar { num: isize }
 
 pub fn main() {
     let vbar = Foo::VBar { num: 1 };

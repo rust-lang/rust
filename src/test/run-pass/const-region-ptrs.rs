@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Pair<'a> { a: int, b: &'a int }
+struct Pair<'a> { a: isize, b: &'a isize }
 
-const x: &'static int = &10;
+const x: &'static isize = &10;
 
 const y: &'static Pair<'static> = &Pair {a: 15, b: x};
 

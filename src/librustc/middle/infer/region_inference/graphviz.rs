@@ -121,7 +121,7 @@ struct ConstraintGraph<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     graph_name: String,
     map: &'a FnvHashMap<Constraint, SubregionOrigin<'tcx>>,
-    node_ids: FnvHashMap<Node, uint>,
+    node_ids: FnvHashMap<Node, usize>,
 }
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug, Copy)]

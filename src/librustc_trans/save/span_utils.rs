@@ -24,7 +24,7 @@ use syntax::parse::token::{keywords, Token};
 #[derive(Clone)]
 pub struct SpanUtils<'a> {
     pub sess: &'a Session,
-    pub err_count: Cell<int>,
+    pub err_count: Cell<isize>,
 }
 
 impl<'a> SpanUtils<'a> {
@@ -232,7 +232,7 @@ impl<'a> SpanUtils<'a> {
     // example with Foo<Bar<T,V>, Bar<T,V>>
     // Nesting = 0: all idents outside of brackets: ~[Foo]
     // Nesting = 1: idents within one level of brackets: ~[Bar, Bar]
-    pub fn spans_with_brackets(&self, span: Span, nesting: int, limit: int) -> Vec<Span> {
+    pub fn spans_with_brackets(&self, span: Span, nesting: isize, limit: isize) -> Vec<Span> {
         let mut result: Vec<Span> = vec!();
 
         let mut toks = self.retokenise_span(span);
@@ -250,7 +250,7 @@ impl<'a> SpanUtils<'a> {
                 }
                 return result
             }
-            if (result.len() as int) == limit {
+            if (result.len() as isize) == limit {
                 return result;
             }
             bracket_count += match ts.tok {
@@ -347,7 +347,7 @@ impl<'a> SpanUtils<'a> {
 
     // Return an owned vector of the subspans of the param identifier
     // tokens found in span.
-    pub fn spans_for_ty_params(&self, span: Span, number: int) -> Vec<Span> {
+    pub fn spans_for_ty_params(&self, span: Span, number: isize) -> Vec<Span> {
         if generated_code(span) {
             return vec!();
         }

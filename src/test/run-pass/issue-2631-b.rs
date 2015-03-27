@@ -24,5 +24,5 @@ pub fn main() {
   let v = vec!(Rc::new("hi".to_string()));
   let mut m: req::header_map = HashMap::new();
   m.insert("METHOD".to_string(), Rc::new(RefCell::new(v)));
-  request::<int>(&m);
+  request::<isize>(&m);
 }

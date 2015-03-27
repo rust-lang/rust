@@ -28,7 +28,7 @@ fn main() {
         // checking that it ends_with the executable name. This
         // is needed because of Windows, which has a different behavior.
         // See #15149 for more info.
-        return assert!(args[0].ends_with(&format!("mytest{}", env::consts::EXE_SUFFIX)[]));
+        return assert!(args[0].ends_with(&format!("mytest{}", env::consts::EXE_SUFFIX)));
     }
 
     test();

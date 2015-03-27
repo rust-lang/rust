@@ -15,22 +15,22 @@ use std::sync::mpsc::{channel, Sender};
 
 pub fn main() { test00(); }
 
-fn test00_start(c: &Sender<int>, number_of_messages: int) {
-    let mut i: int = 0;
+fn test00_start(c: &Sender<isize>, number_of_messages: isize) {
+    let mut i: isize = 0;
     while i < number_of_messages { c.send(i + 0).unwrap(); i += 1; }
 }
 
 fn test00() {
-    let r: int = 0;
-    let mut sum: int = 0;
+    let r: isize = 0;
+    let mut sum: isize = 0;
     let (tx, rx) = channel();
-    let number_of_messages: int = 10;
+    let number_of_messages: isize = 10;
 
     let result = Thread::scoped(move|| {
         test00_start(&tx, number_of_messages);
     });
 
-    let mut i: int = 0;
+    let mut i: isize = 0;
     while i < number_of_messages {
         sum += rx.recv().unwrap();
         println!("{}", r);

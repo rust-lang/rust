@@ -12,11 +12,11 @@
 #![feature(struct_inherit)]
 
 pub virtual struct S1 {
-    pub f1: int,
+    pub f1: isize,
 }
 
 pub struct S2 : S1 {
-    pub f2: int,
+    pub f2: isize,
 }
 
 pub fn test_s2(s2: S2) {

@@ -24,7 +24,7 @@ trait Inner {
     fn print(&self);
 }
 
-impl Inner for int {
+impl Inner for isize {
     fn print(&self) { print!("Inner: {}\n", *self); }
 }
 
@@ -41,7 +41,7 @@ impl<'a> Outer<'a> {
 }
 
 pub fn main() {
-    let inner: int = 5;
+    let inner: isize = 5;
     let outer = Outer::new(&inner as &Inner);
     outer.inner.print();
 }

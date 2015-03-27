@@ -12,7 +12,7 @@
 
 enum E {
     S0 { s: String },
-    S1 { u: uint }
+    S1 { u: usize }
 }
 
 static C: E = E::S1 { u: 23 };

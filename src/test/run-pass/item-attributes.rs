@@ -30,7 +30,7 @@ mod test_first_item_in_file_mod {}
 
 mod test_single_attr_outer {
     #[attr = "val"]
-    pub static x: int = 10;
+    pub static x: isize = 10;
 
     #[attr = "val"]
     pub fn f() { }
@@ -47,7 +47,7 @@ mod test_single_attr_outer {
 mod test_multi_attr_outer {
     #[attr1 = "val"]
     #[attr2 = "val"]
-    pub static x: int = 10;
+    pub static x: isize = 10;
 
     #[attr1 = "val"]
     #[attr2 = "val"]
@@ -65,13 +65,13 @@ mod test_multi_attr_outer {
 
     #[attr1 = "val"]
     #[attr2 = "val"]
-    struct t {x: int}
+    struct t {x: isize}
 }
 
 mod test_stmt_single_attr_outer {
     pub fn f() {
         #[attr = "val"]
-        static x: int = 10;
+        static x: isize = 10;
 
         #[attr = "val"]
         fn f() { }
@@ -93,7 +93,7 @@ mod test_stmt_multi_attr_outer {
 
         #[attr1 = "val"]
         #[attr2 = "val"]
-        static x: int = 10;
+        static x: isize = 10;
 
         #[attr1 = "val"]
         #[attr2 = "val"]
@@ -176,8 +176,8 @@ mod test_foreign_items {
 /*mod test_literals {
     #![str = "s"]
     #![char = 'c']
-    #![int = 100]
-    #![uint = 100_usize]
+    #![isize = 100]
+    #![usize = 100_usize]
     #![mach_int = 100u32]
     #![float = 1.0]
     #![mach_float = 1.0f32]

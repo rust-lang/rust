@@ -9,6 +9,6 @@
 // except according to those terms.
 
 #[no_mangle]
-pub extern "C" fn foo() -> uint {
+pub extern "C" fn foo() -> usize {
     1234
 }

@@ -32,5 +32,5 @@ fn main() {
     println!("{}", equal(&1, &2));
     println!("{}", equal(&1, &1));
     println!("{}", "hello".equal(&"hello"));
-    println!("{}", "hello".equals::<int,&str>(&1, &1, &"foo", &"bar"));
+    println!("{}", "hello".equals::<isize,&str>(&1, &1, &"foo", &"bar"));
 }

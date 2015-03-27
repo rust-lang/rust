@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 fn main() {
-    let x: (int, &[int]) = (2, &[1, 2]);
+    let x: (isize, &[isize]) = (2, &[1, 2]);
     assert_eq!(match x {
         (0, [_, _]) => 0,
         (1, _) => 1,

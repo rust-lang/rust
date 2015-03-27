@@ -115,7 +115,7 @@ pub struct ImportResolution {
     // Note that this is usually either 0 or 1 - shadowing is forbidden the only
     // way outstanding_references is > 1 in a legal program is if the name is
     // used in both namespaces.
-    pub outstanding_references: uint,
+    pub outstanding_references: usize,
 
     /// The value that this `use` directive names, if there is one.
     pub value_target: Option<Target>,

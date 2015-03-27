@@ -14,8 +14,8 @@ trait Trait<T> {
 
 #[derive(Copy)]
 struct Struct {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 impl Trait<&'static str> for Struct {

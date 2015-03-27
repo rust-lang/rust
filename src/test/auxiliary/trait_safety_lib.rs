@@ -11,9 +11,9 @@
 // Simple smoke test that unsafe traits can be compiled etc.
 
 pub unsafe trait Foo {
-    fn foo(&self) -> int;
+    fn foo(&self) -> isize;
 }
 
-unsafe impl Foo for int {
-    fn foo(&self) -> int { *self }
+unsafe impl Foo for isize {
+    fn foo(&self) -> isize { *self }
 }

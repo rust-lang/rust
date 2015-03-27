@@ -1249,27 +1249,13 @@ pub enum ImplItem_ {
     MacImplItem(Mac),
 }
 
-#[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub enum IntTy {
-    TyIs(bool /* is this deprecated `int`? */),
+    TyIs,
     TyI8,
     TyI16,
     TyI32,
     TyI64,
-}
-
-impl PartialEq for IntTy {
-    fn eq(&self, other: &IntTy) -> bool {
-        match (*self, *other) {
-            // true/false need to compare the same, so this can't be derived
-            (TyIs(_), TyIs(_)) |
-            (TyI8, TyI8) |
-            (TyI16, TyI16) |
-            (TyI32, TyI32) |
-            (TyI64, TyI64) => true,
-            _ => false
-        }
-    }
 }
 
 impl fmt::Debug for IntTy {
@@ -1287,41 +1273,25 @@ impl fmt::Display for IntTy {
 impl IntTy {
     pub fn suffix_len(&self) -> usize {
         match *self {
-            TyIs(true) /* i */ => 1,
-            TyIs(false) /* is */ | TyI8 => 2,
+            TyIs | TyI8 => 2,
             TyI16 | TyI32 | TyI64  => 3,
         }
     }
 }
 
-#[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub enum UintTy {
-    TyUs(bool /* is this deprecated uint? */),
+    TyUs,
     TyU8,
     TyU16,
     TyU32,
     TyU64,
 }
 
-impl PartialEq for UintTy {
-    fn eq(&self, other: &UintTy) -> bool {
-        match (*self, *other) {
-            // true/false need to compare the same, so this can't be derived
-            (TyUs(_), TyUs(_)) |
-            (TyU8, TyU8) |
-            (TyU16, TyU16) |
-            (TyU32, TyU32) |
-            (TyU64, TyU64) => true,
-            _ => false
-        }
-    }
-}
-
 impl UintTy {
     pub fn suffix_len(&self) -> usize {
         match *self {
-            TyUs(true) /* u */ => 1,
-            TyUs(false) /* us */ | TyU8 => 2,
+            TyUs | TyU8 => 2,
             TyU16 | TyU32 | TyU64  => 3,
         }
     }

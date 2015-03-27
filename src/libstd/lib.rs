@@ -67,9 +67,8 @@
 //! module encapsulates the platform-specific rules for dealing
 //! with file paths.
 //!
-//! `std` also includes modules for interoperating with the
-//! C language: [`c_str`](c_str/index.html) and
-//! [`c_vec`](c_vec/index.html).
+//! `std` also includes the [`ffi`](ffi/index.html) module for interoperating
+//! with the C language.
 //!
 //! ## Concurrency, I/O, and the runtime
 //!
@@ -114,7 +113,6 @@
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(linkage, thread_local, asm)]
-#![feature(old_impl_check)]
 #![feature(optin_builtin_traits)]
 #![feature(rand)]
 #![feature(staged_api)]
@@ -123,7 +121,6 @@
 #![feature(unsafe_destructor)]
 #![feature(unsafe_no_drop_flag)]
 #![feature(macro_reexport)]
-#![feature(int_uint)]
 #![feature(unique)]
 #![feature(convert)]
 #![feature(allow_internal_unstable)]

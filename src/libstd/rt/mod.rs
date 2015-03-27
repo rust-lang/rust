@@ -48,16 +48,16 @@ mod libunwind;
 
 /// The default error code of the rust runtime if the main thread panics instead
 /// of exiting cleanly.
-pub const DEFAULT_ERROR_CODE: int = 101;
+pub const DEFAULT_ERROR_CODE: isize = 101;
 
 #[cfg(any(windows, android))]
-const OS_DEFAULT_STACK_ESTIMATE: uint = 1 << 20;
+const OS_DEFAULT_STACK_ESTIMATE: usize = 1 << 20;
 #[cfg(all(unix, not(android)))]
-const OS_DEFAULT_STACK_ESTIMATE: uint = 2 * (1 << 20);
+const OS_DEFAULT_STACK_ESTIMATE: usize = 2 * (1 << 20);
 
 #[cfg(not(test))]
 #[lang = "start"]
-fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
+fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
     use prelude::v1::*;
 
     use mem;
@@ -68,13 +68,13 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
     use thread::Thread;
 
     let something_around_the_top_of_the_stack = 1;
-    let addr = &something_around_the_top_of_the_stack as *const _ as *const int;
-    let my_stack_top = addr as uint;
+    let addr = &something_around_the_top_of_the_stack as *const _ as *const isize;
+    let my_stack_top = addr as usize;
 
     // FIXME #11359 we just assume that this thread has a stack of a
     // certain size, and estimate that there's at most 20KB of stack
     // frames above our current position.
-    const TWENTY_KB: uint = 20000;
+    const TWENTY_KB: usize = 20000;
 
     // saturating-add to sidestep overflow
     let top_plus_spill = if usize::MAX - TWENTY_KB < my_stack_top {

@@ -14,7 +14,7 @@
 #![feature(box_syntax)]
 
 struct Fat<T: ?Sized> {
-    f1: int,
+    f1: isize,
     f2: &'static str,
     ptr: T
 }
@@ -24,19 +24,19 @@ struct Bar;
 
 #[derive(Copy, PartialEq, Eq)]
 struct Bar1 {
-    f: int
+    f: isize
 }
 
 trait ToBar {
     fn to_bar(&self) -> Bar;
-    fn to_val(&self) -> int;
+    fn to_val(&self) -> isize;
 }
 
 impl ToBar for Bar {
     fn to_bar(&self) -> Bar {
         *self
     }
-    fn to_val(&self) -> int {
+    fn to_val(&self) -> isize {
         0
     }
 }
@@ -44,7 +44,7 @@ impl ToBar for Bar1 {
     fn to_bar(&self) -> Bar {
         Bar
     }
-    fn to_val(&self) -> int {
+    fn to_val(&self) -> isize {
         self.f
     }
 }

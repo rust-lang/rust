@@ -12,8 +12,8 @@
 
 #[derive(Hash)]
 enum Foo {
-    Bar(int, char),
-    Baz(char, int)
+    Bar(isize, char),
+    Baz(char, isize)
 }
 
 #[derive(Hash)]

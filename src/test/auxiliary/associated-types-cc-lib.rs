@@ -19,8 +19,8 @@ pub trait Bar {
     fn get(x: Option<Self>) -> <Self as Bar>::T;
 }
 
-impl Bar for int {
-    type T = uint;
+impl Bar for isize {
+    type T = usize;
 
-    fn get(_: Option<int>) -> uint { 22 }
+    fn get(_: Option<isize>) -> usize { 22 }
 }

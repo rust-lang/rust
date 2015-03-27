@@ -129,7 +129,7 @@ need, and it can make your lifetimes more complex.
 To write a function that's generic over types of strings, use `&str`.
 
 ```
-fn some_string_length(x: &str) -> uint {
+fn some_string_length(x: &str) -> usize {
     x.len()
 }
 

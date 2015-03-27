@@ -12,12 +12,12 @@
 // scenario work. This is the library portion of the test.
 
 pub enum MaybeOwned<'a> {
-    Owned(int),
-    Borrowed(&'a int)
+    Owned(isize),
+    Borrowed(&'a isize)
 }
 
 pub struct Inv<'a> { // invariant w/r/t 'a
-    x: &'a mut &'a int
+    x: &'a mut &'a isize
 }
 
 // I encountered a bug at some point with encoding the IntoMaybeOwned
