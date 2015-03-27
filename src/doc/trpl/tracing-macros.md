@@ -31,7 +31,7 @@ macro_rules! bct {
 
 This is pretty complex! we can see the output
 
- ```rust
+```rust,ignore
 #![feature(trace_macros)]
 
 macro_rules! bct {
@@ -61,6 +61,7 @@ fn main() {
 
     bct!(0, 0, 1, 1, 1 ; 1, 0, 1);
 }
+```
 
 This will print out a wall of text:
 

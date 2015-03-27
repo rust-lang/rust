@@ -21,7 +21,7 @@ The function marked `#[start]` is passed the command line parameters
 in the same format as C:
 
 ```
-#![feature(lang_items, start, no_std)]
+#![feature(lang_items, start, no_std, libc)]
 #![no_std]
 
 // Pull in the system libc library for what crt0.o likely requires
@@ -104,7 +104,7 @@ As an example, here is a program that will calculate the dot product of two
 vectors provided from C, using idiomatic Rust practices.
 
 ```
-#![feature(lang_items, start, no_std)]
+#![feature(lang_items, start, no_std, core, libc)]
 #![no_std]
 
 # extern crate libc;

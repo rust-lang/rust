@@ -16,7 +16,7 @@ and one for deallocation. A freestanding program that uses the `Box`
 sugar for dynamic allocations via `malloc` and `free`:
 
 ```
-#![feature(lang_items, box_syntax, start, no_std)]
+#![feature(lang_items, box_syntax, start, no_std, libc)]
 #![no_std]
 
 extern crate libc;

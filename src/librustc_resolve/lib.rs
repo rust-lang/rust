@@ -21,7 +21,6 @@
 
 #![feature(alloc)]
 #![feature(collections)]
-#![feature(core)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
