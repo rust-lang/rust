@@ -126,6 +126,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(str_char)]
 #![feature(into_cow)]
+#![feature(slice_patterns)]
 #![cfg_attr(test, feature(test, rustc_private, std_misc))]
 
 // Don't link to std. We are std.

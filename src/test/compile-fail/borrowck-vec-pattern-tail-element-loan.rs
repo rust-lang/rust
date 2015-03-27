@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(slice_patterns)]
+
 fn a<'a>() -> &'a isize {
     let vec = vec!(1, 2, 3, 4);
     let vec: &[isize] = &vec; //~ ERROR `vec` does not live long enough

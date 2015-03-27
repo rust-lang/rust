@@ -13,6 +13,8 @@
 // Tests that match expression handles overlapped literal and range
 // properly in the presence of guard function.
 
+#![feature(slice_patterns)]
+
 fn val() -> usize { 1 }
 
 static CONST: usize = 1;

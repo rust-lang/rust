@@ -13,6 +13,8 @@
 
 // pretty-expanded FIXME #23616
 
+#![feature(slice_patterns)]
+
 struct D { x: u8 }
 
 impl Drop for D { fn drop(&mut self) { } }
