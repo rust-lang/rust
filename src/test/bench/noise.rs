@@ -47,7 +47,7 @@ impl Noise2DContext {
         let mut rng = StdRng::new().unwrap();
 
         let mut rgradients = [Vec2 { x: 0.0, y: 0.0 }; 256];
-        for x in &mut rgradients[] {
+        for x in &mut rgradients[..] {
             *x = random_gradient(&mut rng);
         }
 

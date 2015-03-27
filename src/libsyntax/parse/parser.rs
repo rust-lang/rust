@@ -2312,46 +2312,13 @@ impl<'a> Parser<'a> {
               // expr[...]
               // Could be either an index expression or a slicing expression.
               token::OpenDelim(token::Bracket) => {
-                let bracket_pos = self.span.lo;
                 self.bump();
 
-                if self.eat(&token::CloseDelim(token::Bracket)) {
-                    // No expression, expand to a RangeFull
-                    // FIXME(#20516) It would be better to use a lang item or
-                    // something for RangeFull.
-                    hi = self.last_span.hi;
-
-                    let idents = vec![token::str_to_ident("std"),
-                                      token::str_to_ident("ops"),
-                                      token::str_to_ident("RangeFull")];
-                    let segments = idents.into_iter().map(|ident| {
-                        ast::PathSegment {
-                            identifier: ident,
-                            parameters: ast::PathParameters::none(),
-                        }
-                    }).collect();
-                    let span = mk_sp(lo, hi);
-                    let path = ast::Path {
-                        span: span,
-                        global: true,
-                        segments: segments,
-                    };
-
-                    let range = ExprStruct(path, vec![], None);
-                    let ix = self.mk_expr(bracket_pos, hi, range);
-                    let index = self.mk_index(e, ix);
-                    e = self.mk_expr(lo, hi, index);
-
-                    let obsolete_span = mk_sp(bracket_pos, hi);
-                    self.obsolete(obsolete_span, ObsoleteSyntax::EmptyIndex);
-                } else {
-                    let ix = self.parse_expr();
-                    hi = self.span.hi;
-                    self.commit_expr_expecting(&*ix, token::CloseDelim(token::Bracket));
-                    let index = self.mk_index(e, ix);
-                    e = self.mk_expr(lo, hi, index)
-                }
-
+                let ix = self.parse_expr();
+                hi = self.span.hi;
+                self.commit_expr_expecting(&*ix, token::CloseDelim(token::Bracket));
+                let index = self.mk_index(e, ix);
+                e = self.mk_expr(lo, hi, index)
               }
               _ => return e
             }

@@ -23,7 +23,6 @@ use ptr::P;
 #[derive(Copy, PartialEq, Eq, Hash)]
 pub enum ObsoleteSyntax {
     ClosureKind,
-    EmptyIndex,
     ExternCrateString,
 }
 
@@ -51,11 +50,6 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
                 "`:`, `&mut:`, or `&:`",
                 "rely on inference instead",
                 true,
-            ),
-            ObsoleteSyntax::EmptyIndex => (
-                "[]",
-                "write `[..]` instead",
-                false, // warning for now
             ),
             ObsoleteSyntax::ExternCrateString => (
                 "\"crate-name\"",
