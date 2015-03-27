@@ -32,7 +32,7 @@ impl Drop for SendOnDrop {
 
 enum Foo {
     SimpleVariant(Sender<Message>),
-    NestedVariant(Box<uint>, SendOnDrop, Sender<Message>),
+    NestedVariant(Box<usize>, SendOnDrop, Sender<Message>),
     FailingVariant { on_drop: SendOnDrop }
 }
 

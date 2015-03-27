@@ -28,11 +28,11 @@
 #![omit_gdb_pretty_printer_section]
 
 struct Struct {
-    x: int
+    x: isize
 }
 
 trait Trait<T1> {
-    fn generic_static_default_method<T2>(arg1: int, arg2: &(T1, T2)) -> int {
+    fn generic_static_default_method<T2>(arg1: isize, arg2: &(T1, T2)) -> isize {
         zzz(); // #break
         arg1
     }
@@ -43,8 +43,9 @@ impl<T> Trait<T> for Struct {}
 fn main() {
 
     // Is this really how to use these?
-    Trait::generic_static_default_method::<int, Struct, float>(1000, &(1, 2.5));
-    Trait::generic_static_default_method::<float, Struct, (int, int, int)>(2000, &(3.5, (4, 5, 6)));
+    Trait::generic_static_default_method::<isize, Struct, float>(1000, &(1, 2.5));
+    Trait::generic_static_default_method::<float, Struct, (isize, isize, isize)>(2000,
+            &(3.5, (4, 5, 6)));
 
 }
 

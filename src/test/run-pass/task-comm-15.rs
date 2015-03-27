@@ -15,7 +15,7 @@
 use std::sync::mpsc::{channel, Sender};
 use std::thread::Thread;
 
-fn start(tx: &Sender<int>, i0: int) {
+fn start(tx: &Sender<isize>, i0: isize) {
     let mut i = i0;
     while i > 0 {
         tx.send(0).unwrap();

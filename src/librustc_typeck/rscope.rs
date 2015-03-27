@@ -29,8 +29,8 @@ use syntax::codemap::Span;
 pub trait RegionScope {
     fn anon_regions(&self,
                     span: Span,
-                    count: uint)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>>;
+                    count: usize)
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>>;
 
     /// If an object omits any explicit lifetime bound, and none can
     /// be derived from the object traits, what should we use? If
@@ -50,17 +50,17 @@ impl RegionScope for ExplicitRscope {
 
     fn anon_regions(&self,
                     _span: Span,
-                    _count: uint)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>> {
+                    _count: usize)
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>> {
         Err(None)
     }
 }
 
 // Same as `ExplicitRscope`, but provides some extra information for diagnostics
-pub struct UnelidableRscope(Vec<(String, uint)>);
+pub struct UnelidableRscope(Vec<(String, usize)>);
 
 impl UnelidableRscope {
-    pub fn new(v: Vec<(String, uint)>) -> UnelidableRscope {
+    pub fn new(v: Vec<(String, usize)>) -> UnelidableRscope {
         UnelidableRscope(v)
     }
 }
@@ -72,8 +72,8 @@ impl RegionScope for UnelidableRscope {
 
     fn anon_regions(&self,
                     _span: Span,
-                    _count: uint)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>> {
+                    _count: usize)
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>> {
         let UnelidableRscope(ref v) = *self;
         Err(Some(v.clone()))
     }
@@ -103,8 +103,8 @@ impl RegionScope for ElidableRscope {
 
     fn anon_regions(&self,
                     _span: Span,
-                    count: uint)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>>
+                    count: usize)
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>>
     {
         Ok(repeat(self.default).take(count).collect())
     }
@@ -140,8 +140,8 @@ impl RegionScope for BindingRscope {
 
     fn anon_regions(&self,
                     _: Span,
-                    count: uint)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>>
+                    count: usize)
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>>
     {
         Ok((0..count).map(|_| self.next_region()).collect())
     }
@@ -176,8 +176,8 @@ impl<'r> RegionScope for ObjectLifetimeDefaultRscope<'r> {
 
     fn anon_regions(&self,
                     span: Span,
-                    count: uint)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>>
+                    count: usize)
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>>
     {
         self.base_scope.anon_regions(span, count)
     }
@@ -203,8 +203,8 @@ impl<'r> RegionScope for ShiftedRscope<'r> {
 
     fn anon_regions(&self,
                     span: Span,
-                    count: uint)
-                    -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>>
+                    count: usize)
+                    -> Result<Vec<ty::Region>, Option<Vec<(String, usize)>>>
     {
         match self.base_scope.anon_regions(span, count) {
             Ok(mut v) => {

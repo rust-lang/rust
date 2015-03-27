@@ -10,8 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
-const a: int = 1;
-const b: int = a + 2;
+const a: isize = 1;
+const b: isize = a + 2;
 
 pub fn main() {
     assert_eq!(b, 3);

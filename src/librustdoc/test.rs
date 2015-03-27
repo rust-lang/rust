@@ -45,7 +45,7 @@ pub fn run(input: &str,
            externs: core::Externs,
            mut test_args: Vec<String>,
            crate_name: Option<String>)
-           -> int {
+           -> isize {
     let input_path = PathBuf::from(input);
     let input = config::Input::File(input_path.clone());
 
@@ -224,7 +224,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     // environment to ensure that the target loads the right libraries at
     // runtime. It would be a sad day if the *host* libraries were loaded as a
     // mistake.
-    let mut cmd = Command::new(&outdir.path().join("rust-out"));
+    let mut cmd = Command::new(&outdir.path().join("rust_out"));
     let var = DynamicLibrary::envvar();
     let newpath = {
         let path = env::var_os(var).unwrap_or(OsString::new());
@@ -321,7 +321,7 @@ pub struct Collector {
     names: Vec<String>,
     libs: SearchPaths,
     externs: core::Externs,
-    cnt: uint,
+    cnt: usize,
     use_headers: bool,
     current_header: Option<String>,
     cratename: String,

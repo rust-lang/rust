@@ -13,7 +13,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-fn f() -> Box<int> {
+fn f() -> Box<isize> {
     box 100
 }
 

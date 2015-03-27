@@ -31,16 +31,16 @@ use std::slice;
 // Represents a position on a canvas.
 #[derive(Copy)]
 struct Point {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 // Represents an offset on a canvas. (This has the same structure as a Point.
 // but different semantics).
 #[derive(Copy)]
 struct Size {
-    width: int,
-    height: int,
+    width: isize,
+    height: isize,
 }
 
 #[derive(Copy)]
@@ -51,8 +51,8 @@ struct Rect {
 
 // Contains the information needed to do shape rendering via ASCII art.
 struct AsciiArt {
-    width: uint,
-    height: uint,
+    width: usize,
+    height: usize,
     fill: char,
     lines: Vec<Vec<char> > ,
 
@@ -67,7 +67,7 @@ impl Drop for AsciiArt {
 // It's common to define a constructor sort of function to create struct instances.
 // If there is a canonical constructor it is typically named the same as the type.
 // Other constructor sort of functions are typically named from_foo, from_bar, etc.
-fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt {
+fn AsciiArt(width: usize, height: usize, fill: char) -> AsciiArt {
     // Use an anonymous function to build a vector of vectors containing
     // blank characters for each position in our canvas.
     let mut lines = Vec::new();
@@ -82,12 +82,12 @@ fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt {
 
 // Methods particular to the AsciiArt struct.
 impl AsciiArt {
-    fn add_pt(&mut self, x: int, y: int) {
-        if x >= 0 && x < self.width as int {
-            if y >= 0 && y < self.height as int {
+    fn add_pt(&mut self, x: isize, y: isize) {
+        if x >= 0 && x < self.width as isize {
+            if y >= 0 && y < self.height as isize {
                 // Note that numeric types don't implicitly convert to each other.
-                let v = y as uint;
-                let h = x as uint;
+                let v = y as usize;
+                let h = x as usize;
 
                 // Vector subscripting will normally copy the element, but &v[i]
                 // will return a reference which is what we need because the

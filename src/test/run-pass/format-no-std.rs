@@ -13,7 +13,7 @@
 #![feature(lang_items, start, no_std, core, collections)]
 #![no_std]
 
-extern crate "std" as other;
+extern crate std as other;
 
 #[macro_use] extern crate core;
 #[macro_use] extern crate collections;
@@ -21,7 +21,7 @@ extern crate "std" as other;
 use collections::string::ToString;
 
 #[start]
-fn start(_argc: int, _argv: *const *const u8) -> int {
+fn start(_argc: isize, _argv: *const *const u8) -> isize {
     let s = format!("{}", 1_isize);
     assert_eq!(s, "1".to_string());
 

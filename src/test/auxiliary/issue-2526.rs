@@ -16,7 +16,7 @@
 use std::marker;
 
 struct arc_destruct<T: Sync> {
-    _data: int,
+    _data: isize,
     _marker: marker::PhantomData<T>
 }
 
@@ -25,7 +25,7 @@ impl<T: Sync> Drop for arc_destruct<T> {
     fn drop(&mut self) {}
 }
 
-fn arc_destruct<T: Sync>(data: int) -> arc_destruct<T> {
+fn arc_destruct<T: Sync>(data: isize) -> arc_destruct<T> {
     arc_destruct {
         _data: data,
         _marker: marker::PhantomData
@@ -41,7 +41,7 @@ fn init() -> arc_destruct<context_res> {
 }
 
 struct context_res {
-    ctx : int,
+    ctx : isize,
 }
 
 impl Drop for context_res {

@@ -16,13 +16,13 @@
 // pretty-expanded FIXME #23616
 
 enum T {
-    A(int),
-    B(uint)
+    A(isize),
+    B(usize)
 }
 
 macro_rules! test {
     ($id:ident, $e:expr) => (
-        fn foo(t: T) -> int {
+        fn foo(t: T) -> isize {
             match t {
                 T::A($id) => $e,
                 T::B($id) => $e
@@ -31,7 +31,7 @@ macro_rules! test {
     )
 }
 
-test!(y, 10 + (y as int));
+test!(y, 10 + (y as isize));
 
 pub fn main() {
     foo(T::A(20));

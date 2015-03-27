@@ -81,7 +81,7 @@ impl<'r, R: Reader> Iterator for Bytes<'r, R> {
 /// * `f`: A callback that receives the value.
 ///
 /// This function returns the value returned by the callback, for convenience.
-pub fn u64_to_le_bytes<T, F>(n: u64, size: uint, f: F) -> T where
+pub fn u64_to_le_bytes<T, F>(n: u64, size: usize, f: F) -> T where
     F: FnOnce(&[u8]) -> T,
 {
     use mem::transmute;
@@ -122,7 +122,7 @@ pub fn u64_to_le_bytes<T, F>(n: u64, size: uint, f: F) -> T where
 /// * `f`: A callback that receives the value.
 ///
 /// This function returns the value returned by the callback, for convenience.
-pub fn u64_to_be_bytes<T, F>(n: u64, size: uint, f: F) -> T where
+pub fn u64_to_be_bytes<T, F>(n: u64, size: usize, f: F) -> T where
     F: FnOnce(&[u8]) -> T,
 {
     use mem::transmute;
@@ -158,7 +158,7 @@ pub fn u64_to_be_bytes<T, F>(n: u64, size: uint, f: F) -> T where
 ///           less, or task panic occurs. If this is less than 8, then only
 ///           that many bytes are parsed. For example, if `size` is 4, then a
 ///           32-bit value is parsed.
-pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
+pub fn u64_from_be_bytes(data: &[u8], start: usize, size: usize) -> u64 {
     use ptr::{copy_nonoverlapping};
 
     assert!(size <= 8);
@@ -169,9 +169,9 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
 
     let mut buf = [0; 8];
     unsafe {
-        let ptr = data.as_ptr().offset(start as int);
+        let ptr = data.as_ptr().offset(start as isize);
         let out = buf.as_mut_ptr();
-        copy_nonoverlapping(out.offset((8 - size) as int), ptr, size);
+        copy_nonoverlapping(out.offset((8 - size) as isize), ptr, size);
         (*(out as *const u64)).to_be()
     }
 }
@@ -183,11 +183,11 @@ mod test {
     use old_io::{MemReader, BytesReader};
 
     struct InitialZeroByteReader {
-        count: int,
+        count: isize,
     }
 
     impl Reader for InitialZeroByteReader {
-        fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<usize> {
             if self.count == 0 {
                 self.count = 1;
                 Ok(0)
@@ -201,7 +201,7 @@ mod test {
     struct EofReader;
 
     impl Reader for EofReader {
-        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<uint> {
+        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<usize> {
             Err(old_io::standard_error(old_io::EndOfFile))
         }
     }
@@ -209,17 +209,17 @@ mod test {
     struct ErroringReader;
 
     impl Reader for ErroringReader {
-        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<uint> {
+        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<usize> {
             Err(old_io::standard_error(old_io::InvalidInput))
         }
     }
 
     struct PartialReader {
-        count: int,
+        count: isize,
     }
 
     impl Reader for PartialReader {
-        fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<usize> {
             if self.count == 0 {
                 self.count = 1;
                 buf[0] = 10;
@@ -234,11 +234,11 @@ mod test {
     }
 
     struct ErroringLaterReader {
-        count: int,
+        count: isize,
     }
 
     impl Reader for ErroringLaterReader {
-        fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<usize> {
             if self.count == 0 {
                 self.count = 1;
                 buf[0] = 10;
@@ -250,11 +250,11 @@ mod test {
     }
 
     struct ThreeChunkReader {
-        count: int,
+        count: isize,
     }
 
     impl Reader for ThreeChunkReader {
-        fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<usize> {
             if self.count == 0 {
                 self.count = 1;
                 buf[0] = 10;

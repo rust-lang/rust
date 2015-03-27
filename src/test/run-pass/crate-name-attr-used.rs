@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:--crate-name crate-name-attr-used -F unused-attributes
+// compile-flags:--crate-name crate_name_attr_used -F unused-attributes
 
 // pretty-expanded FIXME #23616
 
-#![crate_name = "crate-name-attr-used"]
+#![crate_name = "crate_name_attr_used"]
 
 fn main() {}

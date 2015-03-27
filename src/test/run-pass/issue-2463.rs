@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-struct Pair { f: int, g: int }
+struct Pair { f: isize, g: isize }
 
 pub fn main() {
 

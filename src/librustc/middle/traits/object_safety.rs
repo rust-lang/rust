@@ -53,36 +53,36 @@ pub enum MethodViolationCode {
 }
 
 pub fn is_object_safe<'tcx>(tcx: &ty::ctxt<'tcx>,
-                            trait_ref: ty::PolyTraitRef<'tcx>)
+                            trait_def_id: ast::DefId)
                             -> bool
 {
     // Because we query yes/no results frequently, we keep a cache:
     let cached_result =
-        tcx.object_safety_cache.borrow().get(&trait_ref.def_id()).cloned();
+        tcx.object_safety_cache.borrow().get(&trait_def_id).cloned();
 
     let result =
         cached_result.unwrap_or_else(|| {
-            let result = object_safety_violations(tcx, trait_ref.clone()).is_empty();
+            let result = object_safety_violations(tcx, trait_def_id).is_empty();
 
             // Record just a yes/no result in the cache; this is what is
             // queried most frequently. Note that this may overwrite a
             // previous result, but always with the same thing.
-            tcx.object_safety_cache.borrow_mut().insert(trait_ref.def_id(), result);
+            tcx.object_safety_cache.borrow_mut().insert(trait_def_id, result);
 
             result
         });
 
-    debug!("is_object_safe({}) = {}", trait_ref.repr(tcx), result);
+    debug!("is_object_safe({}) = {}", trait_def_id.repr(tcx), result);
 
     result
 }
 
 pub fn object_safety_violations<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                      sub_trait_ref: ty::PolyTraitRef<'tcx>)
+                                      trait_def_id: ast::DefId)
                                       -> Vec<ObjectSafetyViolation<'tcx>>
 {
-    supertraits(tcx, sub_trait_ref)
-        .flat_map(|tr| object_safety_violations_for_trait(tcx, tr.def_id()).into_iter())
+    traits::supertrait_def_ids(tcx, trait_def_id)
+        .flat_map(|def_id| object_safety_violations_for_trait(tcx, def_id).into_iter())
         .collect()
 }
 
@@ -96,7 +96,7 @@ fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
         .flat_map(|item| {
             match *item {
                 ty::MethodTraitItem(ref m) => {
-                    object_safety_violations_for_method(tcx, trait_def_id, &**m)
+                    object_safety_violation_for_method(tcx, trait_def_id, &**m)
                         .map(|code| ObjectSafetyViolation::Method(m.clone(), code))
                         .into_iter()
                 }
@@ -193,10 +193,11 @@ fn generics_require_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
         })
 }
 
-fn object_safety_violations_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                             trait_def_id: ast::DefId,
-                                             method: &ty::Method<'tcx>)
-                                             -> Option<MethodViolationCode>
+/// Returns `Some(_)` if this method makes the containing trait not object safe.
+fn object_safety_violation_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                            trait_def_id: ast::DefId,
+                                            method: &ty::Method<'tcx>)
+                                            -> Option<MethodViolationCode>
 {
     // Any method that has a `Self : Sized` requisite is otherwise
     // exempt from the regulations.
@@ -204,6 +205,30 @@ fn object_safety_violations_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         return None;
     }
 
+    virtual_call_violation_for_method(tcx, trait_def_id, method)
+}
+
+/// We say a method is *vtable safe* if it can be invoked on a trait
+/// object.  Note that object-safe traits can have some
+/// non-vtable-safe methods, so long as they require `Self:Sized` or
+/// otherwise ensure that they cannot be used when `Self=Trait`.
+pub fn is_vtable_safe_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                   trait_def_id: ast::DefId,
+                                   method: &ty::Method<'tcx>)
+                                   -> bool
+{
+    virtual_call_violation_for_method(tcx, trait_def_id, method).is_none()
+}
+
+/// Returns `Some(_)` if this method cannot be called on a trait
+/// object; this does not necessarily imply that the enclosing trait
+/// is not object safe, because the method might have a where clause
+/// `Self:Sized`.
+fn virtual_call_violation_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                           trait_def_id: ast::DefId,
+                                           method: &ty::Method<'tcx>)
+                                           -> Option<MethodViolationCode>
+{
     // The method's first parameter must be something that derefs (or
     // autorefs) to `&self`. For now, we only accept `self`, `&self`
     // and `Box<Self>`.

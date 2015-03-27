@@ -61,7 +61,7 @@ impl ArchiveRO {
             if ptr.is_null() {
                 None
             } else {
-                Some(slice::from_raw_parts(ptr as *const u8, size as uint))
+                Some(slice::from_raw_parts(ptr as *const u8, size as usize))
             }
         }
     }

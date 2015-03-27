@@ -20,7 +20,7 @@ struct Bar<T> where T: Trait {
     bar: T,
 }
 
-impl Trait for int {}
+impl Trait for isize {}
 
 fn main() {
     let a = Foo { foo: 12 };

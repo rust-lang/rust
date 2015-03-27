@@ -16,11 +16,11 @@ fn i_live_in_more_text() -> &'static str {
 
 #[cfg(not(target_os = "macos"))]
 #[link_section=".imm"]
-static magic: uint = 42;
+static magic: usize = 42;
 
 #[cfg(not(target_os = "macos"))]
 #[link_section=".mut"]
-static mut frobulator: uint = 0xdeadbeef;
+static mut frobulator: usize = 0xdeadbeef;
 
 #[cfg(target_os = "macos")]
 #[link_section="__TEXT,__moretext"]
@@ -30,11 +30,11 @@ fn i_live_in_more_text() -> &'static str {
 
 #[cfg(target_os = "macos")]
 #[link_section="__RODATA,__imm"]
-static magic: uint = 42;
+static magic: usize = 42;
 
 #[cfg(target_os = "macos")]
 #[link_section="__DATA,__mut"]
-static mut frobulator: uint = 0xdeadbeef;
+static mut frobulator: usize = 0xdeadbeef;
 
 pub fn main() {
     unsafe {

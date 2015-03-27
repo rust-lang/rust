@@ -447,7 +447,6 @@ impl Rng for Isaac64Rng {
 
     #[inline]
     fn next_u64(&mut self) -> u64 {
-        #![allow(trivial_numeric_casts)]
         if self.cnt == 0 {
             // make some more numbers
             self.isaac64();

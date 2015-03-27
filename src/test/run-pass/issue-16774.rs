@@ -17,7 +17,7 @@
 
 use std::ops::{Deref, DerefMut};
 
-struct X(Box<int>);
+struct X(Box<isize>);
 
 static mut DESTRUCTOR_RAN: bool = false;
 
@@ -31,16 +31,16 @@ impl Drop for X {
 }
 
 impl Deref for X {
-    type Target = int;
+    type Target = isize;
 
-    fn deref(&self) -> &int {
+    fn deref(&self) -> &isize {
         let &X(box ref x) = self;
         x
     }
 }
 
 impl DerefMut for X {
-    fn deref_mut(&mut self) -> &mut int {
+    fn deref_mut(&mut self) -> &mut isize {
         let &mut X(box ref mut x) = self;
         x
     }

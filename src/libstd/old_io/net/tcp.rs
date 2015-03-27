@@ -122,7 +122,7 @@ impl TcpStream {
     /// this connection. Otherwise, the keepalive timeout will be set to the
     /// specified time, in seconds.
     #[unstable(feature = "io")]
-    pub fn set_keepalive(&mut self, delay_in_seconds: Option<uint>) -> IoResult<()> {
+    pub fn set_keepalive(&mut self, delay_in_seconds: Option<usize>) -> IoResult<()> {
         self.inner.set_keepalive(delay_in_seconds)
     }
 
@@ -257,7 +257,7 @@ impl Clone for TcpStream {
 }
 
 impl Reader for TcpStream {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         self.inner.read(buf)
     }
 }
@@ -338,7 +338,7 @@ impl TcpListener {
     }
 }
 
-impl Listener<TcpStream, TcpAcceptor> for TcpListener {
+impl Listener<TcpAcceptor> for TcpListener {
     fn listen(self) -> IoResult<TcpAcceptor> {
         self.inner.listen(128).map(|a| TcpAcceptor { inner: a })
     }
@@ -453,7 +453,8 @@ impl TcpAcceptor {
     }
 }
 
-impl Acceptor<TcpStream> for TcpAcceptor {
+impl Acceptor for TcpAcceptor {
+    type Connection = TcpStream;
     fn accept(&mut self) -> IoResult<TcpStream> {
         self.inner.accept().map(TcpStream::new)
     }
@@ -789,12 +790,12 @@ mod test {
     #[test]
     fn multiple_connect_interleaved_greedy_schedule_ip4() {
         let addr = next_test_ip4();
-        static MAX: int = 10;
+        static MAX: isize = 10;
         let acceptor = TcpListener::bind(addr).listen();
 
         let _t = thread::spawn(move|| {
             let mut acceptor = acceptor;
-            for (i, stream) in acceptor.incoming().enumerate().take(MAX as uint) {
+            for (i, stream) in acceptor.incoming().enumerate().take(MAX as usize) {
                 // Start another task to handle the connection
                 let _t = thread::spawn(move|| {
                     let mut stream = stream;
@@ -808,7 +809,7 @@ mod test {
 
         connect(0, addr);
 
-        fn connect(i: int, addr: SocketAddr) {
+        fn connect(i: isize, addr: SocketAddr) {
             if i == MAX { return }
 
             let _t = thread::spawn(move|| {
@@ -825,12 +826,12 @@ mod test {
     #[test]
     fn multiple_connect_interleaved_greedy_schedule_ip6() {
         let addr = next_test_ip6();
-        static MAX: int = 10;
+        static MAX: isize = 10;
         let acceptor = TcpListener::bind(addr).listen();
 
         let _t = thread::spawn(move|| {
             let mut acceptor = acceptor;
-            for (i, stream) in acceptor.incoming().enumerate().take(MAX as uint) {
+            for (i, stream) in acceptor.incoming().enumerate().take(MAX as usize) {
                 // Start another task to handle the connection
                 let _t = thread::spawn(move|| {
                     let mut stream = stream;
@@ -844,7 +845,7 @@ mod test {
 
         connect(0, addr);
 
-        fn connect(i: int, addr: SocketAddr) {
+        fn connect(i: isize, addr: SocketAddr) {
             if i == MAX { return }
 
             let _t = thread::spawn(move|| {
@@ -860,13 +861,13 @@ mod test {
 
     #[test]
     fn multiple_connect_interleaved_lazy_schedule_ip4() {
-        static MAX: int = 10;
+        static MAX: isize = 10;
         let addr = next_test_ip4();
         let acceptor = TcpListener::bind(addr).listen();
 
         let _t = thread::spawn(move|| {
             let mut acceptor = acceptor;
-            for stream in acceptor.incoming().take(MAX as uint) {
+            for stream in acceptor.incoming().take(MAX as usize) {
                 // Start another task to handle the connection
                 let _t = thread::spawn(move|| {
                     let mut stream = stream;
@@ -880,7 +881,7 @@ mod test {
 
         connect(0, addr);
 
-        fn connect(i: int, addr: SocketAddr) {
+        fn connect(i: isize, addr: SocketAddr) {
             if i == MAX { return }
 
             let _t = thread::spawn(move|| {
@@ -896,13 +897,13 @@ mod test {
 
     #[test]
     fn multiple_connect_interleaved_lazy_schedule_ip6() {
-        static MAX: int = 10;
+        static MAX: isize = 10;
         let addr = next_test_ip6();
         let acceptor = TcpListener::bind(addr).listen();
 
         let _t = thread::spawn(move|| {
             let mut acceptor = acceptor;
-            for stream in acceptor.incoming().take(MAX as uint) {
+            for stream in acceptor.incoming().take(MAX as usize) {
                 // Start another task to handle the connection
                 let _t = thread::spawn(move|| {
                     let mut stream = stream;
@@ -916,7 +917,7 @@ mod test {
 
         connect(0, addr);
 
-        fn connect(i: int, addr: SocketAddr) {
+        fn connect(i: isize, addr: SocketAddr) {
             if i == MAX { return }
 
             let _t = thread::spawn(move|| {

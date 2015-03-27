@@ -37,7 +37,7 @@ pub type StrComponents<'a> =
 #[derive(Clone)]
 pub struct Path {
     repr: Vec<u8>, // assumed to never be empty or contain NULs
-    sepidx: Option<uint> // index of the final separator in repr
+    sepidx: Option<usize> // index of the final separator in repr
 }
 
 /// The standard path separator character

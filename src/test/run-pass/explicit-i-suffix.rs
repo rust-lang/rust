@@ -11,11 +11,11 @@
 // pretty-expanded FIXME #23616
 
 pub fn main() {
-    let x: int = 8;
+    let x: isize = 8;
     let y = 9;
     x + y;
 
-    let q: int = -8;
+    let q: isize = -8;
     let r = -9;
     q + r;
 }

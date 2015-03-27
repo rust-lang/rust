@@ -31,11 +31,11 @@ enum Foo {
 }
 
 #[inline(never)]
-extern "C" fn foo(_x: uint) -> Foo { Foo::B }
+extern "C" fn foo(_x: usize) -> Foo { Foo::B }
 
 pub fn main() {
   unsafe {
-    let f: extern "C" fn(uint) -> u32 = ::std::mem::transmute(foo);
+    let f: extern "C" fn(usize) -> u32 = ::std::mem::transmute(foo);
     assert_eq!(f(0xDEADBEEF), Foo::B as u32);
   }
 }

@@ -13,7 +13,7 @@
 
 // pretty-expanded FIXME #23616
 
-struct Point {x: int, y: int, z: int}
+struct Point {x: isize, y: isize, z: isize}
 
 fn f(p: Point) { assert!((p.z == 12)); }
 

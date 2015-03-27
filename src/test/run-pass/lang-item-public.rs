@@ -14,7 +14,7 @@
 #![feature(lang_items, start, no_std)]
 #![no_std]
 
-extern crate "lang-item-public" as lang_lib;
+extern crate lang_item_public as lang_lib;
 
 #[cfg(target_os = "linux")]
 #[link(name = "c")]
@@ -45,6 +45,6 @@ extern {}
 extern {}
 
 #[start]
-fn main(_: int, _: *const *const u8) -> int {
+fn main(_: isize, _: *const *const u8) -> isize {
     1 % 1
 }

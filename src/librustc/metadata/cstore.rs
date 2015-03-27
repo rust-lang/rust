@@ -252,7 +252,7 @@ impl MetadataBlob {
             let len = (((slice[0] as u32) << 24) |
                        ((slice[1] as u32) << 16) |
                        ((slice[2] as u32) << 8) |
-                       ((slice[3] as u32) << 0)) as uint;
+                       ((slice[3] as u32) << 0)) as usize;
             if len + 4 <= slice.len() {
                 &slice[4.. len + 4]
             } else {

@@ -221,7 +221,7 @@ mod svh_visitor {
 
         SawExprLoop(Option<token::InternedString>),
         SawExprField(token::InternedString),
-        SawExprTupField(uint),
+        SawExprTupField(usize),
         SawExprBreak(Option<token::InternedString>),
         SawExprAgain(Option<token::InternedString>),
 

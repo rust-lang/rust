@@ -12,7 +12,7 @@
 
 use std::sync::Mutex;
 
-struct Point {x: int, y: int, z: int}
+struct Point {x: isize, y: isize, z: isize}
 
 fn f(p: &mut Point) { p.z = 13; }
 

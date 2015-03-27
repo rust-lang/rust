@@ -29,11 +29,11 @@ fn move_out<T>(_x: T) {}
 
 enum request {
     get_count,
-    bytes(uint),
+    bytes(usize),
     stop
 }
 
-fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
+fn server(requests: &Receiver<request>, responses: &Sender<usize>) {
     let mut count = 0;
     let mut done = false;
     while !done {
@@ -55,8 +55,8 @@ fn run(args: &[String]) {
     let (to_parent, from_child) = channel();
     let (to_child, from_parent) = channel();
 
-    let size = args[1].parse::<uint>().unwrap();
-    let workers = args[2].parse::<uint>().unwrap();
+    let size = args[1].parse::<usize>().unwrap();
+    let workers = args[2].parse::<usize>().unwrap();
     let num_bytes = 100;
     let mut result = None;
     let mut p = Some((to_child, to_parent, from_parent));

@@ -13,7 +13,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "issue-13620-2" as crate2;
+extern crate issue_13620_2 as crate2;
 
 fn main() {
     (crate2::FOO2.foo)();

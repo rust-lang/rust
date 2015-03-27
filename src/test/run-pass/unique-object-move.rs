@@ -18,7 +18,7 @@
 pub trait EventLoop { fn foo(&self) {} }
 
 pub struct UvEventLoop {
-    uvio: int
+    uvio: isize
 }
 
 impl EventLoop for UvEventLoop { }

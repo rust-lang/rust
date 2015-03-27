@@ -20,7 +20,7 @@ use std::borrow::{Cow, IntoCow};
 type SendStr = Cow<'static, str>;
 
 pub fn main() {
-    let mut map: HashMap<SendStr, uint> = HashMap::new();
+    let mut map: HashMap<SendStr, usize> = HashMap::new();
     assert!(map.insert("foo".into_cow(), 42).is_none());
     assert!(map.insert("foo".to_string().into_cow(), 42).is_some());
     assert!(map.insert("foo".into_cow(), 42).is_some());

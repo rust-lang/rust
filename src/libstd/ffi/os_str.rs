@@ -113,38 +113,12 @@ impl From<String> for OsString {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a String> for OsString {
-    fn from(s: &'a String) -> OsString {
-        OsString { inner: Buf::from_str(s) }
+impl<'a, T: ?Sized + AsRef<OsStr>> From<&'a T> for OsString {
+    fn from(s: &'a T) -> OsString {
+        s.as_ref().to_os_string()
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a str> for OsString {
-    fn from(s: &'a str) -> OsString {
-        OsString { inner: Buf::from_str(s) }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> From<&'a OsStr> for OsString {
-    fn from(s: &'a OsStr) -> OsString {
-        OsString { inner: s.inner.to_owned() }
-    }
-}
-
-#[cfg(stage0)]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Index<ops::RangeFull> for OsString {
-    type Output = OsStr;
-
-    #[inline]
-    fn index(&self, _index: &ops::RangeFull) -> &OsStr {
-        unsafe { mem::transmute(self.inner.as_slice()) }
-    }
-}
-
-#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeFull> for OsString {
     type Output = OsStr;

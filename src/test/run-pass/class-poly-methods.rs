@@ -13,19 +13,19 @@
 
 struct cat<U> {
     info : Vec<U> ,
-    meows : uint,
+    meows : usize,
 
-    how_hungry : int,
+    how_hungry : isize,
 }
 
 impl<U> cat<U> {
     pub fn speak<T>(&mut self, stuff: Vec<T> ) {
         self.meows += stuff.len();
     }
-    pub fn meow_count(&mut self) -> uint { self.meows }
+    pub fn meow_count(&mut self) -> usize { self.meows }
 }
 
-fn cat<U>(in_x : uint, in_y : int, in_info: Vec<U> ) -> cat<U> {
+fn cat<U>(in_x : usize, in_y : isize, in_info: Vec<U> ) -> cat<U> {
     cat {
         meows: in_x,
         how_hungry: in_y,
@@ -34,7 +34,7 @@ fn cat<U>(in_x : uint, in_y : int, in_info: Vec<U> ) -> cat<U> {
 }
 
 pub fn main() {
-  let mut nyan : cat<int> = cat::<int>(52, 99, vec!(9));
+  let mut nyan : cat<isize> = cat::<isize>(52, 99, vec!(9));
   let mut kitty = cat(1000, 2, vec!("tabby".to_string()));
   assert_eq!(nyan.how_hungry, 99);
   assert_eq!(kitty.how_hungry, 2);

@@ -25,7 +25,6 @@
 #![doc(test(no_crate_inject))]
 
 #![allow(trivial_casts)]
-#![allow(trivial_numeric_casts)]
 #![feature(alloc)]
 #![feature(box_syntax)]
 #![feature(box_patterns)]
@@ -36,10 +35,11 @@
 #![feature(unicode)]
 #![feature(unsafe_destructor)]
 #![feature(unique)]
-#![feature(unsafe_no_drop_flag)]
+#![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(step_by)]
 #![feature(str_char)]
 #![feature(convert)]
+#![feature(slice_patterns)]
 #![cfg_attr(test, feature(rand, rustc_private, test, hash, collections))]
 #![cfg_attr(test, allow(deprecated))] // rand
 

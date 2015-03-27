@@ -20,6 +20,6 @@
 
 struct ヒ;
 
-static ラ: uint = 0;
+static ラ: usize = 0;
 
 pub fn main() {}

@@ -16,7 +16,7 @@ struct MutSlice<'a, T:'a> {
     data: &'a mut [T]
 }
 
-fn get<'a, T>(ms: &'a MutSlice<'a, T>, index: uint) -> &'a T {
+fn get<'a, T>(ms: &'a MutSlice<'a, T>, index: usize) -> &'a T {
     &ms.data[index]
 }
 

@@ -193,12 +193,12 @@ impl Float for f32 {
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn mantissa_digits(_: Option<f32>) -> uint { MANTISSA_DIGITS as uint }
+    fn mantissa_digits(_: Option<f32>) -> usize { MANTISSA_DIGITS as usize }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn digits(_: Option<f32>) -> uint { DIGITS as uint }
+    fn digits(_: Option<f32>) -> usize { DIGITS as usize }
 
     #[inline]
     #[unstable(feature = "core")]
@@ -208,22 +208,22 @@ impl Float for f32 {
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn min_exp(_: Option<f32>) -> int { MIN_EXP as int }
+    fn min_exp(_: Option<f32>) -> isize { MIN_EXP as isize }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn max_exp(_: Option<f32>) -> int { MAX_EXP as int }
+    fn max_exp(_: Option<f32>) -> isize { MAX_EXP as isize }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn min_10_exp(_: Option<f32>) -> int { MIN_10_EXP as int }
+    fn min_10_exp(_: Option<f32>) -> isize { MIN_10_EXP as isize }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn max_10_exp(_: Option<f32>) -> int { MAX_10_EXP as int }
+    fn max_10_exp(_: Option<f32>) -> isize { MAX_10_EXP as isize }
 
     #[inline]
     #[unstable(feature = "core")]

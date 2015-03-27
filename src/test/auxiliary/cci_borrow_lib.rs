@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn foo(x: &uint) -> uint {
+pub fn foo(x: &usize) -> usize {
     *x
 }

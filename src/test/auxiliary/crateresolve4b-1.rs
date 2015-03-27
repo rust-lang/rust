@@ -15,4 +15,4 @@
 
 extern crate "crateresolve4a#0.2" as crateresolve4a;
 
-pub fn f() -> int { crateresolve4a::g() }
+pub fn f() -> isize { crateresolve4a::g() }

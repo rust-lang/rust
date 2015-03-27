@@ -14,8 +14,8 @@ extern crate libc;
 
 pub fn main() {
   let f = 1_usize as *const libc::FILE;
-  println!("{:?}", f as int);
-  println!("{:?}", f as uint);
+  println!("{:?}", f as isize);
+  println!("{:?}", f as usize);
   println!("{:?}", f as i8);
   println!("{:?}", f as i16);
   println!("{:?}", f as i32);
@@ -25,8 +25,8 @@ pub fn main() {
   println!("{:?}", f as u32);
   println!("{:?}", f as u64);
 
-  println!("{:?}", 1 as int);
-  println!("{:?}", 1 as uint);
+  println!("{:?}", 1 as isize);
+  println!("{:?}", 1 as usize);
   println!("{:?}", 1 as *const libc::FILE);
   println!("{:?}", 1 as i8);
   println!("{:?}", 1 as i16);
@@ -39,8 +39,8 @@ pub fn main() {
   println!("{:?}", 1 as f32);
   println!("{:?}", 1 as f64);
 
-  println!("{:?}", 1_usize as int);
-  println!("{:?}", 1_usize as uint);
+  println!("{:?}", 1_usize as isize);
+  println!("{:?}", 1_usize as usize);
   println!("{:?}", 1_usize as *const libc::FILE);
   println!("{:?}", 1_usize as i8);
   println!("{:?}", 1_usize as i16);
@@ -53,8 +53,8 @@ pub fn main() {
   println!("{:?}", 1_usize as f32);
   println!("{:?}", 1_usize as f64);
 
-  println!("{:?}", 1i8 as int);
-  println!("{:?}", 1i8 as uint);
+  println!("{:?}", 1i8 as isize);
+  println!("{:?}", 1i8 as usize);
   println!("{:?}", 1i8 as *const libc::FILE);
   println!("{:?}", 1i8 as i8);
   println!("{:?}", 1i8 as i16);
@@ -67,8 +67,8 @@ pub fn main() {
   println!("{:?}", 1i8 as f32);
   println!("{:?}", 1i8 as f64);
 
-  println!("{:?}", 1u8 as int);
-  println!("{:?}", 1u8 as uint);
+  println!("{:?}", 1u8 as isize);
+  println!("{:?}", 1u8 as usize);
   println!("{:?}", 1u8 as *const libc::FILE);
   println!("{:?}", 1u8 as i8);
   println!("{:?}", 1u8 as i16);
@@ -81,8 +81,8 @@ pub fn main() {
   println!("{:?}", 1u8 as f32);
   println!("{:?}", 1u8 as f64);
 
-  println!("{:?}", 1i16 as int);
-  println!("{:?}", 1i16 as uint);
+  println!("{:?}", 1i16 as isize);
+  println!("{:?}", 1i16 as usize);
   println!("{:?}", 1i16 as *const libc::FILE);
   println!("{:?}", 1i16 as i8);
   println!("{:?}", 1i16 as i16);
@@ -95,8 +95,8 @@ pub fn main() {
   println!("{:?}", 1i16 as f32);
   println!("{:?}", 1i16 as f64);
 
-  println!("{:?}", 1u16 as int);
-  println!("{:?}", 1u16 as uint);
+  println!("{:?}", 1u16 as isize);
+  println!("{:?}", 1u16 as usize);
   println!("{:?}", 1u16 as *const libc::FILE);
   println!("{:?}", 1u16 as i8);
   println!("{:?}", 1u16 as i16);
@@ -109,8 +109,8 @@ pub fn main() {
   println!("{:?}", 1u16 as f32);
   println!("{:?}", 1u16 as f64);
 
-  println!("{:?}", 1i32 as int);
-  println!("{:?}", 1i32 as uint);
+  println!("{:?}", 1i32 as isize);
+  println!("{:?}", 1i32 as usize);
   println!("{:?}", 1i32 as *const libc::FILE);
   println!("{:?}", 1i32 as i8);
   println!("{:?}", 1i32 as i16);
@@ -123,8 +123,8 @@ pub fn main() {
   println!("{:?}", 1i32 as f32);
   println!("{:?}", 1i32 as f64);
 
-  println!("{:?}", 1u32 as int);
-  println!("{:?}", 1u32 as uint);
+  println!("{:?}", 1u32 as isize);
+  println!("{:?}", 1u32 as usize);
   println!("{:?}", 1u32 as *const libc::FILE);
   println!("{:?}", 1u32 as i8);
   println!("{:?}", 1u32 as i16);
@@ -137,8 +137,8 @@ pub fn main() {
   println!("{:?}", 1u32 as f32);
   println!("{:?}", 1u32 as f64);
 
-  println!("{:?}", 1i64 as int);
-  println!("{:?}", 1i64 as uint);
+  println!("{:?}", 1i64 as isize);
+  println!("{:?}", 1i64 as usize);
   println!("{:?}", 1i64 as *const libc::FILE);
   println!("{:?}", 1i64 as i8);
   println!("{:?}", 1i64 as i16);
@@ -151,8 +151,8 @@ pub fn main() {
   println!("{:?}", 1i64 as f32);
   println!("{:?}", 1i64 as f64);
 
-  println!("{:?}", 1u64 as int);
-  println!("{:?}", 1u64 as uint);
+  println!("{:?}", 1u64 as isize);
+  println!("{:?}", 1u64 as usize);
   println!("{:?}", 1u64 as *const libc::FILE);
   println!("{:?}", 1u64 as i8);
   println!("{:?}", 1u64 as i16);
@@ -165,8 +165,8 @@ pub fn main() {
   println!("{:?}", 1u64 as f32);
   println!("{:?}", 1u64 as f64);
 
-  println!("{:?}", 1u64 as int);
-  println!("{:?}", 1u64 as uint);
+  println!("{:?}", 1u64 as isize);
+  println!("{:?}", 1u64 as usize);
   println!("{:?}", 1u64 as *const libc::FILE);
   println!("{:?}", 1u64 as i8);
   println!("{:?}", 1u64 as i16);
@@ -179,8 +179,8 @@ pub fn main() {
   println!("{:?}", 1u64 as f32);
   println!("{:?}", 1u64 as f64);
 
-  println!("{:?}", true as int);
-  println!("{:?}", true as uint);
+  println!("{:?}", true as isize);
+  println!("{:?}", true as usize);
   println!("{:?}", true as *const libc::FILE);
   println!("{:?}", true as i8);
   println!("{:?}", true as i16);
@@ -193,8 +193,8 @@ pub fn main() {
   println!("{:?}", true as f32);
   println!("{:?}", true as f64);
 
-  println!("{:?}", 1f32 as int);
-  println!("{:?}", 1f32 as uint);
+  println!("{:?}", 1f32 as isize);
+  println!("{:?}", 1f32 as usize);
   println!("{:?}", 1f32 as i8);
   println!("{:?}", 1f32 as i16);
   println!("{:?}", 1f32 as i32);
@@ -206,8 +206,8 @@ pub fn main() {
   println!("{:?}", 1f32 as f32);
   println!("{:?}", 1f32 as f64);
 
-  println!("{:?}", 1f64 as int);
-  println!("{:?}", 1f64 as uint);
+  println!("{:?}", 1f64 as isize);
+  println!("{:?}", 1f64 as usize);
   println!("{:?}", 1f64 as i8);
   println!("{:?}", 1f64 as i16);
   println!("{:?}", 1f64 as i32);

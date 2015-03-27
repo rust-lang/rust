@@ -12,7 +12,7 @@
 
 #![feature(unsafe_destructor, std_misc)]
 
-pub type Task = int;
+pub type Task = isize;
 
 // tjc: I don't know why
 pub mod pipes {
@@ -31,7 +31,7 @@ pub mod pipes {
     }
 
     #[derive(PartialEq, Debug)]
-    #[repr(int)]
+    #[repr(isize)]
     pub enum state {
         empty,
         full,
@@ -59,9 +59,9 @@ pub mod pipes {
     }
 
     mod rusti {
-      pub fn atomic_xchg(_dst: &mut int, _src: int) -> int { panic!(); }
-      pub fn atomic_xchg_acq(_dst: &mut int, _src: int) -> int { panic!(); }
-      pub fn atomic_xchg_rel(_dst: &mut int, _src: int) -> int { panic!(); }
+      pub fn atomic_xchg(_dst: &mut isize, _src: isize) -> isize { panic!(); }
+      pub fn atomic_xchg_acq(_dst: &mut isize, _src: isize) -> isize { panic!(); }
+      pub fn atomic_xchg_rel(_dst: &mut isize, _src: isize) -> isize { panic!(); }
     }
 
     // We should consider moving this to ::std::unsafe, although I
@@ -72,13 +72,13 @@ pub mod pipes {
 
     pub fn swap_state_acq(dst: &mut state, src: state) -> state {
         unsafe {
-            transmute(rusti::atomic_xchg_acq(transmute(dst), src as int))
+            transmute(rusti::atomic_xchg_acq(transmute(dst), src as isize))
         }
     }
 
     pub fn swap_state_rel(dst: &mut state, src: state) -> state {
         unsafe {
-            transmute(rusti::atomic_xchg_rel(transmute(dst), src as int))
+            transmute(rusti::atomic_xchg_rel(transmute(dst), src as isize))
         }
     }
 

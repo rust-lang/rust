@@ -13,7 +13,7 @@
 #![allow(unreachable_code)]
 
 fn test() {
-    let _v: int;
+    let _v: isize;
     _v = 1;
     return;
     _v = 2; //~ WARNING: unreachable statement

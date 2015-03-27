@@ -21,8 +21,6 @@
 
 #![allow(non_camel_case_types)]
 
-#![feature(core)]
-#![feature(int_uint)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -35,7 +33,7 @@
 
 // for "clarity", rename the graphviz crate to dot; graphviz within `borrowck`
 // refers to the borrowck-specific graphviz adapter traits.
-extern crate "graphviz" as dot;
+extern crate graphviz as dot;
 extern crate rustc;
 
 pub use borrowck::check_crate;

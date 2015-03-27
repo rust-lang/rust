@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 trait connection {
-    fn read(&self) -> int;
+    fn read(&self) -> isize;
 }
 
 trait connection_factory<C:connection> {
@@ -22,7 +22,7 @@ type my_connection = ();
 type my_connection_factory = ();
 
 impl connection for () {
-    fn read(&self) -> int { 43 }
+    fn read(&self) -> isize { 43 }
 }
 
 impl connection_factory<my_connection> for my_connection_factory {

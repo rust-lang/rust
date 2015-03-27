@@ -11,10 +11,10 @@
 // pretty-expanded FIXME #23616
 
 struct C {
-    x: uint,
+    x: usize,
 }
 
-fn C(x: uint) -> C {
+fn C(x: usize) -> C {
     C {
         x: x
     }

@@ -13,7 +13,7 @@
 pub type HANDLE = u32;
 pub type DWORD = u32;
 pub type SIZE_T = u32;
-pub type LPVOID = uint;
+pub type LPVOID = usize;
 pub type BOOL = u8;
 
 #[cfg(windows)]

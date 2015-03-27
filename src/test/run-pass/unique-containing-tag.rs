@@ -14,7 +14,7 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    enum t { t1(int), t2(int), }
+    enum t { t1(isize), t2(isize), }
 
     let _x: Box<_> = box t::t1(10);
 

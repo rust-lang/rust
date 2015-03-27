@@ -16,12 +16,12 @@ use std::rc::Rc;
 use std::cell::Cell;
 
 struct Field {
-    number: uint,
-    state: Rc<Cell<uint>>
+    number: usize,
+    state: Rc<Cell<usize>>
 }
 
 impl Field {
-    fn new(number: uint, state: Rc<Cell<uint>>) -> Field {
+    fn new(number: usize, state: Rc<Cell<usize>>) -> Field {
         Field {
             number: number,
             state: state

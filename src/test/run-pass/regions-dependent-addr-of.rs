@@ -22,9 +22,9 @@ struct A {
 }
 
 struct B {
-    v1: int,
-    v2: [int; 3],
-    v3: Vec<int> ,
+    v1: isize,
+    v2: [isize; 3],
+    v3: Vec<isize> ,
     v4: C,
     v5: Box<C>,
     v6: Option<C>
@@ -32,57 +32,57 @@ struct B {
 
 #[derive(Copy)]
 struct C {
-    f: int
+    f: isize
 }
 
-fn get_v1(a: &A) -> &int {
+fn get_v1(a: &A) -> &isize {
     // Region inferencer must deduce that &v < L2 < L1
     let foo = &a.value; // L1
     &foo.v1             // L2
 }
 
-fn get_v2(a: &A, i: uint) -> &int {
+fn get_v2(a: &A, i: usize) -> &isize {
     let foo = &a.value;
     &foo.v2[i]
 }
 
-fn get_v3(a: &A, i: uint) -> &int {
+fn get_v3(a: &A, i: usize) -> &isize {
     let foo = &a.value;
     &foo.v3[i]
 }
 
-fn get_v4(a: &A, _i: uint) -> &int {
+fn get_v4(a: &A, _i: usize) -> &isize {
     let foo = &a.value;
     &foo.v4.f
 }
 
-fn get_v5(a: &A, _i: uint) -> &int {
+fn get_v5(a: &A, _i: usize) -> &isize {
     let foo = &a.value;
     &foo.v5.f
 }
 
-fn get_v6_a(a: &A, _i: uint) -> &int {
+fn get_v6_a(a: &A, _i: usize) -> &isize {
     match a.value.v6 {
         Some(ref v) => &v.f,
         None => panic!()
     }
 }
 
-fn get_v6_b(a: &A, _i: uint) -> &int {
+fn get_v6_b(a: &A, _i: usize) -> &isize {
     match *a {
         A { value: B { v6: Some(ref v), .. } } => &v.f,
         _ => panic!()
     }
 }
 
-fn get_v6_c(a: &A, _i: uint) -> &int {
+fn get_v6_c(a: &A, _i: usize) -> &isize {
     match a {
         &A { value: B { v6: Some(ref v), .. } } => &v.f,
         _ => panic!()
     }
 }
 
-fn get_v5_ref(a: &A, _i: uint) -> &int {
+fn get_v5_ref(a: &A, _i: usize) -> &isize {
     match &a.value {
         &B {v5: box C {f: ref v}, ..} => v
     }

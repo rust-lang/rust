@@ -22,7 +22,7 @@ pub fn main() {
     assert_eq!(საჭმელად_გემრიელი_სადილი(), 0);
 }
 
-fn საჭმელად_გემრიელი_სადილი() -> int {
+fn საჭმელად_გემრიელი_სადილი() -> isize {
 
     // Lunch in several languages.
 

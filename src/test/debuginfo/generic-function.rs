@@ -73,7 +73,7 @@
 
 #[derive(Clone)]
 struct Struct {
-    a: int,
+    a: isize,
     b: f64
 }
 

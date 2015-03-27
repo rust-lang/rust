@@ -11,8 +11,8 @@
 // ignore-test
 // pp-exact
 struct Thing {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 fn main() {

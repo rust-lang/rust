@@ -19,22 +19,22 @@ fn foo<T, U: bar<T>>(b: U) -> T {
 }
 
 struct cbar {
-    x: int,
+    x: isize,
 }
 
-impl bar<int> for cbar {
-    fn get_bar(&self) -> int {
+impl bar<isize> for cbar {
+    fn get_bar(&self) -> isize {
         self.x
     }
 }
 
-fn cbar(x: int) -> cbar {
+fn cbar(x: isize) -> cbar {
     cbar {
         x: x
     }
 }
 
 pub fn main() {
-    let x: int = foo::<int, cbar>(cbar(5));
+    let x: isize = foo::<isize, cbar>(cbar(5));
     assert_eq!(x, 5);
 }

@@ -10,8 +10,8 @@
 
 pub enum Foo {
     A,
-    B(int),
-    C { a: int },
+    B(isize),
+    C { a: isize },
 }
 
 impl Foo {

@@ -10,17 +10,17 @@
 
 
 trait sum {
-    fn sum_(self) -> int;
+    fn sum_(self) -> isize;
 }
 
 // Note: impl on a slice
-impl<'a> sum for &'a [int] {
-    fn sum_(self) -> int {
+impl<'a> sum for &'a [isize] {
+    fn sum_(self) -> isize {
         self.iter().fold(0, |a, &b| a + b)
     }
 }
 
-fn call_sum(x: &[int]) -> int { x.sum_() }
+fn call_sum(x: &[isize]) -> isize { x.sum_() }
 
 pub fn main() {
     let x = vec!(1, 2, 3);

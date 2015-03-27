@@ -10,15 +10,15 @@
 
 // pretty-expanded FIXME #23616
 
-trait A { fn a(&self) -> int; }
-trait B: A { fn b(&self) -> int; }
-trait C: A { fn c(&self) -> int; }
+trait A { fn a(&self) -> isize; }
+trait B: A { fn b(&self) -> isize; }
+trait C: A { fn c(&self) -> isize; }
 
 struct S { bogus: () }
 
-impl A for S { fn a(&self) -> int { 10 } }
-impl B for S { fn b(&self) -> int { 20 } }
-impl C for S { fn c(&self) -> int { 30 } }
+impl A for S { fn a(&self) -> isize { 10 } }
+impl B for S { fn b(&self) -> isize { 20 } }
+impl C for S { fn c(&self) -> isize { 30 } }
 
 // Multiple type params, multiple levels of inheritance
 fn f<X:A,Y:B,Z:C>(x: &X, y: &Y, z: &Z) {

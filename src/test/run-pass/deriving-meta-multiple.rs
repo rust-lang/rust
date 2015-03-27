@@ -17,8 +17,8 @@ use std::hash::{Hash, SipHasher};
 #[derive(Clone)]
 #[derive(Hash)]
 struct Foo {
-    bar: uint,
-    baz: int
+    bar: usize,
+    baz: isize
 }
 
 fn hash<T: Hash>(_t: &T) {}

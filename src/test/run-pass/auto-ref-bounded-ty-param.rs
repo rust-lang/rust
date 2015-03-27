@@ -13,7 +13,7 @@ trait Foo {
 }
 
 struct Bar {
-    x: int
+    x: isize
 }
 
 trait Baz {

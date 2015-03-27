@@ -12,12 +12,12 @@
 
 // pretty-expanded FIXME #23616
 
-static lsl : int = 1 << 2;
-static add : int = 1 + 2;
+static lsl : isize = 1 << 2;
+static add : isize = 1 + 2;
 static addf : f64 = 1.0 + 2.0;
-static not : int = !0;
+static not : isize = !0;
 static notb : bool = !true;
-static neg : int = -(1);
+static neg : isize = -(1);
 
 pub fn main() {
     assert_eq!(lsl, 4);

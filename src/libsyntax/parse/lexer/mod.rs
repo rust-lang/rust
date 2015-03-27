@@ -742,6 +742,7 @@ impl<'a> StringReader<'a> {
         let start_bpos = self.last_pos;
         let mut accum_int = 0;
 
+        let mut valid = true;
         for _ in 0..n_digits {
             if self.is_eof() {
                 let last_bpos = self.last_pos;
@@ -750,6 +751,7 @@ impl<'a> StringReader<'a> {
             if self.curr_is(delim) {
                 let last_bpos = self.last_pos;
                 self.err_span_(start_bpos, last_bpos, "numeric character escape is too short");
+                valid = false;
                 break;
             }
             let c = self.curr.unwrap_or('\x00');
@@ -757,6 +759,8 @@ impl<'a> StringReader<'a> {
             accum_int += c.to_digit(16).unwrap_or_else(|| {
                 self.err_span_char(self.last_pos, self.pos,
                               "illegal character in numeric character escape", c);
+
+                valid = false;
                 0
             });
             self.bump();
@@ -767,10 +771,11 @@ impl<'a> StringReader<'a> {
                            self.last_pos,
                            "this form of character escape may only be used \
                             with characters in the range [\\x00-\\x7f]");
+            valid = false;
         }
 
         match char::from_u32(accum_int) {
-            Some(_) => true,
+            Some(_) => valid,
             None => {
                 let last_bpos = self.last_pos;
                 self.err_span_(start_bpos, last_bpos, "illegal numeric character escape");
@@ -799,7 +804,18 @@ impl<'a> StringReader<'a> {
                             'n' | 'r' | 't' | '\\' | '\'' | '"' | '0' => true,
                             'x' => self.scan_byte_escape(delim, !ascii_only),
                             'u' if self.curr_is('{') => {
-                                self.scan_unicode_escape(delim)
+                            let valid = self.scan_unicode_escape(delim);
+                            if valid && ascii_only {
+                                self.err_span_(
+                                    escaped_pos,
+                                    self.last_pos,
+                                    "unicode escape sequences cannot be used as a byte or in \
+                                    a byte string"
+                                );
+                                false
+                            } else {
+                               valid
+                            }
                             }
                             '\n' if delim == '"' => {
                                 self.consume_whitespace();
@@ -869,6 +885,7 @@ impl<'a> StringReader<'a> {
         let start_bpos = self.last_pos;
         let mut count = 0;
         let mut accum_int = 0;
+        let mut valid = true;
 
         while !self.curr_is('}') && count <= 6 {
             let c = match self.curr {
@@ -884,29 +901,30 @@ impl<'a> StringReader<'a> {
                     self.fatal_span_(self.last_pos, self.pos,
                                      "unterminated unicode escape (needed a `}`)");
                 } else {
-                    self.fatal_span_char(self.last_pos, self.pos,
+                    self.err_span_char(self.last_pos, self.pos,
                                    "illegal character in unicode escape", c);
                 }
+                valid = false;
+                0
             });
             self.bump();
             count += 1;
         }
 
         if count > 6 {
-            self.fatal_span_(start_bpos, self.last_pos,
+            self.err_span_(start_bpos, self.last_pos,
                           "overlong unicode escape (can have at most 6 hex digits)");
+            valid = false;
         }
 
         self.bump(); // past the ending }
 
-        let mut valid = count >= 1 && count <= 6;
-        if char::from_u32(accum_int).is_none() {
-            valid = false;
+        if valid && (char::from_u32(accum_int).is_none() || count == 0) {
+            self.err_span_(start_bpos, self.last_pos, "illegal unicode character escape");
+            valid= false;
         }
 
-        if !valid {
-            self.fatal_span_(start_bpos, self.last_pos, "illegal unicode character escape");
-        }
+
         valid
     }
 
@@ -1330,7 +1348,7 @@ impl<'a> StringReader<'a> {
                 "unterminated byte constant".to_string());
         }
 
-        let id = if valid { self.name_from(start) } else { token::intern("??") };
+        let id = if valid { self.name_from(start) } else { token::intern("?") };
         self.bump(); // advance curr past token
         return token::Byte(id);
     }

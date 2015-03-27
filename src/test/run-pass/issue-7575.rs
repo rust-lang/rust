@@ -19,8 +19,8 @@ trait Bar {
     fn new(&self) -> bool { true }
 }
 
-impl Bar for int {}
-impl Foo for int {}
+impl Bar for isize {}
+impl Foo for isize {}
 
 fn main() {
     assert!(1.new());

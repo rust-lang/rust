@@ -63,7 +63,6 @@
 #![allow(raw_pointer_derive)]
 #![deny(missing_docs)]
 
-#![feature(int_uint)]
 #![feature(intrinsics, lang_items)]
 #![feature(on_unimplemented)]
 #![feature(simd, unsafe_destructor)]
@@ -72,6 +71,7 @@
 #![feature(rustc_attrs)]
 #![feature(optin_builtin_traits)]
 #![feature(concat_idents)]
+#![feature(reflect)]
 
 #[macro_use]
 mod macros;

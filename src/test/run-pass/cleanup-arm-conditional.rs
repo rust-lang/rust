@@ -28,15 +28,15 @@
 
 use std::os;
 
-struct Test { x: int }
+struct Test { x: isize }
 
 impl Test {
-    fn get_x(&self) -> Option<Box<int>> {
+    fn get_x(&self) -> Option<Box<isize>> {
         Some(box self.x)
     }
 }
 
-fn do_something(t: &Test) -> int {
+fn do_something(t: &Test) -> isize {
 
     // The cleanup scope for the result of `t.get_x()` should be the
     // arm itself and not the match, otherwise we'll (potentially) get

@@ -61,11 +61,11 @@ fn test_ptr() {
 
 #[derive(PartialEq, Debug)]
 struct p {
-  x: int,
-  y: int,
+  x: isize,
+  y: isize,
 }
 
-fn p(x: int, y: int) -> p {
+fn p(x: isize, y: isize) -> p {
     p {
         x: x,
         y: y
@@ -78,8 +78,8 @@ fn test_class() {
 
   unsafe {
   println!("q = {:x}, r = {:x}",
-         (::std::mem::transmute::<*const p, uint>(&q)),
-         (::std::mem::transmute::<*const p, uint>(&r)));
+         (::std::mem::transmute::<*const p, usize>(&q)),
+         (::std::mem::transmute::<*const p, usize>(&r)));
   }
   assert_eq!(q, r);
   r.y = 17;

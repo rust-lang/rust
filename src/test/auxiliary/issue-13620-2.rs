@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate "issue-13620-1" as crate1;
+extern crate issue_13620_1 as crate1;
 
 pub static FOO2: crate1::Foo = crate1::FOO;

@@ -14,7 +14,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
-#![allow(trivial_numeric_casts)]
 
 use self::wrapping::{OverflowingOps, WrappingOps};
 
@@ -52,8 +51,8 @@ pub trait Int
     + BitAnd<Output=Self>
     + BitOr<Output=Self>
     + BitXor<Output=Self>
-    + Shl<uint, Output=Self>
-    + Shr<uint, Output=Self>
+    + Shl<usize, Output=Self>
+    + Shr<usize, Output=Self>
     + WrappingOps
     + OverflowingOps
 {
@@ -565,7 +564,7 @@ uint_impl! { u64 = u64, 64,
     intrinsics::u64_mul_with_overflow }
 
 #[cfg(target_pointer_width = "32")]
-uint_impl! { uint = u32, 32,
+uint_impl! { usize = u32, 32,
     intrinsics::ctpop32,
     intrinsics::ctlz32,
     intrinsics::cttz32,
@@ -575,7 +574,7 @@ uint_impl! { uint = u32, 32,
     intrinsics::u32_mul_with_overflow }
 
 #[cfg(target_pointer_width = "64")]
-uint_impl! { uint = u64, 64,
+uint_impl! { usize = u64, 64,
     intrinsics::ctpop64,
     intrinsics::ctlz64,
     intrinsics::cttz64,
@@ -680,13 +679,13 @@ int_impl! { i64 = i64, u64, 64,
     intrinsics::i64_mul_with_overflow }
 
 #[cfg(target_pointer_width = "32")]
-int_impl! { int = i32, u32, 32,
+int_impl! { isize = i32, u32, 32,
     intrinsics::i32_add_with_overflow,
     intrinsics::i32_sub_with_overflow,
     intrinsics::i32_mul_with_overflow }
 
 #[cfg(target_pointer_width = "64")]
-int_impl! { int = i64, u64, 64,
+int_impl! { isize = i64, u64, 64,
     intrinsics::i64_add_with_overflow,
     intrinsics::i64_sub_with_overflow,
     intrinsics::i64_mul_with_overflow }
@@ -752,7 +751,7 @@ signed_int_impl! { i8 }
 signed_int_impl! { i16 }
 signed_int_impl! { i32 }
 signed_int_impl! { i64 }
-signed_int_impl! { int }
+signed_int_impl! { isize }
 
 // `Int` + `SignedInt` implemented for signed integers
 macro_rules! int_impl {
@@ -1232,7 +1231,7 @@ impl i64 {
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { int = i32, u32, 32,
+    int_impl! { isize = i32, u32, 32,
         intrinsics::i32_add_with_overflow,
         intrinsics::i32_sub_with_overflow,
         intrinsics::i32_mul_with_overflow }
@@ -1241,7 +1240,7 @@ impl isize {
 #[cfg(target_pointer_width = "64")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { int = i64, u64, 64,
+    int_impl! { isize = i64, u64, 64,
         intrinsics::i64_add_with_overflow,
         intrinsics::i64_sub_with_overflow,
         intrinsics::i64_mul_with_overflow }
@@ -1746,7 +1745,7 @@ impl u64 {
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { uint = u32, 32,
+    uint_impl! { usize = u32, 32,
         intrinsics::ctpop32,
         intrinsics::ctlz32,
         intrinsics::cttz32,
@@ -1759,7 +1758,7 @@ impl usize {
 #[cfg(target_pointer_width = "64")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { uint = u64, 64,
+    uint_impl! { usize = u64, 64,
         intrinsics::ctpop64,
         intrinsics::ctlz64,
         intrinsics::cttz64,
@@ -1772,11 +1771,11 @@ impl usize {
 /// A generic trait for converting a value to a number.
 #[unstable(feature = "core", reason = "trait is likely to be removed")]
 pub trait ToPrimitive {
-    /// Converts the value of `self` to an `int`.
+    /// Converts the value of `self` to an `isize`.
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0", reason = "use to_isize")]
-    fn to_int(&self) -> Option<int> {
+    fn to_int(&self) -> Option<isize> {
         self.to_i64().and_then(|x| x.to_isize())
     }
 
@@ -1807,11 +1806,11 @@ pub trait ToPrimitive {
     /// Converts the value of `self` to an `i64`.
     fn to_i64(&self) -> Option<i64>;
 
-    /// Converts the value of `self` to an `uint`.
+    /// Converts the value of `self` to an `usize`.
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0", reason = "use to_usize")]
-    fn to_uint(&self) -> Option<uint> {
+    fn to_uint(&self) -> Option<usize> {
         self.to_u64().and_then(|x| x.to_usize())
     }
 
@@ -1893,7 +1892,7 @@ macro_rules! impl_to_primitive_int {
     ($T:ty) => (
         impl ToPrimitive for $T {
             #[inline]
-            fn to_int(&self) -> Option<int> { impl_to_primitive_int_to_int!($T, int, *self) }
+            fn to_int(&self) -> Option<isize> { impl_to_primitive_int_to_int!($T, isize, *self) }
             #[inline]
             fn to_isize(&self) -> Option<isize> { impl_to_primitive_int_to_int!($T, isize, *self) }
             #[inline]
@@ -1906,7 +1905,7 @@ macro_rules! impl_to_primitive_int {
             fn to_i64(&self) -> Option<i64> { impl_to_primitive_int_to_int!($T, i64, *self) }
 
             #[inline]
-            fn to_uint(&self) -> Option<uint> { impl_to_primitive_int_to_uint!($T, uint, *self) }
+            fn to_uint(&self) -> Option<usize> { impl_to_primitive_int_to_uint!($T, usize, *self) }
             #[inline]
             fn to_usize(&self) -> Option<usize> { impl_to_primitive_int_to_uint!($T, usize, *self) }
             #[inline]
@@ -1967,9 +1966,9 @@ macro_rules! impl_to_primitive_uint {
     ($T:ty) => (
         impl ToPrimitive for $T {
             #[inline]
-            fn to_int(&self) -> Option<int> { impl_to_primitive_uint_to_int!(int, *self) }
+            fn to_int(&self) -> Option<isize> { impl_to_primitive_uint_to_int!(isize, *self) }
             #[inline]
-            fn to_isize(&self) -> Option<int> { impl_to_primitive_uint_to_int!(isize, *self) }
+            fn to_isize(&self) -> Option<isize> { impl_to_primitive_uint_to_int!(isize, *self) }
             #[inline]
             fn to_i8(&self) -> Option<i8> { impl_to_primitive_uint_to_int!(i8, *self) }
             #[inline]
@@ -1980,9 +1979,11 @@ macro_rules! impl_to_primitive_uint {
             fn to_i64(&self) -> Option<i64> { impl_to_primitive_uint_to_int!(i64, *self) }
 
             #[inline]
-            fn to_uint(&self) -> Option<uint> { impl_to_primitive_uint_to_uint!($T, uint, *self) }
+            fn to_uint(&self) -> Option<usize> { impl_to_primitive_uint_to_uint!($T, usize, *self) }
             #[inline]
-            fn to_usize(&self) -> Option<uint> { impl_to_primitive_uint_to_uint!($T, usize, *self) }
+            fn to_usize(&self) -> Option<usize> {
+                impl_to_primitive_uint_to_uint!($T, usize, *self)
+            }
             #[inline]
             fn to_u8(&self) -> Option<u8> { impl_to_primitive_uint_to_uint!($T, u8, *self) }
             #[inline]
@@ -2026,9 +2027,9 @@ macro_rules! impl_to_primitive_float {
     ($T:ident) => (
         impl ToPrimitive for $T {
             #[inline]
-            fn to_int(&self) -> Option<int> { Some(*self as int) }
+            fn to_int(&self) -> Option<isize> { Some(*self as isize) }
             #[inline]
-            fn to_isize(&self) -> Option<int> { Some(*self as isize) }
+            fn to_isize(&self) -> Option<isize> { Some(*self as isize) }
             #[inline]
             fn to_i8(&self) -> Option<i8> { Some(*self as i8) }
             #[inline]
@@ -2039,9 +2040,9 @@ macro_rules! impl_to_primitive_float {
             fn to_i64(&self) -> Option<i64> { Some(*self as i64) }
 
             #[inline]
-            fn to_uint(&self) -> Option<uint> { Some(*self as uint) }
+            fn to_uint(&self) -> Option<usize> { Some(*self as usize) }
             #[inline]
-            fn to_usize(&self) -> Option<uint> { Some(*self as usize) }
+            fn to_usize(&self) -> Option<usize> { Some(*self as usize) }
             #[inline]
             fn to_u8(&self) -> Option<u8> { Some(*self as u8) }
             #[inline]
@@ -2065,12 +2066,12 @@ impl_to_primitive_float! { f64 }
 /// A generic trait for converting a number to a value.
 #[unstable(feature = "core", reason = "trait is likely to be removed")]
 pub trait FromPrimitive : ::marker::Sized {
-    /// Convert an `int` to return an optional value of this type. If the
+    /// Convert an `isize` to return an optional value of this type. If the
     /// value cannot be represented by this value, the `None` is returned.
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0", reason = "use from_isize")]
-    fn from_int(n: int) -> Option<Self> {
+    fn from_int(n: isize) -> Option<Self> {
         FromPrimitive::from_i64(n as i64)
     }
 
@@ -2106,12 +2107,12 @@ pub trait FromPrimitive : ::marker::Sized {
     /// type cannot be represented by this value, the `None` is returned.
     fn from_i64(n: i64) -> Option<Self>;
 
-    /// Convert an `uint` to return an optional value of this type. If the
+    /// Convert an `usize` to return an optional value of this type. If the
     /// type cannot be represented by this value, the `None` is returned.
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0", reason = "use from_usize")]
-    fn from_uint(n: uint) -> Option<Self> {
+    fn from_uint(n: usize) -> Option<Self> {
         FromPrimitive::from_u64(n as u64)
     }
 
@@ -2165,7 +2166,7 @@ pub trait FromPrimitive : ::marker::Sized {
 /// A utility function that just calls `FromPrimitive::from_int`.
 #[unstable(feature = "core", reason = "likely to be removed")]
 #[deprecated(since = "1.0.0", reason = "use from_isize")]
-pub fn from_int<A: FromPrimitive>(n: int) -> Option<A> {
+pub fn from_int<A: FromPrimitive>(n: isize) -> Option<A> {
     FromPrimitive::from_isize(n)
 }
 
@@ -2202,7 +2203,7 @@ pub fn from_i64<A: FromPrimitive>(n: i64) -> Option<A> {
 /// A utility function that just calls `FromPrimitive::from_uint`.
 #[unstable(feature = "core", reason = "likely to be removed")]
 #[deprecated(since = "1.0.0", reason = "use from_uint")]
-pub fn from_uint<A: FromPrimitive>(n: uint) -> Option<A> {
+pub fn from_uint<A: FromPrimitive>(n: usize) -> Option<A> {
     FromPrimitive::from_usize(n)
 }
 
@@ -2252,13 +2253,13 @@ macro_rules! impl_from_primitive {
     ($T:ty, $to_ty:ident) => (
         #[allow(deprecated)]
         impl FromPrimitive for $T {
-            #[inline] fn from_int(n: int) -> Option<$T> { n.$to_ty() }
+            #[inline] fn from_int(n: isize) -> Option<$T> { n.$to_ty() }
             #[inline] fn from_i8(n: i8) -> Option<$T> { n.$to_ty() }
             #[inline] fn from_i16(n: i16) -> Option<$T> { n.$to_ty() }
             #[inline] fn from_i32(n: i32) -> Option<$T> { n.$to_ty() }
             #[inline] fn from_i64(n: i64) -> Option<$T> { n.$to_ty() }
 
-            #[inline] fn from_uint(n: uint) -> Option<$T> { n.$to_ty() }
+            #[inline] fn from_uint(n: usize) -> Option<$T> { n.$to_ty() }
             #[inline] fn from_u8(n: u8) -> Option<$T> { n.$to_ty() }
             #[inline] fn from_u16(n: u16) -> Option<$T> { n.$to_ty() }
             #[inline] fn from_u32(n: u32) -> Option<$T> { n.$to_ty() }
@@ -2270,12 +2271,12 @@ macro_rules! impl_from_primitive {
     )
 }
 
-impl_from_primitive! { int, to_int }
+impl_from_primitive! { isize, to_int }
 impl_from_primitive! { i8, to_i8 }
 impl_from_primitive! { i16, to_i16 }
 impl_from_primitive! { i32, to_i32 }
 impl_from_primitive! { i64, to_i64 }
-impl_from_primitive! { uint, to_uint }
+impl_from_primitive! { usize, to_uint }
 impl_from_primitive! { u8, to_u8 }
 impl_from_primitive! { u16, to_u16 }
 impl_from_primitive! { u32, to_u32 }
@@ -2327,12 +2328,12 @@ impl_num_cast! { u8,    to_u8 }
 impl_num_cast! { u16,   to_u16 }
 impl_num_cast! { u32,   to_u32 }
 impl_num_cast! { u64,   to_u64 }
-impl_num_cast! { uint,  to_uint }
+impl_num_cast! { usize,  to_uint }
 impl_num_cast! { i8,    to_i8 }
 impl_num_cast! { i16,   to_i16 }
 impl_num_cast! { i32,   to_i32 }
 impl_num_cast! { i64,   to_i64 }
-impl_num_cast! { int,   to_int }
+impl_num_cast! { isize,   to_int }
 impl_num_cast! { f32,   to_f32 }
 impl_num_cast! { f64,   to_f64 }
 
@@ -2392,12 +2393,12 @@ pub trait Float
     #[deprecated(since = "1.0.0",
                  reason = "use `std::f32::MANTISSA_DIGITS` or \
                            `std::f64::MANTISSA_DIGITS` as appropriate")]
-    fn mantissa_digits(unused_self: Option<Self>) -> uint;
+    fn mantissa_digits(unused_self: Option<Self>) -> usize;
     /// Returns the number of base-10 digits of precision that this type supports.
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0",
                  reason = "use `std::f32::DIGITS` or `std::f64::DIGITS` as appropriate")]
-    fn digits(unused_self: Option<Self>) -> uint;
+    fn digits(unused_self: Option<Self>) -> usize;
     /// Returns the difference between 1.0 and the smallest representable number larger than 1.0.
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0",
@@ -2407,22 +2408,22 @@ pub trait Float
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0",
                  reason = "use `std::f32::MIN_EXP` or `std::f64::MIN_EXP` as appropriate")]
-    fn min_exp(unused_self: Option<Self>) -> int;
+    fn min_exp(unused_self: Option<Self>) -> isize;
     /// Returns the maximum binary exponent that this type can represent.
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0",
                  reason = "use `std::f32::MAX_EXP` or `std::f64::MAX_EXP` as appropriate")]
-    fn max_exp(unused_self: Option<Self>) -> int;
+    fn max_exp(unused_self: Option<Self>) -> isize;
     /// Returns the minimum base-10 exponent that this type can represent.
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0",
                  reason = "use `std::f32::MIN_10_EXP` or `std::f64::MIN_10_EXP` as appropriate")]
-    fn min_10_exp(unused_self: Option<Self>) -> int;
+    fn min_10_exp(unused_self: Option<Self>) -> isize;
     /// Returns the maximum base-10 exponent that this type can represent.
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0",
                  reason = "use `std::f32::MAX_10_EXP` or `std::f64::MAX_10_EXP` as appropriate")]
-    fn max_10_exp(unused_self: Option<Self>) -> int;
+    fn max_10_exp(unused_self: Option<Self>) -> isize;
     /// Returns the smallest finite value that this type can represent.
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0",
@@ -2625,7 +2626,7 @@ macro_rules! from_str_radix_float_impl {
                 let mut prev_sig = sig;
                 let mut cs = src.chars().enumerate();
                 // Exponent prefix and exponent index offset
-                let mut exp_info = None::<(char, uint)>;
+                let mut exp_info = None::<(char, usize)>;
 
                 // Parse the integer part of the significand
                 for (i, c) in cs.by_ref() {
@@ -2636,9 +2637,9 @@ macro_rules! from_str_radix_float_impl {
 
                             // add/subtract current digit depending on sign
                             if is_positive {
-                                sig = sig + ((digit as int) as $T);
+                                sig = sig + ((digit as isize) as $T);
                             } else {
-                                sig = sig - ((digit as int) as $T);
+                                sig = sig - ((digit as isize) as $T);
                             }
 
                             // Detect overflow by comparing to last value, except
@@ -2719,9 +2720,9 @@ macro_rules! from_str_radix_float_impl {
                         // Parse the exponent as decimal integer
                         let src = &src[offset..];
                         let (is_positive, exp) = match src.slice_shift_char() {
-                            Some(('-', src)) => (false, src.parse::<uint>()),
-                            Some(('+', src)) => (true,  src.parse::<uint>()),
-                            Some((_, _))     => (true,  src.parse::<uint>()),
+                            Some(('-', src)) => (false, src.parse::<usize>()),
+                            Some(('+', src)) => (true,  src.parse::<usize>()),
+                            Some((_, _))     => (true,  src.parse::<usize>()),
                             None             => return Err(PFE { kind: Invalid }),
                         };
 

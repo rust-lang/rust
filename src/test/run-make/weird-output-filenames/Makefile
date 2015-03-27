@@ -12,4 +12,4 @@ all:
 		| grep "invalid character.*in crate name:"
 	cp foo.rs $(TMPDIR)/-foo.rs
 	$(RUSTC) $(TMPDIR)/-foo.rs 2>&1 \
-		| grep "soon cannot contain hyphens:"
+		| grep 'crate names cannot start with a `-`'

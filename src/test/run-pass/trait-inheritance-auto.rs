@@ -14,17 +14,17 @@
 
 impl<T:Foo + Bar + Baz> Quux for T { }
 
-trait Foo { fn f(&self) -> int; }
-trait Bar { fn g(&self) -> int; }
-trait Baz { fn h(&self) -> int; }
+trait Foo { fn f(&self) -> isize; }
+trait Bar { fn g(&self) -> isize; }
+trait Baz { fn h(&self) -> isize; }
 
 trait Quux: Foo + Bar + Baz { }
 
-struct A { x: int }
+struct A { x: isize }
 
-impl Foo for A { fn f(&self) -> int { 10 } }
-impl Bar for A { fn g(&self) -> int { 20 } }
-impl Baz for A { fn h(&self) -> int { 30 } }
+impl Foo for A { fn f(&self) -> isize { 10 } }
+impl Bar for A { fn g(&self) -> isize { 20 } }
+impl Baz for A { fn h(&self) -> isize { 30 } }
 
 fn f<T:Quux>(a: &T) {
     assert_eq!(a.f(), 10);

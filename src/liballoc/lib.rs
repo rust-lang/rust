@@ -75,7 +75,7 @@
 #![feature(box_syntax)]
 #![feature(optin_builtin_traits)]
 #![feature(unboxed_closures)]
-#![feature(unsafe_no_drop_flag)]
+#![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(core)]
 #![feature(unique)]
 #![cfg_attr(test, feature(test, alloc, rustc_private))]

@@ -10,7 +10,7 @@
 
 // aux-build:issue-11508.rs
 
-extern crate "issue-11508" as rand;
+extern crate issue_11508 as rand;
 
 use rand::{Closed01, random};
 

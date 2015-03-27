@@ -296,7 +296,7 @@ pub fn infer_variance(tcx: &ty::ctxt) {
 type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
 #[derive(Copy, Debug)]
-struct InferredIndex(uint);
+struct InferredIndex(usize);
 
 #[derive(Copy)]
 enum VarianceTerm<'a> {
@@ -346,7 +346,7 @@ struct InferredInfo<'a> {
     item_id: ast::NodeId,
     kind: ParamKind,
     space: ParamSpace,
-    index: uint,
+    index: usize,
     param_id: ast::NodeId,
     term: VarianceTermPtr<'a>,
 
@@ -457,7 +457,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
                     item_id: ast::NodeId,
                     kind: ParamKind,
                     space: ParamSpace,
-                    index: uint,
+                    index: usize,
                     param_id: ast::NodeId) {
         let inf_index = InferredIndex(self.inferred_infos.len());
         let term = self.arena.alloc(InferredTerm(inf_index));
@@ -488,7 +488,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
     fn pick_initial_variance(&self,
                              item_id: ast::NodeId,
                              space: ParamSpace,
-                             index: uint)
+                             index: usize)
                              -> ty::Variance
     {
         match space {
@@ -505,7 +505,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         }
     }
 
-    fn num_inferred(&self) -> uint {
+    fn num_inferred(&self) -> usize {
         self.inferred_infos.len()
     }
 }
@@ -791,7 +791,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                          item_def_id: ast::DefId,
                          kind: ParamKind,
                          space: ParamSpace,
-                         index: uint)
+                         index: usize)
                          -> VarianceTermPtr<'a> {
         assert_eq!(param_def_id.krate, item_def_id.krate);
 
@@ -977,7 +977,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::ty_param(ref data) => {
-                let def_id = generics.types.get(data.space, data.idx as uint).def_id;
+                let def_id = generics.types.get(data.space, data.idx as usize).def_id;
                 assert_eq!(def_id.krate, ast::LOCAL_CRATE);
                 match self.terms_cx.inferred_map.get(&def_id.node) {
                     Some(&index) => {
@@ -1027,9 +1027,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         for p in type_param_defs {
             let variance_decl =
                 self.declared_variance(p.def_id, def_id, TypeParam,
-                                       p.space, p.index as uint);
+                                       p.space, p.index as usize);
             let variance_i = self.xform(variance, variance_decl);
-            let substs_ty = *substs.types.get(p.space, p.index as uint);
+            let substs_ty = *substs.types.get(p.space, p.index as usize);
             debug!("add_constraints_from_substs: variance_decl={:?} variance_i={:?}",
                    variance_decl, variance_i);
             self.add_constraints_from_ty(generics, substs_ty, variance_i);
@@ -1038,9 +1038,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         for p in region_param_defs {
             let variance_decl =
                 self.declared_variance(p.def_id, def_id,
-                                       RegionParam, p.space, p.index as uint);
+                                       RegionParam, p.space, p.index as usize);
             let variance_i = self.xform(variance, variance_decl);
-            let substs_r = *substs.regions().get(p.space, p.index as uint);
+            let substs_r = *substs.regions().get(p.space, p.index as usize);
             self.add_constraints_from_region(generics, substs_r, variance_i);
         }
     }
@@ -1059,14 +1059,29 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
 
                 ty::Predicate::Equate(ty::Binder(ref data)) => {
-                    self.add_constraints_from_ty(generics, data.0, variance);
-                    self.add_constraints_from_ty(generics, data.1, variance);
+                    // A == B is only true if A and B are the same
+                    // types, not subtypes of one another, so this is
+                    // an invariant position:
+                    self.add_constraints_from_ty(generics, data.0, self.invariant);
+                    self.add_constraints_from_ty(generics, data.1, self.invariant);
                 }
 
                 ty::Predicate::TypeOutlives(ty::Binder(ref data)) => {
-                    self.add_constraints_from_ty(generics, data.0, variance);
+                    // Why contravariant on both? Let's consider:
+                    //
+                    // Under what conditions is `(T:'t) <: (U:'u)`,
+                    // meaning that `(T:'t) => (U:'u)`. The answer is
+                    // if `U <: T` or `'u <= 't`. Let's see some examples:
+                    //
+                    //   (T: 'big) => (T: 'small)
+                    //   where 'small <= 'big
+                    //
+                    //   (&'small Foo: 't) => (&'big Foo: 't)
+                    //   where 'small <= 'big
+                    //   note that &'big Foo <: &'small Foo
 
                     let variance_r = self.xform(variance, self.contravariant);
+                    self.add_constraints_from_ty(generics, data.0, variance_r);
                     self.add_constraints_from_region(generics, data.1, variance_r);
                 }
 
@@ -1084,6 +1099,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                                         &*data.projection_ty.trait_ref,
                                                         variance);
 
+                    // as the equality predicate above, a binder is a
+                    // type equality relation, not a subtyping
+                    // relation
                     self.add_constraints_from_ty(generics, data.ty, self.invariant);
                 }
             }

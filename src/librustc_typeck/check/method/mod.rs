@@ -58,7 +58,7 @@ pub enum CandidateSource {
     TraitSource(/* trait id */ ast::DefId),
 }
 
-type MethodIndex = uint; // just for doc purposes
+type MethodIndex = usize; // just for doc purposes
 
 /// Determines whether the type `self_ty` supports a method name `method_name` or not.
 pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -334,7 +334,7 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 fn trait_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                       trait_def_id: ast::DefId,
                       method_name: ast::Name)
-                      -> Option<(uint, Rc<ty::Method<'tcx>>)>
+                      -> Option<(usize, Rc<ty::Method<'tcx>>)>
 {
     let trait_items = ty::trait_items(tcx, trait_def_id);
     trait_items

@@ -9,12 +9,12 @@
 // except according to those terms.
 
 struct Foo {
-    x: int,
-    y: int
+    x: isize,
+    y: isize
 }
 
 pub fn main() {
-    let f = |(x, _): (int, int)| println!("{}", x + 1);
+    let f = |(x, _): (isize, isize)| println!("{}", x + 1);
     let g = |Foo { x: x, y: _y }: Foo| println!("{}", x + 1);
     f((2, 3));
     g(Foo { x: 1, y: 2 });

@@ -14,7 +14,7 @@
 
 // Tests for match as expressions resulting in struct types
 #[derive(Copy)]
-struct R { i: int }
+struct R { i: isize }
 
 fn test_rec() {
     let rs = match true { true => R {i: 100}, _ => panic!() };
@@ -26,7 +26,7 @@ enum mood { happy, sad, }
 
 impl PartialEq for mood {
     fn eq(&self, other: &mood) -> bool {
-        ((*self) as uint) == ((*other) as uint)
+        ((*self) as usize) == ((*other) as usize)
     }
     fn ne(&self, other: &mood) -> bool { !(*self).eq(other) }
 }

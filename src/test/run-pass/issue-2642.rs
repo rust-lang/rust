@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 fn f() {
-   let _x: uint = loop { loop { break; } };
+   let _x: usize = loop { loop { break; } };
 }
 
 pub fn main() {

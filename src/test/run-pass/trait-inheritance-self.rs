@@ -17,7 +17,7 @@ trait Bar : Foo<Self> {
 }
 
 struct S {
-    x: int
+    x: isize
 }
 
 impl Foo<S> for S {

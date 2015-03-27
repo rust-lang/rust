@@ -28,8 +28,8 @@ pub fn check_crate(tcx: &ctxt) {
     let mut visitor = IntrinsicCheckingVisitor {
         tcx: tcx,
         param_envs: Vec::new(),
-        dummy_sized_ty: tcx.types.int,
-        dummy_unsized_ty: ty::mk_vec(tcx, tcx.types.int, None),
+        dummy_sized_ty: tcx.types.isize,
+        dummy_unsized_ty: ty::mk_vec(tcx, tcx.types.isize, None),
     };
     visit::walk_crate(&mut visitor, tcx.map.krate());
 }

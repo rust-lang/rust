@@ -14,9 +14,9 @@
 use std::mem::swap;
 
 #[derive(Debug)]
-struct Ints {sum: Box<int>, values: Vec<int> }
+struct Ints {sum: Box<isize>, values: Vec<isize> }
 
-fn add_int(x: &mut Ints, v: int) {
+fn add_int(x: &mut Ints, v: isize) {
     *x.sum += v;
     let mut values = Vec::new();
     swap(&mut values, &mut x.values);
@@ -24,7 +24,7 @@ fn add_int(x: &mut Ints, v: int) {
     swap(&mut values, &mut x.values);
 }
 
-fn iter_ints<F>(x: &Ints, mut f: F) -> bool where F: FnMut(&int) -> bool {
+fn iter_ints<F>(x: &Ints, mut f: F) -> bool where F: FnMut(&isize) -> bool {
     let l = x.values.len();
     (0..l).all(|i| f(&x.values[i]))
 }
@@ -35,7 +35,7 @@ pub fn main() {
     add_int(&mut *ints, 44);
 
     iter_ints(&*ints, |i| {
-        println!("int = {:?}", *i);
+        println!("isize = {:?}", *i);
         true
     });
 

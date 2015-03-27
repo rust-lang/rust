@@ -32,7 +32,7 @@ fn foo<T: RequiresRequiresShareAndSend + 'static>(val: T, chan: Sender<T>) {
 }
 
 pub fn main() {
-    let (tx, rx): (Sender<X<int>>, Receiver<X<int>>) = channel();
+    let (tx, rx): (Sender<X<isize>>, Receiver<X<isize>>) = channel();
     foo(X(31337), tx);
     assert!(rx.recv().unwrap() == X(31337));
 }

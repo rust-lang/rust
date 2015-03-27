@@ -14,9 +14,9 @@
 #![feature(box_syntax)]
 
 struct Font {
-    fontbuf: uint,
-    cairo_font: uint,
-    font_dtor: uint,
+    fontbuf: usize,
+    cairo_font: usize,
+    font_dtor: usize,
 
 }
 

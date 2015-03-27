@@ -8,10 +8,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(plugin)]
+// Test that types that appear in assoc bindings in an object
+// type are subject to the reflect check.
 
-#[plugin]  //~ ERROR #[plugin] on `extern crate` is deprecated
-//~^ HELP use a crate attribute instead, i.e. #![plugin(std)]
-extern crate std;
+use std::marker::Reflect;
+use std::io::Write;
 
-fn main() {}
+trait Get {
+    type Output;
+    fn get(self) -> Self::Output;
+}
+
+struct Struct<T>(T);
+
+fn is_reflect<T:Reflect>() { }
+
+fn a<T>() {
+    is_reflect::<Box<Get<Output=T>>>(); //~ ERROR not implemented
+}
+
+fn ok_a<T: Reflect>() {
+    is_reflect::<Box<Get<Output=T>>>(); // OK
+}
+
+fn main() {
+}

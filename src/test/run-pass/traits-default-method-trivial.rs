@@ -17,7 +17,7 @@ trait Cat {
     fn purr(&self) -> bool { true }
 }
 
-impl Cat for int {
+impl Cat for isize {
     fn meow(&self) -> bool {
         self.scratch()
     }

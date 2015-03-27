@@ -13,7 +13,7 @@ use std::cmp;
 
 // Tests of ports and channels on various types
 fn test_rec() {
-    struct R {val0: int, val1: u8, val2: char}
+    struct R {val0: isize, val1: u8, val2: char}
 
     let (tx, rx) = channel();
     let r0: R = R {val0: 0, val1: 1, val2: '2'};
@@ -27,7 +27,7 @@ fn test_rec() {
 
 fn test_vec() {
     let (tx, rx) = channel();
-    let v0: Vec<int> = vec!(0, 1, 2);
+    let v0: Vec<isize> = vec!(0, 1, 2);
     tx.send(v0).unwrap();
     let v1 = rx.recv().unwrap();
     assert_eq!(v1[0], 0);
@@ -49,8 +49,8 @@ fn test_str() {
 #[derive(Debug)]
 enum t {
     tag1,
-    tag2(int),
-    tag3(int, u8, char)
+    tag2(isize),
+    tag3(isize, u8, char)
 }
 
 impl cmp::PartialEq for t {
@@ -102,7 +102,7 @@ fn test_chan() {
     // Does the transmitted channel still work?
 
     tx2.send(10).unwrap();
-    let mut i: int;
+    let mut i: isize;
     i = rx2.recv().unwrap();
     assert_eq!(i, 10);
 }

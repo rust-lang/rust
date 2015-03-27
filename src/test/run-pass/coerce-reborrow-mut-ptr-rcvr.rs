@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 struct SpeechMaker {
-    speeches: uint
+    speeches: usize
 }
 
 impl SpeechMaker {
