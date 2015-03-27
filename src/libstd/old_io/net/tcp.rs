@@ -338,7 +338,7 @@ impl TcpListener {
     }
 }
 
-impl Listener<TcpStream, TcpAcceptor> for TcpListener {
+impl Listener<TcpAcceptor> for TcpListener {
     fn listen(self) -> IoResult<TcpAcceptor> {
         self.inner.listen(128).map(|a| TcpAcceptor { inner: a })
     }
@@ -453,7 +453,8 @@ impl TcpAcceptor {
     }
 }
 
-impl Acceptor<TcpStream> for TcpAcceptor {
+impl Acceptor for TcpAcceptor {
+    type Connection = TcpStream;
     fn accept(&mut self) -> IoResult<TcpStream> {
         self.inner.accept().map(TcpStream::new)
     }

@@ -113,7 +113,6 @@
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(linkage, thread_local, asm)]
-#![feature(old_impl_check)]
 #![feature(optin_builtin_traits)]
 #![feature(rand)]
 #![feature(staged_api)]
