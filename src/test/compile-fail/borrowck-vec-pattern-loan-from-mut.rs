@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(slice_patterns)]
+
 fn a() {
     let mut v = vec!(1, 2, 3);
     let vb: &mut [isize] = &mut v;

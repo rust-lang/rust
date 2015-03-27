@@ -2337,9 +2337,13 @@ considered off, and using the features will result in a compiler error.
 
 The currently implemented features of the reference compiler are:
 
-* `advanced_slice_patterns` - see the [match expressions](#match-expressions)
+* `advanced_slice_patterns` - See the [match expressions](#match-expressions)
                               section for discussion; the exact semantics of
-                              slice patterns are subject to change.
+                              slice patterns are subject to change, so some types
+			      are still unstable.
+
+* `slice_patterns` - OK, actually, slice patterns are just scary and
+                     completely unstable.
 
 * `asm` - The `asm!` macro provides a means for inline assembly. This is often
           useful, but the exact syntax for this feature along with its
@@ -3255,7 +3259,7 @@ array, like `[.., 42, ..]`. If preceded by a variable name, it will bind the
 corresponding slice to the variable. Example:
 
 ```
-# #![feature(advanced_slice_patterns)]
+# #![feature(advanced_slice_patterns, slice_patterns)]
 fn is_symmetric(list: &[u32]) -> bool {
     match list {
         [] | [_]                   => true,

@@ -26,6 +26,7 @@
 #![feature(debug_builders)]
 #![feature(unique)]
 #![feature(step_by)]
+#![feature(slice_patterns)]
 #![allow(deprecated)] // rand
 
 extern crate core;

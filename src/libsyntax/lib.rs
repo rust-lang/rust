@@ -39,6 +39,7 @@
 #![feature(str_char)]
 #![feature(convert)]
 #![feature(into_cow)]
+#![feature(slice_patterns)]
 
 extern crate arena;
 extern crate fmt_macros;

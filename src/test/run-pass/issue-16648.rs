@@ -10,6 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
+#![feature(slice_patterns)]
+
 fn main() {
     let x: (isize, &[isize]) = (2, &[1, 2]);
     assert_eq!(match x {
