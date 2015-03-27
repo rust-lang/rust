@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "issue-10028" as issue10028;
+extern crate issue_10028 as issue10028;
 
 use issue10028::ZeroLengthThingWithDestructor;
 

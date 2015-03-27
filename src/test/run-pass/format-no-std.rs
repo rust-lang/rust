@@ -13,7 +13,7 @@
 #![feature(lang_items, start, no_std, core, collections)]
 #![no_std]
 
-extern crate "std" as other;
+extern crate std as other;
 
 #[macro_use] extern crate core;
 #[macro_use] extern crate collections;

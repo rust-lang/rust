@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "xcrate-trait-lifetime-param" as other;
+extern crate xcrate_trait_lifetime_param as other;
 
 struct Reader<'a> {
     b : &'a [u8]

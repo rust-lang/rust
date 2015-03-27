@@ -224,7 +224,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     // environment to ensure that the target loads the right libraries at
     // runtime. It would be a sad day if the *host* libraries were loaded as a
     // mistake.
-    let mut cmd = Command::new(&outdir.path().join("rust-out"));
+    let mut cmd = Command::new(&outdir.path().join("rust_out"));
     let var = DynamicLibrary::envvar();
     let newpath = {
         let path = env::var_os(var).unwrap_or(OsString::new());

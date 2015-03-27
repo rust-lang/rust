@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "weak-lang-items" as other;
+extern crate weak_lang_items as other;
 
 use std::thread;
 

@@ -21,14 +21,14 @@ mod m {
 const BAR: () = ();
 struct Data;
 use m::f;
-extern crate "blind-item-mixed-crate-use-item-foo" as foo;
+extern crate blind_item_mixed_crate_use_item_foo as foo;
 
 fn main() {
     const BAR2: () = ();
     struct Data2;
     use m::g;
 
-    extern crate "blind-item-mixed-crate-use-item-foo2" as foo2;
+    extern crate blind_item_mixed_crate_use_item_foo2 as foo2;
 
     f(Data, BAR, foo::X);
     g(Data2, BAR2, foo2::Y);
