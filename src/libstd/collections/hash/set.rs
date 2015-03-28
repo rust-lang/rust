@@ -36,7 +36,16 @@ use super::state::HashState;
 
 /// An implementation of a hash set using the underlying representation of a
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
-/// requires that the elements implement the `Eq` and `Hash` traits.
+/// requires that the elements implement the `Eq` and `Hash` traits. This can
+/// frequently be achieved by using `#[derive(Eq, Hash)]`. If you implement
+/// these yourself, it is important that the following property holds:
+///
+/// ```text
+/// k1 == k2 -> hash(k1) == hash(k2)
+/// ```
+///
+/// In other words, if two keys are equal, their hashes must be equal.
+///
 ///
 /// It is a logic error for an item to be modified in such a way that the
 /// item's hash, as determined by the `Hash` trait, or its equality, as
