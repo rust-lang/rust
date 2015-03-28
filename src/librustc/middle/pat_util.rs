@@ -13,7 +13,7 @@ use middle::ty;
 use util::nodemap::FnvHashMap;
 
 use syntax::ast;
-use syntax::ast_util::{walk_pat};
+use syntax::ast_util::walk_pat;
 use syntax::codemap::{Span, DUMMY_SP};
 
 pub type PatIdMap = FnvHashMap<ast::Ident, ast::NodeId>;

@@ -21,7 +21,7 @@ pub use self::CallArgs::*;
 use arena::TypedArena;
 use back::link;
 use session;
-use llvm::{ValueRef};
+use llvm::ValueRef;
 use llvm::get_param;
 use llvm;
 use metadata::csearch;

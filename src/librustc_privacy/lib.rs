@@ -42,7 +42,7 @@ use rustc::middle::privacy::{ExternalExports, ExportedItems, PublicItems};
 use rustc::middle::ty::{MethodTypeParam, MethodStatic};
 use rustc::middle::ty::{MethodCall, MethodMap, MethodOrigin, MethodParam};
 use rustc::middle::ty::{MethodStaticClosure, MethodObject};
-use rustc::middle::ty::{MethodTraitObject};
+use rustc::middle::ty::MethodTraitObject;
 use rustc::middle::ty::{self, Ty};
 use rustc::util::nodemap::{NodeMap, NodeSet};
 

@@ -9,14 +9,14 @@
 // except according to those terms.
 
 use super::combine::*;
-use super::{cres};
+use super::cres;
 use super::higher_ranked::HigherRankedRelations;
-use super::{Subtype};
+use super::Subtype;
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
-use util::ppaux::{Repr};
+use util::ppaux::Repr;
 
 /// "Greatest lower bound" (common subtype)
 pub struct Sub<'f, 'tcx: 'f> {

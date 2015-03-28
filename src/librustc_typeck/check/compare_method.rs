@@ -15,7 +15,7 @@ use middle::subst::{self, Subst, Substs, VecPerParamSpace};
 use util::ppaux::{self, Repr};
 
 use syntax::ast;
-use syntax::codemap::{Span};
+use syntax::codemap::Span;
 use syntax::parse::token;
 
 use super::assoc;

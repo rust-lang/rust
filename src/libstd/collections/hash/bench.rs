@@ -14,7 +14,7 @@ extern crate test;
 use prelude::v1::*;
 
 use self::test::Bencher;
-use iter::{range_inclusive};
+use iter::range_inclusive;
 
 #[bench]
 fn new_drop(b : &mut Bencher) {

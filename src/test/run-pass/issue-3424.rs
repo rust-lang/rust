@@ -13,7 +13,7 @@
 #![allow(unknown_features)]
 #![feature(unboxed_closures, old_path, std_misc)]
 
-use std::old_path::{Path};
+use std::old_path::Path;
 use std::old_path;
 use std::result;
 use std::thunk::Thunk;

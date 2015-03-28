@@ -14,8 +14,8 @@
 use middle::traits;
 use middle::ty;
 use middle::infer::{self, new_infer_ctxt};
-use syntax::ast::{DefId};
-use syntax::ast::{LOCAL_CRATE};
+use syntax::ast::DefId;
+use syntax::ast::LOCAL_CRATE;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::visit;

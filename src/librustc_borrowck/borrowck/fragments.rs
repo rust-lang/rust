@@ -15,10 +15,10 @@
 use self::Fragment::*;
 
 use borrowck::InteriorKind::{InteriorField, InteriorElement};
-use borrowck::{LoanPath};
+use borrowck::LoanPath;
 use borrowck::LoanPathKind::{LpVar, LpUpvar, LpDowncast, LpExtend};
 use borrowck::LoanPathElem::{LpDeref, LpInterior};
-use borrowck::move_data::{InvalidMovePathIndex};
+use borrowck::move_data::InvalidMovePathIndex;
 use borrowck::move_data::{MoveData, MovePathIndex};
 use rustc::middle::ty;
 use rustc::middle::mem_categorization as mc;

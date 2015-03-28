@@ -77,7 +77,7 @@ use std::io::prelude::*;
 use std::io;
 use std::iter::repeat;
 use std::num::{Float, Int};
-use std::path::{PathBuf};
+use std::path::PathBuf;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;

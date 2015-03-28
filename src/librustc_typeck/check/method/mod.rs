@@ -11,7 +11,7 @@
 //! Method lookup: the secret sauce of Rust. See `README.md`.
 
 use astconv::AstConv;
-use check::{FnCtxt};
+use check::FnCtxt;
 use check::vtable;
 use check::vtable::select_new_fcx_obligations;
 use middle::def;
@@ -24,7 +24,7 @@ use middle::infer;
 use util::ppaux::Repr;
 
 use std::rc::Rc;
-use syntax::ast::{DefId};
+use syntax::ast::DefId;
 use syntax::ast;
 use syntax::codemap::Span;
 

@@ -24,7 +24,7 @@ use core::default::Default;
 use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{Map, FromIterator, IntoIterator};
-use core::ops::{Index};
+use core::ops::Index;
 use core::{iter, fmt, mem, usize};
 use Bound::{self, Included, Excluded, Unbounded};
 

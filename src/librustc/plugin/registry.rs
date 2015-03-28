@@ -15,7 +15,7 @@ use session::Session;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
 use syntax::ext::base::{IdentTT, Decorator, Modifier, MultiModifier, MacroRulesTT};
-use syntax::ext::base::{MacroExpanderFn};
+use syntax::ext::base::MacroExpanderFn;
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ptr::P;
