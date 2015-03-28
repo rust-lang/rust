@@ -12,10 +12,11 @@
 
 use ast;
 use codemap::{Span, CodeMap, FileMap};
-use diagnostic::{SpanHandler, mk_span_handler, default_handler, Auto};
+use diagnostic::{SpanHandler, mk_span_handler, default_handler, Auto, FatalError};
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
 use ptr::P;
+
 
 use std::cell::{Cell, RefCell};
 use std::fs::File;
@@ -26,6 +27,8 @@ use std::num::Int;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str;
+
+pub type PResult<T> = Result<T, FatalError>;
 
 #[macro_use]
 pub mod parser;
@@ -88,7 +91,7 @@ pub fn parse_crate_from_file(
     cfg: ast::CrateConfig,
     sess: &ParseSess
 ) -> ast::Crate {
-    new_parser_from_file(sess, cfg, input).parse_crate_mod()
+    panictry!(new_parser_from_file(sess, cfg, input).parse_crate_mod())
     // why is there no p.abort_if_errors here?
 }
 
@@ -109,7 +112,7 @@ pub fn parse_crate_from_source_str(name: String,
                                            cfg,
                                            name,
                                            source);
-    maybe_aborted(p.parse_crate_mod(),p)
+    maybe_aborted(panictry!(p.parse_crate_mod()),p)
 }
 
 pub fn parse_crate_attrs_from_source_str(name: String,
@@ -182,7 +185,7 @@ pub fn parse_tts_from_source_str(name: String,
     );
     p.quote_depth += 1;
     // right now this is re-creating the token trees from ... token trees.
-    maybe_aborted(p.parse_all_token_trees(),p)
+    maybe_aborted(panictry!(p.parse_all_token_trees()),p)
 }
 
 // Note: keep in sync with `with_hygiene::new_parser_from_source_str`
@@ -245,7 +248,7 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     -> Rc<FileMap> {
     let err = |msg: &str| {
         match spanopt {
-            Some(sp) => sess.span_diagnostic.span_fatal(sp, msg),
+            Some(sp) => panic!(sess.span_diagnostic.span_fatal(sp, msg)),
             None => sess.span_diagnostic.handler().fatal(msg),
         }
     };
@@ -286,7 +289,7 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     let cfg = Vec::new();
     let srdr = lexer::StringReader::new(&sess.span_diagnostic, filemap);
     let mut p1 = Parser::new(sess, cfg, box srdr);
-    p1.parse_all_token_trees()
+    panictry!(p1.parse_all_token_trees())
 }
 
 /// Given tts and cfg, produce a parser
@@ -295,7 +298,7 @@ pub fn tts_to_parser<'a>(sess: &'a ParseSess,
                          cfg: ast::CrateConfig) -> Parser<'a> {
     let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, None, tts);
     let mut p = Parser::new(sess, cfg, box trdr);
-    p.check_unknown_macro_variable();
+    panictry!(p.check_unknown_macro_variable());
     p
 }
 
@@ -325,7 +328,7 @@ pub mod with_hygiene {
         );
         p.quote_depth += 1;
         // right now this is re-creating the token trees from ... token trees.
-        maybe_aborted(p.parse_all_token_trees(),p)
+        maybe_aborted(panictry!(p.parse_all_token_trees()),p)
     }
 
     // Note: keep this in sync with `super::new_parser_from_source_str` until
@@ -358,7 +361,7 @@ pub mod with_hygiene {
         let cfg = Vec::new();
         let srdr = make_reader(&sess.span_diagnostic, filemap);
         let mut p1 = Parser::new(sess, cfg, box srdr);
-        p1.parse_all_token_trees()
+        panictry!(p1.parse_all_token_trees())
     }
 }
 
@@ -964,7 +967,7 @@ mod test {
     #[test] fn parse_ident_pat () {
         let sess = new_parse_sess();
         let mut parser = string_to_parser(&sess, "b".to_string());
-        assert!(parser.parse_pat()
+        assert!(panictry!(parser.parse_pat_nopanic())
                 == P(ast::Pat{
                 id: ast::DUMMY_NODE_ID,
                 node: ast::PatIdent(ast::BindByValue(ast::MutImmutable),

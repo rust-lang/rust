@@ -41,7 +41,7 @@ impl<'a> ParserAnyMacro<'a> {
     fn ensure_complete_parse(&self, allow_semi: bool) {
         let mut parser = self.parser.borrow_mut();
         if allow_semi && parser.token == token::Semi {
-            parser.bump()
+            panictry!(parser.bump())
         }
         if parser.token != token::Eof {
             let token_str = parser.this_token_to_string();
@@ -81,7 +81,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
             let mut parser = self.parser.borrow_mut();
             match parser.token {
                 token::Eof => break,
-                _ => ret.push(parser.parse_impl_item())
+                _ => ret.push(panictry!(parser.parse_impl_item()))
             }
         }
         self.ensure_complete_parse(false);
@@ -142,7 +142,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
           MatchedNonterminal(NtTT(ref lhs_tt)) => {
             let lhs_tt = match **lhs_tt {
                 TtDelimited(_, ref delim) => &delim.tts[..],
-                _ => cx.span_fatal(sp, "malformed macro lhs")
+                _ => panic!(cx.span_fatal(sp, "malformed macro lhs"))
             };
 
             match TokenTree::parse(cx, lhs_tt, arg) {
@@ -153,7 +153,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                         match **tt {
                             // ignore delimiters
                             TtDelimited(_, ref delimed) => delimed.tts.clone(),
-                            _ => cx.span_fatal(sp, "macro rhs must be delimited"),
+                            _ => panic!(cx.span_fatal(sp, "macro rhs must be delimited")),
                         }
                     },
                     _ => cx.span_bug(sp, "bad thing in rhs")
@@ -164,7 +164,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                                            imported_from,
                                            rhs);
                 let mut p = Parser::new(cx.parse_sess(), cx.cfg(), Box::new(trncbr));
-                p.check_unknown_macro_variable();
+                panictry!(p.check_unknown_macro_variable());
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return box ParserAnyMacro {
@@ -175,13 +175,13 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 best_fail_spot = sp;
                 best_fail_msg = (*msg).clone();
               },
-              Error(sp, ref msg) => cx.span_fatal(sp, &msg[..])
+              Error(sp, ref msg) => panic!(cx.span_fatal(sp, &msg[..]))
             }
           }
           _ => cx.bug("non-matcher found in parsed lhses")
         }
     }
-    cx.span_fatal(best_fail_spot, &best_fail_msg[..]);
+    panic!(cx.span_fatal(best_fail_spot, &best_fail_msg[..]));
 }
 
 // Note that macro-by-example's input is also matched against a token tree:

@@ -652,9 +652,9 @@ impl<'a> ExtCtxt<'a> {
     pub fn bt_push(&mut self, ei: ExpnInfo) {
         self.recursion_count += 1;
         if self.recursion_count > self.ecfg.recursion_limit {
-            self.span_fatal(ei.call_site,
+            panic!(self.span_fatal(ei.call_site,
                             &format!("recursion limit reached while expanding the macro `{}`",
-                                    ei.callee.name));
+                                    ei.callee.name)));
         }
 
         let mut call_site = ei.call_site;
@@ -699,7 +699,7 @@ impl<'a> ExtCtxt<'a> {
     ///   value doesn't have to match anything)
     pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
         self.print_backtrace();
-        self.parse_sess.span_diagnostic.span_fatal(sp, msg);
+        panic!(self.parse_sess.span_diagnostic.span_fatal(sp, msg));
     }
 
     /// Emit `msg` attached to `sp`, without immediately stopping
@@ -817,7 +817,7 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
     let mut es = Vec::new();
     while p.token != token::Eof {
         es.push(cx.expander().fold_expr(p.parse_expr()));
-        if p.eat(&token::Comma) {
+        if panictry!(p.eat(&token::Comma)){
             continue;
         }
         if p.token != token::Eof {
