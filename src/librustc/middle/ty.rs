@@ -6047,19 +6047,20 @@ pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> usize {
                 "expected positive integer for repeat count, found {}",
                 found);
         }
-        Err(_) => {
+        Err(err) => {
+            let err_description = err.description();
             let found = match count_expr.node {
                 ast::ExprPath(None, ast::Path {
                     global: false,
                     ref segments,
                     ..
                 }) if segments.len() == 1 =>
-                    "variable",
+                    format!("{}", "found variable"),
                 _ =>
-                    "non-constant expression"
+                    format!("but {}", err_description),
             };
             span_err!(tcx.sess, count_expr.span, E0307,
-                "expected constant integer for repeat count, found {}",
+                "expected constant integer for repeat count, {}",
                 found);
         }
     }
