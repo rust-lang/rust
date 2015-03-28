@@ -8,7 +8,8 @@ and then prints it back out:
 corefn main() {
     println!("Type something!");
 
-    let input = std::old_io::stdin().read_line().ok().expect("Failed to read line");
+    let mut input = String::new();
+    std::io::stdin().read_line(&mut input).ok().expect("Failed to read line");
 
     println!("{}", input);
 }
@@ -17,10 +18,16 @@ corefn main() {
 Let's go over these chunks, one by one:
 
 ```{rust,ignore}
-std::old_io::stdin();
+let mut input = String::new();
 ```
 
-This calls a function, `stdin()`, that lives inside the `std::old_io` module. As
+This creates an empty string which will act as a buffer when we read from stdin.
+
+```{rust,ignore}
+std::io::stdin();
+```
+
+This calls a function, `stdin()`, that lives inside the `std::io` module. As
 you can imagine, everything in `std` is provided by Rust, the 'standard
 library.' We'll talk more about the module system later.
 
@@ -28,8 +35,7 @@ Since writing the fully qualified name all the time is annoying, we can use
 the `use` statement to import it in:
 
 ```{rust}
-# #![feature(old_io)]
-use std::old_io::stdin;
+use std::io::stdin;
 
 stdin();
 ```
@@ -38,21 +44,21 @@ However, it's considered better practice to not import individual functions, but
 to import the module, and only use one level of qualification:
 
 ```{rust}
-# #![feature(old_io)]
-use std::old_io;
+use std::io;
 
-old_io::stdin();
+io::stdin();
 ```
 
 Let's update our example to use this style:
 
 ```{rust,ignore}
-use std::old_io;
+use std::io;
 
 fn main() {
     println!("Type something!");
 
-    let input = old_io::stdin().read_line().ok().expect("Failed to read line");
+    let mut input = String::new();
+    stdin().read_line(&mut input).ok().expect("Failed to read line");
 
     println!("{}", input);
 }
@@ -61,11 +67,15 @@ fn main() {
 Next up:
 
 ```{rust,ignore}
-.read_line()
+.read_line(&mut input)
 ```
 
-The `read_line()` method can be called on the result of `stdin()` to return
-a full line of input. Nice and easy.
+The `read_line()` method can be called on the result of `stdin()` to write
+a full line of input to its argument, a String buffer. We pass `input` as a
+mutable reference, since `read_line()` will be modifying the buffer. Every
+character up to and including the first newline encountered is written to
+`input`, which grows dynamically as needed. It returns the number of bytes
+written to `input`, which we do not make use of here.
 
 ```{rust,ignore}
 .ok().expect("Failed to read line");
@@ -100,16 +110,16 @@ though, we _know_ that `x` has a `Value`, but `match` forces us to handle
 the `missing` case. This is what we want 99% of the time, but sometimes, we
 know better than the compiler.
 
-Likewise, `read_line()` does not return a line of input. It _might_ return a
-line of input, though it might also fail to do so. This could happen if our program
-isn't running in a terminal, but as part of a cron job, or some other context
-where there's no standard input. Because of this, `read_line` returns a type
-very similar to our `OptionalInt`: an `IoResult<T>`. We haven't talked about
-`IoResult<T>` yet because it is the *generic* form of our `OptionalInt`.
-Until then, you can think of it as being the same thing, just for any type –
-not just `i32`s.
+Likewise, `read_line()` does not return the number of bytes written. It _might_
+return the number of bytes written, though it might also fail to do so. This
+could happen if our program isn't running in a terminal, but as part of a cron
+job, or some other context where there's no standard input. Because of this,
+`read_line` returns a type very similar to our `OptionalInt`: a `Result<T>`.
+We haven't talked about `Result<T>` yet because it is the *generic* form of
+our `OptionalInt`. Until then, you can think of it as being the same thing,
+just for any type – not just `i32`s.
 
-Rust provides a method on these `IoResult<T>`s called `ok()`, which does the
+Rust provides a method on these `Result<T>`s called `ok()`, which does the
 same thing as our `match` statement but assumes that we have a valid value.
 We then call `expect()` on the result, which will terminate our program if we
 don't have a valid value. In this case, if we can't get input, our program
@@ -124,12 +134,13 @@ work with.
 Back to the code we were working on! Here's a refresher:
 
 ```{rust,ignore}
-use std::old_io;
+use std::io;
 
 fn main() {
     println!("Type something!");
 
-    let input = old_io::stdin().read_line().ok().expect("Failed to read line");
+    let mut input = String::new();
+    stdin().read_line(&mut input).ok().expect("Failed to read line");
 
     println!("{}", input);
 }
@@ -139,17 +150,19 @@ With long lines like this, Rust gives you some flexibility with the whitespace.
 We _could_ write the example like this:
 
 ```{rust,ignore}
-use std::old_io;
+use std::oio;
 
 fn main() {
     println!("Type something!");
 
+    let mut input = String::new();
+
     // here, we'll show the types at each step
 
-    let input = old_io::stdin() // std::old_io::stdio::StdinReader
-                  .read_line() // IoResult<String>
-                  .ok() // Option<String>
-                  .expect("Failed to read line"); // String
+    io::stdin() // std::io::Stdin
+      .read_line(&mut input) // Result<usize>
+      .ok() // Option<usize>
+      .expect("Failed to read line"); // usize
 
     println!("{}", input);
 }
