@@ -17,6 +17,7 @@ extern crate syntax;
 
 use syntax::ext::base::ExtCtxt;
 use syntax::ptr::P;
+use syntax::parse::PResult;
 
 fn syntax_extension(cx: &ExtCtxt) {
     let e_toks : Vec<syntax::ast::TokenTree> = quote_tokens!(cx, 1 + 2);

@@ -50,6 +50,17 @@ extern crate libc;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
+macro_rules! panictry {
+    ($e:expr) => ({
+        use std::result::Result::{Ok, Err};
+
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!(e)
+        }
+    })
+}
+
 pub mod util {
     pub mod interner;
     #[cfg(test)]

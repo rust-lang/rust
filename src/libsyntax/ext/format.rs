@@ -24,6 +24,17 @@ use ptr::P;
 use std::collections::HashMap;
 use std::iter::repeat;
 
+macro_rules! panictry {
+    ($e:expr) => ({
+        use std::result::Result::{Ok, Err};
+
+        match $e {
+            Ok(e) => e,
+            Err(e) => { panic!(e); }
+        }
+    })
+}
+
 #[derive(PartialEq)]
 enum ArgumentType {
     Known(String),
@@ -92,7 +103,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let fmtstr = p.parse_expr();
     let mut named = false;
     while p.token != token::Eof {
-        if !p.eat(&token::Comma) {
+        if !panictry!(p.eat(&token::Comma)) {
             ecx.span_err(sp, "expected token: `,`");
             return None;
         }
@@ -101,7 +112,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             named = true;
             let ident = match p.token {
                 token::Ident(i, _) => {
-                    p.bump();
+                    panictry!(p.bump());
                     i
                 }
                 _ if named => {
@@ -120,7 +131,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             let interned_name = token::get_ident(ident);
             let name = &interned_name[..];
 
-            p.expect(&token::Eq);
+            panictry!(p.expect(&token::Eq));
             let e = p.parse_expr();
             match names.get(name) {
                 None => {}

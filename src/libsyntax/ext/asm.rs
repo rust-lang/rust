@@ -23,6 +23,17 @@ use parse::token::InternedString;
 use parse::token;
 use ptr::P;
 
+macro_rules! panictry {
+    ($e:expr) => ({
+        use std::result::Result::{Ok, Err};
+
+        match $e {
+            Ok(e) => e,
+            Err(e) => panic!(e),
+        }
+    })
+}
+
 enum State {
     Asm,
     Outputs,
@@ -91,16 +102,16 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                       p.token != token::ModSep {
 
                     if outputs.len() != 0 {
-                        p.eat(&token::Comma);
+                        panictry!(p.eat(&token::Comma));
                     }
 
-                    let (constraint, _str_style) = p.parse_str();
+                    let (constraint, _str_style) = panictry!(p.parse_str());
 
                     let span = p.last_span;
 
-                    p.expect(&token::OpenDelim(token::Paren));
+                    panictry!(p.expect(&token::OpenDelim(token::Paren)));
                     let out = p.parse_expr();
-                    p.expect(&token::CloseDelim(token::Paren));
+                    panictry!(p.expect(&token::CloseDelim(token::Paren)));
 
                     // Expands a read+write operand into two operands.
                     //
@@ -131,10 +142,10 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                       p.token != token::ModSep {
 
                     if inputs.len() != 0 {
-                        p.eat(&token::Comma);
+                        panictry!(p.eat(&token::Comma));
                     }
 
-                    let (constraint, _str_style) = p.parse_str();
+                    let (constraint, _str_style) = panictry!(p.parse_str());
 
                     if constraint.starts_with("=") {
                         cx.span_err(p.last_span, "input operand constraint contains '='");
@@ -142,9 +153,9 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         cx.span_err(p.last_span, "input operand constraint contains '+'");
                     }
 
-                    p.expect(&token::OpenDelim(token::Paren));
+                    panictry!(p.expect(&token::OpenDelim(token::Paren)));
                     let input = p.parse_expr();
-                    p.expect(&token::CloseDelim(token::Paren));
+                    panictry!(p.expect(&token::CloseDelim(token::Paren)));
 
                     inputs.push((constraint, input));
                 }
@@ -155,10 +166,10 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                       p.token != token::ModSep {
 
                     if clobs.len() != 0 {
-                        p.eat(&token::Comma);
+                        panictry!(p.eat(&token::Comma));
                     }
 
-                    let (s, _str_style) = p.parse_str();
+                    let (s, _str_style) = panictry!(p.parse_str());
 
                     if OPTIONS.iter().any(|&opt| s == opt) {
                         cx.span_warn(p.last_span, "expected a clobber, found an option");
@@ -167,7 +178,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 }
             }
             Options => {
-                let (option, _str_style) = p.parse_str();
+                let (option, _str_style) = panictry!(p.parse_str());
 
                 if option == "volatile" {
                     // Indicates that the inline assembly has side effects
@@ -182,7 +193,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 }
 
                 if p.token == token::Comma {
-                    p.eat(&token::Comma);
+                    panictry!(p.eat(&token::Comma));
                 }
             }
             StateNone => ()
@@ -194,12 +205,12 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             match (&p.token, state.next(), state.next().next()) {
                 (&token::Colon, StateNone, _)   |
                 (&token::ModSep, _, StateNone) => {
-                    p.bump();
+                    panictry!(p.bump());
                     break 'statement;
                 }
                 (&token::Colon, st, _)   |
                 (&token::ModSep, _, st) => {
-                    p.bump();
+                    panictry!(p.bump());
                     state = st;
                 }
                 (&token::Eof, _, _) => break 'statement,

@@ -45,10 +45,10 @@ impl<'a> ParserAttr for Parser<'a> {
                     self.span.hi
                 );
                 if attr.node.style != ast::AttrOuter {
-                  self.fatal("expected outer comment");
+                  panic!(self.fatal("expected outer comment"));
                 }
                 attrs.push(attr);
-                self.bump();
+                panictry!(self.bump());
               }
               _ => break
             }
@@ -66,11 +66,11 @@ impl<'a> ParserAttr for Parser<'a> {
         let (span, value, mut style) = match self.token {
             token::Pound => {
                 let lo = self.span.lo;
-                self.bump();
+                panictry!(self.bump());
 
                 if permit_inner { self.expected_tokens.push(TokenType::Token(token::Not)); }
                 let style = if self.token == token::Not {
-                    self.bump();
+                    panictry!(self.bump());
                     if !permit_inner {
                         let span = self.span;
                         self.span_err(span,
@@ -84,21 +84,21 @@ impl<'a> ParserAttr for Parser<'a> {
                     ast::AttrOuter
                 };
 
-                self.expect(&token::OpenDelim(token::Bracket));
+                panictry!(self.expect(&token::OpenDelim(token::Bracket)));
                 let meta_item = self.parse_meta_item();
                 let hi = self.span.hi;
-                self.expect(&token::CloseDelim(token::Bracket));
+                panictry!(self.expect(&token::CloseDelim(token::Bracket)));
 
                 (mk_sp(lo, hi), meta_item, style)
             }
             _ => {
                 let token_str = self.this_token_to_string();
-                self.fatal(&format!("expected `#`, found `{}`", token_str));
+                panic!(self.fatal(&format!("expected `#`, found `{}`", token_str)));
             }
         };
 
         if permit_inner && self.token == token::Semi {
-            self.bump();
+            panictry!(self.bump());
             self.span_warn(span, "this inner attribute syntax is deprecated. \
                            The new syntax is `#![foo]`, with a bang and no semicolon");
             style = ast::AttrInner;
@@ -142,7 +142,7 @@ impl<'a> ParserAttr for Parser<'a> {
                                                          lo, hi);
                     if attr.node.style == ast::AttrInner {
                         attrs.push(attr);
-                        self.bump();
+                        panictry!(self.bump());
                     } else {
                         break;
                     }
@@ -166,19 +166,19 @@ impl<'a> ParserAttr for Parser<'a> {
 
         match nt_meta {
             Some(meta) => {
-                self.bump();
+                panictry!(self.bump());
                 return meta;
             }
             None => {}
         }
 
         let lo = self.span.lo;
-        let ident = self.parse_ident();
+        let ident = panictry!(self.parse_ident());
         let name = self.id_to_interned_str(ident);
         match self.token {
             token::Eq => {
-                self.bump();
-                let lit = self.parse_lit();
+                panictry!(self.bump());
+                let lit = panictry!(self.parse_lit());
                 // FIXME #623 Non-string meta items are not serialized correctly;
                 // just forbid them for now
                 match lit.node {
@@ -206,10 +206,10 @@ impl<'a> ParserAttr for Parser<'a> {
 
     /// matches meta_seq = ( COMMASEP(meta_item) )
     fn parse_meta_seq(&mut self) -> Vec<P<ast::MetaItem>> {
-        self.parse_seq(&token::OpenDelim(token::Paren),
+        panictry!(self.parse_seq(&token::OpenDelim(token::Paren),
                        &token::CloseDelim(token::Paren),
                        seq_sep_trailing_allowed(token::Comma),
-                       |p| p.parse_meta_item()).node
+                       |p| Ok(p.parse_meta_item()))).node
     }
 
     fn parse_optional_meta(&mut self) -> Vec<P<ast::MetaItem>> {
