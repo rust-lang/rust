@@ -58,7 +58,7 @@ fn main() {
     println!("Type something!");
 
     let mut input = String::new();
-    stdin().read_line(&mut input).ok().expect("Failed to read line");
+    io::stdin().read_line(&mut input).ok().expect("Failed to read line");
 
     println!("{}", input);
 }
@@ -74,8 +74,8 @@ The `read_line()` method can be called on the result of `stdin()` to write
 a full line of input to its argument, a String buffer. We pass `input` as a
 mutable reference, since `read_line()` will be modifying the buffer. Every
 character up to and including the first newline encountered is written to
-`input`, which grows dynamically as needed. It returns the number of bytes
-written to `input`, which we do not make use of here.
+`input`, which grows dynamically as needed. `read_line()` returns the number
+of bytes written to `input`, which we do not make use of here.
 
 ```{rust,ignore}
 .ok().expect("Failed to read line");
@@ -140,7 +140,7 @@ fn main() {
     println!("Type something!");
 
     let mut input = String::new();
-    stdin().read_line(&mut input).ok().expect("Failed to read line");
+    io::stdin().read_line(&mut input).ok().expect("Failed to read line");
 
     println!("{}", input);
 }
