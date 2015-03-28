@@ -122,9 +122,9 @@ pub fn write(w: &mut Write) -> io::Result<()> {
 
     try!(writeln!(w, "stack backtrace:"));
     // 100 lines should be enough
-    const SIZE: uint = 100;
+    const SIZE: usize = 100;
     let mut buf: [*mut libc::c_void; SIZE] = unsafe {mem::zeroed()};
-    let cnt = unsafe { backtrace(buf.as_mut_ptr(), SIZE as libc::c_int) as uint};
+    let cnt = unsafe { backtrace(buf.as_mut_ptr(), SIZE as libc::c_int) as usize};
 
     // skipping the first one as it is write itself
     let iter = (1..cnt).map(|i| {
