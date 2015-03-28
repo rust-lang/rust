@@ -52,7 +52,7 @@ use core::prelude::*;
 use alloc::boxed::Box;
 use alloc::heap::{EMPTY, allocate, reallocate, deallocate};
 use core::cmp::max;
-use core::cmp::{Ordering};
+use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};

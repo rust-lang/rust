@@ -202,7 +202,7 @@ use self::InternalStackElement::*;
 use std::collections::{HashMap, BTreeMap};
 use std::io::prelude::*;
 use std::io;
-use std::mem::{swap};
+use std::mem::swap;
 use std::num::FpCategory as Fp;
 use std::ops::Index;
 use std::str::FromStr;

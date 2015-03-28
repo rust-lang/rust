@@ -38,7 +38,7 @@ use core::mem::replace;
 
 use self::FutureState::*;
 use sync::mpsc::{Receiver, channel};
-use thunk::{Thunk};
+use thunk::Thunk;
 use thread;
 
 /// A type encapsulating the result of a computation which may not be complete

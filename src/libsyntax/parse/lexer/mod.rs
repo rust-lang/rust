@@ -14,7 +14,7 @@ use codemap;
 use diagnostic::SpanHandler;
 use ext::tt::transcribe::tt_next_token;
 use parse::token;
-use parse::token::{str_to_ident};
+use parse::token::str_to_ident;
 
 use std::borrow::{IntoCow, Cow};
 use std::char;

@@ -12,7 +12,7 @@
 
 use astconv::object_region_bounds;
 use middle::infer::{InferCtxt, GenericKind};
-use middle::subst::{Substs};
+use middle::subst::Substs;
 use middle::traits;
 use middle::ty::{self, ToPolyTraitRef, Ty};
 use middle::ty_fold::{TypeFoldable, TypeFolder};

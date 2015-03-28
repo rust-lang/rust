@@ -18,7 +18,7 @@ use middle::const_eval::{const_expr_to_pat, lookup_const_by_id};
 use middle::def::*;
 use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Init};
 use middle::expr_use_visitor::{JustWrite, LoanCause, MutateMode};
-use middle::expr_use_visitor::{WriteAndRead};
+use middle::expr_use_visitor::WriteAndRead;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization::cmt;
 use middle::pat_util::*;

@@ -22,7 +22,7 @@ use util::ppaux::{Repr, UserString};
 
 use std::collections::HashSet;
 use syntax::ast;
-use syntax::ast_util::{local_def};
+use syntax::ast_util::local_def;
 use syntax::attr;
 use syntax::codemap::Span;
 use syntax::parse::token::{self, special_idents};

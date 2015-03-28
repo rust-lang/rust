@@ -28,7 +28,7 @@ use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
 use syntax::parse::token;
-use syntax::print::pprust::{lifetime_to_string};
+use syntax::print::pprust::lifetime_to_string;
 use syntax::visit;
 use syntax::visit::Visitor;
 use util::nodemap::NodeMap;

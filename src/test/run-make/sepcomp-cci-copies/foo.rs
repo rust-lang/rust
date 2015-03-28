@@ -9,7 +9,7 @@
 // except according to those terms.
 
 extern crate cci_lib;
-use cci_lib::{cci_fn};
+use cci_lib::cci_fn;
 
 fn call1() -> uint {
     cci_fn()

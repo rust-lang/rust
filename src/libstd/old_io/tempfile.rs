@@ -12,7 +12,7 @@
 #![allow(deprecated)] // rand
 
 use env;
-use iter::{IteratorExt};
+use iter::IteratorExt;
 use old_io::{fs, IoError, IoErrorKind, IoResult};
 use old_io;
 use ops::Drop;

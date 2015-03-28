@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{MethodError};
+use super::MethodError;
 use super::MethodIndex;
 use super::{CandidateSource,ImplSource,TraitSource};
 use super::suggest;

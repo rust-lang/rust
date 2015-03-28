@@ -34,7 +34,7 @@ use super::combine::*;
 use super::glb::Glb;
 use super::lub::Lub;
 
-use middle::ty::{TyVar};
+use middle::ty::TyVar;
 use middle::ty::{self, Ty};
 use util::ppaux::Repr;
 

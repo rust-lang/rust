@@ -24,7 +24,7 @@ use trans::expr;
 use trans::monomorphize::{self, MonoId};
 use trans::type_of::*;
 use middle::ty::{self, ClosureTyper};
-use middle::subst::{Substs};
+use middle::subst::Substs;
 use session::config::FullDebugInfo;
 use util::ppaux::Repr;
 
