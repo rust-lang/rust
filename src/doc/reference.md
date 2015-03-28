@@ -1231,12 +1231,15 @@ the guarantee that these issues are never caused by safe code.
 
 * Data races
 * Dereferencing a null/dangling raw pointer
-* Mutating an immutable value/reference without `UnsafeCell`
 * Reads of [undef](http://llvm.org/docs/LangRef.html#undefined-values)
   (uninitialized) memory
 * Breaking the [pointer aliasing
   rules](http://llvm.org/docs/LangRef.html#pointer-aliasing-rules)
   with raw pointers (a subset of the rules used by C)
+* `&mut` and `&` follow LLVM’s scoped [noalias] model, except if the `&T`
+  contains an `UnsafeCell<U>`. Unsafe code must not violate these aliasing
+  guarantees.
+* Mutating an immutable value/reference without `UnsafeCell<U>`
 * Invoking undefined behavior via compiler intrinsics:
   * Indexing outside of the bounds of an object with `std::ptr::offset`
     (`offset` intrinsic), with
@@ -1252,6 +1255,8 @@ the guarantee that these issues are never caused by safe code.
 * Unwinding into Rust from foreign code or unwinding from Rust into foreign
   code. Rust's failure system is not compatible with exception handling in
   other languages. Unwinding must be caught and handled at FFI boundaries.
+
+[noalias]: http://llvm.org/docs/LangRef.html#noalias
 
 ##### Behaviour not considered unsafe
 
