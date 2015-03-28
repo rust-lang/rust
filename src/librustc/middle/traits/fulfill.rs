@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::infer::{InferCtxt};
+use middle::infer::InferCtxt;
 use middle::ty::{self, RegionEscape, Ty};
 use std::collections::HashSet;
 use std::default::Default;

@@ -20,7 +20,7 @@ use rustc::middle::cfg::graphviz as cfg_dot;
 use borrowck;
 use borrowck::{BorrowckCtxt, LoanPath};
 use dot;
-use rustc::middle::cfg::{CFGIndex};
+use rustc::middle::cfg::CFGIndex;
 use rustc::middle::dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
 use rustc::middle::dataflow;
 use std::rc::Rc;

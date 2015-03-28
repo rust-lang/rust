@@ -64,7 +64,7 @@ use util::ppaux::ty_to_string;
 use util::ppaux::{Repr, UserString};
 use util::common::{memoized, ErrorReported};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
-use util::nodemap::{FnvHashMap};
+use util::nodemap::FnvHashMap;
 
 use arena::TypedArena;
 use std::borrow::{Borrow, Cow};

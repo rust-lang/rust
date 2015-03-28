@@ -46,7 +46,7 @@ use middle::subst;
 use middle::subst::{ErasedRegions, NonerasedRegions, Substs};
 use middle::ty::{FloatVar, FnSig, IntVar, TyVar};
 use middle::ty::{IntType, UintType};
-use middle::ty::{BuiltinBounds};
+use middle::ty::BuiltinBounds;
 use middle::ty::{self, Ty};
 use middle::ty_fold;
 use middle::ty_fold::{TypeFolder, TypeFoldable};

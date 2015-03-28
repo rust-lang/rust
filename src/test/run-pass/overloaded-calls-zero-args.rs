@@ -12,7 +12,7 @@
 
 #![feature(unboxed_closures, core)]
 
-use std::ops::{FnMut};
+use std::ops::FnMut;
 
 struct S {
     x: i32,

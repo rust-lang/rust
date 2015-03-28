@@ -12,7 +12,7 @@
 
 use back::abi;
 use llvm;
-use llvm::{ValueRef};
+use llvm::ValueRef;
 use trans::base::*;
 use trans::base;
 use trans::build::*;
