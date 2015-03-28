@@ -1017,22 +1017,7 @@ impl<'a> Debug for &'a (any::Any+'a) {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for [T] {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        if f.flags & (1 << (FlagV1::Alternate as u32)) == 0 {
-            try!(write!(f, "["));
-        }
-        let mut is_first = true;
-        for x in self {
-            if is_first {
-                is_first = false;
-            } else {
-                try!(write!(f, ", "));
-            }
-            try!(write!(f, "{:?}", *x))
-        }
-        if f.flags & (1 << (FlagV1::Alternate as u32)) == 0 {
-            try!(write!(f, "]"));
-        }
-        Ok(())
+        self.iter().fold(f.debug_list(), |b, e| b.entry(e)).finish()
     }
 }
 
