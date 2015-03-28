@@ -42,7 +42,7 @@ use super::c::{ENABLE_INSERT_MODE, ENABLE_LINE_INPUT};
 use super::c::{ENABLE_PROCESSED_INPUT, ENABLE_QUICK_EDIT_MODE};
 use super::c::CONSOLE_SCREEN_BUFFER_INFO;
 use super::c::{ReadConsoleW, WriteConsoleW, GetConsoleMode, SetConsoleMode};
-use super::c::{GetConsoleScreenBufferInfo};
+use super::c::GetConsoleScreenBufferInfo;
 
 fn invalid_encoding() -> IoError {
     IoError {

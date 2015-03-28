@@ -47,7 +47,7 @@ use syntax::ast::StructVariantKind;
 use syntax::ast::TupleVariantKind;
 use syntax::ast::UnnamedField;
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
-use syntax::ast::{Visibility};
+use syntax::ast::Visibility;
 use syntax::ast;
 use syntax::ast_util::local_def;
 use syntax::attr::AttrMetaMethods;

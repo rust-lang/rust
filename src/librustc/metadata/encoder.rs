@@ -22,7 +22,7 @@ use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
 use middle::def;
-use middle::ty::{lookup_item_type};
+use middle::ty::lookup_item_type;
 use middle::ty::{self, Ty};
 use middle::stability;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};

@@ -73,7 +73,7 @@ use trans::tvec;
 use trans::type_of;
 use middle::ty::{struct_fields, tup_fields};
 use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustUnsafeFnPointer, AutoUnsafe};
-use middle::ty::{AutoPtr};
+use middle::ty::AutoPtr;
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use util::common::indenter;

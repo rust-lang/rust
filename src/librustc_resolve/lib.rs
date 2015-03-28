@@ -77,7 +77,7 @@ use syntax::ast::{TraitRef, Ty, TyBool, TyChar, TyF32};
 use syntax::ast::{TyF64, TyFloat, TyIs, TyI8, TyI16, TyI32, TyI64, TyInt};
 use syntax::ast::{TyPath, TyPtr};
 use syntax::ast::{TyRptr, TyStr, TyUs, TyU8, TyU16, TyU32, TyU64, TyUint};
-use syntax::ast::{TypeImplItem};
+use syntax::ast::TypeImplItem;
 use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::{local_def, walk_pat};

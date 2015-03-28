@@ -113,7 +113,7 @@ use trans::expr;
 use trans::tvec;
 use trans::type_of;
 use middle::ty::{self, Ty};
-use util::ppaux::{ty_to_string};
+use util::ppaux::ty_to_string;
 
 use std::fmt;
 use syntax::ast;

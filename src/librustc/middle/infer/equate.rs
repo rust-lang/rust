@@ -11,10 +11,10 @@
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use middle::infer::combine::*;
-use middle::infer::{cres};
-use middle::infer::{Subtype};
-use middle::infer::type_variable::{EqTo};
-use util::ppaux::{Repr};
+use middle::infer::cres;
+use middle::infer::Subtype;
+use middle::infer::type_variable::EqTo;
+use util::ppaux::Repr;
 
 pub struct Equate<'f, 'tcx: 'f> {
     fields: CombineFields<'f, 'tcx>

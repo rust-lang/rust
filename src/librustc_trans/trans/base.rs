@@ -30,7 +30,7 @@ pub use self::ValueOrigin::*;
 use super::CrateTranslation;
 use super::ModuleTranslation;
 
-use back::link::{mangle_exported_name};
+use back::link::mangle_exported_name;
 use back::{link, abi};
 use lint;
 use llvm::{AttrHelper, BasicBlockRef, Linkage, ValueRef, Vector, get_param};

@@ -75,7 +75,7 @@ use middle::check_const;
 use middle::def;
 use middle::region;
 use middle::ty::{self, Ty};
-use util::nodemap::{NodeMap};
+use util::nodemap::NodeMap;
 use util::ppaux::{Repr, UserString};
 
 use syntax::ast::{MutImmutable, MutMutable};

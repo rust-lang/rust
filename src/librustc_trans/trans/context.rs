@@ -10,7 +10,7 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
-use llvm::{TargetData};
+use llvm::TargetData;
 use llvm::mk_target_data;
 use metadata::common::LinkMeta;
 use middle::def::ExportMap;

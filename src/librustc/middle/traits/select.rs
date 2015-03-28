@@ -21,16 +21,16 @@ use super::DerivedObligationCause;
 use super::project;
 use super::project::{normalize_with_depth, Normalized};
 use super::{PredicateObligation, TraitObligation, ObligationCause};
-use super::{report_overflow_error};
+use super::report_overflow_error;
 use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
 use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
-use super::{Selection};
-use super::{SelectionResult};
+use super::Selection;
+use super::SelectionResult;
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
             VtableFnPointer, VtableObject, VtableDefaultImpl};
 use super::{VtableImplData, VtableObjectData, VtableBuiltinData, VtableDefaultImplData};
 use super::object_safety;
-use super::{util};
+use super::util;
 
 use middle::fast_reject;
 use middle::subst::{Subst, Substs, TypeSpace, VecPerParamSpace};

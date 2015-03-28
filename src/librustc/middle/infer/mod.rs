@@ -28,14 +28,14 @@ use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
 use middle::ty::replace_late_bound_regions;
 use middle::ty::{self, Ty};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
-use std::cell::{RefCell};
+use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
 use util::nodemap::FnvHashMap;
-use util::ppaux::{ty_to_string};
+use util::ppaux::ty_to_string;
 use util::ppaux::{Repr, UserString};
 
 use self::combine::{Combine, Combineable, CombineFields};

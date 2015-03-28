@@ -11,7 +11,7 @@
 use super::combine::*;
 use super::lattice::*;
 use super::higher_ranked::HigherRankedRelations;
-use super::{cres};
+use super::cres;
 use super::Subtype;
 
 use middle::ty::{self, Ty};

@@ -14,7 +14,7 @@ use ext::base::*;
 use ext::base;
 use feature_gate;
 use parse::token;
-use parse::token::{str_to_ident};
+use parse::token::str_to_ident;
 use ptr::P;
 
 pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
