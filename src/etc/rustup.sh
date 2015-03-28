@@ -335,7 +335,7 @@ case $CFG_OSTYPE in
     MINGW32*)
         CFG_OSTYPE=pc-mingw32
         ;;
-# Thad's Cygwin identifers below
+# Thad's Cygwin identifiers below
 
 #   Vista 32 bit
     CYGWIN_NT-6.0)
@@ -437,7 +437,7 @@ CFG_TMP_DIR=$(mktemp -d 2>/dev/null \
            || create_tmp_dir)
 
 # If we're saving nightlies and we didn't specify which one, grab the latest
-# verison from the perspective of the server. Buildbot has typically finished
+# version from the perspective of the server. Buildbot has typically finished
 # building and uploading by ~8UTC, but we want to include a little buffer.
 #
 # FIXME It would be better to use the known most recent nightly that has been

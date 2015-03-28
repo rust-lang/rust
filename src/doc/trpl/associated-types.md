@@ -170,7 +170,7 @@ let obj = Box::new(graph) as Box<Graph>;
           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
-We can’t create a trait object like this, becuase we don’t know the associated
+We can’t create a trait object like this, because we don’t know the associated
 types. Instead, we can write this:
 
 ```rust

@@ -529,7 +529,7 @@ This will create documentation for bar both inside the documentation for the
 crate `foo`, as well as the documentation for your crate. It will use the same
 documentation in both places.
 
-This behavior can be supressed with `no_inline`:
+This behavior can be suppressed with `no_inline`:
 
 ```ignore
 extern crate foo;

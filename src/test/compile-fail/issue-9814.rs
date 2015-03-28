@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Verify that single-variant enums cant be de-referenced
+// Verify that single-variant enums can't be de-referenced
 // Regression test for issue #9814
 
 enum Foo { Bar(isize) }

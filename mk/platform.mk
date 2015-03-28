@@ -179,7 +179,7 @@ define CFG_MAKE_TOOLCHAIN
 
   ifeq ($$(findstring $(HOST_$(1)),arm aarch64 mips mipsel powerpc),)
 
-  # On Bitrig, we need the relocation model to be PIC for everthing
+  # On Bitrig, we need the relocation model to be PIC for everything
   ifeq (,$(filter $(OSTYPE_$(1)),bitrig))
     LLVM_MC_RELOCATION_MODEL="pic"
   else

@@ -476,7 +476,7 @@ pub struct InvariantType<T>;
 /// particular, thanks to the `Reflect` bound, callers know that a
 /// function declared like `fn bar<T>(...)` will always act in
 /// precisely the same way no matter what type `T` is supplied,
-/// beacuse there are no bounds declared on `T`. (The ability for a
+/// because there are no bounds declared on `T`. (The ability for a
 /// caller to reason about what a function may do based solely on what
 /// generic bounds are declared is often called the ["parametricity
 /// property"][1].)
