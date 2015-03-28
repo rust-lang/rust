@@ -150,7 +150,7 @@ With long lines like this, Rust gives you some flexibility with the whitespace.
 We _could_ write the example like this:
 
 ```{rust,ignore}
-use std::oio;
+use std::io;
 
 fn main() {
     println!("Type something!");
