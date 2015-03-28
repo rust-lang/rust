@@ -21,11 +21,20 @@ use path::{Path, PathBuf};
 use ptr;
 use sync::Arc;
 use sys::handle::Handle;
+use sys::pipe2::AnonPipe;
 use sys::{c, cvt, retry};
 use sys_common::FromInner;
 use vec::Vec;
 
-pub struct File { handle: Handle }
+pub struct File {
+    /// OS level file handle
+    handle: Handle,
+    /// File descriptor opened with open_osfhandle
+    read_fd: Option<libc::c_int>,
+    /// File descriptor opened with open_osfhandle
+    write_fd: Option<libc::c_int>,
+}
+
 pub struct FileAttr { data: c::WIN32_FILE_ATTRIBUTE_DATA }
 
 pub struct ReadDir {
@@ -193,7 +202,11 @@ impl File {
         if handle == libc::INVALID_HANDLE_VALUE {
             Err(Error::last_os_error())
         } else {
-            Ok(File { handle: Handle::new(handle) })
+            Ok(File {
+                handle: Handle::new(handle),
+                read_fd: None,
+                write_fd: None,
+            })
         }
     }
 
@@ -262,11 +275,47 @@ impl File {
     }
 
     pub fn handle(&self) -> &Handle { &self.handle }
+
+    pub fn dup_as_anon_pipe(&mut self, writable: bool) -> io::Result<AnonPipe> {
+        // Calling close on the handle's fd will also close the
+        // handle itself. Thus when the AnonPipe cleans itself up, we
+        // must make sure it closes a *clone* of the fd and not the
+        // original itself.
+        AnonPipe::clone_fd(unsafe { try!(self.raw_fd(writable)) })
+    }
+
+    unsafe fn raw_fd(&mut self, writable: bool) -> io::Result<libc::c_int> {
+        if writable {
+            if let Some(fd) = self.write_fd { return Ok(fd); }
+        } else {
+            if let Some(fd) = self.read_fd { return Ok(fd); }
+        }
+
+        // Calling open_osfhandle repeatedly will create new
+        // file descriptors, so we should cache previous calls
+        let flag = if writable { libc:: O_APPEND } else { libc:: O_RDONLY };
+        let fd = retry(|| libc::open_osfhandle(self.handle.raw() as libc::intptr_t, flag));
+        if fd == -1 {
+            return Err(Error::last_os_error());
+        }
+
+        if writable {
+            self.write_fd = Some(fd);
+        } else {
+            self.read_fd = Some(fd);
+        }
+
+        Ok(fd)
+    }
 }
 
 impl FromInner<libc::HANDLE> for File {
     fn from_inner(handle: libc::HANDLE) -> File {
-        File { handle: Handle::new(handle) }
+        File {
+            handle: Handle::new(handle),
+            read_fd: None,
+            write_fd: None,
+        }
     }
 }
 

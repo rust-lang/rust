@@ -310,6 +310,9 @@ impl File {
 impl AsInner<fs_imp::File> for File {
     fn as_inner(&self) -> &fs_imp::File { &self.inner }
 }
+impl AsInnerMut<fs_imp::File> for File {
+    fn as_inner_mut(&mut self) -> &mut fs_imp::File { &mut self.inner }
+}
 impl FromInner<fs_imp::File> for File {
     fn from_inner(f: fs_imp::File) -> File {
         File { inner: f, path: None }
