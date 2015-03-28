@@ -339,7 +339,7 @@ pub fn args() -> Args {
         let info = objc_msgSend(klass, process_info_sel);
         let args = objc_msgSend(info, arguments_sel);
 
-        let cnt: int = mem::transmute(objc_msgSend(args, count_sel));
+        let cnt: usize = mem::transmute(objc_msgSend(args, count_sel));
         for i in (0..cnt) {
             let tmp = objc_msgSend(args, object_at_sel, i);
             let utf_c_str: *const libc::c_char =
