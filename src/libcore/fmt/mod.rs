@@ -696,7 +696,7 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// // prints "Foo { 10, 11 }"
+    /// // prints "[10, 11]"
     /// println!("{:?}", Foo(vec![10, 11]));
     /// ```
     #[unstable(feature = "debug_builders", reason = "method was just created")]
@@ -722,7 +722,7 @@ impl<'a> Formatter<'a> {
     ///     }
     /// }
     ///
-    /// // prints "Foo { 10, 11 }"
+    /// // prints "{10, 11}"
     /// println!("{:?}", Foo(vec![10, 11]));
     /// ```
     #[unstable(feature = "debug_builders", reason = "method was just created")]
@@ -744,11 +744,11 @@ impl<'a> Formatter<'a> {
     ///
     /// impl fmt::Debug for Foo {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-    ///         self.0.iter().fold(fmt.debug_map(), |b, (k, v)| b.entry(k, v)).finish()
+    ///         self.0.iter().fold(fmt.debug_map(), |b, &(ref k, ref v)| b.entry(k, v)).finish()
     ///     }
     /// }
     ///
-    /// // prints "Foo { "A": 10, "B": 11 }"
+    /// // prints "{"A": 10, "B": 11}"
     /// println!("{:?}", Foo(vec![("A".to_string(), 10), ("B".to_string(), 11)]));
     /// ```
     #[unstable(feature = "debug_builders", reason = "method was just created")]
