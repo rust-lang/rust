@@ -692,11 +692,7 @@ impl<'a> Formatter<'a> {
     ///
     /// impl fmt::Debug for Foo {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-    ///         let mut builder = fmt.debug_list();
-    ///         for i in &self.0 {
-    ///             builder = builder.entry(i);
-    ///         }
-    ///         builder.finish()
+    ///         self.0.iter().fold(fmt.debug_list(), |b, e| b.entry(e)).finish()
     ///     }
     /// }
     ///
@@ -722,11 +718,7 @@ impl<'a> Formatter<'a> {
     ///
     /// impl fmt::Debug for Foo {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-    ///         let mut builder = fmt.debug_set();
-    ///         for i in &self.0 {
-    ///             builder = builder.entry(i);
-    ///         }
-    ///         builder.finish()
+    ///         self.0.iter().fold(fmt.debug_set(), |b, e| b.entry(e)).finish()
     ///     }
     /// }
     ///
@@ -752,11 +744,7 @@ impl<'a> Formatter<'a> {
     ///
     /// impl fmt::Debug for Foo {
     ///     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-    ///         let mut builder = fmt.debug_map();
-    ///         for &(ref key, ref value) in &self.0 {
-    ///             builder = builder.entry(key, value);
-    ///         }
-    ///         builder.finish()
+    ///         self.0.iter().fold(fmt.debug_map(), |b, (k, v)| b.entry(k, v)).finish()
     ///     }
     /// }
     ///
