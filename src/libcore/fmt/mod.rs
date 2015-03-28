@@ -15,7 +15,7 @@
 use any;
 use cell::{Cell, RefCell, Ref, RefMut, BorrowState};
 use char::CharExt;
-use iter::{Iterator, IteratorExt};
+use iter::Iterator;
 use marker::{Copy, PhantomData, Sized};
 use mem;
 use option::Option;

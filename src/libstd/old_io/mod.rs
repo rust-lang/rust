@@ -268,7 +268,7 @@ use default::Default;
 use error::Error;
 use fmt;
 use isize;
-use iter::{Iterator, IteratorExt};
+use iter::Iterator;
 use marker::{PhantomFn, Sized};
 use mem::transmute;
 use ops::FnOnce;

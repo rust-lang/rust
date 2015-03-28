@@ -16,7 +16,7 @@ use fmt;
 use hash;
 use old_io::Writer;
 use iter::{AdditiveIterator, Extend};
-use iter::{Iterator, IteratorExt, Map};
+use iter::{Iterator, Map};
 use marker::Sized;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
@@ -444,13 +444,13 @@ mod tests {
     use super::*;
 
     use clone::Clone;
-    use iter::IteratorExt;
     use option::Option::{self, Some, None};
     use old_path::GenericPath;
     use slice::AsSlice;
     use str::{self, Str};
     use string::ToString;
     use vec::Vec;
+    use iter::Iterator;
 
     macro_rules! t {
         (s: $path:expr, $exp:expr) => (

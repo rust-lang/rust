@@ -43,7 +43,7 @@ use env;
 use error::{FromError, Error};
 use ffi::{OsString, OsStr};
 use fmt;
-use iter::{Iterator, IteratorExt};
+use iter::Iterator;
 use libc::{c_void, c_int, c_char};
 use libc;
 use marker::{Copy, Send};

@@ -231,7 +231,7 @@
 use cell::RefCell;
 use clone::Clone;
 use old_io::IoResult;
-use iter::{Iterator, IteratorExt};
+use iter::Iterator;
 use mem;
 use rc::Rc;
 use result::Result::{Ok, Err};

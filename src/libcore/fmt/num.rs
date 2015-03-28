@@ -15,7 +15,7 @@
 #![allow(unsigned_negation)]
 
 use fmt;
-use iter::IteratorExt;
+use iter::Iterator;
 use num::{Int, cast};
 use slice::SliceExt;
 use str;

@@ -149,7 +149,7 @@ use clone::Clone;
 use cmp::{Eq, Ord};
 use default::Default;
 use iter::ExactSizeIterator;
-use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, IntoIterator};
+use iter::{Iterator, DoubleEndedIterator, FromIterator, IntoIterator};
 use mem;
 use ops::FnOnce;
 use result::Result::{Ok, Err};

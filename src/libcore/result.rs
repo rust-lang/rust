@@ -243,8 +243,7 @@ use self::Result::{Ok, Err};
 
 use clone::Clone;
 use fmt;
-use iter::{Iterator, IteratorExt, DoubleEndedIterator,
-           FromIterator, ExactSizeIterator, IntoIterator};
+use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSizeIterator, IntoIterator};
 use ops::{FnMut, FnOnce};
 use option::Option::{self, None, Some};
 #[allow(deprecated)]
