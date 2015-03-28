@@ -214,7 +214,14 @@ fn test_resize_policy() {
 /// overridden with one of the constructors.
 ///
 /// It is required that the keys implement the `Eq` and `Hash` traits, although
-/// this can frequently be achieved by using `#[derive(Eq, Hash)]`.
+/// this can frequently be achieved by using `#[derive(Eq, Hash)]`. If you
+/// implement these yourself, it is important that the following property holds:
+///
+/// ```text
+/// k1 == k2 -> hash(k1) == hash(k2)
+/// ```
+///
+/// In other words, if two keys are equal, their hashes must be equal.
 ///
 /// It is a logic error for a key to be modified in such a way that the key's
 /// hash, as determined by the `Hash` trait, or its equality, as determined by
