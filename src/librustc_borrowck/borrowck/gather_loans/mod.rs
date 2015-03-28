@@ -151,10 +151,11 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
               assignee_cmt: mc::cmt<'tcx>,
               mode: euv::MutateMode)
     {
-        debug!("mutate(assignment_id={}, assignee_cmt={})",
-               assignment_id, assignee_cmt.repr(self.tcx()));
+        let opt_lp = opt_loan_path(&assignee_cmt);
+        debug!("mutate(assignment_id={}, assignee_cmt={}) opt_lp={:?}",
+               assignment_id, assignee_cmt.repr(self.tcx()), opt_lp);
 
-        match opt_loan_path(&assignee_cmt) {
+        match opt_lp {
             Some(lp) => {
                 gather_moves::gather_assignment(self.bccx, &self.move_data,
                                                 assignment_id, assignment_span,
@@ -376,7 +377,8 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                                       req_kind: ty::BorrowKind)
                                       -> Result<(),()> {
             //! Implements the M-* rules in README.md.
-
+            debug!("check_mutability(cause={:?} cmt={} req_kind={:?}",
+                   cause, cmt.repr(bccx.tcx), req_kind);
             match req_kind {
                 ty::UniqueImmBorrow | ty::ImmBorrow => {
                     match cmt.mutbl {
