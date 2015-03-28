@@ -25,13 +25,13 @@
 //! In particular, it might be enough to say (A,B) are bivariant for
 //! all (A,B).
 
-use middle::ty::{BuiltinBounds};
+use middle::ty::BuiltinBounds;
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use middle::infer::combine::*;
-use middle::infer::{cres};
-use middle::infer::type_variable::{BiTo};
-use util::ppaux::{Repr};
+use middle::infer::cres;
+use middle::infer::type_variable::BiTo;
+use util::ppaux::Repr;
 
 pub struct Bivariate<'f, 'tcx: 'f> {
     fields: CombineFields<'f, 'tcx>

@@ -12,7 +12,7 @@
 
 // this is surprisingly complicated to be both generic & correct
 
-use core::prelude::{PartialOrd};
+use core::prelude::PartialOrd;
 use core::num::Int;
 use core::num::wrapping::WrappingOps;
 

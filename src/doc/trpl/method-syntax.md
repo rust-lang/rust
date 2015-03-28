@@ -51,7 +51,8 @@ You can think of this first parameter as being the `x` in `x.foo()`. The three
 variants correspond to the three kinds of thing `x` could be: `self` if it's
 just a value on the stack, `&self` if it's a reference, and `&mut self` if it's
 a mutable reference. We should default to using `&self`, as it's the most
-common. Here's an example of all three variants:
+common, as Rustaceans prefer borrowing over taking ownership, and references 
+over mutable references. Here's an example of all three variants:
 
 ```rust
 struct Circle {
@@ -100,8 +101,8 @@ impl Circle {
         std::f64::consts::PI * (self.radius * self.radius)
     }
 
-    fn grow(&self) -> Circle {
-        Circle { x: self.x, y: self.y, radius: (self.radius * 10.0) }
+    fn grow(&self, increment: f64) -> Circle {
+        Circle { x: self.x, y: self.y, radius: self.radius + increment }
     }
 }
 
@@ -109,7 +110,7 @@ fn main() {
     let c = Circle { x: 0.0, y: 0.0, radius: 2.0 };
     println!("{}", c.area());
 
-    let d = c.grow().area();
+    let d = c.grow(2.0).area();
     println!("{}", d);
 }
 ```
@@ -124,7 +125,7 @@ fn grow(&self) -> Circle {
 ```
 
 We just say we're returning a `Circle`. With this method, we can grow a new
-circle with an area that's 100 times larger than the old one.
+circle to any arbitrary size.
 
 ## Static methods
 

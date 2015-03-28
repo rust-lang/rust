@@ -212,7 +212,7 @@
 //! no means all of the necessary details. Take a look at the rest of
 //! metadata::loader or metadata::creader for all the juicy details!
 
-use back::archive::{METADATA_FILENAME};
+use back::archive::METADATA_FILENAME;
 use back::svh::Svh;
 use session::Session;
 use session::search_paths::PathKind;

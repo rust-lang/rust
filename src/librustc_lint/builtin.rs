@@ -35,7 +35,7 @@ use middle::ty::{self, Ty};
 use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
 use middle::cfg;
-use util::ppaux::{ty_to_string};
+use util::ppaux::ty_to_string;
 use util::nodemap::{FnvHashMap, NodeSet};
 use lint::{Level, Context, LintPass, LintArray, Lint};
 

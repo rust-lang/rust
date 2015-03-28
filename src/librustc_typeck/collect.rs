@@ -91,7 +91,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
 use syntax::codemap::Span;
-use syntax::parse::token::{special_idents};
+use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::visit;

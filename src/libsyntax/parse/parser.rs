@@ -11,7 +11,7 @@
 pub use self::PathParsingMode::*;
 
 use abi;
-use ast::{BareFnTy};
+use ast::BareFnTy;
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::{Public, Unsafety};
 use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
