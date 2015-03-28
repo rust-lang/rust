@@ -39,7 +39,7 @@ use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::attr;
-use syntax::attr::{AttrMetaMethods};
+use syntax::attr::AttrMetaMethods;
 use syntax::diagnostics;
 use syntax::parse;
 use syntax::parse::token;

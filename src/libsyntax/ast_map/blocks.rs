@@ -26,7 +26,7 @@ pub use self::Code::*;
 use abi;
 use ast::{Block, FnDecl, NodeId};
 use ast;
-use ast_map::{Node};
+use ast_map::Node;
 use ast_map;
 use codemap::Span;
 use visit;
