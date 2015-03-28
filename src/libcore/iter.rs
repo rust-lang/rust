@@ -71,6 +71,8 @@ use option::Option::{Some, None};
 use marker::Sized;
 use usize;
 
+fn _assert_is_object_safe(_: &Iterator) {}
+
 /// An interface for dealing with "external iterators". These types of iterators
 /// can be resumed at any time as all state is stored internally as opposed to
 /// being located on the call stack.
@@ -101,62 +103,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn size_hint(&self) -> (usize, Option<usize>) { (0, None) }
-}
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
-    type Item = I::Item;
-    fn next(&mut self) -> Option<I::Item> { (**self).next() }
-    fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
-}
-
-/// Conversion from an `Iterator`
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
-                          built from an iterator over elements of type `{A}`"]
-pub trait FromIterator<A> {
-    /// Build a container with elements from something iterable.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn from_iter<T: IntoIterator<Item=A>>(iterator: T) -> Self;
-}
-
-/// Conversion into an `Iterator`
-#[stable(feature = "rust1", since = "1.0.0")]
-pub trait IntoIterator {
-    /// The type of the elements being iterated
-    #[stable(feature = "rust1", since = "1.0.0")]
-    type Item;
-
-    /// A container for iterating over elements of type Item
-    #[stable(feature = "rust1", since = "1.0.0")]
-    type IntoIter: Iterator<Item=Self::Item>;
-
-    /// Consumes `Self` and returns an iterator over it
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn into_iter(self) -> Self::IntoIter;
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator> IntoIterator for I {
-    type Item = I::Item;
-    type IntoIter = I;
-
-    fn into_iter(self) -> I {
-        self
-    }
-}
-
-/// A type growable from an `Iterator` implementation
-#[stable(feature = "rust1", since = "1.0.0")]
-pub trait Extend<A> {
-    /// Extend a container with the elements yielded by an arbitrary iterator
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn extend<T: IntoIterator<Item=A>>(&mut self, iterable: T);
-}
-
-/// An extension trait providing numerous methods applicable to all iterators.
-#[stable(feature = "rust1", since = "1.0.0")]
-pub trait IteratorExt: Iterator + Sized {
     /// Counts the number of elements in this iterator.
     ///
     /// # Examples
@@ -167,7 +114,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn count(self) -> usize {
+    fn count(self) -> usize where Self: Sized {
         self.fold(0, |cnt, _x| cnt + 1)
     }
 
@@ -181,7 +128,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn last(self) -> Option<Self::Item> {
+    fn last(self) -> Option<Self::Item> where Self: Sized {
         let mut last = None;
         for x in self { last = Some(x); }
         last
@@ -200,7 +147,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
+    fn nth(&mut self, mut n: usize) -> Option<Self::Item> where Self: Sized {
         for x in self.by_ref() {
             if n == 0 { return Some(x) }
             n -= 1;
@@ -225,7 +172,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn chain<U>(self, other: U) -> Chain<Self, U> where
-        U: Iterator<Item=Self::Item>,
+        Self: Sized, U: Iterator<Item=Self::Item>,
     {
         Chain{a: self, b: other, flag: false}
     }
@@ -260,7 +207,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// both produce the same output.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn zip<U: Iterator>(self, other: U) -> Zip<Self, U> {
+    fn zip<U: Iterator>(self, other: U) -> Zip<Self, U> where Self: Sized {
         Zip{a: self, b: other}
     }
 
@@ -279,7 +226,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn map<B, F>(self, f: F) -> Map<Self, F> where
-        F: FnMut(Self::Item) -> B,
+        Self: Sized, F: FnMut(Self::Item) -> B,
     {
         Map{iter: self, f: f}
     }
@@ -299,7 +246,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn filter<P>(self, predicate: P) -> Filter<Self, P> where
-        P: FnMut(&Self::Item) -> bool,
+        Self: Sized, P: FnMut(&Self::Item) -> bool,
     {
         Filter{iter: self, predicate: predicate}
     }
@@ -319,7 +266,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn filter_map<B, F>(self, f: F) -> FilterMap<Self, F> where
-        F: FnMut(Self::Item) -> Option<B>,
+        Self: Sized, F: FnMut(Self::Item) -> Option<B>,
     {
         FilterMap { iter: self, f: f }
     }
@@ -341,7 +288,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn enumerate(self) -> Enumerate<Self> {
+    fn enumerate(self) -> Enumerate<Self> where Self: Sized {
         Enumerate{iter: self, count: 0}
     }
 
@@ -365,7 +312,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn peekable(self) -> Peekable<Self> {
+    fn peekable(self) -> Peekable<Self> where Self: Sized {
         Peekable{iter: self, peeked: None}
     }
 
@@ -386,7 +333,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn skip_while<P>(self, predicate: P) -> SkipWhile<Self, P> where
-        P: FnMut(&Self::Item) -> bool,
+        Self: Sized, P: FnMut(&Self::Item) -> bool,
     {
         SkipWhile{iter: self, flag: false, predicate: predicate}
     }
@@ -407,7 +354,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn take_while<P>(self, predicate: P) -> TakeWhile<Self, P> where
-        P: FnMut(&Self::Item) -> bool,
+        Self: Sized, P: FnMut(&Self::Item) -> bool,
     {
         TakeWhile{iter: self, flag: false, predicate: predicate}
     }
@@ -426,7 +373,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn skip(self, n: usize) -> Skip<Self> {
+    fn skip(self, n: usize) -> Skip<Self> where Self: Sized {
         Skip{iter: self, n: n}
     }
 
@@ -445,7 +392,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn take(self, n: usize) -> Take<Self> {
+    fn take(self, n: usize) -> Take<Self> where Self: Sized, {
         Take{iter: self, n: n}
     }
 
@@ -472,7 +419,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn scan<St, B, F>(self, initial_state: St, f: F) -> Scan<Self, St, F>
-        where F: FnMut(&mut St, Self::Item) -> Option<B>,
+        where Self: Sized, F: FnMut(&mut St, Self::Item) -> Option<B>,
     {
         Scan{iter: self, f: f, state: initial_state}
     }
@@ -495,7 +442,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn flat_map<U, F>(self, f: F) -> FlatMap<Self, U, F>
-        where U: Iterator, F: FnMut(Self::Item) -> U,
+        where Self: Sized, U: Iterator, F: FnMut(Self::Item) -> U,
     {
         FlatMap{iter: self, f: f, frontiter: None, backiter: None }
     }
@@ -529,7 +476,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fuse(self) -> Fuse<Self> {
+    fn fuse(self) -> Fuse<Self> where Self: Sized {
         Fuse{iter: self, done: false}
     }
 
@@ -555,7 +502,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn inspect<F>(self, f: F) -> Inspect<Self, F> where
-        F: FnMut(&Self::Item),
+        Self: Sized, F: FnMut(&Self::Item),
     {
         Inspect{iter: self, f: f}
     }
@@ -575,7 +522,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next() == Some(5));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn by_ref(&mut self) -> &mut Self { self }
+    fn by_ref(&mut self) -> &mut Self where Self: Sized { self }
 
     /// Loops through the entire iterator, collecting all of the elements into
     /// a container implementing `FromIterator`.
@@ -590,7 +537,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn collect<B: FromIterator<Self::Item>>(self) -> B {
+    fn collect<B: FromIterator<Self::Item>>(self) -> B where Self: Sized {
         FromIterator::from_iter(self)
     }
 
@@ -609,6 +556,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[unstable(feature = "core",
                reason = "recently added as part of collections reform")]
     fn partition<B, F>(self, mut f: F) -> (B, B) where
+        Self: Sized,
         B: Default + Extend<Self::Item>,
         F: FnMut(&Self::Item) -> bool
     {
@@ -638,7 +586,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fold<B, F>(self, init: B, mut f: F) -> B where
-        F: FnMut(B, Self::Item) -> B,
+        Self: Sized, F: FnMut(B, Self::Item) -> B,
     {
         let mut accum = init;
         for x in self {
@@ -658,7 +606,9 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn all<F>(&mut self, mut f: F) -> bool where F: FnMut(Self::Item) -> bool {
+    fn all<F>(&mut self, mut f: F) -> bool where
+        Self: Sized, F: FnMut(Self::Item) -> bool
+    {
         for x in self.by_ref() { if !f(x) { return false; } }
         true
     }
@@ -679,7 +629,10 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn any<F>(&mut self, mut f: F) -> bool where F: FnMut(Self::Item) -> bool {
+    fn any<F>(&mut self, mut f: F) -> bool where
+        Self: Sized,
+        F: FnMut(Self::Item) -> bool
+    {
         for x in self.by_ref() { if f(x) { return true; } }
         false
     }
@@ -699,6 +652,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
+        Self: Sized,
         P: FnMut(&Self::Item) -> bool,
     {
         for x in self.by_ref() {
@@ -722,6 +676,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn position<P>(&mut self, mut predicate: P) -> Option<usize> where
+        Self: Sized,
         P: FnMut(Self::Item) -> bool,
     {
         let mut i = 0;
@@ -752,7 +707,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rposition<P>(&mut self, mut predicate: P) -> Option<usize> where
         P: FnMut(Self::Item) -> bool,
-        Self: ExactSizeIterator + DoubleEndedIterator
+        Self: Sized + ExactSizeIterator + DoubleEndedIterator
     {
         let mut i = self.len();
 
@@ -775,7 +730,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn max(self) -> Option<Self::Item> where Self::Item: Ord
+    fn max(self) -> Option<Self::Item> where Self: Sized, Self::Item: Ord
     {
         self.fold(None, |max, x| {
             match max {
@@ -795,7 +750,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn min(self) -> Option<Self::Item> where Self::Item: Ord
+    fn min(self) -> Option<Self::Item> where Self: Sized, Self::Item: Ord
     {
         self.fold(None, |min, x| {
             match min {
@@ -837,7 +792,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(a.iter().min_max() == MinMax(&1, &1));
     /// ```
     #[unstable(feature = "core", reason = "return type may change")]
-    fn min_max(mut self) -> MinMaxResult<Self::Item> where Self::Item: Ord
+    fn min_max(mut self) -> MinMaxResult<Self::Item> where Self: Sized, Self::Item: Ord
     {
         let (mut min, mut max) = match self.next() {
             None => return NoElements,
@@ -897,6 +852,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[unstable(feature = "core",
                reason = "may want to produce an Ordering directly; see #15311")]
     fn max_by<B: Ord, F>(self, mut f: F) -> Option<Self::Item> where
+        Self: Sized,
         F: FnMut(&Self::Item) -> B,
     {
         self.fold(None, |max: Option<(Self::Item, B)>, x| {
@@ -928,6 +884,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[unstable(feature = "core",
                reason = "may want to produce an Ordering directly; see #15311")]
     fn min_by<B: Ord, F>(self, mut f: F) -> Option<Self::Item> where
+        Self: Sized,
         F: FnMut(&Self::Item) -> B,
     {
         self.fold(None, |min: Option<(Self::Item, B)>, x| {
@@ -957,7 +914,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// `std::usize::MAX` elements of the original iterator.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn rev(self) -> Rev<Self> {
+    fn rev(self) -> Rev<Self> where Self: Sized {
         Rev{iter: self}
     }
 
@@ -979,7 +936,7 @@ pub trait IteratorExt: Iterator + Sized {
     fn unzip<A, B, FromA, FromB>(self) -> (FromA, FromB) where
         FromA: Default + Extend<A>,
         FromB: Default + Extend<B>,
-        Self: Iterator<Item=(A, B)>,
+        Self: Sized + Iterator<Item=(A, B)>,
     {
         struct SizeHint<A>(usize, Option<usize>, marker::PhantomData<A>);
         impl<A> Iterator for SizeHint<A> {
@@ -1010,7 +967,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// converting an Iterator<&T> to an Iterator<T>.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn cloned<'a, T: 'a>(self) -> Cloned<Self>
-        where Self: Iterator<Item=&'a T>, T: Clone
+        where Self: Sized + Iterator<Item=&'a T>, T: Clone
     {
         Cloned { it: self }
     }
@@ -1028,7 +985,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    fn cycle(self) -> Cycle<Self> where Self: Clone {
+    fn cycle(self) -> Cycle<Self> where Self: Sized + Clone {
         Cycle{orig: self.clone(), iter: self}
     }
 
@@ -1036,7 +993,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[unstable(feature = "core",
                reason = "uncertain about placement or widespread use")]
     fn reverse_in_place<'a, T: 'a>(&mut self) where
-        Self: Iterator<Item=&'a mut T> + DoubleEndedIterator
+        Self: Sized + Iterator<Item=&'a mut T> + DoubleEndedIterator
     {
         loop {
             match (self.next(), self.next_back()) {
@@ -1048,7 +1005,55 @@ pub trait IteratorExt: Iterator + Sized {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I> IteratorExt for I where I: Iterator {}
+impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
+    type Item = I::Item;
+    fn next(&mut self) -> Option<I::Item> { (**self).next() }
+    fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
+}
+
+/// Conversion from an `Iterator`
+#[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
+                          built from an iterator over elements of type `{A}`"]
+pub trait FromIterator<A> {
+    /// Build a container with elements from something iterable.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn from_iter<T: IntoIterator<Item=A>>(iterator: T) -> Self;
+}
+
+/// Conversion into an `Iterator`
+#[stable(feature = "rust1", since = "1.0.0")]
+pub trait IntoIterator {
+    /// The type of the elements being iterated
+    #[stable(feature = "rust1", since = "1.0.0")]
+    type Item;
+
+    /// A container for iterating over elements of type Item
+    #[stable(feature = "rust1", since = "1.0.0")]
+    type IntoIter: Iterator<Item=Self::Item>;
+
+    /// Consumes `Self` and returns an iterator over it
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn into_iter(self) -> Self::IntoIter;
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: Iterator> IntoIterator for I {
+    type Item = I::Item;
+    type IntoIter = I;
+
+    fn into_iter(self) -> I {
+        self
+    }
+}
+
+/// A type growable from an `Iterator` implementation
+#[stable(feature = "rust1", since = "1.0.0")]
+pub trait Extend<A> {
+    /// Extend a container with the elements yielded by an arbitrary iterator
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn extend<T: IntoIterator<Item=A>>(&mut self, iterable: T);
+}
 
 /// A range iterator able to yield elements from both ends
 ///
@@ -1256,7 +1261,7 @@ impl_multiplicative! { usize, 1 }
 impl_multiplicative! { f32,  1.0 }
 impl_multiplicative! { f64,  1.0 }
 
-/// `MinMaxResult` is an enum returned by `min_max`. See `IteratorOrdExt::min_max` for more detail.
+/// `MinMaxResult` is an enum returned by `min_max`. See `Iterator::min_max` for more detail.
 #[derive(Clone, PartialEq, Debug)]
 #[unstable(feature = "core",
            reason = "unclear whether such a fine-grained result is widely useful")]

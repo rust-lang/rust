@@ -25,7 +25,7 @@ use default::Default;
 use error::Error;
 use fmt;
 use iter::ExactSizeIterator;
-use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
+use iter::{Map, Iterator, DoubleEndedIterator};
 use marker::Sized;
 use mem;
 #[allow(deprecated)]
@@ -1237,7 +1237,7 @@ Section: Trait implementations
 mod traits {
     use cmp::{Ordering, Ord, PartialEq, PartialOrd, Eq};
     use cmp::Ordering::{Less, Equal, Greater};
-    use iter::IteratorExt;
+    use iter::Iterator;
     use option::Option;
     use option::Option::Some;
     use ops;

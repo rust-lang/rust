@@ -23,7 +23,7 @@ use cmp::{PartialEq, Eq, PartialOrd, Ord};
 use error::Error;
 use fmt;
 use intrinsics;
-use iter::IteratorExt;
+use iter::Iterator;
 use marker::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};

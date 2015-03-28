@@ -21,7 +21,7 @@ use boxed::Box;
 use fmt;
 use old_io::{self, IoResult, IoError};
 use old_io::net;
-use iter::{Iterator, IteratorExt};
+use iter::Iterator;
 use ops::{FnOnce, FnMut};
 use option::Option;
 use option::Option::{None, Some};

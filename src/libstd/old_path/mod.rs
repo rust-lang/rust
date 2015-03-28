@@ -70,7 +70,7 @@ use core::marker::Sized;
 use ffi::CString;
 use clone::Clone;
 use fmt;
-use iter::IteratorExt;
+use iter::Iterator;
 use option::Option;
 use option::Option::{None, Some};
 use str;
