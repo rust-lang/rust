@@ -5,7 +5,7 @@ we haven't seen before. Here's a simple program that reads some input,
 and then prints it back out:
 
 ```{rust,ignore}
-corefn main() {
+fn main() {
     println!("Type something!");
 
     let mut input = String::new();
