@@ -86,7 +86,7 @@ impl Ord for ModuleSummary {
     }
 }
 
-// is the item considered publically visible?
+// is the item considered publicly visible?
 fn visible(item: &Item) -> bool {
     match item.inner {
         ImplItem(_) => true,

@@ -157,7 +157,7 @@ pub struct TargetOptions {
     /// particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
     pub is_like_osx: bool,
     /// Whether the target toolchain is like Windows'. Only useful for compiling against Windows,
-    /// only realy used for figuring out how to find libraries, since Windows uses its own
+    /// only really used for figuring out how to find libraries, since Windows uses its own
     /// library naming convention. Defaults to false.
     pub is_like_windows: bool,
     /// Whether the target toolchain is like Android's. Only useful for compiling against Android.
