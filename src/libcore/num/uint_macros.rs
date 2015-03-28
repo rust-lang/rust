@@ -13,9 +13,9 @@
 macro_rules! uint_module { ($T:ty, $T_SIGNED:ty, $bits:expr) => (
 
 #[unstable(feature = "core")]
-pub const BITS : u32 = $bits;
+pub const BITS : usize = $bits;
 #[unstable(feature = "core")]
-pub const BYTES : u32 = ($bits / 8);
+pub const BYTES : usize = ($bits / 8);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN: $T = 0 as $T;
