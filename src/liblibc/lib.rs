@@ -307,7 +307,10 @@ pub mod types {
                 #[derive(Copy)] pub struct sockaddr_storage {
                     pub ss_family: sa_family_t,
                     pub __ss_align: isize,
-                    pub __ss_pad2: [u8; 128 - 2 * (::core::isize::BYTES as usize)],
+                    #[cfg(target_pointer_width = "32")]
+                    pub __ss_pad2: [u8; 128 - 2 * 4],
+                    #[cfg(target_pointer_width = "64")]
+                    pub __ss_pad2: [u8; 128 - 2 * 8],
                 }
                 #[repr(C)]
                 #[derive(Copy)] pub struct sockaddr_in {
