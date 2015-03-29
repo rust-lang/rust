@@ -40,6 +40,7 @@
 #![feature(str_char)]
 #![feature(convert)]
 #![feature(slice_patterns)]
+#![feature(debug_builders)]
 #![cfg_attr(test, feature(rand, rustc_private, test, hash, collections))]
 #![cfg_attr(test, allow(deprecated))] // rand
 
