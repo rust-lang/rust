@@ -403,6 +403,9 @@ pub fn _print(args: fmt::Arguments) {
     if let Err(e) = result {
         panic!("failed printing to stdout: {}", e);
     }
+    if let Err(e) = stdout().flush() {
+        panic!("failed to flush stdout: {}", e);
+    }
 }
 
 #[cfg(test)]
