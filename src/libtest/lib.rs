@@ -340,7 +340,7 @@ The FILTER regex is tested against the name of all tests to run, and
 only those tests that match are run.
 
 By default, all tests are run in parallel. This can be altered with the
-RUST_TEST_THRADS environment variable when running tests (set it to 1).
+RUST_TEST_THREADS environment variable when running tests (set it to 1).
 
 All tests have their standard output and standard error captured by default.
 This can be overridden with the --nocapture flag or the RUST_TEST_NOCAPTURE=1
