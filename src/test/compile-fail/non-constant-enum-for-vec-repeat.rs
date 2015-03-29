@@ -8,9 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Note: This test is checking that we forbid a coding pattern that
+// Issue #5873 explicitly wants to allow.
+
 enum State { ST_NULL, ST_WHITESPACE }
 
 fn main() {
     [State::ST_NULL; (State::ST_WHITESPACE as usize)];
-    //~^ ERROR expected constant integer for repeat count, found non-constant expression
+    //~^ ERROR expected constant integer for repeat count, but non-constant path
 }

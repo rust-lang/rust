@@ -20,7 +20,7 @@ mod tests {
     fn test_overflows() {
         assert!(MAX > 0);
         assert!(MIN <= 0);
-        assert!(MIN + MAX + 1 == 0);
+        assert!((MIN + MAX).wrapping_add(1) == 0);
     }
 
     #[test]
