@@ -22,7 +22,7 @@ pub mod nest {
     struct S;
     impl S {
         fn foo_method(&self) -> &'static str {
-            return "i am very similiar to foo.";
+            return "i am very similar to foo.";
         }
     }
 }

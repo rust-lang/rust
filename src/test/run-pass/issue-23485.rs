@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test for an ICE that occured when a default method implementation
+// Test for an ICE that occurred when a default method implementation
 // was applied to a type that did not meet the prerequisites. The
 // problem occurred specifically because normalizing
 // `Self::Item::Target` was impossible in this case.

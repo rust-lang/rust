@@ -83,7 +83,7 @@
 //! - `Sub32` (`0d`): 4-byte unsigned integer for supplementary information.
 //!   Those two tags normally occur as the first subdocument of certain tags,
 //!   namely `Enum`, `Vec` and `Map`, to provide a variant or size information.
-//!   They can be used interchangably.
+//!   They can be used interchangeably.
 //!
 //! Predefined tags with an explicit length:
 //!
