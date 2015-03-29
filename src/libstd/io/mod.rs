@@ -101,15 +101,14 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
     let start_len = buf.len();
     let mut len = start_len;
-    let mut cap_bump = 16;
+    let min_cap_bump = 16;
     let ret;
     loop {
         if len == buf.len() {
             if buf.capacity() == buf.len() {
-                if cap_bump < DEFAULT_BUF_SIZE {
-                    cap_bump *= 2;
-                }
-                buf.reserve(cap_bump);
+                // reserve() rounds up our request to the nearest power of two, so after the first
+                // time the capacity is exceeded, we double our capacity at each call to reserve. 
+                buf.reserve(min_cap_bump);
             }
             let new_area = buf.capacity() - buf.len();
             buf.extend(iter::repeat(0).take(new_area));
