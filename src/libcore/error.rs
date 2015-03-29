@@ -52,23 +52,23 @@
 //! use std::error::FromError;
 //! use std::{io, str};
 //! use std::fs::File;
-//! 
+//!
 //! enum MyError { Io(io::Error), Utf8(str::Utf8Error), }
-//! 
+//!
 //! impl FromError<io::Error> for MyError {
 //!     fn from_error(err: io::Error) -> MyError { MyError::Io(err) }
 //! }
-//! 
+//!
 //! impl FromError<str::Utf8Error> for MyError {
 //!     fn from_error(err: str::Utf8Error) -> MyError { MyError::Utf8(err) }
 //! }
-//! 
+//!
 //! #[allow(unused_variables)]
 //! fn open_and_map() -> Result<(), MyError> {
 //!     let b = b"foo.txt";
 //!     let s = try!(str::from_utf8(b));
 //!     let f = try!(File::open(s));
-//! 
+//!
 //!     // do something interesting here...
 //!     Ok(())
 //! }
