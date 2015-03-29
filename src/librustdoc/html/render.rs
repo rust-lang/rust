@@ -125,6 +125,7 @@ pub struct Implementor {
     pub trait_: clean::Type,
     pub for_: clean::Type,
     pub stability: Option<clean::Stability>,
+    pub polarity: Option<clean::ImplPolarity>,
 }
 
 /// Metadata about implementations for a type.
@@ -635,9 +636,11 @@ fn write_shared(cx: &Context,
             // going on). If they're in different crates then the crate defining
             // the trait will be interested in our implementation.
             if imp.def_id.krate == did.krate { continue }
-            try!(write!(&mut f, r#""{}impl{} {} for {}","#,
+            try!(write!(&mut f, r#""{}impl{} {}{} for {}","#,
                         ConciseStability(&imp.stability),
-                        imp.generics, imp.trait_, imp.for_));
+                        imp.generics,
+                        if imp.polarity == Some(clean::ImplPolarity::Negative) { "!" } else { "" },
+                        imp.trait_, imp.for_));
         }
         try!(writeln!(&mut f, r"];"));
         try!(writeln!(&mut f, "{}", r"
@@ -882,6 +885,7 @@ impl DocFolder for Cache {
                         trait_: i.trait_.as_ref().unwrap().clone(),
                         for_: i.for_.clone(),
                         stability: item.stability.clone(),
+                        polarity: i.polarity.clone(),
                     });
                 }
                 Some(..) | None => {}
