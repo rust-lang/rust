@@ -309,7 +309,7 @@ impl<T> Vec<T> {
 
             let new_min_cap = self.len.checked_add(additional).expect(err_msg);
             match new_min_cap.checked_next_power_of_two() {
-                None => self.grow_capacity(new_min_cap),
+                None => self.grow_capacity(usize::MAX),
                 Some(x) => self.grow_capacity(x),
             }
         }
