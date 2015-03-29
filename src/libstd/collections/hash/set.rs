@@ -612,14 +612,7 @@ impl<T, S> fmt::Debug for HashSet<T, S>
           S: HashState
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{{"));
-
-        for (i, x) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{:?}", *x));
-        }
-
-        write!(f, "}}")
+        self.iter().fold(f.debug_set(), |b, e| b.entry(e)).finish()
     }
 }
 

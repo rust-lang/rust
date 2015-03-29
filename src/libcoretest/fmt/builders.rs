@@ -211,12 +211,12 @@ mod debug_map {
 
         impl fmt::Debug for Foo {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                fmt.debug_map("Foo").finish()
+                fmt.debug_map().finish()
             }
         }
 
-        assert_eq!("Foo {}", format!("{:?}", Foo));
-        assert_eq!("Foo {}", format!("{:#?}", Foo));
+        assert_eq!("{}", format!("{:?}", Foo));
+        assert_eq!("{}", format!("{:#?}", Foo));
     }
 
     #[test]
@@ -225,15 +225,15 @@ mod debug_map {
 
         impl fmt::Debug for Foo {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                fmt.debug_map("Foo")
+                fmt.debug_map()
                     .entry(&"bar", &true)
                     .finish()
             }
         }
 
-        assert_eq!("Foo { \"bar\": true }", format!("{:?}", Foo));
+        assert_eq!("{\"bar\": true}", format!("{:?}", Foo));
         assert_eq!(
-"Foo {
+"{
     \"bar\": true
 }",
                    format!("{:#?}", Foo));
@@ -245,16 +245,16 @@ mod debug_map {
 
         impl fmt::Debug for Foo {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                fmt.debug_map("Foo")
+                fmt.debug_map()
                     .entry(&"bar", &true)
                     .entry(&10i32, &format_args!("{}/{}", 10i32, 20i32))
                     .finish()
             }
         }
 
-        assert_eq!("Foo { \"bar\": true, 10: 10/20 }", format!("{:?}", Foo));
+        assert_eq!("{\"bar\": true, 10: 10/20}", format!("{:?}", Foo));
         assert_eq!(
-"Foo {
+"{
     \"bar\": true,
     10: 10/20
 }",
@@ -267,7 +267,7 @@ mod debug_map {
 
         impl fmt::Debug for Foo {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                fmt.debug_map("Foo")
+                fmt.debug_map()
                     .entry(&"bar", &true)
                     .entry(&10i32, &format_args!("{}/{}", 10i32, 20i32))
                     .finish()
@@ -278,23 +278,23 @@ mod debug_map {
 
         impl fmt::Debug for Bar {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                fmt.debug_map("Bar")
+                fmt.debug_map()
                     .entry(&"foo", &Foo)
                     .entry(&Foo, &"world")
                     .finish()
             }
         }
 
-        assert_eq!("Bar { \"foo\": Foo { \"bar\": true, 10: 10/20 }, \
-                    Foo { \"bar\": true, 10: 10/20 }: \"world\" }",
+        assert_eq!("{\"foo\": {\"bar\": true, 10: 10/20}, \
+                    {\"bar\": true, 10: 10/20}: \"world\"}",
                    format!("{:?}", Bar));
         assert_eq!(
-"Bar {
-    \"foo\": Foo {
+"{
+    \"foo\": {
         \"bar\": true,
         10: 10/20
     },
-    Foo {
+    {
         \"bar\": true,
         10: 10/20
     }: \"world\"
@@ -312,12 +312,12 @@ mod debug_set {
 
         impl fmt::Debug for Foo {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                fmt.debug_set("Foo").finish()
+                fmt.debug_set().finish()
             }
         }
 
-        assert_eq!("Foo {}", format!("{:?}", Foo));
-        assert_eq!("Foo {}", format!("{:#?}", Foo));
+        assert_eq!("{}", format!("{:?}", Foo));
+        assert_eq!("{}", format!("{:#?}", Foo));
     }
 
     #[test]
@@ -326,15 +326,15 @@ mod debug_set {
 
         impl fmt::Debug for Foo {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                fmt.debug_set("Foo")
+                fmt.debug_set()
                     .entry(&true)
                     .finish()
             }
         }
 
-        assert_eq!("Foo { true }", format!("{:?}", Foo));
+        assert_eq!("{true}", format!("{:?}", Foo));
         assert_eq!(
-"Foo {
+"{
     true
 }",
                    format!("{:#?}", Foo));
@@ -346,16 +346,16 @@ mod debug_set {
 
         impl fmt::Debug for Foo {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                fmt.debug_set("Foo")
+                fmt.debug_set()
                     .entry(&true)
                     .entry(&format_args!("{}/{}", 10i32, 20i32))
                     .finish()
             }
         }
 
-        assert_eq!("Foo { true, 10/20 }", format!("{:?}", Foo));
+        assert_eq!("{true, 10/20}", format!("{:?}", Foo));
         assert_eq!(
-"Foo {
+"{
     true,
     10/20
 }",
@@ -368,7 +368,7 @@ mod debug_set {
 
         impl fmt::Debug for Foo {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                fmt.debug_set("Foo")
+                fmt.debug_set()
                     .entry(&true)
                     .entry(&format_args!("{}/{}", 10i32, 20i32))
                     .finish()
@@ -379,23 +379,120 @@ mod debug_set {
 
         impl fmt::Debug for Bar {
             fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-                fmt.debug_set("Bar")
+                fmt.debug_set()
                     .entry(&Foo)
                     .entry(&"world")
                     .finish()
             }
         }
 
-        assert_eq!("Bar { Foo { true, 10/20 }, \"world\" }",
+        assert_eq!("{{true, 10/20}, \"world\"}",
                    format!("{:?}", Bar));
         assert_eq!(
-"Bar {
-    Foo {
+"{
+    {
         true,
         10/20
     },
     \"world\"
 }",
+                   format!("{:#?}", Bar));
+    }
+}
+
+mod debug_list {
+    use std::fmt;
+
+    #[test]
+    fn test_empty() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                fmt.debug_list().finish()
+            }
+        }
+
+        assert_eq!("[]", format!("{:?}", Foo));
+        assert_eq!("[]", format!("{:#?}", Foo));
+    }
+
+    #[test]
+    fn test_single() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                fmt.debug_list()
+                    .entry(&true)
+                    .finish()
+            }
+        }
+
+        assert_eq!("[true]", format!("{:?}", Foo));
+        assert_eq!(
+"[
+    true
+]",
+                   format!("{:#?}", Foo));
+    }
+
+    #[test]
+    fn test_multiple() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                fmt.debug_list()
+                    .entry(&true)
+                    .entry(&format_args!("{}/{}", 10i32, 20i32))
+                    .finish()
+            }
+        }
+
+        assert_eq!("[true, 10/20]", format!("{:?}", Foo));
+        assert_eq!(
+"[
+    true,
+    10/20
+]",
+                   format!("{:#?}", Foo));
+    }
+
+    #[test]
+    fn test_nested() {
+        struct Foo;
+
+        impl fmt::Debug for Foo {
+            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                fmt.debug_list()
+                    .entry(&true)
+                    .entry(&format_args!("{}/{}", 10i32, 20i32))
+                    .finish()
+            }
+        }
+
+        struct Bar;
+
+        impl fmt::Debug for Bar {
+            fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+                fmt.debug_list()
+                    .entry(&Foo)
+                    .entry(&"world")
+                    .finish()
+            }
+        }
+
+        assert_eq!("[[true, 10/20], \"world\"]",
+                   format!("{:?}", Bar));
+        assert_eq!(
+"[
+    [
+        true,
+        10/20
+    ],
+    \"world\"
+]",
                    format!("{:#?}", Bar));
     }
 }
