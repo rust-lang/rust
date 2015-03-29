@@ -1017,6 +1017,27 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
                           built from an iterator over elements of type `{A}`"]
 pub trait FromIterator<A> {
     /// Build a container with elements from something iterable.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    /// use std::iter::FromIterator;
+    ///
+    /// let colors_vec = vec!["red", "red", "yellow", "blue"];
+    /// let colors_set = HashSet::<&str>::from_iter(colors_vec);
+    /// assert_eq!(colors_set.len(), 3);
+    /// ```
+    ///
+    /// `FromIterator` is more commonly used implicitly via the `Iterator::collect` method:
+    ///
+    /// ```
+    /// use std::collections::HashSet;
+    ///
+    /// let colors_vec = vec!["red", "red", "yellow", "blue"];
+    /// let colors_set = colors_vec.into_iter().collect::<HashSet<&str>>();
+    /// assert_eq!(colors_set.len(), 3);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn from_iter<T: IntoIterator<Item=A>>(iterator: T) -> Self;
 }
