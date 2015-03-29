@@ -844,6 +844,12 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     &format!("{} in an aliasable location",
                              prefix));
             }
+            mc::AliasableReason::UnaliasableImmutable => {
+                self.tcx.sess.span_err(
+                    span,
+                    &format!("{} in an immutable container",
+                             prefix));
+            }
             mc::AliasableClosure(id) => {
                 self.tcx.sess.span_err(span,
                                        &format!("{} in a captured outer \
