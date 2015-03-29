@@ -1532,7 +1532,7 @@ mod test {
                    b"foobar\0\0\0\0".to_vec());
 
         // Truncate to a smaller length, don't seek, and then write something.
-        // Ensure that the intermediate zeroes are all filled in (we're seeked
+        // Ensure that the intermediate zeroes are all filled in (we have `seek`ed
         // past the end of the file).
         check!(file.truncate(2));
         assert_eq!(check!(file.stat()).size, 2);

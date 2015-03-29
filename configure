@@ -404,7 +404,7 @@ case $CFG_OSTYPE in
         CFG_OSTYPE=pc-windows-gnu
         ;;
 
-# Thad's Cygwin identifers below
+# Thad's Cygwin identifiers below
 
 #   Vista 32 bit
     CYGWIN_NT-6.0)

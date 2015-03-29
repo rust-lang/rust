@@ -132,7 +132,7 @@ endef
 # on $$(TSREQ$(1)_T_$(2)_H_$(3)), to ensure that no products will be
 # put into the target area until after the get-snapshot.py script has
 # had its chance to clean it out; otherwise the other products will be
-# inadvertantly included in the clean out.
+# inadvertently included in the clean out.
 SNAPSHOT_RUSTC_POST_CLEANUP=$(HBIN0_H_$(CFG_BUILD))/rustc$(X_$(CFG_BUILD))
 
 define TARGET_HOST_RULES

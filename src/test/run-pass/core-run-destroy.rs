@@ -52,7 +52,7 @@ pub fn sleeper() -> Process {
 
 fn test_destroy_twice() {
     let mut p = sleeper();
-    succeed!(p.signal_exit()); // this shouldnt crash...
+    succeed!(p.signal_exit()); // this shouldn't crash...
     let _ = p.signal_exit(); // ...and nor should this (and nor should the destructor)
 }
 
