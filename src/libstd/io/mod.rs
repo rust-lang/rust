@@ -48,30 +48,6 @@ mod stdio;
 
 const DEFAULT_BUF_SIZE: usize = 64 * 1024;
 
-// Acquires a slice of the vector `v` from its length to its capacity
-// (after initializing the data), reads into it, and then updates the length.
-//
-// This function is leveraged to efficiently read some bytes into a destination
-// vector without extra copying and taking advantage of the space that's already
-// in `v`.
-fn with_end_to_cap<F>(v: &mut Vec<u8>, f: F) -> Result<usize>
-    where F: FnOnce(&mut [u8]) -> Result<usize>
-{
-    let len = v.len();
-    let new_area = v.capacity() - len;
-    v.extend(iter::repeat(0).take(new_area));
-    match f(&mut v[len..]) {
-        Ok(n) => {
-            v.truncate(len + n);
-            Ok(n)
-        }
-        Err(e) => {
-            v.truncate(len);
-            Err(e)
-        }
-    }
-}
-
 // A few methods below (read_to_string, read_line) will append data into a
 // `String` buffer, but we need to be pretty careful when doing this. The
 // implementation will just call `.as_mut_vec()` and then delegate to a
@@ -116,19 +92,45 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
     }
 }
 
+// This uses an adaptive system to extend the vector when it fills. We want to
+// avoid paying to allocate and zero a huge chunk of memory if the reader only
+// has 4 bytes while still making large reads if the reader does have a ton
+// of data to return. Simply tacking on an extra DEFAULT_BUF_SIZE space every
+// time is 4,500 times (!) slower than this if the reader has a very small
+// amount of data to return.
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
-    let mut read = 0;
+    let start_len = buf.len();
+    let mut len = start_len;
+    let mut cap_bump = 16;
+    let ret;
     loop {
-        if buf.capacity() == buf.len() {
-            buf.reserve(DEFAULT_BUF_SIZE);
+        if len == buf.len() {
+            if buf.capacity() == buf.len() {
+                if cap_bump < DEFAULT_BUF_SIZE {
+                    cap_bump *= 2;
+                }
+                buf.reserve(cap_bump);
+            }
+            let new_area = buf.capacity() - buf.len();
+            buf.extend(iter::repeat(0).take(new_area));
         }
-        match with_end_to_cap(buf, |b| r.read(b)) {
-            Ok(0) => return Ok(read),
-            Ok(n) => read += n,
+
+        match r.read(&mut buf[len..]) {
+            Ok(0) => {
+                ret = Ok(len - start_len);
+                break;
+            }
+            Ok(n) => len += n,
             Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-            Err(e) => return Err(e),
+            Err(e) => {
+                ret = Err(e);
+                break;
+            }
         }
     }
+
+    buf.truncate(len);
+    ret
 }
 
 /// A trait for objects which are byte-oriented sources.
