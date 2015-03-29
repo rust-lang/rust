@@ -307,7 +307,7 @@ CFG_CPUTYPE=$(uname -m)
 
 if [ $CFG_OSTYPE = Darwin -a $CFG_CPUTYPE = i386 ]
 then
-    # Darwin's `uname -s` lies and always returns i386. We have to use sysctl
+    # Darwin's `uname -m` lies and always returns i386. We have to use sysctl
     # instead.
     if sysctl hw.optional.x86_64 | grep -q ': 1'
     then
