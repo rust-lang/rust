@@ -53,7 +53,10 @@
 //! use std::{io, str};
 //! use std::fs::File;
 //!
-//! enum MyError { Io(io::Error), Utf8(str::Utf8Error), }
+//! enum MyError {
+//!     Io(io::Error),
+//!     Utf8(str::Utf8Error),
+//! }
 //!
 //! impl FromError<io::Error> for MyError {
 //!     fn from_error(err: io::Error) -> MyError { MyError::Io(err) }
