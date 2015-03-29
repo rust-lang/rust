@@ -50,8 +50,8 @@
 //!
 //! ## Iteration
 //!
-//! The slices implement `IntoIterator`. The iterators of yield references
-//! to the slice elements.
+//! The slices implement `IntoIterator`. The iterator yields references to the
+//! slice elements.
 //!
 //! ```
 //! let numbers = &[0, 1, 2];
