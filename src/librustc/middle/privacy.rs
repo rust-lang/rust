@@ -32,7 +32,7 @@ pub type ExternalExports = DefIdSet;
 /// reexporting a public struct doesn't inline the doc).
 pub type PublicItems = NodeSet;
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum LastPrivate {
     LastMod(PrivateDep),
     // `use` directives (imports) can refer to two separate definitions in the
@@ -46,14 +46,14 @@ pub enum LastPrivate {
                type_used: ImportUse},
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum PrivateDep {
     AllPublic,
     DependsOn(ast::DefId),
 }
 
 // How an import is used.
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ImportUse {
     Unused,       // The import is not used.
     Used,         // The import is used.
