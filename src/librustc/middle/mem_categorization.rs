@@ -71,6 +71,8 @@ pub use self::Note::*;
 pub use self::deref_kind::*;
 pub use self::categorization::*;
 
+use self::Aliasability::*;
+
 use middle::check_const;
 use middle::def;
 use middle::region;
@@ -1387,17 +1389,25 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone, Debug)]
 pub enum InteriorSafety {
     InteriorUnsafe,
     InteriorSafe
 }
 
-#[derive(Copy)]
+#[derive(Clone, Debug)]
+pub enum Aliasability {
+    FreelyAliasable(AliasableReason),
+    NonAliasable,
+    ImmutableUnique(Box<Aliasability>),
+}
+
+#[derive(Copy, Clone, Debug)]
 pub enum AliasableReason {
     AliasableBorrowed,
     AliasableClosure(ast::NodeId), // Aliasable due to capture Fn closure env
     AliasableOther,
+    UnaliasableImmutable, // Created as needed upon seeing ImmutableUnique
     AliasableStatic(InteriorSafety),
     AliasableStaticMut(InteriorSafety),
 }
@@ -1426,9 +1436,9 @@ impl<'tcx> cmt_<'tcx> {
         }
     }
 
-    /// Returns `Some(_)` if this lvalue represents a freely aliasable pointer type.
+    /// Returns `FreelyAliasable(_)` if this lvalue represents a freely aliasable pointer type.
     pub fn freely_aliasable(&self, ctxt: &ty::ctxt<'tcx>)
-                            -> Option<AliasableReason> {
+                            -> Aliasability {
         // Maybe non-obvious: copied upvars can only be considered
         // non-aliasable in once closures, since any other kind can be
         // aliased and eventually recused.
@@ -1439,17 +1449,27 @@ impl<'tcx> cmt_<'tcx> {
             cat_deref(ref b, _, BorrowedPtr(ty::UniqueImmBorrow, _)) |
             cat_deref(ref b, _, Implicit(ty::UniqueImmBorrow, _)) |
             cat_downcast(ref b, _) |
-            cat_deref(ref b, _, Unique) |
             cat_interior(ref b, _) => {
                 // Aliasability depends on base cmt
                 b.freely_aliasable(ctxt)
+            }
+
+            cat_deref(ref b, _, Unique) => {
+                let sub = b.freely_aliasable(ctxt);
+                if b.mutbl.is_mutable() {
+                    // Aliasability depends on base cmt alone
+                    sub
+                } else {
+                    // Do not allow mutation through an immutable box.
+                    ImmutableUnique(Box::new(sub))
+                }
             }
 
             cat_rvalue(..) |
             cat_local(..) |
             cat_upvar(..) |
             cat_deref(_, _, UnsafePtr(..)) => { // yes, it's aliasable, but...
-                None
+                NonAliasable
             }
 
             cat_static_item(..) => {
@@ -1460,17 +1480,18 @@ impl<'tcx> cmt_<'tcx> {
                 };
 
                 if self.mutbl.is_mutable() {
-                    Some(AliasableStaticMut(int_safe))
+                    FreelyAliasable(AliasableStaticMut(int_safe))
                 } else {
-                    Some(AliasableStatic(int_safe))
+                    FreelyAliasable(AliasableStatic(int_safe))
                 }
             }
 
             cat_deref(ref base, _, BorrowedPtr(ty::ImmBorrow, _)) |
             cat_deref(ref base, _, Implicit(ty::ImmBorrow, _)) => {
                 match base.cat {
-                    cat_upvar(Upvar{ id, .. }) => Some(AliasableClosure(id.closure_expr_id)),
-                    _ => Some(AliasableBorrowed)
+                    cat_upvar(Upvar{ id, .. }) =>
+                        FreelyAliasable(AliasableClosure(id.closure_expr_id)),
+                    _ => FreelyAliasable(AliasableBorrowed)
                 }
             }
         }

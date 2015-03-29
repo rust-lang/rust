@@ -943,13 +943,20 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                                       cmt: mc::cmt<'tcx>)
                                                       -> bool {
             match cmt.freely_aliasable(this.tcx()) {
-                None => {
+                mc::Aliasability::NonAliasable => {
                     return true;
                 }
-                Some(mc::AliasableStaticMut(..)) => {
+                mc::Aliasability::FreelyAliasable(mc::AliasableStaticMut(..)) => {
                     return true;
                 }
-                Some(cause) => {
+                mc::Aliasability::ImmutableUnique(_) => {
+                    this.bccx.report_aliasability_violation(
+                        span,
+                        MutabilityViolation,
+                        mc::AliasableReason::UnaliasableImmutable);
+                    return false;
+                }
+                mc::Aliasability::FreelyAliasable(cause) => {
                     this.bccx.report_aliasability_violation(
                         span,
                         MutabilityViolation,
