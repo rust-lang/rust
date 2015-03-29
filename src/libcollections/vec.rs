@@ -306,9 +306,12 @@ impl<T> Vec<T> {
     pub fn reserve(&mut self, additional: usize) {
         if self.cap - self.len < additional {
             let err_msg = "Vec::reserve: `usize` overflow";
-            let new_cap = self.len.checked_add(additional).expect(err_msg)
-                .checked_next_power_of_two().expect(err_msg);
-            self.grow_capacity(new_cap);
+
+            let new_min_cap = self.len.checked_add(additional).expect(err_msg);
+            match new_min_cap.checked_next_power_of_two() {
+                None => self.grow_capacity(new_min_cap),
+                Some(x) => self.grow_capacity(x),
+            }
         }
     }
 
@@ -639,8 +642,11 @@ impl<T> Vec<T> {
         #[inline(never)]
         fn resize<T>(vec: &mut Vec<T>) {
             let old_size = vec.cap * mem::size_of::<T>();
-            let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
-            if old_size > size { panic!("capacity overflow") }
+            if old_size == std::usize::MAX { panic!("capacity overflow") }
+            let mut size = max(old_size, 2 * mem::size_of::<T>()) * 2;
+            if old_size > size {
+                size = std::usize::MAX;
+            }
             unsafe {
                 let ptr = alloc_or_realloc(*vec.ptr, old_size, size);
                 if ptr.is_null() { ::alloc::oom() }
