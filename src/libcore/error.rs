@@ -48,33 +48,27 @@
 //! For example,
 //!
 //! ```
-//! # #![feature(os, old_io, old_path)]
+//! #![feature(core)]
 //! use std::error::FromError;
-//! use std::old_io::{File, IoError};
-//! use std::os::{MemoryMap, MapError};
-//! use std::old_path::Path;
-//!
-//! enum MyError {
-//!     Io(IoError),
-//!     Map(MapError)
+//! use std::{io, str};
+//! use std::fs::File;
+//! 
+//! enum MyError { Io(io::Error), Utf8(str::Utf8Error), }
+//! 
+//! impl FromError<io::Error> for MyError {
+//!     fn from_error(err: io::Error) -> MyError { MyError::Io(err) }
 //! }
-//!
-//! impl FromError<IoError> for MyError {
-//!     fn from_error(err: IoError) -> MyError {
-//!         MyError::Io(err)
-//!     }
+//! 
+//! impl FromError<str::Utf8Error> for MyError {
+//!     fn from_error(err: str::Utf8Error) -> MyError { MyError::Utf8(err) }
 //! }
-//!
-//! impl FromError<MapError> for MyError {
-//!     fn from_error(err: MapError) -> MyError {
-//!         MyError::Map(err)
-//!     }
-//! }
-//!
+//! 
 //! #[allow(unused_variables)]
 //! fn open_and_map() -> Result<(), MyError> {
-//!     let f = try!(File::open(&Path::new("foo.txt")));
-//!     let m = try!(MemoryMap::new(0, &[]));
+//!     let b = b"foo.txt";
+//!     let s = try!(str::from_utf8(b));
+//!     let f = try!(File::open(s));
+//! 
 //!     // do something interesting here...
 //!     Ok(())
 //! }
