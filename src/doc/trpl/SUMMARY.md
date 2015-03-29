@@ -43,5 +43,6 @@
     * [Lang items](lang-items.md)
     * [Link args](link-args.md)
     * [Benchmark Tests](benchmark-tests.md)
+    * [Box Syntax and Patterns](box-syntax-and-patterns.md)
 * [Conclusion](conclusion.md)
 * [Glossary](glossary.md)
