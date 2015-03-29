@@ -642,10 +642,10 @@ impl<T> Vec<T> {
         #[inline(never)]
         fn resize<T>(vec: &mut Vec<T>) {
             let old_size = vec.cap * mem::size_of::<T>();
-            if old_size == std::usize::MAX { panic!("capacity overflow") }
+            if old_size == usize::MAX { panic!("capacity overflow") }
             let mut size = max(old_size, 2 * mem::size_of::<T>()) * 2;
             if old_size > size {
-                size = std::usize::MAX;
+                size = usize::MAX;
             }
             unsafe {
                 let ptr = alloc_or_realloc(*vec.ptr, old_size, size);
