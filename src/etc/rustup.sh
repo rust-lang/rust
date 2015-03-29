@@ -288,6 +288,7 @@ VAL_OPTIONS=""
 flag uninstall "only uninstall from the installation prefix"
 valopt prefix "" "set installation prefix"
 valopt date "" "use the YYYY-MM-DD nightly instead of the current nightly"
+valopt channel "nightly" "use the selected release channel [nightly]"
 flag save "save the downloaded nightlies to ~/.rustup"
 
 if [ $HELP -eq 1 ]
@@ -449,17 +450,24 @@ then
 fi
 
 RUST_URL="https://static.rust-lang.org/dist"
-RUST_PACKAGE_NAME=rust-nightly
+case "$CFG_CHANNEL" in
+    nightly)
+        # add a date suffix if we want a particular nighly.
+        if [ -n "${CFG_DATE}" ];
+        then
+            RUST_URL="${RUST_URL}/${CFG_DATE}"
+        fi
+
+        RUST_PACKAGE_NAME=rust-nightly
+        ;;
+    *)
+        err "Currently nightly is the only supported release channel"
+esac
+
 RUST_PACKAGE_NAME_AND_TRIPLE="${RUST_PACKAGE_NAME}-${HOST_TRIPLE}"
 RUST_TARBALL_NAME="${RUST_PACKAGE_NAME_AND_TRIPLE}.tar.gz"
 RUST_LOCAL_INSTALL_DIR="${CFG_TMP_DIR}/${RUST_PACKAGE_NAME_AND_TRIPLE}"
 RUST_LOCAL_INSTALL_SCRIPT="${RUST_LOCAL_INSTALL_DIR}/install.sh"
-
-# add a date suffix if we want a particular nighly.
-if [ -n "${CFG_DATE}" ];
-then
-    RUST_URL="${RUST_URL}/${CFG_DATE}"
-fi
 
 download_hash() {
     msg "Downloading ${remote_sha256}"
