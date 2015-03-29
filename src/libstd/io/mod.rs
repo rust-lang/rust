@@ -106,9 +106,9 @@ fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> 
     loop {
         if len == buf.len() {
             if buf.capacity() == buf.len() {
-                // reserve() rounds up our request to the nearest power of two,
-                // so after the first time the capacity is exceeded, we double
-                // our capacity at each call to reserve. 
+                // reserve() rounds up our request such that every request
+                // (with maybe the exception of the first request) for the
+                // same amount of space doubles our capacity.
                 buf.reserve(min_cap_bump);
             }
             let new_area = buf.capacity() - buf.len();
