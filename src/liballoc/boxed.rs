@@ -86,6 +86,7 @@ pub static HEAP: () = ();
 /// See the [module-level documentation](../../std/boxed/index.html) for more.
 #[lang = "owned_box"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[fundamental]
 pub struct Box<T>(Unique<T>);
 
 impl<T> Box<T> {
