@@ -115,7 +115,7 @@
 #![feature(box_syntax)]
 #![omit_gdb_pretty_printer_section]
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum Enum {
     Variant1 { x: u16, y: u16 },
     Variant2 (u32)

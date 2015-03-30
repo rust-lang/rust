@@ -12,7 +12,7 @@ macro_rules! check {
     ($m:ident, $t:ty, $v:expr) => {{
         mod $m {
             use std::mem::size_of;
-            #[derive(Copy, Debug)]
+            #[derive(Copy, Clone, Debug)]
             enum E {
                 V = $v,
                 A = 0

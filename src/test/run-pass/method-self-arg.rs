@@ -17,7 +17,7 @@
 
 static mut COUNT: usize = 1;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Foo;
 
 impl Foo {

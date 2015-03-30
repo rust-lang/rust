@@ -63,12 +63,12 @@ fn next_permutation(perm: &mut [i32], count: &mut [i32]) {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct P {
     p: [i32; 16],
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Perm {
     cnt: [i32; 16],
     fact: [u32; 16],

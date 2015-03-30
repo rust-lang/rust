@@ -51,7 +51,7 @@ fn foo3(x: &Fat<Fat<[isize]>>) {
 }
 
 
-#[derive(Copy, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 struct Bar;
 
 trait ToBar {

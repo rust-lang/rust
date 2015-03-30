@@ -10,7 +10,7 @@
 
 use std::ops::Add;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Point {
     x: isize,
     y: isize,

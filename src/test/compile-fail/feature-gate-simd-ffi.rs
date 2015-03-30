@@ -13,7 +13,7 @@
 
 use std::simd::f32x4;
 
-#[simd] #[derive(Copy)] #[repr(C)] struct LocalSimd(u8, u8);
+#[simd] #[derive(Copy, Clone)] #[repr(C)] struct LocalSimd(u8, u8);
 
 extern {
     fn foo() -> f32x4; //~ ERROR use of SIMD type

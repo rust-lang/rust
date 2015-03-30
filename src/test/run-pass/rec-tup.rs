@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Point {x: isize, y: isize}
 
 type rect = (Point, Point);

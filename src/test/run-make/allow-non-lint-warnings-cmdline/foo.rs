@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[derive()]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Foo;
 
 pub fn main() { }

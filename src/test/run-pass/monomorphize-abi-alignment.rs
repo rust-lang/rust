@@ -18,7 +18,7 @@
  * and apply the wrong instance of the method `unwrap`.
  */
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct S<T> { i:u8, t:T }
 
 impl<T> S<T> {
@@ -27,10 +27,10 @@ impl<T> S<T> {
     }
 }
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 struct A((u32, u32));
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 struct B(u64);
 
 pub fn main() {

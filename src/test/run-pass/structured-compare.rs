@@ -10,7 +10,7 @@
 
 
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum foo { large, small, }
 
 impl PartialEq for foo {

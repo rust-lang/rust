@@ -20,7 +20,7 @@ mod bleh {
         )
     }
 
-    #[derive(Copy)]
+    #[derive(Copy, Clone)]
     pub struct S;
 
     impl S {

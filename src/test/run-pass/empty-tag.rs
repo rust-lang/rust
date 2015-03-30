@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum chan { chan_t, }
 
 impl PartialEq for chan {
