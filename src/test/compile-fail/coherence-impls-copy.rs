@@ -23,17 +23,24 @@ impl !Sync for NotSync {}
 
 impl Copy for TestE {}
 impl Copy for MyType {}
+
+impl Copy for &'static mut MyType {}
+//~^ ERROR E0206
+
 impl Copy for (MyType, MyType) {}
 //~^ ERROR E0206
+//~| ERROR E0117
 
 impl Copy for &'static NotSync {}
 //~^ ERROR E0206
 
 impl Copy for [MyType] {}
 //~^ ERROR E0206
+//~| ERROR E0117
 
 impl Copy for &'static [NotSync] {}
 //~^ ERROR E0206
+//~| ERROR E0117
 
 fn main() {
 }
