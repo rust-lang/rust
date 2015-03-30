@@ -165,7 +165,7 @@ macro_rules! forward_ref_binop {
 /// ```
 /// use std::ops::Add;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Add for Foo {
@@ -219,7 +219,7 @@ add_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Sub;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Sub for Foo {
@@ -273,7 +273,7 @@ sub_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Mul;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Mul for Foo {
@@ -327,7 +327,7 @@ mul_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Div;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Div for Foo {
@@ -381,7 +381,7 @@ div_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Rem;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Rem for Foo {
@@ -454,7 +454,7 @@ rem_float_impl! { f64, fmod }
 /// ```
 /// use std::ops::Neg;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Neg for Foo {
@@ -511,7 +511,7 @@ neg_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Not;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Not for Foo {
@@ -565,7 +565,7 @@ not_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 /// ```
 /// use std::ops::BitAnd;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl BitAnd for Foo {
@@ -619,7 +619,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 /// ```
 /// use std::ops::BitOr;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl BitOr for Foo {
@@ -673,7 +673,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 /// ```
 /// use std::ops::BitXor;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl BitXor for Foo {
@@ -727,7 +727,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 /// ```
 /// use std::ops::Shl;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Shl<Foo> for Foo {
@@ -799,7 +799,7 @@ shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// ```
 /// use std::ops::Shr;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Shr<Foo> for Foo {
@@ -871,7 +871,7 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// ```
 /// use std::ops::Index;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 /// struct Bar;
 ///
@@ -912,7 +912,7 @@ pub trait Index<Idx: ?Sized> {
 /// ```
 /// use std::ops::{Index, IndexMut};
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 /// struct Bar;
 ///

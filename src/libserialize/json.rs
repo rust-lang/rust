@@ -278,7 +278,7 @@ pub enum DecoderError {
     ApplicationError(string::String)
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum EncoderError {
     FmtError(fmt::Error),
     BadHashmapKey,

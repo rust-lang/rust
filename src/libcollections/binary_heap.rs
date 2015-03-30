@@ -30,7 +30,7 @@
 //! use std::collections::BinaryHeap;
 //! use std::usize;
 //!
-//! #[derive(Copy, Eq, PartialEq)]
+//! #[derive(Copy, Clone, Eq, PartialEq)]
 //! struct State {
 //!     cost: usize,
 //!     position: usize,

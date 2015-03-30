@@ -40,7 +40,7 @@ use std::string;
 
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Piece<'a> {
     /// A literal string which should directly be emitted
     String(&'a str),
@@ -50,7 +50,7 @@ pub enum Piece<'a> {
 }
 
 /// Representation of an argument specification.
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Argument<'a> {
     /// Where to find this argument
     pub position: Position<'a>,
@@ -59,7 +59,7 @@ pub struct Argument<'a> {
 }
 
 /// Specification for the formatting of an argument in the format string.
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct FormatSpec<'a> {
     /// Optionally specified character to fill alignment with
     pub fill: Option<char>,
@@ -78,7 +78,7 @@ pub struct FormatSpec<'a> {
 }
 
 /// Enum describing where an argument for a format can be located.
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Position<'a> {
     /// The argument will be in the next position. This is the default.
     ArgumentNext,
@@ -89,7 +89,7 @@ pub enum Position<'a> {
 }
 
 /// Enum of alignments which are supported.
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Alignment {
     /// The value will be aligned to the left.
     AlignLeft,
@@ -103,7 +103,7 @@ pub enum Alignment {
 
 /// Various flags which can be applied to format strings. The meaning of these
 /// flags is defined by the formatters themselves.
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Flag {
     /// A `+` will be used to denote positive numbers.
     FlagSignPlus,
@@ -119,7 +119,7 @@ pub enum Flag {
 
 /// A count is used for the precision and width parameters of an integer, and
 /// can reference either an argument or a literal integer.
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Count<'a> {
     /// The count is specified explicitly.
     CountIs(usize),

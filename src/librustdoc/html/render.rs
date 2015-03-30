@@ -225,7 +225,7 @@ struct Source<'a>(&'a str);
 // Helper structs for rendering items/sidebars and carrying along contextual
 // information
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Item<'a> {
     cx: &'a Context,
     item: &'a clean::Item,

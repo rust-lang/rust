@@ -16,7 +16,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Argument {
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -25,7 +25,7 @@ pub struct Argument {
     pub format: FormatSpec,
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct FormatSpec {
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -41,7 +41,7 @@ pub struct FormatSpec {
 }
 
 /// Possible alignments that can be requested as part of a formatting directive.
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Alignment {
     /// Indication that contents should be left-aligned.
@@ -58,7 +58,7 @@ pub enum Alignment {
     Unknown,
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Count {
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -71,7 +71,7 @@ pub enum Count {
     Implied,
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Position {
     #[stable(feature = "rust1", since = "1.0.0")]

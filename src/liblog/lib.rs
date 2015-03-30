@@ -239,7 +239,7 @@ pub trait Logger {
 struct DefaultLogger { handle: Stderr }
 
 /// Wraps the log level with fmt implementations.
-#[derive(Copy, PartialEq, PartialOrd, Debug)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 pub struct LogLevel(pub u32);
 
 impl fmt::Display for LogLevel {
@@ -355,7 +355,7 @@ pub struct LogRecord<'a> {
 }
 
 #[doc(hidden)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct LogLocation {
     pub module_path: &'static str,
     pub file: &'static str,

@@ -75,7 +75,7 @@ pub trait Sized : MarkerTrait {
 ///
 /// ```
 /// // we can just derive a `Copy` implementation
-/// #[derive(Debug, Copy)]
+/// #[derive(Debug, Copy, Clone)]
 /// struct Foo;
 ///
 /// let x = Foo;
@@ -124,7 +124,7 @@ pub trait Sized : MarkerTrait {
 /// There are two ways to implement `Copy` on your type:
 ///
 /// ```
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct MyStruct;
 /// ```
 ///
@@ -133,6 +133,7 @@ pub trait Sized : MarkerTrait {
 /// ```
 /// struct MyStruct;
 /// impl Copy for MyStruct {}
+/// impl Clone for MyStruct { fn clone(&self) -> MyStruct { *self } }
 /// ```
 ///
 /// There is a small difference between the two: the `derive` strategy will also place a `Copy`
