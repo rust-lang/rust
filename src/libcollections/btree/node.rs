@@ -526,7 +526,7 @@ impl<K: Clone, V: Clone> Clone for Node<K, V> {
 ///     println!("Uninitialized memory: {:?}", handle.into_kv());
 /// }
 /// ```
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Handle<NodeRef, Type, NodeType> {
     node: NodeRef,
     index: usize,

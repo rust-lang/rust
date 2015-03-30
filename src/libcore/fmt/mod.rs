@@ -15,6 +15,7 @@
 use any;
 use cell::{Cell, RefCell, Ref, RefMut, BorrowState};
 use char::CharExt;
+use clone::Clone;
 use iter::Iterator;
 use marker::{Copy, PhantomData, Sized};
 use mem;
@@ -54,7 +55,7 @@ pub type Result = result::Result<(), Error>;
 /// occurred. Any extra information must be arranged to be transmitted through
 /// some other means.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Error;
 
 /// A collection of methods that are required to format a message into a stream.
@@ -141,6 +142,12 @@ pub struct ArgumentV1<'a> {
     formatter: fn(&Void, &mut Formatter) -> Result,
 }
 
+impl<'a> Clone for ArgumentV1<'a> {
+    fn clone(&self) -> ArgumentV1<'a> {
+        *self
+    }
+}
+
 impl<'a> ArgumentV1<'a> {
     #[inline(never)]
     fn show_usize(x: &usize, f: &mut Formatter) -> Result {
@@ -175,7 +182,7 @@ impl<'a> ArgumentV1<'a> {
 }
 
 // flags available in the v1 format of format_args
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 #[allow(dead_code)] // SignMinus isn't currently used
 enum FlagV1 { SignPlus, SignMinus, Alternate, SignAwareZeroPad, }
 
@@ -222,7 +229,7 @@ impl<'a> Arguments<'a> {
 /// macro validates the format string at compile-time so usage of the `write`
 /// and `format` functions can be safely performed.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Arguments<'a> {
     // Format string pieces to print.
     pieces: &'a [&'a str],

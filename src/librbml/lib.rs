@@ -175,7 +175,7 @@ pub struct TaggedDoc<'a> {
     pub doc: Doc<'a>,
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum EbmlEncoderTag {
     // tags 00..1f are reserved for auto-serialization.
     // first NUM_IMPLICIT_TAGS tags are implicitly sized and lengths are not encoded.
@@ -265,7 +265,7 @@ pub mod reader {
         )
     }
 
-    #[derive(Copy)]
+    #[derive(Copy, Clone)]
     pub struct Res {
         pub val: usize,
         pub next: usize

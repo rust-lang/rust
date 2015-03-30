@@ -30,19 +30,19 @@ use html::render::{cache, CURRENT_LOCATION_KEY};
 
 /// Helper to render an optional visibility with a space after it (if the
 /// visibility is preset)
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct VisSpace(pub Option<ast::Visibility>);
 /// Similarly to VisSpace, this structure is used to render a function style with a
 /// space after it.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct UnsafetySpace(pub ast::Unsafety);
 /// Wrapper struct for properly emitting a method declaration.
 pub struct Method<'a>(pub &'a clean::SelfTy, pub &'a clean::FnDecl);
 /// Similar to VisSpace, but used for mutability
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct MutableSpace(pub clean::Mutability);
 /// Similar to VisSpace, but used for mutability
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct RawMutableSpace(pub clean::Mutability);
 /// Wrapper struct for properly emitting the stability level.
 pub struct Stability<'a>(pub &'a Option<clean::Stability>);

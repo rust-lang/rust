@@ -213,7 +213,7 @@ pub enum Fail {
 }
 
 /// The type of failure that occurred.
-#[derive(Copy, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[allow(missing_docs)]
 pub enum FailType {
     ArgumentMissing_,
@@ -843,18 +843,18 @@ pub fn short_usage(program_name: &str, opts: &[OptGroup]) -> String {
     line
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum SplitWithinState {
     A,  // leading whitespace, initial state
     B,  // words
     C,  // internal and trailing whitespace
 }
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum Whitespace {
     Ws, // current char is whitespace
     Cr  // current char is not whitespace
 }
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum LengthLimit {
     UnderLim, // current char makes current substring still fit in limit
     OverLim   // current char makes current substring no longer fit in limit

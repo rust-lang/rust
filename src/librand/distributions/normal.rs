@@ -28,7 +28,7 @@ use distributions::{ziggurat, ziggurat_tables, Sample, IndependentSample};
 /// Generate Normal Random
 /// Samples*](http://www.doornik.com/research/ziggurat.pdf). Nuffield
 /// College, Oxford
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct StandardNormal(pub f64);
 
 impl Rand for StandardNormal {
@@ -85,7 +85,7 @@ impl Rand for StandardNormal {
 /// let v = normal.ind_sample(&mut rand::thread_rng());
 /// println!("{} is from a N(2, 9) distribution", v)
 /// ```
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Normal {
     mean: f64,
     std_dev: f64,
@@ -134,7 +134,7 @@ impl IndependentSample<f64> for Normal {
 /// let v = log_normal.ind_sample(&mut rand::thread_rng());
 /// println!("{} is from an ln N(2, 9) distribution", v)
 /// ```
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct LogNormal {
     norm: Normal
 }
