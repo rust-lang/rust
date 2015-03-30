@@ -199,7 +199,7 @@ pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 
 // We pun on *T to mean both actual deref of a ptr as well
 // as accessing of components:
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum deref_kind {
     deref_ptr(PointerKind),
     deref_interior(InteriorKind),
@@ -263,6 +263,9 @@ pub struct MemCategorizationContext<'t,TYPER:'t> {
 }
 
 impl<'t,TYPER:'t> Copy for MemCategorizationContext<'t,TYPER> {}
+impl<'t,TYPER:'t> Clone for MemCategorizationContext<'t,TYPER> {
+    fn clone(&self) -> MemCategorizationContext<'t,TYPER> { *self }
+}
 
 pub type McResult<T> = Result<T, ()>;
 

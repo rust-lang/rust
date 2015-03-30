@@ -294,7 +294,7 @@ pub enum RegionVariableOrigin<'tcx> {
     BoundRegionInCoherence(ast::Name),
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum fixup_err {
     unresolved_int_ty(IntVid),
     unresolved_float_ty(FloatVid),

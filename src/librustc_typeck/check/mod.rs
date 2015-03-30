@@ -204,7 +204,7 @@ struct CastCheck<'tcx> {
 
 /// When type-checking an expression, we propagate downward
 /// whatever type hint we are able in the form of an `Expectation`.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum Expectation<'tcx> {
     /// We know nothing about what type this expression should have.
     NoExpectation,
@@ -1951,14 +1951,14 @@ impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
     }
 }
 
-#[derive(Copy, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LvaluePreference {
     PreferMutLvalue,
     NoPreference
 }
 
 /// Whether `autoderef` requires types to resolve.
-#[derive(Copy, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum UnresolvedTypeAction {
     /// Produce an error and return `ty_err` whenever a type cannot
     /// be resolved (i.e. it is `ty_infer`).

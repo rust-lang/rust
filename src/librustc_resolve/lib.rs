@@ -107,7 +107,7 @@ mod record_exports;
 mod build_reduced_graph;
 mod resolve_imports;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct BindingInfo {
     span: Span,
     binding_mode: BindingMode,
@@ -116,14 +116,14 @@ struct BindingInfo {
 // Map from the name in a pattern to its binding mode.
 type BindingMap = HashMap<Name, BindingInfo>;
 
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 enum PatternBindingMode {
     RefutableMode,
     LocalIrrefutableMode,
     ArgumentIrrefutableMode,
 }
 
-#[derive(Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 enum Namespace {
     TypeNS,
     ValueNS
@@ -277,7 +277,7 @@ enum FallbackSuggestion {
     TraitMethod(String),
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum TypeParameters<'a> {
     NoTypeParameters,
     HasTypeParameters(
@@ -294,7 +294,7 @@ enum TypeParameters<'a> {
 
 // The rib kind controls the translation of local
 // definitions (`DefLocal`) to upvars (`DefUpvar`).
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum RibKind {
     // No translation needs to be applied.
     NormalRibKind,
@@ -316,7 +316,7 @@ enum RibKind {
     ConstantItemRibKind
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum UseLexicalScopeFlag {
     DontUseLexicalScope,
     UseLexicalScope
@@ -327,7 +327,7 @@ enum ModulePrefixResult {
     PrefixFound(Rc<Module>, usize)
 }
 
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 enum NameSearchType {
     /// We're doing a name search in order to resolve a `use` directive.
     ImportSearch,
@@ -337,7 +337,7 @@ enum NameSearchType {
     PathSearch,
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum BareIdentifierPatternResolution {
     FoundStructOrEnumVariant(Def, LastPrivate),
     FoundConst(Def, LastPrivate),
@@ -369,7 +369,7 @@ enum ParentLink {
 }
 
 /// The type of module this is.
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 enum ModuleKind {
     NormalModuleKind,
     TraitModuleKind,
@@ -3539,7 +3539,7 @@ pub struct CrateMap {
     pub glob_map: Option<GlobMap>
 }
 
-#[derive(PartialEq,Copy)]
+#[derive(PartialEq,Copy, Clone)]
 pub enum MakeGlobMap {
     Yes,
     No

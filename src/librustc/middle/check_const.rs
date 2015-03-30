@@ -76,7 +76,7 @@ bitflags! {
     }
 }
 
-#[derive(Copy, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq)]
 enum Mode {
     Const,
     Static,

@@ -44,7 +44,7 @@ use std::option;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpSourceMode {
     PpmNormal,
     PpmEveryBodyLoops,
@@ -56,7 +56,7 @@ pub enum PpSourceMode {
 }
 
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpFlowGraphMode {
     Default,
     /// Drops the labels from the edges in the flowgraph output. This
@@ -65,7 +65,7 @@ pub enum PpFlowGraphMode {
     /// have become a pain to maintain.
     UnlabelledEdges,
 }
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpMode {
     PpmSource(PpSourceMode),
     PpmFlowGraph(PpFlowGraphMode),

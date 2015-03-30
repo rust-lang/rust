@@ -182,7 +182,7 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<PathBuf>)> {
 }
 
 // Whether to stop or continue compilation.
-#[derive(Copy, Debug, Eq, PartialEq)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Compilation {
     Stop,
     Continue,
@@ -265,7 +265,7 @@ pub trait CompilerCalls<'a> {
 }
 
 // CompilerCalls instance for a regular rustc build.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct RustcDefaultCalls;
 
 impl<'a> CompilerCalls<'a> for RustcDefaultCalls {

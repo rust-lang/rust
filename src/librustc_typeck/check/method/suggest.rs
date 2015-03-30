@@ -266,7 +266,7 @@ fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }).2.is_some()
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct TraitInfo {
     pub def_id: ast::DefId,
 }

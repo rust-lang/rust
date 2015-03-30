@@ -343,7 +343,7 @@ pub fn gensym_name(name: &str) -> PathElem {
 *
 */
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct NodeIdAndSpan {
     pub id: ast::NodeId,
     pub span: Span,
@@ -1225,7 +1225,7 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(infcx: &infer::InferCtxt<'a,'tcx>,
 }
 
 // Key used to lookup values supplied for type parameters in an expr.
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum ExprOrMethodCall {
     // Type parameters for a path like `None::<int>`
     ExprId(ast::NodeId),

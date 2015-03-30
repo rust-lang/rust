@@ -2382,7 +2382,7 @@ impl<'tcx> VariantMemberDescriptionFactory<'tcx> {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum EnumDiscriminantInfo {
     RegularDiscriminant(DIType),
     OptimizedDiscriminant,
@@ -3106,7 +3106,7 @@ impl MetadataCreationResult {
     }
 }
 
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 enum InternalDebugLocation {
     KnownLocation { scope: DIScope, line: usize, col: usize },
     UnknownLocation

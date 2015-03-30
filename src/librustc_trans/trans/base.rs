@@ -2112,7 +2112,7 @@ pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
 
 
 /// Enum describing the origin of an LLVM `Value`, for linkage purposes.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum ValueOrigin {
     /// The LLVM `Value` is in this context because the corresponding item was
     /// assigned to the current compilation unit.
