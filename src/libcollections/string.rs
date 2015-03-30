@@ -364,6 +364,14 @@ impl String {
         self.vec
     }
 
+    /// Extract a string slice containing the entire string.
+    #[inline]
+    #[unstable(feature = "convert",
+               reason = "waiting on RFC revision")]
+    pub fn as_str(&self) -> &str {
+        self
+    }
+
     /// Pushes the given string onto this string buffer.
     ///
     /// # Examples
@@ -848,7 +856,6 @@ impl<'a, 'b> PartialEq<Cow<'a, str>> for &'b str {
 #[allow(deprecated)]
 impl Str for String {
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice(&self) -> &str {
         unsafe { mem::transmute(&*self.vec) }
     }

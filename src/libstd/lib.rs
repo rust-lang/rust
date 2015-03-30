@@ -122,12 +122,11 @@
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(macro_reexport)]
 #![feature(unique)]
-#![feature(convert)]
 #![feature(allow_internal_unstable)]
 #![feature(str_char)]
 #![feature(into_cow)]
-#![feature(slice_patterns)]
 #![feature(std_misc)]
+#![feature(slice_patterns)]
 #![feature(debug_builders)]
 #![cfg_attr(test, feature(test, rustc_private, std_misc))]
 

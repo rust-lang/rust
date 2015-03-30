@@ -44,7 +44,6 @@
 #![feature(libc)]
 #![feature(set_stdio)]
 #![feature(os)]
-#![feature(convert)]
 #![cfg_attr(test, feature(old_io))]
 
 extern crate getopts;

@@ -38,7 +38,6 @@
 #![feature(io)]
 #![feature(set_stdio)]
 #![feature(unicode)]
-#![feature(convert)]
 
 extern crate arena;
 extern crate flate;
