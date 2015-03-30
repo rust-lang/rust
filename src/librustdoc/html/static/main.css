@@ -493,6 +493,10 @@ h1 .stability {
 .stability.Locked { border-color: #0084B6; color: #00668c; }
 .stability.Unmarked { border-color: #BBBBBB; }
 
+td.summary-column {
+    width: 100%;
+}
+
 .summary {
     padding-right: 0px;
 }
