@@ -13,7 +13,7 @@
 
 use std::cell::Cell;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum newtype {
     newvar(isize)
 }

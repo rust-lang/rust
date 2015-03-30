@@ -12,7 +12,7 @@
 
 fn id<T>(x: T) -> T { return x; }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Triple {x: isize, y: isize, z: isize}
 
 pub fn main() {

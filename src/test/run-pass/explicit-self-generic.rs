@@ -13,7 +13,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct LM { resize_at: usize, size: usize }
 
 enum HashMap<K,V> {

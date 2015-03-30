@@ -19,10 +19,10 @@ struct Fat<T: ?Sized> {
     ptr: T
 }
 
-#[derive(Copy, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 struct Bar;
 
-#[derive(Copy, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 struct Bar1 {
     f: isize
 }

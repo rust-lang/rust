@@ -13,7 +13,7 @@
 
 use std::cell::Cell;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Point {x: isize, y: isize, z: isize}
 
 fn f(p: &Cell<Point>) {

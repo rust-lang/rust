@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Foo {
     f1: isize,
     _f2: isize,

@@ -13,11 +13,11 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum side { mayo, catsup, vinegar }
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum order { hamburger, fries(side), shake }
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum meal { to_go(order), for_here(order) }
 
 fn foo(m: Box<meal>, cond: bool) {

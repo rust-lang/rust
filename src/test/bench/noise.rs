@@ -18,7 +18,7 @@ use std::f32::consts::PI;
 use std::num::Float;
 use std::rand::{Rng, StdRng};
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Vec2 {
     x: f32,
     y: f32,

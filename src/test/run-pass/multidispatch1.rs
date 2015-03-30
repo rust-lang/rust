@@ -16,7 +16,7 @@ trait MyTrait<T> {
     fn get(&self) -> T;
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct MyType {
     dummy: usize
 }

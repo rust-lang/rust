@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct mytype(Mytype);
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Mytype {
     compute: fn(mytype) -> isize,
     val: isize,

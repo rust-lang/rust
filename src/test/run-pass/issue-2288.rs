@@ -17,7 +17,7 @@ trait clam<A> {
   fn chowder(&self, y: A);
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct foo<A> {
   x: A,
 }

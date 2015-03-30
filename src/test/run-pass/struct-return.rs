@@ -10,10 +10,10 @@
 //
 // ignore-lexer-test FIXME #15883
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Quad { a: u64, b: u64, c: u64, d: u64 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Floats { a: f64, b: u8, c: f64 }
 
 mod rustrt {

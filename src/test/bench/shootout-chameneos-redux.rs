@@ -54,7 +54,7 @@ fn print_complements() {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum Color {
     Red,
     Yellow,
@@ -72,7 +72,7 @@ impl fmt::Debug for Color {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct CreatureInfo {
     name: usize,
     color: Color
