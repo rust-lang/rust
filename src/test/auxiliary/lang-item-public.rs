@@ -35,18 +35,19 @@ pub trait Copy : PhantomFn<Self> {
 
 #[lang="rem"]
 pub trait Rem<RHS=Self> {
-    /// The resulting type after applying the `%` operator
-    #[stable(feature = "rust1", since = "1.0.0")]
     type Output = Self;
-
-    /// The method for the `%` operator
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn rem(self, rhs: RHS) -> Self::Output;
 }
 
-impl Rem for i32 {
-    type Output = i32;
+impl Rem for isize {
+    type Output = isize;
 
     #[inline]
-    fn rem(self, other: i32) -> i32 { self % other }
+    fn rem(self, other: isize) -> isize {
+        // if you use `self % other` here, as one would expect, you
+        // get back an error because of potential failure/overflow,
+        // which tries to invoke error fns that don't have the
+        // appropriate signatures anymore. So...just return 0.
+        0
+    }
 }

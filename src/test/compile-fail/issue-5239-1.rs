@@ -12,5 +12,5 @@
 
 fn main() {
     let x = |ref x: isize| -> isize { x += 1; };
-    //~^ ERROR binary assignment operation `+=` cannot be applied to type `&isize`
+    //~^ ERROR E0368
 }
