@@ -14,33 +14,40 @@
 //! conversions from one type to another. They follow the standard
 //! Rust conventions of `as`/`to`/`into`/`from`.
 
-#![unstable(feature = "convert",
-            reason = "recently added, experimental traits")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use marker::Sized;
 
 /// A cheap, reference-to-reference conversion.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsRef<T: ?Sized> {
     /// Perform the conversion.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_ref(&self) -> &T;
 }
 
 /// A cheap, mutable reference-to-mutable reference conversion.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsMut<T: ?Sized> {
     /// Perform the conversion.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_mut(&mut self) -> &mut T;
 }
 
 /// A conversion that consumes `self`, which may or may not be
 /// expensive.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
     /// Perform the conversion.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn into(self) -> T;
 }
 
 /// Construct `Self` via a conversion.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait From<T> {
     /// Perform the conversion.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn from(T) -> Self;
 }
 
@@ -48,14 +55,8 @@ pub trait From<T> {
 // GENERIC IMPLS
 ////////////////////////////////////////////////////////////////////////////////
 
-// As implies Into
-impl<'a, T: ?Sized, U: ?Sized> Into<&'a U> for &'a T where T: AsRef<U> {
-    fn into(self) -> &'a U {
-        self.as_ref()
-    }
-}
-
 // As lifts over &
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a T where T: AsRef<U> {
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
@@ -63,6 +64,7 @@ impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a T where T: AsRef<U> {
 }
 
 // As lifts over &mut
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a mut T where T: AsRef<U> {
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
@@ -77,14 +79,8 @@ impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a mut T where T: AsRef<U> {
 //     }
 // }
 
-// AsMut implies Into
-impl<'a, T: ?Sized, U: ?Sized> Into<&'a mut U> for &'a mut T where T: AsMut<U> {
-    fn into(self) -> &'a mut U {
-        (*self).as_mut()
-    }
-}
-
 // AsMut lifts over &mut
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized, U: ?Sized> AsMut<U> for &'a mut T where T: AsMut<U> {
     fn as_mut(&mut self) -> &mut U {
         (*self).as_mut()
@@ -100,28 +96,38 @@ impl<'a, T: ?Sized, U: ?Sized> AsMut<U> for &'a mut T where T: AsMut<U> {
 // }
 
 // From implies Into
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, U> Into<U> for T where U: From<T> {
     fn into(self) -> U {
         U::from(self)
     }
 }
 
+// From (and thus Into) is reflexive
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> From<T> for T {
+    fn from(t: T) -> T { t }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // CONCRETE IMPLS
 ////////////////////////////////////////////////////////////////////////////////
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> AsRef<[T]> for [T] {
     fn as_ref(&self) -> &[T] {
         self
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> AsMut<[T]> for [T] {
     fn as_mut(&mut self) -> &mut [T] {
         self
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<str> for str {
     fn as_ref(&self) -> &str {
         self

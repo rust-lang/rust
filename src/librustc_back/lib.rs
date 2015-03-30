@@ -46,7 +46,6 @@
 #![feature(path_ext)]
 #![feature(std_misc)]
 #![feature(step_by)]
-#![feature(convert)]
 #![cfg_attr(test, feature(test, rand))]
 
 extern crate syntax;

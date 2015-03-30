@@ -423,11 +423,18 @@ impl<T> Vec<T> {
         }
     }
 
+    /// Extract a slice containing the entire vector.
+    #[inline]
+    #[unstable(feature = "convert",
+               reason = "waiting on RFC revision")]
+    pub fn as_slice(&self) -> &[T] {
+        self
+    }
+
     /// Deprecated: use `&mut s[..]` instead.
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "will be replaced by slice syntax")]
-    #[deprecated(since = "1.0.0", reason = "use &mut s[..] instead")]
+    #[unstable(feature = "convert",
+               reason = "waiting on RFC revision")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         &mut self[..]
     }
@@ -1636,13 +1643,6 @@ impl<T: fmt::Debug> fmt::Debug for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> AsRef<Vec<T>> for Vec<T> {
     fn as_ref(&self) -> &Vec<T> {
-        self
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Into<Vec<T>> for Vec<T> {
-    fn into(self) -> Vec<T> {
         self
     }
 }

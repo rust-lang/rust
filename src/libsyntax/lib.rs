@@ -37,7 +37,6 @@
 #![feature(unicode)]
 #![feature(path_ext)]
 #![feature(str_char)]
-#![feature(convert)]
 #![feature(into_cow)]
 #![feature(slice_patterns)]
 
