@@ -1473,12 +1473,12 @@ impl str {
     /// let gr1 = "a\u{310}e\u{301}o\u{308}\u{332}".graphemes(true).collect::<Vec<&str>>();
     /// let b: &[_] = &["a\u{310}", "e\u{301}", "o\u{308}\u{332}"];
     ///
-    /// assert_eq!(gr1.as_slice(), b);
+    /// assert_eq!(&gr1[..], b);
     ///
     /// let gr2 = "a\r\nb🇷🇺🇸🇹".graphemes(true).collect::<Vec<&str>>();
     /// let b: &[_] = &["a", "\r\n", "b", "🇷🇺🇸🇹"];
     ///
-    /// assert_eq!(gr2.as_slice(), b);
+    /// assert_eq!(&gr2[..], b);
     /// ```
     #[unstable(feature = "unicode",
                reason = "this functionality may only be provided by libunicode")]
@@ -1496,7 +1496,7 @@ impl str {
     /// let gr_inds = "a̐éö̲\r\n".grapheme_indices(true).collect::<Vec<(usize, &str)>>();
     /// let b: &[_] = &[(0, "a̐"), (3, "é"), (6, "ö̲"), (11, "\r\n")];
     ///
-    /// assert_eq!(gr_inds.as_slice(), b);
+    /// assert_eq!(&gr_inds[..], b);
     /// ```
     #[unstable(feature = "unicode",
                reason = "this functionality may only be provided by libunicode")]

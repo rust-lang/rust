@@ -376,8 +376,8 @@ impl Command {
     /// };
     ///
     /// println!("status: {}", output.status);
-    /// println!("stdout: {}", String::from_utf8_lossy(output.output.as_slice()));
-    /// println!("stderr: {}", String::from_utf8_lossy(output.error.as_slice()));
+    /// println!("stdout: {}", String::from_utf8_lossy(output.output.as_ref()));
+    /// println!("stderr: {}", String::from_utf8_lossy(output.error.as_ref()));
     /// ```
     pub fn output(&self) -> IoResult<ProcessOutput> {
         self.spawn().and_then(|p| p.wait_with_output())

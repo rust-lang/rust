@@ -821,13 +821,13 @@ impl<T> Vec<T> {
     /// # #![feature(collections, core)]
     /// let v = vec![0, 1, 2];
     /// let w = v.map_in_place(|i| i + 3);
-    /// assert_eq!(w.as_slice(), [3, 4, 5].as_slice());
+    /// assert_eq!(&w[..], &[3, 4, 5]);
     ///
     /// #[derive(PartialEq, Debug)]
     /// struct Newtype(u8);
     /// let bytes = vec![0x11, 0x22];
     /// let newtyped_bytes = bytes.map_in_place(|x| Newtype(x));
-    /// assert_eq!(newtyped_bytes.as_slice(), [Newtype(0x11), Newtype(0x22)].as_slice());
+    /// assert_eq!(&newtyped_bytes[..], &[Newtype(0x11), Newtype(0x22)]);
     /// ```
     #[unstable(feature = "collections",
                reason = "API may change to provide stronger guarantees")]

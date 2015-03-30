@@ -29,7 +29,7 @@ fn foo<'a>(map: RefCell<HashMap<&'static str, &'a [u8]>>) {
 // supposed to match the lifetime `'a`) ...
 fn foo<'a>(map: RefCell<HashMap<&'static str, &'a [u8]>>) {
     let one = [1];
-    assert_eq!(map.borrow().get("one"), Some(&one.as_slice()));
+    assert_eq!(map.borrow().get("one"), Some(&&one[..]));
 }
 
 #[cfg(all(not(cannot_use_this_yet),not(cannot_use_this_yet_either)))]
