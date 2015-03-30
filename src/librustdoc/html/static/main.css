@@ -209,6 +209,7 @@ nav.sub {
 
 .content {
     padding: 15px 0;
+    margin-bottom: 80px;
 }
 
 .content.source pre.rust {
@@ -580,6 +581,17 @@ pre.rust { position: relative; }
     color: #999;
 }
 
+
+@media (min-width: 992px) {
+    .footer {
+        border-top: 1px solid #ddd;
+        text-align: center;
+        position: absolute;
+        width: 992px;
+        left: 50%;
+        margin-left: -496px;
+    }
+}
 
 
 /* Media Queries */
