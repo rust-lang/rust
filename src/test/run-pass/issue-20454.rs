@@ -12,10 +12,12 @@
 
 use std::thread;
 
-fn main() {
-    thread::Thread::spawn(move || { // no need for -> ()
+fn _foo() {
+    let _t = thread::scoped(move || { // no need for -> ()
         loop {
             println!("hello");
         }
     });
 }
+
+fn main() {}

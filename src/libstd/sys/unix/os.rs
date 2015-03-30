@@ -16,7 +16,7 @@ use prelude::v1::*;
 use os::unix::prelude::*;
 
 use error::Error as StdError;
-use ffi::{CString, CStr, OsString, OsStr, AsOsStr};
+use ffi::{CString, CStr, OsString, OsStr};
 use fmt;
 use io;
 use iter;
@@ -125,7 +125,8 @@ pub fn getcwd() -> io::Result<PathBuf> {
 }
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
-    let p = try!(CString::new(p.as_os_str().as_bytes()));
+    let p: &OsStr = p.as_ref();
+    let p = try!(CString::new(p.as_bytes()));
     unsafe {
         match libc::chdir(p.as_ptr()) == (0 as c_int) {
             true => Ok(()),
@@ -158,13 +159,13 @@ impl<'a> Iterator for SplitPaths<'a> {
 pub struct JoinPathsError;
 
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
-    where I: Iterator<Item=T>, T: AsOsStr
+    where I: Iterator<Item=T>, T: AsRef<OsStr>
 {
     let mut joined = Vec::new();
     let sep = b':';
 
     for (i, path) in paths.enumerate() {
-        let path = path.as_os_str().as_bytes();
+        let path = path.as_ref().as_bytes();
         if i > 0 { joined.push(sep) }
         if path.contains(&sep) {
             return Err(JoinPathsError)
@@ -464,7 +465,7 @@ pub fn page_size() -> usize {
 }
 
 pub fn temp_dir() -> PathBuf {
-    getenv("TMPDIR".as_os_str()).map(os2path).unwrap_or_else(|| {
+    getenv("TMPDIR".as_ref()).map(os2path).unwrap_or_else(|| {
         if cfg!(target_os = "android") {
             PathBuf::from("/data/local/tmp")
         } else {
@@ -474,7 +475,7 @@ pub fn temp_dir() -> PathBuf {
 }
 
 pub fn home_dir() -> Option<PathBuf> {
-    return getenv("HOME".as_os_str()).or_else(|| unsafe {
+    return getenv("HOME".as_ref()).or_else(|| unsafe {
         fallback()
     }).map(os2path);
 

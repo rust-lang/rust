@@ -12,7 +12,7 @@ use core::prelude::*;
 use io::prelude::*;
 use os::unix::prelude::*;
 
-use ffi::{CString, CStr, OsString, AsOsStr, OsStr};
+use ffi::{CString, CStr, OsString, OsStr};
 use io::{self, Error, SeekFrom};
 use libc::{self, c_int, size_t, off_t, c_char, mode_t};
 use mem;

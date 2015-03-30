@@ -29,8 +29,8 @@ fn main() {
 fn parent() {
     let args: Vec<String> = env::args().collect();
     let mut p = Command::new(&args[0]).arg("child")
-                        .stdout(Stdio::capture())
-                        .stdin(Stdio::capture())
+                        .stdout(Stdio::piped())
+                        .stdin(Stdio::piped())
                         .spawn().unwrap();
     p.stdin.as_mut().unwrap().write_all(b"test1\ntest2\ntest3").unwrap();
     let out = p.wait_with_output().unwrap();

@@ -59,7 +59,7 @@ fn test_from_elem() {
     // Test on-heap from_elem.
     v = vec![20; 6];
     {
-        let v = v.as_slice();
+        let v = &v[..];
         assert_eq!(v[0], 20);
         assert_eq!(v[1], 20);
         assert_eq!(v[2], 20);
@@ -685,7 +685,7 @@ fn test_capacity() {
 #[test]
 fn test_slice_2() {
     let v = vec![1, 2, 3, 4, 5];
-    let v = v.slice(1, 3);
+    let v = &v[1..3];
     assert_eq!(v.len(), 2);
     assert_eq!(v[0], 2);
     assert_eq!(v[1], 3);

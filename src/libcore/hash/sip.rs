@@ -114,11 +114,6 @@ impl SipHasher {
         state
     }
 
-    /// Returns the computed hash.
-    #[unstable(feature = "hash")]
-    #[deprecated(since = "1.0.0", reason = "renamed to finish")]
-    pub fn result(&self) -> u64 { self.finish() }
-
     fn reset(&mut self) {
         self.length = 0;
         self.v0 = self.k0 ^ 0x736f6d6570736575;

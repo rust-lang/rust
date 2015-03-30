@@ -251,7 +251,6 @@ fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
 fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
          symaddr: *mut libc::c_void) -> io::Result<()> {
     use env;
-    use ffi::AsOsStr;
     use os::unix::prelude::*;
     use ptr;
 

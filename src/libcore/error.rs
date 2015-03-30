@@ -50,30 +50,30 @@
 //! ```
 //! #![feature(core)]
 //! use std::error::FromError;
-//! use std::{io, str};
 //! use std::fs::File;
+//! use std::io;
 //!
 //! enum MyError {
 //!     Io(io::Error),
-//!     Utf8(str::Utf8Error),
+//!     CustomError,
 //! }
 //!
 //! impl FromError<io::Error> for MyError {
-//!     fn from_error(err: io::Error) -> MyError { MyError::Io(err) }
+//!     fn from_error(err: io::Error) -> MyError {
+//!         MyError::Io(err)
+//!     }
 //! }
 //!
-//! impl FromError<str::Utf8Error> for MyError {
-//!     fn from_error(err: str::Utf8Error) -> MyError { MyError::Utf8(err) }
-//! }
-//!
-//! #[allow(unused_variables)]
 //! fn open_and_map() -> Result<(), MyError> {
-//!     let b = b"foo.txt";
-//!     let s = try!(str::from_utf8(b));
-//!     let f = try!(File::open(s));
-//!
+//!     let f = try!(File::open("foo.txt"));
+//!     let m = try!(work_with_file(&f));
 //!     // do something interesting here...
-//!     Ok(())
+//!     # Ok(())
+//! }
+//!
+//! fn work_with_file(file: &File) -> Result<(), MyError> {
+//!     // ...
+//!     # return Ok(())
 //! }
 //! ```
 

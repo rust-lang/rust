@@ -243,11 +243,12 @@ for num in nums.iter() {
 ```
 
 These two basic iterators should serve you well. There are some more
-advanced iterators, including ones that are infinite. Like `count`:
+advanced iterators, including ones that are infinite. Like using range syntax
+and `step_by`:
 
 ```rust
-# #![feature(core)]
-std::iter::count(1, 5);
+# #![feature(step_by)]
+(1..).step_by(5);
 ```
 
 This iterator counts up from one, adding five each time. It will give
@@ -292,11 +293,11 @@ just use `for` instead.
 There are tons of interesting iterator adapters. `take(n)` will return an
 iterator over the next `n` elements of the original iterator, note that this
 has no side effect on the original iterator. Let's try it out with our infinite
-iterator from before, `count()`:
+iterator from before:
 
 ```rust
-# #![feature(core)]
-for i in std::iter::count(1, 5).take(5) {
+# #![feature(step_by)]
+for i in (1..).step_by(5).take(5) {
     println!("{}", i);
 }
 ```

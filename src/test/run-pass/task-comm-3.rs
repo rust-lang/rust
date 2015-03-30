@@ -12,7 +12,7 @@
 
 // no-pretty-expanded FIXME #15189
 
-use std::thread::Thread;
+use std::thread;
 use std::sync::mpsc::{channel, Sender};
 
 pub fn main() { println!("===== WITHOUT THREADS ====="); test00(); }
@@ -42,7 +42,7 @@ fn test00() {
     let mut results = Vec::new();
     while i < number_of_tasks {
         let tx = tx.clone();
-        results.push(Thread::scoped({
+        results.push(thread::scoped({
             let i = i;
             move|| {
                 test00_start(&tx, i, number_of_messages)

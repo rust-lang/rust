@@ -951,7 +951,8 @@ mod test {
     pub fn tmpdir() -> TempDir {
         use os;
         use rand;
-        let ret = os::tmpdir().join(format!("rust-{}", rand::random::<u32>()));
+        let temp = Path::new(::env::temp_dir().to_str().unwrap());
+        let ret = temp.join(format!("rust-{}", rand::random::<u32>()));
         check!(old_io::fs::mkdir(&ret, old_io::USER_RWX));
         TempDir(ret)
     }
@@ -1639,7 +1640,7 @@ mod test {
 
         check!(File::create(&tmpdir.join("test")).write(&bytes));
         let actual = check!(File::open(&tmpdir.join("test")).read_to_end());
-        assert!(actual == bytes.as_slice());
+        assert!(actual == &bytes[..]);
     }
 
     #[test]
