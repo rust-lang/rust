@@ -24,17 +24,17 @@ impl !Sync for NotSync {}
 unsafe impl Send for TestE {}
 unsafe impl Send for MyType {}
 unsafe impl Send for (MyType, MyType) {}
-//~^ ERROR E0321
+//~^ ERROR E0117
 
 unsafe impl Send for &'static NotSync {}
 //~^ ERROR E0321
 
 unsafe impl Send for [MyType] {}
-//~^ ERROR E0321
+//~^ ERROR E0117
 
 unsafe impl Send for &'static [NotSync] {}
-//~^ ERROR E0321
-//~| ERROR conflicting implementations
+//~^ ERROR E0117
+//~| ERROR E0119
 
 fn main() {
 }
