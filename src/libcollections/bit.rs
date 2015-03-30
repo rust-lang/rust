@@ -38,7 +38,7 @@
 //! [sieve]: http://en.wikipedia.org/wiki/Sieve_of_Eratosthenes
 //!
 //! ```
-//! # #![feature(collections, core)]
+//! # #![feature(collections, core, step_by)]
 //! use std::collections::{BitSet, BitVec};
 //! use std::num::Float;
 //! use std::iter;
@@ -60,7 +60,7 @@
 //!         if bv[i] {
 //!             // Mark all multiples of i as non-prime (any multiples below i * i
 //!             // will have been marked as non-prime previously)
-//!             for j in iter::range_step(i * i, max_prime, i) { bv.set(j, false) }
+//!             for j in (i * i..max_prime).step_by(i) { bv.set(j, false) }
 //!         }
 //!     }
 //!     BitSet::from_bit_vec(bv)
@@ -1261,14 +1261,6 @@ impl BitSet {
     /// ```
     #[inline]
     pub fn from_bit_vec(bit_vec: BitVec) -> BitSet {
-        BitSet { bit_vec: bit_vec }
-    }
-
-    /// Deprecated: use `from_bit_vec`.
-    #[inline]
-    #[deprecated(since = "1.0.0", reason = "renamed to from_bit_vec")]
-    #[unstable(feature = "collections")]
-    pub fn from_bitv(bit_vec: BitVec) -> BitSet {
         BitSet { bit_vec: bit_vec }
     }
 

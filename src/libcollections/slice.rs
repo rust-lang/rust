@@ -107,7 +107,6 @@ pub use core::slice::{IntSliceExt, SplitMut, ChunksMut, Split};
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
 pub use core::slice::{bytes, mut_ref_slice, ref_slice};
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
-pub use core::slice::{from_raw_buf, from_raw_mut_buf};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Basic slice extension methods
@@ -279,33 +278,6 @@ impl<T> [T] {
             mem::swap(a, b);
         }
         cmp::min(self.len(), end-start)
-    }
-
-    /// Deprecated: use `&s[start .. end]` notation instead.
-    #[unstable(feature = "collections",
-               reason = "will be replaced by slice syntax")]
-    #[deprecated(since = "1.0.0", reason = "use &s[start .. end] instead")]
-    #[inline]
-    pub fn slice(&self, start: usize, end: usize) -> &[T] {
-        &self[start .. end]
-    }
-
-    /// Deprecated: use `&s[start..]` notation instead.
-    #[unstable(feature = "collections",
-               reason = "will be replaced by slice syntax")]
-    #[deprecated(since = "1.0.0", reason = "use &s[start..] instead")]
-    #[inline]
-    pub fn slice_from(&self, start: usize) -> &[T] {
-        &self[start ..]
-    }
-
-    /// Deprecated: use `&s[..end]` notation instead.
-    #[unstable(feature = "collections",
-               reason = "will be replaced by slice syntax")]
-    #[deprecated(since = "1.0.0", reason = "use &s[..end] instead")]
-    #[inline]
-    pub fn slice_to(&self, end: usize) -> &[T] {
-        &self[.. end]
     }
 
     /// Divides one slice into two at an index.
@@ -611,42 +583,6 @@ impl<T> [T] {
         core_slice::SliceExt::get_mut(self, index)
     }
 
-    /// Deprecated: use `&mut s[..]` instead.
-    #[unstable(feature = "collections",
-               reason = "will be replaced by slice syntax")]
-    #[deprecated(since = "1.0.0", reason = "use &mut s[..] instead")]
-    #[allow(deprecated)]
-    pub fn as_mut_slice(&mut self) -> &mut [T] {
-        core_slice::SliceExt::as_mut_slice(self)
-    }
-
-    /// Deprecated: use `&mut s[start .. end]` instead.
-    #[unstable(feature = "collections",
-               reason = "will be replaced by slice syntax")]
-    #[deprecated(since = "1.0.0", reason = "use &mut s[start .. end] instead")]
-    #[inline]
-    pub fn slice_mut(&mut self, start: usize, end: usize) -> &mut [T] {
-        &mut self[start .. end]
-    }
-
-    /// Deprecated: use `&mut s[start ..]` instead.
-    #[unstable(feature = "collections",
-               reason = "will be replaced by slice syntax")]
-    #[deprecated(since = "1.0.0", reason = "use &mut s[start ..] instead")]
-    #[inline]
-    pub fn slice_from_mut(&mut self, start: usize) -> &mut [T] {
-        &mut self[start ..]
-    }
-
-    /// Deprecated: use `&mut s[.. end]` instead.
-    #[unstable(feature = "collections",
-               reason = "will be replaced by slice syntax")]
-    #[deprecated(since = "1.0.0", reason = "use &mut s[.. end] instead")]
-    #[inline]
-    pub fn slice_to_mut(&mut self, end: usize) -> &mut [T] {
-        &mut self[.. end]
-    }
-
     /// Returns an iterator that allows modifying each value
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -935,13 +871,6 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn binary_search(&self, x: &T) -> Result<usize, usize> where T: Ord {
         core_slice::SliceExt::binary_search(self, x)
-    }
-
-    /// Deprecated: use `binary_search` instead.
-    #[unstable(feature = "collections")]
-    #[deprecated(since = "1.0.0", reason = "use binary_search instead")]
-    pub fn binary_search_elem(&self, x: &T) -> Result<usize, usize> where T: Ord {
-        self.binary_search(x)
     }
 
     /// Mutates the slice to the next lexicographic permutation.

@@ -13,7 +13,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax, std_misc)]
 
-use std::thread::Thread;
+use std::thread;
 use std::sync::mpsc::channel;
 
 pub fn main() {
@@ -22,7 +22,7 @@ pub fn main() {
     let x: Box<isize> = box 1;
     let x_in_parent = &(*x) as *const isize as usize;
 
-    let _t = Thread::spawn(move || {
+    let _t = thread::scoped(move || {
         let x_in_child = &(*x) as *const isize as usize;
         tx.send(x_in_child).unwrap();
     });

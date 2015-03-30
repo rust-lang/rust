@@ -42,12 +42,11 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use result::Result::{self, Ok, Err};
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-#[doc(no_inline)] pub use slice::{SliceConcatExt, AsSlice};
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-#[doc(no_inline)] pub use str::Str;
+#[doc(no_inline)] pub use slice::SliceConcatExt;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use string::{String, ToString};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use vec::Vec;
+
+#[allow(deprecated)] pub use slice::AsSlice;
+#[allow(deprecated)] pub use str::Str;

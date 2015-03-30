@@ -14,7 +14,7 @@
 
 extern crate libc;
 
-use std::ffi::{self, CString};
+use std::ffi::{CStr, CString};
 use libc::{c_char, c_int};
 
 
@@ -25,7 +25,7 @@ extern {
 unsafe fn check<T, F>(expected: &str, f: F) where F: FnOnce(*mut c_char) -> T {
     let mut x = [0 as c_char; 50];
     f(&mut x[0] as *mut c_char);
-    assert_eq!(expected.as_bytes(), ffi::c_str_to_bytes(&x.as_ptr()));
+    assert_eq!(expected.as_bytes(), CStr::from_ptr(x.as_ptr()).to_bytes());
 }
 
 pub fn main() {

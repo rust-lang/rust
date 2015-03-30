@@ -10,14 +10,14 @@
 
 // ignore-tidy-linelength
 
-use std::iter::{Range,range};
+use std::ops::Range;
 
 trait Itble<'r, T, I: Iterator<Item=T>> { fn iter(&'r self) -> I; }
 
 impl<'r> Itble<'r, usize, Range<usize>> for (usize, usize) {
     fn iter(&'r self) -> Range<usize> {
         let &(min, max) = self;
-        range(min, max)
+        min..max
     }
 }
 

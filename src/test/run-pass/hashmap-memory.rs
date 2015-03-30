@@ -25,7 +25,7 @@ mod map_reduce {
     use std::collections::HashMap;
     use std::sync::mpsc::{channel, Sender};
     use std::str;
-    use std::thread::Thread;
+    use std::thread;
 
     pub type putter<'a> = Box<FnMut(String, String) + 'a>;
 
@@ -37,7 +37,7 @@ mod map_reduce {
         for i in &inputs {
             let ctrl = ctrl.clone();
             let i = i.clone();
-            Thread::spawn(move|| map_task(ctrl.clone(), i.clone()) );
+            thread::spawn(move|| map_task(ctrl.clone(), i.clone()) );
         }
     }
 

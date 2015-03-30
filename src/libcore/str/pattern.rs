@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(deprecated) /* for CharEq */ ]
-
 use prelude::*;
-use super::CharEq;
 
 // Pattern
 
@@ -228,6 +225,40 @@ pub trait DoubleEndedSearcher<'a>: ReverseSearcher<'a> {}
 
 // Impl for a CharEq wrapper
 
+#[doc(hidden)]
+trait CharEq {
+    fn matches(&mut self, char) -> bool;
+    fn only_ascii(&self) -> bool;
+}
+
+impl CharEq for char {
+    #[inline]
+    fn matches(&mut self, c: char) -> bool { *self == c }
+
+    #[inline]
+    fn only_ascii(&self) -> bool { (*self as u32) < 128 }
+}
+
+impl<F> CharEq for F where F: FnMut(char) -> bool {
+    #[inline]
+    fn matches(&mut self, c: char) -> bool { (*self)(c) }
+
+    #[inline]
+    fn only_ascii(&self) -> bool { false }
+}
+
+impl<'a> CharEq for &'a [char] {
+    #[inline]
+    fn matches(&mut self, c: char) -> bool {
+        self.iter().any(|&m| { let mut m = m; m.matches(c) })
+    }
+
+    #[inline]
+    fn only_ascii(&self) -> bool {
+        self.iter().all(|m| m.only_ascii())
+    }
+}
+
 struct CharEqPattern<C: CharEq>(C);
 
 struct CharEqSearcher<'a, C: CharEq> {
@@ -425,65 +456,116 @@ fn str_search_step<F, G>(mut m: &mut StrSearcher,
     }
 }
 
-macro_rules! associated_items {
-    ($t:ty, $s:ident, $e:expr) => {
-        // FIXME: #22463
-        //type Searcher = $t;
-
-        fn into_searcher(self, haystack: &'a str) -> $t {
-            let $s = self;
-            $e.into_searcher(haystack)
+macro_rules! char_eq_pattern_impl {
+    ($wrapper:ty, $wrapper_ident:ident) => {
+        fn into_searcher(self, haystack: &'a str) -> $wrapper {
+            $wrapper_ident(CharEqPattern(self).into_searcher(haystack))
         }
-
         #[inline]
         fn is_contained_in(self, haystack: &'a str) -> bool {
-            let $s = self;
-            $e.is_contained_in(haystack)
+            CharEqPattern(self).is_contained_in(haystack)
         }
-
         #[inline]
         fn is_prefix_of(self, haystack: &'a str) -> bool {
-            let $s = self;
-            $e.is_prefix_of(haystack)
+            CharEqPattern(self).is_prefix_of(haystack)
         }
-
-        // FIXME: #21750
-        /*#[inline]
+        #[inline]
         fn is_suffix_of(self, haystack: &'a str) -> bool
-            where $t: ReverseSearcher<'a>
+            where $wrapper: ReverseSearcher<'a>
         {
-            let $s = self;
-            $e.is_suffix_of(haystack)
-        }*/
+            CharEqPattern(self).is_suffix_of(haystack)
+        }
     }
 }
 
-// CharEq delegation impls
+// Pattern for char
 
-/// Searches for chars that are equal to a given char
 impl<'a> Pattern<'a> for char {
-    type Searcher =   <CharEqPattern<Self> as Pattern<'a>>::Searcher;
-    associated_items!(<CharEqPattern<Self> as Pattern<'a>>::Searcher,
-                      s, CharEqPattern(s));
+    type Searcher = CharSearcher<'a>;
+    char_eq_pattern_impl!(CharSearcher<'a>, CharSearcher);
 }
 
-/// Searches for chars that are equal to any of the chars in the array
+pub struct CharSearcher<'a>(CharEqSearcher<'a, char>);
+
+unsafe impl<'a> Searcher<'a> for CharSearcher<'a> {
+    #[inline]
+    fn haystack(&self) -> &'a str { self.0.haystack() }
+    #[inline]
+    fn next(&mut self) -> SearchStep { self.0.next() }
+}
+unsafe impl<'a> ReverseSearcher<'a> for CharSearcher<'a> {
+    #[inline]
+    fn next_back(&mut self) -> SearchStep { self.0.next_back() }
+}
+impl<'a> DoubleEndedSearcher<'a> for CharSearcher<'a> {}
+
+// Pattern for &[char]
+
 impl<'a, 'b> Pattern<'a> for &'b [char] {
-    type Searcher =   <CharEqPattern<Self> as Pattern<'a>>::Searcher;
-    associated_items!(<CharEqPattern<Self> as Pattern<'a>>::Searcher,
-                      s, CharEqPattern(s));
+    type Searcher = CharSliceSearcher<'a, 'b>;
+    char_eq_pattern_impl!(CharSliceSearcher<'a, 'b>, CharSliceSearcher);
 }
 
-/// A convenience impl that delegates to the impl for `&str`
+pub struct CharSliceSearcher<'a, 'b>(CharEqSearcher<'a, &'b [char]>);
+
+unsafe impl<'a, 'b> Searcher<'a> for CharSliceSearcher<'a, 'b> {
+    #[inline]
+    fn haystack(&self) -> &'a str { self.0.haystack() }
+    #[inline]
+    fn next(&mut self) -> SearchStep { self.0.next() }
+}
+unsafe impl<'a, 'b> ReverseSearcher<'a> for CharSliceSearcher<'a, 'b> {
+    #[inline]
+    fn next_back(&mut self) -> SearchStep { self.0.next_back() }
+}
+impl<'a, 'b> DoubleEndedSearcher<'a> for CharSliceSearcher<'a, 'b> {}
+
+// Pattern for predicates
+
+impl<'a, F: FnMut(char) -> bool> Pattern<'a> for F {
+    type Searcher = CharPredSearcher<'a, F>;
+    char_eq_pattern_impl!(CharPredSearcher<'a, F>, CharPredSearcher);
+}
+
+pub struct CharPredSearcher<'a, F: FnMut(char) -> bool>(CharEqSearcher<'a, F>);
+
+unsafe impl<'a, F> Searcher<'a> for CharPredSearcher<'a, F>
+    where F: FnMut(char) -> bool
+{
+    #[inline]
+    fn haystack(&self) -> &'a str { self.0.haystack() }
+    #[inline]
+    fn next(&mut self) -> SearchStep { self.0.next() }
+}
+unsafe impl<'a, F> ReverseSearcher<'a> for CharPredSearcher<'a, F>
+    where F: FnMut(char) -> bool
+{
+    #[inline]
+    fn next_back(&mut self) -> SearchStep { self.0.next_back() }
+}
+impl<'a, F> DoubleEndedSearcher<'a> for CharPredSearcher<'a, F>
+    where F: FnMut(char) -> bool
+{}
+
+// Pattern for &&str
+
 impl<'a, 'b> Pattern<'a> for &'b &'b str {
-    type Searcher =   <&'b str as Pattern<'a>>::Searcher;
-    associated_items!(<&'b str as Pattern<'a>>::Searcher,
-                      s, (*s));
-}
-
-/// Searches for chars that match the given predicate
-impl<'a, F> Pattern<'a> for F where F: FnMut(char) -> bool {
-    type Searcher =   <CharEqPattern<Self> as Pattern<'a>>::Searcher;
-    associated_items!(<CharEqPattern<Self> as Pattern<'a>>::Searcher,
-                      s, CharEqPattern(s));
+    type Searcher = <&'b str as Pattern<'a>>::Searcher;
+    #[inline]
+    fn into_searcher(self, haystack: &'a str)
+                     -> <&'b str as Pattern<'a>>::Searcher {
+        (*self).into_searcher(haystack)
+    }
+    #[inline]
+    fn is_contained_in(self, haystack: &'a str) -> bool {
+        (*self).is_contained_in(haystack)
+    }
+    #[inline]
+    fn is_prefix_of(self, haystack: &'a str) -> bool {
+        (*self).is_prefix_of(haystack)
+    }
+    #[inline]
+    fn is_suffix_of(self, haystack: &'a str) -> bool {
+        (*self).is_suffix_of(haystack)
+    }
 }

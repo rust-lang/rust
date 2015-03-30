@@ -64,19 +64,6 @@ pub struct Slice<T> {
 
 impl<T> Copy for Slice<T> {}
 
-/// The representation of an old closure.
-#[repr(C)]
-#[derive(Copy)]
-#[unstable(feature = "core")]
-#[deprecated(reason = "unboxed new closures do not have a universal representation; \
-                       `&Fn` (etc) trait objects should use `TraitObject` instead",
-             since= "1.0.0")]
-#[allow(deprecated) /* for deriving Copy impl */]
-pub struct Closure {
-    pub code: *mut (),
-    pub env: *mut (),
-}
-
 /// The representation of a trait object like `&SomeTrait`.
 ///
 /// This struct has the same layout as types like `&SomeTrait` and

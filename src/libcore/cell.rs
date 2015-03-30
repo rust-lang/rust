@@ -343,23 +343,6 @@ impl<T> RefCell<T> {
         }
     }
 
-    /// Attempts to immutably borrow the wrapped value.
-    ///
-    /// The borrow lasts until the returned `Ref` exits scope. Multiple
-    /// immutable borrows can be taken out at the same time.
-    ///
-    /// Returns `None` if the value is currently mutably borrowed.
-    #[unstable(feature = "core", reason = "may be renamed or removed")]
-    #[deprecated(since = "1.0.0",
-                 reason = "dispatch on `cell.borrow_state()` instead")]
-    #[inline]
-    pub fn try_borrow<'a>(&'a self) -> Option<Ref<'a, T>> {
-        match BorrowRef::new(&self.borrow) {
-            Some(b) => Some(Ref { _value: unsafe { &*self.value.get() }, _borrow: b }),
-            None => None,
-        }
-    }
-
     /// Immutably borrows the wrapped value.
     ///
     /// The borrow lasts until the returned `Ref` exits scope. Multiple
@@ -404,23 +387,6 @@ impl<T> RefCell<T> {
                 _borrow: b,
             },
             None => panic!("RefCell<T> already mutably borrowed"),
-        }
-    }
-
-    /// Mutably borrows the wrapped value.
-    ///
-    /// The borrow lasts until the returned `RefMut` exits scope. The value
-    /// cannot be borrowed while this borrow is active.
-    ///
-    /// Returns `None` if the value is currently borrowed.
-    #[unstable(feature = "core", reason = "may be renamed or removed")]
-    #[deprecated(since = "1.0.0",
-                 reason = "dispatch on `cell.borrow_state()` instead")]
-    #[inline]
-    pub fn try_borrow_mut<'a>(&'a self) -> Option<RefMut<'a, T>> {
-        match BorrowRefMut::new(&self.borrow) {
-            Some(b) => Some(RefMut { _value: unsafe { &mut *self.value.get() }, _borrow: b }),
-            None => None,
         }
     }
 

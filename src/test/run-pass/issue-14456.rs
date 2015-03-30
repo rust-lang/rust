@@ -38,9 +38,9 @@ fn child() {
 fn test() {
     let args: Vec<String> = env::args().collect();
     let mut p = Command::new(&args[0]).arg("child")
-                                     .stdin(Stdio::capture())
-                                     .stdout(Stdio::capture())
-                                     .stderr(Stdio::capture())
+                                     .stdin(Stdio::piped())
+                                     .stdout(Stdio::piped())
+                                     .stderr(Stdio::piped())
                                      .spawn().unwrap();
     assert!(p.wait().unwrap().success());
 }

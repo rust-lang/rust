@@ -18,7 +18,6 @@ use self::Taggy::*;
 use self::Taggypar::*;
 
 #[test]
-#[allow(deprecated)]
 fn test_simple() {
     let mut d = VecDeque::new();
     assert_eq!(d.len(), 0);
@@ -545,7 +544,7 @@ fn test_from_iter() {
     let u: Vec<_> = deq.iter().cloned().collect();
     assert_eq!(u, v);
 
-    let seq = iter::count(0, 2).take(256);
+    let seq = (0..).step_by(2).take(256);
     let deq: VecDeque<_> = seq.collect();
     for (i, &x) in deq.iter().enumerate() {
         assert_eq!(2*i, x);

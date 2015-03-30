@@ -16,11 +16,11 @@
 
 // This test is specifically about spawning temporary closures.
 
-use std::thread::Thread;
+use std::thread;
 
 fn f() {
 }
 
 pub fn main() {
-    let _t = Thread::scoped(move|| f() ).join();
+    let _t = thread::scoped(move|| f() ).join();
 }

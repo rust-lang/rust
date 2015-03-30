@@ -27,9 +27,9 @@ use id::Id;
 
 mod s {
     #![allow(unstable)]
-    use std::sync::atomic::{AtomicUint, ATOMIC_UINT_INIT, Ordering};
+    use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
-    static S_COUNT: AtomicUint = ATOMIC_UINT_INIT;
+    static S_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 
     pub fn next_count() -> usize {
         S_COUNT.fetch_add(1, Ordering::SeqCst) + 1
