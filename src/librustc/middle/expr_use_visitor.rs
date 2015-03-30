@@ -885,6 +885,11 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         }
     }
 
+    // When this returns true, it means that the expression *is* a
+    // method-call (i.e. via the operator-overload).  This true result
+    // also implies that walk_overloaded_operator already took care of
+    // recursively processing the input arguments, and thus the caller
+    // should not do so.
     fn walk_overloaded_operator(&mut self,
                                 expr: &ast::Expr,
                                 receiver: &ast::Expr,
