@@ -63,7 +63,7 @@ declare_lint! {
     "suggest using `loop { }` instead of `while true { }`"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct WhileTrue;
 
 impl LintPass for WhileTrue {
@@ -107,7 +107,7 @@ declare_lint! {
     "shift exceeds the type's number of bits"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct TypeLimits {
     /// Id of the last visited negated expression
     negated_expr_id: ast::NodeId,
@@ -431,7 +431,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ImproperCTypesVisitor<'a, 'tcx> {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct ImproperCTypes;
 
 impl LintPass for ImproperCTypes {
@@ -474,7 +474,7 @@ declare_lint! {
     "use of owned (Box type) heap memory"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct BoxPointers;
 
 impl BoxPointers {
@@ -621,7 +621,7 @@ declare_lint! {
     "detects attributes that were not used by the compiler"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct UnusedAttributes;
 
 impl LintPass for UnusedAttributes {
@@ -662,7 +662,7 @@ declare_lint! {
     "path statements with no effect"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct PathStatements;
 
 impl LintPass for PathStatements {
@@ -696,7 +696,7 @@ declare_lint! {
     "unused result of an expression in a statement"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct UnusedResults;
 
 impl LintPass for UnusedResults {
@@ -764,7 +764,7 @@ declare_lint! {
     "types, variants, traits and type parameters should have camel case names"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct NonCamelCaseTypes;
 
 impl NonCamelCaseTypes {
@@ -874,7 +874,7 @@ declare_lint! {
     "methods, functions, lifetime parameters and modules should have snake case names"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct NonSnakeCase;
 
 impl NonSnakeCase {
@@ -1014,7 +1014,7 @@ declare_lint! {
     "static constants should have uppercase identifiers"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct NonUpperCaseGlobals;
 
 impl NonUpperCaseGlobals {
@@ -1072,7 +1072,7 @@ declare_lint! {
     "`if`, `match`, `while` and `return` do not need parentheses"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct UnusedParens;
 
 impl UnusedParens {
@@ -1166,7 +1166,7 @@ declare_lint! {
     "unnecessary braces around an imported item"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct UnusedImportBraces;
 
 impl LintPass for UnusedImportBraces {
@@ -1196,7 +1196,7 @@ declare_lint! {
     "using `Struct { x: x }` instead of `Struct { x }`"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct NonShorthandFieldPatterns;
 
 impl LintPass for NonShorthandFieldPatterns {
@@ -1233,7 +1233,7 @@ declare_lint! {
     "unnecessary use of an `unsafe` block"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct UnusedUnsafe;
 
 impl LintPass for UnusedUnsafe {
@@ -1258,7 +1258,7 @@ declare_lint! {
     "usage of `unsafe` code"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct UnsafeCode;
 
 impl LintPass for UnsafeCode {
@@ -1319,7 +1319,7 @@ declare_lint! {
     "detect mut variables which don't need to be mutable"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct UnusedMut;
 
 impl UnusedMut {
@@ -1388,7 +1388,7 @@ declare_lint! {
     "detects unnecessary allocations that can be eliminated"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct UnusedAllocation;
 
 impl LintPass for UnusedAllocation {
@@ -1625,7 +1625,7 @@ declare_lint! {
     "detects potentially-forgotten implementations of `Copy`"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct MissingCopyImplementations;
 
 impl LintPass for MissingCopyImplementations {
@@ -1740,7 +1740,7 @@ declare_lint! {
 }
 
 /// Checks for use of items with `#[deprecated]` attributes
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Stability;
 
 impl Stability {
@@ -1800,7 +1800,7 @@ declare_lint! {
     "functions that cannot return without calling themselves"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct UnconditionalRecursion;
 
 
@@ -1991,7 +1991,7 @@ declare_lint! {
     "compiler plugin used as ordinary library in non-plugin crate"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct PluginAsLibrary;
 
 impl LintPass for PluginAsLibrary {
@@ -2045,7 +2045,7 @@ declare_lint! {
     "const items will not have their symbols exported"
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct InvalidNoMangleItems;
 
 impl LintPass for InvalidNoMangleItems {
@@ -2088,7 +2088,7 @@ impl LintPass for InvalidNoMangleItems {
 }
 
 /// Forbids using the `#[feature(...)]` attribute
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct UnstableFeatures;
 
 declare_lint! {

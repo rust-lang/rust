@@ -65,7 +65,7 @@ pub enum Def {
 ///     <T as Trait>::AssocX::AssocY::MethodOrAssocType
 ///           ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~
 ///           base_def        depth = 2
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct PathResolution {
     pub base_def: Def,
     pub last_private: LastPrivate,
@@ -93,7 +93,7 @@ pub type DefMap = RefCell<NodeMap<PathResolution>>;
 // within.
 pub type ExportMap = NodeMap<Vec<Export>>;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Export {
     pub name: ast::Name,    // The name of the target.
     pub def_id: ast::DefId, // The definition of the target.

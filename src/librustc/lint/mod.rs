@@ -41,7 +41,7 @@ pub use lint::context::{Context, LintStore, raw_emit_lint, check_crate, gather_a
                         GatherNodeLevels};
 
 /// Specification of a single lint.
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Lint {
     /// A string identifier for the lint.
     ///

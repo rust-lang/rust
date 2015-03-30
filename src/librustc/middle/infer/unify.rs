@@ -92,7 +92,7 @@ pub struct Node<K:UnifyKey> {
     pub rank: usize,
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Delegate<K>(PhantomData<K>);
 
 // We can't use V:LatticeValue, much as I would like to,

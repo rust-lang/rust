@@ -116,7 +116,7 @@ pub const tag_items_data_item_reexport_def_id: usize = 0x47;
 pub const tag_items_data_item_reexport_name: usize = 0x48;
 
 // used to encode crate_ctxt side tables
-#[derive(Copy, PartialEq, FromPrimitive)]
+#[derive(Copy, Clone, PartialEq, FromPrimitive)]
 #[repr(usize)]
 pub enum astencode_tag { // Reserves 0x50 -- 0x6f
     tag_ast = 0x50,
