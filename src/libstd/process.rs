@@ -16,15 +16,15 @@
 use prelude::v1::*;
 use io::prelude::*;
 
-use ffi::AsOsStr;
+use ffi::OsStr;
 use fmt;
 use io::{self, Error, ErrorKind};
 use libc;
 use path;
 use sync::mpsc::{channel, Receiver};
 use sys::pipe2::{self, AnonPipe};
-use sys::process2::Process as ProcessImp;
 use sys::process2::Command as CommandImp;
+use sys::process2::Process as ProcessImp;
 use sys::process2::ExitStatus as ExitStatusImp;
 use sys_common::{AsInner, AsInnerMut};
 use thread;
@@ -147,9 +147,9 @@ impl Command {
     /// Builder methods are provided to change these defaults and
     /// otherwise configure the process.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn new<S: AsOsStr>(program: S) -> Command {
+    pub fn new<S: AsRef<OsStr>>(program: S) -> Command {
         Command {
-            inner: CommandImp::new(program.as_os_str()),
+            inner: CommandImp::new(program.as_ref()),
             stdin: None,
             stdout: None,
             stderr: None,
@@ -158,15 +158,15 @@ impl Command {
 
     /// Add an argument to pass to the program.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn arg<S: AsOsStr>(&mut self, arg: S) -> &mut Command {
-        self.inner.arg(arg.as_os_str());
+    pub fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Command {
+        self.inner.arg(arg.as_ref());
         self
     }
 
     /// Add multiple arguments to pass to the program.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn args<S: AsOsStr>(&mut self, args: &[S]) -> &mut Command {
-        self.inner.args(args.iter().map(AsOsStr::as_os_str));
+    pub fn args<S: AsRef<OsStr>>(&mut self, args: &[S]) -> &mut Command {
+        self.inner.args(args.iter().map(AsRef::as_ref));
         self
     }
 
@@ -176,16 +176,16 @@ impl Command {
     /// and case-sensitive on all other platforms.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn env<K, V>(&mut self, key: K, val: V) -> &mut Command
-        where K: AsOsStr, V: AsOsStr
+        where K: AsRef<OsStr>, V: AsRef<OsStr>
     {
-        self.inner.env(key.as_os_str(), val.as_os_str());
+        self.inner.env(key.as_ref(), val.as_ref());
         self
     }
 
     /// Removes an environment variable mapping.
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn env_remove<K: AsOsStr>(&mut self, key: K) -> &mut Command {
-        self.inner.env_remove(key.as_os_str());
+    pub fn env_remove<K: AsRef<OsStr>>(&mut self, key: K) -> &mut Command {
+        self.inner.env_remove(key.as_ref());
         self
     }
 
@@ -199,7 +199,7 @@ impl Command {
     /// Set the working directory for the child process.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn current_dir<P: AsRef<path::Path>>(&mut self, dir: P) -> &mut Command {
-        self.inner.cwd(dir.as_ref().as_os_str());
+        self.inner.cwd(dir.as_ref().as_ref());
         self
     }
 
@@ -379,11 +379,6 @@ enum StdioImp {
 
 impl Stdio {
     /// A new pipe should be arranged to connect the parent and child processes.
-    #[unstable(feature = "process_capture")]
-    #[deprecated(since = "1.0.0", reason = "renamed to `Stdio::piped`")]
-    pub fn capture() -> Stdio { Stdio::piped() }
-
-    /// A new pipe should be arranged to connect the parent and child processes.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn piped() -> Stdio { Stdio(StdioImp::Piped) }
 
@@ -529,11 +524,10 @@ impl Child {
 
 #[cfg(test)]
 mod tests {
-    use io::ErrorKind;
+    use prelude::v1::*;
     use io::prelude::*;
-    use prelude::v1::{Ok, Err, drop, Some, Vec};
-    use prelude::v1::{String, Clone};
-    use prelude::v1::{Str, AsSlice, ToString};
+
+    use io::ErrorKind;
     use old_path::{self, GenericPath};
     use old_io::fs::PathExtensions;
     use rt::running_on_valgrind;
@@ -678,7 +672,7 @@ mod tests {
     fn test_process_output_output() {
         let Output {status, stdout, stderr}
              = Command::new("echo").arg("hello").output().unwrap();
-        let output_str = str::from_utf8(stdout.as_slice()).unwrap();
+        let output_str = str::from_utf8(&stdout).unwrap();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_string(), "hello");
@@ -720,7 +714,7 @@ mod tests {
         let prog = Command::new("echo").arg("hello").stdout(Stdio::piped())
             .spawn().unwrap();
         let Output {status, stdout, stderr} = prog.wait_with_output().unwrap();
-        let output_str = str::from_utf8(stdout.as_slice()).unwrap();
+        let output_str = str::from_utf8(&stdout).unwrap();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_string(), "hello");
@@ -755,7 +749,8 @@ mod tests {
         let prog = pwd_cmd().spawn().unwrap();
 
         let output = String::from_utf8(prog.wait_with_output().unwrap().stdout).unwrap();
-        let parent_dir = os::getcwd().unwrap();
+        let parent_dir = ::env::current_dir().unwrap().to_str().unwrap().to_string();
+        let parent_dir = old_path::Path::new(parent_dir);
         let child_dir = old_path::Path::new(output.trim());
 
         let parent_stat = parent_dir.stat().unwrap();
@@ -770,7 +765,8 @@ mod tests {
         use os;
         // test changing to the parent of os::getcwd() because we know
         // the path exists (and os::getcwd() is not expected to be root)
-        let parent_dir = os::getcwd().unwrap().dir_path();
+        let parent_dir = ::env::current_dir().unwrap().to_str().unwrap().to_string();
+        let parent_dir = old_path::Path::new(parent_dir).dir_path();
         let result = pwd_cmd().current_dir(parent_dir.as_str().unwrap()).output().unwrap();
 
         let output = String::from_utf8(result.stdout).unwrap();
@@ -855,7 +851,7 @@ mod tests {
             cmd.env("PATH", &p);
         }
         let result = cmd.output().unwrap();
-        let output = String::from_utf8_lossy(result.stdout.as_slice()).to_string();
+        let output = String::from_utf8_lossy(&result.stdout).to_string();
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
@@ -864,7 +860,7 @@ mod tests {
     #[test]
     fn test_add_to_env() {
         let result = env_cmd().env("RUN_TEST_NEW_ENV", "123").output().unwrap();
-        let output = String::from_utf8_lossy(result.stdout.as_slice()).to_string();
+        let output = String::from_utf8_lossy(&result.stdout).to_string();
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);

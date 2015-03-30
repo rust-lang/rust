@@ -13,7 +13,7 @@
 #![feature(std_misc)]
 
 use std::sync::mpsc::{channel, Sender};
-use std::thread::Thread;
+use std::thread;
 
 fn start(tx: &Sender<isize>, i0: isize) {
     let mut i = i0;
@@ -29,7 +29,7 @@ pub fn main() {
     // the child's point of view the receiver may die. We should
     // drop messages on the floor in this case, and not crash!
     let (tx, rx) = channel();
-    let _t = Thread::spawn(move|| {
+    let _t = thread::scoped(move|| {
         start(&tx, 10)
     });
     rx.recv();

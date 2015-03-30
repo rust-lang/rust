@@ -23,6 +23,7 @@ use mem;
 use old_io::process::{ProcessExit, ExitStatus};
 use old_io::{IoResult, IoError};
 use old_io;
+use fs::PathExt;
 use os;
 use old_path::{BytesContainer, GenericPath};
 use ptr;
@@ -142,14 +143,19 @@ impl Process {
         let program = cfg.env().and_then(|env| {
             for (key, v) in env {
                 if b"PATH" != key.container_as_bytes() { continue }
+                let v = match ::str::from_utf8(v.container_as_bytes()) {
+                    Ok(s) => s,
+                    Err(..) => continue,
+                };
 
                 // Split the value and test each path to see if the
                 // program exists.
-                for path in os::split_paths(v.container_as_bytes()) {
-                    let path = path.join(cfg.program().as_bytes())
+                for path in ::env::split_paths(v) {
+                    let program = str::from_utf8(cfg.program().as_bytes()).unwrap();
+                    let path = path.join(program)
                                    .with_extension(env::consts::EXE_EXTENSION);
                     if path.exists() {
-                        return Some(CString::from_slice(path.as_vec()))
+                        return Some(CString::new(path.to_str().unwrap()).unwrap())
                     }
                 }
                 break
@@ -482,9 +488,9 @@ mod tests {
     #[test]
     fn test_make_command_line() {
         fn test_wrapper(prog: &str, args: &[&str]) -> String {
-            make_command_line(&CString::from_slice(prog.as_bytes()),
+            make_command_line(&CString::new(prog),
                               &args.iter()
-                                   .map(|a| CString::from_slice(a.as_bytes()))
+                                   .map(|a| CString::new(a))
                                    .collect::<Vec<CString>>())
         }
 

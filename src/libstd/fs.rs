@@ -25,11 +25,6 @@ use sys::fs2 as fs_imp;
 use sys_common::{AsInnerMut, FromInner, AsInner};
 use vec::Vec;
 
-#[allow(deprecated)]
-pub use self::tempdir::TempDir;
-
-mod tempdir;
-
 /// A reference to an open file on the filesystem.
 ///
 /// An instance of a `File` can be read and/or written depending on what options
@@ -1327,7 +1322,7 @@ mod tests {
         check!(fs::copy(&input, &out));
         let mut v = Vec::new();
         check!(check!(File::open(&out)).read_to_end(&mut v));
-        assert_eq!(v.as_slice(), b"hello");
+        assert_eq!(v, b"hello");
 
         assert_eq!(check!(input.metadata()).permissions(),
                    check!(out.metadata()).permissions());
@@ -1622,7 +1617,7 @@ mod tests {
         check!(check!(File::create(&tmpdir.join("test"))).write(&bytes));
         let mut v = Vec::new();
         check!(check!(File::open(&tmpdir.join("test"))).read_to_end(&mut v));
-        assert!(v == bytes.as_slice());
+        assert!(v == &bytes[..]);
     }
 
     #[test]

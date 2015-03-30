@@ -13,10 +13,13 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(tempdir, path_ext)]
+#![feature(rustc_private, path_ext)]
+
+extern crate rustc_back;
 
 use std::ffi::CString;
-use std::fs::{self, TempDir, File, PathExt};
+use std::fs::{self, File, PathExt};
+use rustc_back::tempdir::TempDir;
 
 fn rename_directory() {
     let tmpdir = TempDir::new("rename_directory").ok().expect("rename_directory failed");

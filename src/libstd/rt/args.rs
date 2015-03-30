@@ -108,7 +108,6 @@ mod imp {
     #[cfg(test)]
     mod tests {
         use prelude::v1::*;
-        use finally::Finally;
 
         use super::*;
 
@@ -127,14 +126,11 @@ mod imp {
             assert!(take() == Some(expected.clone()));
             assert!(take() == None);
 
-            (|| {
-            }).finally(|| {
-                // Restore the actual global state.
-                match saved_value {
-                    Some(ref args) => put(args.clone()),
-                    None => ()
-                }
-            })
+            // Restore the actual global state.
+            match saved_value {
+                Some(ref args) => put(args.clone()),
+                None => ()
+            }
         }
     }
 }

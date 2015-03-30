@@ -100,7 +100,8 @@ impl TempDir {
     #[allow(deprecated)]
     pub fn new_in(tmpdir: &Path, prefix: &str) -> IoResult<TempDir> {
         if !tmpdir.is_absolute() {
-            let cur_dir = try!(::os::getcwd());
+            let cur_dir = ::env::current_dir().unwrap();
+            let cur_dir = Path::new(cur_dir.to_str().unwrap());
             return TempDir::new_in(&cur_dir.join(tmpdir), prefix);
         }
 
@@ -136,7 +137,8 @@ impl TempDir {
     /// If no directory can be created, `Err` is returned.
     #[allow(deprecated)]
     pub fn new(prefix: &str) -> IoResult<TempDir> {
-        TempDir::new_in(&::os::tmpdir(), prefix)
+        let tmp = Path::new(::env::temp_dir().to_str().unwrap());
+        TempDir::new_in(&tmp, prefix)
     }
 
     /// Unwrap the wrapped `std::path::Path` from the `TempDir` wrapper.

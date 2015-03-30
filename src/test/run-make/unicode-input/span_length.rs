@@ -95,10 +95,10 @@ fn main() {
     let expected_span = format!("\n{}^{}\n",
                                 repeat(" ").take(offset + 7).collect::<String>(),
                                 repeat("~").take(8).collect::<String>());
-    assert!(err.contains(expected_span.as_slice()));
+    assert!(err.contains(&expected_span));
     // Second snake is 8 ~s long, with 36 preceding spaces
     let expected_span = format!("\n{}^{}\n",
                                 repeat(" ").take(offset + 36).collect::<String>(),
                                 repeat("~").take(8).collect::<String>());
-    assert!(err.contains(expected_span.as_slice()));
+    assert!(err.contains(&expected_span));
 }

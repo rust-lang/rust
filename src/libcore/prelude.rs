@@ -37,10 +37,11 @@ pub use char::CharExt;
 pub use clone::Clone;
 pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
 pub use convert::{AsRef, AsMut, Into, From};
-pub use iter::Extend;
-pub use iter::{Iterator, DoubleEndedIterator};
-pub use iter::{ExactSizeIterator};
+pub use iter::{Iterator, DoubleEndedIterator, Extend, ExactSizeIterator};
 pub use option::Option::{self, Some, None};
 pub use result::Result::{self, Ok, Err};
-pub use slice::{AsSlice, SliceExt};
-pub use str::{Str, StrExt};
+pub use slice::SliceExt;
+pub use str::StrExt;
+
+#[allow(deprecated)] pub use slice::AsSlice;
+#[allow(deprecated)] pub use str::Str;

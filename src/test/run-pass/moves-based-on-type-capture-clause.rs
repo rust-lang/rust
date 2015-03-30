@@ -10,11 +10,11 @@
 
 #![feature(std_misc)]
 
-use std::thread::Thread;
+use std::thread;
 
 pub fn main() {
     let x = "Hello world!".to_string();
-    let _t = Thread::spawn(move|| {
+    let _t = thread::scoped(move|| {
         println!("{}", x);
     });
 }

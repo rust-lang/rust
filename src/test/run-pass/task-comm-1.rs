@@ -10,13 +10,13 @@
 
 #![feature(std_misc)]
 
-use std::thread::Thread;
+use std::thread;
 
 pub fn main() { test00(); }
 
 fn start() { println!("Started / Finished task."); }
 
 fn test00() {
-    let _ = Thread::scoped(move|| start() ).join();
+    let _ = thread::scoped(move|| start() ).join();
     println!("Completing.");
 }
