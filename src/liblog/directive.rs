@@ -83,7 +83,7 @@ pub fn parse_logging_spec(spec: &str) -> (Vec<LogDirective>, Option<String>) {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::parse_logging_spec;
 
     #[test]

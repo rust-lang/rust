@@ -520,7 +520,7 @@ mod imp {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use prelude::v1::*;
 
     use sync::mpsc::{channel, Sender};

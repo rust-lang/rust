@@ -164,7 +164,7 @@ float_impl! { f32 }
 float_impl! { f64 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use std::num::Int;
     use std::prelude::v1::*;
     use distributions::{Sample, IndependentSample};

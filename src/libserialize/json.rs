@@ -2610,7 +2610,7 @@ impl FromStr for Json {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     extern crate test;
     use self::Animal::*;
     use self::DecodeEnum::*;

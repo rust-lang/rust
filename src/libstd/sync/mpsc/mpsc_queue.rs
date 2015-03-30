@@ -154,7 +154,7 @@ impl<T: Send> Drop for Queue<T> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use prelude::v1::*;
 
     use sync::mpsc::channel;

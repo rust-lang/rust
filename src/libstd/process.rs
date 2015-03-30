@@ -528,7 +528,7 @@ impl Child {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use io::ErrorKind;
     use io::prelude::*;
     use prelude::v1::{Ok, Err, drop, Some, Vec};

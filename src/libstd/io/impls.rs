@@ -207,7 +207,7 @@ impl Write for Vec<u8> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use io::prelude::*;
     use vec::Vec;
     use test;

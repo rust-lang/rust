@@ -275,7 +275,7 @@ mod imp {
 
 
 #[cfg(test)]
-mod tests {
+mod test {
     use cell::Cell;
     use prelude::v1::*;
 

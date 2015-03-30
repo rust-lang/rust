@@ -150,7 +150,7 @@ impl FromHex for str {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     extern crate test;
     use self::test::Bencher;
     use hex::{FromHex, ToHex};

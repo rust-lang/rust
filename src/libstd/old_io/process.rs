@@ -763,7 +763,7 @@ impl Drop for Process {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use old_io::{Truncate, Write, TimedOut, timer, process, FileNotFound};
     use old_io::{Reader, Writer};
     use prelude::v1::{Ok, Err, drop, Some, None, Vec};

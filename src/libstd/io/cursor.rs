@@ -163,7 +163,7 @@ impl Write for Cursor<Vec<u8>> {
 
 
 #[cfg(test)]
-mod tests {
+mod test {
     use core::prelude::*;
 
     use io::prelude::*;

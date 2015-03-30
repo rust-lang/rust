@@ -1741,7 +1741,7 @@ pub fn to_str_exp_digits(num: f64, dig: usize, upper: bool) -> String {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use f64::*;
     use num::*;
     use num::FpCategory as Fp;

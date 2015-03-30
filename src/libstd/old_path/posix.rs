@@ -440,7 +440,7 @@ static dot_static: &'static [u8] = b".";
 static dot_dot_static: &'static [u8] = b"..";
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     use clone::Clone;

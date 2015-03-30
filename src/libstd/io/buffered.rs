@@ -475,7 +475,7 @@ impl<S: Write> fmt::Debug for BufStream<S> where S: fmt::Debug {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use prelude::v1::*;
     use io::prelude::*;
     use io::{self, BufReader, BufWriter, BufStream, Cursor, LineWriter};

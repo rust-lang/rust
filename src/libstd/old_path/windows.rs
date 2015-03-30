@@ -1120,7 +1120,7 @@ fn prefix_len(p: Option<PathPrefix>) -> usize {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::PathPrefix::*;
     use super::parse_prefix;
     use super::*;

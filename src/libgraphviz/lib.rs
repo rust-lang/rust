@@ -591,7 +591,7 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use self::NodeLabels::*;
     use super::{Id, Labeller, Nodes, Edges, GraphWalk, render};
     use super::LabelText::{self, LabelStr, EscStr};

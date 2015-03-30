@@ -374,7 +374,7 @@ pub fn utime(p: &Path, atime: u64, mtime: u64) -> IoResult<()> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::FileDesc;
     use libc;
     use os;

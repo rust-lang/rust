@@ -274,7 +274,7 @@ fn xor_push(marks: &mut Vec<Mrk>, mark: Mrk) {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use self::TestSC::*;
     use ast::{EMPTY_CTXT, Ident, Mrk, Name, SyntaxContext};
     use super::{resolve, xor_push, apply_mark_internal, new_sctable_internal};

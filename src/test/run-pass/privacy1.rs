@@ -18,7 +18,7 @@ pub mod test2 {
     trait A { fn foo(&self) {} }
     impl A for B {}
 
-    mod tests {
+    mod test {
         use super::A;
         fn foo() {
             let a = super::B;

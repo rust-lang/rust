@@ -263,7 +263,7 @@ fn ziggurat<R: Rng, P, Z>(
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use std::prelude::v1::*;
 
     use {Rng, Rand};

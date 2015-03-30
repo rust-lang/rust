@@ -873,7 +873,7 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     #![allow(deprecated)] //rand
 
     use prelude::v1::*;

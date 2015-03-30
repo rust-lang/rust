@@ -161,7 +161,7 @@ impl IndependentSample<f64> for LogNormal {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use std::prelude::v1::*;
 
     use distributions::{Sample, IndependentSample};

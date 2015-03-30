@@ -10,7 +10,7 @@
 
 macro_rules! uint_module { ($T:ty, $T_i:ident) => (
 #[cfg(test)]
-mod tests {
+mod test {
     use core::$T_i::*;
     use core::num::Int;
     use num;

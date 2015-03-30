@@ -434,7 +434,7 @@ fn with_dirp<T, F>(d: Option<&OsString>, cb: F) -> T where
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use prelude::v1::*;
     use str;
     use ffi::{OsStr, OsString};

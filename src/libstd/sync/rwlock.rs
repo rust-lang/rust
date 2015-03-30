@@ -405,7 +405,7 @@ impl<'a, T> Drop for RwLockWriteGuard<'a, T> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     #![allow(deprecated)] // rand
 
     use prelude::v1::*;

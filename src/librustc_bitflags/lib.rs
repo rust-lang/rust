@@ -297,7 +297,7 @@ mod core {
 
 #[cfg(test)]
 #[allow(non_upper_case_globals)]
-mod tests {
+mod test {
     use std::hash::{self, SipHasher};
     use std::option::Option::{Some, None};
 

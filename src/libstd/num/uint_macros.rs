@@ -15,7 +15,7 @@
 macro_rules! uint_module { ($T:ty) => (
 
 #[cfg(test)]
-mod tests {
+mod test {
     use prelude::v1::*;
     use num::FromStrRadix;
 

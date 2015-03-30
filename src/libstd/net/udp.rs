@@ -141,7 +141,7 @@ impl AsInner<net_imp::UdpSocket> for UdpSocket {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use prelude::v1::*;
 
     use io::ErrorKind;

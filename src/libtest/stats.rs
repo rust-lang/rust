@@ -330,7 +330,7 @@ pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
 // Test vectors generated from R, using the script src/etc/stat-test-vectors.r.
 
 #[cfg(test)]
-mod tests {
+mod test {
     use stats::Stats;
     use stats::Summary;
     use std::old_io::{self, Writer};

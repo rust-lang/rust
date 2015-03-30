@@ -10,7 +10,7 @@
 
 macro_rules! int_module { ($T:ty, $T_i:ident) => (
 #[cfg(test)]
-mod tests {
+mod test {
     use core::$T_i::*;
     use core::isize;
     use core::num::{FromStrRadix, Int, SignedInt};

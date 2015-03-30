@@ -441,7 +441,7 @@ impl<'a> Parser<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     fn same(fmt: &'static str, p: &[Piece<'static>]) {

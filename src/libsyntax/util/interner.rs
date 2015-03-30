@@ -229,7 +229,7 @@ impl StrInterner {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
     use ast::Name;
 

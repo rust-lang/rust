@@ -527,7 +527,7 @@ impl<T> Drop for TypedArena<T> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     extern crate test;
     use self::test::Bencher;
     use super::{Arena, TypedArena};
