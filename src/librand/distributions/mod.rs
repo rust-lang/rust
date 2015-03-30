@@ -256,7 +256,7 @@ fn ziggurat<R: Rng, P, Z>(
             return zero_case(rng, u);
         }
         // algebraically equivalent to f1 + DRanU()*(f0 - f1) < 1
-        if f_tab[i + 1] + (f_tab[i] - f_tab[i + 1]) * rng.gen() < pdf(x) {
+        if f_tab[i + 1] + (f_tab[i] - f_tab[i + 1]) * rng.gen::<f64>() < pdf(x) {
             return x;
         }
     }

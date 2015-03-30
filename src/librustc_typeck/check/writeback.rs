@@ -26,6 +26,7 @@ use util::ppaux::Repr;
 use std::cell::Cell;
 
 use syntax::ast;
+use syntax::ast_util;
 use syntax::codemap::{DUMMY_SP, Span};
 use syntax::print::pprust::pat_to_string;
 use syntax::visit;
@@ -111,6 +112,31 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
     fn visit_expr(&mut self, e: &ast::Expr) {
         if self.fcx.writeback_errors.get() {
             return;
+        }
+
+        // Hacky hack: During type-checking, we treat *all* operators
+        // as potentially overloaded. But then, during writeback, if
+        // we observe that something like `a+b` is (known to be)
+        // operating on scalars, we clear the overload.
+        match e.node {
+            ast::ExprBinary(ref op, ref lhs, ref rhs) => {
+                let lhs_ty = self.fcx.expr_ty(lhs);
+                let lhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
+                let rhs_ty = self.fcx.expr_ty(rhs);
+                let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
+                if ty::type_is_scalar(lhs_ty) && ty::type_is_scalar(rhs_ty) {
+                    self.fcx.inh.method_map.borrow_mut().remove(&MethodCall::expr(e.id));
+
+                    // weird but true: the by-ref binops put an
+                    // adjustment on the lhs but not the rhs; the
+                    // adjustment for rhs is kind of baked into the
+                    // system.
+                    if !ast_util::is_by_value_binop(op.node) {
+                        self.fcx.inh.adjustments.borrow_mut().remove(&lhs.id);
+                    }
+                }
+            }
+            _ => { }
         }
 
         self.visit_node_id(ResolvingExpr(e.span), e.id);

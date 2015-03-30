@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern:quux
 fn foo() -> ! { panic!("quux"); }
 fn main() {
-    foo() //~ ERROR the type of this value must be known in this context
-    ==
-    foo();
+    foo() == foo(); // these types wind up being defaulted to ()
 }

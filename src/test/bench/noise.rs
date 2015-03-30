@@ -29,7 +29,7 @@ fn lerp(a: f32, b: f32, v: f32) -> f32 { a * (1.0 - v) + b * v }
 fn smooth(v: f32) -> f32 { v * v * (3.0 - 2.0 * v) }
 
 fn random_gradient<R: Rng>(r: &mut R) -> Vec2 {
-    let v = PI * 2.0 * r.gen();
+    let v = PI * 2.0 * r.gen::<f32>();
     Vec2 { x: v.cos(), y: v.sin() }
 }
 

@@ -154,7 +154,7 @@ macro_rules! float_impl {
                 }
             }
             fn sample_range<R: Rng>(r: &Range<$ty>, rng: &mut R) -> $ty {
-                r.low + r.range * rng.gen()
+                r.low + r.range * rng.gen::<$ty>()
             }
         }
     }

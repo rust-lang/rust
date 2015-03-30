@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,6 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f() { if (1 == panic!()) { } else { } }
+// pretty-expanded FIXME #23616
 
-fn main() { }
+#![feature(std_misc, libc)]
+
+extern crate libc;
+
+use std::thunk::Thunk;
+
+fn foo(_: Thunk) {}
+
+fn main() {
+    foo(loop {
+        unsafe { libc::exit(0 as libc::c_int); }
+    });
+    2_usize + (loop {});
+    //~^ ERROR E0277
+    //~| ERROR E0277
+}

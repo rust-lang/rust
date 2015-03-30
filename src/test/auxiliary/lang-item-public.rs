@@ -32,3 +32,22 @@ extern fn eh_personality() {}
 pub trait Copy : PhantomFn<Self> {
     // Empty.
 }
+
+#[lang="rem"]
+pub trait Rem<RHS=Self> {
+    type Output = Self;
+    fn rem(self, rhs: RHS) -> Self::Output;
+}
+
+impl Rem for isize {
+    type Output = isize;
+
+    #[inline]
+    fn rem(self, other: isize) -> isize {
+        // if you use `self % other` here, as one would expect, you
+        // get back an error because of potential failure/overflow,
+        // which tries to invoke error fns that don't have the
+        // appropriate signatures anymore. So...just return 0.
+        0
+    }
+}
