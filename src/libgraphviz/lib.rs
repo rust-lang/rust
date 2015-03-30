@@ -84,7 +84,7 @@
 //!
 //!     fn edges(&'a self) -> dot::Edges<'a,Ed> {
 //!         let &Edges(ref edges) = self;
-//!         edges.as_slice().into_cow()
+//!         (&edges[..]).into_cow()
 //!     }
 //!
 //!     fn source(&self, e: &Ed) -> Nd { let &(s,_) = e; s }

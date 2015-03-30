@@ -311,7 +311,7 @@ pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
 /// let key = "PATH";
 /// let mut paths = os::getenv_as_bytes(key).map_or(Vec::new(), os::split_paths);
 /// paths.push(Path::new("/home/xyz/bin"));
-/// os::setenv(key, os::join_paths(paths.as_slice()).unwrap());
+/// os::setenv(key, os::join_paths(&paths[..]).unwrap());
 /// ```
 #[unstable(feature = "os")]
 pub fn join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static str> {

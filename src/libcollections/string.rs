@@ -93,7 +93,7 @@ impl String {
     /// ```
     /// # #![feature(collections, core)]
     /// let s = String::from_str("hello");
-    /// assert_eq!(s.as_slice(), "hello");
+    /// assert_eq!(&s[..], "hello");
     /// ```
     #[inline]
     #[unstable(feature = "collections",

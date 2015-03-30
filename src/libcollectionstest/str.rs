@@ -1470,9 +1470,9 @@ fn test_split_strator() {
 fn test_str_default() {
     use std::default::Default;
 
-    fn t<S: Default + Str>() {
+    fn t<S: Default + AsRef<str>>() {
         let s: S = Default::default();
-        assert_eq!(s.as_slice(), "");
+        assert_eq!(s.as_ref(), "");
     }
 
     t::<&str>();

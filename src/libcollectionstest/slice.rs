@@ -59,7 +59,7 @@ fn test_from_elem() {
     // Test on-heap from_elem.
     v = vec![20; 6];
     {
-        let v = v.as_slice();
+        let v = &v[..];
         assert_eq!(v[0], 20);
         assert_eq!(v[1], 20);
         assert_eq!(v[2], 20);
