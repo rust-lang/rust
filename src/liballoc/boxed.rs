@@ -279,13 +279,6 @@ impl<T: fmt::Debug + ?Sized> fmt::Debug for Box<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Debug for Box<Any> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("Box<Any>")
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Deref for Box<T> {
     type Target = T;
 
