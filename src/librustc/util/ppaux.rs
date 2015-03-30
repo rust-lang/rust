@@ -384,13 +384,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         }
         ty_infer(infer_ty) => infer_ty_to_string(cx, infer_ty),
         ty_err => "[type error]".to_string(),
-        ty_param(ref param_ty) => {
-            if cx.sess.verbose() {
-                param_ty.repr(cx)
-            } else {
-                param_ty.user_string(cx)
-            }
-        }
+        ty_param(ref param_ty) => param_ty.user_string(cx),
         ty_enum(did, substs) | ty_struct(did, substs) => {
             let base = ty::item_path_str(cx, did);
             parameterized(cx, &base, substs, did, &[],

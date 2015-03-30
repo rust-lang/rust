@@ -17,6 +17,7 @@ use self::SelectionCandidate::*;
 use self::BuiltinBoundConditions::*;
 use self::EvaluationResult::*;
 
+use super::coherence;
 use super::DerivedObligationCause;
 use super::project;
 use super::project::{normalize_with_depth, Normalized};
@@ -81,7 +82,7 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
     /// selection-context's freshener. Used to check for recursion.
     fresh_trait_ref: ty::PolyTraitRef<'tcx>,
 
-    previous: Option<&'prev TraitObligationStack<'prev, 'tcx>>
+    previous: TraitObligationStackList<'prev, 'tcx>,
 }
 
 #[derive(Clone)]
@@ -245,7 +246,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("select({})", obligation.repr(self.tcx()));
         assert!(!obligation.predicate.has_escaping_regions());
 
-        let stack = self.push_stack(None, obligation);
+        let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
         match try!(self.candidate_from_obligation(&stack)) {
             None => {
                 self.consider_unification_despite_ambiguity(obligation);
@@ -327,7 +328,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!("evaluate_obligation({})",
                obligation.repr(self.tcx()));
 
-        self.evaluate_predicate_recursively(None, obligation).may_apply()
+        self.evaluate_predicate_recursively(TraitObligationStackList::empty(), obligation)
+            .may_apply()
     }
 
     fn evaluate_builtin_bound_recursively<'o>(&mut self,
@@ -346,7 +348,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match obligation {
             Ok(obligation) => {
-                self.evaluate_predicate_recursively(Some(previous_stack), &obligation)
+                self.evaluate_predicate_recursively(previous_stack.list(), &obligation)
             }
             Err(ErrorReported) => {
                 EvaluatedToOk
@@ -355,7 +357,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn evaluate_predicates_recursively<'a,'o,I>(&mut self,
-                                                stack: Option<&TraitObligationStack<'o, 'tcx>>,
+                                                stack: TraitObligationStackList<'o, 'tcx>,
                                                 predicates: I)
                                                 -> EvaluationResult<'tcx>
         where I : Iterator<Item=&'a PredicateObligation<'tcx>>, 'tcx:'a
@@ -372,7 +374,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn evaluate_predicate_recursively<'o>(&mut self,
-                                          previous_stack: Option<&TraitObligationStack<'o, 'tcx>>,
+                                          previous_stack: TraitObligationStackList<'o, 'tcx>,
                                           obligation: &PredicateObligation<'tcx>)
                                            -> EvaluationResult<'tcx>
     {
@@ -423,14 +425,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn evaluate_obligation_recursively<'o>(&mut self,
-                                           previous_stack: Option<&TraitObligationStack<'o, 'tcx>>,
+                                           previous_stack: TraitObligationStackList<'o, 'tcx>,
                                            obligation: &TraitObligation<'tcx>)
                                            -> EvaluationResult<'tcx>
     {
         debug!("evaluate_obligation_recursively({})",
                obligation.repr(self.tcx()));
 
-        let stack = self.push_stack(previous_stack.map(|x| x), obligation);
+        let stack = self.push_stack(previous_stack, obligation);
 
         let result = self.evaluate_stack(&stack);
 
@@ -538,7 +540,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                        obligation.recursion_depth + 1,
                                                        skol_map,
                                                        snapshot);
-                    self.winnow_selection(None, VtableImpl(vtable_impl)).may_apply()
+                    self.winnow_selection(TraitObligationStackList::empty(),
+                                          VtableImpl(vtable_impl)).may_apply()
                 }
                 Err(()) => {
                     false
@@ -605,6 +608,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         if ty::type_is_error(stack.obligation.predicate.0.self_ty()) {
             return Ok(Some(ErrorCandidate));
+        }
+
+        if !self.is_knowable(stack) {
+            debug!("intercrate not knowable");
+            return Ok(None);
         }
 
         let candidate_set = try!(self.assemble_candidates(stack));
@@ -705,6 +713,27 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         Ok(Some(candidate))
+    }
+
+    fn is_knowable<'o>(&mut self,
+                       stack: &TraitObligationStack<'o, 'tcx>)
+                       -> bool
+    {
+        debug!("is_knowable(intercrate={})", self.intercrate);
+
+        if !self.intercrate {
+            return true;
+        }
+
+        let obligation = &stack.obligation;
+        let predicate = self.infcx().resolve_type_vars_if_possible(&obligation.predicate);
+
+        // ok to skip binder because of the nature of the
+        // trait-ref-is-knowable check, which does not care about
+        // bound regions
+        let trait_ref = &predicate.skip_binder().trait_ref;
+
+        coherence::trait_ref_is_knowable(self.tcx(), trait_ref)
     }
 
     fn pick_candidate_cache(&self) -> &SelectionCache<'tcx> {
@@ -1026,7 +1055,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.infcx().probe(move |_| {
             match self.match_where_clause_trait_ref(stack.obligation, where_clause_trait_ref) {
                 Ok(obligations) => {
-                    self.evaluate_predicates_recursively(Some(stack), obligations.iter())
+                    self.evaluate_predicates_recursively(stack.list(), obligations.iter())
                 }
                 Err(()) => {
                     EvaluatedToErr(Unimplemented)
@@ -1310,7 +1339,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let result = self.infcx.probe(|_| {
             let candidate = (*candidate).clone();
             match self.confirm_candidate(stack.obligation, candidate) {
-                Ok(selection) => self.winnow_selection(Some(stack), selection),
+                Ok(selection) => self.winnow_selection(stack.list(),
+                                                       selection),
                 Err(error) => EvaluatedToErr(error),
             }
         });
@@ -1320,7 +1350,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn winnow_selection<'o>(&mut self,
-                            stack: Option<&TraitObligationStack<'o, 'tcx>>,
+                            stack: TraitObligationStackList<'o,'tcx>,
                             selection: Selection<'tcx>)
                             -> EvaluationResult<'tcx>
     {
@@ -2303,9 +2333,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Err(());
         }
 
-        let impl_substs = util::fresh_substs_for_impl(self.infcx,
-                                                      obligation.cause.span,
-                                                      impl_def_id);
+        let impl_substs = util::fresh_type_vars_for_impl(self.infcx,
+                                                         obligation.cause.span,
+                                                         impl_def_id);
 
         let impl_trait_ref = impl_trait_ref.subst(self.tcx(),
                                                   &impl_substs);
@@ -2423,9 +2453,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         // Create fresh type variables for each type parameter declared
         // on the impl etc.
-        let impl_substs = util::fresh_substs_for_impl(self.infcx,
-                                                      obligation_cause.span,
-                                                      impl_def_id);
+        let impl_substs = util::fresh_type_vars_for_impl(self.infcx,
+                                                         obligation_cause.span,
+                                                         impl_def_id);
 
         // Find the self type for the impl.
         let impl_self_ty = ty::lookup_item_type(self.tcx(), impl_def_id).ty;
@@ -2476,7 +2506,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     // Miscellany
 
     fn push_stack<'o,'s:'o>(&mut self,
-                            previous_stack: Option<&'s TraitObligationStack<'s, 'tcx>>,
+                            previous_stack: TraitObligationStackList<'s, 'tcx>,
                             obligation: &'o TraitObligation<'tcx>)
                             -> TraitObligationStack<'o, 'tcx>
     {
@@ -2486,7 +2516,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         TraitObligationStack {
             obligation: obligation,
             fresh_trait_ref: fresh_trait_ref,
-            previous: previous_stack.map(|p| p), // FIXME variance
+            previous: previous_stack,
         }
     }
 
@@ -2639,17 +2669,36 @@ impl<'tcx> SelectionCache<'tcx> {
     }
 }
 
-impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
-    fn iter(&self) -> Option<&TraitObligationStack<'o, 'tcx>> {
-        Some(self)
+impl<'o,'tcx> TraitObligationStack<'o,'tcx> {
+    fn list(&'o self) -> TraitObligationStackList<'o,'tcx> {
+        TraitObligationStackList::with(self)
+    }
+
+    fn iter(&'o self) -> TraitObligationStackList<'o,'tcx> {
+        self.list()
     }
 }
 
-impl<'o, 'tcx> Iterator for Option<&'o TraitObligationStack<'o, 'tcx>> {
+#[derive(Copy, Clone)]
+struct TraitObligationStackList<'o,'tcx:'o> {
+    head: Option<&'o TraitObligationStack<'o,'tcx>>
+}
+
+impl<'o,'tcx> TraitObligationStackList<'o,'tcx> {
+    fn empty() -> TraitObligationStackList<'o,'tcx> {
+        TraitObligationStackList { head: None }
+    }
+
+    fn with(r: &'o TraitObligationStack<'o,'tcx>) -> TraitObligationStackList<'o,'tcx> {
+        TraitObligationStackList { head: Some(r) }
+    }
+}
+
+impl<'o,'tcx> Iterator for TraitObligationStackList<'o,'tcx>{
     type Item = &'o TraitObligationStack<'o,'tcx>;
 
-    fn next(&mut self) -> Option<&'o TraitObligationStack<'o, 'tcx>> {
-        match *self {
+    fn next(&mut self) -> Option<&'o TraitObligationStack<'o,'tcx>> {
+        match self.head {
             Some(o) => {
                 *self = o.previous;
                 Some(o)
@@ -2659,7 +2708,7 @@ impl<'o, 'tcx> Iterator for Option<&'o TraitObligationStack<'o, 'tcx>> {
     }
 }
 
-impl<'o, 'tcx> Repr<'tcx> for TraitObligationStack<'o, 'tcx> {
+impl<'o,'tcx> Repr<'tcx> for TraitObligationStack<'o,'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("TraitObligationStack({})",
                 self.obligation.repr(tcx))

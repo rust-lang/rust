@@ -12,6 +12,7 @@
 
 use middle::ty::{self, Ty};
 use std::iter::Iterator;
+use std::vec::IntoIter;
 
 pub struct TypeWalker<'tcx> {
     stack: Vec<Ty<'tcx>>,
@@ -21,60 +22,6 @@ pub struct TypeWalker<'tcx> {
 impl<'tcx> TypeWalker<'tcx> {
     pub fn new(ty: Ty<'tcx>) -> TypeWalker<'tcx> {
         TypeWalker { stack: vec!(ty), last_subtree: 1, }
-    }
-
-    fn push_subtypes(&mut self, parent_ty: Ty<'tcx>) {
-        match parent_ty.sty {
-            ty::ty_bool | ty::ty_char | ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |
-            ty::ty_str | ty::ty_infer(_) | ty::ty_param(_) | ty::ty_err => {
-            }
-            ty::ty_uniq(ty) | ty::ty_vec(ty, _) => {
-                self.stack.push(ty);
-            }
-            ty::ty_ptr(ref mt) | ty::ty_rptr(_, ref mt) => {
-                self.stack.push(mt.ty);
-            }
-            ty::ty_projection(ref data) => {
-                self.push_reversed(data.trait_ref.substs.types.as_slice());
-            }
-            ty::ty_trait(box ty::TyTrait { ref principal, ref bounds }) => {
-                self.push_reversed(principal.substs().types.as_slice());
-                self.push_reversed(&bounds.projection_bounds.iter().map(|pred| {
-                    pred.0.ty
-                }).collect::<Vec<_>>());
-            }
-            ty::ty_enum(_, ref substs) |
-            ty::ty_struct(_, ref substs) |
-            ty::ty_closure(_, ref substs) => {
-                self.push_reversed(substs.types.as_slice());
-            }
-            ty::ty_tup(ref ts) => {
-                self.push_reversed(ts);
-            }
-            ty::ty_bare_fn(_, ref ft) => {
-                self.push_sig_subtypes(&ft.sig);
-            }
-        }
-    }
-
-    fn push_sig_subtypes(&mut self, sig: &ty::PolyFnSig<'tcx>) {
-        match sig.0.output {
-            ty::FnConverging(output) => { self.stack.push(output); }
-            ty::FnDiverging => { }
-        }
-        self.push_reversed(&sig.0.inputs);
-    }
-
-    fn push_reversed(&mut self, tys: &[Ty<'tcx>]) {
-        // We push slices on the stack in reverse order so as to
-        // maintain a pre-order traversal. As of the time of this
-        // writing, the fact that the traversal is pre-order is not
-        // known to be significant to any code, but it seems like the
-        // natural order one would expect (basically, the order of the
-        // types as they are written).
-        for &ty in tys.iter().rev() {
-            self.stack.push(ty);
-        }
     }
 
     /// Skips the subtree of types corresponding to the last type
@@ -105,10 +52,70 @@ impl<'tcx> Iterator for TypeWalker<'tcx> {
             }
             Some(ty) => {
                 self.last_subtree = self.stack.len();
-                self.push_subtypes(ty);
+                push_subtypes(&mut self.stack, ty);
                 debug!("next: stack={:?}", self.stack);
                 Some(ty)
             }
         }
+    }
+}
+
+pub fn walk_shallow<'tcx>(ty: Ty<'tcx>) -> IntoIter<Ty<'tcx>> {
+    let mut stack = vec![];
+    push_subtypes(&mut stack, ty);
+    stack.into_iter()
+}
+
+fn push_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, parent_ty: Ty<'tcx>) {
+    match parent_ty.sty {
+        ty::ty_bool | ty::ty_char | ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |
+        ty::ty_str | ty::ty_infer(_) | ty::ty_param(_) | ty::ty_err => {
+        }
+        ty::ty_uniq(ty) | ty::ty_vec(ty, _) => {
+            stack.push(ty);
+        }
+        ty::ty_ptr(ref mt) | ty::ty_rptr(_, ref mt) => {
+            stack.push(mt.ty);
+        }
+        ty::ty_projection(ref data) => {
+            push_reversed(stack, data.trait_ref.substs.types.as_slice());
+        }
+        ty::ty_trait(box ty::TyTrait { ref principal, ref bounds }) => {
+            push_reversed(stack, principal.substs().types.as_slice());
+            push_reversed(stack, &bounds.projection_bounds.iter().map(|pred| {
+                pred.0.ty
+            }).collect::<Vec<_>>());
+        }
+        ty::ty_enum(_, ref substs) |
+        ty::ty_struct(_, ref substs) |
+        ty::ty_closure(_, ref substs) => {
+            push_reversed(stack, substs.types.as_slice());
+        }
+        ty::ty_tup(ref ts) => {
+            push_reversed(stack, ts);
+        }
+        ty::ty_bare_fn(_, ref ft) => {
+            push_sig_subtypes(stack, &ft.sig);
+        }
+    }
+}
+
+fn push_sig_subtypes<'tcx>(stack: &mut Vec<Ty<'tcx>>, sig: &ty::PolyFnSig<'tcx>) {
+    match sig.0.output {
+        ty::FnConverging(output) => { stack.push(output); }
+        ty::FnDiverging => { }
+    }
+    push_reversed(stack, &sig.0.inputs);
+}
+
+fn push_reversed<'tcx>(stack: &mut Vec<Ty<'tcx>>, tys: &[Ty<'tcx>]) {
+    // We push slices on the stack in reverse order so as to
+    // maintain a pre-order traversal. As of the time of this
+    // writing, the fact that the traversal is pre-order is not
+    // known to be significant to any code, but it seems like the
+    // natural order one would expect (basically, the order of the
+    // types as they are written).
+    for &ty in tys.iter().rev() {
+        stack.push(ty);
     }
 }
