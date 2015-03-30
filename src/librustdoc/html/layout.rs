@@ -11,6 +11,7 @@
 use std::fmt;
 use std::io::prelude::*;
 use std::io;
+use std::env;
 
 use externalfiles::ExternalHtml;
 
@@ -81,7 +82,7 @@ r##"<!DOCTYPE html>
     <section id='main' class="content {ty}">{content}</section>
     <section id='search' class="content hidden"></section>
 
-    <section class="footer"></section>
+    <section class="footer">Made with rustdoc. Generated on {build_date} for {build}</section>
 
     <div id="help" class="hidden">
         <div class="shortcuts">
@@ -127,6 +128,8 @@ r##"<!DOCTYPE html>
     <script async src="{root_path}search-index.js"></script>
 </body>
 </html>"##,
+    build = env::var("CFG_BUILD").unwrap(),
+    build_date = env::var("CFG_BUILD_DATE").unwrap(),
     content   = *t,
     root_path = page.root_path,
     ty        = page.ty,
