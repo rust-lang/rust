@@ -16,7 +16,7 @@
 
 mod libc {
     extern {
-        pub fn malloc(size: int) -> *const u8;
+        pub fn malloc(size: isize) -> *const u8;
     }
 }
 

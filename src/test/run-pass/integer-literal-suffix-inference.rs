@@ -16,7 +16,7 @@ pub fn main() {
     fn id_i32(n: i32) -> i32 { n }
     fn id_i64(n: i64) -> i64 { n }
 
-    fn id_uint(n: uint) -> uint { n }
+    fn id_uint(n: usize) -> usize { n }
     fn id_u8(n: u8) -> u8 { n }
     fn id_u16(n: u16) -> u16 { n }
     fn id_u32(n: u32) -> u32 { n }
@@ -42,7 +42,7 @@ pub fn main() {
     id_i64(j);
     id_i64(-9_223_372_036_854_775_808);
 
-    let _i: uint = 1;
+    let _i: usize = 1;
     let j = 1;
     id_uint(j);
     id_uint(1);

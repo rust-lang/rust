@@ -64,7 +64,7 @@
 //!
 //! let mut rng = rand::thread_rng();
 //! if rng.gen() { // random bool
-//!     println!("int: {}, uint: {}", rng.gen::<int>(), rng.gen::<uint>())
+//!     println!("isize: {}, usize: {}", rng.gen::<isize>(), rng.gen::<usize>())
 //! }
 //! ```
 //!
@@ -148,7 +148,7 @@
 //! }
 //!
 //! // Run a single simulation of the Monty Hall problem.
-//! fn simulate<R: Rng>(random_door: &Range<uint>, rng: &mut R) -> SimulationResult {
+//! fn simulate<R: Rng>(random_door: &Range<usize>, rng: &mut R) -> SimulationResult {
 //!     let car = random_door.ind_sample(rng);
 //!
 //!     // This is our initial choice
@@ -168,18 +168,18 @@
 //!
 //! // Returns the door the game host opens given our choice and knowledge of
 //! // where the car is. The game host will never open the door with the car.
-//! fn game_host_open<R: Rng>(car: uint, choice: uint, rng: &mut R) -> uint {
+//! fn game_host_open<R: Rng>(car: usize, choice: usize, rng: &mut R) -> usize {
 //!     let choices = free_doors(&[car, choice]);
 //!     rand::sample(rng, choices.into_iter(), 1)[0]
 //! }
 //!
 //! // Returns the door we switch to, given our current choice and
 //! // the open door. There will only be one valid door.
-//! fn switch_door(choice: uint, open: uint) -> uint {
+//! fn switch_door(choice: usize, open: usize) -> usize {
 //!     free_doors(&[choice, open])[0]
 //! }
 //!
-//! fn free_doors(blocked: &[uint]) -> Vec<uint> {
+//! fn free_doors(blocked: &[usize]) -> Vec<usize> {
 //!     (0..3).filter(|x| !blocked.contains(x)).collect()
 //! }
 //!
@@ -231,7 +231,7 @@
 use cell::RefCell;
 use clone::Clone;
 use old_io::IoResult;
-use iter::{Iterator, IteratorExt};
+use iter::Iterator;
 use mem;
 use rc::Rc;
 use result::Result::{Ok, Err};
@@ -336,7 +336,7 @@ pub struct ThreadRng {
 
 /// Retrieve the lazily-initialized thread-local random number
 /// generator, seeded by the system. Intended to be used in method
-/// chaining style, e.g. `thread_rng().gen::<int>()`.
+/// chaining style, e.g. `thread_rng().gen::<isize>()`.
 ///
 /// The RNG provided will reseed itself from the operating system
 /// after generating a certain amount of randomness.
@@ -556,14 +556,14 @@ mod test {
         let mut r = thread_rng();
         assert_eq!(r.choose(&[1, 1, 1]).cloned(), Some(1));
 
-        let v: &[int] = &[];
+        let v: &[isize] = &[];
         assert_eq!(r.choose(v), None);
     }
 
     #[test]
     fn test_shuffle() {
         let mut r = thread_rng();
-        let empty: &mut [int] = &mut [];
+        let empty: &mut [isize] = &mut [];
         r.shuffle(empty);
         let mut one = [1];
         r.shuffle(&mut one);
@@ -583,7 +583,7 @@ mod test {
     #[test]
     fn test_thread_rng() {
         let mut r = thread_rng();
-        r.gen::<int>();
+        r.gen::<isize>();
         let mut v = [1, 1, 1];
         r.shuffle(&mut v);
         let b: &[_] = &[1, 1, 1];
@@ -594,12 +594,12 @@ mod test {
     #[test]
     fn test_random() {
         // not sure how to test this aside from just getting some values
-        let _n : uint = random();
+        let _n : usize = random();
         let _f : f32 = random();
         let _o : Option<Option<i8>> = random();
         let _many : ((),
-                     (uint,
-                      int,
+                     (usize,
+                      isize,
                       Option<(u32, (bool,))>),
                      (u8, i8, u16, i16, u32, i32, u64, i64),
                      (f32, (f64, (f64,)))) = random();
@@ -611,7 +611,7 @@ mod test {
         let max_val = 100;
 
         let mut r = thread_rng();
-        let vals = (min_val..max_val).collect::<Vec<int>>();
+        let vals = (min_val..max_val).collect::<Vec<isize>>();
         let small_sample = sample(&mut r, vals.iter(), 5);
         let large_sample = sample(&mut r, vals.iter(), vals.len() + 5);
 
@@ -625,7 +625,7 @@ mod test {
 
     #[test]
     fn test_std_rng_seeded() {
-        let s = thread_rng().gen_iter::<uint>().take(256).collect::<Vec<uint>>();
+        let s = thread_rng().gen_iter::<usize>().take(256).collect::<Vec<usize>>();
         let mut ra: StdRng = SeedableRng::from_seed(&*s);
         let mut rb: StdRng = SeedableRng::from_seed(&*s);
         assert!(order::equals(ra.gen_ascii_chars().take(100),
@@ -634,7 +634,7 @@ mod test {
 
     #[test]
     fn test_std_rng_reseed() {
-        let s = thread_rng().gen_iter::<uint>().take(256).collect::<Vec<uint>>();
+        let s = thread_rng().gen_iter::<usize>().take(256).collect::<Vec<usize>>();
         let mut r: StdRng = SeedableRng::from_seed(&*s);
         let string1 = r.gen_ascii_chars().take(100).collect::<String>();
 
@@ -662,10 +662,10 @@ mod bench {
         let mut rng: XorShiftRng = OsRng::new().unwrap().gen();
         b.iter(|| {
             for _ in 0..RAND_BENCH_N {
-                rng.gen::<uint>();
+                rng.gen::<usize>();
             }
         });
-        b.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
+        b.bytes = size_of::<usize>() as u64 * RAND_BENCH_N;
     }
 
     #[bench]
@@ -673,10 +673,10 @@ mod bench {
         let mut rng: IsaacRng = OsRng::new().unwrap().gen();
         b.iter(|| {
             for _ in 0..RAND_BENCH_N {
-                rng.gen::<uint>();
+                rng.gen::<usize>();
             }
         });
-        b.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
+        b.bytes = size_of::<usize>() as u64 * RAND_BENCH_N;
     }
 
     #[bench]
@@ -684,10 +684,10 @@ mod bench {
         let mut rng: Isaac64Rng = OsRng::new().unwrap().gen();
         b.iter(|| {
             for _ in 0..RAND_BENCH_N {
-                rng.gen::<uint>();
+                rng.gen::<usize>();
             }
         });
-        b.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
+        b.bytes = size_of::<usize>() as u64 * RAND_BENCH_N;
     }
 
     #[bench]
@@ -695,16 +695,16 @@ mod bench {
         let mut rng = StdRng::new().unwrap();
         b.iter(|| {
             for _ in 0..RAND_BENCH_N {
-                rng.gen::<uint>();
+                rng.gen::<usize>();
             }
         });
-        b.bytes = size_of::<uint>() as u64 * RAND_BENCH_N;
+        b.bytes = size_of::<usize>() as u64 * RAND_BENCH_N;
     }
 
     #[bench]
     fn rand_shuffle_100(b: &mut Bencher) {
         let mut rng = weak_rng();
-        let x : &mut[uint] = &mut [1; 100];
+        let x : &mut[usize] = &mut [1; 100];
         b.iter(|| {
             rng.shuffle(x);
         })

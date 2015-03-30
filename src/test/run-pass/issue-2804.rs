@@ -39,7 +39,7 @@ fn lookup(table: json::Object, key: String, default: String) -> String
     }
 }
 
-fn add_interface(_store: int, managed_ip: String, data: json::Json) -> (String, object)
+fn add_interface(_store: isize, managed_ip: String, data: json::Json) -> (String, object)
 {
     match &data {
         &Json::Object(ref interface) => {
@@ -57,7 +57,7 @@ fn add_interface(_store: int, managed_ip: String, data: json::Json) -> (String, 
     }
 }
 
-fn add_interfaces(store: int, managed_ip: String, device: HashMap<String, json::Json>)
+fn add_interfaces(store: isize, managed_ip: String, device: HashMap<String, json::Json>)
 -> Vec<(String, object)> {
     match device["interfaces"] {
         Json::Array(ref interfaces) =>

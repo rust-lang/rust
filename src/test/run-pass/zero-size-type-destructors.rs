@@ -12,7 +12,7 @@
 
 #![feature(unsafe_no_drop_flag)]
 
-static mut destructions : int = 3;
+static mut destructions : isize = 3;
 
 pub fn foo() {
     #[unsafe_no_drop_flag]

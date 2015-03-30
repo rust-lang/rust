@@ -12,7 +12,7 @@
 
 #![allow(unused_variables)]
 
-struct Point { x: int, y: int }
+struct Point { x: isize, y: isize }
 
 fn main() {
     let origin = Point {x: 0, y: 0};

@@ -15,7 +15,7 @@
 use std::cell::Cell;
 
 struct dtor<'a> {
-    x: &'a Cell<int>,
+    x: &'a Cell<isize>,
 }
 
 #[unsafe_destructor]

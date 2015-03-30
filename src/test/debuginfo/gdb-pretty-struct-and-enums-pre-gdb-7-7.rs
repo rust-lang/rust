@@ -37,7 +37,7 @@
 // gdb-check:$5 = CStyleEnumVar3
 
 struct RegularStruct {
-    the_first_field: int,
+    the_first_field: isize,
     the_second_field: f64,
     the_third_field: bool,
 }

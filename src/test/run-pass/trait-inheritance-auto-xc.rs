@@ -12,15 +12,15 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "trait_inheritance_auto_xc_aux" as aux;
+extern crate trait_inheritance_auto_xc_aux as aux;
 
 use aux::{Foo, Bar, Baz, Quux};
 
-struct A { x: int }
+struct A { x: isize }
 
-impl Foo for A { fn f(&self) -> int { 10 } }
-impl Bar for A { fn g(&self) -> int { 20 } }
-impl Baz for A { fn h(&self) -> int { 30 } }
+impl Foo for A { fn f(&self) -> isize { 10 } }
+impl Bar for A { fn g(&self) -> isize { 20 } }
+impl Baz for A { fn h(&self) -> isize { 30 } }
 
 fn f<T:Quux>(a: &T) {
     assert_eq!(a.f(), 10);

@@ -16,10 +16,10 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    let _: Box<[int]> =
+    let _: Box<[isize]> =
         if true { let b: Box<_> = box [1, 2, 3]; b } else { let b: Box<_> = box [1]; b };
 
-    let _: Box<[int]> = match true {
+    let _: Box<[isize]> = match true {
         true => { let b: Box<_> = box [1, 2, 3]; b }
         false => { let b: Box<_> = box [1]; b }
     };

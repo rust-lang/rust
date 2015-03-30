@@ -15,7 +15,7 @@ use self::BucketState::*;
 use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
-use iter::{Iterator, IteratorExt, ExactSizeIterator, count};
+use iter::{Iterator, ExactSizeIterator, count};
 use marker::{Copy, Send, Sync, Sized, self};
 use mem::{min_align_of, size_of};
 use mem;
@@ -985,7 +985,7 @@ impl<K: Clone, V: Clone> Clone for RawTable<K, V> {
 #[unsafe_destructor]
 impl<K, V> Drop for RawTable<K, V> {
     fn drop(&mut self) {
-        if self.capacity == 0 {
+        if self.capacity == 0 || self.capacity == mem::POST_DROP_USIZE {
             return;
         }
 

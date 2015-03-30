@@ -23,7 +23,7 @@ impl<'a, T> Iterator for PhfMapEntries<'a, T> {
         self.iter.by_ref().map(|&(key, ref value)| (key, value)).next()
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
 }

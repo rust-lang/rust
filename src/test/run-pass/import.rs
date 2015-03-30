@@ -9,7 +9,7 @@
 // except according to those terms.
 
 mod foo {
-    pub fn x(y: int) { println!("{}", y); }
+    pub fn x(y: isize) { println!("{}", y); }
 }
 
 mod bar {

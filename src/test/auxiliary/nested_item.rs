@@ -9,9 +9,9 @@
 // except according to those terms.
 
 // original problem
-pub fn foo<T>() -> int {
+pub fn foo<T>() -> isize {
     {
-        static foo: int = 2;
+        static foo: isize = 2;
         foo
     }
 }
@@ -20,7 +20,7 @@ pub fn foo<T>() -> int {
 struct Foo;
 impl Foo {
     pub fn foo<T>(&self) {
-        static X: uint = 1;
+        static X: usize = 1;
     }
 }
 
@@ -35,6 +35,6 @@ impl<T: std::iter::Iterator<Item=char>> Parser<T> {
 struct Bar;
 impl Foo {
     pub fn bar<T>(&self) {
-        static X: uint = 1;
+        static X: usize = 1;
     }
 }

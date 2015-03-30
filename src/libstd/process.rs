@@ -37,7 +37,7 @@ use thread;
 ///
 /// # Examples
 ///
-/// ```should_fail
+/// ```should_panic
 /// # #![feature(process)]
 ///
 /// use std::process::Command;

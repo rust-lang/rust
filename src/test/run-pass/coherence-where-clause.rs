@@ -25,7 +25,7 @@ impl<T> MyTrait for T
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct MyType {
-    dummy: uint
+    dummy: usize
 }
 
 impl MyTrait for MyType {

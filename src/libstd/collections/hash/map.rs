@@ -20,7 +20,7 @@ use cmp::{max, Eq, PartialEq};
 use default::Default;
 use fmt::{self, Debug};
 use hash::{Hash, SipHasher};
-use iter::{self, Iterator, ExactSizeIterator, IntoIterator, IteratorExt, FromIterator, Extend, Map};
+use iter::{self, Iterator, ExactSizeIterator, IntoIterator, FromIterator, Extend, Map};
 use marker::Sized;
 use mem::{self, replace};
 use ops::{Deref, FnMut, FnOnce, Index};
@@ -214,7 +214,14 @@ fn test_resize_policy() {
 /// overridden with one of the constructors.
 ///
 /// It is required that the keys implement the `Eq` and `Hash` traits, although
-/// this can frequently be achieved by using `#[derive(Eq, Hash)]`.
+/// this can frequently be achieved by using `#[derive(Eq, Hash)]`. If you
+/// implement these yourself, it is important that the following property holds:
+///
+/// ```text
+/// k1 == k2 -> hash(k1) == hash(k2)
+/// ```
+///
+/// In other words, if two keys are equal, their hashes must be equal.
 ///
 /// It is a logic error for a key to be modified in such a way that the key's
 /// hash, as determined by the `Hash` trait, or its equality, as determined by
@@ -505,7 +512,7 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// let mut map: HashMap<&str, int> = HashMap::new();
+    /// let mut map: HashMap<&str, isize> = HashMap::new();
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -519,7 +526,7 @@ impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// let mut map: HashMap<&str, int> = HashMap::with_capacity(10);
+    /// let mut map: HashMap<&str, isize> = HashMap::with_capacity(10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -596,7 +603,7 @@ impl<K, V, S> HashMap<K, V, S>
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// let map: HashMap<int, int> = HashMap::with_capacity(100);
+    /// let map: HashMap<isize, isize> = HashMap::with_capacity(100);
     /// assert!(map.capacity() >= 100);
     /// ```
     #[inline]
@@ -617,7 +624,7 @@ impl<K, V, S> HashMap<K, V, S>
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// let mut map: HashMap<&str, int> = HashMap::new();
+    /// let mut map: HashMap<&str, isize> = HashMap::new();
     /// map.reserve(10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -725,7 +732,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     /// use std::collections::HashMap;
     ///
-    /// let mut map: HashMap<int, int> = HashMap::with_capacity(100);
+    /// let mut map: HashMap<isize, isize> = HashMap::with_capacity(100);
     /// map.insert(1, 2);
     /// map.insert(3, 4);
     /// assert!(map.capacity() >= 100);
@@ -797,9 +804,9 @@ impl<K, V, S> HashMap<K, V, S>
                 }
             }
 
-            let robin_ib = bucket.index() as int - bucket.distance() as int;
+            let robin_ib = bucket.index() as isize - bucket.distance() as isize;
 
-            if (ib as int) < robin_ib {
+            if (ib as isize) < robin_ib {
                 // Found a luckier bucket than me. Better steal his spot.
                 return robin_hood(bucket, robin_ib as usize, hash, k, v);
             }
@@ -924,7 +931,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// map.insert("c", 3);
     ///
     /// // Not possible with .iter()
-    /// let vec: Vec<(&str, int)> = map.into_iter().collect();
+    /// let vec: Vec<(&str, isize)> = map.into_iter().collect();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<K, V> {
@@ -1188,9 +1195,9 @@ fn search_entry_hashed<'a, K: Eq, V>(table: &'a mut RawTable<K,V>, hash: SafeHas
             }
         }
 
-        let robin_ib = bucket.index() as int - bucket.distance() as int;
+        let robin_ib = bucket.index() as isize - bucket.distance() as isize;
 
-        if (ib as int) < robin_ib {
+        if (ib as isize) < robin_ib {
             // Found a luckier bucket than me. Better steal his spot.
             return Vacant(VacantEntry {
                 hash: hash,
@@ -1226,14 +1233,7 @@ impl<K, V, S> Debug for HashMap<K, V, S>
     where K: Eq + Hash + Debug, V: Debug, S: HashState
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{{"));
-
-        for (i, (k, v)) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{:?}: {:?}", *k, *v));
-        }
-
-        write!(f, "}}")
+        self.iter().fold(f.debug_map(), |b, (k, v)| b.entry(k, v)).finish()
     }
 }
 
@@ -1657,7 +1657,7 @@ mod test_map {
         assert_eq!(*m.get(&2).unwrap(), 4);
     }
 
-    thread_local! { static DROP_VECTOR: RefCell<Vec<int>> = RefCell::new(Vec::new()) }
+    thread_local! { static DROP_VECTOR: RefCell<Vec<isize>> = RefCell::new(Vec::new()) }
 
     #[derive(Hash, PartialEq, Eq)]
     struct Dropable {
@@ -1814,7 +1814,7 @@ mod test_map {
 
     #[test]
     fn test_empty_pop() {
-        let mut m: HashMap<int, bool> = HashMap::new();
+        let mut m: HashMap<isize, bool> = HashMap::new();
         assert_eq!(m.remove(&0), None);
     }
 

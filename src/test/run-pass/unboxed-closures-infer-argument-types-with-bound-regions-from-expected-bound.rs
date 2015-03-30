@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we are able to infer that the type of `x` is `int` based
+// Test that we are able to infer that the type of `x` is `isize` based
 // on the expected type from the object.
 
 // pretty-expanded FIXME #23616
@@ -24,5 +24,5 @@ fn doit<T,F>(val: T, f: &F)
 }
 
 pub fn main() {
-    doit(0, &|x /*: int*/ | { x.to_int(); });
+    doit(0, &|x /*: isize*/ | { x.to_int(); });
 }

@@ -551,7 +551,7 @@ mod tests {
         let arc2 = arc.clone();
         let _ = thread::spawn(move|| -> () {
             struct Unwinder {
-                i: Arc<RwLock<int>>,
+                i: Arc<RwLock<isize>>,
             }
             impl Drop for Unwinder {
                 fn drop(&mut self) {

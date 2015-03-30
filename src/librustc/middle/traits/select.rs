@@ -21,16 +21,16 @@ use super::DerivedObligationCause;
 use super::project;
 use super::project::{normalize_with_depth, Normalized};
 use super::{PredicateObligation, TraitObligation, ObligationCause};
-use super::{report_overflow_error};
+use super::report_overflow_error;
 use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
 use super::{SelectionError, Unimplemented, OutputTypeParameterMismatch};
-use super::{Selection};
-use super::{SelectionResult};
+use super::Selection;
+use super::SelectionResult;
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
             VtableFnPointer, VtableObject, VtableDefaultImpl};
 use super::{VtableImplData, VtableObjectData, VtableBuiltinData, VtableDefaultImplData};
 use super::object_safety;
-use super::{util};
+use super::util;
 
 use middle::fast_reject;
 use middle::subst::{Subst, Substs, TypeSpace, VecPerParamSpace};
@@ -110,7 +110,7 @@ pub enum MethodMatchedData {
 /// The selection process begins by considering all impls, where
 /// clauses, and so forth that might resolve an obligation.  Sometimes
 /// we'll be able to say definitively that (e.g.) an impl does not
-/// apply to the obligation: perhaps it is defined for `uint` but the
+/// apply to the obligation: perhaps it is defined for `usize` but the
 /// obligation is for `int`. In that case, we drop the impl out of the
 /// list.  But the other cases are considered *candidates*.
 ///
@@ -628,7 +628,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // for example, we are looking for $0:Eq where $0 is some
         // unconstrained type variable. In that case, we'll get a
         // candidate which assumes $0 == int, one that assumes $0 ==
-        // uint, etc. This spells an ambiguity.
+        // usize, etc. This spells an ambiguity.
 
         // If there is more than one candidate, first winnow them down
         // by considering extra conditions (nested obligations and so
@@ -2093,7 +2093,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                    impl_def_id: ast::DefId,
                    substs: Normalized<'tcx, Substs<'tcx>>,
                    cause: ObligationCause<'tcx>,
-                   recursion_depth: uint,
+                   recursion_depth: usize,
                    skol_map: infer::SkolemizationMap,
                    snapshot: &infer::CombinedSnapshot)
                    -> VtableImplData<'tcx, PredicateObligation<'tcx>>
@@ -2230,9 +2230,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ///
     ///     impl Fn(int) for Closure { ... }
     ///
-    /// Now imagine our obligation is `Fn(uint) for Closure`. So far
+    /// Now imagine our obligation is `Fn(usize) for Closure`. So far
     /// we have matched the self-type `Closure`. At this point we'll
-    /// compare the `int` to `uint` and generate an error.
+    /// compare the `int` to `usize` and generate an error.
     ///
     /// Note that this checking occurs *after* the impl has selected,
     /// because these output type parameters should not affect the
@@ -2529,7 +2529,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// impl.
     fn impl_or_trait_obligations(&mut self,
                                  cause: ObligationCause<'tcx>,
-                                 recursion_depth: uint,
+                                 recursion_depth: usize,
                                  def_id: ast::DefId, // of impl or trait
                                  substs: &Substs<'tcx>, // for impl or trait
                                  skol_map: infer::SkolemizationMap,

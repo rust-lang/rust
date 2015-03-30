@@ -30,7 +30,6 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(int_uint)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -44,7 +43,6 @@
 #![feature(path_relative_from)]
 
 #![allow(trivial_casts)]
-#![allow(trivial_numeric_casts)]
 
 extern crate arena;
 extern crate flate;

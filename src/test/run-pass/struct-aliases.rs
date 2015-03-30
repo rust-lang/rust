@@ -11,8 +11,8 @@
 // pretty-expanded FIXME #23616
 
 struct S {
-    x: int,
-    y: int,
+    x: isize,
+    y: isize,
 }
 
 type S2 = S;

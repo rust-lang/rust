@@ -25,7 +25,7 @@ use std::cell::RefCell;
 use syntax::codemap::{self, Span};
 use syntax::{ast, visit};
 use syntax::ast::{Block, Item, FnDecl, NodeId, Arm, Pat, Stmt, Expr, Local};
-use syntax::ast_util::{stmt_id};
+use syntax::ast_util::stmt_id;
 use syntax::ast_map;
 use syntax::ptr::P;
 use syntax::visit::{Visitor, FnKind};
@@ -136,7 +136,7 @@ impl DestructionScopeData {
          RustcDecodable, Debug, Copy)]
 pub struct BlockRemainder {
     pub block: ast::NodeId,
-    pub first_statement_index: uint,
+    pub first_statement_index: usize,
 }
 
 impl CodeExtent {
@@ -284,7 +284,7 @@ impl InnermostDeclaringBlock {
 struct DeclaringStatementContext {
     stmt_id: ast::NodeId,
     block_id: ast::NodeId,
-    stmt_index: uint,
+    stmt_index: usize,
 }
 
 impl DeclaringStatementContext {

@@ -13,10 +13,9 @@
 // FIXME: #6220 Implement floating point formatting
 
 #![allow(unsigned_negation)]
-#![allow(trivial_numeric_casts)]
 
 use fmt;
-use iter::IteratorExt;
+use iter::Iterator;
 use num::{Int, cast};
 use slice::SliceExt;
 use str;

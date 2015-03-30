@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(advanced_slice_patterns)]
+#![feature(slice_patterns)]
 
 struct Foo {
     first: bool,

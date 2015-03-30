@@ -10,12 +10,12 @@
 
 // aux-build:issue-16822.rs
 
-extern crate "issue-16822" as lib;
+extern crate issue_16822 as lib;
 
 use std::cell::RefCell;
 
 struct App {
-    i: int
+    i: isize
 }
 
 impl lib::Update for App {

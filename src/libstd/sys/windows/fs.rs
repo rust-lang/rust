@@ -42,7 +42,7 @@ impl FileDesc {
         FileDesc { fd: fd, close_on_drop: close_on_drop }
     }
 
-    pub fn read(&self, buf: &mut [u8]) -> IoResult<uint> {
+    pub fn read(&self, buf: &mut [u8]) -> IoResult<usize> {
         let mut read = 0;
         let ret = unsafe {
             libc::ReadFile(self.handle(), buf.as_ptr() as libc::LPVOID,
@@ -50,7 +50,7 @@ impl FileDesc {
                            ptr::null_mut())
         };
         if ret != 0 {
-            Ok(read as uint)
+            Ok(read as usize)
         } else {
             Err(super::last_error())
         }
@@ -67,8 +67,8 @@ impl FileDesc {
                                 ptr::null_mut())
             };
             if ret != 0 {
-                remaining -= amt as uint;
-                cur = unsafe { cur.offset(amt as int) };
+                remaining -= amt as usize;
+                cur = unsafe { cur.offset(amt as isize) };
             } else {
                 return Err(super::last_error())
             }
@@ -234,7 +234,7 @@ pub fn open(path: &Path, fm: FileMode, fa: FileAccess) -> IoResult<FileDesc> {
     }
 }
 
-pub fn mkdir(p: &Path, _mode: uint) -> IoResult<()> {
+pub fn mkdir(p: &Path, _mode: usize) -> IoResult<()> {
     let p = try!(to_utf16(p));
     super::mkerr_winbool(unsafe {
         // FIXME: turn mode into something useful? #2623
@@ -308,11 +308,11 @@ pub fn unlink(p: &Path) -> IoResult<()> {
                 };
                 if stat.perm.intersects(old_io::USER_WRITE) { return Err(e) }
 
-                match chmod(p, (stat.perm | old_io::USER_WRITE).bits() as uint) {
+                match chmod(p, (stat.perm | old_io::USER_WRITE).bits() as usize) {
                     Ok(()) => do_unlink(&p_utf16),
                     Err(..) => {
                         // Try to put it back as we found it
-                        let _ = chmod(p, stat.perm.bits() as uint);
+                        let _ = chmod(p, stat.perm.bits() as usize);
                         Err(e)
                     }
                 }
@@ -331,7 +331,7 @@ pub fn rename(old: &Path, new: &Path) -> IoResult<()> {
     })
 }
 
-pub fn chmod(p: &Path, mode: uint) -> IoResult<()> {
+pub fn chmod(p: &Path, mode: usize) -> IoResult<()> {
     let p = try!(to_utf16(p));
     mkerr_libc(unsafe {
         libc::wchmod(p.as_ptr(), mode as libc::c_int)
@@ -343,7 +343,7 @@ pub fn rmdir(p: &Path) -> IoResult<()> {
     super::mkerr_winbool(unsafe { libc::RemoveDirectoryW(p.as_ptr()) })
 }
 
-pub fn chown(_p: &Path, _uid: int, _gid: int) -> IoResult<()> {
+pub fn chown(_p: &Path, _uid: isize, _gid: isize) -> IoResult<()> {
     // libuv has this as a no-op, so seems like this should as well?
     Ok(())
 }

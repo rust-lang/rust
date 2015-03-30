@@ -18,17 +18,17 @@ use std::thread::Thread;
 
 pub fn main() { test00(); }
 
-fn test00_start(c: &Sender<int>, start: int,
-                number_of_messages: int) {
-    let mut i: int = 0;
+fn test00_start(c: &Sender<isize>, start: isize,
+                number_of_messages: isize) {
+    let mut i: isize = 0;
     while i < number_of_messages { c.send(start + i).unwrap(); i += 1; }
 }
 
 fn test00() {
-    let mut r: int = 0;
-    let mut sum: int = 0;
+    let mut r: isize = 0;
+    let mut sum: isize = 0;
     let (tx, rx) = channel();
-    let number_of_messages: int = 10;
+    let number_of_messages: isize = 10;
 
     let tx2 = tx.clone();
     let _t = Thread::spawn(move|| {
@@ -47,7 +47,7 @@ fn test00() {
         test00_start(&tx2, number_of_messages * 3, number_of_messages);
     });
 
-    let mut i: int = 0;
+    let mut i: isize = 0;
     while i < number_of_messages {
         r = rx.recv().unwrap();
         sum += r;

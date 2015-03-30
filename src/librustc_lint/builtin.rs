@@ -35,7 +35,7 @@ use middle::ty::{self, Ty};
 use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
 use middle::cfg;
-use util::ppaux::{ty_to_string};
+use util::ppaux::ty_to_string;
 use util::nodemap::{FnvHashMap, NodeSet};
 use lint::{Level, Context, LintPass, LintArray, Lint};
 
@@ -180,7 +180,7 @@ impl LintPass for TypeLimits {
                             if let ast::LitInt(shift, _) = lit.node { shift >= bits }
                             else { false }
                         } else {
-                            match eval_const_expr_partial(cx.tcx, &**r, Some(cx.tcx.types.uint)) {
+                            match eval_const_expr_partial(cx.tcx, &**r, Some(cx.tcx.types.usize)) {
                                 Ok(const_int(shift)) => { shift as u64 >= bits },
                                 Ok(const_uint(shift)) => { shift >= bits },
                                 _ => { false }
@@ -199,7 +199,7 @@ impl LintPass for TypeLimits {
                         match lit.node {
                             ast::LitInt(v, ast::SignedIntLit(_, ast::Plus)) |
                             ast::LitInt(v, ast::UnsuffixedIntLit(ast::Plus)) => {
-                                let int_type = if let ast::TyIs(_) = t {
+                                let int_type = if let ast::TyIs = t {
                                     cx.sess().target.int_type
                                 } else {
                                     t
@@ -218,7 +218,7 @@ impl LintPass for TypeLimits {
                         };
                     },
                     ty::ty_uint(t) => {
-                        let uint_type = if let ast::TyUs(_) = t {
+                        let uint_type = if let ast::TyUs = t {
                             cx.sess().target.uint_type
                         } else {
                             t
@@ -283,7 +283,7 @@ impl LintPass for TypeLimits {
         // warnings are consistent between 32- and 64-bit platforms
         fn int_ty_range(int_ty: ast::IntTy) -> (i64, i64) {
             match int_ty {
-                ast::TyIs(_) => (i64::MIN,        i64::MAX),
+                ast::TyIs => (i64::MIN,        i64::MAX),
                 ast::TyI8 =>    (i8::MIN  as i64, i8::MAX  as i64),
                 ast::TyI16 =>   (i16::MIN as i64, i16::MAX as i64),
                 ast::TyI32 =>   (i32::MIN as i64, i32::MAX as i64),
@@ -293,7 +293,7 @@ impl LintPass for TypeLimits {
 
         fn uint_ty_range(uint_ty: ast::UintTy) -> (u64, u64) {
             match uint_ty {
-                ast::TyUs(_) => (u64::MIN,         u64::MAX),
+                ast::TyUs => (u64::MIN,         u64::MAX),
                 ast::TyU8 =>    (u8::MIN   as u64, u8::MAX   as u64),
                 ast::TyU16 =>   (u16::MIN  as u64, u16::MAX  as u64),
                 ast::TyU32 =>   (u32::MIN  as u64, u32::MAX  as u64),
@@ -310,7 +310,7 @@ impl LintPass for TypeLimits {
 
         fn int_ty_bits(int_ty: ast::IntTy, target_int_ty: ast::IntTy) -> u64 {
             match int_ty {
-                ast::TyIs(_) => int_ty_bits(target_int_ty, target_int_ty),
+                ast::TyIs => int_ty_bits(target_int_ty, target_int_ty),
                 ast::TyI8 =>    i8::BITS  as u64,
                 ast::TyI16 =>   i16::BITS as u64,
                 ast::TyI32 =>   i32::BITS as u64,
@@ -320,7 +320,7 @@ impl LintPass for TypeLimits {
 
         fn uint_ty_bits(uint_ty: ast::UintTy, target_uint_ty: ast::UintTy) -> u64 {
             match uint_ty {
-                ast::TyUs(_) => uint_ty_bits(target_uint_ty, target_uint_ty),
+                ast::TyUs => uint_ty_bits(target_uint_ty, target_uint_ty),
                 ast::TyU8 =>    u8::BITS  as u64,
                 ast::TyU16 =>   u16::BITS as u64,
                 ast::TyU32 =>   u32::BITS as u64,
@@ -395,12 +395,12 @@ struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     fn check_def(&mut self, sp: Span, id: ast::NodeId) {
         match self.cx.tcx.def_map.borrow().get(&id).unwrap().full_def() {
-            def::DefPrimTy(ast::TyInt(ast::TyIs(_))) => {
+            def::DefPrimTy(ast::TyInt(ast::TyIs)) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
                                   "found rust type `isize` in foreign module, while \
                                    libc::c_int or libc::c_long should be used");
             }
-            def::DefPrimTy(ast::TyUint(ast::TyUs(_))) => {
+            def::DefPrimTy(ast::TyUint(ast::TyUs)) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
                                   "found rust type `usize` in foreign module, while \
                                    libc::c_uint or libc::c_ulong should be used");

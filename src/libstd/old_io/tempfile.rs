@@ -12,7 +12,7 @@
 #![allow(deprecated)] // rand
 
 use env;
-use iter::{IteratorExt};
+use iter::Iterator;
 use old_io::{fs, IoError, IoErrorKind, IoResult};
 use old_io;
 use ops::Drop;
@@ -89,7 +89,7 @@ const NUM_RETRIES: u32 = 1 << 31;
 // be enough to dissuade an attacker from trying to preemptively create names
 // of that length, but not so huge that we unnecessarily drain the random number
 // generator of entropy.
-const NUM_RAND_CHARS: uint = 12;
+const NUM_RAND_CHARS: usize = 12;
 
 impl TempDir {
     /// Attempts to make a temporary directory inside of `tmpdir` whose name

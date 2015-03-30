@@ -15,7 +15,7 @@ trait Foo {
     fn foo(self);
 }
 
-impl<'a> Foo for &'a [int] {
+impl<'a> Foo for &'a [isize] {
     fn foo(self) {}
 }
 

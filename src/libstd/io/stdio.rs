@@ -11,7 +11,7 @@
 use prelude::v1::*;
 use io::prelude::*;
 
-use cell::RefCell;
+use cell::{RefCell, BorrowState};
 use cmp;
 use fmt;
 use io::lazy::Lazy;
@@ -264,9 +264,8 @@ impl Write for Stdout {
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
     }
-    fn write_fmt(&mut self, fmt: fmt::Arguments) -> io::Result<()> {
-        self.lock().write_fmt(fmt)
-    }
+    // Don't override write_fmt as it's possible to run arbitrary code during a
+    // write_fmt, allowing the possibility of a recursive lock (aka deadlock)
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for StdoutLock<'a> {
@@ -334,9 +333,7 @@ impl Write for Stderr {
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
     }
-    fn write_fmt(&mut self, fmt: fmt::Arguments) -> io::Result<()> {
-        self.lock().write_fmt(fmt)
-    }
+    // Don't override write_fmt for the same reasons as Stdout
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for StderrLock<'a> {
@@ -395,10 +392,15 @@ pub fn set_print(sink: Box<Write + Send>) -> Option<Box<Write + Send>> {
            reason = "implementation detail which may disappear or be replaced at any time")]
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
-    if let Err(e) = LOCAL_STDOUT.with(|s| match s.borrow_mut().as_mut() {
-        Some(w) => w.write_fmt(args),
-        None => stdout().write_fmt(args)
-    }) {
+    let result = LOCAL_STDOUT.with(|s| {
+        if s.borrow_state() == BorrowState::Unused {
+            if let Some(w) = s.borrow_mut().as_mut() {
+                return w.write_fmt(args);
+            }
+        }
+        stdout().write_fmt(args)
+    });
+    if let Err(e) = result {
         panic!("failed printing to stdout: {}", e);
     }
 }

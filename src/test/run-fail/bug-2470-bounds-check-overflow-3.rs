@@ -25,8 +25,8 @@ fn main() {
 
     let idx = u64::MAX & !(u64::MAX >> 1_usize);
     println!("ov3 idx = 0x%8.8x%8.8x",
-           (idx >> 32) as uint,
-           idx as uint);
+           (idx >> 32) as usize,
+           idx as usize);
 
     // This should panic.
     println!("ov3 0x%x",  x[idx]);

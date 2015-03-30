@@ -17,4 +17,4 @@
 
 fn id<T>(x: T) -> T { return x; }
 
-pub fn main() { let x: int = 42; let y: int = id(x); assert!((x == y)); }
+pub fn main() { let x: isize = 42; let y: isize = id(x); assert!((x == y)); }

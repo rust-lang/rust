@@ -25,8 +25,8 @@ use time::Duration;
 pub type rust_thread = HANDLE;
 
 pub mod guard {
-    pub unsafe fn main() -> uint { 0 }
-    pub unsafe fn current() -> uint { 0 }
+    pub unsafe fn main() -> usize { 0 }
+    pub unsafe fn current() -> usize { 0 }
     pub unsafe fn init() {}
 }
 

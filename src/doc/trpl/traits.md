@@ -479,7 +479,7 @@ impl Foo for OverrideDefault {
 }
 
 let default = UseDefault;
-default.baz(); // prints "We called bar."
+default.baz(); // prints "We called baz."
 
 let over = OverrideDefault;
 over.baz(); // prints "Override baz!"

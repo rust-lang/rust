@@ -9,7 +9,7 @@
 // except according to those terms.
 
 trait X { fn dummy(&self) { } }
-impl X for uint { }
+impl X for usize { }
 
 trait Y { fn dummy(&self) { } }
-impl Y for uint { }
+impl Y for usize { }

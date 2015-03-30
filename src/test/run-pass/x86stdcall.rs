@@ -13,8 +13,8 @@
 #[cfg(windows)]
 mod kernel32 {
   extern "system" {
-    pub fn SetLastError(err: uint);
-    pub fn GetLastError() -> uint;
+    pub fn SetLastError(err: usize);
+    pub fn GetLastError() -> usize;
   }
 }
 

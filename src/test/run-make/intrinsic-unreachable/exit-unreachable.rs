@@ -13,7 +13,7 @@
 
 use std::intrinsics;
 
-pub fn exit(n: uint) -> ! {
+pub fn exit(n: usize) -> ! {
     unsafe {
         // Pretend this asm is an exit() syscall.
         asm!("" :: "r"(n) :: "volatile");

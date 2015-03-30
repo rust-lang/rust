@@ -16,19 +16,17 @@
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
-       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
-       html_root_url = "http://doc.rust-lang.org/nightly/",
-       html_playground_url = "http://play.rust-lang.org/")]
+   html_favicon_url = "http://www.rust-lang.org/favicon.ico",
+   html_root_url = "http://doc.rust-lang.org/nightly/",
+   html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
 #![feature(exit_status)]
-#![feature(int_uint)]
 #![feature(set_stdio)]
 #![feature(libc)]
-#![feature(old_path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(std_misc)]
@@ -39,6 +37,7 @@
 #![feature(path_ext)]
 #![feature(path_relative_from)]
 #![feature(convert)]
+#![feature(slice_patterns)]
 
 extern crate arena;
 extern crate getopts;
@@ -65,8 +64,6 @@ use std::io::{self, Read, Write};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::mpsc::channel;
-
-#[allow(deprecated)] use std::old_path::Path;
 
 use externalfiles::ExternalHtml;
 use serialize::Decodable;
@@ -195,7 +192,7 @@ pub fn usage(argv0: &str) {
                             &opts()));
 }
 
-pub fn main_args(args: &[String]) -> int {
+pub fn main_args(args: &[String]) -> isize {
     let matches = match getopts::getopts(args.tail(), &opts()) {
         Ok(m) => m,
         Err(err) => {
@@ -435,7 +432,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     // Load all plugins/passes into a PluginManager
     let path = matches.opt_str("plugin-path")
                       .unwrap_or("/tmp/rustdoc/plugins".to_string());
-    let mut pm = plugins::PluginManager::new(Path::new(path));
+    let mut pm = plugins::PluginManager::new(PathBuf::from(path));
     for pass in &passes {
         let plugin = match PASSES.iter()
                                  .position(|&(p, _, _)| {

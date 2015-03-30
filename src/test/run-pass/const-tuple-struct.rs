@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-struct Bar(int, int);
+struct Bar(isize, isize);
 
 static X: Bar = Bar(1, 2);
 

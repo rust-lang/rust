@@ -10,9 +10,9 @@
 
 // pretty-expanded FIXME #23616
 
-enum blah { a(int, int, uint), b(int, int), c, }
+enum blah { a(isize, isize, usize), b(isize, isize), c, }
 
-fn or_alt(q: blah) -> int {
+fn or_alt(q: blah) -> isize {
     match q { blah::a(x, y, _) | blah::b(x, y) => { return x + y; } blah::c => { return 0; } }
 }
 

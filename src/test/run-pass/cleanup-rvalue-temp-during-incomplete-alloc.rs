@@ -35,13 +35,13 @@ enum Conzabble {
     Bickwick(Foo)
 }
 
-struct Foo { field: Box<uint> }
+struct Foo { field: Box<usize> }
 
-fn do_it(x: &[uint]) -> Foo {
+fn do_it(x: &[usize]) -> Foo {
     panic!()
 }
 
-fn get_bar(x: uint) -> Vec<uint> { vec!(x * 2) }
+fn get_bar(x: usize) -> Vec<usize> { vec!(x * 2) }
 
 pub fn fails() {
     let x = 2;

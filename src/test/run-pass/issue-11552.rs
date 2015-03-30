@@ -17,7 +17,7 @@
 #[derive(Clone)]
 enum Noun
 {
-    Atom(int),
+    Atom(isize),
     Cell(Box<Noun>, Box<Noun>)
 }
 

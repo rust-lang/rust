@@ -10,7 +10,7 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef, BuilderRef};
-use llvm::{TargetData};
+use llvm::TargetData;
 use llvm::mk_target_data;
 use metadata::common::LinkMeta;
 use middle::def::ExportMap;
@@ -38,17 +38,17 @@ use syntax::ast;
 use syntax::parse::token::InternedString;
 
 pub struct Stats {
-    pub n_glues_created: Cell<uint>,
-    pub n_null_glues: Cell<uint>,
-    pub n_real_glues: Cell<uint>,
-    pub n_fns: Cell<uint>,
-    pub n_monos: Cell<uint>,
-    pub n_inlines: Cell<uint>,
-    pub n_closures: Cell<uint>,
-    pub n_llvm_insns: Cell<uint>,
-    pub llvm_insns: RefCell<FnvHashMap<String, uint>>,
+    pub n_glues_created: Cell<usize>,
+    pub n_null_glues: Cell<usize>,
+    pub n_real_glues: Cell<usize>,
+    pub n_fns: Cell<usize>,
+    pub n_monos: Cell<usize>,
+    pub n_inlines: Cell<usize>,
+    pub n_closures: Cell<usize>,
+    pub n_llvm_insns: Cell<usize>,
+    pub llvm_insns: RefCell<FnvHashMap<String, usize>>,
     // (ident, llvm-instructions)
-    pub fn_stats: RefCell<Vec<(String, uint)> >,
+    pub fn_stats: RefCell<Vec<(String, usize)> >,
 }
 
 /// The shared portion of a `CrateContext`.  There is one `SharedCrateContext`
@@ -69,6 +69,7 @@ pub struct SharedCrateContext<'tcx> {
     tcx: ty::ctxt<'tcx>,
     stats: Stats,
     check_overflow: bool,
+    check_drop_flag_for_sanity: bool,
 
     available_monomorphizations: RefCell<FnvHashSet<String>>,
     available_drop_glues: RefCell<FnvHashMap<Ty<'tcx>, String>>,
@@ -95,7 +96,7 @@ pub struct LocalCrateContext<'tcx> {
     external_srcs: RefCell<NodeMap<ast::DefId>>,
     /// Cache instances of monomorphized functions
     monomorphized: RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>>,
-    monomorphizing: RefCell<DefIdMap<uint>>,
+    monomorphizing: RefCell<DefIdMap<usize>>,
     /// Cache generated vtables
     vtables: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>, ValueRef>>,
     /// Cache of constant strings,
@@ -149,7 +150,7 @@ pub struct LocalCrateContext<'tcx> {
     /// Number of LLVM instructions translated into this `LocalCrateContext`.
     /// This is used to perform some basic load-balancing to keep all LLVM
     /// contexts around the same size.
-    n_llvm_insns: Cell<uint>,
+    n_llvm_insns: Cell<usize>,
 
     trait_cache: RefCell<FnvHashMap<ty::PolyTraitRef<'tcx>,
                                     traits::Vtable<'tcx, ()>>>,
@@ -160,12 +161,12 @@ pub struct CrateContext<'a, 'tcx: 'a> {
     local: &'a LocalCrateContext<'tcx>,
     /// The index of `local` in `shared.local_ccxs`.  This is used in
     /// `maybe_iter(true)` to identify the original `LocalCrateContext`.
-    index: uint,
+    index: usize,
 }
 
 pub struct CrateContextIterator<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'tcx>,
-    index: uint,
+    index: usize,
 }
 
 impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
@@ -190,9 +191,9 @@ impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
 /// The iterator produced by `CrateContext::maybe_iter`.
 pub struct CrateContextMaybeIterator<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'tcx>,
-    index: uint,
+    index: usize,
     single: bool,
-    origin: uint,
+    origin: usize,
 }
 
 impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
@@ -236,13 +237,14 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
 
 impl<'tcx> SharedCrateContext<'tcx> {
     pub fn new(crate_name: &str,
-               local_count: uint,
+               local_count: usize,
                tcx: ty::ctxt<'tcx>,
                export_map: ExportMap,
                symbol_hasher: Sha256,
                link_meta: LinkMeta,
                reachable: NodeSet,
-               check_overflow: bool)
+               check_overflow: bool,
+               check_drop_flag_for_sanity: bool)
                -> SharedCrateContext<'tcx> {
         let (metadata_llcx, metadata_llmod) = unsafe {
             create_context_and_module(&tcx.sess, "metadata")
@@ -271,6 +273,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
                 fn_stats: RefCell::new(Vec::new()),
             },
             check_overflow: check_overflow,
+            check_drop_flag_for_sanity: check_drop_flag_for_sanity,
             available_monomorphizations: RefCell::new(FnvHashSet()),
             available_drop_glues: RefCell::new(FnvHashMap()),
         };
@@ -299,7 +302,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
         }
     }
 
-    pub fn get_ccx<'a>(&'a self, index: uint) -> CrateContext<'a, 'tcx> {
+    pub fn get_ccx<'a>(&'a self, index: usize) -> CrateContext<'a, 'tcx> {
         CrateContext {
             shared: self,
             local: &self.local_ccxs[index],
@@ -456,7 +459,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
         CrateContext {
             shared: shared,
             local: self,
-            index: -1 as uint,
+            index: -1 as usize,
         }
     }
 }
@@ -588,7 +591,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.monomorphized
     }
 
-    pub fn monomorphizing<'a>(&'a self) -> &'a RefCell<DefIdMap<uint>> {
+    pub fn monomorphizing<'a>(&'a self) -> &'a RefCell<DefIdMap<usize>> {
         &self.local.monomorphizing
     }
 
@@ -726,6 +729,13 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn check_overflow(&self) -> bool {
         self.shared.check_overflow
+    }
+
+    pub fn check_drop_flag_for_sanity(&self) -> bool {
+        // This controls whether we emit a conditional llvm.debugtrap
+        // guarded on whether the dropflag is one of its (two) valid
+        // values.
+        self.shared.check_drop_flag_for_sanity
     }
 }
 

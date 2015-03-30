@@ -12,6 +12,6 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "issue-11224" as unused;
+extern crate issue_11224 as unused;
 
 pub fn main() {}

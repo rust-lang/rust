@@ -12,20 +12,20 @@
 
 pub fn main() {
     struct b {
-        i: int,
+        i: isize,
     }
 
     impl b {
-        fn do_stuff(&self) -> int { return 37; }
+        fn do_stuff(&self) -> isize { return 37; }
     }
 
-    fn b(i:int) -> b {
+    fn b(i:isize) -> b {
         b {
             i: i
         }
     }
 
-    //  fn b(x:int) -> int { panic!(); }
+    //  fn b(x:isize) -> isize { panic!(); }
 
     let z = b(42);
     assert_eq!(z.i, 42);

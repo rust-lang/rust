@@ -10,11 +10,11 @@
 
 // pretty-expanded FIXME #23616
 
-fn f(x: int) -> int { x }
-fn g(x: int) -> int { 2 * x }
+fn f(x: isize) -> isize { x }
+fn g(x: isize) -> isize { 2 * x }
 
-static F: fn(int) -> int = f;
-static mut G: fn(int) -> int = f;
+static F: fn(isize) -> isize = f;
+static mut G: fn(isize) -> isize = f;
 
 pub fn main() {
     assert_eq!(F(42), 42);

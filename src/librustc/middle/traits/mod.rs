@@ -39,6 +39,7 @@ pub use self::object_safety::is_object_safe;
 pub use self::object_safety::object_safety_violations;
 pub use self::object_safety::ObjectSafetyViolation;
 pub use self::object_safety::MethodViolationCode;
+pub use self::object_safety::is_vtable_safe_method;
 pub use self::select::SelectionContext;
 pub use self::select::SelectionCache;
 pub use self::select::{MethodMatchResult, MethodMatched, MethodAmbiguous, MethodDidNotMatch};
@@ -70,7 +71,7 @@ mod util;
 #[derive(Clone, PartialEq, Eq)]
 pub struct Obligation<'tcx, T> {
     pub cause: ObligationCause<'tcx>,
-    pub recursion_depth: uint,
+    pub recursion_depth: usize,
     pub predicate: T,
 }
 
@@ -484,7 +485,7 @@ impl<'tcx,O> Obligation<'tcx,O> {
     }
 
     fn with_depth(cause: ObligationCause<'tcx>,
-                  recursion_depth: uint,
+                  recursion_depth: usize,
                   trait_ref: O)
                   -> Obligation<'tcx, O>
     {

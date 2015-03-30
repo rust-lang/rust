@@ -8,24 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name="trait_default_method_xc_aux"]
-
-pub struct Something { pub x: int }
+pub struct Something { pub x: isize }
 
 pub trait A {
-    fn f(&self) -> int;
-    fn g(&self) -> int { 10 }
-    fn h(&self) -> int { 11 }
-    fn lurr(x: &Self, y: &Self) -> int { x.g() + y.h() }
+    fn f(&self) -> isize;
+    fn g(&self) -> isize { 10 }
+    fn h(&self) -> isize { 11 }
+    fn lurr(x: &Self, y: &Self) -> isize { x.g() + y.h() }
 }
 
 
-impl A for int {
-    fn f(&self) -> int { 10 }
+impl A for isize {
+    fn f(&self) -> isize { 10 }
 }
 
 impl A for Something {
-    fn f(&self) -> int { 10 }
+    fn f(&self) -> isize { 10 }
 }
 
 pub trait B<T> {
@@ -33,7 +31,7 @@ pub trait B<T> {
     fn staticthing<U>(_z: &Self, x: T, y: U) -> (T, U) { (x, y) }
 }
 
-impl<T> B<T> for int { }
+impl<T> B<T> for isize { }
 impl B<f64> for bool { }
 
 
@@ -45,8 +43,8 @@ pub trait TestEquality {
     }
 }
 
-impl TestEquality for int {
-    fn test_eq(&self, rhs: &int) -> bool {
+impl TestEquality for isize {
+    fn test_eq(&self, rhs: &isize) -> bool {
         *self == *rhs
     }
 }

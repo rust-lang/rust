@@ -60,11 +60,11 @@ fn main() {
     check_pp(ext_cx, abc,  pprust::print_expr, "23".to_string());
 
 
-    let ty = quote_ty!(cx, int);
-    check_pp(ext_cx, ty, pprust::print_type, "int".to_string());
+    let ty = quote_ty!(cx, isize);
+    check_pp(ext_cx, ty, pprust::print_type, "isize".to_string());
 
-    let item = quote_item!(cx, static x : int = 10;).get();
-    check_pp(ext_cx, item, pprust::print_item, "static x: int = 10;".to_string());
+    let item = quote_item!(cx, static x : isize = 10;).get();
+    check_pp(ext_cx, item, pprust::print_item, "static x: isize = 10;".to_string());
 
     let stmt = quote_stmt!(cx, let x = 20;);
     check_pp(ext_cx, *stmt, pprust::print_stmt, "let x = 20;".to_string());

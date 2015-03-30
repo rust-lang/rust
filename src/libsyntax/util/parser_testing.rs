@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use ast;
-use parse::{new_parse_sess};
+use parse::new_parse_sess;
 use parse::{ParseSess,string_to_filemap,filemap_to_tts};
-use parse::{new_parser_from_source_str};
+use parse::new_parser_from_source_str;
 use parse::parser::Parser;
 use parse::token;
 use ptr::P;

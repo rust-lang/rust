@@ -50,8 +50,8 @@
 //!
 //! ## Iteration
 //!
-//! The slices implement `IntoIterator`. The iterators of yield references
-//! to the slice elements.
+//! The slices implement `IntoIterator`. The iterator yields references to the
+//! slice elements.
 //!
 //! ```
 //! let numbers = &[0, 1, 2];
@@ -76,7 +76,6 @@
 //!   iterators.
 //! * Further methods that return iterators are `.split()`, `.splitn()`,
 //!   `.chunks()`, `.windows()` and more.
-
 #![doc(primitive = "slice")]
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -85,7 +84,7 @@ use core::convert::AsRef;
 use core::clone::Clone;
 use core::cmp::Ordering::{self, Greater, Less};
 use core::cmp::{self, Ord, PartialEq};
-use core::iter::{Iterator, IteratorExt};
+use core::iter::Iterator;
 use core::iter::MultiplicativeIterator;
 use core::marker::Sized;
 use core::mem::size_of;
@@ -131,7 +130,7 @@ mod hack {
     use alloc::boxed::Box;
     use core::clone::Clone;
     #[cfg(test)]
-    use core::iter::{Iterator, IteratorExt};
+    use core::iter::Iterator;
     use core::mem;
     #[cfg(test)]
     use core::option::Option::{Some, None};
@@ -611,9 +610,11 @@ impl<T> [T] {
         core_slice::SliceExt::get_mut(self, index)
     }
 
-    /// Work with `self` as a mut slice.
-    /// Primarily intended for getting a &mut [T] from a [T; N].
-    #[stable(feature = "rust1", since = "1.0.0")]
+    /// Deprecated: use `&mut s[..]` instead.
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &mut s[..] instead")]
+    #[allow(deprecated)]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         core_slice::SliceExt::as_mut_slice(self)
     }

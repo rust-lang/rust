@@ -107,7 +107,7 @@ impl Value {
 
     /// Returns the requested operand of this instruction
     /// Returns None, if there's no operand at the given index
-    pub fn get_operand(self, i: uint) -> Option<Value> {
+    pub fn get_operand(self, i: usize) -> Option<Value> {
         opt_val!(llvm::LLVMGetOperand(self.get(), i as c_uint))
     }
 

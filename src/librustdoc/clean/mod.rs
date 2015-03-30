@@ -1322,7 +1322,7 @@ pub enum Type {
     /// For parameterized types, so the consumer of the JSON don't go
     /// looking for types which don't exist anywhere.
     Generic(String),
-    /// Primitives are the fixed-size numeric types (plus int/uint/float), char,
+    /// Primitives are the fixed-size numeric types (plus int/usize/float), char,
     /// arrays, slices, and tuples.
     Primitive(PrimitiveType),
     /// extern "ABI" fn
@@ -1383,12 +1383,12 @@ pub enum TypeKind {
 impl PrimitiveType {
     fn from_str(s: &str) -> Option<PrimitiveType> {
         match s {
-            "isize" | "int" => Some(Isize),
+            "isize" => Some(Isize),
             "i8" => Some(I8),
             "i16" => Some(I16),
             "i32" => Some(I32),
             "i64" => Some(I64),
-            "usize" | "uint" => Some(Usize),
+            "usize" => Some(Usize),
             "u8" => Some(U8),
             "u16" => Some(U16),
             "u32" => Some(U32),
@@ -1516,12 +1516,12 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
         match self.sty {
             ty::ty_bool => Primitive(Bool),
             ty::ty_char => Primitive(Char),
-            ty::ty_int(ast::TyIs(_)) => Primitive(Isize),
+            ty::ty_int(ast::TyIs) => Primitive(Isize),
             ty::ty_int(ast::TyI8) => Primitive(I8),
             ty::ty_int(ast::TyI16) => Primitive(I16),
             ty::ty_int(ast::TyI32) => Primitive(I32),
             ty::ty_int(ast::TyI64) => Primitive(I64),
-            ty::ty_uint(ast::TyUs(_)) => Primitive(Usize),
+            ty::ty_uint(ast::TyUs) => Primitive(Usize),
             ty::ty_uint(ast::TyU8) => Primitive(U8),
             ty::ty_uint(ast::TyU16) => Primitive(U16),
             ty::ty_uint(ast::TyU32) => Primitive(U32),
@@ -1833,10 +1833,10 @@ impl Clean<VariantKind> for ast::VariantKind {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Span {
     pub filename: String,
-    pub loline: uint,
-    pub locol: uint,
-    pub hiline: uint,
-    pub hicol: uint,
+    pub loline: usize,
+    pub locol: usize,
+    pub hiline: usize,
+    pub hicol: usize,
 }
 
 impl Span {
@@ -2399,12 +2399,12 @@ fn resolve_type(cx: &DocContext,
             ast::TyStr => return Primitive(Str),
             ast::TyBool => return Primitive(Bool),
             ast::TyChar => return Primitive(Char),
-            ast::TyInt(ast::TyIs(_)) => return Primitive(Isize),
+            ast::TyInt(ast::TyIs) => return Primitive(Isize),
             ast::TyInt(ast::TyI8) => return Primitive(I8),
             ast::TyInt(ast::TyI16) => return Primitive(I16),
             ast::TyInt(ast::TyI32) => return Primitive(I32),
             ast::TyInt(ast::TyI64) => return Primitive(I64),
-            ast::TyUint(ast::TyUs(_)) => return Primitive(Usize),
+            ast::TyUint(ast::TyUs) => return Primitive(Usize),
             ast::TyUint(ast::TyU8) => return Primitive(U8),
             ast::TyUint(ast::TyU16) => return Primitive(U16),
             ast::TyUint(ast::TyU32) => return Primitive(U32),

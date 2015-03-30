@@ -13,7 +13,7 @@
 
 fn f() {
     let a: Box<_> = box 1;
-    let b: &int = &*a;
+    let b: &isize = &*a;
     println!("{}", b);
 }
 

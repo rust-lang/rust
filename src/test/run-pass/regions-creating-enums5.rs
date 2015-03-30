@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 enum ast<'a> {
-    num(uint),
+    num(usize),
     add(&'a ast<'a>, &'a ast<'a>)
 }
 

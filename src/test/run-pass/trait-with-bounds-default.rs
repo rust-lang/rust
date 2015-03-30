@@ -27,8 +27,8 @@ trait Getter<T: Clone> {
 
 }
 
-impl Getter<int> for int {
-    fn do_get(&self) -> int { *self }
+impl Getter<isize> for isize {
+    fn do_get(&self) -> isize { *self }
 }
 
 impl<T: Clone> Getter<T> for Option<T> {

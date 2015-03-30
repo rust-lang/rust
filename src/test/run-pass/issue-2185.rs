@@ -17,8 +17,8 @@
 //
 // Running /usr/local/bin/rustc:
 // issue-2185.rs:24:0: 26:1 error: conflicting implementations for a trait
-// issue-2185.rs:24 impl iterable<uint> for 'static ||uint|| {
-// issue-2185.rs:25     fn iter(&self, blk: |v: uint|) { self( |i| blk(i) ) }
+// issue-2185.rs:24 impl iterable<usize> for 'static ||usize|| {
+// issue-2185.rs:25     fn iter(&self, blk: |v: usize|) { self( |i| blk(i) ) }
 // issue-2185.rs:26 }
 // issue-2185.rs:20:0: 22:1 note: note conflicting implementation here
 // issue-2185.rs:20 impl<A> iterable<A> for 'static ||A|| {
@@ -26,7 +26,7 @@
 // issue-2185.rs:22 }
 //
 // … so it looks like it's just not possible to implement both
-// the generic iterable<uint> and iterable<A> for the type iterable<uint>.
+// the generic iterable<usize> and iterable<A> for the type iterable<usize>.
 // Is it okay if I just remove this test?
 //
 // but Niko responded:
@@ -50,8 +50,8 @@ impl<A> iterable<A> for 'static ||A|| {
     fn iter(&self, blk: |A|) { self(blk); }
 }
 
-impl iterable<uint> for 'static ||uint|| {
-    fn iter(&self, blk: |v: uint|) { self( |i| blk(i) ) }
+impl iterable<usize> for 'static ||usize|| {
+    fn iter(&self, blk: |v: usize|) { self( |i| blk(i) ) }
 }
 
 fn filter<A,IA:iterable<A>>(self: IA, prd: 'static |A| -> bool, blk: |A|) {
@@ -68,7 +68,7 @@ fn foldl<A,B,IA:iterable<A>>(self: IA, b0: B, blk: |B, A| -> B) -> B {
     b
 }
 
-fn range(lo: uint, hi: uint, it: |uint|) {
+fn range(lo: usize, hi: usize, it: |usize|) {
     let mut i = lo;
     while i < hi {
         it(i);
@@ -77,12 +77,12 @@ fn range(lo: uint, hi: uint, it: |uint|) {
 }
 
 pub fn main() {
-    let range: 'static ||uint|| = |a| range(0, 1000, a);
-    let filt: 'static ||v: uint|| = |a| filter(
+    let range: 'static ||usize|| = |a| range(0, 1000, a);
+    let filt: 'static ||v: usize|| = |a| filter(
         range,
-        |&&n: uint| n % 3 != 0 && n % 5 != 0,
+        |&&n: usize| n % 3 != 0 && n % 5 != 0,
         a);
-    let sum = foldl(filt, 0, |accum, &&n: uint| accum + n );
+    let sum = foldl(filt, 0, |accum, &&n: usize| accum + n );
 
     println!("{}", sum);
 }

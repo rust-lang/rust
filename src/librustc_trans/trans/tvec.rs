@@ -12,7 +12,7 @@
 
 use back::abi;
 use llvm;
-use llvm::{ValueRef};
+use llvm::ValueRef;
 use trans::base::*;
 use trans::base;
 use trans::build::*;
@@ -265,7 +265,7 @@ fn vec_types<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, unit_ty: Ty<'tcx>)
     }
 }
 
-fn elements_required(bcx: Block, content_expr: &ast::Expr) -> uint {
+fn elements_required(bcx: Block, content_expr: &ast::Expr) -> usize {
     //! Figure out the number of elements we need to store this content
 
     match content_expr.node {
@@ -291,7 +291,7 @@ fn elements_required(bcx: Block, content_expr: &ast::Expr) -> uint {
 /// which should be by ref.
 pub fn get_fixed_base_and_len(bcx: Block,
                               llval: ValueRef,
-                              vec_length: uint)
+                              vec_length: usize)
                               -> (ValueRef, ValueRef) {
     let ccx = bcx.ccx();
 

@@ -10,5 +10,5 @@
 
 // pretty-expanded FIXME #23616
 
-fn wsucc(n: int) -> int { 0 + { return n + 1 } }
+fn wsucc(n: isize) -> isize { 0 + { return n + 1 } }
 pub fn main() { }

@@ -105,7 +105,7 @@ struct LongCycle4<T> {
 
 struct LongCycleWithAnonymousTypes {
     next: Opt<Box<Box<Box<Box<Box<LongCycleWithAnonymousTypes>>>>>>,
-    value: uint,
+    value: usize,
 }
 
 // This test case makes sure that recursive structs are properly described. The Node structs are

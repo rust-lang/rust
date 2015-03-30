@@ -29,7 +29,7 @@ fn main() {
     run(repeat, depth);
 }
 
-fn run(repeat: int, depth: int) {
+fn run(repeat: isize, depth: isize) {
     for _ in 0..repeat {
         let dur = Duration::span(|| {
             let _ = thread::spawn(move|| {
@@ -65,7 +65,7 @@ fn r(l: Box<nillist>) -> r {
     }
 }
 
-fn recurse_or_panic(depth: int, st: Option<State>) {
+fn recurse_or_panic(depth: isize, st: Option<State>) {
     if depth == 0 {
         panic!();
     } else {

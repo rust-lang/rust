@@ -14,7 +14,7 @@ use std::cmp::Ordering::{Less,Equal,Greater};
 
 #[derive(Eq,Ord)]
 struct A<'a> {
-    x: &'a int
+    x: &'a isize
 }
 pub fn main() {
     let (a, b) = (A { x: &1 }, A { x: &2 });

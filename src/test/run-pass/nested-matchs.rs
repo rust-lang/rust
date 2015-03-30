@@ -11,13 +11,13 @@
 fn baz() -> ! { panic!(); }
 
 fn foo() {
-    match Some::<int>(5) {
-      Some::<int>(_x) => {
+    match Some::<isize>(5) {
+      Some::<isize>(_x) => {
         let mut bar;
-        match None::<int> { None::<int> => { bar = 5; } _ => { baz(); } }
+        match None::<isize> { None::<isize> => { bar = 5; } _ => { baz(); } }
         println!("{}", bar);
       }
-      None::<int> => { println!("hello"); }
+      None::<isize> => { println!("hello"); }
     }
 }
 

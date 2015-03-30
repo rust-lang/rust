@@ -13,7 +13,7 @@
 use std::thread::Thread;
 use std::sync::mpsc::{channel, Receiver};
 
-fn periodical(n: int) -> Receiver<bool> {
+fn periodical(n: isize) -> Receiver<bool> {
     let (chan, port) = channel();
     Thread::spawn(move|| {
         loop {
@@ -32,7 +32,7 @@ fn periodical(n: int) -> Receiver<bool> {
     return port;
 }
 
-fn integers() -> Receiver<int> {
+fn integers() -> Receiver<isize> {
     let (chan, port) = channel();
     Thread::spawn(move|| {
         let mut i = 1;

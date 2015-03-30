@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-enum E { V0, V1(int) }
+enum E { V0, V1(isize) }
 static C: &'static E = &E::V0;
 
 pub fn main() {

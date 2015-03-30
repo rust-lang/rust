@@ -11,4 +11,4 @@
 #![crate_name="crateresolve_calories#0.1"]
 #![crate_type = "lib"]
 
-pub fn f() -> int { 200 }
+pub fn f() -> isize { 200 }

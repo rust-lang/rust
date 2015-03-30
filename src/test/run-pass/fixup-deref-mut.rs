@@ -32,12 +32,12 @@ impl<T> DerefMut for Own<T> {
 }
 
 struct Point {
-    x: int,
-    y: int
+    x: isize,
+    y: isize
 }
 
 impl Point {
-    fn get(&mut self) -> (int, int) {
+    fn get(&mut self) -> (isize, isize) {
         (self.x, self.y)
     }
 }

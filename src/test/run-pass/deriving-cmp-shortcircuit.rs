@@ -33,7 +33,7 @@ impl Ord for FailCmp {
 
 #[derive(PartialEq,PartialOrd,Eq,Ord)]
 struct ShortCircuit {
-    x: int,
+    x: isize,
     y: FailCmp
 }
 

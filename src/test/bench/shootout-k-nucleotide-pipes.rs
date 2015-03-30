@@ -42,8 +42,8 @@ fn f64_cmp(x: f64, y: f64) -> Ordering {
 }
 
 // given a map, print a sorted version of it
-fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
-   fn pct(xx: uint, yy: uint) -> f64 {
+fn sort_and_fmt(mm: &HashMap<Vec<u8> , usize>, total: usize) -> String {
+   fn pct(xx: usize, yy: usize) -> f64 {
       return (xx as f64) * 100.0 / (yy as f64);
    }
 
@@ -74,7 +74,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
 }
 
 // given a map, search for the frequency of a pattern
-fn find(mm: &HashMap<Vec<u8> , uint>, key: String) -> uint {
+fn find(mm: &HashMap<Vec<u8> , usize>, key: String) -> usize {
    let key = key.into_ascii_lowercase();
    match mm.get(key.as_bytes()) {
       option::Option::None      => { return 0; }
@@ -83,7 +83,7 @@ fn find(mm: &HashMap<Vec<u8> , uint>, key: String) -> uint {
 }
 
 // given a map, increment the counter for a key
-fn update_freq(mm: &mut HashMap<Vec<u8> , uint>, key: &[u8]) {
+fn update_freq(mm: &mut HashMap<Vec<u8> , usize>, key: &[u8]) {
     let key = key.to_vec();
     let newval = match mm.remove(&key) {
         Some(v) => v + 1,
@@ -95,7 +95,7 @@ fn update_freq(mm: &mut HashMap<Vec<u8> , uint>, key: &[u8]) {
 // given a Vec<u8>, for each window call a function
 // i.e., for "hello" and windows of size four,
 // run it("hell") and it("ello"), then return "llo"
-fn windows_with_carry<F>(bb: &[u8], nn: uint, mut it: F) -> Vec<u8> where
+fn windows_with_carry<F>(bb: &[u8], nn: usize, mut it: F) -> Vec<u8> where
     F: FnMut(&[u8]),
 {
    let mut ii = 0;
@@ -109,12 +109,12 @@ fn windows_with_carry<F>(bb: &[u8], nn: uint, mut it: F) -> Vec<u8> where
    return bb[len - (nn - 1)..len].to_vec();
 }
 
-fn make_sequence_processor(sz: uint,
+fn make_sequence_processor(sz: usize,
                            from_parent: &Receiver<Vec<u8>>,
                            to_parent: &Sender<String>) {
-   let mut freqs: HashMap<Vec<u8>, uint> = HashMap::new();
+   let mut freqs: HashMap<Vec<u8>, usize> = HashMap::new();
    let mut carry = Vec::new();
-   let mut total: uint = 0;
+   let mut total: usize = 0;
 
    let mut line: Vec<u8>;
 

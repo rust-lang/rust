@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn f<F>(i: int, f: F) -> int where F: FnOnce(int) -> int { f(i) }
+fn f<F>(i: isize, f: F) -> isize where F: FnOnce(isize) -> isize { f(i) }
 
 fn g<G>(_g: G) where G: FnOnce() { }
 

@@ -22,17 +22,17 @@ pub enum Unit {
 }
 
 #[derive(Copy)]
-pub struct TupleStruct(pub uint, pub &'static str);
+pub struct TupleStruct(pub usize, pub &'static str);
 
 // used by the cfail test
 
 #[derive(Copy)]
 pub struct StructWithFields {
-    foo: int,
+    foo: isize,
 }
 
 #[derive(Copy)]
 pub enum EnumWithVariants {
     EnumVariant,
-    EnumVariantArg(int)
+    EnumVariantArg(isize)
 }

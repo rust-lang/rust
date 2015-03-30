@@ -19,7 +19,6 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![feature(int_uint)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -43,7 +42,7 @@ use rustc::middle::privacy::{ExternalExports, ExportedItems, PublicItems};
 use rustc::middle::ty::{MethodTypeParam, MethodStatic};
 use rustc::middle::ty::{MethodCall, MethodMap, MethodOrigin, MethodParam};
 use rustc::middle::ty::{MethodStaticClosure, MethodObject};
-use rustc::middle::ty::{MethodTraitObject};
+use rustc::middle::ty::MethodTraitObject;
 use rustc::middle::ty::{self, Ty};
 use rustc::util::nodemap::{NodeMap, NodeSet};
 
@@ -378,7 +377,7 @@ enum PrivacyResult {
 }
 
 enum FieldName {
-    UnnamedField(uint), // index
+    UnnamedField(usize), // index
     // (Name, not Ident, because struct fields are not macro-hygienic)
     NamedField(ast::Name),
 }

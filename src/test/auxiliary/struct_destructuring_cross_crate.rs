@@ -11,6 +11,6 @@
 #![crate_type="lib"]
 
 pub struct S {
-    pub x: int,
-    pub y: int,
+    pub x: isize,
+    pub y: isize,
 }

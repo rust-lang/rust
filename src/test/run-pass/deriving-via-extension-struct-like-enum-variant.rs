@@ -10,7 +10,7 @@
 
 #[derive(PartialEq, Debug)]
 enum S {
-    X { x: int, y: int },
+    X { x: isize, y: isize },
     Y
 }
 

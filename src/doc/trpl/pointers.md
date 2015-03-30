@@ -568,8 +568,8 @@ fn add(x: &i32, y: &i32) -> i32 {
 fn main() {
     let x = Box::new(5);
 
-    println!("{}", add(&x, &x));
-    println!("{}", add(&x, &x));
+    println!("{}", add(&*x, &*x));
+    println!("{}", add(&*x, &*x));
 }
 ```
 

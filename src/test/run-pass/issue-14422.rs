@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "issue-14422" as bug_lib;
+extern crate issue_14422 as bug_lib;
 
 use bug_lib::B;
 use bug_lib::make;

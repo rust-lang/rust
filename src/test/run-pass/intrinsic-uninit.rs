@@ -18,5 +18,5 @@ mod rusti {
     }
 }
 pub fn main() {
-    let _a : int = unsafe {rusti::uninit()};
+    let _a : isize = unsafe {rusti::uninit()};
 }

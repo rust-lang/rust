@@ -19,7 +19,7 @@ fn f<T:MyNum>(x: T, y: T) -> (T, T, T) {
     return (x.clone() + y.clone(), x.clone() - y.clone(), x * y);
 }
 
-fn mi(v: int) -> MyInt { MyInt { val: v } }
+fn mi(v: isize) -> MyInt { MyInt { val: v } }
 
 pub fn main() {
     let (x, y) = (mi(3), mi(5));

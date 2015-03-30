@@ -352,7 +352,7 @@ Here’s an example of documenting a macro:
 /// # }
 /// ```
 ///
-/// ```should_fail
+/// ```should_panic
 /// # #[macro_use] extern crate foo;
 /// # fn main() {
 /// panic_unless!(true == false, “I’m broken.”);
@@ -517,7 +517,7 @@ can be useful when changing some options, or when writing a macro.
 
 ### Re-exports
 
-`rustdoc` will show the documentation for a publc re-export in both places:
+`rustdoc` will show the documentation for a public re-export in both places:
 
 ```ignore
 extern crate foo;

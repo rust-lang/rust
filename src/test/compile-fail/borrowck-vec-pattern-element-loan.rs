@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(advanced_slice_patterns)]
+#![feature(slice_patterns)]
 
 fn a<'a>() -> &'a [isize] {
     let vec = vec!(1, 2, 3, 4);

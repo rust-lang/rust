@@ -12,7 +12,7 @@
 
 #![crate_type = "lib"]
 
-pub struct NameVal { pub name: String, pub val: int }
+pub struct NameVal { pub name: String, pub val: isize }
 
 pub fn struct_nameval() -> NameVal {
     NameVal { name: "crateresolve5".to_string(), val: 10 }
@@ -31,4 +31,4 @@ impl PartialEq for e {
     fn ne(&self, other: &e) -> bool { !nominal_eq(*self, *other) }
 }
 
-pub fn f() -> int { 10 }
+pub fn f() -> isize { 10 }

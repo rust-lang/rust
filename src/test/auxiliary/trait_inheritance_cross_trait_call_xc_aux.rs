@@ -10,13 +10,13 @@
 
 
 pub trait Foo {
-    fn f(&self) -> int;
+    fn f(&self) -> isize;
 }
 
 pub struct A {
-    pub x: int
+    pub x: isize
 }
 
 impl Foo for A {
-    fn f(&self) -> int { 10 }
+    fn f(&self) -> isize { 10 }
 }

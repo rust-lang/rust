@@ -62,33 +62,33 @@ impl<E: Debug> Debug for Edge<E> {
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
-pub struct NodeIndex(pub uint);
+pub struct NodeIndex(pub usize);
 #[allow(non_upper_case_globals)]
 pub const InvalidNodeIndex: NodeIndex = NodeIndex(usize::MAX);
 
 #[derive(Copy, PartialEq, Debug)]
-pub struct EdgeIndex(pub uint);
+pub struct EdgeIndex(pub usize);
 #[allow(non_upper_case_globals)]
 pub const InvalidEdgeIndex: EdgeIndex = EdgeIndex(usize::MAX);
 
 // Use a private field here to guarantee no more instances are created:
 #[derive(Copy, Debug)]
-pub struct Direction { repr: uint }
+pub struct Direction { repr: usize }
 #[allow(non_upper_case_globals)]
 pub const Outgoing: Direction = Direction { repr: 0 };
 #[allow(non_upper_case_globals)]
 pub const Incoming: Direction = Direction { repr: 1 };
 
 impl NodeIndex {
-    fn get(&self) -> uint { let NodeIndex(v) = *self; v }
+    fn get(&self) -> usize { let NodeIndex(v) = *self; v }
     /// Returns unique id (unique with respect to the graph holding associated node).
-    pub fn node_id(&self) -> uint { self.get() }
+    pub fn node_id(&self) -> usize { self.get() }
 }
 
 impl EdgeIndex {
-    fn get(&self) -> uint { let EdgeIndex(v) = *self; v }
+    fn get(&self) -> usize { let EdgeIndex(v) = *self; v }
     /// Returns unique id (unique with respect to the graph holding associated edge).
-    pub fn edge_id(&self) -> uint { self.get() }
+    pub fn edge_id(&self) -> usize { self.get() }
 }
 
 impl<N,E> Graph<N,E> {
@@ -99,8 +99,8 @@ impl<N,E> Graph<N,E> {
         }
     }
 
-    pub fn with_capacity(num_nodes: uint,
-                         num_edges: uint) -> Graph<N,E> {
+    pub fn with_capacity(num_nodes: usize,
+                         num_edges: usize) -> Graph<N,E> {
         Graph {
             nodes: Vec::with_capacity(num_nodes),
             edges: Vec::with_capacity(num_edges),
@@ -275,7 +275,7 @@ impl<N,E> Graph<N,E> {
     // computation.
 
     pub fn iterate_until_fixed_point<'a, F>(&'a self, mut op: F) where
-        F: FnMut(uint, EdgeIndex, &'a Edge<E>) -> bool,
+        F: FnMut(usize, EdgeIndex, &'a Edge<E>) -> bool,
     {
         let mut iteration = 0;
         let mut changed = true;

@@ -10,7 +10,7 @@
 
 #[derive(Clone, Debug)]
 enum foo {
-  a(uint),
+  a(usize),
   b(String),
 }
 

@@ -12,7 +12,7 @@
 
 #![allow(non_snake_case)]
 
-use std::collections::hash_state::{DefaultState};
+use std::collections::hash_state::DefaultState;
 use std::collections::{HashMap, HashSet};
 use std::default::Default;
 use std::hash::{Hasher, Hash};

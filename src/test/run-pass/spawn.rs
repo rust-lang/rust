@@ -14,4 +14,4 @@ pub fn main() {
     thread::spawn(move|| child(10)).join().ok().unwrap();
 }
 
-fn child(i: int) { println!("{}", i); assert!((i == 10)); }
+fn child(i: isize) { println!("{}", i); assert!((i == 10)); }

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(slice_patterns)]
 
 fn main() {
     let x: Vec<(isize, isize)> = Vec::new();

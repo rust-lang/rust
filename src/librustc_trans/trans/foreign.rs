@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use back::{link};
+use back::link;
 use llvm::{ValueRef, CallConv, get_param};
 use llvm;
 use middle::weak_lang_items;
@@ -35,7 +35,7 @@ use syntax::abi::{RustIntrinsic, Rust, RustCall, Stdcall, Fastcall, System};
 use syntax::codemap::Span;
 use syntax::parse::token::{InternedString, special_idents};
 use syntax::parse::token;
-use syntax::{ast};
+use syntax::ast;
 use syntax::{attr, ast_map};
 use syntax::print::pprust;
 use util::ppaux::Repr;

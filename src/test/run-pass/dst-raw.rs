@@ -13,14 +13,14 @@
 // pretty-expanded FIXME #23616
 
 trait Trait {
-    fn foo(&self) -> int;
+    fn foo(&self) -> isize;
 }
 
 struct A {
-    f: int
+    f: isize
 }
 impl Trait for A {
-    fn foo(&self) -> int {
+    fn foo(&self) -> isize {
         self.f
     }
 }

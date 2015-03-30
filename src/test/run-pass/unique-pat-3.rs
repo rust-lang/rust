@@ -11,7 +11,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-enum bar { u(Box<int>), w(int), }
+enum bar { u(Box<isize>), w(isize), }
 
 pub fn main() {
     assert!(match bar::u(box 10) {

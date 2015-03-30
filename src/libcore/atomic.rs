@@ -252,7 +252,8 @@ impl AtomicBool {
 
     /// Stores a value into the bool if the current value is the same as the expected value.
     ///
-    /// If the return value is equal to `old` then the value was updated.
+    /// The return value is always the previous value. If it is equal to `old`, then the value was
+    /// updated.
     ///
     /// `swap` also takes an `Ordering` argument which describes the memory ordering of this
     /// operation.
@@ -489,7 +490,8 @@ impl AtomicIsize {
 
     /// Stores a value into the isize if the current value is the same as the expected value.
     ///
-    /// If the return value is equal to `old` then the value was updated.
+    /// The return value is always the previous value. If it is equal to `old`, then the value was
+    /// updated.
     ///
     /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
     /// this operation.
@@ -676,7 +678,8 @@ impl AtomicUsize {
 
     /// Stores a value into the usize if the current value is the same as the expected value.
     ///
-    /// If the return value is equal to `old` then the value was updated.
+    /// The return value is always the previous value. If it is equal to `old`, then the value was
+    /// updated.
     ///
     /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
     /// this operation.
@@ -873,7 +876,8 @@ impl<T> AtomicPtr<T> {
 
     /// Stores a value into the pointer if the current value is the same as the expected value.
     ///
-    /// If the return value is equal to `old` then the value was updated.
+    /// The return value is always the previous value. If it is equal to `old`, then the value was
+    /// updated.
     ///
     /// `compare_and_swap` also takes an `Ordering` argument which describes the memory ordering of
     /// this operation.
@@ -1064,7 +1068,7 @@ pub fn fence(order: Ordering) {
              reason = "renamed to AtomicIsize")]
 #[allow(missing_docs)]
 pub struct AtomicInt {
-    v: UnsafeCell<int>,
+    v: UnsafeCell<isize>,
 }
 
 #[allow(deprecated)]
@@ -1075,7 +1079,7 @@ unsafe impl Sync for AtomicInt {}
              reason = "renamed to AtomicUsize")]
 #[allow(missing_docs)]
 pub struct AtomicUint {
-    v: UnsafeCell<uint>,
+    v: UnsafeCell<usize>,
 }
 
 #[allow(deprecated)]
@@ -1097,52 +1101,52 @@ pub const ATOMIC_UINT_INIT: AtomicUint =
 #[allow(missing_docs, deprecated)]
 impl AtomicInt {
     #[inline]
-    pub fn new(v: int) -> AtomicInt {
+    pub fn new(v: isize) -> AtomicInt {
         AtomicInt {v: UnsafeCell::new(v)}
     }
 
     #[inline]
-    pub fn load(&self, order: Ordering) -> int {
+    pub fn load(&self, order: Ordering) -> isize {
         unsafe { atomic_load(self.v.get(), order) }
     }
 
     #[inline]
-    pub fn store(&self, val: int, order: Ordering) {
+    pub fn store(&self, val: isize, order: Ordering) {
         unsafe { atomic_store(self.v.get(), val, order); }
     }
 
     #[inline]
-    pub fn swap(&self, val: int, order: Ordering) -> int {
+    pub fn swap(&self, val: isize, order: Ordering) -> isize {
         unsafe { atomic_swap(self.v.get(), val, order) }
     }
 
     #[inline]
-    pub fn compare_and_swap(&self, old: int, new: int, order: Ordering) -> int {
+    pub fn compare_and_swap(&self, old: isize, new: isize, order: Ordering) -> isize {
         unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
     }
 
     #[inline]
-    pub fn fetch_add(&self, val: int, order: Ordering) -> int {
+    pub fn fetch_add(&self, val: isize, order: Ordering) -> isize {
         unsafe { atomic_add(self.v.get(), val, order) }
     }
 
     #[inline]
-    pub fn fetch_sub(&self, val: int, order: Ordering) -> int {
+    pub fn fetch_sub(&self, val: isize, order: Ordering) -> isize {
         unsafe { atomic_sub(self.v.get(), val, order) }
     }
 
     #[inline]
-    pub fn fetch_and(&self, val: int, order: Ordering) -> int {
+    pub fn fetch_and(&self, val: isize, order: Ordering) -> isize {
         unsafe { atomic_and(self.v.get(), val, order) }
     }
 
     #[inline]
-    pub fn fetch_or(&self, val: int, order: Ordering) -> int {
+    pub fn fetch_or(&self, val: isize, order: Ordering) -> isize {
         unsafe { atomic_or(self.v.get(), val, order) }
     }
 
     #[inline]
-    pub fn fetch_xor(&self, val: int, order: Ordering) -> int {
+    pub fn fetch_xor(&self, val: isize, order: Ordering) -> isize {
         unsafe { atomic_xor(self.v.get(), val, order) }
     }
 }
@@ -1150,52 +1154,52 @@ impl AtomicInt {
 #[allow(missing_docs, deprecated)]
 impl AtomicUint {
     #[inline]
-    pub fn new(v: uint) -> AtomicUint {
+    pub fn new(v: usize) -> AtomicUint {
         AtomicUint { v: UnsafeCell::new(v) }
     }
 
     #[inline]
-    pub fn load(&self, order: Ordering) -> uint {
+    pub fn load(&self, order: Ordering) -> usize {
         unsafe { atomic_load(self.v.get(), order) }
     }
 
     #[inline]
-    pub fn store(&self, val: uint, order: Ordering) {
+    pub fn store(&self, val: usize, order: Ordering) {
         unsafe { atomic_store(self.v.get(), val, order); }
     }
 
     #[inline]
-    pub fn swap(&self, val: uint, order: Ordering) -> uint {
+    pub fn swap(&self, val: usize, order: Ordering) -> usize {
         unsafe { atomic_swap(self.v.get(), val, order) }
     }
 
     #[inline]
-    pub fn compare_and_swap(&self, old: uint, new: uint, order: Ordering) -> uint {
+    pub fn compare_and_swap(&self, old: usize, new: usize, order: Ordering) -> usize {
         unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
     }
 
     #[inline]
-    pub fn fetch_add(&self, val: uint, order: Ordering) -> uint {
+    pub fn fetch_add(&self, val: usize, order: Ordering) -> usize {
         unsafe { atomic_add(self.v.get(), val, order) }
     }
 
     #[inline]
-    pub fn fetch_sub(&self, val: uint, order: Ordering) -> uint {
+    pub fn fetch_sub(&self, val: usize, order: Ordering) -> usize {
         unsafe { atomic_sub(self.v.get(), val, order) }
     }
 
     #[inline]
-    pub fn fetch_and(&self, val: uint, order: Ordering) -> uint {
+    pub fn fetch_and(&self, val: usize, order: Ordering) -> usize {
         unsafe { atomic_and(self.v.get(), val, order) }
     }
 
     #[inline]
-    pub fn fetch_or(&self, val: uint, order: Ordering) -> uint {
+    pub fn fetch_or(&self, val: usize, order: Ordering) -> usize {
         unsafe { atomic_or(self.v.get(), val, order) }
     }
 
     #[inline]
-    pub fn fetch_xor(&self, val: uint, order: Ordering) -> uint {
+    pub fn fetch_xor(&self, val: usize, order: Ordering) -> usize {
         unsafe { atomic_xor(self.v.get(), val, order) }
     }
 }

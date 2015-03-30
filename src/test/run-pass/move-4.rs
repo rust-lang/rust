@@ -13,7 +13,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-struct Triple { a: int, b: int, c: int }
+struct Triple { a: isize, b: isize, c: isize }
 
 fn test(foo: Box<Triple>) -> Box<Triple> {
     let foo = foo;

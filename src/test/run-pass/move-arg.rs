@@ -10,6 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-fn test(foo: int) { assert!((foo == 10)); }
+fn test(foo: isize) { assert!((foo == 10)); }
 
 pub fn main() { let x = 10; test(x); }

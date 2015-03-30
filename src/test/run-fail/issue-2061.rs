@@ -12,7 +12,7 @@
 // error-pattern: task '<main>' has overflowed its stack
 
 struct R {
-    b: int,
+    b: isize,
 }
 
 impl Drop for R {

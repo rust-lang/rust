@@ -21,7 +21,7 @@ use boxed::Box;
 use fmt;
 use old_io::{self, IoResult, IoError};
 use old_io::net;
-use iter::{Iterator, IteratorExt};
+use iter::Iterator;
 use ops::{FnOnce, FnMut};
 use option::Option;
 use option::Option::{None, Some};
@@ -82,7 +82,7 @@ impl fmt::Display for SocketAddr {
 struct Parser<'a> {
     // parsing as ASCII, so can use byte array
     s: &'a [u8],
-    pos: uint,
+    pos: usize,
 }
 
 impl<'a> Parser<'a> {
@@ -256,7 +256,7 @@ impl<'a> Parser<'a> {
             Ipv6Addr(gs[0], gs[1], gs[2], gs[3], gs[4], gs[5], gs[6], gs[7])
         }
 
-        fn read_groups(p: &mut Parser, groups: &mut [u16; 8], limit: uint) -> (uint, bool) {
+        fn read_groups(p: &mut Parser, groups: &mut [u16; 8], limit: usize) -> (usize, bool) {
             let mut i = 0;
             while i < limit {
                 if i < limit - 1 {

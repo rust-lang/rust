@@ -24,7 +24,7 @@ use core::default::Default;
 use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{Map, FromIterator, IntoIterator};
-use core::ops::{Index};
+use core::ops::Index;
 use core::{iter, fmt, mem, usize};
 use Bound::{self, Included, Excluded, Unbounded};
 
@@ -904,14 +904,7 @@ impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{{"));
-
-        for (i, (k, v)) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{:?}: {:?}", *k, *v));
-        }
-
-        write!(f, "}}")
+        self.iter().fold(f.debug_map(), |b, (k, v)| b.entry(k, v)).finish()
     }
 }
 

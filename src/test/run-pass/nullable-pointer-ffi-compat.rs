@@ -25,13 +25,13 @@
 use std::mem;
 
 #[inline(never)]
-extern "C" fn foo<'a>(x: &'a int) -> Option<&'a int> { Some(x) }
+extern "C" fn foo<'a>(x: &'a isize) -> Option<&'a isize> { Some(x) }
 
-static FOO: int = 0xDEADBEE;
+static FOO: isize = 0xDEADBEE;
 
 pub fn main() {
     unsafe {
-        let f: for<'a> extern "C" fn(&'a int) -> &'a int = mem::transmute(foo);
+        let f: for<'a> extern "C" fn(&'a isize) -> &'a isize = mem::transmute(foo);
         assert_eq!(*f(&FOO), FOO);
     }
 }

@@ -10,17 +10,17 @@
 
 
 trait noisy {
-  fn speak(&mut self) -> int;
+  fn speak(&mut self) -> isize;
 }
 
 struct dog {
-  barks: uint,
+  barks: usize,
 
-  volume: int,
+  volume: isize,
 }
 
 impl dog {
-    fn bark(&mut self) -> int {
+    fn bark(&mut self) -> isize {
       println!("Woof {} {}", self.barks, self.volume);
       self.barks += 1_usize;
       if self.barks % 3_usize == 0_usize {
@@ -35,7 +35,7 @@ impl dog {
 }
 
 impl noisy for dog {
-    fn speak(&mut self) -> int {
+    fn speak(&mut self) -> isize {
         self.bark()
     }
 }
@@ -49,26 +49,26 @@ fn dog() -> dog {
 
 #[derive(Clone)]
 struct cat {
-  meows: uint,
+  meows: usize,
 
-  how_hungry: int,
+  how_hungry: isize,
   name: String,
 }
 
 impl noisy for cat {
-    fn speak(&mut self) -> int {
-        self.meow() as int
+    fn speak(&mut self) -> isize {
+        self.meow() as isize
     }
 }
 
 impl cat {
-    pub fn meow_count(&self) -> uint {
+    pub fn meow_count(&self) -> usize {
         self.meows
     }
 }
 
 impl cat {
-    fn meow(&mut self) -> uint {
+    fn meow(&mut self) -> usize {
         println!("Meow");
         self.meows += 1_usize;
         if self.meows % 5_usize == 0_usize {
@@ -78,7 +78,7 @@ impl cat {
     }
 }
 
-fn cat(in_x: uint, in_y: int, in_name: String) -> cat {
+fn cat(in_x: usize, in_y: isize, in_name: String) -> cat {
     cat {
         meows: in_x,
         how_hungry: in_y,

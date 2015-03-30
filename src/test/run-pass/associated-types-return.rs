@@ -20,14 +20,14 @@ pub trait Foo {
 #[derive(PartialEq)]
 pub struct Bar;
 
-impl Foo for int {
-    type A = uint;
-    fn boo(&self) -> uint { 42 }
+impl Foo for isize {
+    type A = usize;
+    fn boo(&self) -> usize { 42 }
 }
 
 impl Foo for Bar {
-    type A = int;
-    fn boo(&self) -> int { 43 }
+    type A = isize;
+    fn boo(&self) -> isize { 43 }
 }
 
 impl Foo for char {

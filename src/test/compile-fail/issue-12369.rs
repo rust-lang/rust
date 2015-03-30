@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(slice_patterns)]
+
 fn main() {
     let sl = vec![1,2,3];
     let v: isize = match &*sl {

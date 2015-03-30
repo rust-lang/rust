@@ -14,22 +14,22 @@
 // pretty-expanded FIXME #23616
 
 trait GetRef<'a> {
-    fn get(&self) -> &'a int;
+    fn get(&self) -> &'a isize;
 }
 
 #[derive(Copy)]
 struct Box<'a> {
-    t: &'a int
+    t: &'a isize
 }
 
 impl<'a> GetRef<'a> for Box<'a> {
-    fn get(&self) -> &'a int {
+    fn get(&self) -> &'a isize {
         self.t
     }
 }
 
 impl<'a> Box<'a> {
-    fn add<'b,G:GetRef<'b>>(&self, g2: G) -> int {
+    fn add<'b,G:GetRef<'b>>(&self, g2: G) -> isize {
         *self.t + *g2.get()
     }
 }

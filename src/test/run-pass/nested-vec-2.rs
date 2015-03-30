@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate "#a" as bar; //~ ERROR: invalid character `#` in crate name: `#a`
-//~^ WARNING: obsolete syntax
+// Test that using the `vec!` macro nested within itself works
+// when the contents implement Drop
 
-fn main() {}
+struct D(u32);
+
+impl Drop for D {
+    fn drop(&mut self) { println!("Dropping {}", self.0); }
+}
+
+fn main() {
+    let nested = vec![vec![D(1u32), D(2u32), D(3u32)]];
+    assert_eq!(nested[0][1].0, 2);
+}

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #[no_mangle]
-pub fn test(x: &[int]) -> int {
+pub fn test(x: &[isize]) -> isize {
     let mut y = 0;
     let mut i = 0;
     while (i < x.len()) {

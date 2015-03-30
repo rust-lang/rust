@@ -11,4 +11,4 @@
 
 use std::collections::HashMap;
 
-pub type map = Box<HashMap<uint, uint>>;
+pub type map = Box<HashMap<usize, usize>>;

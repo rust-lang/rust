@@ -43,7 +43,7 @@ use env;
 use error::{FromError, Error};
 use ffi::{OsString, OsStr};
 use fmt;
-use iter::{Iterator, IteratorExt};
+use iter::Iterator;
 use libc::{c_void, c_int, c_char};
 use libc;
 use marker::{Copy, Send};
@@ -100,9 +100,9 @@ fn path2old(path: &path::Path) -> Path {
 }
 
 /// Get the number of cores available
-pub fn num_cpus() -> uint {
+pub fn num_cpus() -> usize {
     unsafe {
-        return rust_get_num_cpus() as uint;
+        return rust_get_num_cpus() as usize;
     }
 
     extern {
@@ -110,7 +110,7 @@ pub fn num_cpus() -> uint {
     }
 }
 
-pub const TMPBUF_SZ : uint = 1000;
+pub const TMPBUF_SZ : usize = 1000;
 
 /// Returns the current working directory as a `Path`.
 ///
@@ -592,7 +592,7 @@ pub fn last_os_error() -> String {
 /// Note that this is not synchronized against modifications of other threads.
 #[deprecated(since = "1.0.0", reason = "renamed to env::set_exit_status")]
 #[unstable(feature = "os")]
-pub fn set_exit_status(code: int) {
+pub fn set_exit_status(code: isize) {
     env::set_exit_status(code as i32)
 }
 
@@ -600,12 +600,12 @@ pub fn set_exit_status(code: int) {
 /// by calling `set_exit_status`.
 #[deprecated(since = "1.0.0", reason = "renamed to env::get_exit_status")]
 #[unstable(feature = "os")]
-pub fn get_exit_status() -> int {
+pub fn get_exit_status() -> isize {
     env::get_exit_status() as isize
 }
 
 #[cfg(target_os = "macos")]
-unsafe fn load_argc_and_argv(argc: int,
+unsafe fn load_argc_and_argv(argc: isize,
                              argv: *const *const c_char) -> Vec<Vec<u8>> {
     use ffi::CStr;
 
@@ -620,7 +620,7 @@ unsafe fn load_argc_and_argv(argc: int,
 #[cfg(target_os = "macos")]
 fn real_args_as_bytes() -> Vec<Vec<u8>> {
     unsafe {
-        let (argc, argv) = (*_NSGetArgc() as int,
+        let (argc, argv) = (*_NSGetArgc() as isize,
                             *_NSGetArgv() as *const *const c_char);
         load_argc_and_argv(argc, argv)
     }
@@ -670,7 +670,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
         let info = objc_msgSend(klass, processInfoSel);
         let args = objc_msgSend(info, argumentsSel);
 
-        let cnt: int = mem::transmute(objc_msgSend(args, countSel));
+        let cnt: isize = mem::transmute(objc_msgSend(args, countSel));
         for i in 0..cnt {
             let tmp = objc_msgSend(args, objectAtSel, i);
             let utf_c_str: *const libc::c_char =
@@ -711,11 +711,11 @@ fn real_args() -> Vec<String> {
     let lpCmdLine = unsafe { GetCommandLineW() };
     let szArgList = unsafe { CommandLineToArgvW(lpCmdLine, lpArgCount) };
 
-    let args: Vec<_> = (0..nArgs as uint).map(|i| unsafe {
+    let args: Vec<_> = (0..nArgs as usize).map(|i| unsafe {
         // Determine the length of this argument.
-        let ptr = *szArgList.offset(i as int);
+        let ptr = *szArgList.offset(i as isize);
         let mut len = 0;
-        while *ptr.offset(len as int) != 0 { len += 1; }
+        while *ptr.offset(len as isize) != 0 { len += 1; }
 
         // Push it onto the list.
         let ptr = ptr as *const u16;
@@ -796,7 +796,7 @@ extern {
 /// Returns the page size of the current architecture in bytes.
 #[deprecated(since = "1.0.0", reason = "renamed to env::page_size")]
 #[unstable(feature = "os")]
-pub fn page_size() -> uint {
+pub fn page_size() -> usize {
     sys::os::page_size()
 }
 
@@ -810,7 +810,7 @@ pub fn page_size() -> uint {
 /// let it leave scope by accident if you want it to stick around.
 pub struct MemoryMap {
     data: *mut u8,
-    len: uint,
+    len: usize,
     kind: MemoryMapKind,
 }
 
@@ -846,9 +846,9 @@ pub enum MapOption {
     /// Create a memory mapping for a file with a given fd.
     #[cfg(not(windows))]
     MapFd(c_int),
-    /// When using `MapFd`, the start of the map is `uint` bytes from the start
+    /// When using `MapFd`, the start of the map is `usize` bytes from the start
     /// of the file.
-    MapOffset(uint),
+    MapOffset(usize),
     /// On POSIX, this can be used to specify the default flags passed to
     /// `mmap`. By default it uses `MAP_PRIVATE` and, if not using `MapFd`,
     /// `MAP_ANON`. This will override both of those. This is platform-specific
@@ -880,7 +880,7 @@ pub enum MapError {
     /// Not all platforms obey this, but this wrapper does.
     ErrZeroLength,
     /// Unrecognized error. The inner value is the unrecognized errno.
-    ErrUnknown(int),
+    ErrUnknown(isize),
     /// # The following are Windows-specific
     ///
     /// Unsupported combination of protection flags
@@ -940,7 +940,7 @@ impl Error for MapError {
 }
 
 // Round up `from` to be divisible by `to`
-fn round_up(from: uint, to: uint) -> uint {
+fn round_up(from: usize, to: usize) -> usize {
     let r = if from % to == 0 {
         from
     } else {
@@ -958,7 +958,7 @@ impl MemoryMap {
     /// Create a new mapping with the given `options`, at least `min_len` bytes
     /// long. `min_len` must be greater than zero; see the note on
     /// `ErrZeroLength`.
-    pub fn new(min_len: uint, options: &[MapOption]) -> Result<MemoryMap, MapError> {
+    pub fn new(min_len: usize, options: &[MapOption]) -> Result<MemoryMap, MapError> {
         use libc::off_t;
 
         if min_len == 0 {
@@ -1002,7 +1002,7 @@ impl MemoryMap {
                 libc::EINVAL => ErrUnaligned,
                 libc::ENODEV => ErrNoMapSupport,
                 libc::ENOMEM => ErrNoMem,
-                code => ErrUnknown(code as int)
+                code => ErrUnknown(code as isize)
             })
         } else {
             Ok(MemoryMap {
@@ -1019,7 +1019,7 @@ impl MemoryMap {
 
     /// Granularity that the offset or address must be for `MapOffset` and
     /// `MapAddr` respectively.
-    pub fn granularity() -> uint {
+    pub fn granularity() -> usize {
         env::page_size()
     }
 }
@@ -1040,7 +1040,7 @@ impl Drop for MemoryMap {
 #[cfg(windows)]
 impl MemoryMap {
     /// Create a new mapping with the given `options`, at least `min_len` bytes long.
-    pub fn new(min_len: uint, options: &[MapOption]) -> Result<MemoryMap, MapError> {
+    pub fn new(min_len: usize, options: &[MapOption]) -> Result<MemoryMap, MapError> {
         use libc::types::os::arch::extra::{LPVOID, DWORD, SIZE_T, HANDLE};
 
         let mut lpAddress: LPVOID = ptr::null_mut();
@@ -1048,7 +1048,7 @@ impl MemoryMap {
         let mut writable = false;
         let mut executable = false;
         let mut handle: HANDLE = libc::INVALID_HANDLE_VALUE;
-        let mut offset: uint = 0;
+        let mut offset: usize = 0;
         let len = round_up(min_len, env::page_size());
 
         for &o in options {
@@ -1083,7 +1083,7 @@ impl MemoryMap {
                                    libc::MEM_COMMIT | libc::MEM_RESERVE,
                                    flProtect)
             };
-            match r as uint {
+            match r as usize {
                 0 => Err(ErrVirtualAlloc(errno())),
                 _ => Ok(MemoryMap {
                    data: r as *mut u8,
@@ -1119,7 +1119,7 @@ impl MemoryMap {
                                             ((len as u64) >> 32) as DWORD,
                                             (offset & 0xffff_ffff) as DWORD,
                                             0);
-                match r as uint {
+                match r as usize {
                     0 => Err(ErrMapViewOfFile(errno())),
                     _ => Ok(MemoryMap {
                        data: r as *mut u8,
@@ -1133,13 +1133,13 @@ impl MemoryMap {
 
     /// Granularity of MapAddr() and MapOffset() parameter values.
     /// This may be greater than the value returned by page_size().
-    pub fn granularity() -> uint {
+    pub fn granularity() -> usize {
         use mem;
         unsafe {
             let mut info = mem::zeroed();
             libc::GetSystemInfo(&mut info);
 
-            return info.dwAllocationGranularity as uint;
+            return info.dwAllocationGranularity as usize;
         }
     }
 }
@@ -1178,7 +1178,7 @@ impl MemoryMap {
     /// Returns the pointer to the memory created or modified by this map.
     pub fn data(&self) -> *mut u8 { self.data }
     /// Returns the number of bytes this map applies to.
-    pub fn len(&self) -> uint { self.len }
+    pub fn len(&self) -> usize { self.len }
     /// Returns the type of mapping this represents.
     pub fn kind(&self) -> MemoryMapKind { self.kind }
 }
