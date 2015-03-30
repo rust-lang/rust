@@ -10,5 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
-fn wsucc(n: isize) -> isize { 0 + { return n + 1 } }
+use std::num::Int;
+
+fn wsucc<T:Int>(n: T) -> T { n + { return n } }
+
 pub fn main() { }

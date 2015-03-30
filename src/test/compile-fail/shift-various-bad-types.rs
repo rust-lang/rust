@@ -17,19 +17,19 @@ struct Panolpy {
 
 fn foo(p: &Panolpy) {
     22 >> p.char;
-    //~^ ERROR right-hand-side of a shift operation must have integral type
+    //~^ ERROR E0277
+    //~| ERROR E0277
 
     22 >> p.str;
-    //~^ ERROR right-hand-side of a shift operation must have integral type
+    //~^ ERROR E0277
+    //~| ERROR E0277
 
     22 >> p;
-    //~^ ERROR right-hand-side of a shift operation must have integral type
+    //~^ ERROR E0277
+    //~| ERROR E0277
 
-    // We could be more accepting in the case of a type not yet inferred, but not
-    // known to be an integer, but meh.
     let x;
-    22 >> x;
-    //~^ ERROR the type of this value must be known in this context
+    22 >> x; // ambiguity error winds up being suppressed
 
     22 >> 1;
     // Integer literal types are OK

@@ -3039,6 +3039,10 @@ pub fn mk_nil<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
     mk_tup(cx, Vec::new())
 }
 
+pub fn mk_bool<'tcx>(cx: &ctxt<'tcx>) -> Ty<'tcx> {
+    mk_t(cx, ty_bool)
+}
+
 pub fn mk_bare_fn<'tcx>(cx: &ctxt<'tcx>,
                         opt_def_id: Option<ast::DefId>,
                         fty: &'tcx BareFnTy<'tcx>) -> Ty<'tcx> {
@@ -3406,8 +3410,12 @@ pub fn type_is_scalar(ty: Ty) -> bool {
 /// Returns true if this type is a floating point type and false otherwise.
 pub fn type_is_floating_point(ty: Ty) -> bool {
     match ty.sty {
-        ty_float(_) => true,
-        _ => false,
+        ty_float(_) |
+        ty_infer(FloatVar(_)) =>
+            true,
+
+        _ =>
+            false,
     }
 }
 
@@ -5803,78 +5811,6 @@ pub fn closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
                     .collect()
         }
     }
-}
-
-pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool {
-    #![allow(non_upper_case_globals)]
-    const tycat_other: isize = 0;
-    const tycat_bool: isize = 1;
-    const tycat_char: isize = 2;
-    const tycat_int: isize = 3;
-    const tycat_float: isize = 4;
-    const tycat_raw_ptr: isize = 6;
-
-    const opcat_add: isize = 0;
-    const opcat_sub: isize = 1;
-    const opcat_mult: isize = 2;
-    const opcat_shift: isize = 3;
-    const opcat_rel: isize = 4;
-    const opcat_eq: isize = 5;
-    const opcat_bit: isize = 6;
-    const opcat_logic: isize = 7;
-    const opcat_mod: isize = 8;
-
-    fn opcat(op: ast::BinOp) -> isize {
-        match op.node {
-          ast::BiAdd => opcat_add,
-          ast::BiSub => opcat_sub,
-          ast::BiMul => opcat_mult,
-          ast::BiDiv => opcat_mult,
-          ast::BiRem => opcat_mod,
-          ast::BiAnd => opcat_logic,
-          ast::BiOr => opcat_logic,
-          ast::BiBitXor => opcat_bit,
-          ast::BiBitAnd => opcat_bit,
-          ast::BiBitOr => opcat_bit,
-          ast::BiShl => opcat_shift,
-          ast::BiShr => opcat_shift,
-          ast::BiEq => opcat_eq,
-          ast::BiNe => opcat_eq,
-          ast::BiLt => opcat_rel,
-          ast::BiLe => opcat_rel,
-          ast::BiGe => opcat_rel,
-          ast::BiGt => opcat_rel
-        }
-    }
-
-    fn tycat<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> isize {
-        if type_is_simd(cx, ty) {
-            return tycat(cx, simd_type(cx, ty))
-        }
-        match ty.sty {
-          ty_char => tycat_char,
-          ty_bool => tycat_bool,
-          ty_int(_) | ty_uint(_) | ty_infer(IntVar(_)) => tycat_int,
-          ty_float(_) | ty_infer(FloatVar(_)) => tycat_float,
-          ty_ptr(_) => tycat_raw_ptr,
-          _ => tycat_other
-        }
-    }
-
-    const t: bool = true;
-    const f: bool = false;
-
-    let tbl = [
-    //           +, -, *, shift, rel, ==, bit, logic, mod
-    /*other*/   [f, f, f, f,     f,   f,  f,   f,     f],
-    /*bool*/    [f, f, f, f,     t,   t,  t,   t,     f],
-    /*char*/    [f, f, f, f,     t,   t,  f,   f,     f],
-    /*isize*/     [t, t, t, t,     t,   t,  t,   f,     t],
-    /*float*/   [t, t, t, f,     t,   t,  f,   f,     f],
-    /*bot*/     [t, t, t, t,     t,   t,  t,   t,     t],
-    /*raw ptr*/ [f, f, f, f,     t,   t,  f,   f,     f]];
-
-    return tbl[tycat(cx, ty) as usize ][opcat(op) as usize];
 }
 
 // Returns the repeat count for a repeating vector expression.
