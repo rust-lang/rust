@@ -5509,12 +5509,12 @@ impl IntTypeExt for attr::IntType {
             SignedInt(ast::TyI16)     => cx.types.i16,
             SignedInt(ast::TyI32)     => cx.types.i32,
             SignedInt(ast::TyI64)     => cx.types.i64,
-            SignedInt(ast::TyIs)   => cx.types.int,
+            SignedInt(ast::TyIs)   => cx.types.isize,
             UnsignedInt(ast::TyU8)    => cx.types.u8,
             UnsignedInt(ast::TyU16)   => cx.types.u16,
             UnsignedInt(ast::TyU32)   => cx.types.u32,
             UnsignedInt(ast::TyU64)   => cx.types.u64,
-            UnsignedInt(ast::TyUs) => cx.types.uint,
+            UnsignedInt(ast::TyUs) => cx.types.usize,
         }
     }
 
