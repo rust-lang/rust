@@ -44,7 +44,7 @@ over
 ```rust
 let foo;
 match bar {
-    Baz  => {
+    Baz => {
         foo = 0;
     }
     Quux => {
