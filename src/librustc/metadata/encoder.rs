@@ -34,8 +34,7 @@ use std::io::prelude::*;
 use std::io::{Cursor, SeekFrom};
 use syntax::abi;
 use syntax::ast::{self, DefId, NodeId};
-use syntax::ast_map::{PathElem, PathElems};
-use syntax::ast_map;
+use syntax::ast_map::{self, LinkedPath, PathElem, PathElems};
 use syntax::ast_util::*;
 use syntax::ast_util;
 use syntax::attr;
@@ -1513,7 +1512,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
                         &krate.module,
                         &[],
                         ast::CRATE_NODE_ID,
-                        [].iter().cloned().chain(None),
+                        [].iter().cloned().chain(LinkedPath::empty()),
                         syntax::parse::token::special_idents::invalid,
                         ast::Public);
 
@@ -1874,7 +1873,7 @@ fn encode_misc_info(ecx: &EncodeContext,
     }
 
     // Encode reexports for the root module.
-    encode_reexports(ecx, rbml_w, 0, [].iter().cloned().chain(None));
+    encode_reexports(ecx, rbml_w, 0, [].iter().cloned().chain(LinkedPath::empty()));
 
     rbml_w.end_tag();
     rbml_w.end_tag();
