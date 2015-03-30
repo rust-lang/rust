@@ -735,7 +735,20 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
 
     let res: u64 = match ::std::num::from_str_radix(s, base).ok() {
         Some(r) => r,
-        None => { sd.span_err(sp, "int literal is too large"); 0 }
+        None => {
+            // small bases are lexed as if they were base 10, e.g, the string
+            // might be `0b10201`. This will cause the conversion above to fail,
+            // but these cases have errors in the lexer: we don't want to emit
+            // two errors, and we especially don't want to emit this error since
+            // it isn't necessarily true.
+            let already_errored = base < 10 &&
+                s.chars().any(|c| c.to_digit(10).map_or(false, |d| d >= base));
+
+            if !already_errored {
+                sd.span_err(sp, "int literal is too large");
+            }
+            0
+        }
     };
 
     // adjust the sign
