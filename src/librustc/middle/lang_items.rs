@@ -70,7 +70,7 @@ impl LanguageItems {
         self.items.iter().enumerate()
     }
 
-    pub fn item_name(index: uint) -> &'static str {
+    pub fn item_name(index: usize) -> &'static str {
         let item: Option<LangItem> = FromPrimitive::from_usize(index);
         match item {
             $( Some($variant) => $name, )*
@@ -79,11 +79,11 @@ impl LanguageItems {
     }
 
     pub fn require(&self, it: LangItem) -> Result<ast::DefId, String> {
-        match self.items[it as uint] {
+        match self.items[it as usize] {
             Some(id) => Ok(id),
             None => {
                 Err(format!("requires `{}` lang_item",
-                            LanguageItems::item_name(it as uint)))
+                            LanguageItems::item_name(it as usize)))
             }
         }
     }
@@ -132,7 +132,7 @@ impl LanguageItems {
     $(
         #[allow(dead_code)]
         pub fn $method(&self) -> Option<ast::DefId> {
-            self.items[$variant as uint]
+            self.items[$variant as usize]
         }
     )*
 }
@@ -142,7 +142,7 @@ struct LanguageItemCollector<'a> {
 
     session: &'a Session,
 
-    item_refs: FnvHashMap<&'static str, uint>,
+    item_refs: FnvHashMap<&'static str, usize>,
 }
 
 impl<'a, 'v> Visitor<'v> for LanguageItemCollector<'a> {
@@ -163,7 +163,7 @@ impl<'a> LanguageItemCollector<'a> {
     pub fn new(session: &'a Session) -> LanguageItemCollector<'a> {
         let mut item_refs = FnvHashMap();
 
-        $( item_refs.insert($name, $variant as uint); )*
+        $( item_refs.insert($name, $variant as usize); )*
 
         LanguageItemCollector {
             session: session,
@@ -172,7 +172,7 @@ impl<'a> LanguageItemCollector<'a> {
         }
     }
 
-    pub fn collect_item(&mut self, item_index: uint,
+    pub fn collect_item(&mut self, item_index: usize,
                         item_def_id: ast::DefId, span: Span) {
         // Check for duplicates.
         match self.items.items[item_index] {

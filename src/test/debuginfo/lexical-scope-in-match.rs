@@ -128,8 +128,8 @@
 #![omit_gdb_pretty_printer_section]
 
 struct Struct {
-    x: int,
-    y: int
+    x: isize,
+    y: isize
 }
 
 fn main() {

@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-struct thing { x: int, }
+struct thing { x: isize, }
 
 impl Drop for thing {
     fn drop(&mut self) {}

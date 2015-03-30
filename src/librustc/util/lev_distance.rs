@@ -10,7 +10,7 @@
 
 use std::cmp;
 
-pub fn lev_distance(me: &str, t: &str) -> uint {
+pub fn lev_distance(me: &str, t: &str) -> usize {
     if me.is_empty() { return t.chars().count(); }
     if t.is_empty() { return me.chars().count(); }
 

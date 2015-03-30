@@ -1752,7 +1752,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
 // LifeGiver is responsible for generating fresh lifetime names
 struct LifeGiver {
     taken: HashSet<String>,
-    counter: Cell<uint>,
+    counter: Cell<usize>,
     generated: RefCell<Vec<ast::Lifetime>>,
 }
 
@@ -1792,7 +1792,7 @@ impl LifeGiver {
         return lifetime;
 
         // 0 .. 25 generates a .. z, 26 .. 51 generates aa .. zz, and so on
-        fn num_to_string(counter: uint) -> String {
+        fn num_to_string(counter: usize) -> String {
             let mut s = String::new();
             let (n, r) = (counter/26 + 1, counter % 26);
             let letter: char = from_u32((r+97) as u32).unwrap();

@@ -10,9 +10,9 @@
 
 // pretty-expanded FIXME #23616
 
-fn f() -> int {
+fn f() -> isize {
     mod m {
-        pub fn g() -> int { 720 }
+        pub fn g() -> isize { 720 }
     }
 
     m::g()

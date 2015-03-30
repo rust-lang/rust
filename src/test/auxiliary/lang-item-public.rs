@@ -20,7 +20,7 @@ impl<A:?Sized, R:?Sized, U:?Sized> PhantomFn<A,R> for U { }
 pub trait Sized : PhantomFn<Self> {}
 
 #[lang="panic"]
-fn panic(_: &(&'static str, &'static str, uint)) -> ! { loop {} }
+fn panic(_: &(&'static str, &'static str, usize)) -> ! { loop {} }
 
 #[lang = "stack_exhausted"]
 extern fn stack_exhausted() {}

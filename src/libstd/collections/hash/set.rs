@@ -18,9 +18,7 @@ use default::Default;
 use fmt::Debug;
 use fmt;
 use hash::Hash;
-use iter::{
-    Iterator, IntoIterator, ExactSizeIterator, IteratorExt, FromIterator, Map, Chain, Extend,
-};
+use iter::{Iterator, IntoIterator, ExactSizeIterator, FromIterator, Map, Chain, Extend};
 use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, self};
 
@@ -36,7 +34,16 @@ use super::state::HashState;
 
 /// An implementation of a hash set using the underlying representation of a
 /// HashMap where the value is (). As with the `HashMap` type, a `HashSet`
-/// requires that the elements implement the `Eq` and `Hash` traits.
+/// requires that the elements implement the `Eq` and `Hash` traits. This can
+/// frequently be achieved by using `#[derive(Eq, Hash)]`. If you implement
+/// these yourself, it is important that the following property holds:
+///
+/// ```text
+/// k1 == k2 -> hash(k1) == hash(k2)
+/// ```
+///
+/// In other words, if two keys are equal, their hashes must be equal.
+///
 ///
 /// It is a logic error for an item to be modified in such a way that the
 /// item's hash, as determined by the `Hash` trait, or its equality, as
@@ -614,14 +621,7 @@ impl<T, S> fmt::Debug for HashSet<T, S>
           S: HashState
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{{"));
-
-        for (i, x) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{:?}", *x));
-        }
-
-        write!(f, "}}")
+        self.iter().fold(f.debug_set(), |b, e| b.entry(e)).finish()
     }
 }
 

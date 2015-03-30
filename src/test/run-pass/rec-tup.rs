@@ -11,14 +11,14 @@
 // pretty-expanded FIXME #23616
 
 #[derive(Copy)]
-struct Point {x: int, y: int}
+struct Point {x: isize, y: isize}
 
 type rect = (Point, Point);
 
 fn fst(r: rect) -> Point { let (fst, _) = r; return fst; }
 fn snd(r: rect) -> Point { let (_, snd) = r; return snd; }
 
-fn f(r: rect, x1: int, y1: int, x2: int, y2: int) {
+fn f(r: rect, x1: isize, y1: isize, x2: isize, y2: isize) {
     assert_eq!(fst(r).x, x1);
     assert_eq!(fst(r).y, y1);
     assert_eq!(snd(r).x, x2);
@@ -32,7 +32,7 @@ pub fn main() {
     assert_eq!(snd(r).x, 11);
     assert_eq!(snd(r).y, 22);
     let r2 = r;
-    let x: int = fst(r2).x;
+    let x: isize = fst(r2).x;
     assert_eq!(x, 10);
     f(r, 10, 20, 11, 22);
     f(r2, 10, 20, 11, 22);

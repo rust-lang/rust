@@ -13,7 +13,7 @@
 // pretty-expanded FIXME #23616
 
 pub fn main() {
-    let _f = |ref x: int| { *x };
+    let _f = |ref x: isize| { *x };
     let foo = 10;
     assert!(_f(foo) == 10);
 }

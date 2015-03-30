@@ -10,14 +10,14 @@
 
 
 
-fn range_<F>(a: int, b: int, mut it: F) where F: FnMut(int) {
+fn range_<F>(a: isize, b: isize, mut it: F) where F: FnMut(isize) {
     assert!((a < b));
-    let mut i: int = a;
+    let mut i: isize = a;
     while i < b { it(i); i += 1; }
 }
 
 pub fn main() {
-    let mut sum: int = 0;
+    let mut sum: isize = 0;
     range_(0, 100, |x| sum += x );
     println!("{}", sum);
 }

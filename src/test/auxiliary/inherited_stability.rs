@@ -43,7 +43,7 @@ pub trait Stable {
     fn stable(&self);
 }
 
-impl Stable for uint {
+impl Stable for usize {
     fn unstable(&self) {}
     fn stable(&self) {}
 }

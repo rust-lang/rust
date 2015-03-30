@@ -60,16 +60,16 @@ pub const RLIB_BYTECODE_OBJECT_MAGIC: &'static [u8] = b"RUST_OBJECT";
 pub const RLIB_BYTECODE_OBJECT_VERSION: u32 = 1;
 
 // The offset in bytes the bytecode object format version number can be found at
-pub const RLIB_BYTECODE_OBJECT_VERSION_OFFSET: uint = 11;
+pub const RLIB_BYTECODE_OBJECT_VERSION_OFFSET: usize = 11;
 
 // The offset in bytes the size of the compressed bytecode can be found at in
 // format version 1
-pub const RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: uint =
+pub const RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET: usize =
     RLIB_BYTECODE_OBJECT_VERSION_OFFSET + 4;
 
 // The offset in bytes the compressed LLVM bytecode can be found at in format
 // version 1
-pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: uint =
+pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: usize =
     RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET + 8;
 
 
@@ -159,11 +159,19 @@ pub fn find_crate_name(sess: Option<&Session>,
     }
     if let Input::File(ref path) = *input {
         if let Some(s) = path.file_stem().and_then(|s| s.to_str()) {
-            return validate(s.to_string(), None);
+            if s.starts_with("-") {
+                let msg = format!("crate names cannot start with a `-`, but \
+                                   `{}` has a leading hyphen", s);
+                if let Some(sess) = sess {
+                    sess.err(&msg);
+                }
+            } else {
+                return validate(s.replace("-", "_"), None);
+            }
         }
     }
 
-    "rust-out".to_string()
+    "rust_out".to_string()
 }
 
 pub fn build_link_meta(sess: &Session, krate: &ast::Crate,
@@ -323,7 +331,7 @@ pub fn mangle_exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, path: PathEl
         "abcdefghijklmnopqrstuvwxyz\
          ABCDEFGHIJKLMNOPQRSTUVWXYZ\
          0123456789";
-    let id = id as uint;
+    let id = id as usize;
     let extra1 = id % EXTRA_CHARS.len();
     let id = id / EXTRA_CHARS.len();
     let extra2 = id % EXTRA_CHARS.len();
@@ -455,7 +463,11 @@ pub fn filename_for_input(sess: &Session,
         }
         config::CrateTypeExecutable => {
             let suffix = &sess.target.target.options.exe_suffix;
-            out_filename.with_file_name(&format!("{}{}", libname, suffix))
+            if suffix.len() == 0 {
+                out_filename.to_path_buf()
+            } else {
+                out_filename.with_extension(&suffix[1..])
+            }
         }
     }
 }
@@ -695,7 +707,7 @@ fn write_rlib_bytecode_object_v1(writer: &mut Write,
         RLIB_BYTECODE_OBJECT_MAGIC.len() +                // magic id
         mem::size_of_val(&RLIB_BYTECODE_OBJECT_VERSION) + // version
         mem::size_of_val(&bc_data_deflated_size) +        // data size field
-        bc_data_deflated_size as uint;                    // actual data
+        bc_data_deflated_size as usize;                    // actual data
 
     // If the number of bytes written to the object so far is odd, add a
     // padding byte to make it even. This works around a crash bug in LLDB
@@ -1154,7 +1166,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         // We may not pass all crates through to the linker. Some crates may
         // appear statically in an existing dylib, meaning we'll pick up all the
         // symbols from the dylib.
-        let kind = match data[cnum as uint - 1] {
+        let kind = match data[cnum as usize - 1] {
             Some(t) => t,
             None => continue
         };

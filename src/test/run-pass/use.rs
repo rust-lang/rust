@@ -15,7 +15,7 @@
 #![no_std]
 
 extern crate std;
-extern crate "std" as zed;
+extern crate std as zed;
 
 use std::str;
 use zed::str as x;
@@ -24,4 +24,4 @@ mod baz {
 }
 
 #[start]
-pub fn start(_: int, _: *const *const u8) -> int { 0 }
+pub fn start(_: isize, _: *const *const u8) -> isize { 0 }

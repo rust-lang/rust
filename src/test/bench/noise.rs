@@ -61,9 +61,9 @@ impl Noise2DContext {
     }
 
     fn get_gradient(&self, x: i32, y: i32) -> Vec2 {
-        let idx = self.permutations[(x & 255) as uint] +
-                    self.permutations[(y & 255) as uint];
-        self.rgradients[(idx & 255) as uint]
+        let idx = self.permutations[(x & 255) as usize] +
+                    self.permutations[(y & 255) as usize];
+        self.rgradients[(idx & 255) as usize]
     }
 
     fn get_gradients(&self, x: f32, y: f32) -> ([Vec2; 4], [Vec2; 4]) {
@@ -117,7 +117,7 @@ fn main() {
 
     for y in 0..256 {
         for x in 0..256 {
-            let idx = (pixels[y*256+x] / 0.2) as uint;
+            let idx = (pixels[y*256+x] / 0.2) as usize;
             print!("{}", symbols[idx]);
         }
         print!("\n");

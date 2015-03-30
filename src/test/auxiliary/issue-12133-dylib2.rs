@@ -12,5 +12,5 @@
 
 #![crate_type = "dylib"]
 
-extern crate "issue-12133-rlib" as a;
-extern crate "issue-12133-dylib" as b;
+extern crate issue_12133_rlib as a;
+extern crate issue_12133_dylib as b;

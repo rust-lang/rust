@@ -67,7 +67,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<PathBuf>> {
                 return Some(box newp);
             }
             // on some installations the dir is named after the hex of the char (e.g. OS X)
-            let f = format!("{:x}", first_char as uint);
+            let f = format!("{:x}", first_char as usize);
             let newp = p.join(&f).join(term);
             if newp.exists() {
                 return Some(box newp);

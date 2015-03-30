@@ -56,7 +56,7 @@ struct TypeContext<'tcx, 'ast> {
     type_table: HashMap<NodeId, Type<'tcx>>,
 
     ast_arena: &'ast AstArena<'ast>,
-    ast_counter: uint,
+    ast_counter: usize,
 }
 
 impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
@@ -96,7 +96,7 @@ impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
 
 #[derive(Copy, PartialEq, Eq, Hash)]
 struct NodeId {
-    id: uint
+    id: usize
 }
 
 type Ast<'ast> = &'ast AstStructure<'ast>;
@@ -110,7 +110,7 @@ struct AstStructure<'ast> {
 #[derive(Copy)]
 enum AstKind<'ast> {
     ExprInt,
-    ExprVar(uint),
+    ExprVar(usize),
     ExprLambda(Ast<'ast>),
 }
 

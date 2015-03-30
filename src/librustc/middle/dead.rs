@@ -145,7 +145,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
         }
     }
 
-    fn handle_tup_field_access(&mut self, lhs: &ast::Expr, idx: uint) {
+    fn handle_tup_field_access(&mut self, lhs: &ast::Expr, idx: usize) {
         match ty::expr_ty_adjusted(self.tcx, lhs).sty {
             ty::ty_struct(id, _) => {
                 let fields = ty::lookup_struct_fields(self.tcx, id);

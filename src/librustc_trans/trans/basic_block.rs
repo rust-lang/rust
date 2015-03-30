@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use llvm;
-use llvm::{BasicBlockRef};
+use llvm::BasicBlockRef;
 use trans::value::{Users, Value};
 use std::iter::{Filter, Map};
 

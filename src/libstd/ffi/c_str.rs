@@ -15,7 +15,7 @@ use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use error::{Error, FromError};
 use fmt;
 use io;
-use iter::IteratorExt;
+use iter::Iterator;
 use libc;
 use mem;
 #[allow(deprecated)]

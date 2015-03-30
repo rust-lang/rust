@@ -13,6 +13,6 @@
 #[macro_use] extern crate log;
 
 pub fn foo<T>() {
-    fn death() -> int { panic!() }
+    fn death() -> isize { panic!() }
     debug!("{}", (||{ death() })());
 }

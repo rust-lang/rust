@@ -12,7 +12,7 @@
 
 use super::Normalized;
 use super::SelectionContext;
-use super::{ObligationCause};
+use super::ObligationCause;
 use super::PredicateObligation;
 use super::project;
 use super::util;

@@ -21,7 +21,7 @@ impl<T> option_<T> {
 
 enum option__ {
     none__,
-    some__(int)
+    some__(isize)
 }
 
 impl option__ {

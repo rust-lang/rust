@@ -22,7 +22,7 @@ use metadata::cstore;
 use metadata::decoder;
 use metadata::tyencode;
 use middle::def;
-use middle::ty::{lookup_item_type};
+use middle::ty::lookup_item_type;
 use middle::ty::{self, Ty};
 use middle::stability;
 use util::nodemap::{FnvHashMap, NodeMap, NodeSet};
@@ -105,7 +105,7 @@ struct entry<T> {
 fn encode_trait_ref<'a, 'tcx>(rbml_w: &mut Encoder,
                               ecx: &EncodeContext<'a, 'tcx>,
                               trait_ref: &ty::TraitRef<'tcx>,
-                              tag: uint) {
+                              tag: usize) {
     let ty_str_ctxt = &tyencode::ctxt {
         diag: ecx.diag,
         ds: def_to_string,
@@ -703,7 +703,7 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
                              ecx: &EncodeContext<'a, 'tcx>,
                              generics: &ty::Generics<'tcx>,
                              predicates: &ty::GenericPredicates<'tcx>,
-                             tag: uint)
+                             tag: usize)
 {
     rbml_w.start_tag(tag);
 
@@ -777,7 +777,7 @@ fn encode_predicates_in_current_doc<'a,'tcx>(rbml_w: &mut Encoder,
 fn encode_predicates<'a,'tcx>(rbml_w: &mut Encoder,
                               ecx: &EncodeContext<'a,'tcx>,
                               predicates: &ty::GenericPredicates<'tcx>,
-                              tag: uint)
+                              tag: usize)
 {
     rbml_w.start_tag(tag);
     encode_predicates_in_current_doc(rbml_w, ecx, predicates);
@@ -1538,7 +1538,7 @@ fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: 
     for elt in index {
         let mut s = SipHasher::new();
         elt.val.hash(&mut s);
-        let h = s.finish() as uint;
+        let h = s.finish() as usize;
         (&mut buckets[h % 256]).push(elt);
     }
 
@@ -1944,7 +1944,7 @@ pub fn encode_metadata(parms: EncodeParams, krate: &ast::Crate) -> Vec<u8> {
 
     // RBML compacts the encoded bytes whenever appropriate,
     // so there are some garbages left after the end of the data.
-    let metalen = wr.seek(SeekFrom::Current(0)).unwrap() as uint;
+    let metalen = wr.seek(SeekFrom::Current(0)).unwrap() as usize;
     let mut v = wr.into_inner();
     v.truncate(metalen);
     assert_eq!(v.len(), metalen);

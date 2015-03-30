@@ -17,10 +17,10 @@ fn call_it(f: Box<FnMut(String) -> String>) { }
 
 fn call_this<F>(f: F) where F: Fn(&str) + Send { }
 
-fn call_that<F>(f: F) where F: for<'a>Fn(&'a int, &'a int) -> int { }
+fn call_that<F>(f: F) where F: for<'a>Fn(&'a isize, &'a isize) -> isize { }
 
-fn call_extern(f: fn() -> int) { }
+fn call_extern(f: fn() -> isize) { }
 
-fn call_abid_extern(f: extern "C" fn() -> int) { }
+fn call_abid_extern(f: extern "C" fn() -> isize) { }
 
 pub fn main() { }

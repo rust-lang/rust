@@ -19,8 +19,8 @@ pub use self::SocketType::*;
 pub use self::Flag::*;
 pub use self::Protocol::*;
 
-use iter::IteratorExt;
-use old_io::{IoResult};
+use iter::Iterator;
+use old_io::IoResult;
 use old_io::net::ip::{SocketAddr, IpAddr};
 use option::Option;
 use option::Option::{Some, None};
@@ -63,19 +63,19 @@ pub enum Protocol {
 /// `man -s 3 getaddrinfo`
 #[derive(Copy, Debug)]
 pub struct Hint {
-    pub family: uint,
+    pub family: usize,
     pub socktype: Option<SocketType>,
     pub protocol: Option<Protocol>,
-    pub flags: uint,
+    pub flags: usize,
 }
 
 #[derive(Copy, Debug)]
 pub struct Info {
     pub address: SocketAddr,
-    pub family: uint,
+    pub family: usize,
     pub socktype: Option<SocketType>,
     pub protocol: Option<Protocol>,
-    pub flags: uint,
+    pub flags: usize,
 }
 
 /// Easy name resolution. Given a hostname, returns the list of IP addresses for

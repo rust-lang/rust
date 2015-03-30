@@ -14,11 +14,11 @@
 #![feature(box_syntax)]
 
 pub struct Foo {
-    a: int,
+    a: isize,
 }
 
 struct Bar<'a> {
-    a: Box<Option<int>>,
+    a: Box<Option<isize>>,
     b: &'a Foo,
 }
 

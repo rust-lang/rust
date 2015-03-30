@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // Regression test for type inference failure around shifting. In this
-// case, the iteration yields an int, but we hadn't run the full type
+// case, the iteration yields an isize, but we hadn't run the full type
 // propagation yet, and so we just saw a type variable, yielding an
 // error.
 

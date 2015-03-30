@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-struct Foo { foo: bool, bar: Option<int>, baz: int }
+struct Foo { foo: bool, bar: Option<isize>, baz: isize }
 
 pub fn main() {
     match (Foo{foo: true, bar: Some(10), baz: 20}) {

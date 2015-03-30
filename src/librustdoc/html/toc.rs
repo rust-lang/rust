@@ -33,7 +33,7 @@ pub struct Toc {
 }
 
 impl Toc {
-    fn count_entries_with_level(&self, level: u32) -> uint {
+    fn count_entries_with_level(&self, level: u32) -> usize {
         self.entries.iter().filter(|e| e.level == level).count()
     }
 }

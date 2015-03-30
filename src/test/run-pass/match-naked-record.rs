@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-struct X { x: int }
+struct X { x: isize }
 
 pub fn main() {
     let _x = match 0 {

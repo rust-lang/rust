@@ -67,9 +67,8 @@
 //! module encapsulates the platform-specific rules for dealing
 //! with file paths.
 //!
-//! `std` also includes modules for interoperating with the
-//! C language: [`c_str`](c_str/index.html) and
-//! [`c_vec`](c_vec/index.html).
+//! `std` also includes the [`ffi`](ffi/index.html) module for interoperating
+//! with the C language.
 //!
 //! ## Concurrency, I/O, and the runtime
 //!
@@ -114,21 +113,22 @@
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(linkage, thread_local, asm)]
-#![feature(old_impl_check)]
 #![feature(optin_builtin_traits)]
 #![feature(rand)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unsafe_destructor)]
-#![feature(unsafe_no_drop_flag)]
+#![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(macro_reexport)]
-#![feature(int_uint)]
 #![feature(unique)]
 #![feature(convert)]
 #![feature(allow_internal_unstable)]
 #![feature(str_char)]
 #![feature(into_cow)]
+#![feature(slice_patterns)]
+#![feature(std_misc)]
+#![feature(debug_builders)]
 #![cfg_attr(test, feature(test, rustc_private, std_misc))]
 
 // Don't link to std. We are std.
@@ -136,7 +136,6 @@
 #![no_std]
 
 #![allow(trivial_casts)]
-#![allow(trivial_numeric_casts)]
 #![deny(missing_docs)]
 
 #[cfg(test)] extern crate test;

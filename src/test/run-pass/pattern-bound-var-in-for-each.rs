@@ -14,7 +14,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn foo(src: uint) {
+fn foo(src: usize) {
 
     match Some(src) {
       Some(src_id) => {

@@ -9,6 +9,6 @@
 // except according to those terms.
 
 #[no_mangle]
-pub fn test() -> int {
+pub fn test() -> isize {
     5
 }

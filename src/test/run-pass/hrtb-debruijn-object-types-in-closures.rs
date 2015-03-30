@@ -11,7 +11,7 @@
 // pretty-expanded FIXME #23616
 
 trait Typer<'tcx> {
-    fn method(&self, data: &'tcx int) -> &'tcx int { data }
+    fn method(&self, data: &'tcx isize) -> &'tcx isize { data }
     fn dummy(&self) { }
 }
 

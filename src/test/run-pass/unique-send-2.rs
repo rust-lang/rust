@@ -16,7 +16,7 @@
 use std::sync::mpsc::{channel, Sender};
 use std::thread;
 
-fn child(tx: &Sender<Box<uint>>, i: uint) {
+fn child(tx: &Sender<Box<usize>>, i: usize) {
     tx.send(box i).unwrap();
 }
 

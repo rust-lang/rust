@@ -20,7 +20,7 @@ use std::thread::Thread;
 use std::thunk::Thunk;
 
 #[start]
-fn start(argc: int, argv: *const *const u8) -> int {
+fn start(argc: isize, argv: *const *const u8) -> isize {
     if argc > 1 {
         unsafe {
             match **argv.offset(1) {
@@ -36,8 +36,8 @@ fn start(argc: int, argv: *const *const u8) -> int {
     }
 
     let args = unsafe {
-        (0..argc as uint).map(|i| {
-            let ptr = *argv.offset(i as int) as *const _;
+        (0..argc as usize).map(|i| {
+            let ptr = *argv.offset(i as isize) as *const _;
             ffi::c_str_to_bytes(&ptr).to_vec()
         }).collect::<Vec<_>>()
     };

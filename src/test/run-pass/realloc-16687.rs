@@ -28,10 +28,10 @@ fn main() {
 }
 
 unsafe fn test_triangle() -> bool {
-    static COUNT : uint = 16;
+    static COUNT : usize = 16;
     let mut ascend = repeat(ptr::null_mut()).take(COUNT).collect::<Vec<_>>();
     let ascend = &mut *ascend;
-    static ALIGN : uint = 1;
+    static ALIGN : usize = 1;
 
     // Checks that `ascend` forms triangle of ascending size formed
     // from pairs of rows (where each pair of rows is equally sized),
@@ -40,37 +40,37 @@ unsafe fn test_triangle() -> bool {
         for i in 0..COUNT / 2 {
             let (p0, p1, size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));
             for j in 0..size {
-                assert_eq!(*p0.offset(j as int), i as u8);
-                assert_eq!(*p1.offset(j as int), i as u8);
+                assert_eq!(*p0.offset(j as isize), i as u8);
+                assert_eq!(*p1.offset(j as isize), i as u8);
             }
         }
     }
 
     static PRINT : bool = false;
 
-    unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
+    unsafe fn allocate(size: usize, align: usize) -> *mut u8 {
         if PRINT { println!("allocate(size={} align={})", size, align); }
 
         let ret = heap::allocate(size, align);
         if ret.is_null() { alloc::oom() }
 
         if PRINT { println!("allocate(size={} align={}) ret: 0x{:010x}",
-                            size, align, ret as uint);
+                            size, align, ret as usize);
         }
 
         ret
     }
-    unsafe fn deallocate(ptr: *mut u8, size: uint, align: uint) {
+    unsafe fn deallocate(ptr: *mut u8, size: usize, align: usize) {
         if PRINT { println!("deallocate(ptr=0x{:010x} size={} align={})",
-                            ptr as uint, size, align);
+                            ptr as usize, size, align);
         }
 
         heap::deallocate(ptr, size, align);
     }
-    unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> *mut u8 {
+    unsafe fn reallocate(ptr: *mut u8, old_size: usize, size: usize, align: usize) -> *mut u8 {
         if PRINT {
             println!("reallocate(ptr=0x{:010x} old_size={} size={} align={})",
-                     ptr as uint, old_size, size, align);
+                     ptr as usize, old_size, size, align);
         }
 
         let ret = heap::reallocate(ptr, old_size, size, align);
@@ -79,12 +79,12 @@ unsafe fn test_triangle() -> bool {
         if PRINT {
             println!("reallocate(ptr=0x{:010x} old_size={} size={} align={}) \
                       ret: 0x{:010x}",
-                     ptr as uint, old_size, size, align, ret as uint);
+                     ptr as usize, old_size, size, align, ret as usize);
         }
         ret
     }
 
-    fn idx_to_size(i: uint) -> uint { (i+1) * 10 }
+    fn idx_to_size(i: usize) -> usize { (i+1) * 10 }
 
     // Allocate pairs of rows that form a triangle shape.  (Hope is
     // that at least two rows will be allocated near each other, so
@@ -100,8 +100,8 @@ unsafe fn test_triangle() -> bool {
     for i in 0..COUNT / 2 {
         let (p0, p1, size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));
         for j in 0..size {
-            *p0.offset(j as int) = i as u8;
-            *p1.offset(j as int) = i as u8;
+            *p0.offset(j as isize) = i as u8;
+            *p1.offset(j as isize) = i as u8;
         }
     }
 

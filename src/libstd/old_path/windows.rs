@@ -21,7 +21,7 @@ use fmt;
 use hash;
 use old_io::Writer;
 use iter::{AdditiveIterator, Extend};
-use iter::{Iterator, IteratorExt, Map, repeat};
+use iter::{Iterator, Map, repeat};
 use mem;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
@@ -81,7 +81,7 @@ pub type Components<'a> =
 pub struct Path {
     repr: String, // assumed to never be empty
     prefix: Option<PathPrefix>,
-    sepidx: Option<uint> // index of the final separator in the non-prefix portion of repr
+    sepidx: Option<usize> // index of the final separator in the non-prefix portion of repr
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -749,7 +749,7 @@ impl Path {
                     if prefix.is_some() && comps.is_empty() {
                         match prefix.unwrap() {
                             DiskPrefix => {
-                                let len = prefix_len(prefix) + is_abs as uint;
+                                let len = prefix_len(prefix) + is_abs as usize;
                                 let mut s = String::from_str(&s[..len]);
                                 unsafe {
                                     let v = s.as_mut_vec();
@@ -764,7 +764,7 @@ impl Path {
                                 Some(s)
                             }
                             VerbatimDiskPrefix => {
-                                let len = prefix_len(prefix) + is_abs as uint;
+                                let len = prefix_len(prefix) + is_abs as usize;
                                 let mut s = String::from_str(&s[..len]);
                                 unsafe {
                                     let v = s.as_mut_vec();
@@ -838,7 +838,7 @@ impl Path {
         self.sepidx = idx.and_then(|x| if x < prefixlen { None } else { Some(x) });
     }
 
-    fn prefix_len(&self) -> uint {
+    fn prefix_len(&self) -> usize {
         prefix_len(self.prefix)
     }
 
@@ -847,7 +847,7 @@ impl Path {
     // end is the length of the string, normally, or the index of the final character if it is
     // a non-semantic trailing separator in a verbatim string.
     // If the prefix is considered the separator, before and after are the same.
-    fn sepidx_or_prefix_len(&self) -> Option<(uint,uint,uint)> {
+    fn sepidx_or_prefix_len(&self) -> Option<(usize,usize,usize)> {
         match self.sepidx {
             None => match self.prefix_len() { 0 => None, x => Some((x,x,self.repr.len())) },
             Some(x) => {
@@ -973,16 +973,16 @@ pub fn is_sep_byte_verbatim(u: &u8) -> bool {
 /// Prefix types for Path
 #[derive(Copy, PartialEq, Clone, Debug)]
 pub enum PathPrefix {
-    /// Prefix `\\?\`, uint is the length of the following component
-    VerbatimPrefix(uint),
+    /// Prefix `\\?\`, usize is the length of the following component
+    VerbatimPrefix(usize),
     /// Prefix `\\?\UNC\`, uints are the lengths of the UNC components
-    VerbatimUNCPrefix(uint, uint),
+    VerbatimUNCPrefix(usize, usize),
     /// Prefix `\\?\C:\` (for any alphabetic character)
     VerbatimDiskPrefix,
-    /// Prefix `\\.\`, uint is the length of the following component
-    DeviceNSPrefix(uint),
+    /// Prefix `\\.\`, usize is the length of the following component
+    DeviceNSPrefix(usize),
     /// UNC prefix `\\server\share`, uints are the lengths of the server/share
-    UNCPrefix(uint, uint),
+    UNCPrefix(usize, usize),
     /// Prefix `C:` for any alphabetic character
     DiskPrefix
 }
@@ -1037,7 +1037,7 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
     }
     return None;
 
-    fn parse_two_comps(mut path: &str, f: fn(char) -> bool) -> Option<(uint, uint)> {
+    fn parse_two_comps(mut path: &str, f: fn(char) -> bool) -> Option<(usize, usize)> {
         let idx_a = match path.find(f) {
             None => return None,
             Some(x) => x
@@ -1107,7 +1107,7 @@ fn prefix_is_verbatim(p: Option<PathPrefix>) -> bool {
     }
 }
 
-fn prefix_len(p: Option<PathPrefix>) -> uint {
+fn prefix_len(p: Option<PathPrefix>) -> usize {
     match p {
         None => 0,
         Some(VerbatimPrefix(x)) => 4 + x,
@@ -1126,7 +1126,7 @@ mod tests {
     use super::*;
 
     use clone::Clone;
-    use iter::IteratorExt;
+    use iter::Iterator;
     use option::Option::{self, Some, None};
     use old_path::GenericPath;
     use slice::AsSlice;

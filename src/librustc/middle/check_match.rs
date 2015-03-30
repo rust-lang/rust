@@ -18,7 +18,7 @@ use middle::const_eval::{const_expr_to_pat, lookup_const_by_id};
 use middle::def::*;
 use middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor, Init};
 use middle::expr_use_visitor::{JustWrite, LoanCause, MutateMode};
-use middle::expr_use_visitor::{WriteAndRead};
+use middle::expr_use_visitor::WriteAndRead;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization::cmt;
 use middle::pat_util::*;
@@ -72,7 +72,7 @@ impl<'a> fmt::Debug for Matrix<'a> {
 
         let column_count = m.iter().map(|row| row.len()).max().unwrap_or(0);
         assert!(m.iter().all(|row| row.len() == column_count));
-        let column_widths: Vec<uint> = (0..column_count).map(|col| {
+        let column_widths: Vec<usize> = (0..column_count).map(|col| {
             pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0)
         }).collect();
 
@@ -116,9 +116,9 @@ pub enum Constructor {
     /// Ranges of literal values (2..5).
     ConstantRange(const_val, const_val),
     /// Array patterns of length n.
-    Slice(uint),
+    Slice(usize),
     /// Array patterns with a subslice.
-    SliceWithSubslice(uint, uint)
+    SliceWithSubslice(usize, usize)
 }
 
 #[derive(Clone, PartialEq)]
@@ -498,7 +498,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
 /// left_ty: tuple of 3 elements
 /// pats: [10, 20, _]           => (10, 20, _)
 ///
-/// left_ty: struct X { a: (bool, &'static str), b: uint}
+/// left_ty: struct X { a: (bool, &'static str), b: usize}
 /// pats: [(false, "foo"), 42]  => X { a: (false, "foo"), b: 42 }
 fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
                      pats: Vec<&Pat>, left_ty: Ty) -> P<Pat> {
@@ -580,7 +580,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
 }
 
 fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
-                       left_ty: Ty, max_slice_length: uint) -> Option<Constructor> {
+                       left_ty: Ty, max_slice_length: usize) -> Option<Constructor> {
     let used_constructors: Vec<Constructor> = rows.iter()
         .flat_map(|row| pat_constructors(cx, row[0], left_ty, max_slice_length).into_iter())
         .collect();
@@ -594,7 +594,7 @@ fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
 /// but is instead bounded by the maximum fixed length of slice patterns in
 /// the column of patterns being analyzed.
 fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
-                    max_slice_length: uint) -> Vec<Constructor> {
+                    max_slice_length: usize) -> Vec<Constructor> {
     match left_ty.sty {
         ty::ty_bool =>
             [true, false].iter().map(|b| ConstantValue(const_bool(*b))).collect(),
@@ -741,7 +741,7 @@ fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix,
 /// On the other hand, a wild pattern and an identifier pattern cannot be
 /// specialized in any way.
 fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
-                    left_ty: Ty, max_slice_length: uint) -> Vec<Constructor> {
+                    left_ty: Ty, max_slice_length: usize) -> Vec<Constructor> {
     let pat = raw_pat(p);
     match pat.node {
         ast::PatIdent(..) =>
@@ -798,7 +798,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
 ///
 /// For instance, a tuple pattern (_, 42, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
-pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> uint {
+pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize {
     match ty.sty {
         ty::ty_tup(ref fs) => fs.len(),
         ty::ty_uniq(_) => 1,
@@ -850,7 +850,7 @@ fn range_covered_by_constructor(ctor: &Constructor,
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
 pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
-                      constructor: &Constructor, col: uint, arity: uint) -> Option<Vec<&'a Pat>> {
+                      constructor: &Constructor, col: usize, arity: usize) -> Option<Vec<&'a Pat>> {
     let &Pat {
         id: pat_id, ref node, span: pat_span
     } = raw_pat(r[col]);

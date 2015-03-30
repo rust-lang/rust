@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-struct Point(int, int);
+struct Point(isize, isize);
 
 fn main() {
     let mut x = Point(3, 2);

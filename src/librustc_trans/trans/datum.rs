@@ -113,7 +113,7 @@ use trans::expr;
 use trans::tvec;
 use trans::type_of;
 use middle::ty::{self, Ty};
-use util::ppaux::{ty_to_string};
+use util::ppaux::ty_to_string;
 
 use std::fmt;
 use syntax::ast;
@@ -307,8 +307,8 @@ impl KindOps for Lvalue {
                               -> Block<'blk, 'tcx> {
         let _icx = push_ctxt("<Lvalue as KindOps>::post_store");
         if bcx.fcx.type_needs_drop(ty) {
-            // cancel cleanup of affine values by zeroing out
-            let () = zero_mem(bcx, val, ty);
+            // cancel cleanup of affine values by drop-filling the memory
+            let () = drop_done_fill_mem(bcx, val, ty);
             bcx
         } else {
             bcx

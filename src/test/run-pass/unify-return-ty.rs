@@ -22,4 +22,4 @@ fn null<T>() -> *const T {
     }
 }
 
-pub fn main() { null::<int>(); }
+pub fn main() { null::<isize>(); }

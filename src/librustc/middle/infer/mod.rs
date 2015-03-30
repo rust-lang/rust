@@ -28,14 +28,14 @@ use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
 use middle::ty::replace_late_bound_regions;
 use middle::ty::{self, Ty};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
-use std::cell::{RefCell};
+use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
 use util::nodemap::FnvHashMap;
-use util::ppaux::{ty_to_string};
+use util::ppaux::ty_to_string;
 use util::ppaux::{Repr, UserString};
 
 use self::combine::{Combine, Combineable, CombineFields};
@@ -836,7 +836,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         ty::mk_var(self.tcx, self.next_ty_var_id(true))
     }
 
-    pub fn next_ty_vars(&self, n: uint) -> Vec<Ty<'tcx>> {
+    pub fn next_ty_vars(&self, n: usize) -> Vec<Ty<'tcx>> {
         (0..n).map(|_i| self.next_ty_var()).collect()
     }
 

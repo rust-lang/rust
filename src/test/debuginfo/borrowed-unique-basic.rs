@@ -118,8 +118,8 @@ fn main() {
     let bool_box: Box<bool> = box true;
     let bool_ref: &bool = &*bool_box;
 
-    let int_box: Box<int> = box -1;
-    let int_ref: &int = &*int_box;
+    let int_box: Box<isize> = box -1;
+    let int_ref: &isize = &*int_box;
 
     let char_box: Box<char> = box 'a';
     let char_ref: &char = &*char_box;
@@ -136,8 +136,8 @@ fn main() {
     let i64_box: Box<i64> = box -64;
     let i64_ref: &i64 = &*i64_box;
 
-    let uint_box: Box<uint> = box 1;
-    let uint_ref: &uint = &*uint_box;
+    let uint_box: Box<usize> = box 1;
+    let uint_ref: &usize = &*uint_box;
 
     let u8_box: Box<u8> = box 100;
     let u8_ref: &u8 = &*u8_box;

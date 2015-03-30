@@ -22,7 +22,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::region;
 use rustc::middle::ty;
-use rustc::util::ppaux::{Repr};
+use rustc::util::ppaux::Repr;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::visit;

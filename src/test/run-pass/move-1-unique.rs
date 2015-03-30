@@ -15,12 +15,12 @@
 
 #[derive(Clone)]
 struct Triple {
-    x: int,
-    y: int,
-    z: int,
+    x: isize,
+    y: isize,
+    z: isize,
 }
 
-fn test(x: bool, foo: Box<Triple>) -> int {
+fn test(x: bool, foo: Box<Triple>) -> isize {
     let bar = foo;
     let mut y: Box<Triple>;
     if x { y = bar; } else { y = box Triple{x: 4, y: 5, z: 6}; }

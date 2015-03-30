@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(slice_patterns)]
+
 pub fn main() {
     let x = &[1, 2, 3, 4, 5];
-    let x: &[int] = &[1, 2, 3, 4, 5];
+    let x: &[isize] = &[1, 2, 3, 4, 5];
     if !x.is_empty() {
         let el = match x {
             [1, ref tail..] => &tail[0],

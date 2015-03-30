@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "issue-11529" as a;
+extern crate issue_11529 as a;
 
 fn main() {
     let one = 1;

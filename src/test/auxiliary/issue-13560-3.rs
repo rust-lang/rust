@@ -12,5 +12,5 @@
 
 #![crate_type = "rlib"]
 
-#[macro_use] #[no_link] extern crate "issue-13560-1" as t1;
-#[macro_use] extern crate "issue-13560-2" as t2;
+#[macro_use] #[no_link] extern crate issue_13560_1 as t1;
+#[macro_use] extern crate issue_13560_2 as t2;

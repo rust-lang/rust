@@ -10,16 +10,16 @@
 
 // pretty-expanded FIXME #23616
 
-trait Foo { fn f(&self) -> int; }
-trait Bar : Foo { fn g(&self) -> int; }
+trait Foo { fn f(&self) -> isize; }
+trait Bar : Foo { fn g(&self) -> isize; }
 
-struct A { x: int }
+struct A { x: isize }
 
-impl Foo for A { fn f(&self) -> int { 10 } }
+impl Foo for A { fn f(&self) -> isize { 10 } }
 
 impl Bar for A {
     // Testing that this impl can call the impl of Foo
-    fn g(&self) -> int { self.f() }
+    fn g(&self) -> isize { self.f() }
 }
 
 pub fn main() {

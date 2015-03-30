@@ -13,8 +13,10 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 #![feature(intrinsics)]
+// needed to check for drop fill word.
+#![feature(filling_drop)]
 
-use std::mem::transmute;
+use std::mem::{self, transmute};
 
 mod rusti {
     extern "rust-intrinsic" {
@@ -27,9 +29,10 @@ pub fn main() {
     unsafe {
         let x: Box<_> = box 1;
         let mut y = rusti::init();
-        let mut z: *const uint = transmute(&x);
+        let mut z: *const usize = transmute(&x);
         rusti::move_val_init(&mut y, x);
         assert_eq!(*y, 1);
-        assert_eq!(*z, 0); // `x` is nulled out, not directly visible
+        // `x` is nulled out, not directly visible
+        assert_eq!(*z, mem::POST_DROP_USIZE);
     }
 }

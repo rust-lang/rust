@@ -16,7 +16,7 @@ use fmt;
 use hash;
 use old_io::Writer;
 use iter::{AdditiveIterator, Extend};
-use iter::{Iterator, IteratorExt, Map};
+use iter::{Iterator, Map};
 use marker::Sized;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
@@ -37,7 +37,7 @@ pub type StrComponents<'a> =
 #[derive(Clone)]
 pub struct Path {
     repr: Vec<u8>, // assumed to never be empty or contain NULs
-    sepidx: Option<uint> // index of the final separator in repr
+    sepidx: Option<usize> // index of the final separator in repr
 }
 
 /// The standard path separator character
@@ -444,13 +444,13 @@ mod tests {
     use super::*;
 
     use clone::Clone;
-    use iter::IteratorExt;
     use option::Option::{self, Some, None};
     use old_path::GenericPath;
     use slice::AsSlice;
     use str::{self, Str};
     use string::ToString;
     use vec::Vec;
+    use iter::Iterator;
 
     macro_rules! t {
         (s: $path:expr, $exp:expr) => (

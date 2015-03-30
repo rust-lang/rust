@@ -17,13 +17,13 @@ use std::thread::Thread;
 use std::sync::mpsc::channel;
 
 pub fn main() {
-    let (tx, rx) = channel::<uint>();
+    let (tx, rx) = channel::<usize>();
 
-    let x: Box<int> = box 1;
-    let x_in_parent = &(*x) as *const int as uint;
+    let x: Box<isize> = box 1;
+    let x_in_parent = &(*x) as *const isize as usize;
 
     let _t = Thread::spawn(move || {
-        let x_in_child = &(*x) as *const int as uint;
+        let x_in_child = &(*x) as *const isize as usize;
         tx.send(x_in_child).unwrap();
     });
 

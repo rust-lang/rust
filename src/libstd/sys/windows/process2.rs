@@ -127,7 +127,7 @@ impl Process {
 
         use env::split_paths;
         use mem;
-        use iter::IteratorExt;
+        use iter::Iterator;
 
         // To have the spawning semantics of unix/windows stay the same, we need to
         // read the *child's* PATH if one is provided. See #15149 for more details.

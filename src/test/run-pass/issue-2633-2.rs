@@ -14,7 +14,7 @@
 #![feature(box_syntax)]
 
 
-fn a_val(x: Box<int>, y: Box<int>) -> int {
+fn a_val(x: Box<isize>, y: Box<isize>) -> isize {
     *x + *y
 }
 

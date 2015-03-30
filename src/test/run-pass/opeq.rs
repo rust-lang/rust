@@ -12,7 +12,7 @@
 
 
 pub fn main() {
-    let mut x: int = 1;
+    let mut x: isize = 1;
     x *= 2;
     println!("{}", x);
     assert_eq!(x, 2);

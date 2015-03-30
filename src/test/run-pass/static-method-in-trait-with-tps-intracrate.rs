@@ -11,15 +11,15 @@
 // pretty-expanded FIXME #23616
 
 trait Deserializer {
-    fn read_int(&self) -> int;
+    fn read_int(&self) -> isize;
 }
 
 trait Deserializable<D:Deserializer> {
     fn deserialize(d: &D) -> Self;
 }
 
-impl<D:Deserializer> Deserializable<D> for int {
-    fn deserialize(d: &D) -> int {
+impl<D:Deserializer> Deserializable<D> for isize {
+    fn deserialize(d: &D) -> isize {
         return d.read_int();
     }
 }
@@ -27,11 +27,11 @@ impl<D:Deserializer> Deserializable<D> for int {
 struct FromThinAir { dummy: () }
 
 impl Deserializer for FromThinAir {
-    fn read_int(&self) -> int { 22 }
+    fn read_int(&self) -> isize { 22 }
 }
 
 pub fn main() {
     let d = FromThinAir { dummy: () };
-    let i: int = Deserializable::deserialize(&d);
+    let i: isize = Deserializable::deserialize(&d);
     assert_eq!(i, 22);
 }

@@ -9,9 +9,9 @@
 // except according to those terms.
 
 
-fn mk() -> int { return 1; }
+fn mk() -> isize { return 1; }
 
-fn chk(a: int) { println!("{}", a); assert!((a == 1)); }
+fn chk(a: isize) { println!("{}", a); assert!((a == 1)); }
 
 fn apply<T>(produce: fn() -> T,
             consume: fn(T)) {
@@ -19,7 +19,7 @@ fn apply<T>(produce: fn() -> T,
 }
 
 pub fn main() {
-    let produce: fn() -> int = mk;
-    let consume: fn(v: int) = chk;
-    apply::<int>(produce, consume);
+    let produce: fn() -> isize = mk;
+    let consume: fn(v: isize) = chk;
+    apply::<isize>(produce, consume);
 }

@@ -29,7 +29,7 @@ use result::Result::{Ok, Err};
 /// use std::old_io::MemReader;
 ///
 /// let mut rng = reader::ReaderRng::new(MemReader::new(vec!(1,2,3,4,5,6,7,8)));
-/// println!("{:x}", rng.gen::<uint>());
+/// println!("{:x}", rng.gen::<usize>());
 /// ```
 pub struct ReaderRng<R> {
     reader: R

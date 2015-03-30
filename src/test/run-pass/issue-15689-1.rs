@@ -12,7 +12,7 @@
 
 #[derive(PartialEq)]
 enum Test<'a> {
-    Slice(&'a int)
+    Slice(&'a isize)
 }
 
 fn main() {

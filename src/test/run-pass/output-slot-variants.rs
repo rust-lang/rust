@@ -15,12 +15,12 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-struct A { a: int, b: int }
-struct Abox { a: Box<int>, b: Box<int> }
+struct A { a: isize, b: isize }
+struct Abox { a: Box<isize>, b: Box<isize> }
 
-fn ret_int_i() -> int { 10 }
+fn ret_int_i() -> isize { 10 }
 
-fn ret_ext_i() -> Box<int> { box 10 }
+fn ret_ext_i() -> Box<isize> { box 10 }
 
 fn ret_int_rec() -> A { A {a: 10, b: 10} }
 
@@ -31,8 +31,8 @@ fn ret_ext_mem() -> Abox { Abox {a: box 10, b: box 10} }
 fn ret_ext_ext_mem() -> Box<Abox> { box Abox{a: box 10, b: box 10} }
 
 pub fn main() {
-    let mut int_i: int;
-    let mut ext_i: Box<int>;
+    let mut int_i: isize;
+    let mut ext_i: Box<isize>;
     let mut int_rec: A;
     let mut ext_rec: Box<A>;
     let mut ext_mem: Abox;

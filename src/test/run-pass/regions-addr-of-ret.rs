@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f(x: &int) -> &int {
+fn f(x: &isize) -> &isize {
     return &*x;
 }
 

@@ -25,7 +25,7 @@ use default::Default;
 use error::Error;
 use fmt;
 use iter::ExactSizeIterator;
-use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
+use iter::{Map, Iterator, DoubleEndedIterator};
 use marker::Sized;
 use mem;
 #[allow(deprecated)]
@@ -1237,7 +1237,7 @@ Section: Trait implementations
 mod traits {
     use cmp::{Ordering, Ord, PartialEq, PartialOrd, Eq};
     use cmp::Ordering::{Less, Equal, Greater};
-    use iter::IteratorExt;
+    use iter::Iterator;
     use option::Option;
     use option::Option::Some;
     use ops;
@@ -1616,7 +1616,7 @@ impl StrExt for str {
     #[inline]
     unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str {
         mem::transmute(Slice {
-            data: self.as_ptr().offset(begin as int),
+            data: self.as_ptr().offset(begin as isize),
             len: end - begin,
         })
     }

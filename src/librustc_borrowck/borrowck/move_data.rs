@@ -76,10 +76,10 @@ pub struct FlowedMoveData<'a, 'tcx: 'a> {
 
 /// Index into `MoveData.paths`, used like a pointer
 #[derive(Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
-pub struct MovePathIndex(uint);
+pub struct MovePathIndex(usize);
 
 impl MovePathIndex {
-    fn get(&self) -> uint {
+    fn get(&self) -> usize {
         let MovePathIndex(v) = *self; v
     }
 }
@@ -95,10 +95,10 @@ const InvalidMovePathIndex: MovePathIndex = MovePathIndex(usize::MAX);
 
 /// Index into `MoveData.moves`, used like a pointer
 #[derive(Copy, PartialEq)]
-pub struct MoveIndex(uint);
+pub struct MoveIndex(usize);
 
 impl MoveIndex {
-    fn get(&self) -> uint {
+    fn get(&self) -> usize {
         let MoveIndex(v) = *self; v
     }
 }
@@ -740,7 +740,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
 
 impl BitwiseOperator for MoveDataFlowOperator {
     #[inline]
-    fn join(&self, succ: uint, pred: uint) -> uint {
+    fn join(&self, succ: usize, pred: usize) -> usize {
         succ | pred // moves from both preds are in scope
     }
 }
@@ -754,7 +754,7 @@ impl DataFlowOperator for MoveDataFlowOperator {
 
 impl BitwiseOperator for AssignDataFlowOperator {
     #[inline]
-    fn join(&self, succ: uint, pred: uint) -> uint {
+    fn join(&self, succ: usize, pred: usize) -> usize {
         succ | pred // moves from both preds are in scope
     }
 }

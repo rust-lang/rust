@@ -12,7 +12,7 @@
 
 pub mod Bar {
     pub struct Foo {
-        v: int,
+        v: isize,
     }
 
     extern {

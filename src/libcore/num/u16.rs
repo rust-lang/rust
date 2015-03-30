@@ -12,6 +12,5 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "u16")]
-#![allow(trivial_numeric_casts)]
 
 uint_module! { u16, i16, 16 }

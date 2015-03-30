@@ -268,7 +268,7 @@ use default::Default;
 use error::Error;
 use fmt;
 use isize;
-use iter::{Iterator, IteratorExt};
+use iter::Iterator;
 use marker::{PhantomFn, Sized};
 use mem::transmute;
 use ops::FnOnce;
@@ -326,7 +326,7 @@ pub mod test;
 /// The default buffer size for various I/O operations
 // libuv recommends 64k buffers to maximize throughput
 // https://groups.google.com/forum/#!topic/libuv/oQO1HJAIDdA
-const DEFAULT_BUF_SIZE: uint = 1024 * 64;
+const DEFAULT_BUF_SIZE: usize = 1024 * 64;
 
 /// A convenient typedef of the return value of any I/O action.
 pub type IoResult<T> = Result<T, IoError>;
@@ -441,7 +441,7 @@ pub enum IoErrorKind {
     ///
     /// The payload contained as part of this variant is the number of bytes
     /// which are known to have been successfully written.
-    ShortWrite(uint),
+    ShortWrite(usize),
     /// The Reader returned 0 bytes from `read()` too many times.
     NoProgress,
 }
@@ -483,7 +483,7 @@ impl<T> UpdateIoError for IoResult<T> {
     }
 }
 
-static NO_PROGRESS_LIMIT: uint = 1000;
+static NO_PROGRESS_LIMIT: usize = 1000;
 
 /// A trait for objects which are byte-oriented streams. Readers are defined by
 /// one method, `read`. This function will block until data is available,
@@ -511,7 +511,7 @@ pub trait Reader {
     ///
     /// When implementing this method on a new Reader, you are strongly encouraged
     /// not to return 0 if you can avoid it.
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint>;
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize>;
 
     // Convenient helper methods based on the above methods
 
@@ -526,7 +526,7 @@ pub trait Reader {
     ///
     /// If an error occurs at any point, that error is returned, and no further
     /// bytes are read.
-    fn read_at_least(&mut self, min: uint, buf: &mut [u8]) -> IoResult<uint> {
+    fn read_at_least(&mut self, min: usize, buf: &mut [u8]) -> IoResult<usize> {
         if min > buf.len() {
             return Err(IoError {
                 detail: Some(String::from_str("the buffer is too short")),
@@ -570,7 +570,7 @@ pub trait Reader {
     ///
     /// If an error occurs during this I/O operation, then it is returned
     /// as `Err(IoError)`. See `read()` for more details.
-    fn push(&mut self, len: uint, buf: &mut Vec<u8>) -> IoResult<uint> {
+    fn push(&mut self, len: usize, buf: &mut Vec<u8>) -> IoResult<usize> {
         let start_len = buf.len();
         buf.reserve(len);
 
@@ -594,7 +594,7 @@ pub trait Reader {
     ///
     /// If an error occurs at any point, that error is returned, and no further
     /// bytes are read.
-    fn push_at_least(&mut self, min: uint, len: uint, buf: &mut Vec<u8>) -> IoResult<uint> {
+    fn push_at_least(&mut self, min: usize, len: usize, buf: &mut Vec<u8>) -> IoResult<usize> {
         if min > len {
             return Err(IoError {
                 detail: Some(String::from_str("the buffer is too short")),
@@ -629,7 +629,7 @@ pub trait Reader {
     /// have already been consumed from the underlying reader, and they are lost
     /// (not returned as part of the error). If this is unacceptable, then it is
     /// recommended to use the `push_at_least` or `read` methods.
-    fn read_exact(&mut self, len: uint) -> IoResult<Vec<u8>> {
+    fn read_exact(&mut self, len: usize) -> IoResult<Vec<u8>> {
         let mut buf = Vec::with_capacity(len);
         match self.push_at_least(len, len, &mut buf) {
             Ok(_) => Ok(buf),
@@ -679,7 +679,7 @@ pub trait Reader {
     /// Reads `n` little-endian unsigned integer bytes.
     ///
     /// `n` must be between 1 and 8, inclusive.
-    fn read_le_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
+    fn read_le_uint_n(&mut self, nbytes: usize) -> IoResult<u64> {
         assert!(nbytes > 0 && nbytes <= 8);
 
         let mut val = 0;
@@ -696,14 +696,14 @@ pub trait Reader {
     /// Reads `n` little-endian signed integer bytes.
     ///
     /// `n` must be between 1 and 8, inclusive.
-    fn read_le_int_n(&mut self, nbytes: uint) -> IoResult<i64> {
+    fn read_le_int_n(&mut self, nbytes: usize) -> IoResult<i64> {
         self.read_le_uint_n(nbytes).map(|i| extend_sign(i, nbytes))
     }
 
     /// Reads `n` big-endian unsigned integer bytes.
     ///
     /// `n` must be between 1 and 8, inclusive.
-    fn read_be_uint_n(&mut self, nbytes: uint) -> IoResult<u64> {
+    fn read_be_uint_n(&mut self, nbytes: usize) -> IoResult<u64> {
         assert!(nbytes > 0 && nbytes <= 8);
 
         let mut val = 0;
@@ -718,36 +718,36 @@ pub trait Reader {
     /// Reads `n` big-endian signed integer bytes.
     ///
     /// `n` must be between 1 and 8, inclusive.
-    fn read_be_int_n(&mut self, nbytes: uint) -> IoResult<i64> {
+    fn read_be_int_n(&mut self, nbytes: usize) -> IoResult<i64> {
         self.read_be_uint_n(nbytes).map(|i| extend_sign(i, nbytes))
     }
 
     /// Reads a little-endian unsigned integer.
     ///
     /// The number of bytes returned is system-dependent.
-    fn read_le_uint(&mut self) -> IoResult<uint> {
-        self.read_le_uint_n(usize::BYTES as usize).map(|i| i as uint)
+    fn read_le_uint(&mut self) -> IoResult<usize> {
+        self.read_le_uint_n(usize::BYTES as usize).map(|i| i as usize)
     }
 
     /// Reads a little-endian integer.
     ///
     /// The number of bytes returned is system-dependent.
-    fn read_le_int(&mut self) -> IoResult<int> {
-        self.read_le_int_n(isize::BYTES as usize).map(|i| i as int)
+    fn read_le_int(&mut self) -> IoResult<isize> {
+        self.read_le_int_n(isize::BYTES as usize).map(|i| i as isize)
     }
 
     /// Reads a big-endian unsigned integer.
     ///
     /// The number of bytes returned is system-dependent.
-    fn read_be_uint(&mut self) -> IoResult<uint> {
-        self.read_be_uint_n(usize::BYTES as usize).map(|i| i as uint)
+    fn read_be_uint(&mut self) -> IoResult<usize> {
+        self.read_be_uint_n(usize::BYTES as usize).map(|i| i as usize)
     }
 
     /// Reads a big-endian integer.
     ///
     /// The number of bytes returned is system-dependent.
-    fn read_be_int(&mut self) -> IoResult<int> {
-        self.read_be_int_n(isize::BYTES as usize).map(|i| i as int)
+    fn read_be_int(&mut self) -> IoResult<isize> {
+        self.read_be_int_n(isize::BYTES as usize).map(|i| i as isize)
     }
 
     /// Reads a big-endian `u64`.
@@ -919,14 +919,14 @@ impl<T: Reader> BytesReader for T {
 }
 
 impl<'a> Reader for Box<Reader+'a> {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         let reader: &mut Reader = &mut **self;
         reader.read(buf)
     }
 }
 
 impl<'a> Reader for &'a mut (Reader+'a) {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { (*self).read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> { (*self).read(buf) }
 }
 
 /// Returns a slice of `v` between `start` and `end`.
@@ -940,13 +940,13 @@ impl<'a> Reader for &'a mut (Reader+'a) {
 /// `start` > `end`.
 // Private function here because we aren't sure if we want to expose this as
 // API yet. If so, it should be a method on Vec.
-unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: uint, end: uint) -> &'a mut [T] {
+unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: usize, end: usize) -> &'a mut [T] {
     use slice;
 
     assert!(start <= end);
     assert!(end <= v.capacity());
     slice::from_raw_parts_mut(
-        v.as_mut_ptr().offset(start as int),
+        v.as_mut_ptr().offset(start as isize),
         end - start
     )
 }
@@ -980,15 +980,15 @@ pub struct RefReader<'a, R:'a> {
 }
 
 impl<'a, R: Reader> Reader for RefReader<'a, R> {
-    fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> { self.inner.read(buf) }
+    fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> { self.inner.read(buf) }
 }
 
 impl<'a, R: Buffer> Buffer for RefReader<'a, R> {
     fn fill_buf(&mut self) -> IoResult<&[u8]> { self.inner.fill_buf() }
-    fn consume(&mut self, amt: uint) { self.inner.consume(amt) }
+    fn consume(&mut self, amt: usize) { self.inner.consume(amt) }
 }
 
-fn extend_sign(val: u64, nbytes: uint) -> i64 {
+fn extend_sign(val: u64, nbytes: usize) -> i64 {
     let shift = (8 - nbytes) * 8;
     (val << shift) as i64 >> shift
 }
@@ -1095,39 +1095,39 @@ pub trait Writer {
         self.write_all(&buf[..n])
     }
 
-    /// Write the result of passing n through `int::to_str_bytes`.
+    /// Write the result of passing n through `isize::to_str_bytes`.
     #[inline]
-    fn write_int(&mut self, n: int) -> IoResult<()> {
+    fn write_int(&mut self, n: isize) -> IoResult<()> {
         write!(self, "{}", n)
     }
 
-    /// Write the result of passing n through `uint::to_str_bytes`.
+    /// Write the result of passing n through `usize::to_str_bytes`.
     #[inline]
-    fn write_uint(&mut self, n: uint) -> IoResult<()> {
+    fn write_uint(&mut self, n: usize) -> IoResult<()> {
         write!(self, "{}", n)
     }
 
-    /// Write a little-endian uint (number of bytes depends on system).
+    /// Write a little-endian usize (number of bytes depends on system).
     #[inline]
-    fn write_le_uint(&mut self, n: uint) -> IoResult<()> {
+    fn write_le_uint(&mut self, n: usize) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, usize::BYTES as usize, |v| self.write_all(v))
     }
 
-    /// Write a little-endian int (number of bytes depends on system).
+    /// Write a little-endian isize (number of bytes depends on system).
     #[inline]
-    fn write_le_int(&mut self, n: int) -> IoResult<()> {
+    fn write_le_int(&mut self, n: isize) -> IoResult<()> {
         extensions::u64_to_le_bytes(n as u64, isize::BYTES as usize, |v| self.write_all(v))
     }
 
-    /// Write a big-endian uint (number of bytes depends on system).
+    /// Write a big-endian usize (number of bytes depends on system).
     #[inline]
-    fn write_be_uint(&mut self, n: uint) -> IoResult<()> {
+    fn write_be_uint(&mut self, n: usize) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, usize::BYTES as usize, |v| self.write_all(v))
     }
 
-    /// Write a big-endian int (number of bytes depends on system).
+    /// Write a big-endian isize (number of bytes depends on system).
     #[inline]
-    fn write_be_int(&mut self, n: int) -> IoResult<()> {
+    fn write_be_int(&mut self, n: isize) -> IoResult<()> {
         extensions::u64_to_be_bytes(n as u64, isize::BYTES as usize, |v| self.write_all(v))
     }
 
@@ -1409,7 +1409,7 @@ pub trait Buffer: Reader {
 
     /// Tells this buffer that `amt` bytes have been consumed from the buffer,
     /// so they should no longer be returned in calls to `read`.
-    fn consume(&mut self, amt: uint);
+    fn consume(&mut self, amt: usize);
 
     /// Reads the next line of input, interpreted as a sequence of UTF-8
     /// encoded Unicode codepoints. If a newline is encountered, then the
@@ -1588,9 +1588,7 @@ pub trait Seek {
 /// connections.
 ///
 /// Doing so produces some sort of Acceptor.
-pub trait Listener<T, A: Acceptor<T>>
-    : PhantomFn<T,T> // FIXME should be an assoc type anyhow
-{
+pub trait Listener<A: Acceptor> {
     /// Spin up the listener and start queuing incoming connections
     ///
     /// # Error
@@ -1601,13 +1599,16 @@ pub trait Listener<T, A: Acceptor<T>>
 }
 
 /// An acceptor is a value that presents incoming connections
-pub trait Acceptor<T> {
+pub trait Acceptor {
+    /// Type of connection that is accepted by this acceptor.
+    type Connection;
+
     /// Wait for and accept an incoming connection
     ///
     /// # Error
     ///
     /// Returns `Err` if an I/O error is encountered.
-    fn accept(&mut self) -> IoResult<T>;
+    fn accept(&mut self) -> IoResult<Self::Connection>;
 
     /// Create an iterator over incoming connection attempts.
     ///
@@ -1628,11 +1629,10 @@ pub struct IncomingConnections<'a, A: ?Sized +'a> {
     inc: &'a mut A,
 }
 
-#[old_impl_check]
-impl<'a, T, A: ?Sized + Acceptor<T>> Iterator for IncomingConnections<'a, A> {
-    type Item = IoResult<T>;
+impl<'a, A: ?Sized + Acceptor> Iterator for IncomingConnections<'a, A> {
+    type Item = IoResult<A::Connection>;
 
-    fn next(&mut self) -> Option<IoResult<T>> {
+    fn next(&mut self) -> Option<IoResult<A::Connection>> {
         Some(self.inc.accept())
     }
 }
@@ -1870,8 +1870,8 @@ mod tests {
 
     #[derive(Clone, PartialEq, Debug)]
     enum BadReaderBehavior {
-        GoodBehavior(uint),
-        BadBehavior(uint)
+        GoodBehavior(usize),
+        BadBehavior(usize)
     }
 
     struct BadReader<T> {
@@ -1886,7 +1886,7 @@ mod tests {
     }
 
     impl<T: Reader> Reader for BadReader<T> {
-        fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
             let BadReader { ref mut behavior, ref mut r } = *self;
             loop {
                 if behavior.is_empty() {

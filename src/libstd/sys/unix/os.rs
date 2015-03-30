@@ -199,13 +199,13 @@ pub fn current_exe() -> io::Result<PathBuf> {
                          0 as libc::size_t);
         if err != 0 { return Err(io::Error::last_os_error()); }
         if sz == 0 { return Err(io::Error::last_os_error()); }
-        let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
+        let mut v: Vec<u8> = Vec::with_capacity(sz as usize);
         let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
                          v.as_mut_ptr() as *mut libc::c_void, &mut sz,
                          ptr::null_mut(), 0 as libc::size_t);
         if err != 0 { return Err(io::Error::last_os_error()); }
         if sz == 0 { return Err(io::Error::last_os_error()); }
-        v.set_len(sz as uint - 1); // chop off trailing NUL
+        v.set_len(sz as usize - 1); // chop off trailing NUL
         Ok(PathBuf::from(OsString::from_vec(v)))
     }
 }
@@ -249,10 +249,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
         let mut sz: u32 = 0;
         _NSGetExecutablePath(ptr::null_mut(), &mut sz);
         if sz == 0 { return Err(io::Error::last_os_error()); }
-        let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
+        let mut v: Vec<u8> = Vec::with_capacity(sz as usize);
         let err = _NSGetExecutablePath(v.as_mut_ptr() as *mut i8, &mut sz);
         if err != 0 { return Err(io::Error::last_os_error()); }
-        v.set_len(sz as uint - 1); // chop off trailing NUL
+        v.set_len(sz as usize - 1); // chop off trailing NUL
         Ok(PathBuf::from(OsString::from_vec(v)))
     }
 }
@@ -339,7 +339,7 @@ pub fn args() -> Args {
         let info = objc_msgSend(klass, process_info_sel);
         let args = objc_msgSend(info, arguments_sel);
 
-        let cnt: int = mem::transmute(objc_msgSend(args, count_sel));
+        let cnt: usize = mem::transmute(objc_msgSend(args, count_sel));
         for i in (0..cnt) {
             let tmp = objc_msgSend(args, object_at_sel, i);
             let utf_c_str: *const libc::c_char =

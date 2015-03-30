@@ -186,13 +186,35 @@ extern "rust-intrinsic" {
     /// crate it is invoked in.
     pub fn type_id<T: ?Sized + 'static>() -> u64;
 
+    /// Create a value initialized to so that its drop flag,
+    /// if any, says that it has been dropped.
+    ///
+    /// `init_dropped` is unsafe because it returns a datum with all
+    /// of its bytes set to the drop flag, which generally does not
+    /// correspond to a valid value.
+    ///
+    /// This intrinsic is likely to be deprecated in the future when
+    /// Rust moves to non-zeroing dynamic drop (and thus removes the
+    /// embedded drop flags that are being established by this
+    /// intrinsic).
+    #[cfg(not(stage0))]
+    pub fn init_dropped<T>() -> T;
+
     /// Create a value initialized to zero.
     ///
     /// `init` is unsafe because it returns a zeroed-out datum,
-    /// which is unsafe unless T is Copy.
+    /// which is unsafe unless T is `Copy`.  Also, even if T is
+    /// `Copy`, an all-zero value may not correspond to any legitimate
+    /// state for the type in question.
     pub fn init<T>() -> T;
 
     /// Create an uninitialized value.
+    ///
+    /// `uninit` is unsafe because there is no guarantee of what its
+    /// contents are. In particular its drop-flag may be set to any
+    /// state, which means it may claim either dropped or
+    /// undropped. In the general case one must use `ptr::write` to
+    /// initialize memory previous set to the result of `uninit`.
     pub fn uninit<T>() -> T;
 
     /// Move a value out of scope without running drop glue.
@@ -304,7 +326,7 @@ extern "rust-intrinsic" {
     /// # #![feature(core)]
     /// use std::ptr;
     ///
-    /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: uint) -> Vec<T> {
+    /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
     ///     dst.set_len(elts);
     ///     ptr::copy(dst.as_mut_ptr(), ptr, elts);

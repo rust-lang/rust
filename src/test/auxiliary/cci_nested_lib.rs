@@ -44,8 +44,8 @@ pub fn alist_get<A:Clone + 'static,
 }
 
 #[inline]
-pub fn new_int_alist<B:'static>() -> alist<int, B> {
-    fn eq_int(a: int, b: int) -> bool { a == b }
+pub fn new_int_alist<B:'static>() -> alist<isize, B> {
+    fn eq_int(a: isize, b: isize) -> bool { a == b }
     return alist {
         eq_fn: eq_int,
         data: box RefCell::new(Vec::new()),
@@ -53,9 +53,9 @@ pub fn new_int_alist<B:'static>() -> alist<int, B> {
 }
 
 #[inline]
-pub fn new_int_alist_2<B:'static>() -> alist<int, B> {
+pub fn new_int_alist_2<B:'static>() -> alist<isize, B> {
     #[inline]
-    fn eq_int(a: int, b: int) -> bool { a == b }
+    fn eq_int(a: isize, b: isize) -> bool { a == b }
     return alist {
         eq_fn: eq_int,
         data: box RefCell::new(Vec::new()),

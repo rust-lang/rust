@@ -14,9 +14,9 @@
 
 use std::u8;
 
-const NUM: uint = u8::BITS as uint;
+const NUM: usize = u8::BITS as usize;
 
-struct MyStruct { nums: [uint; 8] }
+struct MyStruct { nums: [usize; 8] }
 
 
 fn main() {

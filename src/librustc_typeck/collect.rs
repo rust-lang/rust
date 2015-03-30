@@ -91,7 +91,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ast_util::local_def;
 use syntax::codemap::Span;
-use syntax::parse::token::{special_idents};
+use syntax::parse::token::special_idents;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::visit;
@@ -2208,18 +2208,10 @@ fn enforce_impl_ty_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      idx: index as u32,
                                      name: ty_param.ident.name };
         if !input_parameters.contains(&param_ty) {
-            if ty::has_attr(tcx, impl_def_id, "old_impl_check") {
-                tcx.sess.span_warn(
-                    ty_param.span,
-                    &format!("the type parameter `{}` is not constrained by the \
-                              impl trait, self type, or predicates",
-                             param_ty.user_string(tcx)));
-            } else {
-                span_err!(tcx.sess, ty_param.span, E0207,
-                    "the type parameter `{}` is not constrained by the \
-                             impl trait, self type, or predicates",
-                            param_ty.user_string(tcx));
-            }
+            span_err!(tcx.sess, ty_param.span, E0207,
+                "the type parameter `{}` is not constrained by the \
+                         impl trait, self type, or predicates",
+                        param_ty.user_string(tcx));
         }
     }
 }

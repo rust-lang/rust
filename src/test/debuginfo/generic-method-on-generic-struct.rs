@@ -121,17 +121,17 @@ struct Struct<T> {
 
 impl<T1> Struct<T1> {
 
-    fn self_by_ref<T2>(&self, arg1: int, arg2: T2) -> int {
+    fn self_by_ref<T2>(&self, arg1: isize, arg2: T2) -> isize {
         zzz(); // #break
         arg1
     }
 
-    fn self_by_val<T2>(self, arg1: int, arg2: T2) -> int {
+    fn self_by_val<T2>(self, arg1: isize, arg2: T2) -> isize {
         zzz(); // #break
         arg1
     }
 
-    fn self_owned<T2>(self: Box<Struct<T1>>, arg1: int, arg2: T2) -> int {
+    fn self_owned<T2>(self: Box<Struct<T1>>, arg1: isize, arg2: T2) -> isize {
         zzz(); // #break
         arg1
     }

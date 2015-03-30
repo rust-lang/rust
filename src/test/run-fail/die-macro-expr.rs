@@ -11,5 +11,5 @@
 // error-pattern:test
 
 fn main() {
-    let __isize: int = panic!("test");
+    let __isize: isize = panic!("test");
 }

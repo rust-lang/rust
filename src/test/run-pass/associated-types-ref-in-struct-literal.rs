@@ -18,8 +18,8 @@ pub trait Foo {
     fn dummy(&self) { }
 }
 
-impl Foo for int {
-    type Bar = int;
+impl Foo for isize {
+    type Bar = isize;
 }
 
 struct Thing<F: Foo> {

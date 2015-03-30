@@ -14,16 +14,13 @@
 
 #![unstable(feature = "std_misc")]
 #![allow(missing_docs)]
-#![allow(deprecated)] // will be addressed by #23197
 
 use prelude::v1::*;
 
 use env;
-use ffi::CString;
+use ffi::{AsOsStr, CString, OsString};
 use mem;
-use old_path::{Path, GenericPath};
-use os;
-use str;
+use path::{Path, PathBuf};
 
 pub struct DynamicLibrary {
     handle: *mut u8
@@ -54,7 +51,7 @@ impl DynamicLibrary {
     /// Lazily open a dynamic library. When passed None it gives a
     /// handle to the calling process
     pub fn open(filename: Option<&Path>) -> Result<DynamicLibrary, String> {
-        let maybe_library = dl::open(filename.map(|path| path.as_vec()));
+        let maybe_library = dl::open(filename.map(|path| path.as_os_str()));
 
         // The dynamic library must not be constructed if there is
         // an error opening the library so the destructor does not
@@ -68,19 +65,17 @@ impl DynamicLibrary {
     /// Prepends a path to this process's search path for dynamic libraries
     pub fn prepend_search_path(path: &Path) {
         let mut search_path = DynamicLibrary::search_path();
-        search_path.insert(0, path.clone());
-        let newval = DynamicLibrary::create_path(&search_path);
-        env::set_var(DynamicLibrary::envvar(),
-                     str::from_utf8(&newval).unwrap());
+        search_path.insert(0, path.to_path_buf());
+        env::set_var(DynamicLibrary::envvar(), &DynamicLibrary::create_path(&search_path));
     }
 
     /// From a slice of paths, create a new vector which is suitable to be an
     /// environment variable for this platforms dylib search path.
-    pub fn create_path(path: &[Path]) -> Vec<u8> {
-        let mut newvar = Vec::new();
+    pub fn create_path(path: &[PathBuf]) -> OsString {
+        let mut newvar = OsString::new();
         for (i, path) in path.iter().enumerate() {
             if i > 0 { newvar.push(DynamicLibrary::separator()); }
-            newvar.push_all(path.as_vec());
+            newvar.push(path);
         }
         return newvar;
     }
@@ -97,15 +92,15 @@ impl DynamicLibrary {
         }
     }
 
-    fn separator() -> u8 {
-        if cfg!(windows) {b';'} else {b':'}
+    fn separator() -> &'static str {
+        if cfg!(windows) { ";" } else { ":" }
     }
 
     /// Returns the current search path for dynamic libraries being used by this
     /// process
-    pub fn search_path() -> Vec<Path> {
+    pub fn search_path() -> Vec<PathBuf> {
         match env::var_os(DynamicLibrary::envvar()) {
-            Some(var) => os::split_paths(var.to_str().unwrap()),
+            Some(var) => env::split_paths(&var).collect(),
             None => Vec::new(),
         }
     }
@@ -134,8 +129,8 @@ mod test {
     use super::*;
     use prelude::v1::*;
     use libc;
-    use old_path::Path;
     use mem;
+    use path::Path;
 
     #[test]
     #[cfg_attr(any(windows, target_os = "android"), ignore)] // FIXME #8818, #10379
@@ -192,12 +187,13 @@ mod test {
 mod dl {
     use prelude::v1::*;
 
-    use ffi::{CString, CStr};
+    use ffi::{CStr, OsStr};
     use str;
     use libc;
+    use os::unix::prelude::*;
     use ptr;
 
-    pub fn open(filename: Option<&[u8]>) -> Result<*mut u8, String> {
+    pub fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {
         check_for_errors_in(|| {
             unsafe {
                 match filename {
@@ -210,8 +206,8 @@ mod dl {
 
     const LAZY: libc::c_int = 1;
 
-    unsafe fn open_external(filename: &[u8]) -> *mut u8 {
-        let s = CString::new(filename).unwrap();
+    unsafe fn open_external(filename: &OsStr) -> *mut u8 {
+        let s = filename.to_cstring().unwrap();
         dlopen(s.as_ptr(), LAZY) as *mut u8
     }
 
@@ -264,21 +260,22 @@ mod dl {
 
 #[cfg(target_os = "windows")]
 mod dl {
-    use iter::IteratorExt;
+    use ffi::OsStr;
+    use iter::Iterator;
     use libc;
     use libc::consts::os::extra::ERROR_CALL_NOT_IMPLEMENTED;
     use ops::FnOnce;
-    use os;
+    use sys::os;
+    use os::windows::prelude::*;
     use option::Option::{self, Some, None};
     use ptr;
     use result::Result;
     use result::Result::{Ok, Err};
-    use str;
     use string::String;
     use vec::Vec;
     use sys::c::compat::kernel32::SetThreadErrorMode;
 
-    pub fn open(filename: Option<&[u8]>) -> Result<*mut u8, String> {
+    pub fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {
         // disable "dll load failed" error dialog.
         let mut use_thread_mode = true;
         let prev_error_mode = unsafe {
@@ -308,9 +305,8 @@ mod dl {
 
         let result = match filename {
             Some(filename) => {
-                let filename_str = str::from_utf8(filename).unwrap();
-                let mut filename_str: Vec<u16> = filename_str.utf16_units().collect();
-                filename_str.push(0);
+                let filename_str: Vec<_> =
+                    filename.encode_wide().chain(Some(0).into_iter()).collect();
                 let result = unsafe {
                     LoadLibraryW(filename_str.as_ptr() as *const libc::c_void)
                 };

@@ -13,7 +13,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "issue-5521" as foo;
+extern crate issue_5521 as foo;
 
 fn bar(a: foo::map) {
     if false {

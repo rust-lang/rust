@@ -14,7 +14,7 @@
 
 // pretty-expanded FIXME #23616
 
-fn foo(x: &int) {
+fn foo(x: &isize) {
     let a = 1;
     match x {
         mut z => {

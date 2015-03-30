@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait Foo { fn f(&self) -> int; }
-pub trait Bar { fn g(&self) -> int; }
-pub trait Baz { fn h(&self) -> int; }
+pub trait Foo { fn f(&self) -> isize; }
+pub trait Bar { fn g(&self) -> isize; }
+pub trait Baz { fn h(&self) -> isize; }
 
-pub struct A { pub x: int }
+pub struct A { pub x: isize }
 
-impl Foo for A { fn f(&self) -> int { 10 } }
-impl Bar for A { fn g(&self) -> int { 20 } }
-impl Baz for A { fn h(&self) -> int { 30 } }
+impl Foo for A { fn f(&self) -> isize { 10 } }
+impl Bar for A { fn g(&self) -> isize { 20 } }
+impl Baz for A { fn h(&self) -> isize { 30 } }

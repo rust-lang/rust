@@ -148,7 +148,7 @@ pub fn getsockopt<T: Copy>(fd: sock_t, opt: libc::c_int,
         if ret != 0 {
             Err(last_net_error())
         } else {
-            assert!(len as uint == mem::size_of::<T>());
+            assert!(len as usize == mem::size_of::<T>());
             Ok(slot)
         }
     }
@@ -170,14 +170,14 @@ pub fn sockname(fd: sock_t,
             return Err(last_net_error())
         }
     }
-    return sockaddr_to_addr(&storage, len as uint);
+    return sockaddr_to_addr(&storage, len as usize);
 }
 
 pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
-                        len: uint) -> IoResult<SocketAddr> {
+                        len: usize) -> IoResult<SocketAddr> {
     match storage.ss_family as libc::c_int {
         libc::AF_INET => {
-            assert!(len as uint >= mem::size_of::<libc::sockaddr_in>());
+            assert!(len as usize >= mem::size_of::<libc::sockaddr_in>());
             let storage: &libc::sockaddr_in = unsafe {
                 mem::transmute(storage)
             };
@@ -192,7 +192,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
             })
         }
         libc::AF_INET6 => {
-            assert!(len as uint >= mem::size_of::<libc::sockaddr_in6>());
+            assert!(len as usize >= mem::size_of::<libc::sockaddr_in6>());
             let storage: &libc::sockaddr_in6 = unsafe {
                 mem::transmute(storage)
             };
@@ -283,13 +283,13 @@ pub fn get_host_addresses(host: Option<&str>, servname: Option<&str>,
     while !rp.is_null() {
         unsafe {
             let addr = try!(sockaddr_to_addr(mem::transmute((*rp).ai_addr),
-                                             (*rp).ai_addrlen as uint));
+                                             (*rp).ai_addrlen as usize));
             addrs.push(addrinfo::Info {
                 address: addr,
-                family: (*rp).ai_family as uint,
+                family: (*rp).ai_family as usize,
                 socktype: None,
                 protocol: None,
-                flags: (*rp).ai_flags as uint
+                flags: (*rp).ai_flags as usize
             });
 
             rp = (*rp).ai_next as *mut libc::addrinfo;
@@ -312,7 +312,7 @@ extern "system" {
         flags: c_int) -> c_int;
 }
 
-const NI_MAXHOST: uint = 1025;
+const NI_MAXHOST: usize = 1025;
 
 pub fn get_address_name(addr: IpAddr) -> Result<String, IoError> {
     let addr = SocketAddr{ip: addr, port: 0};
@@ -393,7 +393,7 @@ pub fn get_address_name(addr: IpAddr) -> Result<String, IoError> {
 // [1] http://twistedmatrix.com/pipermail/twisted-commits/2012-April/034692.html
 // [2] http://stackoverflow.com/questions/19819198/does-send-msg-dontwait
 
-pub fn read<T, L, R>(fd: sock_t, deadline: u64, mut lock: L, mut read: R) -> IoResult<uint> where
+pub fn read<T, L, R>(fd: sock_t, deadline: u64, mut lock: L, mut read: R) -> IoResult<usize> where
     L: FnMut() -> T,
     R: FnMut(bool) -> libc::c_int,
 {
@@ -431,7 +431,7 @@ pub fn read<T, L, R>(fd: sock_t, deadline: u64, mut lock: L, mut read: R) -> IoR
     match ret {
         0 => Err(sys_common::eof()),
         n if n < 0 => Err(last_net_error()),
-        n => Ok(n as uint)
+        n => Ok(n as usize)
     }
 }
 
@@ -440,9 +440,9 @@ pub fn write<T, L, W>(fd: sock_t,
                       buf: &[u8],
                       write_everything: bool,
                       mut lock: L,
-                      mut write: W) -> IoResult<uint> where
+                      mut write: W) -> IoResult<usize> where
     L: FnMut() -> T,
-    W: FnMut(bool, *const u8, uint) -> i64,
+    W: FnMut(bool, *const u8, usize) -> i64,
 {
     let mut ret = -1;
     let mut written = 0;
@@ -454,7 +454,7 @@ pub fn write<T, L, W>(fd: sock_t,
             });
         } else {
             ret = retry(|| { write(false, buf.as_ptr(), buf.len()) });
-            if ret > 0 { written = ret as uint; }
+            if ret > 0 { written = ret as usize; }
         }
     }
 
@@ -483,7 +483,7 @@ pub fn write<T, L, W>(fd: sock_t,
             match retry(|| write(deadline.is_some(), ptr, len)) {
                 -1 if wouldblock() => {}
                 -1 => return Err(last_net_error()),
-                n => { written += n as uint; }
+                n => { written += n as usize; }
             }
         }
         ret = 0;
@@ -513,8 +513,8 @@ pub fn connect_timeout(fd: sock_t,
         // If the connection is in progress, then we need to wait for it to
         // finish (with a timeout). The current strategy for doing this is
         // to use select() with a timeout.
-        -1 if os::errno() as int == INPROGRESS as int ||
-              os::errno() as int == WOULDBLOCK as int => {
+        -1 if os::errno() as isize == INPROGRESS as isize ||
+              os::errno() as isize == WOULDBLOCK as isize => {
             let mut set: c::fd_set = unsafe { mem::zeroed() };
             c::fd_set(&mut set, fd);
             match await(fd, &mut set, timeout_ms) {
@@ -686,7 +686,7 @@ impl TcpStream {
                    nodelay as libc::c_int)
     }
 
-    pub fn set_keepalive(&mut self, seconds: Option<uint>) -> IoResult<()> {
+    pub fn set_keepalive(&mut self, seconds: Option<usize>) -> IoResult<()> {
         let ret = setsockopt(self.fd(), libc::SOL_SOCKET, libc::SO_KEEPALIVE,
                              seconds.is_some() as libc::c_int);
         match seconds {
@@ -696,18 +696,18 @@ impl TcpStream {
     }
 
     #[cfg(any(target_os = "macos", target_os = "ios"))]
-    fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
+    fn set_tcp_keepalive(&mut self, seconds: usize) -> IoResult<()> {
         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPALIVE,
                    seconds as libc::c_int)
     }
     #[cfg(any(target_os = "freebsd",
               target_os = "dragonfly"))]
-    fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
+    fn set_tcp_keepalive(&mut self, seconds: usize) -> IoResult<()> {
         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPIDLE,
                    seconds as libc::c_int)
     }
     #[cfg(target_os = "openbsd")]
-    fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
+    fn set_tcp_keepalive(&mut self, seconds: usize) -> IoResult<()> {
         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::SO_KEEPALIVE,
                    seconds as libc::c_int)
     }
@@ -716,7 +716,7 @@ impl TcpStream {
                   target_os = "freebsd",
                   target_os = "dragonfly",
                   target_os = "openbsd")))]
-    fn set_tcp_keepalive(&mut self, _seconds: uint) -> IoResult<()> {
+    fn set_tcp_keepalive(&mut self, _seconds: usize) -> IoResult<()> {
         Ok(())
     }
 
@@ -733,7 +733,7 @@ impl TcpStream {
         ret
     }
 
-    pub fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
+    pub fn read(&mut self, buf: &mut [u8]) -> IoResult<usize> {
         let fd = self.fd();
         let dolock = || self.lock_nonblocking();
         let doread = |nb| unsafe {
@@ -749,7 +749,7 @@ impl TcpStream {
     pub fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         let fd = self.fd();
         let dolock = || self.lock_nonblocking();
-        let dowrite = |nb: bool, buf: *const u8, len: uint| unsafe {
+        let dowrite = |nb: bool, buf: *const u8, len: usize| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::send(fd,
                        buf as *const _,
@@ -876,7 +876,7 @@ impl UdpSocket {
         sockname(self.fd(), libc::getsockname)
     }
 
-    pub fn recv_from(&mut self, buf: &mut [u8]) -> IoResult<(uint, SocketAddr)> {
+    pub fn recv_from(&mut self, buf: &mut [u8]) -> IoResult<(usize, SocketAddr)> {
         let fd = self.fd();
         let mut storage: libc::sockaddr_storage = unsafe { mem::zeroed() };
         let storagep = &mut storage as *mut _ as *mut libc::sockaddr;
@@ -893,7 +893,7 @@ impl UdpSocket {
                            storagep,
                            &mut addrlen) as libc::c_int
         }));
-        Ok((n as uint, sockaddr_to_addr(&storage, addrlen as uint).unwrap()))
+        Ok((n as usize, sockaddr_to_addr(&storage, addrlen as usize).unwrap()))
     }
 
     pub fn send_to(&mut self, buf: &[u8], dst: SocketAddr) -> IoResult<()> {
@@ -903,7 +903,7 @@ impl UdpSocket {
 
         let fd = self.fd();
         let dolock = || self.lock_nonblocking();
-        let dowrite = |nb, buf: *const u8, len: uint| unsafe {
+        let dowrite = |nb, buf: *const u8, len: usize| unsafe {
             let flags = if nb {c::MSG_DONTWAIT} else {0};
             libc::sendto(fd,
                          buf as *const libc::c_void,
@@ -939,11 +939,11 @@ impl UdpSocket {
         }
     }
 
-    pub fn multicast_time_to_live(&mut self, ttl: int) -> IoResult<()> {
+    pub fn multicast_time_to_live(&mut self, ttl: isize) -> IoResult<()> {
         setsockopt(self.fd(), libc::IPPROTO_IP, libc::IP_MULTICAST_TTL,
                    ttl as libc::c_int)
     }
-    pub fn time_to_live(&mut self, ttl: int) -> IoResult<()> {
+    pub fn time_to_live(&mut self, ttl: isize) -> IoResult<()> {
         setsockopt(self.fd(), libc::IPPROTO_IP, libc::IP_TTL, ttl as libc::c_int)
     }
 

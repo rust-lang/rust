@@ -17,7 +17,7 @@
 fn f() {
     panic!();
 
-    let _x: int = panic!();
+    let _x: isize = panic!();
 }
 
 pub fn main() {

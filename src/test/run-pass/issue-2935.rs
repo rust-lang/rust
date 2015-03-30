@@ -11,7 +11,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-//type t = { a: int };
+//type t = { a: isize };
 // type t = { a: bool };
 type t = bool;
 

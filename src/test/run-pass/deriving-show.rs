@@ -12,16 +12,16 @@
 struct Unit;
 
 #[derive(Debug)]
-struct Tuple(int, uint);
+struct Tuple(isize, usize);
 
 #[derive(Debug)]
-struct Struct { x: int, y: uint }
+struct Struct { x: isize, y: usize }
 
 #[derive(Debug)]
 enum Enum {
     Nullary,
-    Variant(int, uint),
-    StructVariant { x: int, y : uint }
+    Variant(isize, usize),
+    StructVariant { x: isize, y : usize }
 }
 
 macro_rules! t {

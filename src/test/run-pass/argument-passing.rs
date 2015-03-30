@@ -12,17 +12,17 @@
 // pretty-expanded FIXME #23616
 
 struct X {
-    x: int
+    x: isize
 }
 
-fn f1(a: &mut X, b: &mut int, c: int) -> int {
+fn f1(a: &mut X, b: &mut isize, c: isize) -> isize {
     let r = a.x + *b + c;
     a.x = 0;
     *b = 10;
     return r;
 }
 
-fn f2<F>(a: int, f: F) -> int where F: FnOnce(int) { f(1); return a; }
+fn f2<F>(a: isize, f: F) -> isize where F: FnOnce(isize) { f(1); return a; }
 
 pub fn main() {
     let mut a = X {x: 1};

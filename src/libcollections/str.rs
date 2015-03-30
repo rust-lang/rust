@@ -58,7 +58,7 @@ use self::DecompositionType::*;
 
 use core::clone::Clone;
 use core::iter::AdditiveIterator;
-use core::iter::{Iterator, IteratorExt, Extend};
+use core::iter::{Iterator, Extend};
 use core::option::Option::{self, Some, None};
 use core::result::Result;
 use core::str as core_str;

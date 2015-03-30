@@ -264,7 +264,6 @@ pub mod rt {
         (unsigned, $t:ty, $tag:expr) => (
             impl ToSource for $t {
                 fn to_source(&self) -> String {
-                    #![allow(trivial_numeric_casts)]
                     let lit = ast::LitInt(*self as u64, ast::UnsignedIntLit($tag));
                     pprust::lit_to_string(&dummy_spanned(lit))
                 }
@@ -277,13 +276,13 @@ pub mod rt {
         );
     }
 
-    impl_to_source_int! { signed, int, ast::TyIs(false) }
+    impl_to_source_int! { signed, isize, ast::TyIs }
     impl_to_source_int! { signed, i8,  ast::TyI8 }
     impl_to_source_int! { signed, i16, ast::TyI16 }
     impl_to_source_int! { signed, i32, ast::TyI32 }
     impl_to_source_int! { signed, i64, ast::TyI64 }
 
-    impl_to_source_int! { unsigned, uint, ast::TyUs(false) }
+    impl_to_source_int! { unsigned, usize, ast::TyUs }
     impl_to_source_int! { unsigned, u8,   ast::TyU8 }
     impl_to_source_int! { unsigned, u16,  ast::TyU16 }
     impl_to_source_int! { unsigned, u32,  ast::TyU32 }
@@ -332,12 +331,12 @@ pub mod rt {
     impl_to_tokens! { () }
     impl_to_tokens! { char }
     impl_to_tokens! { bool }
-    impl_to_tokens! { int }
+    impl_to_tokens! { isize }
     impl_to_tokens! { i8 }
     impl_to_tokens! { i16 }
     impl_to_tokens! { i32 }
     impl_to_tokens! { i64 }
-    impl_to_tokens! { uint }
+    impl_to_tokens! { usize }
     impl_to_tokens! { u8 }
     impl_to_tokens! { u16 }
     impl_to_tokens! { u32 }

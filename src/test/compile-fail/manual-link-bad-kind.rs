@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-l foo:bar
+// compile-flags:-l bar=foo
 // error-pattern: unknown library kind `bar`, expected one of dylib, framework, or static
 
 fn main() {

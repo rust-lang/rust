@@ -8,10 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(plugin)]
+use std::fmt;
 
-#[plugin]  //~ ERROR #[plugin] on `extern crate` is deprecated
-//~^ HELP use a crate attribute instead, i.e. #![plugin(std)]
-extern crate std;
+struct Foo;
+impl fmt::Debug for Foo {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        println!("<Foo as Debug>::fmt()");
 
-fn main() {}
+        write!(fmt, "")
+    }
+}
+
+fn test1() {
+    let foo_str = format!("{:?}", Foo);
+
+    println!("{}", foo_str);
+}
+
+fn test2() {
+    println!("{:?}", Foo);
+}
+
+fn main() {
+    // This works fine
+    test1();
+
+    // This fails
+    test2();
+}

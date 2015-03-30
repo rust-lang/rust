@@ -14,12 +14,12 @@ use std::any::{Any, TypeId};
 
 pub struct A;
 pub struct B(Option<A>);
-pub struct C(Option<int>);
+pub struct C(Option<isize>);
 pub struct D(Option<&'static str>);
-pub struct E(Result<&'static str, int>);
+pub struct E(Result<&'static str, isize>);
 
-pub type F = Option<int>;
-pub type G = uint;
+pub type F = Option<isize>;
+pub type G = usize;
 pub type H = &'static str;
 
 pub unsafe fn id_A() -> TypeId { TypeId::of::<A>() }

@@ -26,9 +26,9 @@ extern "rust-intrinsic" { fn transmute<T, U>(t: T) -> U; }
 
 #[start]
 #[no_stack_check]
-fn main(_: int, _: *const *const u8) -> int {
+fn main(_: isize, _: *const *const u8) -> isize {
     unsafe {
-        let (ptr, _): (*const u8, uint) = transmute("Hello!\0");
+        let (ptr, _): (*const u8, usize) = transmute("Hello!\0");
         puts(ptr);
     }
     return 0;

@@ -12,7 +12,7 @@
 
 #![feature(unsafe_no_drop_flag)]
 
-static mut drop_count: uint = 0;
+static mut drop_count: usize = 0;
 
 #[unsafe_no_drop_flag]
 struct Foo {

@@ -25,11 +25,11 @@ pub enum SimplifiedType {
     StrSimplifiedType,
     VecSimplifiedType,
     PtrSimplifiedType,
-    TupleSimplifiedType(uint),
+    TupleSimplifiedType(usize),
     TraitSimplifiedType(ast::DefId),
     StructSimplifiedType(ast::DefId),
     ClosureSimplifiedType(ast::DefId),
-    FunctionSimplifiedType(uint),
+    FunctionSimplifiedType(usize),
     ParameterSimplifiedType,
 }
 

@@ -13,13 +13,13 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-struct T { a: Box<int> }
+struct T { a: Box<isize> }
 
 trait U {
     fn f(self);
 }
 
-impl U for Box<int> {
+impl U for Box<isize> {
     fn f(self) { }
 }
 

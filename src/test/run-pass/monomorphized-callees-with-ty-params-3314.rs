@@ -21,7 +21,7 @@ trait Serializable {
     fn serialize<S:Serializer>(&self, s: S);
 }
 
-impl Serializable for int {
+impl Serializable for isize {
     fn serialize<S:Serializer>(&self, _s: S) { }
 }
 
@@ -33,7 +33,7 @@ impl<A:Serializable> Serializable for F<A> {
     }
 }
 
-impl Serializer for int {
+impl Serializer for isize {
 }
 
 pub fn main() {

@@ -12,11 +12,11 @@
 
 pub fn main() {
     struct A {
-        a: int,
+        a: isize,
         w: B,
     }
     struct B {
-        a: int
+        a: isize
     }
     let mut p = A {
         a: 1,

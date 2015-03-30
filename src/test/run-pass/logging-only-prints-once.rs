@@ -15,7 +15,7 @@ use std::cell::Cell;
 use std::fmt;
 use std::thread;
 
-struct Foo(Cell<int>);
+struct Foo(Cell<isize>);
 
 impl fmt::Debug for Foo {
     fn fmt(&self, _fmt: &mut fmt::Formatter) -> fmt::Result {

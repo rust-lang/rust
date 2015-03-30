@@ -73,7 +73,7 @@ use trans::tvec;
 use trans::type_of;
 use middle::ty::{struct_fields, tup_fields};
 use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AdjustUnsafeFnPointer, AutoUnsafe};
-use middle::ty::{AutoPtr};
+use middle::ty::AutoPtr;
 use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use util::common::indenter;
@@ -521,7 +521,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     fn unsize_unique_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      expr: &ast::Expr,
                                      datum: Datum<'tcx, Expr>,
-                                     len: uint)
+                                     len: usize)
                                      -> DatumBlock<'blk, 'tcx, Expr> {
         let mut bcx = bcx;
         let tcx = bcx.tcx();
@@ -744,7 +744,7 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                               base: &ast::Expr,
                               get_idx: F)
                               -> DatumBlock<'blk, 'tcx, Expr> where
-    F: FnOnce(&'blk ty::ctxt<'tcx>, &[ty::field<'tcx>]) -> uint,
+    F: FnOnce(&'blk ty::ctxt<'tcx>, &[ty::field<'tcx>]) -> usize,
 {
     let mut bcx = bcx;
     let _icx = push_ctxt("trans_rec_field");
@@ -785,7 +785,7 @@ fn trans_rec_field<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// Translates `base.<idx>`.
 fn trans_rec_tup_field<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    base: &ast::Expr,
-                                   idx: uint)
+                                   idx: usize)
                                    -> DatumBlock<'blk, 'tcx, Expr> {
     trans_field(bcx, base, |_, _| idx)
 }
@@ -1149,7 +1149,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         ast::ExprTup(ref args) => {
-            let numbered_fields: Vec<(uint, &ast::Expr)> =
+            let numbered_fields: Vec<(usize, &ast::Expr)> =
                 args.iter().enumerate().map(|(i, arg)| (i, &**arg)).collect();
             trans_adt(bcx,
                       expr_ty(bcx, expr),
@@ -1485,7 +1485,7 @@ pub struct StructBaseInfo<'a, 'tcx> {
     /// The base expression; will be evaluated after all explicit fields.
     expr: &'a ast::Expr,
     /// The indices of fields to copy paired with their types.
-    fields: Vec<(uint, Ty<'tcx>)>
+    fields: Vec<(usize, Ty<'tcx>)>
 }
 
 /// Constructs an ADT instance:
@@ -1499,7 +1499,7 @@ pub struct StructBaseInfo<'a, 'tcx> {
 pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                  ty: Ty<'tcx>,
                                  discr: ty::Disr,
-                                 fields: &[(uint, &ast::Expr)],
+                                 fields: &[(usize, &ast::Expr)],
                                  optbase: Option<StructBaseInfo<'a, 'tcx>>,
                                  dest: Dest,
                                  debug_location: DebugLoc)
@@ -2228,7 +2228,7 @@ fn auto_ref<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn deref_multiple<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               expr: &ast::Expr,
                               datum: Datum<'tcx, Expr>,
-                              times: uint)
+                              times: usize)
                               -> DatumBlock<'blk, 'tcx, Expr> {
     let mut bcx = bcx;
     let mut datum = datum;
@@ -2426,12 +2426,12 @@ impl OverflowOpViaIntrinsic {
         use middle::ty::{ty_int, ty_uint};
 
         let new_sty = match ty.sty {
-            ty_int(TyIs(_)) => match &tcx.sess.target.target.target_pointer_width[..] {
+            ty_int(TyIs) => match &tcx.sess.target.target.target_pointer_width[..] {
                 "32" => ty_int(TyI32),
                 "64" => ty_int(TyI64),
                 _ => panic!("unsupported target word size")
             },
-            ty_uint(TyUs(_)) => match &tcx.sess.target.target.target_pointer_width[..] {
+            ty_uint(TyUs) => match &tcx.sess.target.target.target_pointer_width[..] {
                 "32" => ty_uint(TyU32),
                 "64" => ty_uint(TyU64),
                 _ => panic!("unsupported target word size")

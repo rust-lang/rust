@@ -22,8 +22,7 @@ use util::ppaux::{Repr, UserString};
 
 use std::collections::HashSet;
 use syntax::ast;
-use syntax::ast_util::{local_def};
-use syntax::attr;
+use syntax::ast_util::local_def;
 use syntax::codemap::Span;
 use syntax::parse::token::{self, special_idents};
 use syntax::visit;
@@ -249,22 +248,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             let trait_ref = fcx.instantiate_type_scheme(item.span,
                                                         &fcx.inh.param_env.free_substs,
                                                         &trait_ref);
-
-            // There are special rules that apply to drop.
-            if
-                fcx.tcx().lang_items.drop_trait() == Some(trait_ref.def_id) &&
-                !attr::contains_name(&item.attrs, "unsafe_destructor")
-            {
-                match self_ty.sty {
-                    ty::ty_struct(def_id, _) |
-                    ty::ty_enum(def_id, _) => {
-                        check_struct_safe_for_destructor(fcx, item.span, def_id);
-                    }
-                    _ => {
-                        // Coherence already reports an error in this case.
-                    }
-                }
-            }
 
             if fcx.tcx().lang_items.copy_trait() == Some(trait_ref.def_id) {
                 // This is checked in coherence.
@@ -528,7 +511,7 @@ pub struct BoundsChecker<'cx,'tcx:'cx> {
     // has left it as a NodeId rather than porting to CodeExtent.
     scope: ast::NodeId,
 
-    binding_count: uint,
+    binding_count: usize,
     cache: Option<&'cx mut HashSet<Ty<'tcx>>>,
 }
 
@@ -760,23 +743,4 @@ fn filter_to_trait_obligations<'tcx>(bounds: ty::InstantiatedPredicates<'tcx>)
         }
     }
     result
-}
-
-///////////////////////////////////////////////////////////////////////////
-// Special drop trait checking
-
-fn check_struct_safe_for_destructor<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                              span: Span,
-                                              struct_did: ast::DefId) {
-    let struct_tpt = ty::lookup_item_type(fcx.tcx(), struct_did);
-    if struct_tpt.generics.has_type_params(subst::TypeSpace)
-        || struct_tpt.generics.has_region_params(subst::TypeSpace)
-    {
-        span_err!(fcx.tcx().sess, span, E0141,
-                  "cannot implement a destructor on a structure \
-                   with type parameters");
-        span_note!(fcx.tcx().sess, span,
-                   "use \"#[unsafe_destructor]\" on the implementation \
-                    to force the compiler to allow this");
-    }
 }

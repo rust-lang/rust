@@ -12,7 +12,7 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "trait_default_method_xc_aux" as aux;
+extern crate trait_default_method_xc_aux as aux;
 use aux::{A, TestEquality, Something};
 use aux::B;
 
@@ -20,16 +20,16 @@ fn f<T: aux::A>(i: T) {
     assert_eq!(i.g(), 10);
 }
 
-fn welp<T>(i: int, _x: &T) -> int {
+fn welp<T>(i: isize, _x: &T) -> isize {
     i.g()
 }
 
 mod stuff {
-    pub struct thing { pub x: int }
+    pub struct thing { pub x: isize }
 }
 
 impl A for stuff::thing {
-    fn f(&self) -> int { 10 }
+    fn f(&self) -> isize { 10 }
 }
 
 fn g<T, U, V: B<T>>(i: V, j: T, k: U) -> (T, U) {
@@ -69,7 +69,7 @@ pub fn main() {
 
     assert_eq!(0.thing(3.14f64, 1), (3.14f64, 1));
     assert_eq!(B::staticthing(&0, 3.14f64, 1), (3.14f64, 1));
-    assert_eq!(B::<f64>::staticthing::<int>(&0, 3.14, 1), (3.14, 1));
+    assert_eq!(B::<f64>::staticthing::<isize>(&0, 3.14, 1), (3.14, 1));
 
     assert_eq!(g(0, 3.14f64, 1), (3.14f64, 1));
     assert_eq!(g(false, 3.14f64, 1), (3.14, 1));

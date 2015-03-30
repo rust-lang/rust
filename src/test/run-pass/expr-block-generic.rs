@@ -22,8 +22,8 @@ fn test_bool() {
 
 #[derive(Clone)]
 struct Pair {
-    a: int,
-    b: int,
+    a: isize,
+    b: isize,
 }
 
 fn test_rec() {

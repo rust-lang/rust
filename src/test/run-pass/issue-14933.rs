@@ -10,6 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-pub type BigRat<T = int> = T;
+pub type BigRat<T = isize> = T;
 
 fn main() {}

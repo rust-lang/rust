@@ -43,7 +43,7 @@ fn test_match_on_nonzero_option() {
 
 #[test]
 fn test_match_option_empty_vec() {
-    let a: Option<Vec<int>> = Some(vec![]);
+    let a: Option<Vec<isize>> = Some(vec![]);
     match a {
         None => panic!("unexpected None while matching on Some(vec![])"),
         _ => {}

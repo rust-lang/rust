@@ -15,9 +15,9 @@ use core::num::Int;
 use core::num::wrapping::WrappingOps;
 use {Rng, SeedableRng, Rand};
 
-const KEY_WORDS    : uint =  8; // 8 words for the 256-bit key
-const STATE_WORDS  : uint = 16;
-const CHACHA_ROUNDS: uint = 20; // Cryptographically secure from 8 upwards as of this writing
+const KEY_WORDS    : usize =  8; // 8 words for the 256-bit key
+const STATE_WORDS  : usize = 16;
+const CHACHA_ROUNDS: usize = 20; // Cryptographically secure from 8 upwards as of this writing
 
 /// A random number generator that uses the ChaCha20 algorithm [1].
 ///
@@ -32,7 +32,7 @@ const CHACHA_ROUNDS: uint = 20; // Cryptographically secure from 8 upwards as of
 pub struct ChaChaRng {
     buffer:  [u32; STATE_WORDS], // Internal buffer of output
     state:   [u32; STATE_WORDS], // Initial state
-    index:   uint,                 // Index into state
+    index:   usize,                 // Index into state
 }
 
 static EMPTY: ChaChaRng = ChaChaRng {

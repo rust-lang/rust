@@ -16,17 +16,12 @@
 use prelude::v1::*;
 
 use str::FromStr;
-use net::{Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
+use net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, SocketAddrV4, SocketAddrV6};
 
 struct Parser<'a> {
     // parsing as ASCII, so can use byte array
     s: &'a [u8],
     pos: usize,
-}
-
-enum IpAddr {
-    V4(Ipv4Addr),
-    V6(Ipv6Addr),
 }
 
 impl<'a> Parser<'a> {
@@ -293,6 +288,17 @@ impl<'a> Parser<'a> {
                 IpAddr::V6(ip) => SocketAddr::V6(SocketAddrV6::new(ip, port, 0, 0)),
             }
         })
+    }
+}
+
+#[unstable(feature = "ip_addr", reason = "recent addition")]
+impl FromStr for IpAddr {
+    type Err = AddrParseError;
+    fn from_str(s: &str) -> Result<IpAddr, AddrParseError> {
+        match Parser::new(s).read_till_eof(|p| p.read_ip_addr()) {
+            Some(s) => Ok(s),
+            None => Err(AddrParseError(()))
+        }
     }
 }
 

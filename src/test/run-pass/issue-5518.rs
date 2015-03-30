@@ -12,6 +12,6 @@
 
 // pretty-expanded FIXME #23616
 
-extern crate "issue-5518" as other;
+extern crate issue_5518 as other;
 
 fn main() {}

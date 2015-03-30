@@ -11,8 +11,8 @@
 use super::combine::*;
 use super::higher_ranked::HigherRankedRelations;
 use super::lattice::*;
-use super::{cres};
-use super::{Subtype};
+use super::cres;
+use super::Subtype;
 
 use middle::ty::{self, Ty};
 use util::ppaux::Repr;

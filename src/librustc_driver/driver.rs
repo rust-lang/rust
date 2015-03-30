@@ -39,7 +39,7 @@ use std::path::{Path, PathBuf};
 use syntax::ast;
 use syntax::ast_map;
 use syntax::attr;
-use syntax::attr::{AttrMetaMethods};
+use syntax::attr::AttrMetaMethods;
 use syntax::diagnostics;
 use syntax::parse;
 use syntax::parse::token;
@@ -501,8 +501,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         let features =
             syntax::feature_gate::check_crate(sess.codemap(),
                                               &sess.parse_sess.span_diagnostic,
-                                              &krate,
-                                              true);
+                                              &krate);
         *sess.features.borrow_mut() = features;
         sess.abort_if_errors();
     });
@@ -532,8 +531,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         let features =
             syntax::feature_gate::check_crate(sess.codemap(),
                                               &sess.parse_sess.span_diagnostic,
-                                              &krate,
-                                              false);
+                                              &krate);
         *sess.features.borrow_mut() = features;
         sess.abort_if_errors();
     });

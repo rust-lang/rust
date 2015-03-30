@@ -15,7 +15,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-fn sums_to(v: Vec<int> , sum: int) -> bool {
+fn sums_to(v: Vec<isize> , sum: isize) -> bool {
     let mut i = 0;
     let mut sum0 = 0;
     while i < v.len() {
@@ -25,7 +25,7 @@ fn sums_to(v: Vec<int> , sum: int) -> bool {
     return sum0 == sum;
 }
 
-fn sums_to_using_uniq(v: Vec<int> , sum: int) -> bool {
+fn sums_to_using_uniq(v: Vec<isize> , sum: isize) -> bool {
     let mut i = 0;
     let mut sum0: Box<_> = box 0;
     while i < v.len() {
@@ -35,7 +35,7 @@ fn sums_to_using_uniq(v: Vec<int> , sum: int) -> bool {
     return *sum0 == sum;
 }
 
-fn sums_to_using_rec(v: Vec<int> , sum: int) -> bool {
+fn sums_to_using_rec(v: Vec<isize> , sum: isize) -> bool {
     let mut i = 0;
     let mut sum0 = F {f: 0};
     while i < v.len() {
@@ -47,7 +47,7 @@ fn sums_to_using_rec(v: Vec<int> , sum: int) -> bool {
 
 struct F<T> { f: T }
 
-fn sums_to_using_uniq_rec(v: Vec<int> , sum: int) -> bool {
+fn sums_to_using_uniq_rec(v: Vec<isize> , sum: isize) -> bool {
     let mut i = 0;
     let mut sum0 = F::<Box<_>> {f: box 0};
     while i < v.len() {

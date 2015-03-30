@@ -28,7 +28,7 @@ impl<T: Default + PartialEq> Default for X<T> {
 
 macro_rules! constants {
     () => {
-        let _ : X<int> = Default::default();
+        let _ : X<isize> = Default::default();
     }
 }
 

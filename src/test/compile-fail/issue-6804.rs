@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(rustc_attrs)]
+#![feature(slice_patterns)]
 #![allow(dead_code)]
 
 // Matching against NaN should result in a warning

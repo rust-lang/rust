@@ -10,17 +10,17 @@
 
 // pretty-expanded FIXME #23616
 
-pub trait OpInt { fn call(&mut self, int, int) -> int; }
+pub trait OpInt { fn call(&mut self, isize, isize) -> isize; }
 
-impl<F> OpInt for F where F: FnMut(int, int) -> int {
-    fn call(&mut self, a:int, b:int) -> int {
+impl<F> OpInt for F where F: FnMut(isize, isize) -> isize {
+    fn call(&mut self, a:isize, b:isize) -> isize {
         (*self)(a, b)
     }
 }
 
-fn squarei<'a>(x: int, op: &'a mut OpInt) -> int { op.call(x, x) }
+fn squarei<'a>(x: isize, op: &'a mut OpInt) -> isize { op.call(x, x) }
 
-fn muli(x:int, y:int) -> int { x * y }
+fn muli(x:isize, y:isize) -> isize { x * y }
 
 pub fn main() {
     let mut f = |x, y| muli(x, y);

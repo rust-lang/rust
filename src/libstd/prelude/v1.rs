@@ -36,7 +36,7 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use iter::ExactSizeIterator;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(no_inline)] pub use iter::{Iterator, IteratorExt, Extend};
+#[doc(no_inline)] pub use iter::{Iterator, Extend};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use option::Option::{self, Some, None};
 #[stable(feature = "rust1", since = "1.0.0")]
