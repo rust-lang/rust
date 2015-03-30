@@ -315,8 +315,8 @@ impl MutabilityCategory {
         ret
     }
 
-    pub fn from_pointer_kind(base_mutbl: MutabilityCategory,
-                             ptr: PointerKind) -> MutabilityCategory {
+    fn from_pointer_kind(base_mutbl: MutabilityCategory,
+                         ptr: PointerKind) -> MutabilityCategory {
         let ret = match ptr {
             Unique => {
                 base_mutbl.inherit()
