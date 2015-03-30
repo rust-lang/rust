@@ -71,12 +71,12 @@ pub trait Emitter {
 /// This structure is used to signify that a task has panicked with a fatal error
 /// from the diagnostics. You can use this with the `Any` trait to figure out
 /// how a rustc task died (if so desired).
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct FatalError;
 
 /// Signifies that the compiler died with an explicit call to `.bug`
 /// or `.span_bug` rather than a failed assertion, etc.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct ExplicitBug;
 
 /// A span-handler is like a handler but also

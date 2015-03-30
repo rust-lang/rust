@@ -90,7 +90,7 @@ pub fn path_to_string<PI: Iterator<Item=PathElem>>(path: PI) -> String {
     })
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Node<'ast> {
     NodeItem(&'ast Item),
     NodeForeignItem(&'ast ForeignItem),

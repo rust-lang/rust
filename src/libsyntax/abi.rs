@@ -15,7 +15,7 @@ pub use self::AbiArchitecture::*;
 
 use std::fmt;
 
-#[derive(Copy, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Os {
     OsWindows,
     OsMacos,
@@ -49,7 +49,7 @@ pub enum Abi {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum Architecture {
     X86,
     X86_64,
@@ -58,7 +58,7 @@ pub enum Architecture {
     Mipsel
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct AbiData {
     abi: Abi,
 
@@ -66,7 +66,7 @@ pub struct AbiData {
     name: &'static str,
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum AbiArchitecture {
     /// Not a real ABI (e.g., intrinsic)
     RustArch,
