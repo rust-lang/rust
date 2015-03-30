@@ -17,7 +17,6 @@ use core::clone::Clone;
 
 use std::boxed;
 use std::boxed::Box;
-use std::boxed::BoxAny;
 
 #[test]
 fn test_owned_clone() {
