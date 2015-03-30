@@ -65,9 +65,13 @@ use core::ops;
 use core::ptr;
 use core::ptr::Unique;
 use core::slice;
+use core::isize;
 use core::usize;
 
 use borrow::{Cow, IntoCow};
+
+// FIXME- fix places which assume the max vector allowed has memory usize::MAX.
+static MAX_MEMORY_SIZE: usize = isize::MAX as usize;
 
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
 ///
@@ -305,13 +309,15 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
         if self.cap - self.len < additional {
-            let err_msg = "Vec::reserve: `usize` overflow";
+            let err_msg = "Vec::reserve: `isize` overflow";
 
             let new_min_cap = self.len.checked_add(additional).expect(err_msg);
-            match new_min_cap.checked_next_power_of_two() {
-                None => self.grow_capacity(usize::MAX),
-                Some(x) => self.grow_capacity(x),
-            }
+            if new_min_cap > MAX_MEMORY_SIZE { panic!(err_msg) }
+            self.grow_capacity(match new_min_cap.checked_next_power_of_two() {
+                Some(x) if x > MAX_MEMORY_SIZE => MAX_MEMORY_SIZE,
+                None => MAX_MEMORY_SIZE,
+                Some(x) => x,
+            });
         }
     }
 
@@ -642,10 +648,10 @@ impl<T> Vec<T> {
         #[inline(never)]
         fn resize<T>(vec: &mut Vec<T>) {
             let old_size = vec.cap * mem::size_of::<T>();
-            if old_size == usize::MAX { panic!("capacity overflow") }
+            if old_size >= MAX_MEMORY_SIZE { panic!("capacity overflow") }
             let mut size = max(old_size, 2 * mem::size_of::<T>()) * 2;
-            if old_size > size {
-                size = usize::MAX;
+            if old_size > size || size > MAX_MEMORY_SIZE {
+                size = MAX_MEMORY_SIZE;
             }
             unsafe {
                 let ptr = alloc_or_realloc(*vec.ptr, old_size, size);
