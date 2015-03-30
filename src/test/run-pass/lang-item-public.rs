@@ -46,5 +46,5 @@ extern {}
 
 #[start]
 fn main(_: isize, _: *const *const u8) -> isize {
-    1 % 1
+    1_isize % 1_isize
 }

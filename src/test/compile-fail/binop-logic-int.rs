@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:`&&` cannot be applied to type `_`
-
 fn main() { let x = 1 && 2; }
+//~^ ERROR mismatched types
+//~| ERROR mismatched types
