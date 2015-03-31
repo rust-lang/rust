@@ -181,8 +181,8 @@ fn reverse_complement(seq: &mut [u8], tables: &Tables) {
     let mut i = LINE_LEN;
     while i < len {
         unsafe {
-            copy(seq.as_mut_ptr().offset((i - off + 1) as isize),
-                 seq.as_ptr().offset((i - off) as isize), off);
+            copy(seq.as_ptr().offset((i - off) as isize),
+                 seq.as_mut_ptr().offset((i - off + 1) as isize), off);
             *seq.get_unchecked_mut(i - off) = b'\n';
         }
         i += LINE_LEN + 1;

@@ -142,8 +142,8 @@ impl<T> VecDeque<T> {
         debug_assert!(src + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
                       self.cap);
         ptr::copy(
-            self.ptr.offset(dst as isize),
             self.ptr.offset(src as isize),
+            self.ptr.offset(dst as isize),
             len);
     }
 
@@ -155,8 +155,8 @@ impl<T> VecDeque<T> {
         debug_assert!(src + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
                       self.cap);
         ptr::copy_nonoverlapping(
-            self.ptr.offset(dst as isize),
             self.ptr.offset(src as isize),
+            self.ptr.offset(dst as isize),
             len);
     }
 }
@@ -1361,21 +1361,21 @@ impl<T> VecDeque<T> {
                 // `at` lies in the first half.
                 let amount_in_first = first_len - at;
 
-                ptr::copy_nonoverlapping(*other.ptr,
-                                         first_half.as_ptr().offset(at as isize),
+                ptr::copy_nonoverlapping(first_half.as_ptr().offset(at as isize),
+                                         *other.ptr,
                                          amount_in_first);
 
                 // just take all of the second half.
-                ptr::copy_nonoverlapping(other.ptr.offset(amount_in_first as isize),
-                                         second_half.as_ptr(),
+                ptr::copy_nonoverlapping(second_half.as_ptr(),
+                                         other.ptr.offset(amount_in_first as isize),
                                          second_len);
             } else {
                 // `at` lies in the second half, need to factor in the elements we skipped
                 // in the first half.
                 let offset = at - first_len;
                 let amount_in_second = second_len - offset;
-                ptr::copy_nonoverlapping(*other.ptr,
-                                         second_half.as_ptr().offset(offset as isize),
+                ptr::copy_nonoverlapping(second_half.as_ptr().offset(offset as isize),
+                                         *other.ptr,
                                          amount_in_second);
             }
         }

@@ -398,8 +398,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                            false,
                            false,
                            *substs.types.get(FnSpace, 0),
-                           llargs[0],
                            llargs[1],
+                           llargs[0],
                            llargs[2],
                            call_debug_location)
         }
@@ -408,8 +408,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                            true,
                            false,
                            *substs.types.get(FnSpace, 0),
-                           llargs[0],
                            llargs[1],
+                           llargs[0],
                            llargs[2],
                            call_debug_location)
         }

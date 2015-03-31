@@ -260,16 +260,17 @@ impl<T> Vec<T> {
 
     /// Creates a vector by copying the elements from a raw pointer.
     ///
-    /// This function will copy `elts` contiguous elements starting at `ptr` into a new allocation
-    /// owned by the returned `Vec<T>`. The elements of the buffer are copied into the vector
-    /// without cloning, as if `ptr::read()` were called on them.
+    /// This function will copy `elts` contiguous elements starting at `ptr`
+    /// into a new allocation owned by the returned `Vec<T>`. The elements of
+    /// the buffer are copied into the vector without cloning, as if
+    /// `ptr::read()` were called on them.
     #[inline]
     #[unstable(feature = "collections",
                reason = "may be better expressed via composition")]
     pub unsafe fn from_raw_buf(ptr: *const T, elts: usize) -> Vec<T> {
         let mut dst = Vec::with_capacity(elts);
         dst.set_len(elts);
-        ptr::copy_nonoverlapping(dst.as_mut_ptr(), ptr, elts);
+        ptr::copy_nonoverlapping(ptr, dst.as_mut_ptr(), elts);
         dst
     }
 
@@ -288,8 +289,9 @@ impl<T> Vec<T> {
         self.cap
     }
 
-    /// Reserves capacity for at least `additional` more elements to be inserted in the given
-    /// `Vec<T>`. The collection may reserve more space to avoid frequent reallocations.
+    /// Reserves capacity for at least `additional` more elements to be inserted
+    /// in the given `Vec<T>`. The collection may reserve more space to avoid
+    /// frequent reallocations.
     ///
     /// # Panics
     ///
@@ -541,7 +543,7 @@ impl<T> Vec<T> {
                 let p = self.as_mut_ptr().offset(index as isize);
                 // Shift everything over to make space. (Duplicating the
                 // `index`th element into two consecutive places.)
-                ptr::copy(p.offset(1), &*p, len - index);
+                ptr::copy(&*p, p.offset(1), len - index);
                 // Write it in, overwriting the first copy of the `index`th
                 // element.
                 ptr::write(&mut *p, element);
@@ -579,7 +581,7 @@ impl<T> Vec<T> {
                 ret = ptr::read(ptr);
 
                 // Shift everything down to fill in that spot.
-                ptr::copy(ptr, &*ptr.offset(1), len - index - 1);
+                ptr::copy(&*ptr.offset(1), ptr, len - index - 1);
             }
             self.set_len(len - 1);
             ret
@@ -721,8 +723,8 @@ impl<T> Vec<T> {
         let len = self.len();
         unsafe {
             ptr::copy_nonoverlapping(
-                self.get_unchecked_mut(len),
                 other.as_ptr(),
+                self.get_unchecked_mut(len),
                 other.len());
         }
 
@@ -1042,8 +1044,8 @@ impl<T> Vec<T> {
             other.set_len(other_len);
 
             ptr::copy_nonoverlapping(
-                other.as_mut_ptr(),
                 self.as_ptr().offset(at as isize),
+                other.as_mut_ptr(),
                 other.len());
         }
         other

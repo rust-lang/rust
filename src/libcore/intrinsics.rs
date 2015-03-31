@@ -293,9 +293,9 @@ extern "rust-intrinsic" {
     ///         let mut t: T = mem::uninitialized();
     ///
     ///         // Perform the swap, `&mut` pointers never alias
-    ///         ptr::copy_nonoverlapping(&mut t, &*x, 1);
-    ///         ptr::copy_nonoverlapping(x, &*y, 1);
-    ///         ptr::copy_nonoverlapping(y, &t, 1);
+    ///         ptr::copy_nonoverlapping(x, &mut t, 1);
+    ///         ptr::copy_nonoverlapping(y, x, 1);
+    ///         ptr::copy_nonoverlapping(&t, y, 1);
     ///
     ///         // y and t now point to the same thing, but we need to completely forget `tmp`
     ///         // because it's no longer relevant.
@@ -304,6 +304,12 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(not(stage0))]
+    pub fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize);
+
+    /// dox
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(stage0)]
     pub fn copy_nonoverlapping<T>(dst: *mut T, src: *const T, count: usize);
 
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
@@ -329,12 +335,18 @@ extern "rust-intrinsic" {
     /// unsafe fn from_buf_raw<T>(ptr: *const T, elts: usize) -> Vec<T> {
     ///     let mut dst = Vec::with_capacity(elts);
     ///     dst.set_len(elts);
-    ///     ptr::copy(dst.as_mut_ptr(), ptr, elts);
+    ///     ptr::copy(ptr, dst.as_mut_ptr(), elts);
     ///     dst
     /// }
     /// ```
     ///
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(not(stage0))]
+    pub fn copy<T>(src: *const T, dst: *mut T, count: usize);
+
+    /// dox
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(stage0)]
     pub fn copy<T>(dst: *mut T, src: *const T, count: usize);
 
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
