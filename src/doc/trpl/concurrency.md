@@ -280,13 +280,15 @@ it returns an `Result<T, E>`, and because this is just an example, we `unwrap()`
 it to get a reference to the data. Real code would have more robust error handling
 here. We're then free to mutate it, since we have the lock.
 
-This timer bit is a bit awkward, however. We have picked a reasonable amount of
-time to wait, but it's entirely possible that we've picked too high, and that
-we could be taking less time. It's also possible that we've picked too low,
-and that we aren't actually finishing this computation.
+Lastly, while the threads are running, we wait on a short timer. But
+this is not ideal: we may have picked a reasonable amount of time to
+wait but it's more likely we'll either be waiting longer than
+necessary or not long enough, depending on just how much time the
+threads actually take to finish computing when the program runs.
 
-Rust's standard library provides a few more mechanisms for two threads to
-synchronize with each other. Let's talk about one: channels.
+A more precise alternative to the timer would be to use one of the
+mechanisms provided by the Rust standard library for synchronizing
+threads with each other. Let's talk about one of them: channels.
 
 ## Channels
 
