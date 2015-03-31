@@ -14,8 +14,8 @@
 
 use core::prelude::*;
 use core::slice;
-use core::iter::{range_step, repeat};
-use core::num::wrapping::Wrapping as w;
+use core::iter::repeat;
+use core::num::Wrapping as w;
 
 use {Rng, SeedableRng, Rand};
 
@@ -95,7 +95,7 @@ impl IsaacRng {
         if use_rsl {
             macro_rules! memloop {
                 ($arr:expr) => {{
-                    for i in range_step(0, RAND_SIZE_USIZE, 8) {
+                    for i in (0..RAND_SIZE_USIZE).step_by(8) {
                         a=a+$arr[i  ]; b=b+$arr[i+1];
                         c=c+$arr[i+2]; d=d+$arr[i+3];
                         e=e+$arr[i+4]; f=f+$arr[i+5];
@@ -112,7 +112,7 @@ impl IsaacRng {
             memloop!(self.rsl);
             memloop!(self.mem);
         } else {
-            for i in range_step(0, RAND_SIZE_USIZE, 8) {
+            for i in (0..RAND_SIZE_USIZE).step_by(8) {
                 mix!();
                 self.mem[i  ]=a; self.mem[i+1]=b;
                 self.mem[i+2]=c; self.mem[i+3]=d;
@@ -136,7 +136,7 @@ impl IsaacRng {
         const MIDPOINT: usize = RAND_SIZE_USIZE / 2;
 
         macro_rules! ind {
-            ($x:expr) => ( self.mem[($x >> 2).0 as usize & (RAND_SIZE_USIZE - 1)] )
+            ($x:expr) => (self.mem[($x >> 2).0 as usize & (RAND_SIZE_USIZE - 1)] )
         }
 
         let r = [(0, MIDPOINT), (MIDPOINT, 0)];
@@ -172,7 +172,7 @@ impl IsaacRng {
                 }}
             }
 
-            for i in range_step(0, MIDPOINT, 4) {
+            for i in (0..MIDPOINT).step_by(4) {
                 rngstepp!(i + 0, 13);
                 rngstepn!(i + 1, 6);
                 rngstepp!(i + 2, 2);

@@ -66,6 +66,7 @@ use parse::lexer;
 use ptr::P;
 
 use std::fmt;
+#[allow(deprecated)]
 use std::num::Int;
 use std::rc::Rc;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -1141,6 +1142,7 @@ pub enum Sign {
 }
 
 impl Sign {
+    #[allow(deprecated)] // Int
     pub fn new<T:Int>(n: T) -> Sign {
         if n < Int::zero() {
             Minus
