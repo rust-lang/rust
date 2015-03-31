@@ -73,6 +73,8 @@ use std::cmp;
 use std::fmt;
 use std::hash::{Hash, SipHasher, Hasher};
 use std::mem;
+use std::num::ToPrimitive;
+use std::num::wrapping::WrappingOps;
 use std::ops;
 use std::rc::Rc;
 use std::vec::IntoIter;
@@ -83,9 +85,11 @@ use syntax::ast::{CrateNum, DefId, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
 use syntax::ast::{StmtExpr, StmtSemi, StructField, UnnamedField, Visibility};
 use syntax::ast_util::{self, is_local, lit_is_str, local_def};
-use syntax::attr::{self, AttrMetaMethods};
+use syntax::attr::{self, AttrMetaMethods, SignedInt, UnsignedInt};
 use syntax::codemap::Span;
 use syntax::parse::token::{self, InternedString, special_idents};
+use syntax::print::pprust;
+use syntax::ptr::P;
 use syntax::{ast, ast_map};
 
 pub type Disr = u64;
@@ -5489,63 +5493,268 @@ pub fn type_is_empty(cx: &ctxt, ty: Ty) -> bool {
      }
 }
 
+trait IntTypeExt {
+    fn to_ty<'tcx>(&self, cx: &ctxt<'tcx>) -> Ty<'tcx>;
+    fn i64_to_disr(&self, val: i64) -> Option<Disr>;
+    fn u64_to_disr(&self, val: u64) -> Option<Disr>;
+    fn disr_incr(&self, val: Disr) -> Option<Disr>;
+    fn disr_string(&self, val: Disr) -> String;
+    fn disr_wrap_incr(&self, val: Option<Disr>) -> Disr;
+}
+
+impl IntTypeExt for attr::IntType {
+    fn to_ty<'tcx>(&self, cx: &ctxt<'tcx>) -> Ty<'tcx> {
+        match *self {
+            SignedInt(ast::TyI8)      => cx.types.i8,
+            SignedInt(ast::TyI16)     => cx.types.i16,
+            SignedInt(ast::TyI32)     => cx.types.i32,
+            SignedInt(ast::TyI64)     => cx.types.i64,
+            SignedInt(ast::TyIs)   => cx.types.isize,
+            UnsignedInt(ast::TyU8)    => cx.types.u8,
+            UnsignedInt(ast::TyU16)   => cx.types.u16,
+            UnsignedInt(ast::TyU32)   => cx.types.u32,
+            UnsignedInt(ast::TyU64)   => cx.types.u64,
+            UnsignedInt(ast::TyUs) => cx.types.usize,
+        }
+    }
+
+    fn i64_to_disr(&self, val: i64) -> Option<Disr> {
+        match *self {
+            SignedInt(ast::TyI8)    => val.to_i8()  .map(|v| v as Disr),
+            SignedInt(ast::TyI16)   => val.to_i16() .map(|v| v as Disr),
+            SignedInt(ast::TyI32)   => val.to_i32() .map(|v| v as Disr),
+            SignedInt(ast::TyI64)   => val.to_i64() .map(|v| v as Disr),
+            UnsignedInt(ast::TyU8)  => val.to_u8()  .map(|v| v as Disr),
+            UnsignedInt(ast::TyU16) => val.to_u16() .map(|v| v as Disr),
+            UnsignedInt(ast::TyU32) => val.to_u32() .map(|v| v as Disr),
+            UnsignedInt(ast::TyU64) => val.to_u64() .map(|v| v as Disr),
+
+            UnsignedInt(ast::TyUs) |
+            SignedInt(ast::TyIs) => unreachable!(),
+        }
+    }
+
+    fn u64_to_disr(&self, val: u64) -> Option<Disr> {
+        match *self {
+            SignedInt(ast::TyI8)    => val.to_i8()  .map(|v| v as Disr),
+            SignedInt(ast::TyI16)   => val.to_i16() .map(|v| v as Disr),
+            SignedInt(ast::TyI32)   => val.to_i32() .map(|v| v as Disr),
+            SignedInt(ast::TyI64)   => val.to_i64() .map(|v| v as Disr),
+            UnsignedInt(ast::TyU8)  => val.to_u8()  .map(|v| v as Disr),
+            UnsignedInt(ast::TyU16) => val.to_u16() .map(|v| v as Disr),
+            UnsignedInt(ast::TyU32) => val.to_u32() .map(|v| v as Disr),
+            UnsignedInt(ast::TyU64) => val.to_u64() .map(|v| v as Disr),
+
+            UnsignedInt(ast::TyUs) |
+            SignedInt(ast::TyIs) => unreachable!(),
+        }
+    }
+
+    fn disr_incr(&self, val: Disr) -> Option<Disr> {
+        macro_rules! add1 {
+            ($e:expr) => { $e.and_then(|v|v.checked_add(1)).map(|v| v as Disr) }
+        }
+        match *self {
+            // SignedInt repr means we *want* to reinterpret the bits
+            // treating the highest bit of Disr as a sign-bit, so
+            // cast to i64 before range-checking.
+            SignedInt(ast::TyI8)    => add1!((val as i64).to_i8()),
+            SignedInt(ast::TyI16)   => add1!((val as i64).to_i16()),
+            SignedInt(ast::TyI32)   => add1!((val as i64).to_i32()),
+            SignedInt(ast::TyI64)   => add1!(Some(val as i64)),
+
+            UnsignedInt(ast::TyU8)  => add1!(val.to_u8()),
+            UnsignedInt(ast::TyU16) => add1!(val.to_u16()),
+            UnsignedInt(ast::TyU32) => add1!(val.to_u32()),
+            UnsignedInt(ast::TyU64) => add1!(Some(val)),
+
+            UnsignedInt(ast::TyUs) |
+            SignedInt(ast::TyIs) => unreachable!(),
+        }
+    }
+
+    // This returns a String because (1.) it is only used for
+    // rendering an error message and (2.) a string can represent the
+    // full range from `i64::MIN` through `u64::MAX`.
+    fn disr_string(&self, val: Disr) -> String {
+        match *self {
+            SignedInt(ast::TyI8)    => format!("{}", val as i8 ),
+            SignedInt(ast::TyI16)   => format!("{}", val as i16),
+            SignedInt(ast::TyI32)   => format!("{}", val as i32),
+            SignedInt(ast::TyI64)   => format!("{}", val as i64),
+            UnsignedInt(ast::TyU8)  => format!("{}", val as u8 ),
+            UnsignedInt(ast::TyU16) => format!("{}", val as u16),
+            UnsignedInt(ast::TyU32) => format!("{}", val as u32),
+            UnsignedInt(ast::TyU64) => format!("{}", val as u64),
+
+            UnsignedInt(ast::TyUs) |
+            SignedInt(ast::TyIs) => unreachable!(),
+        }
+    }
+
+    fn disr_wrap_incr(&self, val: Option<Disr>) -> Disr {
+        macro_rules! add1 {
+            ($e:expr) => { ($e).wrapping_add(1) as Disr }
+        }
+        let val = val.unwrap_or(ty::INITIAL_DISCRIMINANT_VALUE);
+        match *self {
+            SignedInt(ast::TyI8)    => add1!(val as i8 ),
+            SignedInt(ast::TyI16)   => add1!(val as i16),
+            SignedInt(ast::TyI32)   => add1!(val as i32),
+            SignedInt(ast::TyI64)   => add1!(val as i64),
+            UnsignedInt(ast::TyU8)  => add1!(val as u8 ),
+            UnsignedInt(ast::TyU16) => add1!(val as u16),
+            UnsignedInt(ast::TyU32) => add1!(val as u32),
+            UnsignedInt(ast::TyU64) => add1!(val as u64),
+
+            UnsignedInt(ast::TyUs) |
+            SignedInt(ast::TyIs) => unreachable!(),
+        }
+    }
+}
+
+/// Returns `(normalized_type, ty)`, where `normalized_type` is the
+/// IntType representation of one of {i64,i32,i16,i8,u64,u32,u16,u8},
+/// and `ty` is the original type (i.e. may include `isize` or
+/// `usize`).
+pub fn enum_repr_type<'tcx>(cx: &ctxt<'tcx>,
+                            opt_hint: Option<&attr::ReprAttr>)
+                            -> (attr::IntType, Ty<'tcx>)
+{
+    let repr_type = match opt_hint {
+        // Feed in the given type
+        Some(&attr::ReprInt(_, int_t)) => int_t,
+        // ... but provide sensible default if none provided
+        //
+        // NB. Historically `fn enum_variants` generate i64 here, while
+        // rustc_typeck::check would generate isize.
+        _ => SignedInt(ast::TyIs),
+    };
+
+    let repr_type_ty = repr_type.to_ty(cx);
+    let repr_type = match repr_type {
+        SignedInt(ast::TyIs) =>
+            SignedInt(cx.sess.target.int_type),
+        UnsignedInt(ast::TyUs) =>
+            UnsignedInt(cx.sess.target.uint_type),
+        other => other
+    };
+
+    (repr_type, repr_type_ty)
+}
+
+fn report_discrim_overflow(cx: &ctxt,
+                           variant_span: Span,
+                           variant_name: &str,
+                           repr_type: attr::IntType,
+                           prev_val: Disr) {
+    let computed_value = repr_type.disr_wrap_incr(Some(prev_val));
+    let computed_value = repr_type.disr_string(computed_value);
+    let prev_val = repr_type.disr_string(prev_val);
+    let repr_type = repr_type.to_ty(cx).user_string(cx);
+    span_err!(cx.sess, variant_span, E0370,
+              "enum discriminant overflowed on value after {}: {}; \
+               set explicitly via {} = {} if that is desired outcome",
+              prev_val, repr_type, variant_name, computed_value);
+}
+
+// This computes the discriminant values for the sequence of Variants
+// attached to a particular enum, taking into account the #[repr] (if
+// any) provided via the `opt_hint`.
+fn compute_enum_variants<'tcx>(cx: &ctxt<'tcx>,
+                               vs: &'tcx [P<ast::Variant>],
+                               opt_hint: Option<&attr::ReprAttr>)
+                               -> Vec<Rc<ty::VariantInfo<'tcx>>> {
+    let mut variants: Vec<Rc<ty::VariantInfo>> = Vec::new();
+    let mut prev_disr_val: Option<ty::Disr> = None;
+
+    let (repr_type, repr_type_ty) = ty::enum_repr_type(cx, opt_hint);
+
+    for v in vs {
+        // If the discriminant value is specified explicitly in the
+        // enum, check whether the initialization expression is valid,
+        // otherwise use the last value plus one.
+        let current_disr_val;
+
+        // This closure marks cases where, when an error occurs during
+        // the computation, attempt to assign a (hopefully) fresh
+        // value to avoid spurious error reports downstream.
+        let attempt_fresh_value = move || -> Disr {
+            repr_type.disr_wrap_incr(prev_disr_val)
+        };
+
+        match v.node.disr_expr {
+            Some(ref e) => {
+                debug!("disr expr, checking {}", pprust::expr_to_string(&**e));
+
+                // check_expr (from check_const pass) doesn't guarantee
+                // that the expression is in a form that eval_const_expr can
+                // handle, so we may still get an internal compiler error
+                //
+                // pnkfelix: The above comment was transcribed from
+                // the version of this code taken from rustc_typeck.
+                // Presumably the implication is that we need to deal
+                // with such ICE's as they arise.
+                //
+                // Since this can be called from `ty::enum_variants`
+                // anyway, best thing is to make `eval_const_expr`
+                // more robust (on case-by-case basis).
+
+                match const_eval::eval_const_expr_partial(cx, &**e, Some(repr_type_ty)) {
+                    Ok(const_eval::const_int(val)) => current_disr_val = val as Disr,
+                    Ok(const_eval::const_uint(val)) => current_disr_val = val as Disr,
+                    Ok(_) => {
+                        span_err!(cx.sess, e.span, E0079,
+                                  "expected signed integer constant");
+                        current_disr_val = attempt_fresh_value();
+                    }
+                    Err(ref err) => {
+                        span_err!(cx.sess, err.span, E0080,
+                                  "constant evaluation error: {}",
+                                  err.description());
+                        current_disr_val = attempt_fresh_value();
+                    }
+                }
+            },
+            None => {
+                current_disr_val = match prev_disr_val {
+                    Some(prev_disr_val) => {
+                        if let Some(v) = repr_type.disr_incr(prev_disr_val) {
+                            v
+                        } else {
+                            report_discrim_overflow(cx, v.span, v.node.name.as_str(),
+                                                    repr_type, prev_disr_val);
+                            attempt_fresh_value()
+                        }
+                    }
+                    None => ty::INITIAL_DISCRIMINANT_VALUE
+                }
+            }
+        }
+
+        let variant_info = Rc::new(VariantInfo::from_ast_variant(cx, &**v, current_disr_val));
+        prev_disr_val = Some(current_disr_val);
+
+        variants.push(variant_info);
+    }
+
+    return variants;
+}
+
 pub fn enum_variants<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                            -> Rc<Vec<Rc<VariantInfo<'tcx>>>> {
     memoized(&cx.enum_var_cache, id, |id: ast::DefId| {
         if ast::LOCAL_CRATE != id.krate {
             Rc::new(csearch::get_enum_variants(cx, id))
         } else {
-            /*
-              Although both this code and check_enum_variants in typeck/check
-              call eval_const_expr, it should never get called twice for the same
-              expr, since check_enum_variants also updates the enum_var_cache
-             */
             match cx.map.get(id.node) {
                 ast_map::NodeItem(ref item) => {
                     match item.node {
                         ast::ItemEnum(ref enum_definition, _) => {
-                            let mut last_discriminant: Option<Disr> = None;
-                            Rc::new(enum_definition.variants.iter().map(|variant| {
-
-                                let mut discriminant = INITIAL_DISCRIMINANT_VALUE;
-                                if let Some(ref e) = variant.node.disr_expr {
-                                    // Preserve all values, and prefer signed.
-                                    let ty = Some(cx.types.i64);
-                                    match const_eval::eval_const_expr_partial(cx, &**e, ty) {
-                                        Ok(const_eval::const_int(val)) => {
-                                            discriminant = val as Disr;
-                                        }
-                                        Ok(const_eval::const_uint(val)) => {
-                                            discriminant = val as Disr;
-                                        }
-                                        Ok(_) => {
-                                            span_err!(cx.sess, e.span, E0304,
-                                                      "expected signed integer constant");
-                                        }
-                                        Err(err) => {
-                                            span_err!(cx.sess, err.span, E0305,
-                                                      "constant evaluation error: {}",
-                                                      err.description());
-                                        }
-                                    }
-                                } else {
-                                    if let Some(val) = last_discriminant {
-                                        if let Some(v) = val.checked_add(1) {
-                                            discriminant = v
-                                        } else {
-                                            cx.sess.span_err(
-                                                variant.span,
-                                                &format!("Discriminant overflowed!"));
-                                        }
-                                    } else {
-                                        discriminant = INITIAL_DISCRIMINANT_VALUE;
-                                    }
-                                }
-
-                                last_discriminant = Some(discriminant);
-                                Rc::new(VariantInfo::from_ast_variant(cx, &**variant,
-                                                                      discriminant))
-                            }).collect())
+                            Rc::new(compute_enum_variants(
+                                cx,
+                                &enum_definition.variants,
+                                lookup_repr_hints(cx, id).get(0)))
                         }
                         _ => {
                             cx.sess.bug("enum_variants: id not bound to an enum")
