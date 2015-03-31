@@ -165,7 +165,7 @@ impl<W: Write> BufWriter<W> {
             match self.inner.as_mut().unwrap().write(&self.buf[written..]) {
                 Ok(0) => {
                     ret = Err(Error::new(ErrorKind::WriteZero,
-                                         "failed to write the buffered data", None));
+                                         "failed to write the buffered data"));
                     break;
                 }
                 Ok(n) => written += n,

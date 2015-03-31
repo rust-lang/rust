@@ -699,8 +699,8 @@ fn print_flowgraph<W: Write>(variants: Vec<borrowck_dot::Variant>,
 
     fn expand_err_details(r: io::Result<()>) -> io::Result<()> {
         r.map_err(|ioerr| {
-            io::Error::new(io::ErrorKind::Other, "graphviz::render failed",
-                           Some(ioerr.to_string()))
+            io::Error::new(io::ErrorKind::Other,
+                           &format!("graphviz::render failed: {}", ioerr)[..])
         })
     }
 }

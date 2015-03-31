@@ -56,8 +56,10 @@ use core::fmt;
 use core::hash::{self, Hash};
 use core::mem;
 use core::ops::{Deref, DerefMut};
-use core::ptr::Unique;
-use core::raw::TraitObject;
+use core::ptr::{self, Unique};
+use core::raw::{TraitObject, Slice};
+
+use heap;
 
 /// A value that represents the heap. This is the default place that the `box`
 /// keyword allocates into when no place is supplied.
@@ -311,5 +313,45 @@ impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {}
 impl<'a, E: Error + 'a> From<E> for Box<Error + 'a> {
     fn from(err: E) -> Box<Error + 'a> {
         Box::new(err)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, E: Error + Send + 'a> From<E> for Box<Error + Send + 'a> {
+    fn from(err: E) -> Box<Error + Send + 'a> {
+        Box::new(err)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, 'b> From<&'b str> for Box<Error + Send + 'a> {
+    fn from(err: &'b str) -> Box<Error + Send + 'a> {
+        #[derive(Debug)]
+        struct StringError(Box<str>);
+        impl Error for StringError {
+            fn description(&self) -> &str { &self.0 }
+        }
+        impl fmt::Display for StringError {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+
+        // Unfortunately `String` is located in libcollections, so we construct
+        // a `Box<str>` manually here.
+        unsafe {
+            let alloc = if err.len() == 0 {
+                0 as *mut u8
+            } else {
+                let ptr = heap::allocate(err.len(), 1);
+                if ptr.is_null() { ::oom(); }
+                ptr as *mut u8
+            };
+            ptr::copy(err.as_bytes().as_ptr(), alloc, err.len());
+            Box::new(StringError(mem::transmute(Slice {
+                data: alloc,
+                len: err.len(),
+            })))
+        }
     }
 }

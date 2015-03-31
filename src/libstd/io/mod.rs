@@ -83,7 +83,7 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
         if str::from_utf8(&g.s[g.len..]).is_err() {
             ret.and_then(|_| {
                 Err(Error::new(ErrorKind::InvalidInput,
-                               "stream did not contain valid UTF-8", None))
+                               "stream did not contain valid UTF-8"))
             })
         } else {
             g.len = g.s.len();
@@ -359,8 +359,7 @@ pub trait Write {
         while buf.len() > 0 {
             match self.write(buf) {
                 Ok(0) => return Err(Error::new(ErrorKind::WriteZero,
-                                               "failed to write whole buffer",
-                                               None)),
+                                               "failed to write whole buffer")),
                 Ok(n) => buf = &buf[n..],
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
@@ -782,7 +781,7 @@ pub struct Chars<R> {
 
 /// An enumeration of possible errors that can be generated from the `Chars`
 /// adapter.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Debug)]
 #[unstable(feature = "io", reason = "awaiting stability of Read::chars")]
 pub enum CharsError {
     /// Variant representing that the underlying stream was read successfully

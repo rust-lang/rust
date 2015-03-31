@@ -576,8 +576,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
     let to = to.as_ref();
     if !from.is_file() {
         return Err(Error::new(ErrorKind::InvalidInput,
-                              "the source path is not an existing file",
-                              None))
+                              "the source path is not an existing file"))
     }
 
     let mut reader = try!(File::open(from));

@@ -34,7 +34,6 @@
 #![feature(unsafe_destructor)]
 #![feature(staged_api)]
 #![feature(exit_status)]
-#![feature(io)]
 #![feature(set_stdio)]
 #![feature(unicode)]
 
