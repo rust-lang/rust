@@ -212,7 +212,7 @@ mod tests {
 
             let _t = thread::spawn(move|| {
                 let mut buf = [0, 0];
-                assert_eq!(sock2.recv_from(&mut buf), Ok((1, addr1)));
+                assert_eq!(sock2.recv_from(&mut buf).unwrap(), (1, addr1));
                 assert_eq!(buf[0], 1);
                 t!(sock2.send_to(&[2], &addr1));
             });
@@ -228,7 +228,7 @@ mod tests {
             });
             tx1.send(()).unwrap();
             let mut buf = [0, 0];
-            assert_eq!(sock1.recv_from(&mut buf), Ok((1, addr2)));
+            assert_eq!(sock1.recv_from(&mut buf).unwrap(), (1, addr2));
             rx2.recv().unwrap();
         })
     }

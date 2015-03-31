@@ -521,7 +521,7 @@ mod tests {
 
             let mut c = t!(TcpStream::connect(&addr));
             let mut b = [0; 10];
-            assert_eq!(c.read(&mut b), Ok(1));
+            assert_eq!(c.read(&mut b).unwrap(), 1);
             t!(c.write(&[1]));
             rx.recv().unwrap();
         })
@@ -566,7 +566,7 @@ mod tests {
             let _t = thread::spawn(move|| {
                 let mut s = t!(TcpStream::connect(&addr));
                 let mut buf = [0, 0];
-                assert_eq!(s.read(&mut buf), Ok(1));
+                assert_eq!(s.read(&mut buf).unwrap(), 1);
                 assert_eq!(buf[0], 1);
                 t!(s.write(&[2]));
             });
@@ -584,7 +584,7 @@ mod tests {
             });
             tx1.send(()).unwrap();
             let mut buf = [0, 0];
-            assert_eq!(s1.read(&mut buf), Ok(1));
+            assert_eq!(s1.read(&mut buf).unwrap(), 1);
             rx2.recv().unwrap();
         })
     }
@@ -657,7 +657,7 @@ mod tests {
             let _t = thread::spawn(move|| {
                 let mut c = t!(a.accept()).0;
                 let mut b = [0];
-                assert_eq!(c.read(&mut b), Ok(0));
+                assert_eq!(c.read(&mut b).unwrap(), 0);
                 t!(c.write(&[1]));
             });
 
@@ -688,16 +688,16 @@ mod tests {
             t!(s.shutdown(Shutdown::Write));
             assert!(s.write(&[0]).is_err());
             t!(s.shutdown(Shutdown::Read));
-            assert_eq!(s.read(&mut b), Ok(0));
+            assert_eq!(s.read(&mut b).unwrap(), 0);
 
             // closing should affect previous handles
             assert!(s2.write(&[0]).is_err());
-            assert_eq!(s2.read(&mut b), Ok(0));
+            assert_eq!(s2.read(&mut b).unwrap(), 0);
 
             // closing should affect new handles
             let mut s3 = t!(s.try_clone());
             assert!(s3.write(&[0]).is_err());
-            assert_eq!(s3.read(&mut b), Ok(0));
+            assert_eq!(s3.read(&mut b).unwrap(), 0);
 
             // make sure these don't die
             let _ = s2.shutdown(Shutdown::Read);

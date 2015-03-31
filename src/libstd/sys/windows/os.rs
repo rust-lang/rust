@@ -382,5 +382,5 @@ pub fn home_dir() -> Option<PathBuf> {
 }
 
 pub fn exit(code: i32) -> ! {
-    unsafe { libc::ExitProcess(code as libc::UINT) }
+    unsafe { c::ExitProcess(code as libc::c_uint) }
 }
