@@ -75,8 +75,7 @@ macro_rules! seek {
 
             if pos < 0 {
                 Err(Error::new(ErrorKind::InvalidInput,
-                               "invalid seek to a negative position",
-                               None))
+                               "invalid seek to a negative position"))
             } else {
                 self.pos = pos as u64;
                 Ok(self.pos)

@@ -47,9 +47,10 @@ pub fn get_sdk_root(sdk_name: &str) -> String {
                               Ok(String::from_utf8(output.stdout).unwrap())
                           } else {
                               let error = String::from_utf8(output.stderr);
+                              let error = format!("process exit with error: {}",
+                                                  error.unwrap());
                               Err(io::Error::new(io::ErrorKind::Other,
-                                                 "process exit with error",
-                                                 error.ok()))
+                                                 &error[..]))
                           }
                       });
 

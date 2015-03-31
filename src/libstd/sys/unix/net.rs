@@ -35,7 +35,8 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
             .to_string()
     };
     Err(io::Error::new(io::ErrorKind::Other,
-                       "failed to lookup address information", Some(detail)))
+                       &format!("failed to lookup address information: {}",
+                                detail)[..]))
 }
 
 impl Socket {
