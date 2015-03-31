@@ -215,25 +215,21 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
                 match traits::orphan_check(self.tcx, def_id) {
                     Ok(()) => { }
                     Err(traits::OrphanCheckErr::NoLocalInputType) => {
-                        if !ty::has_attr(self.tcx, trait_def_id, "old_orphan_check") {
-                            span_err!(
-                                self.tcx.sess, item.span, E0117,
-                                "the impl does not reference any \
-                                 types defined in this crate; \
-                                 only traits defined in the current crate can be \
-                                 implemented for arbitrary types");
-                            return;
-                        }
+                        span_err!(
+                            self.tcx.sess, item.span, E0117,
+                            "the impl does not reference any \
+                             types defined in this crate; \
+                             only traits defined in the current crate can be \
+                             implemented for arbitrary types");
+                        return;
                     }
                     Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {
-                        if !ty::has_attr(self.tcx, trait_def_id, "old_orphan_check") {
-                            span_err!(self.tcx.sess, item.span, E0210,
-                                    "type parameter `{}` must be used as the type parameter for \
-                                     some local type (e.g. `MyStruct<T>`); only traits defined in \
-                                     the current crate can be implemented for a type parameter",
-                                    param_ty.user_string(self.tcx));
-                            return;
-                        }
+                        span_err!(self.tcx.sess, item.span, E0210,
+                                "type parameter `{}` must be used as the type parameter for \
+                                 some local type (e.g. `MyStruct<T>`); only traits defined in \
+                                 the current crate can be implemented for a type parameter",
+                                param_ty.user_string(self.tcx));
+                        return;
                     }
                 }
 

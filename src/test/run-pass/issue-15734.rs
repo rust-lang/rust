@@ -13,7 +13,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(old_orphan_check, core)]
+#![feature(core)]
 
 use std::ops::Index;
 
