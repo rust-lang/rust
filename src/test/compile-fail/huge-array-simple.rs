@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: too big for the current
 #![allow(exceeding_bitshifts)]
 
 fn main() {
-   let fat : [u8; (1<<61)+(1<<31)] = [0; (1u64<<61) as usize +(1u64<<31) as usize];
+    let fat : [u8; (1<<61)+(1<<31)] =
+        //~^ ERROR array length constant evaluation error: attempted left shift with overflow
+        [0; (1u64<<61) as usize +(1u64<<31) as usize];
+    //~^ ERROR expected constant integer for repeat count, but attempted left shift with overflow
 }

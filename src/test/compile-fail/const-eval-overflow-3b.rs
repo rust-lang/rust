@@ -27,6 +27,10 @@ const A_I8_I
     : [u32; (i8::MAX as usize) + 1]
     = [0; (i8::MAX + 1u8) as usize];
 //~^ ERROR mismatched types
+//~| ERROR mismatched types
+//~| ERROR expected constant integer for repeat count, but attempted to add with overflow
+//~| ERROR the trait `core::ops::Add<u8>` is not implemented for the type `i8`
+//~| ERROR the trait `core::ops::Add<u8>` is not implemented for the type `i8`
 
 fn main() {
     foo(&A_I8_I[..]);
