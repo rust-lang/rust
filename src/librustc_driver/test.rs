@@ -808,12 +808,11 @@ fn walk_ty() {
         let tup2_ty = ty::mk_tup(tcx, vec!(tup1_ty, tup1_ty, uint_ty));
         let uniq_ty = ty::mk_uniq(tcx, tup2_ty);
         let walked: Vec<_> = uniq_ty.walk().collect();
-        assert_eq!([uniq_ty,
-                    tup2_ty,
-                    tup1_ty, int_ty, uint_ty, int_ty, uint_ty,
-                    tup1_ty, int_ty, uint_ty, int_ty, uint_ty,
-                    uint_ty],
-                   walked);
+        assert_eq!(walked, [uniq_ty,
+                            tup2_ty,
+                            tup1_ty, int_ty, uint_ty, int_ty, uint_ty,
+                            tup1_ty, int_ty, uint_ty, int_ty, uint_ty,
+                            uint_ty]);
     })
 }
 

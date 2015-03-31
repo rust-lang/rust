@@ -13,7 +13,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(old_orphan_check, rustc_private)]
+#![feature(rustc_private)]
 
 extern crate serialize;
 

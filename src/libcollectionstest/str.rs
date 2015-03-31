@@ -83,7 +83,7 @@ fn test_collect() {
 fn test_into_bytes() {
     let data = String::from_str("asdf");
     let buf = data.into_bytes();
-    assert_eq!(b"asdf", buf);
+    assert_eq!(buf, b"asdf");
 }
 
 #[test]

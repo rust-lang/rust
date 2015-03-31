@@ -1076,7 +1076,7 @@ mod test {
         thread::spawn(move || {
             check_links(&n);
             let a: &[_] = &[&1,&2,&3];
-            assert_eq!(a, n.iter().collect::<Vec<_>>());
+            assert_eq!(a, &n.iter().collect::<Vec<_>>()[..]);
         }).join().ok().unwrap();
     }
 

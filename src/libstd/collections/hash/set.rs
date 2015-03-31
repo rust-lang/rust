@@ -1192,7 +1192,7 @@ mod test_set {
         };
 
         let v = hs.into_iter().collect::<Vec<char>>();
-        assert!(['a', 'b'] == v || ['b', 'a'] == v);
+        assert!(v == ['a', 'b'] || v == ['b', 'a']);
     }
 
     #[test]

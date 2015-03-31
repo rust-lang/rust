@@ -66,10 +66,10 @@ macro_rules! assert {
     );
 }
 
-/// Asserts that two expressions are equal to each other, testing equality in
-/// both directions.
+/// Asserts that two expressions are equal to each other.
 ///
-/// On panic, this macro will print the values of the expressions.
+/// On panic, this macro will print the values of the expressions with their
+/// debug representations.
 ///
 /// # Examples
 ///
@@ -84,10 +84,8 @@ macro_rules! assert_eq {
     ($left:expr , $right:expr) => ({
         match (&($left), &($right)) {
             (left_val, right_val) => {
-                // check both directions of equality....
-                if !((*left_val == *right_val) &&
-                     (*right_val == *left_val)) {
-                    panic!("assertion failed: `(left == right) && (right == left)` \
+                if !(*left_val == *right_val) {
+                    panic!("assertion failed: `(left == right)` \
                            (left: `{:?}`, right: `{:?}`)", *left_val, *right_val)
                 }
             }

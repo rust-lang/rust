@@ -103,7 +103,7 @@ fn test_transmute() {
     }
 
     unsafe {
-        assert_eq!([76], transmute::<_, Vec<u8>>("L".to_string()));
+        assert_eq!(transmute::<_, Vec<u8>>("L".to_string()), [76]);
     }
 }
 
