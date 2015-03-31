@@ -333,7 +333,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Moves the value `v` out of the `Option<T>` if the content of the `Option<T>` is a `Some(v)`.
+    /// Moves the value `v` out of the `Option<T>` if it is `Some(v)`.
     ///
     /// # Panics
     ///
