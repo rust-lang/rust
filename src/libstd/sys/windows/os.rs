@@ -379,3 +379,7 @@ pub fn home_dir() -> Option<PathBuf> {
         }, super::os2path).ok()
     })
 }
+
+pub fn exit(code: i32) -> ! {
+    unsafe { libc::ExitProcess(code as libc::UINT) }
+}
