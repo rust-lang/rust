@@ -213,7 +213,7 @@ impl<'a, B: ?Sized> Cow<'a, B> where B: ToOwned {
     ///
     /// let hello = cow.to_mut();
     ///
-    /// assert_eq!(&[1, 2, 3], hello);
+    /// assert_eq!(hello, &[1, 2, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_mut(&mut self) -> &mut <B as ToOwned>::Owned {

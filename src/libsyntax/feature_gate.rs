@@ -161,10 +161,6 @@ enum Status {
     /// currently being considered for addition/removal.
     Active,
 
-    /// Represents a feature gate that is temporarily enabling deprecated behavior.
-    /// This gate will never be accepted.
-    Deprecated,
-
     /// Represents a feature which has since been removed (it was once Active)
     Removed,
 
@@ -698,13 +694,6 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
                                         .find(|& &(n, _, _)| name == n) {
                         Some(&(name, _, Active)) => {
                             cx.features.push(name);
-                        }
-                        Some(&(name, _, Deprecated)) => {
-                            cx.features.push(name);
-                            span_handler.span_warn(
-                                mi.span,
-                                "feature is deprecated and will only be available \
-                                 for a limited time, please rewrite code that relies on it");
                         }
                         Some(&(_, _, Removed)) => {
                             span_handler.span_err(mi.span, "feature has been removed");

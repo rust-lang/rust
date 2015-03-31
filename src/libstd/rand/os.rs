@@ -254,7 +254,6 @@ mod imp {
     use io;
     use mem;
     use old_io::{IoResult, IoError};
-    use os;
     use rand::Rng;
     use libc::types::os::arch::extra::{LONG_PTR};
     use libc::{DWORD, BYTE, LPCSTR, BOOL};

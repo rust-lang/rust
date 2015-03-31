@@ -37,7 +37,6 @@
 #![feature(unsafe_destructor)]
 #![feature(staged_api)]
 #![feature(std_misc)]
-#![feature(io)]
 #![feature(path_ext)]
 #![feature(str_words)]
 #![feature(str_char)]
