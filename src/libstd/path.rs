@@ -449,7 +449,7 @@ enum State {
 ///
 /// Does not occur on Unix.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Copy, Clone, Eq, Hash, Debug)]
+#[derive(Copy, Clone, Hash, Debug)]
 pub struct PrefixComponent<'a> {
     /// The prefix as an unparsed `OsStr` slice.
     raw: &'a OsStr,
@@ -471,6 +471,9 @@ impl<'a> PrefixComponent<'a> {
         self.raw
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> cmp::Eq for PrefixComponent<'a> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> cmp::PartialEq for PrefixComponent<'a> {

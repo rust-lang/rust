@@ -78,7 +78,7 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 /// table) and a SyntaxContext to track renaming and
 /// macro expansion per Flatt et al., "Macros
 /// That Work Together"
-#[derive(Clone, Copy, Hash, PartialOrd, Eq, Ord)]
+#[derive(Clone, Copy, Hash, PartialOrd, Ord)]
 pub struct Ident {
     pub name: Name,
     pub ctxt: SyntaxContext
@@ -148,6 +148,8 @@ impl PartialEq for Ident {
         ! self.eq(other)
     }
 }
+
+impl Eq for Ident {}
 
 /// A SyntaxContext represents a chain of macro-expandings
 /// and renamings. Each macro expansion corresponds to
@@ -502,7 +504,7 @@ pub struct Crate {
 
 pub type MetaItem = Spanned<MetaItem_>;
 
-#[derive(Clone, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum MetaItem_ {
     MetaWord(InternedString),
     MetaList(InternedString, Vec<P<MetaItem>>),
@@ -533,6 +535,8 @@ impl PartialEq for MetaItem_ {
         }
     }
 }
+
+impl Eq for MetaItem_ {}
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Block {

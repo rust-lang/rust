@@ -1708,7 +1708,7 @@ pub enum UnconstrainedNumeric {
 }
 
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Eq, Hash, Debug, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(u32, BoundRegion)
@@ -1730,6 +1730,8 @@ impl cmp::PartialEq for InferRegion {
         !((*self) == (*other))
     }
 }
+
+impl cmp::Eq for InferRegion {}
 
 impl fmt::Debug for TyVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
