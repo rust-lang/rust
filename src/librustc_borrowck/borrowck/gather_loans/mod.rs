@@ -151,10 +151,11 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
               assignee_cmt: mc::cmt<'tcx>,
               mode: euv::MutateMode)
     {
-        debug!("mutate(assignment_id={}, assignee_cmt={})",
-               assignment_id, assignee_cmt.repr(self.tcx()));
+        let opt_lp = opt_loan_path(&assignee_cmt);
+        debug!("mutate(assignment_id={}, assignee_cmt={}) opt_lp={:?}",
+               assignment_id, assignee_cmt.repr(self.tcx()), opt_lp);
 
-        match opt_loan_path(&assignee_cmt) {
+        match opt_lp {
             Some(lp) => {
                 gather_moves::gather_assignment(self.bccx, &self.move_data,
                                                 assignment_id, assignment_span,
@@ -181,12 +182,16 @@ fn check_aliasability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                 req_kind: ty::BorrowKind)
                                 -> Result<(),()> {
 
-    match (cmt.freely_aliasable(bccx.tcx), req_kind) {
-        (None, _) => {
+    let aliasability = cmt.freely_aliasable(bccx.tcx);
+    debug!("check_aliasability aliasability={:?} req_kind={:?}",
+           aliasability, req_kind);
+
+    match (aliasability, req_kind) {
+        (mc::Aliasability::NonAliasable, _) => {
             /* Uniquely accessible path -- OK for `&` and `&mut` */
             Ok(())
         }
-        (Some(mc::AliasableStatic(safety)), ty::ImmBorrow) => {
+        (mc::Aliasability::FreelyAliasable(mc::AliasableStatic(safety)), ty::ImmBorrow) => {
             // Borrow of an immutable static item:
             match safety {
                 mc::InteriorUnsafe => {
@@ -202,13 +207,20 @@ fn check_aliasability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                 }
             }
         }
-        (Some(mc::AliasableStaticMut(..)), _) => {
+        (mc::Aliasability::FreelyAliasable(mc::AliasableStaticMut(..)), _) => {
             // Even touching a static mut is considered unsafe. We assume the
             // user knows what they're doing in these cases.
             Ok(())
         }
-        (Some(alias_cause), ty::UniqueImmBorrow) |
-        (Some(alias_cause), ty::MutBorrow) => {
+        (mc::Aliasability::ImmutableUnique(_), ty::MutBorrow) => {
+            bccx.report_aliasability_violation(
+                        borrow_span,
+                        BorrowViolation(loan_cause),
+                        mc::AliasableReason::UnaliasableImmutable);
+            Err(())
+        }
+        (mc::Aliasability::FreelyAliasable(alias_cause), ty::UniqueImmBorrow) |
+        (mc::Aliasability::FreelyAliasable(alias_cause), ty::MutBorrow) => {
             bccx.report_aliasability_violation(
                         borrow_span,
                         BorrowViolation(loan_cause),
@@ -376,7 +388,8 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                                       req_kind: ty::BorrowKind)
                                       -> Result<(),()> {
             //! Implements the M-* rules in README.md.
-
+            debug!("check_mutability(cause={:?} cmt={} req_kind={:?}",
+                   cause, cmt.repr(bccx.tcx), req_kind);
             match req_kind {
                 ty::UniqueImmBorrow | ty::ImmBorrow => {
                     match cmt.mutbl {
