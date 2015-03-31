@@ -509,7 +509,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
         // Prefer known type to noop, but always have a type hint.
         let base_hint = ty::expr_ty_opt(tcx, &**base).unwrap_or(ety);
         let val = try!(eval_const_expr_partial(tcx, &**base, Some(base_hint)));
-        match cast_const(val, ety) {
+        match cast_const(tcx, val, ety) {
             Ok(val) => val,
             Err(kind) => return Err(ConstEvalErr { span: e.span, kind: kind }),
         }
@@ -607,39 +607,49 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
     Ok(result)
 }
 
-fn cast_const(val: const_val, ty: Ty) -> Result<const_val, ErrKind> {
-    macro_rules! define_casts {
-        ($($ty_pat:pat => (
-            $intermediate_ty:ty,
-            $const_type:ident,
-            $target_ty:ty
-        )),*) => (match ty.sty {
-            $($ty_pat => {
-                match val {
-                    const_bool(b) => Ok($const_type(b as $intermediate_ty as $target_ty)),
-                    const_uint(u) => Ok($const_type(u as $intermediate_ty as $target_ty)),
-                    const_int(i) => Ok($const_type(i as $intermediate_ty as $target_ty)),
-                    const_float(f) => Ok($const_type(f as $intermediate_ty as $target_ty)),
-                    _ => Err(ErrKind::CannotCastTo(stringify!($const_type))),
-                }
-            },)*
-            _ => Err(ErrKind::CannotCast),
-        })
+fn cast_const<'tcx>(tcx: &ty::ctxt<'tcx>, val: const_val, ty: Ty) -> Result<const_val, ErrKind> {
+    macro_rules! convert_val {
+        ($intermediate_ty:ty, $const_type:ident, $target_ty:ty) => {
+            match val {
+                const_bool(b) => Ok($const_type(b as $intermediate_ty as $target_ty)),
+                const_uint(u) => Ok($const_type(u as $intermediate_ty as $target_ty)),
+                const_int(i) => Ok($const_type(i as $intermediate_ty as $target_ty)),
+                const_float(f) => Ok($const_type(f as $intermediate_ty as $target_ty)),
+                _ => Err(ErrKind::CannotCastTo(stringify!($const_type))),
+            }
+        }
     }
 
-    define_casts!{
-        ty::ty_int(ast::TyIs) => (isize, const_int, i64),
-        ty::ty_int(ast::TyI8) => (i8, const_int, i64),
-        ty::ty_int(ast::TyI16) => (i16, const_int, i64),
-        ty::ty_int(ast::TyI32) => (i32, const_int, i64),
-        ty::ty_int(ast::TyI64) => (i64, const_int, i64),
-        ty::ty_uint(ast::TyUs) => (usize, const_uint, u64),
-        ty::ty_uint(ast::TyU8) => (u8, const_uint, u64),
-        ty::ty_uint(ast::TyU16) => (u16, const_uint, u64),
-        ty::ty_uint(ast::TyU32) => (u32, const_uint, u64),
-        ty::ty_uint(ast::TyU64) => (u64, const_uint, u64),
-        ty::ty_float(ast::TyF32) => (f32, const_float, f64),
-        ty::ty_float(ast::TyF64) => (f64, const_float, f64)
+    // Issue #23890: If isize/usize, then dispatch to appropriate target representation type
+    match (&ty.sty, tcx.sess.target.int_type, tcx.sess.target.uint_type) {
+        (&ty::ty_int(ast::TyIs), ast::TyI32, _) => return convert_val!(i32, const_int, i64),
+        (&ty::ty_int(ast::TyIs), ast::TyI64, _) => return convert_val!(i64, const_int, i64),
+        (&ty::ty_int(ast::TyIs), _, _) => panic!("unexpected target.int_type"),
+
+        (&ty::ty_uint(ast::TyUs), _, ast::TyU32) => return convert_val!(u32, const_uint, u64),
+        (&ty::ty_uint(ast::TyUs), _, ast::TyU64) => return convert_val!(u64, const_uint, u64),
+        (&ty::ty_uint(ast::TyUs), _, _) => panic!("unexpected target.uint_type"),
+
+        _ => {}
+    }
+
+    match ty.sty {
+        ty::ty_int(ast::TyIs) => unreachable!(),
+        ty::ty_uint(ast::TyUs) => unreachable!(),
+
+        ty::ty_int(ast::TyI8) => convert_val!(i8, const_int, i64),
+        ty::ty_int(ast::TyI16) => convert_val!(i16, const_int, i64),
+        ty::ty_int(ast::TyI32) => convert_val!(i32, const_int, i64),
+        ty::ty_int(ast::TyI64) => convert_val!(i64, const_int, i64),
+
+        ty::ty_uint(ast::TyU8) => convert_val!(u8, const_uint, u64),
+        ty::ty_uint(ast::TyU16) => convert_val!(u16, const_uint, u64),
+        ty::ty_uint(ast::TyU32) => convert_val!(u32, const_uint, u64),
+        ty::ty_uint(ast::TyU64) => convert_val!(u64, const_uint, u64),
+
+        ty::ty_float(ast::TyF32) => convert_val!(f32, const_float, f64),
+        ty::ty_float(ast::TyF64) => convert_val!(f64, const_float, f64),
+        _ => Err(ErrKind::CannotCast),
     }
 }
 
