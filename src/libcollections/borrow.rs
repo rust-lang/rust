@@ -248,26 +248,6 @@ impl<'a, B: ?Sized> Cow<'a, B> where B: ToOwned {
             Owned(owned) => owned
         }
     }
-
-    /// Returns true if this `Cow` wraps a borrowed value
-    #[deprecated(since = "1.0.0", reason = "match on the enum instead")]
-    #[unstable(feature = "std_misc")]
-    pub fn is_borrowed(&self) -> bool {
-        match *self {
-            Borrowed(_) => true,
-            _ => false,
-        }
-    }
-
-    /// Returns true if this `Cow` wraps an owned value
-    #[deprecated(since = "1.0.0", reason = "match on the enum instead")]
-    #[unstable(feature = "std_misc")]
-    pub fn is_owned(&self) -> bool {
-        match *self {
-            Owned(_) => true,
-            _ => false,
-        }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

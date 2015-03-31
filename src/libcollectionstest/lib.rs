@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(deprecated)]
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
@@ -21,7 +20,7 @@
 #![feature(unicode)]
 #![feature(unsafe_destructor)]
 #![feature(into_cow)]
-#![feature(convert)]
+#![feature(step_by)]
 #![cfg_attr(test, feature(str_char))]
 
 #[macro_use] extern crate log;

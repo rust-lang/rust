@@ -10,12 +10,12 @@
 
 #![feature(std_misc)]
 
-use std::thread::Thread;
+use std::thread;
 use std::sync::mpsc::{channel, Sender};
 
 pub fn main() {
     let (tx, rx) = channel();
-    let _t = Thread::spawn(move|| { child(&tx) });
+    let _t = thread::scoped(move|| { child(&tx) });
     let y = rx.recv().unwrap();
     println!("received");
     println!("{}", y);

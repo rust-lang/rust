@@ -72,7 +72,7 @@ fn test_multi_iter() {
 
 #[test]
 fn test_counter_from_iter() {
-    let it = count(0, 5).take(10);
+    let it = (0..).step_by(5).take(10);
     let xs: Vec<isize> = FromIterator::from_iter(it);
     assert_eq!(xs, [0, 5, 10, 15, 20, 25, 30, 35, 40, 45]);
 }
@@ -90,7 +90,7 @@ fn test_iterator_chain() {
     }
     assert_eq!(i, expected.len());
 
-    let ys = count(30, 10).take(4);
+    let ys = (30..).step_by(10).take(4);
     let it = xs.iter().cloned().chain(ys);
     let mut i = 0;
     for x in it {
@@ -102,7 +102,7 @@ fn test_iterator_chain() {
 
 #[test]
 fn test_filter_map() {
-    let it = count(0, 1).take(10)
+    let it = (0..).step_by(1).take(10)
         .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
     assert_eq!(it.collect::<Vec<usize>>(), [0*0, 2*2, 4*4, 6*6, 8*8]);
 }
@@ -244,7 +244,7 @@ fn test_iterator_scan() {
 fn test_iterator_flat_map() {
     let xs = [0, 3, 6];
     let ys = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-    let it = xs.iter().flat_map(|&x| count(x, 1).take(3));
+    let it = xs.iter().flat_map(|&x| (x..).step_by(1).take(3));
     let mut i = 0;
     for x in it {
         assert_eq!(x, ys[i]);
@@ -291,13 +291,13 @@ fn test_unfoldr() {
 #[test]
 fn test_cycle() {
     let cycle_len = 3;
-    let it = count(0, 1).take(cycle_len).cycle();
+    let it = (0..).step_by(1).take(cycle_len).cycle();
     assert_eq!(it.size_hint(), (usize::MAX, None));
     for (i, x) in it.take(100).enumerate() {
         assert_eq!(i % cycle_len, x);
     }
 
-    let mut it = count(0, 1).take(0).cycle();
+    let mut it = (0..).step_by(1).take(0).cycle();
     assert_eq!(it.size_hint(), (0, Some(0)));
     assert_eq!(it.next(), None);
 }
@@ -360,7 +360,7 @@ fn test_iterator_min() {
 
 #[test]
 fn test_iterator_size_hint() {
-    let c = count(0, 1);
+    let c = (0..).step_by(1);
     let v: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     let v2 = &[10, 11, 12];
     let vi = v.iter();

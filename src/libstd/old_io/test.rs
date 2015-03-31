@@ -43,7 +43,7 @@ fn next_test_unix_socket() -> String {
 pub fn next_test_unix() -> Path {
     let string = next_test_unix_socket();
     if cfg!(unix) {
-        ::os::tmpdir().join(string)
+        Path::new(::env::temp_dir().to_str().unwrap()).join(string)
     } else {
         Path::new(format!("{}{}", r"\\.\pipe\", string))
     }

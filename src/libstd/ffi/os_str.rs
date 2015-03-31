@@ -29,7 +29,7 @@
 //! for conversion to/from various other string types. Eventually these types
 //! will offer a full-fledged string API.
 
-#![unstable(feature = "os",
+#![unstable(feature = "os_str",
             reason = "recently added as part of path/io reform")]
 
 use core::prelude::*;
@@ -63,22 +63,6 @@ pub struct OsStr {
 }
 
 impl OsString {
-    /// Constructs an `OsString` at no cost by consuming a `String`.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "use `from` instead")]
-    pub fn from_string(s: String) -> OsString {
-        OsString::from(s)
-    }
-
-    /// Constructs an `OsString` by copying from a `&str` slice.
-    ///
-    /// Equivalent to: `OsString::from_string(String::from_str(s))`.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "use `from` instead")]
-    pub fn from_str(s: &str) -> OsString {
-        OsString::from(s)
-    }
-
     /// Constructs a new empty `OsString`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> OsString {
@@ -122,13 +106,6 @@ impl OsString {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_string(self) -> Result<String, OsString> {
         self.inner.into_string().map_err(|buf| OsString { inner: buf} )
-    }
-
-    /// Extend the string with the given `&OsStr` slice.
-    #[deprecated(since = "1.0.0", reason = "renamed to `push`")]
-    #[unstable(feature = "os")]
-    pub fn push_os_str(&mut self, s: &OsStr) {
-        self.inner.push_slice(&s.inner)
     }
 
     /// Extend the string with the given `&OsStr` slice.

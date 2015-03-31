@@ -32,10 +32,6 @@ use core::iter::{self, FromIterator, IntoIterator};
 use core::mem;
 use core::ptr;
 
-#[deprecated(since = "1.0.0", reason = "renamed to LinkedList")]
-#[unstable(feature = "collections")]
-pub use LinkedList as DList;
-
 /// A doubly-linked list.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LinkedList<T> {
@@ -844,7 +840,7 @@ impl<A> ExactSizeIterator for IntoIter<A> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> FromIterator<A> for LinkedList<A> {
     fn from_iter<T: IntoIterator<Item=A>>(iter: T) -> LinkedList<A> {
-        let mut ret = DList::new();
+        let mut ret = LinkedList::new();
         ret.extend(iter);
         ret
     }

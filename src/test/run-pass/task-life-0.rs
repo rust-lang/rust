@@ -12,10 +12,10 @@
 
 #![feature(std_misc)]
 
-use std::thread::Thread;
+use std::thread;
 
 pub fn main() {
-    let _t = Thread::spawn(move|| child("Hello".to_string()) );
+    let _t = thread::scoped(move|| child("Hello".to_string()) );
 }
 
 fn child(_s: String) {

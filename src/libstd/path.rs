@@ -1321,7 +1321,7 @@ impl Path {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_name(&self) -> Option<&OsStr> {
         self.components().next_back().and_then(|p| match p {
-            Component::Normal(p) => Some(p.as_os_str()),
+            Component::Normal(p) => Some(p.as_ref()),
             _ => None
         })
     }

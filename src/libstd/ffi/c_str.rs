@@ -132,15 +132,6 @@ pub struct CStr {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct NulError(usize, Vec<u8>);
 
-/// A conversion trait used by the constructor of `CString` for types that can
-/// be converted to a vector of bytes.
-#[deprecated(since = "1.0.0", reason = "use std::convert::Into<Vec<u8>> instead")]
-#[unstable(feature = "std_misc")]
-pub trait IntoBytes {
-    /// Consumes this container, returning a vector of bytes.
-    fn into_bytes(self) -> Vec<u8>;
-}
-
 impl CString {
     /// Create a new C-compatible string from a container of bytes.
     ///
@@ -175,57 +166,6 @@ impl CString {
         match bytes.iter().position(|x| *x == 0) {
             Some(i) => Err(NulError(i, bytes)),
             None => Ok(unsafe { CString::from_vec_unchecked(bytes) }),
-        }
-    }
-
-    /// Create a new C-compatible string from a byte slice.
-    ///
-    /// This method will copy the data of the slice provided into a new
-    /// allocation, ensuring that there is a trailing 0 byte.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// # #![feature(libc)]
-    /// extern crate libc;
-    /// use std::ffi::CString;
-    ///
-    /// extern { fn puts(s: *const libc::c_char); }
-    ///
-    /// fn main() {
-    ///     let to_print = CString::new("Hello!").unwrap();
-    ///     unsafe {
-    ///         puts(to_print.as_ptr());
-    ///     }
-    /// }
-    /// ```
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if the provided slice contains any
-    /// interior nul bytes.
-    #[unstable(feature = "std_misc")]
-    #[deprecated(since = "1.0.0", reason = "use CString::new instead")]
-    #[allow(deprecated)]
-    pub fn from_slice(v: &[u8]) -> CString {
-        CString::from_vec(v.to_vec())
-    }
-
-    /// Create a C-compatible string from a byte vector.
-    ///
-    /// This method will consume ownership of the provided vector, appending a 0
-    /// byte to the end after verifying that there are no interior 0 bytes.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if the provided slice contains any
-    /// interior nul bytes.
-    #[unstable(feature = "std_misc")]
-    #[deprecated(since = "1.0.0", reason = "use CString::new instead")]
-    pub fn from_vec(v: Vec<u8>) -> CString {
-        match v.iter().position(|x| *x == 0) {
-            Some(i) => panic!("null byte found in slice at: {}", i),
-            None => unsafe { CString::from_vec_unchecked(v) },
         }
     }
 
@@ -422,41 +362,6 @@ impl Ord for CStr {
     fn cmp(&self, other: &CStr) -> Ordering {
         self.to_bytes().cmp(&other.to_bytes())
     }
-}
-
-/// Deprecated in favor of `CStr`
-#[unstable(feature = "std_misc")]
-#[deprecated(since = "1.0.0", reason = "use CStr::from_ptr(p).to_bytes() instead")]
-pub unsafe fn c_str_to_bytes<'a>(raw: &'a *const libc::c_char) -> &'a [u8] {
-    let len = libc::strlen(*raw);
-    slice::from_raw_parts(*(raw as *const _ as *const *const u8), len as usize)
-}
-
-/// Deprecated in favor of `CStr`
-#[unstable(feature = "std_misc")]
-#[deprecated(since = "1.0.0",
-             reason = "use CStr::from_ptr(p).to_bytes_with_nul() instead")]
-pub unsafe fn c_str_to_bytes_with_nul<'a>(raw: &'a *const libc::c_char)
-                                          -> &'a [u8] {
-    let len = libc::strlen(*raw) + 1;
-    slice::from_raw_parts(*(raw as *const _ as *const *const u8), len as usize)
-}
-
-#[allow(deprecated)]
-impl<'a> IntoBytes for &'a str {
-    fn into_bytes(self) -> Vec<u8> { self.as_bytes().to_vec() }
-}
-#[allow(deprecated)]
-impl<'a> IntoBytes for &'a [u8] {
-    fn into_bytes(self) -> Vec<u8> { self.to_vec() }
-}
-#[allow(deprecated)]
-impl IntoBytes for String {
-    fn into_bytes(self) -> Vec<u8> { self.into_bytes() }
-}
-#[allow(deprecated)]
-impl IntoBytes for Vec<u8> {
-    fn into_bytes(self) -> Vec<u8> { self }
 }
 
 #[cfg(test)]

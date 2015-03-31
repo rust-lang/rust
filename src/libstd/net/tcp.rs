@@ -101,13 +101,6 @@ impl TcpStream {
     }
 
     /// Returns the socket address of the local half of this TCP connection.
-    #[unstable(feature = "net")]
-    #[deprecated(since = "1.0.0", reason = "renamed to local_addr")]
-    pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        self.0.socket_addr()
-    }
-
-    /// Returns the socket address of the local half of this TCP connection.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         self.0.socket_addr()
@@ -196,13 +189,6 @@ impl TcpListener {
     /// Returns the local socket address of this listener.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
-        self.0.socket_addr()
-    }
-
-    /// Deprecated, renamed to local_addr
-    #[unstable(feature = "net")]
-    #[deprecated(since = "1.0.0", reason = "renamed to local_addr")]
-    pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         self.0.socket_addr()
     }
 
@@ -359,7 +345,7 @@ mod tests {
             let _t = thread::spawn(move|| {
                 let mut stream = t!(TcpStream::connect(&addr));
                 t!(stream.write(&[99]));
-                tx.send(t!(stream.socket_addr())).unwrap();
+                tx.send(t!(stream.local_addr())).unwrap();
             });
 
             let (mut stream, addr) = t!(acceptor.accept());
@@ -509,7 +495,7 @@ mod tests {
     fn socket_and_peer_name_ip4() {
         each_ip(&mut |addr| {
             let listener = t!(TcpListener::bind(&addr));
-            let so_name = t!(listener.socket_addr());
+            let so_name = t!(listener.local_addr());
             assert_eq!(addr, so_name);
             let _t = thread::spawn(move|| {
                 t!(listener.accept());

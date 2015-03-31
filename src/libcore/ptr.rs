@@ -157,21 +157,6 @@ pub fn null<T>() -> *const T { 0 as *const T }
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn null_mut<T>() -> *mut T { 0 as *mut T }
 
-/// Zeroes out `count * size_of::<T>` bytes of memory at `dst`. `count` may be
-/// `0`.
-///
-/// # Safety
-///
-/// Beyond accepting a raw pointer, this is unsafe because it will not drop the
-/// contents of `dst`, and may be used to create invalid instances of `T`.
-#[inline]
-#[unstable(feature = "core",
-           reason = "may play a larger role in std::ptr future extensions")]
-#[deprecated(since = "1.0.0", reason = "use `write_bytes` instead")]
-pub unsafe fn zero_memory<T>(dst: *mut T, count: usize) {
-    write_bytes(dst, 0, count);
-}
-
 /// Swaps the values at two mutable locations of the same type, without
 /// deinitialising either. They may overlap, unlike `mem::swap` which is
 /// otherwise equivalent.

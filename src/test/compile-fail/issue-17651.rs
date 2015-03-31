@@ -13,6 +13,6 @@
 
 fn main() {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-    (|| Box::new(*[0].as_slice()))();
+    (|| Box::new(*(&[0][..])))();
     //~^ ERROR the trait `core::marker::Sized` is not implemented for the type `[_]`
 }
