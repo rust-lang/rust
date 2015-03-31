@@ -92,7 +92,7 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("main", "1.0.0", Active),
 
     // Deprecate after snapshot
-    // SNAP a923278
+    // SNAP 5520801
     ("unsafe_destructor", "1.0.0", Active),
 
     // A temporary feature gate used to enable parser extensions needed

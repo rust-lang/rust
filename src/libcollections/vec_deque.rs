@@ -25,8 +25,6 @@ use core::default::Default;
 use core::fmt;
 use core::iter::{self, repeat, FromIterator, IntoIterator, RandomAccessIterator};
 use core::mem;
-#[cfg(stage0)]
-use core::num::wrapping::WrappingOps;
 use core::ops::{Index, IndexMut};
 use core::ptr::{self, Unique};
 use core::slice;

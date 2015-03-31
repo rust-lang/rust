@@ -487,9 +487,5 @@ pub struct InvariantType<T>;
 pub trait Reflect : MarkerTrait {
 }
 
-#[cfg(stage0)]
-impl<T> Reflect for T { }
-
-#[cfg(not(stage0))]
 impl Reflect for .. { }
 
