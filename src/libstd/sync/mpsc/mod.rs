@@ -114,7 +114,7 @@
 //! ```
 //!
 //! Reading from a channel with a timeout requires to use a Timer together
-//! with the channel. You can use the select! macro to select either and
+//! with the channel. You can use the `select!` macro to select either and
 //! handle the timeout case. This first example will break out of the loop
 //! after 10 seconds no matter what:
 //!
