@@ -261,7 +261,20 @@ pub fn set_var<K: ?Sized, V: ?Sized>(k: &K, v: &V)
     os_imp::setenv(k.as_os_str(), v.as_os_str())
 }
 
-/// Remove a variable from the environment entirely.
+/// Remove an environment variable from the environment of the currently running process.
+///
+/// # Examples
+///
+/// ```
+/// use std::env;
+///
+/// let key = "KEY";
+/// env::set_var(key, "VALUE");
+/// assert_eq!(env::var(key), Ok("VALUE".to_string()));
+///
+/// env::remove_var(key);
+/// assert!(env::var(key).is_err());
+/// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn remove_var<K: ?Sized>(k: &K) where K: AsOsStr {
     let _g = ENV_LOCK.lock();
@@ -398,6 +411,19 @@ pub fn home_dir() -> Option<PathBuf> {
 /// On Windows, returns the value of, in order, the 'TMP', 'TEMP',
 /// 'USERPROFILE' environment variable  if any are set and not the empty
 /// string. Otherwise, tmpdir returns the path to the Windows directory.
+///
+/// ```
+/// use std::env;
+/// use std::fs::File;
+///
+/// # fn foo() -> std::io::Result<()> {
+/// let mut dir = env::temp_dir();
+/// dir.push("foo.txt");
+///
+/// let f = try!(File::create(dir));
+/// # Ok(())
+/// # }
+/// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn temp_dir() -> PathBuf {
     os_imp::temp_dir()
@@ -557,6 +583,7 @@ pub mod consts {
     #[stable(feature = "env", since = "1.0.0")]
     pub const ARCH: &'static str = super::arch::ARCH;
 
+    /// The family of the operating system. In this case, `unix`.
     #[stable(feature = "env", since = "1.0.0")]
     pub const FAMILY: &'static str = super::os::FAMILY;
 
