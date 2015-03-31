@@ -19,7 +19,7 @@
 
 use std::sync::Arc;
 use std::sync::mpsc::channel;
-use std::thread::Thread;
+use std::thread;
 
 trait Pet {
     fn name(&self, blk: Box<FnMut(&str)>);
@@ -83,13 +83,13 @@ pub fn main() {
                             box dogge2 as Box<Pet+Sync+Send>));
     let (tx1, rx1) = channel();
     let arc1 = arc.clone();
-    let _t1 = Thread::spawn(move|| { check_legs(arc1); tx1.send(()); });
+    let _t1 = thread::scoped(move|| { check_legs(arc1); tx1.send(()); });
     let (tx2, rx2) = channel();
     let arc2 = arc.clone();
-    let _t2 = Thread::spawn(move|| { check_names(arc2); tx2.send(()); });
+    let _t2 = thread::scoped(move|| { check_names(arc2); tx2.send(()); });
     let (tx3, rx3) = channel();
     let arc3 = arc.clone();
-    let _t3 = Thread::spawn(move|| { check_pedigree(arc3); tx3.send(()); });
+    let _t3 = thread::scoped(move|| { check_pedigree(arc3); tx3.send(()); });
     rx1.recv();
     rx2.recv();
     rx3.recv();

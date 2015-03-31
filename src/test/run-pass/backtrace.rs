@@ -80,9 +80,9 @@ fn runtest(me: &str) {
     let s = str::from_utf8(&out.error).unwrap();
     let mut i = 0;
     for _ in 0..2 {
-        i += s[i + 10..].find_str("stack backtrace").unwrap() + 10;
+        i += s[i + 10..].find("stack backtrace").unwrap() + 10;
     }
-    assert!(s[i + 10..].find_str("stack backtrace").is_none(),
+    assert!(s[i + 10..].find("stack backtrace").is_none(),
             "bad output4: {}", s);
 }
 

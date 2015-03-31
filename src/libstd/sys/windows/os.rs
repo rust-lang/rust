@@ -16,7 +16,7 @@ use prelude::v1::*;
 use os::windows::prelude::*;
 
 use error::Error as StdError;
-use ffi::{OsString, OsStr, AsOsStr};
+use ffi::{OsString, OsStr};
 use fmt;
 use io;
 use libc::types::os::arch::extra::LPWCH;
@@ -199,13 +199,13 @@ impl<'a> Iterator for SplitPaths<'a> {
 pub struct JoinPathsError;
 
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
-    where I: Iterator<Item=T>, T: AsOsStr
+    where I: Iterator<Item=T>, T: AsRef<OsStr>
 {
     let mut joined = Vec::new();
     let sep = b';' as u16;
 
     for (i, path) in paths.enumerate() {
-        let path = path.as_os_str();
+        let path = path.as_ref();
         if i > 0 { joined.push(sep) }
         let v = path.encode_wide().collect::<Vec<u16>>();
         if v.contains(&(b'"' as u16)) {
@@ -245,7 +245,8 @@ pub fn getcwd() -> io::Result<PathBuf> {
 }
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
-    let mut p = p.as_os_str().encode_wide().collect::<Vec<_>>();
+    let p: &OsStr = p.as_ref();
+    let mut p = p.encode_wide().collect::<Vec<_>>();
     p.push(0);
 
     unsafe {
@@ -361,8 +362,8 @@ pub fn temp_dir() -> PathBuf {
 }
 
 pub fn home_dir() -> Option<PathBuf> {
-    getenv("HOME".as_os_str()).or_else(|| {
-        getenv("USERPROFILE".as_os_str())
+    getenv("HOME".as_ref()).or_else(|| {
+        getenv("USERPROFILE".as_ref())
     }).map(PathBuf::from).or_else(|| unsafe {
         let me = c::GetCurrentProcess();
         let mut token = ptr::null_mut();

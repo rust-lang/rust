@@ -69,12 +69,13 @@
 use core::marker::Sized;
 use ffi::CString;
 use clone::Clone;
+use borrow::Cow;
 use fmt;
 use iter::Iterator;
 use option::Option;
 use option::Option::{None, Some};
 use str;
-use string::{String, CowString};
+use string::String;
 use vec::Vec;
 
 /// Typedef for POSIX file paths.
@@ -907,7 +908,7 @@ impl<'a, P: GenericPath> Display<'a, P> {
     /// If the path is not UTF-8, invalid sequences will be replaced with the
     /// Unicode replacement char. This involves allocation.
     #[inline]
-    pub fn as_cow(&self) -> CowString<'a> {
+    pub fn as_cow(&self) -> Cow<'a, str> {
         String::from_utf8_lossy(if self.filename {
             match self.path.filename() {
                 None => {

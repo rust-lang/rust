@@ -21,7 +21,7 @@ pub mod pipes {
     use std::mem::{forget, transmute};
     use std::mem::{replace, swap};
     use std::mem;
-    use std::thread::Thread;
+    use std::thread;
     use std::marker::Send;
 
     pub struct Stuff<T> {
@@ -115,7 +115,7 @@ pub mod pipes {
             let old_state = swap_state_acq(&mut (*p).state,
                                            blocked);
             match old_state {
-              empty | blocked => { Thread::yield_now(); }
+              empty | blocked => { thread::yield_now(); }
               full => {
                 let payload = replace(&mut p.payload, None);
                 return Some(payload.unwrap())

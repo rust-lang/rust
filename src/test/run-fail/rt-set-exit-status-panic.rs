@@ -10,16 +10,16 @@
 
 // error-pattern:whatever
 
-#![feature(os, rustc_private)]
+#![feature(exit_status, rustc_private)]
 
 #[macro_use] extern crate log;
-use std::os;
+use std::env;
 
 fn main() {
     error!("whatever");
     // Setting the exit status only works when the scheduler terminates
     // normally. In this case we're going to panic, so instead of
     // returning 50 the process will return the typical rt failure code.
-    os::set_exit_status(50);
+    env::set_exit_status(50);
     panic!();
 }

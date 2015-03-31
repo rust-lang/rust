@@ -81,13 +81,6 @@ impl UdpSocket {
     }
 
     /// Returns the socket address that this socket was created from.
-    #[unstable(feature = "net")]
-    #[deprecated(since = "1.0.0", reason = "renamed to local_addr")]
-    pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        self.0.socket_addr()
-    }
-
-    /// Returns the socket address that this socket was created from.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         self.0.socket_addr()
@@ -203,7 +196,7 @@ mod tests {
     fn socket_name_ip4() {
         each_ip(&mut |addr, _| {
             let server = t!(UdpSocket::bind(&addr));
-            assert_eq!(addr, t!(server.socket_addr()));
+            assert_eq!(addr, t!(server.local_addr()));
         })
     }
 

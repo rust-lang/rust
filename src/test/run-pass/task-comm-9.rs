@@ -10,7 +10,7 @@
 
 #![feature(std_misc)]
 
-use std::thread::Thread;
+use std::thread;
 use std::sync::mpsc::{channel, Sender};
 
 pub fn main() { test00(); }
@@ -26,7 +26,7 @@ fn test00() {
     let (tx, rx) = channel();
     let number_of_messages: isize = 10;
 
-    let result = Thread::scoped(move|| {
+    let result = thread::scoped(move|| {
         test00_start(&tx, number_of_messages);
     });
 

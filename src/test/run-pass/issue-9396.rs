@@ -14,12 +14,12 @@
 
 use std::sync::mpsc::{TryRecvError, channel};
 use std::old_io::timer::Timer;
-use std::thread::Thread;
+use std::thread;
 use std::time::Duration;
 
 pub fn main() {
     let (tx, rx) = channel();
-    let _t = Thread::scoped(move||{
+    let _t = thread::scoped(move||{
         let mut timer = Timer::new().unwrap();
         timer.sleep(Duration::milliseconds(10));
         tx.send(()).unwrap();

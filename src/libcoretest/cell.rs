@@ -59,7 +59,6 @@ fn double_imm_borrow() {
 fn no_mut_then_imm_borrow() {
     let x = RefCell::new(0);
     let _b1 = x.borrow_mut();
-    assert!(x.try_borrow().is_none());
     assert_eq!(x.borrow_state(), BorrowState::Writing);
 }
 
@@ -67,7 +66,6 @@ fn no_mut_then_imm_borrow() {
 fn no_imm_then_borrow_mut() {
     let x = RefCell::new(0);
     let _b1 = x.borrow();
-    assert!(x.try_borrow_mut().is_none());
     assert_eq!(x.borrow_state(), BorrowState::Reading);
 }
 
@@ -76,7 +74,6 @@ fn no_double_borrow_mut() {
     let x = RefCell::new(0);
     assert_eq!(x.borrow_state(), BorrowState::Unused);
     let _b1 = x.borrow_mut();
-    assert!(x.try_borrow_mut().is_none());
     assert_eq!(x.borrow_state(), BorrowState::Writing);
 }
 
@@ -105,7 +102,7 @@ fn double_borrow_single_release_no_borrow_mut() {
     {
         let _b2 = x.borrow();
     }
-    assert!(x.try_borrow_mut().is_none());
+    assert_eq!(x.borrow_state(), BorrowState::Reading);
 }
 
 #[test]
@@ -122,14 +119,14 @@ fn clone_ref_updates_flag() {
     let x = RefCell::new(0);
     {
         let b1 = x.borrow();
-        assert!(x.try_borrow_mut().is_none());
+        assert_eq!(x.borrow_state(), BorrowState::Reading);
         {
             let _b2 = clone_ref(&b1);
-            assert!(x.try_borrow_mut().is_none());
+            assert_eq!(x.borrow_state(), BorrowState::Reading);
         }
-        assert!(x.try_borrow_mut().is_none());
+        assert_eq!(x.borrow_state(), BorrowState::Reading);
     }
-    assert!(x.try_borrow_mut().is_some());
+    assert_eq!(x.borrow_state(), BorrowState::Unused);
 }
 
 #[test]

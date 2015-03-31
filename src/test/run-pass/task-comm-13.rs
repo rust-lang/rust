@@ -11,7 +11,7 @@
 #![feature(std_misc)]
 
 use std::sync::mpsc::{channel, Sender};
-use std::thread::Thread;
+use std::thread;
 
 fn start(tx: &Sender<isize>, start: isize, number_of_messages: isize) {
     let mut i: isize = 0;
@@ -21,6 +21,6 @@ fn start(tx: &Sender<isize>, start: isize, number_of_messages: isize) {
 pub fn main() {
     println!("Check that we don't deadlock.");
     let (tx, rx) = channel();
-    let _ = Thread::scoped(move|| { start(&tx, 0, 10) }).join();
+    let _t = thread::scoped(move|| { start(&tx, 0, 10) }).join();
     println!("Joined task");
 }

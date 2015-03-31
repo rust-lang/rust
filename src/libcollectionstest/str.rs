@@ -89,32 +89,32 @@ fn test_into_bytes() {
 #[test]
 fn test_find_str() {
     // byte positions
-    assert_eq!("".find_str(""), Some(0));
-    assert!("banana".find_str("apple pie").is_none());
+    assert_eq!("".find(""), Some(0));
+    assert!("banana".find("apple pie").is_none());
 
     let data = "abcabc";
-    assert_eq!(data[0..6].find_str("ab"), Some(0));
-    assert_eq!(data[2..6].find_str("ab"), Some(3 - 2));
-    assert!(data[2..4].find_str("ab").is_none());
+    assert_eq!(data[0..6].find("ab"), Some(0));
+    assert_eq!(data[2..6].find("ab"), Some(3 - 2));
+    assert!(data[2..4].find("ab").is_none());
 
     let string = "ประเทศไทย中华Việt Nam";
     let mut data = String::from_str(string);
     data.push_str(string);
-    assert!(data.find_str("ไท华").is_none());
-    assert_eq!(data[0..43].find_str(""), Some(0));
-    assert_eq!(data[6..43].find_str(""), Some(6 - 6));
+    assert!(data.find("ไท华").is_none());
+    assert_eq!(data[0..43].find(""), Some(0));
+    assert_eq!(data[6..43].find(""), Some(6 - 6));
 
-    assert_eq!(data[0..43].find_str("ประ"), Some( 0));
-    assert_eq!(data[0..43].find_str("ทศไ"), Some(12));
-    assert_eq!(data[0..43].find_str("ย中"), Some(24));
-    assert_eq!(data[0..43].find_str("iệt"), Some(34));
-    assert_eq!(data[0..43].find_str("Nam"), Some(40));
+    assert_eq!(data[0..43].find("ประ"), Some( 0));
+    assert_eq!(data[0..43].find("ทศไ"), Some(12));
+    assert_eq!(data[0..43].find("ย中"), Some(24));
+    assert_eq!(data[0..43].find("iệt"), Some(34));
+    assert_eq!(data[0..43].find("Nam"), Some(40));
 
-    assert_eq!(data[43..86].find_str("ประ"), Some(43 - 43));
-    assert_eq!(data[43..86].find_str("ทศไ"), Some(55 - 43));
-    assert_eq!(data[43..86].find_str("ย中"), Some(67 - 43));
-    assert_eq!(data[43..86].find_str("iệt"), Some(77 - 43));
-    assert_eq!(data[43..86].find_str("Nam"), Some(83 - 43));
+    assert_eq!(data[43..86].find("ประ"), Some(43 - 43));
+    assert_eq!(data[43..86].find("ทศไ"), Some(55 - 43));
+    assert_eq!(data[43..86].find("ย中"), Some(67 - 43));
+    assert_eq!(data[43..86].find("iệt"), Some(77 - 43));
+    assert_eq!(data[43..86].find("Nam"), Some(83 - 43));
 }
 
 #[test]
@@ -297,16 +297,16 @@ fn test_replace_2d() {
 
 #[test]
 fn test_slice() {
-    assert_eq!("ab", "abc".slice(0, 2));
-    assert_eq!("bc", "abc".slice(1, 3));
-    assert_eq!("", "abc".slice(1, 1));
-    assert_eq!("\u{65e5}", "\u{65e5}\u{672c}".slice(0, 3));
+    assert_eq!("ab", &"abc"[0..2]);
+    assert_eq!("bc", &"abc"[1..3]);
+    assert_eq!("", &"abc"[1..1]);
+    assert_eq!("\u{65e5}", &"\u{65e5}\u{672c}"[0..3]);
 
     let data = "ประเทศไทย中华";
-    assert_eq!("ป", data.slice(0, 3));
-    assert_eq!("ร", data.slice(3, 6));
-    assert_eq!("", data.slice(3, 3));
-    assert_eq!("华", data.slice(30, 33));
+    assert_eq!("ป", &data[0..3]);
+    assert_eq!("ร", &data[3..6]);
+    assert_eq!("", &data[3..3]);
+    assert_eq!("华", &data[30..33]);
 
     fn a_million_letter_x() -> String {
         let mut i = 0;
@@ -328,23 +328,23 @@ fn test_slice() {
     }
     let letters = a_million_letter_x();
     assert!(half_a_million_letter_x() ==
-        String::from_str(letters.slice(0, 3 * 500000)));
+        String::from_str(&letters[0..3 * 500000]));
 }
 
 #[test]
 fn test_slice_2() {
     let ss = "中华Việt Nam";
 
-    assert_eq!("华", ss.slice(3, 6));
-    assert_eq!("Việt Nam", ss.slice(6, 16));
+    assert_eq!("华", &ss[3..6]);
+    assert_eq!("Việt Nam", &ss[6..16]);
 
-    assert_eq!("ab", "abc".slice(0, 2));
-    assert_eq!("bc", "abc".slice(1, 3));
-    assert_eq!("", "abc".slice(1, 1));
+    assert_eq!("ab", &"abc"[0..2]);
+    assert_eq!("bc", &"abc"[1..3]);
+    assert_eq!("", &"abc"[1..1]);
 
-    assert_eq!("中", ss.slice(0, 3));
-    assert_eq!("华V", ss.slice(3, 7));
-    assert_eq!("", ss.slice(3, 3));
+    assert_eq!("中", &ss[0..3]);
+    assert_eq!("华V", &ss[3..7]);
+    assert_eq!("", &ss[3..3]);
     /*0: 中
       3: 华
       6: V
@@ -360,20 +360,20 @@ fn test_slice_2() {
 #[test]
 #[should_panic]
 fn test_slice_fail() {
-    "中华Việt Nam".slice(0, 2);
+    &"中华Việt Nam"[0..2];
 }
 
 #[test]
 fn test_slice_from() {
-    assert_eq!("abcd".slice_from(0), "abcd");
-    assert_eq!("abcd".slice_from(2), "cd");
-    assert_eq!("abcd".slice_from(4), "");
+    assert_eq!(&"abcd"[0..], "abcd");
+    assert_eq!(&"abcd"[2..], "cd");
+    assert_eq!(&"abcd"[4..], "");
 }
 #[test]
 fn test_slice_to() {
-    assert_eq!("abcd".slice_to(0), "");
-    assert_eq!("abcd".slice_to(2), "ab");
-    assert_eq!("abcd".slice_to(4), "abcd");
+    assert_eq!(&"abcd"[..0], "");
+    assert_eq!(&"abcd"[..2], "ab");
+    assert_eq!(&"abcd"[..4], "abcd");
 }
 
 #[test]
@@ -660,10 +660,10 @@ fn test_contains() {
 
 #[test]
 fn test_contains_char() {
-    assert!("abc".contains_char('b'));
-    assert!("a".contains_char('a'));
-    assert!(!"abc".contains_char('d'));
-    assert!(!"".contains_char('a'));
+    assert!("abc".contains('b'));
+    assert!("a".contains('a'));
+    assert!(!"abc".contains('d'));
+    assert!(!"".contains('a'));
 }
 
 #[test]
@@ -1445,9 +1445,9 @@ fn test_graphemes() {
 }
 
 #[test]
-fn test_split_strator() {
+fn test_splitator() {
     fn t(s: &str, sep: &str, u: &[&str]) {
-        let v: Vec<&str> = s.split_str(sep).collect();
+        let v: Vec<&str> = s.split(sep).collect();
         assert_eq!(v, u);
     }
     t("--1233345--", "12345", &["--1233345--"]);
@@ -1464,19 +1464,6 @@ fn test_split_strator() {
     t("ok", "z", &["ok"]);
     t("zzz", "zz", &["","z"]);
     t("zzzzz", "zz", &["","","z"]);
-}
-
-#[test]
-fn test_str_default() {
-    use std::default::Default;
-
-    fn t<S: Default + Str>() {
-        let s: S = Default::default();
-        assert_eq!(s.as_slice(), "");
-    }
-
-    t::<&str>();
-    t::<String>();
 }
 
 #[test]
