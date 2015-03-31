@@ -56,7 +56,7 @@ mod tempdir;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
-    path: PathBuf,
+    path: Option<PathBuf>,
 }
 
 /// Metadata information about a file.
@@ -171,7 +171,7 @@ impl File {
                reason = "this abstraction is imposed by this library instead \
                          of the underlying OS and may be removed")]
     pub fn path(&self) -> Option<&Path> {
-        Some(&self.path)
+        self.path.as_ref().map(|p| &**p)
     }
 
     /// Attempt to sync all OS-internal metadata to disk.
@@ -273,6 +273,12 @@ impl File {
 impl AsInner<fs_imp::File> for File {
     fn as_inner(&self) -> &fs_imp::File { &self.inner }
 }
+impl FromInner<fs_imp::File> for File {
+    fn from_inner(f: fs_imp::File) -> File {
+        File { inner: f, path: None }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
@@ -381,7 +387,7 @@ impl OpenOptions {
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
         let path = path.as_ref();
         let inner = try!(fs_imp::File::open(path, &self.0));
-        Ok(File { path: path.to_path_buf(), inner: inner })
+        Ok(File { path: Some(path.to_path_buf()), inner: inner })
     }
 }
 

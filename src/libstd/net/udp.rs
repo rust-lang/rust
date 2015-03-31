@@ -16,7 +16,7 @@ use prelude::v1::*;
 use io::{self, Error, ErrorKind};
 use net::{ToSocketAddrs, SocketAddr, IpAddr};
 use sys_common::net2 as net_imp;
-use sys_common::AsInner;
+use sys_common::{AsInner, FromInner};
 
 /// A User Datagram Protocol socket.
 ///
@@ -138,6 +138,10 @@ impl UdpSocket {
 
 impl AsInner<net_imp::UdpSocket> for UdpSocket {
     fn as_inner(&self) -> &net_imp::UdpSocket { &self.0 }
+}
+
+impl FromInner<net_imp::UdpSocket> for UdpSocket {
+    fn from_inner(inner: net_imp::UdpSocket) -> UdpSocket { UdpSocket(inner) }
 }
 
 #[cfg(test)]

@@ -17,7 +17,7 @@ use io::prelude::*;
 use io;
 use net::{ToSocketAddrs, SocketAddr, Shutdown};
 use sys_common::net2 as net_imp;
-use sys_common::AsInner;
+use sys_common::{AsInner, FromInner};
 
 /// A structure which represents a TCP stream between a local socket and a
 /// remote socket.
@@ -172,6 +172,10 @@ impl AsInner<net_imp::TcpStream> for TcpStream {
     fn as_inner(&self) -> &net_imp::TcpStream { &self.0 }
 }
 
+impl FromInner<net_imp::TcpStream> for TcpStream {
+    fn from_inner(inner: net_imp::TcpStream) -> TcpStream { TcpStream(inner) }
+}
+
 impl TcpListener {
     /// Creates a new `TcpListener` which will be bound to the specified
     /// address.
@@ -243,6 +247,12 @@ impl<'a> Iterator for Incoming<'a> {
 
 impl AsInner<net_imp::TcpListener> for TcpListener {
     fn as_inner(&self) -> &net_imp::TcpListener { &self.0 }
+}
+
+impl FromInner<net_imp::TcpListener> for TcpListener {
+    fn from_inner(inner: net_imp::TcpListener) -> TcpListener {
+        TcpListener(inner)
+    }
 }
 
 #[cfg(test)]

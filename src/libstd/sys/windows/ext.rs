@@ -16,112 +16,188 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[unstable(feature = "io_ext",
-           reason = "organization may change slightly and the primitives \
-                     provided may be tweaked")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub mod io {
     use fs;
     use libc;
     use net;
-    use sys_common::AsInner;
+    use sys_common::{net2, AsInner, FromInner};
+    use sys;
 
     #[allow(deprecated)]
     use old_io;
 
     /// Raw HANDLEs.
-    pub type Handle = libc::HANDLE;
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub type RawHandle = libc::HANDLE;
 
     /// Raw SOCKETs.
-    pub type Socket = libc::SOCKET;
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub type RawSocket = libc::SOCKET;
 
     /// Extract raw handles.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub trait AsRawHandle {
         /// Extract the raw handle, without taking any ownership.
-        fn as_raw_handle(&self) -> Handle;
+        #[stable(feature = "rust1", since = "1.0.0")]
+        fn as_raw_handle(&self) -> RawHandle;
+    }
+
+    /// Construct I/O objects from raw handles.
+    #[unstable(feature = "from_raw_os",
+               reason = "recent addition to the std::os::windows::io module")]
+    pub trait FromRawHandle {
+        /// Construct a new I/O object from the specified raw handle.
+        ///
+        /// This function will **consume ownership** of the handle given,
+        /// passing responsibility for closing the handle to the returned
+        /// object.
+        fn from_raw_handle(handle: RawHandle) -> Self;
     }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawHandle for old_io::fs::File {
-        fn as_raw_handle(&self) -> Handle {
+        fn as_raw_handle(&self) -> RawHandle {
             self.as_inner().handle()
         }
     }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawHandle for fs::File {
-        fn as_raw_handle(&self) -> Handle {
+        fn as_raw_handle(&self) -> RawHandle {
             self.as_inner().handle().raw()
         }
     }
 
+    #[unstable(feature = "from_raw_os", reason = "trait is unstable")]
+    impl FromRawHandle for fs::File {
+        fn from_raw_handle(handle: RawHandle) -> fs::File {
+            fs::File::from_inner(sys::fs2::File::from_inner(handle))
+        }
+    }
+
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawHandle for old_io::pipe::PipeStream {
-        fn as_raw_handle(&self) -> Handle {
+        fn as_raw_handle(&self) -> RawHandle {
             self.as_inner().handle()
         }
     }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawHandle for old_io::net::pipe::UnixStream {
-        fn as_raw_handle(&self) -> Handle {
+        fn as_raw_handle(&self) -> RawHandle {
             self.as_inner().handle()
         }
     }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawHandle for old_io::net::pipe::UnixListener {
-        fn as_raw_handle(&self) -> Handle {
+        fn as_raw_handle(&self) -> RawHandle {
             self.as_inner().handle()
         }
     }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawHandle for old_io::net::pipe::UnixAcceptor {
-        fn as_raw_handle(&self) -> Handle {
+        fn as_raw_handle(&self) -> RawHandle {
             self.as_inner().handle()
         }
     }
 
     /// Extract raw sockets.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub trait AsRawSocket {
-        fn as_raw_socket(&self) -> Socket;
+        /// Extract the underlying raw socket from this object.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        fn as_raw_socket(&self) -> RawSocket;
+    }
+
+    /// Create I/O objects from raw sockets.
+    #[unstable(feature = "from_raw_os", reason = "recent addition to module")]
+    pub trait FromRawSocket {
+        /// Creates a new I/O object from the given raw socket.
+        ///
+        /// This function will **consume ownership** of the socket provided and
+        /// it will be closed when the returned object goes out of scope.
+        fn from_raw_socket(sock: RawSocket) -> Self;
     }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawSocket for old_io::net::tcp::TcpStream {
-        fn as_raw_socket(&self) -> Socket {
+        fn as_raw_socket(&self) -> RawSocket {
             self.as_inner().fd()
         }
     }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawSocket for old_io::net::tcp::TcpListener {
-        fn as_raw_socket(&self) -> Socket {
+        fn as_raw_socket(&self) -> RawSocket {
             self.as_inner().socket()
         }
     }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawSocket for old_io::net::tcp::TcpAcceptor {
-        fn as_raw_socket(&self) -> Socket {
+        fn as_raw_socket(&self) -> RawSocket {
             self.as_inner().socket()
         }
     }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawSocket for old_io::net::udp::UdpSocket {
-        fn as_raw_socket(&self) -> Socket {
+        fn as_raw_socket(&self) -> RawSocket {
             self.as_inner().fd()
         }
     }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawSocket for net::TcpStream {
-        fn as_raw_socket(&self) -> Socket { *self.as_inner().socket().as_inner() }
+        fn as_raw_socket(&self) -> RawSocket {
+            *self.as_inner().socket().as_inner()
+        }
     }
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawSocket for net::TcpListener {
-        fn as_raw_socket(&self) -> Socket { *self.as_inner().socket().as_inner() }
+        fn as_raw_socket(&self) -> RawSocket {
+            *self.as_inner().socket().as_inner()
+        }
     }
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawSocket for net::UdpSocket {
-        fn as_raw_socket(&self) -> Socket { *self.as_inner().socket().as_inner() }
+        fn as_raw_socket(&self) -> RawSocket {
+            *self.as_inner().socket().as_inner()
+        }
+    }
+
+    #[unstable(feature = "from_raw_os", reason = "trait is unstable")]
+    impl FromRawSocket for net::TcpStream {
+        fn from_raw_socket(sock: RawSocket) -> net::TcpStream {
+            let sock = sys::net::Socket::from_inner(sock);
+            net::TcpStream::from_inner(net2::TcpStream::from_inner(sock))
+        }
+    }
+    #[unstable(feature = "from_raw_os", reason = "trait is unstable")]
+    impl FromRawSocket for net::TcpListener {
+        fn from_raw_socket(sock: RawSocket) -> net::TcpListener {
+            let sock = sys::net::Socket::from_inner(sock);
+            net::TcpListener::from_inner(net2::TcpListener::from_inner(sock))
+        }
+    }
+    #[unstable(feature = "from_raw_os", reason = "trait is unstable")]
+    impl FromRawSocket for net::UdpSocket {
+        fn from_raw_socket(sock: RawSocket) -> net::UdpSocket {
+            let sock = sys::net::Socket::from_inner(sock);
+            net::UdpSocket::from_inner(net2::UdpSocket::from_inner(sock))
+        }
     }
 }
 
@@ -230,7 +306,7 @@ pub mod fs {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod prelude {
     #[doc(no_inline)]
-    pub use super::io::{Socket, Handle, AsRawSocket, AsRawHandle};
+    pub use super::io::{RawSocket, RawHandle, AsRawSocket, AsRawHandle};
     #[doc(no_inline)] #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::ffi::{OsStrExt, OsStringExt};
     #[doc(no_inline)]
