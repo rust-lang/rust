@@ -106,6 +106,18 @@ pub trait Iterator {
 
     /// Counts the number of elements in this iterator.
     ///
+    /// # Overflow Behavior
+    ///
+    /// The method does no guarding against overflows, so counting elements of
+    /// an iterator with more than `usize::MAX` elements either produces the
+    /// wrong result or panics. If debug assertions are enabled, a panic is
+    /// guaranteed.
+    ///
+    /// # Panics
+    ///
+    /// This functions might panic if the iterator has more than `usize::MAX`
+    /// elements.
+    ///
     /// # Examples
     ///
     /// ```
@@ -115,7 +127,8 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn count(self) -> usize where Self: Sized {
-        self.fold(0, |cnt, _x| cnt + 1)
+        // Might overflow.
+        self.fold(0, |cnt, _| cnt + 1)
     }
 
     /// Loops through the entire iterator, returning the last element.
@@ -281,6 +294,17 @@ pub trait Iterator {
     /// different sized integer, the `zip` function provides similar
     /// functionality.
     ///
+    /// # Overflow Behavior
+    ///
+    /// The method does no guarding against overflows, so enumerating more than
+    /// `usize::MAX` elements either produces the wrong result or panics. If
+    /// debug assertions are enabled, a panic is guaranteed.
+    ///
+    /// # Panics
+    ///
+    /// The returned iterator might panic if the to-be-returned index would
+    /// overflow a `usize`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -293,7 +317,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn enumerate(self) -> Enumerate<Self> where Self: Sized {
-        Enumerate{iter: self, count: 0}
+        Enumerate { iter: self, count: 0 }
     }
 
     /// Creates an iterator that has a `.peek()` method
@@ -672,6 +696,18 @@ pub trait Iterator {
     ///
     /// Does not consume the iterator past the first found element.
     ///
+    /// # Overflow Behavior
+    ///
+    /// The method does no guarding against overflows, so if there are more
+    /// than `usize::MAX` non-matching elements, it either produces the wrong
+    /// result or panics. If debug assertions are enabled, a panic is
+    /// guaranteed.
+    ///
+    /// # Panics
+    ///
+    /// This functions might panic if the iterator has more than `usize::MAX`
+    /// non-matching elements.
+    ///
     /// # Examples
     ///
     /// ```
@@ -685,12 +721,11 @@ pub trait Iterator {
         Self: Sized,
         P: FnMut(Self::Item) -> bool,
     {
-        let mut i = 0;
-        for x in self.by_ref() {
+        // `enumerate` might overflow.
+        for (i, x) in self.by_ref().enumerate() {
             if predicate(x) {
                 return Some(i);
             }
-            i += 1;
         }
         None
     }
@@ -720,6 +755,8 @@ pub trait Iterator {
             if predicate(v) {
                 return Some(i - 1);
             }
+            // No need for an overflow check here, because `ExactSizeIterator`
+            // implies that the number of elements fits into a `usize`.
             i -= 1;
         }
         None
@@ -1783,17 +1820,27 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for FilterMap<I, F>
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Enumerate<I> {
     iter: I,
-    count: usize
+    count: usize,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Enumerate<I> where I: Iterator {
     type Item = (usize, <I as Iterator>::Item);
 
+    /// # Overflow Behavior
+    ///
+    /// The method does no guarding against overflows, so enumerating more than
+    /// `usize::MAX` elements either produces the wrong result or panics. If
+    /// debug assertions are enabled, a panic is guaranteed.
+    ///
+    /// # Panics
+    ///
+    /// Might panic if the index of the element overflows a `usize`.
     #[inline]
     fn next(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
         self.iter.next().map(|a| {
             let ret = (self.count, a);
+            // Possible undefined overflow.
             self.count += 1;
             ret
         })
@@ -1827,6 +1874,8 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
     fn next_back(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
         self.iter.next_back().map(|a| {
             let len = self.iter.len();
+            // Can safely add, `ExactSizeIterator` promises that the number of
+            // elements fits into a `usize`.
             (self.count + len, a)
         })
     }
@@ -1841,6 +1890,9 @@ impl<I> RandomAccessIterator for Enumerate<I> where I: RandomAccessIterator {
 
     #[inline]
     fn idx(&mut self, index: usize) -> Option<(usize, <I as Iterator>::Item)> {
+        // Can safely add, `ExactSizeIterator` (ancestor of
+        // `RandomAccessIterator`) promises that the number of elements fits
+        // into a `usize`.
         self.iter.idx(index).map(|a| (self.count + index, a))
     }
 }
