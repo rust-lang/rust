@@ -189,7 +189,6 @@ mod imp {
     use core::option::Option;
     use core::option::Option::None;
     use core::ptr::{null_mut, null};
-    use core::num::Int;
     use libc::{c_char, c_int, c_void, size_t};
     use super::MIN_ALIGN;
 

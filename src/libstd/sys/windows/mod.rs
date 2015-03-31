@@ -18,6 +18,7 @@ use ffi::{OsStr, OsString};
 use io::{self, ErrorKind};
 use libc;
 use mem;
+#[allow(deprecated)]
 use num::Int;
 use old_io::{self, IoResult, IoError};
 use os::windows::ffi::{OsStrExt, OsStringExt};
@@ -315,6 +316,7 @@ pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
     }
 }
 
+#[allow(deprecated)]
 fn cvt<I: Int>(i: I) -> io::Result<I> {
     if i == Int::zero() {
         Err(io::Error::last_os_error())
