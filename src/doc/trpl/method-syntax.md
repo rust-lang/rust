@@ -181,17 +181,23 @@ impl Circle {
 }
 
 struct CircleBuilder {
-    coordinate: f64,
+    x: f64,
+    y: f64,
     radius: f64,
 }
 
 impl CircleBuilder {
     fn new() -> CircleBuilder {
-        CircleBuilder { coordinate: 0.0, radius: 0.0, }
+        CircleBuilder { x: 0.0, y: 0.0, radius: 0.0, }
     }
 
-    fn coordinate(&mut self, coordinate: f64) -> &mut CircleBuilder {
-        self.coordinate = coordinate;
+    fn x(&mut self, coordinate: f64) -> &mut CircleBuilder {
+        self.x = coordinate;
+        self
+    }
+
+    fn y(&mut self, coordinate: f64) -> &mut CircleBuilder {
+        self.x = coordinate;
         self
     }
 
@@ -201,18 +207,20 @@ impl CircleBuilder {
     }
 
     fn finalize(&self) -> Circle {
-        Circle { x: self.coordinate, y: self.coordinate, radius: self.radius }
+        Circle { x: self.x, y: self.y, radius: self.radius }
     }
 }
 
 fn main() {
     let c = CircleBuilder::new()
-                .coordinate(10.0)
-                .radius(5.0)
+                .x(1.0)
+                .y(2.0)
+                .radius(2.0)
                 .finalize();
 
-
     println!("area: {}", c.area());
+    println!("x: {}", c.x);
+    println!("y: {}", c.y);
 }
 ```
 
