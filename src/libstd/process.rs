@@ -678,7 +678,7 @@ mod tests {
     fn test_process_output_output() {
         let Output {status, stdout, stderr}
              = Command::new("echo").arg("hello").output().unwrap();
-        let output_str = str::from_utf8(stdout.as_slice()).unwrap();
+        let output_str = str::from_utf8(&stdout[..]).unwrap();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_string(), "hello");
@@ -720,7 +720,7 @@ mod tests {
         let prog = Command::new("echo").arg("hello").stdout(Stdio::piped())
             .spawn().unwrap();
         let Output {status, stdout, stderr} = prog.wait_with_output().unwrap();
-        let output_str = str::from_utf8(stdout.as_slice()).unwrap();
+        let output_str = str::from_utf8(&stdout[..]).unwrap();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_string(), "hello");
@@ -855,7 +855,7 @@ mod tests {
             cmd.env("PATH", &p);
         }
         let result = cmd.output().unwrap();
-        let output = String::from_utf8_lossy(result.stdout.as_slice()).to_string();
+        let output = String::from_utf8_lossy(&result.stdout[..]).to_string();
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
@@ -864,7 +864,7 @@ mod tests {
     #[test]
     fn test_add_to_env() {
         let result = env_cmd().env("RUN_TEST_NEW_ENV", "123").output().unwrap();
-        let output = String::from_utf8_lossy(result.stdout.as_slice()).to_string();
+        let output = String::from_utf8_lossy(&result.stdout[..]).to_string();
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);

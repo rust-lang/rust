@@ -527,7 +527,8 @@ impl<T> VecDeque<T> {
     /// buf.push_back(3);
     /// buf.push_back(4);
     /// let b: &[_] = &[&5, &3, &4];
-    /// assert_eq!(buf.iter().collect::<Vec<&i32>>().as_slice(), b);
+    /// let c: Vec<&i32> = buf.iter().collect();
+    /// assert_eq!(&c[..], b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {

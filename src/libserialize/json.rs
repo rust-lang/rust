@@ -100,7 +100,7 @@
 //!     let encoded = json::encode(&object).unwrap();
 //!
 //!     // Deserialize using `json::decode`
-//!     let decoded: TestStruct = json::decode(encoded.as_slice()).unwrap();
+//!     let decoded: TestStruct = json::decode(&encoded[..]).unwrap();
 //! }
 //! ```
 //!
