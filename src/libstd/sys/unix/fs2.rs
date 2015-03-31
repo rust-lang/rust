@@ -276,8 +276,8 @@ impl File {
 }
 
 fn cstr(path: &Path) -> io::Result<CString> {
-    let cstring = try!(path.as_os_str().to_cstring());
-    Ok(cstring)
+    path.as_os_str().to_cstring().ok_or(
+        io::Error::new(io::ErrorKind::InvalidInput, "path contained a null", None))
 }
 
 impl FromInner<c_int> for File {

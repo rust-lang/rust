@@ -35,7 +35,6 @@
 //! To build or modify paths, use `PathBuf`:
 //!
 //! ```rust
-//! # #![feature(convert)]
 //! use std::path::PathBuf;
 //!
 //! let mut path = PathBuf::from("c:\\");
@@ -521,9 +520,9 @@ impl<'a> Component<'a> {
     pub fn as_os_str(self) -> &'a OsStr {
         match self {
             Component::Prefix(p) => p.as_os_str(),
-            Component::RootDir => OsStr::from_str(MAIN_SEP_STR),
-            Component::CurDir => OsStr::from_str("."),
-            Component::ParentDir => OsStr::from_str(".."),
+            Component::RootDir => OsStr::new(MAIN_SEP_STR),
+            Component::CurDir => OsStr::new("."),
+            Component::ParentDir => OsStr::new(".."),
             Component::Normal(path) => path,
         }
     }
@@ -893,7 +892,6 @@ impl<'a> cmp::Ord for Components<'a> {
 /// # Examples
 ///
 /// ```
-/// # #![feature(convert)]
 /// use std::path::PathBuf;
 ///
 /// let mut path = PathBuf::from("c:\\");
@@ -916,6 +914,12 @@ impl PathBuf {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> PathBuf {
         PathBuf { inner: OsString::new() }
+    }
+
+    /// Coerce to a `Path` slice.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn as_path(&self) -> &Path {
+        self
     }
 
     /// Extend `self` with `path`.
@@ -985,7 +989,6 @@ impl PathBuf {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(convert)]
     /// use std::path::PathBuf;
     ///
     /// let mut buf = PathBuf::from("/");

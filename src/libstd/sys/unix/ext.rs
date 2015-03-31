@@ -207,7 +207,7 @@ pub mod io {
 /// Unix-specific extension to the primitives in the `std::ffi` module
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod ffi {
-    use ffi::{CString, NulError, OsStr, OsString};
+    use ffi::{OsStr, OsString};
     use mem;
     use prelude::v1::*;
     use sys::os_str::Buf;
@@ -244,10 +244,6 @@ pub mod ffi {
         /// Get the underlying byte view of the `OsStr` slice.
         #[stable(feature = "rust1", since = "1.0.0")]
         fn as_bytes(&self) -> &[u8];
-
-        /// Convert the `OsStr` slice into a `CString`.
-        #[stable(feature = "rust1", since = "1.0.0")]
-        fn to_cstring(&self) -> Result<CString, NulError>;
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -257,9 +253,6 @@ pub mod ffi {
         }
         fn as_bytes(&self) -> &[u8] {
             &self.as_inner().inner
-        }
-        fn to_cstring(&self) -> Result<CString, NulError> {
-            CString::new(self.as_bytes())
         }
     }
 }
