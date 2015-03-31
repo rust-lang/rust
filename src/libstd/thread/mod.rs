@@ -810,7 +810,6 @@ mod test {
 
     use any::Any;
     use sync::mpsc::{channel, Sender};
-    use boxed::BoxAny;
     use result;
     use std::old_io::{ChanReader, ChanWriter};
     use super::{Builder};

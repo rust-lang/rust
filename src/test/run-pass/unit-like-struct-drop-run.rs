@@ -14,7 +14,6 @@
 
 #![feature(alloc)]
 
-use std::boxed::BoxAny;
 use std::thread;
 
 struct Foo;
