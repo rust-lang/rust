@@ -1,6 +1,6 @@
 - Feature Name: exit
 - Start Date: 2015-03-24
-- RFC PR: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1011
 - Rust Issue: (leave this empty)
 
 # Summary
