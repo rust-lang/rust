@@ -557,7 +557,6 @@ impl<T> [T] {
     /// ```rust
     /// # #![feature(core)]
     /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
-    /// let s = s.as_slice();
     ///
     /// let seek = 13;
     /// assert_eq!(s.binary_search_by(|probe| probe.cmp(&seek)), Ok(9));
@@ -924,7 +923,6 @@ impl<T> [T] {
     /// ```rust
     /// # #![feature(core)]
     /// let s = [0, 1, 1, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55];
-    /// let s = s.as_slice();
     ///
     /// assert_eq!(s.binary_search(&13),  Ok(9));
     /// assert_eq!(s.binary_search(&4),   Err(7));

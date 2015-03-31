@@ -624,7 +624,7 @@ pub trait Iterator {
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert!(it.any(|x| *x == 3));
-    /// assert_eq!(it.as_slice(), [4, 5]);
+    /// assert_eq!(&it[..], [4, 5]);
     ///
     /// ```
     #[inline]
@@ -648,7 +648,7 @@ pub trait Iterator {
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert_eq!(it.find(|&x| *x == 3).unwrap(), &3);
-    /// assert_eq!(it.as_slice(), [4, 5]);
+    /// assert_eq!(&it[..], [4, 5]);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
@@ -672,7 +672,7 @@ pub trait Iterator {
     /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert_eq!(it.position(|x| *x == 3).unwrap(), 2);
-    /// assert_eq!(it.as_slice(), [4, 5]);
+    /// assert_eq!(&it[..], [4, 5]);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn position<P>(&mut self, mut predicate: P) -> Option<usize> where
@@ -702,7 +702,7 @@ pub trait Iterator {
     /// let a = [1, 2, 2, 4, 5];
     /// let mut it = a.iter();
     /// assert_eq!(it.rposition(|x| *x == 2).unwrap(), 2);
-    /// assert_eq!(it.as_slice(), [1, 2]);
+    /// assert_eq!(&it[..], [1, 2]);
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rposition<P>(&mut self, mut predicate: P) -> Option<usize> where
