@@ -10,7 +10,7 @@
 
 #![unstable(feature = "std_misc")]
 
-use convert::Into;
+use convert::{Into, From};
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use error::Error;
 use fmt;

@@ -24,7 +24,6 @@ use old_io::process::{ProcessExit, ExitStatus};
 use old_io::{IoResult, IoError};
 use old_io;
 use fs::PathExt;
-use os;
 use old_path::{BytesContainer, GenericPath};
 use ptr;
 use str;

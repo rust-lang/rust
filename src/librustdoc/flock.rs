@@ -195,8 +195,8 @@ mod imp {
 
     impl Lock {
         pub fn new(p: &Path) -> Lock {
-            let p: &OsStr = p.as_ref();
-            let mut p_16: Vec<_> = p.encode_wide().collect();
+            let os: &OsStr = p.as_ref();
+            let mut p_16: Vec<_> = os.encode_wide().collect();
             p_16.push(0);
             let handle = unsafe {
                 libc::CreateFileW(p_16.as_ptr(),

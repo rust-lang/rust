@@ -23,7 +23,6 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(collections)]
-#![feature(core)]
 #![feature(exit_status)]
 #![feature(set_stdio)]
 #![feature(libc)]

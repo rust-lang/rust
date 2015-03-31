@@ -135,13 +135,6 @@ impl FileDesc {
             _ => Err(super::last_error()),
         }
     }
-
-    /// Extract the actual filedescriptor without closing it.
-    pub fn unwrap(self) -> fd_t {
-        let fd = self.fd;
-        unsafe { mem::forget(self) };
-        fd
-    }
 }
 
 impl Drop for FileDesc {

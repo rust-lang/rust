@@ -27,7 +27,6 @@
 
 #![feature(box_syntax)]
 #![feature(collections)]
-#![feature(core)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
