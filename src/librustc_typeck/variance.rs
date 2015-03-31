@@ -644,39 +644,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
 
             ast::ItemTrait(..) => {
                 let trait_def = ty::lookup_trait_def(tcx, did);
-                let predicates = ty::lookup_super_predicates(tcx, did);
-                self.add_constraints_from_predicates(&trait_def.generics,
-                                                     predicates.predicates.as_slice(),
-                                                     self.covariant);
-
-                let trait_items = ty::trait_items(tcx, did);
-                for trait_item in &*trait_items {
-                    match *trait_item {
-                        ty::MethodTraitItem(ref method) => {
-                            self.add_constraints_from_predicates(
-                                &method.generics,
-                                method.predicates.predicates.get_slice(FnSpace),
-                                self.contravariant);
-
-                            self.add_constraints_from_sig(
-                                &method.generics,
-                                &method.fty.sig,
-                                self.covariant);
-                        }
-                        ty::TypeTraitItem(ref data) => {
-                            // Any trait with an associated type is
-                            // invariant with respect to all of its
-                            // inputs. See length discussion in the comment
-                            // on this module.
-                            let projection_ty = ty::mk_projection(tcx,
-                                                                  trait_def.trait_ref.clone(),
-                                                                  data.name);
-                            self.add_constraints_from_ty(&trait_def.generics,
-                                                         projection_ty,
-                                                         self.invariant);
-                        }
-                    }
-                }
+                self.add_constraints_from_trait_ref(&trait_def.generics,
+                                                    &trait_def.trait_ref,
+                                                    self.invariant);
             }
 
             ast::ItemExternCrate(_) |
@@ -1042,69 +1012,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             let variance_i = self.xform(variance, variance_decl);
             let substs_r = *substs.regions().get(p.space, p.index as usize);
             self.add_constraints_from_region(generics, substs_r, variance_i);
-        }
-    }
-
-    fn add_constraints_from_predicates(&mut self,
-                                       generics: &ty::Generics<'tcx>,
-                                       predicates: &[ty::Predicate<'tcx>],
-                                       variance: VarianceTermPtr<'a>) {
-        debug!("add_constraints_from_generics({})",
-               generics.repr(self.tcx()));
-
-        for predicate in predicates.iter() {
-            match *predicate {
-                ty::Predicate::Trait(ty::Binder(ref data)) => {
-                    self.add_constraints_from_trait_ref(generics, &*data.trait_ref, variance);
-                }
-
-                ty::Predicate::Equate(ty::Binder(ref data)) => {
-                    // A == B is only true if A and B are the same
-                    // types, not subtypes of one another, so this is
-                    // an invariant position:
-                    self.add_constraints_from_ty(generics, data.0, self.invariant);
-                    self.add_constraints_from_ty(generics, data.1, self.invariant);
-                }
-
-                ty::Predicate::TypeOutlives(ty::Binder(ref data)) => {
-                    // Why contravariant on both? Let's consider:
-                    //
-                    // Under what conditions is `(T:'t) <: (U:'u)`,
-                    // meaning that `(T:'t) => (U:'u)`. The answer is
-                    // if `U <: T` or `'u <= 't`. Let's see some examples:
-                    //
-                    //   (T: 'big) => (T: 'small)
-                    //   where 'small <= 'big
-                    //
-                    //   (&'small Foo: 't) => (&'big Foo: 't)
-                    //   where 'small <= 'big
-                    //   note that &'big Foo <: &'small Foo
-
-                    let variance_r = self.xform(variance, self.contravariant);
-                    self.add_constraints_from_ty(generics, data.0, variance_r);
-                    self.add_constraints_from_region(generics, data.1, variance_r);
-                }
-
-                ty::Predicate::RegionOutlives(ty::Binder(ref data)) => {
-                    // `'a : 'b` is still true if 'a gets bigger
-                    self.add_constraints_from_region(generics, data.0, variance);
-
-                    // `'a : 'b` is still true if 'b gets smaller
-                    let variance_r = self.xform(variance, self.contravariant);
-                    self.add_constraints_from_region(generics, data.1, variance_r);
-                }
-
-                ty::Predicate::Projection(ty::Binder(ref data)) => {
-                    self.add_constraints_from_trait_ref(generics,
-                                                        &*data.projection_ty.trait_ref,
-                                                        variance);
-
-                    // as the equality predicate above, a binder is a
-                    // type equality relation, not a subtyping
-                    // relation
-                    self.add_constraints_from_ty(generics, data.ty, self.invariant);
-                }
-            }
         }
     }
 
