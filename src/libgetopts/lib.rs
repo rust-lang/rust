@@ -971,7 +971,7 @@ fn test_split_within() {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
     use super::Fail::*;
 

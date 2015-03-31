@@ -523,7 +523,7 @@ impl Writer for StdWriter {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use prelude::v1::*;
 
     use super::*;

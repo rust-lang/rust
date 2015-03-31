@@ -341,7 +341,7 @@ impl StaticCondvar {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use prelude::v1::*;
 
     use super::{StaticCondvar, CONDVAR_INIT};

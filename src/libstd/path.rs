@@ -1541,7 +1541,7 @@ impl AsRef<Path> for PathBuf {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
     use core::prelude::*;
     use string::{ToString, String};

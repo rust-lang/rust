@@ -457,7 +457,7 @@ impl<'a, T: ToSocketAddrs + ?Sized> ToSocketAddrs for &'a T {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use prelude::v1::*;
     use io;
     use net::*;

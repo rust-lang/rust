@@ -213,7 +213,7 @@ impl<T:Rand> Rand for Option<T> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use std::rand::{Rng, thread_rng, Open01, Closed01};
 
     struct ConstantRng(u64);

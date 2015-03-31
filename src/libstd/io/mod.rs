@@ -909,7 +909,7 @@ impl<B: BufRead> Iterator for Lines<B> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use prelude::v1::*;
     use io::prelude::*;
     use io;

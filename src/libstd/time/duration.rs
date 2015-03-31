@@ -427,7 +427,7 @@ fn div_rem_64(this: i64, other: i64) -> (i64, i64) {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::{Duration, MIN, MAX};
     use {i32, i64};
     use option::Option::{Some, None};

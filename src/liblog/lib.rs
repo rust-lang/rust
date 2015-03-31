@@ -457,7 +457,7 @@ fn init() {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::enabled;
     use directive::LogDirective;
 

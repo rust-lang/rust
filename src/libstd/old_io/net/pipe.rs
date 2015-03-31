@@ -285,7 +285,7 @@ impl sys_common::AsInner<UnixAcceptorImp> for UnixAcceptor {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use prelude::v1::*;
 
     use old_io::fs::PathExtensions;

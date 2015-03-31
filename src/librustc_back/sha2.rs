@@ -529,7 +529,7 @@ static H256: [u32; 8] = [
 ];
 
 #[cfg(test)]
-mod tests {
+mod test {
     #![allow(deprecated)]
     extern crate rand;
 

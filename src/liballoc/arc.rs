@@ -648,7 +648,7 @@ impl<T: Hash> Hash for Arc<T> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use std::clone::Clone;
     use std::sync::mpsc::channel;
     use std::mem::drop;

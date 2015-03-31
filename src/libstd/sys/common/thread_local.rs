@@ -243,7 +243,7 @@ impl Drop for Key {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use prelude::v1::*;
     use super::{Key, StaticKey, INIT_INNER};
 

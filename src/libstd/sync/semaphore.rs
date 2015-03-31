@@ -109,7 +109,7 @@ impl<'a> Drop for SemaphoreGuard<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use prelude::v1::*;
 
     use sync::Arc;

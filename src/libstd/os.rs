@@ -1504,7 +1504,7 @@ mod arch_consts {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     #![allow(deprecated)] // rand
 
     use prelude::v1::*;
