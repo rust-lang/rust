@@ -722,6 +722,9 @@ pub trait Iterator {
 
     /// Consumes the entire iterator to return the maximum element.
     ///
+    /// Returns the rightmost element if the comparison determines two elements
+    /// to be equally maximum.
+    ///
     /// # Examples
     ///
     /// ```
@@ -732,15 +735,18 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn max(self) -> Option<Self::Item> where Self: Sized, Self::Item: Ord
     {
-        self.fold(None, |max, x| {
+        self.fold(None, |max, y| {
             match max {
-                None    => Some(x),
-                Some(y) => Some(cmp::max(x, y))
+                None    => Some(y),
+                Some(x) => Some(cmp::max(x, y))
             }
         })
     }
 
     /// Consumes the entire iterator to return the minimum element.
+    ///
+    /// Returns the leftmost element if the comparison determines two elements
+    /// to be equally minimum.
     ///
     /// # Examples
     ///
@@ -752,10 +758,10 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn min(self) -> Option<Self::Item> where Self: Sized, Self::Item: Ord
     {
-        self.fold(None, |min, x| {
+        self.fold(None, |min, y| {
             match min {
-                None    => Some(x),
-                Some(y) => Some(cmp::min(x, y))
+                None    => Some(y),
+                Some(x) => Some(cmp::min(x, y))
             }
         })
     }
@@ -799,7 +805,7 @@ pub trait Iterator {
             Some(x) => {
                 match self.next() {
                     None => return OneElement(x),
-                    Some(y) => if x < y {(x, y)} else {(y,x)}
+                    Some(y) => if x <= y {(x, y)} else {(y, x)}
                 }
             }
         };
@@ -817,19 +823,19 @@ pub trait Iterator {
                 None => {
                     if first < min {
                         min = first;
-                    } else if first > max {
+                    } else if first >= max {
                         max = first;
                     }
                     break;
                 }
                 Some(x) => x
             };
-            if first < second {
-                if first < min {min = first;}
-                if max < second {max = second;}
+            if first <= second {
+                if first < min { min = first }
+                if second >= max { max = second }
             } else {
-                if second < min {min = second;}
-                if max < first {max = first;}
+                if second < min { min = second }
+                if first >= max { max = first }
             }
         }
 
@@ -838,6 +844,9 @@ pub trait Iterator {
 
     /// Return the element that gives the maximum value from the
     /// specified function.
+    ///
+    /// Returns the rightmost element if the comparison determines two elements
+    /// to be equally maximum.
     ///
     /// # Examples
     ///
@@ -854,14 +863,14 @@ pub trait Iterator {
         Self: Sized,
         F: FnMut(&Self::Item) -> B,
     {
-        self.fold(None, |max: Option<(Self::Item, B)>, x| {
-            let x_val = f(&x);
+        self.fold(None, |max: Option<(Self::Item, B)>, y| {
+            let y_val = f(&y);
             match max {
-                None             => Some((x, x_val)),
-                Some((y, y_val)) => if x_val > y_val {
-                    Some((x, x_val))
-                } else {
+                None             => Some((y, y_val)),
+                Some((x, x_val)) => if y_val >= x_val {
                     Some((y, y_val))
+                } else {
+                    Some((x, x_val))
                 }
             }
         }).map(|(x, _)| x)
@@ -869,6 +878,9 @@ pub trait Iterator {
 
     /// Return the element that gives the minimum value from the
     /// specified function.
+    ///
+    /// Returns the leftmost element if the comparison determines two elements
+    /// to be equally minimum.
     ///
     /// # Examples
     ///
@@ -885,11 +897,11 @@ pub trait Iterator {
         Self: Sized,
         F: FnMut(&Self::Item) -> B,
     {
-        self.fold(None, |min: Option<(Self::Item, B)>, x| {
-            let x_val = f(&x);
+        self.fold(None, |min: Option<(Self::Item, B)>, y| {
+            let y_val = f(&y);
             match min {
-                None             => Some((x, x_val)),
-                Some((y, y_val)) => if x_val < y_val {
+                None             => Some((y, y_val)),
+                Some((x, x_val)) => if x_val <= y_val {
                     Some((x, x_val))
                 } else {
                     Some((y, y_val))
