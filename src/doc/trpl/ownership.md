@@ -472,10 +472,15 @@ thread-safe counterpart of `Rc<T>`.
 
 ## Lifetime Elision
 
-Earlier, we mentioned *lifetime elision*, a feature of Rust which allows you to
-not write lifetime annotations in certain circumstances. All references have a
-lifetime, and so if you elide a lifetime (like `&T` instead of `&'a T`), Rust
-will do three things to determine what those lifetimes should be.
+Rust supports powerful local type inference in function bodies, but it’s
+forbidden in item signatures to allow reasoning about the types just based in
+the item signature alone. However, for ergonomic reasons a very restricted
+secondary inference algorithm called “lifetime elision” applies in function
+signatures. It infers only based on the signature components themselves and not
+based on the body of the function, only infers lifetime paramters, and does
+this with only three easily memorizable and unambiguous rules. This makes
+lifetime elision a shorthand for writing an item signature, while not hiding
+away the actual types involved as full local inference would if applied to it.
 
 When talking about lifetime elision, we use the term *input lifetime* and
 *output lifetime*. An *input lifetime* is a lifetime associated with a parameter

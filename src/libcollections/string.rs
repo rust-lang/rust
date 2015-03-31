@@ -592,8 +592,8 @@ impl String {
         let ch = self.char_at(idx);
         let next = idx + ch.len_utf8();
         unsafe {
-            ptr::copy(self.vec.as_mut_ptr().offset(idx as isize),
-                      self.vec.as_ptr().offset(next as isize),
+            ptr::copy(self.vec.as_ptr().offset(next as isize),
+                      self.vec.as_mut_ptr().offset(idx as isize),
                       len - next);
             self.vec.set_len(len - (next - idx));
         }
@@ -622,11 +622,11 @@ impl String {
         let amt = ch.encode_utf8(&mut bits).unwrap();
 
         unsafe {
-            ptr::copy(self.vec.as_mut_ptr().offset((idx + amt) as isize),
-                      self.vec.as_ptr().offset(idx as isize),
+            ptr::copy(self.vec.as_ptr().offset(idx as isize),
+                      self.vec.as_mut_ptr().offset((idx + amt) as isize),
                       len - idx);
-            ptr::copy(self.vec.as_mut_ptr().offset(idx as isize),
-                      bits.as_ptr(),
+            ptr::copy(bits.as_ptr(),
+                      self.vec.as_mut_ptr().offset(idx as isize),
                       amt);
             self.vec.set_len(len + amt);
         }
@@ -1019,8 +1019,25 @@ impl AsRef<str> for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&'a str> for String {
+    #[inline]
     fn from(s: &'a str) -> String {
         s.to_string()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<&'a str> for Cow<'a, str> {
+    #[inline]
+    fn from(s: &'a str) -> Cow<'a, str> {
+        Cow::Borrowed(s)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> From<String> for Cow<'a, str> {
+    #[inline]
+    fn from(s: String) -> Cow<'a, str> {
+        Cow::Owned(s)
     }
 }
 
@@ -1031,7 +1048,7 @@ impl Into<Vec<u8>> for String {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`")]
 impl IntoCow<'static, str> for String {
     #[inline]
     fn into_cow(self) -> Cow<'static, str> {
@@ -1039,7 +1056,7 @@ impl IntoCow<'static, str> for String {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`")]
 impl<'a> IntoCow<'a, str> for &'a str {
     #[inline]
     fn into_cow(self) -> Cow<'a, str> {
