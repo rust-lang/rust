@@ -12,9 +12,10 @@
 
 //! An implementation of SipHash 2-4.
 
+#![allow(deprecated)] // until the next snapshot for inherent wrapping ops
+
 use prelude::*;
 use default::Default;
-use num::wrapping::WrappingOps;
 use super::Hasher;
 
 /// An implementation of SipHash 2-4.
@@ -71,7 +72,7 @@ macro_rules! u8to64_le {
 
 macro_rules! rotl {
     ($x:expr, $b:expr) =>
-    (($x << $b) | ($x >> (64.wrapping_sub($b))))
+    (($x << $b) | ($x >> (64_i32.wrapping_sub($b))))
 }
 
 macro_rules! compress {

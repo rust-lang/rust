@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(missing_docs)]
+#![allow(deprecated)] // Float
 
 use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::mem;

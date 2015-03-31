@@ -18,9 +18,6 @@
 //! (see below). It is not possible to move out of borrowed strings because they
 //! are owned elsewhere.
 //!
-//! Basic operations are implemented directly by the compiler, but more advanced
-//! operations are defined as methods on the `str` type.
-//!
 //! # Examples
 //!
 //! Here's some code that uses a `&str`:

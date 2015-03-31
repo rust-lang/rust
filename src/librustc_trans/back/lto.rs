@@ -22,6 +22,7 @@ use flate;
 
 use std::ffi::CString;
 use std::mem;
+#[allow(deprecated)]
 use std::num::Int;
 
 pub fn run(sess: &session::Session, llmod: ModuleRef,
@@ -204,6 +205,7 @@ fn extract_compressed_bytecode_size_v1(bc: &[u8]) -> u64 {
     return read_from_le_bytes::<u64>(bc, link::RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET);
 }
 
+#[allow(deprecated)]
 fn read_from_le_bytes<T: Int>(bytes: &[u8], position_in_bytes: usize) -> T {
     let byte_data = &bytes[position_in_bytes..position_in_bytes + mem::size_of::<T>()];
     let data = unsafe {

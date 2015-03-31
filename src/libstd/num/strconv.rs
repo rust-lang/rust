@@ -11,6 +11,7 @@
 // ignore-lexer-test FIXME #15679
 
 #![allow(missing_docs)]
+#![allow(deprecated)]
 
 use self::ExponentFormat::*;
 use self::SignificantDigits::*;

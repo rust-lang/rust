@@ -233,24 +233,10 @@ impl<T: ?Sized + Hash> Hash for Box<T> {
     }
 }
 
-/// Extension methods for an owning `Any` trait object.
-#[unstable(feature = "alloc",
-           reason = "this trait will likely disappear once compiler bugs blocking \
-                     a direct impl on `Box<Any>` have been fixed ")]
-// FIXME(#18737): this should be a direct impl on `Box<Any>`. If you're
-//                removing this please make sure that you can downcase on
-//                `Box<Any + Send>` as well as `Box<Any>`
-pub trait BoxAny {
-    /// Returns the boxed value if it is of type `T`, or
-    /// `Err(Self)` if it isn't.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>>;
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl BoxAny for Box<Any> {
+impl Box<Any> {
     #[inline]
-    fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -267,10 +253,10 @@ impl BoxAny for Box<Any> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl BoxAny for Box<Any+Send> {
+impl Box<Any+Send> {
     #[inline]
-    fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
         <Box<Any>>::downcast(self)
     }
 }
