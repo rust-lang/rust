@@ -154,7 +154,7 @@ pub trait Rng : Sized {
     ///
     /// let mut v = [0; 13579];
     /// thread_rng().fill_bytes(&mut v);
-    /// println!("{:?}", v);
+    /// println!("{:?}", &v[..]);
     /// ```
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         // this could, in theory, be done by transmuting dest to a

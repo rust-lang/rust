@@ -744,7 +744,7 @@ mod test {
                     wr.write(&[5; 10]).unwrap();
                 }
             }
-            assert_eq!(buf.as_ref(), [5; 100].as_ref());
+            assert_eq!(&buf[..], &[5; 100][..]);
         });
     }
 

@@ -197,7 +197,6 @@ extern "rust-intrinsic" {
     /// Rust moves to non-zeroing dynamic drop (and thus removes the
     /// embedded drop flags that are being established by this
     /// intrinsic).
-    #[cfg(not(stage0))]
     pub fn init_dropped<T>() -> T;
 
     /// Create a value initialized to zero.
