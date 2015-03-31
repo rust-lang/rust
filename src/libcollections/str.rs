@@ -10,13 +10,12 @@
 //
 // ignore-lexer-test FIXME #15679
 
-//! Unicode string manipulation (the [`str`](../primitive.str.html) type).
+//! Unicode string manipulation (the `str` type).
 //!
-//! Rust's [`str`](../primitive.str.html) type is one of the core primitive
-//! types of the language. `&str` is the borrowed string type. This type of
-//! string can only be created from other strings, unless it is a `&'static str`
-//! (see below). It is not possible to move out of borrowed strings because they
-//! are owned elsewhere.
+//! Rust's `str` type is one of the core primitive types of the language. `&str` is the borrowed
+//! string type. This type of string can only be created from other strings, unless it is a
+//! `&'static str` (see below). It is not possible to move out of borrowed strings because they are
+//! owned elsewhere.
 //!
 //! # Examples
 //!
@@ -26,9 +25,8 @@
 //! let s = "Hello, world.";
 //! ```
 //!
-//! This `&str` is a `&'static str`, which is the type of string literals.
-//! They're `'static` because literals are available for the entire lifetime of
-//! the program.
+//! This `&str` is a `&'static str`, which is the type of string literals. They're `'static`
+//! because literals are available for the entire lifetime of the program.
 //!
 //! You can get a non-`'static` `&str` by taking a slice of a `String`:
 //!
@@ -39,13 +37,12 @@
 //!
 //! # Representation
 //!
-//! Rust's string type, `str`, is a sequence of Unicode scalar values encoded as
-//! a stream of UTF-8 bytes. All [strings](../../reference.html#literals) are
-//! guaranteed to be validly encoded UTF-8 sequences. Additionally, strings are
-//! not null-terminated and can thus contain null bytes.
+//! Rust's string type, `str`, is a sequence of Unicode scalar values encoded as a stream of UTF-8
+//! bytes. All [strings](../../reference.html#literals) are guaranteed to be validly encoded UTF-8
+//! sequences. Additionally, strings are not null-terminated and can thus contain null bytes.
 //!
-//! The actual representation of `str`s have direct mappings to slices: `&str`
-//! is the same as `&[u8]`.
+//! The actual representation of `str`s have direct mappings to slices: `&str` is the same as
+//! `&[u8]`.
 
 #![doc(primitive = "str")]
 #![stable(feature = "rust1", since = "1.0.0")]
