@@ -1,7 +1,7 @@
 - Feature Name: fundamental_attribute
 - Start Date: 2015-03-27
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/1023
+- Rust Issue: https://github.com/rust-lang/rust/issues/23918
 
 ## Summary
 
@@ -14,7 +14,7 @@ This RFC proposes two rule changes:
 2. Restrict negative reasoning so it too obeys the orphan rules.
 3. Introduce an unstable `#[fundamental]` attribute that can be used
    to extend the above rules in select cases (details below).
-   
+
 ## Motivation
 
 The current orphan rules are oriented around allowing as many remote
@@ -47,7 +47,7 @@ impl<T> Send for Vec<T>
 // tied to &Vec<T>
 impl<'a,T> IntoIterator for &'a Vec<T>
 ```
-    
+
 On this basis, we propose that we limit remote impls to require that
 they include a type either defined in the current crate or a reference
 to a type defined in the current crate. This is more restrictive than
@@ -142,7 +142,7 @@ struct LinkedList<'a> {
 
 impl<'a> Iterator for LinkedList<'a> {
     type Item = i32;
-    
+
     fn next(&mut self) -> Option<i32> {
         if let Some(ptr) = self.data {
             *self = Some(ptr.next);
@@ -225,7 +225,7 @@ must be local to the current crate, or:
    `Ti` be the first such type.
 2. No type parameters `P1...Pn` may appear in the type parameters that
    precede `Ti` (that is, `Tj` where `j < i`).
-   
+
 ### Type locality and negative reasoning
 
 Currently the overlap check employs negative reasoning to segregate
@@ -279,13 +279,13 @@ be annoying.
   unfortunate. Moreover, it seems likely we will encounter further
   examples of "reasonable cases" that `#[fundamental]` can easily
   accommodate.
-  
+
 - **Specializations, negative impls, and contracts.** The gist
   referenced earlier includes [a section][c] covering various
   alternatives that I explored which came up short. These include
   specialization, explicit negative impls, and explicit contracts
   between the trait definer and the trait consumer.
-  
+
 # Unresolved questions
 
 None.
