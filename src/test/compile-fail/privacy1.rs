@@ -11,15 +11,11 @@
 #![feature(lang_items, start, no_std)]
 #![no_std] // makes debugging this test *a lot* easier (during resolve)
 
-#[lang="phantom_fn"]
-pub trait PhantomFn<A:?Sized,R:?Sized=()> { }
-impl<A:?Sized, R:?Sized, U:?Sized> PhantomFn<A,R> for U { }
-
 #[lang="sized"]
-pub trait Sized : PhantomFn<Self> {}
+pub trait Sized {}
 
 #[lang="copy"]
-pub trait Copy : PhantomFn<Self> {}
+pub trait Copy {}
 
 mod bar {
     // shouldn't bring in too much

@@ -12,18 +12,15 @@
 #![allow(dead_code)]
 #![deny(unsafe_code)]
 
-use std::marker::PhantomFn;
-
 struct Bar;
 struct Bar2;
 struct Bar3;
 
 #[allow(unsafe_code)]
 mod allowed_unsafe {
-    use std::marker::PhantomFn;
     fn allowed() { unsafe {} }
     unsafe fn also_allowed() {}
-    unsafe trait AllowedUnsafe : PhantomFn<Self> {}
+    unsafe trait AllowedUnsafe { }
     unsafe impl AllowedUnsafe for super::Bar {}
 }
 
@@ -34,7 +31,7 @@ macro_rules! unsafe_in_macro {
 }
 
 unsafe fn baz() {} //~ ERROR: declaration of an `unsafe` function
-unsafe trait Foo : PhantomFn<Self> {} //~ ERROR: declaration of an `unsafe` trait
+unsafe trait Foo {} //~ ERROR: declaration of an `unsafe` trait
 unsafe impl Foo for Bar {} //~ ERROR: implementation of an `unsafe` trait
 
 trait Baz {

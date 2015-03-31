@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-use std::marker::{PhantomData, PhantomFn};
+use std::marker::PhantomData;
 
 pub struct Handle<T, I>(T, I);
 
@@ -34,7 +34,7 @@ impl<D: Device, T> BufferHandle<D, T> {
 
 pub type RawBufferHandle<D: Device> = Handle<<D as Device>::Buffer, String>;
 
-pub trait Device: PhantomFn<Self> {
+pub trait Device {
     type Buffer;
 }
 

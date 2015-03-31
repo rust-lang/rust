@@ -17,7 +17,8 @@ trait Get {
 fn get_min_from_max<'min, 'max, G>()
     where 'max : 'min, G : 'max, &'max G : Get
 {
-    impls_get::<&'min G>();
+    // Previously OK, now an error as traits are invariant.
+    impls_get::<&'min G>(); //~ ERROR mismatched types
 }
 
 fn get_max_from_min<'min, 'max, G>()

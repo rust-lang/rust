@@ -10,6 +10,9 @@
 
 #![allow(dead_code)]
 
+// This test was previously testing variance on traits.
+// But now that it is removed, both cases error.
+
 trait Get<T> : 'static {
     fn get(&self, t: T);
 }
@@ -25,7 +28,8 @@ fn get_max_from_min<'min, 'max, G>(v: Box<Get<&'min i32>>)
                                    -> Box<Get<&'max i32>>
     where 'max : 'min
 {
-    v
+    // Previously OK:
+    v //~ ERROR mismatched types
 }
 
 fn main() { }
