@@ -456,7 +456,6 @@ impl Child {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
                 "invalid argument: can't kill an exited process",
-                None
             ))
         }
 

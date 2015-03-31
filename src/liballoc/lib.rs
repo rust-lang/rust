@@ -78,6 +78,7 @@
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(core)]
 #![feature(unique)]
+#![feature(convert)]
 #![cfg_attr(test, feature(test, alloc, rustc_private))]
 #![cfg_attr(all(not(feature = "external_funcs"), not(feature = "external_crate")),
             feature(libc))]

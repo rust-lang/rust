@@ -862,8 +862,8 @@ pub mod writer {
         } else if 0x100 <= n && n < NUM_TAGS {
             w.write_all(&[0xf0 | (n >> 8) as u8, n as u8])
         } else {
-            Err(io::Error::new(io::ErrorKind::Other, "invalid tag",
-                               Some(n.to_string())))
+            Err(io::Error::new(io::ErrorKind::Other,
+                               &format!("invalid tag: {}", n)[..]))
         }
     }
 
@@ -876,7 +876,7 @@ pub mod writer {
             4 => w.write_all(&[0x10 | ((n >> 24) as u8), (n >> 16) as u8,
                             (n >> 8) as u8, n as u8]),
             _ => Err(io::Error::new(io::ErrorKind::Other,
-                                    "isize too big", Some(n.to_string())))
+                                    &format!("isize too big: {}", n)[..]))
         }
     }
 
@@ -885,8 +885,8 @@ pub mod writer {
         if n < 0x4000 { return write_sized_vuint(w, n, 2); }
         if n < 0x200000 { return write_sized_vuint(w, n, 3); }
         if n < 0x10000000 { return write_sized_vuint(w, n, 4); }
-        Err(io::Error::new(io::ErrorKind::Other, "isize too big",
-                           Some(n.to_string())))
+        Err(io::Error::new(io::ErrorKind::Other,
+                           &format!("isize too big: {}", n)[..]))
     }
 
     impl<'a> Encoder<'a> {
@@ -1077,8 +1077,8 @@ pub mod writer {
                 self.wr_tagged_raw_u32(EsSub32 as usize, v)
             } else {
                 Err(io::Error::new(io::ErrorKind::Other,
-                                   "length or variant id too big",
-                                   Some(v.to_string())))
+                                   &format!("length or variant id too big: {}",
+                                            v)[..]))
             }
         }
 
