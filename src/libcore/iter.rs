@@ -532,10 +532,9 @@ pub trait Iterator {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(core)]
-    /// let a = [1, 2, 3, 4, 5];
-    /// let b: Vec<_> = a.iter().cloned().collect();
-    /// assert_eq!(a, b);
+    /// let expected = [1, 2, 3, 4, 5];
+    /// let actual: Vec<_> = expected.iter().cloned().collect();
+    /// assert_eq!(actual, expected);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -943,8 +942,8 @@ pub trait Iterator {
     /// # #![feature(core)]
     /// let a = [(1, 2), (3, 4)];
     /// let (left, right): (Vec<_>, Vec<_>) = a.iter().cloned().unzip();
-    /// assert_eq!([1, 3], left);
-    /// assert_eq!([2, 4], right);
+    /// assert_eq!(left, [1, 3]);
+    /// assert_eq!(right, [2, 4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn unzip<A, B, FromA, FromB>(self) -> (FromA, FromB) where

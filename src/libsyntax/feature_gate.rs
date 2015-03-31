@@ -102,9 +102,6 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // A way to temporarily opt out of opt in copy. This will *never* be accepted.
     ("opt_out_copy", "1.0.0", Removed),
 
-    // A way to temporarily opt out of the new orphan rules. This will *never* be accepted.
-    ("old_orphan_check", "1.0.0", Deprecated),
-
     // OIBIT specific features
     ("optin_builtin_traits", "1.0.0", Active),
 
@@ -273,9 +270,6 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("stable", Whitelisted),
     ("unstable", Whitelisted),
 
-    // FIXME: #19470 this shouldn't be needed forever
-    ("old_orphan_check", Whitelisted),
-
     ("rustc_paren_sugar", Gated("unboxed_closures",
                                 "unboxed_closures are still evolving")),
     ("rustc_reflect_like", Gated("reflect",
@@ -323,7 +317,6 @@ pub struct Features {
     pub allow_trace_macros: bool,
     pub allow_internal_unstable: bool,
     pub allow_custom_derive: bool,
-    pub old_orphan_check: bool,
     pub simd_ffi: bool,
     pub unmarked_api: bool,
     /// spans of #![feature] attrs for stable language features. for error reporting
@@ -345,7 +338,6 @@ impl Features {
             allow_trace_macros: false,
             allow_internal_unstable: false,
             allow_custom_derive: false,
-            old_orphan_check: false,
             simd_ffi: false,
             unmarked_api: false,
             declared_stable_lang_features: Vec::new(),
@@ -569,14 +561,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                     },
                     _ => {}
                 }
-
-                if attr::contains_name(&i.attrs[..],
-                                       "old_orphan_check") {
-                    self.gate_feature(
-                        "old_orphan_check",
-                        i.span,
-                        "the new orphan check rules will eventually be strictly enforced");
-                }
             }
 
             _ => {}
@@ -726,7 +710,6 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler,
         allow_trace_macros: cx.has_feature("trace_macros"),
         allow_internal_unstable: cx.has_feature("allow_internal_unstable"),
         allow_custom_derive: cx.has_feature("custom_derive"),
-        old_orphan_check: cx.has_feature("old_orphan_check"),
         simd_ffi: cx.has_feature("simd_ffi"),
         unmarked_api: cx.has_feature("unmarked_api"),
         declared_stable_lang_features: accepted_features,

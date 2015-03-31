@@ -15,8 +15,11 @@
 #[macro_export]
 macro_rules! __impl_slice_eq1 {
     ($Lhs: ty, $Rhs: ty) => {
+        __impl_slice_eq1! { $Lhs, $Rhs, Sized }
+    };
+    ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, 'b, A, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
+        impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
             #[inline]
             fn eq(&self, other: &$Rhs) -> bool { &self[..] == &other[..] }
             #[inline]
@@ -31,13 +34,7 @@ macro_rules! __impl_slice_eq2 {
         __impl_slice_eq2! { $Lhs, $Rhs, Sized }
     };
     ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
-            #[inline]
-            fn eq(&self, other: &$Rhs) -> bool { &self[..] == &other[..] }
-            #[inline]
-            fn ne(&self, other: &$Rhs) -> bool { &self[..] != &other[..] }
-        }
+        __impl_slice_eq1!($Lhs, $Rhs, $Bound);
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, 'b, A: $Bound, B> PartialEq<$Lhs> for $Rhs where B: PartialEq<A> {

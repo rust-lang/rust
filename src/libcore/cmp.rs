@@ -64,7 +64,6 @@ use option::Option::{self, Some, None};
 /// inverse of `ne`; that is, `!(a == b)` if and only if `a != b`.
 #[lang="eq"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[old_orphan_check]
 pub trait PartialEq<Rhs: ?Sized = Self> {
     /// This method tests for `self` and `other` values to be equal, and is used by `==`.
     #[stable(feature = "rust1", since = "1.0.0")]

@@ -446,7 +446,7 @@ mod tests {
 
     fn same(fmt: &'static str, p: &[Piece<'static>]) {
         let parser = Parser::new(fmt);
-        assert!(p == parser.collect::<Vec<Piece<'static>>>());
+        assert!(parser.collect::<Vec<Piece<'static>>>() == p);
     }
 
     fn fmtdflt() -> FormatSpec<'static> {
