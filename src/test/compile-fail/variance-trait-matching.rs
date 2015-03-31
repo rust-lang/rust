@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,22 +8,43 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Issue #5781. Tests that subtyping is handled properly in trait matching.
+// pretty-expanded FIXME #23616
 
-trait Make<'a> {
-    fn make(x: &'a mut isize) -> Self;
+#![allow(dead_code)]
+
+// Get<T> is covariant in T
+trait Get<T> {
+    fn get(&self) -> T;
 }
 
-impl<'a> Make<'a> for &'a mut isize {
-    fn make(x: &'a mut isize) -> &'a mut isize {
-        x
+struct Cloner<T:Clone> {
+    t: T
+}
+
+impl<T:Clone> Get<T> for Cloner<T> {
+    fn get(&self) -> T {
+        self.t.clone()
     }
 }
 
-fn f() -> &'static mut isize {
-    let mut x = 1;
-    let y: &'static mut isize = Make::make(&mut x);   //~ ERROR `x` does not live long enough
-    y
+fn get<'a, G>(get: &G) -> i32
+    where G : Get<&'a i32>
+{
+    // This fails to type-check because, without variance, we can't
+    // use `G : Get<&'a i32>` as evidence that `G : Get<&'b i32>`,
+    // even if `'a : 'b`.
+    pick(get, &22) //~ ERROR cannot infer
 }
 
-fn main() {}
+fn pick<'b, G>(get: &'b G, if_odd: &'b i32) -> i32
+    where G : Get<&'b i32>
+{
+    let v = *get.get();
+    if v % 2 != 0 { v } else { *if_odd }
+}
+
+fn main() {
+    let x = Cloner { t: &23 };
+    let y = get(&x);
+    assert_eq!(y, 23);
+}

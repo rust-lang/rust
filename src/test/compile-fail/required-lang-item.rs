@@ -11,11 +11,7 @@
 #![feature(lang_items, no_std)]
 #![no_std]
 
-#[lang="phantom_fn"]
-pub trait PhantomFn<T:?Sized> { }
-impl<T:?Sized, U:?Sized> PhantomFn<T> for U { }
-
-#[lang="sized"] pub trait Sized : PhantomFn<Self> {}
+#[lang="sized"] pub trait Sized { }
 
 // error-pattern:requires `start` lang_item
 

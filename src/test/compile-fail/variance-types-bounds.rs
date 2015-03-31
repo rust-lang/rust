@@ -37,12 +37,12 @@ struct TestIndirect2<A:'static, B:'static> { //~ ERROR types=[[o, o];[];[]]
 }
 
 #[rustc_variance]
-trait Getter<A> { //~ ERROR types=[[+];[-];[]]
+trait Getter<A> { //~ ERROR types=[[o];[o];[]]
     fn get(&self) -> A;
 }
 
 #[rustc_variance]
-trait Setter<A> { //~ ERROR types=[[-];[o];[]]
+trait Setter<A> { //~ ERROR types=[[o];[o];[]]
     fn set(&mut self, a: A);
 }
 
@@ -53,7 +53,7 @@ trait GetterSetter<A> { //~ ERROR types=[[o];[o];[]]
 }
 
 #[rustc_variance]
-trait GetterInTypeBound<A> { //~ ERROR types=[[-];[-];[]]
+trait GetterInTypeBound<A> { //~ ERROR types=[[o];[o];[]]
     // Here, the use of `A` in the method bound *does* affect
     // variance.  Think of it as if the method requested a dictionary
     // for `T:Getter<A>`.  Since this dictionary is an input, it is
@@ -63,12 +63,12 @@ trait GetterInTypeBound<A> { //~ ERROR types=[[-];[-];[]]
 }
 
 #[rustc_variance]
-trait SetterInTypeBound<A> { //~ ERROR types=[[+];[-];[]]
+trait SetterInTypeBound<A> { //~ ERROR types=[[o];[o];[]]
     fn do_it<T:Setter<A>>(&self);
 }
 
 #[rustc_variance]
-struct TestObject<A, R> { //~ ERROR types=[[-, +];[];[]]
+struct TestObject<A, R> { //~ ERROR types=[[o, o];[];[]]
     n: Box<Setter<A>+Send>,
     m: Box<Getter<R>+Send>,
 }

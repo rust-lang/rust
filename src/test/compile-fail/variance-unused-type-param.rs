@@ -21,10 +21,6 @@ enum SomeEnum<A> { Nothing }
 //~^ ERROR parameter `A` is never used
 //~| HELP PhantomData
 
-trait SomeTrait<A> { fn foo(&self); }
-//~^ ERROR parameter `A` is never used
-//~| HELP PhantomFn
-
 // Here T might *appear* used, but in fact it isn't.
 enum ListCell<T> {
 //~^ ERROR parameter `T` is never used

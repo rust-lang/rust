@@ -13,12 +13,10 @@
 #![feature(rustc_attrs)]
 #![allow(dead_code)]
 
-use std::marker::PhantomFn;
-
-trait Baz : PhantomFn<Self> {
+trait Baz {
 }
 
-trait Bar<T> : PhantomFn<(Self, T)> {
+trait Bar<T> {
 }
 
 fn make_bar<T:Bar<u32>>(t: &T) -> &Bar<u32> {
