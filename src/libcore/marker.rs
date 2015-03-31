@@ -35,6 +35,7 @@ use hash::Hasher;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang="send"]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
+#[allow(deprecated)]
 pub unsafe trait Send : MarkerTrait {
     // empty.
 }
@@ -50,6 +51,7 @@ impl !Send for Managed { }
 #[lang="sized"]
 #[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
+#[allow(deprecated)]
 pub trait Sized : MarkerTrait {
     // Empty.
 }
@@ -203,6 +205,7 @@ pub trait Copy : Clone {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang="sync"]
 #[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
+#[allow(deprecated)]
 pub unsafe trait Sync : MarkerTrait {
     // Empty
 }
@@ -269,14 +272,10 @@ macro_rules! impls{
         )
 }
 
-/// `MarkerTrait` is intended to be used as the supertrait for traits
-/// that don't have any methods but instead serve just to designate
-/// categories of types. An example would be the `Send` trait, which
-/// indicates types that are sendable: `Send` does not itself offer
-/// any methods, but instead is used to gate access to data.
-///
-/// FIXME. Better documentation needed here!
-#[stable(feature = "rust1", since = "1.0.0")]
+/// `MarkerTrait` is deprecated and no longer needed.
+#[unstable(feature = "core", reason = "deprecated")]
+#[deprecated(since = "1.0.0", reason = "No longer needed")]
+#[allow(deprecated)]
 pub trait MarkerTrait : PhantomFn<Self,Self> { }
 //                                    ~~~~~ <-- FIXME(#22806)?
 //
@@ -284,68 +283,13 @@ pub trait MarkerTrait : PhantomFn<Self,Self> { }
 // but we should ideally solve the underlying problem. That's a bit
 // complicated.
 
+#[allow(deprecated)]
 impl<T:?Sized> MarkerTrait for T { }
 
-/// `PhantomFn` is a marker trait for use with traits that contain
-/// type or lifetime parameters that do not appear in any of their
-/// methods. In that case, you can either remove those parameters, or
-/// add a `PhantomFn` supertrait that reflects the signature of
-/// methods that compiler should "pretend" exists. This most commonly
-/// occurs for traits with no methods: in that particular case, you
-/// can extend `MarkerTrait`, which is equivalent to
-/// `PhantomFn<Self>`.
-///
-/// # Examples
-///
-/// As an example, consider a trait with no methods like `Even`, meant
-/// to represent types that are "even":
-///
-/// ```rust,ignore
-/// trait Even { }
-/// ```
-///
-/// In this case, because the implicit parameter `Self` is unused, the
-/// compiler will issue an error. The only purpose of this trait is to
-/// categorize types (and hence instances of those types) as "even" or
-/// not, so if we *were* going to have a method, it might look like:
-///
-/// ```rust,ignore
-/// trait Even {
-///     fn is_even(self) -> bool { true }
-/// }
-/// ```
-///
-/// Therefore, we can model a method like this as follows:
-///
-/// ```
-/// use std::marker::PhantomFn;
-/// trait Even : PhantomFn<Self> { }
-/// ```
-///
-/// Another equivalent, but clearer, option would be to use
-/// `MarkerTrait`:
-///
-/// ```
-/// # #![feature(core)]
-/// use std::marker::MarkerTrait;
-/// trait Even : MarkerTrait { }
-/// ```
-///
-/// # Parameters
-///
-/// - `A` represents the type of the method's argument. You can use a
-///   tuple to represent "multiple" arguments. Any types appearing here
-///   will be considered "contravariant".
-/// - `R`, if supplied, represents the method's return type. This defaults
-///   to `()` as it is rarely needed.
-///
-/// # Additional reading
-///
-/// More details and background can be found in [RFC 738][738].
-///
-/// [738]: https://github.com/rust-lang/rfcs/blob/master/text/0738-variance.md
+/// `PhantomFn` is a deprecated marker trait that is no longer needed.
 #[lang="phantom_fn"]
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "core", reason = "deprecated")]
+#[deprecated(since = "1.0.0", reason = "No longer needed")]
 pub trait PhantomFn<A:?Sized,R:?Sized=()> { }
 
 /// `PhantomData<T>` allows you to describe that a type acts as if it stores a value of type `T`,
@@ -444,6 +388,7 @@ mod impls {
 /// [1]: http://en.wikipedia.org/wiki/Parametricity
 #[rustc_reflect_like]
 #[unstable(feature = "core", reason = "requires RFC and more experience")]
+#[allow(deprecated)]
 pub trait Reflect : MarkerTrait {
 }
 
