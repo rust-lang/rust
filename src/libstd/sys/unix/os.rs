@@ -506,3 +506,7 @@ pub fn home_dir() -> Option<PathBuf> {
         }
     }
 }
+
+pub fn exit(code: i32) -> ! {
+    unsafe { libc::exit(code as c_int) }
+}

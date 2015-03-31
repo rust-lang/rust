@@ -522,6 +522,22 @@ impl Child {
     }
 }
 
+/// Terminates the current process with the specified exit code.
+///
+/// This function will never return and will immediately terminate the current
+/// process. The exit code is passed through to the underlying OS and will be
+/// available for consumption by another process.
+///
+/// Note that because this function never returns, and that it terminates the
+/// process, no destructors on the current stack or any other thread's stack
+/// will be run. If a clean shutdown is needed it is recommended to only call
+/// this function at a known point where there are no more destructors left
+/// to run.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn exit(code: i32) -> ! {
+    ::sys::os::exit(code)
+}
+
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;
