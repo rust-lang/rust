@@ -16,7 +16,7 @@ use prelude::v1::*;
 use io::prelude::*;
 
 use cmp;
-use error::{self, FromError};
+use error;
 use fmt;
 use io::{self, DEFAULT_BUF_SIZE, Error, ErrorKind};
 use ptr;
@@ -264,8 +264,8 @@ impl<W> IntoInnerError<W> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<W> FromError<IntoInnerError<W>> for Error {
-    fn from_error(iie: IntoInnerError<W>) -> Error { iie.1 }
+impl<W> From<IntoInnerError<W>> for Error {
+    fn from(iie: IntoInnerError<W>) -> Error { iie.1 }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

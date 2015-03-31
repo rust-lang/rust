@@ -156,7 +156,7 @@ macro_rules! debug_assert_eq {
 
 /// Short circuiting evaluation on Err
 ///
-/// `libstd` contains a more general `try!` macro that uses `FromError`.
+/// `libstd` contains a more general `try!` macro that uses `From<E>`.
 #[macro_export]
 macro_rules! try {
     ($e:expr) => ({

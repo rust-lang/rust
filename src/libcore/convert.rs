@@ -99,6 +99,13 @@ impl<'a, T: ?Sized, U: ?Sized> AsMut<U> for &'a mut T where T: AsMut<U> {
 //     }
 // }
 
+// From itself is always itself
+impl<T> From<T> for T {
+    fn from(t: T) -> T {
+        t
+    }
+}
+
 // From implies Into
 impl<T, U> Into<U> for T where U: From<T> {
     fn into(self) -> U {

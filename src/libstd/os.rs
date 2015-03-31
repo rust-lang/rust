@@ -40,7 +40,7 @@ use boxed::Box;
 use clone::Clone;
 use convert::From;
 use env;
-use error::{FromError, Error};
+use error::Error;
 use ffi::{OsString, OsStr};
 use fmt;
 use iter::Iterator;
