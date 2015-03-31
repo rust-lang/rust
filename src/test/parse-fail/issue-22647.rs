@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let caller<F> = |f: F|  //~ ERROR unexpected token: `<`
+    let caller<F> = |f: F|  //~ ERROR expected one of `:`, `;`, `=`, or `@`, found `<`
     where F: Fn() -> i32
     {
         let x = f();
