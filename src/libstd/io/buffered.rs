@@ -177,8 +177,8 @@ impl<W: Write> BufWriter<W> {
         if written > 0 {
             // NB: would be better expressed as .remove(0..n) if it existed
             unsafe {
-                ptr::copy(self.buf.as_mut_ptr(),
-                          self.buf.as_ptr().offset(written as isize),
+                ptr::copy(self.buf.as_ptr().offset(written as isize),
+                          self.buf.as_mut_ptr(),
                           len - written);
             }
         }

@@ -39,7 +39,7 @@ use util::ppaux::ty_to_string;
 use util::nodemap::{FnvHashMap, NodeSet};
 use lint::{Level, Context, LintPass, LintArray, Lint};
 
-use std::collections::BitSet;
+use std::collections::{HashSet, BitSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::num::SignedInt;
 use std::{cmp, slice};
@@ -1437,6 +1437,9 @@ pub struct MissingDoc {
     /// Stack of whether #[doc(hidden)] is set
     /// at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
+
+    /// Private traits or trait items that leaked through. Don't check their methods.
+    private_traits: HashSet<ast::NodeId>,
 }
 
 impl MissingDoc {
@@ -1445,6 +1448,7 @@ impl MissingDoc {
             struct_def_stack: vec!(),
             in_variant: false,
             doc_hidden_stack: vec!(false),
+            private_traits: HashSet::new(),
         }
     }
 
@@ -1531,18 +1535,46 @@ impl LintPass for MissingDoc {
             ast::ItemMod(..) => "a module",
             ast::ItemEnum(..) => "an enum",
             ast::ItemStruct(..) => "a struct",
-            ast::ItemTrait(..) => "a trait",
+            ast::ItemTrait(_, _, _, ref items) => {
+                // Issue #11592, traits are always considered exported, even when private.
+                if it.vis == ast::Visibility::Inherited {
+                    self.private_traits.insert(it.id);
+                    for itm in items {
+                        self.private_traits.insert(itm.id);
+                    }
+                    return
+                }
+                "a trait"
+            },
             ast::ItemTy(..) => "a type alias",
+            ast::ItemImpl(_, _, _, Some(ref trait_ref), _, ref impl_items) => {
+                // If the trait is private, add the impl items to private_traits so they don't get
+                // reported for missing docs.
+                let real_trait = ty::trait_ref_to_def_id(cx.tcx, trait_ref);
+                match cx.tcx.map.find(real_trait.node) {
+                    Some(ast_map::NodeItem(item)) => if item.vis == ast::Visibility::Inherited {
+                        for itm in impl_items {
+                            self.private_traits.insert(itm.id);
+                        }
+                    },
+                    _ => { }
+                }
+                return
+            },
             _ => return
         };
+
         self.check_missing_docs_attrs(cx, Some(it.id), &it.attrs, it.span, desc);
     }
 
     fn check_trait_item(&mut self, cx: &Context, trait_item: &ast::TraitItem) {
+        if self.private_traits.contains(&trait_item.id) { return }
+
         let desc = match trait_item.node {
             ast::MethodTraitItem(..) => "a trait method",
             ast::TypeTraitItem(..) => "an associated type"
         };
+
         self.check_missing_docs_attrs(cx, Some(trait_item.id),
                                       &trait_item.attrs,
                                       trait_item.span, desc);

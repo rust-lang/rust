@@ -1133,13 +1133,13 @@ impl<K, V> Node<K, V> {
     #[inline]
     unsafe fn insert_kv(&mut self, index: usize, key: K, val: V) -> &mut V {
         ptr::copy(
-            self.keys_mut().as_mut_ptr().offset(index as isize + 1),
             self.keys().as_ptr().offset(index as isize),
+            self.keys_mut().as_mut_ptr().offset(index as isize + 1),
             self.len() - index
         );
         ptr::copy(
-            self.vals_mut().as_mut_ptr().offset(index as isize + 1),
             self.vals().as_ptr().offset(index as isize),
+            self.vals_mut().as_mut_ptr().offset(index as isize + 1),
             self.len() - index
         );
 
@@ -1155,8 +1155,8 @@ impl<K, V> Node<K, V> {
     #[inline]
     unsafe fn insert_edge(&mut self, index: usize, edge: Node<K, V>) {
         ptr::copy(
-            self.edges_mut().as_mut_ptr().offset(index as isize + 1),
             self.edges().as_ptr().offset(index as isize),
+            self.edges_mut().as_mut_ptr().offset(index as isize + 1),
             self.len() - index
         );
         ptr::write(self.edges_mut().get_unchecked_mut(index), edge);
@@ -1188,13 +1188,13 @@ impl<K, V> Node<K, V> {
         let val = ptr::read(self.vals().get_unchecked(index));
 
         ptr::copy(
-            self.keys_mut().as_mut_ptr().offset(index as isize),
             self.keys().as_ptr().offset(index as isize + 1),
+            self.keys_mut().as_mut_ptr().offset(index as isize),
             self.len() - index - 1
         );
         ptr::copy(
-            self.vals_mut().as_mut_ptr().offset(index as isize),
             self.vals().as_ptr().offset(index as isize + 1),
+            self.vals_mut().as_mut_ptr().offset(index as isize),
             self.len() - index - 1
         );
 
@@ -1209,8 +1209,8 @@ impl<K, V> Node<K, V> {
         let edge = ptr::read(self.edges().get_unchecked(index));
 
         ptr::copy(
-            self.edges_mut().as_mut_ptr().offset(index as isize),
             self.edges().as_ptr().offset(index as isize + 1),
+            self.edges_mut().as_mut_ptr().offset(index as isize),
             // index can be == len+1, so do the +1 first to avoid underflow.
             (self.len() + 1) - index
         );
@@ -1237,19 +1237,19 @@ impl<K, V> Node<K, V> {
             right._len = self.len() / 2;
             let right_offset = self.len() - right.len();
             ptr::copy_nonoverlapping(
-                right.keys_mut().as_mut_ptr(),
                 self.keys().as_ptr().offset(right_offset as isize),
+                right.keys_mut().as_mut_ptr(),
                 right.len()
             );
             ptr::copy_nonoverlapping(
-                right.vals_mut().as_mut_ptr(),
                 self.vals().as_ptr().offset(right_offset as isize),
+                right.vals_mut().as_mut_ptr(),
                 right.len()
             );
             if !self.is_leaf() {
                 ptr::copy_nonoverlapping(
-                    right.edges_mut().as_mut_ptr(),
                     self.edges().as_ptr().offset(right_offset as isize),
+                    right.edges_mut().as_mut_ptr(),
                     right.len() + 1
                 );
             }
@@ -1278,19 +1278,19 @@ impl<K, V> Node<K, V> {
             ptr::write(self.vals_mut().get_unchecked_mut(old_len), val);
 
             ptr::copy_nonoverlapping(
-                self.keys_mut().as_mut_ptr().offset(old_len as isize + 1),
                 right.keys().as_ptr(),
+                self.keys_mut().as_mut_ptr().offset(old_len as isize + 1),
                 right.len()
             );
             ptr::copy_nonoverlapping(
-                self.vals_mut().as_mut_ptr().offset(old_len as isize + 1),
                 right.vals().as_ptr(),
+                self.vals_mut().as_mut_ptr().offset(old_len as isize + 1),
                 right.len()
             );
             if !self.is_leaf() {
                 ptr::copy_nonoverlapping(
-                    self.edges_mut().as_mut_ptr().offset(old_len as isize + 1),
                     right.edges().as_ptr(),
+                    self.edges_mut().as_mut_ptr().offset(old_len as isize + 1),
                     right.len() + 1
                 );
             }
