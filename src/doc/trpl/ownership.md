@@ -477,7 +477,7 @@ forbidden in item signatures to allow reasoning about the types just based in
 the item signature alone. However, for ergonomic reasons a very restricted
 secondary inference algorithm called “lifetime elision” applies in function
 signatures. It infers only based on the signature components themselves and not
-based on the body of the function, only infers lifetime paramters, and does
+based on the body of the function, only infers lifetime parameters, and does
 this with only three easily memorizable and unambiguous rules. This makes
 lifetime elision a shorthand for writing an item signature, while not hiding
 away the actual types involved as full local inference would if applied to it.
