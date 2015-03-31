@@ -231,7 +231,7 @@ pub fn add_two(a: i32) -> i32 {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::add_two;
 
     #[test]
@@ -241,7 +241,7 @@ mod tests {
 }
 ```
 
-There's a few changes here. The first is the introduction of a `mod tests` with
+There's a few changes here. The first is the introduction of a `mod test` with
 a `cfg` attribute. The module allows us to group all of our tests together, and
 to also define helper functions if needed, that don't become a part of the rest
 of our crate. The `cfg` attribute only compiles our test code if we're
@@ -260,7 +260,7 @@ pub fn add_two(a: i32) -> i32 {
 }
 
 #[cfg(test)]
-mod tests {
+mod test {
     use super::*;
 
     #[test]
