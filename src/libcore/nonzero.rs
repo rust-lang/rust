@@ -14,6 +14,7 @@ use marker::{Sized, MarkerTrait};
 use ops::Deref;
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
+#[allow(deprecated)]
 pub unsafe trait Zeroable : MarkerTrait {}
 
 unsafe impl<T:?Sized> Zeroable for *const T {}

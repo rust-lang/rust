@@ -192,13 +192,16 @@ struct TyDesc {
     align: usize
 }
 
+trait AllTypes { fn dummy(&self) { } }
+impl<T:?Sized> AllTypes for T { }
+
 unsafe fn get_tydesc<T>() -> *const TyDesc {
     use std::raw::TraitObject;
 
     let ptr = &*(1 as *const T);
 
     // Can use any trait that is implemented for all types.
-    let obj = mem::transmute::<&marker::MarkerTrait, TraitObject>(ptr);
+    let obj = mem::transmute::<&AllTypes, TraitObject>(ptr);
     obj.vtable as *const TyDesc
 }
 
