@@ -18,6 +18,8 @@ use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 use ptr::P;
 
+use super::partial_ord;
+
 pub fn expand_deriving_ord(cx: &mut ExtCtxt,
                            span: Span,
                            mitem: &MetaItem,
@@ -48,7 +50,9 @@ pub fn expand_deriving_ord(cx: &mut ExtCtxt,
         associated_types: Vec::new(),
     };
 
-    trait_def.expand(cx, mitem, item, push)
+    trait_def.expand(cx, mitem, item, push);
+
+    partial_ord::expand_deriving_partial_ord(cx, span, mitem, item, push)
 }
 
 

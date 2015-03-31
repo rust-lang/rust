@@ -95,6 +95,7 @@ fn expand_derive(cx: &mut ExtCtxt,
         // FIXME: This can be removed after a snapshot
         let mut seen_copy = false;
         let mut seen_eq = false;
+        let mut seen_ord = false;
 
         for titem in traits.iter() {
             match titem.node {
@@ -102,6 +103,7 @@ fn expand_derive(cx: &mut ExtCtxt,
                     match &**tname {
                         "Copy" => { seen_copy = true; }
                         "Eq" => { seen_eq = true; }
+                        "Ord" => { seen_ord = true; }
                         _ => { }
                     }
                 }
@@ -129,6 +131,7 @@ fn expand_derive(cx: &mut ExtCtxt,
             // FIXME: This can be removed after a snapshot
             if seen_copy && &**tname == "Clone" { continue; }
             if seen_eq && &**tname == "PartialEq" { continue; }
+            if seen_ord && &**tname == "PartialOrd" { continue; }
 
             // #[derive(Foo, Bar)] expands to #[derive_Foo] #[derive_Bar]
             item.attrs.push(cx.attribute(titem.span, cx.meta_word(titem.span,
