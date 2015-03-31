@@ -1679,11 +1679,6 @@ impl<'a> From<&'a str> for Vec<u8> {
 // Clone-on-write
 ////////////////////////////////////////////////////////////////////////////////
 
-/// A clone-on-write vector
-#[deprecated(since = "1.0.0", reason = "use Cow<'a, [T]> instead")]
-#[unstable(feature = "collections")]
-pub type CowVec<'a, T> = Cow<'a, [T]>;
-
 #[unstable(feature = "collections")]
 impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
     fn from_iter<I: IntoIterator<Item=T>>(it: I) -> Cow<'a, [T]> {

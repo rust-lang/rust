@@ -20,7 +20,7 @@ use prelude::v1::*;
 
 use iter::IntoIterator;
 use error::Error;
-use ffi::{OsString, AsOsStr};
+use ffi::{OsStr, OsString};
 use fmt;
 use io;
 use path::{Path, PathBuf};
@@ -176,7 +176,7 @@ impl Iterator for VarsOs {
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn var<K: ?Sized>(key: &K) -> Result<String, VarError> where K: AsOsStr {
+pub fn var<K: ?Sized>(key: &K) -> Result<String, VarError> where K: AsRef<OsStr> {
     match var_os(key) {
         Some(s) => s.into_string().map_err(VarError::NotUnicode),
         None => Err(VarError::NotPresent)
@@ -198,9 +198,9 @@ pub fn var<K: ?Sized>(key: &K) -> Result<String, VarError> where K: AsOsStr {
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn var_os<K: ?Sized>(key: &K) -> Option<OsString> where K: AsOsStr {
+pub fn var_os<K: ?Sized>(key: &K) -> Option<OsString> where K: AsRef<OsStr> {
     let _g = ENV_LOCK.lock();
-    os_imp::getenv(key.as_os_str())
+    os_imp::getenv(key.as_ref())
 }
 
 /// Possible errors from the `env::var` method.
@@ -255,10 +255,10 @@ impl Error for VarError {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn set_var<K: ?Sized, V: ?Sized>(k: &K, v: &V)
-    where K: AsOsStr, V: AsOsStr
+    where K: AsRef<OsStr>, V: AsRef<OsStr>
 {
     let _g = ENV_LOCK.lock();
-    os_imp::setenv(k.as_os_str(), v.as_os_str())
+    os_imp::setenv(k.as_ref(), v.as_ref())
 }
 
 /// Remove an environment variable from the environment of the currently running process.
@@ -276,9 +276,9 @@ pub fn set_var<K: ?Sized, V: ?Sized>(k: &K, v: &V)
 /// assert!(env::var(key).is_err());
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn remove_var<K: ?Sized>(k: &K) where K: AsOsStr {
+pub fn remove_var<K: ?Sized>(k: &K) where K: AsRef<OsStr> {
     let _g = ENV_LOCK.lock();
-    os_imp::unsetenv(k.as_os_str())
+    os_imp::unsetenv(k.as_ref())
 }
 
 /// An iterator over `Path` instances for parsing an environment variable
@@ -309,8 +309,8 @@ pub struct SplitPaths<'a> { inner: os_imp::SplitPaths<'a> }
 /// }
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
-pub fn split_paths<T: AsOsStr + ?Sized>(unparsed: &T) -> SplitPaths {
-    SplitPaths { inner: os_imp::split_paths(unparsed.as_os_str()) }
+pub fn split_paths<T: AsRef<OsStr> + ?Sized>(unparsed: &T) -> SplitPaths {
+    SplitPaths { inner: os_imp::split_paths(unparsed.as_ref()) }
 }
 
 #[stable(feature = "env", since = "1.0.0")]
@@ -352,7 +352,7 @@ pub struct JoinPathsError {
 /// ```
 #[stable(feature = "env", since = "1.0.0")]
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
-    where I: IntoIterator<Item=T>, T: AsOsStr
+    where I: IntoIterator<Item=T>, T: AsRef<OsStr>
 {
     os_imp::join_paths(paths.into_iter()).map_err(|e| {
         JoinPathsError { inner: e }
@@ -766,7 +766,7 @@ mod tests {
         let mut rng = rand::thread_rng();
         let n = format!("TEST{}", rng.gen_ascii_chars().take(10)
                                      .collect::<String>());
-        let n = OsString::from_string(n);
+        let n = OsString::from(n);
         assert!(var_os(&n).is_none());
         n
     }

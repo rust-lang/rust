@@ -15,17 +15,16 @@ pub use self::imp::OsRng;
 
 #[cfg(all(unix, not(target_os = "ios")))]
 mod imp {
-    extern crate libc;
-
+    use prelude::v1::*;
     use self::OsRngInner::*;
 
+    use libc;
+    use mem;
     use old_io::{IoResult, File};
     use old_path::Path;
     use rand::Rng;
     use rand::reader::ReaderRng;
-    use result::Result::Ok;
-    use mem;
-    use os::errno;
+    use sys::os::errno;
 
     #[cfg(all(target_os = "linux",
               any(target_arch = "x86_64",
@@ -184,14 +183,13 @@ mod imp {
 
 #[cfg(target_os = "ios")]
 mod imp {
-    extern crate libc;
+    use prelude::v1::*;
 
-    use old_io::{IoResult};
+    use old_io::IoResult;
     use mem;
     use os;
     use rand::Rng;
-    use result::Result::{Ok};
-    use self::libc::{c_int, size_t};
+    use libc::{c_int, size_t};
 
     /// A random number generator that retrieves randomness straight from
     /// the operating system. Platform sources:
@@ -251,16 +249,15 @@ mod imp {
 
 #[cfg(windows)]
 mod imp {
-    extern crate libc;
+    use prelude::v1::*;
 
-    use old_io::{IoResult, IoError};
+    use io;
     use mem;
-    use ops::Drop;
+    use old_io::{IoResult, IoError};
     use os;
     use rand::Rng;
-    use result::Result::{Ok, Err};
-    use self::libc::{DWORD, BYTE, LPCSTR, BOOL};
-    use self::libc::types::os::arch::extra::{LONG_PTR};
+    use libc::types::os::arch::extra::{LONG_PTR};
+    use libc::{DWORD, BYTE, LPCSTR, BOOL};
 
     type HCRYPTPROV = LONG_PTR;
 
@@ -330,7 +327,8 @@ mod imp {
                                v.as_mut_ptr())
             };
             if ret == 0 {
-                panic!("couldn't generate random bytes: {}", os::last_os_error());
+                panic!("couldn't generate random bytes: {}",
+                       io::Error::last_os_error());
             }
         }
     }
@@ -341,7 +339,8 @@ mod imp {
                 CryptReleaseContext(self.hcryptprov, 0)
             };
             if ret == 0 {
-                panic!("couldn't release context: {}", os::last_os_error());
+                panic!("couldn't release context: {}",
+                       io::Error::last_os_error());
             }
         }
     }

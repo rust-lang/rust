@@ -172,8 +172,6 @@ pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;
 pub use core::convert;
 pub use core::default;
-#[allow(deprecated)]
-pub use core::finally;
 pub use core::hash;
 pub use core::intrinsics;
 pub use core::iter;

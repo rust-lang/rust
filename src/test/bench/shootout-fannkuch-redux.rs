@@ -38,9 +38,9 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![feature(core)]
+#![feature(step_by)]
 
-use std::{cmp, iter, mem};
+use std::{cmp, mem};
 use std::thread;
 
 fn rotate(x: &mut [i32]) {
@@ -163,7 +163,7 @@ fn fannkuch(n: i32) -> (i32, i32) {
     let mut futures = vec![];
     let k = perm.max() / N;
 
-    for (_, j) in (0..N).zip(iter::count(0, k)) {
+    for (_, j) in (0..N).zip((0..).step_by(k)) {
         let max = cmp::min(j+k, perm.max());
 
         futures.push(thread::scoped(move|| {

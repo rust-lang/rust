@@ -67,22 +67,6 @@ pub use string::String;
 pub use vec::Vec;
 pub use vec_map::VecMap;
 
-#[deprecated(since = "1.0.0", reason = "renamed to vec_deque")]
-#[unstable(feature = "collections")]
-pub use vec_deque as ring_buf;
-
-#[deprecated(since = "1.0.0", reason = "renamed to linked_list")]
-#[unstable(feature = "collections")]
-pub use linked_list as dlist;
-
-#[deprecated(since = "1.0.0", reason = "renamed to bit_vec")]
-#[unstable(feature = "collections")]
-pub use bit_vec as bitv;
-
-#[deprecated(since = "1.0.0", reason = "renamed to bit_set")]
-#[unstable(feature = "collections")]
-pub use bit_set as bitv_set;
-
 // Needed for the vec! macro
 pub use alloc::boxed;
 
@@ -107,10 +91,6 @@ pub mod vec_map;
            reason = "RFC 509")]
 pub mod bit_vec {
     pub use bit::{BitVec, Iter};
-
-    #[deprecated(since = "1.0.0", reason = "renamed to BitVec")]
-    #[unstable(feature = "collections")]
-    pub use bit::BitVec as Bitv;
 }
 
 #[unstable(feature = "collections",
@@ -118,10 +98,6 @@ pub mod bit_vec {
 pub mod bit_set {
     pub use bit::{BitSet, Union, Intersection, Difference, SymmetricDifference};
     pub use bit::SetIter as Iter;
-
-    #[deprecated(since = "1.0.0", reason = "renamed to BitSet")]
-    #[unstable(feature = "collections")]
-    pub use bit::BitSet as BitvSet;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

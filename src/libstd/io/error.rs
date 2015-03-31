@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use boxed::Box;
-use clone::Clone;
 use error;
 use fmt;
 use option::Option::{self, Some, None};
@@ -177,27 +176,6 @@ impl Error {
         match self.repr {
             Repr::Os(code) => sys::decode_error_kind(code),
             Repr::Custom(ref c) => c.kind,
-        }
-    }
-
-    /// Returns a short description for this error message
-    #[unstable(feature = "io")]
-    #[deprecated(since = "1.0.0", reason = "use the Error trait's description \
-                                            method instead")]
-    pub fn description(&self) -> &str {
-        match self.repr {
-            Repr::Os(..) => "os error",
-            Repr::Custom(ref c) => c.desc,
-        }
-    }
-
-    /// Returns a detailed error message for this error (if one is available)
-    #[unstable(feature = "io")]
-    #[deprecated(since = "1.0.0", reason = "use the to_string() method instead")]
-    pub fn detail(&self) -> Option<String> {
-        match self.repr {
-            Repr::Os(code) => Some(sys::os::error_string(code)),
-            Repr::Custom(ref s) => s.detail.clone(),
         }
     }
 }

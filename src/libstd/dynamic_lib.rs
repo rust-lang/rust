@@ -18,7 +18,7 @@
 use prelude::v1::*;
 
 use env;
-use ffi::{AsOsStr, CString, OsString};
+use ffi::{CString, OsString};
 use mem;
 use path::{Path, PathBuf};
 

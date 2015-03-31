@@ -39,12 +39,10 @@
 #![feature(io)]
 #![feature(old_io)]
 #![feature(old_path)]
-#![feature(os)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(rand)]
 #![feature(path_ext)]
-#![feature(std_misc)]
 #![feature(step_by)]
 #![cfg_attr(test, feature(test, rand))]
 

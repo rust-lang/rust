@@ -12,7 +12,7 @@
 
 #![feature(std_misc)]
 
-use std::thread::Thread;
+use std::thread;
 use std::sync::mpsc::channel;
 
 struct test {
@@ -32,7 +32,7 @@ fn test(f: isize) -> test {
 pub fn main() {
     let (tx, rx) = channel();
 
-    let _t = Thread::spawn(move|| {
+    let _t = thread::scoped(move|| {
         let (tx2, rx2) = channel();
         tx.send(tx2).unwrap();
 

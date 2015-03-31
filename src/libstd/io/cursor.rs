@@ -288,12 +288,12 @@ mod tests {
         assert_eq!(reader.read(&mut buf), Ok(1));
         assert_eq!(reader.len(), 7);
         let b: &[_] = &[0];
-        assert_eq!(buf, b);
+        assert_eq!(&buf[..], b);
         let mut buf = [0; 4];
         assert_eq!(reader.read(&mut buf), Ok(4));
         assert_eq!(reader.len(), 3);
         let b: &[_] = &[1, 2, 3, 4];
-        assert_eq!(buf, b);
+        assert_eq!(&buf[..], b);
         assert_eq!(reader.read(&mut buf), Ok(3));
         let b: &[_] = &[5, 6, 7];
         assert_eq!(&buf[..3], b);

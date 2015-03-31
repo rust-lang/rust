@@ -14,7 +14,7 @@
 
 #![allow(deprecated)] // to_be32
 
-use std::iter::{range_step, repeat};
+use std::iter::repeat;
 use std::num::Int;
 use std::slice::bytes::{MutableByteVector, copy_memory};
 use serialize::hex::ToHex;
@@ -368,7 +368,7 @@ impl Engine256State {
 
         // Putting the message schedule inside the same loop as the round calculations allows for
         // the compiler to generate better code.
-        for t in range_step(0, 48, 8) {
+        for t in (0..48).step_by(8) {
             schedule_round!(t + 16);
             schedule_round!(t + 17);
             schedule_round!(t + 18);
@@ -388,7 +388,7 @@ impl Engine256State {
             sha2_round!(b, c, d, e, f, g, h, a, K32, t + 7);
         }
 
-        for t in range_step(48, 64, 8) {
+        for t in (48..64).step_by(8) {
             sha2_round!(a, b, c, d, e, f, g, h, K32, t);
             sha2_round!(h, a, b, c, d, e, f, g, K32, t + 1);
             sha2_round!(g, h, a, b, c, d, e, f, K32, t + 2);

@@ -28,8 +28,6 @@ use iter::ExactSizeIterator;
 use iter::{Map, Iterator, DoubleEndedIterator};
 use marker::Sized;
 use mem;
-#[allow(deprecated)]
-use num::Int;
 use ops::{Fn, FnMut, FnOnce};
 use option::Option::{self, None, Some};
 use raw::{Repr, Slice};
@@ -241,78 +239,6 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
     mem::transmute(v)
-}
-
-/// Constructs a static string slice from a given raw pointer.
-///
-/// This function will read memory starting at `s` until it finds a 0, and then
-/// transmute the memory up to that point as a string slice, returning the
-/// corresponding `&'static str` value.
-///
-/// This function is unsafe because the caller must ensure the C string itself
-/// has the static lifetime and that the memory `s` is valid up to and including
-/// the first null byte.
-///
-/// # Panics
-///
-/// This function will panic if the string pointed to by `s` is not valid UTF-8.
-#[unstable(feature = "core")]
-#[deprecated(since = "1.0.0",
-             reason = "use std::ffi::c_str_to_bytes + str::from_utf8")]
-pub unsafe fn from_c_str(s: *const i8) -> &'static str {
-    let s = s as *const u8;
-    let mut len: usize = 0;
-    while *s.offset(len as isize) != 0 {
-        len += 1;
-    }
-    let v: &'static [u8] = ::mem::transmute(Slice { data: s, len: len });
-    from_utf8(v).ok().expect("from_c_str passed invalid utf-8 data")
-}
-
-/// Something that can be used to compare against a character
-#[unstable(feature = "core")]
-#[deprecated(since = "1.0.0",
-             reason = "use `Pattern` instead")]
-// NB: Rather than removing it, make it private and move it into self::pattern
-pub trait CharEq {
-    /// Determine if the splitter should split at the given character
-    fn matches(&mut self, char) -> bool;
-    /// Indicate if this is only concerned about ASCII characters,
-    /// which can allow for a faster implementation.
-    fn only_ascii(&self) -> bool;
-}
-
-#[allow(deprecated) /* for CharEq */ ]
-impl CharEq for char {
-    #[inline]
-    fn matches(&mut self, c: char) -> bool { *self == c }
-
-    #[inline]
-    fn only_ascii(&self) -> bool { (*self as u32) < 128 }
-}
-
-#[allow(deprecated) /* for CharEq */ ]
-impl<F> CharEq for F where F: FnMut(char) -> bool {
-    #[inline]
-    fn matches(&mut self, c: char) -> bool { (*self)(c) }
-
-    #[inline]
-    fn only_ascii(&self) -> bool { false }
-}
-
-#[allow(deprecated) /* for CharEq */ ]
-impl<'a> CharEq for &'a [char] {
-    #[inline]
-    #[allow(deprecated) /* for CharEq */ ]
-    fn matches(&mut self, c: char) -> bool {
-        self.iter().any(|&m| { let mut m = m; m.matches(c) })
-    }
-
-    #[inline]
-    #[allow(deprecated) /* for CharEq */ ]
-    fn only_ascii(&self) -> bool {
-        self.iter().all(|m| m.only_ascii())
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1047,22 +973,6 @@ impl<'a, P: Pattern<'a>> Iterator for MatchIndices<'a, P> {
     }
 }
 
-/// An iterator over the substrings of a string separated by a given
-/// search string
-#[unstable(feature = "core")]
-#[deprecated(since = "1.0.0", reason = "use `Split` with a `&str`")]
-pub struct SplitStr<'a, P: Pattern<'a>>(Split<'a, P>);
-#[allow(deprecated)]
-impl<'a, P: Pattern<'a>> Iterator for SplitStr<'a, P> {
-    type Item = &'a str;
-
-    #[inline]
-    #[allow(deprecated)]
-    fn next(&mut self) -> Option<&'a str> {
-        Iterator::next(&mut self.0)
-    }
-}
-
 impl<'a, 'b>  OldMatchIndices<'a, 'b> {
     #[inline]
     #[allow(dead_code)]
@@ -1444,8 +1354,6 @@ pub trait StrExt {
     fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>
         where P::Searcher: ReverseSearcher<'a>;
     fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P>;
-    #[allow(deprecated) /* for SplitStr */]
-    fn split_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitStr<'a, P>;
     fn lines<'a>(&'a self) -> Lines<'a>;
     fn lines_any<'a>(&'a self) -> LinesAny<'a>;
     fn char_len(&self) -> usize;
@@ -1563,12 +1471,6 @@ impl StrExt for str {
     #[inline]
     fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
         MatchIndices(pat.into_searcher(self))
-    }
-
-    #[inline]
-    #[allow(deprecated) /* for SplitStr */ ]
-    fn split_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitStr<'a, P> {
-        SplitStr(self.split(pat))
     }
 
     #[inline]

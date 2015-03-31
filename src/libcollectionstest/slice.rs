@@ -685,7 +685,7 @@ fn test_capacity() {
 #[test]
 fn test_slice_2() {
     let v = vec![1, 2, 3, 4, 5];
-    let v = v.slice(1, 3);
+    let v = &v[1..3];
     assert_eq!(v.len(), 2);
     assert_eq!(v[0], 2);
     assert_eq!(v[1], 3);

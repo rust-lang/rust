@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tempdir)]
+#![feature(rustc_private)]
+
+extern crate rustc_back;
 
 use std::env;
-use std::fs::{self, TempDir};
+use std::fs;
+use rustc_back::tempdir::TempDir;
 
 fn main() {
     let td = TempDir::new("create-dir-all-bare").unwrap();

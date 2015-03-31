@@ -10,7 +10,7 @@
 
 #![feature(start, os, std_misc, old_io)]
 
-use std::ffi;
+use std::ffi::CStr;
 use std::old_io::process::{Command, ProcessOutput};
 use std::os;
 use std::rt::unwind::try;
@@ -38,7 +38,7 @@ fn start(argc: isize, argv: *const *const u8) -> isize {
     let args = unsafe {
         (0..argc as usize).map(|i| {
             let ptr = *argv.offset(i as isize) as *const _;
-            ffi::c_str_to_bytes(&ptr).to_vec()
+            CStr::from_ptr(ptr).to_bytes().to_vec()
         }).collect::<Vec<_>>()
     };
     let me = &*args[0];

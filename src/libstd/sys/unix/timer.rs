@@ -54,7 +54,8 @@ use self::Req::*;
 use old_io::IoResult;
 use libc;
 use mem;
-use os;
+use sys::os;
+use io;
 use ptr;
 use sync::atomic::{self, Ordering};
 use sync::mpsc::{channel, Sender, Receiver, TryRecvError};
@@ -209,7 +210,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
 
             -1 if os::errno() == libc::EINTR as i32 => {}
             n => panic!("helper thread failed in select() with error: {} ({})",
-                       n, os::last_os_error())
+                       n, io::Error::last_os_error())
         }
     }
 }

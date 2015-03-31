@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::borrow::IntoCow;
+use std::borrow::{IntoCow, Cow};
 use std::iter::repeat;
 use std::str::Utf8Error;
-use std::string::{CowString, as_string};
+use std::string::as_string;
 
 use test::Bencher;
 
@@ -52,11 +52,11 @@ fn test_from_utf8() {
 #[test]
 fn test_from_utf8_lossy() {
     let xs = b"hello";
-    let ys: CowString = "hello".into_cow();
+    let ys: Cow<str> = "hello".into_cow();
     assert_eq!(String::from_utf8_lossy(xs), ys);
 
     let xs = "ศไทย中华Việt Nam".as_bytes();
-    let ys: CowString = "ศไทย中华Việt Nam".into_cow();
+    let ys: Cow<str> = "ศไทย中华Việt Nam".into_cow();
     assert_eq!(String::from_utf8_lossy(xs), ys);
 
     let xs = b"Hello\xC2 There\xFF Goodbye";

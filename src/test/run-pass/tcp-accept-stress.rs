@@ -19,7 +19,7 @@ use std::old_io::{TcpListener, Listener, Acceptor, EndOfFile, TcpStream};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::channel;
-use std::thread::Thread;
+use std::thread;
 
 static N: usize = 8;
 static M: usize = 20;
@@ -40,7 +40,7 @@ fn test() {
         let a = a.clone();
         let cnt = cnt.clone();
         let srv_tx = srv_tx.clone();
-        Thread::scoped(move|| {
+        thread::scoped(move|| {
             let mut a = a;
             loop {
                 match a.accept() {
@@ -59,7 +59,7 @@ fn test() {
 
     let _t = (0..N).map(|_| {
         let cli_tx = cli_tx.clone();
-        Thread::scoped(move|| {
+        thread::scoped(move|| {
             for _ in 0..M {
                 let _s = TcpStream::connect(addr).unwrap();
             }
