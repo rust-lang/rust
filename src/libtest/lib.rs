@@ -122,7 +122,6 @@ impl fmt::Display for TestName {
 #[derive(Clone, Copy)]
 enum NamePadding {
     PadNone,
-    PadOnLeft,
     PadOnRight,
 }
 
@@ -130,13 +129,9 @@ impl TestDesc {
     fn padded_name(&self, column_count: usize, align: NamePadding) -> String {
         let mut name = String::from_str(self.name.as_slice());
         let fill = column_count.saturating_sub(name.len());
-        let mut pad = repeat(" ").take(fill).collect::<String>();
+        let pad = repeat(" ").take(fill).collect::<String>();
         match align {
             PadNone => name,
-            PadOnLeft => {
-                pad.push_str(&name);
-                pad
-            }
             PadOnRight => {
                 name.push_str(&pad);
                 name
@@ -690,7 +685,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::Res
     fn len_if_padded(t: &TestDescAndFn) -> usize {
         match t.testfn.padding() {
             PadNone => 0,
-            PadOnLeft | PadOnRight => t.desc.name.as_slice().len(),
+            PadOnRight => t.desc.name.as_slice().len(),
         }
     }
     match tests.iter().max_by(|t|len_if_padded(*t)) {
