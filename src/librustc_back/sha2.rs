@@ -64,7 +64,7 @@ impl ToBits for u64 {
 fn add_bytes_to_bits<T: Int + ToBits>(bits: T, bytes: T) -> T {
     let (new_high_bits, new_low_bits) = bytes.to_bits();
 
-    if new_high_bits > Int::zero() {
+    if new_high_bits > T::zero() {
         panic!("numeric overflow occurred.")
     }
 
@@ -537,7 +537,7 @@ mod tests {
     use self::rand::isaac::IsaacRng;
     use serialize::hex::FromHex;
     use std::iter::repeat;
-    use std::num::Int;
+    use std::u64;
     use super::{Digest, Sha256, FixedBuffer};
 
     // A normal addition - no overflow occurs
@@ -550,7 +550,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_add_bytes_to_bits_overflow() {
-        super::add_bytes_to_bits::<u64>(Int::max_value(), 1);
+        super::add_bytes_to_bits::<u64>(u64::MAX, 1);
     }
 
     struct Test {

@@ -15,6 +15,7 @@ use libc::consts::os::extra::INVALID_SOCKET;
 use libc::{self, c_int, c_void};
 use mem;
 use net::SocketAddr;
+#[allow(deprecated)]
 use num::{SignedInt, Int};
 use rt;
 use sync::{Once, ONCE_INIT};
@@ -50,6 +51,7 @@ fn last_error() -> io::Error {
 /// function must be called before another call to the socket API is made.
 ///
 /// FIXME: generics needed?
+#[allow(deprecated)]
 pub fn cvt<T: SignedInt>(t: T) -> io::Result<T> {
     let one: T = Int::one();
     if t == -one {
@@ -67,6 +69,7 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 }
 
 /// Provides the functionality of `cvt` for a closure.
+#[allow(deprecated)]
 pub fn cvt_r<T: SignedInt, F>(mut f: F) -> io::Result<T> where F: FnMut() -> T {
     cvt(f())
 }

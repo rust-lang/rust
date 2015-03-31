@@ -30,6 +30,7 @@
 #![feature(staged_api)]
 #![staged_api]
 #![feature(core)]
+#![feature(step_by)]
 #![deprecated(reason = "use the crates.io `rand` library instead",
               since = "1.0.0-alpha")]
 

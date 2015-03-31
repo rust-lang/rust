@@ -41,7 +41,6 @@ use lint::{Level, Context, LintPass, LintArray, Lint};
 
 use std::collections::{HashSet, BitSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
-use std::num::SignedInt;
 use std::{cmp, slice};
 use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 
