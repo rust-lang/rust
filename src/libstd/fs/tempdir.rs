@@ -73,8 +73,7 @@ impl TempDir {
         }
 
         Err(Error::new(ErrorKind::AlreadyExists,
-                       "too many temporary directories already exist",
-                       None))
+                       "too many temporary directories already exist"))
     }
 
     /// Attempts to make a temporary directory inside of `env::temp_dir()` whose

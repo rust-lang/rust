@@ -20,9 +20,7 @@ pub fn realpath(original: &Path) -> io::Result<PathBuf> {
     let old = old_path::Path::new(original.to_str().unwrap());
     match old_realpath(&old) {
         Ok(p) => Ok(PathBuf::from(p.as_str().unwrap())),
-        Err(e) => Err(io::Error::new(io::ErrorKind::Other,
-                                     "realpath error",
-                                     Some(e.to_string())))
+        Err(e) => Err(io::Error::new(io::ErrorKind::Other, e))
     }
 }
 
