@@ -10,6 +10,9 @@
 
 // pretty-expanded FIXME #23616
 
+// this is for the wrapping_add call below.
+#![feature(core)]
+
 /*!
  * Tests the range assertion wraparound case in trans::middle::adt::load_discr.
  */
