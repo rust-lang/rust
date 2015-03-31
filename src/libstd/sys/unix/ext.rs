@@ -32,102 +32,171 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 /// Unix-specific extensions to general I/O primitives
-#[unstable(feature = "io_ext",
-           reason = "may want a slightly different organization or a more \
-                     general file descriptor primitive")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub mod io {
     #[allow(deprecated)] use old_io;
     use fs;
     use libc;
     use net;
-    use sys_common::AsInner;
+    use sys_common::{net2, AsInner, FromInner};
+    use sys;
 
     /// Raw file descriptors.
-    pub type Fd = libc::c_int;
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub type RawFd = libc::c_int;
 
-    /// Extract raw file descriptor
+    /// A trait to extract the raw unix file descriptor from an underlying
+    /// object.
+    ///
+    /// This is only available on unix platforms and must be imported in order
+    /// to call the method. Windows platforms have a corresponding `AsRawHandle`
+    /// and `AsRawSocket` set of traits.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub trait AsRawFd {
-        /// Extract the raw file descriptor, without taking any ownership.
-        fn as_raw_fd(&self) -> Fd;
+        /// Extract the raw file descriptor.
+        ///
+        /// This method does **not** pass ownership of the raw file descriptor
+        /// to the caller. The descriptor is only guarantee to be valid while
+        /// the original object has not yet been destroyed.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        fn as_raw_fd(&self) -> RawFd;
+    }
+
+    /// A trait to express the ability to construct an object from a raw file
+    /// descriptor.
+    #[unstable(feature = "from_raw_os",
+               reason = "recent addition to std::os::unix::io")]
+    pub trait FromRawFd {
+        /// Constructs a new instances of `Self` from the given raw file
+        /// descriptor.
+        ///
+        /// This function **consumes ownership** of the specified file
+        /// descriptor. The returned object will take responsibility for closing
+        /// it when the object goes out of scope.
+        ///
+        /// Callers should normally only pass in a valid file descriptor to this
+        /// method or otherwise methods will return errors.
+        fn from_raw_fd(fd: RawFd) -> Self;
     }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawFd for old_io::fs::File {
-        fn as_raw_fd(&self) -> Fd {
+        fn as_raw_fd(&self) -> RawFd {
             self.as_inner().fd()
         }
     }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawFd for fs::File {
-        fn as_raw_fd(&self) -> Fd {
+        fn as_raw_fd(&self) -> RawFd {
             self.as_inner().fd().raw()
         }
     }
+    #[unstable(feature = "from_raw_os", reason = "trait is unstable")]
+    impl FromRawFd for fs::File {
+        fn from_raw_fd(fd: RawFd) -> fs::File {
+            fs::File::from_inner(sys::fs2::File::from_inner(fd))
+        }
+    }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawFd for old_io::pipe::PipeStream {
-        fn as_raw_fd(&self) -> Fd {
+        fn as_raw_fd(&self) -> RawFd {
             self.as_inner().fd()
         }
     }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawFd for old_io::net::pipe::UnixStream {
-        fn as_raw_fd(&self) -> Fd {
+        fn as_raw_fd(&self) -> RawFd {
             self.as_inner().fd()
         }
     }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawFd for old_io::net::pipe::UnixListener {
-        fn as_raw_fd(&self) -> Fd {
+        fn as_raw_fd(&self) -> RawFd {
             self.as_inner().fd()
         }
     }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawFd for old_io::net::pipe::UnixAcceptor {
-        fn as_raw_fd(&self) -> Fd {
+        fn as_raw_fd(&self) -> RawFd {
             self.as_inner().fd()
         }
     }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     impl AsRawFd for old_io::net::tcp::TcpStream {
-        fn as_raw_fd(&self) -> Fd {
+        fn as_raw_fd(&self) -> RawFd {
             self.as_inner().fd()
         }
     }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     impl AsRawFd for old_io::net::tcp::TcpListener {
-        fn as_raw_fd(&self) -> Fd {
+        fn as_raw_fd(&self) -> RawFd {
             self.as_inner().fd()
         }
     }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     impl AsRawFd for old_io::net::tcp::TcpAcceptor {
-        fn as_raw_fd(&self) -> Fd {
+        fn as_raw_fd(&self) -> RawFd {
             self.as_inner().fd()
         }
     }
 
     #[allow(deprecated)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawFd for old_io::net::udp::UdpSocket {
-        fn as_raw_fd(&self) -> Fd {
+        fn as_raw_fd(&self) -> RawFd {
             self.as_inner().fd()
         }
     }
 
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawFd for net::TcpStream {
-        fn as_raw_fd(&self) -> Fd { *self.as_inner().socket().as_inner() }
+        fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
     }
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawFd for net::TcpListener {
-        fn as_raw_fd(&self) -> Fd { *self.as_inner().socket().as_inner() }
+        fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
     }
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawFd for net::UdpSocket {
-        fn as_raw_fd(&self) -> Fd { *self.as_inner().socket().as_inner() }
+        fn as_raw_fd(&self) -> RawFd { *self.as_inner().socket().as_inner() }
+    }
+
+    #[unstable(feature = "from_raw_os", reason = "trait is unstable")]
+    impl FromRawFd for net::TcpStream {
+        fn from_raw_fd(fd: RawFd) -> net::TcpStream {
+            let socket = sys::net::Socket::from_inner(fd);
+            net::TcpStream::from_inner(net2::TcpStream::from_inner(socket))
+        }
+    }
+    #[unstable(feature = "from_raw_os", reason = "trait is unstable")]
+    impl FromRawFd for net::TcpListener {
+        fn from_raw_fd(fd: RawFd) -> net::TcpListener {
+            let socket = sys::net::Socket::from_inner(fd);
+            net::TcpListener::from_inner(net2::TcpListener::from_inner(socket))
+        }
+    }
+    #[unstable(feature = "from_raw_os", reason = "trait is unstable")]
+    impl FromRawFd for net::UdpSocket {
+        fn from_raw_fd(fd: RawFd) -> net::UdpSocket {
+            let socket = sys::net::Socket::from_inner(fd);
+            net::UdpSocket::from_inner(net2::UdpSocket::from_inner(socket))
+        }
     }
 }
 
@@ -302,7 +371,7 @@ pub mod process {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod prelude {
     #[doc(no_inline)]
-    pub use super::io::{Fd, AsRawFd};
+    pub use super::io::{RawFd, AsRawFd};
     #[doc(no_inline)] #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::ffi::{OsStrExt, OsStringExt};
     #[doc(no_inline)]

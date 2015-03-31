@@ -31,7 +31,7 @@ use ptr;
 use slice;
 use sys::c;
 use sys::fs::FileDesc;
-use sys::handle::Handle as RawHandle;
+use sys::handle::Handle;
 
 use libc::funcs::extra::kernel32::{
     GetEnvironmentStringsW,
@@ -369,7 +369,7 @@ pub fn home_dir() -> Option<PathBuf> {
         if c::OpenProcessToken(me, c::TOKEN_READ, &mut token) == 0 {
             return None
         }
-        let _handle = RawHandle::new(token);
+        let _handle = Handle::new(token);
         super::fill_utf16_buf_new(|buf, mut sz| {
             match c::GetUserProfileDirectoryW(token, buf, &mut sz) {
                 0 if libc::GetLastError() != 0 => 0,
