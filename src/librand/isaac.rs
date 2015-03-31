@@ -187,6 +187,7 @@ impl IsaacRng {
 }
 
 // Cannot be derived because [u32; 256] does not implement Clone
+#[cfg(stage0)]
 impl Clone for IsaacRng {
     fn clone(&self) -> IsaacRng {
         *self
@@ -432,6 +433,7 @@ impl Isaac64Rng {
 }
 
 // Cannot be derived because [u32; 256] does not implement Clone
+#[cfg(stage0)]
 impl Clone for Isaac64Rng {
     fn clone(&self) -> Isaac64Rng {
         *self

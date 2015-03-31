@@ -84,6 +84,7 @@ impl MovePathIndex {
     }
 }
 
+#[cfg(stage0)]
 impl Clone for MovePathIndex {
     fn clone(&self) -> MovePathIndex {
         MovePathIndex(self.get())

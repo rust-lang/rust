@@ -2091,6 +2091,7 @@ pub mod types {
                     pub __ss_align: i64,
                     pub __ss_pad2: [u8; 112],
                 }
+                #[cfg(stage0)]
                 impl ::core::clone::Clone for sockaddr_storage {
                     fn clone(&self) -> sockaddr_storage { *self }
                 }
@@ -2154,6 +2155,7 @@ pub mod types {
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char; 104]
                 }
+                #[cfg(stage0)]
                 impl ::core::clone::Clone for sockaddr_un {
                     fn clone(&self) -> sockaddr_un { *self }
                 }
@@ -2369,6 +2371,7 @@ pub mod types {
                     pub __sig: c_long,
                     pub __opaque: [c_char; 56]
                 }
+                #[cfg(stage0)]
                 impl ::core::clone::Clone for pthread_attr_t {
                     fn clone(&self) -> pthread_attr_t { *self }
                 }

@@ -206,10 +206,13 @@ impl fmt::Debug for SocketAddrV6 {
     }
 }
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for SocketAddrV4 {
     fn clone(&self) -> SocketAddrV4 { *self }
 }
+
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for SocketAddrV6 {
     fn clone(&self) -> SocketAddrV6 { *self }

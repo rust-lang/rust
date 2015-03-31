@@ -148,6 +148,7 @@ enum MapEntry<'ast> {
     RootInlinedParent(&'ast InlinedParent)
 }
 
+#[cfg(stage0)]
 impl<'ast> Clone for MapEntry<'ast> {
     fn clone(&self) -> MapEntry<'ast> {
         *self

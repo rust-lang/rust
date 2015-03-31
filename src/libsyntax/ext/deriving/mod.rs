@@ -92,6 +92,21 @@ fn expand_derive(cx: &mut ExtCtxt,
             cx.span_warn(mitem.span, "empty trait list in `derive`");
         }
 
+        // FIXME: This can be removed after a snapshot
+        let mut seen_copy = false;
+
+        for titem in traits.iter() {
+            match titem.node {
+                MetaWord(ref tname) => {
+                    match &**tname {
+                        "Copy" => { seen_copy = true; }
+                        _ => { }
+                    }
+                }
+                _ => { }
+            }
+        }
+
         for titem in traits.iter().rev() {
             let tname = match titem.node {
                 MetaWord(ref tname) => tname,
@@ -108,6 +123,9 @@ fn expand_derive(cx: &mut ExtCtxt,
                                                feature_gate::EXPLAIN_CUSTOM_DERIVE);
                 continue;
             }
+
+            // FIXME: This can be removed after a snapshot
+            if seen_copy && &**tname == "Clone" { continue; }
 
             // #[derive(Foo, Bar)] expands to #[derive_Foo] #[derive_Bar]
             item.attrs.push(cx.attribute(titem.span, cx.meta_word(titem.span,

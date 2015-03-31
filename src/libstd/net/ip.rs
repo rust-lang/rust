@@ -174,6 +174,7 @@ impl fmt::Debug for Ipv4Addr {
     }
 }
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for Ipv4Addr {
     fn clone(&self) -> Ipv4Addr { *self }
@@ -417,6 +418,7 @@ impl fmt::Debug for Ipv6Addr {
     }
 }
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for Ipv6Addr {
     fn clone(&self) -> Ipv6Addr { *self }
