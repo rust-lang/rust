@@ -1533,22 +1533,15 @@ impl<T> Extend<T> for Vec<T> {
 }
 
 __impl_slice_eq1! { Vec<A>, Vec<B> }
-__impl_slice_eq2! { Vec<A>, &'b [B] }
-__impl_slice_eq2! { Vec<A>, &'b mut [B] }
-__impl_slice_eq2! { Cow<'a, [A]>, &'b [B], Clone }
-__impl_slice_eq2! { Cow<'a, [A]>, &'b mut [B], Clone }
+__impl_slice_eq2! { Vec<A>, [B] }
+__impl_slice_eq2! { Cow<'a, [A]>, [B], Clone }
 __impl_slice_eq2! { Cow<'a, [A]>, Vec<B>, Clone }
 
 macro_rules! array_impls {
     ($($N: expr)+) => {
         $(
-            // NOTE: some less important impls are omitted to reduce code bloat
             __impl_slice_eq2! { Vec<A>, [B; $N] }
-            __impl_slice_eq2! { Vec<A>, &'b [B; $N] }
-            // __impl_slice_eq2! { Vec<A>, &'b mut [B; $N] }
-            // __impl_slice_eq2! { Cow<'a, [A]>, [B; $N], Clone }
-            // __impl_slice_eq2! { Cow<'a, [A]>, &'b [B; $N], Clone }
-            // __impl_slice_eq2! { Cow<'a, [A]>, &'b mut [B; $N], Clone }
+            __impl_slice_eq2! { Cow<'a, [A]>, [B; $N], Clone }
         )+
     }
 }

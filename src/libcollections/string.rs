@@ -809,40 +809,24 @@ macro_rules! impl_eq {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a> PartialEq<$rhs> for $lhs {
             #[inline]
-            fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&**self, &**other) }
+            fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&self[..], &other[..]) }
             #[inline]
-            fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&**self, &**other) }
+            fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&self[..], &other[..]) }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a> PartialEq<$lhs> for $rhs {
             #[inline]
-            fn eq(&self, other: &$lhs) -> bool { PartialEq::eq(&**self, &**other) }
+            fn eq(&self, other: &$lhs) -> bool { PartialEq::eq(&self[..], &other[..]) }
             #[inline]
-            fn ne(&self, other: &$lhs) -> bool { PartialEq::ne(&**self, &**other) }
+            fn ne(&self, other: &$lhs) -> bool { PartialEq::ne(&self[..], &other[..]) }
         }
-
     }
 }
 
-impl_eq! { String, &'a str }
+impl_eq! { String, str }
+impl_eq! { Cow<'a, str>, str }
 impl_eq! { Cow<'a, str>, String }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b> PartialEq<&'b str> for Cow<'a, str> {
-    #[inline]
-    fn eq(&self, other: &&'b str) -> bool { PartialEq::eq(&**self, &**other) }
-    #[inline]
-    fn ne(&self, other: &&'b str) -> bool { PartialEq::ne(&**self, &**other) }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b> PartialEq<Cow<'a, str>> for &'b str {
-    #[inline]
-    fn eq(&self, other: &Cow<'a, str>) -> bool { PartialEq::eq(&**self, &**other) }
-    #[inline]
-    fn ne(&self, other: &Cow<'a, str>) -> bool { PartialEq::ne(&**self, &**other) }
-}
 
 #[unstable(feature = "collections", reason = "waiting on Str stabilization")]
 #[allow(deprecated)]
