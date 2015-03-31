@@ -202,8 +202,7 @@ pub struct TypeId {
 impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been
     /// instantiated with
-    #[unstable(feature = "core",
-               reason = "may grow a `Reflect` bound soon via marker traits")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn of<T: ?Sized + Any>() -> TypeId {
         TypeId {
             t: unsafe { intrinsics::type_id::<T>() },
