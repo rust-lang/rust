@@ -42,5 +42,6 @@
     * [Intrinsics](intrinsics.md)
     * [Lang items](lang-items.md)
     * [Link args](link-args.md)
+    * [Benchmark Tests](benchmark-tests.md)
 * [Conclusion](conclusion.md)
 * [Glossary](glossary.md)
