@@ -22,7 +22,8 @@ use std::{u8, u16, u32, u64, usize};
 const A_I8_I
     : [u32; (i8::MAX as usize) + 1]
     = [0; (i8::MAX + 1) as usize];
-//~^ ERROR error evaluating count: attempted to add with overflow
+//~^ ERROR mismatched types
+//~| ERROR expected constant integer for repeat count, but attempted to add with overflow
 
 fn main() {
     foo(&A_I8_I[..]);
