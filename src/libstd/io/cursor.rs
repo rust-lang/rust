@@ -14,7 +14,6 @@ use io::prelude::*;
 use cmp;
 use io::{self, SeekFrom, Error, ErrorKind};
 use iter::repeat;
-use num::Int;
 use slice;
 
 /// A `Cursor` is a type which wraps a non-I/O object to provide a `Seek`

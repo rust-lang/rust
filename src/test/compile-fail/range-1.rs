@@ -15,9 +15,10 @@ pub fn main() {
     let _ = 0u32..10i32;
     //~^ ERROR start and end of range have incompatible types
 
-    // Float => does not implement iterator.
-    for i in 0f32..42f32 {}
-    //~^ ERROR the trait `core::num::Int` is not implemented for the type `f32`
+    // Bool => does not implement iterator.
+    for i in false..true {}
+    //~^ ERROR the trait
+    //~^^ ERROR the trait
 
     // Unsized type.
     let arr: &[_] = &[1, 2, 3];

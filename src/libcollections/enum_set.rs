@@ -16,7 +16,6 @@
 use core::prelude::*;
 use core::marker;
 use core::fmt;
-use core::num::Int;
 use core::iter::{FromIterator, IntoIterator};
 use core::ops::{Sub, BitOr, BitAnd, BitXor};
 

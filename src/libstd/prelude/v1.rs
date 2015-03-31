@@ -51,6 +51,3 @@
 #[doc(no_inline)] pub use string::{String, ToString};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use vec::Vec;
-
-// FIXME(#23454) should these be here?
-#[doc(no_inline)] pub use num::wrapping::{Wrapping, WrappingOps};
