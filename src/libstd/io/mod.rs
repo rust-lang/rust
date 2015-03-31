@@ -441,9 +441,7 @@ pub trait Write {
 ///
 /// The stream typically has a fixed size, allowing seeking relative to either
 /// end or the current offset.
-#[unstable(feature = "io", reason = "the central `seek` method may be split \
-                                     into multiple methods instead of taking \
-                                     an enum as an argument")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Seek {
     /// Seek to an offset, in bytes, in a stream
     ///
@@ -459,14 +457,16 @@ pub trait Seek {
     /// # Errors
     ///
     /// Seeking to a negative offset is considered an error
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
 }
 
 /// Enumeration of possible methods to seek within an I/O object.
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
-#[unstable(feature = "io", reason = "awaiting the stability of Seek")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub enum SeekFrom {
     /// Set the offset to the provided number of bytes.
+    #[stable(feature = "rust1", since = "1.0.0")]
     Start(u64),
 
     /// Set the offset to the size of this object plus the specified number of
@@ -474,6 +474,7 @@ pub enum SeekFrom {
     ///
     /// It is possible to seek beyond the end of an object, but is an error to
     /// seek before byte 0.
+    #[stable(feature = "rust1", since = "1.0.0")]
     End(i64),
 
     /// Set the offset to the current position plus the specified number of
@@ -481,6 +482,7 @@ pub enum SeekFrom {
     ///
     /// It is possible to seek beyond the end of an object, but is an error to
     /// seek before byte 0.
+    #[stable(feature = "rust1", since = "1.0.0")]
     Current(i64),
 }
 
