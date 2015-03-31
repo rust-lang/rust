@@ -14,6 +14,7 @@ use old_io::{self, IoError, IoResult};
 use prelude::v1::*;
 use sys::{last_error, retry};
 use ffi::CString;
+#[allow(deprecated)] // Int
 use num::Int;
 
 #[allow(deprecated)]

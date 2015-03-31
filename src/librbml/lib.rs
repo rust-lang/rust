@@ -241,7 +241,6 @@ pub mod reader {
 
     use std::isize;
     use std::mem::transmute;
-    use std::num::Int;
     use std::slice::bytes;
 
     use serialize;
@@ -346,7 +345,7 @@ pub mod reader {
 
         unsafe {
             let ptr = data.as_ptr().offset(start as isize) as *const u32;
-            let val = Int::from_be(*ptr);
+            let val = u32::from_be(*ptr);
 
             let i = (val >> 28) as usize;
             let (shift, mask) = SHIFT_MASK_TABLE[i];
@@ -835,7 +834,6 @@ pub mod reader {
 
 pub mod writer {
     use std::mem;
-    use std::num::Int;
     use std::io::prelude::*;
     use std::io::{self, SeekFrom, Cursor};
     use std::slice::bytes;

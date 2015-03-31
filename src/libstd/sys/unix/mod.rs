@@ -171,6 +171,7 @@ pub fn retry<T, F> (mut f: F) -> T where
     }
 }
 
+#[allow(deprecated)]
 pub fn cvt<T: SignedInt>(t: T) -> io::Result<T> {
     let one: T = Int::one();
     if t == -one {
@@ -180,6 +181,7 @@ pub fn cvt<T: SignedInt>(t: T) -> io::Result<T> {
     }
 }
 
+#[allow(deprecated)]
 pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
     where T: SignedInt, F: FnMut() -> T
 {
