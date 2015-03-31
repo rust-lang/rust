@@ -576,7 +576,7 @@ mod tests {
         assert!(p.is_ok());
         let mut p = p.unwrap();
         assert!(p.wait().unwrap().code() == Some(1));
-        drop(p.wait().clone());
+        drop(p.wait());
     }
 
     #[cfg(all(unix, not(target_os="android")))]

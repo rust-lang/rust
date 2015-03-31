@@ -697,8 +697,11 @@ mod tests {
               false, false, false, true,  false, false, false, Some(Global));
     }
 
-    fn tsa<A: ToSocketAddrs>(a: A) -> io::Result<Vec<SocketAddr>> {
-        Ok(try!(a.to_socket_addrs()).collect())
+    fn tsa<A: ToSocketAddrs>(a: A) -> Result<Vec<SocketAddr>, String> {
+        match a.to_socket_addrs() {
+            Ok(a) => Ok(a.collect()),
+            Err(e) => Err(e.to_string()),
+        }
     }
 
     #[test]

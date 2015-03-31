@@ -503,34 +503,34 @@ mod tests {
 
         let mut buf = [0, 0, 0];
         let nread = reader.read(&mut buf);
-        assert_eq!(Ok(3), nread);
+        assert_eq!(nread.unwrap(), 3);
         let b: &[_] = &[5, 6, 7];
         assert_eq!(buf, b);
 
         let mut buf = [0, 0];
         let nread = reader.read(&mut buf);
-        assert_eq!(Ok(2), nread);
+        assert_eq!(nread.unwrap(), 2);
         let b: &[_] = &[0, 1];
         assert_eq!(buf, b);
 
         let mut buf = [0];
         let nread = reader.read(&mut buf);
-        assert_eq!(Ok(1), nread);
+        assert_eq!(nread.unwrap(), 1);
         let b: &[_] = &[2];
         assert_eq!(buf, b);
 
         let mut buf = [0, 0, 0];
         let nread = reader.read(&mut buf);
-        assert_eq!(Ok(1), nread);
+        assert_eq!(nread.unwrap(), 1);
         let b: &[_] = &[3, 0, 0];
         assert_eq!(buf, b);
 
         let nread = reader.read(&mut buf);
-        assert_eq!(Ok(1), nread);
+        assert_eq!(nread.unwrap(), 1);
         let b: &[_] = &[4, 0, 0];
         assert_eq!(buf, b);
 
-        assert_eq!(reader.read(&mut buf), Ok(0));
+        assert_eq!(reader.read(&mut buf).unwrap(), 0);
     }
 
     #[test]
@@ -592,7 +592,7 @@ mod tests {
         }
 
         let mut stream = BufStream::new(S);
-        assert_eq!(stream.read(&mut [0; 10]), Ok(0));
+        assert_eq!(stream.read(&mut [0; 10]).unwrap(), 0);
         stream.write(&[0; 10]).unwrap();
         stream.flush().unwrap();
     }
@@ -658,10 +658,10 @@ mod tests {
         let in_buf: &[u8] = b"a\nb\nc";
         let reader = BufReader::with_capacity(2, in_buf);
         let mut it = reader.lines();
-        assert_eq!(it.next(), Some(Ok("a".to_string())));
-        assert_eq!(it.next(), Some(Ok("b".to_string())));
-        assert_eq!(it.next(), Some(Ok("c".to_string())));
-        assert_eq!(it.next(), None);
+        assert_eq!(it.next().unwrap().unwrap(), "a".to_string());
+        assert_eq!(it.next().unwrap().unwrap(), "b".to_string());
+        assert_eq!(it.next().unwrap().unwrap(), "c".to_string());
+        assert!(it.next().is_none());
     }
 
     #[test]
@@ -669,20 +669,20 @@ mod tests {
         let inner = ShortReader{lengths: vec![0, 1, 2, 0, 1, 0]};
         let mut reader = BufReader::new(inner);
         let mut buf = [0, 0];
-        assert_eq!(reader.read(&mut buf), Ok(0));
-        assert_eq!(reader.read(&mut buf), Ok(1));
-        assert_eq!(reader.read(&mut buf), Ok(2));
-        assert_eq!(reader.read(&mut buf), Ok(0));
-        assert_eq!(reader.read(&mut buf), Ok(1));
-        assert_eq!(reader.read(&mut buf), Ok(0));
-        assert_eq!(reader.read(&mut buf), Ok(0));
+        assert_eq!(reader.read(&mut buf).unwrap(), 0);
+        assert_eq!(reader.read(&mut buf).unwrap(), 1);
+        assert_eq!(reader.read(&mut buf).unwrap(), 2);
+        assert_eq!(reader.read(&mut buf).unwrap(), 0);
+        assert_eq!(reader.read(&mut buf).unwrap(), 1);
+        assert_eq!(reader.read(&mut buf).unwrap(), 0);
+        assert_eq!(reader.read(&mut buf).unwrap(), 0);
     }
 
     #[test]
     fn read_char_buffered() {
         let buf = [195, 159];
         let reader = BufReader::with_capacity(1, &buf[..]);
-        assert_eq!(reader.chars().next(), Some(Ok('ß')));
+        assert_eq!(reader.chars().next().unwrap().unwrap(), 'ß');
     }
 
     #[test]
@@ -690,9 +690,9 @@ mod tests {
         let buf = [195, 159, b'a'];
         let reader = BufReader::with_capacity(1, &buf[..]);
         let mut it = reader.chars();
-        assert_eq!(it.next(), Some(Ok('ß')));
-        assert_eq!(it.next(), Some(Ok('a')));
-        assert_eq!(it.next(), None);
+        assert_eq!(it.next().unwrap().unwrap(), 'ß');
+        assert_eq!(it.next().unwrap().unwrap(), 'a');
+        assert!(it.next().is_none());
     }
 
     #[test]
