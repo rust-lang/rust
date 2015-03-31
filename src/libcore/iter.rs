@@ -555,8 +555,7 @@ pub trait Iterator {
     /// assert_eq!(even, [2, 4]);
     /// assert_eq!(odd, [1, 3]);
     /// ```
-    #[unstable(feature = "core",
-               reason = "recently added as part of collections reform")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn partition<B, F>(self, mut f: F) -> (B, B) where
         Self: Sized,
         B: Default + Extend<Self::Item>,
@@ -947,7 +946,7 @@ pub trait Iterator {
     /// assert_eq!([1, 3], left);
     /// assert_eq!([2, 4], right);
     /// ```
-    #[unstable(feature = "core", reason = "recent addition")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn unzip<A, B, FromA, FromB>(self) -> (FromA, FromB) where
         FromA: Default + Extend<A>,
         FromB: Default + Extend<B>,
