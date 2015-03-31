@@ -25,23 +25,22 @@
 //! the `FromIterator` trait for creating a container from an iterator, and much
 //! more.
 //!
-//! ## Rust's `for` loop
+//! # Rust's `for` loop
 //!
-//! The special syntax used by rust's `for` loop is based around the `Iterator`
-//! trait defined in this module. For loops can be viewed as a syntactical expansion
+//! The special syntax used by rust's `for` loop is based around the `IntoIterator`
+//! trait defined in this module. `for` loops can be viewed as a syntactical expansion
 //! into a `loop`, for example, the `for` loop in this example is essentially
 //! translated to the `loop` below.
 //!
 //! ```
 //! let values = vec![1, 2, 3];
 //!
-//! // "Syntactical sugar" taking advantage of an iterator
-//! for &x in values.iter() {
+//! for x in values {
 //!     println!("{}", x);
 //! }
 //!
 //! // Rough translation of the iteration without a `for` iterator.
-//! let mut it = values.iter();
+//! let mut it = values.into_iter();
 //! loop {
 //!     match it.next() {
 //!         Some(&x) => {
@@ -52,7 +51,8 @@
 //! }
 //! ```
 //!
-//! This `for` loop syntax can be applied to any iterator over any type.
+//! Because `Iterator`s implement `IntoIterator`, this `for` loop syntax can be applied to any
+//! iterator over any type.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -1041,6 +1041,9 @@ pub trait FromIterator<A> {
 }
 
 /// Conversion into an `Iterator`
+///
+/// Implementing this trait allows you to use your type with Rust's `for` loop. See
+/// the [module level documentation](../index.html) for more details.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
     /// The type of the elements being iterated
