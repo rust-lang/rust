@@ -340,7 +340,6 @@ pub struct JoinPathsError {
 /// # Examples
 ///
 /// ```
-/// # #![feature(convert)]
 /// use std::env;
 /// use std::path::PathBuf;
 ///

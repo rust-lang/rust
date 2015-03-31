@@ -36,7 +36,6 @@
 #![feature(file_path)]
 #![feature(path_ext)]
 #![feature(path_relative_from)]
-#![feature(convert)]
 #![feature(slice_patterns)]
 
 extern crate arena;
