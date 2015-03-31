@@ -9,4 +9,4 @@
 // except according to those terms.
 
 fn a(B<) {}
-   //~^ error: unexpected token: `<`
+   //~^ error: expected one of `:` or `@`, found `<`
