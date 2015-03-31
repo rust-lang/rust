@@ -1482,8 +1482,7 @@ impl<'a, K, V> Entry<'a, K, V> {
         }
     }
 
-    #[unstable(feature = "collections",
-               reason = "matches entry v3 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
     pub fn or_insert(self, default: V) -> &'a mut V {
@@ -1493,8 +1492,7 @@ impl<'a, K, V> Entry<'a, K, V> {
         }
     }
 
-    #[unstable(feature = "collections",
-               reason = "matches entry v3 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     /// Ensures a value is in the entry by inserting the result of the default function if empty,
     /// and returns a mutable reference to the value in the entry.
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {

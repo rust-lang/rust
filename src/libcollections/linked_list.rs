@@ -252,6 +252,7 @@ impl<T> LinkedList<T> {
     /// }
     /// println!("{}", b.len()); // prints 0
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn append(&mut self, other: &mut LinkedList<T>) {
         match self.list_tail.resolve() {
             None => {
