@@ -64,6 +64,10 @@ macro_rules! panic {
 ///
 /// Equivalent to the `println!` macro except that a newline is not printed at
 /// the end of the message.
+///
+/// Note that stdout is frequently line-buffered by default so it may be
+/// necessary to use `io::stdout().flush()` to ensure the output is emitted
+/// immediately.
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
