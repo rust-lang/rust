@@ -1320,10 +1320,10 @@ fn insertion_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> O
 
             if i != j {
                 let tmp = ptr::read(read_ptr);
-                ptr::copy(buf_v.offset(j + 1),
-                          &*buf_v.offset(j),
+                ptr::copy(&*buf_v.offset(j),
+                          buf_v.offset(j + 1),
                           (i - j) as usize);
-                ptr::copy_nonoverlapping(buf_v.offset(j), &tmp, 1);
+                ptr::copy_nonoverlapping(&tmp, buf_v.offset(j), 1);
                 mem::forget(tmp);
             }
         }
@@ -1396,10 +1396,10 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
                 // j + 1 could be `len` (for the last `i`), but in
                 // that case, `i == j` so we don't copy. The
                 // `.offset(j)` is always in bounds.
-                ptr::copy(buf_dat.offset(j + 1),
-                          &*buf_dat.offset(j),
+                ptr::copy(&*buf_dat.offset(j),
+                          buf_dat.offset(j + 1),
                           i - j as usize);
-                ptr::copy_nonoverlapping(buf_dat.offset(j), read_ptr, 1);
+                ptr::copy_nonoverlapping(read_ptr, buf_dat.offset(j), 1);
             }
         }
     }
@@ -1447,11 +1447,11 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
                     if left == right_start {
                         // the number remaining in this run.
                         let elems = (right_end as usize - right as usize) / mem::size_of::<T>();
-                        ptr::copy_nonoverlapping(out, &*right, elems);
+                        ptr::copy_nonoverlapping(&*right, out, elems);
                         break;
                     } else if right == right_end {
                         let elems = (right_start as usize - left as usize) / mem::size_of::<T>();
-                        ptr::copy_nonoverlapping(out, &*left, elems);
+                        ptr::copy_nonoverlapping(&*left, out, elems);
                         break;
                     }
 
@@ -1465,7 +1465,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
                     } else {
                         step(&mut left)
                     };
-                    ptr::copy_nonoverlapping(out, &*to_copy, 1);
+                    ptr::copy_nonoverlapping(&*to_copy, out, 1);
                     step(&mut out);
                 }
             }
@@ -1479,7 +1479,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
     // write the result to `v` in one go, so that there are never two copies
     // of the same object in `v`.
     unsafe {
-        ptr::copy_nonoverlapping(v.as_mut_ptr(), &*buf_dat, len);
+        ptr::copy_nonoverlapping(&*buf_dat, v.as_mut_ptr(), len);
     }
 
     // increment the pointer, returning the old pointer.

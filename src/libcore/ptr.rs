@@ -104,10 +104,27 @@ use cmp::Ordering::{self, Less, Equal, Greater};
 // FIXME #19649: intrinsic docs don't render, so these have no docs :(
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
 pub use intrinsics::copy_nonoverlapping;
 
+/// dox
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
+pub unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: usize) {
+    intrinsics::copy_nonoverlapping(dst, src, count)
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
 pub use intrinsics::copy;
+
+/// dox
+#[cfg(stage0)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
+    intrinsics::copy(dst, src, count)
+}
+
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::write_bytes;
@@ -167,12 +184,11 @@ pub unsafe fn zero_memory<T>(dst: *mut T, count: usize) {
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with
     let mut tmp: T = mem::uninitialized();
-    let t: *mut T = &mut tmp;
 
     // Perform the swap
-    copy_nonoverlapping(t, &*x, 1);
-    copy(x, &*y, 1); // `x` and `y` may overlap
-    copy_nonoverlapping(y, &*t, 1);
+    copy_nonoverlapping(x, &mut tmp, 1);
+    copy(y, x, 1); // `x` and `y` may overlap
+    copy_nonoverlapping(&tmp, y, 1);
 
     // y and t now point to the same thing, but we need to completely forget `tmp`
     // because it's no longer relevant.
@@ -208,7 +224,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
     let mut tmp: T = mem::uninitialized();
-    copy_nonoverlapping(&mut tmp, src, 1);
+    copy_nonoverlapping(src, &mut tmp, 1);
     tmp
 }
 

@@ -139,15 +139,15 @@ impl FixedBuffer for FixedBuffer64 {
             let buffer_remaining = size - self.buffer_idx;
             if input.len() >= buffer_remaining {
                     copy_memory(
-                        &mut self.buffer[self.buffer_idx..size],
-                        &input[..buffer_remaining]);
+                        &input[..buffer_remaining],
+                        &mut self.buffer[self.buffer_idx..size]);
                 self.buffer_idx = 0;
                 func(&self.buffer);
                 i += buffer_remaining;
             } else {
                 copy_memory(
-                    &mut self.buffer[self.buffer_idx..self.buffer_idx + input.len()],
-                    input);
+                    input,
+                    &mut self.buffer[self.buffer_idx..self.buffer_idx + input.len()]);
                 self.buffer_idx += input.len();
                 return;
             }
@@ -165,8 +165,8 @@ impl FixedBuffer for FixedBuffer64 {
         // be empty.
         let input_remaining = input.len() - i;
         copy_memory(
-            &mut self.buffer[..input_remaining],
-            &input[i..]);
+            &input[i..],
+            &mut self.buffer[..input_remaining]);
         self.buffer_idx += input_remaining;
     }
 
