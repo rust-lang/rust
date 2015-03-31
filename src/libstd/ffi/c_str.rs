@@ -12,7 +12,7 @@
 
 use convert::Into;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
-use error::{Error, FromError};
+use error::Error;
 use fmt;
 use io;
 use iter::Iterator;
@@ -298,8 +298,8 @@ impl fmt::Display for NulError {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl FromError<NulError> for io::Error {
-    fn from_error(_: NulError) -> io::Error {
+impl From<NulError> for io::Error {
+    fn from(_: NulError) -> io::Error {
         io::Error::new(io::ErrorKind::InvalidInput,
                        "data provided contains a nul byte", None)
     }
@@ -307,8 +307,8 @@ impl FromError<NulError> for io::Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
-impl FromError<NulError> for old_io::IoError {
-    fn from_error(_: NulError) -> old_io::IoError {
+impl From<NulError> for old_io::IoError {
+    fn from(_: NulError) -> old_io::IoError {
         old_io::IoError {
             kind: old_io::IoErrorKind::InvalidInput,
             desc: "data provided contains a nul byte",
