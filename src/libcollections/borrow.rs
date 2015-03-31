@@ -40,6 +40,24 @@ use self::Cow::*;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Borrow<Borrowed: ?Sized> {
     /// Immutably borrow from an owned value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::borrow::Borrow;
+    ///
+    /// fn check<T: Borrow<str>>(s: T) {
+    ///     assert_eq!("Hello", s.borrow());
+    /// }
+    ///
+    /// let s = "Hello".to_string();
+    ///
+    /// check(s);
+    ///
+    /// let s = "Hello";
+    ///
+    /// check(s);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn borrow(&self) -> &Borrowed;
 }
@@ -50,6 +68,20 @@ pub trait Borrow<Borrowed: ?Sized> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BorrowMut<Borrowed: ?Sized> : Borrow<Borrowed> {
     /// Mutably borrow from an owned value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::borrow::BorrowMut;
+    ///
+    /// fn check<T: BorrowMut<[i32]>>(mut v: T) {
+    ///     assert_eq!(&mut [1, 2, 3], v.borrow_mut());
+    /// }
+    ///
+    /// let v = vec![1, 2, 3];
+    ///
+    /// check(v);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn borrow_mut(&mut self) -> &mut Borrowed;
 }
@@ -171,6 +203,18 @@ impl<'a, B: ?Sized> Cow<'a, B> where B: ToOwned {
     /// Acquire a mutable reference to the owned form of the data.
     ///
     /// Copies the data if it is not already owned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::borrow::Cow;
+    ///
+    /// let mut cow: Cow<[_]> = Cow::Owned(vec![1, 2, 3]);
+    ///
+    /// let hello = cow.to_mut();
+    ///
+    /// assert_eq!(&[1, 2, 3], hello);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_mut(&mut self) -> &mut <B as ToOwned>::Owned {
         match *self {
@@ -185,6 +229,18 @@ impl<'a, B: ?Sized> Cow<'a, B> where B: ToOwned {
     /// Extract the owned data.
     ///
     /// Copies the data if it is not already owned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::borrow::Cow;
+    ///
+    /// let cow: Cow<[_]> = Cow::Owned(vec![1, 2, 3]);
+    ///
+    /// let hello = cow.into_owned();
+    ///
+    /// assert_eq!(vec![1, 2, 3], hello);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_owned(self) -> <B as ToOwned>::Owned {
         match self {
