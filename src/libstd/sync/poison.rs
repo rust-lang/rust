@@ -11,7 +11,7 @@
 use prelude::v1::*;
 
 use cell::UnsafeCell;
-use error::{Error, FromError};
+use error::{Error};
 use fmt;
 use thread;
 
@@ -144,8 +144,8 @@ impl<T> PoisonError<T> {
     pub fn get_mut(&mut self) -> &mut T { &mut self.guard }
 }
 
-impl<T> FromError<PoisonError<T>> for TryLockError<T> {
-    fn from_error(err: PoisonError<T>) -> TryLockError<T> {
+impl<T> From<PoisonError<T>> for TryLockError<T> {
+    fn from(err: PoisonError<T>) -> TryLockError<T> {
         TryLockError::Poisoned(err)
     }
 }

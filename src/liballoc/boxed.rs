@@ -51,7 +51,7 @@ use core::prelude::*;
 use core::any::Any;
 use core::cmp::Ordering;
 use core::default::Default;
-use core::error::{Error, FromError};
+use core::error::Error;
 use core::fmt;
 use core::hash::{self, Hash};
 use core::mem;
@@ -308,8 +308,8 @@ impl<I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for Box<I> {
 impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, E: Error + 'a> FromError<E> for Box<Error + 'a> {
-    fn from_error(err: E) -> Box<Error + 'a> {
+impl<'a, E: Error + 'a> From<E> for Box<Error + 'a> {
+    fn from(err: E) -> Box<Error + 'a> {
         Box::new(err)
     }
 }
