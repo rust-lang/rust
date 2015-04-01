@@ -1145,3 +1145,52 @@ pub trait FnOnce<Args> {
     /// This is called when the call operator is used.
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
 }
+
+#[cfg(not(stage0))]
+mod impls {
+    use marker::Sized;
+    use super::{Fn, FnMut, FnOnce};
+
+    impl<'a,A,F:?Sized> Fn<A> for &'a F
+        where F : Fn<A>
+    {
+        extern "rust-call" fn call(&self, args: A) -> F::Output {
+            (**self).call(args)
+        }
+    }
+
+    impl<'a,A,F:?Sized> FnMut<A> for &'a F
+        where F : Fn<A>
+    {
+        extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+            (**self).call(args)
+        }
+    }
+
+    impl<'a,A,F:?Sized> FnOnce<A> for &'a F
+        where F : Fn<A>
+    {
+        type Output = F::Output;
+
+        extern "rust-call" fn call_once(self, args: A) -> F::Output {
+            (*self).call(args)
+        }
+    }
+
+    impl<'a,A,F:?Sized> FnMut<A> for &'a mut F
+        where F : FnMut<A>
+    {
+        extern "rust-call" fn call_mut(&mut self, args: A) -> F::Output {
+            (*self).call_mut(args)
+        }
+    }
+
+    impl<'a,A,F:?Sized> FnOnce<A> for &'a mut F
+        where F : FnMut<A>
+    {
+        type Output = F::Output;
+        extern "rust-call" fn call_once(mut self, args: A) -> F::Output {
+            (*self).call_mut(args)
+        }
+    }
+}

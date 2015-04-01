@@ -81,7 +81,7 @@ pub fn poly_project_and_unify_type<'cx,'tcx>(
            obligation.repr(selcx.tcx()));
 
     let infcx = selcx.infcx();
-    infcx.try(|snapshot| {
+    infcx.commit_if_ok(|snapshot| {
         let (skol_predicate, skol_map) =
             infcx.skolemize_late_bound_regions(&obligation.predicate, snapshot);
 
@@ -291,6 +291,7 @@ impl<'a,'b,'tcx> TypeFolder<'tcx> for AssociatedTypeNormalizer<'a,'b,'tcx> {
     }
 }
 
+#[derive(Clone)]
 pub struct Normalized<'tcx,T> {
     pub value: T,
     pub obligations: Vec<PredicateObligation<'tcx>>,
