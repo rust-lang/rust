@@ -274,36 +274,36 @@ closure:
    types of all its upvars must outlive `'r`.
 2. Parameters must outlive the region of any fn that they are passed to.
 
-Therefore, we can -- sort of -- assume that when we are asked to
-compare a region `'a` from a closure with a region `'b` from the fn
-that encloses it, in fact `'b` is the larger region. And that is
-precisely what we do: when building the region hierarchy, each region
-lives in its own distinct subtree, but if we are asked to compute the
-`LUB(r1, r2)` of two regions, and those regions are in disjoint
-subtrees, we compare the lexical nesting of the two regions.
+Therefore, we can -- sort of -- assume that any region from an
+enclosing fns is larger than any region from one of its enclosed
+fn. And that is precisely what we do: when building the region
+hierarchy, each region lives in its own distinct subtree, but if we
+are asked to compute the `LUB(r1, r2)` of two regions, and those
+regions are in disjoint subtrees, we compare the lexical nesting of
+the two regions.
 
-*Ideas for improving the situation:* The correct argument here is
-subtle and a bit hand-wavy. The ideal, as stated earlier, would be to
-model things in such a way that it corresponds more closely to the
-desugared code. The best approach for doing this is a bit unclear: it
-may in fact be possible to *actually* desugar before we start, but I
-don't think so. The main option that I've been thinking through is
-imposing a "view shift" as we enter the fn body, so that regions
-appearing in the types of fn parameters and upvars are translated from
-being regions in the outer fn into free region parameters, just as
-they would be if we applied the desugaring. The challenge here is that
-type inference may not have fully run, so the types may not be fully
-known: we could probably do this translation lazilly, as type
-variables are instantiated. We would also have to apply a kind of
-inverse translation to the return value. This would be a good idea
-anyway, as right now it is possible for free regions instantiated
-within the closure to leak into the parent: this currently leads to
-type errors, since those regions cannot outlive any expressions within
-the parent hierarchy. Much like the current handling of closures,
-there are no known cases where this leads to a type-checking accepting
-incorrect code (though it sometimes rejects what might be considered
-correct code; see rust-lang/rust#22557), but it still doesn't feel
-like the right approach.
+*Ideas for improving the situation:* (FIXME #3696) The correctness
+argument here is subtle and a bit hand-wavy. The ideal, as stated
+earlier, would be to model things in such a way that it corresponds
+more closely to the desugared code. The best approach for doing this
+is a bit unclear: it may in fact be possible to *actually* desugar
+before we start, but I don't think so. The main option that I've been
+thinking through is imposing a "view shift" as we enter the fn body,
+so that regions appearing in the types of fn parameters and upvars are
+translated from being regions in the outer fn into free region
+parameters, just as they would be if we applied the desugaring. The
+challenge here is that type inference may not have fully run, so the
+types may not be fully known: we could probably do this translation
+lazilly, as type variables are instantiated. We would also have to
+apply a kind of inverse translation to the return value. This would be
+a good idea anyway, as right now it is possible for free regions
+instantiated within the closure to leak into the parent: this
+currently leads to type errors, since those regions cannot outlive any
+expressions within the parent hierarchy. Much like the current
+handling of closures, there are no known cases where this leads to a
+type-checking accepting incorrect code (though it sometimes rejects
+what might be considered correct code; see rust-lang/rust#22557), but
+it still doesn't feel like the right approach.
 
 ### Skolemization
 
