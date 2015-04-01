@@ -328,8 +328,11 @@ impl<T> [T] {
     }
 
     /// Returns an iterator over subslices separated by elements that match
-    /// `pred`, limited to splitting at most `n` times.  The matched element is
+    /// `pred`, limited to returning at most `n` items.  The matched element is
     /// not contained in the subslices.
+    ///
+    /// The last element returned, if any, will contain the remainder of the
+    /// slice.
     ///
     /// # Examples
     ///
@@ -338,7 +341,7 @@ impl<T> [T] {
     ///
     /// ```
     /// let v = [10, 40, 30, 20, 60, 50];
-    /// for group in v.splitn(1, |num| *num % 3 == 0) {
+    /// for group in v.splitn(2, |num| *num % 3 == 0) {
     ///     println!("{:?}", group);
     /// }
     /// ```
@@ -349,9 +352,12 @@ impl<T> [T] {
     }
 
     /// Returns an iterator over subslices separated by elements that match
-    /// `pred` limited to splitting at most `n` times. This starts at the end of
+    /// `pred` limited to returning at most `n` items. This starts at the end of
     /// the slice and works backwards.  The matched element is not contained in
     /// the subslices.
+    ///
+    /// The last element returned, if any, will contain the remainder of the
+    /// slice.
     ///
     /// # Examples
     ///
@@ -360,7 +366,7 @@ impl<T> [T] {
     ///
     /// ```
     /// let v = [10, 40, 30, 20, 60, 50];
-    /// for group in v.rsplitn(1, |num| *num % 3 == 0) {
+    /// for group in v.rsplitn(2, |num| *num % 3 == 0) {
     ///     println!("{:?}", group);
     /// }
     /// ```
@@ -626,8 +632,11 @@ impl<T> [T] {
     }
 
     /// Returns an iterator over subslices separated by elements that match
-    /// `pred`, limited to splitting at most `n` times.  The matched element is
+    /// `pred`, limited to returning at most `n` items.  The matched element is
     /// not contained in the subslices.
+    ///
+    /// The last element returned, if any, will contain the remainder of the
+    /// slice.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn splitn_mut<F>(&mut self, n: usize, pred: F) -> SplitNMut<T, F>
@@ -636,9 +645,12 @@ impl<T> [T] {
     }
 
     /// Returns an iterator over subslices separated by elements that match
-    /// `pred` limited to splitting at most `n` times. This starts at the end of
+    /// `pred` limited to returning at most `n` items. This starts at the end of
     /// the slice and works backwards.  The matched element is not contained in
     /// the subslices.
+    ///
+    /// The last element returned, if any, will contain the remainder of the
+    /// slice.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn rsplitn_mut<F>(&mut self,  n: usize, pred: F) -> RSplitNMut<T, F>
