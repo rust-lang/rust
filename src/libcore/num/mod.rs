@@ -1347,7 +1347,7 @@ macro_rules! uint_impl {
 
         /// Returns the largest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
-        pub fn max_value() -> $T { -1 }
+        pub fn max_value() -> $T { !0 }
 
         /// Convert a string slice in a given base to an integer.
         ///

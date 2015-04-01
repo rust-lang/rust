@@ -47,7 +47,7 @@ use sync::mpsc::blocking::{self, WaitToken, SignalToken};
 use sync::mpsc::select::StartResult::{self, Installed, Abort};
 use sync::{Mutex, MutexGuard};
 
-pub struct Packet<T: Send> {
+pub struct Packet<T> {
     /// Only field outside of the mutex. Just done for kicks, but mainly because
     /// the other shared channel already had the code implemented
     channels: AtomicUsize,

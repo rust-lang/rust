@@ -342,7 +342,7 @@ mod spsc_queue;
 /// The receiving-half of Rust's channel type. This half can only be owned by
 /// one task
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Receiver<T:Send> {
+pub struct Receiver<T> {
     inner: UnsafeCell<Flavor<T>>,
 }
 
@@ -354,14 +354,14 @@ unsafe impl<T: Send> Send for Receiver<T> { }
 /// whenever `next` is called, waiting for a new message, and `None` will be
 /// returned when the corresponding channel has hung up.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Iter<'a, T:Send+'a> {
+pub struct Iter<'a, T: 'a> {
     rx: &'a Receiver<T>
 }
 
 /// The sending-half of Rust's asynchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Sender<T:Send> {
+pub struct Sender<T> {
     inner: UnsafeCell<Flavor<T>>,
 }
 
@@ -372,7 +372,7 @@ unsafe impl<T: Send> Send for Sender<T> { }
 /// The sending-half of Rust's synchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct SyncSender<T: Send> {
+pub struct SyncSender<T> {
     inner: Arc<UnsafeCell<sync::Packet<T>>>,
 }
 
@@ -433,7 +433,7 @@ pub enum TrySendError<T> {
     Disconnected(T),
 }
 
-enum Flavor<T:Send> {
+enum Flavor<T> {
     Oneshot(Arc<UnsafeCell<oneshot::Packet<T>>>),
     Stream(Arc<UnsafeCell<stream::Packet<T>>>),
     Shared(Arc<UnsafeCell<shared::Packet<T>>>),
@@ -441,7 +441,7 @@ enum Flavor<T:Send> {
 }
 
 #[doc(hidden)]
-trait UnsafeFlavor<T:Send> {
+trait UnsafeFlavor<T> {
     fn inner_unsafe<'a>(&'a self) -> &'a UnsafeCell<Flavor<T>>;
     unsafe fn inner_mut<'a>(&'a self) -> &'a mut Flavor<T> {
         &mut *self.inner_unsafe().get()
@@ -450,12 +450,12 @@ trait UnsafeFlavor<T:Send> {
         &*self.inner_unsafe().get()
     }
 }
-impl<T:Send> UnsafeFlavor<T> for Sender<T> {
+impl<T> UnsafeFlavor<T> for Sender<T> {
     fn inner_unsafe<'a>(&'a self) -> &'a UnsafeCell<Flavor<T>> {
         &self.inner
     }
 }
-impl<T:Send> UnsafeFlavor<T> for Receiver<T> {
+impl<T> UnsafeFlavor<T> for Receiver<T> {
     fn inner_unsafe<'a>(&'a self) -> &'a UnsafeCell<Flavor<T>> {
         &self.inner
     }

@@ -39,7 +39,7 @@ const MAX_STEALS: isize = 5;
 #[cfg(not(test))]
 const MAX_STEALS: isize = 1 << 20;
 
-pub struct Packet<T:Send> {
+pub struct Packet<T> {
     queue: spsc::Queue<Message<T>>, // internal queue for all message
 
     cnt: AtomicIsize, // How many items are on this channel
@@ -49,7 +49,7 @@ pub struct Packet<T:Send> {
     port_dropped: AtomicBool, // flag if the channel has been destroyed.
 }
 
-pub enum Failure<T:Send> {
+pub enum Failure<T> {
     Empty,
     Disconnected,
     Upgraded(Receiver<T>),
@@ -61,7 +61,7 @@ pub enum UpgradeResult {
     UpWoke(SignalToken),
 }
 
-pub enum SelectionResult<T:Send> {
+pub enum SelectionResult<T> {
     SelSuccess,
     SelCanceled,
     SelUpgraded(SignalToken, Receiver<T>),
@@ -69,7 +69,7 @@ pub enum SelectionResult<T:Send> {
 
 // Any message could contain an "upgrade request" to a new shared port, so the
 // internal queue it's a queue of T, but rather Message<T>
-enum Message<T:Send> {
+enum Message<T> {
     Data(T),
     GoUp(Receiver<T>),
 }

@@ -2571,7 +2571,7 @@ pub mod consts {
             pub const ERROR_IO_PENDING: c_int = 997;
             pub const ERROR_FILE_INVALID : c_int = 1006;
             pub const ERROR_NOT_FOUND: c_int = 1168;
-            pub const INVALID_HANDLE_VALUE: HANDLE = -1 as HANDLE;
+            pub const INVALID_HANDLE_VALUE: HANDLE = !0 as HANDLE;
 
             pub const DELETE : DWORD = 0x00010000;
             pub const READ_CONTROL : DWORD = 0x00020000;
@@ -2609,12 +2609,12 @@ pub mod consts {
             pub const WAIT_ABANDONED : DWORD = 0x00000080;
             pub const WAIT_OBJECT_0 : DWORD = 0x00000000;
             pub const WAIT_TIMEOUT : DWORD = 0x00000102;
-            pub const WAIT_FAILED : DWORD = -1;
+            pub const WAIT_FAILED : DWORD = !0;
 
             pub const DUPLICATE_CLOSE_SOURCE : DWORD = 0x00000001;
             pub const DUPLICATE_SAME_ACCESS : DWORD = 0x00000002;
 
-            pub const INFINITE : DWORD = -1;
+            pub const INFINITE : DWORD = !0;
             pub const STILL_ACTIVE : DWORD = 259;
 
             pub const MEM_COMMIT : DWORD = 0x00001000;

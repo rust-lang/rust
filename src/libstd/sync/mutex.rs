@@ -112,7 +112,7 @@ use fmt;
 /// *guard += 1;
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Mutex<T: Send> {
+pub struct Mutex<T> {
     // Note that this static mutex is in a *box*, not inlined into the struct
     // itself. Once a native mutex has been used once, its address can never
     // change (it can't be moved). This mutex type can be safely moved at any
