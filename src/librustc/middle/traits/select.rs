@@ -836,14 +836,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ambiguous: false
         };
 
-        // Check for the `PhantomFn` trait. This is really just a
-        // special annotation that is *always* considered to match, no
-        // matter what the type parameters are etc.
-        if self.tcx().lang_items.phantom_fn() == Some(obligation.predicate.def_id()) {
-            candidates.vec.push(PhantomFnCandidate);
-            return Ok(candidates);
-        }
-
         // Other bounds. Consider both in-scope bounds from fn decl
         // and applicable impls. There is a certain set of precedence rules here.
 

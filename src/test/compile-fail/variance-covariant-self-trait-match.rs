@@ -10,6 +10,9 @@
 
 #![allow(dead_code)]
 
+// Test that even when `Self` is only used in covariant position, it
+// is treated as invariant.
+
 trait Get {
     fn get() -> Self;
 }

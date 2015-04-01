@@ -321,7 +321,6 @@ lets_do_this! {
     ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
     OwnedBoxLangItem,                "owned_box",               owned_box;
 
-    PhantomFnItem,                   "phantom_fn",              phantom_fn;
     PhantomDataItem,                 "phantom_data",            phantom_data;
 
     // Deprecated:
