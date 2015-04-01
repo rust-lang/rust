@@ -351,7 +351,14 @@ pub struct StrSearcher<'a, 'b> {
     needle: &'b str,
     start: usize,
     end: usize,
-    done: bool,
+    state: State,
+}
+
+#[derive(Clone, PartialEq)]
+enum State { Done, NotDone, Reject(usize, usize) }
+impl State {
+    #[inline] fn done(&self) -> bool { *self == State::Done }
+    #[inline] fn take(&mut self) -> State { ::mem::replace(self, State::NotDone) }
 }
 
 /// Non-allocating substring search.
@@ -368,7 +375,7 @@ impl<'a, 'b> Pattern<'a> for &'b str {
             needle: self,
             start: 0,
             end: haystack.len(),
-            done: false,
+            state: State::NotDone,
         }
     }
 }
@@ -385,8 +392,9 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b>  {
         |m: &mut StrSearcher| {
             // Forward step for empty needle
             let current_start = m.start;
-            if !m.done {
+            if !m.state.done() {
                 m.start = m.haystack.char_range_at(current_start).next;
+                m.state = State::Reject(current_start, m.start);
             }
             SearchStep::Match(current_start, current_start)
         },
@@ -415,8 +423,9 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b>  {
         |m: &mut StrSearcher| {
             // Backward step for empty needle
             let current_end = m.end;
-            if !m.done {
+            if !m.state.done() {
                 m.end = m.haystack.char_range_at_reverse(current_end).next;
+                m.state = State::Reject(m.end, current_end);
             }
             SearchStep::Match(current_end, current_end)
         },
@@ -446,23 +455,27 @@ fn str_search_step<F, G>(mut m: &mut StrSearcher,
     where F: FnOnce(&mut StrSearcher) -> SearchStep,
           G: FnOnce(&mut StrSearcher) -> SearchStep
 {
-    if m.done {
+    if m.state.done() {
         SearchStep::Done
     } else if m.needle.len() == 0 && m.start <= m.end {
         // Case for needle == ""
-        if m.start == m.end {
-            m.done = true;
+        if let State::Reject(a, b) = m.state.take() {
+            SearchStep::Reject(a, b)
+        } else {
+            if m.start == m.end {
+                m.state = State::Done;
+            }
+            empty_needle_step(&mut m)
         }
-        empty_needle_step(&mut m)
     } else if m.start + m.needle.len() <= m.end {
         // Case for needle != ""
         nonempty_needle_step(&mut m)
     } else if m.start < m.end {
         // Remaining slice shorter than needle, reject it
-        m.done = true;
+        m.state = State::Done;
         SearchStep::Reject(m.start, m.end)
     } else {
-        m.done = true;
+        m.state = State::Done;
         SearchStep::Done
     }
 }
