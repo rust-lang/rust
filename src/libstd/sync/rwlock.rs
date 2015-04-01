@@ -60,7 +60,7 @@ use fmt;
 /// } // write lock is dropped here
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct RwLock<T> {
+pub struct RwLock<T: Send + Sync> {
     inner: Box<StaticRwLock>,
     data: UnsafeCell<T>,
 }
@@ -251,7 +251,7 @@ impl<T: Send + Sync> RwLock<T> {
 
 #[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for RwLock<T> {
+impl<T: Send + Sync> Drop for RwLock<T> {
     fn drop(&mut self) {
         unsafe { self.inner.lock.destroy() }
     }

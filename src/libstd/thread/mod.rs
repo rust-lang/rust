@@ -292,7 +292,7 @@ impl Builder {
         let my_thread = Thread::new(name);
         let their_thread = my_thread.clone();
 
-        let my_packet = Packet(Arc::new(UnsafeCell::new(None)));
+        let my_packet = Packet(Arc::new(PacketInner { data: UnsafeCell::new(None) }));
         let their_packet = Packet(my_packet.0.clone());
 
         // Spawning a new OS thread guarantees that __morestack will never get
@@ -331,7 +331,7 @@ impl Builder {
                 }
             };
             unsafe {
-                *their_packet.0.get() = Some(match (output, try_result) {
+                *their_packet.0.data.get() = Some(match (output, try_result) {
                     (Some(data), Ok(_)) => Ok(data),
                     (None, Err(cause)) => Err(cause),
                     _ => unreachable!()
@@ -585,26 +585,30 @@ impl thread_info::NewThread for Thread {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type Result<T> = ::result::Result<T, Box<Any + Send + 'static>>;
 
-struct Packet<T>(Arc<UnsafeCell<Option<Result<T>>>>);
+struct Packet<T: Send>(Arc<PacketInner<T>>);
+// see also SyncUnsafeCell in sync/mspc.
+struct PacketInner<T: Send> {
+    data: UnsafeCell<Option<Result<T>>>
+}
 
-unsafe impl<T:Send> Send for Packet<T> {}
-unsafe impl<T> Sync for Packet<T> {}
+unsafe impl<T:Send> Send for PacketInner<T> {}
+unsafe impl<T> Sync for PacketInner<T> {}
 
 /// Inner representation for JoinHandle and JoinGuard
-struct JoinInner<T> {
+struct JoinInner<T: Send> {
     native: imp::rust_thread,
     thread: Thread,
     packet: Packet<T>,
     joined: bool,
 }
 
-impl<T> JoinInner<T> {
+impl<T: Send> JoinInner<T> {
     fn join(&mut self) -> Result<T> {
         assert!(!self.joined);
         unsafe { imp::join(self.native) };
         self.joined = true;
         unsafe {
-            (*self.packet.0.get()).take().unwrap()
+            (*self.packet.0.data.get()).take().unwrap()
         }
     }
 }

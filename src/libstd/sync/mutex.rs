@@ -170,6 +170,8 @@ pub struct MutexGuard<'a, T: 'a> {
     __poison: poison::Guard,
 }
 
+// It is undefined behaviour to unlock a mutex on a thread other than
+// the one that locked it.
 impl<'a, T> !marker::Send for MutexGuard<'a, T> {}
 
 /// Static initialization of a mutex. This constant can be used to initialize
