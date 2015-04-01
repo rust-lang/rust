@@ -514,7 +514,7 @@ macro_rules! neg_impl_unsigned {
         }, $($t)*} }
 }
 
-neg_impl_unsigned! { usize u8 u16 u32 u64 }
+// neg_impl_unsigned! { usize u8 u16 u32 u64 }
 neg_impl_numeric! { isize i8 i16 i32 i64 f32 f64 }
 
 /// The `Not` trait is used to specify the functionality of unary `!`.
