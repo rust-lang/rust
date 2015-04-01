@@ -958,7 +958,7 @@ pub fn run_test(opts: &TestOpts,
         }
         DynMetricFn(f) => {
             let mut mm = MetricMap::new();
-            f.call_box((&mut mm,)); // TODO unfortunate
+            f.call_box((&mut mm,));
             monitor_ch.send((desc, TrMetrics(mm), Vec::new())).unwrap();
             return;
         }
