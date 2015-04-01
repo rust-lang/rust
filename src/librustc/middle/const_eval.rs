@@ -396,7 +396,7 @@ pub fn const_int_checked_neg<'a>(
 pub fn const_uint_checked_neg<'a>(
     a: u64, _e: &'a Expr, _opt_ety: Option<UintTy>) -> EvalResult {
     // This always succeeds, and by definition, returns `(!a)+1`.
-    Ok(const_uint(-a))
+    Ok(const_uint((!a).wrapping_add(1)))
 }
 
 macro_rules! overflow_checking_body {
