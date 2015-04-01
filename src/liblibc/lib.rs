@@ -812,7 +812,7 @@ pub mod types {
                     pub tv_nsec: c_long,
                 }
 
-                #[derive(Copy, Clone)] pub enum timezone {}
+                pub enum timezone {}
 
                 pub type sighandler_t = size_t;
 
@@ -1074,7 +1074,7 @@ pub mod types {
                     pub tv_nsec: c_long,
                 }
 
-                #[derive(Copy, Clone)] pub enum timezone {}
+                pub enum timezone {}
 
                 pub type sighandler_t = size_t;
 
@@ -1354,7 +1354,7 @@ pub mod types {
                     pub tv_nsec: c_long,
                 }
 
-                #[derive(Copy, Clone)] pub enum timezone {}
+                pub enum timezone {}
 
                 pub type sighandler_t = size_t;
 
@@ -1616,7 +1616,7 @@ pub mod types {
                     pub tv_nsec: c_long,
                 }
 
-                #[derive(Copy, Clone)] pub enum timezone {}
+                pub enum timezone {}
             }
 
             pub mod bsd44 {
@@ -2020,7 +2020,7 @@ pub mod types {
                     pub tv_nsec: c_long,
                 }
 
-                #[derive(Copy, Clone)] pub enum timezone {}
+                pub enum timezone {}
 
                 pub type sighandler_t = size_t;
 
