@@ -25,7 +25,7 @@
 use self::Status::*;
 use self::AttributeType::*;
 
-use abi::RustIntrinsic;
+use abi::Abi;
 use ast::NodeId;
 use ast;
 use attr;
@@ -517,7 +517,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                        across platforms, it is recommended to \
                                        use `#[link(name = \"foo\")]` instead")
                 }
-                if foreign_module.abi == RustIntrinsic {
+                if foreign_module.abi == Abi::RustIntrinsic {
                     self.gate_feature("intrinsics",
                                       i.span,
                                       "intrinsics are subject to change")
@@ -633,10 +633,16 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 span: Span,
                 _node_id: NodeId) {
         match fn_kind {
-            visit::FkItemFn(_, _, _, abi) if abi == RustIntrinsic => {
+            visit::FkItemFn(_, _, _, abi) if abi == Abi::RustIntrinsic => {
                 self.gate_feature("intrinsics",
                                   span,
                                   "intrinsics are subject to change")
+            }
+            visit::FkItemFn(_, _, _, abi) |
+            visit::FkMethod(_, &ast::MethodSig { abi, .. }) if abi == Abi::RustCall => {
+                self.gate_feature("unboxed_closures",
+                                  span,
+                                  "rust-call ABI is subject to change")
             }
             _ => {}
         }

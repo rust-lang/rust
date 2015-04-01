@@ -17,23 +17,23 @@
 
 struct Foo;
 impl Fn<()> for Foo {
-    //~^ ERROR angle-bracket notation is not stable when used with the `Fn` family of traits
     extern "rust-call" fn call(self, args: ()) -> () {}
+    //~^ ERROR rust-call ABI is subject to change
 }
 struct Foo1;
 impl FnOnce() for Foo1 {
-    //~^ ERROR associated type bindings are not allowed here
     extern "rust-call" fn call_once(self, args: ()) -> () {}
+    //~^ ERROR rust-call ABI is subject to change
 }
 struct Bar;
 impl FnMut<()> for Bar {
-    //~^ ERROR angle-bracket notation is not stable when used with the `Fn` family of traits
     extern "rust-call" fn call_mut(&self, args: ()) -> () {}
+    //~^ ERROR rust-call ABI is subject to change
 }
 struct Baz;
 impl FnOnce<()> for Baz {
-    //~^ ERROR angle-bracket notation is not stable when used with the `Fn` family of traits
     extern "rust-call" fn call_once(&self, args: ()) -> () {}
+    //~^ ERROR rust-call ABI is subject to change
 }
 
 fn main() {}
