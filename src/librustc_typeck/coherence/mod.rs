@@ -30,7 +30,6 @@ use middle::ty::{ty_uint, ty_closure, ty_uniq, ty_bare_fn};
 use middle::ty::ty_projection;
 use middle::ty;
 use CrateCtxt;
-use middle::infer::combine::Combine;
 use middle::infer::InferCtxt;
 use middle::infer::new_infer_ctxt;
 use std::collections::HashSet;

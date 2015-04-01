@@ -282,7 +282,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     let trait_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(trait_m.fty.clone()));
     let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
-    let err = infcx.try(|snapshot| {
+    let err = infcx.commit_if_ok(|snapshot| {
         let origin = infer::MethodCompatCheck(impl_m_span);
 
         let (impl_sig, _) =

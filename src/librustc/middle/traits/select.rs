@@ -39,11 +39,13 @@ use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
+use middle::ty_match;
+use middle::ty_relate::TypeRelation;
 use std::cell::RefCell;
-use std::collections::hash_map::HashMap;
 use std::rc::Rc;
 use syntax::{abi, ast};
 use util::common::ErrorReported;
+use util::nodemap::FnvHashMap;
 use util::ppaux::Repr;
 
 pub struct SelectionContext<'cx, 'tcx:'cx> {
@@ -87,8 +89,8 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
 
 #[derive(Clone)]
 pub struct SelectionCache<'tcx> {
-    hashmap: RefCell<HashMap<Rc<ty::TraitRef<'tcx>>,
-                             SelectionResult<'tcx, SelectionCandidate<'tcx>>>>,
+    hashmap: RefCell<FnvHashMap<Rc<ty::TraitRef<'tcx>>,
+                                SelectionResult<'tcx, SelectionCandidate<'tcx>>>>,
 }
 
 pub enum MethodMatchResult {
@@ -474,7 +476,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             unbound_input_types &&
              (self.intercrate ||
               stack.iter().skip(1).any(
-                  |prev| stack.fresh_trait_ref.def_id() == prev.fresh_trait_ref.def_id()))
+                  |prev| self.match_fresh_trait_refs(&stack.fresh_trait_ref,
+                                                     &prev.fresh_trait_ref)))
         {
             debug!("evaluate_stack({}) --> unbound argument, recursion -->  ambiguous",
                    stack.fresh_trait_ref.repr(self.tcx()));
@@ -1271,7 +1274,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return;
         }
 
-        self.infcx.try(|snapshot| {
+        self.infcx.commit_if_ok(|snapshot| {
             let bound_self_ty =
                 self.infcx.resolve_type_vars_if_possible(&obligation.self_ty());
             let (self_ty, _) =
@@ -1808,7 +1811,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // For each type, produce a vector of resulting obligations
         let obligations: Result<Vec<Vec<_>>, _> = bound_types.iter().map(|nested_ty| {
-            self.infcx.try(|snapshot| {
+            self.infcx.commit_if_ok(|snapshot| {
                 let (skol_ty, skol_map) =
                     self.infcx().skolemize_late_bound_regions(nested_ty, snapshot);
                 let Normalized { value: normalized_ty, mut obligations } =
@@ -1918,7 +1921,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     obligation: &TraitObligation<'tcx>)
     {
         let _: Result<(),()> =
-            self.infcx.try(|snapshot| {
+            self.infcx.commit_if_ok(|snapshot| {
                 let result =
                     self.match_projection_obligation_against_bounds_from_trait(obligation,
                                                                                snapshot);
@@ -2073,7 +2076,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                                 trait_def_id,
                                                                 nested);
 
-        let trait_obligations: Result<VecPerParamSpace<_>,()> = self.infcx.try(|snapshot| {
+        let trait_obligations: Result<VecPerParamSpace<_>,()> = self.infcx.commit_if_ok(|snapshot| {
             let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
             let (trait_ref, skol_map) =
                 self.infcx().skolemize_late_bound_regions(&poly_trait_ref, snapshot);
@@ -2107,7 +2110,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // First, create the substitutions by matching the impl again,
         // this time not in a probe.
-        self.infcx.try(|snapshot| {
+        self.infcx.commit_if_ok(|snapshot| {
             let (skol_obligation_trait_ref, skol_map) =
                 self.infcx().skolemize_late_bound_regions(&obligation.predicate, snapshot);
             let substs =
@@ -2505,6 +2508,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // Miscellany
 
+    fn match_fresh_trait_refs(&self,
+                              previous: &ty::PolyTraitRef<'tcx>,
+                              current: &ty::PolyTraitRef<'tcx>)
+                              -> bool
+    {
+        let mut matcher = ty_match::Match::new(self.tcx());
+        matcher.relate(previous, current).is_ok()
+    }
+
     fn push_stack<'o,'s:'o>(&mut self,
                             previous_stack: TraitObligationStackList<'s, 'tcx>,
                             obligation: &'o TraitObligation<'tcx>)
@@ -2664,7 +2676,7 @@ impl<'tcx> Repr<'tcx> for SelectionCandidate<'tcx> {
 impl<'tcx> SelectionCache<'tcx> {
     pub fn new() -> SelectionCache<'tcx> {
         SelectionCache {
-            hashmap: RefCell::new(HashMap::new())
+            hashmap: RefCell::new(FnvHashMap())
         }
     }
 }

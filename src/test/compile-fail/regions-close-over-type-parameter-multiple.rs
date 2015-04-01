@@ -27,7 +27,7 @@ fn make_object_good2<'a,'b,A:SomeTrait+'a+'b>(v: A) -> Box<SomeTrait+'b> {
 
 fn make_object_bad<'a,'b,'c,A:SomeTrait+'a+'b>(v: A) -> Box<SomeTrait+'c> {
     // A outlives 'a AND 'b...but not 'c.
-    box v as Box<SomeTrait+'a> //~ ERROR mismatched types
+    box v as Box<SomeTrait+'a> //~ ERROR lifetime of the source pointer does not outlive
 }
 
 fn main() {
