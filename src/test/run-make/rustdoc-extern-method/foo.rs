@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![crate_type="lib"]
+#![feature(unboxed_closures)]
 
 pub trait Foo {
     extern "rust-call" fn foo(&self, _: ()) -> i32;
