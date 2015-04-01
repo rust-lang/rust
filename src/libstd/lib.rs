@@ -183,7 +183,7 @@ pub use core::raw;
 pub use core::simd;
 pub use core::result;
 pub use core::option;
-pub use core::error;
+pub mod error;
 
 #[cfg(not(test))] pub use alloc::boxed;
 pub use alloc::rc;
