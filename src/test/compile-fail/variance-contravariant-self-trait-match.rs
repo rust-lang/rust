@@ -10,6 +10,9 @@
 
 #![allow(dead_code)]
 
+// Test that even when `Self` is only used in contravariant position, it
+// is treated as invariant.
+
 trait Get {
     fn get(&self);
 }

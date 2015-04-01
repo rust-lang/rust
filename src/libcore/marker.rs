@@ -276,12 +276,15 @@ macro_rules! impls{
 #[unstable(feature = "core", reason = "deprecated")]
 #[deprecated(since = "1.0.0", reason = "No longer needed")]
 #[allow(deprecated)]
+#[cfg(stage0)]
 pub trait MarkerTrait : PhantomFn<Self,Self> { }
-//                                    ~~~~~ <-- FIXME(#22806)?
-//
-// Marker trait has been made invariant so as to avoid inf recursion,
-// but we should ideally solve the underlying problem. That's a bit
-// complicated.
+
+/// `MarkerTrait` is deprecated and no longer needed.
+#[unstable(feature = "core", reason = "deprecated")]
+#[deprecated(since = "1.0.0", reason = "No longer needed")]
+#[allow(deprecated)]
+#[cfg(not(stage0))]
+pub trait MarkerTrait { }
 
 #[allow(deprecated)]
 impl<T:?Sized> MarkerTrait for T { }
@@ -290,7 +293,20 @@ impl<T:?Sized> MarkerTrait for T { }
 #[lang="phantom_fn"]
 #[unstable(feature = "core", reason = "deprecated")]
 #[deprecated(since = "1.0.0", reason = "No longer needed")]
-pub trait PhantomFn<A:?Sized,R:?Sized=()> { }
+#[cfg(stage0)]
+pub trait PhantomFn<A:?Sized,R:?Sized=()> {
+}
+
+/// `PhantomFn` is a deprecated marker trait that is no longer needed.
+#[unstable(feature = "core", reason = "deprecated")]
+#[deprecated(since = "1.0.0", reason = "No longer needed")]
+#[cfg(not(stage0))]
+pub trait PhantomFn<A:?Sized,R:?Sized=()> {
+}
+
+#[allow(deprecated)]
+#[cfg(not(stage0))]
+impl<A:?Sized,R:?Sized,T:?Sized> PhantomFn<A,R> for T { }
 
 /// `PhantomData<T>` allows you to describe that a type acts as if it stores a value of type `T`,
 /// even though it does not. This allows you to inform the compiler about certain safety properties

@@ -10,6 +10,9 @@
 
 #![allow(dead_code)]
 
+// Test that even when `T` is only used in covariant position, it
+// is treated as invariant.
+
 trait Get<T> {
     fn get(&self) -> T;
 }

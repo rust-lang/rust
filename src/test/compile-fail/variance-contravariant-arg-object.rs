@@ -10,8 +10,8 @@
 
 #![allow(dead_code)]
 
-// This test was previously testing variance on traits.
-// But now that it is removed, both cases error.
+// Test that even when `T` is only used in contravariant position, it
+// is treated as invariant.
 
 trait Get<T> : 'static {
     fn get(&self, t: T);
