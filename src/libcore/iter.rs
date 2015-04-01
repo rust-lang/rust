@@ -45,10 +45,8 @@
 //! let mut it = values.into_iter();
 //! loop {
 //!     match it.next() {
-//!         Some(x) => {
-//!             println!("{}", x);
-//!         }
-//!         None => { break }
+//!         Some(x) => println!("{}", x),
+//!         None => break,
 //!     }
 //! }
 //! ```
