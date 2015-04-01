@@ -603,7 +603,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                       e.span,
                       "unary negation of unsigned integers may be removed in the future");
               }
-              const_uint(n) => try!(const_uint_checked_neg(n, e, expr_uint_type)),
+              try!(const_uint_checked_neg(i, e, expr_uint_type))
           }
           const_str(_) => signal!(e, NegateOnString),
           const_bool(_) => signal!(e, NegateOnBoolean),
