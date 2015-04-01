@@ -1975,6 +1975,7 @@ extern {
     pub fn LLVMIsAArgument(value_ref: ValueRef) -> ValueRef;
 
     pub fn LLVMIsAAllocaInst(value_ref: ValueRef) -> ValueRef;
+    pub fn LLVMIsAConstantInt(value_ref: ValueRef) -> ValueRef;
 
     pub fn LLVMInitializeX86TargetInfo();
     pub fn LLVMInitializeX86Target();

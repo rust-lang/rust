@@ -963,6 +963,32 @@ pub fn const_to_uint(v: ValueRef) -> u64 {
     }
 }
 
+fn is_const_integral(v: ValueRef) -> bool {
+    unsafe {
+        !llvm::LLVMIsAConstantInt(v).is_null()
+    }
+}
+
+pub fn const_to_opt_int(v: ValueRef) -> Option<i64> {
+    unsafe {
+        if is_const_integral(v) {
+            Some(llvm::LLVMConstIntGetSExtValue(v))
+        } else {
+            None
+        }
+    }
+}
+
+pub fn const_to_opt_uint(v: ValueRef) -> Option<u64> {
+    unsafe {
+        if is_const_integral(v) {
+            Some(llvm::LLVMConstIntGetZExtValue(v))
+        } else {
+            None
+        }
+    }
+}
+
 pub fn is_undef(val: ValueRef) -> bool {
     unsafe {
         llvm::LLVMIsUndef(val) != False
