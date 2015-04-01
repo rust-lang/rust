@@ -18,6 +18,8 @@
 //!
 //! Their definition should always match the ABI defined in `rustc::back::abi`.
 
+use clone::Clone;
+use marker::Copy;
 use mem;
 
 /// The representation of a slice like `&[T]`.
