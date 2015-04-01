@@ -465,9 +465,16 @@ pub fn catch_panic<F, R>(f: F) -> Result<R>
 /// specifics or platform-dependent functionality. Note that on unix platforms
 /// this function will not return early due to a signal being received or a
 /// spurious wakeup.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn sleep_ms(ms: u32) {
+    imp::sleep(Duration::milliseconds(ms as i64))
+}
+
+/// Deprecated: use `sleep_ms` instead.
 #[unstable(feature = "thread_sleep",
            reason = "recently added, needs an RFC, and `Duration` itself is \
                      unstable")]
+#[deprecated(since = "1.0.0", reason = "use sleep_ms instead")]
 pub fn sleep(dur: Duration) {
     imp::sleep(dur)
 }
@@ -501,15 +508,22 @@ pub fn park() {
 /// amount of time waited to be precisely *duration* long.
 ///
 /// See the module doc for more detail.
-#[unstable(feature = "std_misc", reason = "recently introduced, depends on Duration")]
-pub fn park_timeout(duration: Duration) {
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn park_timeout_ms(ms: u32) {
     let thread = current();
     let mut guard = thread.inner.lock.lock().unwrap();
     if !*guard {
-        let (g, _) = thread.inner.cvar.wait_timeout(guard, duration).unwrap();
+        let (g, _) = thread.inner.cvar.wait_timeout_ms(guard, ms).unwrap();
         guard = g;
     }
     *guard = false;
+}
+
+/// Deprecated: use `park_timeout_ms`
+#[unstable(feature = "std_misc", reason = "recently introduced, depends on Duration")]
+#[deprecated(since = "1.0.0", reason = "use park_timeout_ms instead")]
+pub fn park_timeout(duration: Duration) {
+    park_timeout_ms(duration.num_milliseconds() as u32)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -716,6 +730,7 @@ mod test {
     use thread;
     use thunk::Thunk;
     use time::Duration;
+    use u32;
 
     // !!! These tests are dangerous. If something is buggy, they will hang, !!!
     // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
@@ -936,14 +951,14 @@ mod test {
     fn test_park_timeout_unpark_before() {
         for _ in 0..10 {
             thread::current().unpark();
-            thread::park_timeout(Duration::seconds(10_000_000));
+            thread::park_timeout_ms(u32::MAX);
         }
     }
 
     #[test]
     fn test_park_timeout_unpark_not_called() {
         for _ in 0..10 {
-            thread::park_timeout(Duration::milliseconds(10));
+            thread::park_timeout_ms(10);
         }
     }
 
@@ -959,14 +974,13 @@ mod test {
                 th.unpark();
             });
 
-            thread::park_timeout(Duration::seconds(10_000_000));
+            thread::park_timeout_ms(u32::MAX);
         }
     }
 
     #[test]
-    fn sleep_smoke() {
-        thread::sleep(Duration::milliseconds(2));
-        thread::sleep(Duration::milliseconds(-2));
+    fn sleep_ms_smoke() {
+        thread::sleep_ms(2);
     }
 
     // NOTE: the corresponding test for stderr is in run-pass/task-stderr, due
