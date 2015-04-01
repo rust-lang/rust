@@ -459,7 +459,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
         CrateContext {
             shared: shared,
             local: self,
-            index: -1 as usize,
+            index: !0 as usize,
         }
     }
 }
