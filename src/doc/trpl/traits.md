@@ -277,6 +277,29 @@ One last thing about traits: generic functions with a trait bound use
 dispatched. What's that mean? Check out the chapter on [static and dynamic
 dispatch](static-and-dynamic-dispatch.html) for more.
 
+## Multiple trait bounds
+
+You’ve seen that you can bound a generic type parameter with a trait:
+
+```rust
+fn foo<T: Clone>(x: T) {
+    x.clone();
+}
+```
+
+If you need more than one bound, you can use `+`:
+
+```rust
+use std::fmt::Debug;
+
+fn foo<T: Clone + Debug>(x: T) {
+    x.clone();
+    println!("{:?}", x);
+}
+```
+
+`T` now needs to be both `Clone` as well as `Debug`.
+
 ## Where clause
 
 Writing functions with only a few generic types and a small number of trait
