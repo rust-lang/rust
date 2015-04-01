@@ -64,7 +64,7 @@ pub fn cleanup() {
             if queue as usize != 0 {
                 let queue: Box<Queue> = Box::from_raw(queue);
                 for to_run in *queue {
-                    to_run.invoke(());
+                    to_run();
                 }
             }
         }

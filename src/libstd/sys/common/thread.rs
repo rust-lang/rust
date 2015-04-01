@@ -25,6 +25,7 @@ pub fn start_thread(main: *mut libc::c_void) {
     unsafe {
         stack::record_os_managed_stack_bounds(0, usize::MAX);
         let _handler = stack_overflow::Handler::new();
-        Box::from_raw(main as *mut Thunk).invoke(());
+        let main: Box<Thunk> = Box::from_raw(main as *mut Thunk);
+        main();
     }
 }
