@@ -489,7 +489,7 @@ struct CharSplits<'a, P: Pattern<'a>> {
 /// splitting at most `count` times.
 struct CharSplitsN<'a, P: Pattern<'a>> {
     iter: CharSplits<'a, P>,
-    /// The number of splits remaining
+    /// The number of items remaining
     count: usize,
 }
 
@@ -596,11 +596,10 @@ impl<'a, P: Pattern<'a>> Iterator for CharSplitsN<'a, P> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
-        if self.count != 0 {
-            self.count -= 1;
-            self.iter.next()
-        } else {
-            self.iter.get_end()
+        match self.count {
+            0 => None,
+            1 => { self.count = 0; self.iter.get_end() }
+            _ => { self.count -= 1; self.iter.next() }
         }
     }
 }
@@ -650,11 +649,10 @@ impl<'a, P: Pattern<'a>> Iterator for RCharSplitsN<'a, P>
 
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
-        if self.count != 0 {
-            self.count -= 1;
-            self.iter.next()
-        } else {
-            self.iter.get_remainder()
+        match self.count {
+            0 => None,
+            1 => { self.count -= 1; self.iter.get_remainder() }
+            _ => { self.count -= 1; self.iter.next() }
         }
     }
 }

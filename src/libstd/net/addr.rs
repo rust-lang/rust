@@ -441,7 +441,7 @@ impl ToSocketAddrs for str {
         }
 
         // split the string by ':' and convert the second part to u16
-        let mut parts_iter = self.rsplitn(1, ':');
+        let mut parts_iter = self.rsplitn(2, ':');
         let port_str = try_opt!(parts_iter.next(), "invalid socket address");
         let host = try_opt!(parts_iter.next(), "invalid socket address");
         let port: u16 = try_opt!(port_str.parse().ok(), "invalid port value");
