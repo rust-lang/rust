@@ -19,7 +19,6 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::str;
 use std::sync::{Arc, Mutex};
-use std::thunk::Thunk;
 
 use testing;
 use rustc_lint;
@@ -366,7 +365,7 @@ impl Collector {
                 ignore: should_ignore,
                 should_panic: testing::ShouldPanic::No, // compiler failures are test failures
             },
-            testfn: testing::DynTestFn(Thunk::new(move|| {
+            testfn: testing::DynTestFn(Box::new(move|| {
                 runtest(&test,
                         &cratename,
                         libs,

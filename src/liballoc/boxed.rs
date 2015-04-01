@@ -300,3 +300,74 @@ impl<I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for Box<I> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {}
 
+
+/// `FnBox` is a version of the `FnOnce` intended for use with boxed
+/// closure objects. The idea is that where one would normally store a
+/// `Box<FnOnce()>` in a data structure, you should use
+/// `Box<FnBox()>`. The two traits behave essentially the same, except
+/// that a `FnBox` closure can only be called if it is boxed. (Note
+/// that `FnBox` may be deprecated in the future if `Box<FnOnce()>`
+/// closures become directly usable.)
+///
+/// ### Example
+///
+/// Here is a snippet of code which creates a hashmap full of boxed
+/// once closures and then removes them one by one, calling each
+/// closure as it is removed. Note that the type of the closures
+/// stored in the map is `Box<FnBox() -> i32>` and not `Box<FnOnce()
+/// -> i32>`.
+///
+/// ```
+/// #![feature(core)]
+///
+/// use std::boxed::FnBox;
+/// use std::collections::HashMap;
+///
+/// fn make_map() -> HashMap<i32, Box<FnBox() -> i32>> {
+///     let mut map: HashMap<i32, Box<FnBox() -> i32>> = HashMap::new();
+///     map.insert(1, Box::new(|| 22));
+///     map.insert(2, Box::new(|| 44));
+///     map
+/// }
+///
+/// fn main() {
+///     let mut map = make_map();
+///     for i in &[1, 2] {
+///         let f = map.remove(&i).unwrap();
+///         assert_eq!(f(), i * 22);
+///     }
+/// }
+/// ```
+#[rustc_paren_sugar]
+#[unstable(feature = "core", reason = "Newly introduced")]
+pub trait FnBox<A> {
+    type Output;
+
+    fn call_box(self: Box<Self>, args: A) -> Self::Output;
+}
+
+impl<A,F> FnBox<A> for F
+    where F: FnOnce<A>
+{
+    type Output = F::Output;
+
+    fn call_box(self: Box<F>, args: A) -> F::Output {
+        self.call_once(args)
+    }
+}
+
+impl<'a,A,R> FnOnce<A> for Box<FnBox<A,Output=R>+'a> {
+    type Output = R;
+
+    extern "rust-call" fn call_once(self, args: A) -> R {
+        self.call_box(args)
+    }
+}
+
+impl<'a,A,R> FnOnce<A> for Box<FnBox<A,Output=R>+Send+'a> {
+    type Output = R;
+
+    extern "rust-call" fn call_once(self, args: A) -> R {
+        self.call_box(args)
+    }
+}
