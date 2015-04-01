@@ -13,6 +13,12 @@
 //
 // This test is checking the count in an array expression.
 
+// FIXME (#23926): the error output is not consistent between a
+// self-hosted and a cross-compiled setup; therefore resorting to
+// error-pattern for now.
+
+// error-pattern: expected constant integer for repeat count, but attempted to add with overflow
+
 #![allow(unused_imports)]
 
 use std::fmt;
@@ -22,8 +28,6 @@ use std::{u8, u16, u32, u64, usize};
 const A_I8_I
     : [u32; (i8::MAX as usize) + 1]
     = [0; (i8::MAX + 1) as usize];
-//~^ ERROR mismatched types
-//~| ERROR expected constant integer for repeat count, but attempted to add with overflow
 
 fn main() {
     foo(&A_I8_I[..]);
