@@ -37,6 +37,7 @@ pub enum AnnNode<'a> {
     NodeName(&'a ast::Name),
     NodeBlock(&'a ast::Block),
     NodeItem(&'a ast::Item),
+    NodeSubItem(ast::NodeId),
     NodeExpr(&'a ast::Expr),
     NodePat(&'a ast::Pat),
 }
@@ -1264,6 +1265,7 @@ impl<'a> State<'a> {
 
     pub fn print_trait_item(&mut self, ti: &ast::TraitItem)
                             -> io::Result<()> {
+        try!(self.ann.pre(self, NodeSubItem(ti.id)));
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(ti.span.lo));
         try!(self.print_outer_attributes(&ti.attrs));
@@ -1275,19 +1277,21 @@ impl<'a> State<'a> {
                 try!(self.print_method_sig(ti.ident, sig, ast::Inherited));
                 if let Some(ref body) = *body {
                     try!(self.nbsp());
-                    self.print_block_with_attrs(body, &ti.attrs)
+                    try!(self.print_block_with_attrs(body, &ti.attrs));
                 } else {
-                    word(&mut self.s, ";")
+                    try!(word(&mut self.s, ";"));
                 }
             }
             ast::TypeTraitItem(ref bounds, ref default) => {
-                self.print_associated_type(ti.ident, Some(bounds),
-                                           default.as_ref().map(|ty| &**ty))
+                try!(self.print_associated_type(ti.ident, Some(bounds),
+                                                default.as_ref().map(|ty| &**ty)));
             }
         }
+        self.ann.post(self, NodeSubItem(ti.id))
     }
 
     pub fn print_impl_item(&mut self, ii: &ast::ImplItem) -> io::Result<()> {
+        try!(self.ann.pre(self, NodeSubItem(ii.id)));
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(ii.span.lo));
         try!(self.print_outer_attributes(&ii.attrs));
@@ -1296,10 +1300,10 @@ impl<'a> State<'a> {
                 try!(self.head(""));
                 try!(self.print_method_sig(ii.ident, sig, ii.vis));
                 try!(self.nbsp());
-                self.print_block_with_attrs(body, &ii.attrs)
+                try!(self.print_block_with_attrs(body, &ii.attrs));
             }
             ast::TypeImplItem(ref ty) => {
-                self.print_associated_type(ii.ident, None, Some(ty))
+                try!(self.print_associated_type(ii.ident, None, Some(ty)));
             }
             ast::MacImplItem(codemap::Spanned { node: ast::MacInvocTT(ref pth, ref tts, _),
                                                 ..}) => {
@@ -1311,9 +1315,10 @@ impl<'a> State<'a> {
                 try!(self.print_tts(&tts[..]));
                 try!(self.pclose());
                 try!(word(&mut self.s, ";"));
-                self.end()
+                try!(self.end())
             }
         }
+        self.ann.post(self, NodeSubItem(ii.id))
     }
 
     pub fn print_outer_attributes(&mut self,
