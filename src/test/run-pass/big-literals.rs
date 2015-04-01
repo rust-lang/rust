@@ -21,5 +21,5 @@ pub fn main() {
     assert_eq!(0xffffffffffffffff, (-1 as u64));
     assert_eq!(18446744073709551615, (-1 as u64));
 
-    assert_eq!((-2147483648).wrapping_sub(1), 2147483647);
+    assert_eq!((-2147483648i32).wrapping_sub(1), 2147483647);
 }

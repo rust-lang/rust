@@ -487,9 +487,9 @@ mod tests {
     #[test]
     fn test_make_command_line() {
         fn test_wrapper(prog: &str, args: &[&str]) -> String {
-            make_command_line(&CString::new(prog),
+            make_command_line(&CString::new(prog).unwrap(),
                               &args.iter()
-                                   .map(|a| CString::new(a))
+                                   .map(|a| CString::new(*a).unwrap())
                                    .collect::<Vec<CString>>())
         }
 
