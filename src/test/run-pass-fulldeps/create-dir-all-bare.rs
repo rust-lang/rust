@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-android
+
 #![feature(rustc_private)]
 
 extern crate rustc_back;

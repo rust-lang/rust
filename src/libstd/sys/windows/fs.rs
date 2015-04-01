@@ -135,6 +135,13 @@ impl FileDesc {
             _ => Err(super::last_error()),
         }
     }
+
+    #[allow(dead_code)]
+    pub fn unwrap(self) -> fd_t {
+        let fd = self.fd;
+        unsafe { mem::forget(self) };
+        fd
+    }
 }
 
 impl Drop for FileDesc {

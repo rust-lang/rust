@@ -445,10 +445,9 @@ mod tests {
         fn test_wrapper(prog: &str, args: &[&str]) -> String {
             String::from_utf16(
                 &make_command_line(OsStr::from_str(prog),
-                                   args.iter()
-                                       .map(|a| OsString::from_str(a))
-                                       .collect::<Vec<OsString>>()
-                                       .as_slice())).unwrap()
+                                   &args.iter()
+                                        .map(|a| OsString::from(a))
+                                        .collect::<Vec<OsString>>())).unwrap()
         }
 
         assert_eq!(

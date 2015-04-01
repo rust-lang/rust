@@ -74,7 +74,6 @@ use std::fmt;
 use std::hash::{Hash, SipHasher, Hasher};
 use std::mem;
 use std::num::ToPrimitive;
-use std::num::wrapping::WrappingOps;
 use std::ops;
 use std::rc::Rc;
 use std::vec::IntoIter;
