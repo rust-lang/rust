@@ -820,6 +820,18 @@ macro_rules! int_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
+        /// Returns the smallest value that can be represented by this integer type.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub fn min_value() -> $T {
+            (-1 as $T) << ($BITS - 1)
+        }
+
+        /// Returns the largest value that can be represented by this integer type.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub fn max_value() -> $T {
+            let min: $T = Int::min_value(); !min
+        }
+
         /// Convert a string slice in a given base to an integer.
         ///
         /// Leading and trailing whitespace represent an error.
@@ -1330,6 +1342,14 @@ macro_rules! uint_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
+        /// Returns the smallest value that can be represented by this integer type.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub fn min_value() -> $T { 0 }
+
+        /// Returns the largest value that can be represented by this integer type.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub fn max_value() -> $T { -1 }
+
         /// Convert a string slice in a given base to an integer.
         ///
         /// Leading and trailing whitespace represent an error.
