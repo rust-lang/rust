@@ -1720,6 +1720,31 @@ mod pattern {
         if rev {
             v.reverse();
         }
+
+        let mut first_index = 0;
+        let mut err = None;
+
+        for (i, e) in right.iter().enumerate() {
+            match *e {
+                Match(a, b) | Reject(a, b)
+                if a <= b && a == first_index => {
+                    first_index = b;
+                }
+                _ => {
+                    err = Some(i);
+                    break;
+                }
+            }
+        }
+
+        if let Some(err) = err {
+            panic!("Input skipped range at {}", err);
+        }
+
+        if first_index != haystack.len() {
+            panic!("Did not cover whole input");
+        }
+
         assert_eq!(v, right);
     }
 
@@ -1731,14 +1756,21 @@ mod pattern {
         Reject(6, 7),
     ]);
     make_test!(str_searcher_empty_needle_ascii_haystack, "", "abbcbbd", [
-        Match(0, 0),
-        Match(1, 1),
-        Match(2, 2),
-        Match(3, 3),
-        Match(4, 4),
-        Match(5, 5),
-        Match(6, 6),
-        Match(7, 7),
+        Match (0, 0),
+        Reject(0, 1),
+        Match (1, 1),
+        Reject(1, 2),
+        Match (2, 2),
+        Reject(2, 3),
+        Match (3, 3),
+        Reject(3, 4),
+        Match (4, 4),
+        Reject(4, 5),
+        Match (5, 5),
+        Reject(5, 6),
+        Match (6, 6),
+        Reject(6, 7),
+        Match (7, 7),
     ]);
     make_test!(str_searcher_mulibyte_haystack, " ", "├──", [
         Reject(0, 3),
@@ -1746,10 +1778,13 @@ mod pattern {
         Reject(6, 9),
     ]);
     make_test!(str_searcher_empty_needle_mulibyte_haystack, "", "├──", [
-        Match(0, 0),
-        Match(3, 3),
-        Match(6, 6),
-        Match(9, 9),
+        Match (0, 0),
+        Reject(0, 3),
+        Match (3, 3),
+        Reject(3, 6),
+        Match (6, 6),
+        Reject(6, 9),
+        Match (9, 9),
     ]);
     make_test!(str_searcher_empty_needle_empty_haystack, "", "", [
         Match(0, 0),
@@ -1776,6 +1811,96 @@ mod pattern {
         Reject(2, 3),
     ]);
 
+}
+
+macro_rules! generate_iterator_test {
+    {
+        $name:ident {
+            $(
+                ($($arg:expr),*) -> [$($t:tt)*];
+            )*
+        }
+        with $fwd:expr, $bwd:expr;
+    } => {
+        #[test]
+        fn $name() {
+            $(
+                {
+                    let res = vec![$($t)*];
+
+                    let fwd_vec: Vec<_> = ($fwd)($($arg),*).collect();
+                    assert_eq!(fwd_vec, res);
+
+                    let mut bwd_vec: Vec<_> = ($bwd)($($arg),*).collect();
+                    bwd_vec.reverse();
+                    assert_eq!(bwd_vec, res);
+                }
+            )*
+        }
+    };
+    {
+        $name:ident {
+            $(
+                ($($arg:expr),*) -> [$($t:tt)*];
+            )*
+        }
+        with $fwd:expr;
+    } => {
+        #[test]
+        fn $name() {
+            $(
+                {
+                    let res = vec![$($t)*];
+
+                    let fwd_vec: Vec<_> = ($fwd)($($arg),*).collect();
+                    assert_eq!(fwd_vec, res);
+                }
+            )*
+        }
+    }
+}
+
+generate_iterator_test! {
+    double_ended_split {
+        ("foo.bar.baz", '.') -> ["foo", "bar", "baz"];
+        ("foo::bar::baz", "::") -> ["foo", "bar", "baz"];
+    }
+    with str::split, str::rsplit;
+}
+
+generate_iterator_test! {
+    double_ended_split_terminator {
+        ("foo;bar;baz;", ';') -> ["foo", "bar", "baz"];
+    }
+    with str::split_terminator, str::rsplit_terminator;
+}
+
+generate_iterator_test! {
+    double_ended_matches {
+        ("a1b2c3", char::is_numeric) -> ["1", "2", "3"];
+    }
+    with str::matches, str::rmatches;
+}
+
+generate_iterator_test! {
+    double_ended_match_indices {
+        ("a1b2c3", char::is_numeric) -> [(1, 2), (3, 4), (5, 6)];
+    }
+    with str::match_indices, str::rmatch_indices;
+}
+
+generate_iterator_test! {
+    not_double_ended_splitn {
+        ("foo::bar::baz", 2, "::") -> ["foo", "bar::baz"];
+    }
+    with str::splitn;
+}
+
+generate_iterator_test! {
+    not_double_ended_rsplitn {
+        ("foo::bar::baz", 2, "::") -> ["baz", "foo::bar"];
+    }
+    with str::rsplitn;
 }
 
 mod bench {
