@@ -772,19 +772,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           ast::ExprRepeat(ref elem, ref count) => {
             let unit_ty = ty::sequence_element_type(cx.tcx(), ety);
             let llunitty = type_of::type_of(cx, unit_ty);
-            let n = match const_eval::eval_const_expr_partial(cx.tcx(), &**count, None) {
-                Ok(const_eval::const_int(i))  => i as usize,
-                Ok(const_eval::const_uint(i)) => i as usize,
-                Ok(_) => {
-                    cx.sess().span_bug(count.span, "count must be integral const expression.")
-                }
-                Err(err) => {
-                    cx.sess().span_err(count.span, &format!("error evaluating count: {}",
-                                                            err.description()));
-                    // return 1 to allow compilation to proceed
-                    1 as usize
-                }
-            };
+            let n = ty::eval_repeat_count(cx.tcx(), count);
             let unit_val = const_expr(cx, &**elem, param_substs).0;
             let vs: Vec<_> = repeat(unit_val).take(n).collect();
             if val_ty(unit_val) != llunitty {
