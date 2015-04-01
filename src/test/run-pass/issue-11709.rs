@@ -25,7 +25,7 @@ fn test(slot: &mut Option<Thunk<(),Thunk>>) -> () {
   let a = slot.take();
   let _a = match a {
     // `{let .. a(); }` would break
-    Some(a) => { let _a = a.invoke(()); },
+    Some(a) => { let _a = a(); },
     None => (),
   };
 }

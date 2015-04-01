@@ -257,7 +257,7 @@ impl Builder {
     pub fn spawn<F>(self, f: F) -> io::Result<JoinHandle> where
         F: FnOnce(), F: Send + 'static
     {
-        self.spawn_inner(Thunk::new(f)).map(|i| JoinHandle(i))
+        self.spawn_inner(Box::new(f)).map(|i| JoinHandle(i))
     }
 
     /// Spawn a new child thread that must be joined within a given
@@ -279,7 +279,7 @@ impl Builder {
     pub fn scoped<'a, T, F>(self, f: F) -> io::Result<JoinGuard<'a, T>> where
         T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
     {
-        self.spawn_inner(Thunk::new(f)).map(|inner| {
+        self.spawn_inner(Box::new(f)).map(|inner| {
             JoinGuard { inner: inner, _marker: PhantomData }
         })
     }
@@ -315,7 +315,7 @@ impl Builder {
                 thread_info::set(imp::guard::current(), their_thread);
             }
 
-            let mut output = None;
+            let mut output: Option<T> = None;
             let try_result = {
                 let ptr = &mut output;
 
@@ -327,7 +327,11 @@ impl Builder {
                 // 'unwinding' flag in the thread itself. For these reasons,
                 // this unsafety should be ok.
                 unsafe {
-                    unwind::try(move || *ptr = Some(f.invoke(())))
+                    unwind::try(move || {
+                        let f: Thunk<(), T> = f;
+                        let v: T = f();
+                        *ptr = Some(v)
+                    })
                 }
             };
             unsafe {
@@ -340,7 +344,7 @@ impl Builder {
         };
 
         Ok(JoinInner {
-            native: try!(unsafe { imp::create(stack_size, Thunk::new(main)) }),
+            native: try!(unsafe { imp::create(stack_size, Box::new(main)) }),
             thread: my_thread,
             packet: my_packet,
             joined: false,
@@ -820,7 +824,7 @@ mod test {
         let x: Box<_> = box 1;
         let x_in_parent = (&*x) as *const i32 as usize;
 
-        spawnfn(Thunk::new(move|| {
+        spawnfn(Box::new(move|| {
             let x_in_child = (&*x) as *const i32 as usize;
             tx.send(x_in_child).unwrap();
         }));
@@ -832,7 +836,7 @@ mod test {
     #[test]
     fn test_avoid_copying_the_body_spawn() {
         avoid_copying_the_body(|v| {
-            thread::spawn(move || v.invoke(()));
+            thread::spawn(move || v());
         });
     }
 
@@ -840,7 +844,7 @@ mod test {
     fn test_avoid_copying_the_body_thread_spawn() {
         avoid_copying_the_body(|f| {
             thread::spawn(move|| {
-                f.invoke(());
+                f();
             });
         })
     }
@@ -849,7 +853,7 @@ mod test {
     fn test_avoid_copying_the_body_join() {
         avoid_copying_the_body(|f| {
             let _ = thread::spawn(move|| {
-                f.invoke(())
+                f()
             }).join();
         })
     }
@@ -862,13 +866,13 @@ mod test {
         // valgrind-friendly. try this at home, instead..!)
         const GENERATIONS: u32 = 16;
         fn child_no(x: u32) -> Thunk<'static> {
-            return Thunk::new(move|| {
+            return Box::new(move|| {
                 if x < GENERATIONS {
-                    thread::spawn(move|| child_no(x+1).invoke(()));
+                    thread::spawn(move|| child_no(x+1)());
                 }
             });
         }
-        thread::spawn(|| child_no(0).invoke(()));
+        thread::spawn(|| child_no(0)());
     }
 
     #[test]

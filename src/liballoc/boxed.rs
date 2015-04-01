@@ -393,28 +393,25 @@ impl<'a, 'b> From<&'b str> for Box<Error + Send + 'a> {
 ///     }
 /// }
 /// ```
-#[cfg(not(stage0))]
 #[rustc_paren_sugar]
 #[unstable(feature = "core", reason = "Newly introduced")]
 pub trait FnBox<A> {
     type Output;
 
-    extern "rust-call" fn call_box(self: Box<Self>, args: A) -> Self::Output;
+    fn call_box(self: Box<Self>, args: A) -> Self::Output;
 }
 
-#[cfg(not(stage0))]
 impl<A,F> FnBox<A> for F
     where F: FnOnce<A>
 {
     type Output = F::Output;
 
-    extern "rust-call" fn call_box(self: Box<F>, args: A) -> F::Output {
+    fn call_box(self: Box<F>, args: A) -> F::Output {
         self.call_once(args)
     }
 }
 
-#[cfg(not(stage0))]
-impl<A,R> FnOnce<A> for Box<FnBox<A,Output=R>> {
+impl<'a,A,R> FnOnce<A> for Box<FnBox<A,Output=R>+'a> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {
@@ -422,8 +419,7 @@ impl<A,R> FnOnce<A> for Box<FnBox<A,Output=R>> {
     }
 }
 
-#[cfg(not(stage0))]
-impl<A,R> FnOnce<A> for Box<FnBox<A,Output=R>+Send> {
+impl<'a,A,R> FnOnce<A> for Box<FnBox<A,Output=R>+Send+'a> {
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {

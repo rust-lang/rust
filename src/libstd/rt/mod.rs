@@ -21,7 +21,6 @@
 
 use prelude::v1::*;
 use sys;
-use thunk::Thunk;
 use usize;
 
 // Reexport some of our utilities which are expected by other crates.
@@ -153,7 +152,7 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
 /// that the closure could not be registered, meaning that it is not scheduled
 /// to be rune.
 pub fn at_exit<F: FnOnce() + Send + 'static>(f: F) -> Result<(), ()> {
-    if at_exit_imp::push(Thunk::new(f)) {Ok(())} else {Err(())}
+    if at_exit_imp::push(Box::new(f)) {Ok(())} else {Err(())}
 }
 
 /// One-time runtime cleanup.

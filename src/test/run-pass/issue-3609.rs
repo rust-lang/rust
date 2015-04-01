@@ -13,7 +13,6 @@
 
 use std::thread;
 use std::sync::mpsc::Sender;
-use std::thunk::Invoke;
 
 type RingBuffer = Vec<f64> ;
 type SamplesFn = Box<FnMut(&RingBuffer) + Send>;

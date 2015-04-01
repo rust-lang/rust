@@ -12,10 +12,10 @@
 
 use std::thunk::Thunk;
 
-fn action(cb: Thunk<usize, usize>) -> usize {
-    cb.invoke(1)
+fn action(cb: Thunk<(usize,), usize>) -> usize {
+    cb(1)
 }
 
 pub fn main() {
-    println!("num: {}", action(Thunk::with_arg(move |u| u)));
+    println!("num: {}", action(Box::new(move |u| u)));
 }

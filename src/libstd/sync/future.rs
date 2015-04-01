@@ -36,6 +36,7 @@
 use core::prelude::*;
 use core::mem::replace;
 
+use boxed::Box;
 use self::FutureState::*;
 use sync::mpsc::{Receiver, channel};
 use thunk::Thunk;
@@ -84,7 +85,7 @@ impl<A> Future<A> {
                 match replace(&mut self.state, Evaluating) {
                     Forced(_) | Evaluating => panic!("Logic error."),
                     Pending(f) => {
-                        self.state = Forced(f.invoke(()));
+                        self.state = Forced(f());
                         self.get_ref()
                     }
                 }
@@ -114,7 +115,7 @@ impl<A> Future<A> {
          * function. It is not spawned into another task.
          */
 
-        Future {state: Pending(Thunk::new(f))}
+        Future {state: Pending(Box::new(f))}
     }
 }
 
