@@ -23,10 +23,6 @@ pub fn main() {
     let f2: &Fat<[isize; 3]> = &f1;
     let f3: &Fat<[usize]> = f2;
     //~^ ERROR mismatched types
-    //~| expected `&Fat<[usize]>`
-    //~| found `&Fat<[isize; 3]>`
-    //~| expected usize
-    //~| found isize
 
     // With a trait.
     let f1 = Fat { ptr: Foo };

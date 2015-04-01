@@ -304,7 +304,7 @@ macro_rules! options {
     {
         let mut op = $defaultfn();
         for option in matches.opt_strs($prefix) {
-            let mut iter = option.splitn(1, '=');
+            let mut iter = option.splitn(2, '=');
             let key = iter.next().unwrap();
             let value = iter.next();
             let option_to_lookup = key.replace("-", "_");
@@ -958,7 +958,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     }
 
     let libs = matches.opt_strs("l").into_iter().map(|s| {
-        let mut parts = s.splitn(1, '=');
+        let mut parts = s.splitn(2, '=');
         let kind = parts.next().unwrap();
         let (name, kind) = match (parts.next(), kind) {
             (None, name) |
@@ -1010,7 +1010,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let mut externs = HashMap::new();
     for arg in &matches.opt_strs("extern") {
-        let mut parts = arg.splitn(1, '=');
+        let mut parts = arg.splitn(2, '=');
         let name = match parts.next() {
             Some(s) => s,
             None => early_error("--extern value must not be empty"),

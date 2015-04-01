@@ -20,7 +20,6 @@ use self::wrapping::{OverflowingOps, WrappingOps};
 use char::CharExt;
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord};
-use error::Error;
 use fmt;
 use intrinsics;
 use iter::Iterator;
@@ -820,6 +819,18 @@ macro_rules! int_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
+        /// Returns the smallest value that can be represented by this integer type.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub fn min_value() -> $T {
+            (-1 as $T) << ($BITS - 1)
+        }
+
+        /// Returns the largest value that can be represented by this integer type.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub fn max_value() -> $T {
+            let min: $T = Int::min_value(); !min
+        }
+
         /// Convert a string slice in a given base to an integer.
         ///
         /// Leading and trailing whitespace represent an error.
@@ -1330,6 +1341,14 @@ macro_rules! uint_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
+        /// Returns the smallest value that can be represented by this integer type.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub fn min_value() -> $T { 0 }
+
+        /// Returns the largest value that can be represented by this integer type.
+        #[stable(feature = "rust1", since = "1.0.0")]
+        pub fn max_value() -> $T { -1 }
+
         /// Convert a string slice in a given base to an integer.
         ///
         /// Leading and trailing whitespace represent an error.
@@ -2948,22 +2967,22 @@ enum IntErrorKind {
     Underflow,
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Display for ParseIntError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for ParseIntError {
-    fn description(&self) -> &str {
+impl ParseIntError {
+    #[unstable(feature = "core", reason = "available through Error trait")]
+    pub fn description(&self) -> &str {
         match self.kind {
             IntErrorKind::Empty => "cannot parse integer from empty string",
             IntErrorKind::InvalidDigit => "invalid digit found in string",
             IntErrorKind::Overflow => "number too large to fit in target type",
             IntErrorKind::Underflow => "number too small to fit in target type",
         }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Display for ParseIntError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
     }
 }
 
@@ -2978,19 +2997,19 @@ enum FloatErrorKind {
     Invalid,
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Display for ParseFloatError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for ParseFloatError {
-    fn description(&self) -> &str {
+impl ParseFloatError {
+    #[unstable(feature = "core", reason = "available through Error trait")]
+    pub fn description(&self) -> &str {
         match self.kind {
             FloatErrorKind::Empty => "cannot parse float from empty string",
             FloatErrorKind::Invalid => "invalid float literal",
         }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Display for ParseFloatError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
     }
 }

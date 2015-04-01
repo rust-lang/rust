@@ -162,9 +162,12 @@ impl NamespaceResult {
 }
 
 enum NameDefinition {
-    NoNameDefinition,           //< The name was unbound.
-    ChildNameDefinition(Def, LastPrivate), //< The name identifies an immediate child.
-    ImportNameDefinition(Def, LastPrivate) //< The name identifies an import.
+    // The name was unbound.
+    NoNameDefinition,
+    // The name identifies an immediate child.
+    ChildNameDefinition(Def, LastPrivate),
+    // The name identifies an import.
+    ImportNameDefinition(Def, LastPrivate),
 }
 
 impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
@@ -795,11 +798,6 @@ pub struct Resolver<'a, 'tcx:'a> {
     // The current self type if inside an impl (used for better errors).
     current_self_type: Option<Ty>,
 
-    // The ident for the keyword "self".
-    self_name: Name,
-    // The ident for the non-keyword "Self".
-    type_self_name: Name,
-
     // The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
 
@@ -868,9 +866,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             current_trait_ref: None,
             current_self_type: None,
-
-            self_name: special_names::self_,
-            type_self_name: special_names::type_self,
 
             primitive_type_table: PrimitiveTypeTable::new(),
 
@@ -1822,7 +1817,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 let mut self_type_rib = Rib::new(ItemRibKind);
 
                 // plain insert (no renaming, types are not currently hygienic....)
-                let name = self.type_self_name;
+                let name = special_names::type_self;
                 self_type_rib.bindings.insert(name, DlDef(DefSelfTy(item.id)));
                 self.type_ribs.push(self_type_rib);
 
@@ -2047,8 +2042,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn with_optional_trait_ref<T, F>(&mut self,
                                      opt_trait_ref: Option<&TraitRef>,
-                                     f: F) -> T where
-        F: FnOnce(&mut Resolver) -> T,
+                                     f: F)
+                                     -> T
+        where F: FnOnce(&mut Resolver) -> T,
     {
         let mut new_val = None;
         if let Some(trait_ref) = opt_trait_ref {
@@ -2585,11 +2581,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let span = path.span;
         let segments = &path.segments[..path.segments.len()-path_depth];
 
-        let mk_res = |(def, lp)| PathResolution {
-            base_def: def,
-            last_private: lp,
-            depth: path_depth
-        };
+        let mk_res = |(def, lp)| PathResolution::new(def, lp, path_depth);
 
         if path.global {
             let def = self.resolve_crate_relative_path(span, segments, namespace);
@@ -2603,25 +2595,25 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         check_ribs,
                                         span);
 
-        if segments.len() > 1 {
-            let def = self.resolve_module_relative_path(span, segments, namespace);
-            match (def, unqualified_def) {
-                (Some((ref d, _)), Some((ref ud, _))) if *d == *ud => {
-                    self.session
-                        .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
-                                  id, span,
-                                  "unnecessary qualification".to_string());
-                }
-                _ => ()
-            }
-
-            def.map(mk_res)
-        } else {
-            unqualified_def.map(mk_res)
+        if segments.len() <= 1 {
+            return unqualified_def.map(mk_res);
         }
+
+        let def = self.resolve_module_relative_path(span, segments, namespace);
+        match (def, unqualified_def) {
+            (Some((ref d, _)), Some((ref ud, _))) if *d == *ud => {
+                self.session
+                    .add_lint(lint::builtin::UNUSED_QUALIFICATIONS,
+                              id, span,
+                              "unnecessary qualification".to_string());
+            }
+            _ => {}
+        }
+
+        def.map(mk_res)
     }
 
-    // resolve a single identifier (used as a varref)
+    // Resolve a single identifier.
     fn resolve_identifier(&mut self,
                           identifier: Ident,
                           namespace: Namespace,
@@ -2662,8 +2654,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 match child_name_bindings.def_for_namespace(namespace) {
                     Some(def) => {
                         // Found it. Stop the search here.
-                        let p = child_name_bindings.defined_in_public_namespace(
-                                        namespace);
+                        let p = child_name_bindings.defined_in_public_namespace(namespace);
                         let lp = if p {LastMod(AllPublic)} else {
                             LastMod(DependsOn(def.def_id()))
                         };
@@ -2734,8 +2725,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let containing_module;
         let last_private;
-        let module = self.current_module.clone();
-        match self.resolve_module_path(module,
+        let current_module = self.current_module.clone();
+        match self.resolve_module_path(current_module,
                                        &module_path[..],
                                        UseLexicalScope,
                                        span,
@@ -2858,8 +2849,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         match search_result {
             Some(DlDef(def)) => {
-                debug!("(resolving path in local ribs) resolved `{}` to \
-                        local: {:?}",
+                debug!("(resolving path in local ribs) resolved `{}` to local: {:?}",
                        token::get_ident(ident),
                        def);
                 Some(def)
@@ -2904,15 +2894,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 panic!("unexpected indeterminate result");
             }
             Failed(err) => {
-                match err {
-                    Some((span, msg)) =>
-                        self.resolve_error(span, &format!("failed to resolve. {}",
-                                                         msg)),
-                    None => ()
-                }
-
                 debug!("(resolving item path by identifier in lexical scope) \
                          failed to resolve {}", token::get_name(name));
+
+                if let Some((span, msg)) = err {
+                    self.resolve_error(span, &format!("failed to resolve. {}", msg))
+                }
+
                 return None;
             }
         }
@@ -2964,10 +2952,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
             } else {
                 match this.resolve_module_path(root,
-                                                &name_path[..],
-                                                UseLexicalScope,
-                                                span,
-                                                PathSearch) {
+                                               &name_path[..],
+                                               UseLexicalScope,
+                                               span,
+                                               PathSearch) {
                     Success((module, _)) => Some(module),
                     _ => None
                 }
@@ -3203,8 +3191,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 false // Stop advancing
                             });
 
-                            if method_scope && &token::get_name(self.self_name)[..]
-                                                                == path_name {
+                            if method_scope &&
+                               &token::get_name(special_names::self_)[..] == path_name {
                                     self.resolve_error(
                                         expr.span,
                                         "`self` is not available \

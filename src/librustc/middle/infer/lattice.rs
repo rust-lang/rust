@@ -29,48 +29,32 @@
 //! over a `LatticeValue`, which is a value defined with respect to
 //! a lattice.
 
-use super::*;
-use super::combine::*;
-use super::glb::Glb;
-use super::lub::Lub;
+use super::combine;
+use super::InferCtxt;
 
 use middle::ty::TyVar;
 use middle::ty::{self, Ty};
+use middle::ty_relate::{RelateResult, TypeRelation};
 use util::ppaux::Repr;
 
-pub trait LatticeDir<'tcx> {
+pub trait LatticeDir<'f,'tcx> : TypeRelation<'f,'tcx> {
+    fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;
+
     // Relates the type `v` to `a` and `b` such that `v` represents
     // the LUB/GLB of `a` and `b` as appropriate.
-    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, ()>;
+    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()>;
 }
 
-impl<'a, 'tcx> LatticeDir<'tcx> for Lub<'a, 'tcx> {
-    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, ()> {
-        let sub = self.sub();
-        try!(sub.tys(a, v));
-        try!(sub.tys(b, v));
-        Ok(())
-    }
-}
-
-impl<'a, 'tcx> LatticeDir<'tcx> for Glb<'a, 'tcx> {
-    fn relate_bound(&self, v: Ty<'tcx>, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, ()> {
-        let sub = self.sub();
-        try!(sub.tys(v, a));
-        try!(sub.tys(v, b));
-        Ok(())
-    }
-}
-
-pub fn super_lattice_tys<'tcx, L:LatticeDir<'tcx>+Combine<'tcx>>(this: &L,
-                                                                 a: Ty<'tcx>,
-                                                                 b: Ty<'tcx>)
-                                                                 -> cres<'tcx, Ty<'tcx>>
+pub fn super_lattice_tys<'a,'tcx,L:LatticeDir<'a,'tcx>>(this: &mut L,
+                                                        a: Ty<'tcx>,
+                                                        b: Ty<'tcx>)
+                                                        -> RelateResult<'tcx, Ty<'tcx>>
+    where 'tcx: 'a
 {
     debug!("{}.lattice_tys({}, {})",
            this.tag(),
-           a.repr(this.infcx().tcx),
-           b.repr(this.infcx().tcx));
+           a.repr(this.tcx()),
+           b.repr(this.tcx()));
 
     if a == b {
         return Ok(a);
@@ -95,7 +79,7 @@ pub fn super_lattice_tys<'tcx, L:LatticeDir<'tcx>+Combine<'tcx>>(this: &L,
         }
 
         _ => {
-            super_tys(this, a, b)
+            combine::super_combine_tys(this.infcx(), this, a, b)
         }
     }
 }

@@ -10,8 +10,10 @@
 
 // aux-build:coherence_lib.rs
 
-// Test that it's ok for T to appear second in the self-type, as long
-// as it's covered somewhere.
+// Test that the `Pair` type reports an error if it contains type
+// parameters, even when they are covered by local types. This test
+// was originally intended to test the opposite, but the rules changed
+// with RFC 1023 and this became illegal.
 
 // pretty-expanded FIXME #23616
 
@@ -20,6 +22,6 @@ use lib::{Remote,Pair};
 
 pub struct Cover<T>(T);
 
-impl<T> Remote for Pair<Cover<T>,T> { }
+impl<T> Remote for Pair<Cover<T>,T> { } //~ ERROR E0210
 
 fn main() { }

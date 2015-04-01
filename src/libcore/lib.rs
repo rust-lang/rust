@@ -70,8 +70,10 @@
 #![feature(unboxed_closures)]
 #![feature(rustc_attrs)]
 #![feature(optin_builtin_traits)]
+#![feature(fundamental)]
 #![feature(concat_idents)]
 #![feature(reflect)]
+#![feature(custom_attribute)]
 
 #[macro_use]
 mod macros;
@@ -145,7 +147,6 @@ pub mod slice;
 pub mod str;
 pub mod hash;
 pub mod fmt;
-pub mod error;
 
 #[doc(primitive = "bool")]
 mod bool {

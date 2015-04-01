@@ -31,7 +31,6 @@ extern crate log;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::thunk::Thunk;
 use getopts::{optopt, optflag, reqopt};
 use common::Config;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Codegen};
@@ -351,7 +350,7 @@ pub fn make_test_name(config: &Config, testfile: &Path) -> test::TestName {
 pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     let testfile = testfile.to_path_buf();
-    test::DynTestFn(Thunk::new(move || {
+    test::DynTestFn(Box::new(move || {
         runtest::run(config, &testfile)
     }))
 }

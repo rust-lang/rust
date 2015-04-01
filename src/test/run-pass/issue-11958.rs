@@ -23,5 +23,5 @@ use std::thunk::Thunk;
 
 pub fn main() {
     let mut x = 1;
-    let _thunk = Thunk::new(move|| { x = 2; });
+    let _thunk = Box::new(move|| { x = 2; });
 }

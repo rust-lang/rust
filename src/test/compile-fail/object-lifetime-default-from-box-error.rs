@@ -25,7 +25,7 @@ fn load(ss: &mut SomeStruct) -> Box<SomeTrait> {
     // `Box<SomeTrait>` defaults to a `'static` bound, so this return
     // is illegal.
 
-    ss.r //~ ERROR mismatched types
+    ss.r //~ ERROR lifetime of the source pointer does not outlive lifetime bound
 }
 
 fn store(ss: &mut SomeStruct, b: Box<SomeTrait>) {
@@ -38,7 +38,7 @@ fn store(ss: &mut SomeStruct, b: Box<SomeTrait>) {
 fn store1<'b>(ss: &mut SomeStruct, b: Box<SomeTrait+'b>) {
     // Here we override the lifetimes explicitly, and so naturally we get an error.
 
-    ss.r = b; //~ ERROR mismatched types
+    ss.r = b; //~ ERROR lifetime of the source pointer does not outlive lifetime bound
 }
 
 fn main() {
