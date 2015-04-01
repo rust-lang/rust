@@ -3329,7 +3329,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                 &format!("unbound path {}", expr.repr(tcx)))
           };
 
-          let mut def = path_res.base_def;
+          let def = path_res.base_def;
           if path_res.depth == 0 {
               let (scheme, predicates) =
                   type_scheme_and_predicates_for_def(fcx, expr.span, def);
@@ -3339,9 +3339,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           } else {
               let ty_segments = path.segments.init();
               let base_ty_end = path.segments.len() - path_res.depth;
-              let ty = astconv::finish_resolving_def_to_ty(fcx, fcx, expr.span,
+              let ty = astconv::finish_resolving_def_to_ty(fcx,
+                                                           fcx,
+                                                           expr.span,
                                                            PathParamMode::Optional,
-                                                           &mut def,
+                                                           &def,
                                                            opt_self_ty,
                                                            &ty_segments[..base_ty_end],
                                                            &ty_segments[base_ty_end..]);

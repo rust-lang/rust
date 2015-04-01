@@ -65,7 +65,7 @@ pub enum Def {
 ///     <T as Trait>::AssocX::AssocY::MethodOrAssocType
 ///           ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~
 ///           base_def        depth = 2
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct PathResolution {
     pub base_def: Def,
     pub last_private: LastPrivate,
@@ -84,6 +84,17 @@ impl PathResolution {
     /// Get the DefId, if fully resolved, otherwise panic.
     pub fn def_id(&self) -> ast::DefId {
         self.full_def().def_id()
+    }
+
+    pub fn new(base_def: Def,
+               last_private: LastPrivate,
+               depth: usize)
+               -> PathResolution {
+        PathResolution {
+            base_def: base_def,
+            last_private: last_private,
+            depth: depth,
+        }
     }
 }
 

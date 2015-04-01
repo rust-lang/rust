@@ -226,6 +226,10 @@ impl<'ast> pprust::PpAnn for IdentifiedAnnotation<'ast> {
                 try!(pp::space(&mut s.s));
                 s.synth_comment(item.id.to_string())
             }
+            pprust::NodeSubItem(id) => {
+                try!(pp::space(&mut s.s));
+                s.synth_comment(id.to_string())
+            }
             pprust::NodeBlock(blk) => {
                 try!(pp::space(&mut s.s));
                 s.synth_comment(format!("block {}", blk.id))

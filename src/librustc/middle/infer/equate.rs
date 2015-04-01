@@ -8,51 +8,43 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use super::combine::{self, CombineFields};
+use super::higher_ranked::HigherRankedRelations;
+use super::{Subtype};
+use super::type_variable::{EqTo};
+
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
-use middle::infer::combine::*;
-use middle::infer::cres;
-use middle::infer::Subtype;
-use middle::infer::type_variable::EqTo;
-use util::ppaux::Repr;
+use middle::ty_relate::{Relate, RelateResult, TypeRelation};
+use util::ppaux::{Repr};
 
-pub struct Equate<'f, 'tcx: 'f> {
-    fields: CombineFields<'f, 'tcx>
+pub struct Equate<'a, 'tcx: 'a> {
+    fields: CombineFields<'a, 'tcx>
 }
 
-#[allow(non_snake_case)]
-pub fn Equate<'f, 'tcx>(cf: CombineFields<'f, 'tcx>) -> Equate<'f, 'tcx> {
-    Equate { fields: cf }
+impl<'a, 'tcx> Equate<'a, 'tcx> {
+    pub fn new(fields: CombineFields<'a, 'tcx>) -> Equate<'a, 'tcx> {
+        Equate { fields: fields }
+    }
 }
 
-impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
-    fn tag(&self) -> String { "Equate".to_string() }
-    fn fields<'a>(&'a self) -> &'a CombineFields<'a, 'tcx> { &self.fields }
+impl<'a, 'tcx> TypeRelation<'a,'tcx> for Equate<'a, 'tcx> {
+    fn tag(&self) -> &'static str { "Equate" }
 
-    fn tys_with_variance(&self, _: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
-                         -> cres<'tcx, Ty<'tcx>>
+    fn tcx(&self) -> &'a ty::ctxt<'tcx> { self.fields.tcx() }
+
+    fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
+
+    fn relate_with_variance<T:Relate<'a,'tcx>>(&mut self,
+                                               _: ty::Variance,
+                                               a: &T,
+                                               b: &T)
+                                               -> RelateResult<'tcx, T>
     {
-        // Once we're equating, it doesn't matter what the variance is.
-        self.tys(a, b)
+        self.relate(a, b)
     }
 
-    fn regions_with_variance(&self, _: ty::Variance, a: ty::Region, b: ty::Region)
-                             -> cres<'tcx, ty::Region>
-    {
-        // Once we're equating, it doesn't matter what the variance is.
-        self.regions(a, b)
-    }
-
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region> {
-        debug!("{}.regions({}, {})",
-               self.tag(),
-               a.repr(self.fields.infcx.tcx),
-               b.repr(self.fields.infcx.tcx));
-        self.infcx().region_vars.make_eqregion(Subtype(self.trace()), a, b);
-        Ok(a)
-    }
-
-    fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
+    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         debug!("{}.tys({}, {})", self.tag(),
                a.repr(self.fields.infcx.tcx), b.repr(self.fields.infcx.tcx));
         if a == b { return Ok(a); }
@@ -77,15 +69,26 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
             }
 
             _ => {
-                super_tys(self, a, b)
+                combine::super_combine_tys(self.fields.infcx, self, a, b)
             }
         }
     }
 
-    fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> cres<'tcx, ty::Binder<T>>
-        where T : Combineable<'tcx>
+    fn regions(&mut self, a: ty::Region, b: ty::Region) -> RelateResult<'tcx, ty::Region> {
+        debug!("{}.regions({}, {})",
+               self.tag(),
+               a.repr(self.fields.infcx.tcx),
+               b.repr(self.fields.infcx.tcx));
+        let origin = Subtype(self.fields.trace.clone());
+        self.fields.infcx.region_vars.make_eqregion(origin, a, b);
+        Ok(a)
+    }
+
+    fn binders<T>(&mut self, a: &ty::Binder<T>, b: &ty::Binder<T>)
+                  -> RelateResult<'tcx, ty::Binder<T>>
+        where T: Relate<'a, 'tcx>
     {
-        try!(self.sub().binders(a, b));
-        self.sub().binders(b, a)
+        try!(self.fields.higher_ranked_sub(a, b));
+        self.fields.higher_ranked_sub(b, a)
     }
 }

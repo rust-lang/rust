@@ -91,6 +91,8 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("start", "1.0.0", Active),
     ("main", "1.0.0", Active),
 
+    ("fundamental", "1.0.0", Active),
+
     // Deprecate after snapshot
     // SNAP 5520801
     ("unsafe_destructor", "1.0.0", Active),
@@ -236,6 +238,10 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
 
     ("allow_internal_unstable", Gated("allow_internal_unstable",
                                       EXPLAIN_ALLOW_INTERNAL_UNSTABLE)),
+
+    ("fundamental", Gated("fundamental",
+                          "the `#[fundamental]` attribute \
+                           is an experimental feature")),
 
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     ("doc", Whitelisted),

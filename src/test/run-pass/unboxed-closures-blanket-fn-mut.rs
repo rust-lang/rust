@@ -8,18 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:coherence_lib.rs
-
-// Test that it's ok for T to appear first in the self-type, as long
-// as it's covered somewhere.
+// Test that you can supply `&F` where `F: FnMut()`.
 
 // pretty-expanded FIXME #23616
 
-extern crate coherence_lib as lib;
-use lib::{Remote,Pair};
+#![feature(lang_items, unboxed_closures)]
 
-pub struct Cover<T>(T);
+fn a<F:FnMut() -> i32>(mut f: F) -> i32 {
+    f()
+}
 
-impl<T> Remote for Pair<T,Cover<T>> { }
+fn b(f: &mut FnMut() -> i32) -> i32 {
+    a(f)
+}
 
-fn main() { }
+fn c<F:FnMut() -> i32>(f: &mut F) -> i32 {
+    a(f)
+}
+
+fn main() {
+    let z: isize = 7;
+
+    let x = b(&mut || 22);
+    assert_eq!(x, 22);
+
+    let x = c(&mut || 22);
+    assert_eq!(x, 22);
+}

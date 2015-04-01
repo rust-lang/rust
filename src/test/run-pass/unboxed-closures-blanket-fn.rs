@@ -8,15 +8,30 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:coherence_lib.rs
+// Test that you can supply `&F` where `F: Fn()`.
 
 // pretty-expanded FIXME #23616
 
-extern crate coherence_lib as lib;
-use lib::Remote;
+#![feature(lang_items, unboxed_closures)]
 
-struct Local;
+fn a<F:Fn() -> i32>(f: F) -> i32 {
+    f()
+}
 
-impl Remote for Vec<Local> { }
+fn b(f: &Fn() -> i32) -> i32 {
+    a(f)
+}
 
-fn main() { }
+fn c<F:Fn() -> i32>(f: &F) -> i32 {
+    a(f)
+}
+
+fn main() {
+    let z: isize = 7;
+
+    let x = b(&|| 22);
+    assert_eq!(x, 22);
+
+    let x = c(&|| 22);
+    assert_eq!(x, 22);
+}
