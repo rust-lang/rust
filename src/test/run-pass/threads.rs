@@ -10,12 +10,12 @@
 
 #![feature(std_misc)]
 
-use std::thread::Thread;
+use std::thread;
 
 pub fn main() {
     let mut i = 10;
     while i > 0 {
-        Thread::scoped({let i = i; move|| child(i)});
+        thread::scoped({let i = i; move|| child(i)});
         i = i - 1;
     }
     println!("main thread exiting");

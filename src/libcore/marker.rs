@@ -415,42 +415,6 @@ mod impls {
     unsafe impl<'a, T: Send + ?Sized> Send for &'a mut T {}
 }
 
-/// Old-style marker trait. Deprecated.
-#[unstable(feature = "core", reason = "deprecated")]
-#[deprecated(since = "1.0.0", reason = "Replace with `PhantomData<&'a ()>`")]
-#[lang="contravariant_lifetime"]
-pub struct ContravariantLifetime<'a>;
-
-/// Old-style marker trait. Deprecated.
-#[unstable(feature = "core", reason = "deprecated")]
-#[deprecated(since = "1.0.0", reason = "Replace with `PhantomData<fn(&'a ())>`")]
-#[lang="covariant_lifetime"]
-pub struct CovariantLifetime<'a>;
-
-/// Old-style marker trait. Deprecated.
-#[unstable(feature = "core", reason = "deprecated")]
-#[deprecated(since = "1.0.0", reason = "Replace with `PhantomData<Cell<&'a ()>>`")]
-#[lang="invariant_lifetime"]
-pub struct InvariantLifetime<'a>;
-
-/// Old-style marker trait. Deprecated.
-#[unstable(feature = "core", reason = "deprecated")]
-#[deprecated(since = "1.0.0", reason = "Replace with `PhantomData<fn(T)>`")]
-#[lang="contravariant_type"]
-pub struct ContravariantType<T>;
-
-/// Old-style marker trait. Deprecated.
-#[unstable(feature = "core", reason = "deprecated")]
-#[deprecated(since = "1.0.0", reason = "Replace with `PhantomData<T>`")]
-#[lang="covariant_type"]
-pub struct CovariantType<T>;
-
-/// Old-style marker trait. Deprecated.
-#[unstable(feature = "core", reason = "deprecated")]
-#[deprecated(since = "1.0.0", reason = "Replace with `PhantomData<Cell<T>>`")]
-#[lang="invariant_type"]
-pub struct InvariantType<T>;
-
 /// A marker trait indicates a type that can be reflected over. This
 /// trait is implemented for all types. Its purpose is to ensure that
 /// when you write a generic function that will employ reflection,
@@ -487,9 +451,5 @@ pub struct InvariantType<T>;
 pub trait Reflect : MarkerTrait {
 }
 
-#[cfg(stage0)]
-impl<T> Reflect for T { }
-
-#[cfg(not(stage0))]
 impl Reflect for .. { }
 

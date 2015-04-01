@@ -8,13 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(tempdir)]
-
 use std::env;
-use std::fs::{self, TempDir};
+use std::process::{self, Command, Stdio};
 
 fn main() {
-    let td = TempDir::new("create-dir-all-bare").unwrap();
-    env::set_current_dir(td.path()).unwrap();
-    fs::create_dir_all("create-dir-all-bare").unwrap();
+    let args: Vec<String> = env::args().collect();
+    if args.len() > 1 && args[1] == "child" {
+        child();
+    } else {
+        parent();
+    }
+}
+
+fn parent() {
+    let args: Vec<String> = env::args().collect();
+    let status = Command::new(&args[0]).arg("child").status().unwrap();
+    assert_eq!(status.code(), Some(2));
+}
+
+fn child() -> i32 {
+    process::exit(2);
 }

@@ -17,7 +17,7 @@ use str;
 use sys::c;
 use net::SocketAddr;
 use sys::fd::FileDesc;
-use sys_common::AsInner;
+use sys_common::{AsInner, FromInner};
 
 pub use sys::{cvt, cvt_r};
 
@@ -35,7 +35,8 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
             .to_string()
     };
     Err(io::Error::new(io::ErrorKind::Other,
-                       "failed to lookup address information", Some(detail)))
+                       &format!("failed to lookup address information: {}",
+                                detail)[..]))
 }
 
 impl Socket {
@@ -71,4 +72,8 @@ impl Socket {
 
 impl AsInner<c_int> for Socket {
     fn as_inner(&self) -> &c_int { self.0.as_inner() }
+}
+
+impl FromInner<c_int> for Socket {
+    fn from_inner(fd: c_int) -> Socket { Socket(FileDesc::new(fd)) }
 }

@@ -27,5 +27,5 @@ fn main() {
     v.push(&x); //~ ERROR `x` does not live long enough
     v.push(&y); //~ ERROR `y` does not live long enough
 
-    assert_eq!(v.as_slice(), [&3, &4]);
+    assert_eq!(v, [&3, &4]);
 }

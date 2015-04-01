@@ -37,7 +37,7 @@ number of elements.
 
 ```rust
 let x: Vec<u32> = vec![1, 2, 3];
-# assert_eq!(&[1,2,3], &x);
+# assert_eq!(x, [1, 2, 3]);
 ```
 
 This can't be an ordinary function, because it takes any number of arguments.
@@ -51,7 +51,7 @@ let x: Vec<u32> = {
     temp_vec.push(3);
     temp_vec
 };
-# assert_eq!(&[1,2,3], &x);
+# assert_eq!(x, [1, 2, 3]);
 ```
 
 We can implement this shorthand, using a macro: [^actual]
@@ -73,7 +73,7 @@ macro_rules! vec {
     };
 }
 # fn main() {
-#     assert_eq!([1,2,3], vec![1,2,3]);
+#     assert_eq!(vec![1,2,3], [1, 2, 3]);
 # }
 ```
 

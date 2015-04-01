@@ -15,13 +15,14 @@
 use std::{fs, net};
 
 fn assert_both<T: Send + Sync>() {}
+fn assert_send<T: Send>() {}
 
 fn main() {
     assert_both::<fs::File>();
     assert_both::<fs::Metadata>();
     assert_both::<fs::ReadDir>();
     assert_both::<fs::DirEntry>();
-    assert_both::<fs::WalkDir>();
+    assert_send::<fs::WalkDir>();
     assert_both::<fs::OpenOptions>();
     assert_both::<fs::Permissions>();
 

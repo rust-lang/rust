@@ -433,6 +433,7 @@ extern "system" {
                             TokenHandle: *mut libc::HANDLE) -> libc::BOOL;
     pub fn GetCurrentProcess() -> libc::HANDLE;
     pub fn GetStdHandle(which: libc::DWORD) -> libc::HANDLE;
+    pub fn ExitProcess(uExitCode: libc::c_uint) -> !;
 }
 
 #[link(name = "userenv")]

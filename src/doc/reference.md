@@ -977,7 +977,6 @@ An example of `use` declarations:
 
 ```
 # #![feature(core)]
-use std::iter::range_step;
 use std::option::Option::{Some, None};
 use std::collections::hash_map::{self, HashMap};
 
@@ -985,9 +984,6 @@ fn foo<T>(_: T){}
 fn bar(map1: HashMap<String, usize>, map2: hash_map::HashMap<String, usize>){}
 
 fn main() {
-    // Equivalent to 'std::iter::range_step(0, 10, 2);'
-    range_step(0, 10, 2);
-
     // Equivalent to 'foo(vec![std::option::Option::Some(1.0f64),
     // std::option::Option::None]);'
     foo(vec![Some(1.0f64), None]);

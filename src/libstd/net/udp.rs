@@ -16,7 +16,7 @@ use prelude::v1::*;
 use io::{self, Error, ErrorKind};
 use net::{ToSocketAddrs, SocketAddr, IpAddr};
 use sys_common::net2 as net_imp;
-use sys_common::AsInner;
+use sys_common::{AsInner, FromInner};
 
 /// A User Datagram Protocol socket.
 ///
@@ -76,15 +76,8 @@ impl UdpSocket {
         match try!(addr.to_socket_addrs()).next() {
             Some(addr) => self.0.send_to(buf, &addr),
             None => Err(Error::new(ErrorKind::InvalidInput,
-                                   "no addresses to send data to", None)),
+                                   "no addresses to send data to")),
         }
-    }
-
-    /// Returns the socket address that this socket was created from.
-    #[unstable(feature = "net")]
-    #[deprecated(since = "1.0.0", reason = "renamed to local_addr")]
-    pub fn socket_addr(&self) -> io::Result<SocketAddr> {
-        self.0.socket_addr()
     }
 
     /// Returns the socket address that this socket was created from.
@@ -138,6 +131,10 @@ impl UdpSocket {
 
 impl AsInner<net_imp::UdpSocket> for UdpSocket {
     fn as_inner(&self) -> &net_imp::UdpSocket { &self.0 }
+}
+
+impl FromInner<net_imp::UdpSocket> for UdpSocket {
+    fn from_inner(inner: net_imp::UdpSocket) -> UdpSocket { UdpSocket(inner) }
 }
 
 #[cfg(test)]
@@ -203,7 +200,7 @@ mod tests {
     fn socket_name_ip4() {
         each_ip(&mut |addr, _| {
             let server = t!(UdpSocket::bind(&addr));
-            assert_eq!(addr, t!(server.socket_addr()));
+            assert_eq!(addr, t!(server.local_addr()));
         })
     }
 
@@ -215,7 +212,7 @@ mod tests {
 
             let _t = thread::spawn(move|| {
                 let mut buf = [0, 0];
-                assert_eq!(sock2.recv_from(&mut buf), Ok((1, addr1)));
+                assert_eq!(sock2.recv_from(&mut buf).unwrap(), (1, addr1));
                 assert_eq!(buf[0], 1);
                 t!(sock2.send_to(&[2], &addr1));
             });
@@ -231,7 +228,7 @@ mod tests {
             });
             tx1.send(()).unwrap();
             let mut buf = [0, 0];
-            assert_eq!(sock1.recv_from(&mut buf), Ok((1, addr2)));
+            assert_eq!(sock1.recv_from(&mut buf).unwrap(), (1, addr2));
             rx2.recv().unwrap();
         })
     }

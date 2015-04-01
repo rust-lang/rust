@@ -226,13 +226,13 @@ mod test {
     fn test_move_iter() {
         let v = SmallVector::zero();
         let v: Vec<isize> = v.into_iter().collect();
-        assert_eq!(Vec::new(), v);
+        assert_eq!(v, Vec::new());
 
         let v = SmallVector::one(1);
-        assert_eq!([1], v.into_iter().collect::<Vec<_>>());
+        assert_eq!(v.into_iter().collect::<Vec<_>>(), [1]);
 
         let v = SmallVector::many(vec![1, 2, 3]);
-        assert_eq!([1, 2, 3], v.into_iter().collect::<Vec<_>>());
+        assert_eq!(v.into_iter().collect::<Vec<_>>(), [1, 2, 3]);
     }
 
     #[test]

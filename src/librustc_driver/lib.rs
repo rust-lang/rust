@@ -27,7 +27,6 @@
 
 #![feature(box_syntax)]
 #![feature(collections)]
-#![feature(core)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
@@ -35,10 +34,8 @@
 #![feature(unsafe_destructor)]
 #![feature(staged_api)]
 #![feature(exit_status)]
-#![feature(io)]
 #![feature(set_stdio)]
 #![feature(unicode)]
-#![feature(convert)]
 
 extern crate arena;
 extern crate flate;

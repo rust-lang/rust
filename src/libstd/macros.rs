@@ -101,7 +101,7 @@ macro_rules! try {
     ($expr:expr) => (match $expr {
         $crate::result::Result::Ok(val) => val,
         $crate::result::Result::Err(err) => {
-            return $crate::result::Result::Err($crate::error::FromError::from_error(err))
+            return $crate::result::Result::Err($crate::convert::From::from(err))
         }
     })
 }

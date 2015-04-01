@@ -246,7 +246,7 @@ impl Command {
             None => {
                 // if the env is currently just inheriting from the parent's,
                 // materialize the parent's env into a hashtable.
-                self.env = Some(os::env_as_bytes().into_iter().map(|(k, v)| {
+                self.env = Some(::env::vars().map(|(k, v)| {
                     (EnvKey(CString::new(k).unwrap()),
                      CString::new(v).unwrap())
                 }).collect());
@@ -367,7 +367,7 @@ impl Command {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(old_io, core)]
+    /// # #![feature(old_io, core, convert)]
     /// use std::old_io::Command;
     ///
     /// let output = match Command::new("cat").arg("foot.txt").output() {
@@ -376,8 +376,8 @@ impl Command {
     /// };
     ///
     /// println!("status: {}", output.status);
-    /// println!("stdout: {}", String::from_utf8_lossy(output.output.as_slice()));
-    /// println!("stderr: {}", String::from_utf8_lossy(output.error.as_slice()));
+    /// println!("stdout: {}", String::from_utf8_lossy(output.output.as_ref()));
+    /// println!("stderr: {}", String::from_utf8_lossy(output.error.as_ref()));
     /// ```
     pub fn output(&self) -> IoResult<ProcessOutput> {
         self.spawn().and_then(|p| p.wait_with_output())
@@ -764,11 +764,9 @@ impl Drop for Process {
 
 #[cfg(test)]
 mod tests {
+    use prelude::v1::*;
     use old_io::{Truncate, Write, TimedOut, timer, process, FileNotFound};
     use old_io::{Reader, Writer};
-    use prelude::v1::{Ok, Err, drop, Some, None, Vec};
-    use prelude::v1::{String, Clone};
-    use prelude::v1::{Str, AsSlice, ToString};
     use old_path::{GenericPath, Path};
     use old_io::fs::PathExtensions;
     use old_io::timer::*;
@@ -1003,7 +1001,7 @@ mod tests {
         let prog = pwd_cmd().spawn().unwrap();
 
         let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
-        let parent_dir = os::getcwd().unwrap();
+        let parent_dir = Path::new(::env::current_dir().unwrap().to_str().unwrap());
         let child_dir = Path::new(output.trim());
 
         let parent_stat = parent_dir.stat().unwrap();
@@ -1018,7 +1016,7 @@ mod tests {
         use os;
         // test changing to the parent of os::getcwd() because we know
         // the path exists (and os::getcwd() is not expected to be root)
-        let parent_dir = os::getcwd().unwrap().dir_path();
+        let parent_dir = Path::new(::env::current_dir().unwrap().to_str().unwrap());
         let prog = pwd_cmd().cwd(&parent_dir).spawn().unwrap();
 
         let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
@@ -1058,11 +1056,11 @@ mod tests {
         let prog = env_cmd().spawn().unwrap();
         let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
 
-        let r = os::env();
-        for &(ref k, ref v) in &r {
+        let r = ::env::vars();
+        for (k, v) in r {
             // don't check windows magical empty-named variables
             assert!(k.is_empty() ||
-                    output.contains(&format!("{}={}", *k, *v)),
+                    output.contains(&format!("{}={}", k, v)),
                     "output doesn't contain `{}={}`\n{}",
                     k, v, output);
         }
@@ -1076,16 +1074,12 @@ mod tests {
         let mut prog = env_cmd().spawn().unwrap();
         let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
 
-        let r = os::env();
-        for &(ref k, ref v) in &r {
+        let r = ::env::vars();
+        for (k, v) in r {
             // don't check android RANDOM variables
-            if *k != "RANDOM".to_string() {
-                assert!(output.contains(&format!("{}={}",
-                                                 *k,
-                                                 *v)) ||
-                        output.contains(&format!("{}=\'{}\'",
-                                                 *k,
-                                                 *v)));
+            if k != "RANDOM".to_string() {
+                assert!(output.contains(&format!("{}={}", k, v)) ||
+                        output.contains(&format!("{}=\'{}\'", k, v)));
             }
         }
     }
@@ -1100,9 +1094,9 @@ mod tests {
         // PATH to our sub-process.
         let path_val: String;
         let mut new_env = vec![("RUN_TEST_NEW_ENV", "123")];
-        match os::getenv("PATH") {
-            None => {}
-            Some(val) => {
+        match ::env::var("PATH") {
+            Err(..) => {}
+            Ok(val) => {
                 path_val = val;
                 new_env.push(("PATH", &path_val))
             }

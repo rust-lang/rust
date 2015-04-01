@@ -19,7 +19,7 @@
 extern crate log;
 
 use std::sync::mpsc::{channel, Sender, Receiver};
-use std::thread::Thread;
+use std::thread;
 
 pub struct ChannelLogger {
     tx: Sender<String>
@@ -41,7 +41,7 @@ impl log::Logger for ChannelLogger {
 pub fn main() {
     let (logger, rx) = ChannelLogger::new();
 
-    let _t = Thread::spawn(move|| {
+    let _t = thread::scoped(move|| {
         log::set_logger(logger);
 
         info!("foo");

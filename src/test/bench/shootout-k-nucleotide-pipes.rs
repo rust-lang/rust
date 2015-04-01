@@ -193,7 +193,7 @@ fn main() {
 
            // start processing if this is the one
            ('>', false) => {
-               match line[1..].find_str("THREE") {
+               match line[1..].find("THREE") {
                    Some(_) => { proc_mode = true; }
                    None    => { }
                }

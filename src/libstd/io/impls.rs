@@ -180,7 +180,7 @@ impl<'a> Write for &'a mut [u8] {
         if try!(self.write(data)) == data.len() {
             Ok(())
         } else {
-            Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer", None))
+            Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer"))
         }
     }
 

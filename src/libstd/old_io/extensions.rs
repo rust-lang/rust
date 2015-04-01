@@ -519,7 +519,8 @@ mod bench {
         ({
             use super::u64_from_be_bytes;
 
-            let data = (0..$stride*100+$start_index).collect::<Vec<_>>();
+            let len = ($stride as u8).wrapping_mul(100).wrapping_add($start_index);
+            let data = (0..len).collect::<Vec<_>>();
             let mut sum = 0;
             $b.iter(|| {
                 let mut i = $start_index;

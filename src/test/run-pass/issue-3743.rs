@@ -10,7 +10,6 @@
 
 // If `Mul` used an associated type for its output, this test would
 // work more smoothly.
-#![feature(old_orphan_check)]
 
 use std::ops::Mul;
 

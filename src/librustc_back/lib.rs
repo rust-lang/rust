@@ -36,17 +36,13 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(old_fs)]
-#![feature(io)]
 #![feature(old_io)]
 #![feature(old_path)]
-#![feature(os)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(rand)]
 #![feature(path_ext)]
-#![feature(std_misc)]
 #![feature(step_by)]
-#![feature(convert)]
 #![cfg_attr(test, feature(test, rand))]
 
 extern crate syntax;

@@ -93,7 +93,7 @@ impl String {
     /// ```
     /// # #![feature(collections, core)]
     /// let s = String::from_str("hello");
-    /// assert_eq!(s.as_slice(), "hello");
+    /// assert_eq!(&s[..], "hello");
     /// ```
     #[inline]
     #[unstable(feature = "collections",
@@ -362,6 +362,14 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_bytes(self) -> Vec<u8> {
         self.vec
+    }
+
+    /// Extract a string slice containing the entire string.
+    #[inline]
+    #[unstable(feature = "convert",
+               reason = "waiting on RFC revision")]
+    pub fn as_str(&self) -> &str {
+        self
     }
 
     /// Pushes the given string onto this string buffer.
@@ -848,7 +856,6 @@ impl<'a, 'b> PartialEq<Cow<'a, str>> for &'b str {
 #[allow(deprecated)]
 impl Str for String {
     #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice(&self) -> &str {
         unsafe { mem::transmute(&*self.vec) }
     }
@@ -1071,11 +1078,6 @@ impl<'a> Str for Cow<'a, str> {
         &**self
     }
 }
-
-/// A clone-on-write string
-#[deprecated(since = "1.0.0", reason = "use Cow<'a, str> instead")]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub type CowString<'a> = Cow<'a, str>;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Write for String {

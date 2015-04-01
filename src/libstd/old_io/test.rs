@@ -43,7 +43,7 @@ fn next_test_unix_socket() -> String {
 pub fn next_test_unix() -> Path {
     let string = next_test_unix_socket();
     if cfg!(unix) {
-        ::os::tmpdir().join(string)
+        Path::new(::env::temp_dir().to_str().unwrap()).join(string)
     } else {
         Path::new(format!("{}{}", r"\\.\pipe\", string))
     }
@@ -141,7 +141,7 @@ mod darwin_fd_limit {
         // sysctl value, and bump the soft resource limit for maxfiles up to the sysctl value.
         use ptr::null_mut;
         use mem::size_of_val;
-        use os::last_os_error;
+        use io;
 
         // Fetch the kern.maxfilesperproc value
         let mut mib: [libc::c_int; 2] = [CTL_KERN, KERN_MAXFILESPERPROC];
@@ -149,14 +149,14 @@ mod darwin_fd_limit {
         let mut size: libc::size_t = size_of_val(&maxfiles) as libc::size_t;
         if sysctl(&mut mib[0], 2, &mut maxfiles as *mut libc::c_int as *mut libc::c_void, &mut size,
                   null_mut(), 0) != 0 {
-            let err = last_os_error();
+            let err = io::Error::last_os_error();
             panic!("raise_fd_limit: error calling sysctl: {}", err);
         }
 
         // Fetch the current resource limits
         let mut rlim = rlimit{rlim_cur: 0, rlim_max: 0};
         if getrlimit(RLIMIT_NOFILE, &mut rlim) != 0 {
-            let err = last_os_error();
+            let err = io::Error::last_os_error();
             panic!("raise_fd_limit: error calling getrlimit: {}", err);
         }
 
@@ -165,7 +165,7 @@ mod darwin_fd_limit {
 
         // Set our newly-increased resource limit
         if setrlimit(RLIMIT_NOFILE, &rlim) != 0 {
-            let err = last_os_error();
+            let err = io::Error::last_os_error();
             panic!("raise_fd_limit: error calling setrlimit: {}", err);
         }
     }

@@ -41,7 +41,7 @@ fn get(handle: libc::DWORD) -> io::Result<Output> {
         Err(io::Error::last_os_error())
     } else if handle.is_null() {
         Err(io::Error::new(io::ErrorKind::Other,
-                           "no stdio handle available for this process", None))
+                           "no stdio handle available for this process"))
     } else {
         let ret = NoClose::new(handle);
         let mut out = 0;
@@ -160,6 +160,5 @@ impl Drop for NoClose {
 }
 
 fn invalid_encoding() -> io::Error {
-    io::Error::new(io::ErrorKind::InvalidInput, "text was not valid unicode",
-                   None)
+    io::Error::new(io::ErrorKind::InvalidInput, "text was not valid unicode")
 }

@@ -18,7 +18,6 @@
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(path_ext)]
-#![feature(convert)]
 #![feature(str_char)]
 
 #![deny(warnings)]

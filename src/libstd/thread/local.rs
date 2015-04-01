@@ -294,12 +294,6 @@ impl<T: 'static> LocalKey<T> {
             }
         }
     }
-
-    /// Deprecated
-    #[unstable(feature = "std_misc")]
-    #[deprecated(since = "1.0.0",
-                 reason = "function renamed to state() and returns more info")]
-    pub fn destroyed(&'static self) -> bool { self.state() == LocalKeyState::Destroyed }
 }
 
 #[cfg(all(any(target_os = "macos", target_os = "linux"), not(target_arch = "aarch64")))]

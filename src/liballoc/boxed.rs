@@ -51,13 +51,15 @@ use core::prelude::*;
 use core::any::Any;
 use core::cmp::Ordering;
 use core::default::Default;
-use core::error::{Error, FromError};
+use core::error::Error;
 use core::fmt;
 use core::hash::{self, Hash};
 use core::mem;
 use core::ops::{Deref, DerefMut};
-use core::ptr::Unique;
-use core::raw::TraitObject;
+use core::ptr::{self, Unique};
+use core::raw::{TraitObject, Slice};
+
+use heap;
 
 /// A value that represents the heap. This is the default place that the `box`
 /// keyword allocates into when no place is supplied.
@@ -233,24 +235,10 @@ impl<T: ?Sized + Hash> Hash for Box<T> {
     }
 }
 
-/// Extension methods for an owning `Any` trait object.
-#[unstable(feature = "alloc",
-           reason = "this trait will likely disappear once compiler bugs blocking \
-                     a direct impl on `Box<Any>` have been fixed ")]
-// FIXME(#18737): this should be a direct impl on `Box<Any>`. If you're
-//                removing this please make sure that you can downcase on
-//                `Box<Any + Send>` as well as `Box<Any>`
-pub trait BoxAny {
-    /// Returns the boxed value if it is of type `T`, or
-    /// `Err(Self)` if it isn't.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>>;
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl BoxAny for Box<Any> {
+impl Box<Any> {
     #[inline]
-    fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -267,10 +255,10 @@ impl BoxAny for Box<Any> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl BoxAny for Box<Any+Send> {
+impl Box<Any+Send> {
     #[inline]
-    fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn downcast<T: Any>(self) -> Result<Box<T>, Box<Any>> {
         <Box<Any>>::downcast(self)
     }
 }
@@ -322,8 +310,48 @@ impl<I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for Box<I> {
 impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, E: Error + 'a> FromError<E> for Box<Error + 'a> {
-    fn from_error(err: E) -> Box<Error + 'a> {
+impl<'a, E: Error + 'a> From<E> for Box<Error + 'a> {
+    fn from(err: E) -> Box<Error + 'a> {
         Box::new(err)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, E: Error + Send + 'a> From<E> for Box<Error + Send + 'a> {
+    fn from(err: E) -> Box<Error + Send + 'a> {
+        Box::new(err)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, 'b> From<&'b str> for Box<Error + Send + 'a> {
+    fn from(err: &'b str) -> Box<Error + Send + 'a> {
+        #[derive(Debug)]
+        struct StringError(Box<str>);
+        impl Error for StringError {
+            fn description(&self) -> &str { &self.0 }
+        }
+        impl fmt::Display for StringError {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                self.0.fmt(f)
+            }
+        }
+
+        // Unfortunately `String` is located in libcollections, so we construct
+        // a `Box<str>` manually here.
+        unsafe {
+            let alloc = if err.len() == 0 {
+                0 as *mut u8
+            } else {
+                let ptr = heap::allocate(err.len(), 1);
+                if ptr.is_null() { ::oom(); }
+                ptr as *mut u8
+            };
+            ptr::copy(err.as_bytes().as_ptr(), alloc, err.len());
+            Box::new(StringError(mem::transmute(Slice {
+                data: alloc,
+                len: err.len(),
+            })))
+        }
     }
 }

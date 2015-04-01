@@ -43,8 +43,6 @@
 #![feature(std_misc)]
 #![feature(libc)]
 #![feature(set_stdio)]
-#![feature(os)]
-#![feature(convert)]
 #![cfg_attr(test, feature(old_io))]
 
 extern crate getopts;
@@ -857,7 +855,8 @@ fn get_concurrency() -> usize {
             if std::rt::util::limit_thread_creation_due_to_osx_and_valgrind() {
                 1
             } else {
-                std::os::num_cpus()
+                extern { fn rust_get_num_cpus() -> libc::uintptr_t; }
+                unsafe { rust_get_num_cpus() as usize }
             }
         }
     }

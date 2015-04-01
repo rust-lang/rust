@@ -83,7 +83,7 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
         if str::from_utf8(&g.s[g.len..]).is_err() {
             ret.and_then(|_| {
                 Err(Error::new(ErrorKind::InvalidInput,
-                               "stream did not contain valid UTF-8", None))
+                               "stream did not contain valid UTF-8"))
             })
         } else {
             g.len = g.s.len();
@@ -359,8 +359,7 @@ pub trait Write {
         while buf.len() > 0 {
             match self.write(buf) {
                 Ok(0) => return Err(Error::new(ErrorKind::WriteZero,
-                                               "failed to write whole buffer",
-                                               None)),
+                                               "failed to write whole buffer")),
                 Ok(n) => buf = &buf[n..],
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
                 Err(e) => return Err(e),
@@ -441,9 +440,7 @@ pub trait Write {
 ///
 /// The stream typically has a fixed size, allowing seeking relative to either
 /// end or the current offset.
-#[unstable(feature = "io", reason = "the central `seek` method may be split \
-                                     into multiple methods instead of taking \
-                                     an enum as an argument")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Seek {
     /// Seek to an offset, in bytes, in a stream
     ///
@@ -459,14 +456,16 @@ pub trait Seek {
     /// # Errors
     ///
     /// Seeking to a negative offset is considered an error
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn seek(&mut self, pos: SeekFrom) -> Result<u64>;
 }
 
 /// Enumeration of possible methods to seek within an I/O object.
 #[derive(Copy, PartialEq, Eq, Clone, Debug)]
-#[unstable(feature = "io", reason = "awaiting the stability of Seek")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub enum SeekFrom {
     /// Set the offset to the provided number of bytes.
+    #[stable(feature = "rust1", since = "1.0.0")]
     Start(u64),
 
     /// Set the offset to the size of this object plus the specified number of
@@ -474,6 +473,7 @@ pub enum SeekFrom {
     ///
     /// It is possible to seek beyond the end of an object, but is an error to
     /// seek before byte 0.
+    #[stable(feature = "rust1", since = "1.0.0")]
     End(i64),
 
     /// Set the offset to the current position plus the specified number of
@@ -481,6 +481,7 @@ pub enum SeekFrom {
     ///
     /// It is possible to seek beyond the end of an object, but is an error to
     /// seek before byte 0.
+    #[stable(feature = "rust1", since = "1.0.0")]
     Current(i64),
 }
 
@@ -780,7 +781,7 @@ pub struct Chars<R> {
 
 /// An enumeration of possible errors that can be generated from the `Chars`
 /// adapter.
-#[derive(PartialEq, Clone, Debug)]
+#[derive(Debug)]
 #[unstable(feature = "io", reason = "awaiting stability of Read::chars")]
 pub enum CharsError {
     /// Variant representing that the underlying stream was read successfully
@@ -919,18 +920,18 @@ mod tests {
     fn read_until() {
         let mut buf = Cursor::new(&b"12"[..]);
         let mut v = Vec::new();
-        assert_eq!(buf.read_until(b'3', &mut v), Ok(2));
+        assert_eq!(buf.read_until(b'3', &mut v).unwrap(), 2);
         assert_eq!(v, b"12");
 
         let mut buf = Cursor::new(&b"1233"[..]);
         let mut v = Vec::new();
-        assert_eq!(buf.read_until(b'3', &mut v), Ok(3));
+        assert_eq!(buf.read_until(b'3', &mut v).unwrap(), 3);
         assert_eq!(v, b"123");
         v.truncate(0);
-        assert_eq!(buf.read_until(b'3', &mut v), Ok(1));
+        assert_eq!(buf.read_until(b'3', &mut v).unwrap(), 1);
         assert_eq!(v, b"3");
         v.truncate(0);
-        assert_eq!(buf.read_until(b'3', &mut v), Ok(0));
+        assert_eq!(buf.read_until(b'3', &mut v).unwrap(), 0);
         assert_eq!(v, []);
     }
 
@@ -938,32 +939,32 @@ mod tests {
     fn split() {
         let buf = Cursor::new(&b"12"[..]);
         let mut s = buf.split(b'3');
-        assert_eq!(s.next(), Some(Ok(vec![b'1', b'2'])));
-        assert_eq!(s.next(), None);
+        assert_eq!(s.next().unwrap().unwrap(), vec![b'1', b'2']);
+        assert!(s.next().is_none());
 
         let buf = Cursor::new(&b"1233"[..]);
         let mut s = buf.split(b'3');
-        assert_eq!(s.next(), Some(Ok(vec![b'1', b'2'])));
-        assert_eq!(s.next(), Some(Ok(vec![])));
-        assert_eq!(s.next(), None);
+        assert_eq!(s.next().unwrap().unwrap(), vec![b'1', b'2']);
+        assert_eq!(s.next().unwrap().unwrap(), vec![]);
+        assert!(s.next().is_none());
     }
 
     #[test]
     fn read_line() {
         let mut buf = Cursor::new(&b"12"[..]);
         let mut v = String::new();
-        assert_eq!(buf.read_line(&mut v), Ok(2));
+        assert_eq!(buf.read_line(&mut v).unwrap(), 2);
         assert_eq!(v, "12");
 
         let mut buf = Cursor::new(&b"12\n\n"[..]);
         let mut v = String::new();
-        assert_eq!(buf.read_line(&mut v), Ok(3));
+        assert_eq!(buf.read_line(&mut v).unwrap(), 3);
         assert_eq!(v, "12\n");
         v.truncate(0);
-        assert_eq!(buf.read_line(&mut v), Ok(1));
+        assert_eq!(buf.read_line(&mut v).unwrap(), 1);
         assert_eq!(v, "\n");
         v.truncate(0);
-        assert_eq!(buf.read_line(&mut v), Ok(0));
+        assert_eq!(buf.read_line(&mut v).unwrap(), 0);
         assert_eq!(v, "");
     }
 
@@ -971,26 +972,26 @@ mod tests {
     fn lines() {
         let buf = Cursor::new(&b"12"[..]);
         let mut s = buf.lines();
-        assert_eq!(s.next(), Some(Ok("12".to_string())));
-        assert_eq!(s.next(), None);
+        assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
+        assert!(s.next().is_none());
 
         let buf = Cursor::new(&b"12\n\n"[..]);
         let mut s = buf.lines();
-        assert_eq!(s.next(), Some(Ok("12".to_string())));
-        assert_eq!(s.next(), Some(Ok(String::new())));
-        assert_eq!(s.next(), None);
+        assert_eq!(s.next().unwrap().unwrap(), "12".to_string());
+        assert_eq!(s.next().unwrap().unwrap(), "".to_string());
+        assert!(s.next().is_none());
     }
 
     #[test]
     fn read_to_end() {
         let mut c = Cursor::new(&b""[..]);
         let mut v = Vec::new();
-        assert_eq!(c.read_to_end(&mut v), Ok(0));
+        assert_eq!(c.read_to_end(&mut v).unwrap(), 0);
         assert_eq!(v, []);
 
         let mut c = Cursor::new(&b"1"[..]);
         let mut v = Vec::new();
-        assert_eq!(c.read_to_end(&mut v), Ok(1));
+        assert_eq!(c.read_to_end(&mut v).unwrap(), 1);
         assert_eq!(v, b"1");
     }
 
@@ -998,12 +999,12 @@ mod tests {
     fn read_to_string() {
         let mut c = Cursor::new(&b""[..]);
         let mut v = String::new();
-        assert_eq!(c.read_to_string(&mut v), Ok(0));
+        assert_eq!(c.read_to_string(&mut v).unwrap(), 0);
         assert_eq!(v, "");
 
         let mut c = Cursor::new(&b"1"[..]);
         let mut v = String::new();
-        assert_eq!(c.read_to_string(&mut v), Ok(1));
+        assert_eq!(c.read_to_string(&mut v).unwrap(), 1);
         assert_eq!(v, "1");
 
         let mut c = Cursor::new(&b"\xff"[..]);
@@ -1017,11 +1018,11 @@ mod tests {
 
         impl Read for R {
             fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-                Err(io::Error::new(io::ErrorKind::Other, "", None))
+                Err(io::Error::new(io::ErrorKind::Other, ""))
             }
         }
 
         let mut buf = [0; 1];
-        assert_eq!(Ok(0), R.take(0).read(&mut buf));
+        assert_eq!(0, R.take(0).read(&mut buf).unwrap());
     }
 }

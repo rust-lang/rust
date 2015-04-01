@@ -100,7 +100,7 @@
 //!     let encoded = json::encode(&object).unwrap();
 //!
 //!     // Deserialize using `json::decode`
-//!     let decoded: TestStruct = json::decode(encoded.as_slice()).unwrap();
+//!     let decoded: TestStruct = json::decode(&encoded[..]).unwrap();
 //! }
 //! ```
 //!
@@ -367,8 +367,8 @@ impl std::error::Error for EncoderError {
     fn description(&self) -> &str { "encoder error" }
 }
 
-impl std::error::FromError<fmt::Error> for EncoderError {
-    fn from_error(err: fmt::Error) -> EncoderError { EncoderError::FmtError(err) }
+impl From<fmt::Error> for EncoderError {
+    fn from(err: fmt::Error) -> EncoderError { EncoderError::FmtError(err) }
 }
 
 pub type EncodeResult = Result<(), EncoderError>;

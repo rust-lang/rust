@@ -11,7 +11,7 @@
 use prelude::v1::*;
 
 use cell::UnsafeCell;
-use error::{Error, FromError};
+use error::{Error};
 use fmt;
 use thread;
 
@@ -125,12 +125,6 @@ impl<T> PoisonError<T> {
     /// Consumes this error indicating that a lock is poisoned, returning the
     /// underlying guard to allow access regardless.
     #[unstable(feature = "std_misc")]
-    #[deprecated(since = "1.0.0", reason = "renamed to into_inner")]
-    pub fn into_guard(self) -> T { self.guard }
-
-    /// Consumes this error indicating that a lock is poisoned, returning the
-    /// underlying guard to allow access regardless.
-    #[unstable(feature = "std_misc")]
     pub fn into_inner(self) -> T { self.guard }
 
     /// Reaches into this error indicating that a lock is poisoned, returning a
@@ -144,8 +138,8 @@ impl<T> PoisonError<T> {
     pub fn get_mut(&mut self) -> &mut T { &mut self.guard }
 }
 
-impl<T> FromError<PoisonError<T>> for TryLockError<T> {
-    fn from_error(err: PoisonError<T>) -> TryLockError<T> {
+impl<T> From<PoisonError<T>> for TryLockError<T> {
+    fn from(err: PoisonError<T>) -> TryLockError<T> {
         TryLockError::Poisoned(err)
     }
 }
