@@ -8,31 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits)]
+// Test that we are able to introduce a negative constraint that
+// `MyType: !MyTrait` along with other "fundamental" wrappers.
 
-use std::marker::Copy;
+// aux-build:coherence_copy_like_lib.rs
 
-enum TestE {
-  A
-}
+#![feature(rustc_attrs)]
+#![allow(dead_code)]
 
-struct MyType;
+extern crate coherence_copy_like_lib as lib;
 
-struct NotSync;
-impl !Sync for NotSync {}
+struct MyType { x: i32 }
 
-impl Sized for TestE {} //~ ERROR E0322
+// These are all legal because they are all fundamental types:
 
-impl Sized for MyType {} //~ ERROR E0322
+// MyStruct is not fundamental.
+impl lib::MyCopy for lib::MyStruct<MyType> { } //~ ERROR E0117
 
-impl Sized for (MyType, MyType) {} //~ ERROR E0117
-
-impl Sized for &'static NotSync {} //~ ERROR E0322
-
-impl Sized for [MyType] {} //~ ERROR E0117
-//~^ ERROR E0277
-
-impl Sized for &'static [NotSync] {} //~ ERROR E0117
-
-fn main() {
-}
+#[rustc_error]
+fn main() { }

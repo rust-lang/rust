@@ -8,31 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits)]
+// Tests that we consider `Box<U>: !Sugar` to be ambiguous, even
+// though we see no impl of `Sugar` for `Box`. Therefore, an overlap
+// error is reported for the following pair of impls (#23516).
 
-use std::marker::Copy;
-
-enum TestE {
-  A
-}
-
-struct MyType;
-
-struct NotSync;
-impl !Sync for NotSync {}
-
-impl Sized for TestE {} //~ ERROR E0322
-
-impl Sized for MyType {} //~ ERROR E0322
-
-impl Sized for (MyType, MyType) {} //~ ERROR E0117
-
-impl Sized for &'static NotSync {} //~ ERROR E0322
-
-impl Sized for [MyType] {} //~ ERROR E0117
-//~^ ERROR E0277
-
-impl Sized for &'static [NotSync] {} //~ ERROR E0117
-
-fn main() {
-}
+pub trait Sugar { fn dummy(&self) { } }
+pub trait Sweet { fn dummy(&self) { } }
+impl<T:Sugar> Sweet for T { } //~ ERROR E0119
+impl<U:Sugar> Sweet for Box<U> { }
+fn main() { }

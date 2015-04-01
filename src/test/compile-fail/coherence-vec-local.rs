@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that a local type (with no type parameters) appearing within a
+// *non-fundamental* remote type like `Vec` is not considered local.
+
 // aux-build:coherence_lib.rs
 
-// Test that it's not ok for T to appear uncovered
+// pretty-expanded FIXME #23616
 
 extern crate coherence_lib as lib;
-use lib::{Remote,Pair};
+use lib::Remote;
 
-pub struct Cover<T>(T);
+struct Local;
 
-impl<T,U> Remote for Pair<Cover<T>,U> { }
-//~^ ERROR type parameter `T` must be used as the type parameter for some local type
+impl Remote for Vec<Local> { } //~ ERROR E0117
 
 fn main() { }
