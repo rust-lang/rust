@@ -1088,7 +1088,7 @@ fn test_bytes_set_memory() {
 #[should_panic]
 fn test_overflow_does_not_cause_segfault() {
     let mut v = vec![];
-    v.reserve_exact(-1);
+    v.reserve_exact(!0);
     v.push(1);
     v.push(2);
 }
@@ -1097,7 +1097,7 @@ fn test_overflow_does_not_cause_segfault() {
 #[should_panic]
 fn test_overflow_does_not_cause_segfault_managed() {
     let mut v = vec![Rc::new(1)];
-    v.reserve_exact(-1);
+    v.reserve_exact(!0);
     v.push(Rc::new(2));
 }
 

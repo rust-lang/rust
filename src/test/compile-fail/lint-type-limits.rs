@@ -10,6 +10,7 @@
 
 #![feature(negate_unsigned)]
 #![allow(dead_code)]
+#![feature(negate_unsigned)]
 
 // compile-flags: -D unused-comparisons
 fn main() { }
