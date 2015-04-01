@@ -252,11 +252,14 @@ pub fn strong_count<T>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst
 ///
 /// ```
 /// # #![feature(alloc)]
-/// use std::alloc::arc;
+/// extern crate alloc;
+/// # fn main() {
+/// use alloc::arc;
 ///
 /// let mut four = arc::Arc::new(4);
 ///
 /// arc::unique(&mut four).map(|num| *num = 5);
+/// # }
 /// ```
 #[inline]
 #[unstable(feature = "alloc")]
