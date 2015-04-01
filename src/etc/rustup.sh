@@ -452,7 +452,7 @@ fi
 RUST_URL="https://static.rust-lang.org/dist"
 case "$CFG_CHANNEL" in
     nightly)
-        # add a date suffix if we want a particular nighly.
+        # add a date suffix if we want a particular nightly.
         if [ -n "${CFG_DATE}" ];
         then
             RUST_URL="${RUST_URL}/${CFG_DATE}"
