@@ -147,7 +147,6 @@ pub mod slice;
 pub mod str;
 pub mod hash;
 pub mod fmt;
-pub mod error;
 
 #[doc(primitive = "bool")]
 mod bool {
