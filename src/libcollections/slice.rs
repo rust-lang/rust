@@ -1123,7 +1123,7 @@ impl Iterator for ElementSwaps {
     // #[inline]
     fn next(&mut self) -> Option<(usize, usize)> {
         fn new_pos_wrapping(i: usize, s: Direction) -> usize {
-            i.wrapping_add(match s { Pos => 1, Neg => -1 })
+            i.wrapping_add(match s { Pos => 1, Neg => !0 /* aka -1 */ })
         }
 
         fn new_pos(i: usize, s: Direction) -> usize {
