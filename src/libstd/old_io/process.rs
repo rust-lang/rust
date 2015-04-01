@@ -1074,7 +1074,7 @@ mod tests {
         let mut prog = env_cmd().spawn().unwrap();
         let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
 
-        let r = env::vars();
+        let r = ::env::vars();
         for (k, v) in r {
             // don't check android RANDOM variables
             if k != "RANDOM".to_string() {

@@ -832,14 +832,13 @@ mod tests {
     #[cfg(target_os="android")]
     #[test]
     fn test_inherit_env() {
-        use os;
+        use std::env;
         if running_on_valgrind() { return; }
 
         let mut result = env_cmd().output().unwrap();
         let output = String::from_utf8(result.stdout).unwrap();
 
-        let r = os::env();
-        for &(ref k, ref v) in &r {
+        for (ref k, ref v) in env::vars() {
             // don't check android RANDOM variables
             if *k != "RANDOM".to_string() {
                 assert!(output.contains(&format!("{}={}",
