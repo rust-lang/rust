@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
+
 extern crate foo;
 
 // @has bar/trait.Foo.html //pre "pub trait Foo"

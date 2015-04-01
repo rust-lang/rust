@@ -242,6 +242,41 @@ pub fn weak_count<T>(this: &Arc<T>) -> usize { this.inner().weak.load(SeqCst) - 
 #[unstable(feature = "alloc")]
 pub fn strong_count<T>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst) }
 
+
+/// Try accessing a mutable reference to the contents behind an unique `Arc<T>`.
+///
+/// The access is granted only if this is the only reference to the object.
+/// Otherwise, `None` is returned.
+///
+/// # Examples
+///
+/// ```
+/// # #![feature(alloc)]
+/// extern crate alloc;
+/// # fn main() {
+/// use alloc::arc;
+///
+/// let mut four = arc::Arc::new(4);
+///
+/// arc::unique(&mut four).map(|num| *num = 5);
+/// # }
+/// ```
+#[inline]
+#[unstable(feature = "alloc")]
+pub fn unique<T>(this: &mut Arc<T>) -> Option<&mut T> {
+    if strong_count(this) == 1 && weak_count(this) == 0 {
+        // This unsafety is ok because we're guaranteed that the pointer
+        // returned is the *only* pointer that will ever be returned to T. Our
+        // reference count is guaranteed to be 1 at this point, and we required
+        // the Arc itself to be `mut`, so we're returning the only possible
+        // reference to the inner data.
+        let inner = unsafe { &mut **this._ptr };
+        Some(&mut inner.data)
+    }else {
+        None
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Arc<T> {
     /// Makes a clone of the `Arc<T>`.
@@ -312,11 +347,8 @@ impl<T: Send + Sync + Clone> Arc<T> {
            self.inner().weak.load(SeqCst) != 1 {
             *self = Arc::new((**self).clone())
         }
-        // This unsafety is ok because we're guaranteed that the pointer
-        // returned is the *only* pointer that will ever be returned to T. Our
-        // reference count is guaranteed to be 1 at this point, and we required
-        // the Arc itself to be `mut`, so we're returning the only possible
-        // reference to the inner data.
+        // As with `unique()`, the unsafety is ok because our reference was
+        // either unique to begin with, or became one upon cloning the contents.
         let inner = unsafe { &mut **self._ptr };
         &mut inner.data
     }
@@ -659,7 +691,7 @@ mod tests {
     use std::sync::atomic::Ordering::{Acquire, SeqCst};
     use std::thread;
     use std::vec::Vec;
-    use super::{Arc, Weak, weak_count, strong_count};
+    use super::{Arc, Weak, weak_count, strong_count, unique};
     use std::sync::Mutex;
 
     struct Canary(*mut atomic::AtomicUsize);
@@ -693,6 +725,21 @@ mod tests {
 
         assert_eq!((*arc_v)[2], 3);
         assert_eq!((*arc_v)[4], 5);
+    }
+
+    #[test]
+    fn test_arc_unique() {
+        let mut x = Arc::new(10);
+        assert!(unique(&mut x).is_some());
+        {
+            let y = x.clone();
+            assert!(unique(&mut x).is_none());
+        }
+        {
+            let z = x.downgrade();
+            assert!(unique(&mut x).is_none());
+        }
+        assert!(unique(&mut x).is_some());
     }
 
     #[test]

@@ -74,7 +74,7 @@ pub enum PpMode {
 pub fn parse_pretty(sess: &Session,
                     name: &str,
                     extended: bool) -> (PpMode, Option<UserIdentifiedItem>) {
-    let mut split = name.splitn(1, '=');
+    let mut split = name.splitn(2, '=');
     let first = split.next().unwrap();
     let opt_second = split.next();
     let first = match (first, extended) {
@@ -225,6 +225,10 @@ impl<'ast> pprust::PpAnn for IdentifiedAnnotation<'ast> {
             pprust::NodeItem(item) => {
                 try!(pp::space(&mut s.s));
                 s.synth_comment(item.id.to_string())
+            }
+            pprust::NodeSubItem(id) => {
+                try!(pp::space(&mut s.s));
+                s.synth_comment(id.to_string())
             }
             pprust::NodeBlock(blk) => {
                 try!(pp::space(&mut s.s));

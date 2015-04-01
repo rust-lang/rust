@@ -49,6 +49,7 @@ impl !Send for Managed { }
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang="sized"]
 #[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
+#[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
 pub trait Sized : MarkerTrait {
     // Empty.
 }
@@ -346,17 +347,16 @@ impl<T:?Sized> MarkerTrait for T { }
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait PhantomFn<A:?Sized,R:?Sized=()> { }
 
-/// `PhantomData` is a way to tell the compiler about fake fields.
-/// Phantom data is required whenever type parameters are not used.
-/// The idea is that if the compiler encounters a `PhantomData<T>`
-/// instance, it will behave *as if* an instance of the type `T` were
-/// present for the purpose of various automatic analyses.
+/// `PhantomData<T>` allows you to describe that a type acts as if it stores a value of type `T`,
+/// even though it does not. This allows you to inform the compiler about certain safety properties
+/// of your code.
+///
+/// Though they both have scary names, `PhantomData<T>` and "phantom types" are unrelated. 👻👻👻
 ///
 /// # Examples
 ///
 /// When handling external resources over a foreign function interface, `PhantomData<T>` can
-/// prevent mismatches by enforcing types in the method implementations, although the struct
-/// doesn't actually contain values of the resource type.
+/// prevent mismatches by enforcing types in the method implementations:
 ///
 /// ```
 /// # trait ResType { fn foo(&self); };
@@ -397,11 +397,6 @@ pub trait PhantomFn<A:?Sized,R:?Sized=()> { }
 /// commonly necessary if the structure is using an unsafe pointer
 /// like `*mut T` whose referent may be dropped when the type is
 /// dropped, as a `*mut T` is otherwise not treated as owned.
-///
-/// FIXME. Better documentation and examples of common patterns needed
-/// here! For now, please see [RFC 738][738] for more information.
-///
-/// [738]: https://github.com/rust-lang/rfcs/blob/master/text/0738-variance.md
 #[lang="phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PhantomData<T:?Sized>;

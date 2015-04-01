@@ -25,7 +25,7 @@
 use self::Status::*;
 use self::AttributeType::*;
 
-use abi::RustIntrinsic;
+use abi::Abi;
 use ast::NodeId;
 use ast;
 use attr;
@@ -90,6 +90,8 @@ const KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("plugin", "1.0.0", Active),
     ("start", "1.0.0", Active),
     ("main", "1.0.0", Active),
+
+    ("fundamental", "1.0.0", Active),
 
     // Deprecate after snapshot
     // SNAP 5520801
@@ -236,6 +238,10 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
 
     ("allow_internal_unstable", Gated("allow_internal_unstable",
                                       EXPLAIN_ALLOW_INTERNAL_UNSTABLE)),
+
+    ("fundamental", Gated("fundamental",
+                          "the `#[fundamental]` attribute \
+                           is an experimental feature")),
 
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     ("doc", Whitelisted),
@@ -511,7 +517,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                        across platforms, it is recommended to \
                                        use `#[link(name = \"foo\")]` instead")
                 }
-                if foreign_module.abi == RustIntrinsic {
+                if foreign_module.abi == Abi::RustIntrinsic {
                     self.gate_feature("intrinsics",
                                       i.span,
                                       "intrinsics are subject to change")
@@ -627,10 +633,16 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 span: Span,
                 _node_id: NodeId) {
         match fn_kind {
-            visit::FkItemFn(_, _, _, abi) if abi == RustIntrinsic => {
+            visit::FkItemFn(_, _, _, abi) if abi == Abi::RustIntrinsic => {
                 self.gate_feature("intrinsics",
                                   span,
                                   "intrinsics are subject to change")
+            }
+            visit::FkItemFn(_, _, _, abi) |
+            visit::FkMethod(_, &ast::MethodSig { abi, .. }) if abi == Abi::RustCall => {
+                self.gate_feature("unboxed_closures",
+                                  span,
+                                  "rust-call ABI is subject to change")
             }
             _ => {}
         }

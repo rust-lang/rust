@@ -12,7 +12,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use any;
 use cell::{Cell, RefCell, Ref, RefMut, BorrowState};
 use char::CharExt;
 use iter::Iterator;
@@ -996,11 +995,6 @@ macro_rules! tuple {
 }
 
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Debug for &'a (any::Any+'a) {
-    fn fmt(&self, f: &mut Formatter) -> Result { f.pad("&Any") }
-}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for [T] {

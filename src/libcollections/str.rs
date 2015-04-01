@@ -610,11 +610,14 @@ impl str {
         core_str::StrExt::split(&self[..], pat)
     }
 
-    /// An iterator over substrings of `self`, separated by characters matched by a pattern,
-    /// restricted to splitting at most `count` times.
+    /// An iterator over substrings of `self`, separated by characters matched
+    /// by a pattern, returning most `count` items.
     ///
     /// The pattern can be a simple `&str`, or a closure that determines
     /// the split.
+    ///
+    /// The last element returned, if any, will contain the remainder of the
+    /// string.
     ///
     /// # Examples
     ///
@@ -622,12 +625,12 @@ impl str {
     ///
     /// ```
     /// let v: Vec<&str> = "Mary had a little lambda".splitn(2, ' ').collect();
-    /// assert_eq!(v, ["Mary", "had", "a little lambda"]);
+    /// assert_eq!(v, ["Mary", "had a little lambda"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".splitn(2, 'X').collect();
-    /// assert_eq!(v, ["lion", "", "tigerXleopard"]);
+    /// assert_eq!(v, ["lion", "XtigerXleopard"]);
     ///
-    /// let v: Vec<&str> = "abcXdef".splitn(0, 'X').collect();
+    /// let v: Vec<&str> = "abcXdef".splitn(1, 'X').collect();
     /// assert_eq!(v, ["abcXdef"]);
     ///
     /// let v: Vec<&str> = "".splitn(1, 'X').collect();
@@ -637,7 +640,7 @@ impl str {
     /// More complex patterns with a lambda:
     ///
     /// ```
-    /// let v: Vec<&str> = "abc1def2ghi".splitn(1, |c: char| c.is_numeric()).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".splitn(2, |c: char| c.is_numeric()).collect();
     /// assert_eq!(v, ["abc", "def2ghi"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -705,25 +708,28 @@ impl str {
     }
 
     /// An iterator over substrings of `self`, separated by a pattern,
-    /// starting from the end of the string, restricted to splitting
-    /// at most `count` times.
+    /// starting from the end of the string, restricted to returning
+    /// at most `count` items.
+    ///
+    /// The last element returned, if any, will contain the remainder of the
+    /// string.
     ///
     /// # Examples
     ///
     /// Simple patterns:
     ///
     /// ```
-    /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(2, ' ').collect();
+    /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(3, ' ').collect();
     /// assert_eq!(v, ["lamb", "little", "Mary had a"]);
     ///
-    /// let v: Vec<&str> = "lion::tiger::leopard".rsplitn(1, "::").collect();
+    /// let v: Vec<&str> = "lion::tiger::leopard".rsplitn(2, "::").collect();
     /// assert_eq!(v, ["leopard", "lion::tiger"]);
     /// ```
     ///
     /// More complex patterns with a lambda:
     ///
     /// ```
-    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(1, |c: char| c.is_numeric()).collect();
+    /// let v: Vec<&str> = "abc1def2ghi".rsplitn(2, |c: char| c.is_numeric()).collect();
     /// assert_eq!(v, ["ghi", "abc1def"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]

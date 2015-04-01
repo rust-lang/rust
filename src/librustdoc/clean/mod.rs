@@ -2392,7 +2392,7 @@ fn resolve_type(cx: &DocContext,
     };
 
     match def {
-        def::DefSelfTy(..) => {
+        def::DefSelfTy(..) if path.segments.len() == 1 => {
             return Generic(token::get_name(special_idents::type_self.name).to_string());
         }
         def::DefPrimTy(p) => match p {
@@ -2412,7 +2412,9 @@ fn resolve_type(cx: &DocContext,
             ast::TyFloat(ast::TyF32) => return Primitive(F32),
             ast::TyFloat(ast::TyF64) => return Primitive(F64),
         },
-        def::DefTyParam(_, _, _, n) => return Generic(token::get_name(n).to_string()),
+        def::DefTyParam(_, _, _, n) => {
+            return Generic(token::get_name(n).to_string())
+        }
         _ => {}
     };
     let did = register_def(&*cx, def);

@@ -40,6 +40,10 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     let fcx = cx.fcx;
     debug!("trans_stmt({})", s.repr(cx.tcx()));
 
+    if cx.unreachable.get() {
+        return cx;
+    }
+
     if cx.sess().asm_comments() {
         add_span_comment(cx, s.span, &s.repr(cx.tcx()));
     }
@@ -76,6 +80,11 @@ pub fn trans_stmt<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 pub fn trans_stmt_semi<'blk, 'tcx>(cx: Block<'blk, 'tcx>, e: &ast::Expr)
                                    -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_stmt_semi");
+
+    if cx.unreachable.get() {
+        return cx;
+    }
+
     let ty = expr_ty(cx, e);
     if cx.fcx.type_needs_drop(ty) {
         expr::trans_to_lvalue(cx, e, "stmt").bcx
@@ -89,6 +98,11 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                mut dest: expr::Dest)
                                -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_block");
+
+    if bcx.unreachable.get() {
+        return bcx;
+    }
+
     let fcx = bcx.fcx;
     let mut bcx = bcx;
 
@@ -141,6 +155,11 @@ pub fn trans_if<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            bcx.to_str(), if_id, bcx.expr_to_string(cond), thn.id,
            dest.to_string(bcx.ccx()));
     let _icx = push_ctxt("trans_if");
+
+    if bcx.unreachable.get() {
+        return bcx;
+    }
+
     let mut bcx = bcx;
 
     let cond_val = unpack_result!(bcx, expr::trans(bcx, cond).to_llbool());
@@ -214,6 +233,11 @@ pub fn trans_while<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                body: &ast::Block)
                                -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_while");
+
+    if bcx.unreachable.get() {
+        return bcx;
+    }
+
     let fcx = bcx.fcx;
 
     //            bcx
@@ -257,6 +281,11 @@ pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               body: &ast::Block)
                               -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_loop");
+
+    if bcx.unreachable.get() {
+        return bcx;
+    }
+
     let fcx = bcx.fcx;
 
     //            bcx
@@ -296,11 +325,12 @@ pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     exit: usize)
                                     -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_break_cont");
-    let fcx = bcx.fcx;
 
     if bcx.unreachable.get() {
         return bcx;
     }
+
+    let fcx = bcx.fcx;
 
     // Locate loop that we will break to
     let loop_id = match opt_label {
@@ -341,6 +371,11 @@ pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                              retval_expr: Option<&ast::Expr>)
                              -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_ret");
+
+    if bcx.unreachable.get() {
+        return bcx;
+    }
+
     let fcx = bcx.fcx;
     let mut bcx = bcx;
     let dest = match (fcx.llretslotptr.get(), retval_expr) {
@@ -372,6 +407,10 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let ccx = bcx.ccx();
     let _icx = push_ctxt("trans_fail_value");
 
+    if bcx.unreachable.get() {
+        return bcx;
+    }
+
     let v_str = C_str_slice(ccx, fail_str);
     let loc = bcx.sess().codemap().lookup_char_pos(call_info.span.lo);
     let filename = token::intern_and_get_ident(&loc.file.name);
@@ -398,6 +437,10 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                            -> Block<'blk, 'tcx> {
     let ccx = bcx.ccx();
     let _icx = push_ctxt("trans_fail_bounds_check");
+
+    if bcx.unreachable.get() {
+        return bcx;
+    }
 
     // Extract the file/line from the span
     let loc = bcx.sess().codemap().lookup_char_pos(call_info.span.lo);

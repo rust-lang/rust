@@ -83,9 +83,7 @@ pub fn check_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                   UnresolvedTypeAction::Error,
                   LvaluePreference::NoPreference,
                   |adj_ty, idx| {
-                      let autoderefref = ty::AutoDerefRef { autoderefs: idx, autoref: None };
-                      try_overloaded_call_step(fcx, call_expr, callee_expr,
-                                               adj_ty, autoderefref)
+                      try_overloaded_call_step(fcx, call_expr, callee_expr, adj_ty, idx)
                   });
 
     match result {
@@ -119,13 +117,15 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                       call_expr: &'tcx ast::Expr,
                                       callee_expr: &'tcx ast::Expr,
                                       adjusted_ty: Ty<'tcx>,
-                                      autoderefref: ty::AutoDerefRef<'tcx>)
+                                      autoderefs: usize)
                                       -> Option<CallStep<'tcx>>
 {
-    debug!("try_overloaded_call_step(call_expr={}, adjusted_ty={}, autoderefref={})",
+    debug!("try_overloaded_call_step(call_expr={}, adjusted_ty={}, autoderefs={})",
            call_expr.repr(fcx.tcx()),
            adjusted_ty.repr(fcx.tcx()),
-           autoderefref.repr(fcx.tcx()));
+           autoderefs);
+
+    let autoderefref = ty::AutoDerefRef { autoderefs: autoderefs, autoref: None };
 
     // If the callee is a bare function or a closure, then we're all set.
     match structurally_resolved_type(fcx, callee_expr.span, adjusted_ty).sty {
@@ -159,6 +159,18 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                          closure_def_id: def_id}));
                 return Some(CallStep::DeferredClosure(fn_sig));
             }
+        }
+
+        // Hack: we know that there are traits implementing Fn for &F
+        // where F:Fn and so forth. In the particular case of types
+        // like `x: &mut FnMut()`, if there is a call `x()`, we would
+        // normally translate to `FnMut::call_mut(&mut x, ())`, but
+        // that winds up requiring `mut x: &mut FnMut()`. A little
+        // over the top. The simplest fix by far is to just ignore
+        // this case and deref again, so we wind up with
+        // `FnMut::call_mut(&mut *x, ())`.
+        ty::ty_rptr(..) if autoderefs == 0 => {
+            return None;
         }
 
         _ => {}

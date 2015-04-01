@@ -8,15 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:coherence_lib.rs
+extern "rust-call" fn foo() { } //~ ERROR rust-call ABI is subject to change
 
-// pretty-expanded FIXME #23616
+trait Foo {
+    extern "rust-call" fn foo();
+}
 
-extern crate coherence_lib as lib;
-use lib::Remote;
-
-struct Local;
-
-impl Remote for Vec<Local> { }
+impl Foo for i32 {
+    extern "rust-call" fn foo() { } //~ ERROR rust-call ABI is subject to change
+}
 
 fn main() { }

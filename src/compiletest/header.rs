@@ -311,7 +311,7 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
     parse_name_value_directive(line, "exec-env").map(|nv| {
         // nv is either FOO or FOO=BAR
         let mut strs: Vec<String> = nv
-                                      .splitn(1, '=')
+                                      .splitn(2, '=')
                                       .map(|s| s.to_string())
                                       .collect();
 
