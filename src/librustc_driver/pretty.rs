@@ -74,7 +74,7 @@ pub enum PpMode {
 pub fn parse_pretty(sess: &Session,
                     name: &str,
                     extended: bool) -> (PpMode, Option<UserIdentifiedItem>) {
-    let mut split = name.splitn(1, '=');
+    let mut split = name.splitn(2, '=');
     let first = split.next().unwrap();
     let opt_second = split.next();
     let first = match (first, extended) {

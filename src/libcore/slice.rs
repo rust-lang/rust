@@ -1126,18 +1126,20 @@ impl<T, I: SplitIter<Item=T>> Iterator for GenericSplitN<I> {
 
     #[inline]
     fn next(&mut self) -> Option<T> {
-        if self.count == 0 {
-            self.iter.finish()
-        } else {
-            self.count -= 1;
-            if self.invert { self.iter.next_back() } else { self.iter.next() }
+        match self.count {
+            0 => None,
+            1 => { self.count -= 1; self.iter.finish() }
+            _ => {
+                self.count -= 1;
+                if self.invert {self.iter.next_back()} else {self.iter.next()}
+            }
         }
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (lower, upper_opt) = self.iter.size_hint();
-        (lower, upper_opt.map(|upper| cmp::min(self.count + 1, upper)))
+        (lower, upper_opt.map(|upper| cmp::min(self.count, upper)))
     }
 }
 
