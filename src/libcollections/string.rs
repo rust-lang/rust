@@ -17,7 +17,6 @@
 use core::prelude::*;
 
 use core::default::Default;
-use core::error::Error;
 use core::fmt;
 use core::hash;
 use core::iter::{IntoIterator, FromIterator};
@@ -724,20 +723,10 @@ impl fmt::Display for FromUtf8Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Error for FromUtf8Error {
-    fn description(&self) -> &str { "invalid utf-8" }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt("invalid utf-16: lone surrogate found", f)
     }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for FromUtf16Error {
-    fn description(&self) -> &str { "invalid utf-16" }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

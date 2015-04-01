@@ -22,7 +22,6 @@ use char::CharExt;
 use clone::Clone;
 use cmp::{self, Eq};
 use default::Default;
-use error::Error;
 use fmt;
 use iter::ExactSizeIterator;
 use iter::{Map, Iterator, DoubleEndedIterator};
@@ -192,11 +191,6 @@ impl fmt::Display for ParseBoolError {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for ParseBoolError {
-    fn description(&self) -> &str { "failed to parse bool" }
-}
-
 /*
 Section: Creating a string
 */
@@ -239,16 +233,6 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
     mem::transmute(v)
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Error for Utf8Error {
-    fn description(&self) -> &str {
-        match *self {
-            Utf8Error::TooShort => "invalid utf-8: not enough bytes",
-            Utf8Error::InvalidByte(..) => "invalid utf-8: corrupt contents",
-        }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
