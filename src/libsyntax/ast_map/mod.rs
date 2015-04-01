@@ -53,18 +53,29 @@ impl fmt::Display for PathElem {
 }
 
 #[derive(Clone)]
-struct LinkedPathNode<'a> {
+pub struct LinkedPathNode<'a> {
     node: PathElem,
     next: LinkedPath<'a>,
 }
 
-type LinkedPath<'a> = Option<&'a LinkedPathNode<'a>>;
+#[derive(Copy, Clone)]
+pub struct LinkedPath<'a>(Option<&'a LinkedPathNode<'a>>);
+
+impl<'a> LinkedPath<'a> {
+    pub fn empty() -> LinkedPath<'a> {
+        LinkedPath(None)
+    }
+
+    pub fn from(node: &'a LinkedPathNode) -> LinkedPath<'a> {
+        LinkedPath(Some(node))
+    }
+}
 
 impl<'a> Iterator for LinkedPath<'a> {
     type Item = PathElem;
 
     fn next(&mut self) -> Option<PathElem> {
-        match *self {
+        match self.0 {
             Some(node) => {
                 *self = node.next;
                 Some(node.node)
@@ -384,7 +395,7 @@ impl<'ast> Map<'ast> {
     pub fn with_path<T, F>(&self, id: NodeId, f: F) -> T where
         F: FnOnce(PathElems) -> T,
     {
-        self.with_path_next(id, None, f)
+        self.with_path_next(id, LinkedPath::empty(), f)
     }
 
     pub fn path_to_string(&self, id: NodeId) -> String {
@@ -422,7 +433,7 @@ impl<'ast> Map<'ast> {
                 _ => f([].iter().cloned().chain(next))
             }
         } else {
-            self.with_path_next(parent, Some(&LinkedPathNode {
+            self.with_path_next(parent, LinkedPath::from(&LinkedPathNode {
                 node: self.get_path_elem(id),
                 next: next
             }), f)

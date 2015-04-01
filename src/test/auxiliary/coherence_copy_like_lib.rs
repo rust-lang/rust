@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:coherence_lib.rs
+#![crate_type = "rlib"]
+#![feature(fundamental)]
 
-// Test that it's ok for T to appear second in the self-type, as long
-// as it's covered somewhere.
+use std::marker::MarkerTrait;
 
-// pretty-expanded FIXME #23616
+pub trait MyCopy : MarkerTrait { }
+impl MyCopy for i32 { }
 
-extern crate coherence_lib as lib;
-use lib::{Remote,Pair};
+pub struct MyStruct<T>(T);
 
-pub struct Cover<T>(T);
-
-impl<T> Remote for Pair<Cover<T>,T> { }
-
-fn main() { }
+#[fundamental]
+pub struct MyFundamentalStruct<T>(T);

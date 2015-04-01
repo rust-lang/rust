@@ -71,6 +71,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use fmt;
 use marker::Send;
 use mem::transmute;
 use option::Option::{self, Some, None};
@@ -104,6 +105,13 @@ impl<T> Any for T
 ///////////////////////////////////////////////////////////////////////////////
 // Extension methods for Any trait objects.
 ///////////////////////////////////////////////////////////////////////////////
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for Any {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Any")
+    }
+}
 
 impl Any {
     /// Returns true if the boxed type is the same as `T`
