@@ -185,9 +185,9 @@ mod imp {
 mod imp {
     use prelude::v1::*;
 
+    use io;
     use old_io::IoResult;
     use mem;
-    use os;
     use rand::Rng;
     use libc::{c_int, size_t};
 
@@ -241,7 +241,7 @@ mod imp {
                 SecRandomCopyBytes(kSecRandomDefault, v.len() as size_t, v.as_mut_ptr())
             };
             if ret == -1 {
-                panic!("couldn't generate random bytes: {}", os::last_os_error());
+                panic!("couldn't generate random bytes: {}", io::Error::last_os_error());
             }
         }
     }
