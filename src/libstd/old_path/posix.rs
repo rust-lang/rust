@@ -20,7 +20,7 @@ use iter::{Iterator, Map};
 use marker::Sized;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
-use slice::{AsSlice, Split, SliceConcatExt};
+use slice::{Split, SliceConcatExt};
 use str::{self, FromStr};
 use vec::Vec;
 
@@ -126,7 +126,7 @@ impl GenericPathUnsafe for Path {
     unsafe fn set_filename_unchecked<T: BytesContainer>(&mut self, filename: T) {
         let filename = filename.container_as_bytes();
         match self.sepidx {
-            None if b".." == self.repr => {
+            None if self.repr == b".." => {
                 let mut v = Vec::with_capacity(3 + filename.len());
                 v.push_all(dot_dot_static);
                 v.push(SEP_BYTE);
@@ -186,7 +186,7 @@ impl GenericPath for Path {
 
     fn dirname<'a>(&'a self) -> &'a [u8] {
         match self.sepidx {
-            None if b".." == self.repr => &self.repr,
+            None if self.repr == b".." => &self.repr,
             None => dot_static,
             Some(0) => &self.repr[..1],
             Some(idx) if &self.repr[idx+1..] == b".." => &self.repr,
@@ -196,8 +196,7 @@ impl GenericPath for Path {
 
     fn filename<'a>(&'a self) -> Option<&'a [u8]> {
         match self.sepidx {
-            None if b"." == self.repr ||
-                b".." == self.repr => None,
+            None if self.repr == b"." || self.repr == b".." => None,
             None => Some(&self.repr),
             Some(idx) if &self.repr[idx+1..] == b".." => None,
             Some(0) if self.repr[1..].is_empty() => None,
@@ -207,13 +206,13 @@ impl GenericPath for Path {
 
     fn pop(&mut self) -> bool {
         match self.sepidx {
-            None if b"." == self.repr => false,
+            None if self.repr == b"." => false,
             None => {
                 self.repr = vec![b'.'];
                 self.sepidx = None;
                 true
             }
-            Some(0) if b"/" == self.repr => false,
+            Some(0) if self.repr == b"/" => false,
             Some(idx) => {
                 if idx == 0 {
                     self.repr.truncate(idx+1);
@@ -245,7 +244,7 @@ impl GenericPath for Path {
         } else {
             let mut ita = self.components();
             let mut itb = other.components();
-            if b"." == self.repr {
+            if self.repr == b"." {
                 return match itb.next() {
                     None => true,
                     Some(b) => b != b".."
@@ -339,11 +338,11 @@ impl Path {
 
     /// Returns a normalized byte vector representation of a path, by removing all empty
     /// components, and unnecessary . and .. components.
-    fn normalize<V: ?Sized + AsSlice<u8>>(v: &V) -> Vec<u8> {
+    fn normalize(v: &[u8]) -> Vec<u8> {
         // borrowck is being very picky
         let val = {
-            let is_abs = !v.as_slice().is_empty() && v.as_slice()[0] == SEP_BYTE;
-            let v_ = if is_abs { &v.as_slice()[1..] } else { v.as_slice() };
+            let is_abs = !v.is_empty() && v[0] == SEP_BYTE;
+            let v_ = if is_abs { &v[1..] } else { v };
             let comps = normalize_helper(v_, is_abs);
             match comps {
                 None => None,
@@ -371,7 +370,7 @@ impl Path {
             }
         };
         match val {
-            None => v.as_slice().to_vec(),
+            None => v.to_vec(),
             Some(val) => val
         }
     }
@@ -446,8 +445,7 @@ mod tests {
     use clone::Clone;
     use option::Option::{self, Some, None};
     use old_path::GenericPath;
-    use slice::AsSlice;
-    use str::{self, Str};
+    use str;
     use string::ToString;
     use vec::Vec;
     use iter::Iterator;

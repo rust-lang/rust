@@ -274,7 +274,7 @@ use mem::transmute;
 use ops::FnOnce;
 use option::Option;
 use option::Option::{Some, None};
-use os;
+use sys::os;
 use boxed::Box;
 use result::Result;
 use result::Result::{Ok, Err};

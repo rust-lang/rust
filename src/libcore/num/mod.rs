@@ -46,7 +46,7 @@ use str::{FromStr, StrExt};
 /// intended to have wrapping semantics.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug)]
-pub struct Wrapping<T>(pub T);
+pub struct Wrapping<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 
 #[unstable(feature = "core", reason = "may be removed or relocated")]
 pub mod wrapping;

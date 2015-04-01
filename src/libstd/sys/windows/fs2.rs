@@ -20,11 +20,12 @@ use mem;
 use path::{Path, PathBuf};
 use ptr;
 use sync::Arc;
-use sys::handle::Handle as RawHandle;
+use sys::handle::Handle;
 use sys::{c, cvt};
+use sys_common::FromInner;
 use vec::Vec;
 
-pub struct File { handle: RawHandle }
+pub struct File { handle: Handle }
 pub struct FileAttr { data: c::WIN32_FILE_ATTRIBUTE_DATA }
 
 pub struct ReadDir {
@@ -192,7 +193,7 @@ impl File {
         if handle == libc::INVALID_HANDLE_VALUE {
             Err(Error::last_os_error())
         } else {
-            Ok(File { handle: RawHandle::new(handle) })
+            Ok(File { handle: Handle::new(handle) })
         }
     }
 
@@ -260,7 +261,13 @@ impl File {
         Ok(newpos as u64)
     }
 
-    pub fn handle(&self) -> &RawHandle { &self.handle }
+    pub fn handle(&self) -> &Handle { &self.handle }
+}
+
+impl FromInner<libc::HANDLE> for File {
+    fn from_inner(handle: libc::HANDLE) -> File {
+        File { handle: Handle::new(handle) }
+    }
 }
 
 pub fn to_utf16(s: &Path) -> Vec<u16> {

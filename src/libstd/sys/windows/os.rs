@@ -16,7 +16,7 @@ use prelude::v1::*;
 use os::windows::prelude::*;
 
 use error::Error as StdError;
-use ffi::{OsString, OsStr, AsOsStr};
+use ffi::{OsString, OsStr};
 use fmt;
 use io;
 use libc::types::os::arch::extra::LPWCH;
@@ -31,7 +31,7 @@ use ptr;
 use slice;
 use sys::c;
 use sys::fs::FileDesc;
-use sys::handle::Handle as RawHandle;
+use sys::handle::Handle;
 
 use libc::funcs::extra::kernel32::{
     GetEnvironmentStringsW,
@@ -199,13 +199,13 @@ impl<'a> Iterator for SplitPaths<'a> {
 pub struct JoinPathsError;
 
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
-    where I: Iterator<Item=T>, T: AsOsStr
+    where I: Iterator<Item=T>, T: AsRef<OsStr>
 {
     let mut joined = Vec::new();
     let sep = b';' as u16;
 
     for (i, path) in paths.enumerate() {
-        let path = path.as_os_str();
+        let path = path.as_ref();
         if i > 0 { joined.push(sep) }
         let v = path.encode_wide().collect::<Vec<u16>>();
         if v.contains(&(b'"' as u16)) {
@@ -245,7 +245,8 @@ pub fn getcwd() -> io::Result<PathBuf> {
 }
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
-    let mut p = p.as_os_str().encode_wide().collect::<Vec<_>>();
+    let p: &OsStr = p.as_ref();
+    let mut p = p.encode_wide().collect::<Vec<_>>();
     p.push(0);
 
     unsafe {
@@ -361,15 +362,15 @@ pub fn temp_dir() -> PathBuf {
 }
 
 pub fn home_dir() -> Option<PathBuf> {
-    getenv("HOME".as_os_str()).or_else(|| {
-        getenv("USERPROFILE".as_os_str())
+    getenv("HOME".as_ref()).or_else(|| {
+        getenv("USERPROFILE".as_ref())
     }).map(PathBuf::from).or_else(|| unsafe {
         let me = c::GetCurrentProcess();
         let mut token = ptr::null_mut();
         if c::OpenProcessToken(me, c::TOKEN_READ, &mut token) == 0 {
             return None
         }
-        let _handle = RawHandle::new(token);
+        let _handle = Handle::new(token);
         super::fill_utf16_buf_new(|buf, mut sz| {
             match c::GetUserProfileDirectoryW(token, buf, &mut sz) {
                 0 if libc::GetLastError() != 0 => 0,
@@ -378,4 +379,8 @@ pub fn home_dir() -> Option<PathBuf> {
             }
         }, super::os2path).ok()
     })
+}
+
+pub fn exit(code: i32) -> ! {
+    unsafe { c::ExitProcess(code as libc::c_uint) }
 }

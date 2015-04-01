@@ -10,7 +10,6 @@
 
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::collections::{BitSet, BitVec};
-use std::iter::range_step;
 
 #[test]
 fn test_bit_set_show() {
@@ -42,7 +41,7 @@ fn test_bit_set_iterator() {
     assert_eq!(idxs, [0, 2, 3]);
 
     let long: BitSet = (0..10000).filter(|&n| n % 2 == 0).collect();
-    let real: Vec<_> = range_step(0, 10000, 2).collect();
+    let real: Vec<_> = (0..10000).step_by(2).collect();
 
     let idxs: Vec<_> = long.iter().collect();
     assert_eq!(idxs, real);

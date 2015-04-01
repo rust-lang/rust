@@ -10,7 +10,7 @@
 
 #![feature(std_misc)]
 
-use std::thread::Thread;
+use std::thread;
 use std::sync::mpsc::{channel, Sender};
 
 pub fn main() { test05(); }
@@ -26,7 +26,7 @@ fn test05_start(tx : &Sender<isize>) {
 
 fn test05() {
     let (tx, rx) = channel();
-    let _t = Thread::spawn(move|| { test05_start(&tx) });
+    let _t = thread::scoped(move|| { test05_start(&tx) });
     let mut value: isize = rx.recv().unwrap();
     println!("{}", value);
     value = rx.recv().unwrap();

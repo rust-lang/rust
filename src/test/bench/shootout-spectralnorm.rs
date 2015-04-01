@@ -118,7 +118,9 @@ fn dot(v: &[f64], u: &[f64]) -> f64 {
 fn parallel<'a,T, F>(v: &mut [T], ref f: F)
                   where T: Send + Sync + 'a,
                         F: Fn(usize, &mut [T]) + Sync + 'a {
-    let size = v.len() / os::num_cpus() + 1;
+    // FIXME: pick a more appropriate parallel factor
+    let parallelism = 4;
+    let size = v.len() / parallelism + 1;
     v.chunks_mut(size).enumerate().map(|(i, chunk)| {
         thread::scoped(move|| {
             f(i * size, chunk)

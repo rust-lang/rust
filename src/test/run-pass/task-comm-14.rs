@@ -11,7 +11,7 @@
 #![feature(std_misc)]
 
 use std::sync::mpsc::{channel, Sender};
-use std::thread::Thread;
+use std::thread;
 
 pub fn main() {
     let (tx, rx) = channel();
@@ -21,7 +21,7 @@ pub fn main() {
     while (i > 0) {
         println!("{}", i);
         let tx = tx.clone();
-        Thread::spawn({let i = i; move|| { child(i, &tx) }});
+        thread::scoped({let i = i; move|| { child(i, &tx) }});
         i = i - 1;
     }
 

@@ -44,7 +44,7 @@
 //! lives in the [`vec`](vec/index.html) module. Contiguous, unsized regions
 //! of memory, `[T]`, commonly called "slices", and their borrowed versions,
 //! `&[T]`, commonly called "borrowed slices", are built-in types for which the
-//! for which the [`slice`](slice/index.html) module defines many methods.
+//! [`slice`](slice/index.html) module defines many methods.
 //!
 //! `&str`, a UTF-8 string, is a built-in type, and the standard library
 //! defines methods for it on a variety of traits in the
@@ -122,12 +122,11 @@
 #![feature(unsafe_no_drop_flag, filling_drop)]
 #![feature(macro_reexport)]
 #![feature(unique)]
-#![feature(convert)]
 #![feature(allow_internal_unstable)]
 #![feature(str_char)]
 #![feature(into_cow)]
-#![feature(slice_patterns)]
 #![feature(std_misc)]
+#![feature(slice_patterns)]
 #![feature(debug_builders)]
 #![cfg_attr(test, feature(test, rustc_private, std_misc))]
 
@@ -173,8 +172,6 @@ pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;
 pub use core::convert;
 pub use core::default;
-#[allow(deprecated)]
-pub use core::finally;
 pub use core::hash;
 pub use core::intrinsics;
 pub use core::iter;

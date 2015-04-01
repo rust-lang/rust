@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(libc, os)]
+#![feature(libc, exit_status)]
 
 extern crate libc;
 
@@ -23,6 +23,6 @@ fn main() {
     };
 
     if result != 1 {
-        std::os::set_exit_status(255);
+        std::env::set_exit_status(255);
     }
 }

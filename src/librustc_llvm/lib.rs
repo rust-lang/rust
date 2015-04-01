@@ -30,7 +30,6 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(staged_api)]
-#![cfg_attr(unix, feature(std_misc))]
 
 extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
@@ -1976,6 +1975,7 @@ extern {
     pub fn LLVMIsAArgument(value_ref: ValueRef) -> ValueRef;
 
     pub fn LLVMIsAAllocaInst(value_ref: ValueRef) -> ValueRef;
+    pub fn LLVMIsAConstantInt(value_ref: ValueRef) -> ValueRef;
 
     pub fn LLVMInitializeX86TargetInfo();
     pub fn LLVMInitializeX86Target();

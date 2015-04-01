@@ -12,7 +12,7 @@
 
 #![feature(std_misc)]
 
-use std::thread::Thread;
+use std::thread;
 use std::sync::mpsc::{channel, Sender};
 
 fn producer(tx: &Sender<Vec<u8>>) {
@@ -23,7 +23,7 @@ fn producer(tx: &Sender<Vec<u8>>) {
 
 pub fn main() {
     let (tx, rx) = channel::<Vec<u8>>();
-    let _prod = Thread::spawn(move|| {
+    let _prod = thread::scoped(move|| {
         producer(&tx)
     });
 

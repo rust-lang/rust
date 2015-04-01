@@ -136,7 +136,6 @@ pub mod atomic;
 pub mod cell;
 pub mod char;
 pub mod panicking;
-pub mod finally;
 pub mod iter;
 pub mod option;
 pub mod raw;

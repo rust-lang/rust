@@ -11,7 +11,6 @@
 // pretty-expanded FIXME #23616
 
 #![feature(path)]
-#![feature(convert)]
 
 use std::env::*;
 use std::path::PathBuf;

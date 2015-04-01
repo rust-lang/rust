@@ -1129,8 +1129,6 @@ mod tests {
     use iter::Iterator;
     use option::Option::{self, Some, None};
     use old_path::GenericPath;
-    use slice::AsSlice;
-    use str::Str;
     use string::ToString;
     use vec::Vec;
 

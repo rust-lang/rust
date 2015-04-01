@@ -30,9 +30,9 @@ use id::Id;
 
 mod s {
     #![allow(unstable)]
-    use std::sync::atomic::{AtomicUint, ATOMIC_UINT_INIT, Ordering};
+    use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
-    static S_COUNT: AtomicUint = ATOMIC_UINT_INIT;
+    static S_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 
     /// generates globally unique count (global across the current
     /// process, that is)

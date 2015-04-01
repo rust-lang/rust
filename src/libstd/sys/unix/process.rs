@@ -19,8 +19,9 @@ use hash::Hash;
 use old_io::process::{ProcessExit, ExitStatus, ExitSignal};
 use old_io::{IoResult, EndOfFile};
 use libc::{self, pid_t, c_void, c_int};
+use io;
 use mem;
-use os;
+use sys::os;
 use old_path::BytesContainer;
 use ptr;
 use sync::mpsc::{channel, Sender, Receiver};
@@ -496,7 +497,8 @@ impl Process {
                     n if n > 0 => { ret = true; }
                     0 => return true,
                     -1 if wouldblock() => return ret,
-                    n => panic!("bad read {:?} ({:?})", os::last_os_error(), n),
+                    n => panic!("bad read {} ({})",
+                                io::Error::last_os_error(), n),
                 }
             }
         }

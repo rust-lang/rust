@@ -12,7 +12,7 @@
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
-#![feature(old_orphan_check, rustc_private)]
+#![feature(rustc_private)]
 
 extern crate serialize;
 

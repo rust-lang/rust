@@ -25,8 +25,6 @@ use core::default::Default;
 use core::fmt;
 use core::iter::{self, repeat, FromIterator, IntoIterator, RandomAccessIterator};
 use core::mem;
-#[cfg(stage0)]
-use core::num::wrapping::WrappingOps;
 use core::ops::{Index, IndexMut};
 use core::ptr::{self, Unique};
 use core::slice;
@@ -35,10 +33,6 @@ use core::hash::{Hash, Hasher};
 use core::cmp;
 
 use alloc::heap;
-
-#[deprecated(since = "1.0.0", reason = "renamed to VecDeque")]
-#[unstable(feature = "collections")]
-pub use VecDeque as RingBuf;
 
 const INITIAL_CAPACITY: usize = 7; // 2^3 - 1
 const MINIMUM_CAPACITY: usize = 1; // 2 - 1
@@ -527,7 +521,8 @@ impl<T> VecDeque<T> {
     /// buf.push_back(3);
     /// buf.push_back(4);
     /// let b: &[_] = &[&5, &3, &4];
-    /// assert_eq!(buf.iter().collect::<Vec<&i32>>().as_slice(), b);
+    /// let c: Vec<&i32> = buf.iter().collect();
+    /// assert_eq!(&c[..], b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
@@ -1902,7 +1897,7 @@ mod test {
         // len is the length *after* insertion
         for len in 1..cap {
             // 0, 1, 2, .., len - 1
-            let expected = iter::count(0, 1).take(len).collect();
+            let expected = (0..).take(len).collect();
             for tail_pos in 0..cap {
                 for to_insert in 0..len {
                     tester.tail = tail_pos;
@@ -1935,7 +1930,7 @@ mod test {
         // len is the length *after* removal
         for len in 0..cap - 1 {
             // 0, 1, 2, .., len - 1
-            let expected = iter::count(0, 1).take(len).collect();
+            let expected = (0..).take(len).collect();
             for tail_pos in 0..cap {
                 for to_remove in 0..len + 1 {
                     tester.tail = tail_pos;
@@ -1973,7 +1968,7 @@ mod test {
 
         for len in 0..cap + 1 {
             // 0, 1, 2, .., len - 1
-            let expected = iter::count(0, 1).take(len).collect();
+            let expected = (0..).take(len).collect();
             for tail_pos in 0..max_cap + 1 {
                 tester.tail = tail_pos;
                 tester.head = tail_pos;
@@ -2006,9 +2001,9 @@ mod test {
             // index to split at
             for at in 0..len + 1 {
                 // 0, 1, 2, .., at - 1 (may be empty)
-                let expected_self = iter::count(0, 1).take(at).collect();
+                let expected_self = (0..).take(at).collect();
                 // at, at + 1, .., len - 1 (may be empty)
-                let expected_other = iter::count(at, 1).take(len - at).collect();
+                let expected_other = (at..).take(len - at).collect();
 
                 for tail_pos in 0..cap {
                     tester.tail = tail_pos;

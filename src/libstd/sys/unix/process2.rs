@@ -54,7 +54,7 @@ impl Command {
         self.args.push(arg.to_cstring().unwrap())
     }
     pub fn args<'a, I: Iterator<Item = &'a OsStr>>(&mut self, args: I) {
-        self.args.extend(args.map(|s| OsStrExt::to_cstring(s).unwrap()))
+        self.args.extend(args.map(|s| s.to_cstring().unwrap()))
     }
     fn init_env_map(&mut self) {
         if self.env.is_none() {

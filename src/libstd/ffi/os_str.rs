@@ -29,12 +29,13 @@
 //! for conversion to/from various other string types. Eventually these types
 //! will offer a full-fledged string API.
 
-#![unstable(feature = "os",
+#![unstable(feature = "os_str",
             reason = "recently added as part of path/io reform")]
 
 use core::prelude::*;
 
 use borrow::{Borrow, Cow, ToOwned};
+use ffi::CString;
 use fmt::{self, Debug};
 use mem;
 use string::String;
@@ -42,6 +43,7 @@ use ops;
 use cmp;
 use hash::{Hash, Hasher};
 use old_path::{Path, GenericPath};
+use vec::Vec;
 
 use sys::os_str::{Buf, Slice};
 use sys_common::{AsInner, IntoInner, FromInner};
@@ -61,26 +63,41 @@ pub struct OsStr {
 }
 
 impl OsString {
-    /// Constructs an `OsString` at no cost by consuming a `String`.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "use `from` instead")]
-    pub fn from_string(s: String) -> OsString {
-        OsString::from(s)
-    }
-
-    /// Constructs an `OsString` by copying from a `&str` slice.
-    ///
-    /// Equivalent to: `OsString::from_string(String::from_str(s))`.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "use `from` instead")]
-    pub fn from_str(s: &str) -> OsString {
-        OsString::from(s)
-    }
-
     /// Constructs a new empty `OsString`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> OsString {
         OsString { inner: Buf::from_string(String::new()) }
+    }
+
+    /// Construct an `OsString` from a byte sequence.
+    ///
+    /// # Platform behavior
+    ///
+    /// On Unix systems, any byte sequence can be successfully
+    /// converted into an `OsString`.
+    ///
+    /// On Windows system, only UTF-8 byte sequences will successfully
+    /// convert; non UTF-8 data will produce `None`.
+    #[unstable(feature = "convert", reason = "recently added")]
+    pub fn from_bytes<B>(bytes: B) -> Option<OsString> where B: Into<Vec<u8>> {
+        #[cfg(unix)]
+        fn from_bytes_inner(vec: Vec<u8>) -> Option<OsString> {
+            use os::unix::ffi::OsStringExt;
+            Some(OsString::from_vec(vec))
+        }
+
+        #[cfg(windows)]
+        fn from_bytes_inner(vec: Vec<u8>) -> Option<OsString> {
+            String::from_utf8(vec).ok().map(OsString::from)
+        }
+
+        from_bytes_inner(bytes.into())
+    }
+
+    /// Convert to an `OsStr` slice.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn as_os_str(&self) -> &OsStr {
+        self
     }
 
     /// Convert the `OsString` into a `String` if it contains valid Unicode data.
@@ -89,13 +106,6 @@ impl OsString {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_string(self) -> Result<String, OsString> {
         self.inner.into_string().map_err(|buf| OsString { inner: buf} )
-    }
-
-    /// Extend the string with the given `&OsStr` slice.
-    #[deprecated(since = "1.0.0", reason = "renamed to `push`")]
-    #[unstable(feature = "os")]
-    pub fn push_os_str(&mut self, s: &OsStr) {
-        self.inner.push_slice(&s.inner)
     }
 
     /// Extend the string with the given `&OsStr` slice.
@@ -211,8 +221,16 @@ impl Hash for OsString {
 }
 
 impl OsStr {
+    /// Coerce into an `OsStr` slice.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &OsStr {
+        s.as_ref()
+    }
+
     /// Coerce directly from a `&str` slice to a `&OsStr` slice.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[deprecated(since = "1.0.0",
+                 reason = "use `OsStr::new` instead")]
     pub fn from_str(s: &str) -> &OsStr {
         unsafe { mem::transmute(Slice::from_str(s)) }
     }
@@ -239,6 +257,36 @@ impl OsStr {
         OsString { inner: self.inner.to_owned() }
     }
 
+    /// Yield this `OsStr` as a byte slice.
+    ///
+    /// # Platform behavior
+    ///
+    /// On Unix systems, this is a no-op.
+    ///
+    /// On Windows systems, this returns `None` unless the `OsStr` is
+    /// valid unicode, in which case it produces UTF-8-encoded
+    /// data. This may entail checking validity.
+    #[unstable(feature = "convert", reason = "recently added")]
+    pub fn to_bytes(&self) -> Option<&[u8]> {
+        if cfg!(windows) {
+            self.to_str().map(|s| s.as_bytes())
+        } else {
+            Some(self.bytes())
+        }
+    }
+
+    /// Create a `CString` containing this `OsStr` data.
+    ///
+    /// Fails if the `OsStr` contains interior nulls.
+    ///
+    /// This is a convenience for creating a `CString` from
+    /// `self.to_bytes()`, and inherits the platform behavior of the
+    /// `to_bytes` method.
+    #[unstable(feature = "convert", reason = "recently added")]
+    pub fn to_cstring(&self) -> Option<CString> {
+        self.to_bytes().and_then(|b| CString::new(b).ok())
+    }
+
     /// Get the underlying byte representation.
     ///
     /// Note: it is *crucial* that this API is private, to avoid
@@ -258,14 +306,14 @@ impl PartialEq for OsStr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<str> for OsStr {
     fn eq(&self, other: &str) -> bool {
-        *self == *OsStr::from_str(other)
+        *self == *OsStr::new(other)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq<OsStr> for str {
     fn eq(&self, other: &OsStr) -> bool {
-        *other == *OsStr::from_str(self)
+        *other == *OsStr::new(self)
     }
 }
 
@@ -292,7 +340,7 @@ impl PartialOrd for OsStr {
 impl PartialOrd<str> for OsStr {
     #[inline]
     fn partial_cmp(&self, other: &str) -> Option<cmp::Ordering> {
-        self.partial_cmp(OsStr::from_str(other))
+        self.partial_cmp(OsStr::new(other))
     }
 }
 
@@ -359,7 +407,7 @@ impl AsOsStr for OsString {
 #[deprecated(since = "1.0.0", reason = "trait is deprecated")]
 impl AsOsStr for str {
     fn as_os_str(&self) -> &OsStr {
-        OsStr::from_str(self)
+        unsafe { mem::transmute(Slice::from_str(self)) }
     }
 }
 
@@ -367,7 +415,7 @@ impl AsOsStr for str {
 #[deprecated(since = "1.0.0", reason = "trait is deprecated")]
 impl AsOsStr for String {
     fn as_os_str(&self) -> &OsStr {
-        OsStr::from_str(&self[..])
+        unsafe { mem::transmute(Slice::from_str(self)) }
     }
 }
 
@@ -388,14 +436,14 @@ impl AsRef<OsStr> for OsString {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for str {
     fn as_ref(&self) -> &OsStr {
-        OsStr::from_str(self)
+        unsafe { mem::transmute(Slice::from_str(self)) }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for String {
     fn as_ref(&self) -> &OsStr {
-        OsStr::from_str(&self[..])
+        unsafe { mem::transmute(Slice::from_str(self)) }
     }
 }
 

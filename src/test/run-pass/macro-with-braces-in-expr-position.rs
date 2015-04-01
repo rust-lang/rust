@@ -10,13 +10,13 @@
 
 #![feature(std_misc)]
 
-use std::thread::Thread;
+use std::thread;
 
 macro_rules! expr { ($e: expr) => { $e } }
 
 macro_rules! spawn {
     ($($code: tt)*) => {
-        expr!(Thread::spawn(move|| {$($code)*}))
+        expr!(thread::spawn(move|| {$($code)*}))
     }
 }
 

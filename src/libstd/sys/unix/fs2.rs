@@ -12,7 +12,7 @@ use core::prelude::*;
 use io::prelude::*;
 use os::unix::prelude::*;
 
-use ffi::{CString, CStr, OsString, AsOsStr, OsStr};
+use ffi::{CString, CStr, OsString, OsStr};
 use io::{self, Error, SeekFrom};
 use libc::{self, c_int, size_t, off_t, c_char, mode_t};
 use mem;
@@ -276,8 +276,14 @@ impl File {
 }
 
 fn cstr(path: &Path) -> io::Result<CString> {
-    let cstring = try!(path.as_os_str().to_cstring());
-    Ok(cstring)
+    path.as_os_str().to_cstring().ok_or(
+        io::Error::new(io::ErrorKind::InvalidInput, "path contained a null"))
+}
+
+impl FromInner<c_int> for File {
+    fn from_inner(fd: c_int) -> File {
+        File(FileDesc::new(fd))
+    }
 }
 
 pub fn mkdir(p: &Path) -> io::Result<()> {

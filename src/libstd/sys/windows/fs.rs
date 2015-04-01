@@ -136,7 +136,7 @@ impl FileDesc {
         }
     }
 
-    /// Extract the actual filedescriptor without closing it.
+    #[allow(dead_code)]
     pub fn unwrap(self) -> fd_t {
         let fd = self.fd;
         unsafe { mem::forget(self) };

@@ -620,8 +620,8 @@ impl<'a> StringReader<'a> {
         let base = 10;
 
         // find the integer representing the name
-        self.scan_digits(base);
-        let encoded_name: u32 = self.with_str_from(start_bpos, |s| {
+        self.scan_digits(base, base);
+        let encoded_name : u32 = self.with_str_from(start_bpos, |s| {
             u32::from_str_radix(s, 10).unwrap_or_else(|_| {
                 panic!("expected digits representing a name, got {:?}, {}, range [{:?},{:?}]",
                       s, whence, start_bpos, self.last_pos);
@@ -638,7 +638,7 @@ impl<'a> StringReader<'a> {
 
         // find the integer representing the ctxt
         let start_bpos = self.last_pos;
-        self.scan_digits(base);
+        self.scan_digits(base, base);
         let encoded_ctxt : ast::SyntaxContext = self.with_str_from(start_bpos, |s| {
             u32::from_str_radix(s, 10).unwrap_or_else(|_| {
                 panic!("expected digits representing a ctxt, got {:?}, {}", s, whence);
@@ -652,16 +652,28 @@ impl<'a> StringReader<'a> {
                      ctxt: encoded_ctxt, }
     }
 
-    /// Scan through any digits (base `radix`) or underscores, and return how
-    /// many digits there were.
-    fn scan_digits(&mut self, radix: u32) -> usize {
+    /// Scan through any digits (base `scan_radix`) or underscores,
+    /// and return how many digits there were.
+    ///
+    /// `real_radix` represents the true radix of the number we're
+    /// interested in, and errors will be emitted for any digits
+    /// between `real_radix` and `scan_radix`.
+    fn scan_digits(&mut self, real_radix: u32, scan_radix: u32) -> usize {
+        assert!(real_radix <= scan_radix);
         let mut len = 0;
         loop {
             let c = self.curr;
             if c == Some('_') { debug!("skipping a _"); self.bump(); continue; }
-            match c.and_then(|cc| cc.to_digit(radix)) {
+            match c.and_then(|cc| cc.to_digit(scan_radix)) {
                 Some(_) => {
                     debug!("{:?} in scan_digits", c);
+                    // check that the hypothetical digit is actually
+                    // in range for the true radix
+                    if c.unwrap().to_digit(real_radix).is_none() {
+                        self.err_span_(self.last_pos, self.pos,
+                                       &format!("invalid digit for a base {} literal",
+                                                real_radix));
+                    }
                     len += 1;
                     self.bump();
                 }
@@ -680,11 +692,11 @@ impl<'a> StringReader<'a> {
 
         if c == '0' {
             match self.curr.unwrap_or('\0') {
-                'b' => { self.bump(); base = 2; num_digits = self.scan_digits(2); }
-                'o' => { self.bump(); base = 8; num_digits = self.scan_digits(8); }
-                'x' => { self.bump(); base = 16; num_digits = self.scan_digits(16); }
+                'b' => { self.bump(); base = 2; num_digits = self.scan_digits(2, 10); }
+                'o' => { self.bump(); base = 8; num_digits = self.scan_digits(8, 10); }
+                'x' => { self.bump(); base = 16; num_digits = self.scan_digits(16, 16); }
                 '0'...'9' | '_' | '.' => {
-                    num_digits = self.scan_digits(10) + 1;
+                    num_digits = self.scan_digits(10, 10) + 1;
                 }
                 _ => {
                     // just a 0
@@ -692,7 +704,7 @@ impl<'a> StringReader<'a> {
                 }
             }
         } else if c.is_digit(10) {
-            num_digits = self.scan_digits(10) + 1;
+            num_digits = self.scan_digits(10, 10) + 1;
         } else {
             num_digits = 0;
         }
@@ -711,7 +723,7 @@ impl<'a> StringReader<'a> {
             // with a number
             self.bump();
             if self.curr.unwrap_or('\0').is_digit(10) {
-                self.scan_digits(10);
+                self.scan_digits(10, 10);
                 self.scan_float_exponent();
             }
             let last_pos = self.last_pos;
@@ -934,7 +946,7 @@ impl<'a> StringReader<'a> {
             if self.curr_is('-') || self.curr_is('+') {
                 self.bump();
             }
-            if self.scan_digits(10) == 0 {
+            if self.scan_digits(10, 10) == 0 {
                 self.err_span_(self.last_pos, self.pos, "expected at least one digit in exponent")
             }
         }

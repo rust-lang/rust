@@ -15,7 +15,7 @@
 #![feature(libc, std_misc)]
 
 extern crate libc;
-use std::thread::Thread;
+use std::thread;
 
 mod rustrt {
     extern crate libc;
@@ -46,7 +46,7 @@ fn count(n: libc::uintptr_t) -> libc::uintptr_t {
 pub fn main() {
     // Make sure we're on a task with small Rust stacks (main currently
     // has a large stack)
-    let _t = Thread::spawn(move|| {
+    let _t = thread::scoped(move|| {
         let result = count(12);
         println!("result = {}", result);
         assert_eq!(result, 2048);

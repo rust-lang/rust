@@ -25,11 +25,6 @@ use sys::fs2 as fs_imp;
 use sys_common::{AsInnerMut, FromInner, AsInner};
 use vec::Vec;
 
-#[allow(deprecated)]
-pub use self::tempdir::TempDir;
-
-mod tempdir;
-
 /// A reference to an open file on the filesystem.
 ///
 /// An instance of a `File` can be read and/or written depending on what options
@@ -56,7 +51,7 @@ mod tempdir;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
-    path: PathBuf,
+    path: Option<PathBuf>,
 }
 
 /// Metadata information about a file.
@@ -171,7 +166,7 @@ impl File {
                reason = "this abstraction is imposed by this library instead \
                          of the underlying OS and may be removed")]
     pub fn path(&self) -> Option<&Path> {
-        Some(&self.path)
+        self.path.as_ref().map(|p| &**p)
     }
 
     /// Attempt to sync all OS-internal metadata to disk.
@@ -273,6 +268,12 @@ impl File {
 impl AsInner<fs_imp::File> for File {
     fn as_inner(&self) -> &fs_imp::File { &self.inner }
 }
+impl FromInner<fs_imp::File> for File {
+    fn from_inner(f: fs_imp::File) -> File {
+        File { inner: f, path: None }
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for File {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
@@ -381,7 +382,7 @@ impl OpenOptions {
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
         let path = path.as_ref();
         let inner = try!(fs_imp::File::open(path, &self.0));
-        Ok(File { path: path.to_path_buf(), inner: inner })
+        Ok(File { path: Some(path.to_path_buf()), inner: inner })
     }
 }
 
@@ -575,8 +576,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
     let to = to.as_ref();
     if !from.is_file() {
         return Err(Error::new(ErrorKind::InvalidInput,
-                              "the source path is not an existing file",
-                              None))
+                              "the source path is not an existing file"))
     }
 
     let mut reader = try!(File::open(from));
@@ -1327,7 +1327,7 @@ mod tests {
         check!(fs::copy(&input, &out));
         let mut v = Vec::new();
         check!(check!(File::open(&out)).read_to_end(&mut v));
-        assert_eq!(v.as_slice(), b"hello");
+        assert_eq!(v, b"hello");
 
         assert_eq!(check!(input.metadata()).permissions(),
                    check!(out.metadata()).permissions());
@@ -1622,7 +1622,7 @@ mod tests {
         check!(check!(File::create(&tmpdir.join("test"))).write(&bytes));
         let mut v = Vec::new();
         check!(check!(File::open(&tmpdir.join("test"))).read_to_end(&mut v));
-        assert!(v == bytes.as_slice());
+        assert!(v == &bytes[..]);
     }
 
     #[test]

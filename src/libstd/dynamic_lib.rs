@@ -18,7 +18,7 @@
 use prelude::v1::*;
 
 use env;
-use ffi::{AsOsStr, CString, OsString};
+use ffi::{CString, OsString};
 use mem;
 use path::{Path, PathBuf};
 
@@ -190,7 +190,6 @@ mod dl {
     use ffi::{CStr, OsStr};
     use str;
     use libc;
-    use os::unix::prelude::*;
     use ptr;
 
     pub fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {

@@ -39,7 +39,6 @@ mod atomic;
 mod cell;
 mod char;
 mod cmp;
-mod finally;
 mod fmt;
 mod hash;
 mod iter;

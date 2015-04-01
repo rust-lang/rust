@@ -189,8 +189,6 @@ use sys_common::{stack, thread_info};
 use thunk::Thunk;
 use time::Duration;
 
-#[allow(deprecated)] use old_io::Writer;
-
 ////////////////////////////////////////////////////////////////////////////////
 // Thread-local storage
 ////////////////////////////////////////////////////////////////////////////////
@@ -240,28 +238,6 @@ impl Builder {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stack_size(mut self, size: usize) -> Builder {
         self.stack_size = Some(size);
-        self
-    }
-
-    /// Redirect thread-local stdout.
-    #[unstable(feature = "std_misc",
-               reason = "Will likely go away after proc removal")]
-    #[deprecated(since = "1.0.0",
-                 reason = "the old I/O module is deprecated and this function \
-                           will be removed with no replacement")]
-    #[allow(deprecated)]
-    pub fn stdout(self, _stdout: Box<Writer + Send + 'static>) -> Builder {
-        self
-    }
-
-    /// Redirect thread-local stderr.
-    #[unstable(feature = "std_misc",
-               reason = "Will likely go away after proc removal")]
-    #[deprecated(since = "1.0.0",
-                 reason = "the old I/O module is deprecated and this function \
-                           will be removed with no replacement")]
-    #[allow(deprecated)]
-    pub fn stderr(self, _stderr: Box<Writer + Send + 'static>) -> Builder {
         self
     }
 
@@ -568,71 +544,6 @@ impl Thread {
         }
     }
 
-    /// Deprecated: use module-level free function.
-    #[deprecated(since = "1.0.0", reason = "use module-level free function")]
-    #[unstable(feature = "std_misc",
-               reason = "may change with specifics of new Send semantics")]
-    pub fn spawn<F>(f: F) -> Thread where F: FnOnce(), F: Send + 'static {
-        Builder::new().spawn(f).unwrap().thread().clone()
-    }
-
-    /// Deprecated: use module-level free function.
-    #[deprecated(since = "1.0.0", reason = "use module-level free function")]
-    #[unstable(feature = "std_misc",
-               reason = "may change with specifics of new Send semantics")]
-    pub fn scoped<'a, T, F>(f: F) -> JoinGuard<'a, T> where
-        T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
-    {
-        Builder::new().scoped(f).unwrap()
-    }
-
-    /// Deprecated: use module-level free function.
-    #[deprecated(since = "1.0.0", reason = "use module-level free function")]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn current() -> Thread {
-        thread_info::current_thread()
-    }
-
-    /// Deprecated: use module-level free function.
-    #[deprecated(since = "1.0.0", reason = "use module-level free function")]
-    #[unstable(feature = "std_misc", reason = "name may change")]
-    pub fn yield_now() {
-        unsafe { imp::yield_now() }
-    }
-
-    /// Deprecated: use module-level free function.
-    #[deprecated(since = "1.0.0", reason = "use module-level free function")]
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn panicking() -> bool {
-        unwind::panicking()
-    }
-
-    /// Deprecated: use module-level free function.
-    #[deprecated(since = "1.0.0", reason = "use module-level free function")]
-    #[unstable(feature = "std_misc", reason = "recently introduced")]
-    pub fn park() {
-        let thread = current();
-        let mut guard = thread.inner.lock.lock().unwrap();
-        while !*guard {
-            guard = thread.inner.cvar.wait(guard).unwrap();
-        }
-        *guard = false;
-    }
-
-    /// Deprecated: use module-level free function.
-    #[deprecated(since = "1.0.0", reason = "use module-level free function")]
-    #[unstable(feature = "std_misc", reason = "recently introduced")]
-    pub fn park_timeout(duration: Duration) {
-        let thread = current();
-        let mut guard = thread.inner.lock.lock().unwrap();
-        if !*guard {
-            let (g, _) = thread.inner.cvar.wait_timeout(guard, duration).unwrap();
-            guard = g;
-        }
-        *guard = false;
-    }
-
     /// Atomically makes the handle's token available if it is not already.
     ///
     /// See the module doc for more detail.
@@ -762,8 +673,8 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
         &self.inner.thread
     }
 
-    /// Wait for the associated thread to finish, returning the result of the thread's
-    /// calculation.
+    /// Wait for the associated thread to finish, returning the result of the
+    /// thread's calculation.
     ///
     /// # Panics
     ///
@@ -774,17 +685,6 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
             Ok(res) => res,
             Err(_) => panic!("child thread {:?} panicked", self.thread()),
         }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> JoinGuard<'static, T> {
-    /// Detaches the child thread, allowing it to outlive its parent.
-    #[deprecated(since = "1.0.0", reason = "use spawn instead")]
-    #[unstable(feature = "std_misc")]
-    pub fn detach(mut self) {
-        unsafe { imp::detach(self.inner.native) };
-        self.inner.joined = true; // avoid joining in the destructor
     }
 }
 
@@ -810,7 +710,6 @@ mod test {
 
     use any::Any;
     use sync::mpsc::{channel, Sender};
-    use boxed::BoxAny;
     use result;
     use std::old_io::{ChanReader, ChanWriter};
     use super::{Builder};

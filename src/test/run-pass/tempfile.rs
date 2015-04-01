@@ -24,7 +24,7 @@ use std::old_path::{Path, GenericPath};
 use std::old_io::fs::PathExtensions;
 use std::old_io::{fs, TempDir};
 use std::old_io;
-use std::os;
+use std::env;
 use std::sync::mpsc::channel;
 use std::thread;
 
@@ -129,7 +129,7 @@ fn test_rm_tempdir_close() {
 // to depend on std
 fn recursive_mkdir_rel() {
     let path = Path::new("frob");
-    let cwd = os::getcwd().unwrap();
+    let cwd = Path::new(env::current_dir().unwrap().to_str().unwrap());
     println!("recursive_mkdir_rel: Making: {} in cwd {} [{}]", path.display(),
            cwd.display(), path.exists());
     fs::mkdir_recursive(&path, old_io::USER_RWX);
@@ -147,7 +147,7 @@ fn recursive_mkdir_dot() {
 
 fn recursive_mkdir_rel_2() {
     let path = Path::new("./frob/baz");
-    let cwd = os::getcwd().unwrap();
+    let cwd = Path::new(env::current_dir().unwrap().to_str().unwrap());
     println!("recursive_mkdir_rel_2: Making: {} in cwd {} [{}]", path.display(),
            cwd.display(), path.exists());
     fs::mkdir_recursive(&path, old_io::USER_RWX);
@@ -196,7 +196,7 @@ pub fn dont_double_panic() {
 
 fn in_tmpdir<F>(f: F) where F: FnOnce() {
     let tmpdir = TempDir::new("test").ok().expect("can't make tmpdir");
-    assert!(os::change_dir(tmpdir.path()).is_ok());
+    assert!(env::set_current_dir(tmpdir.path().as_str().unwrap()).is_ok());
 
     f();
 }
