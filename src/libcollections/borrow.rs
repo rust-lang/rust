@@ -16,7 +16,7 @@ use core::clone::Clone;
 use core::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
 use core::convert::AsRef;
 use core::hash::{Hash, Hasher};
-use core::marker::Sized;
+use core::marker::{Send, Sized, Sync};
 use core::ops::Deref;
 use core::option::Option;
 
@@ -115,7 +115,7 @@ impl<T> Borrow<T> for rc::Rc<T> {
     fn borrow(&self) -> &T { &**self }
 }
 
-impl<T> Borrow<T> for arc::Arc<T> {
+impl<T: Send + Sync> Borrow<T> for arc::Arc<T> {
     fn borrow(&self) -> &T { &**self }
 }
 

@@ -612,7 +612,7 @@ impl<T: Decodable> Decodable for RefCell<T> {
     }
 }
 
-impl<T:Encodable> Encodable for Arc<T> {
+impl<T:Sync+Send+Encodable> Encodable for Arc<T> {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         (**self).encode(s)
     }

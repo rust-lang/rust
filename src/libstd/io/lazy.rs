@@ -15,13 +15,13 @@ use cell::UnsafeCell;
 use rt;
 use sync::{StaticMutex, Arc};
 
-pub struct Lazy<T> {
+pub struct Lazy<T: Send + Sync> {
     pub lock: StaticMutex,
     pub ptr: UnsafeCell<*mut Arc<T>>,
     pub init: fn() -> Arc<T>,
 }
 
-unsafe impl<T> Sync for Lazy<T> {}
+unsafe impl<T: Send + Sync> Sync for Lazy<T> {}
 
 macro_rules! lazy_init {
     ($init:expr) => (::io::lazy::Lazy {

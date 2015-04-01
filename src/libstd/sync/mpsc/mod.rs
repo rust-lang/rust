@@ -373,12 +373,10 @@ unsafe impl<T: Send> Send for Sender<T> { }
 /// owned by one task, but it can be cloned to send to other tasks.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SyncSender<T: Send> {
-    inner: Arc<UnsafeCell<sync::Packet<T>>>,
+    inner: Arc<SyncUnsafeCell<sync::Packet<T>>>,
 }
 
-unsafe impl<T: Send> Send for SyncSender<T> {}
-
-impl<T> !Sync for SyncSender<T> {}
+impl<T: Send> !Sync for SyncSender<T> {}
 
 /// An error returned from the `send` function on channels.
 ///
@@ -434,11 +432,33 @@ pub enum TrySendError<T> {
 }
 
 enum Flavor<T:Send> {
-    Oneshot(Arc<UnsafeCell<oneshot::Packet<T>>>),
-    Stream(Arc<UnsafeCell<stream::Packet<T>>>),
-    Shared(Arc<UnsafeCell<shared::Packet<T>>>),
-    Sync(Arc<UnsafeCell<sync::Packet<T>>>),
+    Oneshot(Arc<SyncUnsafeCell<oneshot::Packet<T>>>),
+    Stream(Arc<SyncUnsafeCell<stream::Packet<T>>>),
+    Shared(Arc<SyncUnsafeCell<shared::Packet<T>>>),
+    Sync(Arc<SyncUnsafeCell<sync::Packet<T>>>),
 }
+
+// the channel impls are free and fast with mutability and sharing, so
+// we have to hack around this with this type.
+struct SyncUnsafeCell<T> {
+    data: UnsafeCell<T>
+}
+impl<T> SyncUnsafeCell<T> {
+    pub fn new(x: T) -> SyncUnsafeCell<T> {
+        SyncUnsafeCell {
+            data: UnsafeCell::new(x)
+        }
+    }
+}
+impl<T> ::ops::Deref for SyncUnsafeCell<T> {
+    type Target = UnsafeCell<T>;
+    fn deref(&self) -> &UnsafeCell<T> {
+        &self.data
+    }
+}
+
+unsafe impl<T: Send> Send for SyncUnsafeCell<T> {}
+unsafe impl<T: Send> Sync for SyncUnsafeCell<T> {}
 
 #[doc(hidden)]
 trait UnsafeFlavor<T:Send> {
@@ -489,7 +509,7 @@ impl<T:Send> UnsafeFlavor<T> for Receiver<T> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
-    let a = Arc::new(UnsafeCell::new(oneshot::Packet::new()));
+    let a = Arc::new(SyncUnsafeCell::new(oneshot::Packet::new()));
     (Sender::new(Flavor::Oneshot(a.clone())), Receiver::new(Flavor::Oneshot(a)))
 }
 
@@ -529,7 +549,7 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn sync_channel<T: Send>(bound: usize) -> (SyncSender<T>, Receiver<T>) {
-    let a = Arc::new(UnsafeCell::new(sync::Packet::new(bound)));
+    let a = Arc::new(SyncUnsafeCell::new(sync::Packet::new(bound)));
     (SyncSender::new(a.clone()), Receiver::new(Flavor::Sync(a)))
 }
 
@@ -576,12 +596,12 @@ impl<T: Send> Sender<T> {
         let (new_inner, ret) = match *unsafe { self.inner() } {
             Flavor::Oneshot(ref p) => {
                 unsafe {
-                    let p = p.get();
+                    let p = p.data.get();
                     if !(*p).sent() {
                         return (*p).send(t).map_err(SendError);
                     } else {
                         let a =
-                            Arc::new(UnsafeCell::new(stream::Packet::new()));
+                            Arc::new(SyncUnsafeCell::new(stream::Packet::new()));
                         let rx = Receiver::new(Flavor::Stream(a.clone()));
                         match (*p).upgrade(rx) {
                             oneshot::UpSuccess => {
@@ -623,7 +643,7 @@ impl<T: Send> Clone for Sender<T> {
     fn clone(&self) -> Sender<T> {
         let (packet, sleeper, guard) = match *unsafe { self.inner() } {
             Flavor::Oneshot(ref p) => {
-                let a = Arc::new(UnsafeCell::new(shared::Packet::new()));
+                let a = Arc::new(SyncUnsafeCell::new(shared::Packet::new()));
                 unsafe {
                     let guard = (*a.get()).postinit_lock();
                     let rx = Receiver::new(Flavor::Shared(a.clone()));
@@ -635,7 +655,7 @@ impl<T: Send> Clone for Sender<T> {
                 }
             }
             Flavor::Stream(ref p) => {
-                let a = Arc::new(UnsafeCell::new(shared::Packet::new()));
+                let a = Arc::new(SyncUnsafeCell::new(shared::Packet::new()));
                 unsafe {
                     let guard = (*a.get()).postinit_lock();
                     let rx = Receiver::new(Flavor::Shared(a.clone()));
@@ -681,7 +701,7 @@ impl<T: Send> Drop for Sender<T> {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl<T: Send> SyncSender<T> {
-    fn new(inner: Arc<UnsafeCell<sync::Packet<T>>>) -> SyncSender<T> {
+    fn new(inner: Arc<SyncUnsafeCell<sync::Packet<T>>>) -> SyncSender<T> {
         SyncSender { inner: inner }
     }
 
