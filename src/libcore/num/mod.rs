@@ -517,7 +517,7 @@ macro_rules! uint_impl {
             fn min_value() -> $T { 0 }
 
             #[inline]
-            fn max_value() -> $T { -1 }
+            fn max_value() -> $T { !0 }
 
             #[inline]
             fn count_ones(self) -> u32 {

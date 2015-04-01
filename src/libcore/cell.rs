@@ -287,7 +287,7 @@ pub enum BorrowState {
 // (will not outgrow its range since `usize` is the size of the address space)
 type BorrowFlag = usize;
 const UNUSED: BorrowFlag = 0;
-const WRITING: BorrowFlag = -1;
+const WRITING: BorrowFlag = !0;
 
 impl<T> RefCell<T> {
     /// Creates a new `RefCell` containing `value`.

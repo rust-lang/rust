@@ -117,7 +117,7 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
             use libc;
             use libc::funcs::posix01::signal::signal;
             unsafe {
-                assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != -1);
+                assert!(signal(libc::SIGPIPE, libc::SIG_IGN) != !0);
             }
         }
         ignore_sigpipe();
