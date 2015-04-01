@@ -14,6 +14,14 @@ use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
 use llvm::{InternalLinkage, ValueRef, Bool, True};
 use middle::{check_const, const_eval, def};
+use middle::const_eval::{const_int_checked_neg, const_uint_checked_neg};
+use middle::const_eval::{const_int_checked_add, const_uint_checked_add};
+use middle::const_eval::{const_int_checked_sub, const_uint_checked_sub};
+use middle::const_eval::{const_int_checked_mul, const_uint_checked_mul};
+use middle::const_eval::{const_int_checked_div, const_uint_checked_div};
+use middle::const_eval::{const_int_checked_rem, const_uint_checked_rem};
+use middle::const_eval::{const_int_checked_shl, const_uint_checked_shl};
+use middle::const_eval::{const_int_checked_shr, const_uint_checked_shr};
 use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
 use trans::common::*;
@@ -336,6 +344,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let csize = machine::llsize_of_alloc(cx, val_ty(llconst));
     let tsize = machine::llsize_of_alloc(cx, llty);
     if csize != tsize {
+        cx.sess().abort_if_errors();
         unsafe {
             // FIXME these values could use some context
             llvm::LLVMDumpValue(llconst);
@@ -346,6 +355,100 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                          csize, tsize));
     }
     (llconst, ety_adjusted)
+}
+
+fn check_unary_expr_validity(cx: &CrateContext, e: &ast::Expr, t: Ty,
+                             te: ValueRef) {
+    // The only kind of unary expression that we check for validity
+    // here is `-expr`, to check if it "overflows" (e.g. `-i32::MIN`).
+    if let ast::ExprUnary(ast::UnNeg, ref inner_e) = e.node {
+
+        // An unfortunate special case: we parse e.g. -128 as a
+        // negation of the literal 128, which means if we're expecting
+        // a i8 (or if it was already suffixed, e.g. `-128_i8`), then
+        // 128 will have already overflowed to -128, and so then the
+        // constant evaluator thinks we're trying to negate -128.
+        //
+        // Catch this up front by looking for ExprLit directly,
+        // and just accepting it.
+        if let ast::ExprLit(_) = inner_e.node { return; }
+
+        let result = match t.sty {
+            ty::ty_int(int_type) => {
+                let input = match const_to_opt_int(te) {
+                    Some(v) => v,
+                    None => return,
+                };
+                const_int_checked_neg(
+                    input, e, Some(const_eval::IntTy::from(cx.tcx(), int_type)))
+            }
+            ty::ty_uint(uint_type) => {
+                let input = match const_to_opt_uint(te) {
+                    Some(v) => v,
+                    None => return,
+                };
+                const_uint_checked_neg(
+                    input, e, Some(const_eval::UintTy::from(cx.tcx(), uint_type)))
+            }
+            _ => return,
+        };
+
+        // We do not actually care about a successful result.
+        if let Err(err) = result {
+            cx.tcx().sess.span_err(e.span, &err.description());
+        }
+    }
+}
+
+fn check_binary_expr_validity(cx: &CrateContext, e: &ast::Expr, t: Ty,
+                              te1: ValueRef, te2: ValueRef) {
+    let b = if let ast::ExprBinary(b, _, _) = e.node { b } else { return };
+
+    let result = match t.sty {
+        ty::ty_int(int_type) => {
+            let (lhs, rhs) = match (const_to_opt_int(te1),
+                                    const_to_opt_int(te2)) {
+                (Some(v1), Some(v2)) => (v1, v2),
+                _ => return,
+            };
+
+            let opt_ety = Some(const_eval::IntTy::from(cx.tcx(), int_type));
+            match b.node {
+                ast::BiAdd => const_int_checked_add(lhs, rhs, e, opt_ety),
+                ast::BiSub => const_int_checked_sub(lhs, rhs, e, opt_ety),
+                ast::BiMul => const_int_checked_mul(lhs, rhs, e, opt_ety),
+                ast::BiDiv => const_int_checked_div(lhs, rhs, e, opt_ety),
+                ast::BiRem => const_int_checked_rem(lhs, rhs, e, opt_ety),
+                ast::BiShl => const_int_checked_shl(lhs, rhs, e, opt_ety),
+                ast::BiShr => const_int_checked_shr(lhs, rhs, e, opt_ety),
+                _ => return,
+            }
+        }
+        ty::ty_uint(uint_type) => {
+            let (lhs, rhs) = match (const_to_opt_uint(te1),
+                                    const_to_opt_uint(te2)) {
+                (Some(v1), Some(v2)) => (v1, v2),
+                _ => return,
+            };
+
+            let opt_ety = Some(const_eval::UintTy::from(cx.tcx(), uint_type));
+            match b.node {
+                ast::BiAdd => const_uint_checked_add(lhs, rhs, e, opt_ety),
+                ast::BiSub => const_uint_checked_sub(lhs, rhs, e, opt_ety),
+                ast::BiMul => const_uint_checked_mul(lhs, rhs, e, opt_ety),
+                ast::BiDiv => const_uint_checked_div(lhs, rhs, e, opt_ety),
+                ast::BiRem => const_uint_checked_rem(lhs, rhs, e, opt_ety),
+                ast::BiShl => const_uint_checked_shl(lhs, rhs, e, opt_ety),
+                ast::BiShr => const_uint_checked_shr(lhs, rhs, e, opt_ety),
+                _ => return,
+            }
+        }
+        _ => return,
+    };
+    // We do not actually care about a successful result.
+    if let Err(err) = result {
+        cx.tcx().sess.span_err(e.span, &err.description());
+    }
 }
 
 fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
@@ -386,7 +489,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let signed = ty::type_is_signed(intype);
 
             let (te2, _) = const_expr(cx, &**e2, param_substs);
-            let te2 = base::cast_shift_const_rhs(b.node, te1, te2);
+
+            check_binary_expr_validity(cx, e, ty, te1, te2);
 
             match b.node {
               ast::BiAdd   => {
@@ -416,8 +520,12 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
               ast::BiBitXor => llvm::LLVMConstXor(te1, te2),
               ast::BiBitAnd => llvm::LLVMConstAnd(te1, te2),
               ast::BiBitOr  => llvm::LLVMConstOr(te1, te2),
-              ast::BiShl    => llvm::LLVMConstShl(te1, te2),
+              ast::BiShl    => {
+                let te2 = base::cast_shift_const_rhs(b.node, te1, te2);
+                llvm::LLVMConstShl(te1, te2)
+              }
               ast::BiShr    => {
+                let te2 = base::cast_shift_const_rhs(b.node, te1, te2);
                 if signed { llvm::LLVMConstAShr(te1, te2) }
                 else      { llvm::LLVMConstLShr(te1, te2) }
               }
@@ -439,8 +547,11 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
               }
             }
           },
-          ast::ExprUnary(u, ref e) => {
-            let (te, ty) = const_expr(cx, &**e, param_substs);
+          ast::ExprUnary(u, ref inner_e) => {
+            let (te, ty) = const_expr(cx, &**inner_e, param_substs);
+
+            check_unary_expr_validity(cx, e, ty, te);
+
             let is_float = ty::type_is_fp(ty);
             match u {
               ast::UnUniq | ast::UnDeref => {
@@ -661,11 +772,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           ast::ExprRepeat(ref elem, ref count) => {
             let unit_ty = ty::sequence_element_type(cx.tcx(), ety);
             let llunitty = type_of::type_of(cx, unit_ty);
-            let n = match const_eval::eval_const_expr_partial(cx.tcx(), &**count, None) {
-                Ok(const_eval::const_int(i))  => i as usize,
-                Ok(const_eval::const_uint(i)) => i as usize,
-                _ => cx.sess().span_bug(count.span, "count must be integral const expression.")
-            };
+            let n = ty::eval_repeat_count(cx.tcx(), count);
             let unit_val = const_expr(cx, &**elem, param_substs).0;
             let vs: Vec<_> = repeat(unit_val).take(n).collect();
             if val_ty(unit_val) != llunitty {

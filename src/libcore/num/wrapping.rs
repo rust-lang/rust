@@ -30,6 +30,8 @@ use intrinsics::{i16_mul_with_overflow, u16_mul_with_overflow};
 use intrinsics::{i32_mul_with_overflow, u32_mul_with_overflow};
 use intrinsics::{i64_mul_with_overflow, u64_mul_with_overflow};
 
+use ::{i8,i16,i32,i64,u8,u16,u32,u64};
+
 #[unstable(feature = "core", reason = "may be removed, renamed, or relocated")]
 #[deprecated(since = "1.0.0", reason = "moved to inherent methods")]
 pub trait WrappingOps {
@@ -43,6 +45,12 @@ pub trait OverflowingOps {
     fn overflowing_add(self, rhs: Self) -> (Self, bool);
     fn overflowing_sub(self, rhs: Self) -> (Self, bool);
     fn overflowing_mul(self, rhs: Self) -> (Self, bool);
+
+    fn overflowing_div(self, rhs: Self) -> (Self, bool);
+    fn overflowing_rem(self, rhs: Self) -> (Self, bool);
+
+    fn overflowing_shl(self, rhs: u32) -> (Self, bool);
+    fn overflowing_shr(self, rhs: u32) -> (Self, bool);
 }
 
 macro_rules! sh_impl {
@@ -184,6 +192,20 @@ macro_rules! wrapping_impl {
 
 wrapping_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
+mod shift_max {
+    #![allow(non_upper_case_globals)]
+
+    pub const  i8: u32 = (1 << 3) - 1;
+    pub const i16: u32 = (1 << 4) - 1;
+    pub const i32: u32 = (1 << 5) - 1;
+    pub const i64: u32 = (1 << 6) - 1;
+
+    pub const  u8: u32 = i8;
+    pub const u16: u32 = i16;
+    pub const u32: u32 = i32;
+    pub const u64: u32 = i64;
+}
+
 macro_rules! overflowing_impl {
     ($($t:ident)*) => ($(
         impl OverflowingOps for $t {
@@ -204,6 +226,34 @@ macro_rules! overflowing_impl {
                 unsafe {
                     concat_idents!($t, _mul_with_overflow)(self, rhs)
                 }
+            }
+
+            #[inline(always)]
+            fn overflowing_div(self, rhs: $t) -> ($t, bool) {
+                if self == $t::MIN && rhs == -1 {
+                    (1, true)
+                } else {
+                    (self/rhs, false)
+                }
+            }
+            #[inline(always)]
+            fn overflowing_rem(self, rhs: $t) -> ($t, bool) {
+                if self == $t::MIN && rhs == -1 {
+                    (0, true)
+                } else {
+                    (self % rhs, false)
+                }
+            }
+
+            #[inline(always)]
+            fn overflowing_shl(self, rhs: u32) -> ($t, bool) {
+                (self << (rhs & self::shift_max::$t),
+                 (rhs > self::shift_max::$t))
+            }
+            #[inline(always)]
+            fn overflowing_shr(self, rhs: u32) -> ($t, bool) {
+                (self >> (rhs & self::shift_max::$t),
+                 (rhs > self::shift_max::$t))
             }
         }
     )*)
@@ -234,6 +284,26 @@ impl OverflowingOps for usize {
             (res.0 as usize, res.1)
         }
     }
+    #[inline(always)]
+    fn overflowing_div(self, rhs: usize) -> (usize, bool) {
+        let (r, f) = (self as u64).overflowing_div(rhs as u64);
+        (r as usize, f)
+    }
+    #[inline(always)]
+    fn overflowing_rem(self, rhs: usize) -> (usize, bool) {
+        let (r, f) = (self as u64).overflowing_rem(rhs as u64);
+        (r as usize, f)
+    }
+    #[inline(always)]
+    fn overflowing_shl(self, rhs: u32) -> (usize, bool) {
+        let (r, f) = (self as u64).overflowing_shl(rhs);
+        (r as usize, f)
+    }
+    #[inline(always)]
+    fn overflowing_shr(self, rhs: u32) -> (usize, bool) {
+        let (r, f) = (self as u64).overflowing_shr(rhs);
+        (r as usize, f)
+    }
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -258,6 +328,26 @@ impl OverflowingOps for usize {
             let res = u32_mul_with_overflow(self as u32, rhs as u32);
             (res.0 as usize, res.1)
         }
+    }
+    #[inline(always)]
+    fn overflowing_div(self, rhs: usize) -> (usize, bool) {
+        let (r, f) = (self as u32).overflowing_div(rhs as u32);
+        (r as usize, f)
+    }
+    #[inline(always)]
+    fn overflowing_rem(self, rhs: usize) -> (usize, bool) {
+        let (r, f) = (self as u32).overflowing_rem(rhs as u32);
+        (r as usize, f)
+    }
+    #[inline(always)]
+    fn overflowing_shl(self, rhs: u32) -> (usize, bool) {
+        let (r, f) = (self as u32).overflowing_shl(rhs);
+        (r as usize, f)
+    }
+    #[inline(always)]
+    fn overflowing_shr(self, rhs: u32) -> (usize, bool) {
+        let (r, f) = (self as u32).overflowing_shr(rhs);
+        (r as usize, f)
     }
 }
 
@@ -284,6 +374,26 @@ impl OverflowingOps for isize {
             (res.0 as isize, res.1)
         }
     }
+    #[inline(always)]
+    fn overflowing_div(self, rhs: isize) -> (isize, bool) {
+        let (r, f) = (self as i64).overflowing_div(rhs as i64);
+        (r as isize, f)
+    }
+    #[inline(always)]
+    fn overflowing_rem(self, rhs: isize) -> (isize, bool) {
+        let (r, f) = (self as i64).overflowing_rem(rhs as i64);
+        (r as isize, f)
+    }
+    #[inline(always)]
+    fn overflowing_shl(self, rhs: u32) -> (isize, bool) {
+        let (r, f) = (self as i64).overflowing_shl(rhs);
+        (r as isize, f)
+    }
+    #[inline(always)]
+    fn overflowing_shr(self, rhs: u32) -> (isize, bool) {
+        let (r, f) = (self as i64).overflowing_shr(rhs);
+        (r as isize, f)
+    }
 }
 
 #[cfg(target_pointer_width = "32")]
@@ -308,5 +418,25 @@ impl OverflowingOps for isize {
             let res = i32_mul_with_overflow(self as i32, rhs as i32);
             (res.0 as isize, res.1)
         }
+    }
+    #[inline(always)]
+    fn overflowing_div(self, rhs: isize) -> (isize, bool) {
+        let (r, f) = (self as i32).overflowing_div(rhs as i32);
+        (r as isize, f)
+    }
+    #[inline(always)]
+    fn overflowing_rem(self, rhs: isize) -> (isize, bool) {
+        let (r, f) = (self as i32).overflowing_rem(rhs as i32);
+        (r as isize, f)
+    }
+    #[inline(always)]
+    fn overflowing_shl(self, rhs: u32) -> (isize, bool) {
+        let (r, f) = (self as i32).overflowing_shl(rhs);
+        (r as isize, f)
+    }
+    #[inline(always)]
+    fn overflowing_shr(self, rhs: u32) -> (isize, bool) {
+        let (r, f) = (self as i32).overflowing_shr(rhs);
+        (r as isize, f)
     }
 }

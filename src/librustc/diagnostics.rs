@@ -68,6 +68,8 @@ register_diagnostics! {
     E0019,
     E0020,
     E0022,
+    E0079, // enum variant: expected signed integer constant
+    E0080, // enum variant: constant evaluation error
     E0109,
     E0110,
     E0133,
@@ -128,7 +130,8 @@ register_diagnostics! {
     E0313, // lifetime of borrowed pointer outlives lifetime of captured variable
     E0314, // closure outlives stack frame
     E0315, // cannot invoke closure outside of its lifetime
-    E0316 // nested quantification of lifetimes
+    E0316, // nested quantification of lifetimes
+    E0370  // discriminant overflow
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }
