@@ -206,50 +206,66 @@ impl CodeExtent {
 }
 
 /// The region maps encode information about region relationships.
-///
-/// - `scope_map` maps from a scope id to the enclosing scope id; this is
-///   usually corresponding to the lexical nesting, though in the case of
-///   closures the parent scope is the innermost conditional expression or repeating
-///   block. (Note that the enclosing scope id for the block
-///   associated with a closure is the closure itself.)
-///
-/// - `var_map` maps from a variable or binding id to the block in which
-///   that variable is declared.
-///
-/// - `free_region_map` maps from a free region `a` to a list of free
-///   regions `bs` such that `a <= b for all b in bs`
-///   - the free region map is populated during type check as we check
-///     each function. See the function `relate_free_regions` for
-///     more information.
-///
-/// - `rvalue_scopes` includes entries for those expressions whose cleanup
-///   scope is larger than the default. The map goes from the expression
-///   id to the cleanup scope id. For rvalues not present in this table,
-///   the appropriate cleanup scope is the innermost enclosing statement,
-///   conditional expression, or repeating block (see `terminating_scopes`).
-///
-/// - `terminating_scopes` is a set containing the ids of each statement,
-///   or conditional/repeating expression. These scopes are calling "terminating
-///   scopes" because, when attempting to find the scope of a temporary, by
-///   default we search up the enclosing scopes until we encounter the
-///   terminating scope. A conditional/repeating
-///   expression is one which is not guaranteed to execute exactly once
-///   upon entering the parent scope. This could be because the expression
-///   only executes conditionally, such as the expression `b` in `a && b`,
-///   or because the expression may execute many times, such as a loop
-///   body. The reason that we distinguish such expressions is that, upon
-///   exiting the parent scope, we cannot statically know how many times
-///   the expression executed, and thus if the expression creates
-///   temporaries we cannot know statically how many such temporaries we
-///   would have to cleanup. Therefore we ensure that the temporaries never
-///   outlast the conditional/repeating expression, preventing the need
-///   for dynamic checks and/or arbitrary amounts of stack space.
 pub struct RegionMaps {
+    /// `scope_map` maps from a scope id to the enclosing scope id;
+    /// this is usually corresponding to the lexical nesting, though
+    /// in the case of closures the parent scope is the innermost
+    /// conditional expression or repeating block. (Note that the
+    /// enclosing scope id for the block associated with a closure is
+    /// the closure itself.)
     scope_map: RefCell<FnvHashMap<CodeExtent, CodeExtent>>,
+
+    /// `var_map` maps from a variable or binding id to the block in
+    /// which that variable is declared.
     var_map: RefCell<NodeMap<CodeExtent>>,
+
+    /// `free_region_map` maps from a free region `a` to a list of
+    /// free regions `bs` such that `a <= b for all b in bs`
+    ///
+    /// NB. the free region map is populated during type check as we
+    /// check each function. See the function `relate_free_regions`
+    /// for more information.
     free_region_map: RefCell<FnvHashMap<FreeRegion, Vec<FreeRegion>>>,
+
+    /// `rvalue_scopes` includes entries for those expressions whose cleanup scope is
+    /// larger than the default. The map goes from the expression id
+    /// to the cleanup scope id. For rvalues not present in this
+    /// table, the appropriate cleanup scope is the innermost
+    /// enclosing statement, conditional expression, or repeating
+    /// block (see `terminating_scopes`).
     rvalue_scopes: RefCell<NodeMap<CodeExtent>>,
+
+    /// `terminating_scopes` is a set containing the ids of each
+    /// statement, or conditional/repeating expression. These scopes
+    /// are calling "terminating scopes" because, when attempting to
+    /// find the scope of a temporary, by default we search up the
+    /// enclosing scopes until we encounter the terminating scope. A
+    /// conditional/repeating expression is one which is not
+    /// guaranteed to execute exactly once upon entering the parent
+    /// scope. This could be because the expression only executes
+    /// conditionally, such as the expression `b` in `a && b`, or
+    /// because the expression may execute many times, such as a loop
+    /// body. The reason that we distinguish such expressions is that,
+    /// upon exiting the parent scope, we cannot statically know how
+    /// many times the expression executed, and thus if the expression
+    /// creates temporaries we cannot know statically how many such
+    /// temporaries we would have to cleanup. Therefore we ensure that
+    /// the temporaries never outlast the conditional/repeating
+    /// expression, preventing the need for dynamic checks and/or
+    /// arbitrary amounts of stack space.
     terminating_scopes: RefCell<FnvHashSet<CodeExtent>>,
+
+    /// Encodes the hierarchy of fn bodies. Every fn body (including
+    /// closures) forms its own distinct region hierarchy, rooted in
+    /// the block that is the fn body. This map points from the id of
+    /// that root block to the id of the root block for the enclosing
+    /// fn, if any. Thus the map structures the fn bodies into a
+    /// hierarchy based on their lexical mapping. This is used to
+    /// handle the relationships between regions in a fn and in a
+    /// closure defined by that fn. See the "Modeling closures"
+    /// section of the README in middle::infer::region_inference for
+    /// more details.
+    fn_tree: RefCell<NodeMap<ast::NodeId>>,
 }
 
 /// Carries the node id for the innermost block or match expression,
@@ -320,6 +336,14 @@ impl InnermostEnclosingExpr {
 
 #[derive(Debug, Copy)]
 pub struct Context {
+    /// the root of the current region tree. This is typically the id
+    /// of the innermost fn body. Each fn forms its own disjoint tree
+    /// in the region hierarchy. These fn bodies are themselves
+    /// arranged into a tree. See the "Modeling closures" section of
+    /// the README in middle::infer::region_inference for more
+    /// details.
+    root_id: Option<ast::NodeId>,
+
     /// the scope that contains any new variables declared
     var_parent: InnermostDeclaringBlock,
 
@@ -381,19 +405,40 @@ impl RegionMaps {
         self.free_region_map.borrow_mut().insert(sub, vec!(sup));
     }
 
+    /// Records that `sub_fn` is defined within `sup_fn`. These ids
+    /// should be the id of the block that is the fn body, which is
+    /// also the root of the region hierarchy for that fn.
+    fn record_fn_parent(&self, sub_fn: ast::NodeId, sup_fn: ast::NodeId) {
+        debug!("record_fn_parent(sub_fn={:?}, sup_fn={:?})", sub_fn, sup_fn);
+        assert!(sub_fn != sup_fn);
+        let previous = self.fn_tree.borrow_mut().insert(sub_fn, sup_fn);
+        assert!(previous.is_none());
+    }
+
+    fn fn_is_enclosed_by(&self, mut sub_fn: ast::NodeId, sup_fn: ast::NodeId) -> bool {
+        let fn_tree = self.fn_tree.borrow();
+        loop {
+            if sub_fn == sup_fn { return true; }
+            match fn_tree.get(&sub_fn) {
+                Some(&s) => { sub_fn = s; }
+                None => { return false; }
+            }
+        }
+    }
+
     pub fn record_encl_scope(&self, sub: CodeExtent, sup: CodeExtent) {
         debug!("record_encl_scope(sub={:?}, sup={:?})", sub, sup);
         assert!(sub != sup);
         self.scope_map.borrow_mut().insert(sub, sup);
     }
 
-    pub fn record_var_scope(&self, var: ast::NodeId, lifetime: CodeExtent) {
+    fn record_var_scope(&self, var: ast::NodeId, lifetime: CodeExtent) {
         debug!("record_var_scope(sub={:?}, sup={:?})", var, lifetime);
         assert!(var != lifetime.node_id());
         self.var_map.borrow_mut().insert(var, lifetime);
     }
 
-    pub fn record_rvalue_scope(&self, var: ast::NodeId, lifetime: CodeExtent) {
+    fn record_rvalue_scope(&self, var: ast::NodeId, lifetime: CodeExtent) {
         debug!("record_rvalue_scope(sub={:?}, sup={:?})", var, lifetime);
         assert!(var != lifetime.node_id());
         self.rvalue_scopes.borrow_mut().insert(var, lifetime);
@@ -402,7 +447,7 @@ impl RegionMaps {
     /// Records that a scope is a TERMINATING SCOPE. Whenever we create automatic temporaries --
     /// e.g. by an expression like `a().f` -- they will be freed within the innermost terminating
     /// scope.
-    pub fn mark_as_terminating_scope(&self, scope_id: CodeExtent) {
+    fn mark_as_terminating_scope(&self, scope_id: CodeExtent) {
         debug!("record_terminating_scope(scope_id={:?})", scope_id);
         self.terminating_scopes.borrow_mut().insert(scope_id);
     }
@@ -562,15 +607,15 @@ impl RegionMaps {
     pub fn nearest_common_ancestor(&self,
                                    scope_a: CodeExtent,
                                    scope_b: CodeExtent)
-                                   -> Option<CodeExtent> {
-        if scope_a == scope_b { return Some(scope_a); }
+                                   -> CodeExtent {
+        if scope_a == scope_b { return scope_a; }
 
         let a_ancestors = ancestors_of(self, scope_a);
         let b_ancestors = ancestors_of(self, scope_b);
         let mut a_index = a_ancestors.len() - 1;
         let mut b_index = b_ancestors.len() - 1;
 
-        // Here, ~[ab]_ancestors is a vector going from narrow to broad.
+        // Here, [ab]_ancestors is a vector going from narrow to broad.
         // The end of each vector will be the item where the scope is
         // defined; if there are any common ancestors, then the tails of
         // the vector will be the same.  So basically we want to walk
@@ -579,23 +624,47 @@ impl RegionMaps {
         // then the corresponding scope is a superscope of the other.
 
         if a_ancestors[a_index] != b_ancestors[b_index] {
-            return None;
+            // In this case, the two regions belong to completely
+            // different functions.  Compare those fn for lexical
+            // nesting. The reasoning behind this is subtle.  See the
+            // "Modeling closures" section of the README in
+            // middle::infer::region_inference for more details.
+            let a_root_scope = a_ancestors[a_index];
+            let b_root_scope = a_ancestors[a_index];
+            return match (a_root_scope, b_root_scope) {
+                (CodeExtent::DestructionScope(a_root_id),
+                 CodeExtent::DestructionScope(b_root_id)) => {
+                    if self.fn_is_enclosed_by(a_root_id, b_root_id) {
+                        // `a` is enclosed by `b`, hence `b` is the ancestor of everything in `a`
+                        scope_b
+                    } else if self.fn_is_enclosed_by(b_root_id, a_root_id) {
+                        // `b` is enclosed by `a`, hence `a` is the ancestor of everything in `b`
+                        scope_a
+                    } else {
+                        // neither fn encloses the other
+                        unreachable!()
+                    }
+                }
+                _ => {
+                    // root ids are always Misc right now
+                    unreachable!()
+                }
+            };
         }
 
         loop {
             // Loop invariant: a_ancestors[a_index] == b_ancestors[b_index]
             // for all indices between a_index and the end of the array
-            if a_index == 0 { return Some(scope_a); }
-            if b_index == 0 { return Some(scope_b); }
+            if a_index == 0 { return scope_a; }
+            if b_index == 0 { return scope_b; }
             a_index -= 1;
             b_index -= 1;
             if a_ancestors[a_index] != b_ancestors[b_index] {
-                return Some(a_ancestors[a_index + 1]);
+                return a_ancestors[a_index + 1];
             }
         }
 
-        fn ancestors_of(this: &RegionMaps, scope: CodeExtent)
-            -> Vec<CodeExtent> {
+        fn ancestors_of(this: &RegionMaps, scope: CodeExtent) -> Vec<CodeExtent> {
             // debug!("ancestors_of(scope={:?})", scope);
             let mut result = vec!(scope);
             let mut scope = scope;
@@ -645,6 +714,7 @@ fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &ast::Block) {
     let prev_cx = visitor.cx;
 
     let blk_scope = CodeExtent::Misc(blk.id);
+
     // If block was previously marked as a terminating scope during
     // the recursive visit of its parent node in the AST, then we need
     // to account for the destruction scope representing the extent of
@@ -684,6 +754,7 @@ fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &ast::Block) {
     // itself has returned.
 
     visitor.cx = Context {
+        root_id: prev_cx.root_id,
         var_parent: InnermostDeclaringBlock::Block(blk.id),
         parent: InnermostEnclosingExpr::Some(blk.id),
     };
@@ -710,6 +781,7 @@ fn resolve_block(visitor: &mut RegionResolutionVisitor, blk: &ast::Block) {
                 record_superlifetime(
                     visitor, declaring.to_code_extent(), statement.span);
                 visitor.cx = Context {
+                    root_id: prev_cx.root_id,
                     var_parent: InnermostDeclaringBlock::Statement(declaring),
                     parent: InnermostEnclosingExpr::Statement(declaring),
                 };
@@ -1103,6 +1175,7 @@ fn resolve_item(visitor: &mut RegionResolutionVisitor, item: &ast::Item) {
     // Items create a new outer block scope as far as we're concerned.
     let prev_cx = visitor.cx;
     visitor.cx = Context {
+        root_id: None,
         var_parent: InnermostDeclaringBlock::None,
         parent: InnermostEnclosingExpr::None
     };
@@ -1111,7 +1184,7 @@ fn resolve_item(visitor: &mut RegionResolutionVisitor, item: &ast::Item) {
 }
 
 fn resolve_fn(visitor: &mut RegionResolutionVisitor,
-              fk: FnKind,
+              _: FnKind,
               decl: &ast::FnDecl,
               body: &ast::Block,
               sp: Span,
@@ -1127,42 +1200,36 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
 
     let body_scope = CodeExtent::from_node_id(body.id);
     visitor.region_maps.mark_as_terminating_scope(body_scope);
+
     let dtor_scope = CodeExtent::DestructionScope(body.id);
     visitor.region_maps.record_encl_scope(body_scope, dtor_scope);
+
     record_superlifetime(visitor, dtor_scope, body.span);
+
+    if let Some(root_id) = visitor.cx.root_id {
+        visitor.region_maps.record_fn_parent(body.id, root_id);
+    }
 
     let outer_cx = visitor.cx;
 
     // The arguments and `self` are parented to the body of the fn.
     visitor.cx = Context {
+        root_id: Some(body.id),
         parent: InnermostEnclosingExpr::Some(body.id),
         var_parent: InnermostDeclaringBlock::Block(body.id)
     };
     visit::walk_fn_decl(visitor, decl);
 
-    // The body of the fn itself is either a root scope (top-level fn)
-    // or it continues with the inherited scope (closures).
-    match fk {
-        visit::FkItemFn(..) | visit::FkMethod(..) => {
-            visitor.cx = Context {
-                parent: InnermostEnclosingExpr::None,
-                var_parent: InnermostDeclaringBlock::None
-            };
-            visitor.visit_block(body);
-            visitor.cx = outer_cx;
-        }
-        visit::FkFnBlock(..) => {
-            // FIXME(#3696) -- at present we are place the closure body
-            // within the region hierarchy exactly where it appears lexically.
-            // This is wrong because the closure may live longer
-            // than the enclosing expression. We should probably fix this,
-            // but the correct fix is a bit subtle, and I am also not sure
-            // that the present approach is unsound -- it may not permit
-            // any illegal programs. See issue for more details.
-            visitor.cx = outer_cx;
-            visitor.visit_block(body);
-        }
-    }
+    // The body of the every fn is a root scope.
+    visitor.cx = Context {
+        root_id: Some(body.id),
+        parent: InnermostEnclosingExpr::None,
+        var_parent: InnermostDeclaringBlock::None
+    };
+    visitor.visit_block(body);
+
+    // Restore context we had at the start.
+    visitor.cx = outer_cx;
 }
 
 impl<'a, 'v> Visitor<'v> for RegionResolutionVisitor<'a> {
@@ -1203,12 +1270,14 @@ pub fn resolve_crate(sess: &Session, krate: &ast::Crate) -> RegionMaps {
         free_region_map: RefCell::new(FnvHashMap()),
         rvalue_scopes: RefCell::new(NodeMap()),
         terminating_scopes: RefCell::new(FnvHashSet()),
+        fn_tree: RefCell::new(NodeMap()),
     };
     {
         let mut visitor = RegionResolutionVisitor {
             sess: sess,
             region_maps: &maps,
             cx: Context {
+                root_id: None,
                 parent: InnermostEnclosingExpr::None,
                 var_parent: InnermostDeclaringBlock::None,
             }
@@ -1225,6 +1294,7 @@ pub fn resolve_inlined_item(sess: &Session,
         sess: sess,
         region_maps: region_maps,
         cx: Context {
+            root_id: None,
             parent: InnermostEnclosingExpr::None,
             var_parent: InnermostDeclaringBlock::None
         }

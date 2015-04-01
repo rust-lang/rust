@@ -588,6 +588,7 @@ fn lub_free_free() {
 fn lub_returning_scope() {
     test_env(EMPTY_SOURCE_STR,
              errors(&["cannot infer an appropriate lifetime"]), |env| {
+                 env.create_simple_region_hierarchy();
                  let t_rptr_scope10 = env.t_rptr_scope(10);
                  let t_rptr_scope11 = env.t_rptr_scope(11);
 
