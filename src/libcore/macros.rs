@@ -184,7 +184,7 @@ macro_rules! try {
 /// ```
 #[macro_export]
 macro_rules! write {
-    ($dst:expr, $($arg:tt)*) => ((&mut *$dst).write_fmt(format_args!($($arg)*)))
+    ($dst:expr, $($arg:tt)*) => ($dst.write_fmt(format_args!($($arg)*)))
 }
 
 /// Equivalent to the `write!` macro, except that a newline is appended after
