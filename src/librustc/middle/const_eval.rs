@@ -23,6 +23,7 @@ use middle::astconv_util::ast_ty_to_prim_ty;
 
 use syntax::ast::{self, Expr};
 use syntax::codemap::Span;
+use syntax::feature_gate;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::{ast_map, ast_util, codemap};
@@ -594,7 +595,16 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
         match try!(eval_const_expr_partial(tcx, &**inner, ety)) {
           const_float(f) => const_float(-f),
           const_int(n) =>  try!(const_int_checked_neg(n, e, expr_int_type)),
-          const_uint(n) => try!(const_uint_checked_neg(n, e, expr_uint_type)),
+          const_uint(i) => {
+              if !tcx.sess.features.borrow().negate_unsigned {
+                  feature_gate::emit_feature_err(
+                      &tcx.sess.parse_sess.span_diagnostic,
+                      "negate_unsigned",
+                      e.span,
+                      "unary negation of unsigned integers may be removed in the future");
+              }
+              const_uint(n) => try!(const_uint_checked_neg(n, e, expr_uint_type)),
+          }
           const_str(_) => signal!(e, NegateOnString),
           const_bool(_) => signal!(e, NegateOnBoolean),
           const_binary(_) => signal!(e, NegateOnBinary),

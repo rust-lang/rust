@@ -278,9 +278,9 @@ pub struct ExpnInfo {
 #[derive(PartialEq, Eq, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Copy)]
 pub struct ExpnId(u32);
 
-pub const NO_EXPANSION: ExpnId = ExpnId(-1);
+pub const NO_EXPANSION: ExpnId = ExpnId(!0);
 // For code appearing from the command line
-pub const COMMAND_LINE_EXPN: ExpnId = ExpnId(-2);
+pub const COMMAND_LINE_EXPN: ExpnId = ExpnId(!1);
 
 impl ExpnId {
     pub fn from_llvm_cookie(cookie: c_uint) -> ExpnId {

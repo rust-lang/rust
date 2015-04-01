@@ -830,7 +830,7 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     let bits = machine::llbitsize_of_real(bcx.ccx(), llty);
     assert!(bits <= 64);
     let  bits = bits as usize;
-    let mask = (-1u64 >> (64 - bits)) as Disr;
+    let mask = (!0u64 >> (64 - bits)) as Disr;
     // For a (max) discr of -1, max will be `-1 as usize`, which overflows.
     // However, that is fine here (it would still represent the full range),
     if (max.wrapping_add(1)) & mask == min & mask {
