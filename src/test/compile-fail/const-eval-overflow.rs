@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(negate_unsigned)]
+
 #![allow(unused_imports)]
 
 // Note: the relevant lint pass here runs before some of the constant
