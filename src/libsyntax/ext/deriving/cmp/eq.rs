@@ -24,18 +24,20 @@ pub fn expand_deriving_eq(cx: &mut ExtCtxt,
                           push: &mut FnMut(P<Item>))
 {
     fn cs_total_eq_assert(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
-        cs_same_method(|cx, span, exprs| {
-            // create `a.<method>(); b.<method>(); c.<method>(); ...`
-            // (where method is `assert_receiver_is_total_eq`)
-            let stmts = exprs.into_iter().map(|e| cx.stmt_expr(e)).collect();
-            let block = cx.block(span, stmts, None);
-            cx.expr_block(block)
-        },
-                       Box::new(|cx, sp, _, _| {
-                           cx.span_bug(sp, "non matching enums in derive(Eq)?") }),
-                       cx,
-                       span,
-                       substr)
+        cs_same_method(
+            |cx, span, exprs| {
+                // create `a.<method>(); b.<method>(); c.<method>(); ...`
+                // (where method is `assert_receiver_is_total_eq`)
+                let stmts = exprs.into_iter().map(|e| cx.stmt_expr(e)).collect();
+                let block = cx.block(span, stmts, None);
+                cx.expr_block(block)
+            },
+            Box::new(|cx, sp, _, _| {
+                cx.span_bug(sp, "non matching enums in derive(Eq)?") }),
+            cx,
+            span,
+            substr
+        )
     }
 
     let inline = cx.meta_word(span, InternedString::new("inline"));
