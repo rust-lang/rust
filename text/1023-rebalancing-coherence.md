@@ -1,7 +1,7 @@
-- Feature Name: fundamental_attribute
+- Feature Name: `fundamental_attribute`
 - Start Date: 2015-03-27
-- RFC PR: https://github.com/rust-lang/rfcs/pull/1023
-- Rust Issue: https://github.com/rust-lang/rust/issues/23918
+- RFC PR: [rust-lang/rfcs#1023](https://github.com/rust-lang/rfcs/pull/1023)
+- Rust Issue: [rust-lang/rust#23086](https://github.com/rust-lang/rust/issues/23086)
 
 ## Summary
 
