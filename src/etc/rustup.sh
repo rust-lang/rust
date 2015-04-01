@@ -288,7 +288,7 @@ VAL_OPTIONS=""
 flag uninstall "only uninstall from the installation prefix"
 valopt prefix "" "set installation prefix"
 valopt date "" "use the YYYY-MM-DD nightly instead of the current nightly"
-valopt channel "nightly" "use the selected release channel [nightly]"
+valopt channel "beta" "use the selected release channel [beta]"
 flag save "save the downloaded nightlies to ~/.rustup"
 
 if [ $HELP -eq 1 ]
@@ -460,8 +460,11 @@ case "$CFG_CHANNEL" in
 
         RUST_PACKAGE_NAME=rust-nightly
         ;;
+    beta)
+        RUST_PACKAGE_NAME=rust-1.0.0-beta
+        ;;
     *)
-        err "Currently nightly is the only supported release channel"
+        err "Currently 'beta' and 'nightly' are the only supported channels"
 esac
 
 RUST_PACKAGE_NAME_AND_TRIPLE="${RUST_PACKAGE_NAME}-${HOST_TRIPLE}"
