@@ -406,7 +406,7 @@ fn split_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
         // contents of the encoding and (2) new &OsStr values are produced
         // only from ASCII-bounded slices of existing &OsStr values.
 
-        let mut iter = os_str_as_u8_slice(file).rsplitn(1, |b| *b == b'.');
+        let mut iter = os_str_as_u8_slice(file).rsplitn(2, |b| *b == b'.');
         let after = iter.next();
         let before = iter.next();
         if before == Some(b"") {

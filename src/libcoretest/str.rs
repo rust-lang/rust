@@ -65,20 +65,20 @@ fn test_strslice_contains() {
 fn test_rsplitn_char_iterator() {
     let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
-    let mut split: Vec<&str> = data.rsplitn(3, ' ').collect();
+    let mut split: Vec<&str> = data.rsplitn(4, ' ').collect();
     split.reverse();
     assert_eq!(split, ["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
 
-    let mut split: Vec<&str> = data.rsplitn(3, |c: char| c == ' ').collect();
+    let mut split: Vec<&str> = data.rsplitn(4, |c: char| c == ' ').collect();
     split.reverse();
     assert_eq!(split, ["\nMäry häd ä", "little", "lämb\nLittle", "lämb\n"]);
 
     // Unicode
-    let mut split: Vec<&str> = data.rsplitn(3, 'ä').collect();
+    let mut split: Vec<&str> = data.rsplitn(4, 'ä').collect();
     split.reverse();
     assert_eq!(split, ["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
 
-    let mut split: Vec<&str> = data.rsplitn(3, |c: char| c == 'ä').collect();
+    let mut split: Vec<&str> = data.rsplitn(4, |c: char| c == 'ä').collect();
     split.reverse();
     assert_eq!(split, ["\nMäry häd ", " little l", "mb\nLittle l", "mb\n"]);
 }

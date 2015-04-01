@@ -409,7 +409,7 @@ pub fn env() -> Env {
     };
 
     fn parse(input: &[u8]) -> (OsString, OsString) {
-        let mut it = input.splitn(1, |b| *b == b'=');
+        let mut it = input.splitn(2, |b| *b == b'=');
         let key = it.next().unwrap().to_vec();
         let default: &[u8] = &[];
         let val = it.next().unwrap_or(default).to_vec();

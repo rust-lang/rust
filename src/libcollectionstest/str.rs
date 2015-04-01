@@ -885,17 +885,17 @@ fn test_char_indices_revator() {
 fn test_splitn_char_iterator() {
     let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
-    let split: Vec<&str> = data.splitn(3, ' ').collect();
+    let split: Vec<&str> = data.splitn(4, ' ').collect();
     assert_eq!(split, ["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
 
-    let split: Vec<&str> = data.splitn(3, |c: char| c == ' ').collect();
+    let split: Vec<&str> = data.splitn(4, |c: char| c == ' ').collect();
     assert_eq!(split, ["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
 
     // Unicode
-    let split: Vec<&str> = data.splitn(3, 'ä').collect();
+    let split: Vec<&str> = data.splitn(4, 'ä').collect();
     assert_eq!(split, ["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
 
-    let split: Vec<&str> = data.splitn(3, |c: char| c == 'ä').collect();
+    let split: Vec<&str> = data.splitn(4, |c: char| c == 'ä').collect();
     assert_eq!(split, ["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
 }
 
@@ -928,13 +928,13 @@ fn test_rsplit() {
 fn test_rsplitn() {
     let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
-    let split: Vec<&str> = data.rsplitn(1, ' ').collect();
+    let split: Vec<&str> = data.rsplitn(2, ' ').collect();
     assert_eq!(split, ["lämb\n", "\nMäry häd ä little lämb\nLittle"]);
 
-    let split: Vec<&str> = data.rsplitn(1, "lämb").collect();
+    let split: Vec<&str> = data.rsplitn(2, "lämb").collect();
     assert_eq!(split, ["\n", "\nMäry häd ä little lämb\nLittle "]);
 
-    let split: Vec<&str> = data.rsplitn(1, |c: char| c == 'ä').collect();
+    let split: Vec<&str> = data.rsplitn(2, |c: char| c == 'ä').collect();
     assert_eq!(split, ["mb\n", "\nMäry häd ä little lämb\nLittle l"]);
 }
 
