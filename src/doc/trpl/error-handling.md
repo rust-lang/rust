@@ -200,15 +200,15 @@ Because these kinds of situations are relatively rare, use panics sparingly.
 # Upgrading failures to panics
 
 In certain circumstances, even though a function may fail, we may want to treat
-it as a panic instead. For example, `io::stdin().read_line()` returns an
-`IoResult<String>`, a form of `Result`, when there is an error reading the
-line. This allows us to handle and possibly recover from this sort of error.
+it as a panic instead. For example, `io::stdin().read_line(&mut buffer)` returns
+an `Result<usize>`, when there is an error reading the line. This allows us to
+handle and possibly recover from error.
 
 If we don't want to handle this error, and would rather just abort the program,
 we can use the `unwrap()` method:
 
 ```{rust,ignore}
-io::stdin().read_line().unwrap();
+io::stdin().read_line(&mut buffer).unwrap();
 ```
 
 `unwrap()` will `panic!` if the `Option` is `None`. This basically says "Give
@@ -219,12 +219,13 @@ shorter. Sometimes, just crashing is appropriate.
 There's another way of doing this that's a bit nicer than `unwrap()`:
 
 ```{rust,ignore}
-let input = io::stdin().read_line()
+let mut buffer = String::new();
+let input = io::stdin().read_line(&mut buffer)
                        .ok()
                        .expect("Failed to read line");
 ```
 
-`ok()` converts the `IoResult` into an `Option`, and `expect()` does the same
+`ok()` converts the `Result` into an `Option`, and `expect()` does the same
 thing as `unwrap()`, but takes a message. This message is passed along to the
 underlying `panic!`, providing a better error message if the code errors.
 
