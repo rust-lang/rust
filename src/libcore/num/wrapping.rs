@@ -30,7 +30,7 @@ use intrinsics::{i16_mul_with_overflow, u16_mul_with_overflow};
 use intrinsics::{i32_mul_with_overflow, u32_mul_with_overflow};
 use intrinsics::{i64_mul_with_overflow, u64_mul_with_overflow};
 
-use ::{i8,i16,i32,i64,u8,u16,u32,u64};
+use ::{i8,i16,i32,i64};
 
 #[unstable(feature = "core", reason = "may be removed, renamed, or relocated")]
 #[deprecated(since = "1.0.0", reason = "moved to inherent methods")]
@@ -206,7 +206,7 @@ mod shift_max {
     pub const u64: u32 = i64;
 }
 
-macro_rules! overflowing_impl {
+macro_rules! signed_overflowing_impl {
     ($($t:ident)*) => ($(
         impl OverflowingOps for $t {
             #[inline(always)]
@@ -259,7 +259,53 @@ macro_rules! overflowing_impl {
     )*)
 }
 
-overflowing_impl! { u8 u16 u32 u64 i8 i16 i32 i64 }
+macro_rules! unsigned_overflowing_impl {
+    ($($t:ident)*) => ($(
+        impl OverflowingOps for $t {
+            #[inline(always)]
+            fn overflowing_add(self, rhs: $t) -> ($t, bool) {
+                unsafe {
+                    concat_idents!($t, _add_with_overflow)(self, rhs)
+                }
+            }
+            #[inline(always)]
+            fn overflowing_sub(self, rhs: $t) -> ($t, bool) {
+                unsafe {
+                    concat_idents!($t, _sub_with_overflow)(self, rhs)
+                }
+            }
+            #[inline(always)]
+            fn overflowing_mul(self, rhs: $t) -> ($t, bool) {
+                unsafe {
+                    concat_idents!($t, _mul_with_overflow)(self, rhs)
+                }
+            }
+
+            #[inline(always)]
+            fn overflowing_div(self, rhs: $t) -> ($t, bool) {
+                (self/rhs, false)
+            }
+            #[inline(always)]
+            fn overflowing_rem(self, rhs: $t) -> ($t, bool) {
+                (self % rhs, false)
+            }
+
+            #[inline(always)]
+            fn overflowing_shl(self, rhs: u32) -> ($t, bool) {
+                (self << (rhs & self::shift_max::$t),
+                 (rhs > self::shift_max::$t))
+            }
+            #[inline(always)]
+            fn overflowing_shr(self, rhs: u32) -> ($t, bool) {
+                (self >> (rhs & self::shift_max::$t),
+                 (rhs > self::shift_max::$t))
+            }
+        }
+    )*)
+}
+
+signed_overflowing_impl! { i8 i16 i32 i64 }
+unsigned_overflowing_impl! { u8 u16 u32 u64 }
 
 #[cfg(target_pointer_width = "64")]
 impl OverflowingOps for usize {
