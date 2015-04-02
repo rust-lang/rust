@@ -21,7 +21,7 @@ use path::{Path, PathBuf};
 use ptr;
 use sync::Arc;
 use sys::handle::Handle;
-use sys::{c, cvt};
+use sys::{c, cvt, retry};
 use sys_common::FromInner;
 use vec::Vec;
 
@@ -431,4 +431,51 @@ pub fn utimes(p: &Path, atime: u64, mtime: u64) -> io::Result<()> {
         c::SetFileTime(f.handle.raw(), 0 as *const _, &atime, &mtime)
     }));
     Ok(())
+}
+
+pub fn pipe() -> io::Result<(File, File)> {
+    unsafe {
+        let mut fds = [0; 2];
+        if retry(|| libc::pipe(fds.as_mut_ptr(), 4096, libc::O_TEXT)) == 0 {
+            let (read_fd, write_fd) = (fds[0], fds[1]);
+            let (read_handle, write_handle) =
+                (libc::get_osfhandle(read_fd) as libc::HANDLE,
+                 libc::get_osfhandle(write_fd) as libc::HANDLE);
+
+            if read_handle == libc::INVALID_HANDLE_VALUE ||
+                write_handle == libc::INVALID_HANDLE_VALUE
+            {
+                // Capture the error which caused us to fail
+                let err = io::Error::last_os_error();
+
+                // Cleanup file descriptors in unlikely event that
+                // they are created but we couldn't get the handles
+                if read_fd != -1 {
+                    retry(|| libc::close(read_fd));
+                }
+
+                if write_fd != -1 {
+                    retry(|| libc::close(write_fd));
+                }
+
+                return Err(err);
+            }
+
+            let read_file = File {
+                handle: Handle::new(read_handle),
+                read_fd: Some(read_fd),
+                write_fd: None,
+            };
+
+            let write_file = File {
+                handle: Handle::new(write_handle),
+                read_fd: None,
+                write_fd: Some(write_fd),
+            };
+
+            Ok((read_file, write_file))
+        } else {
+            Err(io::Error::last_os_error())
+        }
+    }
 }

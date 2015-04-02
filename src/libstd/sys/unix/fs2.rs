@@ -381,3 +381,15 @@ pub fn utimes(p: &Path, atime: u64, mtime: u64) -> io::Result<()> {
     try!(cvt(unsafe { c::utimes(p.as_ptr(), buf.as_ptr()) }));
     Ok(())
 }
+
+pub fn pipe() -> io::Result<(File, File)> {
+    unsafe {
+        let mut fds = [0; 2];
+        if let Ok(0) = cvt_r(|| libc::pipe(fds.as_mut_ptr())) {
+            Ok((File::from_inner(fds[0]),
+                File::from_inner(fds[1])))
+        } else {
+            Err(io::Error::last_os_error())
+        }
+    }
+}
