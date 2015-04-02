@@ -15,7 +15,7 @@ fn f(arg: &mut A) {
     arg.a = 100;
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct A { a: isize }
 
 pub fn main() {

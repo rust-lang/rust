@@ -334,7 +334,7 @@ impl ToInteriorKind for mc::InteriorKind {
     }
 }
 
-#[derive(Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum LoanPathElem {
     LpDeref(mc::PointerKind),    // `*LV` in README.md
     LpInterior(InteriorKind),    // `LV.f` in README.md
@@ -500,13 +500,13 @@ pub struct BckError<'tcx> {
     code: bckerr_code
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum AliasableViolationKind {
     MutabilityViolation,
     BorrowViolation(euv::LoanCause)
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum MovedValueUseKind {
     MovedInUse,
     MovedInCapture,

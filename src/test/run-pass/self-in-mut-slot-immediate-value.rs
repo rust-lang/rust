@@ -13,7 +13,7 @@
 
 // pretty-expanded FIXME #23616
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Value {
     n: isize
 }

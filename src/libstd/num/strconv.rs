@@ -25,7 +25,7 @@ use string::String;
 use vec::Vec;
 
 /// A flag that specifies whether to use exponential (scientific) notation.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum ExponentFormat {
     /// Do not use exponential notation.
     ExpNone,
@@ -40,7 +40,7 @@ pub enum ExponentFormat {
 
 /// The number of digits used for emitting the fractional part of a number, if
 /// any.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum SignificantDigits {
     /// All calculable digits will be printed.
     ///
@@ -57,7 +57,7 @@ pub enum SignificantDigits {
 }
 
 /// How to emit the sign of a number.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum SignFormat {
     /// No sign will be printed. The exponent sign will also be emitted.
     SignNone,

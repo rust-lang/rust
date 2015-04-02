@@ -17,7 +17,7 @@ with the representation of [isize; n] and [isize] somehow, or at least
 failed to typecheck correctly.
 */
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct X { vec: &'static [isize] }
 
 static V: &'static [X] = &[X { vec: &[1, 2, 3] }];

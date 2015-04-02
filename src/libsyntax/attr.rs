@@ -282,7 +282,7 @@ pub fn find_crate_name(attrs: &[Attribute]) -> Option<InternedString> {
     first_attr_value_str_by_name(attrs, "crate_name")
 }
 
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -571,7 +571,7 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
     }
 }
 
-#[derive(PartialEq, Debug, RustcEncodable, RustcDecodable, Copy)]
+#[derive(PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
 pub enum ReprAttr {
     ReprAny,
     ReprInt(Span, IntType),
@@ -590,7 +590,7 @@ impl ReprAttr {
     }
 }
 
-#[derive(Eq, Hash, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Eq, Hash, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy)

@@ -37,7 +37,7 @@ use std::rc::Rc;
 
 
 /// Contains data for specific types of import directives.
-#[derive(Copy,Debug)]
+#[derive(Copy, Clone,Debug)]
 pub enum ImportDirectiveSubclass {
     SingleImport(Name /* target */, Name /* source */),
     GlobImport

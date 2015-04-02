@@ -104,7 +104,7 @@ pub type DefMap = RefCell<NodeMap<PathResolution>>;
 // within.
 pub type ExportMap = NodeMap<Vec<Export>>;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Export {
     pub name: ast::Name,    // The name of the target.
     pub def_id: ast::DefId, // The definition of the target.

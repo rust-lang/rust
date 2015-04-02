@@ -17,7 +17,7 @@ trait GetRef<'a> {
     fn get(&self) -> &'a isize;
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Box<'a> {
     t: &'a isize
 }

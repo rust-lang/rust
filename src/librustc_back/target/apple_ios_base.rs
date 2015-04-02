@@ -15,7 +15,7 @@ use target::TargetOptions;
 use self::Arch::*;
 
 #[allow(non_camel_case_types)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum Arch {
     Armv7,
     Armv7s,

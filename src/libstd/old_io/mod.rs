@@ -391,7 +391,7 @@ impl Error for IoError {
 }
 
 /// A list specifying general categories of I/O error.
-#[derive(Copy, PartialEq, Eq, Clone, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum IoErrorKind {
     /// Any I/O error not part of this list.
     OtherIoError,
@@ -1553,7 +1553,7 @@ impl<T: Buffer> BufferPrelude for T {
 
 /// When seeking, the resulting cursor is offset from a base by the offset given
 /// to the `seek` function. The base used is specified by this enumeration.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum SeekStyle {
     /// Seek from the beginning of the stream
     SeekSet,
@@ -1744,7 +1744,7 @@ pub enum FileType {
 ///
 /// println!("byte size: {}", info.size);
 /// ```
-#[derive(Copy, Hash)]
+#[derive(Copy, Clone, Hash)]
 pub struct FileStat {
     /// The size of the file, in bytes
     pub size: u64,
@@ -1783,7 +1783,7 @@ pub struct FileStat {
 /// structure. This information is not necessarily platform independent, and may
 /// have different meanings or no meaning at all on some platforms.
 #[unstable(feature = "io")]
-#[derive(Copy, Hash)]
+#[derive(Copy, Clone, Hash)]
 pub struct UnstableFileStat {
     /// The ID of the device containing the file.
     pub device: u64,

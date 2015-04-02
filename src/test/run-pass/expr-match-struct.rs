@@ -13,7 +13,7 @@
 
 
 // Tests for match as expressions resulting in struct types
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct R { i: isize }
 
 fn test_rec() {
@@ -21,7 +21,7 @@ fn test_rec() {
     assert_eq!(rs.i, 100);
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum mood { happy, sad, }
 
 impl PartialEq for mood {

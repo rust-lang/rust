@@ -194,7 +194,7 @@ impl fmt::Debug for TestFn {
 /// This is fed into functions marked with `#[bench]` to allow for
 /// set-up & tear-down before running a piece of code repeatedly via a
 /// call to `iter`.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Bencher {
     iterations: u64,
     dur: Duration,
@@ -281,7 +281,7 @@ pub fn test_main_static(args: env::Args, tests: &[TestDescAndFn]) {
     test_main(&args, owned_tests)
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum ColorConfig {
     AutoColor,
     AlwaysColor,

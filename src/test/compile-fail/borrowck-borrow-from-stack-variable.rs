@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Foo {
   bar1: Bar,
   bar2: Bar
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Bar {
   int1: isize,
   int2: isize,

@@ -22,7 +22,7 @@
 
 use std::marker::PhantomData;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Foo<T> { x: T }
 
 type Ty<'tcx> = &'tcx TyS<'tcx>;
@@ -31,7 +31,7 @@ enum TyS<'tcx> {
     Boop(PhantomData<*mut &'tcx ()>)
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum Bar<'tcx> {
     Baz(Foo<Ty<'tcx>>)
 }

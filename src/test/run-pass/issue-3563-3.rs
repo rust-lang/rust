@@ -29,7 +29,7 @@ use std::iter::repeat;
 use std::slice;
 
 // Represents a position on a canvas.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Point {
     x: isize,
     y: isize,
@@ -37,13 +37,13 @@ struct Point {
 
 // Represents an offset on a canvas. (This has the same structure as a Point.
 // but different semantics).
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Size {
     width: isize,
     height: isize,
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Rect {
     top_left: Point,
     size: Size,

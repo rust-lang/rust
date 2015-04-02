@@ -21,7 +21,7 @@ enum Context {
     Normal, Loop, Closure
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct CheckLoopVisitor<'a> {
     sess: &'a Session,
     cx: Context

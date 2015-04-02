@@ -109,7 +109,7 @@ pub enum PickAdjustment {
     AutoRef(ast::Mutability, Box<PickAdjustment>),
 }
 
-#[derive(PartialEq, Eq, Copy)]
+#[derive(PartialEq, Eq, Copy, Clone)]
 pub enum Mode {
     // An expression of the form `receiver.method_name(...)`.
     // Autoderefs are performed on `receiver`, lookup is done based on the

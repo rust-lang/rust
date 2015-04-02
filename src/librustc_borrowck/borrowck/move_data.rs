@@ -94,7 +94,7 @@ impl Clone for MovePathIndex {
 const InvalidMovePathIndex: MovePathIndex = MovePathIndex(usize::MAX);
 
 /// Index into `MoveData.moves`, used like a pointer
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct MoveIndex(usize);
 
 impl MoveIndex {
@@ -125,7 +125,7 @@ pub struct MovePath<'tcx> {
     pub next_sibling: MovePathIndex,
 }
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum MoveKind {
     Declared,   // When declared, variables start out "moved".
     MoveExpr,   // Expression or binding that moves a variable
@@ -133,7 +133,7 @@ pub enum MoveKind {
     Captured    // Closure creation that moves a value
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Move {
     /// Path being moved.
     pub path: MovePathIndex,
@@ -148,7 +148,7 @@ pub struct Move {
     pub next_move: MoveIndex
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Assignment {
     /// Path being assigned.
     pub path: MovePathIndex,
@@ -160,7 +160,7 @@ pub struct Assignment {
     pub span: Span,
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct VariantMatch {
     /// downcast to the variant.
     pub path: MovePathIndex,

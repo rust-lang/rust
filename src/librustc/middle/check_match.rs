@@ -128,7 +128,7 @@ enum Usefulness {
     NotUseful
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum WitnessPreference {
     ConstructWitness,
     LeaveOutWitness

@@ -14,7 +14,7 @@
 
 // Tests for if as expressions returning nominal types
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct I { i: isize }
 
 fn test_rec() {
@@ -22,7 +22,7 @@ fn test_rec() {
     assert_eq!(rs.i, 100);
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum mood { happy, sad, }
 
 impl PartialEq for mood {

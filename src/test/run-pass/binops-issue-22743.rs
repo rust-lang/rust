@@ -10,7 +10,7 @@
 
 use std::ops::Mul;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Foo {
     x: f64,
 }

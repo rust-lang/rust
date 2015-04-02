@@ -27,7 +27,7 @@ use html::render::cache;
 
 #[derive(RustcEncodable, RustcDecodable, PartialEq, Eq)]
 /// The counts for each stability level.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct Counts {
     pub deprecated: u64,
     pub unstable: u64,
