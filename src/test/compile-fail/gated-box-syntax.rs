@@ -13,5 +13,4 @@
 fn main() {
     let x = box 3;
     //~^ ERROR box expression syntax is experimental; you can call `Box::new` instead.
-    //~| HELP add #![feature(box_syntax)] to the crate attributes to enable
 }

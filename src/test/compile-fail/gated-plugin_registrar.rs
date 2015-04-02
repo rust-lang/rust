@@ -15,5 +15,4 @@
 #[plugin_registrar]
 pub fn registrar() {}
 //~^ ERROR compiler plugins are experimental
-//~| HELP add #![feature(plugin_registrar)] to the crate attributes to enable
 fn main() {}

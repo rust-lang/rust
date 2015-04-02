@@ -19,4 +19,3 @@
 #[macro_use] #[no_link]
 extern crate macro_reexport_1;
 //~^ ERROR macros reexports are experimental and possibly buggy
-//~| HELP add #![feature(macro_reexport)] to the crate attributes to enable
