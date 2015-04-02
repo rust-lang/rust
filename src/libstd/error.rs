@@ -88,8 +88,8 @@ impl<'a, E: Error + Send + 'a> From<E> for Box<Error + Send + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b> From<&'b str> for Box<Error + Send + 'a> {
-    fn from(err: &'b str) -> Box<Error + Send + 'a> {
+impl From<String> for Box<Error + Send> {
+    fn from(err: String) -> Box<Error + Send> {
         #[derive(Debug)]
         struct StringError(String);
 
@@ -103,7 +103,14 @@ impl<'a, 'b> From<&'b str> for Box<Error + Send + 'a> {
             }
         }
 
-        Box::new(StringError(String::from_str(err)))
+        Box::new(StringError(err))
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, 'b> From<&'b str> for Box<Error + Send + 'a> {
+    fn from(err: &'b str) -> Box<Error + Send + 'a> {
+        From::from(String::from_str(err))
     }
 }
 
