@@ -822,7 +822,9 @@ macro_rules! impl_eq {
     }
 }
 
+impl_eq! { String, str }
 impl_eq! { String, &'a str }
+impl_eq! { Cow<'a, str>, str }
 impl_eq! { Cow<'a, str>, String }
 
 #[stable(feature = "rust1", since = "1.0.0")]
