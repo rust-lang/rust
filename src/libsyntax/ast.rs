@@ -388,7 +388,7 @@ pub const CRATE_NODE_ID: NodeId = 0;
 /// When parsing and doing expansions, we initially give all AST nodes this AST
 /// node value. Then later, in the renumber pass, we renumber them to have
 /// small, positive ids.
-pub const DUMMY_NODE_ID: NodeId = -1;
+pub const DUMMY_NODE_ID: NodeId = !0;
 
 /// The AST represents all type param bounds as types.
 /// typeck::collect::compute_bounds matches these against

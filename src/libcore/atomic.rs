@@ -161,7 +161,7 @@ pub const ATOMIC_USIZE_INIT: AtomicUsize =
         AtomicUsize { v: UnsafeCell { value: 0, } };
 
 // NB: Needs to be -1 (0b11111111...) to make fetch_nand work correctly
-const UINT_TRUE: usize = -1;
+const UINT_TRUE: usize = !0;
 
 impl AtomicBool {
     /// Creates a new `AtomicBool`.

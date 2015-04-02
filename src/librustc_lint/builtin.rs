@@ -116,7 +116,7 @@ pub struct TypeLimits {
 impl TypeLimits {
     pub fn new() -> TypeLimits {
         TypeLimits {
-            negated_expr_id: -1,
+            negated_expr_id: !0,
         }
     }
 }

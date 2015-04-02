@@ -855,7 +855,7 @@ impl TwoWaySearcher {
     #[allow(dead_code)]
     #[allow(deprecated)]
     fn maximal_suffix(arr: &[u8], reversed: bool) -> (usize, usize) {
-        let mut left: usize = -1; // Corresponds to i in the paper
+        let mut left: usize = !0; // Corresponds to i in the paper
         let mut right = 0; // Corresponds to j in the paper
         let mut offset = 1; // Corresponds to k in the paper
         let mut period = 1; // Corresponds to p in the paper
