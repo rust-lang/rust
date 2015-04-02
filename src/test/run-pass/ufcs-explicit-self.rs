@@ -11,7 +11,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Foo {
     f: isize,
 }
@@ -28,7 +28,7 @@ impl Foo {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Bar<T> {
     f: T,
 }

@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct S {
     x: u64,
     y: u64,

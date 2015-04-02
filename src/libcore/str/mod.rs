@@ -855,7 +855,7 @@ impl TwoWaySearcher {
     #[allow(dead_code)]
     #[allow(deprecated)]
     fn maximal_suffix(arr: &[u8], reversed: bool) -> (usize, usize) {
-        let mut left: usize = -1; // Corresponds to i in the paper
+        let mut left: usize = !0; // Corresponds to i in the paper
         let mut right = 0; // Corresponds to j in the paper
         let mut offset = 1; // Corresponds to k in the paper
         let mut period = 1; // Corresponds to p in the paper
@@ -1105,7 +1105,7 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 /// Struct that contains a `char` and the index of the first byte of
 /// the next `char` in a string.  This can be used as a data structure
 /// for iterating over the UTF-8 bytes of a string.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 #[unstable(feature = "str_char",
            reason = "existence of this struct is uncertain as it is frequently \
                      able to be replaced with char.len_utf8() and/or \

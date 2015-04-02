@@ -94,7 +94,7 @@ use std::rc::Rc;
 // These are passed around by the code generating functions to track the
 // destination of a computation's value.
 
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Dest {
     SaveIn(ValueRef),
     Ignore,
@@ -2038,7 +2038,7 @@ fn float_cast(bcx: Block,
     } else { llsrc };
 }
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum cast_kind {
     cast_pointer,
     cast_integral,

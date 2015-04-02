@@ -47,7 +47,7 @@ pub struct BytePos(pub u32);
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
-#[derive(Copy, PartialEq, Hash, PartialOrd, Debug)]
+#[derive(Copy, Clone, PartialEq, Hash, PartialOrd, Debug)]
 pub struct CharPos(pub usize);
 
 // FIXME: Lots of boilerplate in these impls, but so far my attempts to fix
@@ -278,9 +278,9 @@ pub struct ExpnInfo {
 #[derive(PartialEq, Eq, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Copy)]
 pub struct ExpnId(u32);
 
-pub const NO_EXPANSION: ExpnId = ExpnId(-1);
+pub const NO_EXPANSION: ExpnId = ExpnId(!0);
 // For code appearing from the command line
-pub const COMMAND_LINE_EXPN: ExpnId = ExpnId(-2);
+pub const COMMAND_LINE_EXPN: ExpnId = ExpnId(!1);
 
 impl ExpnId {
     pub fn from_llvm_cookie(cookie: c_uint) -> ExpnId {
@@ -305,7 +305,7 @@ pub struct FileLines {
 }
 
 /// Identifies an offset of a multi-byte character in a FileMap
-#[derive(Copy, RustcEncodable, RustcDecodable, Eq, PartialEq)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Eq, PartialEq)]
 pub struct MultiByteChar {
     /// The absolute offset of the character in the CodeMap
     pub pos: BytePos,

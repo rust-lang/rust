@@ -72,12 +72,12 @@ struct Node<T> {
 /// The multi-producer single-consumer structure. This is not cloneable, but it
 /// may be safely shared so long as it is guaranteed that there is only one
 /// popper at a time (many pushers are allowed).
-pub struct Queue<T: Send> {
+pub struct Queue<T> {
     head: AtomicPtr<Node<T>>,
     tail: UnsafeCell<*mut Node<T>>,
 }
 
-unsafe impl<T:Send> Send for Queue<T> { }
+unsafe impl<T: Send> Send for Queue<T> { }
 unsafe impl<T: Send> Sync for Queue<T> { }
 
 impl<T> Node<T> {
@@ -89,7 +89,7 @@ impl<T> Node<T> {
     }
 }
 
-impl<T: Send> Queue<T> {
+impl<T> Queue<T> {
     /// Creates a new queue that is safe to share among multiple producers and
     /// one consumer.
     pub fn new() -> Queue<T> {
@@ -140,7 +140,7 @@ impl<T: Send> Queue<T> {
 
 #[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> Drop for Queue<T> {
+impl<T> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {
             let mut cur = *self.tail.get();

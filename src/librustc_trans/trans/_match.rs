@@ -228,7 +228,7 @@ use syntax::codemap::Span;
 use syntax::fold::Folder;
 use syntax::ptr::P;
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 struct ConstantExpr<'a>(&'a ast::Expr);
 
 impl<'a> ConstantExpr<'a> {
@@ -311,7 +311,7 @@ impl<'a, 'tcx> Opt<'a, 'tcx> {
     }
 }
 
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum BranchKind {
     NoBranch,
     Single,

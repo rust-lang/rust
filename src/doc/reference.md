@@ -1648,7 +1648,7 @@ specific type.
 Implementations are defined with the keyword `impl`.
 
 ```
-# #[derive(Copy)]
+# #[derive(Copy, Clone)]
 # struct Point {x: f64, y: f64};
 # type Surface = i32;
 # struct BoundingBox {x: f64, y: f64, width: f64, height: f64};
@@ -1660,6 +1660,10 @@ struct Circle {
 }
 
 impl Copy for Circle {}
+
+impl Clone for Circle {
+    fn clone(&self) -> Circle { *self }
+}
 
 impl Shape for Circle {
     fn draw(&self, s: Surface) { do_draw_circle(s, *self); }

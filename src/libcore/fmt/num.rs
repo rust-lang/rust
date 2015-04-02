@@ -139,7 +139,7 @@ impl GenericRadix for Radix {
 /// A helper type for formatting radixes.
 #[unstable(feature = "core",
            reason = "may be renamed or move to a different module")]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct RadixFmt<T, R>(T, R);
 
 /// Constructs a radix formatter in the range of `2..36`.

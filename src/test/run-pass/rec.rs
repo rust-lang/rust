@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Rect {x: isize, y: isize, w: isize, h: isize}
 
 fn f(r: Rect, x: isize, y: isize, w: isize, h: isize) {

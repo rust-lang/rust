@@ -11,7 +11,7 @@
 
 use color::{red, green, blue, black, white, imaginary, purple, orange};
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum color {
     red = 0xff0000,
     green = 0x00ff00,

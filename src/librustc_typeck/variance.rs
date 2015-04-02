@@ -295,10 +295,10 @@ pub fn infer_variance(tcx: &ty::ctxt) {
 
 type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 struct InferredIndex(usize);
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum VarianceTerm<'a> {
     ConstantTerm(ty::Variance),
     TransformTerm(VarianceTermPtr<'a>, VarianceTermPtr<'a>),
@@ -336,7 +336,7 @@ struct TermsContext<'a, 'tcx: 'a> {
     inferred_infos: Vec<InferredInfo<'a>> ,
 }
 
-#[derive(Copy, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 enum ParamKind {
     TypeParam,
     RegionParam,
@@ -560,7 +560,7 @@ struct ConstraintContext<'a, 'tcx: 'a> {
 
 /// Declares that the variable `decl_id` appears in a location with
 /// variance `variance`.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Constraint<'a> {
     inferred: InferredIndex,
     variance: &'a VarianceTerm<'a>,

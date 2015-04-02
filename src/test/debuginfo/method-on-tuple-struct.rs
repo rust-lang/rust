@@ -115,7 +115,7 @@
 #![feature(box_syntax)]
 #![omit_gdb_pretty_printer_section]
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct TupleStruct(isize, f64);
 
 impl TupleStruct {

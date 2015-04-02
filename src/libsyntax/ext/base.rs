@@ -318,7 +318,7 @@ impl MacResult for MacEager {
 
 /// Fill-in macro expansion result, to allow compilation to continue
 /// after hitting errors.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct DummyResult {
     expr_only: bool,
     span: Span

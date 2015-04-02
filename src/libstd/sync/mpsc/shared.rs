@@ -40,7 +40,7 @@ const MAX_STEALS: isize = 5;
 #[cfg(not(test))]
 const MAX_STEALS: isize = 1 << 20;
 
-pub struct Packet<T: Send> {
+pub struct Packet<T> {
     queue: mpsc::Queue<T>,
     cnt: AtomicIsize, // How many items are on this channel
     steals: isize, // How many times has a port received without blocking?
@@ -64,7 +64,7 @@ pub enum Failure {
     Disconnected,
 }
 
-impl<T: Send> Packet<T> {
+impl<T> Packet<T> {
     // Creation of a packet *must* be followed by a call to postinit_lock
     // and later by inherit_blocker
     pub fn new() -> Packet<T> {
@@ -474,7 +474,7 @@ impl<T: Send> Packet<T> {
 }
 
 #[unsafe_destructor]
-impl<T: Send> Drop for Packet<T> {
+impl<T> Drop for Packet<T> {
     fn drop(&mut self) {
         // Note that this load is not only an assert for correctness about
         // disconnection, but also a proper fence before the read of

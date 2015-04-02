@@ -57,7 +57,7 @@ struct Node<T> {
 /// but it can be safely shared in an Arc if it is guaranteed that there
 /// is only one popper and one pusher touching the queue at any one point in
 /// time.
-pub struct Queue<T: Send> {
+pub struct Queue<T> {
     // consumer fields
     tail: UnsafeCell<*mut Node<T>>, // where to pop from
     tail_prev: AtomicPtr<Node<T>>, // where to pop from
@@ -78,7 +78,7 @@ unsafe impl<T: Send> Send for Queue<T> { }
 
 unsafe impl<T: Send> Sync for Queue<T> { }
 
-impl<T: Send> Node<T> {
+impl<T> Node<T> {
     fn new() -> *mut Node<T> {
         unsafe {
             boxed::into_raw(box Node {
@@ -89,7 +89,7 @@ impl<T: Send> Node<T> {
     }
 }
 
-impl<T: Send> Queue<T> {
+impl<T> Queue<T> {
     /// Creates a new queue.
     ///
     /// This is unsafe as the type system doesn't enforce a single
@@ -227,7 +227,7 @@ impl<T: Send> Queue<T> {
 }
 
 #[unsafe_destructor]
-impl<T: Send> Drop for Queue<T> {
+impl<T> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {
             let mut cur = *self.first.get();

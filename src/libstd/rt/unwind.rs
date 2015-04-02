@@ -398,7 +398,7 @@ pub mod eabi {
     pub struct DISPATCHER_CONTEXT;
 
     #[repr(C)]
-    #[derive(Copy)]
+    #[derive(Copy, Clone)]
     pub enum EXCEPTION_DISPOSITION {
         ExceptionContinueExecution,
         ExceptionContinueSearch,

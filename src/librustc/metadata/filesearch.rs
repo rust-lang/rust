@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 use util::fs as myfs;
 use session::search_paths::{SearchPaths, PathKind};
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum FileMatch {
     FileMatches,
     FileDoesntMatch,

@@ -13,7 +13,7 @@
 use std::cmp;
 use std::ops;
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 struct Point {
     x: isize,
     y: isize

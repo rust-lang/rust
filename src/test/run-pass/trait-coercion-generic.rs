@@ -12,7 +12,7 @@ trait Trait<T> {
     fn f(&self, x: T);
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Struct {
     x: isize,
     y: isize,

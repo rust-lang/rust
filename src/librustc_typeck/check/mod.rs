@@ -120,6 +120,7 @@ use syntax::attr::AttrMetaMethods;
 use syntax::ast::{self, DefId, Visibility};
 use syntax::ast_util::{self, local_def};
 use syntax::codemap::{self, Span};
+use syntax::feature_gate;
 use syntax::owned_slice::OwnedSlice;
 use syntax::parse::token;
 use syntax::print::pprust;
@@ -204,7 +205,7 @@ struct CastCheck<'tcx> {
 
 /// When type-checking an expression, we propagate downward
 /// whatever type hint we are able in the form of an `Expectation`.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum Expectation<'tcx> {
     /// We know nothing about what type this expression should have.
     NoExpectation,
@@ -1951,14 +1952,14 @@ impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
     }
 }
 
-#[derive(Copy, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum LvaluePreference {
     PreferMutLvalue,
     NoPreference
 }
 
 /// Whether `autoderef` requires types to resolve.
-#[derive(Copy, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum UnresolvedTypeAction {
     /// Produce an error and return `ty_err` whenever a type cannot
     /// be resolved (i.e. it is `ty_infer`).
@@ -3257,6 +3258,15 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                         oprnd_t = op::check_user_unop(fcx, "-", "neg",
                                                       tcx.lang_items.neg_trait(),
                                                       expr, &**oprnd, oprnd_t, unop);
+                    }
+                    if let ty::ty_uint(_) = oprnd_t.sty {
+                        if !tcx.sess.features.borrow().negate_unsigned {
+                            feature_gate::emit_feature_err(
+                                &tcx.sess.parse_sess.span_diagnostic,
+                                "negate_unsigned",
+                                expr.span,
+                                "unary negation of unsigned integers may be removed in the future");
+                        }
                     }
                 }
             }

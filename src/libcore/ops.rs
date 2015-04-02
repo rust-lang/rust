@@ -165,7 +165,7 @@ macro_rules! forward_ref_binop {
 /// ```
 /// use std::ops::Add;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Add for Foo {
@@ -219,7 +219,7 @@ add_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Sub;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Sub for Foo {
@@ -273,7 +273,7 @@ sub_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Mul;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Mul for Foo {
@@ -327,7 +327,7 @@ mul_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Div;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Div for Foo {
@@ -381,7 +381,7 @@ div_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Rem;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Rem for Foo {
@@ -454,7 +454,7 @@ rem_float_impl! { f64, fmod }
 /// ```
 /// use std::ops::Neg;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Neg for Foo {
@@ -482,8 +482,10 @@ pub trait Neg {
     fn neg(self) -> Self::Output;
 }
 
-macro_rules! neg_impl {
-    ($($t:ty)*) => ($(
+
+
+macro_rules! neg_impl_core {
+    ($id:ident => $body:expr, $($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         #[allow(unsigned_negation)]
         impl Neg for $t {
@@ -492,14 +494,28 @@ macro_rules! neg_impl {
 
             #[inline]
             #[stable(feature = "rust1", since = "1.0.0")]
-            fn neg(self) -> $t { -self }
+            fn neg(self) -> $t { let $id = self; $body }
         }
 
         forward_ref_unop! { impl Neg, neg for $t }
     )*)
 }
 
-neg_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+macro_rules! neg_impl_numeric {
+    ($($t:ty)*) => { neg_impl_core!{ x => -x, $($t)*} }
+}
+
+macro_rules! neg_impl_unsigned {
+    ($($t:ty)*) => {
+        neg_impl_core!{ x => {
+            #[cfg(stage0)]
+            use ::num::wrapping::WrappingOps;
+            !x.wrapping_add(1)
+        }, $($t)*} }
+}
+
+// neg_impl_unsigned! { usize u8 u16 u32 u64 }
+neg_impl_numeric! { isize i8 i16 i32 i64 f32 f64 }
 
 /// The `Not` trait is used to specify the functionality of unary `!`.
 ///
@@ -511,7 +527,7 @@ neg_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 /// ```
 /// use std::ops::Not;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Not for Foo {
@@ -565,7 +581,7 @@ not_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 /// ```
 /// use std::ops::BitAnd;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl BitAnd for Foo {
@@ -619,7 +635,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 /// ```
 /// use std::ops::BitOr;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl BitOr for Foo {
@@ -673,7 +689,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 /// ```
 /// use std::ops::BitXor;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl BitXor for Foo {
@@ -727,7 +743,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 /// ```
 /// use std::ops::Shl;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Shl<Foo> for Foo {
@@ -799,7 +815,7 @@ shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// ```
 /// use std::ops::Shr;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 ///
 /// impl Shr<Foo> for Foo {
@@ -871,7 +887,7 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// ```
 /// use std::ops::Index;
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 /// struct Bar;
 ///
@@ -912,7 +928,7 @@ pub trait Index<Idx: ?Sized> {
 /// ```
 /// use std::ops::{Index, IndexMut};
 ///
-/// #[derive(Copy)]
+/// #[derive(Copy, Clone)]
 /// struct Foo;
 /// struct Bar;
 ///

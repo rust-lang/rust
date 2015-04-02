@@ -52,7 +52,7 @@ pub enum MethodError {
 
 // A pared down enum describing just the places from which a method
 // candidate can arise. Used for error reporting only.
-#[derive(Copy, PartialOrd, Ord, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub enum CandidateSource {
     ImplSource(ast::DefId),
     TraitSource(/* trait id */ ast::DefId),

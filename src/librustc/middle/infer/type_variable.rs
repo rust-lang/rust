@@ -47,7 +47,7 @@ struct Delegate<'tcx>(PhantomData<&'tcx ()>);
 
 type Relation = (RelationDir, ty::TyVid);
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum RelationDir {
     SubtypeOf, SupertypeOf, EqTo, BiTo
 }

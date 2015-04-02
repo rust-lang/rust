@@ -114,7 +114,7 @@
 #![feature(box_syntax)]
 #![omit_gdb_pretty_printer_section]
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Struct<T> {
     x: T
 }

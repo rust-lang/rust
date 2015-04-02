@@ -30,7 +30,7 @@ struct B {
     v6: Option<C>
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct C {
     f: isize
 }
