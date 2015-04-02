@@ -863,12 +863,15 @@ pub mod types {
                     pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_storage {
+                #[derive(Copy)] pub struct sockaddr_storage {
                     pub ss_len: u8,
                     pub ss_family: sa_family_t,
                     pub __ss_pad1: [u8; 6],
                     pub __ss_align: i64,
                     pub __ss_pad2: [u8; 112],
+                }
+                impl ::core::clone::Clone for sockaddr_storage {
+                    fn clone(&self) -> sockaddr_storage { *self }
                 }
                 #[repr(C)]
                 #[derive(Copy, Clone)] pub struct sockaddr_in {
@@ -917,10 +920,13 @@ pub mod types {
                     pub ai_next: *mut addrinfo,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_un {
+                #[derive(Copy)] pub struct sockaddr_un {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char; 104]
+                }
+                impl ::core::clone::Clone for sockaddr_un {
+                    fn clone(&self) -> sockaddr_un { *self }
                 }
                 #[repr(C)]
                 #[derive(Copy, Clone)] pub struct ifaddrs {
@@ -1125,12 +1131,15 @@ pub mod types {
                     pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_storage {
+                #[derive(Copy)] pub struct sockaddr_storage {
                     pub ss_len: u8,
                     pub ss_family: sa_family_t,
                     pub __ss_pad1: [u8; 6],
                     pub __ss_align: i64,
                     pub __ss_pad2: [u8; 112],
+                }
+                impl ::core::clone::Clone for sockaddr_storage {
+                    fn clone(&self) -> sockaddr_storage { *self }
                 }
                 #[repr(C)]
                 #[derive(Copy, Clone)] pub struct sockaddr_in {
@@ -1179,10 +1188,13 @@ pub mod types {
                     pub ai_next: *mut addrinfo,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_un {
+                #[derive(Copy)] pub struct sockaddr_un {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char; 104]
+                }
+                impl ::core::clone::Clone for sockaddr_un {
+                    fn clone(&self) -> sockaddr_un { *self }
                 }
                 #[repr(C)]
                 #[derive(Copy, Clone)] pub struct ifaddrs {
@@ -1405,12 +1417,15 @@ pub mod types {
                     pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_storage {
+                #[derive(Copy)] pub struct sockaddr_storage {
                     pub ss_len: u8,
                     pub ss_family: sa_family_t,
                     pub __ss_pad1: [u8; 6],
                     pub __ss_pad2: i64,
                     pub __ss_pad3: [u8; 240],
+                }
+                impl ::core::clone::Clone for sockaddr_storage {
+                    fn clone(&self) -> sockaddr_storage { *self }
                 }
                 #[repr(C)]
                 #[derive(Copy, Clone)] pub struct sockaddr_in {
@@ -1459,10 +1474,13 @@ pub mod types {
                     pub ai_next: *mut addrinfo,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_un {
+                #[derive(Copy)] pub struct sockaddr_un {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char; 104]
+                }
+                impl ::core::clone::Clone for sockaddr_un {
+                    fn clone(&self) -> sockaddr_un { *self }
                 }
                 #[repr(C)]
                 #[derive(Copy, Clone)] pub struct ifaddrs {
