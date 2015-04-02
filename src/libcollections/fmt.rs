@@ -368,12 +368,12 @@
 //!         should always be printed.
 //! * '-' - Currently not used
 //! * '#' - This flag is indicates that the "alternate" form of printing should
-//!         be used. By default, this only applies to the integer formatting
-//!         traits and performs like:
-//!     * `x` - precedes the argument with a "0x"
-//!     * `X` - precedes the argument with a "0x"
-//!     * `t` - precedes the argument with a "0b"
-//!     * `o` - precedes the argument with a "0o"
+//!         be used.  For array slices, the alternate form omits the brackets.
+//!         For the integer formatting traits, the alternate forms are:
+//!     * `#x` - precedes the argument with a "0x"
+//!     * `#X` - precedes the argument with a "0x"
+//!     * `#t` - precedes the argument with a "0b"
+//!     * `#o` - precedes the argument with a "0o"
 //! * '0' - This is used to indicate for integer formats that the padding should
 //!         both be done with a `0` character as well as be sign-aware. A format
 //!         like `{:08}` would yield `00000001` for the integer `1`, while the
