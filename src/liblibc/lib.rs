@@ -3134,7 +3134,7 @@ pub mod consts {
             pub const MAP_FIXED : c_int = 0x0010;
             pub const MAP_ANON : c_int = 0x0800;
 
-            pub const MAP_FAILED : *mut c_void = -1 as *mut c_void;
+            pub const MAP_FAILED : *mut c_void = !0 as *mut c_void;
 
             pub const MCL_CURRENT : c_int = 0x0001;
             pub const MCL_FUTURE : c_int = 0x0002;
@@ -3870,7 +3870,7 @@ pub mod consts {
             pub const MAP_FIXED : c_int = 0x0010;
             pub const MAP_ANON : c_int = 0x1000;
 
-            pub const MAP_FAILED : *mut c_void = -1 as *mut c_void;
+            pub const MAP_FAILED : *mut c_void = !0 as *mut c_void;
 
             pub const MCL_CURRENT : c_int = 0x0001;
             pub const MCL_FUTURE : c_int = 0x0002;
@@ -4324,7 +4324,7 @@ pub mod consts {
             pub const MAP_FIXED : c_int = 0x0010;
             pub const MAP_ANON : c_int = 0x1000;
 
-            pub const MAP_FAILED : *mut c_void = -1 as *mut c_void;
+            pub const MAP_FAILED : *mut c_void = !0 as *mut c_void;
 
             pub const MCL_CURRENT : c_int = 0x0001;
             pub const MCL_FUTURE : c_int = 0x0002;
