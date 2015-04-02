@@ -3160,7 +3160,9 @@ impl<'a> Parser<'a> {
                 // Parse pattern starting with a path
                 if self.token.is_plain_ident() && self.look_ahead(1, |t| *t != token::DotDotDot &&
                         *t != token::OpenDelim(token::Brace) &&
-                        *t != token::OpenDelim(token::Paren)) {
+                        *t != token::OpenDelim(token::Paren) &&
+                        // Contrary to its definition, a plain ident can be followed by :: in macros
+                        *t != token::ModSep) {
                     // Plain idents have some extra abilities here compared to general paths
                     if self.look_ahead(1, |t| *t == token::Not) {
                         // Parse macro invocation
