@@ -25,7 +25,7 @@ use syntax::ast;
 use syntax::codemap::{DUMMY_SP, Span};
 use util::ppaux::Repr;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct ParamIsLocal(bool);
 
 /// True if there exist types that satisfy both of the two given impls.

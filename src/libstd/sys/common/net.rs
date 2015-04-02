@@ -115,9 +115,9 @@ pub fn socket(addr: SocketAddr, ty: libc::c_int) -> IoResult<sock_t> {
             Ipv4Addr(..) => libc::AF_INET,
             Ipv6Addr(..) => libc::AF_INET6,
         };
-        match libc::socket(fam, ty, 0) {
+        match libc::socket(fam, ty, 0) as i32 {
             -1 => Err(last_net_error()),
-            fd => Ok(fd),
+            fd => Ok(fd as sock_t),
         }
     }
 }

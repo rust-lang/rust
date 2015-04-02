@@ -291,7 +291,6 @@ pub mod types {
             }
 
             pub mod bsd44 {
-                use core::clone::Clone;
                 use types::common::c95::{c_void};
                 use types::os::arch::c95::{c_char, c_int, c_uint};
 
@@ -313,7 +312,7 @@ pub mod types {
                     #[cfg(target_pointer_width = "64")]
                     pub __ss_pad2: [u8; 128 - 2 * 8],
                 }
-                impl Clone for sockaddr_storage {
+                impl ::core::clone::Clone for sockaddr_storage {
                     fn clone(&self) -> sockaddr_storage { *self }
                 }
                 #[repr(C)]
@@ -376,7 +375,7 @@ pub mod types {
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char; 108]
                 }
-                impl Clone for sockaddr_un {
+                impl ::core::clone::Clone for sockaddr_un {
                     fn clone(&self) -> sockaddr_un { *self }
                 }
 
@@ -1634,11 +1633,14 @@ pub mod types {
                     pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_storage {
+                #[derive(Copy)] pub struct sockaddr_storage {
                     pub ss_family: sa_family_t,
                     pub __ss_pad1: [u8; 6],
                     pub __ss_align: i64,
                     pub __ss_pad2: [u8; 112],
+                }
+                impl ::core::clone::Clone for sockaddr_storage {
+                    fn clone(&self) -> sockaddr_storage { *self }
                 }
                 #[repr(C)]
                 #[derive(Copy, Clone)] pub struct sockaddr_in {
@@ -1685,9 +1687,12 @@ pub mod types {
                     pub ai_next: *mut addrinfo,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_un {
+                #[derive(Copy)] pub struct sockaddr_un {
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char; 108]
+                }
+                impl ::core::clone::Clone for sockaddr_un {
+                    fn clone(&self) -> sockaddr_un { *self }
                 }
             }
         }
@@ -1933,7 +1938,7 @@ pub mod types {
                 pub type LPWSAPROTOCOLCHAIN = *mut WSAPROTOCOLCHAIN;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct WSAPROTOCOL_INFO {
+                #[derive(Copy)] pub struct WSAPROTOCOL_INFO {
                     pub dwServiceFlags1: DWORD,
                     pub dwServiceFlags2: DWORD,
                     pub dwServiceFlags3: DWORD,
@@ -1955,13 +1960,16 @@ pub mod types {
                     pub dwProviderReserved: DWORD,
                     pub szProtocol: [u8; WSAPROTOCOL_LEN as usize + 1],
                 }
+                impl ::core::clone::Clone for WSAPROTOCOL_INFO {
+                    fn clone(&self) -> WSAPROTOCOL_INFO { *self }
+                }
 
                 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
 
                 pub type GROUP = c_uint;
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct WIN32_FIND_DATAW {
+                #[derive(Copy)] pub struct WIN32_FIND_DATAW {
                     pub dwFileAttributes: DWORD,
                     pub ftCreationTime: FILETIME,
                     pub ftLastAccessTime: FILETIME,
@@ -1972,6 +1980,9 @@ pub mod types {
                     pub dwReserved1: DWORD,
                     pub cFileName: [wchar_t; 260], // #define MAX_PATH 260
                     pub cAlternateFileName: [wchar_t; 14],
+                }
+                impl ::core::clone::Clone for WIN32_FIND_DATAW {
+                    fn clone(&self) -> WIN32_FIND_DATAW { *self }
                 }
 
                 pub type LPWIN32_FIND_DATAW = *mut WIN32_FIND_DATAW;
@@ -2073,12 +2084,15 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_storage {
+                #[derive(Copy)] pub struct sockaddr_storage {
                     pub ss_len: u8,
                     pub ss_family: sa_family_t,
                     pub __ss_pad1: [u8; 6],
                     pub __ss_align: i64,
                     pub __ss_pad2: [u8; 112],
+                }
+                impl ::core::clone::Clone for sockaddr_storage {
+                    fn clone(&self) -> sockaddr_storage { *self }
                 }
 
                 #[repr(C)]
@@ -2135,10 +2149,13 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_un {
+                #[derive(Copy)] pub struct sockaddr_un {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char; 104]
+                }
+                impl ::core::clone::Clone for sockaddr_un {
+                    fn clone(&self) -> sockaddr_un { *self }
                 }
 
                 #[repr(C)]
@@ -2239,9 +2256,12 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct pthread_attr_t {
+                #[derive(Copy)] pub struct pthread_attr_t {
                     pub __sig: c_long,
                     pub __opaque: [c_char; 36]
+                }
+                impl ::core::clone::Clone for pthread_attr_t {
+                    fn clone(&self) -> pthread_attr_t { *self }
                 }
             }
             pub mod posix08 {
@@ -2345,9 +2365,12 @@ pub mod types {
                 }
 
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct pthread_attr_t {
+                #[derive(Copy)] pub struct pthread_attr_t {
                     pub __sig: c_long,
                     pub __opaque: [c_char; 56]
+                }
+                impl ::core::clone::Clone for pthread_attr_t {
+                    fn clone(&self) -> pthread_attr_t { *self }
                 }
             }
             pub mod posix08 {
