@@ -122,6 +122,8 @@ pub struct Mutex<T: Send> {
     data: UnsafeCell<T>,
 }
 
+// these are the only places where `T: Send` matters; all other
+// functionality works fine on a single thread.
 unsafe impl<T: Send> Send for Mutex<T> { }
 
 unsafe impl<T: Send> Sync for Mutex<T> { }
@@ -181,7 +183,7 @@ pub const MUTEX_INIT: StaticMutex = StaticMutex {
     poison: poison::FLAG_INIT,
 };
 
-impl<T: Send> Mutex<T> {
+impl<T> Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> Mutex<T> {
@@ -244,7 +246,7 @@ impl<T: Send> Mutex<T> {
 
 #[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> Drop for Mutex<T> {
+impl<T> Drop for Mutex<T> {
     fn drop(&mut self) {
         // This is actually safe b/c we know that there is no further usage of
         // this mutex (it's up to the user to arrange for a mutex to get
@@ -254,7 +256,7 @@ impl<T: Send> Drop for Mutex<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug + Send + 'static> fmt::Debug for Mutex<T> {
+impl<T: fmt::Debug + 'static> fmt::Debug for Mutex<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.try_lock() {
             Ok(guard) => write!(f, "Mutex {{ data: {:?} }}", *guard),

@@ -321,7 +321,7 @@ impl<T> Deref for Arc<T> {
     }
 }
 
-impl<T: Send + Sync + Clone> Arc<T> {
+impl<T: Clone> Arc<T> {
     /// Make a mutable reference from the given `Arc<T>`.
     ///
     /// This is also referred to as a copy-on-write operation because the inner
@@ -465,7 +465,7 @@ impl<T> Weak<T> {
 
 #[unstable(feature = "alloc",
            reason = "Weak pointers may not belong in this module.")]
-impl<T: Sync + Send> Clone for Weak<T> {
+impl<T> Clone for Weak<T> {
     /// Makes a clone of the `Weak<T>`.
     ///
     /// This increases the weak reference count.

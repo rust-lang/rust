@@ -89,7 +89,7 @@ impl<T> Node<T> {
     }
 }
 
-impl<T: Send> Queue<T> {
+impl<T> Queue<T> {
     /// Creates a new queue that is safe to share among multiple producers and
     /// one consumer.
     pub fn new() -> Queue<T> {
@@ -140,7 +140,7 @@ impl<T: Send> Queue<T> {
 
 #[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> Drop for Queue<T> {
+impl<T> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {
             let mut cur = *self.tail.get();

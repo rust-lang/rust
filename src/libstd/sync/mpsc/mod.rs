@@ -488,7 +488,7 @@ impl<T:Send> UnsafeFlavor<T> for Receiver<T> {
 /// println!("{:?}", rx.recv().unwrap());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
+pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
     let a = Arc::new(UnsafeCell::new(oneshot::Packet::new()));
     (Sender::new(Flavor::Oneshot(a.clone())), Receiver::new(Flavor::Oneshot(a)))
 }
@@ -528,7 +528,7 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// assert_eq!(rx.recv().unwrap(), 2);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn sync_channel<T: Send>(bound: usize) -> (SyncSender<T>, Receiver<T>) {
+pub fn sync_channel<T>(bound: usize) -> (SyncSender<T>, Receiver<T>) {
     let a = Arc::new(UnsafeCell::new(sync::Packet::new(bound)));
     (SyncSender::new(a.clone()), Receiver::new(Flavor::Sync(a)))
 }
@@ -537,7 +537,7 @@ pub fn sync_channel<T: Send>(bound: usize) -> (SyncSender<T>, Receiver<T>) {
 // Sender
 ////////////////////////////////////////////////////////////////////////////////
 
-impl<T: Send> Sender<T> {
+impl<T> Sender<T> {
     fn new(inner: Flavor<T>) -> Sender<T> {
         Sender {
             inner: UnsafeCell::new(inner),
@@ -619,7 +619,7 @@ impl<T: Send> Sender<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> Clone for Sender<T> {
+impl<T> Clone for Sender<T> {
     fn clone(&self) -> Sender<T> {
         let (packet, sleeper, guard) = match *unsafe { self.inner() } {
             Flavor::Oneshot(ref p) => {
@@ -665,7 +665,7 @@ impl<T: Send> Clone for Sender<T> {
 
 #[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> Drop for Sender<T> {
+impl<T> Drop for Sender<T> {
     fn drop(&mut self) {
         match *unsafe { self.inner_mut() } {
             Flavor::Oneshot(ref mut p) => unsafe { (*p.get()).drop_chan(); },
@@ -680,7 +680,7 @@ impl<T: Send> Drop for Sender<T> {
 // SyncSender
 ////////////////////////////////////////////////////////////////////////////////
 
-impl<T: Send> SyncSender<T> {
+impl<T> SyncSender<T> {
     fn new(inner: Arc<UnsafeCell<sync::Packet<T>>>) -> SyncSender<T> {
         SyncSender { inner: inner }
     }
@@ -720,7 +720,7 @@ impl<T: Send> SyncSender<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> Clone for SyncSender<T> {
+impl<T> Clone for SyncSender<T> {
     fn clone(&self) -> SyncSender<T> {
         unsafe { (*self.inner.get()).clone_chan(); }
         return SyncSender::new(self.inner.clone());
@@ -729,7 +729,7 @@ impl<T: Send> Clone for SyncSender<T> {
 
 #[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> Drop for SyncSender<T> {
+impl<T> Drop for SyncSender<T> {
     fn drop(&mut self) {
         unsafe { (*self.inner.get()).drop_chan(); }
     }
@@ -739,7 +739,7 @@ impl<T: Send> Drop for SyncSender<T> {
 // Receiver
 ////////////////////////////////////////////////////////////////////////////////
 
-impl<T: Send> Receiver<T> {
+impl<T> Receiver<T> {
     fn new(inner: Flavor<T>) -> Receiver<T> {
         Receiver { inner: UnsafeCell::new(inner) }
     }
@@ -858,7 +858,7 @@ impl<T: Send> Receiver<T> {
     }
 }
 
-impl<T: Send> select::Packet for Receiver<T> {
+impl<T> select::Packet for Receiver<T> {
     fn can_recv(&self) -> bool {
         loop {
             let new_port = match *unsafe { self.inner() } {
@@ -945,7 +945,7 @@ impl<T: Send> select::Packet for Receiver<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: Send> Iterator for Iter<'a, T> {
+impl<'a, T> Iterator for Iter<'a, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> { self.rx.recv().ok() }
@@ -953,7 +953,7 @@ impl<'a, T: Send> Iterator for Iter<'a, T> {
 
 #[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> Drop for Receiver<T> {
+impl<T> Drop for Receiver<T> {
     fn drop(&mut self) {
         match *unsafe { self.inner_mut() } {
             Flavor::Oneshot(ref mut p) => unsafe { (*p.get()).drop_port(); },

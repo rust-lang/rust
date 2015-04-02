@@ -130,7 +130,7 @@ pub struct RwLockWriteGuard<'a, T: 'a> {
 
 impl<'a, T> !marker::Send for RwLockWriteGuard<'a, T> {}
 
-impl<T: Send + Sync> RwLock<T> {
+impl<T> RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
     ///
     /// # Examples
@@ -258,7 +258,7 @@ impl<T> Drop for RwLock<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug + Send + Sync> fmt::Debug for RwLock<T> {
+impl<T: fmt::Debug> fmt::Debug for RwLock<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.try_read() {
             Ok(guard) => write!(f, "RwLock {{ data: {:?} }}", *guard),
