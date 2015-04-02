@@ -113,10 +113,10 @@ pub enum Failure {
 
 /// Atomically blocks the current thread, placing it into `slot`, unlocking `lock`
 /// in the meantime. This re-locks the mutex upon returning.
-fn wait<'a, 'b, T: Send>(lock: &'a Mutex<State<T>>,
-                         mut guard: MutexGuard<'b, State<T>>,
-                         f: fn(SignalToken) -> Blocker)
-                         -> MutexGuard<'a, State<T>>
+fn wait<'a, 'b, T>(lock: &'a Mutex<State<T>>,
+                   mut guard: MutexGuard<'b, State<T>>,
+                   f: fn(SignalToken) -> Blocker)
+                   -> MutexGuard<'a, State<T>>
 {
     let (wait_token, signal_token) = blocking::tokens();
     match mem::replace(&mut guard.blocker, f(signal_token)) {
@@ -136,7 +136,7 @@ fn wakeup<T>(token: SignalToken, guard: MutexGuard<State<T>>) {
     token.signal();
 }
 
-impl<T: Send> Packet<T> {
+impl<T> Packet<T> {
     pub fn new(cap: usize) -> Packet<T> {
         Packet {
             channels: AtomicUsize::new(1),
@@ -412,7 +412,7 @@ impl<T: Send> Packet<T> {
 }
 
 #[unsafe_destructor]
-impl<T: Send> Drop for Packet<T> {
+impl<T> Drop for Packet<T> {
     fn drop(&mut self) {
         assert_eq!(self.channels.load(Ordering::SeqCst), 0);
         let mut guard = self.lock.lock().unwrap();
