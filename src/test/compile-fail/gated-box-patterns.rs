@@ -16,7 +16,6 @@ fn main() {
     match x {
         box 1 => (),
         //~^ box pattern syntax is experimental
-        //~| add #![feature(box_patterns)] to the crate attributes to enable
         _     => ()
     };
 }
