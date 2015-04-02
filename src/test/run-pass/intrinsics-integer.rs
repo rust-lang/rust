@@ -10,6 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
+#![feature(negate_unsigned)]
 #![feature(intrinsics)]
 
 mod rusti {

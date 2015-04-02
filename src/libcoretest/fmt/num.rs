@@ -125,14 +125,14 @@ fn test_format_int_flags() {
     assert!(format!("{:>8x}", 10) == "       a");
     assert!(format!("{:#08x}", 10) == "0x00000a");
     assert!(format!("{:08}", -10) == "-0000010");
-    assert!(format!("{:x}", -1u8) == "ff");
-    assert!(format!("{:X}", -1u8) == "FF");
-    assert!(format!("{:b}", -1u8) == "11111111");
-    assert!(format!("{:o}", -1u8) == "377");
-    assert!(format!("{:#x}", -1u8) == "0xff");
-    assert!(format!("{:#X}", -1u8) == "0xFF");
-    assert!(format!("{:#b}", -1u8) == "0b11111111");
-    assert!(format!("{:#o}", -1u8) == "0o377");
+    assert!(format!("{:x}", !0u8) == "ff");
+    assert!(format!("{:X}", !0u8) == "FF");
+    assert!(format!("{:b}", !0u8) == "11111111");
+    assert!(format!("{:o}", !0u8) == "377");
+    assert!(format!("{:#x}", !0u8) == "0xff");
+    assert!(format!("{:#X}", !0u8) == "0xFF");
+    assert!(format!("{:#b}", !0u8) == "0b11111111");
+    assert!(format!("{:#o}", !0u8) == "0o377");
 }
 
 #[test]

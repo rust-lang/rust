@@ -482,8 +482,10 @@ pub trait Neg {
     fn neg(self) -> Self::Output;
 }
 
-macro_rules! neg_impl {
-    ($($t:ty)*) => ($(
+
+
+macro_rules! neg_impl_core {
+    ($id:ident => $body:expr, $($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         #[allow(unsigned_negation)]
         impl Neg for $t {
@@ -492,14 +494,28 @@ macro_rules! neg_impl {
 
             #[inline]
             #[stable(feature = "rust1", since = "1.0.0")]
-            fn neg(self) -> $t { -self }
+            fn neg(self) -> $t { let $id = self; $body }
         }
 
         forward_ref_unop! { impl Neg, neg for $t }
     )*)
 }
 
-neg_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
+macro_rules! neg_impl_numeric {
+    ($($t:ty)*) => { neg_impl_core!{ x => -x, $($t)*} }
+}
+
+macro_rules! neg_impl_unsigned {
+    ($($t:ty)*) => {
+        neg_impl_core!{ x => {
+            #[cfg(stage0)]
+            use ::num::wrapping::WrappingOps;
+            !x.wrapping_add(1)
+        }, $($t)*} }
+}
+
+// neg_impl_unsigned! { usize u8 u16 u32 u64 }
+neg_impl_numeric! { isize i8 i16 i32 i64 f32 f64 }
 
 /// The `Not` trait is used to specify the functionality of unary `!`.
 ///

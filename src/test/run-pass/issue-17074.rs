@@ -10,10 +10,10 @@
 
 // pretty-expanded FIXME #23616
 
-static X2: u64 = -1 as u16 as u64;
-static Y2: u64 = -1 as u32 as u64;
-const X: u64 = -1 as u16 as u64;
-const Y: u64 = -1 as u32 as u64;
+static X2: u64 = !0 as u16 as u64;
+static Y2: u64 = !0 as u32 as u64;
+const X: u64 = !0 as u16 as u64;
+const Y: u64 = !0 as u32 as u64;
 
 fn main() {
     assert_eq!(match 1 {
