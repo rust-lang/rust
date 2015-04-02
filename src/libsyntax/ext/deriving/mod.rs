@@ -65,14 +65,14 @@ pub mod show;
 pub mod default;
 pub mod primitive;
 
+#[path="cmp/partial_eq.rs"]
+pub mod partial_eq;
 #[path="cmp/eq.rs"]
 pub mod eq;
-#[path="cmp/totaleq.rs"]
-pub mod totaleq;
+#[path="cmp/partial_ord.rs"]
+pub mod partial_ord;
 #[path="cmp/ord.rs"]
 pub mod ord;
-#[path="cmp/totalord.rs"]
-pub mod totalord;
 
 
 pub mod generic;
@@ -162,10 +162,10 @@ derive_traits! {
 
     "RustcDecodable" => decodable::expand_deriving_rustc_decodable,
 
-    "PartialEq" => eq::expand_deriving_eq,
-    "Eq" => totaleq::expand_deriving_totaleq,
-    "PartialOrd" => ord::expand_deriving_ord,
-    "Ord" => totalord::expand_deriving_totalord,
+    "PartialEq" => partial_eq::expand_deriving_partial_eq,
+    "Eq" => eq::expand_deriving_eq,
+    "PartialOrd" => partial_ord::expand_deriving_partial_ord,
+    "Ord" => ord::expand_deriving_ord,
 
     "Debug" => show::expand_deriving_show,
 
