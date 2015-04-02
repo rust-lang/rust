@@ -89,7 +89,6 @@ pub type LPWSANETWORKEVENTS = *mut WSANETWORKEVENTS;
 pub type WSAEVENT = libc::HANDLE;
 
 #[repr(C)]
-#[derive(Copy)]
 pub struct WSAPROTOCOL_INFO {
     pub dwServiceFlags1: libc::DWORD,
     pub dwServiceFlags2: libc::DWORD,

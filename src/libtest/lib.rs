@@ -757,7 +757,7 @@ fn stdout_isatty() -> bool {
 }
 #[cfg(windows)]
 fn stdout_isatty() -> bool {
-    const STD_OUTPUT_HANDLE: libc::DWORD = -11;
+    const STD_OUTPUT_HANDLE: libc::DWORD = -11i32 as libc::DWORD;
     extern "system" {
         fn GetStdHandle(which: libc::DWORD) -> libc::HANDLE;
         fn GetConsoleMode(hConsoleHandle: libc::HANDLE,

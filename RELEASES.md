@@ -34,7 +34,7 @@ Version 1.0.0-beta (April 2015)
       downcasting via the `Any` trait is effectively limited to
       concrete types. This helps retain the potentially-important
       "parametricity" property: generic code cannot behave differently
-      for different type arguments.
+      for different type arguments except in minor ways.
     * The `unsafe_destructor` feature is now deprecated in favor of
       the [new `dropck`][dropck]. This change is a major reduction in
       unsafe code.
@@ -78,7 +78,7 @@ Version 1.0.0-beta (April 2015)
 [scoped]: http://static.rust-lang.org/doc/master/std/thread/fn.scoped.html
 [moar-ufcs]: https://github.com/rust-lang/rust/pull/22172
 [prim-inherent]: https://github.com/rust-lang/rust/pull/23104
-[overflow]: https://github.com/rust-lang/rust/pull/22532
+[overflow]: https://github.com/rust-lang/rfcs/blob/master/text/0560-integer-overflow.md
 [metadata-shrink]: https://github.com/rust-lang/rust/pull/22971
 [self-sized]: https://github.com/rust-lang/rust/pull/22301
 [assoc-where]: https://github.com/rust-lang/rust/pull/22512

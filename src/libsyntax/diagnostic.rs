@@ -371,7 +371,7 @@ fn stderr_isatty() -> bool {
 }
 #[cfg(windows)]
 fn stderr_isatty() -> bool {
-    const STD_ERROR_HANDLE: libc::DWORD = -12;
+    const STD_ERROR_HANDLE: libc::DWORD = -12i32 as libc::DWORD;
     extern "system" {
         fn GetStdHandle(which: libc::DWORD) -> libc::HANDLE;
         fn GetConsoleMode(hConsoleHandle: libc::HANDLE,
