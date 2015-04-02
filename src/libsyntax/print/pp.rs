@@ -147,13 +147,13 @@ pub fn buf_str(toks: &[Token],
     s
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum PrintStackBreak {
     Fits,
     Broken(Breaks),
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct PrintStackElem {
     offset: isize,
     pbreak: PrintStackBreak

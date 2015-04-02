@@ -47,12 +47,12 @@ pub trait PpAnn {
     fn post(&self, _state: &mut State, _node: AnnNode) -> io::Result<()> { Ok(()) }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct NoAnn;
 
 impl PpAnn for NoAnn {}
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct CurrentCommentAndLiteral {
     cur_cmnt: usize,
     cur_lit: usize,
@@ -3053,7 +3053,7 @@ mod test {
     #[test]
     fn test_signed_int_to_string() {
         let pos_int = ast::LitInt(42, ast::SignedIntLit(ast::TyI32, ast::Plus));
-        let neg_int = ast::LitInt((-42) as u64, ast::SignedIntLit(ast::TyI32, ast::Minus));
+        let neg_int = ast::LitInt((!42 + 1) as u64, ast::SignedIntLit(ast::TyI32, ast::Minus));
         assert_eq!(format!("-{}", lit_to_string(&codemap::dummy_spanned(pos_int))),
                    lit_to_string(&codemap::dummy_spanned(neg_int)));
     }

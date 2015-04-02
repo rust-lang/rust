@@ -17,7 +17,7 @@ trait Get<T> {
     fn get(&self) -> T;
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Box<T> {
     t: T
 }

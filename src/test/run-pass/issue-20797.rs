@@ -34,7 +34,7 @@ pub trait Strategy {
 }
 
 /// The basic fully-recursive strategy. Nothing is pruned.
-#[derive(Copy, Default)]
+#[derive(Copy, Clone, Default)]
 pub struct Recursive;
 
 impl Strategy for Recursive {

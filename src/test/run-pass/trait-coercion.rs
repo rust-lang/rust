@@ -17,7 +17,7 @@ trait Trait {
     fn f(&self);
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Struct {
     x: isize,
     y: isize,

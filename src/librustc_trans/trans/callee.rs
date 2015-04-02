@@ -60,7 +60,7 @@ use syntax::ast;
 use syntax::ast_map;
 use syntax::ptr::P;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct MethodData {
     pub llfn: ValueRef,
     pub llself: ValueRef,
@@ -1110,7 +1110,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     bcx
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum AutorefArg {
     DontAutorefArg,
     DoAutorefArg(ast::NodeId)

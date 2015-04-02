@@ -99,7 +99,7 @@ pub enum MethodMatchResult {
     MethodDidNotMatch,
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum MethodMatchedData {
     // In the case of a precise match, we don't really need to store
     // how the match was found. So don't.

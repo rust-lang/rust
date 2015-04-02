@@ -516,7 +516,7 @@ macro_rules! uint_impl {
             fn min_value() -> $T { 0 }
 
             #[inline]
-            fn max_value() -> $T { -1 }
+            fn max_value() -> $T { !0 }
 
             #[inline]
             fn count_ones(self) -> u32 {
@@ -1347,7 +1347,7 @@ macro_rules! uint_impl {
 
         /// Returns the largest value that can be represented by this integer type.
         #[stable(feature = "rust1", since = "1.0.0")]
-        pub fn max_value() -> $T { -1 }
+        pub fn max_value() -> $T { !0 }
 
         /// Convert a string slice in a given base to an integer.
         ///
@@ -2444,7 +2444,7 @@ impl_num_cast! { f32,   to_f32 }
 impl_num_cast! { f64,   to_f64 }
 
 /// Used for representing the classification of floating point numbers
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum FpCategory {
     /// "Not a Number", often obtained by dividing by zero

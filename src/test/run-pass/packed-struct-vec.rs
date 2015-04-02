@@ -13,7 +13,7 @@
 use std::mem;
 
 #[repr(packed)]
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 struct Foo {
     bar: u8,
     baz: u64

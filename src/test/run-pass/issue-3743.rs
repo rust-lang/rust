@@ -13,7 +13,7 @@
 
 use std::ops::Mul;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Vec2 {
     x: f64,
     y: f64

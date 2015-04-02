@@ -113,7 +113,7 @@ declare_lint! {
 }
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct HardwiredLints;
 
 impl LintPass for HardwiredLints {

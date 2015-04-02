@@ -13,7 +13,7 @@
 #![feature(simd)]
 
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 #[simd]
 pub struct f32x4(f32, f32, f32, f32);
 

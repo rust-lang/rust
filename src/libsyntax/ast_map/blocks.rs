@@ -40,7 +40,7 @@ use visit;
 ///   - The default implementation for a trait method.
 ///
 /// To construct one, use the `Code::from_node` function.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct FnLikeNode<'a> { node: ast_map::Node<'a> }
 
 /// MaybeFnLike wraps a method that indicates if an object
@@ -80,7 +80,7 @@ impl MaybeFnLike for ast::Expr {
 /// Carries either an FnLikeNode or a Block, as these are the two
 /// constructs that correspond to "code" (as in, something from which
 /// we can construct a control-flow graph).
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum Code<'a> {
     FnLikeCode(FnLikeNode<'a>),
     BlockCode(&'a Block),

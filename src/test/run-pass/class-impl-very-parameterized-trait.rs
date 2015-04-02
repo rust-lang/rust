@@ -11,7 +11,7 @@
 
 use std::cmp;
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum cat_type { tuxedo, tabby, tortoiseshell }
 
 impl cmp::PartialEq for cat_type {

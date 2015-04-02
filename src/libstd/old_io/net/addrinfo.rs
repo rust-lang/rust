@@ -29,7 +29,7 @@ use sys;
 use vec::Vec;
 
 /// Hints to the types of sockets that are desired when looking up hosts
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum SocketType {
     Stream, Datagram, Raw
 }
@@ -38,7 +38,7 @@ pub enum SocketType {
 /// to manipulate how a query is performed.
 ///
 /// The meaning of each of these flags can be found with `man -s 3 getaddrinfo`
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Flag {
     AddrConfig,
     All,
@@ -51,7 +51,7 @@ pub enum Flag {
 
 /// A transport protocol associated with either a hint or a return value of
 /// `lookup`
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Protocol {
     TCP, UDP
 }
@@ -61,7 +61,7 @@ pub enum Protocol {
 ///
 /// For details on these fields, see their corresponding definitions via
 /// `man -s 3 getaddrinfo`
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Hint {
     pub family: usize,
     pub socktype: Option<SocketType>,
@@ -69,7 +69,7 @@ pub struct Hint {
     pub flags: usize,
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Info {
     pub address: SocketAddr,
     pub family: usize,

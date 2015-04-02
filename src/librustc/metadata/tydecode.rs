@@ -43,7 +43,7 @@ use syntax::parse::token;
 // def-id will depend on where it originated from.  Therefore, the conversion
 // function is given an indicator of the source of the def-id.  See
 // astencode.rs for more information.
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum DefIdSource {
     // Identifies a struct, trait, enum, etc.
     NominalType,

@@ -18,14 +18,14 @@
  */
 
 #[repr(u8)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum Eu { Lu = 0, Hu = 255 }
 
 static CLu: Eu = Eu::Lu;
 static CHu: Eu = Eu::Hu;
 
 #[repr(i8)]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum Es { Ls = -128, Hs = 127 }
 
 static CLs: Es = Es::Ls;

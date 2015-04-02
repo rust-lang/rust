@@ -14,4 +14,8 @@
 #[derive(Copy)]
 struct Test(*const i32);
 
+impl Clone for Test {
+    fn clone(&self) -> Test { *self }
+}
+
 fn main() {}

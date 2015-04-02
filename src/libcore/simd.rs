@@ -38,7 +38,7 @@
 
 #[unstable(feature = "core")]
 #[simd]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct i8x16(pub i8, pub i8, pub i8, pub i8,
                  pub i8, pub i8, pub i8, pub i8,
@@ -47,26 +47,26 @@ pub struct i8x16(pub i8, pub i8, pub i8, pub i8,
 
 #[unstable(feature = "core")]
 #[simd]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct i16x8(pub i16, pub i16, pub i16, pub i16,
                  pub i16, pub i16, pub i16, pub i16);
 
 #[unstable(feature = "core")]
 #[simd]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct i32x4(pub i32, pub i32, pub i32, pub i32);
 
 #[unstable(feature = "core")]
 #[simd]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct i64x2(pub i64, pub i64);
 
 #[unstable(feature = "core")]
 #[simd]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct u8x16(pub u8, pub u8, pub u8, pub u8,
                  pub u8, pub u8, pub u8, pub u8,
@@ -75,31 +75,31 @@ pub struct u8x16(pub u8, pub u8, pub u8, pub u8,
 
 #[unstable(feature = "core")]
 #[simd]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct u16x8(pub u16, pub u16, pub u16, pub u16,
                  pub u16, pub u16, pub u16, pub u16);
 
 #[unstable(feature = "core")]
 #[simd]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct u32x4(pub u32, pub u32, pub u32, pub u32);
 
 #[unstable(feature = "core")]
 #[simd]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct u64x2(pub u64, pub u64);
 
 #[unstable(feature = "core")]
 #[simd]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct f32x4(pub f32, pub f32, pub f32, pub f32);
 
 #[unstable(feature = "core")]
 #[simd]
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[repr(C)]
 pub struct f64x2(pub f64, pub f64);

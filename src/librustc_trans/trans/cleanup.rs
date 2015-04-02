@@ -153,7 +153,7 @@ pub struct CleanupScope<'blk, 'tcx: 'blk> {
     cached_landing_pad: Option<BasicBlockRef>,
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct CustomScopeIndex {
     index: usize
 }
@@ -184,14 +184,14 @@ impl<'blk, 'tcx: 'blk> fmt::Debug for CleanupScopeKind<'blk, 'tcx> {
     }
 }
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum EarlyExitLabel {
     UnwindExit,
     ReturnExit,
     LoopExit(ast::NodeId, usize)
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct CachedEarlyExit {
     label: EarlyExitLabel,
     cleanup_block: BasicBlockRef,
@@ -209,7 +209,7 @@ pub trait Cleanup<'tcx> {
 
 pub type CleanupObj<'tcx> = Box<Cleanup<'tcx>+'tcx>;
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum ScopeId {
     AstScope(ast::NodeId),
     CustomScope(CustomScopeIndex)
@@ -982,7 +982,7 @@ impl EarlyExitLabel {
 ///////////////////////////////////////////////////////////////////////////
 // Cleanup types
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct DropValue<'tcx> {
     is_immediate: bool,
     must_unwind: bool,
@@ -1021,12 +1021,12 @@ impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
     }
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Heap {
     HeapExchange
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct FreeValue<'tcx> {
     ptr: ValueRef,
     heap: Heap,
@@ -1061,7 +1061,7 @@ impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct FreeSlice {
     ptr: ValueRef,
     size: ValueRef,
@@ -1098,7 +1098,7 @@ impl<'tcx> Cleanup<'tcx> for FreeSlice {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct LifetimeEnd {
     ptr: ValueRef,
 }

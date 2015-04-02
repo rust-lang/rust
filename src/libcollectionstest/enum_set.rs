@@ -14,7 +14,7 @@ use collections::enum_set::{CLike, EnumSet};
 
 use self::Foo::*;
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 #[repr(usize)]
 enum Foo {
     A, B, C
@@ -218,7 +218,7 @@ fn test_operators() {
 #[should_panic]
 fn test_overflow() {
     #[allow(dead_code)]
-    #[derive(Copy)]
+    #[derive(Copy, Clone)]
     #[repr(usize)]
     enum Bar {
         V00, V01, V02, V03, V04, V05, V06, V07, V08, V09,

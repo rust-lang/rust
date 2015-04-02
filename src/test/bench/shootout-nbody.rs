@@ -96,7 +96,7 @@ static BODIES: [Planet;N_BODIES] = [
     },
 ];
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Planet {
     x: f64, y: f64, z: f64,
     vx: f64, vy: f64, vz: f64,

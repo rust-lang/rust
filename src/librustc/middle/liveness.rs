@@ -139,7 +139,7 @@ enum LoopKind<'a> {
     WhileLoop(&'a Expr),
 }
 
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 struct Variable(usize);
 
 #[derive(Copy, PartialEq)]
@@ -159,7 +159,7 @@ impl Clone for LiveNode {
     }
 }
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 enum LiveNodeKind {
     FreeVarNode(Span),
     ExprNode(Span),
@@ -245,13 +245,13 @@ struct CaptureInfo {
     var_nid: NodeId
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 struct LocalInfo {
     id: NodeId,
     ident: ast::Ident
 }
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum VarKind {
     Arg(NodeId, ast::Ident),
     Local(LocalInfo),
@@ -534,7 +534,7 @@ fn invalid_users() -> Users {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Specials {
     exit_ln: LiveNode,
     fallthrough_ln: LiveNode,

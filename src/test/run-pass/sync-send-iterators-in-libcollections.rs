@@ -77,7 +77,7 @@ fn main() {
 
     all_sync_send!(LinkedList::<usize>::new(), iter, iter_mut, into_iter);
 
-    #[derive(Copy)]
+    #[derive(Copy, Clone)]
     #[repr(usize)]
     #[allow(dead_code)]
     enum Foo { A, B, C }

@@ -87,6 +87,9 @@ struct RawBucket<K, V> {
 }
 
 impl<K,V> Copy for RawBucket<K,V> {}
+impl<K,V> Clone for RawBucket<K,V> {
+    fn clone(&self) -> RawBucket<K, V> { *self }
+}
 
 pub struct Bucket<K, V, M> {
     raw:   RawBucket<K, V>,
@@ -95,6 +98,9 @@ pub struct Bucket<K, V, M> {
 }
 
 impl<K,V,M:Copy> Copy for Bucket<K,V,M> {}
+impl<K,V,M:Copy> Clone for Bucket<K,V,M> {
+    fn clone(&self) -> Bucket<K,V,M> { *self }
+}
 
 pub struct EmptyBucket<K, V, M> {
     raw:   RawBucket<K, V>,
@@ -129,7 +135,7 @@ struct GapThenFull<K, V, M> {
 
 /// A hash that is not zero, since we use a hash of zero to represent empty
 /// buckets.
-#[derive(PartialEq, Copy)]
+#[derive(PartialEq, Copy, Clone)]
 pub struct SafeHash {
     hash: u64,
 }

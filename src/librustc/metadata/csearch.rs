@@ -29,7 +29,7 @@ use syntax::parse::token;
 
 use std::collections::hash_map::HashMap;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct MethodInfo {
     pub name: ast::Name,
     pub def_id: ast::DefId,

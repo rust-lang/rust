@@ -25,7 +25,7 @@ impl<T> MyTrait<T> for T
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct MyType {
     dummy: usize
 }

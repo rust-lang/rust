@@ -57,7 +57,7 @@ mod basic_block;
 mod llrepr;
 mod cleanup;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct ModuleTranslation {
     pub llcx: ContextRef,
     pub llmod: ModuleRef,

@@ -122,7 +122,7 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// Rust's memory orderings are [the same as
 /// C++'s](http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync).
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum Ordering {
     /// No ordering constraints, only atomic operations.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -161,7 +161,7 @@ pub const ATOMIC_USIZE_INIT: AtomicUsize =
         AtomicUsize { v: UnsafeCell { value: 0, } };
 
 // NB: Needs to be -1 (0b11111111...) to make fetch_nand work correctly
-const UINT_TRUE: usize = -1;
+const UINT_TRUE: usize = !0;
 
 impl AtomicBool {
     /// Creates a new `AtomicBool`.

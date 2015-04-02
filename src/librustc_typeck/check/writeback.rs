@@ -350,7 +350,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Resolution reason.
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum ResolveReason {
     ResolvingExpr(Span),
     ResolvingLocal(Span),

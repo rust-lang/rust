@@ -970,7 +970,7 @@ mod test {
             let mut read_stream = File::open_mode(filename, Open, Read);
             let mut read_buf = [0; 1028];
             let read_str = match check!(read_stream.read(&mut read_buf)) {
-                -1|0 => panic!("shouldn't happen"),
+                0 => panic!("shouldn't happen"),
                 n => str::from_utf8(&read_buf[..n]).unwrap().to_string()
             };
             assert_eq!(read_str, message);
