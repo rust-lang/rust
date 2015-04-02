@@ -105,7 +105,7 @@ fn sum_and_scale(a: &'static [AminoAcid]) -> Vec<AminoAcid> {
     result
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct AminoAcid {
     c: u8,
     p: f32,

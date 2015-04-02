@@ -179,7 +179,7 @@ enum SomeEnum<'a> {
     MyTypes(MyType, MyType)
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum SomeOtherEnum {
     SomeConst1,
     SomeConst2,

@@ -33,7 +33,7 @@ use util::ppaux::ty_to_string;
 use syntax::ast;
 use syntax::parse::token::InternedString;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct VecTypes<'tcx> {
     unit_ty: Ty<'tcx>,
     llunit_ty: Type

@@ -47,12 +47,12 @@ pub trait PpAnn {
     fn post(&self, _state: &mut State, _node: AnnNode) -> io::Result<()> { Ok(()) }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct NoAnn;
 
 impl PpAnn for NoAnn {}
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct CurrentCommentAndLiteral {
     cur_cmnt: usize,
     cur_lit: usize,

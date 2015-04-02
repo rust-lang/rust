@@ -29,7 +29,7 @@ use std::mem;
 
 type Type<'tcx> = &'tcx TypeStructure<'tcx>;
 
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 enum TypeStructure<'tcx> {
     TypeInt,
     TypeFunction(Type<'tcx>, Type<'tcx>),
@@ -94,20 +94,20 @@ impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
     }
 }
 
-#[derive(Copy, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 struct NodeId {
     id: usize
 }
 
 type Ast<'ast> = &'ast AstStructure<'ast>;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct AstStructure<'ast> {
     id: NodeId,
     kind: AstKind<'ast>
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum AstKind<'ast> {
     ExprInt,
     ExprVar(usize),

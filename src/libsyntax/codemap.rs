@@ -47,7 +47,7 @@ pub struct BytePos(pub u32);
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
-#[derive(Copy, PartialEq, Hash, PartialOrd, Debug)]
+#[derive(Copy, Clone, PartialEq, Hash, PartialOrd, Debug)]
 pub struct CharPos(pub usize);
 
 // FIXME: Lots of boilerplate in these impls, but so far my attempts to fix
@@ -305,7 +305,7 @@ pub struct FileLines {
 }
 
 /// Identifies an offset of a multi-byte character in a FileMap
-#[derive(Copy, RustcEncodable, RustcDecodable, Eq, PartialEq)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Eq, PartialEq)]
 pub struct MultiByteChar {
     /// The absolute offset of the character in the CodeMap
     pub pos: BytePos,

@@ -24,7 +24,7 @@ pub struct CFG {
     pub exit: CFGIndex,
 }
 
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum CFGNodeData {
     AST(ast::NodeId),
     Entry,

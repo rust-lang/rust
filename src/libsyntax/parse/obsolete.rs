@@ -20,7 +20,7 @@ use parse::token;
 use ptr::P;
 
 /// The specific types of unsupported syntax
-#[derive(Copy, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ObsoleteSyntax {
     ClosureKind,
     ExternCrateString,

@@ -17,7 +17,7 @@ fn assert_copy<T:Copy>() { }
 
 trait Dummy : MarkerTrait { }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct MyStruct {
     x: isize,
     y: isize,

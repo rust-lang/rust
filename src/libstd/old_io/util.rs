@@ -90,7 +90,7 @@ impl<R: Buffer> Buffer for LimitReader<R> {
 }
 
 /// A `Writer` which ignores bytes written to it, like /dev/null.
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[deprecated(since = "1.0.0", reason = "use std::io::sink() instead")]
 #[unstable(feature = "old_io")]
 pub struct NullWriter;
@@ -103,7 +103,7 @@ impl Writer for NullWriter {
 }
 
 /// A `Reader` which returns an infinite stream of 0 bytes, like /dev/zero.
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[deprecated(since = "1.0.0", reason = "use std::io::repeat(0) instead")]
 #[unstable(feature = "old_io")]
 pub struct ZeroReader;
@@ -130,7 +130,7 @@ impl Buffer for ZeroReader {
 }
 
 /// A `Reader` which is always at EOF, like /dev/null.
-#[derive(Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 #[deprecated(since = "1.0.0", reason = "use std::io::empty() instead")]
 #[unstable(feature = "old_io")]
 pub struct NullReader;

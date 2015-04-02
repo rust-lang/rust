@@ -1105,7 +1105,7 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 /// Struct that contains a `char` and the index of the first byte of
 /// the next `char` in a string.  This can be used as a data structure
 /// for iterating over the UTF-8 bytes of a string.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 #[unstable(feature = "str_char",
            reason = "existence of this struct is uncertain as it is frequently \
                      able to be replaced with char.len_utf8() and/or \

@@ -21,7 +21,7 @@ use core::ops::{Sub, BitOr, BitAnd, BitXor};
 
 // FIXME(contentions): implement union family of methods? (general design may be wrong here)
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash)]
 /// A specialized set implementation to use enum types.
 ///
 /// It is a logic error for an item to be modified in such a way that the transformation of the
@@ -36,6 +36,10 @@ pub struct EnumSet<E> {
 }
 
 impl<E> Copy for EnumSet<E> {}
+
+impl<E> Clone for EnumSet<E> {
+    fn clone(&self) -> EnumSet<E> { *self }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<E:CLike + fmt::Debug> fmt::Debug for EnumSet<E> {

@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 enum Foo {
     Bar = 0xDEADBEE
 }

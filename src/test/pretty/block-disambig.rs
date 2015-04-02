@@ -19,7 +19,7 @@ fn test1() { let val = &0; { } *val; }
 
 fn test2() -> isize { let val = &0; { } *val }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct S { eax: isize }
 
 fn test3() {

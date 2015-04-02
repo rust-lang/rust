@@ -249,11 +249,6 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         &fcx.inh.param_env.free_substs,
                                                         &trait_ref);
 
-            if fcx.tcx().lang_items.copy_trait() == Some(trait_ref.def_id) {
-                // This is checked in coherence.
-                return
-            }
-
             // We are stricter on the trait-ref in an impl than the
             // self-type.  In particular, we enforce region
             // relationships. The reason for this is that (at least

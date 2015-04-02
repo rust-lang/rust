@@ -262,7 +262,7 @@ pub struct field_ty {
 
 // Contains information needed to resolve types and (in the future) look up
 // the types of AST nodes.
-#[derive(Copy, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct creader_cache_key {
     pub cnum: CrateNum,
     pub pos: usize,
@@ -596,7 +596,7 @@ pub type ObjectCastMap<'tcx> = RefCell<NodeMap<ty::PolyTraitRef<'tcx>>>;
 /// will push one or more such restriction into the
 /// `transmute_restrictions` vector during `intrinsicck`. They are
 /// then checked during `trans` by the fn `check_intrinsics`.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub struct TransmuteRestriction<'tcx> {
     /// The span whence the restriction comes.
     pub span: Span,
@@ -886,7 +886,7 @@ macro_rules! sty_debug_print {
         // variable names.
         mod inner {
             use middle::ty;
-            #[derive(Copy)]
+            #[derive(Copy, Clone)]
             struct DebugStat {
                 total: usize,
                 region_infer: usize,
@@ -4003,7 +4003,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
 ///
 /// The ordering of the cases is significant. They are sorted so that cmp::max
 /// will keep the "more erroneous" of two values.
-#[derive(Copy, PartialOrd, Ord, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialOrd, Ord, Eq, PartialEq, Debug)]
 pub enum Representability {
     Representable,
     ContainsRecursive,
@@ -4734,7 +4734,7 @@ pub fn expr_is_lval(tcx: &ctxt, e: &ast::Expr) -> bool {
 /// two kinds of rvalues is an artifact of trans which reflects how we will
 /// generate code for that kind of expression.  See trans/expr.rs for more
 /// information.
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum ExprKind {
     LvalueExpr,
     RvalueDpsExpr,
@@ -5430,7 +5430,7 @@ pub fn item_path_str(cx: &ctxt, id: ast::DefId) -> String {
     with_path(cx, id, |path| ast_map::path_to_string(path)).to_string()
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum DtorKind {
     NoDtor,
     TraitDtor(DefId, bool)
@@ -7154,7 +7154,7 @@ pub fn make_substs_for_receiver_types<'tcx>(tcx: &ty::ctxt<'tcx>,
     trait_ref.substs.clone().with_method(meth_tps, meth_regions)
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum CopyImplementationError {
     FieldDoesNotImplementCopy(ast::Name),
     VariantDoesNotImplementCopy(ast::Name),

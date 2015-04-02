@@ -74,13 +74,13 @@ pub enum GenericKind<'tcx> {
     Projection(ty::ProjectionTy<'tcx>),
 }
 
-#[derive(Copy, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TwoRegions {
     a: Region,
     b: Region,
 }
 
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum UndoLogEntry {
     OpenSnapshot,
     CommitedSnapshot,
@@ -91,7 +91,7 @@ pub enum UndoLogEntry {
     AddCombination(CombineMapType, TwoRegions)
 }
 
-#[derive(Copy, PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum CombineMapType {
     Lub, Glb
 }
@@ -951,10 +951,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
 // ______________________________________________________________________
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 enum Classification { Expanding, Contracting }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 pub enum VarValue { NoValue, Value(Region), ErrorValue }
 
 struct VarData {

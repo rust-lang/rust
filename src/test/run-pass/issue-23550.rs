@@ -13,7 +13,7 @@
 
 use std::intrinsics;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct Wrap(i64);
 
 // These volatile and atomic intrinsics used to cause an ICE

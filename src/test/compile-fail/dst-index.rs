@@ -14,7 +14,7 @@
 use std::ops::Index;
 use std::fmt::Debug;
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct S;
 
 impl Index<usize> for S {
@@ -25,7 +25,7 @@ impl Index<usize> for S {
     }
 }
 
-#[derive(Copy)]
+#[derive(Copy, Clone)]
 struct T;
 
 impl Index<usize> for T {

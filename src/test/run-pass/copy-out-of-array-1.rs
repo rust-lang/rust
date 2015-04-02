@@ -14,9 +14,8 @@
 
 // pretty-expanded FIXME #23616
 
+#[derive(Copy, Clone)]
 struct C { _x: u8 }
-
-impl Copy for C { }
 
 fn main() {
     fn d() -> C { C { _x: 0 } }

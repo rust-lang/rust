@@ -271,7 +271,7 @@ pub struct RegionMaps {
 /// Carries the node id for the innermost block or match expression,
 /// for building up the `var_map` which maps ids to the blocks in
 /// which they were declared.
-#[derive(PartialEq, Eq, Debug, Copy)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 enum InnermostDeclaringBlock {
     None,
     Block(ast::NodeId),
@@ -296,7 +296,7 @@ impl InnermostDeclaringBlock {
 /// Contextual information for declarations introduced by a statement
 /// (i.e. `let`). It carries node-id's for statement and enclosing
 /// block both, as well as the statement's index within the block.
-#[derive(PartialEq, Eq, Debug, Copy)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 struct DeclaringStatementContext {
     stmt_id: ast::NodeId,
     block_id: ast::NodeId,
@@ -312,7 +312,7 @@ impl DeclaringStatementContext {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Copy)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone)]
 enum InnermostEnclosingExpr {
     None,
     Some(ast::NodeId),
@@ -334,7 +334,7 @@ impl InnermostEnclosingExpr {
     }
 }
 
-#[derive(Debug, Copy)]
+#[derive(Debug, Copy, Clone)]
 pub struct Context {
     /// the root of the current region tree. This is typically the id
     /// of the innermost fn body. Each fn forms its own disjoint tree

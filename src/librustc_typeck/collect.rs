@@ -135,7 +135,7 @@ struct ItemCtxt<'a,'tcx:'a> {
     param_bounds: &'a (GetTypeParameterBounds<'tcx>+'a),
 }
 
-#[derive(Copy, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 enum AstConvRequest {
     GetItemTypeScheme(ast::DefId),
     GetTraitDef(ast::DefId),

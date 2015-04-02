@@ -295,7 +295,7 @@ pub const KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("recursion_limit", CrateLevel),
 ];
 
-#[derive(PartialEq, Copy, Debug)]
+#[derive(PartialEq, Copy, Clone, Debug)]
 pub enum AttributeType {
     /// Normal, builtin attribute that is consumed
     /// by the compiler before the unused_attribute check
