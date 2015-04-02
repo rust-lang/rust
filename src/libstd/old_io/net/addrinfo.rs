@@ -127,11 +127,10 @@ mod test {
         assert!(found_local);
     }
 
-    #[ignore]
     #[test]
     fn issue_10663() {
         // Something should happen here, but this certainly shouldn't cause
         // everything to die. The actual outcome we don't care too much about.
-        get_host_addresses("example.com").unwrap();
+        let _ = get_host_addresses("example.com");
     }
 }

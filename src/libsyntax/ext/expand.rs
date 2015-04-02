@@ -1770,7 +1770,8 @@ mod test {
     // suggests that this can only occur in the presence of local-expand, which
     // we have no plans to support. ... unless it's needed for item hygiene....
     #[ignore]
-    #[test] fn issue_8062(){
+    #[test]
+    fn issue_8062(){
         run_renaming_test(
             &("fn main() {let hrcoo = 19; macro_rules! getx(()=>(hrcoo)); getx!();}",
               vec!(vec!(0)), true), 0)
@@ -1781,7 +1782,8 @@ mod test {
     // (just g) along the other, so the result of the whole thing should
     // be "let z_123 = 3; z_123"
     #[ignore]
-    #[test] fn issue_6994(){
+    #[test]
+    fn issue_6994(){
         run_renaming_test(
             &("macro_rules! g (($x:ident) =>
               ({macro_rules! f(($y:ident)=>({let $y=3;$x}));f!($x)}));
@@ -1792,7 +1794,8 @@ mod test {
 
     // match variable hygiene. Should expand into
     // fn z() {match 8 {x_1 => {match 9 {x_2 | x_2 if x_2 == x_1 => x_2 + x_1}}}}
-    #[test] fn issue_9384(){
+    #[test]
+    fn issue_9384(){
         run_renaming_test(
             &("macro_rules! bad_macro (($ex:expr) => ({match 9 {x | x if x == $ex => x + $ex}}));
               fn z() {match 8 {x => bad_macro!(x)}}",
@@ -1805,7 +1808,8 @@ mod test {
     // interpolated nodes weren't getting labeled.
     // should expand into
     // fn main(){let g1_1 = 13; g1_1}}
-    #[test] fn pat_expand_issue_15221(){
+    #[test]
+    fn pat_expand_issue_15221(){
         run_renaming_test(
             &("macro_rules! inner ( ($e:pat ) => ($e));
               macro_rules! outer ( ($e:pat ) => (inner!($e)));
@@ -1821,7 +1825,8 @@ mod test {
 
     // method arg hygiene
     // method expands to fn get_x(&self_0, x_1: i32) {self_0 + self_2 + x_3 + x_1}
-    #[test] fn method_arg_hygiene(){
+    #[test]
+    fn method_arg_hygiene(){
         run_renaming_test(
             &("macro_rules! inject_x (()=>(x));
               macro_rules! inject_self (()=>(self));
@@ -1834,7 +1839,8 @@ mod test {
 
     // ooh, got another bite?
     // expands to struct A; impl A {fn thingy(&self_1) {self_1;}}
-    #[test] fn method_arg_hygiene_2(){
+    #[test]
+    fn method_arg_hygiene_2(){
         run_renaming_test(
             &("struct A;
               macro_rules! add_method (($T:ty) =>
@@ -1847,7 +1853,8 @@ mod test {
 
     // item fn hygiene
     // expands to fn q(x_1: i32){fn g(x_2: i32){x_2 + x_1};}
-    #[test] fn issue_9383(){
+    #[test]
+    fn issue_9383(){
         run_renaming_test(
             &("macro_rules! bad_macro (($ex:expr) => (fn g(x: i32){ x + $ex }));
               fn q(x: i32) { bad_macro!(x); }",
@@ -1857,7 +1864,8 @@ mod test {
 
     // closure arg hygiene (ExprClosure)
     // expands to fn f(){(|x_1 : i32| {(x_2 + x_1)})(3);}
-    #[test] fn closure_arg_hygiene(){
+    #[test]
+    fn closure_arg_hygiene(){
         run_renaming_test(
             &("macro_rules! inject_x (()=>(x));
             fn f(){(|x : i32| {(inject_x!() + x)})(3);}",
@@ -1867,7 +1875,8 @@ mod test {
     }
 
     // macro_rules in method position. Sadly, unimplemented.
-    #[test] fn macro_in_method_posn(){
+    #[test]
+    fn macro_in_method_posn(){
         expand_crate_str(
             "macro_rules! my_method (() => (fn thirteen(&self) -> i32 {13}));
             struct A;
@@ -1877,7 +1886,8 @@ mod test {
 
     // another nested macro
     // expands to impl Entries {fn size_hint(&self_1) {self_1;}
-    #[test] fn item_macro_workaround(){
+    #[test]
+    fn item_macro_workaround(){
         run_renaming_test(
             &("macro_rules! item { ($i:item) => {$i}}
               struct Entries;
@@ -1961,7 +1971,8 @@ mod test {
         }
     }
 
-    #[test] fn fmt_in_macro_used_inside_module_macro() {
+    #[test]
+    fn fmt_in_macro_used_inside_module_macro() {
         let crate_str = "macro_rules! fmt_wrap(($b:expr)=>($b.to_string()));
 macro_rules! foo_module (() => (mod generated { fn a() { let xx = 147; fmt_wrap!(xx);}}));
 foo_module!();
