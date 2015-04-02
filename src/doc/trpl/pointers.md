@@ -574,7 +574,7 @@ fn main() {
 ```
 
 We can mutably borrow `x` multiple times, but only if x itself is mutable, and
-it may not be *simultaneously* borrowed: 
+it may not be *simultaneously* borrowed:
 
 ```{rust,ignore}
 fn increment(x: &mut i32) {
@@ -595,8 +595,7 @@ Notice the signature of `increment()` requests a mutable reference.
 
 ## Best practices
 
-Boxes are appropriate to use in two situations: Recursive data structures,
-and occasionally, when returning data.
+Boxes are most appropriate to use when defining recursive data structures.
 
 ### Recursive data structures
 
@@ -630,14 +629,6 @@ we don't know the size, and therefore, we need to heap allocate our list.
 Working with recursive or other unknown-sized data structures is the primary
 use-case for boxes.
 
-### Returning data
-
-This is important enough to have its own section entirely. The TL;DR is this:
-you don't want to return pointers, even when you might in a language like C or
-C++.
-
-See [Returning Pointers](#returning-pointers) below for more.
-
 # Rc and Arc
 
 This part is coming soon.
@@ -653,79 +644,6 @@ This part is coming soon.
 ## Best practices
 
 This part is coming soon.
-
-# Returning Pointers
-
-In many languages with pointers, you'd return a pointer from a function
-so as to avoid copying a large data structure. For example:
-
-```{rust}
-struct BigStruct {
-    one: i32,
-    two: i32,
-    // etc
-    one_hundred: i32,
-}
-
-fn foo(x: Box<BigStruct>) -> Box<BigStruct> {
-    Box::new(*x)
-}
-
-fn main() {
-    let x = Box::new(BigStruct {
-        one: 1,
-        two: 2,
-        one_hundred: 100,
-    });
-
-    let y = foo(x);
-}
-```
-
-The idea is that by passing around a box, you're only copying a pointer, rather
-than the hundred `int`s that make up the `BigStruct`.
-
-This is an antipattern in Rust. Instead, write this:
-
-```rust
-#![feature(box_syntax)]
-
-struct BigStruct {
-    one: i32,
-    two: i32,
-    // etc
-    one_hundred: i32,
-}
-
-fn foo(x: Box<BigStruct>) -> BigStruct {
-    *x
-}
-
-fn main() {
-    let x = Box::new(BigStruct {
-        one: 1,
-        two: 2,
-        one_hundred: 100,
-    });
-
-    let y: Box<BigStruct> = box foo(x);
-}
-```
-
-Note that this uses the `box_syntax` feature gate, so this syntax may change in
-the future.
-
-This gives you flexibility without sacrificing performance.
-
-You may think that this gives us terrible performance: return a value and then
-immediately box it up ?! Isn't this pattern the worst of both worlds? Rust is
-smarter than that. There is no copy in this code. `main` allocates enough room
-for the `box`, passes a pointer to that memory into `foo` as `x`, and then
-`foo` writes the value straight into the `Box<T>`.
-
-This is important enough that it bears repeating: pointers are not for
-optimizing returning values from your code. Allow the caller to choose how they
-want to use your output.
 
 # Creating your own Pointers
 
