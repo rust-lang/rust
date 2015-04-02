@@ -111,8 +111,8 @@ Cargo will build this crate as a library:
 ```bash
 $ cargo build
    Compiling phrases v0.0.1 (file:///home/you/projects/phrases)
-$ ls target
-deps  libphrases-a7448e02a0468eaa.rlib  native
+$ ls target/debug
+build  deps  examples  libphrases-a7448e02a0468eaa.rlib  native
 ```
 
 `libphrase-hash.rlib` is the compiled crate. Before we see how to use this
@@ -163,9 +163,12 @@ $ tree .
 │   │   └── mod.rs
 │   └── lib.rs
 └── target
-    ├── deps
-    ├── libphrases-a7448e02a0468eaa.rlib
-    └── native
+    └── debug
+        ├── build
+        ├── deps
+        ├── examples
+        ├── libphrases-a7448e02a0468eaa.rlib
+        └── native
 ```
 
 `src/lib.rs` is our crate root, and looks like this:
@@ -214,8 +217,6 @@ fn goodbye() -> String {
 Put this in `src/japanese/greetings.rs`:
 
 ```rust
-// in src/japanese/greetings.rs
-
 fn hello() -> String {
     "こんにちは".to_string()
 }
@@ -275,14 +276,15 @@ this:
 ```bash
 $ cargo build
    Compiling phrases v0.0.1 (file:///home/you/projects/phrases)
-/home/you/projects/phrases/src/main.rs:4:38: 4:72 error: function `hello` is private
-/home/you/projects/phrases/src/main.rs:4     println!("Hello in English: {}", phrases::english::greetings::hello());
-                                                                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/main.rs:4:38: 4:72 error: function `hello` is private
+src/main.rs:4     println!("Hello in English: {}", phrases::english::greetings::hello());
+                                                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: in expansion of format_args!
-<std macros>:2:23: 2:77 note: expansion site
-<std macros>:1:1: 3:2 note: in expansion of println!
-/home/you/projects/phrases/src/main.rs:4:5: 4:76 note: expansion site
-
+<std macros>:2:25: 2:58 note: expansion site
+<std macros>:1:1: 2:62 note: in expansion of print!
+<std macros>:3:1: 3:54 note: expansion site
+<std macros>:1:1: 3:58 note: in expansion of println!
+phrases/src/main.rs:4:5: 4:76 note: expansion site
 ```
 
 By default, everything is private in Rust. Let's talk about this in some more
@@ -340,15 +342,15 @@ functions:
 ```bash
 $ cargo run
    Compiling phrases v0.0.1 (file:///home/you/projects/phrases)
-/home/you/projects/phrases/src/japanese/greetings.rs:1:1: 3:2 warning: code is never used: `hello`, #[warn(dead_code)] on by default
-/home/you/projects/phrases/src/japanese/greetings.rs:1 fn hello() -> String {
-/home/you/projects/phrases/src/japanese/greetings.rs:2     "こんにちは".to_string()
-/home/you/projects/phrases/src/japanese/greetings.rs:3 }
-/home/you/projects/phrases/src/japanese/farewells.rs:1:1: 3:2 warning: code is never used: `goodbye`, #[warn(dead_code)] on by default
-/home/you/projects/phrases/src/japanese/farewells.rs:1 fn goodbye() -> String {
-/home/you/projects/phrases/src/japanese/farewells.rs:2     "さようなら".to_string()
-/home/you/projects/phrases/src/japanese/farewells.rs:3 }
-     Running `target/phrases`
+src/japanese/greetings.rs:1:1: 3:2 warning: function is never used: `hello`, #[warn(dead_code)] on by default
+src/japanese/greetings.rs:1 fn hello() -> String {
+src/japanese/greetings.rs:2     "こんにちは".to_string()
+src/japanese/greetings.rs:3 }
+src/japanese/farewells.rs:1:1: 3:2 warning: function is never used: `goodbye`, #[warn(dead_code)] on by default
+src/japanese/farewells.rs:1 fn goodbye() -> String {
+src/japanese/farewells.rs:2     "さようなら".to_string()
+src/japanese/farewells.rs:3 }
+     Running `target/debug/phrases`
 Hello in English: Hello!
 Goodbye in English: Goodbye.
 ```
@@ -414,9 +416,9 @@ Rust will give us a compile-time error:
 
 ```text
    Compiling phrases v0.0.1 (file:///home/you/projects/phrases)
-/home/you/projects/phrases/src/main.rs:4:5: 4:40 error: a value named `hello` has already been imported in this module
-/home/you/projects/phrases/src/main.rs:4 use phrases::japanese::greetings::hello;
-                                          ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+src/main.rs:4:5: 4:40 error: a value named `hello` has already been imported in this module [E0252]
+src/main.rs:4 use phrases::japanese::greetings::hello;
+                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 error: aborting due to previous error
 Could not compile `phrases`.
 ```
@@ -523,7 +525,7 @@ This will build and run:
 ```bash
 $ cargo run
    Compiling phrases v0.0.1 (file:///home/you/projects/phrases)
-     Running `target/phrases`
+     Running `target/debug/phrases`
 Hello in English: Hello!
 Goodbye in English: Goodbye.
 Hello in Japanese: こんにちは
