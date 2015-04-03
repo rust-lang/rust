@@ -1176,7 +1176,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
             }
             ExprMethodCall(i, tps, args) => {
                 ExprMethodCall(
-                    respan(i.span, folder.fold_ident(i.node)),
+                    respan(folder.new_span(i.span), folder.fold_ident(i.node)),
                     tps.move_map(|x| folder.fold_ty(x)),
                     args.move_map(|x| folder.fold_expr(x)))
             }
@@ -1246,11 +1246,13 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
             }
             ExprField(el, ident) => {
                 ExprField(folder.fold_expr(el),
-                          respan(ident.span, folder.fold_ident(ident.node)))
+                          respan(folder.new_span(ident.span),
+                                 folder.fold_ident(ident.node)))
             }
             ExprTupField(el, ident) => {
                 ExprTupField(folder.fold_expr(el),
-                             respan(ident.span, folder.fold_usize(ident.node)))
+                             respan(folder.new_span(ident.span),
+                                    folder.fold_usize(ident.node)))
             }
             ExprIndex(el, er) => {
                 ExprIndex(folder.fold_expr(el), folder.fold_expr(er))
