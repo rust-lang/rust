@@ -162,7 +162,7 @@ fn main() {
 This gives us an error:
 
 ```text
-12:17 error: capture of moved value: `data`
+8:17 error: capture of moved value: `data`
         data[i] += 1;
         ^~~~
 ```
@@ -201,10 +201,10 @@ fn main() {
 Here's the error:
 
 ```text
-<anon>:11:9: 11:22 error: the trait `core::marker::Send` is not implemented for the type `std::sync::mutex::MutexGuard<'_, collections::vec::Vec<u32>>` [E0277]
+<anon>:9:9: 9:22 error: the trait `core::marker::Send` is not implemented for the type `std::sync::mutex::MutexGuard<'_, collections::vec::Vec<u32>>` [E0277]
 <anon>:11         thread::spawn(move || {
                   ^~~~~~~~~~~~~
-<anon>:11:9: 11:22 note: `std::sync::mutex::MutexGuard<'_, collections::vec::Vec<u32>>` cannot be sent between threads safely
+<anon>:9:9: 9:22 note: `std::sync::mutex::MutexGuard<'_, collections::vec::Vec<u32>>` cannot be sent between threads safely
 <anon>:11         thread::spawn(move || {
                   ^~~~~~~~~~~~~
 ```
