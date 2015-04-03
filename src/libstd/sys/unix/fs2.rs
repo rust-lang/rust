@@ -215,7 +215,9 @@ impl File {
         let fd = try!(cvt_r(|| unsafe {
             libc::open(path.as_ptr(), flags, opts.mode)
         }));
-        Ok(File(FileDesc::new(fd)))
+        let fd = FileDesc::new(fd);
+        fd.set_cloexec();
+        Ok(File(fd))
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
