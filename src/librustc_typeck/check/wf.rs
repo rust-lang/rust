@@ -117,15 +117,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
                 self.check_variances_for_type_defn(item, ast_generics);
             }
-            ast::ItemTrait(_, ref ast_generics, _, ref items) => {
+            ast::ItemTrait(_, _, _, ref items) => {
                 let trait_predicates =
                     ty::lookup_predicates(ccx.tcx, local_def(item.id));
-                reject_non_type_param_bounds(
-                    ccx.tcx,
-                    item.span,
-                    &trait_predicates);
-                self.check_variances(item, ast_generics, &trait_predicates,
-                                     self.tcx().lang_items.phantom_fn());
+                reject_non_type_param_bounds(ccx.tcx, item.span, &trait_predicates);
                 if ty::trait_has_default_impl(ccx.tcx, local_def(item.id)) {
                     if !items.is_empty() {
                         ccx.tcx.sess.span_err(
@@ -287,30 +282,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                      ast_generics: &ast::Generics)
     {
         let item_def_id = local_def(item.id);
-        let predicates = ty::lookup_predicates(self.tcx(), item_def_id);
-        self.check_variances(item,
-                             ast_generics,
-                             &predicates,
-                             self.tcx().lang_items.phantom_data());
-    }
-
-    fn check_variances(&self,
-                       item: &ast::Item,
-                       ast_generics: &ast::Generics,
-                       ty_predicates: &ty::GenericPredicates<'tcx>,
-                       suggested_marker_id: Option<ast::DefId>)
-    {
-        let variance_lang_items = &[
-            self.tcx().lang_items.phantom_fn(),
-            self.tcx().lang_items.phantom_data(),
-        ];
-
-        let item_def_id = local_def(item.id);
-        let is_lang_item = variance_lang_items.iter().any(|n| *n == Some(item_def_id));
-        if is_lang_item {
-            return;
-        }
-
+        let ty_predicates = ty::lookup_predicates(self.tcx(), item_def_id);
         let variances = ty::item_variances(self.tcx(), item_def_id);
 
         let mut constrained_parameters: HashSet<_> =
@@ -331,7 +303,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 continue;
             }
             let span = self.ty_param_span(ast_generics, item, space, index);
-            self.report_bivariance(span, param_ty.name, suggested_marker_id);
+            self.report_bivariance(span, param_ty.name);
         }
 
         for (space, index, &variance) in variances.regions.iter_enumerated() {
@@ -342,7 +314,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             assert_eq!(space, TypeSpace);
             let span = ast_generics.lifetimes[index].lifetime.span;
             let name = ast_generics.lifetimes[index].lifetime.name;
-            self.report_bivariance(span, name, suggested_marker_id);
+            self.report_bivariance(span, name);
         }
     }
 
@@ -377,14 +349,14 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
     fn report_bivariance(&self,
                          span: Span,
-                         param_name: ast::Name,
-                         suggested_marker_id: Option<ast::DefId>)
+                         param_name: ast::Name)
     {
         self.tcx().sess.span_err(
             span,
             &format!("parameter `{}` is never used",
                      param_name.user_string(self.tcx())));
 
+        let suggested_marker_id = self.tcx().lang_items.phantom_data();
         match suggested_marker_id {
             Some(def_id) => {
                 self.tcx().sess.fileline_help(

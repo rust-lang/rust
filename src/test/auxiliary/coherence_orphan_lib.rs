@@ -8,6 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait TheTrait<T> : ::std::marker::PhantomFn<T> {
+pub trait TheTrait<T> {
     fn the_fn(&self);
 }

@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::marker::PhantomFn;
-
-trait FromStructReader<'a> : PhantomFn<(Self,&'a ())> { }
+trait FromStructReader<'a> { }
 trait ResponseHook {
      fn get<'a, T: FromStructReader<'a>>(&'a self);
 }

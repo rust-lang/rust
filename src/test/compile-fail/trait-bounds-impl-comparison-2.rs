@@ -15,7 +15,6 @@ trait Iterator<A> {
 }
 
 trait IteratorUtil<A>
-    : ::std::marker::PhantomFn<(),A>
 {
     fn zip<B, U: Iterator<U>>(self, other: U) -> ZipIterator<Self, U>;
 }

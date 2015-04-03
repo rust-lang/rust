@@ -16,12 +16,12 @@
 // influence variance.
 
 #[rustc_variance]
-trait Getter<T> { //~ ERROR types=[[+];[-];[]]
+trait Getter<T> { //~ ERROR types=[[o];[o];[]]
     fn get(&self) -> T;
 }
 
 #[rustc_variance]
-trait Setter<T> { //~ ERROR types=[[-];[-];[]]
+trait Setter<T> { //~ ERROR types=[[o];[o];[]]
     fn get(&self, T);
 }
 
@@ -37,16 +37,16 @@ enum TestEnum<U,T:Setter<U>> {//~ ERROR types=[[*, +];[];[]]
 }
 
 #[rustc_variance]
-trait TestTrait<U,T:Setter<U>> { //~ ERROR types=[[-, +];[-];[]]
+trait TestTrait<U,T:Setter<U>> { //~ ERROR types=[[o, o];[o];[]]
     fn getter(&self, u: U) -> T;
 }
 
 #[rustc_variance]
-trait TestTrait2<U> : Getter<U> { //~ ERROR types=[[+];[-];[]]
+trait TestTrait2<U> : Getter<U> { //~ ERROR types=[[o];[o];[]]
 }
 
 #[rustc_variance]
-trait TestTrait3<U> { //~ ERROR types=[[-];[-];[]]
+trait TestTrait3<U> { //~ ERROR types=[[o];[o];[]]
     fn getter<T:Getter<U>>(&self);
 }
 

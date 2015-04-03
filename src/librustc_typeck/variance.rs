@@ -18,34 +18,121 @@
 //! defined on type `X`, we only consider the definition of the type `X`
 //! and the definitions of any types it references.
 //!
-//! We only infer variance for type parameters found on *types*: structs,
-//! enums, and traits. We do not infer variance for type parameters found
-//! on fns or impls. This is because those things are not type definitions
-//! and variance doesn't really make sense in that context.
-//!
-//! It is worth covering what variance means in each case. For structs and
-//! enums, I think it is fairly straightforward. The variance of the type
+//! We only infer variance for type parameters found on *data types*
+//! like structs and enums. In these cases, there is fairly straightforward
+//! explanation for what variance means. The variance of the type
 //! or lifetime parameters defines whether `T<A>` is a subtype of `T<B>`
 //! (resp. `T<'a>` and `T<'b>`) based on the relationship of `A` and `B`
-//! (resp. `'a` and `'b`). (FIXME #3598 -- we do not currently make use of
-//! the variances we compute for type parameters.)
+//! (resp. `'a` and `'b`).
 //!
-//! ### Variance on traits
+//! We do not infer variance for type parameters found on traits, fns,
+//! or impls. Variance on trait parameters can make indeed make sense
+//! (and we used to compute it) but it is actually rather subtle in
+//! meaning and not that useful in practice, so we removed it. See the
+//! addendum for some details. Variances on fn/impl parameters, otoh,
+//! doesn't make sense because these parameters are instantiated and
+//! then forgotten, they don't persist in types or compiled
+//! byproducts.
 //!
-//! The meaning of variance for trait parameters is more subtle and worth
-//! expanding upon. There are in fact two uses of the variance values we
-//! compute.
+//! ### The algorithm
 //!
-//! #### Trait variance and object types
+//! The basic idea is quite straightforward. We iterate over the types
+//! defined and, for each use of a type parameter X, accumulate a
+//! constraint indicating that the variance of X must be valid for the
+//! variance of that use site. We then iteratively refine the variance of
+//! X until all constraints are met. There is *always* a sol'n, because at
+//! the limit we can declare all type parameters to be invariant and all
+//! constraints will be satisfied.
 //!
-//! The first is for object types. Just as with structs and enums, we can
-//! decide the subtyping relationship between two object types `&Trait<A>`
-//! and `&Trait<B>` based on the relationship of `A` and `B`. Note that
-//! for object types we ignore the `Self` type parameter -- it is unknown,
-//! and the nature of dynamic dispatch ensures that we will always call a
+//! As a simple example, consider:
+//!
+//!     enum Option<A> { Some(A), None }
+//!     enum OptionalFn<B> { Some(|B|), None }
+//!     enum OptionalMap<C> { Some(|C| -> C), None }
+//!
+//! Here, we will generate the constraints:
+//!
+//!     1. V(A) <= +
+//!     2. V(B) <= -
+//!     3. V(C) <= +
+//!     4. V(C) <= -
+//!
+//! These indicate that (1) the variance of A must be at most covariant;
+//! (2) the variance of B must be at most contravariant; and (3, 4) the
+//! variance of C must be at most covariant *and* contravariant. All of these
+//! results are based on a variance lattice defined as follows:
+//!
+//!       *      Top (bivariant)
+//!    -     +
+//!       o      Bottom (invariant)
+//!
+//! Based on this lattice, the solution V(A)=+, V(B)=-, V(C)=o is the
+//! optimal solution. Note that there is always a naive solution which
+//! just declares all variables to be invariant.
+//!
+//! You may be wondering why fixed-point iteration is required. The reason
+//! is that the variance of a use site may itself be a function of the
+//! variance of other type parameters. In full generality, our constraints
+//! take the form:
+//!
+//!     V(X) <= Term
+//!     Term := + | - | * | o | V(X) | Term x Term
+//!
+//! Here the notation V(X) indicates the variance of a type/region
+//! parameter `X` with respect to its defining class. `Term x Term`
+//! represents the "variance transform" as defined in the paper:
+//!
+//!   If the variance of a type variable `X` in type expression `E` is `V2`
+//!   and the definition-site variance of the [corresponding] type parameter
+//!   of a class `C` is `V1`, then the variance of `X` in the type expression
+//!   `C<E>` is `V3 = V1.xform(V2)`.
+//!
+//! ### Constraints
+//!
+//! If I have a struct or enum with where clauses:
+//!
+//!     struct Foo<T:Bar> { ... }
+//!
+//! you might wonder whether the variance of `T` with respect to `Bar`
+//! affects the variance `T` with respect to `Foo`. I claim no.  The
+//! reason: assume that `T` is invariant w/r/t `Bar` but covariant w/r/t
+//! `Foo`. And then we have a `Foo<X>` that is upcast to `Foo<Y>`, where
+//! `X <: Y`. However, while `X : Bar`, `Y : Bar` does not hold.  In that
+//! case, the upcast will be illegal, but not because of a variance
+//! failure, but rather because the target type `Foo<Y>` is itself just
+//! not well-formed. Basically we get to assume well-formedness of all
+//! types involved before considering variance.
+//!
+//! ### Addendum: Variance on traits
+//!
+//! As mentioned above, we used to permit variance on traits. This was
+//! computed based on the appearance of trait type parameters in
+//! method signatures and was used to represent the compatibility of
+//! vtables in trait objects (and also "virtual" vtables or dictionary
+//! in trait bounds). One complication was that variance for
+//! associated types is less obvious, since they can be projected out
+//! and put to myriad uses, so it's not clear when it is safe to allow
+//! `X<A>::Bar` to vary (or indeed just what that means). Moreover (as
+//! covered below) all inputs on any trait with an associated type had
+//! to be invariant, limiting the applicability. Finally, the
+//! annotations (`MarkerTrait`, `PhantomFn`) needed to ensure that all
+//! trait type parameters had a variance were confusing and annoying
+//! for little benefit.
+//!
+//! Just for historical reference,I am going to preserve some text indicating
+//! how one could interpret variance and trait matching.
+//!
+//! #### Variance and object types
+//!
+//! Just as with structs and enums, we can decide the subtyping
+//! relationship between two object types `&Trait<A>` and `&Trait<B>`
+//! based on the relationship of `A` and `B`. Note that for object
+//! types we ignore the `Self` type parameter -- it is unknown, and
+//! the nature of dynamic dispatch ensures that we will always call a
 //! function that is expected the appropriate `Self` type. However, we
-//! must be careful with the other type parameters, or else we could end
-//! up calling a function that is expecting one type but provided another.
+//! must be careful with the other type parameters, or else we could
+//! end up calling a function that is expecting one type but provided
+//! another.
 //!
 //! To see what I mean, consider a trait like so:
 //!
@@ -135,104 +222,24 @@
 //!
 //! These conditions are satisfied and so we are happy.
 //!
-//! ### The algorithm
+//! #### Variance and associated types
 //!
-//! The basic idea is quite straightforward. We iterate over the types
-//! defined and, for each use of a type parameter X, accumulate a
-//! constraint indicating that the variance of X must be valid for the
-//! variance of that use site. We then iteratively refine the variance of
-//! X until all constraints are met. There is *always* a sol'n, because at
-//! the limit we can declare all type parameters to be invariant and all
-//! constraints will be satisfied.
-//!
-//! As a simple example, consider:
-//!
-//!     enum Option<A> { Some(A), None }
-//!     enum OptionalFn<B> { Some(|B|), None }
-//!     enum OptionalMap<C> { Some(|C| -> C), None }
-//!
-//! Here, we will generate the constraints:
-//!
-//!     1. V(A) <= +
-//!     2. V(B) <= -
-//!     3. V(C) <= +
-//!     4. V(C) <= -
-//!
-//! These indicate that (1) the variance of A must be at most covariant;
-//! (2) the variance of B must be at most contravariant; and (3, 4) the
-//! variance of C must be at most covariant *and* contravariant. All of these
-//! results are based on a variance lattice defined as follows:
-//!
-//!       *      Top (bivariant)
-//!    -     +
-//!       o      Bottom (invariant)
-//!
-//! Based on this lattice, the solution V(A)=+, V(B)=-, V(C)=o is the
-//! optimal solution. Note that there is always a naive solution which
-//! just declares all variables to be invariant.
-//!
-//! You may be wondering why fixed-point iteration is required. The reason
-//! is that the variance of a use site may itself be a function of the
-//! variance of other type parameters. In full generality, our constraints
-//! take the form:
-//!
-//!     V(X) <= Term
-//!     Term := + | - | * | o | V(X) | Term x Term
-//!
-//! Here the notation V(X) indicates the variance of a type/region
-//! parameter `X` with respect to its defining class. `Term x Term`
-//! represents the "variance transform" as defined in the paper:
-//!
-//!   If the variance of a type variable `X` in type expression `E` is `V2`
-//!   and the definition-site variance of the [corresponding] type parameter
-//!   of a class `C` is `V1`, then the variance of `X` in the type expression
-//!   `C<E>` is `V3 = V1.xform(V2)`.
-//!
-//! ### Constraints
-//!
-//! If I have a struct or enum with where clauses:
-//!
-//!     struct Foo<T:Bar> { ... }
-//!
-//! you might wonder whether the variance of `T` with respect to `Bar`
-//! affects the variance `T` with respect to `Foo`. I claim no.  The
-//! reason: assume that `T` is invariant w/r/t `Bar` but covariant w/r/t
-//! `Foo`. And then we have a `Foo<X>` that is upcast to `Foo<Y>`, where
-//! `X <: Y`. However, while `X : Bar`, `Y : Bar` does not hold.  In that
-//! case, the upcast will be illegal, but not because of a variance
-//! failure, but rather because the target type `Foo<Y>` is itself just
-//! not well-formed. Basically we get to assume well-formedness of all
-//! types involved before considering variance.
-//!
-//! ### Associated types
-//!
-//! Any trait with an associated type is invariant with respect to all
-//! of its inputs. To see why this makes sense, consider what
-//! subtyping for a trait reference means:
+//! Traits with associated types -- or at minimum projection
+//! expressions -- must be invariant with respect to all of their
+//! inputs. To see why this makes sense, consider what subtyping for a
+//! trait reference means:
 //!
 //!    <T as Trait> <: <U as Trait>
 //!
-//! means that if I know that `T as Trait`,
-//! I also know that `U as
-//! Trait`. Moreover, if you think of it as
-//! dictionary passing style, it means that
-//! a dictionary for `<T as Trait>` is safe
-//! to use where a dictionary for `<U as
-//! Trait>` is expected.
+//! means that if I know that `T as Trait`, I also know that `U as
+//! Trait`. Moreover, if you think of it as dictionary passing style,
+//! it means that a dictionary for `<T as Trait>` is safe to use where
+//! a dictionary for `<U as Trait>` is expected.
 //!
-//! The problem is that when you can
-//! project types out from `<T as Trait>`,
-//! the relationship to types projected out
-//! of `<U as Trait>` is completely unknown
-//! unless `T==U` (see #21726 for more
-//! details). Making `Trait` invariant
-//! ensures that this is true.
-//!
-//! *Historical note: we used to preserve this invariant another way,
-//! by tweaking the subtyping rules and requiring that when a type `T`
-//! appeared as part of a projection, that was considered an invariant
-//! location, but this version does away with the need for those
-//! somewhat "special-case-feeling" rules.*
+//! The problem is that when you can project types out from `<T as
+//! Trait>`, the relationship to types projected out of `<U as Trait>`
+//! is completely unknown unless `T==U` (see #21726 for more
+//! details). Making `Trait` invariant ensures that this is true.
 //!
 //! Another related reason is that if we didn't make traits with
 //! associated types invariant, then projection is no longer a
@@ -383,7 +390,6 @@ fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
 
 fn lang_items(tcx: &ty::ctxt) -> Vec<(ast::NodeId,Vec<ty::Variance>)> {
     let all = vec![
-        (tcx.lang_items.phantom_fn(), vec![ty::Contravariant, ty::Covariant]),
         (tcx.lang_items.phantom_data(), vec![ty::Covariant]),
         (tcx.lang_items.unsafe_cell_type(), vec![ty::Invariant]),
 
@@ -520,6 +526,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
                 self.add_inferreds_for_item(item.id, false, generics);
             }
             ast::ItemTrait(_, ref generics, _, _) => {
+                // Note: all inputs for traits are ultimately
+                // constrained to be invariant. See `visit_item` in
+                // the impl for `ConstraintContext` below.
                 self.add_inferreds_for_item(item.id, true, generics);
                 visit::walk_item(self, item);
             }
@@ -644,39 +653,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
 
             ast::ItemTrait(..) => {
                 let trait_def = ty::lookup_trait_def(tcx, did);
-                let predicates = ty::lookup_super_predicates(tcx, did);
-                self.add_constraints_from_predicates(&trait_def.generics,
-                                                     predicates.predicates.as_slice(),
-                                                     self.covariant);
-
-                let trait_items = ty::trait_items(tcx, did);
-                for trait_item in &*trait_items {
-                    match *trait_item {
-                        ty::MethodTraitItem(ref method) => {
-                            self.add_constraints_from_predicates(
-                                &method.generics,
-                                method.predicates.predicates.get_slice(FnSpace),
-                                self.contravariant);
-
-                            self.add_constraints_from_sig(
-                                &method.generics,
-                                &method.fty.sig,
-                                self.covariant);
-                        }
-                        ty::TypeTraitItem(ref data) => {
-                            // Any trait with an associated type is
-                            // invariant with respect to all of its
-                            // inputs. See length discussion in the comment
-                            // on this module.
-                            let projection_ty = ty::mk_projection(tcx,
-                                                                  trait_def.trait_ref.clone(),
-                                                                  data.name);
-                            self.add_constraints_from_ty(&trait_def.generics,
-                                                         projection_ty,
-                                                         self.invariant);
-                        }
-                    }
-                }
+                self.add_constraints_from_trait_ref(&trait_def.generics,
+                                                    &trait_def.trait_ref,
+                                                    self.invariant);
             }
 
             ast::ItemExternCrate(_) |
@@ -1042,69 +1021,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             let variance_i = self.xform(variance, variance_decl);
             let substs_r = *substs.regions().get(p.space, p.index as usize);
             self.add_constraints_from_region(generics, substs_r, variance_i);
-        }
-    }
-
-    fn add_constraints_from_predicates(&mut self,
-                                       generics: &ty::Generics<'tcx>,
-                                       predicates: &[ty::Predicate<'tcx>],
-                                       variance: VarianceTermPtr<'a>) {
-        debug!("add_constraints_from_generics({})",
-               generics.repr(self.tcx()));
-
-        for predicate in predicates.iter() {
-            match *predicate {
-                ty::Predicate::Trait(ty::Binder(ref data)) => {
-                    self.add_constraints_from_trait_ref(generics, &*data.trait_ref, variance);
-                }
-
-                ty::Predicate::Equate(ty::Binder(ref data)) => {
-                    // A == B is only true if A and B are the same
-                    // types, not subtypes of one another, so this is
-                    // an invariant position:
-                    self.add_constraints_from_ty(generics, data.0, self.invariant);
-                    self.add_constraints_from_ty(generics, data.1, self.invariant);
-                }
-
-                ty::Predicate::TypeOutlives(ty::Binder(ref data)) => {
-                    // Why contravariant on both? Let's consider:
-                    //
-                    // Under what conditions is `(T:'t) <: (U:'u)`,
-                    // meaning that `(T:'t) => (U:'u)`. The answer is
-                    // if `U <: T` or `'u <= 't`. Let's see some examples:
-                    //
-                    //   (T: 'big) => (T: 'small)
-                    //   where 'small <= 'big
-                    //
-                    //   (&'small Foo: 't) => (&'big Foo: 't)
-                    //   where 'small <= 'big
-                    //   note that &'big Foo <: &'small Foo
-
-                    let variance_r = self.xform(variance, self.contravariant);
-                    self.add_constraints_from_ty(generics, data.0, variance_r);
-                    self.add_constraints_from_region(generics, data.1, variance_r);
-                }
-
-                ty::Predicate::RegionOutlives(ty::Binder(ref data)) => {
-                    // `'a : 'b` is still true if 'a gets bigger
-                    self.add_constraints_from_region(generics, data.0, variance);
-
-                    // `'a : 'b` is still true if 'b gets smaller
-                    let variance_r = self.xform(variance, self.contravariant);
-                    self.add_constraints_from_region(generics, data.1, variance_r);
-                }
-
-                ty::Predicate::Projection(ty::Binder(ref data)) => {
-                    self.add_constraints_from_trait_ref(generics,
-                                                        &*data.projection_ty.trait_ref,
-                                                        variance);
-
-                    // as the equality predicate above, a binder is a
-                    // type equality relation, not a subtyping
-                    // relation
-                    self.add_constraints_from_ty(generics, data.ty, self.invariant);
-                }
-            }
         }
     }
 

@@ -12,12 +12,8 @@
 #![no_std]
 #![feature(lang_items)]
 
-#[lang="phantom_fn"]
-pub trait PhantomFn<A:?Sized,R:?Sized=()> { }
-impl<A:?Sized, R:?Sized, U:?Sized> PhantomFn<A,R> for U { }
-
 #[lang="sized"]
-pub trait Sized : PhantomFn<Self> {}
+pub trait Sized { }
 
 #[lang="panic"]
 fn panic(_: &(&'static str, &'static str, usize)) -> ! { loop {} }
@@ -29,7 +25,7 @@ extern fn stack_exhausted() {}
 extern fn eh_personality() {}
 
 #[lang="copy"]
-pub trait Copy : PhantomFn<Self> {
+pub trait Copy {
     // Empty.
 }
 
