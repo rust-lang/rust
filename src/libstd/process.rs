@@ -340,7 +340,7 @@ fn setup_io(io: &StdioImp, fd: libc::c_int, readable: bool)
             (Some(AnonPipe::from_fd(fd)), None)
         }
         Piped => {
-            let (reader, writer) = try!(unsafe { pipe2::anon_pipe() });
+            let (reader, writer) = try!(pipe2::anon_pipe());
             if readable {
                 (Some(reader), Some(writer))
             } else {

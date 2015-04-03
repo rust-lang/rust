@@ -159,6 +159,8 @@ extern {
     pub fn utimes(filename: *const libc::c_char,
                   times: *const libc::timeval) -> libc::c_int;
     pub fn gai_strerror(errcode: libc::c_int) -> *const libc::c_char;
+    pub fn setgroups(ngroups: libc::c_int,
+                     ptr: *const libc::c_void) -> libc::c_int;
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]

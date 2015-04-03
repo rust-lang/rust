@@ -205,13 +205,17 @@ impl OpenOptions {
 
 impl File {
     pub fn open(path: &Path, opts: &OpenOptions) -> io::Result<File> {
+        let path = try!(cstr(path));
+        File::open_c(&path, opts)
+    }
+
+    pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
         let flags = opts.flags | match (opts.read, opts.write) {
             (true, true) => libc::O_RDWR,
             (false, true) => libc::O_WRONLY,
             (true, false) |
             (false, false) => libc::O_RDONLY,
         };
-        let path = try!(cstr(path));
         let fd = try!(cvt_r(|| unsafe {
             libc::open(path.as_ptr(), flags, opts.mode)
         }));
@@ -219,6 +223,8 @@ impl File {
         fd.set_cloexec();
         Ok(File(fd))
     }
+
+    pub fn into_fd(self) -> FileDesc { self.0 }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         let mut stat: libc::stat = unsafe { mem::zeroed() };
