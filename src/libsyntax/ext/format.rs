@@ -17,6 +17,7 @@ use ext::base::*;
 use ext::base;
 use ext::build::AstBuilder;
 use fmt_macros as parse;
+use fold::Folder;
 use parse::token::special_idents;
 use parse::token;
 use ptr::P;
@@ -649,6 +650,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                     names: HashMap<String, P<ast::Expr>>)
                                     -> P<ast::Expr> {
     let arg_types: Vec<_> = (0..args.len()).map(|_| None).collect();
+    // Expand the format literal so that efmt.span will have a backtrace. This
+    // is essential for locating a bug when the format literal is generated in
+    // a macro. (e.g. println!("{}"), which uses concat!($fmt, "\n")).
+    let efmt = ecx.expander().fold_expr(efmt);
     let mut cx = Context {
         ecx: ecx,
         args: args,
@@ -663,9 +668,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         pieces: Vec::new(),
         str_pieces: Vec::new(),
         all_pieces_simple: true,
-        fmtsp: sp,
+        fmtsp: efmt.span,
     };
-    cx.fmtsp = efmt.span;
     let fmt = match expr_to_string(cx.ecx,
                                    efmt,
                                    "format argument must be a string literal.") {
