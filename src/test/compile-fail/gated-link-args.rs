@@ -14,6 +14,5 @@
 #[link_args = "aFdEfSeVEEE"]
 extern {}
 //~^ ERROR the `link_args` attribute is not portable across platforms
-//~| HELP add #![feature(link_args)] to the crate attributes to enable
 
 fn main() { }
