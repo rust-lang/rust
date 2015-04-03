@@ -88,16 +88,14 @@ When `guard` goes out of scope, it will block execution until the thread is
 finished. If we didn't want this behaviour, we could use `thread::spawn()`:
 
 ```
-# #![feature(thread_sleep, std_misc)]
 use std::thread;
-use std::time::Duration;
 
 fn main() {
     thread::spawn(|| {
         println!("Hello from a thread!");
     });
 
-    thread::sleep(Duration::milliseconds(50));
+    thread::sleep_ms(50);
 }
 ```
 
@@ -146,9 +144,7 @@ As an example, here is a Rust program that would have a data race in many
 languages. It will not compile:
 
 ```ignore
-# #![feature(thread_sleep, std_misc)]
 use std::thread;
-use std::time::Duration;
 
 fn main() {
     let mut data = vec![1u32, 2, 3];
@@ -159,16 +155,16 @@ fn main() {
         });
     }
 
-    thread::sleep(Duration::milliseconds(50));
+    thread::sleep_ms(50);
 }
 ```
 
 This gives us an error:
 
 ```text
-12:17 error: capture of moved value: `data`
-        data[i] += 1;
-        ^~~~
+error: capture of moved value: `data`
+   data[i] += 1;
+   ^~~~
 ```
 
 In this case, we know that our code _should_ be safe, but Rust isn't sure. And
@@ -185,9 +181,7 @@ only one person at a time can mutate what's inside. For that, we can use the
 but for a different reason:
 
 ```ignore
-# #![feature(thread_sleep, std_misc)]
 use std::thread;
-use std::time::Duration;
 use std::sync::Mutex;
 
 fn main() {
@@ -200,19 +194,19 @@ fn main() {
         });
     }
 
-    thread::sleep(Duration::milliseconds(50));
+    thread::sleep_ms(50);
 }
 ```
 
 Here's the error:
 
 ```text
-<anon>:11:9: 11:22 error: the trait `core::marker::Send` is not implemented for the type `std::sync::mutex::MutexGuard<'_, collections::vec::Vec<u32>>` [E0277]
-<anon>:11         thread::spawn(move || {
-                  ^~~~~~~~~~~~~
-<anon>:11:9: 11:22 note: `std::sync::mutex::MutexGuard<'_, collections::vec::Vec<u32>>` cannot be sent between threads safely
-<anon>:11         thread::spawn(move || {
-                  ^~~~~~~~~~~~~
+<anon>:9:9: 9:22 error: the trait `core::marker::Send` is not implemented for the type `std::sync::mutex::MutexGuard<'_, collections::vec::Vec<u32>>` [E0277]
+<anon>:9         thread::spawn(move || {
+                 ^~~~~~~~~~~~~
+<anon>:9:9: 9:22 note: `std::sync::mutex::MutexGuard<'_, collections::vec::Vec<u32>>` cannot be sent between threads safely
+<anon>:9         thread::spawn(move || {
+                 ^~~~~~~~~~~~~
 ```
 
 You see, [`Mutex`](std/sync/struct.Mutex.html) has a
@@ -229,10 +223,8 @@ guard across thread boundaries, which gives us our error.
 We can use `Arc<T>` to fix this. Here's the working version:
 
 ```
-# #![feature(thread_sleep, std_misc)]
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
 
 fn main() {
     let data = Arc::new(Mutex::new(vec![1u32, 2, 3]));
@@ -245,7 +237,7 @@ fn main() {
         });
     }
 
-    thread::sleep(Duration::milliseconds(50));
+    thread::sleep_ms(50);
 }
 ```
 
