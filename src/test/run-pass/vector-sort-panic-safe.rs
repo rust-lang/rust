@@ -57,7 +57,7 @@ impl Drop for DropCounter {
 }
 
 pub fn main() {
-    assert!(MAX_LEN <= std::usize::BITS as usize);
+    assert!(MAX_LEN <= std::usize::BITS);
     // len can't go above 64.
     for len in 2..MAX_LEN {
         for _ in 0..REPEATS {
