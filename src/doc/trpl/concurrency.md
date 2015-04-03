@@ -90,7 +90,6 @@ finished. If we didn't want this behaviour, we could use `thread::spawn()`:
 ```
 # #![feature(std_misc)]
 use std::thread;
-use std::time::Duration;
 
 fn main() {
     thread::spawn(|| {
@@ -148,7 +147,6 @@ languages. It will not compile:
 ```ignore
 # #![feature(std_misc)]
 use std::thread;
-use std::time::Duration;
 
 fn main() {
     let mut data = vec![1u32, 2, 3];
@@ -187,7 +185,6 @@ but for a different reason:
 ```ignore
 # #![feature(std_misc)]
 use std::thread;
-use std::time::Duration;
 use std::sync::Mutex;
 
 fn main() {
@@ -232,7 +229,6 @@ We can use `Arc<T>` to fix this. Here's the working version:
 # #![feature(std_misc)]
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::time::Duration;
 
 fn main() {
     let data = Arc::new(Mutex::new(vec![1u32, 2, 3]));
@@ -257,7 +253,6 @@ thread more closely:
 # #![feature(std_misc)]
 # use std::sync::{Arc, Mutex};
 # use std::thread;
-# use std::time::Duration;
 # fn main() {
 #     let data = Arc::new(Mutex::new(vec![1u32, 2, 3]));
 #     for i in 0..2 {
