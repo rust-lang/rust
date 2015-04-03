@@ -18,8 +18,6 @@ struct D<'a>(&'a u32);
 
 #[unsafe_destructor]
 //~^ ERROR `#[unsafe_destructor]` does nothing anymore
-//~| HELP: add #![feature(unsafe_destructor)] to the crate attributes to enable
-// (but of couse there is no point in doing so)
 impl<'a> Drop for D<'a> {
     fn drop(&mut self) { }
 }
