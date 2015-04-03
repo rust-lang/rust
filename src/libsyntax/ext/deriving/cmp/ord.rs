@@ -155,7 +155,7 @@ fn expand_deriving_partial_ord_when_ord(cx: &mut ExtCtxt,
     // However, as an optimization for non-generic types, we can just generate:
     //
     // impl<...> PartialOrd for $ty {
-    //     fn partial_cmp(&self, other: &$ty) -> Self { self.cmp(other) }
+    //     fn partial_cmp(&self, other: &$ty) -> Option<Self> { Some(self.cmp(other)) }
     // }
     //
     // But the generic deriving helpers do not support generating such a simple method. So we'll
