@@ -99,16 +99,45 @@ fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 // time is 4,500 times (!) slower than this if the reader has a very small
 // amount of data to return.
 fn read_to_end<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
+    fn read_next_byte_if_available<R: Read + ?Sized>(r: &mut R) -> Result<Option<u8>> {
+        let mut small_buf = [0u8; 1];
+        match r.read(&mut small_buf) {
+            Ok(0) => return Ok(None),
+            Ok(1) => return Ok(Some(small_buf[0])),
+            Ok(_) => unreachable!(),
+            Err(e) => return Err(e),
+        }
+    }
     let start_len = buf.len();
     let mut len = start_len;
     let mut new_write_size = 16;
     let ret;
     loop {
+        // If we are at capacity, check to make sure that there is something left to read
+        // before we expand the vector any further.
+        if buf.capacity() == buf.len() {
+            match read_next_byte_if_available(r) {
+                Ok(Some(b)) => {
+                    len += 1;
+                    buf.push(b);
+                }
+                Ok(None) => {
+                    ret = Ok(len - start_len);
+                    break;
+                }
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(e) => {
+                    ret = Err(e);
+                    break;
+                }
+            }
+        }
         if len == buf.len() {
             if new_write_size < DEFAULT_BUF_SIZE {
                 new_write_size *= 2;
             }
-            buf.extend(iter::repeat(0).take(new_write_size));
+            let remaining_capacity = buf.capacity() - buf.len();
+            buf.extend(iter::repeat(0).take(cmp::min(new_write_size, remaining_capacity)));
         }
 
         match r.read(&mut buf[len..]) {
@@ -989,6 +1018,17 @@ mod tests {
         let mut v = Vec::new();
         assert_eq!(c.read_to_end(&mut v).unwrap(), 1);
         assert_eq!(v, b"1");
+    }
+
+    #[test]
+    fn read_to_end_doesnt_expand_capacity_unless_necessary() {
+        const BUF_SIZE: usize = 1024;
+        let buf = [1u8; BUF_SIZE];
+        let mut src = &buf[..];
+        let mut dst = Vec::with_capacity(BUF_SIZE);
+        let init_capacity = dst.capacity();
+        assert_eq!(src.read_to_end(&mut dst).unwrap(), BUF_SIZE);
+        assert_eq!(init_capacity, dst.capacity());
     }
 
     #[test]
