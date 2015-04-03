@@ -40,8 +40,8 @@ use ast::{MacStmtWithBraces, MacStmtWithSemicolon, MacStmtWithoutBraces};
 use ast::{MutImmutable, MutMutable, Mac_, MacInvocTT, MatchSource};
 use ast::{MutTy, BiMul, Mutability};
 use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, UnNot};
-use ast::{Pat, PatEnum, PatIdent, PatLit, PatRange, PatRegion, PatStruct};
-use ast::{PatTup, PatBox, PatWild, PatWildMulti, PatWildSingle};
+use ast::{Pat, PatBox, PatEnum, PatIdent, PatLit, PatMac, PatRange, PatRegion};
+use ast::{PatStruct, PatTup, PatVec, PatWild, PatWildMulti, PatWildSingle};
 use ast::{PolyTraitRef, QSelf};
 use ast::{Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
@@ -86,11 +86,9 @@ bitflags! {
     flags Restrictions: u8 {
         const UNRESTRICTED                  = 0b0000,
         const RESTRICTION_STMT_EXPR         = 0b0001,
-        const RESTRICTION_NO_BAR_OP         = 0b0010,
-        const RESTRICTION_NO_STRUCT_LITERAL = 0b0100,
+        const RESTRICTION_NO_STRUCT_LITERAL = 0b0010,
     }
 }
-
 
 type ItemInfo = (Ident, Item_, Option<Vec<Attribute> >);
 
@@ -2603,13 +2601,6 @@ impl<'a> Parser<'a> {
     pub fn parse_more_binops(&mut self, lhs: P<Expr>, min_prec: usize) -> P<Expr> {
         if self.expr_is_complete(&*lhs) { return lhs; }
 
-        // Prevent dynamic borrow errors later on by limiting the
-        // scope of the borrows.
-        if self.token == token::BinOp(token::Or) &&
-            self.restrictions.contains(RESTRICTION_NO_BAR_OP) {
-            return lhs;
-        }
-
         self.expected_tokens.push(TokenType::Operator);
 
         let cur_op_span = self.span;
@@ -2956,6 +2947,22 @@ impl<'a> Parser<'a> {
         };
     }
 
+    fn parse_pat_tuple_elements(&mut self) -> Vec<P<Pat>> {
+        let mut fields = vec![];
+        if !self.check(&token::CloseDelim(token::Paren)) {
+            fields.push(self.parse_pat());
+            if self.look_ahead(1, |t| *t != token::CloseDelim(token::Paren)) {
+                while self.eat(&token::Comma) && !self.check(&token::CloseDelim(token::Paren)) {
+                    fields.push(self.parse_pat());
+                }
+            }
+            if fields.len() == 1 {
+                self.expect(&token::Comma);
+            }
+        }
+        fields
+    }
+
     fn parse_pat_vec_elements(
         &mut self,
     ) -> (Vec<P<Pat>>, Option<P<Pat>>, Vec<P<Pat>>) {
@@ -3087,250 +3094,147 @@ impl<'a> Parser<'a> {
         return (fields, etc);
     }
 
+    fn parse_pat_range_end(&mut self) -> P<Expr> {
+        if self.is_path_start() {
+            let lo = self.span.lo;
+            let path = self.parse_path(LifetimeAndTypesWithColons);
+            let hi = self.last_span.hi;
+            self.mk_expr(lo, hi, ExprPath(None, path))
+        } else {
+            self.parse_literal_maybe_minus()
+        }
+    }
+
+    fn is_path_start(&self) -> bool {
+        (self.token == token::ModSep || self.token.is_ident() || self.token.is_path())
+            && !self.token.is_keyword(keywords::True) && !self.token.is_keyword(keywords::False)
+    }
+
     /// Parse a pattern.
     pub fn parse_pat(&mut self) -> P<Pat> {
         maybe_whole!(self, NtPat);
 
         let lo = self.span.lo;
-        let mut hi;
         let pat;
         match self.token {
-            // parse _
           token::Underscore => {
+            // Parse _
             self.bump();
             pat = PatWild(PatWildSingle);
-            hi = self.last_span.hi;
-            return P(ast::Pat {
-                id: ast::DUMMY_NODE_ID,
-                node: pat,
-                span: mk_sp(lo, hi)
-            })
           }
           token::BinOp(token::And) | token::AndAnd => {
-            // parse &pat and &mut pat
-            let lo = self.span.lo;
+            // Parse &pat / &mut pat
             self.expect_and();
-            let mutability = if self.eat_keyword(keywords::Mut) {
-                ast::MutMutable
-            } else {
-                ast::MutImmutable
-            };
-            let sub = self.parse_pat();
-            pat = PatRegion(sub, mutability);
-            hi = self.last_span.hi;
-            return P(ast::Pat {
-                id: ast::DUMMY_NODE_ID,
-                node: pat,
-                span: mk_sp(lo, hi)
-            })
+            let mutbl = self.parse_mutability();
+            let subpat = self.parse_pat();
+            pat = PatRegion(subpat, mutbl);
           }
           token::OpenDelim(token::Paren) => {
-            // parse (pat,pat,pat,...) as tuple
+            // Parse (pat,pat,pat,...) as tuple pattern
             self.bump();
-            if self.check(&token::CloseDelim(token::Paren)) {
-                self.bump();
-                pat = PatTup(vec![]);
-            } else {
-                let mut fields = vec!(self.parse_pat());
-                if self.look_ahead(1, |t| *t != token::CloseDelim(token::Paren)) {
-                    while self.check(&token::Comma) {
-                        self.bump();
-                        if self.check(&token::CloseDelim(token::Paren)) { break; }
-                        fields.push(self.parse_pat());
-                    }
-                }
-                if fields.len() == 1 { self.expect(&token::Comma); }
-                self.expect(&token::CloseDelim(token::Paren));
-                pat = PatTup(fields);
-            }
-            hi = self.last_span.hi;
-            return P(ast::Pat {
-                id: ast::DUMMY_NODE_ID,
-                node: pat,
-                span: mk_sp(lo, hi)
-            })
+            let fields = self.parse_pat_tuple_elements();
+            self.expect(&token::CloseDelim(token::Paren));
+            pat = PatTup(fields);
           }
           token::OpenDelim(token::Bracket) => {
-            // parse [pat,pat,...] as vector pattern
+            // Parse [pat,pat,...] as vector pattern
             self.bump();
-            let (before, slice, after) =
-                self.parse_pat_vec_elements();
-
+            let (before, slice, after) = self.parse_pat_vec_elements();
             self.expect(&token::CloseDelim(token::Bracket));
-            pat = ast::PatVec(before, slice, after);
-            hi = self.last_span.hi;
-            return P(ast::Pat {
-                id: ast::DUMMY_NODE_ID,
-                node: pat,
-                span: mk_sp(lo, hi)
-            })
+            pat = PatVec(before, slice, after);
           }
-          _ => {}
-        }
-        // at this point, token != _, ~, &, &&, (, [
-
-        if (!(self.token.is_ident() || self.token.is_path())
-              && self.token != token::ModSep)
-                || self.token.is_keyword(keywords::True)
-                || self.token.is_keyword(keywords::False) {
-            // Parse an expression pattern or exp ... exp.
-            //
-            // These expressions are limited to literals (possibly
-            // preceded by unary-minus) or identifiers.
-            let val = self.parse_literal_maybe_minus();
-            if (self.check(&token::DotDotDot)) &&
-                    self.look_ahead(1, |t| {
-                        *t != token::Comma && *t != token::CloseDelim(token::Bracket)
-                    }) {
-                self.bump();
-                let end = if self.token.is_ident() || self.token.is_path() {
-                    let path = self.parse_path(LifetimeAndTypesWithColons);
-                    let hi = self.span.hi;
-                    self.mk_expr(lo, hi, ExprPath(None, path))
-                } else {
-                    self.parse_literal_maybe_minus()
-                };
-                pat = PatRange(val, end);
-            } else {
-                pat = PatLit(val);
-            }
-        } else if self.eat_keyword(keywords::Mut) {
-            pat = self.parse_pat_ident(BindByValue(MutMutable));
-        } else if self.eat_keyword(keywords::Ref) {
-            // parse ref pat
-            let mutbl = self.parse_mutability();
-            pat = self.parse_pat_ident(BindByRef(mutbl));
-        } else if self.eat_keyword(keywords::Box) {
-            // `box PAT`
-            //
-            // FIXME(#13910): Rename to `PatBox` and extend to full DST
-            // support.
-            let sub = self.parse_pat();
-            pat = PatBox(sub);
-            hi = self.last_span.hi;
-            return P(ast::Pat {
-                id: ast::DUMMY_NODE_ID,
-                node: pat,
-                span: mk_sp(lo, hi)
-            })
-        } else {
-            let can_be_enum_or_struct = self.look_ahead(1, |t| {
-                match *t {
-                    token::OpenDelim(_) | token::Lt | token::ModSep => true,
-                    _ => false,
-                }
-            });
-
-            if self.look_ahead(1, |t| *t == token::DotDotDot) &&
-                    self.look_ahead(2, |t| {
-                        *t != token::Comma && *t != token::CloseDelim(token::Bracket)
-                    }) {
-                let start = self.parse_expr_res(RESTRICTION_NO_BAR_OP);
-                self.eat(&token::DotDotDot);
-                let end = self.parse_expr_res(RESTRICTION_NO_BAR_OP);
-                pat = PatRange(start, end);
-            } else if self.token.is_plain_ident() && !can_be_enum_or_struct {
-                let id = self.parse_ident();
-                let id_span = self.last_span;
-                let pth1 = codemap::Spanned{span:id_span, node: id};
-                if self.eat(&token::Not) {
-                    // macro invocation
-                    let delim = self.expect_open_delim();
-                    let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
-                                                    seq_sep_none(),
-                                                    |p| p.parse_token_tree());
-
-                    let mac = MacInvocTT(ident_to_path(id_span,id), tts, EMPTY_CTXT);
-                    pat = ast::PatMac(codemap::Spanned {node: mac, span: self.span});
-                } else {
-                    let sub = if self.eat(&token::At) {
-                        // parse foo @ pat
-                        Some(self.parse_pat())
+          _ => {
+            // At this point, token != _, &, &&, (, [
+            if self.eat_keyword(keywords::Mut) {
+                // Parse mut ident @ pat
+                pat = self.parse_pat_ident(BindByValue(MutMutable));
+            } else if self.eat_keyword(keywords::Ref) {
+                // Parse ref ident @ pat / ref mut ident @ pat
+                let mutbl = self.parse_mutability();
+                pat = self.parse_pat_ident(BindByRef(mutbl));
+            } else if self.eat_keyword(keywords::Box) {
+                // Parse box pat
+                let subpat = self.parse_pat();
+                pat = PatBox(subpat);
+            } else if self.is_path_start() {
+                // Parse pattern starting with a path
+                if self.token.is_plain_ident() && self.look_ahead(1, |t| *t != token::DotDotDot &&
+                        *t != token::OpenDelim(token::Brace) &&
+                        *t != token::OpenDelim(token::Paren) &&
+                        // Contrary to its definition, a plain ident can be followed by :: in macros
+                        *t != token::ModSep) {
+                    // Plain idents have some extra abilities here compared to general paths
+                    if self.look_ahead(1, |t| *t == token::Not) {
+                        // Parse macro invocation
+                        let ident = self.parse_ident();
+                        let ident_span = self.last_span;
+                        let path = ident_to_path(ident_span, ident);
+                        self.bump();
+                        let delim = self.expect_open_delim();
+                        let tts = self.parse_seq_to_end(&token::CloseDelim(delim),
+                                seq_sep_none(), |p| p.parse_token_tree());
+                        let mac = MacInvocTT(path, tts, EMPTY_CTXT);
+                        pat = PatMac(codemap::Spanned {node: mac, span: self.span});
                     } else {
-                        // or just foo
-                        None
-                    };
-                    pat = PatIdent(BindByValue(MutImmutable), pth1, sub);
-                }
-            } else if self.look_ahead(1, |t| *t == token::Lt) {
-                self.bump();
-                self.unexpected()
-            } else {
-                // parse an enum pat
-                let enum_path = self.parse_path(LifetimeAndTypesWithColons);
-                match self.token {
-                    token::OpenDelim(token::Brace) => {
-                        self.bump();
-                        let (fields, etc) =
-                            self.parse_pat_fields();
-                        self.bump();
-                        pat = PatStruct(enum_path, fields, etc);
+                        // Parse ident @ pat
+                        // This can give false positives and parse nullary enums,
+                        // they are dealt with later in resolve
+                        pat = self.parse_pat_ident(BindByValue(MutImmutable));
                     }
-                    token::DotDotDot => {
+                } else {
+                    // Parse as a general path
+                    let path = self.parse_path(LifetimeAndTypesWithColons);
+                    match self.token {
+                      token::DotDotDot => {
+                        // Parse range
                         let hi = self.last_span.hi;
-                        let start = self.mk_expr(lo, hi, ExprPath(None, enum_path));
-                        self.eat(&token::DotDotDot);
-                        let end = if self.token.is_ident() || self.token.is_path() {
-                            let path = self.parse_path(LifetimeAndTypesWithColons);
-                            let hi = self.span.hi;
-                            self.mk_expr(lo, hi, ExprPath(None, path))
+                        let begin = self.mk_expr(lo, hi, ExprPath(None, path));
+                        self.bump();
+                        let end = self.parse_pat_range_end();
+                        pat = PatRange(begin, end);
+                      }
+                      token::OpenDelim(token::Brace) => {
+                        // Parse struct pattern
+                        self.bump();
+                        let (fields, etc) = self.parse_pat_fields();
+                        self.bump();
+                        pat = PatStruct(path, fields, etc);
+                      }
+                      token::OpenDelim(token::Paren) => {
+                        // Parse tuple struct or enum pattern
+                        if self.look_ahead(1, |t| *t == token::DotDot) {
+                            // This is a "top constructor only" pat
+                            self.bump();
+                            self.bump();
+                            self.expect(&token::CloseDelim(token::Paren));
+                            pat = PatEnum(path, None);
                         } else {
-                            self.parse_literal_maybe_minus()
-                        };
-                        pat = PatRange(start, end);
-                    }
-                    _ => {
-                        let mut args: Vec<P<Pat>> = Vec::new();
-                        match self.token {
-                          token::OpenDelim(token::Paren) => {
-                            let is_dotdot = self.look_ahead(1, |t| {
-                                match *t {
-                                    token::DotDot => true,
-                                    _ => false,
-                                }
-                            });
-                            if is_dotdot {
-                                // This is a "top constructor only" pat
-                                self.bump();
-                                self.bump();
-                                self.expect(&token::CloseDelim(token::Paren));
-                                pat = PatEnum(enum_path, None);
-                            } else {
-                                args = self.parse_enum_variant_seq(
-                                    &token::OpenDelim(token::Paren),
+                            let args = self.parse_enum_variant_seq(&token::OpenDelim(token::Paren),
                                     &token::CloseDelim(token::Paren),
-                                    seq_sep_trailing_allowed(token::Comma),
-                                    |p| p.parse_pat()
-                                );
-                                pat = PatEnum(enum_path, Some(args));
-                            }
-                          },
-                          _ => {
-                              if !enum_path.global &&
-                                  enum_path.segments.len() == 1 &&
-                                  enum_path.segments[0].parameters.is_empty()
-                              {
-                                // NB: If enum_path is a single identifier,
-                                // this should not be reachable due to special
-                                // handling further above.
-                                //
-                                // However, previously a PatIdent got emitted
-                                // here, so we preserve the branch just in case.
-                                //
-                                // A rewrite of the logic in this function
-                                // would probably make this obvious.
-                                self.span_bug(enum_path.span,
-                                              "ident only path should have been covered already");
-                              } else {
-                                  pat = PatEnum(enum_path, Some(args));
-                              }
-                          }
+                                    seq_sep_trailing_allowed(token::Comma), |p| p.parse_pat());
+                            pat = PatEnum(path, Some(args));
                         }
+                      }
+                      _ => {
+                        // Parse nullary enum
+                        pat = PatEnum(path, Some(vec![]));
+                      }
                     }
+                }
+            } else {
+                // Try to parse everything else as literal with optional minus
+                let begin = self.parse_literal_maybe_minus();
+                if self.eat(&token::DotDotDot) {
+                    let end = self.parse_pat_range_end();
+                    pat = PatRange(begin, end);
+                } else {
+                    pat = PatLit(begin);
                 }
             }
+          }
         }
-        hi = self.last_span.hi;
+
+        let hi = self.last_span.hi;
         P(ast::Pat {
             id: ast::DUMMY_NODE_ID,
             node: pat,
