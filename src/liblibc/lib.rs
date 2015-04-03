@@ -1299,7 +1299,7 @@ pub mod types {
             pub mod posix01 {
                 use types::common::c95::{c_void};
                 use types::os::arch::c95::{c_char, c_int, size_t,
-                                                 time_t, suseconds_t, c_long};
+                                           time_t, suseconds_t, c_long};
                 use types::os::arch::c99::{uintptr_t};
 
                 pub type pthread_t = uintptr_t;
@@ -1405,12 +1405,15 @@ pub mod types {
                     pub sa_data: [u8; 14],
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_storage {
+                #[derive(Copy)] pub struct sockaddr_storage {
                     pub ss_len: u8,
                     pub ss_family: sa_family_t,
                     pub __ss_pad1: [u8; 6],
                     pub __ss_pad2: i64,
                     pub __ss_pad3: [u8; 240],
+                }
+                impl ::core::clone::Clone for sockaddr_storage {
+                    fn clone(&self) -> sockaddr_storage { *self }
                 }
                 #[repr(C)]
                 #[derive(Copy, Clone)] pub struct sockaddr_in {
@@ -1459,10 +1462,13 @@ pub mod types {
                     pub ai_next: *mut addrinfo,
                 }
                 #[repr(C)]
-                #[derive(Copy, Clone)] pub struct sockaddr_un {
+                #[derive(Copy)] pub struct sockaddr_un {
                     pub sun_len: u8,
                     pub sun_family: sa_family_t,
                     pub sun_path: [c_char; 104]
+                }
+                impl ::core::clone::Clone for sockaddr_un {
+                    fn clone(&self) -> sockaddr_un { *self }
                 }
                 #[repr(C)]
                 #[derive(Copy, Clone)] pub struct ifaddrs {
@@ -4306,7 +4312,7 @@ pub mod consts {
             pub const MAP_FIXED : c_int = 0x0010;
             pub const MAP_ANON : c_int = 0x1000;
 
-            pub const MAP_FAILED : *mut c_void = -1 as *mut c_void;
+            pub const MAP_FAILED : *mut c_void = -(1 as c_int) as *mut c_void;
 
             pub const MCL_CURRENT : c_int = 0x0001;
             pub const MCL_FUTURE : c_int = 0x0002;
