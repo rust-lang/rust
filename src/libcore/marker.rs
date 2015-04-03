@@ -273,14 +273,14 @@ macro_rules! impls{
 }
 
 /// `MarkerTrait` is deprecated and no longer needed.
-#[unstable(feature = "core", reason = "deprecated")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "1.0.0", reason = "No longer needed")]
 #[allow(deprecated)]
 #[cfg(stage0)]
 pub trait MarkerTrait : PhantomFn<Self,Self> { }
 
 /// `MarkerTrait` is deprecated and no longer needed.
-#[unstable(feature = "core", reason = "deprecated")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "1.0.0", reason = "No longer needed")]
 #[allow(deprecated)]
 #[cfg(not(stage0))]
@@ -291,14 +291,14 @@ impl<T:?Sized> MarkerTrait for T { }
 
 /// `PhantomFn` is a deprecated marker trait that is no longer needed.
 #[lang="phantom_fn"]
-#[unstable(feature = "core", reason = "deprecated")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "1.0.0", reason = "No longer needed")]
 #[cfg(stage0)]
 pub trait PhantomFn<A:?Sized,R:?Sized=()> {
 }
 
 /// `PhantomFn` is a deprecated marker trait that is no longer needed.
-#[unstable(feature = "core", reason = "deprecated")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "1.0.0", reason = "No longer needed")]
 #[cfg(not(stage0))]
 pub trait PhantomFn<A:?Sized,R:?Sized=()> {
