@@ -119,6 +119,12 @@ pub struct Process {
     pid: pid_t
 }
 
+pub enum Stdio {
+    Inherit,
+    Piped(AnonPipe),
+    None,
+}
+
 const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
 impl Process {
@@ -128,9 +134,9 @@ impl Process {
     }
 
     pub fn spawn(cfg: &Command,
-                 in_fd: Option<AnonPipe>,
-                 out_fd: Option<AnonPipe>,
-                 err_fd: Option<AnonPipe>) -> io::Result<Process> {
+                 in_fd: Stdio,
+                 out_fd: Stdio,
+                 err_fd: Stdio) -> io::Result<Process> {
         let dirp = cfg.cwd.as_ref().map(|c| c.as_ptr()).unwrap_or(ptr::null());
 
         let (envp, _a, _b) = make_envp(cfg.env.as_ref());
@@ -224,9 +230,9 @@ impl Process {
                                argv: *const *const libc::c_char,
                                envp: *const libc::c_void,
                                dirp: *const libc::c_char,
-                               in_fd: Option<AnonPipe>,
-                               out_fd: Option<AnonPipe>,
-                               err_fd: Option<AnonPipe>) -> ! {
+                               in_fd: Stdio,
+                               out_fd: Stdio,
+                               err_fd: Stdio) -> ! {
         fn fail(output: &mut AnonPipe) -> ! {
             let errno = sys::os::errno() as u32;
             let bytes = [
@@ -244,23 +250,30 @@ impl Process {
             unsafe { libc::_exit(1) }
         }
 
-        // If a stdio file descriptor is set to be ignored, we don't
-        // actually close it, but rather open up /dev/null into that
-        // file descriptor. Otherwise, the first file descriptor opened
-        // up in the child would be numbered as one of the stdio file
-        // descriptors, which is likely to wreak havoc.
-        let setup = |src: Option<AnonPipe>, dst: c_int| {
-            src.map(|p| p.into_fd()).or_else(|| {
-                let mut opts = OpenOptions::new();
-                opts.read(dst == libc::STDIN_FILENO);
-                opts.write(dst != libc::STDIN_FILENO);
-                let devnull = CStr::from_ptr(b"/dev/null\0".as_ptr()
-                                                as *const _);
-                File::open_c(devnull, &opts).ok().map(|f| f.into_fd())
-            }).map(|fd| {
-                fd.unset_cloexec();
-                retry(|| libc::dup2(fd.raw(), dst)) != -1
-            }).unwrap_or(false)
+        let setup = |src: Stdio, dst: c_int| {
+            let fd = match src {
+                Stdio::Inherit => return true,
+                Stdio::Piped(pipe) => pipe.into_fd(),
+
+                // If a stdio file descriptor is set to be ignored, we open up
+                // /dev/null into that file descriptor. Otherwise, the first
+                // file descriptor opened up in the child would be numbered as
+                // one of the stdio file descriptors, which is likely to wreak
+                // havoc.
+                Stdio::None => {
+                    let mut opts = OpenOptions::new();
+                    opts.read(dst == libc::STDIN_FILENO);
+                    opts.write(dst != libc::STDIN_FILENO);
+                    let devnull = CStr::from_ptr(b"/dev/null\0".as_ptr()
+                                                    as *const _);
+                    if let Ok(f) = File::open_c(devnull, &opts) {
+                        f.into_fd()
+                    } else {
+                        return false
+                    }
+                }
+            };
+            retry(|| libc::dup2(fd.raw(), dst)) != -1
         };
 
         if !setup(in_fd, libc::STDIN_FILENO) { fail(&mut output) }

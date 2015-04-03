@@ -19,13 +19,13 @@ use io::prelude::*;
 use ffi::OsStr;
 use fmt;
 use io::{self, Error, ErrorKind};
-use libc;
 use path;
 use sync::mpsc::{channel, Receiver};
 use sys::pipe2::{self, AnonPipe};
 use sys::process2::Command as CommandImp;
 use sys::process2::Process as ProcessImp;
 use sys::process2::ExitStatus as ExitStatusImp;
+use sys::process2::Stdio as StdioImp2;
 use sys_common::{AsInner, AsInnerMut};
 use thread;
 
@@ -229,13 +229,13 @@ impl Command {
 
     fn spawn_inner(&self, default_io: StdioImp) -> io::Result<Child> {
         let (their_stdin, our_stdin) = try!(
-            setup_io(self.stdin.as_ref().unwrap_or(&default_io), 0, true)
+            setup_io(self.stdin.as_ref().unwrap_or(&default_io), true)
         );
         let (their_stdout, our_stdout) = try!(
-            setup_io(self.stdout.as_ref().unwrap_or(&default_io), 1, false)
+            setup_io(self.stdout.as_ref().unwrap_or(&default_io), false)
         );
         let (their_stderr, our_stderr) = try!(
-            setup_io(self.stderr.as_ref().unwrap_or(&default_io), 2, false)
+            setup_io(self.stderr.as_ref().unwrap_or(&default_io), false)
         );
 
         match ProcessImp::spawn(&self.inner, their_stdin, their_stdout, their_stderr) {
@@ -328,23 +328,19 @@ impl AsInnerMut<CommandImp> for Command {
     fn as_inner_mut(&mut self) -> &mut CommandImp { &mut self.inner }
 }
 
-fn setup_io(io: &StdioImp, fd: libc::c_int, readable: bool)
-            -> io::Result<(Option<AnonPipe>, Option<AnonPipe>)>
+fn setup_io(io: &StdioImp, readable: bool)
+            -> io::Result<(StdioImp2, Option<AnonPipe>)>
 {
     use self::StdioImp::*;
     Ok(match *io {
-        Null => {
-            (None, None)
-        }
-        Inherit => {
-            (Some(AnonPipe::from_fd(fd)), None)
-        }
+        Null => (StdioImp2::None, None),
+        Inherit => (StdioImp2::Inherit, None),
         Piped => {
             let (reader, writer) = try!(pipe2::anon_pipe());
             if readable {
-                (Some(reader), Some(writer))
+                (StdioImp2::Piped(reader), Some(writer))
             } else {
-                (Some(writer), Some(reader))
+                (StdioImp2::Piped(writer), Some(reader))
             }
         }
     })
