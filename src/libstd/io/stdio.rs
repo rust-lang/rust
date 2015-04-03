@@ -18,6 +18,7 @@ use io::lazy::Lazy;
 use io::{self, BufReader, LineWriter};
 use sync::{Arc, Mutex, MutexGuard};
 use sys::stdio;
+use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 
 /// Stdout used by print! and println! macros
 thread_local! {
@@ -210,7 +211,7 @@ pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
     //        stdout (tty or not). Note that if this is not line buffered it
     //        should also flush-on-panic or some form of flush-on-abort.
-    inner: Arc<Mutex<LineWriter<StdoutRaw>>>,
+    inner: Arc<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>>,
 }
 
 /// A locked reference to the a `Stdout` handle.
@@ -219,7 +220,7 @@ pub struct Stdout {
 /// method on `Stdout`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StdoutLock<'a> {
-    inner: MutexGuard<'a, LineWriter<StdoutRaw>>,
+    inner: ReentrantMutexGuard<'a, RefCell<LineWriter<StdoutRaw>>>,
 }
 
 /// Constructs a new reference to the standard output of the current process.
@@ -231,13 +232,13 @@ pub struct StdoutLock<'a> {
 /// The returned handle implements the `Write` trait.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stdout() -> Stdout {
-    static INSTANCE: Lazy<Mutex<LineWriter<StdoutRaw>>> = lazy_init!(stdout_init);
+    static INSTANCE: Lazy<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> = lazy_init!(stdout_init);
     return Stdout {
         inner: INSTANCE.get().expect("cannot access stdout during shutdown"),
     };
 
-    fn stdout_init() -> Arc<Mutex<LineWriter<StdoutRaw>>> {
-        Arc::new(Mutex::new(LineWriter::new(stdout_raw())))
+    fn stdout_init() -> Arc<ReentrantMutex<RefCell<LineWriter<StdoutRaw>>>> {
+        Arc::new(ReentrantMutex::new(RefCell::new(LineWriter::new(stdout_raw()))))
     }
 }
 
@@ -264,15 +265,18 @@ impl Write for Stdout {
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
     }
-    // Don't override write_fmt as it's possible to run arbitrary code during a
-    // write_fmt, allowing the possibility of a recursive lock (aka deadlock)
+    fn write_fmt(&mut self, args: fmt::Arguments) -> io::Result<()> {
+        self.lock().write_fmt(args)
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for StdoutLock<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.inner.write(&buf[..cmp::min(buf.len(), OUT_MAX)])
+        self.inner.borrow_mut().write(&buf[..cmp::min(buf.len(), OUT_MAX)])
     }
-    fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.borrow_mut().flush()
+    }
 }
 
 /// A handle to the standard error stream of a process.
@@ -280,7 +284,7 @@ impl<'a> Write for StdoutLock<'a> {
 /// For more information, see `stderr`
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stderr {
-    inner: Arc<Mutex<StderrRaw>>,
+    inner: Arc<ReentrantMutex<RefCell<StderrRaw>>>,
 }
 
 /// A locked reference to the a `Stderr` handle.
@@ -289,7 +293,7 @@ pub struct Stderr {
 /// method on `Stderr`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct StderrLock<'a> {
-    inner: MutexGuard<'a, StderrRaw>,
+    inner: ReentrantMutexGuard<'a, RefCell<StderrRaw>>,
 }
 
 /// Constructs a new reference to the standard error stream of a process.
@@ -300,13 +304,13 @@ pub struct StderrLock<'a> {
 /// The returned handle implements the `Write` trait.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn stderr() -> Stderr {
-    static INSTANCE: Lazy<Mutex<StderrRaw>> = lazy_init!(stderr_init);
+    static INSTANCE: Lazy<ReentrantMutex<RefCell<StderrRaw>>> = lazy_init!(stderr_init);
     return Stderr {
         inner: INSTANCE.get().expect("cannot access stderr during shutdown"),
     };
 
-    fn stderr_init() -> Arc<Mutex<StderrRaw>> {
-        Arc::new(Mutex::new(stderr_raw()))
+    fn stderr_init() -> Arc<ReentrantMutex<RefCell<StderrRaw>>> {
+        Arc::new(ReentrantMutex::new(RefCell::new(stderr_raw())))
     }
 }
 
@@ -333,14 +337,18 @@ impl Write for Stderr {
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.lock().write_all(buf)
     }
-    // Don't override write_fmt for the same reasons as Stdout
+    fn write_fmt(&mut self, args: fmt::Arguments) -> io::Result<()> {
+        self.lock().write_fmt(args)
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Write for StderrLock<'a> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        self.inner.write(&buf[..cmp::min(buf.len(), OUT_MAX)])
+        self.inner.borrow_mut().write(&buf[..cmp::min(buf.len(), OUT_MAX)])
     }
-    fn flush(&mut self) -> io::Result<()> { self.inner.flush() }
+    fn flush(&mut self) -> io::Result<()> {
+        self.inner.borrow_mut().flush()
+    }
 }
 
 /// Resets the task-local stderr handle to the specified writer
