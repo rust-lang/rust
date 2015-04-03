@@ -88,9 +88,8 @@ When `guard` goes out of scope, it will block execution until the thread is
 finished. If we didn't want this behaviour, we could use `thread::spawn()`:
 
 ```
-# #![feature(old_io, std_misc)]
+# #![feature(std_misc)]
 use std::thread;
-use std::old_io::timer;
 use std::time::Duration;
 
 fn main() {
@@ -98,7 +97,7 @@ fn main() {
         println!("Hello from a thread!");
     });
 
-    timer::sleep(Duration::milliseconds(50));
+    thread::sleep_ms(50);
 }
 ```
 
@@ -147,9 +146,8 @@ As an example, here is a Rust program that would have a data race in many
 languages. It will not compile:
 
 ```ignore
-# #![feature(old_io, std_misc)]
+# #![feature(std_misc)]
 use std::thread;
-use std::old_io::timer;
 use std::time::Duration;
 
 fn main() {
@@ -161,7 +159,7 @@ fn main() {
         });
     }
 
-    timer::sleep(Duration::milliseconds(50));
+    thread::sleep_ms(50);
 }
 ```
 
@@ -187,9 +185,8 @@ only one person at a time can mutate what's inside. For that, we can use the
 but for a different reason:
 
 ```ignore
-# #![feature(old_io, std_misc)]
+# #![feature(std_misc)]
 use std::thread;
-use std::old_io::timer;
 use std::time::Duration;
 use std::sync::Mutex;
 
@@ -203,7 +200,7 @@ fn main() {
         });
     }
 
-    timer::sleep(Duration::milliseconds(50));
+    thread::sleep_ms(50);
 }
 ```
 
@@ -232,10 +229,9 @@ guard across thread boundaries, which gives us our error.
 We can use `Arc<T>` to fix this. Here's the working version:
 
 ```
-# #![feature(old_io, std_misc)]
+# #![feature(std_misc)]
 use std::sync::{Arc, Mutex};
 use std::thread;
-use std::old_io::timer;
 use std::time::Duration;
 
 fn main() {
@@ -249,7 +245,7 @@ fn main() {
         });
     }
 
-    timer::sleep(Duration::milliseconds(50));
+    thread::sleep_ms(50);
 }
 ```
 
@@ -258,10 +254,9 @@ handle is then moved into the new thread. Let's examine the body of the
 thread more closely:
 
 ```
-# #![feature(old_io, std_misc)]
+# #![feature(std_misc)]
 # use std::sync::{Arc, Mutex};
 # use std::thread;
-# use std::old_io::timer;
 # use std::time::Duration;
 # fn main() {
 #     let data = Arc::new(Mutex::new(vec![1u32, 2, 3]));
