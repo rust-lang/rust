@@ -11,11 +11,11 @@
 use prelude::v1::*;
 
 use cell::UnsafeCell;
+use fmt;
 use marker;
 use ops::{Deref, DerefMut};
-use sync::poison::{self, TryLockError, TryLockResult, LockResult};
 use sys_common::mutex as sys;
-use fmt;
+use sys_common::poison::{self, TryLockError, TryLockResult, LockResult};
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///
@@ -212,7 +212,7 @@ impl<T> Mutex<T> {
 
     /// Attempts to acquire this lock.
     ///
-    /// If the lock could not be acquired at this time, then `None` is returned.
+    /// If the lock could not be acquired at this time, then `Err` is returned.
     /// Otherwise, an RAII guard is returned. The lock will be unlocked when the
     /// guard is dropped.
     ///

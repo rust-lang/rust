@@ -12,16 +12,24 @@
 
 use libc;
 
-pub use self::os::{PTHREAD_MUTEX_INITIALIZER, pthread_mutex_t};
+pub use self::os::{PTHREAD_MUTEX_INITIALIZER, PTHREAD_MUTEX_RECURSIVE, pthread_mutex_t,
+                   pthread_mutexattr_t};
 pub use self::os::{PTHREAD_COND_INITIALIZER, pthread_cond_t};
 pub use self::os::{PTHREAD_RWLOCK_INITIALIZER, pthread_rwlock_t};
 
 extern {
     // mutexes
+    pub fn pthread_mutex_init(lock: *mut pthread_mutex_t, attr: *const pthread_mutexattr_t)
+                            -> libc::c_int;
     pub fn pthread_mutex_destroy(lock: *mut pthread_mutex_t) -> libc::c_int;
     pub fn pthread_mutex_lock(lock: *mut pthread_mutex_t) -> libc::c_int;
     pub fn pthread_mutex_trylock(lock: *mut pthread_mutex_t) -> libc::c_int;
     pub fn pthread_mutex_unlock(lock: *mut pthread_mutex_t) -> libc::c_int;
+
+    pub fn pthread_mutexattr_init(attr: *mut pthread_mutexattr_t) -> libc::c_int;
+    pub fn pthread_mutexattr_destroy(attr: *mut pthread_mutexattr_t) -> libc::c_int;
+    pub fn pthread_mutexattr_settype(attr: *mut pthread_mutexattr_t, _type: libc::c_int)
+                                    -> libc::c_int;
 
     // cvars
     pub fn pthread_cond_wait(cond: *mut pthread_cond_t,
@@ -52,12 +60,14 @@ mod os {
     use libc;
 
     pub type pthread_mutex_t = *mut libc::c_void;
+    pub type pthread_mutexattr_t = *mut libc::c_void;
     pub type pthread_cond_t = *mut libc::c_void;
     pub type pthread_rwlock_t = *mut libc::c_void;
 
     pub const PTHREAD_MUTEX_INITIALIZER: pthread_mutex_t = 0 as *mut _;
     pub const PTHREAD_COND_INITIALIZER: pthread_cond_t = 0 as *mut _;
     pub const PTHREAD_RWLOCK_INITIALIZER: pthread_rwlock_t = 0 as *mut _;
+    pub const PTHREAD_MUTEX_RECURSIVE: libc::c_int = 2;
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -95,6 +105,12 @@ mod os {
         __opaque: [u8; __PTHREAD_MUTEX_SIZE__],
     }
     #[repr(C)]
+    pub struct pthread_mutexattr_t {
+        __sig: libc::c_long,
+        // note, that this is 16 bytes just to be safe, the actual struct might be smaller.
+        __opaque: [u8; 16],
+    }
+    #[repr(C)]
     pub struct pthread_cond_t {
         __sig: libc::c_long,
         __opaque: [u8; __PTHREAD_COND_SIZE__],
@@ -117,6 +133,8 @@ mod os {
         __sig: _PTHREAD_RWLOCK_SIG_INIT,
         __opaque: [0; __PTHREAD_RWLOCK_SIZE__],
     };
+
+    pub const PTHREAD_MUTEX_RECURSIVE: libc::c_int = 2;
 }
 
 #[cfg(target_os = "linux")]
@@ -161,6 +179,12 @@ mod os {
         size: [u8; __SIZEOF_PTHREAD_MUTEX_T],
     }
     #[repr(C)]
+    pub struct pthread_mutexattr_t {
+        __align: libc::c_longlong,
+        // note, that this is 16 bytes just to be safe, the actual struct might be smaller.
+        size: [u8; 16],
+    }
+    #[repr(C)]
     pub struct pthread_cond_t {
         __align: libc::c_longlong,
         size: [u8; __SIZEOF_PTHREAD_COND_T],
@@ -183,6 +207,7 @@ mod os {
         __align: 0,
         size: [0; __SIZEOF_PTHREAD_RWLOCK_T],
     };
+    pub const PTHREAD_MUTEX_RECURSIVE: libc::c_int = 1;
 }
 #[cfg(target_os = "android")]
 mod os {
@@ -190,6 +215,7 @@ mod os {
 
     #[repr(C)]
     pub struct pthread_mutex_t { value: libc::c_int }
+    pub type pthread_mutexattr_t = libc::c_long;
     #[repr(C)]
     pub struct pthread_cond_t { value: libc::c_int }
     #[repr(C)]
@@ -218,4 +244,5 @@ mod os {
         pendingWriters: 0,
         reserved: [0 as *mut _; 4],
     };
+    pub const PTHREAD_MUTEX_RECURSIVE: libc::c_int = 1;
 }
