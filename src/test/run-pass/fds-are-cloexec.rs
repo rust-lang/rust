@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-windows
+// ignore-android
 
 #![feature(libc)]
 
