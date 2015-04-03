@@ -726,28 +726,28 @@ pub trait Reader {
     ///
     /// The number of bytes returned is system-dependent.
     fn read_le_uint(&mut self) -> IoResult<usize> {
-        self.read_le_uint_n(usize::BYTES as usize).map(|i| i as usize)
+        self.read_le_uint_n(usize::BYTES).map(|i| i as usize)
     }
 
     /// Reads a little-endian integer.
     ///
     /// The number of bytes returned is system-dependent.
     fn read_le_int(&mut self) -> IoResult<isize> {
-        self.read_le_int_n(isize::BYTES as usize).map(|i| i as isize)
+        self.read_le_int_n(isize::BYTES).map(|i| i as isize)
     }
 
     /// Reads a big-endian unsigned integer.
     ///
     /// The number of bytes returned is system-dependent.
     fn read_be_uint(&mut self) -> IoResult<usize> {
-        self.read_be_uint_n(usize::BYTES as usize).map(|i| i as usize)
+        self.read_be_uint_n(usize::BYTES).map(|i| i as usize)
     }
 
     /// Reads a big-endian integer.
     ///
     /// The number of bytes returned is system-dependent.
     fn read_be_int(&mut self) -> IoResult<isize> {
-        self.read_be_int_n(isize::BYTES as usize).map(|i| i as isize)
+        self.read_be_int_n(isize::BYTES).map(|i| i as isize)
     }
 
     /// Reads a big-endian `u64`.
@@ -1110,25 +1110,25 @@ pub trait Writer {
     /// Write a little-endian usize (number of bytes depends on system).
     #[inline]
     fn write_le_uint(&mut self, n: usize) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, usize::BYTES as usize, |v| self.write_all(v))
+        extensions::u64_to_le_bytes(n as u64, usize::BYTES, |v| self.write_all(v))
     }
 
     /// Write a little-endian isize (number of bytes depends on system).
     #[inline]
     fn write_le_int(&mut self, n: isize) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, isize::BYTES as usize, |v| self.write_all(v))
+        extensions::u64_to_le_bytes(n as u64, isize::BYTES, |v| self.write_all(v))
     }
 
     /// Write a big-endian usize (number of bytes depends on system).
     #[inline]
     fn write_be_uint(&mut self, n: usize) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, usize::BYTES as usize, |v| self.write_all(v))
+        extensions::u64_to_be_bytes(n as u64, usize::BYTES, |v| self.write_all(v))
     }
 
     /// Write a big-endian isize (number of bytes depends on system).
     #[inline]
     fn write_be_int(&mut self, n: isize) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, isize::BYTES as usize, |v| self.write_all(v))
+        extensions::u64_to_be_bytes(n as u64, isize::BYTES, |v| self.write_all(v))
     }
 
     /// Write a big-endian u64 (8 bytes).
