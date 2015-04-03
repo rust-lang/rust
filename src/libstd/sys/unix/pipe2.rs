@@ -20,11 +20,10 @@ use libc;
 
 pub struct AnonPipe(FileDesc);
 
-pub unsafe fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
+pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     let mut fds = [0; 2];
-    if libc::pipe(fds.as_mut_ptr()) == 0 {
-        Ok((AnonPipe::from_fd(fds[0]),
-            AnonPipe::from_fd(fds[1])))
+    if unsafe { libc::pipe(fds.as_mut_ptr()) == 0 } {
+        Ok((AnonPipe::from_fd(fds[0]), AnonPipe::from_fd(fds[1])))
     } else {
         Err(io::Error::last_os_error())
     }
@@ -45,7 +44,7 @@ impl AnonPipe {
         self.0.write(buf)
     }
 
-    pub fn raw(&self) -> libc::c_int {
-        self.0.raw()
+    pub fn into_fd(self) -> FileDesc {
+        self.0
     }
 }
