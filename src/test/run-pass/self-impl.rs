@@ -22,6 +22,17 @@ impl Foo {
     fn foo(_x: Self, _y: &Self, _z: Box<Self>) -> Self {
         Foo
     }
+
+    fn baz() {
+        // Test that Self cannot be shadowed.
+        type Foo = i32;
+        // There is no empty method on i32.
+        Self::empty();
+
+        let _: Self = Foo;
+    }
+
+    fn empty() {}
 }
 
 // Test uses when implementing a trait and with a type parameter.
@@ -30,12 +41,18 @@ pub struct Baz<X> {
 }
 
 trait Bar<X> {
+    type Qux;
+
     fn bar(x: Self, y: &Self, z: Box<Self>) -> Self;
     fn dummy(&self, x: X) { }
 }
 
 impl Bar<isize> for Box<Baz<isize>> {
+    type Qux = i32;
+
     fn bar(_x: Self, _y: &Self, _z: Box<Self>) -> Self {
+        let _: Self::Qux = 42;
+        let _: <Self as Bar<isize>>::Qux = 42;
         box Baz { f: 42 }
     }
 }
@@ -43,6 +60,6 @@ impl Bar<isize> for Box<Baz<isize>> {
 fn main() {
     let _: Foo = Foo::foo(Foo, &Foo, box Foo);
     let _: Box<Baz<isize>> = Bar::bar(box Baz { f: 42 },
-                                    &box Baz { f: 42 },
-                                    box box Baz { f: 42 });
+                                      &box Baz { f: 42 },
+                                      box box Baz { f: 42 });
 }

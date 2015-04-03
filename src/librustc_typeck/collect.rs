@@ -547,14 +547,15 @@ fn is_param<'tcx>(tcx: &ty::ctxt<'tcx>,
     if let ast::TyPath(None, _) = ast_ty.node {
         let path_res = *tcx.def_map.borrow().get(&ast_ty.id).unwrap();
         match path_res.base_def {
-            def::DefSelfTy(node_id) =>
-                path_res.depth == 0 && node_id == param_id,
-
-            def::DefTyParam(_, _, def_id, _) =>
-                path_res.depth == 0 && def_id == local_def(param_id),
-
-            _ =>
-                false,
+            def::DefSelfTy(Some(def_id), None) => {
+                path_res.depth == 0 && def_id.node == param_id
+            }
+            def::DefTyParam(_, _, def_id, _) => {
+                path_res.depth == 0 && def_id == local_def(param_id)
+            }
+            _ => {
+                false
+            }
         }
     } else {
         false

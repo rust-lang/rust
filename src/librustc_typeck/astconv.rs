@@ -56,7 +56,7 @@ use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::traits;
 use middle::ty::{self, RegionEscape, Ty};
-use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
+use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope, ExplicitRscope,
              ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope};
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::ppaux::{self, Repr, UserString};
@@ -1041,6 +1041,65 @@ fn report_ambiguous_associated_type(tcx: &ty::ctxt,
               type_str, trait_str, name);
 }
 
+// Search for a bound on a type parameter which includes the associated item
+// given by assoc_name. We assume that ty_path_def is the def for such a type
+// parameter (which might be `Self`). This function will fail if there are no
+// suitable bounds or there is any ambiguity.
+fn find_bound_for_assoc_item<'tcx>(this: &AstConv<'tcx>,
+                                   ty_path_def: def::Def,
+                                   assoc_name: ast::Name,
+                                   span: Span)
+                                   -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
+{
+    let tcx = this.tcx();
+
+    let ty_param_node_id = ty_path_def.local_node_id();
+
+    let bounds = match this.get_type_parameter_bounds(span, ty_param_node_id) {
+        Ok(v) => v,
+        Err(ErrorReported) => {
+            return Err(ErrorReported);
+        }
+    };
+
+    // Ensure the super predicates and stop if we encountered an error.
+    if bounds.iter().any(|b| this.ensure_super_predicates(span, b.def_id()).is_err()) {
+        return Err(ErrorReported);
+    }
+
+    // Check that there is exactly one way to find an associated type with the
+    // correct name.
+    let mut suitable_bounds: Vec<_> =
+        traits::transitive_bounds(tcx, &bounds)
+        .filter(|b| this.trait_defines_associated_type_named(b.def_id(), assoc_name))
+        .collect();
+
+    let ty_param_name = tcx.ty_param_defs.borrow().get(&ty_param_node_id).unwrap().name;
+    if suitable_bounds.len() == 0 {
+        span_err!(tcx.sess, span, E0220,
+                          "associated type `{}` not found for type parameter `{}`",
+                                  token::get_name(assoc_name),
+                                  token::get_name(ty_param_name));
+        return Err(ErrorReported);
+    }
+
+    if suitable_bounds.len() > 1 {
+        span_err!(tcx.sess, span, E0221,
+                          "ambiguous associated type `{}` in bounds of `{}`",
+                                  token::get_name(assoc_name),
+                                  token::get_name(ty_param_name));
+
+        for suitable_bound in &suitable_bounds {
+            span_note!(tcx.sess, span,
+                       "associated type `{}` could derive from `{}`",
+                       token::get_name(ty_param_name),
+                       suitable_bound.user_string(tcx));
+        }
+    }
+
+    Ok(suitable_bounds.pop().unwrap().clone())
+}
+
 // Create a type from a a path to an associated type.
 // For a path A::B::C::D, ty and ty_path_def are the type and def for A::B::C
 // and item_segment is the path segment for D. We return a type and a def for
@@ -1061,11 +1120,44 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
 
     check_path_args(tcx, slice::ref_slice(item_segment), NO_TPS | NO_REGIONS);
 
-    // Check that the path prefix given by ty/ty_path_def is a type parameter/Self.
-    match (&ty.sty, ty_path_def) {
+    // Find the type of the associated item, and the trait where the associated
+    // item is declared.
+    let (ty, trait_did) = match (&ty.sty, ty_path_def) {
+        (_, def::DefSelfTy(Some(trait_did), Some((impl_id, _)))) => {
+            // `Self` in an impl of a trait - we have a concrete self type and a
+            // trait reference.
+            match tcx.map.expect_item(impl_id).node {
+                ast::ItemImpl(_, _, _, Some(ref trait_ref), _, _) => {
+                    let trait_segment = &trait_ref.path.segments.last().unwrap();
+                    let trait_ref = ast_path_to_mono_trait_ref(this,
+                                                               &ExplicitRscope,
+                                                               span,
+                                                               PathParamMode::Explicit,
+                                                               trait_did,
+                                                               Some(ty),
+                                                               trait_segment);
+
+                    let ty = this.projected_ty(span, trait_ref, assoc_name);
+                    (ty, trait_did)
+                }
+                _ => unreachable!()
+            }
+        }
         (&ty::ty_param(_), def::DefTyParam(..)) |
-        (&ty::ty_param(_), def::DefSelfTy(_)) => {}
+        (&ty::ty_param(_), def::DefSelfTy(Some(_), None)) => {
+            // A type parameter or Self, we need to find the associated item from
+            // a bound.
+            let bound = match find_bound_for_assoc_item(this, ty_path_def, assoc_name, span) {
+                Ok(bound) => bound,
+                Err(ErrorReported) => return (tcx.types.err, ty_path_def),
+            };
+            let trait_did = bound.0.def_id;
+            let ty = this.projected_ty_from_poly_trait_ref(span, bound, assoc_name);
+
+            (ty, trait_did)
+        }
         _ => {
+            println!("{:?} {:?}", ty.sty, ty_path_def);
             report_ambiguous_associated_type(tcx,
                                              span,
                                              &ty.user_string(tcx),
@@ -1073,61 +1165,12 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                              &token::get_name(assoc_name));
             return (tcx.types.err, ty_path_def);
         }
-    }
-
-    let ty_param_node_id = ty_path_def.local_node_id();
-    let ty_param_name = tcx.ty_param_defs.borrow().get(&ty_param_node_id).unwrap().name;
-
-    let bounds = match this.get_type_parameter_bounds(span, ty_param_node_id) {
-        Ok(v) => v,
-        Err(ErrorReported) => {
-            return (tcx.types.err, ty_path_def);
-        }
     };
-
-    // Ensure the super predicates and stop if we encountered an error.
-    if bounds.iter().any(|b| this.ensure_super_predicates(span, b.def_id()).is_err()) {
-        return (this.tcx().types.err, ty_path_def);
-    }
-
-    // Check that there is exactly one way to find an associated type with the
-    // correct name.
-    let mut suitable_bounds: Vec<_> =
-        traits::transitive_bounds(tcx, &bounds)
-        .filter(|b| this.trait_defines_associated_type_named(b.def_id(), assoc_name))
-        .collect();
-
-    if suitable_bounds.len() == 0 {
-        span_err!(tcx.sess, span, E0220,
-                          "associated type `{}` not found for type parameter `{}`",
-                                  token::get_name(assoc_name),
-                                  token::get_name(ty_param_name));
-        return (this.tcx().types.err, ty_path_def);
-    }
-
-    if suitable_bounds.len() > 1 {
-        span_err!(tcx.sess, span, E0221,
-                          "ambiguous associated type `{}` in bounds of `{}`",
-                                  token::get_name(assoc_name),
-                                  token::get_name(ty_param_name));
-
-        for suitable_bound in &suitable_bounds {
-            span_note!(this.tcx().sess, span,
-                       "associated type `{}` could derive from `{}`",
-                       token::get_name(ty_param_name),
-                       suitable_bound.user_string(this.tcx()));
-        }
-    }
-
-    let suitable_bound = suitable_bounds.pop().unwrap().clone();
-    let trait_did = suitable_bound.0.def_id;
-
-    let ty = this.projected_ty_from_poly_trait_ref(span, suitable_bound, assoc_name);
 
     let item_did = if trait_did.krate == ast::LOCAL_CRATE {
         // `ty::trait_items` used below requires information generated
         // by type collection, which may be in progress at this point.
-        match this.tcx().map.expect_item(trait_did.node).node {
+        match tcx.map.expect_item(trait_did.node).node {
             ast::ItemTrait(_, _, _, ref trait_items) => {
                 let item = trait_items.iter()
                                       .find(|i| i.ident.name == assoc_name)
@@ -1137,7 +1180,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             _ => unreachable!()
         }
     } else {
-        let trait_items = ty::trait_items(this.tcx(), trait_did);
+        let trait_items = ty::trait_items(tcx, trait_did);
         let item = trait_items.iter().find(|i| i.name() == assoc_name);
         item.expect("missing associated type").def_id()
     };
@@ -1173,14 +1216,13 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
 
     debug!("qpath_to_ty: self_type={}", self_ty.repr(tcx));
 
-    let trait_ref =
-        ast_path_to_mono_trait_ref(this,
-                                   rscope,
-                                   span,
-                                   param_mode,
-                                   trait_def_id,
-                                   Some(self_ty),
-                                   trait_segment);
+    let trait_ref = ast_path_to_mono_trait_ref(this,
+                                               rscope,
+                                               span,
+                                               param_mode,
+                                               trait_def_id,
+                                               Some(self_ty),
+                                               trait_segment);
 
     debug!("qpath_to_ty: trait_ref={}", trait_ref.repr(tcx));
 
@@ -1220,20 +1262,20 @@ pub fn ast_ty_arg_to_ty<'tcx>(this: &AstConv<'tcx>,
     }
 }
 
-// Note that both base_segments and assoc_segments may be empty, although not at
-// the same time.
-pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
-                                        rscope: &RegionScope,
-                                        span: Span,
-                                        param_mode: PathParamMode,
-                                        def: &def::Def,
-                                        opt_self_ty: Option<Ty<'tcx>>,
-                                        base_segments: &[ast::PathSegment],
-                                        assoc_segments: &[ast::PathSegment])
-                                        -> Ty<'tcx> {
+// Check the base def in a PathResolution and convert it to a Ty. If there are
+// associated types in the PathResolution, these will need to be seperately
+// resolved.
+fn base_def_to_ty<'tcx>(this: &AstConv<'tcx>,
+                        rscope: &RegionScope,
+                        span: Span,
+                        param_mode: PathParamMode,
+                        def: &def::Def,
+                        opt_self_ty: Option<Ty<'tcx>>,
+                        base_segments: &[ast::PathSegment])
+                        -> Ty<'tcx> {
     let tcx = this.tcx();
 
-    let base_ty = match *def {
+    match *def {
         def::DefTrait(trait_def_id) => {
             // N.B. this case overlaps somewhat with
             // TyObjectSum, see that fn for details
@@ -1257,18 +1299,28 @@ pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
         }
         def::DefTy(did, _) | def::DefStruct(did) => {
             check_path_args(tcx, base_segments.init(), NO_TPS | NO_REGIONS);
-            ast_path_to_ty(this, rscope, span,
-                           param_mode, did,
+            ast_path_to_ty(this,
+                           rscope,
+                           span,
+                           param_mode,
+                           did,
                            base_segments.last().unwrap())
         }
         def::DefTyParam(space, index, _, name) => {
             check_path_args(tcx, base_segments, NO_TPS | NO_REGIONS);
             ty::mk_param(tcx, space, index, name)
         }
-        def::DefSelfTy(_) => {
-            // N.b.: resolve guarantees that the this type only appears in a
-            // trait, which we rely upon in various places when creating
-            // substs.
+        def::DefSelfTy(_, Some((_, self_ty_id))) => {
+            // Self in impl (we know the concrete type).
+            check_path_args(tcx, base_segments, NO_TPS | NO_REGIONS);
+            if let Some(&ty) = tcx.ast_ty_to_ty_cache.borrow().get(&self_ty_id) {
+                ty
+            } else {
+                tcx.sess.span_bug(span, "self type has not been fully resolved")
+            }
+        }
+        def::DefSelfTy(Some(_), None) => {
+            // Self in trait.
             check_path_args(tcx, base_segments, NO_TPS | NO_REGIONS);
             ty::mk_self_type(tcx)
         }
@@ -1288,6 +1340,9 @@ pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             // FIXME(#22519) This part of the resolution logic should be
             // avoided entirely for that form, once we stop needed a Def
             // for `associated_path_def_to_ty`.
+            // Fixing this will also let use resolve <Self>::Foo the same way we
+            // resolve Self::Foo, at the moment we can't resolve the former because
+            // we don't have the trait information around, which is just sad.
 
             if !base_segments.is_empty() {
                 span_err!(tcx.sess,
@@ -1308,11 +1363,29 @@ pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                       "found value name used as a type: {:?}", *def);
             return this.tcx().types.err;
         }
-    };
+    }
+}
 
-    // If any associated type segments remain, attempt to resolve them.
-    let mut ty = base_ty;
+// Note that both base_segments and assoc_segments may be empty, although not at
+// the same time.
+pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
+                                        rscope: &RegionScope,
+                                        span: Span,
+                                        param_mode: PathParamMode,
+                                        def: &def::Def,
+                                        opt_self_ty: Option<Ty<'tcx>>,
+                                        base_segments: &[ast::PathSegment],
+                                        assoc_segments: &[ast::PathSegment])
+                                        -> Ty<'tcx> {
+    let mut ty = base_def_to_ty(this,
+                                rscope,
+                                span,
+                                param_mode,
+                                def,
+                                opt_self_ty,
+                                base_segments);
     let mut def = *def;
+    // If any associated type segments remain, attempt to resolve them.
     for segment in assoc_segments {
         if ty.sty == ty::ty_err {
             break;
@@ -1996,7 +2069,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                                 check_type_argument_count(tcx, b.trait_ref.path.span,
                                                           parameters.types().len(), 0, 0);
                             }
-                            if parameters.lifetimes().len() > 0{
+                            if parameters.lifetimes().len() > 0 {
                                 report_lifetime_number_error(tcx, b.trait_ref.path.span,
                                                              parameters.lifetimes().len(), 0);
                             }

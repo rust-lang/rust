@@ -457,7 +457,11 @@ impl tr for def::Def {
           def::DefMethod(did, p) => {
             def::DefMethod(did.tr(dcx), p.map(|did2| did2.tr(dcx)))
           }
-          def::DefSelfTy(nid) => { def::DefSelfTy(dcx.tr_id(nid)) }
+          def::DefSelfTy(opt_did, impl_ids) => { def::DefSelfTy(opt_did.map(|did| did.tr(dcx)),
+                                                                impl_ids.map(|(nid1, nid2)| {
+                                                                    (dcx.tr_id(nid1),
+                                                                     dcx.tr_id(nid2))
+                                                                })) }
           def::DefMod(did) => { def::DefMod(did.tr(dcx)) }
           def::DefForeignMod(did) => { def::DefForeignMod(did.tr(dcx)) }
           def::DefStatic(did, m) => { def::DefStatic(did.tr(dcx), m) }
