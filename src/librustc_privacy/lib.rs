@@ -1178,7 +1178,7 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
         let did = match self.tcx.def_map.borrow().get(&path_id).map(|d| d.full_def()) {
             // `int` etc. (None doesn't seem to occur.)
             None | Some(def::DefPrimTy(..)) => return false,
-            Some(def) => def.def_id()
+            Some(def) => def.def_id(),
         };
         // A path can only be private if:
         // it's in this crate...
