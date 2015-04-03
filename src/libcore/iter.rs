@@ -1065,7 +1065,7 @@ pub trait IntoIterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     type Item;
 
-    /// A container for iterating over elements of type Item
+    /// A container for iterating over elements of type `Item`
     #[stable(feature = "rust1", since = "1.0.0")]
     type IntoIter: Iterator<Item=Self::Item>;
 
