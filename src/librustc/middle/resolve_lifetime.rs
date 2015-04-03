@@ -24,6 +24,7 @@ use middle::region;
 use middle::subst;
 use middle::ty;
 use std::fmt;
+use std::mem::replace;
 use syntax::ast;
 use syntax::codemap::Span;
 use syntax::parse::token::special_idents;
@@ -70,6 +71,9 @@ struct LifetimeContext<'a> {
 
     // I'm sorry.
     trait_ref_hack: bool,
+
+    // List of labels in the function/method currently under analysis.
+    labels_in_fn: Vec<(ast::Ident, Span)>,
 }
 
 enum ScopeChain<'a> {
@@ -97,6 +101,7 @@ pub fn krate(sess: &Session, krate: &ast::Crate, def_map: &DefMap) -> NamedRegio
         scope: &ROOT_SCOPE,
         def_map: def_map,
         trait_ref_hack: false,
+        labels_in_fn: vec![],
     }, krate);
     sess.abort_if_errors();
     named_region_map
@@ -104,6 +109,10 @@ pub fn krate(sess: &Session, krate: &ast::Crate, def_map: &DefMap) -> NamedRegio
 
 impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     fn visit_item(&mut self, item: &ast::Item) {
+        // Items save/restore the set of labels. This way innner items
+        // can freely reuse names, be they loop labels or lifetimes.
+        let saved = replace(&mut self.labels_in_fn, vec![]);
+
         // Items always introduce a new root scope
         self.with(RootScope, |_, this| {
             match item.node {
@@ -137,6 +146,9 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                 }
             }
         });
+
+        // Done traversing the item; restore saved set of labels.
+        replace(&mut self.labels_in_fn, saved);
     }
 
     fn visit_fn(&mut self, fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
@@ -144,16 +156,16 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         match fk {
             visit::FkItemFn(_, generics, _, _) => {
                 self.visit_early_late(subst::FnSpace, generics, |this| {
-                    visit::walk_fn(this, fk, fd, b, s)
+                    this.walk_fn(fk, fd, b, s)
                 })
             }
             visit::FkMethod(_, sig) => {
                 self.visit_early_late(subst::FnSpace, &sig.generics, |this| {
-                    visit::walk_fn(this, fk, fd, b, s)
+                    this.walk_fn(fk, fd, b, s)
                 })
             }
             visit::FkFnBlock(..) => {
-                visit::walk_fn(self, fk, fd, b, s)
+                self.walk_fn(fk, fd, b, s)
             }
         }
     }
@@ -190,6 +202,10 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &ast::TraitItem) {
+        // We reset the labels on every trait item, so that different
+        // methods in an impl can reuse label names.
+        let saved = replace(&mut self.labels_in_fn, vec![]);
+
         if let ast::MethodTraitItem(ref sig, None) = trait_item.node {
             self.visit_early_late(
                 subst::FnSpace, &sig.generics,
@@ -197,6 +213,8 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         } else {
             visit::walk_trait_item(self, trait_item);
         }
+
+        replace(&mut self.labels_in_fn, saved);
     }
 
     fn visit_block(&mut self, b: &ast::Block) {
@@ -286,7 +304,159 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     }
 }
 
+enum ShadowKind { Label, Lifetime }
+struct Original { kind: ShadowKind, span: Span }
+struct Shadower { kind: ShadowKind, span: Span }
+
+fn original_label(span: Span) -> Original {
+    Original { kind: ShadowKind::Label, span: span }
+}
+fn shadower_label(span: Span) -> Shadower {
+    Shadower { kind: ShadowKind::Label, span: span }
+}
+fn original_lifetime(l: &ast::Lifetime) -> Original {
+    Original { kind: ShadowKind::Lifetime, span: l.span }
+}
+fn shadower_lifetime(l: &ast::Lifetime) -> Shadower {
+    Shadower { kind: ShadowKind::Lifetime, span: l.span }
+}
+
+impl ShadowKind {
+    fn desc(&self) -> &'static str {
+        match *self {
+            ShadowKind::Label => "label",
+            ShadowKind::Lifetime => "lifetime",
+        }
+    }
+}
+
+fn signal_shadowing_error(
+    sess: &Session, name: ast::Name, orig: Original, shadower: Shadower) {
+    sess.span_err(shadower.span,
+                  &format!("{} name `{}` shadows a \
+                            {} name that is already in scope",
+                           shadower.kind.desc(), name, orig.kind.desc()));
+    sess.span_note(orig.span,
+                   &format!("shadowed {} `{}` declared here",
+                            orig.kind.desc(), name));
+}
+
+// Adds all labels in `b` to `ctxt.labels_in_fn`, signalling an error
+// if one of the label shadows a lifetime or another label.
+fn extract_labels<'v, 'a>(ctxt: &mut LifetimeContext<'a>, b: &'v ast::Block) {
+
+    struct GatherLabels<'a> {
+        sess: &'a Session,
+        scope: Scope<'a>,
+        labels_in_fn: &'a mut Vec<(ast::Ident, Span)>,
+    }
+
+    let mut gather = GatherLabels {
+        sess: ctxt.sess,
+        scope: ctxt.scope,
+        labels_in_fn: &mut ctxt.labels_in_fn,
+    };
+    gather.visit_block(b);
+    return;
+
+    impl<'v, 'a> Visitor<'v> for GatherLabels<'a> {
+        fn visit_expr(&mut self, ex: &'v ast::Expr) {
+            if let Some(label) = expression_label(ex) {
+                for &(prior, prior_span) in &self.labels_in_fn[..] {
+                    // FIXME (#24278): non-hygienic comparision
+                    if label.name == prior.name {
+                        signal_shadowing_error(self.sess,
+                                               label.name,
+                                               original_label(prior_span),
+                                               shadower_label(ex.span));
+                    }
+                }
+
+                check_if_label_shadows_lifetime(self.sess,
+                                                self.scope,
+                                                label,
+                                                ex.span);
+
+                self.labels_in_fn.push((label, ex.span));
+            }
+            visit::walk_expr(self, ex)
+        }
+
+        fn visit_item(&mut self, _: &ast::Item) {
+            // do not recurse into items defined in the block
+        }
+    }
+
+    fn expression_label(ex: &ast::Expr) -> Option<ast::Ident> {
+        match ex.node {
+            ast::ExprWhile(_, _, Some(label))       |
+            ast::ExprWhileLet(_, _, _, Some(label)) |
+            ast::ExprForLoop(_, _, _, Some(label))  |
+            ast::ExprLoop(_, Some(label))          => Some(label),
+            _ => None,
+        }
+    }
+
+    fn check_if_label_shadows_lifetime<'a>(sess: &'a Session,
+                                           mut scope: Scope<'a>,
+                                           label: ast::Ident,
+                                           label_span: Span) {
+        loop {
+            match *scope {
+                BlockScope(_, s) => { scope = s; }
+                RootScope => { return; }
+
+                EarlyScope(_, lifetimes, s) |
+                LateScope(lifetimes, s) => {
+                    for lifetime_def in lifetimes {
+                        // FIXME (#24278): non-hygienic comparision
+                        if label.name == lifetime_def.lifetime.name {
+                            signal_shadowing_error(
+                                sess,
+                                label.name,
+                                original_lifetime(&lifetime_def.lifetime),
+                                shadower_label(label_span));
+                            return;
+                        }
+                    }
+                    scope = s;
+                }
+            }
+        }
+    }
+}
+
 impl<'a> LifetimeContext<'a> {
+    // This is just like visit::walk_fn, except that it extracts the
+    // labels of the function body and swaps them in before visiting
+    // the function body itself.
+    fn walk_fn<'b>(&mut self,
+                   fk: visit::FnKind,
+                   fd: &ast::FnDecl,
+                   fb: &'b ast::Block,
+                   _span: Span) {
+        match fk {
+            visit::FkItemFn(_, generics, _, _) => {
+                visit::walk_fn_decl(self, fd);
+                self.visit_generics(generics);
+            }
+            visit::FkMethod(_, sig) => {
+                visit::walk_fn_decl(self, fd);
+                self.visit_generics(&sig.generics);
+                self.visit_explicit_self(&sig.explicit_self);
+            }
+            visit::FkFnBlock(..) => {
+                visit::walk_fn_decl(self, fd);
+            }
+        }
+
+        // After inpsecting the decl, add all labels from the body to
+        // `self.labels_in_fn`.
+        extract_labels(self, fb);
+
+        self.visit_block(fb);
+    }
+
     fn with<F>(&mut self, wrap_scope: ScopeChain, f: F) where
         F: FnOnce(Scope, &mut LifetimeContext),
     {
@@ -297,6 +467,7 @@ impl<'a> LifetimeContext<'a> {
             scope: &wrap_scope,
             def_map: self.def_map,
             trait_ref_hack: self.trait_ref_hack,
+            labels_in_fn: self.labels_in_fn.clone(),
         };
         debug!("entering scope {:?}", this.scope);
         f(self.scope, &mut this);
@@ -494,6 +665,17 @@ impl<'a> LifetimeContext<'a> {
                                         mut old_scope: Scope,
                                         lifetime: &ast::Lifetime)
     {
+        for &(label, label_span) in &self.labels_in_fn {
+            // FIXME (#24278): non-hygienic comparision
+            if lifetime.name == label.name {
+                signal_shadowing_error(self.sess,
+                                       lifetime.name,
+                                       original_label(label_span),
+                                       shadower_lifetime(&lifetime));
+                return;
+            }
+        }
+
         loop {
             match *old_scope {
                 BlockScope(_, s) => {
@@ -507,15 +689,11 @@ impl<'a> LifetimeContext<'a> {
                 EarlyScope(_, lifetimes, s) |
                 LateScope(lifetimes, s) => {
                     if let Some((_, lifetime_def)) = search_lifetimes(lifetimes, lifetime) {
-                        self.sess.span_err(
-                            lifetime.span,
-                            &format!("lifetime name `{}` shadows another \
-                                     lifetime name that is already in scope",
-                                     token::get_name(lifetime.name)));
-                        self.sess.span_note(
-                            lifetime_def.span,
-                            &format!("shadowed lifetime `{}` declared here",
-                                     token::get_name(lifetime.name)));
+                        signal_shadowing_error(
+                            self.sess,
+                            lifetime.name,
+                            original_lifetime(&lifetime_def),
+                            shadower_lifetime(&lifetime));
                         return;
                     }
 
