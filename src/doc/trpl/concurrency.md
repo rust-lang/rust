@@ -88,7 +88,6 @@ When `guard` goes out of scope, it will block execution until the thread is
 finished. If we didn't want this behaviour, we could use `thread::spawn()`:
 
 ```
-# #![feature(std_misc)]
 use std::thread;
 
 fn main() {
@@ -145,7 +144,6 @@ As an example, here is a Rust program that would have a data race in many
 languages. It will not compile:
 
 ```ignore
-# #![feature(std_misc)]
 use std::thread;
 
 fn main() {
@@ -183,7 +181,6 @@ only one person at a time can mutate what's inside. For that, we can use the
 but for a different reason:
 
 ```ignore
-# #![feature(std_misc)]
 use std::thread;
 use std::sync::Mutex;
 
@@ -226,7 +223,6 @@ guard across thread boundaries, which gives us our error.
 We can use `Arc<T>` to fix this. Here's the working version:
 
 ```
-# #![feature(std_misc)]
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -250,7 +246,6 @@ handle is then moved into the new thread. Let's examine the body of the
 thread more closely:
 
 ```
-# #![feature(std_misc)]
 # use std::sync::{Arc, Mutex};
 # use std::thread;
 # fn main() {
