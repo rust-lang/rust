@@ -32,7 +32,9 @@ pub unsafe fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
 
 impl AnonPipe {
     pub fn from_fd(fd: libc::c_int) -> AnonPipe {
-        AnonPipe(FileDesc::new(fd))
+        let fd = FileDesc::new(fd);
+        fd.set_cloexec();
+        AnonPipe(fd)
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {

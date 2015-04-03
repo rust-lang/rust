@@ -13,6 +13,7 @@ use core::prelude::*;
 use io;
 use libc::{self, c_int, size_t, c_void};
 use mem;
+use sys::c;
 use sys::cvt;
 use sys_common::AsInner;
 
@@ -50,6 +51,20 @@ impl FileDesc {
                         buf.len() as size_t)
         }));
         Ok(ret as usize)
+    }
+
+    pub fn set_cloexec(&self) {
+        unsafe {
+            let ret = c::ioctl(self.fd, c::FIOCLEX);
+            debug_assert_eq!(ret, 0);
+        }
+    }
+
+    pub fn unset_cloexec(&self) {
+        unsafe {
+            let ret = c::ioctl(self.fd, c::FIONCLEX);
+            debug_assert_eq!(ret, 0);
+        }
     }
 }
 
