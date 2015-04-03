@@ -27,9 +27,7 @@ pub trait Decoder<'v> {
     fn read(&mut self) -> Value<'v>;
 }
 
-pub trait Decodable<'v, D: Decoder<'v>>
-    : marker::PhantomFn<(), &'v isize>
-{
+pub trait Decodable<'v, D: Decoder<'v>> {
     fn decode(d: &mut D) -> Self;
 }
 

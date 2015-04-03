@@ -13,8 +13,7 @@
 
 use std::marker;
 
-trait A : marker::PhantomFn<Self> {
-}
+trait A { }
 
 trait B: A {}
 

@@ -11,9 +11,7 @@
 #![crate_type = "rlib"]
 #![feature(fundamental)]
 
-use std::marker::MarkerTrait;
-
-pub trait MyCopy : MarkerTrait { }
+pub trait MyCopy { }
 impl MyCopy for i32 { }
 
 pub struct MyStruct<T>(T);

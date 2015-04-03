@@ -41,7 +41,7 @@ fn g<T>(val: T) {
 fn foo<'a>() {
     let t: S<&'a isize> = S(marker::PhantomData);
     let a = &t as &Gettable<&'a isize>;
-    //~^ ERROR cannot infer
+    //~^ ERROR does not fulfill
 }
 
 fn foo2<'a>() {

@@ -15,11 +15,9 @@
 #![allow(dead_code)]
 #![feature(rustc_attrs)]
 
-use std::marker::PhantomFn;
-
 ///////////////////////////////////////////////////////////////////////////
 
-pub trait TheTrait: PhantomFn<Self, Self> {
+pub trait TheTrait {
     type TheAssocType;
 }
 
