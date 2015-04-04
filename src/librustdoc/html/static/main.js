@@ -713,10 +713,12 @@
                 if (crates[i] == window.currentCrate) {
                     klass += ' current';
                 }
-                var desc = rawSearchIndex[crates[i]].items[0][3];
-                div.append($('<a>', {'href': '../' + crates[i] + '/index.html',
-                                     'title': plainSummaryLine(desc),
-                                     'class': klass}).text(crates[i]));
+                if (rawSearchIndex[crates[i]].items[0]) {
+                    var desc = rawSearchIndex[crates[i]].items[0][3];
+                    div.append($('<a>', {'href': '../' + crates[i] + '/index.html',
+                                         'title': plainSummaryLine(desc),
+                                         'class': klass}).text(crates[i]));
+                }
             }
             sidebar.append(div);
         }
