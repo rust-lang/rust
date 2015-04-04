@@ -669,7 +669,6 @@ probe CFG_LD               ld
 probe CFG_VALGRIND         valgrind
 probe CFG_PERF             perf
 probe CFG_ISCC             iscc
-probe CFG_JAVAC            javac
 probe CFG_ANTLR4           antlr4
 probe CFG_GRUN             grun
 probe CFG_FLEX             flex
@@ -678,6 +677,14 @@ probe CFG_PANDOC           pandoc
 probe CFG_XELATEX          xelatex
 probe CFG_GDB              gdb
 probe CFG_LLDB             lldb
+
+# On MacOS X, invoking `javac` pops up a dialog if the JDK is not
+# installed. Since `javac` is only used if `antlr4` is available,
+# probe for it only in this case.
+if [ ! -z "$CFG_ANTLR4" ]
+then
+   probe CFG_JAVAC            javac
+fi
 
 if [ ! -z "$CFG_GDB" ]
 then
