@@ -197,7 +197,7 @@ impl CircleBuilder {
     }
 
     fn y(&mut self, coordinate: f64) -> &mut CircleBuilder {
-        self.x = coordinate;
+        self.y = coordinate;
         self
     }
 
