@@ -29,6 +29,11 @@ use std::rc::Rc;
 
 struct ParserAnyMacro<'a> {
     parser: RefCell<Parser<'a>>,
+
+    /// Span of the expansion site of the macro this parser is for
+    site_span: Span,
+    /// The ident of the macro we're parsing
+    macro_ident: ast::Ident
 }
 
 impl<'a> ParserAnyMacro<'a> {
@@ -50,6 +55,12 @@ impl<'a> ParserAnyMacro<'a> {
                               token_str);
             let span = parser.span;
             parser.span_err(span, &msg[..]);
+
+            let name = token::get_ident(self.macro_ident);
+            let msg = format!("caused by the macro expansion here; the usage \
+                               of `{}` is likely invalid in this context",
+                               name);
+            parser.span_note(self.site_span, &msg[..]);
         }
     }
 }
@@ -169,6 +180,12 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 // Weird, but useful for X-macros.
                 return box ParserAnyMacro {
                     parser: RefCell::new(p),
+
+                    // Pass along the original expansion site and the name of the macro
+                    // so we can print a useful error message if the parse of the expanded
+                    // macro leaves unparsed tokens.
+                    site_span: sp,
+                    macro_ident: name
                 }
               }
               Failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
