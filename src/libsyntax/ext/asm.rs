@@ -23,17 +23,6 @@ use parse::token::InternedString;
 use parse::token;
 use ptr::P;
 
-macro_rules! panictry {
-    ($e:expr) => ({
-        use std::result::Result::{Ok, Err};
-
-        match $e {
-            Ok(e) => e,
-            Err(e) => panic!(e),
-        }
-    })
-}
-
 enum State {
     Asm,
     Outputs,

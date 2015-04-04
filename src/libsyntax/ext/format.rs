@@ -24,17 +24,6 @@ use ptr::P;
 use std::collections::HashMap;
 use std::iter::repeat;
 
-macro_rules! panictry {
-    ($e:expr) => ({
-        use std::result::Result::{Ok, Err};
-
-        match $e {
-            Ok(e) => e,
-            Err(e) => { panic!(e); }
-        }
-    })
-}
-
 #[derive(PartialEq)]
 enum ArgumentType {
     Known(String),
