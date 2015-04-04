@@ -175,9 +175,6 @@ we called `add_num`, it mutated the underlying value, as we'd expect. We also
 needed to declare `add_num` as `mut` too, because we’re mutating its
 environment.
 
-We also had to declare `add_num` as mut, since we will be modifying its
-environment.
-
 If we change to a `move` closure, it's different:
 
 ```rust
