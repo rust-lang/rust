@@ -812,7 +812,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         }
         self.give_suggestion(same_regions);
         for &(ref trace, terr) in trace_origins {
-            self.report_type_error(trace.clone(), &terr);
+            self.report_and_explain_type_error(trace.clone(), &terr);
         }
     }
 
