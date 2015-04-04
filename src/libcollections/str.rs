@@ -432,7 +432,8 @@ impl str {
 
     /// Replaces all occurrences of one string with another.
     ///
-    /// `replace` takes two arguments, a sub-`&str` to find in `self`, and a second `&str` to
+    /// `replace` takes two arguments, a sub-`&str` to find in `self`, and a
+    /// second `&str` to
     /// replace it with. If the original `&str` isn't found, no change occurs.
     ///
     /// # Examples
@@ -584,14 +585,16 @@ impl str {
     /// An iterator over substrings of `self`, separated by characters
     /// matched by a pattern.
     ///
-    /// The pattern can be a simple `&str`, `char`, or a closure that determines
-    /// the split.
-    /// Additional libraries might provide more complex patterns like regular expressions.
+    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// determines the split.
+    /// Additional libraries might provide more complex patterns like
+    /// regular expressions.
     ///
     /// # Iterator behavior
     ///
-    /// The returned iterator will be double ended if the pattern allows a reverse search
-    /// and forward/reverse search yields the same elements. This is true for, eg, `char` but not
+    /// The returned iterator will be double ended if the pattern allows a
+    /// reverse search and forward/reverse search yields the same elements.
+    /// This is true for, eg, `char` but not
     /// for `&str`.
     ///
     /// If the pattern allows a reverse search but its results might differ
@@ -615,13 +618,13 @@ impl str {
     /// assert_eq!(v, ["lion", "tiger", "leopard"]);
     /// ```
     ///
-    /// More complex patterns with a lambda:
+    /// More complex patterns with closures:
     ///
     /// ```
     /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_numeric()).collect();
     /// assert_eq!(v, ["abc", "def", "ghi"]);
     ///
-    /// let v: Vec<&str> = "lionXtigerXleopard".split(|c: char| c.is_uppercase()).collect();
+    /// let v: Vec<&str> = "lionXtigerXleopard".split(char::is_uppercase).collect();
     /// assert_eq!(v, ["lion", "tiger", "leopard"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -632,14 +635,17 @@ impl str {
     /// An iterator over substrings of `self`, separated by characters
     /// matched by a pattern and yielded in reverse order.
     ///
-    /// The pattern can be a simple `&str`, `char`, or a closure that determines
-    /// the split.
-    /// Additional libraries might provide more complex patterns like regular expressions.
+    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// determines the split.
+    /// Additional libraries might provide more complex patterns like
+    /// regular expressions.
     ///
     /// # Iterator behavior
     ///
-    /// The returned iterator requires that the pattern supports a reverse search,
-    /// and it will be double ended if a forward/reverse search yields the same elements.
+    /// The returned iterator requires that the pattern supports a
+    /// reverse search,
+    /// and it will be double ended if a forward/reverse search yields
+    /// the same elements.
     ///
     /// For iterating from the front, `split()` can be used.
     ///
@@ -661,13 +667,13 @@ impl str {
     /// assert_eq!(v, ["leopard", "tiger", "lion"]);
     /// ```
     ///
-    /// More complex patterns with a lambda:
+    /// More complex patterns with closures:
     ///
     /// ```rust
     /// let v: Vec<&str> = "abc1def2ghi".rsplit(|c: char| c.is_numeric()).collect();
     /// assert_eq!(v, ["ghi", "def", "abc"]);
     ///
-    /// let v: Vec<&str> = "lionXtigerXleopard".rsplit(|c: char| c.is_uppercase()).collect();
+    /// let v: Vec<&str> = "lionXtigerXleopard".rsplit(char::is_uppercase).collect();
     /// assert_eq!(v, ["leopard", "tiger", "lion"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -680,20 +686,23 @@ impl str {
     /// An iterator over substrings of `self`, separated by characters
     /// matched by a pattern.
     ///
-    /// The pattern can be a simple `&str`, `char`, or a closure that determines
-    /// the split.
-    /// Additional libraries might provide more complex patterns like regular expressions.
+    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// determines the split.
+    /// Additional libraries might provide more complex patterns
+    /// like regular expressions.
     ///
-    /// Equivalent to `split`, except that the trailing substring is skipped if empty.
+    /// Equivalent to `split`, except that the trailing substring
+    /// is skipped if empty.
     ///
-    /// This method can be used for string data that is _terminated_, rather than
-    /// _seperated_ by some string.
+    /// This method can be used for string data that is _terminated_,
+    /// rather than _seperated_ by a pattern.
     ///
     /// # Iterator behavior
     ///
-    /// The returned iterator will be double ended if the pattern allows a reverse search
-    /// and forward/reverse search yields the same elements. This is true for, eg, `char` but not
-    /// for `&str`.
+    /// The returned iterator will be double ended if the pattern allows a
+    /// reverse search
+    /// and forward/reverse search yields the same elements. This is true
+    /// for, eg, `char` but not for `&str`.
     ///
     /// If the pattern allows a reverse search but its results might differ
     /// from a forward search, `rsplit_terminator()` can be used.
@@ -710,7 +719,7 @@ impl str {
     /// assert_eq!(v, ["A", "", "B", ""]);
     /// ```
     ///
-    /// More complex patterns with a lambda:
+    /// More complex patterns with closures:
     ///
     /// ```
     /// let v: Vec<&str> = "abc1def2ghi3".split_terminator(|c: char| c.is_numeric()).collect();
@@ -724,19 +733,22 @@ impl str {
     /// An iterator over substrings of `self`, separated by characters
     /// matched by a pattern and yielded in reverse order.
     ///
-    /// The pattern can be a simple `&str`, `char`, or a closure that determines
-    /// the split.
-    /// Additional libraries might provide more complex patterns like regular expressions.
+    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// determines the split.
+    /// Additional libraries might provide more complex patterns like
+    /// regular expressions.
     ///
-    /// Equivalent to `split`, except that the trailing substring is skipped if empty.
+    /// Equivalent to `split`, except that the trailing substring is
+    /// skipped if empty.
     ///
-    /// This method can be used for string data that is _terminated_, rather than
-    /// _seperated_ by some string.
+    /// This method can be used for string data that is _terminated_,
+    /// rather than _seperated_ by a pattern.
     ///
     /// # Iterator behavior
     ///
-    /// The returned iterator requires that the pattern supports a reverse search,
-    /// and it will be double ended if a forward/reverse search yields the same elements.
+    /// The returned iterator requires that the pattern supports a
+    /// reverse search, and it will be double ended if a forward/reverse
+    /// search yields the same elements.
     ///
     /// For iterating from the front, `split_terminator()` can be used.
     ///
@@ -752,7 +764,7 @@ impl str {
     /// assert_eq!(v, ["", "B", "", "A"]);
     /// ```
     ///
-    /// More complex patterns with a lambda:
+    /// More complex patterns with closures:
     ///
     /// ```
     /// let v: Vec<&str> = "abc1def2ghi3".rsplit_terminator(|c: char| c.is_numeric()).collect();
@@ -771,13 +783,15 @@ impl str {
     ///
     /// The last element returned, if any, will contain the remainder of the
     /// string.
-    /// The pattern can be a simple `&str`, `char`, or a closure that determines
-    /// the split.
-    /// Additional libraries might provide more complex patterns like regular expressions.
+    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// determines the split.
+    /// Additional libraries might provide more complex patterns like
+    /// regular expressions.
     ///
     /// # Iterator behavior
     ///
-    /// The returned iterator will not be double ended, because it is not efficient to support.
+    /// The returned iterator will not be double ended, because it is
+    /// not efficient to support.
     ///
     /// If the pattern allows a reverse search, `rsplitn()` can be used.
     ///
@@ -799,7 +813,7 @@ impl str {
     /// assert_eq!(v, [""]);
     /// ```
     ///
-    /// More complex patterns with a lambda:
+    /// More complex patterns with closures:
     ///
     /// ```
     /// let v: Vec<&str> = "abc1def2ghi".splitn(2, |c: char| c.is_numeric()).collect();
@@ -817,13 +831,15 @@ impl str {
     /// The last element returned, if any, will contain the remainder of the
     /// string.
     ///
-    /// The pattern can be a simple `&str`, `char`, or a closure that determines
-    /// the split.
-    /// Additional libraries might provide more complex patterns like regular expressions.
+    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// determines the split.
+    /// Additional libraries might provide more complex patterns like
+    /// regular expressions.
     ///
     /// # Iterator behavior
     ///
-    /// The returned iterator will not be double ended, because it is not efficient to support.
+    /// The returned iterator will not be double ended, because it is not
+    /// efficient to support.
     ///
     /// `splitn()` can be used for splitting from the front.
     ///
@@ -842,7 +858,7 @@ impl str {
     /// assert_eq!(v, ["leopard", "lion::tiger"]);
     /// ```
     ///
-    /// More complex patterns with a lambda:
+    /// More complex patterns with closures:
     ///
     /// ```
     /// let v: Vec<&str> = "abc1def2ghi".rsplitn(2, |c: char| c.is_numeric()).collect();
@@ -857,14 +873,17 @@ impl str {
 
     /// An iterator over the matches of a pattern within `self`.
     ///
-    /// The pattern can be a simple `&str`, `char`, or a closure that determines
-    /// the split.
-    /// Additional libraries might provide more complex patterns like regular expressions.
+    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// determines the split.
+    /// Additional libraries might provide more complex patterns like
+    /// regular expressions.
     ///
     /// # Iterator behavior
     ///
-    /// The returned iterator will be double ended if the pattern allows a reverse search
-    /// and forward/reverse search yields the same elements. This is true for, eg, `char` but not
+    /// The returned iterator will be double ended if the pattern allows
+    /// a reverse search
+    /// and forward/reverse search yields the same elements. This is true
+    /// for, eg, `char` but not
     /// for `&str`.
     ///
     /// If the pattern allows a reverse search but its results might differ
@@ -886,16 +905,20 @@ impl str {
         core_str::StrExt::matches(&self[..], pat)
     }
 
-    /// An iterator over the matches of a pattern within `self`, yielded in reverse order.
+    /// An iterator over the matches of a pattern within `self`, yielded in
+    /// reverse order.
     ///
-    /// The pattern can be a simple `&str`, `char`, or a closure that determines
-    /// the split.
-    /// Additional libraries might provide more complex patterns like regular expressions.
+    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// determines the split.
+    /// Additional libraries might provide more complex patterns like
+    /// regular expressions.
     ///
     /// # Iterator behavior
     ///
-    /// The returned iterator requires that the pattern supports a reverse search,
-    /// and it will be double ended if a forward/reverse search yields the same elements.
+    /// The returned iterator requires that the pattern supports a
+    /// reverse search,
+    /// and it will be double ended if a forward/reverse search yields
+    /// the same elements.
     ///
     /// For iterating from the front, `matches()` can be used.
     ///
@@ -917,20 +940,25 @@ impl str {
         core_str::StrExt::rmatches(&self[..], pat)
     }
 
-    /// An iterator over the start and end indices of the disjoint matches of a pattern within
-    /// `self`.
+    /// An iterator over the start and end indices of the disjoint matches
+    /// of a pattern within `self`.
     ///
-    /// For matches of `pat` within `self` that overlap, only the indices corresponding to the first
+    /// For matches of `pat` within `self` that overlap, only the indices
+    /// corresponding to the first
     /// match are returned.
     ///
-    /// The pattern can be a simple `&str`, `char`, or a closure that determines
+    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// determines
     /// the split.
-    /// Additional libraries might provide more complex patterns like regular expressions.
+    /// Additional libraries might provide more complex patterns like
+    /// regular expressions.
     ///
     /// # Iterator behavior
     ///
-    /// The returned iterator will be double ended if the pattern allows a reverse search
-    /// and forward/reverse search yields the same elements. This is true for, eg, `char` but not
+    /// The returned iterator will be double ended if the pattern allows a
+    /// reverse search
+    /// and forward/reverse search yields the same elements. This is true for,
+    /// eg, `char` but not
     /// for `&str`.
     ///
     /// If the pattern allows a reverse search but its results might differ
@@ -941,10 +969,10 @@ impl str {
     /// ```
     /// # #![feature(collections)]
     /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".match_indices("abc").collect();
-    /// assert_eq!(v, [(0,3), (6,9), (12,15)]);
+    /// assert_eq!(v, [(0, 3), (6, 9), (12, 15)]);
     ///
     /// let v: Vec<(usize, usize)> = "1abcabc2".match_indices("abc").collect();
-    /// assert_eq!(v, [(1,4), (4,7)]);
+    /// assert_eq!(v, [(1, 4), (4, 7)]);
     ///
     /// let v: Vec<(usize, usize)> = "ababa".match_indices("aba").collect();
     /// assert_eq!(v, [(0, 3)]); // only the first `aba`
@@ -957,20 +985,26 @@ impl str {
         core_str::StrExt::match_indices(&self[..], pat)
     }
 
-    /// An iterator over the start and end indices of the disjoint matches of a pattern within
+    /// An iterator over the start and end indices of the disjoint matches of
+    /// a pattern within
     /// `self`, yielded in reverse order.
     ///
-    /// For matches of `pat` within `self` that overlap, only the indices corresponding to the last
+    /// For matches of `pat` within `self` that overlap, only the indices
+    /// corresponding to the last
     /// match are returned.
     ///
-    /// The pattern can be a simple `&str`, `char`, or a closure that determines
+    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// determines
     /// the split.
-    /// Additional libraries might provide more complex patterns like regular expressions.
+    /// Additional libraries might provide more complex patterns like
+    /// regular expressions.
     ///
     /// # Iterator behavior
     ///
-    /// The returned iterator requires that the pattern supports a reverse search,
-    /// and it will be double ended if a forward/reverse search yields the same elements.
+    /// The returned iterator requires that the pattern supports a
+    /// reverse search,
+    /// and it will be double ended if a forward/reverse search yields
+    /// the same elements.
     ///
     /// For iterating from the front, `match_indices()` can be used.
     ///
@@ -979,10 +1013,10 @@ impl str {
     /// ```
     /// # #![feature(collections)]
     /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".rmatch_indices("abc").collect();
-    /// assert_eq!(v, [(12,15), (6,9), (0,3)]);
+    /// assert_eq!(v, [(12, 15), (6, 9), (0, 3)]);
     ///
     /// let v: Vec<(usize, usize)> = "1abcabc2".rmatch_indices("abc").collect();
-    /// assert_eq!(v, [(4,7), (1,4)]);
+    /// assert_eq!(v, [(4, 7), (1, 4)]);
     ///
     /// let v: Vec<(usize, usize)> = "ababa".rmatch_indices("aba").collect();
     /// assert_eq!(v, [(2, 5)]); // only the last `aba`
@@ -1023,7 +1057,8 @@ impl str {
         core_str::StrExt::lines(&self[..])
     }
 
-    /// An iterator over the lines of a string, separated by either `\n` or `\r\n`.
+    /// An iterator over the lines of a string, separated by either
+    /// `\n` or `\r\n`.
     ///
     /// As with `.lines()`, this does not include an empty trailing line.
     ///
@@ -1085,7 +1120,8 @@ impl str {
     ///
     /// # Unsafety
     ///
-    /// Caller must check both UTF-8 character boundaries and the boundaries of the entire slice as
+    /// Caller must check both UTF-8 character boundaries and the boundaries
+    /// of the entire slice as
     /// well.
     ///
     /// # Examples
@@ -1128,13 +1164,15 @@ impl str {
         core_str::StrExt::ends_with(&self[..], pat)
     }
 
-    /// Returns a string with all pre- and suffixes that match a pattern repeatedly removed.
+    /// Returns a string with all pre- and suffixes that match a pattern
+    /// repeatedly removed.
     ///
-    /// The pattern can be a simple `&str`, or a closure that determines the split.
+    /// The pattern can be a simple `char`, or a closure that determines
+    /// the split.
     ///
     /// # Examples
     ///
-    /// Simple `&str` patterns:
+    /// Simple patterns:
     ///
     /// ```
     /// assert_eq!("11foo1bar11".trim_matches('1'), "foo1bar");
@@ -1143,7 +1181,7 @@ impl str {
     /// assert_eq!("12foo1bar12".trim_matches(x), "foo1bar");
     /// ```
     ///
-    /// More complex patterns with a lambda:
+    /// More complex patterns with closures:
     ///
     /// ```
     /// assert_eq!("123foo1bar123".trim_matches(|c: char| c.is_numeric()), "foo1bar");
@@ -1155,13 +1193,15 @@ impl str {
         core_str::StrExt::trim_matches(&self[..], pat)
     }
 
-    /// Returns a string with all prefixes that match a pattern repeatedly removed.
+    /// Returns a string with all prefixes that match a pattern
+    /// repeatedly removed.
     ///
-    /// The pattern can be a simple `&str`, or a closure that determines the split.
+    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// determines the split.
     ///
     /// # Examples
     ///
-    /// Simple `&str` patterns:
+    /// Simple patterns:
     ///
     /// ```
     /// assert_eq!("11foo1bar11".trim_left_matches('1'), "foo1bar11");
@@ -1170,7 +1210,7 @@ impl str {
     /// assert_eq!("12foo1bar12".trim_left_matches(x), "foo1bar12");
     /// ```
     ///
-    /// More complex patterns with a lambda:
+    /// More complex patterns with closures:
     ///
     /// ```
     /// assert_eq!("123foo1bar123".trim_left_matches(|c: char| c.is_numeric()), "foo1bar123");
@@ -1180,13 +1220,15 @@ impl str {
         core_str::StrExt::trim_left_matches(&self[..], pat)
     }
 
-    /// Returns a string with all suffixes that match a pattern repeatedly removed.
+    /// Returns a string with all suffixes that match a pattern
+    /// repeatedly removed.
     ///
-    /// The pattern can be a simple `&str`, or a closure that determines the split.
+    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// determines the split.
     ///
     /// # Examples
     ///
-    /// Simple `&str` patterns:
+    /// Simple patterns:
     ///
     /// ```
     /// assert_eq!("11foo1bar11".trim_right_matches('1'), "11foo1bar");
@@ -1194,7 +1236,7 @@ impl str {
     /// assert_eq!("12foo1bar12".trim_right_matches(x), "12foo1bar");
     /// ```
     ///
-    /// More complex patterns with a lambda:
+    /// More complex patterns with closures:
     ///
     /// ```
     /// assert_eq!("123foo1bar123".trim_right_matches(|c: char| c.is_numeric()), "123foo1bar");
@@ -1206,9 +1248,11 @@ impl str {
         core_str::StrExt::trim_right_matches(&self[..], pat)
     }
 
-    /// Check that `index`-th byte lies at the start and/or end of a UTF-8 code point sequence.
+    /// Check that `index`-th byte lies at the start and/or end of a
+    /// UTF-8 code point sequence.
     ///
-    /// The start and end of the string (when `index == self.len()`) are considered to be
+    /// The start and end of the string (when `index == self.len()`) are
+    /// considered to be
     /// boundaries.
     ///
     /// # Panics
@@ -1251,7 +1295,8 @@ impl str {
     ///
     /// # Examples
     ///
-    /// This example manually iterates through the characters of a string; this should normally be
+    /// This example manually iterates through the characters of a string;
+    /// this should normally be
     /// done by `.chars()` or `.char_indices()`.
     ///
     /// ```
@@ -1302,7 +1347,8 @@ impl str {
     ///
     /// # Examples
     ///
-    /// This example manually iterates through the characters of a string; this should normally be
+    /// This example manually iterates through the characters of a string;
+    /// this should normally be
     /// done by `.chars().rev()` or `.char_indices()`.
     ///
     /// ```
@@ -1365,7 +1411,8 @@ impl str {
         core_str::StrExt::char_at(&self[..], i)
     }
 
-    /// Given a byte position, return the `char` at that position, counting from the end.
+    /// Given a byte position, return the `char` at that position, counting
+    /// from the end.
     ///
     /// # Panics
     ///
@@ -1400,31 +1447,36 @@ impl str {
         core_str::StrExt::as_bytes(&self[..])
     }
 
-    /// Returns the byte index of the first character of `self` that matches the pattern, if it
+    /// Returns the byte index of the first character of `self` that matches
+    /// the pattern, if it
     /// exists.
     ///
     /// Returns `None` if it doesn't exist.
     ///
-    /// The pattern can be a simple `&str`, or a closure that determines the split.
+    /// The pattern can be a simple `&str`, `char`, or a closure that
+    /// determines the
+    /// split.
     ///
     /// # Examples
     ///
-    /// Simple `&str` patterns:
+    /// Simple patterns:
     ///
     /// ```
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.find('L'), Some(0));
     /// assert_eq!(s.find('é'), Some(14));
+    /// assert_eq!(s.find("Léopard"), Some(13));
     ///
     /// ```
     ///
-    /// More complex patterns with a lambda:
+    /// More complex patterns with closures:
     ///
     /// ```
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.find(|c: char| c.is_whitespace()), Some(5));
+    /// assert_eq!(s.find(char::is_lowercase), Some(1));
     /// ```
     ///
     /// Not finding the pattern:
@@ -1440,16 +1492,18 @@ impl str {
         core_str::StrExt::find(&self[..], pat)
     }
 
-    /// Returns the byte index of the last character of `self` that matches the pattern, if it
+    /// Returns the byte index of the last character of `self` that
+    /// matches the pattern, if it
     /// exists.
     ///
     /// Returns `None` if it doesn't exist.
     ///
-    /// The pattern can be a simple `&str`, or a closure that determines the split.
+    /// The pattern can be a simple `&str`, `char`,
+    /// or a closure that determines the split.
     ///
     /// # Examples
     ///
-    /// Simple `&str` patterns:
+    /// Simple patterns:
     ///
     /// ```
     /// let s = "Löwe 老虎 Léopard";
@@ -1458,12 +1512,13 @@ impl str {
     /// assert_eq!(s.rfind('é'), Some(14));
     /// ```
     ///
-    /// More complex patterns with a lambda:
+    /// More complex patterns with closures:
     ///
     /// ```
     /// let s = "Löwe 老虎 Léopard";
     ///
     /// assert_eq!(s.rfind(|c: char| c.is_whitespace()), Some(12));
+    /// assert_eq!(s.rfind(char::is_lowercase), Some(20));
     /// ```
     ///
     /// Not finding the pattern:
@@ -1483,7 +1538,8 @@ impl str {
 
     /// Retrieves the first character from a `&str` and returns it.
     ///
-    /// This does not allocate a new string; instead, it returns a slice that points one character
+    /// This does not allocate a new string; instead, it returns a slice that
+    /// points one character
     /// beyond the character that was shifted.
     ///
     /// If the slice does not contain any characters, None is returned instead.
@@ -1511,7 +1567,8 @@ impl str {
         core_str::StrExt::slice_shift_char(&self[..])
     }
 
-    /// Returns the byte offset of an inner slice relative to an enclosing outer slice.
+    /// Returns the byte offset of an inner slice relative to an enclosing
+    /// outer slice.
     ///
     /// # Panics
     ///
@@ -1536,7 +1593,8 @@ impl str {
 
     /// Return an unsafe pointer to the `&str`'s buffer.
     ///
-    /// The caller must ensure that the string outlives this pointer, and that it is not
+    /// The caller must ensure that the string outlives this pointer, and
+    /// that it is not
     /// reallocated (e.g. by pushing to the string).
     ///
     /// # Examples
@@ -1612,7 +1670,8 @@ impl str {
     ///
     /// [graphemes]: http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries
     ///
-    /// If `is_extended` is true, the iterator is over the *extended grapheme clusters*;
+    /// If `is_extended` is true, the iterator is over the
+    /// *extended grapheme clusters*;
     /// otherwise, the iterator is over the *legacy grapheme clusters*.
     /// [UAX#29](http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries)
     /// recommends extended grapheme cluster boundaries for general processing.
@@ -1637,7 +1696,8 @@ impl str {
         UnicodeStr::graphemes(&self[..], is_extended)
     }
 
-    /// Returns an iterator over the grapheme clusters of `self` and their byte offsets. See
+    /// Returns an iterator over the grapheme clusters of `self` and their
+    /// byte offsets. See
     /// `graphemes()` for more information.
     ///
     /// # Examples
@@ -1657,7 +1717,8 @@ impl str {
 
     /// An iterator over the non-empty words of `self`.
     ///
-    /// A 'word' is a subsequence separated by any sequence of whitespace. Sequences of whitespace
+    /// A 'word' is a subsequence separated by any sequence of whitespace.
+    /// Sequences of whitespace
     /// are collapsed, so empty "words" are not included.
     ///
     /// # Examples
@@ -1679,11 +1740,15 @@ impl str {
     ///
     /// Control characters have zero width.
     ///
-    /// `is_cjk` determines behavior for characters in the Ambiguous category: if `is_cjk` is
-    /// `true`, these are 2 columns wide; otherwise, they are 1. In CJK locales, `is_cjk` should be
+    /// `is_cjk` determines behavior for characters in the Ambiguous category:
+    /// if `is_cjk` is
+    /// `true`, these are 2 columns wide; otherwise, they are 1.
+    /// In CJK locales, `is_cjk` should be
     /// `true`, else it should be `false`.
-    /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/) recommends that these
-    /// characters be treated as 1 column (i.e., `is_cjk = false`) if the locale is unknown.
+    /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
+    /// recommends that these
+    /// characters be treated as 1 column (i.e., `is_cjk = false`) if the
+    /// locale is unknown.
     #[unstable(feature = "unicode",
                reason = "this functionality may only be provided by libunicode")]
     pub fn width(&self, is_cjk: bool) -> usize {
