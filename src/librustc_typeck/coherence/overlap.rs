@@ -21,14 +21,14 @@ use syntax::ast_util;
 use syntax::visit;
 use syntax::codemap::Span;
 use util::nodemap::DefIdMap;
-use util::ppaux::Repr;
+use util::ppaux::{Repr, UserString};
 
 pub fn check(tcx: &ty::ctxt) {
     let mut overlap = OverlapChecker { tcx: tcx, default_impls: DefIdMap() };
     overlap.check_for_overlapping_impls();
 
-    // this secondary walk specifically checks for impls of defaulted
-    // traits, for which additional overlap rules exist
+    // this secondary walk specifically checks for some other cases,
+    // like defaulted traits, for which additional overlap rules exist
     visit::walk_crate(&mut overlap, tcx.map.krate());
 }
 
@@ -153,7 +153,41 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                     None => { }
                 }
             }
-            _ => {}
+            ast::ItemImpl(_, _, _, Some(_), ref self_ty, _) => {
+                let impl_def_id = ast_util::local_def(item.id);
+                let trait_ref = ty::impl_trait_ref(self.tcx, impl_def_id).unwrap();
+                let trait_def_id = trait_ref.def_id;
+                match trait_ref.self_ty().sty {
+                    ty::ty_trait(ref data) => {
+                        // This is something like impl Trait1 for Trait2. Illegal
+                        // if Trait1 is a supertrait of Trait2 or Trait2 is not object safe.
+
+                        if !traits::is_object_safe(self.tcx, data.principal_def_id()) {
+                            // this just means the self-ty is illegal,
+                            // and probably this error should have
+                            // been reported elsewhere, but I'm trying to avoid
+                            // giving a misleading message below.
+                            span_err!(self.tcx.sess, self_ty.span, E0372,
+                                      "the trait `{}` cannot be made into an object",
+                                      ty::item_path_str(self.tcx, data.principal_def_id()));
+                        } else {
+                            let mut supertrait_def_ids =
+                                traits::supertrait_def_ids(self.tcx, data.principal_def_id());
+                            if supertrait_def_ids.any(|d| d == trait_def_id) {
+                                span_err!(self.tcx.sess, item.span, E0371,
+                                          "the object type `{}` automatically \
+                                           implements the trait `{}`",
+                                          trait_ref.self_ty().user_string(self.tcx),
+                                          ty::item_path_str(self.tcx, trait_def_id));
+                            }
+                        }
+                    }
+                    _ => { }
+                }
+            }
+            _ => {
+            }
         }
+        visit::walk_item(self, item);
     }
 }
