@@ -468,6 +468,8 @@
                     if ($active.length) {
                         document.location.href = $active.find('a').prop('href');
                     }
+                } else {
+                  $active.removeClass('highlighted');
                 }
             });
         }
