@@ -75,7 +75,7 @@
 //! let good_result: Result<bool, i32> = good_result.and_then(|i| Ok(i == 11));
 //!
 //! // Use `or_else` to handle the error.
-//! let bad_result: Result<i32, i32> = bad_result.or_else(|i| Ok(11));
+//! let bad_result: Result<i32, i32> = bad_result.or_else(|_| Ok(11));
 //!
 //! // Consume the result and return the contents with `unwrap`.
 //! let final_awesome_result = good_result.unwrap();
