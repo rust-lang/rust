@@ -1378,6 +1378,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // #18453.
                 true
             }
+            (&ImplCandidate(..), &ObjectCandidate(..)) => {
+                // This means that we are matching an object of type
+                // `Trait` against the trait `Trait`. In that case, we
+                // always prefer to use the object vtable over the
+                // impl. Like a where clause, the impl may or may not
+                // be the one that is used by the object (because the
+                // impl may have additional where-clauses that the
+                // object's source might not meet) -- if it is, using
+                // the vtable is fine. If it is not, using the vtable
+                // is good. A win win!
+                true
+            }
             (&DefaultImplCandidate(_), _) => {
                 // Prefer other candidates over default implementations.
                 self.tcx().sess.bug(
