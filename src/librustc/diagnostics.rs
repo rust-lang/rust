@@ -10,45 +10,52 @@
 
 #![allow(non_snake_case)]
 
+// Error messages for EXXXX errors.
+// Each message should start and end with a new line, and be wrapped to 80 characters.
+// In vim you can `:set tw=80` and use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
 register_long_diagnostics! {
-    E0001: r##"
-    This error suggests that the expression arm corresponding to the noted pattern
-    will never be reached as for all possible values of the expression being matched,
-    one of the preceding patterns will match.
 
-    This means that perhaps some of the preceding patterns are too general, this
-    one is too specific or the ordering is incorrect.
+E0001: r##"
+This error suggests that the expression arm corresponding to the noted pattern
+will never be reached as for all possible values of the expression being
+matched, one of the preceding patterns will match.
+
+This means that perhaps some of the preceding patterns are too general, this one
+is too specific or the ordering is incorrect.
 "##,
 
-    E0003: r##"
-    Not-a-Number (NaN) values can not be compared for equality and hence can never match
-    the input to a match expression. To match against NaN values, you should instead use
-    the `is_nan` method in a guard, as in: x if x.is_nan() => ...
+E0003: r##"
+Not-a-Number (NaN) values can not be compared for equality and hence can never
+match the input to a match expression. To match against NaN values, you should
+instead use the `is_nan` method in a guard, as in: x if x.is_nan() => ...
 "##,
 
-    E0004: r##"
-    This error indicates that the compiler can not guarantee a matching pattern for one
-    or more possible inputs to a match expression. Guaranteed matches are required in order
-    to assign values to match expressions, or alternatively, determine the flow of execution.
+E0004: r##"
+This error indicates that the compiler can not guarantee a matching pattern for
+one or more possible inputs to a match expression. Guaranteed matches are
+required in order to assign values to match expressions, or alternatively,
+determine the flow of execution.
 
-    If you encounter this error you must alter your patterns so that every possible value of
-    the input type is matched. For types with a small number of variants (like enums) you
-    should probably cover all cases explicitly. Alternatively, the underscore `_` wildcard
-    pattern can be added after all other patterns to match "anything else".
+If you encounter this error you must alter your patterns so that every possible
+value of the input type is matched. For types with a small number of variants
+(like enums) you should probably cover all cases explicitly. Alternatively, the
+underscore `_` wildcard pattern can be added after all other patterns to match
+"anything else".
 "##,
 
-    // FIXME: Remove duplication here?
-    E0005: r##"
-    Patterns used to bind names must be irrefutable, that is, they must guarantee that a
-    name will be extracted in all cases. If you encounter this error you probably need
-    to use a `match` or `if let` to deal with the possibility of failure.
+// FIXME: Remove duplication here?
+E0005: r##"
+Patterns used to bind names must be irrefutable, that is, they must guarantee that a
+name will be extracted in all cases. If you encounter this error you probably need
+to use a `match` or `if let` to deal with the possibility of failure.
 "##,
 
-    E0006: r##"
-    Patterns used to bind names must be irrefutable, that is, they must guarantee that a
-    name will be extracted in all cases. If you encounter this error you probably need
-    to use a `match` or `if let` to deal with the possibility of failure.
+E0006: r##"
+Patterns used to bind names must be irrefutable, that is, they must guarantee that a
+name will be extracted in all cases. If you encounter this error you probably need
+to use a `match` or `if let` to deal with the possibility of failure.
 "##
+
 }
 
 register_diagnostics! {
