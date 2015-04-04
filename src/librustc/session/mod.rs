@@ -155,7 +155,7 @@ impl Session {
         self.diagnostic().handler().note(msg)
     }
     pub fn help(&self, msg: &str) {
-        self.diagnostic().handler().note(msg)
+        self.diagnostic().handler().help(msg)
     }
     pub fn opt_span_bug(&self, opt_sp: Option<Span>, msg: &str) -> ! {
         match opt_sp {
