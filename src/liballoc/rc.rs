@@ -324,7 +324,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 /// ```
 #[inline]
 #[unstable(feature = "alloc")]
-pub fn get_mut<'a, T>(rc: &'a mut Rc<T>) -> Option<&'a mut T> {
+pub fn get_mut<T>(rc: &mut Rc<T>) -> Option<&mut T> {
     if is_unique(rc) {
         let inner = unsafe { &mut **rc._ptr };
         Some(&mut inner.value)

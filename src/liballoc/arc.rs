@@ -252,6 +252,7 @@ pub fn strong_count<T>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst
 /// ```
 /// # #![feature(alloc)]
 /// extern crate alloc;
+/// # fn main() {
 /// use alloc::arc::{Arc, get_mut};
 ///
 /// let mut x = Arc::new(3);
@@ -260,10 +261,11 @@ pub fn strong_count<T>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst
 ///
 /// let _y = x.clone();
 /// assert!(get_mut(&mut x).is_none());
+/// # }
 /// ```
 #[inline]
 #[unstable(feature = "alloc")]
-pub fn get_mut<'a, T>(this: &'a mut Arc<T>) -> Option<&'a mut T> {
+pub fn get_mut<T>(this: &mut Arc<T>) -> Option<&mut T> {
     if strong_count(this) == 1 && weak_count(this) == 0 {
         // This unsafety is ok because we're guaranteed that the pointer
         // returned is the *only* pointer that will ever be returned to T. Our
