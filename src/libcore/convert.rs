@@ -21,7 +21,7 @@ use marker::Sized;
 /// A cheap, reference-to-reference conversion.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsRef<T: ?Sized> {
-    /// Perform the conversion.
+    /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_ref(&self) -> &T;
 }
@@ -29,7 +29,7 @@ pub trait AsRef<T: ?Sized> {
 /// A cheap, mutable reference-to-mutable reference conversion.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsMut<T: ?Sized> {
-    /// Perform the conversion.
+    /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_mut(&mut self) -> &mut T;
 }
@@ -38,7 +38,7 @@ pub trait AsMut<T: ?Sized> {
 /// expensive.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
-    /// Perform the conversion.
+    /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn into(self) -> T;
 }
@@ -46,7 +46,7 @@ pub trait Into<T>: Sized {
 /// Construct `Self` via a conversion.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait From<T> {
-    /// Perform the conversion.
+    /// Performs the conversion.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn from(T) -> Self;
 }
