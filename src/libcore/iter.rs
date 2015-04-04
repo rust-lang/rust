@@ -608,7 +608,11 @@ pub trait Iterator {
     fn all<F>(&mut self, mut f: F) -> bool where
         Self: Sized, F: FnMut(Self::Item) -> bool
     {
-        for x in self.by_ref() { if !f(x) { return false; } }
+        for x in self.by_ref() {
+            if !f(x) {
+                return false;
+            }
+        }
         true
     }
 
@@ -633,7 +637,11 @@ pub trait Iterator {
         Self: Sized,
         F: FnMut(Self::Item) -> bool
     {
-        for x in self.by_ref() { if f(x) { return true; } }
+        for x in self.by_ref() {
+            if f(x) {
+                return true;
+            }
+        }
         false
     }
 
@@ -1562,13 +1570,11 @@ impl<A, B> Iterator for Zip<A, B> where A: Iterator, B: Iterator
 
     #[inline]
     fn next(&mut self) -> Option<(A::Item, B::Item)> {
-        match self.a.next() {
-            None => None,
-            Some(x) => match self.b.next() {
-                None => None,
-                Some(y) => Some((x, y))
-            }
-        }
+        self.a.next().and_then(|x| {
+            self.b.next().and_then(|y| {
+                Some((x, y))
+            })
+        })
     }
 
     #[inline]
@@ -1626,13 +1632,11 @@ impl<A, B> RandomAccessIterator for Zip<A, B> where
 
     #[inline]
     fn idx(&mut self, index: usize) -> Option<(A::Item, B::Item)> {
-        match self.a.idx(index) {
-            None => None,
-            Some(x) => match self.b.idx(index) {
-                None => None,
-                Some(y) => Some((x, y))
-            }
-        }
+        self.a.idx(index).and_then(|x| {
+            self.b.idx(index).and_then(|y| {
+                Some((x, y))
+            })
+        })
     }
 }
 
@@ -1748,9 +1752,8 @@ impl<B, I: Iterator, F> Iterator for FilterMap<I, F>
     #[inline]
     fn next(&mut self) -> Option<B> {
         for x in self.iter.by_ref() {
-            match (self.f)(x) {
-                Some(y) => return Some(y),
-                None => ()
+            if let Some(y) = (self.f)(x) {
+                return Some(y);
             }
         }
         None
@@ -1770,9 +1773,8 @@ impl<B, I: DoubleEndedIterator, F> DoubleEndedIterator for FilterMap<I, F>
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         for x in self.iter.by_ref().rev() {
-            match (self.f)(x) {
-                Some(y) => return Some(y),
-                None => ()
+            if let Some(y) = (self.f)(x) {
+                return Some(y);
             }
         }
         None
@@ -1794,14 +1796,11 @@ impl<I> Iterator for Enumerate<I> where I: Iterator {
 
     #[inline]
     fn next(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
-        match self.iter.next() {
-            Some(a) => {
-                let ret = Some((self.count, a));
-                self.count += 1;
-                ret
-            }
-            _ => None
-        }
+        self.iter.next().map(|a| {
+            let ret = (self.count, a);
+            self.count += 1;
+            ret
+        })
     }
 
     #[inline]
@@ -1816,13 +1815,10 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
 {
     #[inline]
     fn next_back(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
-        match self.iter.next_back() {
-            Some(a) => {
-                let len = self.iter.len();
-                Some((self.count + len, a))
-            }
-            _ => None
-        }
+        self.iter.next_back().map(|a| {
+            let len = self.iter.len();
+            (self.count + len, a)
+        })
     }
 }
 
@@ -1835,10 +1831,7 @@ impl<I> RandomAccessIterator for Enumerate<I> where I: RandomAccessIterator {
 
     #[inline]
     fn idx(&mut self, index: usize) -> Option<(usize, <I as Iterator>::Item)> {
-        match self.iter.idx(index) {
-            Some(a) => Some((self.count + index, a)),
-            _ => None,
-        }
+        self.iter.idx(index).map(|a| (self.count + index, a))
     }
 }
 
@@ -1865,8 +1858,10 @@ impl<I: Iterator> Iterator for Peekable<I> {
 
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
-        if self.peeked.is_some() { self.peeked.take() }
-        else { self.iter.next() }
+        match self.peeked {
+            Some(_) => self.peeked.take(),
+            None => self.iter.next(),
+        }
     }
 
     #[inline]
@@ -1874,10 +1869,7 @@ impl<I: Iterator> Iterator for Peekable<I> {
         let (lo, hi) = self.iter.size_hint();
         if self.peeked.is_some() {
             let lo = lo.saturating_add(1);
-            let hi = match hi {
-                Some(x) => x.checked_add(1),
-                None => None
-            };
+            let hi = hi.and_then(|x| x.checked_add(1));
             (lo, hi)
         } else {
             (lo, hi)
@@ -1966,17 +1958,14 @@ impl<I: Iterator, P> Iterator for TakeWhile<I, P>
         if self.flag {
             None
         } else {
-            match self.iter.next() {
-                Some(x) => {
-                    if (self.predicate)(&x) {
-                        Some(x)
-                    } else {
-                        self.flag = true;
-                        None
-                    }
+            self.iter.next().and_then(|x| {
+                if (self.predicate)(&x) {
+                    Some(x)
+                } else {
+                    self.flag = true;
+                    None
                 }
-                None => None
-            }
+            })
         }
     }
 
@@ -2030,11 +2019,7 @@ impl<I> Iterator for Skip<I> where I: Iterator {
         let (lower, upper) = self.iter.size_hint();
 
         let lower = lower.saturating_sub(self.n);
-
-        let upper = match upper {
-            Some(x) => Some(x.saturating_sub(self.n)),
-            None => None
-        };
+        let upper = upper.map(|x| x.saturating_sub(self.n));
 
         (lower, upper)
     }
@@ -2316,9 +2301,8 @@ pub struct Inspect<I, F> {
 impl<I: Iterator, F> Inspect<I, F> where F: FnMut(&I::Item) {
     #[inline]
     fn do_inspect(&mut self, elt: Option<I::Item>) -> Option<I::Item> {
-        match elt {
-            Some(ref a) => (self.f)(a),
-            None => ()
+        if let Some(ref a) = elt {
+            (self.f)(a);
         }
 
         elt
@@ -2619,17 +2603,14 @@ impl<A: Step + One + Clone> Iterator for RangeInclusive<A> {
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        match self.range.next() {
-            Some(x) => Some(x),
-            None => {
-                if !self.done && self.range.start == self.range.end {
-                    self.done = true;
-                    Some(self.range.end.clone())
-                } else {
-                    None
-                }
+        self.range.next().or_else(|| {
+            if !self.done && self.range.start == self.range.end {
+                self.done = true;
+                Some(self.range.end.clone())
+            } else {
+                None
             }
-        }
+        })
     }
 
     #[inline]
@@ -2639,10 +2620,7 @@ impl<A: Step + One + Clone> Iterator for RangeInclusive<A> {
             (lo, hi)
         } else {
             let lo = lo.saturating_add(1);
-            let hi = match hi {
-                Some(x) => x.checked_add(1),
-                None => None
-            };
+            let hi = hi.and_then(|x| x.checked_add(1));
             (lo, hi)
         }
     }
@@ -2805,10 +2783,9 @@ impl<A: Step + One + Clone> Iterator for ops::Range<A> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        if let Some(hint) = Step::steps_between(&self.start, &self.end, &A::one()) {
-            (hint, Some(hint))
-        } else {
-            (0, None)
+        match Step::steps_between(&self.start, &self.end, &A::one()) {
+            Some(hint) => (hint, Some(hint)),
+            None => (0, None)
         }
     }
 }
@@ -2899,13 +2876,8 @@ pub fn iterate<T, F>(seed: T, f: F) -> Iterate<T, F> where
         let &mut (ref mut f, ref mut val, ref mut first) = st;
         if *first {
             *first = false;
-        } else {
-            match val.take() {
-                Some(x) => {
-                    *val = Some((*f)(x))
-                }
-                None => {}
-            }
+        } else if let Some(x) = val.take() {
+            *val = Some((*f)(x))
         }
         val.clone()
     }
