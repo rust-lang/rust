@@ -46,12 +46,8 @@
 //!
 //! let version = parse_version(&[1, 2, 3, 4]);
 //! match version {
-//!     Ok(v) => {
-//!         println!("working with version: {:?}", v);
-//!     }
-//!     Err(e) => {
-//!         println!("error parsing header: {:?}", e);
-//!     }
+//!     Ok(v) => println!("working with version: {:?}", v),
+//!     Err(e) => println!("error parsing header: {:?}", e),
 //! }
 //! ```
 //!
