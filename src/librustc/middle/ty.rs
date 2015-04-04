@@ -5132,7 +5132,8 @@ pub fn note_and_explain_type_err<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) {
             let found_str = ty_sort_string(cx, values.found);
             if expected_str == found_str && expected_str == "closure" {
                 cx.sess.note(&format!("no two closures, even if identical, have the same type"));
-                cx.sess.help(&format!("consider boxing your closure and/or using it as a trait object"));
+                cx.sess.help(&format!("consider boxing your closure and/or \
+                                        using it as a trait object"));
             }
         }
         _ => {}
