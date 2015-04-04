@@ -446,7 +446,7 @@ impl<T> Weak<T> {
     /// ```
     pub fn upgrade(&self) -> Option<Arc<T>> {
         // We use a CAS loop to increment the strong count instead of a
-        // fetch_add because once the count hits 0 is must never be above 0.
+        // fetch_add because once the count hits 0 it must never be above 0.
         let inner = self.inner();
         loop {
             let n = inner.strong.load(SeqCst);
