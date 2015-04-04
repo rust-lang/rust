@@ -1830,7 +1830,7 @@ explain, here's a few use cases and what they would entail:
   the second case.
 
 * When writing unit tests for a module, it's often a common idiom to have an
-  immediate child of the module to-be-tested named `mod test`. This module
+  immediate child of the module to-be-tested named `mod tests`. This module
   could access any items of the parent module through the second case, meaning
   that internal implementation details could also be seamlessly tested from the
   child module.
@@ -1882,7 +1882,7 @@ pub mod submodule {
     fn my_implementation() {}
 
     #[cfg(test)]
-    mod test {
+    mod tests {
 
         #[test]
         fn test_my_implementation() {
