@@ -77,9 +77,8 @@
 //! including [`atomic`](sync/atomic/index.html), and [`mpsc`](sync/mpsc/index.html),
 //! which contains the channel types for message passing.
 //!
-//! Common types of I/O, including files, TCP, UDP, pipes, Unix domain sockets,
-//! timers, and process spawning, are defined in the
-//! [`old_io`](old_io/index.html) module.
+//! Common types of I/O, including files, TCP, UDP, pipes, Unix domain sockets, and
+//! process spawning, are defined in the [`io`](io/index.html) module.
 //!
 //! Rust's I/O and concurrency depends on a small runtime interface
 //! that lives, along with its support code, in mod [`rt`](rt/index.html).
