@@ -545,7 +545,6 @@ opt verify-install 1 "verify installed binaries work"
 # This is used by the automation to produce single-target nightlies
 opt dist-host-only 0 "only install bins for the host architecture"
 opt inject-std-version 1 "inject the current compiler version of libstd into programs"
-opt jemalloc 1 "build liballoc with jemalloc"
 opt llvm-version-check 1 "don't check if the LLVM version is supported, build anyway"
 
 valopt localstatedir "/var/lib" "local state directory"
@@ -562,6 +561,7 @@ valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
 # (others are conditionally saved).
 opt_nosave manage-submodules 1 "let the build manage the git submodules"
 opt_nosave clang 0 "prefer clang to gcc for building the runtime"
+opt_nosave jemalloc 1 "build liballoc with jemalloc"
 
 valopt_nosave prefix "/usr/local" "set installation prefix"
 valopt_nosave local-rust-root "/usr/local" "set prefix for local rust binary"
@@ -669,7 +669,6 @@ probe CFG_LD               ld
 probe CFG_VALGRIND         valgrind
 probe CFG_PERF             perf
 probe CFG_ISCC             iscc
-probe CFG_JAVAC            javac
 probe CFG_ANTLR4           antlr4
 probe CFG_GRUN             grun
 probe CFG_FLEX             flex
@@ -678,6 +677,14 @@ probe CFG_PANDOC           pandoc
 probe CFG_XELATEX          xelatex
 probe CFG_GDB              gdb
 probe CFG_LLDB             lldb
+
+# On MacOS X, invoking `javac` pops up a dialog if the JDK is not
+# installed. Since `javac` is only used if `antlr4` is available,
+# probe for it only in this case.
+if [ ! -z "$CFG_ANTLR4" ]
+then
+   probe CFG_JAVAC            javac
+fi
 
 if [ ! -z "$CFG_GDB" ]
 then
@@ -775,7 +782,7 @@ if [ $CFG_OSTYPE = unknown-bitrig ]
 then
     step_msg "on Bitrig, forcing use of clang, disabling jemalloc"
     CFG_ENABLE_CLANG=1
-    CFG_ENABLE_JEMALLOC=0
+    CFG_DISABLE_JEMALLOC=1
 fi
 
 if [ -z "$CFG_ENABLE_CLANG" -a -z "$CFG_GCC" ]
@@ -826,6 +833,12 @@ fi
 if [ ! -z "$CFG_ENABLE_CLANG" ]
 then
     putvar CFG_ENABLE_CLANG
+fi
+
+# Same with jemalloc.  save the setting here.
+if [ ! -z "$CFG_DISABLE_JEMALLOC" ]
+then
+    putvar CFG_DISABLE_JEMALLOC
 fi
 
 if [ ! -z "$CFG_LLVM_ROOT" -a -z "$CFG_DISABLE_LLVM_VERSION_CHECK" -a -e "$CFG_LLVM_ROOT/bin/llvm-config" ]

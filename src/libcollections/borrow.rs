@@ -342,7 +342,7 @@ impl<'a,  B: ?Sized> IntoCow<'a, B> for Cow<'a, B> where B: ToOwned {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: Clone> AsRef<T> for Cow<'a, T> {
+impl<'a, T: ?Sized + ToOwned> AsRef<T> for Cow<'a, T> {
     fn as_ref(&self) -> &T {
         self
     }
