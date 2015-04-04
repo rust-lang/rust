@@ -291,7 +291,7 @@ If you are trying to execute a closure on an iterator for its side effects,
 just use `for` instead.
 
 There are tons of interesting iterator adapters. `take(n)` will return an
-iterator over the next `n` elements of the original iterator, note that this
+iterator over the next `n` elements of the original iterator. Note that this
 has no side effect on the original iterator. Let's try it out with our infinite
 iterator from before:
 
