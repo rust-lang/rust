@@ -373,8 +373,9 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
     fn report_and_explain_type_error(&self,
                                      trace: TypeTrace<'tcx>,
                                      terr: &ty::type_err<'tcx>) {
+        let span = trace.origin.span();
         self.report_type_error(trace, terr);
-        ty::note_and_explain_type_err(self.tcx, terr);
+        ty::note_and_explain_type_err(self.tcx, terr, span);
     }
 
     /// Returns a string of the form "expected `{}`, found `{}`", or None if this is a derived
