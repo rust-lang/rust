@@ -36,6 +36,8 @@ fn main() {
     // ok, the instability is contained.
     call_unstable_allow!();
     construct_unstable_allow!(0);
+    |x: internal_unstable::Foo| { call_method_allow!(x) };
+    |x: internal_unstable::Bar| { access_field_allow!(x) };
 
     // bad.
     pass_through_allow!(internal_unstable::unstable()); //~ ERROR use of unstable
