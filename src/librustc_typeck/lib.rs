@@ -200,7 +200,7 @@ fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,
                                       msg(),
                                       ty::type_err_to_str(tcx,
                                                           terr));
-            ty::note_and_explain_type_err(tcx, terr);
+            ty::note_and_explain_type_err(tcx, terr, span);
             false
         }
     }

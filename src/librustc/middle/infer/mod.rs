@@ -987,7 +987,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     error_str));
 
                 if let Some(err) = err {
-                    ty::note_and_explain_type_err(self.tcx, err)
+                    ty::note_and_explain_type_err(self.tcx, err, sp)
                 }
             }
         }

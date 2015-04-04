@@ -3709,7 +3709,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                             .ty_to_string(
                                                 actual_structure_type),
                                          type_error_description);
-                    ty::note_and_explain_type_err(tcx, &type_error);
+                    ty::note_and_explain_type_err(tcx, &type_error, path.span);
                 }
             }
         }
