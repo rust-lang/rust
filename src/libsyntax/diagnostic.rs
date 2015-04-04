@@ -68,9 +68,9 @@ pub trait Emitter {
                    sp: RenderSpan, msg: &str, lvl: Level);
 }
 
-/// This structure is used to signify that a task has panicked with a fatal error
-/// from the diagnostics. You can use this with the `Any` trait to figure out
-/// how a rustc task died (if so desired).
+/// Used as a return value to signify a fatal error occurred. (It is also
+/// used as the argument to panic at the moment, but that will eventually
+/// not be true.)
 #[derive(Copy, Clone)]
 #[must_use]
 pub struct FatalError;
