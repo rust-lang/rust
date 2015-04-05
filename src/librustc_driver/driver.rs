@@ -600,7 +600,8 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     syntax::ext::mtwt::clear_tables();
 
     let named_region_map = time(time_passes, "lifetime resolution", (),
-                                |_| middle::resolve_lifetime::krate(&sess, krate, &def_map));
+                                |_| middle::resolve_lifetime::krate(&sess, krate,
+                                                                    &def_map.borrow()));
 
     time(time_passes, "looking for entry point", (),
          |_| middle::entry::find_entry_point(&sess, &ast_map));
