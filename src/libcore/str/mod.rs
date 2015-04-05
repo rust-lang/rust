@@ -413,6 +413,21 @@ impl<'a> ExactSizeIterator for Bytes<'a> {
     }
 }
 
+/// This macro generates a Clone impl for string pattern API
+/// wrapper types of the form X<'a, P>
+macro_rules! derive_pattern_clone {
+    (clone $t:ident with |$s:ident| $e:expr) => {
+        impl<'a, P: Pattern<'a>> Clone for $t<'a, P>
+            where P::Searcher: Clone
+        {
+            fn clone(&self) -> Self {
+                let $s = self;
+                $e
+            }
+        }
+    }
+}
+
 /// This macro generates two public iterator structs
 /// wrapping an private internal one that makes use of the `Pattern` API.
 ///
@@ -488,6 +503,15 @@ macro_rules! generate_pattern_iterators {
             }
         }
 
+        $(#[$common_stability_attribute])*
+        impl<'a, P: Pattern<'a>> Clone for $forward_iterator<'a, P>
+            where P::Searcher: Clone
+        {
+            fn clone(&self) -> Self {
+                $forward_iterator(self.0.clone())
+            }
+        }
+
         $(#[$reverse_iterator_attribute])*
         $(#[$common_stability_attribute])*
         pub struct $reverse_iterator<'a, P: Pattern<'a>>($internal_iterator<'a, P>);
@@ -501,6 +525,15 @@ macro_rules! generate_pattern_iterators {
             #[inline]
             fn next(&mut self) -> Option<$iterty> {
                 self.0.next_back()
+            }
+        }
+
+        $(#[$common_stability_attribute])*
+        impl<'a, P: Pattern<'a>> Clone for $reverse_iterator<'a, P>
+            where P::Searcher: Clone
+        {
+            fn clone(&self) -> Self {
+                $reverse_iterator(self.0.clone())
             }
         }
 
@@ -540,6 +573,10 @@ macro_rules! generate_pattern_iterators {
     } => {}
 }
 
+derive_pattern_clone!{
+    clone SplitInternal
+    with |s| SplitInternal { matcher: s.matcher.clone(), ..*s }
+}
 struct SplitInternal<'a, P: Pattern<'a>> {
     start: usize,
     end: usize,
@@ -634,6 +671,10 @@ generate_pattern_iterators! {
     delegate double ended;
 }
 
+derive_pattern_clone!{
+    clone SplitNInternal
+    with |s| SplitNInternal { iter: s.iter.clone(), ..*s }
+}
 struct SplitNInternal<'a, P: Pattern<'a>> {
     iter: SplitInternal<'a, P>,
     /// The number of splits remaining
@@ -676,6 +717,10 @@ generate_pattern_iterators! {
     delegate single ended;
 }
 
+derive_pattern_clone!{
+    clone MatchIndicesInternal
+    with |s| MatchIndicesInternal(s.0.clone())
+}
 struct MatchIndicesInternal<'a, P: Pattern<'a>>(P::Searcher);
 
 impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
@@ -707,6 +752,10 @@ generate_pattern_iterators! {
     delegate double ended;
 }
 
+derive_pattern_clone!{
+    clone MatchesInternal
+    with |s| MatchesInternal(s.0.clone())
+}
 struct MatchesInternal<'a, P: Pattern<'a>>(P::Searcher);
 
 impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
@@ -745,6 +794,7 @@ generate_pattern_iterators! {
 
 /// Return type of `str::lines()`
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Clone)]
 pub struct Lines<'a>(SplitTerminator<'a, char>);
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -772,7 +822,37 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
 
 /// Return type of `str::lines_any()`
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct LinesAny<'a>(Map<Lines<'a>, fn(&str) -> &str>);
+#[derive(Clone)]
+pub struct LinesAny<'a>(Map<Lines<'a>, LinesAnyMap>);
+
+/// A nameable, clonable fn type
+#[derive(Clone)]
+struct LinesAnyMap;
+
+impl<'a> Fn<(&'a str,)> for LinesAnyMap {
+    #[inline]
+    extern "rust-call" fn call(&self, (line,): (&'a str,)) -> &'a str {
+        let l = line.len();
+        if l > 0 && line.as_bytes()[l - 1] == b'\r' { &line[0 .. l - 1] }
+        else { line }
+    }
+}
+
+impl<'a> FnMut<(&'a str,)> for LinesAnyMap {
+    #[inline]
+    extern "rust-call" fn call_mut(&mut self, (line,): (&'a str,)) -> &'a str {
+        Fn::call(&*self, (line,))
+    }
+}
+
+impl<'a> FnOnce<(&'a str,)> for LinesAnyMap {
+    type Output = &'a str;
+
+    #[inline]
+    extern "rust-call" fn call_once(self, (line,): (&'a str,)) -> &'a str {
+        Fn::call(&self, (line,))
+    }
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for LinesAny<'a> {
@@ -1584,14 +1664,7 @@ impl StrExt for str {
 
     #[inline]
     fn lines_any(&self) -> LinesAny {
-        fn f(line: &str) -> &str {
-            let l = line.len();
-            if l > 0 && line.as_bytes()[l - 1] == b'\r' { &line[0 .. l - 1] }
-            else { line }
-        }
-
-        let f: fn(&str) -> &str = f; // coerce to fn pointer
-        LinesAny(self.lines().map(f))
+        LinesAny(self.lines().map(LinesAnyMap))
     }
 
     #[inline]
