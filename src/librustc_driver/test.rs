@@ -129,7 +129,7 @@ fn test_env<F>(source_string: &str,
     let region_map = region::resolve_crate(&sess, krate);
     let tcx = ty::mk_ctxt(sess,
                           &arenas,
-                          def_map.into_inner(),
+                          def_map,
                           named_region_map,
                           ast_map,
                           freevars,

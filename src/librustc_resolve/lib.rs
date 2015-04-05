@@ -3519,7 +3519,7 @@ fn module_to_string(module: &Module) -> String {
 
 
 pub struct CrateMap {
-    pub def_map: RefCell<DefMap>,
+    pub def_map: DefMap,
     pub freevars: RefCell<FreevarMap>,
     pub export_map: ExportMap,
     pub trait_map: TraitMap,
@@ -3557,7 +3557,7 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
     check_unused::check_crate(&mut resolver, krate);
 
     CrateMap {
-        def_map: RefCell::new(resolver.def_map),
+        def_map: resolver.def_map,
         freevars: resolver.freevars,
         export_map: resolver.export_map,
         trait_map: resolver.trait_map,

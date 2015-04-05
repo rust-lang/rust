@@ -600,8 +600,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     syntax::ext::mtwt::clear_tables();
 
     let named_region_map = time(time_passes, "lifetime resolution", (),
-                                |_| middle::resolve_lifetime::krate(&sess, krate,
-                                                                    &def_map.borrow()));
+                                |_| middle::resolve_lifetime::krate(&sess, krate, &def_map));
 
     time(time_passes, "looking for entry point", (),
          |_| middle::entry::find_entry_point(&sess, &ast_map));
@@ -618,11 +617,11 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
          middle::check_loop::check_crate(&sess, krate));
 
     time(time_passes, "static item recursion checking", (), |_|
-         middle::check_static_recursion::check_crate(&sess, krate, &def_map.borrow(), &ast_map));
+         middle::check_static_recursion::check_crate(&sess, krate, &def_map, &ast_map));
 
     let ty_cx = ty::mk_ctxt(sess,
                             arenas,
-                            def_map.into_inner(),
+                            def_map,
                             named_region_map,
                             ast_map,
                             freevars,
