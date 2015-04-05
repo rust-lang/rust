@@ -54,7 +54,7 @@ The second is that the syntax is similar, but a bit different. I've added spaces
 here to make them look a little closer:
 
 ```rust
-fn  plus_one_v1 (  x: i32 ) -> i32 { x + 1 }
+fn  plus_one_v1   (x: i32 ) -> i32 { x + 1 }
 let plus_one_v2 = |x: i32 | -> i32 { x + 1 };
 let plus_one_v3 = |x: i32 |          x + 1  ;
 ```
