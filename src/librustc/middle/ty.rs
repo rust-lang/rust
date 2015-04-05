@@ -2733,11 +2733,11 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn pat_contains_ref_binding(&self, pat: &ast::Pat) -> bool {
-        pat_util::pat_contains_ref_binding(&self.def_map, pat)
+        pat_util::pat_contains_ref_binding(&self.def_map.borrow(), pat)
     }
 
     pub fn arm_contains_ref_binding(&self, arm: &ast::Arm) -> bool {
-        pat_util::arm_contains_ref_binding(&self.def_map, arm)
+        pat_util::arm_contains_ref_binding(&self.def_map.borrow(), arm)
     }
 }
 

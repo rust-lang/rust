@@ -118,7 +118,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             // subtyping doesn't matter here, as the value is some kind of scalar
             demand::eqtype(fcx, pat.span, expected, lhs_ty);
         }
-        ast::PatEnum(..) | ast::PatIdent(..) if pat_is_const(&tcx.def_map, pat) => {
+        ast::PatEnum(..) | ast::PatIdent(..) if pat_is_const(&tcx.def_map.borrow(), pat) => {
             let const_did = tcx.def_map.borrow().get(&pat.id).unwrap().def_id();
             let const_scheme = ty::lookup_item_type(tcx, const_did);
             assert!(const_scheme.generics.is_empty());
@@ -134,7 +134,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             // is good enough.
             demand::suptype(fcx, pat.span, expected, const_ty);
         }
-        ast::PatIdent(bm, ref path, ref sub) if pat_is_binding(&tcx.def_map, pat) => {
+        ast::PatIdent(bm, ref path, ref sub) if pat_is_binding(&tcx.def_map.borrow(), pat) => {
             let typ = fcx.local_ty(pat.span, pat.id);
             match bm {
                 ast::BindByRef(mutbl) => {
@@ -336,7 +336,7 @@ pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                                       inner: &ast::Pat) -> bool {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
-    if pat_is_binding(&tcx.def_map, inner) {
+    if pat_is_binding(&tcx.def_map.borrow(), inner) {
         let expected = fcx.infcx().shallow_resolve(expected);
         ty::deref(expected, true).map_or(true, |mt| match mt.ty.sty {
             ty::ty_trait(_) => {
@@ -383,7 +383,7 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     for arm in arms {
         let mut pcx = pat_ctxt {
             fcx: fcx,
-            map: pat_id_map(&tcx.def_map, &*arm.pats[0]),
+            map: pat_id_map(&tcx.def_map.borrow(), &*arm.pats[0]),
         };
         for p in &arm.pats {
             check_pat(&mut pcx, &**p, discrim_ty);

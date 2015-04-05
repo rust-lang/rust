@@ -2148,7 +2148,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut result = HashMap::new();
-        pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path1| {
+        pat_bindings(&self.def_map.borrow(), pat, |binding_mode, _id, sp, path1| {
             let name = mtwt::resolve(path1.node);
             result.insert(name, BindingInfo {
                 span: sp,

@@ -843,7 +843,7 @@ pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
     let def_map = &cx.tcx().def_map;
     let locals = bcx.fcx.lllocals.borrow();
 
-    pat_util::pat_bindings(def_map, &*local.pat, |_, node_id, span, var_ident| {
+    pat_util::pat_bindings(&def_map.borrow(), &*local.pat, |_, node_id, span, var_ident| {
         let datum = match locals.get(&node_id) {
             Some(datum) => datum,
             None => {
@@ -1021,7 +1021,7 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
                          .fn_metadata;
     let locals = bcx.fcx.lllocals.borrow();
 
-    pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, span, var_ident| {
+    pat_util::pat_bindings(&def_map.borrow(), &*arg.pat, |_, node_id, span, var_ident| {
         let datum = match locals.get(&node_id) {
             Some(v) => v,
             None => {
@@ -3255,7 +3255,7 @@ fn create_scope_map(cx: &CrateContext,
     // Push argument identifiers onto the stack so arguments integrate nicely
     // with variable shadowing.
     for arg in args {
-        pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, _, path1| {
+        pat_util::pat_bindings(&def_map.borrow(), &*arg.pat, |_, node_id, _, path1| {
             scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata,
                                                ident: Some(path1.node) });
             scope_map.insert(node_id, fn_metadata);
@@ -3372,7 +3372,7 @@ fn create_scope_map(cx: &CrateContext,
 
                 // Check if this is a binding. If so we need to put it on the
                 // scope stack and maybe introduce an artificial scope
-                if pat_util::pat_is_binding(def_map, &*pat) {
+                if pat_util::pat_is_binding(&def_map.borrow(), &*pat) {
 
                     let ident = path1.node;
 

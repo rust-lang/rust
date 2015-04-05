@@ -284,7 +284,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
             ast::PatStruct(_, ref fields, _) => {
                 self.handle_field_pattern_match(pat, fields);
             }
-            _ if pat_util::pat_is_const(def_map, pat) => {
+            _ if pat_util::pat_is_const(&def_map.borrow(), pat) => {
                 // it might be the only use of a const
                 self.lookup_and_handle_definition(&pat.id)
             }

@@ -450,7 +450,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             let mut bound_ptrs = br.bound_ptrs.clone();
             match this.node {
                 ast::PatIdent(_, ref path, None) => {
-                    if pat_is_binding(dm, &*this) {
+                    if pat_is_binding(&dm.borrow(), &*this) {
                         bound_ptrs.push((path.node, val));
                     }
                 }
@@ -489,7 +489,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Collect all of the matches that can match against anything.
     enter_match(bcx, dm, m, col, val, |pats| {
-        if pat_is_binding_or_wild(dm, &*pats[col]) {
+        if pat_is_binding_or_wild(&dm.borrow(), &*pats[col]) {
             let mut r = pats[..col].to_vec();
             r.push_all(&pats[col + 1..]);
             Some(r)
@@ -777,7 +777,7 @@ fn pick_column_to_specialize(def_map: &RefCell<DefMap>, m: &[Match]) -> Option<u
     fn pat_score(def_map: &RefCell<DefMap>, pat: &ast::Pat) -> usize {
         match pat.node {
             ast::PatIdent(_, _, Some(ref inner)) => pat_score(def_map, &**inner),
-            _ if pat_is_refutable(def_map, pat) => 1,
+            _ if pat_is_refutable(&def_map.borrow(), pat) => 1,
             _ => 0
         }
     }
@@ -1379,7 +1379,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
     let tcx = bcx.tcx();
     let reassigned = is_discr_reassigned(bcx, discr, body);
     let mut bindings_map = FnvHashMap();
-    pat_bindings(&tcx.def_map, &*pat, |bm, p_id, span, path1| {
+    pat_bindings(&tcx.def_map.borrow(), &*pat, |bm, p_id, span, path1| {
         let ident = path1.node;
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
@@ -1525,7 +1525,7 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // create dummy memory for the variables if we have no
         // value to store into them immediately
         let tcx = bcx.tcx();
-        pat_bindings(&tcx.def_map, pat, |_, p_id, _, path1| {
+        pat_bindings(&tcx.def_map.borrow(), pat, |_, p_id, _, path1| {
             let scope = cleanup::var_scope(tcx, p_id);
             bcx = mk_binding_alloca(
                 bcx, p_id, &path1.node, scope, (),
@@ -1682,7 +1682,7 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let ccx = bcx.ccx();
     match pat.node {
         ast::PatIdent(pat_binding_mode, ref path1, ref inner) => {
-            if pat_is_binding(&tcx.def_map, &*pat) {
+            if pat_is_binding(&tcx.def_map.borrow(), &*pat) {
                 // Allocate the stack slot where the value of this
                 // binding will live and place it into the appropriate
                 // map.
