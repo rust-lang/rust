@@ -381,7 +381,8 @@ mod tests {
     use prelude::v1::*;
 
     #[cfg_attr(any(target_os = "freebsd",
-                   target_os = "openbsd"),
+                   target_os = "openbsd",
+                   target_os = "bitrig"),
                ignore)]
     // under some system, pipe(2) will return a bidrectionnal pipe
     #[test]

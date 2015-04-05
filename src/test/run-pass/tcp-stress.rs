@@ -11,6 +11,7 @@
 // ignore-linux see joyent/libuv#1189
 // ignore-android needs extra network permissions
 // ignore-openbsd system ulimit (Too many open files)
+// ignore-bitrig system ulimit (Too many open files)
 // exec-env:RUST_LOG=debug
 
 #![feature(rustc_private, libc, old_io, io, std_misc)]
