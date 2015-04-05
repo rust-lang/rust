@@ -389,8 +389,7 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
     }
 }
 
-/// External iterator for a string's characters and their byte offsets.
-/// Use with the `std::iter` module.
+/// Iterator for a string's characters and their byte offsets.
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CharIndices<'a> {
