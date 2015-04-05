@@ -68,8 +68,7 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                                   "unused import".to_string());
         }
 
-        let mut def_map = self.def_map.borrow_mut();
-        let path_res = if let Some(r) = def_map.get_mut(&id) {
+        let path_res = if let Some(r) = self.resolver.def_map.get_mut(&id) {
             r
         } else {
             return;
@@ -81,12 +80,12 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             }
         };
 
-        let mut v_used = if self.used_imports.contains(&(id, ValueNS)) {
+        let mut v_used = if self.resolver.used_imports.contains(&(id, ValueNS)) {
             Used
         } else {
             Unused
         };
-        let t_used = if self.used_imports.contains(&(id, TypeNS)) {
+        let t_used = if self.resolver.used_imports.contains(&(id, TypeNS)) {
             Used
         } else {
             Unused

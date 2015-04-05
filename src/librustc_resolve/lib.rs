@@ -801,7 +801,7 @@ pub struct Resolver<'a, 'tcx:'a> {
     // The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
 
-    def_map: RefCell<DefMap>,
+    def_map: DefMap,
     freevars: RefCell<FreevarMap>,
     freevars_seen: RefCell<NodeMap<NodeSet>>,
     export_map: ExportMap,
@@ -869,7 +869,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             primitive_type_table: PrimitiveTypeTable::new(),
 
-            def_map: RefCell::new(NodeMap()),
+            def_map: NodeMap(),
             freevars: RefCell::new(NodeMap()),
             freevars_seen: RefCell::new(NodeMap()),
             export_map: NodeMap(),
@@ -1871,7 +1871,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ItemUse(ref view_path) => {
                 // check for imports shadowing primitive types
                 if let ast::ViewPathSimple(ident, _) = view_path.node {
-                    match self.def_map.borrow().get(&item.id).map(|d| d.full_def()) {
+                    match self.def_map.get(&item.id).map(|d| d.full_def()) {
                         Some(DefTy(..)) | Some(DefStruct(..)) | Some(DefTrait(..)) | None => {
                             self.check_if_primitive_type_name(ident.name, item.span);
                         }
@@ -2148,7 +2148,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     // user and one 'x' came from the macro.
     fn binding_mode_map(&mut self, pat: &Pat) -> BindingMap {
         let mut result = HashMap::new();
-        pat_bindings(&self.def_map.borrow(), pat, |binding_mode, _id, sp, path1| {
+        pat_bindings(&self.def_map, pat, |binding_mode, _id, sp, path1| {
             let name = mtwt::resolve(path1.node);
             result.insert(name, BindingInfo {
                 span: sp,
@@ -2991,7 +2991,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         if allowed == Everything {
             // Look for a field with the same name in the current self_type.
-            match self.def_map.borrow().get(&node_id).map(|d| d.full_def()) {
+            match self.def_map.get(&node_id).map(|d| d.full_def()) {
                 Some(DefTy(did, _)) |
                 Some(DefStruct(did)) |
                 Some(DefVariant(_, did, _)) => match self.structs.get(&did) {
@@ -3402,7 +3402,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         assert!(match resolution.last_private {LastImport{..} => false, _ => true},
                 "Import should only be used for `use` directives");
 
-        if let Some(prev_res) = self.def_map.borrow_mut().insert(node_id, resolution) {
+        if let Some(prev_res) = self.def_map.insert(node_id, resolution) {
             let span = self.ast_map.opt_span(node_id).unwrap_or(codemap::DUMMY_SP);
             self.session.span_bug(span, &format!("path resolved multiple times \
                                                   ({:?} before, {:?} now)",
@@ -3557,7 +3557,7 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
     check_unused::check_crate(&mut resolver, krate);
 
     CrateMap {
-        def_map: resolver.def_map,
+        def_map: RefCell::new(resolver.def_map),
         freevars: resolver.freevars,
         export_map: resolver.export_map,
         trait_map: resolver.trait_map,

@@ -684,14 +684,14 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
         };
 
         if let Some((def, _)) = value_def_and_priv {
-            self.resolver.def_map.borrow_mut().insert(directive.id, PathResolution {
+            self.resolver.def_map.insert(directive.id, PathResolution {
                 base_def: def,
                 last_private: import_lp,
                 depth: 0
             });
         }
         if let Some((def, _)) = type_def_and_priv {
-            self.resolver.def_map.borrow_mut().insert(directive.id, PathResolution {
+            self.resolver.def_map.insert(directive.id, PathResolution {
                 base_def: def,
                 last_private: import_lp,
                 depth: 0
@@ -815,7 +815,7 @@ impl<'a, 'b:'a, 'tcx:'b> ImportResolver<'a, 'b, 'tcx> {
 
         // Record the destination of this import
         if let Some(did) = target_module.def_id.get() {
-            self.resolver.def_map.borrow_mut().insert(id, PathResolution {
+            self.resolver.def_map.insert(id, PathResolution {
                 base_def: DefMod(did),
                 last_private: lp,
                 depth: 0
