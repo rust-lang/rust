@@ -243,10 +243,9 @@ pub fn weak_count<T>(this: &Arc<T>) -> usize { this.inner().weak.load(SeqCst) - 
 pub fn strong_count<T>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst) }
 
 
-/// Try accessing a mutable reference to the contents behind an unique `Arc<T>`.
+/// Returns a mutable reference to the contained value if the `Arc<T>` is unique.
 ///
-/// The access is granted only if this is the only reference to the object.
-/// Otherwise, `None` is returned.
+/// Returns `None` if the `Arc<T>` is not unique.
 ///
 /// # Examples
 ///
@@ -254,16 +253,19 @@ pub fn strong_count<T>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst
 /// # #![feature(alloc)]
 /// extern crate alloc;
 /// # fn main() {
-/// use alloc::arc;
+/// use alloc::arc::{Arc, get_mut};
 ///
-/// let mut four = arc::Arc::new(4);
+/// let mut x = Arc::new(3);
+/// *get_mut(&mut x).unwrap() = 4;
+/// assert_eq!(*x, 4);
 ///
-/// arc::unique(&mut four).map(|num| *num = 5);
+/// let _y = x.clone();
+/// assert!(get_mut(&mut x).is_none());
 /// # }
 /// ```
 #[inline]
 #[unstable(feature = "alloc")]
-pub fn unique<T>(this: &mut Arc<T>) -> Option<&mut T> {
+pub fn get_mut<T>(this: &mut Arc<T>) -> Option<&mut T> {
     if strong_count(this) == 1 && weak_count(this) == 0 {
         // This unsafety is ok because we're guaranteed that the pointer
         // returned is the *only* pointer that will ever be returned to T. Our
@@ -347,7 +349,7 @@ impl<T: Clone> Arc<T> {
            self.inner().weak.load(SeqCst) != 1 {
             *self = Arc::new((**self).clone())
         }
-        // As with `unique()`, the unsafety is ok because our reference was
+        // As with `get_mut()`, the unsafety is ok because our reference was
         // either unique to begin with, or became one upon cloning the contents.
         let inner = unsafe { &mut **self._ptr };
         &mut inner.data
@@ -691,7 +693,7 @@ mod tests {
     use std::sync::atomic::Ordering::{Acquire, SeqCst};
     use std::thread;
     use std::vec::Vec;
-    use super::{Arc, Weak, weak_count, strong_count, unique};
+    use super::{Arc, Weak, get_mut, weak_count, strong_count};
     use std::sync::Mutex;
 
     struct Canary(*mut atomic::AtomicUsize);
@@ -728,18 +730,16 @@ mod tests {
     }
 
     #[test]
-    fn test_arc_unique() {
-        let mut x = Arc::new(10);
-        assert!(unique(&mut x).is_some());
-        {
-            let y = x.clone();
-            assert!(unique(&mut x).is_none());
-        }
-        {
-            let z = x.downgrade();
-            assert!(unique(&mut x).is_none());
-        }
-        assert!(unique(&mut x).is_some());
+    fn test_arc_get_mut() {
+        let mut x = Arc::new(3);
+        *get_mut(&mut x).unwrap() = 4;
+        assert_eq!(*x, 4);
+        let y = x.clone();
+        assert!(get_mut(&mut x).is_none());
+        drop(y);
+        assert!(get_mut(&mut x).is_some());
+        let _w = x.downgrade();
+        assert!(get_mut(&mut x).is_none());
     }
 
     #[test]
