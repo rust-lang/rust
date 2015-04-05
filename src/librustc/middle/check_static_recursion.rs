@@ -19,11 +19,9 @@ use syntax::{ast_util, ast_map};
 use syntax::visit::Visitor;
 use syntax::visit;
 
-use std::cell::RefCell;
-
 struct CheckCrateVisitor<'a, 'ast: 'a> {
     sess: &'a Session,
-    def_map: &'a RefCell<DefMap>,
+    def_map: &'a DefMap,
     ast_map: &'a ast_map::Map<'ast>
 }
 
@@ -35,7 +33,7 @@ impl<'v, 'a, 'ast> Visitor<'v> for CheckCrateVisitor<'a, 'ast> {
 
 pub fn check_crate<'ast>(sess: &Session,
                          krate: &ast::Crate,
-                         def_map: &RefCell<DefMap>,
+                         def_map: &DefMap,
                          ast_map: &ast_map::Map<'ast>) {
     let mut visitor = CheckCrateVisitor {
         sess: sess,
@@ -61,7 +59,7 @@ struct CheckItemRecursionVisitor<'a, 'ast: 'a> {
     root_it: &'a ast::Item,
     sess: &'a Session,
     ast_map: &'a ast_map::Map<'ast>,
-    def_map: &'a RefCell<DefMap>,
+    def_map: &'a DefMap,
     idstack: Vec<ast::NodeId>
 }
 
@@ -69,7 +67,7 @@ struct CheckItemRecursionVisitor<'a, 'ast: 'a> {
 // FIXME: Should use the dependency graph when it's available (#1356)
 pub fn check_item_recursion<'a>(sess: &'a Session,
                                 ast_map: &'a ast_map::Map,
-                                def_map: &'a RefCell<DefMap>,
+                                def_map: &'a DefMap,
                                 it: &'a ast::Item) {
 
     let mut visitor = CheckItemRecursionVisitor {
@@ -96,7 +94,7 @@ impl<'a, 'ast, 'v> Visitor<'v> for CheckItemRecursionVisitor<'a, 'ast> {
     fn visit_expr(&mut self, e: &ast::Expr) {
         match e.node {
             ast::ExprPath(..) => {
-                match self.def_map.borrow().get(&e.id).map(|d| d.base_def) {
+                match self.def_map.get(&e.id).map(|d| d.base_def) {
                     Some(DefStatic(def_id, _)) |
                     Some(DefConst(def_id)) if
                             ast_util::is_local(def_id) => {
