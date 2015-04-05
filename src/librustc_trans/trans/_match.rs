@@ -219,6 +219,7 @@ use util::nodemap::FnvHashMap;
 use util::ppaux::{Repr, vec_map_to_string};
 
 use std;
+use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::iter::AdditiveIterator;
 use std::rc::Rc;
@@ -428,7 +429,7 @@ fn expand_nested_bindings<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
-                                          dm: &DefMap,
+                                          dm: &RefCell<DefMap>,
                                           m: &[Match<'a, 'p, 'blk, 'tcx>],
                                           col: usize,
                                           val: ValueRef,
@@ -474,7 +475,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 }
 
 fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                     dm: &DefMap,
+                                     dm: &RefCell<DefMap>,
                                      m: &[Match<'a, 'p, 'blk, 'tcx>],
                                      col: usize,
                                      val: ValueRef)
@@ -529,7 +530,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn enter_opt<'a, 'p, 'blk, 'tcx>(
              bcx: Block<'blk, 'tcx>,
              _: ast::NodeId,
-             dm: &DefMap,
+             dm: &RefCell<DefMap>,
              m: &[Match<'a, 'p, 'blk, 'tcx>],
              opt: &Opt,
              col: usize,
@@ -772,8 +773,8 @@ impl FailureHandler {
     }
 }
 
-fn pick_column_to_specialize(def_map: &DefMap, m: &[Match]) -> Option<usize> {
-    fn pat_score(def_map: &DefMap, pat: &ast::Pat) -> usize {
+fn pick_column_to_specialize(def_map: &RefCell<DefMap>, m: &[Match]) -> Option<usize> {
+    fn pat_score(def_map: &RefCell<DefMap>, pat: &ast::Pat) -> usize {
         match pat.node {
             ast::PatIdent(_, _, Some(ref inner)) => pat_score(def_map, &**inner),
             _ if pat_is_refutable(def_map, pat) => 1,

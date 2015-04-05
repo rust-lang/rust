@@ -680,7 +680,7 @@ pub struct ctxt<'tcx> {
     pub types: CommonTypes<'tcx>,
 
     pub sess: Session,
-    pub def_map: DefMap,
+    pub def_map: RefCell<DefMap>,
 
     pub named_region_map: resolve_lifetime::NamedRegionMap,
 
@@ -2589,7 +2589,7 @@ impl<'tcx> CommonTypes<'tcx> {
 
 pub fn mk_ctxt<'tcx>(s: Session,
                      arenas: &'tcx CtxtArenas<'tcx>,
-                     def_map: DefMap,
+                     def_map: RefCell<DefMap>,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
                      freevars: RefCell<FreevarMap>,
