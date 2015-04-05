@@ -1,6 +1,9 @@
 -include ../tools.mk
 
-ifneq ($(findstring BSD,$(UNAME)),BSD)
+SKIP_OS := 'FreeBSD OpenBSD Bitrig'
+
+ifneq ($(UNAME),$(findstring $(UNAME),$(SKIP_OS)))
+
 HOST := $(shell $(RUSTC) -vV | grep 'host:' | sed 's/host: //')
 ifeq ($(findstring i686,$(HOST)),i686)
 TARGET := $(subst i686,x86_64,$(HOST))
@@ -13,6 +16,6 @@ all:
 	$(RUSTC) bar.rs -C extra-filename=-targ --target $(TARGET)
 	$(RUSTC) baz.rs --extern a=$(TMPDIR)/liba-targ.rlib --target $(TARGET)
 else
-# FreeBSD & OpenBSD support only x86_64 architecture for now
+# FreeBSD, OpenBSD, and Bitrig support only x86_64 architecture for now
 all:
 endif
