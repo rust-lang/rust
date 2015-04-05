@@ -219,7 +219,6 @@ use util::nodemap::FnvHashMap;
 use util::ppaux::{Repr, vec_map_to_string};
 
 use std;
-use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::iter::AdditiveIterator;
 use std::rc::Rc;
@@ -429,7 +428,7 @@ fn expand_nested_bindings<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
-                                          dm: &RefCell<DefMap>,
+                                          dm: &DefMap,
                                           m: &[Match<'a, 'p, 'blk, 'tcx>],
                                           col: usize,
                                           val: ValueRef,
@@ -450,7 +449,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             let mut bound_ptrs = br.bound_ptrs.clone();
             match this.node {
                 ast::PatIdent(_, ref path, None) => {
-                    if pat_is_binding(&dm.borrow(), &*this) {
+                    if pat_is_binding(&dm, &*this) {
                         bound_ptrs.push((path.node, val));
                     }
                 }
@@ -475,7 +474,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 }
 
 fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                     dm: &RefCell<DefMap>,
+                                     dm: &DefMap,
                                      m: &[Match<'a, 'p, 'blk, 'tcx>],
                                      col: usize,
                                      val: ValueRef)
@@ -489,7 +488,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Collect all of the matches that can match against anything.
     enter_match(bcx, dm, m, col, val, |pats| {
-        if pat_is_binding_or_wild(&dm.borrow(), &*pats[col]) {
+        if pat_is_binding_or_wild(&dm, &*pats[col]) {
             let mut r = pats[..col].to_vec();
             r.push_all(&pats[col + 1..]);
             Some(r)
@@ -530,7 +529,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn enter_opt<'a, 'p, 'blk, 'tcx>(
              bcx: Block<'blk, 'tcx>,
              _: ast::NodeId,
-             dm: &RefCell<DefMap>,
+             dm: &DefMap,
              m: &[Match<'a, 'p, 'blk, 'tcx>],
              opt: &Opt,
              col: usize,
@@ -773,11 +772,11 @@ impl FailureHandler {
     }
 }
 
-fn pick_column_to_specialize(def_map: &RefCell<DefMap>, m: &[Match]) -> Option<usize> {
-    fn pat_score(def_map: &RefCell<DefMap>, pat: &ast::Pat) -> usize {
+fn pick_column_to_specialize(def_map: &DefMap, m: &[Match]) -> Option<usize> {
+    fn pat_score(def_map: &DefMap, pat: &ast::Pat) -> usize {
         match pat.node {
             ast::PatIdent(_, _, Some(ref inner)) => pat_score(def_map, &**inner),
-            _ if pat_is_refutable(&def_map.borrow(), pat) => 1,
+            _ if pat_is_refutable(&def_map, pat) => 1,
             _ => 0
         }
     }
@@ -997,9 +996,9 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         return;
     }
 
-    let tcx = bcx.tcx();
-    let def_map = &tcx.def_map;
-    match pick_column_to_specialize(def_map, m) {
+    // On a separate line to limit the lifetime of the borrow
+    let col_opt = pick_column_to_specialize(&bcx.tcx().def_map.borrow(), m);
+    match col_opt {
         Some(col) => {
             let val = vals[col];
             if has_nested_bindings(m, col) {
@@ -1095,7 +1094,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     };
     match adt_vals {
         Some(field_vals) => {
-            let pats = enter_match(bcx, dm, m, col, val, |pats|
+            let pats = enter_match(bcx, &dm.borrow(), m, col, val, |pats|
                 check_match::specialize(&mcx, pats,
                                         &check_match::Single, col,
                                         field_vals.len())
@@ -1153,7 +1152,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         C_int(ccx, 0) // Placeholder for when not using a switch
     };
 
-    let defaults = enter_default(else_cx, dm, m, col, val);
+    let defaults = enter_default(else_cx, &dm.borrow(), m, col, val);
     let exhaustive = chk.is_infallible() && defaults.len() == 0;
     let len = opts.len();
 
@@ -1253,7 +1252,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             }
             ConstantValue(..) | ConstantRange(..) => ()
         }
-        let opt_ms = enter_opt(opt_cx, pat_id, dm, m, opt, col, size, val);
+        let opt_ms = enter_opt(opt_cx, pat_id, &dm.borrow(), m, opt, col, size, val);
         let mut opt_vals = unpacked;
         opt_vals.push_all(&vals_left[..]);
         compile_submatch(opt_cx,
