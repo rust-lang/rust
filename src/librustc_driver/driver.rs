@@ -622,7 +622,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
 
     let ty_cx = ty::mk_ctxt(sess,
                             arenas,
-                            def_map,
+                            def_map.into_inner(),
                             named_region_map,
                             ast_map,
                             freevars,
