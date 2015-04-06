@@ -60,7 +60,7 @@ use self::MinMaxResult::*;
 
 use clone::Clone;
 use cmp;
-use cmp::Ord;
+use cmp::{Ord, PartialOrd, PartialEq};
 use default::Default;
 use marker;
 use mem;
@@ -2431,7 +2431,7 @@ impl<A, St, F> Iterator for Unfold<St, F> where F: FnMut(&mut St) -> Option<A> {
 /// two `Step` objects.
 #[unstable(feature = "step_trait",
            reason = "likely to be replaced by finer-grained traits")]
-pub trait Step: Ord {
+pub trait Step: PartialOrd {
     /// Steps `self` if possible.
     fn step(&self, by: &Self) -> Option<Self>;
 
@@ -2598,7 +2598,10 @@ pub fn range_inclusive<A>(start: A, stop: A) -> RangeInclusive<A>
 
 #[unstable(feature = "core",
            reason = "likely to be replaced by range notation and adapters")]
-impl<A: Step + One + Clone> Iterator for RangeInclusive<A> {
+impl<A> Iterator for RangeInclusive<A> where
+    A: PartialEq + Step + One + Clone,
+    for<'a> &'a A: Add<&'a A, Output = A>
+{
     type Item = A;
 
     #[inline]
@@ -2628,9 +2631,10 @@ impl<A: Step + One + Clone> Iterator for RangeInclusive<A> {
 
 #[unstable(feature = "core",
            reason = "likely to be replaced by range notation and adapters")]
-impl<A> DoubleEndedIterator for RangeInclusive<A>
-    where A: Step + One + Clone,
-          for<'a> &'a A: Sub<Output=A>
+impl<A> DoubleEndedIterator for RangeInclusive<A> where
+    A: PartialEq + Step + One + Clone,
+    for<'a> &'a A: Add<&'a A, Output = A>,
+    for<'a> &'a A: Sub<Output=A>
 {
     #[inline]
     fn next_back(&mut self) -> Option<A> {
@@ -2758,24 +2762,17 @@ macro_rules! range_exact_iter_impl {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
-impl<A: Step + One + Clone> Iterator for ops::Range<A> {
+impl<A: Step + One> Iterator for ops::Range<A> where
+    for<'a> &'a A: Add<&'a A, Output = A>
+{
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
         if self.start < self.end {
-            match self.start.step(&A::one()) {
-                Some(mut n) => {
-                    mem::swap(&mut n, &mut self.start);
-                    Some(n)
-                },
-                None => {
-                    let mut n = self.end.clone();
-                    mem::swap(&mut n, &mut self.start);
-                    Some(n)
-
-                }
-            }
+            let mut n = &self.start + &A::one();
+            mem::swap(&mut n, &mut self.start);
+            Some(n)
         } else {
             None
         }
@@ -2797,6 +2794,7 @@ range_exact_iter_impl!(usize u8 u16 u32 isize i8 i16 i32);
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
 impl<A: Step + One + Clone> DoubleEndedIterator for ops::Range<A> where
+    for<'a> &'a A: Add<&'a A, Output = A>,
     for<'a> &'a A: Sub<&'a A, Output = A>
 {
     #[inline]
@@ -2812,15 +2810,16 @@ impl<A: Step + One + Clone> DoubleEndedIterator for ops::Range<A> where
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
-impl<A: Step + One> Iterator for ops::RangeFrom<A> {
+impl<A: Step + One> Iterator for ops::RangeFrom<A> where
+    for<'a> &'a A: Add<&'a A, Output = A>
+{
     type Item = A;
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        self.start.step(&A::one()).map(|mut n| {
-            mem::swap(&mut n, &mut self.start);
-            n
-        })
+        let mut n = &self.start + &A::one();
+        mem::swap(&mut n, &mut self.start);
+        Some(n)
     }
 }
 
