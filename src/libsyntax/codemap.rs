@@ -871,7 +871,7 @@ impl CodeMap {
         F: FnOnce(Option<&ExpnInfo>) -> T,
     {
         match id {
-            NO_EXPANSION => f(None),
+            NO_EXPANSION | COMMAND_LINE_EXPN => f(None),
             ExpnId(i) => f(Some(&(*self.expansions.borrow())[i as usize]))
         }
     }
