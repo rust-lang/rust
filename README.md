@@ -42,6 +42,7 @@ the direction the language is evolving in.
 * [0769-sound-generic-drop.md](text/0769-sound-generic-drop.md)
 * [0803-type-ascription.md](text/0803-type-ascription.md)
 * [0809-box-and-in-for-stdlib.md](text/0809-box-and-in-for-stdlib.md)
+* [0888-compiler-fences.md](text/0888-compiler-fences.md)
 * [0909-move-thread-local-to-std-thread.md](text/0909-move-thread-local-to-std-thread.md)
 * [0911-const-fn.md](text/0911-const-fn.md)
 * [0968-closure-return-type-syntax.md](text/0968-closure-return-type-syntax.md)
