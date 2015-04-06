@@ -378,47 +378,44 @@ fn test_slice_to() {
 
 #[test]
 fn test_trim_left_matches() {
-    let v: &[char] = &[];
-    assert_eq!(" *** foo *** ".trim_left_matches(v), " *** foo *** ");
-    let chars: &[char] = &['*', ' '];
-    assert_eq!(" *** foo *** ".trim_left_matches(chars), "foo *** ");
-    assert_eq!(" ***  *** ".trim_left_matches(chars), "");
-    assert_eq!("foo *** ".trim_left_matches(chars), "foo *** ");
+    assert_eq!(" *** foo *** ".trim_left_matches(|_| false), " *** foo *** ");
+
+    assert_eq!(" *** foo *** ".trim_left_matches(|c| "* ".contains(c)), "foo *** ");
+    assert_eq!(" ***  *** ".trim_left_matches(|c| "* ".contains(c)), "");
+    assert_eq!("foo *** ".trim_left_matches(|c| "* ".contains(c)), "foo *** ");
 
     assert_eq!("11foo1bar11".trim_left_matches('1'), "foo1bar11");
-    let chars: &[char] = &['1', '2'];
-    assert_eq!("12foo1bar12".trim_left_matches(chars), "foo1bar12");
-    assert_eq!("123foo1bar123".trim_left_matches(|c: char| c.is_numeric()), "foo1bar123");
+
+    assert_eq!("12foo1bar12".trim_left_matches(|c| "12".contains(c)), "foo1bar12");
+    assert_eq!("123foo1bar123".trim_left_matches(char::is_numeric), "foo1bar123");
 }
 
 #[test]
 fn test_trim_right_matches() {
-    let v: &[char] = &[];
-    assert_eq!(" *** foo *** ".trim_right_matches(v), " *** foo *** ");
-    let chars: &[char] = &['*', ' '];
-    assert_eq!(" *** foo *** ".trim_right_matches(chars), " *** foo");
-    assert_eq!(" ***  *** ".trim_right_matches(chars), "");
-    assert_eq!(" *** foo".trim_right_matches(chars), " *** foo");
+    assert_eq!(" *** foo *** ".trim_right_matches(|_| false), " *** foo *** ");
+
+    assert_eq!(" *** foo *** ".trim_right_matches(|c| "* ".contains(c)), " *** foo");
+    assert_eq!(" ***  *** ".trim_right_matches(|c| "* ".contains(c)), "");
+    assert_eq!(" *** foo".trim_right_matches(|c| "* ".contains(c)), " *** foo");
 
     assert_eq!("11foo1bar11".trim_right_matches('1'), "11foo1bar");
-    let chars: &[char] = &['1', '2'];
-    assert_eq!("12foo1bar12".trim_right_matches(chars), "12foo1bar");
-    assert_eq!("123foo1bar123".trim_right_matches(|c: char| c.is_numeric()), "123foo1bar");
+
+    assert_eq!("12foo1bar12".trim_right_matches(|c| "12".contains(c)), "12foo1bar");
+    assert_eq!("123foo1bar123".trim_right_matches(char::is_numeric), "123foo1bar");
 }
 
 #[test]
 fn test_trim_matches() {
-    let v: &[char] = &[];
-    assert_eq!(" *** foo *** ".trim_matches(v), " *** foo *** ");
-    let chars: &[char] = &['*', ' '];
-    assert_eq!(" *** foo *** ".trim_matches(chars), "foo");
-    assert_eq!(" ***  *** ".trim_matches(chars), "");
-    assert_eq!("foo".trim_matches(chars), "foo");
+    assert_eq!(" *** foo *** ".trim_matches(|_| false), " *** foo *** ");
+
+    assert_eq!(" *** foo *** ".trim_matches(|c| "* ".contains(c)), "foo");
+    assert_eq!(" ***  *** ".trim_matches(|c| "* ".contains(c)), "");
+    assert_eq!("foo".trim_matches(|c| "* ".contains(c)), "foo");
 
     assert_eq!("11foo1bar11".trim_matches('1'), "foo1bar");
-    let chars: &[char] = &['1', '2'];
-    assert_eq!("12foo1bar12".trim_matches(chars), "foo1bar");
-    assert_eq!("123foo1bar123".trim_matches(|c: char| c.is_numeric()), "foo1bar");
+
+    assert_eq!("12foo1bar12".trim_matches(|c| "12".contains(c)), "foo1bar");
+    assert_eq!("123foo1bar123".trim_matches(char::is_numeric), "foo1bar");
 }
 
 #[test]
@@ -1996,15 +1993,6 @@ mod bench {
         let len = s.split(' ').count();
 
         b.iter(|| assert_eq!(s.split(|c: char| c == ' ').count(), len));
-    }
-
-    #[bench]
-    fn split_slice(b: &mut Bencher) {
-        let s = "Mary had a little lamb, Little lamb, little-lamb.";
-        let len = s.split(' ').count();
-
-        let c: &[char] = &[' '];
-        b.iter(|| assert_eq!(s.split(c).count(), len));
     }
 
     #[bench]

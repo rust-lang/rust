@@ -63,7 +63,7 @@ type Pos = (&'static str, u32);
 fn dump_filelines(filelines: &[Pos]) {
     for &(file, line) in filelines.iter().rev() {
         // extract a basename
-        let basename = file.split(&['/', '\\'][..]).last().unwrap();
+        let basename = file.split(|c| "/\\".contains(c)).last().unwrap();
         println!("{}:{}", basename, line);
     }
 }
