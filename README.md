@@ -43,6 +43,7 @@ the direction the language is evolving in.
 * [0803-type-ascription.md](text/0803-type-ascription.md)
 * [0809-box-and-in-for-stdlib.md](text/0809-box-and-in-for-stdlib.md)
 * [0909-move-thread-local-to-std-thread.md](text/0909-move-thread-local-to-std-thread.md)
+* [0911-const-fn.md](text/0911-const-fn.md)
 * [0968-closure-return-type-syntax.md](text/0968-closure-return-type-syntax.md)
 * [0979-align-splitn-with-other-languages.md](text/0979-align-splitn-with-other-languages.md)
 * [1011-process.exit.md](text/1011-process.exit.md)

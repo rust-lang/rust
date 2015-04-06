@@ -13,6 +13,7 @@ called in constants contexts, with constant arguments.
 As it is right now, `UnsafeCell` is a stabilization and safety hazard: the field
 it is supposed to be wrapping is public. This is only done out of the necessity
 to initialize static items containing atomics, mutexes, etc. - for example:
+
 ```rust
 #[lang="unsafe_cell"]
 struct UnsafeCell<T> { pub value: T }
@@ -46,9 +47,17 @@ for such features.
 
 The design should be as simple as it can be, while keeping enough functionality
 to solve the issues mentioned above.
-The intention is to have something usable at 1.0 without limiting what we can
-in the future. Compile-time pure constants (the existing `const` items) with
-added parametrization over types and values (arguments) should suffice.
+
+The intention of this RFC is to introduce a minimal change that
+enables safe abstraction resembling the kind of code that one writes
+outside of a constant. Compile-time pure constants (the existing
+`const` items) with added parametrization over types and values
+(arguments) should suffice.
+
+This RFC explicitly does not introduce a general CTFE mechanism. In
+particular, conditional branching and virtual dispatch are still not
+supported in constant expressions, which imposes a severe limitation
+on what one can express.
 
 # Detailed design
 
@@ -171,9 +180,6 @@ after 1.0.
 
 # Alternatives
 
-* Not do anything for 1.0. This would result in some APIs being crippled and
-serious backwards compatibility issues - `UnsafeCell`'s `value` field cannot
-simply be removed later.
 * While not an alternative, but rather a potential extension, I want to point
 out there is only way I could make `const fn`s work with traits (in an untested
 design, that is): qualify trait implementations and bounds with `const`.
@@ -214,3 +220,9 @@ algorithm that can handle *at least* tail recursion.
 Also, there is no way to actually write a recursive `const fn` at this moment,
 because no control flow primitives are implemented for constants, but that
 cannot be taken for granted, at least `if`/`else` should eventually work.
+
+# History
+
+- This RFC was accepted on 2015-04-06. The primary concerns raised in
+  the discussion concerned CTFE, and whether the `const fn` strategy
+  locks us into an undesirable plan there.
