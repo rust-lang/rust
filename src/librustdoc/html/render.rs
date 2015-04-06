@@ -1352,7 +1352,9 @@ impl Context {
     fn ignore_private_item(&self, it: &clean::Item) -> bool {
         match it.inner {
             clean::ModuleItem(ref m) => {
-                (m.items.len() == 0 && it.doc_value().is_none()) ||
+                (m.items.len() == 0 &&
+                 it.doc_value().is_none() &&
+                 it.visibility != Some(ast::Public)) ||
                 (self.passes.contains("strip-private") && it.visibility != Some(ast::Public))
             }
             clean::PrimitiveItem(..) => it.visibility != Some(ast::Public),
