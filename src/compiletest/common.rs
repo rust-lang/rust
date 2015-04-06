@@ -23,7 +23,8 @@ pub enum Mode {
     Pretty,
     DebugInfoGdb,
     DebugInfoLldb,
-    Codegen
+    Codegen,
+    Rustdoc,
 }
 
 impl FromStr for Mode {
@@ -39,6 +40,7 @@ impl FromStr for Mode {
           "debuginfo-lldb" => Ok(DebugInfoLldb),
           "debuginfo-gdb" => Ok(DebugInfoGdb),
           "codegen" => Ok(Codegen),
+          "rustdoc" => Ok(Rustdoc),
           _ => Err(()),
         }
     }
@@ -56,6 +58,7 @@ impl fmt::Display for Mode {
             DebugInfoGdb => "debuginfo-gdb",
             DebugInfoLldb => "debuginfo-lldb",
             Codegen => "codegen",
+            Rustdoc => "rustdoc",
         }, f)
     }
 }
@@ -70,6 +73,12 @@ pub struct Config {
 
     // The rustc executable
     pub rustc_path: PathBuf,
+
+    // The rustdoc executable
+    pub rustdoc_path: PathBuf,
+
+    // The python executable
+    pub python: String,
 
     // The clang executable
     pub clang_path: Option<PathBuf>,
