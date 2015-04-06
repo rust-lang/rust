@@ -1175,6 +1175,7 @@ fn document(config: &Config, props: &TestProps,
                         out_dir.to_str().unwrap().to_string(),
                         testfile.to_str().unwrap().to_string()];
     args.extend(extra_args.iter().cloned());
+    args.extend(split_maybe_args(&props.compile_flags).into_iter());
     let args = ProcArgs {
         prog: config.rustdoc_path.to_str().unwrap().to_string(),
         args: args,
