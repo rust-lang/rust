@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use clean::*;
-use std::iter::Extend;
+use std::collections::HashMap;
 use std::mem::{replace, swap};
 
 pub trait DocFolder : Sized {
@@ -80,6 +80,13 @@ pub trait DocFolder : Sized {
         c.module = match replace(&mut c.module, None) {
             Some(module) => self.fold_item(module), None => None
         };
+        let external_traits = replace(&mut c.external_traits, HashMap::new());
+        c.external_traits = external_traits.into_iter().map(|(k, mut v)| {
+            let items = replace(&mut v.items, Vec::new());
+            v.items = items.into_iter().filter_map(|i| self.fold_item(i))
+                           .collect();
+            (k, v)
+        }).collect();
         return c;
     }
 }

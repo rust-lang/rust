@@ -44,6 +44,7 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufWriter, BufReader};
 use std::iter::repeat;
+use std::mem;
 use std::path::{PathBuf, Path};
 use std::str;
 use std::sync::Arc;
@@ -383,9 +384,7 @@ pub fn run(mut krate: clean::Crate,
         privmod: false,
         public_items: public_items,
         orphan_methods: Vec::new(),
-        traits: analysis.as_ref().map(|a| {
-            a.external_traits.borrow_mut().take().unwrap()
-        }).unwrap_or(HashMap::new()),
+        traits: mem::replace(&mut krate.external_traits, HashMap::new()),
         typarams: analysis.as_ref().map(|a| {
             a.external_typarams.borrow_mut().take().unwrap()
         }).unwrap_or(HashMap::new()),
@@ -2239,7 +2238,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     }
 
     try!(write!(w, "<div class='impl-items'>"));
-    for trait_item in &i.impl_.items {
+    for trait_item in i.impl_.items.iter() {
         try!(doctraititem(w, trait_item, true));
     }
 
@@ -2262,17 +2261,10 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     // default methods which weren't overridden in the implementation block.
     // FIXME: this also needs to be done for associated types, whenever defaults
     // for them work.
-    match i.impl_.trait_ {
-        Some(clean::ResolvedPath { did, .. }) => {
-            try!({
-                match cache().traits.get(&did) {
-                    Some(t) => try!(render_default_methods(w, t, &i.impl_)),
-                    None => {}
-                }
-                Ok(())
-            })
+    if let Some(clean::ResolvedPath { did, .. }) = i.impl_.trait_ {
+        if let Some(t) = cache().traits.get(&did) {
+            try!(render_default_methods(w, t, &i.impl_));
         }
-        Some(..) | None => {}
     }
     try!(write!(w, "</div>"));
     Ok(())

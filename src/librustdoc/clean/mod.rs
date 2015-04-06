@@ -44,9 +44,10 @@ use rustc::middle::subst::{self, ParamSpace, VecPerParamSpace};
 use rustc::middle::ty;
 use rustc::middle::stability;
 
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::u32;
-use std::path::PathBuf;
 
 use core::DocContext;
 use doctree;
@@ -119,6 +120,7 @@ pub struct Crate {
     pub module: Option<Item>,
     pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
     pub primitives: Vec<PrimitiveType>,
+    pub external_traits: HashMap<ast::DefId, Trait>,
 }
 
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
@@ -197,6 +199,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             module: Some(module),
             externs: externs,
             primitives: primitives,
+            external_traits: cx.external_traits.borrow_mut().take().unwrap(),
         }
     }
 }

@@ -331,9 +331,10 @@ fn build_impl(cx: &DocContext,
                 let did = assoc_ty.def_id;
                 let type_scheme = ty::lookup_item_type(tcx, did);
                 let predicates = ty::lookup_predicates(tcx, did);
-                // Not sure the choice of ParamSpace actually matters here, because an
-                // associated type won't have generics on the LHS
-                let typedef = (type_scheme, predicates, subst::ParamSpace::TypeSpace).clean(cx);
+                // Not sure the choice of ParamSpace actually matters here,
+                // because an associated type won't have generics on the LHS
+                let typedef = (type_scheme, predicates,
+                               subst::ParamSpace::TypeSpace).clean(cx);
                 Some(clean::Item {
                     name: Some(assoc_ty.name.clean(cx)),
                     inner: clean::TypedefItem(typedef),
