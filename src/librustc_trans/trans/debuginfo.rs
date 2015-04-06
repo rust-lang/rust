@@ -2029,7 +2029,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
 
         self.fields.iter().enumerate().map(|(i, field)| {
             let name = if field.name == special_idents::unnamed_field.name {
-                "".to_string()
+                format!("__{}", i)
             } else {
                 token::get_name(field.name).to_string()
             };
@@ -2107,9 +2107,12 @@ struct TupleMemberDescriptionFactory<'tcx> {
 impl<'tcx> TupleMemberDescriptionFactory<'tcx> {
     fn create_member_descriptions<'a>(&self, cx: &CrateContext<'a, 'tcx>)
                                       -> Vec<MemberDescription> {
-        self.component_types.iter().map(|&component_type| {
+        self.component_types
+            .iter()
+            .enumerate()
+            .map(|(i, &component_type)| {
             MemberDescription {
-                name: "".to_string(),
+                name: format!("__{}", i),
                 llvm_type: type_of::type_of(cx, component_type),
                 type_metadata: type_metadata(cx, component_type, self.span),
                 offset: ComputedMemberOffset,
@@ -2262,7 +2265,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 let sole_struct_member_description = MemberDescription {
                     name: match non_null_variant.arg_names {
                         Some(ref names) => token::get_name(names[0]).to_string(),
-                        None => "".to_string()
+                        None => "__0".to_string()
                     },
                     llvm_type: non_null_llvm_type,
                     type_metadata: non_null_type_metadata,
@@ -2432,7 +2435,13 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                  .map(|&name| token::get_name(name).to_string())
                  .collect()
         }
-        None => variant_info.args.iter().map(|_| "".to_string()).collect()
+        None => {
+            variant_info.args
+                        .iter()
+                        .enumerate()
+                        .map(|(i, _)| format!("__{}", i))
+                        .collect()
+        }
     };
 
     // If this is not a univariant enum, there is also the discriminant field.

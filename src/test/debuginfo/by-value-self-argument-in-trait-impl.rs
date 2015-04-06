@@ -25,7 +25,7 @@
 // gdb-command:continue
 
 // gdb-command:print self
-// gdb-check:$3 = {4444.5, 5555, 6666, 7777.5}
+// gdb-check:$3 = {__0 = 4444.5, __1 = 5555, __2 = 6666, __3 = 7777.5}
 // gdb-command:continue
 
 

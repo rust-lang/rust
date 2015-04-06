@@ -38,9 +38,9 @@
 // gdb-command:print padded_tuple.length
 // gdb-check:$8 = 2
 // gdb-command:print padded_tuple.data_ptr[0]
-// gdb-check:$9 = {6, 7}
+// gdb-check:$9 = {__0 = 6, __1 = 7}
 // gdb-command:print padded_tuple.data_ptr[1]
-// gdb-check:$10 = {8, 9}
+// gdb-check:$10 = {__0 = 8, __1 = 9}
 
 // gdb-command:print padded_struct.length
 // gdb-check:$11 = 2
