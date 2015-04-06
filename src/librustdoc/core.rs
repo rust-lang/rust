@@ -75,7 +75,6 @@ pub struct CrateAnalysis {
     pub exported_items: privacy::ExportedItems,
     pub public_items: privacy::PublicItems,
     pub external_paths: ExternalPaths,
-    pub external_traits: RefCell<Option<HashMap<ast::DefId, clean::Trait>>>,
     pub external_typarams: RefCell<Option<HashMap<ast::DefId, String>>>,
     pub inlined: RefCell<Option<HashSet<ast::DefId>>>,
 }
@@ -155,7 +154,6 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
         exported_items: exported_items,
         public_items: public_items,
         external_paths: RefCell::new(None),
-        external_traits: RefCell::new(None),
         external_typarams: RefCell::new(None),
         inlined: RefCell::new(None),
     };
@@ -168,8 +166,6 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
 
     let external_paths = ctxt.external_paths.borrow_mut().take();
     *analysis.external_paths.borrow_mut() = external_paths;
-    let map = ctxt.external_traits.borrow_mut().take();
-    *analysis.external_traits.borrow_mut() = map;
     let map = ctxt.external_typarams.borrow_mut().take();
     *analysis.external_typarams.borrow_mut() = map;
     let map = ctxt.inlined.borrow_mut().take();
