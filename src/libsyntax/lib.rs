@@ -50,6 +50,21 @@ extern crate libc;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
+// A variant of 'try!' that panics on Err(FatalError). This is used as a
+// crutch on the way towards a non-panic!-prone parser. It should be used
+// for fatal parsing errors; eventually we plan to convert all code using
+// panictry to just use normal try
+macro_rules! panictry {
+    ($e:expr) => ({
+        use std::result::Result::{Ok, Err};
+        use diagnostic::FatalError;
+        match $e {
+            Ok(e) => e,
+            Err(FatalError) => panic!(FatalError)
+        }
+    })
+}
+
 pub mod util {
     pub mod interner;
     #[cfg(test)]

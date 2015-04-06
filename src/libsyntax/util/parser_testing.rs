@@ -44,7 +44,7 @@ fn with_error_checking_parse<T, F>(s: String, f: F) -> T where
 /// Parse a string, return a crate.
 pub fn string_to_crate (source_str : String) -> ast::Crate {
     with_error_checking_parse(source_str, |p| {
-        p.parse_crate_mod()
+        panictry!(p.parse_crate_mod())
     })
 }
 

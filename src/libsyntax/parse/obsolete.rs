@@ -100,7 +100,7 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
 
     fn eat_obsolete_ident(&mut self, ident: &str) -> bool {
         if self.is_obsolete_ident(ident) {
-            self.bump();
+            panictry!(self.bump());
             true
         } else {
             false

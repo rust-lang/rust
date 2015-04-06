@@ -116,7 +116,7 @@ impl<'a> Reader for TtReader<'a> {
         r
     }
     fn fatal(&self, m: &str) -> ! {
-        self.sp_diag.span_fatal(self.cur_span, m);
+        panic!(self.sp_diag.span_fatal(self.cur_span, m));
     }
     fn err(&self, m: &str) {
         self.sp_diag.span_err(self.cur_span, m);
@@ -181,7 +181,7 @@ impl<'a> StringReader<'a> {
 
     /// Report a fatal lexical error with a given span.
     pub fn fatal_span(&self, sp: Span, m: &str) -> ! {
-        self.span_diagnostic.span_fatal(sp, m)
+        panic!(self.span_diagnostic.span_fatal(sp, m))
     }
 
     /// Report a lexical error with a given span.

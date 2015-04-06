@@ -247,22 +247,22 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 match lockstep_iter_size(&TtSequence(sp, seq.clone()),
                                          r) {
                     LisUnconstrained => {
-                        r.sp_diag.span_fatal(
+                        panic!(r.sp_diag.span_fatal(
                             sp.clone(), /* blame macro writer */
                             "attempted to repeat an expression \
                              containing no syntax \
-                             variables matched as repeating at this depth");
+                             variables matched as repeating at this depth"));
                     }
                     LisContradiction(ref msg) => {
                         // FIXME #2887 blame macro invoker instead
-                        r.sp_diag.span_fatal(sp.clone(), &msg[..]);
+                        panic!(r.sp_diag.span_fatal(sp.clone(), &msg[..]));
                     }
                     LisConstraint(len, _) => {
                         if len == 0 {
                             if seq.op == ast::OneOrMore {
                                 // FIXME #2887 blame invoker
-                                r.sp_diag.span_fatal(sp.clone(),
-                                                     "this must repeat at least once");
+                                panic!(r.sp_diag.span_fatal(sp.clone(),
+                                                     "this must repeat at least once"));
                             }
 
                             r.stack.last_mut().unwrap().idx += 1;
@@ -306,10 +306,10 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                                 return ret_val;
                             }
                             MatchedSeq(..) => {
-                                r.sp_diag.span_fatal(
+                                panic!(r.sp_diag.span_fatal(
                                     r.cur_span, /* blame the macro writer */
                                     &format!("variable '{:?}' is still repeating at this depth",
-                                            token::get_ident(ident)));
+                                            token::get_ident(ident))));
                             }
                         }
                     }

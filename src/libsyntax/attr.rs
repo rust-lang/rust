@@ -503,8 +503,8 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[P<MetaItem>]) {
         let name = meta.name();
 
         if !set.insert(name.clone()) {
-            diagnostic.span_fatal(meta.span,
-                                  &format!("duplicate meta item `{}`", name));
+            panic!(diagnostic.span_fatal(meta.span,
+                                  &format!("duplicate meta item `{}`", name)));
         }
     }
 }
