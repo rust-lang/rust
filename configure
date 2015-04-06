@@ -1108,6 +1108,7 @@ do
     make_dir $h/test/debuginfo-gdb
     make_dir $h/test/debuginfo-lldb
     make_dir $h/test/codegen
+    make_dir $h/test/rustdoc
 done
 
 # Configure submodules

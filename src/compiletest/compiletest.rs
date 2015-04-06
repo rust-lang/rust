@@ -60,6 +60,8 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         vec!(reqopt("", "compile-lib-path", "path to host shared libraries", "PATH"),
           reqopt("", "run-lib-path", "path to target shared libraries", "PATH"),
           reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH"),
+          reqopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH"),
+          reqopt("", "python", "path to python to use for doc tests", "PATH"),
           optopt("", "clang-path", "path to  executable for codegen tests", "PATH"),
           optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM"),
           optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind"),
@@ -128,6 +130,8 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         compile_lib_path: matches.opt_str("compile-lib-path").unwrap(),
         run_lib_path: matches.opt_str("run-lib-path").unwrap(),
         rustc_path: opt_path(matches, "rustc-path"),
+        rustdoc_path: opt_path(matches, "rustdoc-path"),
+        python: matches.opt_str("python").unwrap(),
         clang_path: matches.opt_str("clang-path").map(|s| PathBuf::from(&s)),
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
@@ -168,6 +172,7 @@ pub fn log_config(config: &Config) {
     logv(c, format!("compile_lib_path: {:?}", config.compile_lib_path));
     logv(c, format!("run_lib_path: {:?}", config.run_lib_path));
     logv(c, format!("rustc_path: {:?}", config.rustc_path.display()));
+    logv(c, format!("rustdoc_path: {:?}", config.rustdoc_path.display()));
     logv(c, format!("src_base: {:?}", config.src_base.display()));
     logv(c, format!("build_base: {:?}", config.build_base.display()));
     logv(c, format!("stage_id: {}", config.stage_id));
