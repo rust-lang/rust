@@ -179,7 +179,9 @@ register_diagnostics! {
     E0366, // dropck forbid specialization to concrete type or region
     E0367, // dropck forbid specialization to predicate not in struct/enum
     E0368, // binary operation `<op>=` cannot be applied to types
-    E0369  // binary operation `<op>` cannot be applied to types
+    E0369, // binary operation `<op>` cannot be applied to types
+    E0371, // impl Trait for Trait is illegal
+    E0372  // impl Trait for Trait where Trait is not object safe
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }
