@@ -9,6 +9,7 @@
 # except according to those terms.
 
 import gdb
+import re
 
 #===============================================================================
 # GDB Pretty Printing Module for Rust
@@ -299,12 +300,12 @@ def classify_struct(type):
     if fields[0].name == "RUST$ENUM$DISR":
         if field_count == 1:
             return STRUCT_KIND_CSTYLE_VARIANT
-        elif fields[1].name is None:
+        elif all_fields_conform_to_tuple_field_naming(fields, 1):
             return STRUCT_KIND_TUPLE_VARIANT
         else:
             return STRUCT_KIND_STRUCT_VARIANT
 
-    if fields[0].name is None:
+    if all_fields_conform_to_tuple_field_naming(fields, 0):
         if type.tag.startswith("("):
             return STRUCT_KIND_TUPLE
         else:
@@ -325,7 +326,6 @@ def first_field(val):
     for field in val.type.fields():
         return field
 
-
 def get_field_at_index(val, index):
     i = 0
     for field in val.type.fields():
@@ -333,6 +333,12 @@ def get_field_at_index(val, index):
             return field
         i += 1
     return None
+
+def all_fields_conform_to_tuple_field_naming(fields, start_index):
+    for i in range(start_index, len(fields)):
+        if (fields[i].name is None) or (re.match(r"__\d+$", fields[i].name) is None):
+            return False
+    return True
 
 def extract_length_and_data_ptr_from_std_vec(vec_val):
     length = int(vec_val["len"])

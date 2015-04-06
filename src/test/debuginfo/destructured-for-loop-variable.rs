@@ -77,7 +77,7 @@
 // gdb-command:continue
 
 // gdb-command:print simple_tuple_ident
-// gdb-check:$24 = {34903493, 232323}
+// gdb-check:$24 = {__0 = 34903493, __1 = 232323}
 // gdb-command:continue
 
 // === LLDB TESTS ==================================================================================

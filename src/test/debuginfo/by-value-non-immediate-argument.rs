@@ -30,15 +30,15 @@
 // gdb-command:continue
 
 // gdb-command:print a
-// gdb-check:$5 = {7, 8, 9.5, 10.5}
+// gdb-check:$5 = {__0 = 7, __1 = 8, __2 = 9.5, __3 = 10.5}
 // gdb-command:continue
 
 // gdb-command:print a
-// gdb-check:$6 = {11.5, 12.5, 13, 14}
+// gdb-check:$6 = {__0 = 11.5, __1 = 12.5, __2 = 13, __3 = 14}
 // gdb-command:continue
 
 // gdb-command:print x
-// gdb-check:$7 = {{RUST$ENUM$DISR = Case1, x = 0, y = 8970181431921507452}, {RUST$ENUM$DISR = Case1, 0, 2088533116, 2088533116}}
+// gdb-check:$7 = {{RUST$ENUM$DISR = Case1, x = 0, y = 8970181431921507452}, {RUST$ENUM$DISR = Case1, __0 = 0, __1 = 2088533116, __2 = 2088533116}}
 // gdb-command:continue
 
 

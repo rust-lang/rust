@@ -21,7 +21,7 @@
 // gdb-command:print *t1
 // gdb-check:$2 = 2.5
 // gdb-command:print ret
-// gdb-check:$3 = {{1, 2.5}, {2.5, 1}}
+// gdb-check:$3 = {__0 = {__0 = 1, __1 = 2.5}, __1 = {__0 = 2.5, __1 = 1}}
 // gdb-command:continue
 
 // gdb-command:print *t0
@@ -29,7 +29,7 @@
 // gdb-command:print *t1
 // gdb-check:$5 = 4
 // gdb-command:print ret
-// gdb-check:$6 = {{3.5, 4}, {4, 3.5}}
+// gdb-check:$6 = {__0 = {__0 = 3.5, __1 = 4}, __1 = {__0 = 4, __1 = 3.5}}
 // gdb-command:continue
 
 // gdb-command:print *t0
@@ -37,7 +37,7 @@
 // gdb-command:print *t1
 // gdb-check:$8 = {a = 6, b = 7.5}
 // gdb-command:print ret
-// gdb-check:$9 = {{5, {a = 6, b = 7.5}}, {{a = 6, b = 7.5}, 5}}
+// gdb-check:$9 = {__0 = {__0 = 5, __1 = {a = 6, b = 7.5}}, __1 = {__0 = {a = 6, b = 7.5}, __1 = 5}}
 // gdb-command:continue
 
 
