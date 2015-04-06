@@ -10,7 +10,7 @@
 
 #![crate_type="lib"]
 
-// @has lib/trait.Index.html
+// @has assoc_types/trait.Index.html
 pub trait Index<I: ?Sized> {
     // @has - '//*[@id="associatedtype.Output"]//code' 'type Output: ?Sized'
     type Output: ?Sized;

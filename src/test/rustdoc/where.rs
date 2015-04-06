@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![crate_name = "foo"]
+
 pub trait MyTrait { fn dummy(&self) { } }
 
 // @has foo/struct.Alpha.html '//pre' "pub struct Alpha<A> where A: MyTrait"
