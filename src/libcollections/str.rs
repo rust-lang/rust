@@ -53,7 +53,6 @@ use self::RecompositionState::*;
 use self::DecompositionType::*;
 
 use core::clone::Clone;
-use core::iter::AdditiveIterator;
 use core::iter::{Iterator, Extend};
 use core::option::Option::{self, Some, None};
 use core::result::Result;
@@ -112,7 +111,7 @@ impl<S: AsRef<str>> SliceConcatExt<str, String> for [S] {
         // this is wrong without the guarantee that `self` is non-empty
         // `len` calculation may overflow but push_str but will check boundaries
         let len = sep.len() * (self.len() - 1)
-            + self.iter().map(|s| s.as_ref().len()).sum();
+            + self.iter().map(|s| s.as_ref().len()).sum::<usize>();
         let mut result = String::with_capacity(len);
         let mut first = true;
 

@@ -86,6 +86,20 @@ macro_rules! zero_one_impl {
 }
 zero_one_impl! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 
+macro_rules! zero_one_impl_float {
+    ($($t:ty)*) => ($(
+        impl Zero for $t {
+            #[inline]
+            fn zero() -> $t { 0.0 }
+        }
+        impl One for $t {
+            #[inline]
+            fn one() -> $t { 1.0 }
+        }
+    )*)
+}
+zero_one_impl_float! { f32 f64 }
+
 /// A built-in signed or unsigned integer.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[deprecated(since = "1.0.0",

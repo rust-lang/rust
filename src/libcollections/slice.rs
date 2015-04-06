@@ -85,7 +85,6 @@ use core::clone::Clone;
 use core::cmp::Ordering::{self, Greater, Less};
 use core::cmp::{self, Ord, PartialEq};
 use core::iter::Iterator;
-use core::iter::MultiplicativeIterator;
 use core::marker::Sized;
 use core::mem::size_of;
 use core::mem;
@@ -1182,7 +1181,7 @@ impl Iterator for ElementSwaps {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         // For a vector of size n, there are exactly n! permutations.
-        let n = (2..self.sdir.len() + 1).product();
+        let n: usize = (2..self.sdir.len() + 1).product();
         (n - self.swaps_made, Some(n - self.swaps_made))
     }
 }
