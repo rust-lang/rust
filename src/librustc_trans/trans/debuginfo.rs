@@ -773,11 +773,11 @@ pub fn create_global_var_metadata(cx: &CrateContext,
 
     let var_item = cx.tcx().map.get(node_id);
 
-    let (ident, span) = match var_item {
+    let (name, span) = match var_item {
         ast_map::NodeItem(item) => {
             match item.node {
-                ast::ItemStatic(..) => (item.ident, item.span),
-                ast::ItemConst(..) => (item.ident, item.span),
+                ast::ItemStatic(..) => (item.ident.name, item.span),
+                ast::ItemConst(..) => (item.ident.name, item.span),
                 _ => {
                     cx.sess()
                       .span_bug(item.span,
@@ -806,7 +806,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let variable_type = ty::node_id_to_type(cx.tcx(), node_id);
     let type_metadata = type_metadata(cx, variable_type, span);
     let namespace_node = namespace_for_item(cx, ast_util::local_def(node_id));
-    let var_name = token::get_ident(ident).to_string();
+    let var_name = token::get_name(name).to_string();
     let linkage_name =
         namespace_node.mangled_name_of_contained_item(&var_name[..]);
     let var_scope = namespace_node.scope;
@@ -861,7 +861,7 @@ pub fn create_local_var_metadata(bcx: Block, local: &ast::Local) {
         let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
 
         declare_local(bcx,
-                      var_ident.node,
+                      var_ident.node.name,
                       datum.ty,
                       scope_metadata,
                       DirectVariable { alloca: datum.val },
@@ -889,14 +889,14 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let ast_item = cx.tcx().map.find(node_id);
 
-    let variable_ident = match ast_item {
+    let variable_name = match ast_item {
         None => {
             cx.sess().span_bug(span, "debuginfo::create_captured_var_metadata: node not found");
         }
         Some(ast_map::NodeLocal(pat)) | Some(ast_map::NodeArg(pat)) => {
             match pat.node {
                 ast::PatIdent(_, ref path1, _) => {
-                    path1.node
+                    path1.node.name
                 }
                 _ => {
                     cx.sess()
@@ -950,7 +950,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     declare_local(bcx,
-                  variable_ident,
+                  variable_name,
                   variable_type,
                   scope_metadata,
                   variable_access,
@@ -963,7 +963,7 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 ///
 /// Adds the created metadata nodes directly to the crate's IR.
 pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                                 variable_ident: ast::Ident,
+                                                 variable_name: ast::Name,
                                                  binding: BindingInfo<'tcx>) {
     if bcx.unreachable.get() ||
        fn_should_be_ignored(bcx.fcx) ||
@@ -993,7 +993,7 @@ pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     declare_local(bcx,
-                  variable_ident,
+                  variable_name,
                   binding.ty,
                   scope_metadata,
                   var_access,
@@ -1048,7 +1048,7 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
         };
 
         declare_local(bcx,
-                      var_ident.node,
+                      var_ident.node.name,
                       datum.ty,
                       scope_metadata,
                       DirectVariable { alloca: datum.val },
@@ -1283,7 +1283,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let fnitem = cx.tcx().map.get(fn_ast_id);
 
-    let (ident, fn_decl, generics, top_level_block, span, has_path) = match fnitem {
+    let (name, fn_decl, generics, top_level_block, span, has_path) = match fnitem {
         ast_map::NodeItem(ref item) => {
             if contains_nodebug_attribute(&item.attrs) {
                 return FunctionDebugContext::FunctionWithoutDebugInfo;
@@ -1291,7 +1291,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             match item.node {
                 ast::ItemFn(ref fn_decl, _, _, ref generics, ref top_level_block) => {
-                    (item.ident, fn_decl, generics, top_level_block, item.span, true)
+                    (item.ident.name, fn_decl, generics, top_level_block, item.span, true)
                 }
                 _ => {
                     cx.sess().span_bug(item.span,
@@ -1306,7 +1306,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
-                    (impl_item.ident,
+                    (impl_item.ident.name,
                      &sig.decl,
                      &sig.generics,
                      body,
@@ -1329,7 +1329,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             match expr.node {
                 ast::ExprClosure(_, ref fn_decl, ref top_level_block) => {
                     let name = format!("fn{}", token::gensym("fn"));
-                    let name = token::str_to_ident(&name[..]);
+                    let name = token::intern(&name[..]);
                     (name, fn_decl,
                         // This is not quite right. It should actually inherit
                         // the generics of the enclosing function.
@@ -1350,7 +1350,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
-                    (trait_item.ident,
+                    (trait_item.ident.name,
                      &sig.decl,
                      &sig.generics,
                      body,
@@ -1394,7 +1394,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // Get_template_parameters() will append a `<...>` clause to the function
     // name if necessary.
-    let mut function_name = String::from_str(&token::get_ident(ident));
+    let mut function_name = String::from_str(&token::get_name(name));
     let template_parameters = get_template_parameters(cx,
                                                       generics,
                                                       param_substs,
@@ -1541,10 +1541,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                               actual_self_type,
                                                               codemap::DUMMY_SP);
 
-                let ident = special_idents::type_self;
+                let name = token::get_name(special_idents::type_self.name);
 
-                let ident = token::get_ident(ident);
-                let name = CString::new(ident.as_bytes()).unwrap();
+                let name = CString::new(name.as_bytes()).unwrap();
                 let param_metadata = unsafe {
                     llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                         DIB(cx),
@@ -1673,7 +1672,7 @@ fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
 }
 
 fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                             variable_ident: ast::Ident,
+                             variable_name: ast::Name,
                              variable_type: Ty<'tcx>,
                              scope_metadata: DIScope,
                              variable_access: VariableAccess,
@@ -1684,7 +1683,7 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let filename = span_start(cx, span).file.name.clone();
     let file_metadata = file_metadata(cx, &filename[..]);
 
-    let name = token::get_ident(variable_ident);
+    let name = token::get_name(variable_name);
     let loc = span_start(cx, span);
     let type_metadata = type_metadata(cx, variable_type, span);
 
@@ -2261,7 +2260,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // MemberDescription of the struct's single field.
                 let sole_struct_member_description = MemberDescription {
                     name: match non_null_variant.arg_names {
-                        Some(ref names) => token::get_ident(names[0]).to_string(),
+                        Some(ref names) => token::get_name(names[0]).to_string(),
                         None => "".to_string()
                     },
                     llvm_type: non_null_llvm_type,
@@ -2429,9 +2428,8 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let mut arg_names: Vec<_> = match variant_info.arg_names {
         Some(ref names) => {
             names.iter()
-                 .map(|ident| {
-                     token::get_ident(*ident).to_string()
-                 }).collect()
+                 .map(|&name| token::get_name(name).to_string())
+                 .collect()
         }
         None => variant_info.args.iter().map(|_| "".to_string()).collect()
     };
@@ -3245,11 +3243,10 @@ fn create_scope_map(cx: &CrateContext,
 
     struct ScopeStackEntry {
         scope_metadata: DIScope,
-        ident: Option<ast::Ident>
+        name: Option<ast::Name>
     }
 
-    let mut scope_stack = vec!(ScopeStackEntry { scope_metadata: fn_metadata,
-                                                 ident: None });
+    let mut scope_stack = vec!(ScopeStackEntry { scope_metadata: fn_metadata, name: None });
     scope_map.insert(fn_ast_id, fn_metadata);
 
     // Push argument identifiers onto the stack so arguments integrate nicely
@@ -3257,7 +3254,7 @@ fn create_scope_map(cx: &CrateContext,
     for arg in args {
         pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, _, path1| {
             scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata,
-                                               ident: Some(path1.node) });
+                                               name: Some(path1.node.name) });
             scope_map.insert(node_id, fn_metadata);
         })
     }
@@ -3296,13 +3293,12 @@ fn create_scope_map(cx: &CrateContext,
                 loc.col.to_usize() as c_uint)
         };
 
-        scope_stack.push(ScopeStackEntry { scope_metadata: scope_metadata,
-                                           ident: None });
+        scope_stack.push(ScopeStackEntry { scope_metadata: scope_metadata, name: None });
 
         inner_walk(cx, scope_stack, scope_map);
 
         // pop artificial scopes
-        while scope_stack.last().unwrap().ident.is_some() {
+        while scope_stack.last().unwrap().name.is_some() {
             scope_stack.pop();
         }
 
@@ -3374,7 +3370,7 @@ fn create_scope_map(cx: &CrateContext,
                 // scope stack and maybe introduce an artificial scope
                 if pat_util::pat_is_binding(def_map, &*pat) {
 
-                    let ident = path1.node;
+                    let name = path1.node.name;
 
                     // LLVM does not properly generate 'DW_AT_start_scope' fields
                     // for variable DIEs. For this reason we have to introduce
@@ -3401,7 +3397,7 @@ fn create_scope_map(cx: &CrateContext,
                     // variables with the same name will cause the problem.
                     let need_new_scope = scope_stack
                         .iter()
-                        .any(|entry| entry.ident.iter().any(|i| i.name == ident.name));
+                        .any(|entry| entry.name == Some(name));
 
                     if need_new_scope {
                         // Create a new lexical scope and push it onto the stack
@@ -3420,7 +3416,7 @@ fn create_scope_map(cx: &CrateContext,
 
                         scope_stack.push(ScopeStackEntry {
                             scope_metadata: scope_metadata,
-                            ident: Some(ident)
+                            name: Some(name)
                         });
 
                     } else {
@@ -3428,7 +3424,7 @@ fn create_scope_map(cx: &CrateContext,
                         let prev_metadata = scope_stack.last().unwrap().scope_metadata;
                         scope_stack.push(ScopeStackEntry {
                             scope_metadata: prev_metadata,
-                            ident: Some(ident)
+                            name: Some(name)
                         });
                     }
                 }
@@ -3970,8 +3966,8 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
     ty::with_path(cx.tcx(), def_id, |path| {
         // prepend crate name if not already present
         let krate = if def_id.krate == ast::LOCAL_CRATE {
-            let crate_namespace_ident = token::str_to_ident(crate_root_namespace(cx));
-            Some(ast_map::PathMod(crate_namespace_ident.name))
+            let crate_namespace_name = token::intern(crate_root_namespace(cx));
+            Some(ast_map::PathMod(crate_namespace_name))
         } else {
             None
         };

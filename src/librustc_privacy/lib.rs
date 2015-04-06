@@ -686,7 +686,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     fn check_static_method(&mut self,
                            span: Span,
                            method_id: ast::DefId,
-                           name: ast::Ident) {
+                           name: ast::Name) {
         // If the method is a default method, we need to use the def_id of
         // the default implementation.
         let method_id = match ty::impl_or_trait_item(self.tcx, method_id) {
@@ -696,7 +696,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             ty::TypeTraitItem(_) => method_id,
         };
 
-        let string = token::get_ident(name);
+        let string = token::get_name(name);
         self.report_error(self.ensure_public(span,
                                              method_id,
                                              None,
@@ -705,13 +705,13 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     }
 
     // Checks that a path is in scope.
-    fn check_path(&mut self, span: Span, path_id: ast::NodeId, last: ast::Ident) {
+    fn check_path(&mut self, span: Span, path_id: ast::NodeId, last: ast::Name) {
         debug!("privacy - path {}", self.nodestr(path_id));
         let path_res = *self.tcx.def_map.borrow().get(&path_id).unwrap();
         let ck = |tyname: &str| {
             let ck_public = |def: ast::DefId| {
                 debug!("privacy - ck_public {:?}", def);
-                let name = token::get_ident(last);
+                let name = token::get_name(last);
                 let origdid = path_res.def_id();
                 self.ensure_public(span,
                                    def,
@@ -800,10 +800,10 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
 
     // Checks that a method is in scope.
     fn check_method(&mut self, span: Span, origin: &MethodOrigin,
-                    ident: ast::Ident) {
+                    name: ast::Name) {
         match *origin {
             MethodStatic(method_id) => {
-                self.check_static_method(span, method_id, ident)
+                self.check_static_method(span, method_id, name)
             }
             MethodStaticClosure(_) => {}
             // Trait methods are always all public. The only controlling factor
@@ -825,11 +825,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                     match pid.node {
                         ast::PathListIdent { id, name } => {
                             debug!("privacy - ident item {}", id);
-                            self.check_path(pid.span, id, name);
+                            self.check_path(pid.span, id, name.name);
                         }
                         ast::PathListMod { id } => {
                             debug!("privacy - mod item {}", id);
-                            let name = prefix.segments.last().unwrap().identifier;
+                            let name = prefix.segments.last().unwrap().identifier.name;
                             self.check_path(pid.span, id, name);
                         }
                     }
@@ -863,7 +863,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                     }
                     Some(method) => {
                         debug!("(privacy checking) checking impl method");
-                        self.check_method(expr.span, &method.origin, ident.node);
+                        self.check_method(expr.span, &method.origin, ident.node.name);
                     }
                 }
             }
@@ -1005,7 +1005,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_path(&mut self, path: &ast::Path, id: ast::NodeId) {
-        self.check_path(path.span, id, path.segments.last().unwrap().identifier);
+        self.check_path(path.span, id, path.segments.last().unwrap().identifier.name);
         visit::walk_path(self, path);
     }
 }

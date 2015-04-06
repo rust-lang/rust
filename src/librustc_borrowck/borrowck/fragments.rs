@@ -396,11 +396,11 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
             match *origin_field_name {
                 mc::NamedField(ast_name) => {
                     let variant_arg_names = variant_info.arg_names.as_ref().unwrap();
-                    for variant_arg_ident in variant_arg_names {
-                        if variant_arg_ident.name == ast_name {
+                    for &variant_arg_name in variant_arg_names {
+                        if variant_arg_name == ast_name {
                             continue;
                         }
-                        let field_name = mc::NamedField(variant_arg_ident.name);
+                        let field_name = mc::NamedField(variant_arg_name);
                         add_fragment_sibling_local(field_name, Some(variant_info.id));
                     }
                 }

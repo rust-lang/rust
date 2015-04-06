@@ -87,8 +87,8 @@ fn encode_name(rbml_w: &mut Encoder, name: ast::Name) {
     rbml_w.wr_tagged_str(tag_paths_data_name, &token::get_name(name));
 }
 
-fn encode_impl_type_basename(rbml_w: &mut Encoder, name: ast::Ident) {
-    rbml_w.wr_tagged_str(tag_item_impl_type_basename, &token::get_ident(name));
+fn encode_impl_type_basename(rbml_w: &mut Encoder, name: ast::Name) {
+    rbml_w.wr_tagged_str(tag_item_impl_type_basename, &token::get_name(name));
 }
 
 pub fn encode_def_id(rbml_w: &mut Encoder, id: DefId) {
@@ -519,12 +519,12 @@ fn encode_info_for_mod(ecx: &EncodeContext,
                        attrs: &[ast::Attribute],
                        id: NodeId,
                        path: PathElems,
-                       name: ast::Ident,
+                       name: ast::Name,
                        vis: ast::Visibility) {
     rbml_w.start_tag(tag_items_data_item);
     encode_def_id(rbml_w, local_def(id));
     encode_family(rbml_w, 'm');
-    encode_name(rbml_w, name.name);
+    encode_name(rbml_w, name);
     debug!("(encoding info for module) encoding info for module ID {}", id);
 
     // Encode info about all the module children.
@@ -666,7 +666,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
 
 fn encode_info_for_struct_ctor(ecx: &EncodeContext,
                                rbml_w: &mut Encoder,
-                               name: ast::Ident,
+                               name: ast::Name,
                                ctor_id: NodeId,
                                index: &mut Vec<entry<i64>>,
                                struct_id: NodeId) {
@@ -679,7 +679,7 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
     encode_def_id(rbml_w, local_def(ctor_id));
     encode_family(rbml_w, 'o');
     encode_bounds_and_type_for_item(rbml_w, ecx, ctor_id);
-    encode_name(rbml_w, name.name);
+    encode_name(rbml_w, name);
     ecx.tcx.map.with_path(ctor_id, |path| encode_path(rbml_w, path));
     encode_parent_item(rbml_w, local_def(struct_id));
 
@@ -886,7 +886,7 @@ fn encode_method_argument_names(rbml_w: &mut Encoder,
     for arg in &decl.inputs {
         let tag = tag_method_argument_name;
         if let ast::PatIdent(_, ref path1, _) = arg.pat.node {
-            let name = token::get_ident(path1.node);
+            let name = token::get_name(path1.node.name);
             rbml_w.wr_tagged_bytes(tag, name.as_bytes());
         } else {
             rbml_w.wr_tagged_bytes(tag, &[]);
@@ -1044,7 +1044,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                             &item.attrs,
                             item.id,
                             path,
-                            item.ident,
+                            item.ident.name,
                             item.vis);
       }
       ast::ItemForeignMod(ref fm) => {
@@ -1152,7 +1152,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         // If this is a tuple-like struct, encode the type of the constructor.
         match struct_def.ctor_id {
             Some(ctor_id) => {
-                encode_info_for_struct_ctor(ecx, rbml_w, item.ident,
+                encode_info_for_struct_ctor(ecx, rbml_w, item.ident.name,
                                             ctor_id, index, def_id.node);
             }
             None => {}
@@ -1187,8 +1187,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_polarity(rbml_w, polarity);
         match ty.node {
             ast::TyPath(None, ref path) if path.segments.len() == 1 => {
-                let ident = path.segments.last().unwrap().identifier;
-                encode_impl_type_basename(rbml_w, ident);
+                let name = path.segments.last().unwrap().identifier.name;
+                encode_impl_type_basename(rbml_w, name);
             }
             _ => {}
         }
@@ -1513,7 +1513,7 @@ fn encode_info_for_items(ecx: &EncodeContext,
                         &[],
                         ast::CRATE_NODE_ID,
                         [].iter().cloned().chain(LinkedPath::empty()),
-                        syntax::parse::token::special_idents::invalid,
+                        syntax::parse::token::special_idents::invalid.name,
                         ast::Public);
 
     visit::walk_crate(&mut EncodeVisitor {
