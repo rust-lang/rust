@@ -192,25 +192,11 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
 /// Returns a new string with all consecutive whitespace collapsed into
 /// single spaces.
 ///
-/// The input is assumed to be already trimmed.
+/// Any leading or trailing whitespace will be trimmed.
 fn collapse_whitespace(s: &str) -> String {
-    let mut buffer = String::with_capacity(s.len());
-    let mut previous_char_is_whitespace = false;
-
-    for c in s.chars() {
-        if c.is_whitespace() {
-            if !previous_char_is_whitespace {
-                buffer.push(' ');
-            }
-
-            previous_char_is_whitespace = true;
-        } else {
-            buffer.push(c);
-            previous_char_is_whitespace = false;
-        }
-    }
-
-    buffer
+    s.split(|c: char| c.is_whitespace()).filter(|s| {
+        !s.is_empty()
+    }).collect::<Vec<_>>().connect(" ")
 }
 
 thread_local!(static USED_HEADER_MAP: RefCell<HashMap<String, usize>> = {
@@ -623,8 +609,9 @@ mod tests {
         }
 
         t("foo", "foo");
-        t("foo   bar", "foo bar");
-        t("foo  bar\nbaz", "foo bar baz");
-        t("foo bar \n   baz\t\tqux", "foo bar baz qux");
+        t("foo bar baz", "foo bar baz");
+        t(" foo   bar", "foo bar");
+        t("\tfoo   bar\nbaz", "foo bar baz");
+        t("foo   bar \n   baz\t\tqux\n", "foo bar baz qux");
     }
 }
