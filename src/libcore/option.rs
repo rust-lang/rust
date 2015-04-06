@@ -10,9 +10,9 @@
 
 //! Optional values
 //!
-//! Type `Option` represents an optional value: every `Option`
+//! Type `Option<T>` represents an optional value: every `Option<T>`
 //! is either `Some` and contains a value, or `None`, and
-//! does not. `Option` types are very common in Rust code, as
+//! does not. `Option<T>` types are very common in Rust code, as
 //! they have a number of uses:
 //!
 //! * Initial values
@@ -51,7 +51,7 @@
 //! ```
 //!
 //
-// FIXME: Show how `Option` is used in practice, with lots of methods
+// FIXME: Show how `Option<T>` is used in practice, with lots of methods
 //
 //! # Options and pointers ("nullable" pointers)
 //!
@@ -59,7 +59,7 @@
 //! no "null" pointers. Instead, Rust has *optional* pointers, like
 //! the optional owned box, `Option<Box<T>>`.
 //!
-//! The following example uses `Option` to create an optional box of
+//! The following example uses `Option<T>` to create an optional box of
 //! `i32`. Notice that in order to use the inner `i32` value first the
 //! `check_optional` function needs to use pattern matching to
 //! determine whether the box has a value (i.e. it is `Some(...)`) or
@@ -80,14 +80,14 @@
 //! }
 //! ```
 //!
-//! This usage of `Option` to create safe nullable pointers is so
+//! This usage of `Option<T>` to create safe nullable pointers is so
 //! common that Rust does special optimizations to make the
 //! representation of `Option<Box<T>>` a single pointer. Optional pointers
 //! in Rust are stored as efficiently as any other pointer type.
 //!
 //! # Examples
 //!
-//! Basic pattern matching on `Option`:
+//! Basic pattern matching on `Option<T>`:
 //!
 //! ```
 //! let msg = Some("howdy");
@@ -98,7 +98,7 @@
 //!     None => ()
 //! }
 //!
-//! // Remove the contained string, destroying the Option
+//! // Remove the contained string, destroying the `Option<T>`
 //! let unwrapped_msg = match msg {
 //!     Some(m) => m,
 //!     None => "default message"
@@ -159,9 +159,9 @@ use slice;
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
 // `Iterator` is an enumeration with one type parameter and two variants,
-// which basically means it must be `Option`.
+// which basically means it must be `Option<T>`.
 
-/// The `Option` type. See [the module level documentation](../index.html) for more.
+/// The `Option<T>` type. See [the module level documentation](../index.html) for more.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Option<T> {
@@ -182,7 +182,7 @@ impl<T> Option<T> {
     // Querying the contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Returns `true` if the option is a `Some` value
+    /// Returns `true` if the `Option<T>` is a `Some(v)` value.
     ///
     /// # Examples
     ///
@@ -202,7 +202,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns `true` if the option is a `None` value
+    /// Returns `true` if the `Option<T>` is a `None` value.
     ///
     /// # Examples
     ///
@@ -223,13 +223,13 @@ impl<T> Option<T> {
     // Adapter for working with references
     /////////////////////////////////////////////////////////////////////////
 
-    /// Convert from `Option<T>` to `Option<&T>`
+    /// Convert from `Option<T>` to `Option<&T>`.
     ///
     /// # Examples
     ///
     /// Convert an `Option<String>` into an `Option<usize>`, preserving the original.
     /// The `map` method takes the `self` argument by value, consuming the original,
-    /// so this technique uses `as_ref` to first take an `Option` to a reference
+    /// so this technique uses `as_ref` to first take an `Option<T>` to a reference
     /// to the value inside the original.
     ///
     /// ```
@@ -248,7 +248,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Convert from `Option<T>` to `Option<&mut T>`
+    /// Convert from `Option<T>` to `Option<&mut T>`.
     ///
     /// # Examples
     ///
@@ -269,7 +269,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Convert from `Option<T>` to `&mut [T]` (without copying)
+    /// Convert from `Option<T>` to `&mut [T]` (without copying).
     ///
     /// # Examples
     ///
@@ -304,7 +304,8 @@ impl<T> Option<T> {
     // Getting to contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Unwraps an option, yielding the content of a `Some`
+    /// If the `Option<T>` is `Some(v)`, moves the value `v` out of the `Option<T>`.
+    /// Otherwise panics with the provided message `msg`.
     ///
     /// # Panics
     ///
@@ -363,7 +364,8 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns the contained value or a default.
+    /// Moves the value `v` out of the `Option<T>` if the content of the
+    /// `Option<T>` is a `Some(v)` or returns the value of the argument `def`.
     ///
     /// # Examples
     ///
@@ -380,7 +382,8 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns the contained value or computes it from a closure.
+    /// Moves the value `v` out of the `Option<T>` if the content of the
+    /// `Option<T>` is a `Some(v)` or computes it from a closure.
     ///
     /// # Examples
     ///
@@ -402,7 +405,10 @@ impl<T> Option<T> {
     // Transforming contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Maps an `Option<T>` to `Option<U>` by applying a function to a contained value
+    /// Transforms the `Option<T>` into a new `Option<U>`.
+    /// If the `Option<T>` is `None` then `f` is not invoked and `None` is returned.
+    /// Otherwise the result `u` of evaluating `f(v)` is returned as a `Some(u)`
+    /// where `v` is the value of the content `Some(v)` on the `Option<T>`.
     ///
     /// # Examples
     ///
@@ -422,7 +428,10 @@ impl<T> Option<T> {
         }
     }
 
-    /// Applies a function to the contained value or returns a default.
+    /// Transforms the `Option<T>` into a new `Option<U>`.
+    /// If the `Option<T>` is `None` then `f` is not invoked and the `def` value
+    /// is returned. Otherwise the result of evaluating `f(v)` is returned where
+    /// `v` is the value of the content `Some(v)` on the `Option<T>`.
     ///
     /// # Examples
     ///
@@ -442,7 +451,10 @@ impl<T> Option<T> {
         }
     }
 
-    /// Applies a function to the contained value or computes a default.
+    /// Transforms the `Option<T>` into a value of of type `U`.
+    /// If the `Option<T>` is `None` then the result of evaluating `def()` is returned.
+    /// Otherwise the result of evaluating `f(v)` is returned where `v` is the
+    /// value of the content `Some(v)` on the `Option<T>`.
     ///
     /// # Examples
     ///
@@ -604,8 +616,8 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns `None` if the option is `None`, otherwise calls `f` with the
-    /// wrapped value and returns the result.
+    /// Returns `None` if the `Option<T>` is `None`, otherwise calls `f` with the
+    /// wrapped value `v` of the `Some(v)` and returns the result.
     ///
     /// Some languages call this operation flatmap.
     ///
@@ -629,7 +641,8 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns the option if it contains a value, otherwise returns `optb`.
+    /// Returns the `Option<T>` if it contains a `Some(v)` value, otherwise
+    /// returns the argument value `optb`.
     ///
     /// # Examples
     ///
@@ -659,8 +672,8 @@ impl<T> Option<T> {
         }
     }
 
-    /// Returns the option if it contains a value, otherwise calls `f` and
-    /// returns the result.
+    /// Returns the `Option<T>` if it contains a `Some(v)` value, otherwise calls
+    /// `f` and returns the result.
     ///
     /// # Examples
     ///
@@ -685,17 +698,18 @@ impl<T> Option<T> {
     // Misc
     /////////////////////////////////////////////////////////////////////////
 
-    /// Takes the value out of the option, leaving a `None` in its place.
+    /// Returns the current `Option<T>` object and replaces its memory location
+    /// with `None`.
     ///
     /// # Examples
     ///
     /// ```
     /// let mut x = Some(2);
-    /// x.take();
+    /// assert_eq!(x.take(), Some(2));
     /// assert_eq!(x, None);
     ///
     /// let mut x: Option<u32> = None;
-    /// x.take();
+    /// assert_eq!(x.take(), None);
     /// assert_eq!(x, None);
     /// ```
     #[inline]
@@ -889,7 +903,7 @@ impl<A> ExactSizeIterator for IntoIter<A> {}
 impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// Takes each element in the `Iterator`: if it is `None`, no further
     /// elements are taken, and the `None` is returned. Should no `None` occur, a
-    /// container with the values of each `Option` is returned.
+    /// container with the values of each `Option<T>` is returned.
     ///
     /// Here is an example which increments every integer in a vector,
     /// checking for overflow:
