@@ -87,7 +87,7 @@ use marker::{Reflect, Sized};
 ///
 /// Every type with no non-`'static` references implements `Any`.
 ///
-/// [mod]: ../index.html
+/// [mod]: ./index.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Any: Reflect + 'static {
     /// Get the `TypeId` of `self`
