@@ -1167,6 +1167,7 @@ fn document(config: &Config, props: &TestProps,
             testfile: &Path, extra_args: &[String]) -> (ProcRes, PathBuf) {
     let aux_dir = aux_output_dir_name(config, testfile);
     let out_dir = output_base_name(config, testfile);
+    let _ = fs::remove_dir_all(&out_dir);
     ensure_dir(&out_dir);
     let mut args = vec!["-L".to_string(),
                         aux_dir.to_str().unwrap().to_string(),

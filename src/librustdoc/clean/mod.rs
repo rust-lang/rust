@@ -1368,6 +1368,7 @@ pub enum PrimitiveType {
     Slice,
     Array,
     PrimitiveTuple,
+    PrimitiveRawPointer,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy, Debug)]
@@ -1404,6 +1405,7 @@ impl PrimitiveType {
             "array" => Some(Array),
             "slice" => Some(Slice),
             "tuple" => Some(PrimitiveTuple),
+            "pointer" => Some(PrimitiveRawPointer),
             _ => None,
         }
     }
@@ -1449,6 +1451,7 @@ impl PrimitiveType {
             Array => "array",
             Slice => "slice",
             PrimitiveTuple => "tuple",
+            PrimitiveRawPointer => "pointer",
         }
     }
 
