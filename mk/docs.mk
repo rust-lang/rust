@@ -255,7 +255,7 @@ doc/$(1)/index.html: CFG_COMPILER_HOST_TRIPLE = $(CFG_TARGET)
 doc/$(1)/index.html: $$(LIB_DOC_DEP_$(1)) doc/$(1)/
 	@$$(call E, rustdoc: $$@)
 	$$(Q)CFG_LLVM_LINKAGE_FILE=$$(LLVM_LINKAGE_PATH_$(CFG_BUILD)) \
-		$$(RUSTDOC) --cfg dox --cfg stage2 $$<
+		$$(RUSTDOC) --cfg dox --cfg stage2 $$(RUSTFLAGS_$(1)) $$<
 endef
 
 $(foreach crate,$(DOC_CRATES),$(eval $(call DEF_LIB_DOC,$(crate),DOC_TARGETS)))
