@@ -156,7 +156,7 @@
 //!     let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
 //!     try!(file.write_line("important message"));
 //!     drop(file);
-//!     return Ok(());
+//!     Ok(())
 //! }
 //! ```
 //!
@@ -189,7 +189,7 @@
 //!     if let Err(e) = file.write_line(&format!("age: {}", info.age)) {
 //!         return Err(e)
 //!     }
-//!     return file.write_line(&format!("rating: {}", info.rating));
+//!     file.write_line(&format!("rating: {}", info.rating))
 //! }
 //! ```
 //!
@@ -212,7 +212,7 @@
 //!     try!(file.write_line(&format!("name: {}", info.name)));
 //!     try!(file.write_line(&format!("age: {}", info.age)));
 //!     try!(file.write_line(&format!("rating: {}", info.rating)));
-//!     return Ok(());
+//!     Ok(())
 //! }
 //! ```
 //!
