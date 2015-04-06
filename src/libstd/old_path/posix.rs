@@ -15,8 +15,7 @@ use cmp::{Ordering, Eq, Ord, PartialEq, PartialOrd};
 use fmt;
 use hash;
 use old_io::Writer;
-use iter::{AdditiveIterator, Extend};
-use iter::{Iterator, Map};
+use iter::{Extend, Iterator, Map};
 use marker::Sized;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
@@ -351,7 +350,7 @@ impl Path {
                         Some(vec![SEP_BYTE])
                     } else {
                         let n = if is_abs { comps.len() } else { comps.len() - 1} +
-                                comps.iter().map(|v| v.len()).sum();
+                                comps.iter().map(|v| v.len()).sum::<usize>();
                         let mut v = Vec::with_capacity(n);
                         let mut it = comps.into_iter();
                         if !is_abs {

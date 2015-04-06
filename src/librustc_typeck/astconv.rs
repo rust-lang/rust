@@ -61,7 +61,7 @@ use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::ppaux::{self, Repr, UserString};
 
-use std::iter::{repeat, AdditiveIterator};
+use std::iter::repeat;
 use std::rc::Rc;
 use std::slice;
 use syntax::{abi, ast, ast_util};
@@ -517,12 +517,13 @@ fn find_implied_output_region(input_tys: &[Ty], input_pats: Vec<String>)
         lifetimes_for_params.push((input_pat, accumulator.len()));
     }
 
-    let implied_output_region = if lifetimes_for_params.iter().map(|&(_, n)| n).sum() == 1 {
-        assert!(possible_implied_output_region.is_some());
-        possible_implied_output_region
-    } else {
-        None
-    };
+    let implied_output_region =
+        if lifetimes_for_params.iter().map(|&(_, n)| n).sum::<usize>() == 1 {
+            assert!(possible_implied_output_region.is_some());
+            possible_implied_output_region
+        } else {
+            None
+        };
     (implied_output_region, lifetimes_for_params)
 }
 

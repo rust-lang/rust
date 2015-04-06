@@ -65,7 +65,7 @@ use default::Default;
 use marker;
 use mem;
 use num::{Int, Zero, One};
-use ops::{self, Add, Sub, FnMut, RangeFrom};
+use ops::{self, Add, Sub, FnMut, Mul, RangeFrom};
 use option::Option::{self, Some, None};
 use marker::Sized;
 use usize;
@@ -489,15 +489,14 @@ pub trait Iterator {
     ///
     /// ```
     /// # #![feature(core)]
-    /// use std::iter::AdditiveIterator;
     ///
     /// let a = [1, 4, 2, 3, 8, 9, 6];
-    /// let sum = a.iter()
-    ///            .map(|x| *x)
-    ///            .inspect(|&x| println!("filtering {}", x))
-    ///            .filter(|&x| x % 2 == 0)
-    ///            .inspect(|&x| println!("{} made it through", x))
-    ///            .sum();
+    /// let sum: i32 = a.iter()
+    ///                 .map(|x| *x)
+    ///                 .inspect(|&x| println!("filtering {}", x))
+    ///                 .filter(|&x| x % 2 == 0)
+    ///                 .inspect(|&x| println!("{} made it through", x))
+    ///                 .sum();
     /// println!("{}", sum);
     /// ```
     #[inline]
@@ -1022,6 +1021,47 @@ pub trait Iterator {
             }
         }
     }
+
+    /// Iterates over the entire iterator, summing up all the elements
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(core)]
+    ///
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter().cloned();
+    /// assert!(it.sum::<i32>() == 15);
+    /// ```
+    #[unstable(feature="core")]
+    fn sum<S=<Self as Iterator>::Item>(self) -> S where
+        S: Add<Self::Item, Output=S> + Zero,
+        Self: Sized,
+    {
+        self.fold(Zero::zero(), |s, e| s + e)
+    }
+
+    /// Iterates over the entire iterator, multiplying all the elements
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(core)]
+    ///
+    /// fn factorial(n: u32) -> u32 {
+    ///     (1..).take_while(|&i| i <= n).product()
+    /// }
+    /// assert!(factorial(0) == 1);
+    /// assert!(factorial(1) == 1);
+    /// assert!(factorial(5) == 120);
+    /// ```
+    #[unstable(feature="core")]
+    fn product<P=<Self as Iterator>::Item>(self) -> P where
+        P: Mul<Self::Item, Output=P> + One,
+        Self: Sized,
+    {
+        self.fold(One::one(), |p, e| p * e)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1221,151 +1261,6 @@ impl<I> RandomAccessIterator for Rev<I>
         }
     }
 }
-
-/// A trait for iterators over elements which can be added together
-#[unstable(feature = "core",
-           reason = "needs to be re-evaluated as part of numerics reform")]
-pub trait AdditiveIterator {
-    /// The result of summing over the iterator.
-    type SumResult;
-
-    /// Iterates over the entire iterator, summing up all the elements
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![feature(core)]
-    /// use std::iter::AdditiveIterator;
-    ///
-    /// let a = [1, 2, 3, 4, 5];
-    /// let mut it = a.iter().cloned();
-    /// assert!(it.sum() == 15);
-    /// ```
-    fn sum(self) -> Self::SumResult;
-}
-
-/// The sum operation of an iterator's item type. Implementing this allows
-/// calling `.sum()` on the iterator.
-#[unstable(feature = "core", reason = "trait is experimental")]
-pub trait AdditiveIteratorItem {
-    /// The type of the intermediate sums.
-    type SumResult;
-    /// The start value of the sum, usually something like `0`.
-    fn start() -> Self::SumResult;
-    /// Adds another element of the iterator to the intermediate sum.
-    fn combine(self, other: Self::SumResult) -> Self::SumResult;
-}
-
-#[unstable(feature = "core", reason = "trait is experimental")]
-impl<I: Iterator> AdditiveIterator for I where
-    <I as Iterator>::Item: AdditiveIteratorItem
-{
-    type SumResult = <<I as Iterator>::Item as AdditiveIteratorItem>::SumResult;
-    fn sum(self) -> <I as AdditiveIterator>::SumResult {
-        let mut sum = <<I as Iterator>::Item as AdditiveIteratorItem>::start();
-        for x in self {
-            sum = x.combine(sum);
-        }
-        sum
-    }
-}
-
-macro_rules! impl_additive {
-    ($T:ty, $init:expr) => {
-        #[unstable(feature = "core", reason = "trait is experimental")]
-        impl AdditiveIteratorItem for $T {
-            type SumResult = $T;
-            fn start() -> $T { $init }
-            fn combine(self, other: $T) -> $T { self + other }
-        }
-    };
-}
-impl_additive! { i8,    0 }
-impl_additive! { i16,   0 }
-impl_additive! { i32,   0 }
-impl_additive! { i64,   0 }
-impl_additive! { isize, 0 }
-impl_additive! { u8,    0 }
-impl_additive! { u16,   0 }
-impl_additive! { u32,   0 }
-impl_additive! { u64,   0 }
-impl_additive! { usize, 0 }
-impl_additive! { f32,   0.0 }
-impl_additive! { f64,   0.0 }
-
-/// A trait for iterators over elements which can be multiplied together.
-#[unstable(feature = "core",
-           reason = "needs to be re-evaluated as part of numerics reform")]
-pub trait MultiplicativeIterator {
-    /// The result of multiplying the elements of the iterator.
-    type ProductResult;
-
-    /// Iterates over the entire iterator, multiplying all the elements
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![feature(core)]
-    /// use std::iter::MultiplicativeIterator;
-    ///
-    /// fn factorial(n: usize) -> usize {
-    ///     (1..).take_while(|&i| i <= n).product()
-    /// }
-    /// assert!(factorial(0) == 1);
-    /// assert!(factorial(1) == 1);
-    /// assert!(factorial(5) == 120);
-    /// ```
-    fn product(self) -> Self::ProductResult;
-}
-
-/// The product operation of an iterator's item type. Implementing this allows
-/// calling `.product()` on the iterator.
-#[unstable(feature = "core", reason = "trait is experimental")]
-pub trait MultiplicativeIteratorItem {
-    /// The type of the intermediate products.
-    type ProductResult;
-    /// The start value of the product, usually something like `1`.
-    fn start() -> Self::ProductResult;
-    /// Multiplies another element of the iterator to the intermediate product.
-    fn combine(self, other: Self::ProductResult) -> Self::ProductResult;
-}
-
-#[unstable(feature = "core", reason = "trait is experimental")]
-impl<I: Iterator> MultiplicativeIterator for I where
-    <I as Iterator>::Item: MultiplicativeIteratorItem
-{
-    type ProductResult = <<I as Iterator>::Item as MultiplicativeIteratorItem>::ProductResult;
-    fn product(self) -> <I as MultiplicativeIterator>::ProductResult {
-        let mut product = <<I as Iterator>::Item as MultiplicativeIteratorItem>::start();
-        for x in self {
-            product = x.combine(product);
-        }
-        product
-    }
-}
-
-macro_rules! impl_multiplicative  {
-    ($T:ty, $init:expr) => {
-        #[unstable(feature = "core", reason = "trait is experimental")]
-        impl MultiplicativeIteratorItem for $T {
-            type ProductResult = $T;
-            fn start() -> $T { $init }
-            fn combine(self, other: $T) -> $T { self * other }
-        }
-    };
-}
-impl_multiplicative! { i8,    1 }
-impl_multiplicative! { i16,   1 }
-impl_multiplicative! { i32,   1 }
-impl_multiplicative! { i64,   1 }
-impl_multiplicative! { isize, 1 }
-impl_multiplicative! { u8,    1 }
-impl_multiplicative! { u16,   1 }
-impl_multiplicative! { u32,   1 }
-impl_multiplicative! { u64,   1 }
-impl_multiplicative! { usize, 1 }
-impl_multiplicative! { f32,  1.0 }
-impl_multiplicative! { f64,  1.0 }
 
 /// `MinMaxResult` is an enum returned by `min_max`. See `Iterator::min_max` for
 /// more detail.
