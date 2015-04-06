@@ -1,7 +1,7 @@
 - Feature Name: const_fn
 - Start Date: 2015-02-25
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#911](https://github.com/rust-lang/rfcs/pull/911)
+- Rust Issue: [rust-lang/rust#24111](https://github.com/rust-lang/rust/issues/24111)
 
 # Summary
 
