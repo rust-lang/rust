@@ -199,7 +199,7 @@ impl<'a> Iterator for Graphemes<'a> {
                     gr::GC_L => HangulL,
                     gr::GC_LV | gr::GC_V => HangulLV,
                     gr::GC_LVT | gr::GC_T => HangulLVT,
-                    gr::GC_RegionalIndicator => Regional,
+                    gr::GC_Regional_Indicator => Regional,
                     _ => FindExtend
                 },
                 FindExtend => {         // found non-extending when looking for extending
@@ -231,7 +231,7 @@ impl<'a> Iterator for Graphemes<'a> {
                     }
                 },
                 Regional => match cat {     // rule GB8a
-                    gr::GC_RegionalIndicator => continue,
+                    gr::GC_Regional_Indicator => continue,
                     _ => {
                         take_curr = false;
                         break;
@@ -300,7 +300,7 @@ impl<'a> DoubleEndedIterator for Graphemes<'a> {
                     gr::GC_L | gr::GC_LV | gr::GC_LVT => HangulL,
                     gr::GC_V => HangulLV,
                     gr::GC_T => HangulLVT,
-                    gr::GC_RegionalIndicator => Regional,
+                    gr::GC_Regional_Indicator => Regional,
                     gr::GC_Control => {
                         take_curr = Start == state;
                         break;
@@ -332,7 +332,7 @@ impl<'a> DoubleEndedIterator for Graphemes<'a> {
                     }
                 },
                 Regional => match cat {     // rule GB8a
-                    gr::GC_RegionalIndicator => continue,
+                    gr::GC_Regional_Indicator => continue,
                     _ => {
                         take_curr = false;
                         break;
