@@ -579,6 +579,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         ast::ExprTupField(..) |
         ast::ExprVec(_) |
         ast::ExprParen(..) |
+        ast::ExprType(..) |
         ast::ExprTup(..) => {}
 
         // Conditional control flow (possible to implement).

@@ -671,7 +671,8 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_datum_unadjusted");
 
     match expr.node {
-        ast::ExprParen(ref e) => {
+        ast::ExprParen(ref e) |
+        ast::ExprType(ref e, _) => {
             trans(bcx, &**e)
         }
         ast::ExprPath(..) => {
@@ -972,7 +973,8 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
     match expr.node {
-        ast::ExprParen(ref e) => {
+        ast::ExprParen(ref e) |
+        ast::ExprType(ref e, _) => {
             trans_into(bcx, &**e, Ignore)
         }
         ast::ExprBreak(label_opt) => {
@@ -1072,7 +1074,8 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     debuginfo::set_source_location(bcx.fcx, expr.id, expr.span);
 
     match expr.node {
-        ast::ExprParen(ref e) => {
+        ast::ExprParen(ref e) |
+        ast::ExprType(ref e, _) => {
             trans_into(bcx, &**e, dest)
         }
         ast::ExprPath(..) => {

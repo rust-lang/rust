@@ -558,7 +558,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
 
-          ast::ExprParen(ref e) => {
+          ast::ExprParen(ref e) | ast::ExprType(ref e, _) => {
             self.cat_expr(&**e)
           }
 

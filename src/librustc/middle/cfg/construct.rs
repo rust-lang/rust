@@ -372,6 +372,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             ast::ExprBox(None, ref e) |
             ast::ExprAddrOf(_, ref e) |
             ast::ExprCast(ref e, _) |
+            ast::ExprType(ref e, _) |
             ast::ExprUnary(_, ref e) |
             ast::ExprParen(ref e) |
             ast::ExprField(ref e, _) |

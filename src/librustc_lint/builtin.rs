@@ -1104,6 +1104,7 @@ impl UnusedParens {
                 }
                 ast::ExprUnary(_, ref x) |
                 ast::ExprCast(ref x, _) |
+                ast::ExprType(ref x, _) |
                 ast::ExprField(ref x, _) |
                 ast::ExprTupField(ref x, _) |
                 ast::ExprIndex(ref x, _) => {

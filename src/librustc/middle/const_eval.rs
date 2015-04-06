@@ -773,7 +773,8 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
       ast::ExprLit(ref lit) => {
           lit_to_const(&**lit, ety)
       }
-      ast::ExprParen(ref e) => try!(eval_const_expr_partial(tcx, &**e, ety)),
+      ast::ExprParen(ref e) |
+      ast::ExprType(ref e, _) => try!(eval_const_expr_partial(tcx, &**e, ety)),
       ast::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => try!(eval_const_expr_partial(tcx, &**expr, ety)),

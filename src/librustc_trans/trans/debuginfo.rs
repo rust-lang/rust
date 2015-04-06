@@ -3525,7 +3525,8 @@ fn create_scope_map(cx: &CrateContext,
             ast::ExprAddrOf(_, ref sub_exp)  |
             ast::ExprField(ref sub_exp, _) |
             ast::ExprTupField(ref sub_exp, _) |
-            ast::ExprParen(ref sub_exp) =>
+            ast::ExprParen(ref sub_exp) |
+            ast::ExprType(ref sub_exp, _) =>
                 walk_expr(cx, &**sub_exp, scope_stack, scope_map),
 
             ast::ExprBox(ref place, ref sub_expr) => {
