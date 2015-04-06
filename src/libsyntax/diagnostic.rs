@@ -68,10 +68,11 @@ pub trait Emitter {
                    sp: RenderSpan, msg: &str, lvl: Level);
 }
 
-/// This structure is used to signify that a task has panicked with a fatal error
-/// from the diagnostics. You can use this with the `Any` trait to figure out
-/// how a rustc task died (if so desired).
+/// Used as a return value to signify a fatal error occurred. (It is also
+/// used as the argument to panic at the moment, but that will eventually
+/// not be true.)
 #[derive(Copy, Clone)]
+#[must_use]
 pub struct FatalError;
 
 /// Signifies that the compiler died with an explicit call to `.bug`
@@ -88,13 +89,13 @@ pub struct SpanHandler {
 }
 
 impl SpanHandler {
-    pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
+    pub fn span_fatal(&self, sp: Span, msg: &str) -> FatalError {
         self.handler.emit(Some((&self.cm, sp)), msg, Fatal);
-        panic!(FatalError);
+        return FatalError;
     }
-    pub fn span_fatal_with_code(&self, sp: Span, msg: &str, code: &str) -> ! {
+    pub fn span_fatal_with_code(&self, sp: Span, msg: &str, code: &str) -> FatalError {
         self.handler.emit_with_code(Some((&self.cm, sp)), msg, code, Fatal);
-        panic!(FatalError);
+        return FatalError;
     }
     pub fn span_err(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&self.cm, sp)), msg, Error);

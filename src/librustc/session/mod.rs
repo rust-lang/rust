@@ -68,13 +68,13 @@ impl Session {
         if self.opts.treat_err_as_bug {
             self.span_bug(sp, msg);
         }
-        self.diagnostic().span_fatal(sp, msg)
+        panic!(self.diagnostic().span_fatal(sp, msg))
     }
     pub fn span_fatal_with_code(&self, sp: Span, msg: &str, code: &str) -> ! {
         if self.opts.treat_err_as_bug {
             self.span_bug(sp, msg);
         }
-        self.diagnostic().span_fatal_with_code(sp, msg, code)
+        panic!(self.diagnostic().span_fatal_with_code(sp, msg, code))
     }
     pub fn fatal(&self, msg: &str) -> ! {
         if self.opts.treat_err_as_bug {

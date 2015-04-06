@@ -1684,7 +1684,7 @@ mod test {
 
     fn expand_crate_str(crate_str: String) -> ast::Crate {
         let ps = parse::new_parse_sess();
-        let crate_ast = string_to_parser(&ps, crate_str).parse_crate_mod();
+        let crate_ast = panictry!(string_to_parser(&ps, crate_str).parse_crate_mod());
         // the cfg argument actually does matter, here...
         expand_crate(&ps,test_ecfg(),vec!(),vec!(),crate_ast)
     }

@@ -528,7 +528,10 @@ impl<'a> CrateReader<'a> {
                                                               source_name.clone(),
                                                               body);
                 let lo = p.span.lo;
-                let body = p.parse_all_token_trees();
+                let body = match p.parse_all_token_trees() {
+                    Ok(body) => body,
+                    Err(err) => panic!(err),
+                };
                 let span = mk_sp(lo, p.last_span.hi);
                 p.abort_if_errors();
                 macros.push(ast::MacroDef {
