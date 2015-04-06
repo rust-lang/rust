@@ -101,10 +101,6 @@ fn scan<R, F, G>(st: &mut PState, mut is_last: F, op: G) -> R where
     return op(&st.data[start_pos..end_pos]);
 }
 
-pub fn parse_ident(st: &mut PState, last: char) -> ast::Ident {
-    ast::Ident::new(parse_name(st, last))
-}
-
 pub fn parse_name(st: &mut PState, last: char) -> ast::Name {
     fn is_last(b: char, c: char) -> bool { return c == b; }
     parse_name_(st, |a| is_last(last, a) )

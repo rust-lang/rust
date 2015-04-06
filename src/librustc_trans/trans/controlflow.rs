@@ -27,7 +27,6 @@ use middle::ty;
 use util::ppaux::Repr;
 
 use syntax::ast;
-use syntax::ast::Ident;
 use syntax::ast_util;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
@@ -321,7 +320,7 @@ pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     expr: &ast::Expr,
-                                    opt_label: Option<Ident>,
+                                    opt_label: Option<ast::Ident>,
                                     exit: usize)
                                     -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_break_cont");
@@ -354,14 +353,14 @@ pub fn trans_break_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
 pub fn trans_break<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                expr: &ast::Expr,
-                               label_opt: Option<Ident>)
+                               label_opt: Option<ast::Ident>)
                                -> Block<'blk, 'tcx> {
     return trans_break_cont(bcx, expr, label_opt, cleanup::EXIT_BREAK);
 }
 
 pub fn trans_cont<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               expr: &ast::Expr,
-                              label_opt: Option<Ident>)
+                              label_opt: Option<ast::Ident>)
                               -> Block<'blk, 'tcx> {
     return trans_break_cont(bcx, expr, label_opt, cleanup::EXIT_LOOP);
 }

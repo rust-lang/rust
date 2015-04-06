@@ -223,7 +223,7 @@ use std::cmp::Ordering;
 use std::iter::AdditiveIterator;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::ast::{DUMMY_NODE_ID, Ident, NodeId};
+use syntax::ast::{DUMMY_NODE_ID, NodeId};
 use syntax::codemap::Span;
 use syntax::fold::Folder;
 use syntax::ptr::P;
@@ -349,7 +349,7 @@ pub struct BindingInfo<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-type BindingsMap<'tcx> = FnvHashMap<Ident, BindingInfo<'tcx>>;
+type BindingsMap<'tcx> = FnvHashMap<ast::Ident, BindingInfo<'tcx>>;
 
 struct ArmData<'p, 'blk, 'tcx: 'blk> {
     bodycx: Block<'blk, 'tcx>,
@@ -364,7 +364,7 @@ struct ArmData<'p, 'blk, 'tcx: 'blk> {
 struct Match<'a, 'p: 'a, 'blk: 'a, 'tcx: 'blk> {
     pats: Vec<&'p ast::Pat>,
     data: &'a ArmData<'p, 'blk, 'tcx>,
-    bound_ptrs: Vec<(Ident, ValueRef)>,
+    bound_ptrs: Vec<(ast::Ident, ValueRef)>,
     // Thread along renamings done by the check_match::StaticInliner, so we can
     // map back to original NodeIds
     pat_renaming_map: Option<&'a FnvHashMap<(NodeId, Span), NodeId>>
@@ -923,7 +923,7 @@ fn insert_lllocals<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
         debug!("binding {} to {}", binding_info.id, bcx.val_to_string(llval));
         bcx.fcx.lllocals.borrow_mut().insert(binding_info.id, datum);
-        debuginfo::create_match_binding_metadata(bcx, ident, binding_info);
+        debuginfo::create_match_binding_metadata(bcx, ident.name, binding_info);
     }
     bcx
 }
@@ -1380,6 +1380,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
     let mut bindings_map = FnvHashMap();
     pat_bindings(&tcx.def_map, &*pat, |bm, p_id, span, path1| {
         let ident = path1.node;
+        let name = ident.name;
         let variable_ty = node_id_type(bcx, p_id);
         let llvariable_ty = type_of::type_of(ccx, variable_ty);
         let tcx = bcx.tcx();
@@ -1396,7 +1397,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
                                  "__llmatch");
                 trmode = TrByCopy(alloca_no_lifetime(bcx,
                                          llvariable_ty,
-                                         &bcx.ident(ident)));
+                                         &bcx.name(name)));
             }
             ast::BindByValue(_) => {
                 // in this case, the final type of the variable will be T,
@@ -1404,13 +1405,13 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
                 // above
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty.ptr_to(),
-                                 &bcx.ident(ident));
+                                 &bcx.name(name));
                 trmode = TrByMove;
             }
             ast::BindByRef(_) => {
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty,
-                                 &bcx.ident(ident));
+                                 &bcx.name(name));
                 trmode = TrByRef;
             }
         };
@@ -1527,7 +1528,7 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         pat_bindings(&tcx.def_map, pat, |_, p_id, _, path1| {
             let scope = cleanup::var_scope(tcx, p_id);
             bcx = mk_binding_alloca(
-                bcx, p_id, &path1.node, scope, (),
+                bcx, p_id, path1.node.name, scope, (),
                 |(), bcx, llval, ty| { drop_done_fill_mem(bcx, llval, ty); bcx });
         });
         bcx
@@ -1549,7 +1550,7 @@ pub fn store_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 Some(ident) => {
                     let var_scope = cleanup::var_scope(tcx, local.id);
                     return mk_binding_alloca(
-                        bcx, pat.id, ident, var_scope, (),
+                        bcx, pat.id, ident.name, var_scope, (),
                         |(), bcx, v, _| expr::trans_into(bcx, &**init_expr,
                                                          expr::SaveIn(v)));
                 }
@@ -1605,7 +1606,7 @@ pub fn store_arg<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 bcx
             } else {
                 mk_binding_alloca(
-                    bcx, pat.id, ident, arg_scope, arg,
+                    bcx, pat.id, ident.name, arg_scope, arg,
                     |arg, bcx, llval, _| arg.store_to(bcx, llval))
             }
         }
@@ -1622,7 +1623,7 @@ pub fn store_arg<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
 fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
                                        p_id: ast::NodeId,
-                                       ident: &ast::Ident,
+                                       name: ast::Name,
                                        cleanup_scope: cleanup::ScopeId,
                                        arg: A,
                                        populate: F)
@@ -1632,7 +1633,7 @@ fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
     let var_ty = node_id_type(bcx, p_id);
 
     // Allocate memory on stack for the binding.
-    let llval = alloc_ty(bcx, var_ty, &bcx.ident(*ident));
+    let llval = alloc_ty(bcx, var_ty, &bcx.name(name));
 
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.
@@ -1686,7 +1687,7 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // binding will live and place it into the appropriate
                 // map.
                 bcx = mk_binding_alloca(
-                    bcx, pat.id, &path1.node, cleanup_scope, (),
+                    bcx, pat.id, path1.node.name, cleanup_scope, (),
                     |(), bcx, llval, ty| {
                         match pat_binding_mode {
                             ast::BindByValue(_) => {
