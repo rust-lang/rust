@@ -1,7 +1,7 @@
 - Feature Name: stable, it only restricts the language
 - Start Date: 2015-02-17
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#879](https://github.com/rust-lang/rfcs/pull/879)
+- Rust Issue: [rust-lang/rust#23872](https://github.com/rust-lang/rust/pull/23872)
 
 # Summary
 
