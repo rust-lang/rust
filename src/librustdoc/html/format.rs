@@ -491,7 +491,8 @@ impl fmt::Display for clean::Type {
             }
             clean::Bottom => f.write_str("!"),
             clean::RawPointer(m, ref t) => {
-                write!(f, "*{}{}", RawMutableSpace(m), **t)
+                primitive_link(f, clean::PrimitiveType::PrimitiveRawPointer,
+                               &format!("*{}{}", RawMutableSpace(m), **t))
             }
             clean::BorrowedRef{ lifetime: ref l, mutability, type_: ref ty} => {
                 let lt = match *l {
