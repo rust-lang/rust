@@ -8,9 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate foo;
+#![crate_name = "foo"]
 
-pub use foo::bar;
+pub mod io {
+    pub trait Reader { fn dummy(&self) { } }
+}
 
-pub fn wut<T: bar::Bar>() {
+pub enum Maybe<A> {
+    Just(A),
+    Nothing
+}
+
+// @has foo/prelude/index.html
+pub mod prelude {
+    // @has foo/prelude/index.html '//code' 'pub use io::{self, Reader}'
+    #[doc(no_inline)] pub use io::{self, Reader};
+    // @has foo/prelude/index.html '//code' 'pub use Maybe::{self, Just, Nothing}'
+    #[doc(no_inline)] pub use Maybe::{self, Just, Nothing};
 }

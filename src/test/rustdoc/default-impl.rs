@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type="lib"]
+// aux-build:rustdoc-default-impl.rs
 
-extern crate lib;
+extern crate rustdoc_default_impl as foo;
 
-// @has user/fn.foreigner.html //pre 'pub unsafe fn foreigner(cold_as_ice: u32)'
-pub use lib::foreigner;
+pub use foo::bar;
+
+pub fn wut<T: bar::Bar>() {
+}

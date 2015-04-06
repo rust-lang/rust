@@ -8,36 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "foo"]
-
 //! Dox
-// @has src/foo/foo.rs.html
-// @has foo/index.html '//a/@href' '../src/foo/foo.rs.html'
-
-pub mod qux;
-
-// @has foo/bar/index.html '//a/@href' '../../src/foo/foo.rs.html'
 pub mod bar {
 
     /// Dox
-    // @has foo/bar/baz/index.html '//a/@href' '../../../src/foo/foo.rs.html'
     pub mod baz {
         /// Dox
-        // @has foo/bar/baz/fn.baz.html '//a/@href' '../../../src/foo/foo.rs.html'
         pub fn baz() { }
     }
 
     /// Dox
-    // @has foo/bar/trait.Foobar.html '//a/@href' '../../src/foo/foo.rs.html'
     pub trait Foobar { fn dummy(&self) { } }
 
-    // @has foo/bar/struct.Foo.html '//a/@href' '../../src/foo/foo.rs.html'
     pub struct Foo { x: i32, y: u32 }
 
-    // @has foo/bar/fn.prawns.html '//a/@href' '../../src/foo/foo.rs.html'
     pub fn prawns((a, b): (i32, u32), Foo { x, y }: Foo) { }
 }
 
 /// Dox
-// @has foo/fn.modfn.html '//a/@href' '../src/foo/foo.rs.html'
 pub fn modfn() { }

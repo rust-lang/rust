@@ -8,7 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate ext;
+// @has must_use/struct.Struct.html //pre '#[must_use]'
+#[must_use]
+pub struct Struct {
+    field: i32,
+}
 
-// @count lib/struct.Struct.html '//*[@id="method.provided"]' 1
-pub use ext::Struct;
+// @has must_use/enum.Enum.html //pre '#[must_use = "message"]'
+#[must_use = "message"]
+pub enum Enum {
+    Variant(i32),
+}

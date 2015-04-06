@@ -8,16 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type="lib"]
+// aux-build:rustdoc-extern-default-method.rs
 
-// @has lib/struct.Struct.html //pre '#[must_use]'
-#[must_use]
-pub struct Struct {
-    field: i32,
-}
+extern crate rustdoc_extern_default_method as ext;
 
-// @has lib/enum.Enum.html //pre '#[must_use = "message"]'
-#[must_use = "message"]
-pub enum Enum {
-    Variant(i32),
-}
+// @count extern_default_method/struct.Struct.html '//*[@id="method.provided"]' 1
+pub use ext::Struct;

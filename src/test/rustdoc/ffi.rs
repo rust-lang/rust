@@ -8,19 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod io {
-    pub trait Reader { fn dummy(&self) { } }
-}
+// aux-build:rustdoc-ffi.rs
 
-pub enum Maybe<A> {
-    Just(A),
-    Nothing
-}
+extern crate rustdoc_ffi as lib;
 
-// @has foo/prelude/index.html
-pub mod prelude {
-    // @has foo/prelude/index.html '//code' 'pub use io::{self, Reader}'
-    #[doc(no_inline)] pub use io::{self, Reader};
-    // @has foo/prelude/index.html '//code' 'pub use Maybe::{self, Just, Nothing}'
-    #[doc(no_inline)] pub use Maybe::{self, Just, Nothing};
+// @has ffi/fn.foreigner.html //pre 'pub unsafe fn foreigner(cold_as_ice: u32)'
+pub use lib::foreigner;
+
+extern "C" {
+    // @has ffi/fn.another.html //pre 'pub unsafe fn another(cold_as_ice: u32)'
+    pub fn another(cold_as_ice: u32);
 }

@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// aux-build:rustdoc-extern-method.rs
+
 #![feature(unboxed_closures)]
 
-extern crate foo;
+extern crate rustdoc_extern_method as foo;
 
-// @has bar/trait.Foo.html //pre "pub trait Foo"
+// @has extern_method/trait.Foo.html //pre "pub trait Foo"
 // @has - '//*[@id="tymethod.foo"]//code' 'extern "rust-call" fn foo'
 // @has - '//*[@id="tymethod.foo_"]//code' 'extern "rust-call" fn foo_'
 pub use foo::Foo;
 
-// @has bar/trait.Bar.html //pre "pub trait Bar"
+// @has extern_method/trait.Bar.html //pre "pub trait Bar"
 pub trait Bar {
     // @has - '//*[@id="tymethod.bar"]//code' 'extern "rust-call" fn bar'
     extern "rust-call" fn bar(&self, _: ());
