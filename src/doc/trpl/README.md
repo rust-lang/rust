@@ -28,7 +28,7 @@ and will be able to understand most Rust code and write more complex programs.
 
 In a similar fashion to "Intermediate," this section is full of individual,
 deep-dive chapters, which stand alone and can be read in any order. These
-chapters focus on the most complex features,
+chapters focus on Rust's most complex features.
 
 <h2 class="section-header"><a href="unstable.html">Unstable</a></h2>
 
