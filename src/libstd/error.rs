@@ -50,7 +50,7 @@
 use boxed::Box;
 use convert::From;
 use fmt::{self, Debug, Display};
-use marker::Send;
+use marker::{Send, Sync};
 use num;
 use option::Option;
 use option::Option::None;
@@ -81,15 +81,15 @@ impl<'a, E: Error + 'a> From<E> for Box<Error + 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, E: Error + Send + 'a> From<E> for Box<Error + Send + 'a> {
-    fn from(err: E) -> Box<Error + Send + 'a> {
+impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<Error + Send + Sync + 'a> {
+    fn from(err: E) -> Box<Error + Send + Sync + 'a> {
         Box::new(err)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl From<String> for Box<Error + Send> {
-    fn from(err: String) -> Box<Error + Send> {
+impl From<String> for Box<Error + Send + Sync> {
+    fn from(err: String) -> Box<Error + Send + Sync> {
         #[derive(Debug)]
         struct StringError(String);
 
@@ -108,8 +108,8 @@ impl From<String> for Box<Error + Send> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b> From<&'b str> for Box<Error + Send + 'a> {
-    fn from(err: &'b str) -> Box<Error + Send + 'a> {
+impl<'a, 'b> From<&'b str> for Box<Error + Send + Sync + 'a> {
+    fn from(err: &'b str) -> Box<Error + Send + Sync + 'a> {
         From::from(String::from_str(err))
     }
 }
