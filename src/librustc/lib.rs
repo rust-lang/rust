@@ -104,7 +104,6 @@ pub mod middle {
     pub mod entry;
     pub mod expr_use_visitor;
     pub mod fast_reject;
-    pub mod graph;
     pub mod intrinsicck;
     pub mod infer;
     pub mod lang_items;
