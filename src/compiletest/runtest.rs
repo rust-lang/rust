@@ -382,8 +382,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
 
             // write debugger script
             let mut script_str = String::with_capacity(2048);
-            let charset = if cfg!(target_os = "bitrig") { "auto" } else { "UTF-8" };
-            script_str.push_str(&format!("set charset {}\n", charset));
+            script_str.push_str(&format!("set charset {}\n", charset()));
             script_str.push_str(&format!("file {}\n", exe_file.to_str().unwrap()));
             script_str.push_str("target remote :5039\n");
             script_str.push_str(&format!("set solib-search-path \
@@ -517,8 +516,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                                                        .to_string();
             // write debugger script
             let mut script_str = String::with_capacity(2048);
-            let charset = if cfg!(target_os = "bitrig") { "auto" } else { "UTF-8" };
-            script_str.push_str(&format!("set charset {}\n", charset));
+            script_str.push_str(&format!("set charset {}\n", charset()));
             script_str.push_str("show version\n");
 
             match config.gdb_version {
@@ -1790,4 +1788,12 @@ fn run_codegen_test(config: &Config, props: &TestProps,
     mm.insert_metric("clang-codegen-ratio",
                      (base_lines as f64) / (clang_lines as f64),
                      0.001);
+}
+
+fn charset() -> &'static str {
+    if cfg!(any(target_os = "bitrig", target_os = "freebsd")) {
+        "auto"
+    } else {
+        "UTF-8"
+    }
 }
