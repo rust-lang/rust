@@ -324,7 +324,7 @@ impl<A:?Sized,R:?Sized,T:?Sized> PhantomFn<A,R> for T { }
 /// that has two pointers of type `*const T`, presumably pointing into
 /// an array somewhere:
 ///
-/// ```
+/// ```ignore
 /// struct Slice<'a, T> {
 ///     start: *const T,
 ///     end: *const T,
