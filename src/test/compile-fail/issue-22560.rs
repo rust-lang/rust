@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 use std::ops::{Add, Sub};
 
 type Test = Add +
@@ -15,5 +17,4 @@ type Test = Add +
             Sub;
             //~^ ERROR only the builtin traits can be used as closure or object bounds
 
-fn main() {
-}
+fn main() { }
