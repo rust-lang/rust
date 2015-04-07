@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-17476.rs
+// aux-build:inline-default-methods.rs
 
-extern crate issue_17476;
+extern crate inline_default_methods;
 
-pub struct Foo;
-
-// @has issue_17476/struct.Foo.html \
-//      '//*[@href="http://example.com/issue_17476/trait.Foo.html#method.foo"]' \
-//      'foo'
-impl issue_17476::Foo for Foo {}
+// @has inline_default_methods/trait.Foo.html
+// @has - '//*[@class="rust trait"]' 'fn bar(&self);'
+// @has - '//*[@class="rust trait"]' 'fn foo(&mut self) { ... }'
+pub use inline_default_methods::Foo;

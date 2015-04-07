@@ -1296,6 +1296,35 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
             }
         };
 
+        let generics = (&self.generics, &self.predicates,
+                        subst::FnSpace).clean(cx);
+        let decl = (self.def_id, &sig).clean(cx);
+        let provided = match self.container {
+            ty::ImplContainer(..) => false,
+            ty::TraitContainer(did) => {
+                ty::provided_trait_methods(cx.tcx(), did).iter().any(|m| {
+                    m.def_id == self.def_id
+                })
+            }
+        };
+        let inner = if provided {
+            MethodItem(Method {
+                unsafety: self.fty.unsafety,
+                generics: generics,
+                self_: self_,
+                decl: decl,
+                abi: self.fty.abi
+            })
+        } else {
+            TyMethodItem(TyMethod {
+                unsafety: self.fty.unsafety,
+                generics: generics,
+                self_: self_,
+                decl: decl,
+                abi: self.fty.abi
+            })
+        };
+
         Item {
             name: Some(self.name.clean(cx)),
             visibility: Some(ast::Inherited),
@@ -1303,13 +1332,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
             def_id: self.def_id,
             attrs: inline::load_attrs(cx, cx.tcx(), self.def_id),
             source: Span::empty(),
-            inner: TyMethodItem(TyMethod {
-                unsafety: self.fty.unsafety,
-                generics: (&self.generics, &self.predicates, subst::FnSpace).clean(cx),
-                self_: self_,
-                decl: (self.def_id, &sig).clean(cx),
-                abi: self.fty.abi
-            })
+            inner: inner,
         }
     }
 }
