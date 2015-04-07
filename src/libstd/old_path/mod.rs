@@ -144,12 +144,10 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// # #![feature(old_path)]
-    /// use std::old_path::{Path, GenericPath};
-    /// # foo();
-    /// # #[cfg(windows)] fn foo() {}
-    /// # #[cfg(unix)] fn foo() {
+    /// # fn main() {
+    /// use std::old_path::Path;
     /// let path = Path::new("foo/bar");
     /// # }
     /// ```
@@ -170,12 +168,10 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// # #![feature(old_path)]
-    /// use std::old_path::{Path, GenericPath};
-    /// # foo();
-    /// # #[cfg(windows)] fn foo() {}
-    /// # #[cfg(unix)] fn foo() {
+    /// # fn main() {
+    /// use std::old_path::Path;
     /// let x: &[u8] = b"foo\0";
     /// assert!(Path::new_opt(x).is_none());
     /// # }

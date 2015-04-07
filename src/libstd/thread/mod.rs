@@ -99,6 +99,7 @@
 //! `println!` and `panic!` for the child thread:
 //!
 //! ```rust
+//! # #![allow(unused_must_use)]
 //! use std::thread;
 //!
 //! thread::Builder::new().name("child1".to_string()).spawn(move || {

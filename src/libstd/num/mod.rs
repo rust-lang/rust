@@ -280,7 +280,6 @@ pub trait Float
     /// [subnormal][subnormal], or `NaN`.
     ///
     /// ```
-    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f32;
     ///
@@ -307,7 +306,6 @@ pub trait Float
     /// predicate instead.
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::num::{Float, FpCategory};
     /// use std::f32;
     ///
@@ -417,7 +415,6 @@ pub trait Float
     /// number is `Float::nan()`.
     ///
     /// ```
-    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -441,7 +438,6 @@ pub trait Float
     /// - `Float::nan()` if the number is `Float::nan()`
     ///
     /// ```
-    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -686,7 +682,6 @@ pub trait Float
     /// Convert radians to degrees.
     ///
     /// ```
-    /// # #![feature(std_misc, core)]
     /// use std::num::Float;
     /// use std::f64::consts;
     ///
@@ -701,7 +696,7 @@ pub trait Float
     /// Convert degrees to radians.
     ///
     /// ```
-    /// # #![feature(std_misc, core)]
+    /// # #![feature(std_misc)]
     /// use std::num::Float;
     /// use std::f64::consts;
     ///
@@ -849,7 +844,6 @@ pub trait Float
     /// Computes the sine of a number (in radians).
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -864,7 +858,6 @@ pub trait Float
     /// Computes the cosine of a number (in radians).
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -879,7 +872,6 @@ pub trait Float
     /// Computes the tangent of a number (in radians).
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -895,7 +887,6 @@ pub trait Float
     /// [-1, 1].
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -913,7 +904,6 @@ pub trait Float
     /// [-1, 1].
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -949,7 +939,6 @@ pub trait Float
     /// * `y < 0`: `arctan(y/x) - pi` -> `(-pi, -pi/2)`
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -975,7 +964,6 @@ pub trait Float
     /// `(sin(x), cos(x))`.
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1011,7 +999,6 @@ pub trait Float
     /// the operations were performed separately.
     ///
     /// ```
-    /// # #![feature(std_misc, core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1028,7 +1015,6 @@ pub trait Float
     /// Hyperbolic sine function.
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1047,7 +1033,6 @@ pub trait Float
     /// Hyperbolic cosine function.
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1066,7 +1051,6 @@ pub trait Float
     /// Hyperbolic tangent function.
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///
@@ -1113,7 +1097,6 @@ pub trait Float
     /// Inverse hyperbolic tangent function.
     ///
     /// ```
-    /// # #![feature(core)]
     /// use std::num::Float;
     /// use std::f64;
     ///

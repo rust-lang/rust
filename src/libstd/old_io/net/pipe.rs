@@ -191,7 +191,7 @@ impl UnixListener {
     /// let server = Path::new("/path/to/my/socket");
     /// let stream = UnixListener::bind(&server);
     /// for mut client in stream.listen().incoming() {
-    ///     client.write(&[1, 2, 3, 4]);
+    ///     let _ = client.write(&[1, 2, 3, 4]);
     /// }
     /// # }
     /// ```
