@@ -72,6 +72,9 @@ type blockcodefn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
 type headerfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                               libc::c_int, *mut libc::c_void);
 
+type codespanfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                *mut libc::c_void);
+
 type linkfn = extern "C" fn (*mut hoedown_buffer, *const hoedown_buffer,
                              *const hoedown_buffer, *const hoedown_buffer,
                              *mut libc::c_void) -> libc::c_int;
@@ -89,11 +92,12 @@ struct hoedown_renderer {
     blockhtml: Option<extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
                                     *mut libc::c_void)>,
     header: Option<headerfn>,
-
     other_block_level_callbacks: [libc::size_t; 9],
 
     /* span level callbacks - NULL or return 0 prints the span verbatim */
-    other_span_level_callbacks_1: [libc::size_t; 9],
+    autolink: libc::size_t, // unused
+    codespan: Option<codespanfn>,
+    other_span_level_callbacks_1: [libc::size_t; 7],
     link: Option<linkfn>,
     other_span_level_callbacks_2: [libc::size_t; 5],
     // hoedown will add `math` callback here, but we use an old version of it.
@@ -183,6 +187,16 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     } else {
         None
     }
+}
+
+/// Returns a new string with all consecutive whitespace collapsed into
+/// single spaces.
+///
+/// Any leading or trailing whitespace will be trimmed.
+fn collapse_whitespace(s: &str) -> String {
+    s.split(|c: char| c.is_whitespace()).filter(|s| {
+        !s.is_empty()
+    }).collect::<Vec<_>>().connect(" ")
 }
 
 thread_local!(static USED_HEADER_MAP: RefCell<HashMap<String, usize>> = {
@@ -299,6 +313,20 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
     reset_headers();
 
+    extern fn codespan(ob: *mut hoedown_buffer, text: *const hoedown_buffer, _: *mut libc::c_void) {
+        let content = if text.is_null() {
+            "".to_string()
+        } else {
+            let bytes = unsafe { (*text).as_bytes() };
+            let s = str::from_utf8(bytes).unwrap();
+            collapse_whitespace(s)
+        };
+
+        let content = format!("<code>{}</code>", Escape(&content));
+        let element = CString::new(content).unwrap();
+        unsafe { hoedown_buffer_puts(ob, element.as_ptr()); }
+    }
+
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
         let renderer = hoedown_html_renderer_new(0, 0);
@@ -310,6 +338,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 = &mut opaque as *mut _ as *mut libc::c_void;
         (*renderer).blockcode = Some(block);
         (*renderer).header = Some(header);
+        (*renderer).codespan = Some(codespan);
 
         let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
         hoedown_document_render(document, ob, s.as_ptr(),
@@ -523,7 +552,7 @@ pub fn plain_summary_line(md: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{LangString, Markdown};
-    use super::plain_summary_line;
+    use super::{collapse_whitespace, plain_summary_line};
 
     #[test]
     fn test_lang_string_parse() {
@@ -570,5 +599,19 @@ mod tests {
         t("type `Type<'static>` ...", "type `Type<'static>` ...");
         t("# top header", "top header");
         t("## header", "header");
+    }
+
+    #[test]
+    fn test_collapse_whitespace() {
+        fn t(input: &str, expected: &str) {
+            let actual = collapse_whitespace(input);
+            assert_eq!(actual, expected);
+        }
+
+        t("foo", "foo");
+        t("foo bar baz", "foo bar baz");
+        t(" foo   bar", "foo bar");
+        t("\tfoo   bar\nbaz", "foo bar baz");
+        t("foo   bar \n   baz\t\tqux\n", "foo bar baz qux");
     }
 }
