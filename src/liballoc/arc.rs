@@ -669,6 +669,13 @@ impl<T: fmt::Debug> fmt::Debug for Arc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl<T> fmt::Pointer for Arc<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Pointer::fmt(&*self._ptr, f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default + Sync + Send> Default for Arc<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Arc<T> { Arc::new(Default::default()) }
