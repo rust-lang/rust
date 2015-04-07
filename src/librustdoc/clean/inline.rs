@@ -150,11 +150,14 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
     let def = ty::lookup_trait_def(tcx, did);
     let trait_items = ty::trait_items(tcx, did).clean(cx);
     let predicates = ty::lookup_predicates(tcx, did);
+    let generics = (&def.generics, &predicates, subst::TypeSpace).clean(cx);
+    let generics = filter_non_trait_generics(did, generics);
+    let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
     clean::Trait {
         unsafety: def.unsafety,
-        generics: (&def.generics, &predicates, subst::TypeSpace).clean(cx),
+        generics: generics,
         items: trait_items,
-        bounds: vec![], // supertraits can be found in the list of predicates
+        bounds: supertrait_bounds,
     }
 }
 
@@ -446,4 +449,49 @@ fn build_static(cx: &DocContext, tcx: &ty::ctxt,
         mutability: if mutable {clean::Mutable} else {clean::Immutable},
         expr: "\n\n\n".to_string(), // trigger the "[definition]" links
     }
+}
+
+/// A trait's generics clause actually contains all of the predicates for all of
+/// its associated types as well. We specifically move these clauses to the
+/// associated types instead when displaying, so when we're genering the
+/// generics for the trait itself we need to be sure to remove them.
+///
+/// The inverse of this filtering logic can be found in the `Clean`
+/// implementation for `AssociatedType`
+fn filter_non_trait_generics(trait_did: ast::DefId, mut g: clean::Generics)
+                             -> clean::Generics {
+    g.where_predicates.retain(|pred| {
+        match *pred {
+            clean::WherePredicate::BoundPredicate {
+                ty: clean::QPath {
+                    self_type: box clean::Generic(ref s),
+                    trait_: box clean::ResolvedPath { did, .. },
+                    name: ref _name,
+                }, ..
+            } => *s != "Self" || did != trait_did,
+            _ => true,
+        }
+    });
+    return g;
+}
+
+/// Supertrait bounds for a trait are also listed in the generics coming from
+/// the metadata for a crate, so we want to separate those out and create a new
+/// list of explicit supertrait bounds to render nicely.
+fn separate_supertrait_bounds(mut g: clean::Generics)
+                              -> (clean::Generics, Vec<clean::TyParamBound>) {
+    let mut ty_bounds = Vec::new();
+    g.where_predicates.retain(|pred| {
+        match *pred {
+            clean::WherePredicate::BoundPredicate {
+                ty: clean::Generic(ref s),
+                ref bounds
+            } if *s == "Self" => {
+                ty_bounds.extend(bounds.iter().cloned());
+                false
+            }
+            _ => true,
+        }
+    });
+    (g, ty_bounds)
 }
