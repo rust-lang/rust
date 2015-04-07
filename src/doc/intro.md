@@ -23,7 +23,7 @@ and safety.
 # Tools
 
 Getting started on a new Rust project is incredibly easy, thanks to Rust's
-package manager, [Cargo](http://crates.io).
+package manager, [Cargo](https://crates.io/).
 
 To start a new project with Cargo, use `cargo new`:
 
@@ -149,8 +149,8 @@ Enough about tools, let's talk code!
 Rust's defining feature is "memory safety without garbage collection". Let's
 take a moment to talk about what that means. *Memory safety* means that the
 programming language eliminates certain kinds of bugs, such as [buffer
-overflows](http://en.wikipedia.org/wiki/Buffer_overflow) and [dangling
-pointers](http://en.wikipedia.org/wiki/Dangling_pointer). These problems occur
+overflows](https://en.wikipedia.org/wiki/Buffer_overflow) and [dangling
+pointers](https://en.wikipedia.org/wiki/Dangling_pointer). These problems occur
 when you have unrestricted access to memory. As an example, here's some Ruby
 code:
 
