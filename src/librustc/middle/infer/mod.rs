@@ -29,6 +29,7 @@ use middle::ty::replace_late_bound_regions;
 use middle::ty::{self, Ty};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use middle::ty_relate::{Relate, RelateResult, TypeRelation};
+use rustc_data_structures::unify::{self, UnificationTable};
 use std::cell::{RefCell};
 use std::fmt;
 use std::rc::Rc;
@@ -41,8 +42,8 @@ use util::ppaux::{Repr, UserString};
 
 use self::combine::CombineFields;
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
-use self::unify::{ToType, UnificationTable};
 use self::error_reporting::ErrorReporting;
+use self::unify_key::ToType;
 
 pub mod bivariate;
 pub mod combine;
@@ -57,7 +58,7 @@ pub mod resolve;
 mod freshen;
 pub mod sub;
 pub mod type_variable;
-pub mod unify;
+pub mod unify_key;
 
 pub type Bound<T> = Option<T>;
 pub type UnitResult<'tcx> = RelateResult<'tcx, ()>; // "unify result"

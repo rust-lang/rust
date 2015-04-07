@@ -37,7 +37,7 @@ use middle::ty_fold::TypeFolder;
 use std::collections::hash_map::{self, Entry};
 
 use super::InferCtxt;
-use super::unify::ToType;
+use super::unify_key::ToType;
 
 pub struct TypeFreshener<'a, 'tcx:'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
