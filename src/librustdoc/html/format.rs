@@ -281,48 +281,46 @@ impl fmt::Display for clean::Path {
     }
 }
 
-/// Used when rendering a `ResolvedPath` structure. This invokes the `path`
-/// rendering function with the necessary arguments for linking to a local path.
-fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, p: &clean::Path,
-                 print_all: bool) -> fmt::Result {
-    path(w, p, print_all,
-        |cache, loc| {
-            if ast_util::is_local(did) || cache.inlined.contains(&did) {
-                Some(repeat("../").take(loc.len()).collect::<String>())
-            } else {
-                match cache.extern_locations[&did.krate] {
-                    render::Remote(ref s) => Some(s.to_string()),
-                    render::Local => {
-                        Some(repeat("../").take(loc.len()).collect::<String>())
-                    }
-                    render::Unknown => None,
-                }
-            }
-        },
-        |cache| {
-            match cache.paths.get(&did) {
-                None => None,
-                Some(&(ref fqp, shortty)) => Some((fqp.clone(), shortty))
-            }
-        })
+pub fn href(did: ast::DefId) -> Option<(String, ItemType, Vec<String>)> {
+    let cache = cache();
+    let loc = CURRENT_LOCATION_KEY.with(|l| l.borrow().clone());
+    let &(ref fqp, shortty) = match cache.paths.get(&did) {
+        Some(p) => p,
+        None => return None,
+    };
+    let mut url = if ast_util::is_local(did) || cache.inlined.contains(&did) {
+        repeat("../").take(loc.len()).collect::<String>()
+    } else {
+        match cache.extern_locations[&did.krate] {
+            render::Remote(ref s) => s.to_string(),
+            render::Local => repeat("../").take(loc.len()).collect::<String>(),
+            render::Unknown => return None,
+        }
+    };
+    for component in &fqp[..fqp.len() - 1] {
+        url.push_str(component);
+        url.push_str("/");
+    }
+    match shortty {
+        ItemType::Module => {
+            url.push_str(fqp.last().unwrap());
+            url.push_str("/index.html");
+        }
+        _ => {
+            url.push_str(shortty.to_static_str());
+            url.push_str(".");
+            url.push_str(fqp.last().unwrap());
+            url.push_str(".html");
+        }
+    }
+    Some((url, shortty, fqp.to_vec()))
 }
 
-fn path<F, G>(w: &mut fmt::Formatter,
-              path: &clean::Path,
-              print_all: bool,
-              root: F,
-              info: G)
-              -> fmt::Result where
-    F: FnOnce(&render::Cache, &[String]) -> Option<String>,
-    G: FnOnce(&render::Cache) -> Option<(Vec<String>, ItemType)>,
-{
-    // The generics will get written to both the title and link
+/// Used when rendering a `ResolvedPath` structure. This invokes the `path`
+/// rendering function with the necessary arguments for linking to a local path.
+fn resolved_path(w: &mut fmt::Formatter, did: ast::DefId, path: &clean::Path,
+                 print_all: bool) -> fmt::Result {
     let last = path.segments.last().unwrap();
-    let generics = format!("{}", last.params);
-
-    let loc = CURRENT_LOCATION_KEY.with(|l| l.borrow().clone());
-    let cache = cache();
-    let abs_root = root(&*cache, &loc);
     let rel_root = match &*path.segments[0].name {
         "self" => Some("./".to_string()),
         _ => None,
@@ -334,8 +332,7 @@ fn path<F, G>(w: &mut fmt::Formatter,
             Some(root) => {
                 let mut root = String::from_str(&root);
                 for seg in &path.segments[..amt] {
-                    if "super" == seg.name ||
-                            "self" == seg.name {
+                    if "super" == seg.name || "self" == seg.name {
                         try!(write!(w, "{}::", seg.name));
                     } else {
                         root.push_str(&seg.name);
@@ -355,37 +352,14 @@ fn path<F, G>(w: &mut fmt::Formatter,
         }
     }
 
-    match info(&*cache) {
-        // This is a documented path, link to it!
-        Some((ref fqp, shortty)) if abs_root.is_some() => {
-            let mut url = String::from_str(&abs_root.unwrap());
-            let to_link = &fqp[..fqp.len() - 1];
-            for component in to_link {
-                url.push_str(component);
-                url.push_str("/");
-            }
-            match shortty {
-                ItemType::Module => {
-                    url.push_str(fqp.last().unwrap());
-                    url.push_str("/index.html");
-                }
-                _ => {
-                    url.push_str(shortty.to_static_str());
-                    url.push_str(".");
-                    url.push_str(fqp.last().unwrap());
-                    url.push_str(".html");
-                }
-            }
-
+    match href(did) {
+        Some((url, shortty, fqp)) => {
             try!(write!(w, "<a class='{}' href='{}' title='{}'>{}</a>",
                           shortty, url, fqp.connect("::"), last.name));
         }
-
-        _ => {
-            try!(write!(w, "{}", last.name));
-        }
+        _ => try!(write!(w, "{}", last.name)),
     }
-    try!(write!(w, "{}", generics));
+    try!(write!(w, "{}", last.params));
     Ok(())
 }
 
