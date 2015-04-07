@@ -422,7 +422,6 @@ impl f32 {
     /// [subnormal][subnormal], or `NaN`.
     ///
     /// ```
-    /// # #![feature(std_misc)]
     /// use std::f32;
     ///
     /// let min = f32::MIN_POSITIVE; // 1.17549435e-38f32
@@ -856,7 +855,7 @@ impl f32 {
     /// Convert radians to degrees.
     ///
     /// ```
-    /// # #![feature(std_misc, core)]
+    /// # #![feature(std_misc)]
     /// use std::f32::{self, consts};
     ///
     /// let angle = consts::PI;
@@ -987,7 +986,6 @@ impl f32 {
     /// * Else: `self - other`
     ///
     /// ```
-    /// # #![feature(std_misc)]
     /// use std::f32;
     ///
     /// let x = 3.0f32;
@@ -1008,7 +1006,6 @@ impl f32 {
     /// Take the cubic root of a number.
     ///
     /// ```
-    /// # #![feature(std_misc)]
     /// use std::f32;
     ///
     /// let x = 8.0f32;
@@ -1210,8 +1207,6 @@ impl f32 {
     /// number is close to zero.
     ///
     /// ```
-    /// use std::f64;
-    ///
     /// let x = 7.0f64;
     ///
     /// // e^(ln(7)) - 1

@@ -27,7 +27,6 @@ use sys_common::{AsInner, FromInner};
 /// # Examples
 ///
 /// ```no_run
-/// # #![feature(net)]
 /// use std::net::UdpSocket;
 ///
 /// # fn foo() -> std::io::Result<()> {

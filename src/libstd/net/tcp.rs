@@ -27,7 +27,6 @@ use sys_common::{AsInner, FromInner};
 /// # Examples
 ///
 /// ```no_run
-/// # #![feature(net)]
 /// use std::io::prelude::*;
 /// use std::net::TcpStream;
 ///
@@ -47,7 +46,6 @@ pub struct TcpStream(net_imp::TcpStream);
 /// # Examples
 ///
 /// ```no_run
-/// # #![feature(net)]
 /// use std::net::{TcpListener, TcpStream};
 /// use std::thread;
 ///

@@ -103,7 +103,8 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![doc(test(no_crate_inject))]
+#![doc(test(no_crate_inject, attr(deny(warnings))))]
+#![doc(test(attr(allow(dead_code, deprecated, unused_variables, unused_mut))))]
 
 #![feature(alloc)]
 #![feature(box_syntax)]
