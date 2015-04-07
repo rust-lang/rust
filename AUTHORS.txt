@@ -796,7 +796,7 @@ Tamir Duberstein <tamird@squareup.com>
 Taras Shpot <mrshpot@gmail.com>
 Taylor Hutchison <seanthutchison@gmail.com>
 Ted Horst <ted.horst@earthlink.net>
-Tero Hänninen <tejohann@kapsi.fi>
+Tero Hänninen <lgvz@users.noreply.github.com>
 Thad Guidry <thadguidry@gmail.com>
 Thiago Carvalho <thiago.carvalho@westwing.de>
 Thiago Pontes <email@thiago.me>
