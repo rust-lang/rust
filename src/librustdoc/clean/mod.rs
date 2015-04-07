@@ -1054,6 +1054,7 @@ pub struct Function {
     pub decl: FnDecl,
     pub generics: Generics,
     pub unsafety: ast::Unsafety,
+    pub abi: abi::Abi
 }
 
 impl Clean<Item> for doctree::Function {
@@ -1069,6 +1070,7 @@ impl Clean<Item> for doctree::Function {
                 decl: self.decl.clean(cx),
                 generics: self.generics.clean(cx),
                 unsafety: self.unsafety,
+                abi: self.abi,
             }),
         }
     }
@@ -2316,7 +2318,14 @@ impl Clean<ViewListIdent> for ast::PathListItem {
 
 impl Clean<Vec<Item>> for ast::ForeignMod {
     fn clean(&self, cx: &DocContext) -> Vec<Item> {
-        self.items.clean(cx)
+        let mut items = self.items.clean(cx);
+        for item in &mut items {
+            match item.inner {
+                ForeignFunctionItem(ref mut f) => f.abi = self.abi,
+                _ => {}
+            }
+        }
+        items
     }
 }
 
@@ -2328,6 +2337,7 @@ impl Clean<Item> for ast::ForeignItem {
                     decl: decl.clean(cx),
                     generics: generics.clean(cx),
                     unsafety: ast::Unsafety::Unsafe,
+                    abi: abi::Rust,
                 })
             }
             ast::ForeignItemStatic(ref ty, mutbl) => {

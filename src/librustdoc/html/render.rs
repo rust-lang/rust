@@ -62,7 +62,7 @@ use clean;
 use doctree;
 use fold::DocFolder;
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace, Stability};
-use html::format::{ConciseStability, TyParamBounds, WhereClause, href};
+use html::format::{ConciseStability, TyParamBounds, WhereClause, href, AbiSpace};
 use html::highlight;
 use html::item_type::ItemType;
 use html::layout;
@@ -1746,10 +1746,11 @@ fn item_static(w: &mut fmt::Formatter, it: &clean::Item,
 
 fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
-    try!(write!(w, "<pre class='rust fn'>{vis}{unsafety}fn \
+    try!(write!(w, "<pre class='rust fn'>{vis}{unsafety}{abi}fn \
                     {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(it.visibility),
            unsafety = UnsafetySpace(f.unsafety),
+           abi = AbiSpace(f.abi),
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
            where_clause = WhereClause(&f.generics),

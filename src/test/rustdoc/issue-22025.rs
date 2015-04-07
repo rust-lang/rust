@@ -8,14 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:rustdoc-ffi.rs
+// aux-build:issue-22025.rs
 
-extern crate rustdoc_ffi as lib;
+extern crate issue_22025;
 
-// @has ffi/fn.foreigner.html //pre 'pub unsafe extern fn foreigner(cold_as_ice: u32)'
-pub use lib::foreigner;
-
-extern "C" {
-    // @has ffi/fn.another.html //pre 'pub unsafe extern fn another(cold_as_ice: u32)'
-    pub fn another(cold_as_ice: u32);
-}
+pub use issue_22025::foo::{Foo, Bar};
