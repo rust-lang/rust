@@ -8,13 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-17476.rs
-
-extern crate issue_17476;
-
-pub struct Foo;
-
-// @has issue_17476/struct.Foo.html \
-//      '//*[@href="http://example.com/issue_17476/trait.Foo.html#method.foo"]' \
-//      'foo'
-impl issue_17476::Foo for Foo {}
+pub trait Foo {
+    fn bar(&self);
+    fn foo(&mut self) {}
+}
