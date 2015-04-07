@@ -286,7 +286,7 @@ BOOL_OPTIONS=""
 VAL_OPTIONS=""
 
 flag uninstall "only uninstall from the installation prefix"
-valopt prefix "" "set installation prefix"
+valopt prefix "${RUSTUP_PREFIX}" "set installation prefix"
 valopt date "" "use the YYYY-MM-DD nightly instead of the current nightly"
 valopt channel "beta" "use the selected release channel [beta]"
 flag save "save the downloaded nightlies to ~/.rustup"
