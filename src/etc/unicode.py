@@ -12,8 +12,11 @@
 
 # This script uses the following Unicode tables:
 # - DerivedCoreProperties.txt
+# - DerivedNormalizationProps.txt
 # - EastAsianWidth.txt
+# - auxiliary/GraphemeBreakProperty.txt
 # - PropList.txt
+# - ReadMe.txt
 # - Scripts.txt
 # - UnicodeData.txt
 #
@@ -51,41 +54,20 @@ expanded_categories = {
     'Cc': ['C'], 'Cf': ['C'], 'Cs': ['C'], 'Co': ['C'], 'Cn': ['C'],
 }
 
-
-# Grapheme cluster data
-# taken from UAX29, http://www.unicode.org/reports/tr29/
-# these code points are excluded from the Control category
-# NOTE: CR and LF are also technically excluded, but for
-# the sake of convenience we leave them in the Control group
-# and manually check them in the appropriate place. This is
-# still compliant with the implementation requirements.
-grapheme_control_exceptions = set([0x200c, 0x200d])
-
-# the Regional_Indicator category
-grapheme_regional_indicator = [(0x1f1e6, 0x1f1ff)]
-
-# "The following ... are specifically excluded" from the SpacingMark category
-# http://www.unicode.org/reports/tr29/#SpacingMark
-grapheme_spacingmark_exceptions = [(0x102b, 0x102c), (0x1038, 0x1038),
-    (0x1062, 0x1064), (0x1067, 0x106d), (0x1083, 0x1083), (0x1087, 0x108c),
-    (0x108f, 0x108f), (0x109a, 0x109c), (0x19b0, 0x19b4), (0x19b8, 0x19b9),
-    (0x19bb, 0x19c0), (0x19c8, 0x19c9), (0x1a61, 0x1a61), (0x1a63, 0x1a64),
-    (0xaa7b, 0xaa7b), (0xaa7d, 0xaa7d)]
-
-# these are included in the SpacingMark category
-grapheme_spacingmark_extra = set([0xe33, 0xeb3])
+# these are the surrogate codepoints, which are not valid rust characters
+surrogate_codepoints = (0xd800, 0xdfff)
 
 def fetch(f):
-    if not os.path.exists(f):
+    if not os.path.exists(os.path.basename(f)):
         os.system("curl -O http://www.unicode.org/Public/UNIDATA/%s"
                   % f)
 
-    if not os.path.exists(f):
+    if not os.path.exists(os.path.basename(f)):
         sys.stderr.write("cannot load %s" % f)
         exit(1)
 
 def is_surrogate(n):
-    return 0xD800 <= n <= 0xDFFF
+    return surrogate_codepoints[0] <= n <= surrogate_codepoints[1]
 
 def load_unicode_data(f):
     fetch(f)
@@ -228,7 +210,7 @@ def load_properties(f, interestingprops):
     re1 = re.compile("^([0-9A-F]+) +; (\w+)")
     re2 = re.compile("^([0-9A-F]+)\.\.([0-9A-F]+) +; (\w+)")
 
-    for line in fileinput.input(f):
+    for line in fileinput.input(os.path.basename(f)):
         prop = None
         d_lo = 0
         d_hi = 0
@@ -623,19 +605,13 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
         (canon_decomp, compat_decomp, gencats, combines,
                 lowerupper, upperlower) = load_unicode_data("UnicodeData.txt")
         want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"]
-        other_derived = ["Default_Ignorable_Code_Point", "Grapheme_Extend"]
+        other_derived = ["Default_Ignorable_Code_Point"]
         derived = load_properties("DerivedCoreProperties.txt", want_derived + other_derived)
         scripts = load_properties("Scripts.txt", [])
         props = load_properties("PropList.txt",
                 ["White_Space", "Join_Control", "Noncharacter_Code_Point"])
         norm_props = load_properties("DerivedNormalizationProps.txt",
                      ["Full_Composition_Exclusion"])
-
-        # grapheme cluster category from DerivedCoreProperties
-        # the rest are defined below
-        grapheme_cats = {}
-        grapheme_cats["Extend"] = derived["Grapheme_Extend"]
-        del(derived["Grapheme_Extend"])
 
         # bsearch_range_table is used in all the property modules below
         emit_bsearch_range_table(rf)
@@ -691,34 +667,24 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
 
         ### grapheme cluster module
         # from http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Break_Property_Values
-        # Hangul syllable categories
-        want_hangul = ["L", "V", "T", "LV", "LVT"]
-        grapheme_cats.update(load_properties("HangulSyllableType.txt", want_hangul))
+        grapheme_cats = load_properties("auxiliary/GraphemeBreakProperty.txt", [])
 
         # Control
+        #  Note 1:
         # This category also includes Cs (surrogate codepoints), but Rust's `char`s are
         # Unicode Scalar Values only, and surrogates are thus invalid `char`s.
-        grapheme_cats["Control"] = set()
-        for cat in ["Zl", "Zp", "Cc", "Cf"]:
-            grapheme_cats["Control"] |= set(ungroup_cat(gencats[cat]))
+        # Thus, we have to remove Cs from the Control category
+        #  Note 2:
+        # 0x0a and 0x0d (CR and LF) are not in the Control category for Graphemes.
+        # However, the Graphemes iterator treats these as a special case, so they
+        # should be included in grapheme_cats["Control"] for our implementation.
         grapheme_cats["Control"] = group_cat(list(
-            grapheme_cats["Control"]
-            - grapheme_control_exceptions
-            | (set(ungroup_cat(gencats["Cn"]))
-               & set(ungroup_cat(derived["Default_Ignorable_Code_Point"])))))
-
-        # Regional Indicator
-        grapheme_cats["RegionalIndicator"] = grapheme_regional_indicator
-
-        # Prepend - "Currently there are no characters with this value"
-        # (from UAX#29, Unicode 7.0)
-
-        # SpacingMark
-        grapheme_cats["SpacingMark"] = group_cat(list(
-            set(ungroup_cat(gencats["Mc"]))
-            - set(ungroup_cat(grapheme_cats["Extend"]))
-            | grapheme_spacingmark_extra
-            - set(ungroup_cat(grapheme_spacingmark_exceptions))))
+            (set(ungroup_cat(grapheme_cats["Control"]))
+             | set(ungroup_cat(grapheme_cats["CR"]))
+             | set(ungroup_cat(grapheme_cats["LF"])))
+            - set(ungroup_cat([surrogate_codepoints]))))
+        del(grapheme_cats["CR"])
+        del(grapheme_cats["LF"])
 
         grapheme_table = []
         for cat in grapheme_cats:
