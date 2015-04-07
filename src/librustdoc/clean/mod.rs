@@ -58,6 +58,7 @@ use visit_ast;
 pub static SCHEMA_VERSION: &'static str = "0.8.3";
 
 mod inline;
+mod simplify;
 
 // extract the stability index for a node from tcx, if possible
 fn get_stability(cx: &DocContext, def_id: ast::DefId) -> Option<Stability> {
@@ -891,8 +892,9 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
 
         let (gens, preds, space) = *self;
 
-        // Bounds in the type_params and lifetimes fields are repeated in the predicates
-        // field (see rustc_typeck::collect::ty_generics), so remove them.
+        // Bounds in the type_params and lifetimes fields are repeated in the
+        // predicates field (see rustc_typeck::collect::ty_generics), so remove
+        // them.
         let stripped_typarams = gens.types.get_slice(space).iter().map(|tp| {
             tp.clean(cx)
         }).collect::<Vec<_>>();
@@ -902,11 +904,12 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
             srp.clean(cx)
         }).collect::<Vec<_>>();
 
-        let where_predicates = preds.predicates.get_slice(space).to_vec().clean(cx);
+        let where_predicates = preds.predicates.get_slice(space)
+                                               .to_vec().clean(cx);
 
-        // Type parameters have a Sized bound by default unless removed with ?Sized.
-        // Scan through the predicates and mark any type parameter with a Sized
-        // bound, removing the bounds as we find them.
+        // Type parameters have a Sized bound by default unless removed with
+        // ?Sized.  Scan through the predicates and mark any type parameter with
+        // a Sized bound, removing the bounds as we find them.
         let mut sized_params = HashSet::new();
         let mut where_predicates = where_predicates.into_iter().filter_map(|pred| {
             if let WP::BoundPredicate { ty: Type::Generic(ref g), ref bounds } = pred {
@@ -918,8 +921,8 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
             Some(pred)
         }).collect::<Vec<_>>();
 
-        // Finally, run through the type parameters again and insert a ?Sized unbound for
-        // any we didn't find to be Sized.
+        // Finally, run through the type parameters again and insert a ?Sized
+        // unbound for any we didn't find to be Sized.
         for tp in &stripped_typarams {
             if !sized_params.contains(&tp.name) {
                 let mut sized_bound = ty::BuiltinBound::BoundSized.clean(cx);
@@ -938,9 +941,9 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
         // and instead see `where T: Foo + Bar + Sized + 'a`
 
         Generics {
-            type_params: stripped_typarams,
+            type_params: simplify::ty_params(stripped_typarams),
             lifetimes: stripped_lifetimes,
-            where_predicates: where_predicates
+            where_predicates: simplify::where_clauses(where_predicates),
         }
     }
 }
