@@ -18,6 +18,7 @@
 use std::fmt;
 use std::iter::repeat;
 
+use syntax::abi::Abi;
 use syntax::ast;
 use syntax::ast_util;
 
@@ -54,6 +55,7 @@ pub struct WhereClause<'a>(pub &'a clean::Generics);
 pub struct TyParamBounds<'a>(pub &'a [clean::TyParamBound]);
 /// Wrapper struct for emitting a comma-separated list of items
 pub struct CommaSep<'a, T: 'a>(pub &'a [T]);
+pub struct AbiSpace(pub Abi);
 
 impl VisSpace {
     pub fn get(&self) -> Option<ast::Visibility> {
@@ -687,6 +689,16 @@ impl fmt::Display for RawMutableSpace {
         match *self {
             RawMutableSpace(clean::Immutable) => write!(f, "const "),
             RawMutableSpace(clean::Mutable) => write!(f, "mut "),
+        }
+    }
+}
+
+impl fmt::Display for AbiSpace {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.0 {
+            Abi::Rust => Ok(()),
+            Abi::C => write!(f, "extern "),
+            abi => write!(f, "extern {} ", abi),
         }
     }
 }

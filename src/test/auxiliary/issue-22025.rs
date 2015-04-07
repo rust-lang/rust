@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:rustdoc-ffi.rs
+pub mod foo {
 
-extern crate rustdoc_ffi as lib;
+    pub trait Foo {}
+    pub struct Bar;
 
-// @has ffi/fn.foreigner.html //pre 'pub unsafe extern fn foreigner(cold_as_ice: u32)'
-pub use lib::foreigner;
+    impl Foo for Bar {}
 
-extern "C" {
-    // @has ffi/fn.another.html //pre 'pub unsafe extern fn another(cold_as_ice: u32)'
-    pub fn another(cold_as_ice: u32);
 }
