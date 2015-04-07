@@ -91,7 +91,7 @@ impl Reader for ChanReader {
                 Some(src) => {
                     let dst = &mut buf[num_read..];
                     let count = cmp::min(src.len(), dst.len());
-                    bytes::copy_memory(&src[..count], dst);
+                    bytes::copy_memory(dst, &src[..count]);
                     count
                 },
                 None => 0,

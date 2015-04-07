@@ -149,7 +149,7 @@ impl<'a> Read for &'a [u8] {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         let amt = cmp::min(buf.len(), self.len());
         let (a, b) = self.split_at(amt);
-        slice::bytes::copy_memory(a, buf);
+        slice::bytes::copy_memory(buf, a);
         *self = b;
         Ok(amt)
     }
@@ -170,7 +170,7 @@ impl<'a> Write for &'a mut [u8] {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
         let amt = cmp::min(data.len(), self.len());
         let (a, b) = mem::replace(self, &mut []).split_at_mut(amt);
-        slice::bytes::copy_memory(&data[..amt], a);
+        slice::bytes::copy_memory(a, &data[..amt]);
         *self = b;
         Ok(amt)
     }

@@ -126,9 +126,10 @@ impl<'a, W: Writer> RepeatFasta<'a, W> {
         let mut buf = repeat(0).take(alu_len + LINE_LEN).collect::<Vec<_>>();
         let alu: &[u8] = self.alu.as_bytes();
 
-        copy_memory(alu, &mut buf);
+        copy_memory(&mut buf, alu);
         let buf_len = buf.len();
-        copy_memory(&alu[..LINE_LEN], &mut buf[alu_len..buf_len]);
+        copy_memory(&mut buf[alu_len..buf_len],
+                    &alu[..LINE_LEN]);
 
         let mut pos = 0;
         let mut bytes;

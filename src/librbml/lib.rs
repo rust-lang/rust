@@ -447,21 +447,21 @@ pub mod reader {
     pub fn doc_as_u16(d: Doc) -> u16 {
         assert_eq!(d.end, d.start + 2);
         let mut b = [0; 2];
-        bytes::copy_memory(&d.data[d.start..d.end], &mut b);
+        bytes::copy_memory(&mut b, &d.data[d.start..d.end]);
         unsafe { (*(b.as_ptr() as *const u16)).to_be() }
     }
 
     pub fn doc_as_u32(d: Doc) -> u32 {
         assert_eq!(d.end, d.start + 4);
         let mut b = [0; 4];
-        bytes::copy_memory(&d.data[d.start..d.end], &mut b);
+        bytes::copy_memory(&mut b, &d.data[d.start..d.end]);
         unsafe { (*(b.as_ptr() as *const u32)).to_be() }
     }
 
     pub fn doc_as_u64(d: Doc) -> u64 {
         assert_eq!(d.end, d.start + 8);
         let mut b = [0; 8];
-        bytes::copy_memory(&d.data[d.start..d.end], &mut b);
+        bytes::copy_memory(&mut b, &d.data[d.start..d.end]);
         unsafe { (*(b.as_ptr() as *const u64)).to_be() }
     }
 
@@ -935,7 +935,7 @@ pub mod writer {
                 {
                     let last_size_pos = last_size_pos as usize;
                     let data = &self.writer.get_ref()[last_size_pos+4..cur_pos as usize];
-                    bytes::copy_memory(data, &mut buf);
+                    bytes::copy_memory(&mut buf, data);
                 }
 
                 // overwrite the size and data and continue
