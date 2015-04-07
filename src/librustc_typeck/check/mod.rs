@@ -1559,6 +1559,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                  span)
     }
 
+    pub fn type_is_fat_ptr(&self, ty: Ty<'tcx>, span: Span) -> bool {
+        match ty.sty {
+            ty::ty_ptr(ty::mt { ty: t, .. }) |
+            ty::ty_rptr(_, ty::mt { ty: t, .. }) => {
+                !self.type_is_known_to_be_sized(t, span)
+            }
+            _ => false
+        }
+    }
+
     pub fn register_builtin_bound(&self,
                                   ty: Ty<'tcx>,
                                   builtin_bound: ty::BuiltinBound,
