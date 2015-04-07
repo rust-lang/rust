@@ -17,7 +17,7 @@ use middle::ty::{self, Ty};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use syntax::ast;
-use util::snapshot_vec as sv;
+use rustc_data_structures::snapshot_vec as sv;
 
 /// This trait is implemented by any type that can serve as a type
 /// variable. We call such variables *unification keys*. For example,
@@ -95,7 +95,7 @@ pub struct Delegate<K>(PhantomData<K>);
 impl<K:UnifyKey> UnificationTable<K> {
     pub fn new() -> UnificationTable<K> {
         UnificationTable {
-            values: sv::SnapshotVec::new(Delegate(PhantomData)),
+            values: sv::SnapshotVec::new(),
         }
     }
 
@@ -213,7 +213,7 @@ impl<K:UnifyKey> sv::SnapshotVecDelegate for Delegate<K> {
     type Value = VarValue<K>;
     type Undo = ();
 
-    fn reverse(&mut self, _: &mut Vec<VarValue<K>>, _: ()) {
+    fn reverse(_: &mut Vec<VarValue<K>>, _: ()) {
         panic!("Nothing to reverse");
     }
 }
