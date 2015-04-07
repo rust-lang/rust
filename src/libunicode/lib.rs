@@ -49,6 +49,7 @@ pub mod char;
 
 pub mod str {
     pub use u_str::{UnicodeStr, Words, Graphemes, GraphemeIndices};
+    pub use u_str::{UnicodeWords, UWordBounds, UWordBoundIndices};
     pub use u_str::{utf8_char_width, is_utf16, Utf16Items, Utf16Item};
     pub use u_str::{utf16_items, Utf16Encoder};
 }
