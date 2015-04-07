@@ -1815,7 +1815,7 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                     ty::ty_param(p) => if p.idx > cur_idx {
                         span_err!(tcx.sess, path.span, E0128,
                                   "type parameters with a default cannot use \
-                                  forward declared identifiers");
+                                   forward declared identifiers");
                         },
                         _ => {}
                     }

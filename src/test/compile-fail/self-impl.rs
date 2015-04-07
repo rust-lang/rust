@@ -16,8 +16,16 @@ trait Foo {
     type Baz;
 }
 
+trait SuperFoo {
+    type SuperBaz;
+}
+
 impl Foo for Bar {
     type Baz = bool;
+}
+
+impl SuperFoo for Bar {
+    type SuperBaz = bool;
 }
 
 impl Bar {
