@@ -26,7 +26,7 @@ trait MyWriter {
 
 impl<'a> MyWriter for &'a mut [u8] {
     fn my_write(&mut self, buf: &[u8]) -> IoResult<()> {
-        slice::bytes::copy_memory(buf, *self);
+        slice::bytes::copy_memory(*self, buf);
 
         let write_len = buf.len();
         unsafe {

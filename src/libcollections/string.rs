@@ -599,8 +599,8 @@ impl String {
         let ch = self.char_at(idx);
         let next = idx + ch.len_utf8();
         unsafe {
-            ptr::copy(self.vec.as_ptr().offset(next as isize),
-                      self.vec.as_mut_ptr().offset(idx as isize),
+            ptr::copy(self.vec.as_mut_ptr().offset(idx as isize),
+                      self.vec.as_ptr().offset(next as isize),
                       len - next);
             self.vec.set_len(len - (next - idx));
         }
@@ -629,11 +629,11 @@ impl String {
         let amt = ch.encode_utf8(&mut bits).unwrap();
 
         unsafe {
-            ptr::copy(self.vec.as_ptr().offset(idx as isize),
-                      self.vec.as_mut_ptr().offset((idx + amt) as isize),
+            ptr::copy(self.vec.as_mut_ptr().offset((idx + amt) as isize),
+                      self.vec.as_ptr().offset(idx as isize),
                       len - idx);
-            ptr::copy(bits.as_ptr(),
-                      self.vec.as_mut_ptr().offset(idx as isize),
+            ptr::copy(self.vec.as_mut_ptr().offset(idx as isize),
+                      bits.as_ptr(),
                       amt);
             self.vec.set_len(len + amt);
         }

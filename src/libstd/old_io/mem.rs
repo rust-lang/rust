@@ -168,7 +168,7 @@ impl Reader for MemReader {
             let input = &self.buf[self.pos.. self.pos + write_len];
             let output = &mut buf[..write_len];
             assert_eq!(input.len(), output.len());
-            slice::bytes::copy_memory(input, output);
+            slice::bytes::copy_memory(output, input);
         }
         self.pos += write_len;
         assert!(self.pos <= self.buf.len());
@@ -212,7 +212,7 @@ impl<'a> Reader for &'a [u8] {
         {
             let input = &self[..write_len];
             let output = &mut buf[.. write_len];
-            slice::bytes::copy_memory(input, output);
+            slice::bytes::copy_memory(output, input);
         }
 
         *self = &self[write_len..];
@@ -287,13 +287,13 @@ impl<'a> Writer for BufWriter<'a> {
         let src_len = src.len();
 
         if dst_len >= src_len {
-            slice::bytes::copy_memory(src, dst);
+            slice::bytes::copy_memory(dst, src);
 
             self.pos += src_len;
 
             Ok(())
         } else {
-            slice::bytes::copy_memory(&src[..dst_len], dst);
+            slice::bytes::copy_memory(dst, &src[..dst_len]);
 
             self.pos += dst_len;
 
@@ -360,7 +360,7 @@ impl<'a> Reader for BufReader<'a> {
             let input = &self.buf[self.pos.. self.pos + write_len];
             let output = &mut buf[..write_len];
             assert_eq!(input.len(), output.len());
-            slice::bytes::copy_memory(input, output);
+            slice::bytes::copy_memory(output, input);
         }
         self.pos += write_len;
         assert!(self.pos <= self.buf.len());
