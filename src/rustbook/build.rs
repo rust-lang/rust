@@ -89,7 +89,8 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
         } else {
             src = PathBuf::from(&env::args().nth(2).unwrap());
         }
-        // preprocess the markdown, rerouting markdown references to html references
+        // preprocess the markdown, rerouting markdown references to html
+        // references
         let mut markdown_data = String::new();
         try!(File::open(&src.join(&item.path)).and_then(|mut f| {
             f.read_to_string(&mut markdown_data)
