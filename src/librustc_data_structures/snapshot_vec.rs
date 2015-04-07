@@ -21,6 +21,7 @@
 use self::UndoLog::*;
 
 use std::mem;
+use std::ops;
 
 pub enum UndoLog<D:SnapshotVecDelegate> {
     /// Indicates where a snapshot started.
@@ -42,7 +43,6 @@ pub enum UndoLog<D:SnapshotVecDelegate> {
 pub struct SnapshotVec<D:SnapshotVecDelegate> {
     values: Vec<D::Value>,
     undo_log: Vec<UndoLog<D>>,
-    delegate: D
 }
 
 // Snapshots are tokens that should be created/consumed linearly.
@@ -55,15 +55,14 @@ pub trait SnapshotVecDelegate {
     type Value;
     type Undo;
 
-    fn reverse(&mut self, values: &mut Vec<Self::Value>, action: Self::Undo);
+    fn reverse(values: &mut Vec<Self::Value>, action: Self::Undo);
 }
 
 impl<D:SnapshotVecDelegate> SnapshotVec<D> {
-    pub fn new(delegate: D) -> SnapshotVec<D> {
+    pub fn new() -> SnapshotVec<D> {
         SnapshotVec {
             values: Vec::new(),
             undo_log: Vec::new(),
-            delegate: delegate
         }
     }
 
@@ -75,6 +74,10 @@ impl<D:SnapshotVecDelegate> SnapshotVec<D> {
         if self.in_snapshot() {
             self.undo_log.push(Other(action));
         }
+    }
+
+    pub fn len(&self) -> usize {
+        self.values.len()
     }
 
     pub fn push(&mut self, elem: D::Value) -> usize {
@@ -159,7 +162,7 @@ impl<D:SnapshotVecDelegate> SnapshotVec<D> {
                 }
 
                 Other(u) => {
-                    self.delegate.reverse(&mut self.values, u);
+                    D::reverse(&mut self.values, u);
                 }
             }
         }
@@ -183,4 +186,22 @@ impl<D:SnapshotVecDelegate> SnapshotVec<D> {
             self.undo_log[snapshot.length] = CommittedSnapshot;
         }
     }
+}
+
+impl<D:SnapshotVecDelegate> ops::Deref for SnapshotVec<D> {
+    type Target = [D::Value];
+    fn deref(&self) -> &[D::Value] { &*self.values }
+}
+
+impl<D:SnapshotVecDelegate> ops::DerefMut for SnapshotVec<D> {
+    fn deref_mut(&mut self) -> &mut [D::Value] { &mut *self.values }
+}
+
+impl<D:SnapshotVecDelegate> ops::Index<usize> for SnapshotVec<D> {
+    type Output = D::Value;
+    fn index(&self, index: usize) -> &D::Value { self.get(index) }
+}
+
+impl<D:SnapshotVecDelegate> ops::IndexMut<usize> for SnapshotVec<D> {
+    fn index_mut(&mut self, index: usize) -> &mut D::Value { self.get_mut(index) }
 }

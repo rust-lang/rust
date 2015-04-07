@@ -31,3 +31,5 @@
 
 #[macro_use] extern crate log;
 extern crate serialize as rustc_serialize; // used by deriving
+
+pub mod snapshot_vec;
