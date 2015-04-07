@@ -24,14 +24,24 @@ This means that perhaps some of the preceding patterns are too general, this one
 is too specific or the ordering is incorrect.
 "##,
 
+E0002: r##"
+This error indicates that an empty match expression is illegal because the type
+it is matching on is non-empty (there exist values of this type). In safe code
+it is impossible to create an instance of an empty type, so empty match
+expressions are almost never desired.  This error is typically fixed by adding
+one or more cases to the match expression.
+
+An example of an empty type is `enum Empty { }`.
+"##,
+
 E0003: r##"
-Not-a-Number (NaN) values can not be compared for equality and hence can never
+Not-a-Number (NaN) values cannot be compared for equality and hence can never
 match the input to a match expression. To match against NaN values, you should
 instead use the `is_nan` method in a guard, as in: x if x.is_nan() => ...
 "##,
 
 E0004: r##"
-This error indicates that the compiler can not guarantee a matching pattern for
+This error indicates that the compiler cannot guarantee a matching pattern for
 one or more possible inputs to a match expression. Guaranteed matches are
 required in order to assign values to match expressions, or alternatively,
 determine the flow of execution.
@@ -54,14 +64,80 @@ E0006: r##"
 Patterns used to bind names must be irrefutable, that is, they must guarantee that a
 name will be extracted in all cases. If you encounter this error you probably need
 to use a `match` or `if let` to deal with the possibility of failure.
+"##,
+
+E0007: r##"
+This error indicates that the bindings in a match arm would require a value to
+be moved into more than one location, thus violating unique ownership. Code like
+the following is invalid as it requires the entire Option<String> to be moved
+into a variable called `op_string` while simultaneously requiring the inner
+String to be moved into a variable called `s`.
+
+let x = Some("s".to_string());
+match x {
+    op_string @ Some(s) => ...
+    None => ...
+}
+
+See also Error 303.
+"##,
+
+E0008: r##"
+Names bound in match arms retain their type in pattern guards. As such, if a
+name is bound by move in a pattern, it should also be moved to wherever it is
+referenced in the pattern guard code. Doing so however would prevent the name
+from being available in the body of the match arm. Consider the following:
+
+match Some("hi".to_string()) {
+    Some(s) if s.len() == 0 => // use s.
+    ...
+}
+
+The variable `s` has type String, and its use in the guard is as a variable of
+type String. The guard code effectively executes in a separate scope to the body
+of the arm, so the value would be moved into this anonymous scope and therefore
+become unavailable in the body of the arm. Although this example seems
+innocuous, the problem is most clear when considering functions that take their
+argument by value.
+
+match Some("hi".to_string()) {
+    Some(s) if { drop(s); false } => (),
+    Some(s) => // use s.
+    ...
+}
+
+The value would be dropped in the guard then become unavailable not only in the
+body of that arm but also in all subsequent arms! The solution is to bind by
+reference when using guards or refactor the entire expression, perhaps by
+putting the condition inside the body of the arm.
+"##,
+
+E0303: r##"
+In certain cases it is possible for sub-bindings to violate memory safety.
+Updates to the borrow checker in a future version of Rust may remove this
+restriction, but for now patterns must be rewritten without sub-bindings.
+
+// Code like this...
+match Some(5) {
+    ref op_num @ Some(num) => ...
+    None => ...
+}
+
+// ... should be updated to code like this.
+match Some(5) {
+    Some(num) => {
+        let op_num = &Some(num);
+        ...
+    }
+    None => ...
+}
+
+See also https://github.com/rust-lang/rust/issues/14587
 "##
 
 }
 
 register_diagnostics! {
-    E0002,
-    E0007,
-    E0008,
     E0009,
     E0010,
     E0011,
@@ -124,7 +200,6 @@ register_diagnostics! {
     E0300, // unexpanded macro
     E0301, // cannot mutable borrow in a pattern guard
     E0302, // cannot assign in a pattern guard
-    E0303, // pattern bindings are not allowed after an `@`
     E0304, // expected signed integer constant
     E0305, // expected constant
     E0306, // expected positive integer for repeat count
