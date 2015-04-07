@@ -11,7 +11,7 @@
 //! Module that constructs a control-flow graph representing an item.
 //! Uses `Graph` as the underlying representation.
 
-use middle::graph;
+use rustc_data_structures::graph;
 use middle::ty;
 use syntax::ast;
 
@@ -24,7 +24,7 @@ pub struct CFG {
     pub exit: CFGIndex,
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum CFGNodeData {
     AST(ast::NodeId),
     Entry,
@@ -43,6 +43,7 @@ impl CFGNodeData {
     }
 }
 
+#[derive(Debug)]
 pub struct CFGEdgeData {
     pub exiting_scopes: Vec<ast::NodeId>
 }
