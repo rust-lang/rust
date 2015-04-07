@@ -502,6 +502,29 @@ impl fmt::Display for clean::Type {
                 }
                 Ok(())
             }
+            // It's pretty unsightly to look at `<A as B>::C` in output, and
+            // we've got hyperlinking on our side, so try to avoid longer
+            // notation as much as possible by making `C` a hyperlink to trait
+            // `B` to disambiguate.
+            //
+            // FIXME: this is still a lossy conversion and there should probably
+            //        be a better way of representing this in general? Most of
+            //        the ugliness comes from inlining across crates where
+            //        everything comes in as a fully resolved QPath (hard to
+            //        look at).
+            clean::QPath {
+                ref name,
+                ref self_type,
+                trait_: box clean::ResolvedPath { did, ref typarams, .. },
+            } => {
+                try!(write!(f, "{}::", self_type));
+                let path = clean::Path::singleton(name.clone());
+                try!(resolved_path(f, did, &path, false));
+
+                // FIXME: `typarams` are not rendered, and this seems bad?
+                drop(typarams);
+                Ok(())
+            }
             clean::QPath { ref name, ref self_type, ref trait_ } => {
                 write!(f, "&lt;{} as {}&gt;::{}", self_type, trait_, name)
             }
@@ -636,17 +659,7 @@ impl fmt::Display for clean::ViewListIdent {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.source {
             Some(did) => {
-                let path = clean::Path {
-                    global: false,
-                    segments: vec!(clean::PathSegment {
-                        name: self.name.clone(),
-                        params: clean::PathParameters::AngleBracketed {
-                            lifetimes: Vec::new(),
-                            types: Vec::new(),
-                            bindings: Vec::new()
-                        }
-                    })
-                };
+                let path = clean::Path::singleton(self.name.clone());
                 resolved_path(f, did, &path, false)
             }
             _ => write!(f, "{}", self.name),
