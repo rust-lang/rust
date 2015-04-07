@@ -172,13 +172,13 @@ macro_rules! forward_ref_binop {
 ///     type Output = Foo;
 ///
 ///     fn add(self, _rhs: Foo) -> Foo {
-///       println!("Adding!");
-///       self
-///   }
+///         println!("Adding!");
+///         self
+///     }
 /// }
 ///
 /// fn main() {
-///   Foo + Foo;
+///     Foo + Foo;
 /// }
 /// ```
 #[lang="add"]
