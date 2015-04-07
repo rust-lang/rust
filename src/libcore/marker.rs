@@ -316,8 +316,49 @@ impl<A:?Sized,R:?Sized,T:?Sized> PhantomFn<A,R> for T { }
 ///
 /// # Examples
 ///
-/// When handling external resources over a foreign function interface, `PhantomData<T>` can
-/// prevent mismatches by enforcing types in the method implementations:
+/// ## Unused lifetime parameter
+///
+/// Perhaps the most common time that `PhantomData` is required is
+/// with a struct that has an unused lifetime parameter, typically as
+/// part of some unsafe code. For example, here is a struct `Slice`
+/// that has two pointers of type `*const T`, presumably pointing into
+/// an array somewhere:
+///
+/// ```
+/// struct Slice<'a, T> {
+///     start: *const T,
+///     end: *const T,
+/// }
+/// ```
+///
+/// The intention is that the underlying data is only valid for the
+/// lifetime `'a`, so `Slice` should not outlive `'a`. However, this
+/// intent is not expressed in the code, since there are no uses of
+/// the lifetime `'a` and hence it is not clear what data it applies
+/// to. We can correct this by telling the compiler to act *as if* the
+/// `Slice` struct contained a borrowed reference `&'a T`:
+///
+/// ```
+/// use std::marker::PhantomData;
+///
+/// struct Slice<'a, T:'a> {
+///     start: *const T,
+///     end: *const T,
+///     phantom: PhantomData<&'a T>
+/// }
+/// ```
+///
+/// This also in turn requires that we annotate `T:'a`, indicating
+/// that `T` is a type that can be borrowed for the lifetime `'a`.
+///
+/// ## Unused type parameters
+///
+/// It sometimes happens that there are unused type parameters that
+/// indicate what type of data a struct is "tied" to, even though that
+/// data is not actually found in the struct itself. Here is an
+/// example where this arises when handling external resources over a
+/// foreign function interface. `PhantomData<T>` can prevent
+/// mismatches by enforcing types in the method implementations:
 ///
 /// ```
 /// # trait ResType { fn foo(&self); };
@@ -351,13 +392,21 @@ impl<A:?Sized,R:?Sized,T:?Sized> PhantomFn<A,R> for T { }
 /// }
 /// ```
 ///
-/// Another example: embedding a `PhantomData<T>` will inform the compiler
-/// that one or more instances of the type `T` could be dropped when
-/// instances of the type itself is dropped, though that may not be
-/// apparent from the other structure of the type itself. This is
-/// commonly necessary if the structure is using an unsafe pointer
-/// like `*mut T` whose referent may be dropped when the type is
-/// dropped, as a `*mut T` is otherwise not treated as owned.
+/// ## Indicating ownership
+///
+/// Adding a field of type `PhantomData<T>` also indicates that your
+/// struct owns data of type `T`. This in turn implies that when your
+/// struct is dropped, it may in turn drop one or more instances of
+/// the type `T`, though that may not be apparent from the other
+/// structure of the type itself. This is commonly necessary if the
+/// structure is using an unsafe pointer like `*mut T` whose referent
+/// may be dropped when the type is dropped, as a `*mut T` is
+/// otherwise not treated as owned.
+///
+/// If your struct does not in fact *own* the data of type `T`, it is
+/// better to use a reference type, like `PhantomData<&'a T>`
+/// (ideally) or `PhantomData<*const T>` (if no lifetime applies), so
+/// as not to indicate ownership.
 #[lang="phantom_data"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PhantomData<T:?Sized>;
