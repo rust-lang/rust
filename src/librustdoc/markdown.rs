@@ -59,7 +59,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
     let input_str = load_or_return!(input, 1, 2);
     let playground = matches.opt_str("markdown-playground-url");
     if playground.is_some() {
-        markdown::PLAYGROUND_KRATE.with(|s| { *s.borrow_mut() = None; });
+        markdown::PLAYGROUND_KRATE.with(|s| { *s.borrow_mut() = Some(None); });
     }
     let playground = playground.unwrap_or("".to_string());
 

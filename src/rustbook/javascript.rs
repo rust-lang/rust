@@ -71,4 +71,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
 });
 </script>
+<script type="text/javascript" src="jquery.js"></script>
+<script type="text/javascript" src="playpen.js"></script>
 "#;

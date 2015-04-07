@@ -135,6 +135,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
             format!("-o{}", out_path.display()),
             format!("--html-before-content={}", prelude.display()),
             format!("--html-after-content={}", postlude.display()),
+            format!("--markdown-playground-url=http://play.rust-lang.org"),
             format!("--markdown-css={}", item.path_to_root.join("rust-book.css").display()),
             "--markdown-no-toc".to_string(),
         ];
@@ -148,6 +149,14 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
 
     // create index.html from the root README
     try!(fs::copy(&tgt.join("README.html"), &tgt.join("index.html")));
+
+    // Copy some js for playpen
+    let mut jquery = try!(File::create(tgt.join("jquery.js")));
+    let js = include_bytes!("../librustdoc/html/static/jquery-2.1.0.min.js");
+    try!(jquery.write_all(js));
+    let mut playpen = try!(File::create(tgt.join("playpen.js")));
+    let js = include_bytes!("../librustdoc/html/static/playpen.js");
+    try!(playpen.write_all(js));
     Ok(())
 }
 
