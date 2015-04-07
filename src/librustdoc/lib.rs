@@ -154,8 +154,9 @@ pub fn opts() -> Vec<getopts::OptGroup> {
         optmulti("", "cfg", "pass a --cfg to rustc", ""),
         optmulti("", "extern", "pass an --extern to rustc", "NAME=PATH"),
         optmulti("", "plugin-path", "directory to load plugins from", "DIR"),
-        optmulti("", "passes", "space separated list of passes to also run, a \
-                                value of `list` will print available passes",
+        optmulti("", "passes", "list of passes to also run, you might want \
+                                to pass it multiple times; a value of `list` \
+                                will print available passes",
                  "PASSES"),
         optmulti("", "plugins", "space separated list of plugins to also load",
                  "PLUGINS"),
