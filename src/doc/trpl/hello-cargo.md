@@ -1,7 +1,7 @@
 % Hello, Cargo!
 
 [Cargo](http://crates.io) is a tool that Rustaceans use to help manage their
-Rust projects. Cargo is currently in an alpha state, just like Rust, and so it
+Rust projects. Cargo is currently in a pre-1.0 state, just like Rust, and so it
 is still a work in progress. However, it is already good enough to use for many
 Rust projects, and so it is assumed that Rust projects will use Cargo from the
 beginning.

@@ -83,11 +83,12 @@ use marker::{Reflect, Sized};
 // Any trait
 ///////////////////////////////////////////////////////////////////////////////
 
-/// A type to emulate dynamic typing. See the [module-level documentation][mod] for more details.
+/// A type to emulate dynamic typing.
 ///
 /// Every type with no non-`'static` references implements `Any`.
+/// See the [module-level documentation][mod] for more details.
 ///
-/// [mod]: ../index.html
+/// [mod]: index.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Any: Reflect + 'static {
     /// Get the `TypeId` of `self`

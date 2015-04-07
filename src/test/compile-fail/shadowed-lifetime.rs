@@ -15,16 +15,14 @@ struct Foo<'a>(&'a isize);
 impl<'a> Foo<'a> {
     //~^ NOTE shadowed lifetime `'a` declared here
     fn shadow_in_method<'a>(&'a self) -> &'a isize {
-        //~^ WARNING lifetime name `'a` shadows another lifetime name that is already in scope
-        //~| NOTE deprecated
+        //~^ ERROR lifetime name `'a` shadows another lifetime name that is already in scope
         self.0
     }
 
     fn shadow_in_type<'b>(&'b self) -> &'b isize {
         //~^ NOTE shadowed lifetime `'b` declared here
         let x: for<'b> fn(&'b isize) = panic!();
-        //~^ WARNING lifetime name `'b` shadows another lifetime name that is already in scope
-        //~| NOTE deprecated
+        //~^ ERROR lifetime name `'b` shadows another lifetime name that is already in scope
         self.0
     }
 
@@ -35,9 +33,4 @@ impl<'a> Foo<'a> {
 }
 
 fn main() {
-    // intentional error that occurs after `resolve_lifetime` runs,
-    // just to ensure that this test fails to compile; when shadowed
-    // lifetimes become either an error or a proper lint, this will
-    // not be needed.
-    let x: isize = 3_usize; //~ ERROR mismatched types
 }
