@@ -192,7 +192,7 @@ pub fn usage(argv0: &str) {
 }
 
 pub fn main_args(args: &[String]) -> isize {
-    let matches = match getopts::getopts(args.tail(), &opts()) {
+    let matches = match getopts::getopts(args.tail().unwrap(), &opts()) {
         Ok(m) => m,
         Err(err) => {
             println!("{}", err);
