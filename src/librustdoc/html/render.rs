@@ -1059,7 +1059,12 @@ impl DocFolder for Cache {
                         // Figure out the id of this impl. This may map to a
                         // primitive rather than always to a struct/enum.
                         let did = match i.for_ {
-                            ResolvedPath { did, .. } => Some(did),
+                            ResolvedPath { did, .. } |
+                            BorrowedRef {
+                                type_: box ResolvedPath { did, .. }, ..
+                            } => {
+                                Some(did)
+                            }
 
                             // References to primitives are picked up as well to
                             // recognize implementations for &str, this may not
