@@ -149,10 +149,10 @@ If you come from a dynamically typed language like Ruby, Python, or JavaScript,
 you may not be used to these two steps being separate. Rust is an
 *ahead-of-time compiled language*, which means that you can compile a
 program, give it to someone else, and they don't need to have Rust installed.
-If you give someone a `.rb` or `.py` or `.js` file, they need to have
-Ruby/Python/JavaScript installed, but you just need one command to both compile
-and run your program. Everything is a tradeoff in language design, and Rust has
-made its choice.
+If you give someone a `.rb` or `.py` or `.js` file, they need to have a
+Ruby/Python/JavaScript implementation installed, but you just need one command
+to both compile and run your program. Everything is a tradeoff in language design,
+and Rust has made its choice.
 
 Congratulations! You have officially written a Rust program. That makes you a
 Rust programmer! Welcome.
