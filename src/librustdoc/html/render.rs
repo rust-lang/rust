@@ -920,9 +920,10 @@ impl DocFolder for Cache {
                         let path = match self.paths.get(&did) {
                             Some(&(_, ItemType::Trait)) =>
                                 Some(&self.stack[..self.stack.len() - 1]),
-                            // The current stack not necessarily has correlation for
-                            // where the type was defined. On the other hand,
-                            // `paths` always has the right information if present.
+                            // The current stack not necessarily has correlation
+                            // for where the type was defined. On the other
+                            // hand, `paths` always has the right
+                            // information if present.
                             Some(&(ref fqp, ItemType::Struct)) |
                             Some(&(ref fqp, ItemType::Enum)) =>
                                 Some(&fqp[..fqp.len() - 1]),
@@ -1861,6 +1862,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         try!(write!(w, "</div>"));
     }
 
+    // If there are methods directly on this trait object, render them here.
+    try!(render_methods(w, it));
+
     let cache = cache();
     try!(write!(w, "
         <h2 id='implementors'>Implementors</h2>
@@ -2179,37 +2183,36 @@ enum MethodLink {
 }
 
 fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
-    match cache().impls.get(&it.def_id) {
-        Some(v) => {
-            let (non_trait, traits): (Vec<_>, _) = v.iter().cloned()
-                .partition(|i| i.impl_.trait_.is_none());
-            if non_trait.len() > 0 {
-                try!(write!(w, "<h2 id='methods'>Methods</h2>"));
-                for i in &non_trait {
-                    try!(render_impl(w, i, MethodLink::Anchor));
-                }
-            }
-            if traits.len() > 0 {
-                try!(write!(w, "<h2 id='implementations'>Trait \
-                                  Implementations</h2>"));
-                let (derived, manual): (Vec<_>, _) = traits.into_iter()
-                    .partition(|i| i.impl_.derived);
-                for i in &manual {
-                    let did = i.trait_did().unwrap();
-                    try!(render_impl(w, i, MethodLink::GotoSource(did)));
-                }
-                if derived.len() > 0 {
-                    try!(write!(w, "<h3 id='derived_implementations'>\
-                        Derived Implementations \
-                    </h3>"));
-                    for i in &derived {
-                        let did = i.trait_did().unwrap();
-                        try!(render_impl(w, i, MethodLink::GotoSource(did)));
-                    }
-                }
+    let v = match cache().impls.get(&it.def_id) {
+        Some(v) => v.clone(),
+        None => return Ok(()),
+    };
+    let (non_trait, traits): (Vec<_>, _) = v.into_iter()
+        .partition(|i| i.impl_.trait_.is_none());
+    if non_trait.len() > 0 {
+        try!(write!(w, "<h2 id='methods'>Methods</h2>"));
+        for i in &non_trait {
+            try!(render_impl(w, i, MethodLink::Anchor));
+        }
+    }
+    if traits.len() > 0 {
+        try!(write!(w, "<h2 id='implementations'>Trait \
+                          Implementations</h2>"));
+        let (derived, manual): (Vec<_>, _) = traits.into_iter()
+            .partition(|i| i.impl_.derived);
+        for i in &manual {
+            let did = i.trait_did().unwrap();
+            try!(render_impl(w, i, MethodLink::GotoSource(did)));
+        }
+        if derived.len() > 0 {
+            try!(write!(w, "<h3 id='derived_implementations'>\
+                Derived Implementations \
+            </h3>"));
+            for i in &derived {
+                let did = i.trait_did().unwrap();
+                try!(render_impl(w, i, MethodLink::GotoSource(did)));
             }
         }
-        None => {}
     }
     Ok(())
 }
