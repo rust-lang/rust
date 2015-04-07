@@ -183,7 +183,9 @@ impl hoedown_buffer {
 /// left as-is.)
 fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     let trimmed = s.trim();
-    if trimmed.starts_with("# ") {
+    if trimmed == "#" {
+        Some("")
+    } else if trimmed.starts_with("# ") {
         Some(&trimmed[2..])
     } else {
         None
