@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::default::Default;
 use std::fs::File;
-use std::io;
 use std::io::prelude::*;
+use std::io;
 use std::path::{PathBuf, Path};
 
 use core;
@@ -23,7 +24,7 @@ use externalfiles::ExternalHtml;
 use html::escape::Escape;
 use html::markdown;
 use html::markdown::{Markdown, MarkdownWithToc, find_testable_code, reset_headers};
-use test::Collector;
+use test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `%`.
 fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
@@ -143,7 +144,10 @@ pub fn test(input: &str, libs: SearchPaths, externs: core::Externs,
             mut test_args: Vec<String>) -> isize {
     let input_str = load_or_return!(input, 1, 2);
 
-    let mut collector = Collector::new(input.to_string(), libs, externs, true, false);
+    let mut opts = TestOptions::default();
+    opts.no_crate_inject = true;
+    let mut collector = Collector::new(input.to_string(), libs, externs,
+                                       true, opts);
     find_testable_code(&input_str, &mut collector);
     test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(&test_args, collector.tests);
