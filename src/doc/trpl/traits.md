@@ -229,8 +229,6 @@ everything is fine:
 
 ```{rust}
 # #![feature(core)]
-use shapes::HasArea;
-
 mod shapes {
     use std::f64::consts;
 
@@ -251,6 +249,7 @@ mod shapes {
     }
 }
 
+use shapes::HasArea;
 
 fn main() {
     let c = shapes::Circle {

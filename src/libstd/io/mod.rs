@@ -618,9 +618,6 @@ pub trait BufRead: Read {
     /// The iterator returned from this function will yield instances of
     /// `io::Result<String>`. Each string returned will *not* have a newline
     /// byte (the 0xA byte) at the end.
-    ///
-    /// This function will yield errors whenever `read_string` would have also
-    /// yielded an error.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lines(self) -> Lines<Self> where Self: Sized {
         Lines { buf: self }
