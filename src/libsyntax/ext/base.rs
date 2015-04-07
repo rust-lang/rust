@@ -208,10 +208,11 @@ impl<F> IdentMacroExpander for F
 }
 
 // Use a macro because forwarding to a simple function has type system issues
-macro_rules! make_stmt_default {
+macro_rules! make_stmts_default {
     ($me:expr) => {
         $me.make_expr().map(|e| {
-            P(codemap::respan(e.span, ast::StmtExpr(e, ast::DUMMY_NODE_ID)))
+            SmallVector::one(P(codemap::respan(
+                e.span, ast::StmtExpr(e, ast::DUMMY_NODE_ID))))
         })
     }
 }
@@ -238,12 +239,12 @@ pub trait MacResult {
         None
     }
 
-    /// Create a statement.
+    /// Create zero or more statements.
     ///
     /// By default this attempts to create an expression statement,
     /// returning None if that fails.
-    fn make_stmt(self: Box<Self>) -> Option<P<ast::Stmt>> {
-        make_stmt_default!(self)
+    fn make_stmts(self: Box<Self>) -> Option<SmallVector<P<ast::Stmt>>> {
+        make_stmts_default!(self)
     }
 }
 
@@ -276,7 +277,7 @@ make_MacEager! {
     pat: P<ast::Pat>,
     items: SmallVector<P<ast::Item>>,
     impl_items: SmallVector<P<ast::ImplItem>>,
-    stmt: P<ast::Stmt>,
+    stmts: SmallVector<P<ast::Stmt>>,
 }
 
 impl MacResult for MacEager {
@@ -292,10 +293,10 @@ impl MacResult for MacEager {
         self.impl_items
     }
 
-    fn make_stmt(self: Box<Self>) -> Option<P<ast::Stmt>> {
-        match self.stmt {
-            None => make_stmt_default!(self),
-            s => s,
+    fn make_stmts(self: Box<Self>) -> Option<SmallVector<P<ast::Stmt>>> {
+        match self.stmts.as_ref().map_or(0, |s| s.len()) {
+            0 => make_stmts_default!(self),
+            _ => self.stmts,
         }
     }
 
@@ -384,10 +385,11 @@ impl MacResult for DummyResult {
             Some(SmallVector::zero())
         }
     }
-    fn make_stmt(self: Box<DummyResult>) -> Option<P<ast::Stmt>> {
-        Some(P(codemap::respan(self.span,
-                               ast::StmtExpr(DummyResult::raw_expr(self.span),
-                                             ast::DUMMY_NODE_ID))))
+    fn make_stmts(self: Box<DummyResult>) -> Option<SmallVector<P<ast::Stmt>>> {
+        Some(SmallVector::one(P(
+            codemap::respan(self.span,
+                            ast::StmtExpr(DummyResult::raw_expr(self.span),
+                                          ast::DUMMY_NODE_ID)))))
     }
 }
 
