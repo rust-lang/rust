@@ -6166,6 +6166,9 @@ pub mod funcs {
                                      dwNumberOfBytesToMap: SIZE_T)
                                      -> LPVOID;
                 pub fn UnmapViewOfFile(lpBaseAddress: LPCVOID) -> BOOL;
+                pub fn FlushViewOfFile(lpBaseAddress: LPCVOID,
+                                       dwNumberOfBytesToFlush: SIZE_T)
+                                       -> Bool;
                 pub fn MoveFileExW(lpExistingFileName: LPCWSTR,
                                    lpNewFileName: LPCWSTR,
                                    dwFlags: DWORD) -> BOOL;
