@@ -18,7 +18,7 @@ use io::prelude::*;
 use cmp;
 use error;
 use fmt;
-use io::{self, DEFAULT_BUF_SIZE, Error, ErrorKind};
+use io::{self, DEFAULT_BUF_SIZE, Error, ErrorKind, SeekFrom};
 use ptr;
 use iter;
 
@@ -117,6 +117,52 @@ impl<R> fmt::Debug for BufReader<R> where R: fmt::Debug {
             .field("reader", &self.inner)
             .field("buffer", &format_args!("{}/{}", self.cap - self.pos, self.buf.len()))
             .finish()
+    }
+}
+
+#[unstable(feature = "buf_seek", reason = "recently added")]
+impl<R: Seek> Seek for BufReader<R> {
+    /// Seek to an offset, in bytes, in the underlying reader.
+    ///
+    /// The position used for seeking with `SeekFrom::Current(_)` is the
+    /// position the underlying reader would be at if the `BufReader` had no
+    /// internal buffer.
+    ///
+    /// Seeking always discards the internal buffer, even if the seek position
+    /// would otherwise fall within it. This guarantees that calling
+    /// `.unwrap()` immediately after a seek yields the underlying reader at
+    /// the same position.
+    ///
+    /// See `std::io::Seek` for more details.
+    ///
+    /// Note: In the edge case where you're seeking with `SeekFrom::Current(n)`
+    /// where `n` minus the internal buffer length underflows an `i64`, two
+    /// seeks will be performed instead of one. If the second seek returns
+    /// `Err`, the underlying reader will be left at the same position it would
+    /// have if you seeked to `SeekFrom::Current(0)`.
+    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
+        let result: u64;
+        if let SeekFrom::Current(n) = pos {
+            let remainder = (self.cap - self.pos) as i64;
+            // it should be safe to assume that remainder fits within an i64 as the alternative
+            // means we managed to allocate 8 ebibytes and that's absurd.
+            // But it's not out of the realm of possibility for some weird underlying reader to
+            // support seeking by i64::min_value() so we need to handle underflow when subtracting
+            // remainder.
+            if let Some(offset) = n.checked_sub(remainder) {
+                result = try!(self.inner.seek(SeekFrom::Current(offset)));
+            } else {
+                // seek backwards by our remainder, and then by the offset
+                try!(self.inner.seek(SeekFrom::Current(-remainder)));
+                self.pos = self.cap; // empty the buffer
+                result = try!(self.inner.seek(SeekFrom::Current(n)));
+            }
+        } else {
+            // Seeking with Start/End doesn't care about our buffer length.
+            result = try!(self.inner.seek(pos));
+        }
+        self.pos = self.cap; // empty the buffer
+        Ok(result)
     }
 }
 
@@ -478,7 +524,7 @@ impl<S: Write> fmt::Debug for BufStream<S> where S: fmt::Debug {
 mod tests {
     use prelude::v1::*;
     use io::prelude::*;
-    use io::{self, BufReader, BufWriter, BufStream, Cursor, LineWriter};
+    use io::{self, BufReader, BufWriter, BufStream, Cursor, LineWriter, SeekFrom};
     use test;
 
     /// A dummy reader intended at testing short-reads propagation.
@@ -531,6 +577,67 @@ mod tests {
         assert_eq!(buf, b);
 
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
+    }
+
+    #[test]
+    fn test_buffered_reader_seek() {
+        let inner: &[u8] = &[5, 6, 7, 0, 1, 2, 3, 4];
+        let mut reader = BufReader::with_capacity(2, io::Cursor::new(inner));
+
+        assert_eq!(reader.seek(SeekFrom::Start(3)).ok(), Some(3));
+        assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
+        assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(3));
+        assert_eq!(reader.fill_buf().ok(), Some(&[0, 1][..]));
+        assert_eq!(reader.seek(SeekFrom::Current(1)).ok(), Some(4));
+        assert_eq!(reader.fill_buf().ok(), Some(&[1, 2][..]));
+        reader.consume(1);
+        assert_eq!(reader.seek(SeekFrom::Current(-2)).ok(), Some(3));
+    }
+
+    #[test]
+    fn test_buffered_reader_seek_underflow() {
+        // gimmick reader that yields its position modulo 256 for each byte
+        struct PositionReader {
+            pos: u64
+        }
+        impl Read for PositionReader {
+            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+                let len = buf.len();
+                for x in buf {
+                    *x = self.pos as u8;
+                    self.pos = self.pos.wrapping_add(1);
+                }
+                Ok(len)
+            }
+        }
+        impl Seek for PositionReader {
+            fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
+                match pos {
+                    SeekFrom::Start(n) => {
+                        self.pos = n;
+                    }
+                    SeekFrom::Current(n) => {
+                        self.pos = self.pos.wrapping_add(n as u64);
+                    }
+                    SeekFrom::End(n) => {
+                        self.pos = u64::max_value().wrapping_add(n as u64);
+                    }
+                }
+                Ok(self.pos)
+            }
+        }
+
+        let mut reader = BufReader::with_capacity(5, PositionReader { pos: 0 });
+        assert_eq!(reader.fill_buf().ok(), Some(&[0, 1, 2, 3, 4][..]));
+        assert_eq!(reader.seek(SeekFrom::End(-5)).ok(), Some(u64::max_value()-5));
+        assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
+        // the following seek will require two underlying seeks
+        let expected = 9223372036854775802;
+        assert_eq!(reader.seek(SeekFrom::Current(i64::min_value())).ok(), Some(expected));
+        assert_eq!(reader.fill_buf().ok().map(|s| s.len()), Some(5));
+        // seeking to 0 should empty the buffer.
+        assert_eq!(reader.seek(SeekFrom::Current(0)).ok(), Some(expected));
+        assert_eq!(reader.get_ref().pos, expected);
     }
 
     #[test]
