@@ -1815,12 +1815,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ItemTrait(_, ref generics, ref bounds, ref trait_items) => {
                 self.check_if_primitive_type_name(name, item.span);
 
-                self.with_self_rib(DefSelfTy(Some(local_def(item.id)), None), |this| {
-                    // Create a new rib for the trait-wide type parameters.
-                    this.with_type_parameter_rib(HasTypeParameters(generics,
-                                                                   TypeSpace,
-                                                                   NormalRibKind),
-                                                 |this| {
+                // Create a new rib for the trait-wide type parameters.
+                self.with_type_parameter_rib(HasTypeParameters(generics,
+                                                               TypeSpace,
+                                                               ItemRibKind),
+                                             |this| {
+                    this.with_self_rib(DefSelfTy(Some(local_def(item.id)), None), |this| {
                         this.visit_generics(generics);
                         visit::walk_ty_param_bounds_helper(this, bounds);
 
