@@ -29,11 +29,16 @@
 use std::mem;
 use std::collections::HashMap;
 
-use clean;
-use clean::WherePredicate as WP;
-use clean::PathParameters as PP;
+use rustc::middle::subst;
+use rustc::middle::ty;
+use syntax::ast;
 
-pub fn where_clauses(clauses: Vec<WP>) -> Vec<WP> {
+use clean::PathParameters as PP;
+use clean::WherePredicate as WP;
+use clean::{self, Clean};
+use core::DocContext;
+
+pub fn where_clauses(cx: &DocContext, clauses: Vec<WP>) -> Vec<WP> {
     // First, partition the where clause into its separate components
     let mut params = HashMap::new();
     let mut lifetimes = Vec::new();
@@ -90,16 +95,25 @@ pub fn where_clauses(clauses: Vec<WP>) -> Vec<WP> {
                 clean::ResolvedPath { did, ref mut path, ..} => (did, path),
                 _ => return false,
             };
-            if did != trait_did { return false }
+            // If this QPath's trait `trait_did` is the same as, or a supertrait
+            // of, the bound's trait `did` then we can keep going, otherwise
+            // this is just a plain old equality bound.
+            if !trait_is_same_or_supertrait(cx, did, trait_did) {
+                return false
+            }
             let last = path.segments.last_mut().unwrap();
-            let bindings = match last.params {
-                PP::AngleBracketed { ref mut bindings, .. } => bindings,
-                PP::Parenthesized { .. } => return false,
+            match last.params {
+                PP::AngleBracketed { ref mut bindings, .. } => {
+                    bindings.push(clean::TypeBinding {
+                        name: name.clone(),
+                        ty: rhs.clone(),
+                    });
+                }
+                PP::Parenthesized { ref mut output, .. } => {
+                    assert!(output.is_none());
+                    *output = Some(rhs.clone());
+                }
             };
-            bindings.push(clean::TypeBinding {
-                name: name.clone(),
-                ty: rhs.clone(),
-            });
             true
         })
     });
@@ -133,4 +147,34 @@ pub fn ty_params(mut params: Vec<clean::TyParam>) -> Vec<clean::TyParam> {
 
 fn ty_bounds(bounds: Vec<clean::TyParamBound>) -> Vec<clean::TyParamBound> {
     bounds
+}
+
+fn trait_is_same_or_supertrait(cx: &DocContext, child: ast::DefId,
+                               trait_: ast::DefId) -> bool {
+    if child == trait_ {
+        return true
+    }
+    let def = ty::lookup_trait_def(cx.tcx(), child);
+    let predicates = ty::lookup_predicates(cx.tcx(), child);
+    let generics = (&def.generics, &predicates, subst::TypeSpace).clean(cx);
+    generics.where_predicates.iter().filter_map(|pred| {
+        match *pred {
+            clean::WherePredicate::BoundPredicate {
+                ty: clean::Generic(ref s),
+                ref bounds
+            } if *s == "Self" => Some(bounds),
+            _ => None,
+        }
+    }).flat_map(|bounds| bounds.iter()).any(|bound| {
+        let poly_trait = match *bound {
+            clean::TraitBound(ref t, _) => t,
+            _ => return false,
+        };
+        match poly_trait.trait_ {
+            clean::ResolvedPath { did, .. } => {
+                trait_is_same_or_supertrait(cx, did, trait_)
+            }
+            _ => false,
+        }
+    })
 }

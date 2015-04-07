@@ -958,7 +958,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
         Generics {
             type_params: simplify::ty_params(stripped_typarams),
             lifetimes: stripped_lifetimes,
-            where_predicates: simplify::where_clauses(where_predicates),
+            where_predicates: simplify::where_clauses(cx, where_predicates),
         }
     }
 }
