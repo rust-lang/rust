@@ -88,10 +88,24 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
         Some(ret)
     }
 
-    fn make_stmt(self: Box<ParserAnyMacro<'a>>) -> Option<P<ast::Stmt>> {
-        let ret = self.parser.borrow_mut().parse_stmt();
-        self.ensure_complete_parse(true);
-        ret
+    fn make_stmts(self: Box<ParserAnyMacro<'a>>)
+                 -> Option<SmallVector<P<ast::Stmt>>> {
+        let mut ret = SmallVector::zero();
+        loop {
+            let mut parser = self.parser.borrow_mut();
+            match parser.token {
+                token::Eof => break,
+                _ => match parser.parse_stmt_nopanic() {
+                    Ok(maybe_stmt) => match maybe_stmt {
+                        Some(stmt) => ret.push(stmt),
+                        None => (),
+                    },
+                    Err(_) => break,
+                }
+            }
+        }
+        self.ensure_complete_parse(false);
+        Some(ret)
     }
 }
 
