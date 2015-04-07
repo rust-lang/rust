@@ -24,7 +24,7 @@ use core::mem;
 use core::ops::{self, Deref, Add, Index};
 use core::ptr;
 use core::slice;
-use core::str::Pattern;
+use core::str::pattern::Pattern;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
 
