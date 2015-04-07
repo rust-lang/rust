@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-test FIXME: #13993
-// error-pattern:unsupported cast
+// error-pattern:illegal cast
+
+#![feature(libc)]
 
 extern crate libc;
 

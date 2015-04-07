@@ -94,9 +94,11 @@ pub fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
     let t_e_is_c_enum = ty::type_is_c_like_enum(fcx.tcx(), t_e);
 
     let t_1_is_scalar = ty::type_is_scalar(t_1);
+    let t_1_is_integral = ty::type_is_integral(t_1);
     let t_1_is_char = ty::type_is_char(t_1);
     let t_1_is_bare_fn = ty::type_is_bare_fn(t_1);
     let t_1_is_float = ty::type_is_floating_point(t_1);
+    let t_1_is_c_enum = ty::type_is_c_like_enum(fcx.tcx(), t_1);
 
     // casts to scalars other than `char` and `bare fn` are trivial
     let t_1_is_trivial = t_1_is_scalar && !t_1_is_char && !t_1_is_bare_fn;
@@ -113,6 +115,10 @@ pub fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
     } else if t_1.sty == ty::ty_bool {
         span_err!(fcx.tcx().sess, span, E0054,
                   "cannot cast as `bool`, compare with zero instead");
+    } else if t_e_is_float && (t_1_is_scalar || t_1_is_c_enum) && !(
+        t_1_is_integral || t_1_is_float) {
+        // Casts from float must go through an integer
+        cast_through_integer_err(fcx, span, t_1, t_e)
     } else if t_1_is_float && (t_e_is_scalar || t_e_is_c_enum) && !(
         t_e_is_integral || t_e_is_float || t_e.sty == ty::ty_bool) {
         // Casts to float must go through an integer or boolean
