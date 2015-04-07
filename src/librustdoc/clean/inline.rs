@@ -10,6 +10,8 @@
 
 //! Support for inlining external documentation into the current AST.
 
+use std::collections::HashSet;
+
 use syntax::ast;
 use syntax::ast_util;
 use syntax::attr::AttrMetaMethods;
@@ -400,16 +402,19 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
         is_crate: false,
     };
 
-    // FIXME: this doesn't handle reexports inside the module itself.
-    //        Should they be handled?
     fn fill_in(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId,
                items: &mut Vec<clean::Item>) {
+        // If we're reexporting a reexport it may actually reexport something in
+        // two namespaces, so the target may be listed twice. Make sure we only
+        // visit each node at most once.
+        let mut visited = HashSet::new();
         csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, vis| {
             match def {
                 decoder::DlDef(def::DefForeignMod(did)) => {
                     fill_in(cx, tcx, did, items);
                 }
                 decoder::DlDef(def) if vis == ast::Public => {
+                    if !visited.insert(def) { return }
                     match try_inline_def(cx, tcx, def) {
                         Some(i) => items.extend(i.into_iter()),
                         None => {}
