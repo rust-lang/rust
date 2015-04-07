@@ -38,6 +38,12 @@ use html::markdown;
 use passes;
 use visit_ast::RustdocVisitor;
 
+#[derive(Clone, Default)]
+pub struct TestOptions {
+    pub no_crate_inject: bool,
+    pub attrs: Vec<String>,
+}
+
 pub fn run(input: &str,
            cfgs: Vec<String>,
            libs: SearchPaths,
@@ -75,7 +81,7 @@ pub fn run(input: &str,
                                                      "rustdoc-test", None)
         .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
-    let inject_crate = should_inject_crate(&krate);
+    let opts = scrape_test_config(&krate);
 
     let ctx = core::DocContext {
         krate: &krate,
@@ -102,7 +108,7 @@ pub fn run(input: &str,
                                        libs,
                                        externs,
                                        false,
-                                       inject_crate);
+                                       opts);
     collector.fold_crate(krate);
 
     test_args.insert(0, "rustdoctest".to_string());
@@ -113,41 +119,44 @@ pub fn run(input: &str,
 }
 
 // Look for #![doc(test(no_crate_inject))], used by crates in the std facade
-fn should_inject_crate(krate: &::syntax::ast::Crate) -> bool {
+fn scrape_test_config(krate: &::syntax::ast::Crate) -> TestOptions {
     use syntax::attr::AttrMetaMethods;
+    use syntax::print::pprust;
 
-    let mut inject_crate = true;
+    let mut opts = TestOptions {
+        no_crate_inject: true,
+        attrs: Vec::new(),
+    };
 
-    for attr in &krate.attrs {
-        if attr.check_name("doc") {
-            for list in attr.meta_item_list().into_iter() {
-                for attr in list {
-                    if attr.check_name("test") {
-                        for list in attr.meta_item_list().into_iter() {
-                            for attr in list {
-                                if attr.check_name("no_crate_inject") {
-                                    inject_crate = false;
-                                }
-                            }
-                        }
-                    }
+    let attrs = krate.attrs.iter().filter(|a| a.check_name("doc"))
+                     .filter_map(|a| a.meta_item_list())
+                     .flat_map(|l| l.iter())
+                     .filter(|a| a.check_name("test"))
+                     .filter_map(|a| a.meta_item_list())
+                     .flat_map(|l| l.iter());
+    for attr in attrs {
+        if attr.check_name("no_crate_inject") {
+            opts.no_crate_inject = true;
+        }
+        if attr.check_name("attr") {
+            if let Some(l) = attr.meta_item_list() {
+                for item in l {
+                    opts.attrs.push(pprust::meta_item_to_string(item));
                 }
             }
         }
     }
 
-    return inject_crate;
+    return opts;
 }
 
-#[allow(deprecated)]
 fn runtest(test: &str, cratename: &str, libs: SearchPaths,
            externs: core::Externs,
            should_panic: bool, no_run: bool, as_test_harness: bool,
-           inject_crate: bool) {
+           opts: &TestOptions) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
-    let test = maketest(test, Some(cratename), true, as_test_harness,
-                        inject_crate);
+    let test = maketest(test, Some(cratename), as_test_harness, opts);
     let input = config::Input::Str(test.to_string());
 
     let sessopts = config::Options {
@@ -250,8 +259,8 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     }
 }
 
-pub fn maketest(s: &str, cratename: Option<&str>, lints: bool,
-                dont_insert_main: bool, inject_crate: bool) -> String {
+pub fn maketest(s: &str, cratename: Option<&str>, dont_insert_main: bool,
+                opts: &TestOptions) -> String {
     let (crate_attrs, everything_else) = partition_source(s);
 
     let mut prog = String::new();
@@ -260,20 +269,18 @@ pub fn maketest(s: &str, cratename: Option<&str>, lints: bool,
     // are intended to be crate attributes.
     prog.push_str(&crate_attrs);
 
-    if lints {
-        prog.push_str(r"
-#![allow(unused_variables, unused_assignments, unused_mut, unused_attributes, dead_code)]
-");
+    // Next, any attributes for other aspects such as lints.
+    for attr in &opts.attrs {
+        prog.push_str(&format!("#![{}]\n", attr));
     }
 
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
-    if !s.contains("extern crate") && inject_crate {
+    if !s.contains("extern crate") && !opts.no_crate_inject {
         match cratename {
             Some(cratename) => {
                 if s.contains(cratename) {
-                    prog.push_str(&format!("extern crate {};\n",
-                                           cratename));
+                    prog.push_str(&format!("extern crate {};\n", cratename));
                 }
             }
             None => {}
@@ -325,12 +332,12 @@ pub struct Collector {
     use_headers: bool,
     current_header: Option<String>,
     cratename: String,
-    inject_crate: bool
+    opts: TestOptions,
 }
 
 impl Collector {
     pub fn new(cratename: String, libs: SearchPaths, externs: core::Externs,
-               use_headers: bool, inject_crate: bool) -> Collector {
+               use_headers: bool, opts: TestOptions) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -340,7 +347,7 @@ impl Collector {
             use_headers: use_headers,
             current_header: None,
             cratename: cratename,
-            inject_crate: inject_crate
+            opts: opts,
         }
     }
 
@@ -357,13 +364,14 @@ impl Collector {
         let libs = self.libs.clone();
         let externs = self.externs.clone();
         let cratename = self.cratename.to_string();
-        let inject_crate = self.inject_crate;
+        let opts = self.opts.clone();
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
                 name: testing::DynTestName(name),
                 ignore: should_ignore,
-                should_panic: testing::ShouldPanic::No, // compiler failures are test failures
+                // compiler failures are test failures
+                should_panic: testing::ShouldPanic::No,
             },
             testfn: testing::DynTestFn(Box::new(move|| {
                 runtest(&test,
@@ -373,7 +381,7 @@ impl Collector {
                         should_panic,
                         no_run,
                         as_test_harness,
-                        inject_crate);
+                        &opts);
             }))
         });
     }

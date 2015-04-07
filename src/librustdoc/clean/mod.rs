@@ -199,7 +199,8 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             module: Some(module),
             externs: externs,
             primitives: primitives,
-            external_traits: cx.external_traits.borrow_mut().take().unwrap(),
+            external_traits: cx.external_traits.borrow_mut().take()
+                               .unwrap_or(HashMap::new()),
         }
     }
 }
