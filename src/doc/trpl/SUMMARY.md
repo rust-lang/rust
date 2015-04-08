@@ -58,7 +58,7 @@
     * [Macros](macros.md)
     * [`unsafe` Code](unsafe-code.md)
 * [Nightly Rust](nightly-rust.md)
-    * [Compiler Plugins](plugins.md)
+    * [Compiler Plugins](compiler-plugins.md)
     * [Inline Assembly](inline-assembly.md)
     * [No stdlib](no-stdlib.md)
     * [Intrinsics](intrinsics.md)
