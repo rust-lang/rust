@@ -495,7 +495,6 @@ pub extern fn rust_begin_unwind(msg: fmt::Arguments,
 /// on (e.g.) the inlining of other functions as possible), by moving
 /// the actual formatting into this shared place.
 #[inline(never)] #[cold]
-#[stable(since = "1.0.0", feature = "rust1")]
 pub fn begin_unwind_fmt(msg: fmt::Arguments, file_line: &(&'static str, usize)) -> ! {
     use fmt::Write;
 
@@ -511,7 +510,6 @@ pub fn begin_unwind_fmt(msg: fmt::Arguments, file_line: &(&'static str, usize)) 
 
 /// This is the entry point of unwinding for panic!() and assert!().
 #[inline(never)] #[cold] // avoid code bloat at the call sites as much as possible
-#[stable(since = "1.0.0", feature = "rust1")]
 pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, usize)) -> ! {
     // Note that this should be the only allocation performed in this code path.
     // Currently this means that panic!() on OOM will invoke this code path,
@@ -598,7 +596,6 @@ fn begin_unwind_inner(msg: Box<Any + Send>,
 /// Only a limited number of callbacks can be registered, and this function
 /// returns whether the callback was successfully registered or not. It is not
 /// currently possible to unregister a callback once it has been registered.
-#[unstable(feature = "std_misc")]
 pub unsafe fn register(f: Callback) -> bool {
     match CALLBACK_CNT.fetch_add(1, Ordering::SeqCst) {
         // The invocation code has knowledge of this window where the count has
