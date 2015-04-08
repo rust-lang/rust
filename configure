@@ -523,19 +523,16 @@ fi
 BOOL_OPTIONS=""
 VAL_OPTIONS=""
 
+opt debug 0 "debug mode"
 opt valgrind 0 "run tests with valgrind (memcheck by default)"
 opt helgrind 0 "run tests with helgrind instead of memcheck"
 opt valgrind-rpass 1 "run rpass-valgrind tests with valgrind"
 opt docs     1 "build standard library documentation"
 opt compiler-docs     0 "build compiler documentation"
-opt optimize 1 "build optimized rust code"
-opt optimize-cxx 1 "build optimized C++ code"
-opt optimize-llvm 1 "build optimized LLVM"
 opt optimize-tests 1 "build tests with optimizations"
 opt libcpp 1 "build with llvm with libc++ instead of libstdc++ when using clang"
 opt llvm-assertions 0 "build LLVM with assertions"
 opt debug-assertions 0 "build with debugging assertions"
-opt debuginfo 0 "build with debugger metadata"
 opt fast-make 0 "use .gitmodules as timestamp for submodule deps"
 opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
@@ -545,6 +542,14 @@ opt rpath 0 "build rpaths into rustc itself"
 opt dist-host-only 0 "only install bins for the host architecture"
 opt inject-std-version 1 "inject the current compiler version of libstd into programs"
 opt llvm-version-check 1 "don't check if the LLVM version is supported, build anyway"
+
+# Optimization and debugging options. These may be overridden by the release channel, etc.
+opt_nosave optimize 1 "build optimized rust code"
+opt_nosave optimize-cxx 1 "build optimized C++ code"
+opt_nosave optimize-llvm 1 "build optimized LLVM"
+opt_nosave llvm-assertions 0 "build LLVM with assertions"
+opt_nosave debug-assertions 0 "build with debugging assertions"
+opt_nosave debuginfo 0 "build with debugger metadata"
 
 valopt localstatedir "/var/lib" "local state directory"
 valopt sysconfdir "/etc" "install system configuration files"
@@ -619,6 +624,24 @@ case "$CFG_RELEASE_CHANNEL" in
         err "release channel must be 'dev', 'nightly', 'beta' or 'stable'"
         ;;
 esac
+
+# Adjust perf and debug options for debug mode
+if [ -n "$CFG_ENABLE_DEBUG" ]; then
+    msg "debug mode enabled, setting performance options"
+    CFG_DISABLE_OPTIMIZE=1
+    CFG_DISABLE_OPTIMIZE_CXX=1
+    CFG_DISABLE_OPTIMIZE_LLVM=1
+    CFG_ENABLE_LLVM_ASSERTIONS=1
+    CFG_ENABLE_DEBUG_ASSERTIONS=1
+fi
+
+# OK, now write the debugging options
+if [ -n "$CFG_DISABLE_OPTIMIZE" ]; then putvar CFG_DISABLE_OPTIMIZE; fi
+if [ -n "$CFG_DISABLE_OPTIMIZE_CXX" ]; then putvar CFG_DISABLE_OPTIMIZE_CXX; fi
+if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]; then putvar CFG_DISABLE_OPTIMIZE_LLVM; fi
+if [ -n "$CFG_ENABLE_LLVM_ASSERTIONS" ]; then putvar CFG_ENABLE_LLVM_ASSERTIONS; fi
+if [ -n "$CFG_ENABLE_DEBUG_ASSERTIONS" ]; then putvar CFG_ENABLE_DEBUG_ASSERTIONS; fi
+if [ -n "$CFG_ENABLE_DEBUGINFO" ]; then putvar CFG_ENABLE_DEBUGINFO; fi
 
 # A magic value that allows the compiler to use unstable features
 # during the bootstrap even when doing so would normally be an error
@@ -1425,6 +1448,11 @@ move_if_changed config.tmp config.mk
 rm -f config.tmp
 touch config.stamp
 
-step_msg "complete"
+if [ -z "$CFG_ENABLE_DEBUG" ]; then
+    step_msg "configured in release mode. for development consider --enable-debug"
+else
+    step_msg "complete"
+fi
+
 msg "run \`make help\`"
 msg
