@@ -119,74 +119,6 @@ fn test_first_mut() {
 }
 
 #[test]
-fn test_tail() {
-    let mut a = vec![11];
-    let b: &[i32] = &[];
-    assert_eq!(a.tail(), b);
-    a = vec![11, 12];
-    let b: &[i32] = &[12];
-    assert_eq!(a.tail(), b);
-}
-
-#[test]
-fn test_tail_mut() {
-    let mut a = vec![11];
-    let b: &mut [i32] = &mut [];
-    assert!(a.tail_mut() == b);
-    a = vec![11, 12];
-    let b: &mut [_] = &mut [12];
-    assert!(a.tail_mut() == b);
-}
-
-#[test]
-#[should_panic]
-fn test_tail_empty() {
-    let a = Vec::<i32>::new();
-    a.tail();
-}
-
-#[test]
-#[should_panic]
-fn test_tail_mut_empty() {
-    let mut a = Vec::<i32>::new();
-    a.tail_mut();
-}
-
-#[test]
-fn test_init() {
-    let mut a = vec![11];
-    let b: &[i32] = &[];
-    assert_eq!(a.init(), b);
-    a = vec![11, 12];
-    let b: &[_] = &[11];
-    assert_eq!(a.init(), b);
-}
-
-#[test]
-fn test_init_mut() {
-    let mut a = vec![11];
-    let b: &mut [i32] = &mut [];
-    assert!(a.init_mut() == b);
-    a = vec![11, 12];
-    let b: &mut [_] = &mut [11];
-    assert!(a.init_mut() == b);
-}
-
-#[test]
-#[should_panic]
-fn test_init_empty() {
-    let a = Vec::<i32>::new();
-    a.init();
-}
-
-#[test]
-#[should_panic]
-fn test_init_mut_empty() {
-    let mut a = Vec::<i32>::new();
-    a.init_mut();
-}
-
-#[test]
 fn test_last() {
     let mut a = vec![];
     assert_eq!(a.last(), None);
@@ -204,6 +136,46 @@ fn test_last_mut() {
     assert_eq!(*a.last_mut().unwrap(), 11);
     a = vec![11, 12];
     assert_eq!(*a.last_mut().unwrap(), 12);
+}
+
+#[test]
+fn test_pop_first() {
+    let a: &[i32] = &[];
+    assert_eq!(a.pop_first(), None);
+    let b: &[i32] = &[11];
+    assert_eq!(b.pop_first(), Some((&11, &[][..])));
+    let c: &[i32] = &[11, 12];
+    assert_eq!(c.pop_first(), Some((&11, &[12][..])));
+}
+
+#[test]
+fn test_pop_first_mut() {
+    let a: &mut [i32] = &mut [];
+    assert_eq!(a.pop_first_mut(), None);
+    let b: &mut [i32] = &mut [11];
+    assert_eq!(b.pop_first_mut(), Some((&mut 11, &mut [][..])));
+    let c: &mut [i32] = &mut [11, 12];
+    assert_eq!(c.pop_first_mut(), Some((&mut 11, &mut [12][..])));
+}
+
+#[test]
+fn test_pop_last() {
+    let a: &[i32] = &[];
+    assert_eq!(a.pop_last(), None);
+    let b: &[i32] = &[11];
+    assert_eq!(b.pop_last(), Some((&11, &[][..])));
+    let c: &[i32] = &[11, 12];
+    assert_eq!(c.pop_last(), Some((&12, &[11][..])));
+}
+
+#[test]
+fn test_pop_last_mut() {
+    let a: &mut [i32] = &mut [];
+    assert_eq!(a.pop_last_mut(), None);
+    let b: &mut [i32] = &mut [11];
+    assert_eq!(b.pop_last_mut(), Some((&mut 11, &mut [][..])));
+    let c: &mut [i32] = &mut [11, 12];
+    assert_eq!(c.pop_last_mut(), Some((&mut 12, &mut [11][..])));
 }
 
 #[test]

@@ -2719,7 +2719,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     segments: &[ast::PathSegment],
                                     namespace: Namespace)
                                     -> Option<(Def, LastPrivate)> {
-        let module_path = segments.init().iter()
+        let module_path = segments.pop_last().unwrap().1.iter()
                                          .map(|ps| ps.identifier.name)
                                          .collect::<Vec<_>>();
 
@@ -2777,7 +2777,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                    segments: &[ast::PathSegment],
                                    namespace: Namespace)
                                        -> Option<(Def, LastPrivate)> {
-        let module_path = segments.init().iter()
+        let module_path = segments.pop_last().unwrap().1.iter()
                                          .map(|ps| ps.identifier.name)
                                          .collect::<Vec<_>>();
 

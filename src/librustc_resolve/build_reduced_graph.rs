@@ -272,7 +272,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let module_path = match view_path.node {
                     ViewPathSimple(_, ref full_path) => {
                         full_path.segments
-                            .init()
+                            .pop_last().unwrap().1
                             .iter().map(|ident| ident.identifier.name)
                             .collect()
                     }
@@ -334,8 +334,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                 PathListIdent { name, .. } =>
                                     (module_path.clone(), name.name),
                                 PathListMod { .. } => {
-                                    let name = match module_path.last() {
-                                        Some(name) => *name,
+                                    let (name, module_path) = match module_path.pop_last() {
+                                        Some((name, module_path)) => (*name, module_path),
                                         None => {
                                             self.resolve_error(source_item.span,
                                                 "`self` import can only appear in an import list \
@@ -343,7 +343,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                             continue;
                                         }
                                     };
-                                    let module_path = module_path.init();
                                     (module_path.to_vec(), name)
                                 }
                             };

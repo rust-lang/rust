@@ -693,12 +693,12 @@ fn is_useful(cx: &MatchCheckCtxt,
             Some(constructor) => {
                 let matrix = rows.iter().filter_map(|r| {
                     if pat_is_binding_or_wild(&cx.tcx.def_map, raw_pat(r[0])) {
-                        Some(r.tail().to_vec())
+                        Some(r[1..].to_vec())
                     } else {
                         None
                     }
                 }).collect();
-                match is_useful(cx, &matrix, v.tail(), witness) {
+                match is_useful(cx, &matrix, &v[1..], witness) {
                     UsefulWithWitness(pats) => {
                         let arity = constructor_arity(cx, &constructor, left_ty);
                         let wild_pats: Vec<_> = repeat(DUMMY_WILD_PAT).take(arity).collect();
