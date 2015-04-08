@@ -10,7 +10,6 @@
 
 // aux-build:macro_crate_def_only.rs
 
-// pretty-expanded FIXME #23616
 
 #[macro_use] #[no_link]
 extern crate macro_crate_def_only;

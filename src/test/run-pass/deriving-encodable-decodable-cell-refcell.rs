@@ -11,7 +11,6 @@
 // This briefly tests the capability of `Cell` and `RefCell` to implement the
 // `Encodable` and `Decodable` traits via `#[derive(Encodable, Decodable)]`
 
-// pretty-expanded FIXME #23616
 
 #![feature(rustc_private)]
 

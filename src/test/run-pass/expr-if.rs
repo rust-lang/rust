@@ -13,7 +13,6 @@
 
 
 // Tests for if as expressions
-// pretty-expanded FIXME #23616
 
 fn test_if() { let rs: bool = if true { true } else { false }; assert!((rs)); }
 

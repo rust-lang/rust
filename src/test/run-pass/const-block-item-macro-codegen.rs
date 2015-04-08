@@ -11,7 +11,6 @@
 // General test that function items in static blocks
 // can be generated with a macro.
 
-// pretty-expanded FIXME #23616
 
 struct MyType {
     desc: &'static str,

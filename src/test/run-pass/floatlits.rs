@@ -10,7 +10,6 @@
 
 
 
-// pretty-expanded FIXME #23616
 
 pub fn main() {
     let f = 4.999999999999f64;

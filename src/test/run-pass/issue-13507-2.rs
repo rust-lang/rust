@@ -10,7 +10,6 @@
 
 // aux-build:issue13507.rs
 
-// pretty-expanded FIXME #23616
 
 #![feature(core)]
 

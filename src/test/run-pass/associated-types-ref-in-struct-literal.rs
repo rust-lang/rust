@@ -10,7 +10,6 @@
 
 // Test associated type references in a struct literal. Issue #20535.
 
-// pretty-expanded FIXME #23616
 
 pub trait Foo {
     type Bar;

@@ -10,7 +10,6 @@
 
 // Test references to `Self::Item` in the trait. Issue #20220.
 
-// pretty-expanded FIXME #23616
 
 use std::vec;
 

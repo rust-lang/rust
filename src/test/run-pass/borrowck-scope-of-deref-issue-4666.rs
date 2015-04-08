@@ -12,7 +12,6 @@
 // limited to the deref operation itself, and does not infect the
 // block as a whole.
 
-// pretty-expanded FIXME #23616
 
 struct Box {
     x: usize

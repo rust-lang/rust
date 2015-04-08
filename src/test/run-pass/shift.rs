@@ -11,7 +11,6 @@
 // Testing shifts for various combinations of integers
 // Issue #1570
 
-// pretty-expanded FIXME #23616
 
 pub fn main() {
     test_misc();

@@ -10,7 +10,6 @@
 
 // Tests for the new |args| expr lambda syntax
 
-// pretty-expanded FIXME #23616
 
 fn f<F>(i: isize, f: F) -> isize where F: FnOnce(isize) -> isize { f(i) }
 

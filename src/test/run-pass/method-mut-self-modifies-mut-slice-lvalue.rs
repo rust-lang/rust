@@ -12,7 +12,6 @@
 // type is `&mut [u8]`, passes in a pointer to the lvalue and not a
 // temporary. Issue #19147.
 
-// pretty-expanded FIXME #23616
 
 #![feature(core, old_io)]
 

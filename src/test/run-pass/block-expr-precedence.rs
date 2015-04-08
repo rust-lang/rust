@@ -13,7 +13,6 @@
 
 // no-reformat
 
-// pretty-expanded FIXME #23616
 
 /*
  *

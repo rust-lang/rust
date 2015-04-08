@@ -13,7 +13,6 @@
 // various methods in various ways successfully.
 // See also `compile-fail/trait-repeated-supertrait-ambig.rs`.
 
-// pretty-expanded FIXME #23616
 
 trait CompareTo<T> {
     fn same_as(&self, t: T) -> bool;

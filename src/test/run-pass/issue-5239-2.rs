@@ -10,7 +10,6 @@
 
 // Regression test for issue #5239
 
-// pretty-expanded FIXME #23616
 
 pub fn main() {
     let _f = |ref x: isize| { *x };

@@ -10,7 +10,6 @@
 
 // exec-env:RUST_LOG=logging_enabled=info
 
-// pretty-expanded FIXME #23616
 
 #![feature(rustc_private)]
 

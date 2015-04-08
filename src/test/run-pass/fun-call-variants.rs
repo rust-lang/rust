@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
 
 fn ho<F>(f: F) -> isize where F: FnOnce(isize) -> isize { let n: isize = f(3); return n; }
 

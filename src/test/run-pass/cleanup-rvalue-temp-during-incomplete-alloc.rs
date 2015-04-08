@@ -24,7 +24,6 @@
 // It's unclear how likely such a bug is to recur, but it seems like a
 // scenario worth testing.
 
-// pretty-expanded FIXME #23616
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]

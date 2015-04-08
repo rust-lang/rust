@@ -10,7 +10,6 @@
 
 // Test that the call operator autoderefs when calling a bounded type parameter.
 
-// pretty-expanded FIXME #23616
 
 #![feature(unboxed_closures)]
 

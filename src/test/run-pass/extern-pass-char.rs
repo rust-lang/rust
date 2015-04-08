@@ -10,7 +10,6 @@
 
 // Test a function that takes/returns a u8.
 
-// pretty-expanded FIXME #23616
 
 #[link(name = "rust_test_helpers")]
 extern {
