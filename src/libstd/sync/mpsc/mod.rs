@@ -112,58 +112,6 @@
 //! });
 //! rx.recv().unwrap();
 //! ```
-//!
-//! Reading from a channel with a timeout requires to use a Timer together
-//! with the channel. You can use the `select!` macro to select either and
-//! handle the timeout case. This first example will break out of the loop
-//! after 10 seconds no matter what:
-//!
-//! ```no_run
-//! # #![feature(std_misc, old_io)]
-//! use std::sync::mpsc::channel;
-//! use std::old_io::timer::Timer;
-//! use std::time::Duration;
-//!
-//! let (tx, rx) = channel::<i32>();
-//! let mut timer = Timer::new().unwrap();
-//! let timeout = timer.oneshot(Duration::seconds(10));
-//!
-//! loop {
-//!     select! {
-//!         val = rx.recv() => println!("Received {}", val.unwrap()),
-//!         _ = timeout.recv() => {
-//!             println!("timed out, total time was more than 10 seconds");
-//!             break;
-//!         }
-//!     }
-//! }
-//! ```
-//!
-//! This second example is more costly since it allocates a new timer every
-//! time a message is received, but it allows you to timeout after the channel
-//! has been inactive for 5 seconds:
-//!
-//! ```no_run
-//! # #![feature(std_misc, old_io)]
-//! use std::sync::mpsc::channel;
-//! use std::old_io::timer::Timer;
-//! use std::time::Duration;
-//!
-//! let (tx, rx) = channel::<i32>();
-//! let mut timer = Timer::new().unwrap();
-//!
-//! loop {
-//!     let timeout = timer.oneshot(Duration::seconds(5));
-//!
-//!     select! {
-//!         val = rx.recv() => println!("Received {}", val.unwrap()),
-//!         _ = timeout.recv() => {
-//!             println!("timed out, no message received in 5 seconds");
-//!             break;
-//!         }
-//!     }
-//! }
-//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
