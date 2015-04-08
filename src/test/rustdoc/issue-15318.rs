@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue-15318.rs
+// ignore-android
 
 #![feature(no_std)]
 #![no_std]

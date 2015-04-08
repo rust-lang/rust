@@ -48,7 +48,7 @@
 //!
 //! ## Examples
 //!
-//! ```rust
+//! ```rust,ignore
 //! # #![feature(old_path, old_io)]
 //! use std::old_io::fs::PathExtensions;
 //! use std::old_path::{Path, GenericPath};
@@ -190,7 +190,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -209,7 +209,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -225,7 +225,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -242,7 +242,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -262,7 +262,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -281,7 +281,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -298,7 +298,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -319,7 +319,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -336,7 +336,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -357,7 +357,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -386,7 +386,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -408,7 +408,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -437,7 +437,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -457,7 +457,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -485,7 +485,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -537,7 +537,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -564,7 +564,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -590,7 +590,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -611,7 +611,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -628,7 +628,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -654,7 +654,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -685,7 +685,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -704,7 +704,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -731,7 +731,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -755,7 +755,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -774,7 +774,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -794,7 +794,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -815,7 +815,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();
@@ -833,7 +833,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```ignore
     /// # #![feature(old_path)]
     /// use std::old_path::{Path, GenericPath};
     /// # foo();

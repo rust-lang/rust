@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:rustdoc-extern-method.rs
+// ignore-android
 
 #![feature(unboxed_closures)]
 

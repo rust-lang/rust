@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:rustdoc-ffi.rs
+// ignore-android
 
 extern crate rustdoc_ffi as lib;
 
