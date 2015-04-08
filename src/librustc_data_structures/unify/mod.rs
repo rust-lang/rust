@@ -241,7 +241,7 @@ impl<K:UnifyKey> sv::SnapshotVecDelegate for Delegate<K> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Base union-find algorithm, where we are just making setes
+// Base union-find algorithm, where we are just making sets
 
 impl<'tcx,K> UnificationTable<K>
     where K : UnifyKey<Value=()>,
