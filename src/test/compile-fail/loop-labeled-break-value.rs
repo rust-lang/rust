@@ -16,6 +16,6 @@ fn main() {
         let _: i32 = 'inner: loop { break 'inner }; //~ ERROR mismatched types
     }
     loop {
-        let _: i32 = 'inner: loop { loop { break 'inner } }; //~ ERROR mismatched types
+        let _: i32 = 'inner2: loop { loop { break 'inner2 } }; //~ ERROR mismatched types
     }
 }
