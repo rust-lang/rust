@@ -20,15 +20,15 @@
 pub use alloc::arc::{Arc, Weak};
 pub use core::atomic;
 
-pub use self::mutex::{Mutex, MutexGuard, StaticMutex};
-pub use self::mutex::MUTEX_INIT;
-pub use self::rwlock::{RwLock, StaticRwLock, RW_LOCK_INIT};
-pub use self::rwlock::{RwLockReadGuard, RwLockWriteGuard};
-pub use self::condvar::{Condvar, StaticCondvar, CONDVAR_INIT};
-pub use self::once::{Once, ONCE_INIT};
-pub use self::semaphore::{Semaphore, SemaphoreGuard};
 pub use self::barrier::{Barrier, BarrierWaitResult};
-pub use self::poison::{PoisonError, TryLockError, TryLockResult, LockResult};
+pub use self::condvar::{Condvar, StaticCondvar, CONDVAR_INIT};
+pub use self::mutex::MUTEX_INIT;
+pub use self::mutex::{Mutex, MutexGuard, StaticMutex};
+pub use self::once::{Once, ONCE_INIT};
+pub use sys_common::poison::{PoisonError, TryLockError, TryLockResult, LockResult};
+pub use self::rwlock::{RwLockReadGuard, RwLockWriteGuard};
+pub use self::rwlock::{RwLock, StaticRwLock, RW_LOCK_INIT};
+pub use self::semaphore::{Semaphore, SemaphoreGuard};
 
 pub use self::future::Future;
 
@@ -39,6 +39,5 @@ mod condvar;
 mod future;
 mod mutex;
 mod once;
-mod poison;
 mod rwlock;
 mod semaphore;

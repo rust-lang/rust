@@ -8,17 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::{BOOL, DWORD, LPVOID, c_ulong};
+use libc::{BOOL, DWORD, LPVOID, LONG, HANDLE, c_ulong};
 use libc::types::os::arch::extra::BOOLEAN;
 
 pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;
 pub type PSRWLOCK = *mut SRWLOCK;
 pub type ULONG = c_ulong;
+pub type ULONG_PTR = c_ulong;
 
 #[repr(C)]
 pub struct CONDITION_VARIABLE { pub ptr: LPVOID }
 #[repr(C)]
 pub struct SRWLOCK { pub ptr: LPVOID }
+#[repr(C)]
+pub struct CRITICAL_SECTION {
+    CriticalSectionDebug: LPVOID,
+    LockCount: LONG,
+    RecursionCount: LONG,
+    OwningThread: HANDLE,
+    LockSemaphore: HANDLE,
+    SpinCount: ULONG_PTR
+}
 
 pub const CONDITION_VARIABLE_INIT: CONDITION_VARIABLE = CONDITION_VARIABLE {
     ptr: 0 as *mut _,
@@ -41,4 +51,10 @@ extern "system" {
     pub fn ReleaseSRWLockShared(SRWLock: PSRWLOCK);
     pub fn TryAcquireSRWLockExclusive(SRWLock: PSRWLOCK) -> BOOLEAN;
     pub fn TryAcquireSRWLockShared(SRWLock: PSRWLOCK) -> BOOLEAN;
+
+    pub fn InitializeCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
+    pub fn EnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
+    pub fn TryEnterCriticalSection(CriticalSection: *mut CRITICAL_SECTION) -> BOOLEAN;
+    pub fn LeaveCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
+    pub fn DeleteCriticalSection(CriticalSection: *mut CRITICAL_SECTION);
 }
