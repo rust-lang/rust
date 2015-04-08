@@ -284,6 +284,16 @@ impl<W: Write> fmt::Debug for BufWriter<W> where W: fmt::Debug {
     }
 }
 
+#[unstable(feature = "buf_seek", reason = "recently added")]
+impl<W: Write+Seek> Seek for BufWriter<W> {
+    /// Seek to the offset, in bytes, in the underlying writer.
+    ///
+    /// Seeking always writes out the internal buffer before seeking.
+    fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
+        self.flush_buf().and_then(|_| self.get_mut().seek(pos))
+    }
+}
+
 #[unsafe_destructor]
 impl<W: Write> Drop for BufWriter<W> {
     fn drop(&mut self) {
@@ -681,6 +691,18 @@ mod tests {
         assert_eq!(*w.get_ref(), []);
         let w = w.into_inner().unwrap();
         assert_eq!(w, [0, 1]);
+    }
+
+    #[test]
+    fn test_buffered_writer_seek() {
+        let mut w = BufWriter::with_capacity(3, io::Cursor::new(Vec::new()));
+        w.write_all(&[0, 1, 2, 3, 4, 5]).unwrap();
+        w.write_all(&[6, 7]).unwrap();
+        assert_eq!(w.seek(SeekFrom::Current(0)).ok(), Some(8));
+        assert_eq!(&w.get_ref().get_ref()[..], &[0, 1, 2, 3, 4, 5, 6, 7][..]);
+        assert_eq!(w.seek(SeekFrom::Start(2)).ok(), Some(2));
+        w.write_all(&[8, 9]).unwrap();
+        assert_eq!(&w.into_inner().unwrap().into_inner()[..], &[0, 1, 8, 9, 4, 5, 6, 7]);
     }
 
     // This is just here to make sure that we don't infinite loop in the
