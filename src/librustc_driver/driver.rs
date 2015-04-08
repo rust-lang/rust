@@ -438,7 +438,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         }
     });
 
-    let Registry { syntax_exts, lint_passes, lint_groups, .. } = registry;
+    let Registry { syntax_exts, lint_passes, lint_groups, llvm_passes, .. } = registry;
 
     {
         let mut ls = sess.lint_store.borrow_mut();
@@ -449,6 +449,8 @@ pub fn phase_2_configure_and_expand(sess: &Session,
         for (name, to) in lint_groups {
             ls.register_group(Some(sess), true, name, to);
         }
+
+        *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
     }
 
     // Lint plugins are registered; now we can process command line flags.
