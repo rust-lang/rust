@@ -726,6 +726,14 @@ impl<'a, T: Clone> Option<&'a T> {
     }
 }
 
+impl<'a, T: Clone> Option<&'a mut T> {
+    /// Maps an Option<&mut T> to an Option<T> by cloning the contents of the Option.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn cloned(self) -> Option<T> {
+        self.map(|t| t.clone())
+    }
+}
+
 impl<T: Default> Option<T> {
     /// Returns the contained value or a default
     ///
