@@ -277,7 +277,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             Some(ref code) => {
                 match descriptions.find_description(&code[..]) {
                     Some(ref description) => {
-                        println!("{}", description);
+                        // Slice off the leading newline and print.
+                        print!("{}", &description[1..]);
                     }
                     None => {
                         early_error(&format!("no extended information for {}", code));
