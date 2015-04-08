@@ -163,13 +163,17 @@ This is to make the language easier to parse for humans, especially in the face
 of higher-order functions. `fn foo<T>(f: fn(int): int, fn(T): U): U` is not
 particularly easy to read.
 
-## `let` is used to introduce variables
+## Why is `let` used to introduce variables?
 
-`let` not only defines variables, but can do pattern matching. One can also
-redeclare immutable variables with `let`. This is useful to avoid unnecessary
-`mut` annotations. An interesting historical note is that Rust comes,
-syntactically, most closely from ML, which also uses `let` to introduce
-bindings.
+We don't use the term "variable", instead, we use "variable bindings". The
+simplest way for binding is the `let` syntax, other ways including `if let`,
+`while let` and `match`. Bindings also exist in function arguments positions.
+
+Bindings always happen in pattern matching positions, and it's also Rust's way
+to declare mutability. One can also redeclare mutability of a binding in
+pattern matching. This is useful to avoid unnecessary `mut` annotations. An
+interesting historical note is that Rust comes, syntactically, most closely
+from ML, which also uses `let` to introduce bindings.
 
 See also [a long thread][alt] on renaming `let mut` to `var`.
 
