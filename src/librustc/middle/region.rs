@@ -95,7 +95,15 @@ use syntax::visit::{Visitor, FnKind};
            RustcDecodable, Debug, Copy)]
 pub enum CodeExtent {
     Misc(ast::NodeId),
-    DestructionScope(ast::NodeId), // extent of destructors for temporaries of node-id
+
+    // extent of parameters passed to a function or closure (they
+    // outlive its body)
+    ParameterScope { fn_id: ast::NodeId, body_id: ast::NodeId },
+
+    // extent of destructors for temporaries of node-id
+    DestructionScope(ast::NodeId),
+
+    // extent of code following a `let id = expr;` binding in a block
     Remainder(BlockRemainder)
 }
 
@@ -153,15 +161,19 @@ impl CodeExtent {
     pub fn node_id(&self) -> ast::NodeId {
         match *self {
             CodeExtent::Misc(node_id) => node_id,
+
+            // These cases all return rough approximations to the
+            // precise extent denoted by `self`.
             CodeExtent::Remainder(br) => br.block,
             CodeExtent::DestructionScope(node_id) => node_id,
+            CodeExtent::ParameterScope { fn_id: _, body_id } => body_id,
         }
     }
 
     /// Maps this scope to a potentially new one according to the
     /// NodeId transformer `f_id`.
-    pub fn map_id<F>(&self, f_id: F) -> CodeExtent where
-        F: FnOnce(ast::NodeId) -> ast::NodeId,
+    pub fn map_id<F>(&self, mut f_id: F) -> CodeExtent where
+        F: FnMut(ast::NodeId) -> ast::NodeId,
     {
         match *self {
             CodeExtent::Misc(node_id) => CodeExtent::Misc(f_id(node_id)),
@@ -170,6 +182,8 @@ impl CodeExtent {
                     block: f_id(br.block), first_statement_index: br.first_statement_index }),
             CodeExtent::DestructionScope(node_id) =>
                 CodeExtent::DestructionScope(f_id(node_id)),
+            CodeExtent::ParameterScope { fn_id, body_id } =>
+                CodeExtent::ParameterScope { fn_id: f_id(fn_id), body_id: f_id(body_id) },
         }
     }
 
@@ -180,6 +194,7 @@ impl CodeExtent {
         match ast_map.find(self.node_id()) {
             Some(ast_map::NodeBlock(ref blk)) => {
                 match *self {
+                    CodeExtent::ParameterScope { .. } |
                     CodeExtent::Misc(_) |
                     CodeExtent::DestructionScope(_) => Some(blk.span),
 
@@ -277,6 +292,7 @@ enum InnermostDeclaringBlock {
     Block(ast::NodeId),
     Statement(DeclaringStatementContext),
     Match(ast::NodeId),
+    FnDecl { fn_id: ast::NodeId, body_id: ast::NodeId },
 }
 
 impl InnermostDeclaringBlock {
@@ -285,6 +301,8 @@ impl InnermostDeclaringBlock {
             InnermostDeclaringBlock::None => {
                 return Option::None;
             }
+            InnermostDeclaringBlock::FnDecl { fn_id, body_id } =>
+                CodeExtent::ParameterScope { fn_id: fn_id, body_id: body_id },
             InnermostDeclaringBlock::Block(id) |
             InnermostDeclaringBlock::Match(id) => CodeExtent::from_node_id(id),
             InnermostDeclaringBlock::Statement(s) =>  s.to_code_extent(),
@@ -1198,13 +1216,20 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
            body.id,
            visitor.cx.parent);
 
+    // This scope covers the function body, which includes the
+    // bindings introduced by let statements as well as temporaries
+    // created by the fn's tail expression (if any). It does *not*
+    // include the fn parameters (see below).
     let body_scope = CodeExtent::from_node_id(body.id);
     visitor.region_maps.mark_as_terminating_scope(body_scope);
 
     let dtor_scope = CodeExtent::DestructionScope(body.id);
     visitor.region_maps.record_encl_scope(body_scope, dtor_scope);
 
-    record_superlifetime(visitor, dtor_scope, body.span);
+    let fn_decl_scope = CodeExtent::ParameterScope { fn_id: id, body_id: body.id };
+    visitor.region_maps.record_encl_scope(dtor_scope, fn_decl_scope);
+
+    record_superlifetime(visitor, fn_decl_scope, body.span);
 
     if let Some(root_id) = visitor.cx.root_id {
         visitor.region_maps.record_fn_parent(body.id, root_id);
@@ -1212,11 +1237,13 @@ fn resolve_fn(visitor: &mut RegionResolutionVisitor,
 
     let outer_cx = visitor.cx;
 
-    // The arguments and `self` are parented to the body of the fn.
+    // The arguments and `self` are parented to the fn.
     visitor.cx = Context {
         root_id: Some(body.id),
-        parent: InnermostEnclosingExpr::Some(body.id),
-        var_parent: InnermostDeclaringBlock::Block(body.id)
+        parent: InnermostEnclosingExpr::None,
+        var_parent: InnermostDeclaringBlock::FnDecl {
+            fn_id: id, body_id: body.id
+        },
     };
     visit::walk_fn_decl(visitor, decl);
 
