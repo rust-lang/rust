@@ -1,4 +1,4 @@
-% Static and Dynamic Dispatch
+% Trait Objects
 
 When code involves polymorphism, there needs to be a mechanism to determine
 which specific version is actually run. This is called 'dispatch.' There are

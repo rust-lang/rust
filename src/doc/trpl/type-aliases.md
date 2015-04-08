@@ -1,0 +1,3 @@
+% `type` Aliases
+
+Coming soon
