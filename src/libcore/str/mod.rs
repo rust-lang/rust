@@ -1496,6 +1496,7 @@ impl<'a, S: ?Sized> Str for &'a S where S: Str {
 
 /// Methods for string slices
 #[allow(missing_docs)]
+#[doc(hidden)]
 pub trait StrExt {
     // NB there are no docs here are they're all located on the StrExt trait in
     // libcollections, not here.

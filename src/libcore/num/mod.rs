@@ -2476,6 +2476,7 @@ pub enum FpCategory {
 //               `unused_self`. Removing it requires #8888 to be fixed.
 #[unstable(feature = "core",
            reason = "distribution of methods between core/std is unclear")]
+#[doc(hidden)]
 pub trait Float
     : Copy + Clone
     + NumCast

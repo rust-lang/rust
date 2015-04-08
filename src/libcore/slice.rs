@@ -63,6 +63,7 @@ use raw::Slice as RawSlice;
 
 /// Extension methods for slices.
 #[allow(missing_docs)] // docs in libcollections
+#[doc(hidden)]
 pub trait SliceExt {
     type Item;
 
