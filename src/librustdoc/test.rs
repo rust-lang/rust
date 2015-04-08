@@ -124,7 +124,7 @@ fn scrape_test_config(krate: &::syntax::ast::Crate) -> TestOptions {
     use syntax::print::pprust;
 
     let mut opts = TestOptions {
-        no_crate_inject: true,
+        no_crate_inject: false,
         attrs: Vec::new(),
     };
 

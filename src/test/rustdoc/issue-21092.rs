@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue-21092.rs
+// ignore-android
 
 extern crate issue_21092;
 

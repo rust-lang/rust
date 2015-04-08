@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue-20646.rs
+// ignore-android
 
 #![feature(associated_types)]
 

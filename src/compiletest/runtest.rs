@@ -726,18 +726,18 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
                 -> ProcRes {
         // Prepare the lldb_batchmode which executes the debugger script
         let lldb_script_path = rust_src_root.join("src/etc/lldb_batchmode.py");
-        cmd2proces(config,
-                   test_executable,
-                   Command::new(&config.python)
-                           .arg(&lldb_script_path)
-                           .arg(test_executable)
-                           .arg(debugger_script)
-                           .env("PYTHONPATH",
-                                config.lldb_python_dir.as_ref().unwrap()))
+        cmd2procres(config,
+                    test_executable,
+                    Command::new(&config.python)
+                            .arg(&lldb_script_path)
+                            .arg(test_executable)
+                            .arg(debugger_script)
+                            .env("PYTHONPATH",
+                                 config.lldb_python_dir.as_ref().unwrap()))
     }
 }
 
-fn cmd2proces(config: &Config, test_executable: &Path, cmd: &mut Command)
+fn cmd2procres(config: &Config, test_executable: &Path, cmd: &mut Command)
               -> ProcRes {
     let (status, out, err) = match cmd.output() {
         Ok(Output { status, stdout, stderr }) => {
@@ -1828,12 +1828,12 @@ fn run_rustdoc_test(config: &Config, props: &TestProps, testfile: &Path) {
     }
     let root = find_rust_src_root(config).unwrap();
 
-    let res = cmd2proces(config,
-                         testfile,
-                         Command::new(&config.python)
-                                 .arg(root.join("src/etc/htmldocck.py"))
-                                 .arg(out_dir)
-                                 .arg(testfile));
+    let res = cmd2procres(config,
+                          testfile,
+                          Command::new(&config.python)
+                                  .arg(root.join("src/etc/htmldocck.py"))
+                                  .arg(out_dir)
+                                  .arg(testfile));
     if !res.status.success() {
         fatal_proc_rec("htmldocck failed!", &res);
     }
