@@ -10,5 +10,10 @@
 
 fn main() {
     let a: &[i32] = &[1, 2, 3];
-    a as *const [i32] as usize; //~ ERROR cast from fat pointer
+    let b: Box<[i32]> = Box::new([1, 2, 3]);
+    let p = a as *const [i32];
+
+    a as usize; //~ ERROR cast from fat pointer
+    b as usize; //~ ERROR cast from fat pointer
+    p as usize; //~ ERROR cast from fat pointer
 }

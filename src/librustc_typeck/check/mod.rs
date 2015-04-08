@@ -1560,13 +1560,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub fn type_is_fat_ptr(&self, ty: Ty<'tcx>, span: Span) -> bool {
-        match ty.sty {
-            ty::ty_ptr(ty::mt { ty: t, .. }) |
-            ty::ty_rptr(_, ty::mt { ty: t, .. }) => {
-                !self.type_is_known_to_be_sized(t, span)
-            }
-            _ => false
+        if let Some(mt) = ty::deref(ty, true) {
+            return !self.type_is_known_to_be_sized(mt.ty, span);
         }
+        false
     }
 
     pub fn register_builtin_bound(&self,
