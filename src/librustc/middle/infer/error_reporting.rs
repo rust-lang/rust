@@ -1352,7 +1352,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
             region_names,
         } = rebuild_info;
 
-        let last_seg = path.segments.last().unwrap();
+        let (last_seg, init_seg) = path.segments.pop_last().unwrap();
         let new_parameters = match last_seg.parameters {
             ast::ParenthesizedParameters(..) => {
                 last_seg.parameters.clone()
@@ -1409,7 +1409,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
             parameters: new_parameters
         };
         let mut new_segs = Vec::new();
-        new_segs.push_all(path.segments.init());
+        new_segs.push_all(init_seg);
         new_segs.push(new_seg);
         ast::Path {
             span: path.span,

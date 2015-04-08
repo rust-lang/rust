@@ -351,15 +351,16 @@ pub fn unindent(s: &str) -> String {
     });
 
     if lines.len() >= 1 {
-        let mut unindented = vec![ lines[0].trim().to_string() ];
-        unindented.push_all(&lines.tail().iter().map(|&line| {
+        let (first_line, tail_lines) = lines.pop_first().unwrap();
+        let mut unindented = vec![ first_line.trim().to_string() ];
+        unindented.extend(tail_lines.iter().map(|&line| {
             if line.chars().all(|c| c.is_whitespace()) {
                 line.to_string()
             } else {
                 assert!(line.len() >= min_indent);
                 line[min_indent..].to_string()
             }
-        }).collect::<Vec<_>>());
+        }));
         unindented.connect("\n")
     } else {
         s.to_string()

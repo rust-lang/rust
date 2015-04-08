@@ -1240,15 +1240,16 @@ pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
             // TyObjectSum, see that fn for details
             let mut projection_bounds = Vec::new();
 
+            let (last_segment, init_segments) = base_segments.pop_last().unwrap();
             let trait_ref = object_path_to_poly_trait_ref(this,
                                                           rscope,
                                                           span,
                                                           param_mode,
                                                           trait_def_id,
-                                                          base_segments.last().unwrap(),
+                                                          last_segment,
                                                           &mut projection_bounds);
 
-            check_path_args(tcx, base_segments.init(), NO_TPS | NO_REGIONS);
+            check_path_args(tcx, init_segments, NO_TPS | NO_REGIONS);
             trait_ref_to_object_type(this,
                                      rscope,
                                      span,
@@ -1257,10 +1258,11 @@ pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                      &[])
         }
         def::DefTy(did, _) | def::DefStruct(did) => {
-            check_path_args(tcx, base_segments.init(), NO_TPS | NO_REGIONS);
+            let (last_segment, init_segments) = base_segments.pop_last().unwrap();
+            check_path_args(tcx, init_segments, NO_TPS | NO_REGIONS);
             ast_path_to_ty(this, rscope, span,
                            param_mode, did,
-                           base_segments.last().unwrap())
+                           last_segment)
         }
         def::DefTyParam(space, index, _, name) => {
             check_path_args(tcx, base_segments, NO_TPS | NO_REGIONS);

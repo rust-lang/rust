@@ -3347,7 +3347,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                scheme, &predicates,
                                opt_self_ty, def, expr.span, id);
           } else {
-              let ty_segments = path.segments.init();
+              let (method_segment, ty_segments) = path.segments.pop_last().unwrap();
               let base_ty_end = path.segments.len() - path_res.depth;
               let ty = astconv::finish_resolving_def_to_ty(fcx,
                                                            fcx,
@@ -3357,7 +3357,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                            opt_self_ty,
                                                            &ty_segments[..base_ty_end],
                                                            &ty_segments[base_ty_end..]);
-              let method_segment = path.segments.last().unwrap();
               let method_name = method_segment.identifier.name;
               match method::resolve_ufcs(fcx, expr.span, method_name, ty, id) {
                   Ok((def, lp)) => {

@@ -707,7 +707,7 @@ pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeI
                                 -> csearch::FoundAst<'tcx> {
     debug!("Looking up item: {}", id);
     let item_doc = lookup_item(id, cdata.data());
-    let path = item_path(item_doc).init().to_vec();
+    let path = item_path(item_doc).pop_last().unwrap().1.to_vec();
     match decode_inlined_item(cdata, tcx, path, item_doc) {
         Ok(ii) => csearch::FoundAst::Found(ii),
         Err(path) => {
