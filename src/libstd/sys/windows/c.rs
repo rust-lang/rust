@@ -44,6 +44,8 @@ pub const WSA_WAIT_TIMEOUT: libc::DWORD = libc::consts::os::extra::WAIT_TIMEOUT;
 pub const WSA_WAIT_EVENT_0: libc::DWORD = libc::consts::os::extra::WAIT_OBJECT_0;
 pub const WSA_WAIT_FAILED: libc::DWORD = libc::consts::os::extra::WAIT_FAILED;
 pub const WSAESHUTDOWN: libc::c_int = 10058;
+pub const WSA_FLAG_OVERLAPPED: libc::DWORD = 0x01;
+pub const WSA_FLAG_NO_HANDLE_INHERIT: libc::DWORD = 0x80;
 
 pub const ERROR_NO_MORE_FILES: libc::DWORD = 18;
 pub const TOKEN_READ: libc::DWORD = 0x20008;

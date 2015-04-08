@@ -80,7 +80,11 @@ impl Socket {
             SocketAddr::V4(..) => libc::AF_INET,
             SocketAddr::V6(..) => libc::AF_INET6,
         };
-        match unsafe { libc::socket(fam, ty, 0) } {
+        let socket = unsafe {
+            c::WSASocketW(fam, ty, 0, 0 as *mut _, 0,
+                          c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT)
+        };
+        match socket {
             INVALID_SOCKET => Err(last_error()),
             n => Ok(Socket(n)),
         }
@@ -103,7 +107,9 @@ impl Socket {
             match c::WSASocketW(info.iAddressFamily,
                                 info.iSocketType,
                                 info.iProtocol,
-                                &mut info, 0, 0) {
+                                &mut info, 0,
+                                c::WSA_FLAG_OVERLAPPED |
+                                    c::WSA_FLAG_NO_HANDLE_INHERIT) {
                 INVALID_SOCKET => Err(last_error()),
                 n => Ok(Socket(n)),
             }
