@@ -44,8 +44,7 @@ pub trait Clone : Sized {
     /// but can be overridden to reuse the resources of `a` to avoid unnecessary
     /// allocations.
     #[inline(always)]
-    #[unstable(feature = "core",
-               reason = "this function is rarely used")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn clone_from(&mut self, source: &Self) {
         *self = source.clone()
     }
