@@ -489,8 +489,8 @@ Since it was accepted, the RFC has been updated as follows:
    capability for libstd to declare inherent methods on primitive
    integral types.
 2. `as` was changed to restore the behavior before the RFC (that is,
-   it truncates, as a C cast would).
-   
+   it truncates to the target bitwidth and reinterprets the highest
+   order bit, a.k.a. sign-bit, as necessary, as a C cast would).
 
 # Acknowledgements and further reading
 
