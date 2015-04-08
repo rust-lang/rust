@@ -550,6 +550,7 @@ opt_nosave optimize-llvm 1 "build optimized LLVM"
 opt_nosave llvm-assertions 0 "build LLVM with assertions"
 opt_nosave debug-assertions 0 "build with debugging assertions"
 opt_nosave debuginfo 0 "build with debugger metadata"
+opt_nosave debug-jemalloc 0 "build jemalloc with --enable-debug --enable-fill"
 
 valopt localstatedir "/var/lib" "local state directory"
 valopt sysconfdir "/etc" "install system configuration files"
@@ -633,6 +634,7 @@ if [ -n "$CFG_ENABLE_DEBUG" ]; then
     CFG_DISABLE_OPTIMIZE_LLVM=1
     CFG_ENABLE_LLVM_ASSERTIONS=1
     CFG_ENABLE_DEBUG_ASSERTIONS=1
+    CFG_ENABLE_DEBUG_JEMALLOC=1
 fi
 
 # OK, now write the debugging options
@@ -642,6 +644,7 @@ if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]; then putvar CFG_DISABLE_OPTIMIZE_LLVM; f
 if [ -n "$CFG_ENABLE_LLVM_ASSERTIONS" ]; then putvar CFG_ENABLE_LLVM_ASSERTIONS; fi
 if [ -n "$CFG_ENABLE_DEBUG_ASSERTIONS" ]; then putvar CFG_ENABLE_DEBUG_ASSERTIONS; fi
 if [ -n "$CFG_ENABLE_DEBUGINFO" ]; then putvar CFG_ENABLE_DEBUGINFO; fi
+if [ -n "$CFG_ENABLE_DEBUG_JEMALLOC" ]; then putvar CFG_ENABLE_DEBUG_JEMALLOC; fi
 
 # A magic value that allows the compiler to use unstable features
 # during the bootstrap even when doing so would normally be an error
