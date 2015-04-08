@@ -29,6 +29,8 @@ pub mod condvar;
 pub mod mutex;
 pub mod net;
 pub mod net2;
+pub mod poison;
+pub mod remutex;
 pub mod rwlock;
 pub mod stack;
 pub mod thread;

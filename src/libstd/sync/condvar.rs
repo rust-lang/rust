@@ -11,12 +11,12 @@
 use prelude::v1::*;
 
 use sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
-use sync::poison::{self, LockResult};
-use sys::time::SteadyTime;
+use sync::{mutex, MutexGuard, PoisonError};
 use sys_common::condvar as sys;
 use sys_common::mutex as sys_mutex;
+use sys_common::poison::{self, LockResult};
+use sys::time::SteadyTime;
 use time::Duration;
-use sync::{mutex, MutexGuard, PoisonError};
 
 /// A Condition Variable
 ///
