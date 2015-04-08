@@ -133,6 +133,11 @@ else
   CFG_RUSTC_FLAGS += --cfg ndebug
 endif
 
+ifdef CFG_ENABLE_DEBUGINFO
+  $(info cfg: enabling debuginfo (CFG_ENABLE_DEBUGINFO))
+  CFG_RUSTC_FLAGS += -g
+endif
+
 ifdef SAVE_TEMPS
   CFG_RUSTC_FLAGS += --save-temps
 endif
