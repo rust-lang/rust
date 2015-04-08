@@ -1,4 +1,4 @@
-#!/bin/sh
+<#!/bin/sh
 
 msg() {
     echo "configure: $1"
@@ -540,7 +540,6 @@ opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
 opt llvm-static-stdcpp 0 "statically link to libstdc++ for LLVM"
 opt rpath 0 "build rpaths into rustc itself"
-opt nightly 0 "build nightly packages"
 opt verify-install 1 "verify installed binaries work"
 # This is used by the automation to produce single-target nightlies
 opt dist-host-only 0 "only install bins for the host architecture"
@@ -556,6 +555,7 @@ valopt llvm-root "" "set LLVM root"
 valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
 valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
 valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
+valopt release-channel "dev" "the name of the release channel to build"
 
 # Many of these are saved below during the "writing configuration" step
 # (others are conditionally saved).
@@ -568,7 +568,6 @@ valopt_nosave local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt_nosave host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
 valopt_nosave target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
 valopt_nosave mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
-valopt_nosave release-channel "dev" "the name of the release channel to build"
 
 # Temporarily support old triples until buildbots get updated
 CFG_BUILD=$(to_llvm_triple $CFG_BUILD)
@@ -620,14 +619,6 @@ case "$CFG_RELEASE_CHANNEL" in
         err "release channel must be 'dev', 'nightly', 'beta' or 'stable'"
         ;;
 esac
-
-# Continue supporting the old --enable-nightly flag to transition the bots
-# XXX Remove me
-if [ ! -z "$CFG_ENABLE_NIGHTLY" ]
-then
-    CFG_RELEASE_CHANNEL=nightly
-fi
-putvar CFG_RELEASE_CHANNEL
 
 # A magic value that allows the compiler to use unstable features
 # during the bootstrap even when doing so would normally be an error
