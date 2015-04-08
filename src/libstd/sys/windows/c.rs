@@ -47,6 +47,10 @@ pub const WSAESHUTDOWN: libc::c_int = 10058;
 
 pub const ERROR_NO_MORE_FILES: libc::DWORD = 18;
 pub const TOKEN_READ: libc::DWORD = 0x20008;
+pub const FILE_FLAG_OPEN_REPARSE_POINT: libc::DWORD = 0x00200000;
+pub const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: usize = 16 * 1024;
+pub const FSCTL_GET_REPARSE_POINT: libc::DWORD = 0x900a8;
+pub const IO_REPARSE_TAG_SYMLINK: libc::DWORD = 0xa000000c;
 
 // Note that these are not actually HANDLEs, just values to pass to GetStdHandle
 pub const STD_INPUT_HANDLE: libc::DWORD = -10i32 as libc::DWORD;
@@ -212,6 +216,24 @@ pub enum FILE_INFO_BY_HANDLE_CLASS {
 #[repr(C)]
 pub struct FILE_END_OF_FILE_INFO {
     pub EndOfFile: libc::LARGE_INTEGER,
+}
+
+#[repr(C)]
+pub struct REPARSE_DATA_BUFFER {
+    pub ReparseTag: libc::c_uint,
+    pub ReparseDataLength: libc::c_ushort,
+    pub Reserved: libc::c_ushort,
+    pub rest: (),
+}
+
+#[repr(C)]
+pub struct SYMBOLIC_LINK_REPARSE_BUFFER {
+    pub SubstituteNameOffset: libc::c_ushort,
+    pub SubstituteNameLength: libc::c_ushort,
+    pub PrintNameOffset: libc::c_ushort,
+    pub PrintNameLength: libc::c_ushort,
+    pub Flags: libc::c_ulong,
+    pub PathBuffer: libc::WCHAR,
 }
 
 #[link(name = "ws2_32")]
@@ -433,6 +455,14 @@ extern "system" {
     pub fn GetCurrentProcess() -> libc::HANDLE;
     pub fn GetStdHandle(which: libc::DWORD) -> libc::HANDLE;
     pub fn ExitProcess(uExitCode: libc::c_uint) -> !;
+    pub fn DeviceIoControl(hDevice: libc::HANDLE,
+                           dwIoControlCode: libc::DWORD,
+                           lpInBuffer: libc::LPVOID,
+                           nInBufferSize: libc::DWORD,
+                           lpOutBuffer: libc::LPVOID,
+                           nOutBufferSize: libc::DWORD,
+                           lpBytesReturned: libc::LPDWORD,
+                           lpOverlapped: libc::LPOVERLAPPED) -> libc::BOOL;
 }
 
 #[link(name = "userenv")]
