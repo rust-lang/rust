@@ -1689,7 +1689,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                 }
             }
-            DefTyParam(..) | DefSelfTy(_) => {
+            DefTyParam(..) | DefSelfTy(..) => {
                 for rib in ribs {
                     match rib.kind {
                         NormalRibKind | MethodRibKind | ClosureRibKind(..) => {
@@ -1797,63 +1797,57 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             ItemDefaultImpl(_, ref trait_ref) => {
-                self.with_optional_trait_ref(Some(trait_ref), |_| {});
+                self.with_optional_trait_ref(Some(trait_ref), |_, _| {});
             }
-            ItemImpl(_, _,
+            ItemImpl(_,
+                     _,
                      ref generics,
-                     ref implemented_traits,
+                     ref opt_trait_ref,
                      ref self_type,
                      ref impl_items) => {
                 self.resolve_implementation(generics,
-                                            implemented_traits,
+                                            opt_trait_ref,
                                             &**self_type,
+                                            item.id,
                                             &impl_items[..]);
             }
 
             ItemTrait(_, ref generics, ref bounds, ref trait_items) => {
                 self.check_if_primitive_type_name(name, item.span);
 
-                // Create a new rib for the self type.
-                let mut self_type_rib = Rib::new(ItemRibKind);
-
-                // plain insert (no renaming, types are not currently hygienic....)
-                let name = special_names::type_self;
-                self_type_rib.bindings.insert(name, DlDef(DefSelfTy(item.id)));
-                self.type_ribs.push(self_type_rib);
-
                 // Create a new rib for the trait-wide type parameters.
                 self.with_type_parameter_rib(HasTypeParameters(generics,
                                                                TypeSpace,
-                                                               NormalRibKind),
+                                                               ItemRibKind),
                                              |this| {
-                    this.visit_generics(generics);
-                    visit::walk_ty_param_bounds_helper(this, bounds);
+                    this.with_self_rib(DefSelfTy(Some(local_def(item.id)), None), |this| {
+                        this.visit_generics(generics);
+                        visit::walk_ty_param_bounds_helper(this, bounds);
 
-                    for trait_item in trait_items {
-                        // Create a new rib for the trait_item-specific type
-                        // parameters.
-                        //
-                        // FIXME #4951: Do we need a node ID here?
+                        for trait_item in trait_items {
+                            // Create a new rib for the trait_item-specific type
+                            // parameters.
+                            //
+                            // FIXME #4951: Do we need a node ID here?
 
-                        let type_parameters = match trait_item.node {
-                            ast::MethodTraitItem(ref sig, _) => {
-                                HasTypeParameters(&sig.generics,
-                                                  FnSpace,
-                                                  MethodRibKind)
-                            }
-                            ast::TypeTraitItem(..) => {
-                                this.check_if_primitive_type_name(trait_item.ident.name,
-                                                                  trait_item.span);
-                                NoTypeParameters
-                            }
-                        };
-                        this.with_type_parameter_rib(type_parameters, |this| {
-                            visit::walk_trait_item(this, trait_item)
-                        });
-                    }
+                            let type_parameters = match trait_item.node {
+                                ast::MethodTraitItem(ref sig, _) => {
+                                    HasTypeParameters(&sig.generics,
+                                                      FnSpace,
+                                                      MethodRibKind)
+                                }
+                                ast::TypeTraitItem(..) => {
+                                    this.check_if_primitive_type_name(trait_item.ident.name,
+                                                                      trait_item.span);
+                                    NoTypeParameters
+                                }
+                            };
+                            this.with_type_parameter_rib(type_parameters, |this| {
+                                visit::walk_trait_item(this, trait_item)
+                            });
+                        }
+                    });
                 });
-
-                self.type_ribs.pop();
             }
 
             ItemMod(_) | ItemForeignMod(_) => {
@@ -2030,8 +2024,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         visit::walk_generics(self, generics);
     }
 
-    fn with_current_self_type<T, F>(&mut self, self_type: &Ty, f: F) -> T where
-        F: FnOnce(&mut Resolver) -> T,
+    fn with_current_self_type<T, F>(&mut self, self_type: &Ty, f: F) -> T
+        where F: FnOnce(&mut Resolver) -> T
     {
         // Handle nested impls (inside fn bodies)
         let previous_value = replace(&mut self.current_self_type, Some(self_type.clone()));
@@ -2044,29 +2038,44 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                      opt_trait_ref: Option<&TraitRef>,
                                      f: F)
                                      -> T
-        where F: FnOnce(&mut Resolver) -> T,
+        where F: FnOnce(&mut Resolver, Option<DefId>) -> T
     {
         let mut new_val = None;
+        let mut new_id = None;
         if let Some(trait_ref) = opt_trait_ref {
-            match self.resolve_trait_reference(trait_ref.ref_id, &trait_ref.path, 0) {
-                Ok(path_res) => {
-                    self.record_def(trait_ref.ref_id, path_res);
-                    new_val = Some((path_res.base_def.def_id(), trait_ref.clone()));
-                }
-                Err(_) => { /* error was already reported */ }
+            if let Ok(path_res) = self.resolve_trait_reference(trait_ref.ref_id,
+                                                               &trait_ref.path, 0) {
+                assert!(path_res.depth == 0);
+                self.record_def(trait_ref.ref_id, path_res);
+                new_val = Some((path_res.base_def.def_id(), trait_ref.clone()));
+                new_id = Some(path_res.base_def.def_id());
             }
             visit::walk_trait_ref(self, trait_ref);
         }
         let original_trait_ref = replace(&mut self.current_trait_ref, new_val);
-        let result = f(self);
+        let result = f(self, new_id);
         self.current_trait_ref = original_trait_ref;
         result
+    }
+
+    fn with_self_rib<F>(&mut self, self_def: Def, f: F)
+        where F: FnOnce(&mut Resolver)
+    {
+        let mut self_type_rib = Rib::new(NormalRibKind);
+
+        // plain insert (no renaming, types are not currently hygienic....)
+        let name = special_names::type_self;
+        self_type_rib.bindings.insert(name, DlDef(self_def));
+        self.type_ribs.push(self_type_rib);
+        f(self);
+        self.type_ribs.pop();
     }
 
     fn resolve_implementation(&mut self,
                               generics: &Generics,
                               opt_trait_reference: &Option<TraitRef>,
                               self_type: &Ty,
+                              item_id: NodeId,
                               impl_items: &[P<ImplItem>]) {
         // If applicable, create a rib for the type parameters.
         self.with_type_parameter_rib(HasTypeParameters(generics,
@@ -2077,40 +2086,42 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             this.visit_generics(generics);
 
             // Resolve the trait reference, if necessary.
-            this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this| {
+            this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this, trait_id| {
                 // Resolve the self type.
                 this.visit_ty(self_type);
 
-                this.with_current_self_type(self_type, |this| {
-                    for impl_item in impl_items {
-                        match impl_item.node {
-                            MethodImplItem(ref sig, _) => {
-                                // If this is a trait impl, ensure the method
-                                // exists in trait
-                                this.check_trait_item(impl_item.ident.name,
-                                                      impl_item.span);
+                this.with_self_rib(DefSelfTy(trait_id, Some((item_id, self_type.id))), |this| {
+                    this.with_current_self_type(self_type, |this| {
+                        for impl_item in impl_items {
+                            match impl_item.node {
+                                MethodImplItem(ref sig, _) => {
+                                    // If this is a trait impl, ensure the method
+                                    // exists in trait
+                                    this.check_trait_item(impl_item.ident.name,
+                                                          impl_item.span);
 
-                                // We also need a new scope for the method-
-                                // specific type parameters.
-                                let type_parameters =
-                                    HasTypeParameters(&sig.generics,
-                                                      FnSpace,
-                                                      MethodRibKind);
-                                this.with_type_parameter_rib(type_parameters, |this| {
-                                    visit::walk_impl_item(this, impl_item);
-                                });
-                            }
-                            TypeImplItem(ref ty) => {
-                                // If this is a trait impl, ensure the method
-                                // exists in trait
-                                this.check_trait_item(impl_item.ident.name,
-                                                      impl_item.span);
+                                    // We also need a new scope for the method-
+                                    // specific type parameters.
+                                    let type_parameters =
+                                        HasTypeParameters(&sig.generics,
+                                                          FnSpace,
+                                                          MethodRibKind);
+                                    this.with_type_parameter_rib(type_parameters, |this| {
+                                        visit::walk_impl_item(this, impl_item);
+                                    });
+                                }
+                                TypeImplItem(ref ty) => {
+                                    // If this is a trait impl, ensure the method
+                                    // exists in trait
+                                    this.check_trait_item(impl_item.ident.name,
+                                                          impl_item.span);
 
-                                this.visit_ty(ty);
+                                    this.visit_ty(ty);
+                                }
+                                ast::MacImplItem(_) => {}
                             }
-                            ast::MacImplItem(_) => {}
                         }
-                    }
+                    });
                 });
             });
         });
