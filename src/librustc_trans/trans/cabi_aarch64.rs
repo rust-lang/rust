@@ -86,10 +86,90 @@ fn ty_size(ty: Type) -> usize {
     }
 }
 
+fn is_homogenous_aggregate_ty(ty: Type) -> Option<(Type, u64)> {
+    fn check_array(ty: Type) -> Option<(Type, u64)> {
+        let len = ty.array_length() as u64;
+        if len == 0 {
+            return None
+        }
+        let elt = ty.element_type();
+
+        // if our element is an HFA/HVA, so are we; multiply members by our len
+        is_homogenous_aggregate_ty(elt).map(|(base_ty, members)| (base_ty, len * members))
+    }
+
+    fn check_struct(ty: Type) -> Option<(Type, u64)> {
+        let str_tys = ty.field_types();
+        if str_tys.len() == 0 {
+            return None
+        }
+
+        let mut prev_base_ty = None;
+        let mut members = 0;
+        for opt_homog_agg in str_tys.iter().map(|t| is_homogenous_aggregate_ty(*t)) {
+            match (prev_base_ty, opt_homog_agg) {
+                // field isn't itself an HFA, so we aren't either
+                (_, None) => return None,
+
+                // first field - store its type and number of members
+                (None, Some((field_ty, field_members))) => {
+                    prev_base_ty = Some(field_ty);
+                    members = field_members;
+                },
+
+                // 2nd or later field - give up if it's a different type; otherwise incr. members
+                (Some(prev_ty), Some((field_ty, field_members))) => {
+                    if prev_ty != field_ty {
+                        return None;
+                    }
+                    members += field_members;
+                }
+            }
+        }
+
+        // Because of previous checks, we know prev_base_ty is Some(...) because
+        //   1. str_tys has at least one element; and
+        //   2. prev_base_ty was filled in (or we would've returned early)
+        let (base_ty, members) = (prev_base_ty.unwrap(), members);
+
+        // Ensure there is no padding.
+        if ty_size(ty) == ty_size(base_ty) * (members as usize) {
+            Some((base_ty, members))
+        } else {
+            None
+        }
+    }
+
+    let homog_agg = match ty.kind() {
+        Float  => Some((ty, 1)),
+        Double => Some((ty, 1)),
+        Array  => check_array(ty),
+        Struct => check_struct(ty),
+        Vector => match ty_size(ty) {
+            4|8 => Some((ty, 1)),
+            _   => None
+        },
+        _ => None
+    };
+
+    // Ensure we have at most four uniquely addressable members
+    homog_agg.and_then(|(base_ty, members)| {
+        if members > 0 && members <= 4 {
+            Some((base_ty, members))
+        } else {
+            None
+        }
+    })
+}
+
 fn classify_ret_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
         let attr = if ty == Type::i1(ccx) { Some(ZExtAttribute) } else { None };
         return ArgType::direct(ty, None, None, attr);
+    }
+    if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ty) {
+        let llty = Type::array(&base_ty, members);
+        return ArgType::direct(ty, Some(llty), None, None);
     }
     let size = ty_size(ty);
     if size <= 16 {
@@ -113,6 +193,10 @@ fn classify_arg_ty(ccx: &CrateContext, ty: Type) -> ArgType {
     if is_reg_ty(ty) {
         let attr = if ty == Type::i1(ccx) { Some(ZExtAttribute) } else { None };
         return ArgType::direct(ty, None, None, attr);
+    }
+    if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ty) {
+        let llty = Type::array(&base_ty, members);
+        return ArgType::direct(ty, Some(llty), None, None);
     }
     let size = ty_size(ty);
     if size <= 16 {
