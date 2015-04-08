@@ -127,7 +127,7 @@ endif
 CFG_JEMALLOC_FLAGS += $(JEMALLOC_FLAGS)
 
 ifdef CFG_ENABLE_DEBUG_ASSERTIONS
-  $(info cfg: enabling more debugging (CFG_ENABLE_DEBUG_ASSERTIONS))
+  $(info cfg: enabling debug assertions (CFG_ENABLE_DEBUG_ASSERTIONS))
   CFG_RUSTC_FLAGS += --cfg debug -C debug-assertions=on
 else
   CFG_RUSTC_FLAGS += --cfg ndebug
