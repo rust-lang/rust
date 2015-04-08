@@ -19,6 +19,7 @@ pub fn main() {
     for i in false..true {}
     //~^ ERROR the trait
     //~^^ ERROR the trait
+    //~^^^ ERROR the trait
 
     // Unsized type.
     let arr: &[_] = &[1, 2, 3];
