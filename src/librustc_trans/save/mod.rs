@@ -248,7 +248,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
             def::DefFn(..) => Some(recorder::FnRef),
 
-            def::DefSelfTy(_) |
+            def::DefSelfTy(..) |
             def::DefRegion(_) |
             def::DefLabel(_) |
             def::DefTyParam(..) |

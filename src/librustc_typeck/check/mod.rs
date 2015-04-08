@@ -3341,11 +3341,17 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
           let def = path_res.base_def;
           if path_res.depth == 0 {
-              let (scheme, predicates) =
-                  type_scheme_and_predicates_for_def(fcx, expr.span, def);
-              instantiate_path(fcx, &path.segments,
-                               scheme, &predicates,
-                               opt_self_ty, def, expr.span, id);
+              let (scheme, predicates) = type_scheme_and_predicates_for_def(fcx,
+                                                                            expr.span,
+                                                                            def);
+              instantiate_path(fcx,
+                               &path.segments,
+                               scheme,
+                               &predicates,
+                               opt_self_ty,
+                               def,
+                               expr.span,
+                               id);
           } else {
               let ty_segments = path.segments.init();
               let base_ty_end = path.segments.len() - path_res.depth;

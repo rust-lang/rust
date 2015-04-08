@@ -14,7 +14,7 @@ trait Zero { fn dummy(&self); }
 
 fn foo(_: Zero())
     //~^ ERROR wrong number of type arguments
-    //~| ERROR no associated type `Output` defined in `Zero`
+    //~| ERROR associated type `Output` not found for `Zero`
 {}
 
 fn main() { }
