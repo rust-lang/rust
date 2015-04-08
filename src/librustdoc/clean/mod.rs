@@ -1428,6 +1428,21 @@ pub enum TypeKind {
     TypeTypedef,
 }
 
+impl Type {
+    pub fn primitive_type(&self) -> Option<PrimitiveType> {
+        match *self {
+            Primitive(p) | BorrowedRef { type_: box Primitive(p), ..} => Some(p),
+            Vector(..) | BorrowedRef{ type_: box Vector(..), ..  } => Some(Slice),
+            FixedVector(..) | BorrowedRef { type_: box FixedVector(..), .. } => {
+                Some(Array)
+            }
+            Tuple(..) => Some(PrimitiveTuple),
+            RawPointer(..) => Some(PrimitiveRawPointer),
+            _ => None,
+        }
+    }
+}
+
 impl PrimitiveType {
     fn from_str(s: &str) -> Option<PrimitiveType> {
         match s {

@@ -1025,7 +1025,16 @@ impl DocFolder for Cache {
                         self.parent_stack.push(did);
                         true
                     }
-                    _ => false
+                    ref t => {
+                        match t.primitive_type() {
+                            Some(prim) => {
+                                let did = ast_util::local_def(prim.to_node_id());
+                                self.parent_stack.push(did);
+                                true
+                            }
+                            _ => false,
+                        }
+                    }
                 }
             }
             _ => false
@@ -1037,11 +1046,6 @@ impl DocFolder for Cache {
             Some(item) => {
                 match item {
                     clean::Item{ attrs, inner: clean::ImplItem(i), .. } => {
-                        use clean::{Primitive, Vector, ResolvedPath, BorrowedRef};
-                        use clean::PrimitiveType::{Array, Slice, PrimitiveTuple};
-                        use clean::PrimitiveType::{PrimitiveRawPointer};
-                        use clean::{FixedVector, Tuple, RawPointer};
-
                         // extract relevant documentation for this impl
                         let dox = match attrs.into_iter().find(|a| {
                             match *a {
@@ -1059,47 +1063,18 @@ impl DocFolder for Cache {
                         // Figure out the id of this impl. This may map to a
                         // primitive rather than always to a struct/enum.
                         let did = match i.for_ {
-                            ResolvedPath { did, .. } |
-                            BorrowedRef {
-                                type_: box ResolvedPath { did, .. }, ..
+                            clean::ResolvedPath { did, .. } |
+                            clean::BorrowedRef {
+                                type_: box clean::ResolvedPath { did, .. }, ..
                             } => {
                                 Some(did)
                             }
 
-                            // References to primitives are picked up as well to
-                            // recognize implementations for &str, this may not
-                            // be necessary in a DST world.
-                            Primitive(p) |
-                                BorrowedRef { type_: box Primitive(p), ..} =>
-                            {
-                                Some(ast_util::local_def(p.to_node_id()))
+                            ref t => {
+                                t.primitive_type().map(|p| {
+                                    ast_util::local_def(p.to_node_id())
+                                })
                             }
-
-                            FixedVector(..) |
-                                BorrowedRef { type_: box FixedVector(..), .. } =>
-                            {
-                                Some(ast_util::local_def(Array.to_node_id()))
-                            }
-
-                            // In a DST world, we may only need Vector, but for
-                            // now we also pick up borrowed references
-                            Vector(..) |
-                                BorrowedRef{ type_: box Vector(..), ..  } =>
-                            {
-                                Some(ast_util::local_def(Slice.to_node_id()))
-                            }
-
-                            Tuple(..) => {
-                                let id = PrimitiveTuple.to_node_id();
-                                Some(ast_util::local_def(id))
-                            }
-
-                            RawPointer(..) => {
-                                let id = PrimitiveRawPointer.to_node_id();
-                                Some(ast_util::local_def(id))
-                            }
-
-                            _ => None,
                         };
 
                         if let Some(did) = did {
