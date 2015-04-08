@@ -276,6 +276,16 @@ impl<T: fmt::Debug + ?Sized> fmt::Debug for Box<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl<T> fmt::Pointer for Box<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // It's not possible to extract the inner Uniq directly from the Box,
+        // instead we cast it to a *const which aliases the Unique
+        let ptr: *const T = &**self;
+        fmt::Pointer::fmt(&ptr, f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Deref for Box<T> {
     type Target = T;
 
