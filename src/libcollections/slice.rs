@@ -460,20 +460,6 @@ impl<T> [T] {
         core_slice::SliceExt::first(self)
     }
 
-    /// Returns all but the first element of a slice.
-    #[unstable(feature = "collections", reason = "likely to be renamed")]
-    #[inline]
-    pub fn tail(&self) -> &[T] {
-        core_slice::SliceExt::tail(self)
-    }
-
-    /// Returns all but the last element of a slice.
-    #[unstable(feature = "collections", reason = "likely to be renamed")]
-    #[inline]
-    pub fn init(&self) -> &[T] {
-        core_slice::SliceExt::init(self)
-    }
-
     /// Returns the last element of a slice, or `None` if it is empty.
     ///
     /// # Examples
@@ -489,6 +475,42 @@ impl<T> [T] {
     #[inline]
     pub fn last(&self) -> Option<&T> {
         core_slice::SliceExt::last(self)
+    }
+
+    /// Removes the first element of the slice and returns it, along with the
+    /// remainder, or `None` if the slice is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert!(v.pop_first() == Some((&10, &[40, 30])));
+    ///
+    /// let w: &[i32] = &[];
+    /// assert!(w.pop_first() == None);
+    /// ```
+    #[unstable(feature = "collections", reason = "brand new")]
+    #[inline]
+    pub fn pop_first(&self) -> Option<(&T, &[T])> {
+        core_slice::SliceExt::pop_first(self)
+    }
+
+    /// Removes the last element of the slice and returns it, along with the
+    /// remainder, or `None` if the slice is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert!(v.pop_last() == Some((&30, &[10, 40])));
+    ///
+    /// let w: &[i32] = &[];
+    /// assert!(w.pop_last() == None);
+    /// ```
+    #[unstable(feature = "collections", reason = "brand new")]
+    #[inline]
+    pub fn pop_last(&self) -> Option<(&T, &[T])> {
+        core_slice::SliceExt::pop_last(self)
     }
 
     /// Returns a pointer to the element at the given index, without doing
@@ -600,27 +622,27 @@ impl<T> [T] {
         core_slice::SliceExt::first_mut(self)
     }
 
-    /// Returns all but the first element of a mutable slice
-    #[unstable(feature = "collections",
-               reason = "likely to be renamed or removed")]
-    #[inline]
-    pub fn tail_mut(&mut self) -> &mut [T] {
-        core_slice::SliceExt::tail_mut(self)
-    }
-
-    /// Returns all but the last element of a mutable slice
-    #[unstable(feature = "collections",
-               reason = "likely to be renamed or removed")]
-    #[inline]
-    pub fn init_mut(&mut self) -> &mut [T] {
-        core_slice::SliceExt::init_mut(self)
-    }
-
     /// Returns a mutable pointer to the last item in the slice.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn last_mut(&mut self) -> Option<&mut T> {
         core_slice::SliceExt::last_mut(self)
+    }
+
+    /// Removes the first element from a mutable slice and returns it, along
+    /// with the remainder of the slice.
+    #[unstable(feature = "collections", reason = "brand new")]
+    #[inline]
+    pub fn pop_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
+        core_slice::SliceExt::pop_first_mut(self)
+    }
+
+    /// Removes the last element from a mutable slice and returns it, along
+    /// with the remainder of the slice.
+    #[unstable(feature = "collections", reason = "brand new")]
+    #[inline]
+    pub fn pop_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
+        core_slice::SliceExt::pop_last_mut(self)
     }
 
     /// Returns an iterator over mutable subslices separated by elements that

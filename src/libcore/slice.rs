@@ -78,9 +78,9 @@ pub trait SliceExt {
     fn chunks<'a>(&'a self, size: usize) -> Chunks<'a, Self::Item>;
     fn get<'a>(&'a self, index: usize) -> Option<&'a Self::Item>;
     fn first<'a>(&'a self) -> Option<&'a Self::Item>;
-    fn tail<'a>(&'a self) -> &'a [Self::Item];
-    fn init<'a>(&'a self) -> &'a [Self::Item];
     fn last<'a>(&'a self) -> Option<&'a Self::Item>;
+    fn pop_first(&self) -> Option<(&Self::Item, &[Self::Item])>;
+    fn pop_last(&self) -> Option<(&Self::Item, &[Self::Item])>;
     unsafe fn get_unchecked<'a>(&'a self, index: usize) -> &'a Self::Item;
     fn as_ptr(&self) -> *const Self::Item;
     fn binary_search_by<F>(&self, f: F) -> Result<usize, usize> where
@@ -90,9 +90,9 @@ pub trait SliceExt {
     fn get_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut Self::Item>;
     fn iter_mut<'a>(&'a mut self) -> IterMut<'a, Self::Item>;
     fn first_mut<'a>(&'a mut self) -> Option<&'a mut Self::Item>;
-    fn tail_mut<'a>(&'a mut self) -> &'a mut [Self::Item];
-    fn init_mut<'a>(&'a mut self) -> &'a mut [Self::Item];
     fn last_mut<'a>(&'a mut self) -> Option<&'a mut Self::Item>;
+    fn pop_first_mut(&mut self) -> Option<(&mut Self::Item, &mut [Self::Item])>;
+    fn pop_last_mut(&mut self) -> Option<(&mut Self::Item, &mut [Self::Item])>;
     fn split_mut<'a, P>(&'a mut self, pred: P) -> SplitMut<'a, Self::Item, P>
                         where P: FnMut(&Self::Item) -> bool;
     fn splitn_mut<P>(&mut self, n: usize, pred: P) -> SplitNMut<Self::Item, P>
@@ -207,16 +207,21 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn tail(&self) -> &[T] { &self[1..] }
-
-    #[inline]
-    fn init(&self) -> &[T] {
-        &self[..self.len() - 1]
+    fn last(&self) -> Option<&T> {
+        if self.len() == 0 { None } else { Some(&self[self.len() - 1]) }
     }
 
     #[inline]
-    fn last(&self) -> Option<&T> {
-        if self.len() == 0 { None } else { Some(&self[self.len() - 1]) }
+    fn pop_first(&self) -> Option<(&T, &[T])> {
+        if self.len() == 0 { None } else { Some((&self[0], &self[1..])) }
+    }
+
+    #[inline]
+    fn pop_last(&self) -> Option<(&T, &[T])> {
+        match self.len() {
+            0 => None,
+            n => Some((&self[n-1], &self[..(n-1)]))
+        }
     }
 
     #[inline]
@@ -299,14 +304,24 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn tail_mut(&mut self) -> &mut [T] {
-        &mut self[1 ..]
+    fn pop_first_mut(&mut self) -> Option<(&mut T, &mut [T])> {
+        if self.len() == 0 {
+            None
+        } else {
+            let (head, tail) = self.split_at_mut(1);
+            Some((&mut head[0], tail))
+        }
     }
 
     #[inline]
-    fn init_mut(&mut self) -> &mut [T] {
-        let len = self.len();
-        &mut self[.. (len - 1)]
+    fn pop_last_mut(&mut self) -> Option<(&mut T, &mut [T])> {
+        match self.len() {
+            0 => None,
+            n => {
+                let (init, last) = self.split_at_mut(n-1);
+                Some((&mut last[0], init))
+            }
+        }
     }
 
     #[inline]
