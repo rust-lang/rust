@@ -212,7 +212,7 @@ pub unsafe fn create(stack: usize, p: Thunk) -> io::Result<rust_thread> {
     assert_eq!(pthread_attr_destroy(&mut attr), 0);
 
     return if ret != 0 {
-        Err(io::Error::from_os_error(ret))
+        Err(io::Error::from_raw_os_error(ret))
     } else {
         mem::forget(p); // ownership passed to pthread_create
         Ok(native)

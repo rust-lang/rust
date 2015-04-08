@@ -193,7 +193,7 @@ impl Process {
                                 let errno = combine(&bytes[0.. 4]);
                                 assert!(p.wait().is_ok(),
                                         "wait() should either return Ok or panic");
-                                return Err(Error::from_os_error(errno))
+                                return Err(Error::from_raw_os_error(errno))
                             }
                             Ok(0) => return Ok(p),
                             Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
