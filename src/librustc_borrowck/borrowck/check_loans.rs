@@ -542,6 +542,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 euv::OverloadedOperator(..) |
                 euv::AddrOf(..) |
                 euv::AutoRef(..) |
+                euv::AutoUnsafe(..) |
                 euv::ClosureInvocation(..) |
                 euv::ForLoop(..) |
                 euv::RefBinding(..) |

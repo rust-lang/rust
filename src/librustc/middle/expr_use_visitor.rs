@@ -99,6 +99,7 @@ pub enum LoanCause {
     ClosureCapture(Span),
     AddrOf,
     AutoRef,
+    AutoUnsafe,
     RefBinding,
     OverloadedOperator,
     ClosureInvocation,
@@ -800,18 +801,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             return_if_err!(self.mc.cat_expr_unadjusted(expr));
                         self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
                     }
-                    ty::AdjustDerefRef(ty::AutoDerefRef {
-                        autoref: ref opt_autoref,
-                        autoderefs: n
-                    }) => {
-                        self.walk_autoderefs(expr, n);
-
-                        match *opt_autoref {
-                            None => { }
-                            Some(ref r) => {
-                                self.walk_autoref(expr, r, n);
-                            }
-                        }
+                    ty::AdjustDerefRef(ref adj) => {
+                        self.walk_autoderefref(expr, adj);
                     }
                 }
             }
@@ -852,38 +843,164 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         }
     }
 
+    fn walk_autoderefref(&mut self,
+                         expr: &ast::Expr,
+                         adj: &ty::AutoDerefRef<'tcx>) {
+        debug!("walk_autoderefref expr={} adj={}",
+               expr.repr(self.tcx()),
+               adj.repr(self.tcx()));
+
+        self.walk_autoderefs(expr, adj.autoderefs);
+
+        // Weird hacky special case: AutoUnsizeUniq, which converts
+        // from a ~T to a ~Trait etc, always comes in a stylized
+        // fashion. In particular, we want to consume the ~ pointer
+        // being dereferenced, not the dereferenced content (as the
+        // content is, at least for upcasts, unsized).
+        match adj.autoref {
+            Some(ty::AutoUnsizeUniq(_)) => {
+                assert!(adj.autoderefs == 1,
+                        format!("Expected exactly 1 deref with Uniq AutoRefs, found: {}",
+                                adj.autoderefs));
+                let cmt_unadjusted =
+                    return_if_err!(self.mc.cat_expr_unadjusted(expr));
+                self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
+                return;
+            }
+            _ => { }
+        }
+
+        let autoref = adj.autoref.as_ref();
+        let cmt_derefd = return_if_err!(
+            self.mc.cat_expr_autoderefd(expr, adj.autoderefs));
+        self.walk_autoref(expr, &cmt_derefd, autoref);
+    }
+
+    /// Walks the autoref `opt_autoref` applied to the autoderef'd
+    /// `expr`. `cmt_derefd` is the mem-categorized form of `expr`
+    /// after all relevant autoderefs have occurred. Because AutoRefs
+    /// can be recursive, this function is recursive: it first walks
+    /// deeply all the way down the autoref chain, and then processes
+    /// the autorefs on the way out. At each point, it returns the
+    /// `cmt` for the rvalue that will be produced by introduced an
+    /// autoref.
     fn walk_autoref(&mut self,
                     expr: &ast::Expr,
-                    autoref: &ty::AutoRef,
-                    n: usize) {
-        debug!("walk_autoref expr={}", expr.repr(self.tcx()));
+                    cmt_derefd: &mc::cmt<'tcx>,
+                    opt_autoref: Option<&ty::AutoRef<'tcx>>)
+                    -> mc::cmt<'tcx>
+    {
+        debug!("walk_autoref(expr.id={} cmt_derefd={} opt_autoref={:?})",
+               expr.id,
+               cmt_derefd.repr(self.tcx()),
+               opt_autoref);
+
+        let autoref = match opt_autoref {
+            Some(autoref) => autoref,
+            None => {
+                // No recursive step here, this is a base case.
+                return cmt_derefd.clone();
+            }
+        };
 
         match *autoref {
-            ty::AutoPtr(r, m, _) => {
-                let cmt_derefd = return_if_err!(
-                    self.mc.cat_expr_autoderefd(expr, n));
-                debug!("walk_adjustment: cmt_derefd={}",
-                       cmt_derefd.repr(self.tcx()));
+            ty::AutoPtr(r, m, ref baseref) => {
+                let cmt_base = self.walk_autoref_recursively(expr, cmt_derefd, baseref);
+
+                debug!("walk_autoref: expr.id={} cmt_base={}",
+                       expr.id,
+                       cmt_base.repr(self.tcx()));
 
                 self.delegate.borrow(expr.id,
                                      expr.span,
-                                     cmt_derefd,
+                                     cmt_base,
                                      r,
                                      ty::BorrowKind::from_mutbl(m),
                                      AutoRef);
             }
-            ty::AutoUnsize(_) |
-            ty::AutoUnsizeUniq(_) => {
-                assert!(n == 1, format!("Expected exactly 1 deref with Uniq \
-                                         AutoRefs, found: {}", n));
-                let cmt_unadjusted =
-                    return_if_err!(self.mc.cat_expr_unadjusted(expr));
-                self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
+
+            ty::AutoUnsize(_) => {
+                // Converting a `[T; N]` to `[T]` or `T` to `Trait`
+                // isn't really a borrow, move, etc, in and of itself.
+                // Also, no recursive step here, this is a base case.
+
+                // It may seem a bit odd to return the cmt_derefd
+                // unmodified here, but in fact I think it's the right
+                // thing to do. Essentially the unsize transformation
+                // isn't really relevant to the borrowing rules --
+                // it's best thought of as a kind of side-modifier to
+                // the autoref, adding additional data that is
+                // attached to the pointer that is produced, but not
+                // affecting the data being borrowed in any other
+                // way. To see what I mean, consider this example:
+                //
+                //    fn foo<'a>(&'a self) -> &'a Trait { self }
+                //
+                // This is valid because the underlying `self` value
+                // lives for the lifetime 'a. If we were to treat the
+                // "unsizing" as e.g. producing an rvalue, that would
+                // only be valid for the temporary scope, which isn't
+                // enough to justify the return value, which have the
+                // lifetime 'a.
+                //
+                // Another option would be to add a variant for
+                // categorization (like downcast) that wraps
+                // cmt_derefd and represents the unsizing operation.
+                // But I don't think there is any particular use for
+                // this (yet). -nmatsakis
+                return cmt_derefd.clone();
             }
-            ty::AutoUnsafe(..) => {
+
+            ty::AutoUnsizeUniq(_) => {
+                // these are handled via special case above
+                self.tcx().sess.span_bug(expr.span, "nexpected AutoUnsizeUniq");
+            }
+
+            ty::AutoUnsafe(m, ref baseref) => {
+                let cmt_base = self.walk_autoref_recursively(expr, cmt_derefd, baseref);
+
+                debug!("walk_autoref: expr.id={} cmt_base={}",
+                       expr.id,
+                       cmt_base.repr(self.tcx()));
+
+                // Converting from a &T to *T (or &mut T to *mut T) is
+                // treated as borrowing it for the enclosing temporary
+                // scope.
+                let r = ty::ReScope(region::CodeExtent::from_node_id(expr.id));
+
+                self.delegate.borrow(expr.id,
+                                     expr.span,
+                                     cmt_base,
+                                     r,
+                                     ty::BorrowKind::from_mutbl(m),
+                                     AutoUnsafe);
             }
         }
+
+        // Construct the categorization for the result of the autoref.
+        // This is always an rvalue, since we are producing a new
+        // (temporary) indirection.
+
+        let adj_ty =
+            ty::adjust_ty_for_autoref(self.tcx(),
+                                      expr.span,
+                                      cmt_derefd.ty,
+                                      opt_autoref);
+
+        self.mc.cat_rvalue_node(expr.id, expr.span, adj_ty)
     }
+
+    fn walk_autoref_recursively(&mut self,
+                                expr: &ast::Expr,
+                                cmt_derefd: &mc::cmt<'tcx>,
+                                autoref: &Option<Box<ty::AutoRef<'tcx>>>)
+                                -> mc::cmt<'tcx>
+    {
+        // Shuffle from a ref to an optional box to an optional ref.
+        let autoref: Option<&ty::AutoRef<'tcx>> = autoref.as_ref().map(|b| &**b);
+        self.walk_autoref(expr, cmt_derefd, autoref)
+    }
+
 
     // When this returns true, it means that the expression *is* a
     // method-call (i.e. via the operator-overload).  This true result
