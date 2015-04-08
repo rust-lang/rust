@@ -23,6 +23,14 @@ fn main() {
     let _ = format!("{:p}{:p}{:p}",
                     rc, arc, b);
 
+    if cfg!(target_pointer_width = "32") {
+        assert_eq!(format!("{:#p}", p),
+                   "0x00000000");
+    }
+    if cfg!(target_pointer_width = "64") {
+        assert_eq!(format!("{:#p}", p),
+                   "0x0000000000000000");
+    }
     assert_eq!(format!("{:p}", p),
                "0x0");
 }

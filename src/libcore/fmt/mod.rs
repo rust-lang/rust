@@ -847,9 +847,33 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result {
+        let old_width = f.width;
+        let old_flags = f.flags;
+
+        // The alternate flag is already treated by LowerHex as being special-
+        // it denotes whether to prefix with 0x. We use it to work out whether
+        // or not to zero extend, and then unconditionally set it to get the
+        // prefix.
+        if f.flags & 1 << (FlagV1::Alternate as u32) > 0 {
+            f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
+
+            if let None = f.width {
+                // The formats need two extra bytes, for the 0x
+                if cfg!(target_pointer_width = "32") {
+                    f.width = Some(10);
+                }
+                if cfg!(target_pointer_width = "64") {
+                    f.width = Some(18);
+                }
+            }
+        }
         f.flags |= 1 << (FlagV1::Alternate as u32);
+
         let ret = LowerHex::fmt(&(*self as usize), f);
-        f.flags &= !(1 << (FlagV1::Alternate as u32));
+
+        f.width = old_width;
+        f.flags = old_flags;
+
         ret
     }
 }
