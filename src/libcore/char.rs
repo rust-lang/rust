@@ -139,6 +139,7 @@ pub fn from_digit(num: u32, radix: u32) -> Option<char> {
 // NB: the stabilization and documentation for this trait is in
 // unicode/char.rs, not here
 #[allow(missing_docs)] // docs in libunicode/u_char.rs
+#[doc(hidden)]
 pub trait CharExt {
     fn is_digit(self, radix: u32) -> bool;
     fn to_digit(self, radix: u32) -> Option<u32>;
