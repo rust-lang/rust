@@ -20,8 +20,7 @@ use cmp::{Ordering, Eq, Ord, PartialEq, PartialOrd};
 use fmt;
 use hash;
 use old_io::Writer;
-use iter::{AdditiveIterator, Extend};
-use iter::{Iterator, Map, repeat};
+use iter::{Extend, Iterator, Map, repeat};
 use mem;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
@@ -785,7 +784,7 @@ impl Path {
                         let prefix_ = &s[..prefix_len(prefix)];
                         let n = prefix_.len() +
                                 if is_abs { comps.len() } else { comps.len() - 1} +
-                                comps.iter().map(|v| v.len()).sum();
+                                comps.iter().map(|v| v.len()).sum::<usize>();
                         let mut s = String::with_capacity(n);
                         match prefix {
                             Some(DiskPrefix) => {

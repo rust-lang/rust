@@ -20,7 +20,7 @@ use core::prelude::*;
 
 use core::char;
 use core::cmp;
-use core::iter::{Filter, AdditiveIterator};
+use core::iter::Filter;
 use core::mem;
 use core::slice;
 use core::str::Split;
