@@ -1,4 +1,4 @@
-% If
+% `if`
 
 Rust's take on `if` is not particularly complex, but it's much more like the
 `if` you'll find in a dynamically typed language than in a more traditional
@@ -153,3 +153,5 @@ instead.
 
 There's one more time in which you won't see a semicolon at the end of a line
 of Rust code. For that, we'll need our next concept: functions.
+
+TODO: `if let`
