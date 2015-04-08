@@ -113,6 +113,9 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
         };
         let scope_decorated_tag = match scope {
             region::CodeExtent::Misc(_) => tag,
+            region::CodeExtent::ParameterScope { .. } => {
+                "scope of parameters for function"
+            }
             region::CodeExtent::DestructionScope(_) => {
                 new_string = format!("destruction scope surrounding {}", tag);
                 &*new_string
@@ -952,6 +955,8 @@ impl<'tcx> Repr<'tcx> for ty::FreeRegion {
 impl<'tcx> Repr<'tcx> for region::CodeExtent {
     fn repr(&self, _tcx: &ctxt) -> String {
         match *self {
+            region::CodeExtent::ParameterScope { fn_id, body_id } =>
+                format!("ParameterScope({}, {})", fn_id, body_id),
             region::CodeExtent::Misc(node_id) =>
                 format!("Misc({})", node_id),
             region::CodeExtent::DestructionScope(node_id) =>
