@@ -329,17 +329,17 @@ fn test_iterator_len() {
 #[test]
 fn test_iterator_sum() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[..4].iter().cloned().sum(), 6);
-    assert_eq!(v.iter().cloned().sum(), 55);
-    assert_eq!(v[..0].iter().cloned().sum(), 0);
+    assert_eq!(v[..4].iter().cloned().sum::<i32>(), 6);
+    assert_eq!(v.iter().cloned().sum::<i32>(), 55);
+    assert_eq!(v[..0].iter().cloned().sum::<i32>(), 0);
 }
 
 #[test]
 fn test_iterator_product() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[..4].iter().cloned().product(), 0);
-    assert_eq!(v[1..5].iter().cloned().product(), 24);
-    assert_eq!(v[..0].iter().cloned().product(), 1);
+    assert_eq!(v[..4].iter().cloned().product::<i32>(), 0);
+    assert_eq!(v[1..5].iter().cloned().product::<i32>(), 24);
+    assert_eq!(v[..0].iter().cloned().product::<i32>(), 1);
 }
 
 #[test]

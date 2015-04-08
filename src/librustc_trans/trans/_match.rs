@@ -220,7 +220,6 @@ use util::ppaux::{Repr, vec_map_to_string};
 
 use std;
 use std::cmp::Ordering;
-use std::iter::AdditiveIterator;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::ast::{DUMMY_NODE_ID, NodeId};

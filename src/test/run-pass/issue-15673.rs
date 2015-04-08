@@ -12,8 +12,7 @@
 
 #![feature(core)]
 
-use std::iter::AdditiveIterator;
 fn main() {
     let x: [u64; 3] = [1, 2, 3];
-    assert_eq!(6, (0..3).map(|i| x[i]).sum());
+    assert_eq!(6, (0..3).map(|i| x[i]).sum::<u64>());
 }

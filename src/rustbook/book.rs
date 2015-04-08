@@ -13,7 +13,6 @@
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::iter;
-use std::iter::AdditiveIterator;
 use std::path::{Path, PathBuf};
 
 pub struct BookItem {
@@ -151,7 +150,7 @@ pub fn parse_summary(input: &mut Read, src: &Path) -> Result<Book, Vec<String>> 
                 '\t' => 4,
                 _ => unreachable!()
             }
-        }).sum() / 4 + 1;
+        }).sum::<usize>() / 4 + 1;
 
         if level > stack.len() + 1 {
             errors.push(format!("section '{}' is indented too deeply; \

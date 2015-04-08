@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use std::cmp::Ordering::{Equal, Greater, Less};
-use std::iter::AdditiveIterator;
 use std::str::{Utf8Error, from_utf8};
 
 #[test]

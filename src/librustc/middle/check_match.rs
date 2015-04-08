@@ -26,7 +26,7 @@ use middle::ty::*;
 use middle::ty;
 use std::cmp::Ordering;
 use std::fmt;
-use std::iter::{range_inclusive, AdditiveIterator, FromIterator, IntoIterator, repeat};
+use std::iter::{range_inclusive, FromIterator, IntoIterator, repeat};
 use std::slice;
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId, Pat};
 use syntax::ast_util;
@@ -76,7 +76,7 @@ impl<'a> fmt::Debug for Matrix<'a> {
             pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0)
         }).collect();
 
-        let total_width = column_widths.iter().cloned().sum() + column_count * 3 + 1;
+        let total_width = column_widths.iter().cloned().sum::<usize>() + column_count * 3 + 1;
         let br = repeat('+').take(total_width).collect::<String>();
         try!(write!(f, "{}\n", br));
         for row in pretty_printed_matrix {
