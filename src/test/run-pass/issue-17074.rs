@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
 
 static X2: u64 = !0 as u16 as u64;
 static Y2: u64 = !0 as u32 as u64;

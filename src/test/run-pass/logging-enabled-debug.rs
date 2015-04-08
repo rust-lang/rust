@@ -11,7 +11,6 @@
 // compile-flags:-C debug-assertions=no
 // exec-env:RUST_LOG=logging-enabled-debug=debug
 
-// pretty-expanded FIXME #23616
 
 #![feature(rustc_private)]
 

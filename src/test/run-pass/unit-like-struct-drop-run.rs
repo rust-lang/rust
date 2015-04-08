@@ -10,7 +10,6 @@
 
 // Make sure the destructor is run for unit-like structs.
 
-// pretty-expanded FIXME #23616
 
 #![feature(alloc)]
 

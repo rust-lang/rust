@@ -11,7 +11,6 @@
 
 
 
-// pretty-expanded FIXME #23616
 
 enum color {
     rgb(isize, isize, isize),

@@ -9,6 +9,5 @@
 // except according to those terms.
 
 
-// pretty-expanded FIXME #23616
 
 pub fn main() { let x: Vec<isize> = Vec::new(); for _ in &x { panic!("moop"); } }

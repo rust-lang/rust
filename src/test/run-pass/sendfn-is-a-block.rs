@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-// pretty-expanded FIXME #23616
 
 fn test<F>(f: F) -> usize where F: FnOnce(usize) -> usize {
     return f(22);

@@ -13,7 +13,6 @@
 // us from approximating the lifetimes of `field1` and `field2` to a
 // common intersection.
 
-// pretty-expanded FIXME #23616
 
 #![allow(dead_code)]
 #![feature(core)]

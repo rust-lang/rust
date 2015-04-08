@@ -11,7 +11,6 @@
 // Test lifetimes are linked properly when we create dependent region pointers.
 // Issue #3148.
 
-// pretty-expanded FIXME #23616
 
 #![allow(unknown_features)]
 #![feature(box_patterns)]

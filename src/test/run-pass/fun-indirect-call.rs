@@ -11,7 +11,6 @@
 
 
 
-// pretty-expanded FIXME #23616
 
 fn f() -> isize { return 42; }
 

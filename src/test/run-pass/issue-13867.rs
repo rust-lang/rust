@@ -11,7 +11,6 @@
 // Test that codegen works correctly when there are multiple refutable
 // patterns in match expression.
 
-// pretty-expanded FIXME #23616
 
 enum Foo {
     FooUint(usize),

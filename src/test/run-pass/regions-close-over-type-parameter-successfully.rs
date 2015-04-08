@@ -11,7 +11,6 @@
 // A test where we (successfully) close over a reference into
 // an object.
 
-// pretty-expanded FIXME #23616
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]

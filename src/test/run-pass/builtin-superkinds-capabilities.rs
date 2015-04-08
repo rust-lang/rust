@@ -12,7 +12,6 @@
 // builtin-kinds, e.g., if a trait requires Send to implement, then
 // at usage site of that trait, we know we have the Send capability.
 
-// pretty-expanded FIXME #23616
 
 use std::sync::mpsc::{channel, Sender, Receiver};
 

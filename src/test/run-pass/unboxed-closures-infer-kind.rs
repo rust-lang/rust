@@ -11,7 +11,6 @@
 // Test that we can infer the "kind" of an unboxed closure based on
 // the expected type.
 
-// pretty-expanded FIXME #23616
 
 #![feature(unboxed_closures)]
 

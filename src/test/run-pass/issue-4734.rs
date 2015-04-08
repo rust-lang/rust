@@ -11,7 +11,6 @@
 // Ensures that destructors are run for expressions of the form "e;" where
 // `e` is a type which requires a destructor.
 
-// pretty-expanded FIXME #23616
 
 #![allow(path_statement)]
 

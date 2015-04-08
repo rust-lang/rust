@@ -12,7 +12,6 @@
 // doesn't die in a ball of fire, but rather it's gracefully handled.
 
 // ignore-aarch64
-// pretty-expanded FIXME #23616
 
 use std::env;
 use std::io::prelude::*;

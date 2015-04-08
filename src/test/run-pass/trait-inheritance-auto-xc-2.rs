@@ -10,7 +10,6 @@
 
 // aux-build:trait_inheritance_auto_xc_2_aux.rs
 
-// pretty-expanded FIXME #23616
 
 extern crate trait_inheritance_auto_xc_2_aux as aux;
 

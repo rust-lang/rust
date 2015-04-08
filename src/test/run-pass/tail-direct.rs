@@ -11,7 +11,6 @@
 
 
 
-// pretty-expanded FIXME #23616
 
 pub fn main() { assert!((even(42))); assert!((odd(45))); }
 

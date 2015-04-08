@@ -10,7 +10,6 @@
 
 // test for #8664
 
-// pretty-expanded FIXME #23616
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]

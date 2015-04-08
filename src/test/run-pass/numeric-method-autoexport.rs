@@ -15,7 +15,6 @@
 // necessary. Testing the methods of the impls is done within the source
 // file for each numeric type.
 
-// pretty-expanded FIXME #23616
 
 #![feature(core)]
 

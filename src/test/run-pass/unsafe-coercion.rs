@@ -10,7 +10,6 @@
 
 // Check that safe fns are not a subtype of unsafe fns.
 
-// pretty-expanded FIXME #23616
 
 fn foo(x: i32) -> i32 {
     x * 22

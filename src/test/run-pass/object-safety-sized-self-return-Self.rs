@@ -11,7 +11,6 @@
 // Check that a trait is still object-safe (and usable) if it has
 // methods that return `Self` so long as they require `Self : Sized`.
 
-// pretty-expanded FIXME #23616
 
 trait Counter {
     fn new() -> Self where Self : Sized;

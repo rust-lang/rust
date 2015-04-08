@@ -11,7 +11,6 @@
 // Issue 4691: Ensure that functional-struct-updates operates
 // correctly and moves rather than copy when appropriate.
 
-// pretty-expanded FIXME #23616
 
 #![allow(unknown_features)]
 #![feature(box_syntax, core)]

@@ -10,7 +10,6 @@
 
 // aux-build:packed.rs
 
-// pretty-expanded FIXME #23616
 
 extern crate packed;
 

@@ -10,7 +10,6 @@
 
 // Checks that extern fn pointers implement the full range of Fn traits.
 
-// pretty-expanded FIXME #23616
 
 #![feature(unboxed_closures)]
 #![feature(unboxed_closures)]

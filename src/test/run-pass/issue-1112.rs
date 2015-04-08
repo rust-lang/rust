@@ -11,7 +11,6 @@
 // Issue #1112
 // Alignment of interior pointers to dynamic-size types
 
-// pretty-expanded FIXME #23616
 
 struct X<T> {
     a: T,
