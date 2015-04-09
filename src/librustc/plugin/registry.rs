@@ -22,6 +22,7 @@ use syntax::ptr::P;
 use syntax::ast;
 
 use std::collections::HashMap;
+use std::borrow::ToOwned;
 
 /// Structure used to register plugins.
 ///
@@ -50,6 +51,9 @@ pub struct Registry<'a> {
 
     #[doc(hidden)]
     pub lint_groups: HashMap<&'static str, Vec<LintId>>,
+
+    #[doc(hidden)]
+    pub llvm_passes: Vec<String>,
 }
 
 impl<'a> Registry<'a> {
@@ -62,6 +66,7 @@ impl<'a> Registry<'a> {
             syntax_exts: vec!(),
             lint_passes: vec!(),
             lint_groups: HashMap::new(),
+            llvm_passes: vec!(),
         }
     }
 
@@ -115,5 +120,14 @@ impl<'a> Registry<'a> {
     /// Register a lint group.
     pub fn register_lint_group(&mut self, name: &'static str, to: Vec<&'static Lint>) {
         self.lint_groups.insert(name, to.into_iter().map(|x| LintId::of(x)).collect());
+    }
+
+    /// Register an LLVM pass.
+    ///
+    /// Registration with LLVM itself is handled through static C++ objects with
+    /// constructors. This method simply adds a name to the list of passes to
+    /// execute.
+    pub fn register_llvm_pass(&mut self, name: &str) {
+        self.llvm_passes.push(name.to_owned());
     }
 }
