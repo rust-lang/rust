@@ -39,7 +39,7 @@ use self::Cow::*;
 /// Borrow<Vec<T>>` and `Vec<T>: Borrow<[T]>`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Borrow<Borrowed: ?Sized> {
-    /// Immutably borrow from an owned value.
+    /// Immutably borrows from an owned value.
     ///
     /// # Examples
     ///
@@ -67,7 +67,7 @@ pub trait Borrow<Borrowed: ?Sized> {
 /// Similar to `Borrow`, but for mutable borrows.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BorrowMut<Borrowed: ?Sized> : Borrow<Borrowed> {
-    /// Mutably borrow from an owned value.
+    /// Mutably borrows from an owned value.
     ///
     /// # Examples
     ///
@@ -126,7 +126,7 @@ impl<'a, B: ?Sized> Borrow<B> for Cow<'a, B> where B: ToOwned, <B as ToOwned>::O
     }
 }
 
-/// A generalization of Clone to borrowed data.
+/// A generalization of `Clone` to borrowed data.
 ///
 /// Some types make it possible to go from borrowed to owned, usually by
 /// implementing the `Clone` trait. But `Clone` works only for going from `&T`
@@ -137,7 +137,7 @@ pub trait ToOwned {
     #[stable(feature = "rust1", since = "1.0.0")]
     type Owned: Borrow<Self>;
 
-    /// Create owned data from borrowed data, usually by copying.
+    /// Creates owned data from borrowed data, usually by cloning.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_owned(&self) -> Self::Owned;
 }
@@ -155,9 +155,9 @@ impl<T> ToOwned for T where T: Clone {
 /// data lazily when mutation or ownership is required. The type is designed to
 /// work with general borrowed data via the `Borrow` trait.
 ///
-/// `Cow` implements both `Deref`, which means that you can call
+/// `Cow` implements `Deref`, which means that you can call
 /// non-mutating methods directly on the data it encloses. If mutation
-/// is desired, `to_mut` will obtain a mutable references to an owned
+/// is desired, `to_mut` will obtain a mutable reference to an owned
 /// value, cloning if necessary.
 ///
 /// # Examples
@@ -200,7 +200,7 @@ impl<'a, B: ?Sized> Clone for Cow<'a, B> where B: ToOwned {
 }
 
 impl<'a, B: ?Sized> Cow<'a, B> where B: ToOwned {
-    /// Acquire a mutable reference to the owned form of the data.
+    /// Acquires a mutable reference to the owned form of the data.
     ///
     /// Copies the data if it is not already owned.
     ///
@@ -226,7 +226,7 @@ impl<'a, B: ?Sized> Cow<'a, B> where B: ToOwned {
         }
     }
 
-    /// Extract the owned data.
+    /// Extracts the owned data.
     ///
     /// Copies the data if it is not already owned.
     ///
@@ -327,7 +327,7 @@ impl<'a, B: ?Sized> Hash for Cow<'a, B> where B: Hash + ToOwned
     }
 }
 
-/// Trait for moving into a `Cow`
+/// Trait for moving into a `Cow`.
 #[unstable(feature = "into_cow", reason = "may be replaced by `convert::Into`")]
 pub trait IntoCow<'a, B: ?Sized> where B: ToOwned {
     /// Moves `self` into `Cow`
