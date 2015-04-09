@@ -10,7 +10,6 @@
 
 
 
-// pretty-expanded FIXME #23616
 
 struct Pair<T> {x: T, y: T}
 

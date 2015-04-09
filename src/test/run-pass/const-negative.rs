@@ -10,7 +10,6 @@
 
 // Issue #358
 
-// pretty-expanded FIXME #23616
 
 static toplevel_mod: isize = -1;
 

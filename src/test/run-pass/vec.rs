@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-// pretty-expanded FIXME #23616
 
 pub fn main() {
     let v: Vec<isize> = vec!(10, 20);

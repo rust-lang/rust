@@ -12,7 +12,6 @@
 // because it needs TempDir, which is in extra
 
 // ignore-android
-// pretty-expanded FIXME #23616
 
 #![feature(rustc_private, path_ext)]
 

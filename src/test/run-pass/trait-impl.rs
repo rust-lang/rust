@@ -11,7 +11,6 @@
 // Test calling methods on an impl for a bare trait.
 
 // aux-build:traitimpl.rs
-// pretty-expanded FIXME #23616
 
 extern crate traitimpl;
 use traitimpl::Bar;

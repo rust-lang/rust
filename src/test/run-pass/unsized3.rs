@@ -10,7 +10,6 @@
 
 // Test structs with always-unsized fields.
 
-// pretty-expanded FIXME #23616
 
 #![allow(unknown_features)]
 #![feature(box_syntax, core)]

@@ -12,7 +12,6 @@
 // aux-build:trait_default_method_xc_aux_2.rs
 
 
-// pretty-expanded FIXME #23616
 
 extern crate trait_default_method_xc_aux as aux;
 extern crate trait_default_method_xc_aux_2 as aux2;

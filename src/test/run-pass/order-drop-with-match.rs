@@ -14,7 +14,6 @@
 // in ORDER matching up to when it ran.
 // Correct order is: matched, inner, outer
 
-// pretty-expanded FIXME #23616
 
 static mut ORDER: [usize; 3] = [0, 0, 0];
 static mut INDEX: usize = 0;

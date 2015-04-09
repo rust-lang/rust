@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-// pretty-expanded FIXME #23616
 
 fn bar(v: &mut [usize]) -> Vec<usize> {
     v.to_vec()

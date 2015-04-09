@@ -13,7 +13,6 @@
 
 // Test references to static items across compilation units.
 
-// pretty-expanded FIXME #23616
 
 fn pad() -> usize { 0 }
 

@@ -10,7 +10,6 @@
 
 // Test that you can supply `&F` where `F: Fn()`.
 
-// pretty-expanded FIXME #23616
 
 #![feature(lang_items, unboxed_closures)]
 

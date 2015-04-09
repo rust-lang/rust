@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
 
 enum pattern { tabby, tortoiseshell, calico }
 enum breed { beagle, rottweiler, pug }

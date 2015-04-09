@@ -10,7 +10,6 @@
 
 
 
-// pretty-expanded FIXME #23616
 
 trait vec_monad<A> {
     fn bind<B, F>(&self, f: F ) -> Vec<B> where F: FnMut(&A) -> Vec<B> ;

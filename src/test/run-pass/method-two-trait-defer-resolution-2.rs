@@ -19,7 +19,6 @@
 // translate the call as `Foo::foo(&x)` and let the specific impl get
 // chosen later.
 
-// pretty-expanded FIXME #23616
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]

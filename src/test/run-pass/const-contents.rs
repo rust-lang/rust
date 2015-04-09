@@ -10,7 +10,6 @@
 
 // Issue #570
 
-// pretty-expanded FIXME #23616
 
 static lsl : isize = 1 << 2;
 static add : isize = 1 + 2;

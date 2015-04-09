@@ -10,7 +10,6 @@
 
 // aux-build:cci_const.rs
 
-// pretty-expanded FIXME #23616
 
 extern crate cci_const;
 static foo: &'static str = cci_const::foopy;
