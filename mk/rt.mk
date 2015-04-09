@@ -143,6 +143,10 @@ else ifeq ($(findstring android, $(OSTYPE_$(1))), android)
   JEMALLOC_ARGS_$(1) := --disable-tls
 endif
 
+ifdef CFG_ENABLE_DEBUG_JEMALLOC
+  JEMALLOC_ARGS_$(1) += --enable-debug --enable-fill
+endif
+
 ################################################################################
 # jemalloc
 ################################################################################
