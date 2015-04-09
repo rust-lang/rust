@@ -319,6 +319,8 @@ struct CodegenContext<'a> {
     lto_ctxt: Option<(&'a Session, &'a [String])>,
     // Handler to use for diagnostics produced during codegen.
     handler: &'a Handler,
+    // LLVM passes added by plugins.
+    plugin_passes: Vec<String>,
     // LLVM optimizations for which we want to print remarks.
     remark: Passes,
 }
@@ -328,6 +330,7 @@ impl<'a> CodegenContext<'a> {
         CodegenContext {
             lto_ctxt: Some((sess, reachable)),
             handler: sess.diagnostic().handler(),
+            plugin_passes: sess.plugin_llvm_passes.borrow().clone(),
             remark: sess.opts.cg.remark.clone(),
         }
     }
@@ -460,6 +463,16 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                     cgcx.handler.warn(&format!("unknown pass {:?}, ignoring", pass));
                 }
             }
+
+            for pass in &cgcx.plugin_passes {
+                let pass = CString::new(pass.clone()).unwrap();
+                if !llvm::LLVMRustAddPass(mpm, pass.as_ptr()) {
+                    cgcx.handler.err(&format!("a plugin asked for LLVM pass {:?} but LLVM \
+                                               does not recognize it", pass));
+                }
+            }
+
+            cgcx.handler.abort_if_errors();
 
             // Finally, run the actual optimization passes
             time(config.time_passes, "llvm function passes", (), |()|
@@ -907,6 +920,7 @@ fn run_work_multithreaded(sess: &Session,
     for i in 0..num_workers {
         let work_items_arc = work_items_arc.clone();
         let diag_emitter = diag_emitter.clone();
+        let plugin_passes = sess.plugin_llvm_passes.borrow().clone();
         let remark = sess.opts.cg.remark.clone();
 
         let (tx, rx) = channel();
@@ -921,6 +935,7 @@ fn run_work_multithreaded(sess: &Session,
             let cgcx = CodegenContext {
                 lto_ctxt: None,
                 handler: &diag_handler,
+                plugin_passes: plugin_passes,
                 remark: remark,
             };
 
