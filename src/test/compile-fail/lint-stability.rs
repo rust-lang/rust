@@ -12,7 +12,6 @@
 // aux-build:inherited_stability.rs
 // aux-build:stability_cfg1.rs
 // aux-build:stability_cfg2.rs
-// ignore-tidy-linelength
 
 #![deny(deprecated)]
 #![allow(dead_code)]
