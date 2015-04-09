@@ -43,7 +43,7 @@ pub fn init() {
 
 /// Returns the last error from the Windows socket interface.
 fn last_error() -> io::Error {
-    io::Error::from_os_error(unsafe { c::WSAGetLastError() })
+    io::Error::from_raw_os_error(unsafe { c::WSAGetLastError() })
 }
 
 /// Checks if the signed integer is the Windows constant `SOCKET_ERROR` (-1)
