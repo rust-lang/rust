@@ -163,12 +163,18 @@ impl Error {
     /// `Error` for the error code.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn last_os_error() -> Error {
-        Error::from_os_error(sys::os::errno() as i32)
+        Error::from_raw_os_error(sys::os::errno() as i32)
     }
 
     /// Creates a new instance of an `Error` from a particular OS error code.
-    #[unstable(feature = "io",
-               reason = "unclear whether this function is necessary")]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn from_raw_os_error(code: i32) -> Error {
+        Error { repr: Repr::Os(code) }
+    }
+
+    /// Creates a new instance of an `Error` from a particular OS error code.
+    #[unstable(feature = "io", reason = "deprecated")]
+    #[deprecated(since = "1.0.0", reason = "renamed to from_raw_os_error")]
     pub fn from_os_error(code: i32) -> Error {
         Error { repr: Repr::Os(code) }
     }
