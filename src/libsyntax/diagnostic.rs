@@ -483,25 +483,39 @@ fn highlight_lines(err: &mut EmitterWriter,
                    cm: &codemap::CodeMap,
                    sp: Span,
                    lvl: Level,
-                   lines: codemap::FileLines) -> io::Result<()> {
+                   lines: codemap::FileLines)
+                   -> io::Result<()>
+{
     let fm = &*lines.file;
 
-    let mut elided = false;
-    let mut display_lines = &lines.lines[..];
-    if display_lines.len() > MAX_LINES {
-        display_lines = &display_lines[0..MAX_LINES];
-        elided = true;
-    }
+    let line_strings: Option<Vec<&str>> =
+        lines.lines.iter()
+                   .map(|info| fm.get_line(info.line_index))
+                   .collect();
+
+    let line_strings = match line_strings {
+        None => { return Ok(()); }
+        Some(line_strings) => line_strings
+    };
+
+    // Display only the first MAX_LINES lines.
+    let all_lines = lines.lines.len();
+    let display_lines = cmp::min(all_lines, MAX_LINES);
+    let display_line_infos = &lines.lines[..display_lines];
+    let display_line_strings = &line_strings[..display_lines];
+
     // Print the offending lines
-    for &line_number in display_lines {
-        if let Some(line) = fm.get_line(line_number) {
-            try!(write!(&mut err.dst, "{}:{} {}\n", fm.name,
-                        line_number + 1, line));
-        }
+    for (line_info, line) in display_line_infos.iter().zip(display_line_strings.iter()) {
+        try!(write!(&mut err.dst, "{}:{} {}\n",
+                    fm.name,
+                    line_info.line_index + 1,
+                    line));
     }
-    if elided {
-        let last_line = display_lines[display_lines.len() - 1];
-        let s = format!("{}:{} ", fm.name, last_line + 1);
+
+    // If we elided something, put an ellipsis.
+    if display_lines < all_lines {
+        let last_line_index = display_line_infos.last().unwrap().line_index;
+        let s = format!("{}:{} ", fm.name, last_line_index + 1);
         try!(write!(&mut err.dst, "{0:1$}...\n", "", s.len()));
     }
 
@@ -510,7 +524,7 @@ fn highlight_lines(err: &mut EmitterWriter,
     if lines.lines.len() == 1 {
         let lo = cm.lookup_char_pos(sp.lo);
         let mut digits = 0;
-        let mut num = (lines.lines[0] + 1) / 10;
+        let mut num = (lines.lines[0].line_index + 1) / 10;
 
         // how many digits must be indent past?
         while num > 0 { num /= 10; digits += 1; }
@@ -522,7 +536,7 @@ fn highlight_lines(err: &mut EmitterWriter,
         for _ in 0..skip {
             s.push(' ');
         }
-        if let Some(orig) = fm.get_line(lines.lines[0]) {
+        if let Some(orig) = fm.get_line(lines.lines[0].line_index) {
             let mut col = skip;
             let mut lastc = ' ';
             let mut iter = orig.chars().enumerate();
@@ -597,32 +611,32 @@ fn end_highlight_lines(w: &mut EmitterWriter,
 
     let lines = &lines.lines[..];
     if lines.len() > MAX_LINES {
-        if let Some(line) = fm.get_line(lines[0]) {
+        if let Some(line) = fm.get_line(lines[0].line_index) {
             try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
-                        lines[0] + 1, line));
+                        lines[0].line_index + 1, line));
         }
         try!(write!(&mut w.dst, "...\n"));
-        let last_line_number = lines[lines.len() - 1];
-        if let Some(last_line) = fm.get_line(last_line_number) {
+        let last_line_index = lines[lines.len() - 1].line_index;
+        if let Some(last_line) = fm.get_line(last_line_index) {
             try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
-                        last_line_number + 1, last_line));
+                        last_line_index + 1, last_line));
         }
     } else {
-        for &line_number in lines {
-            if let Some(line) = fm.get_line(line_number) {
+        for line_info in lines {
+            if let Some(line) = fm.get_line(line_info.line_index) {
                 try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
-                            line_number + 1, line));
+                            line_info.line_index + 1, line));
             }
         }
     }
-    let last_line_start = format!("{}:{} ", fm.name, lines[lines.len()-1]+1);
+    let last_line_start = format!("{}:{} ", fm.name, lines[lines.len()-1].line_index + 1);
     let hi = cm.lookup_char_pos(sp.hi);
     let skip = last_line_start.width(false);
     let mut s = String::new();
     for _ in 0..skip {
         s.push(' ');
     }
-    if let Some(orig) = fm.get_line(lines[0]) {
+    if let Some(orig) = fm.get_line(lines[0].line_index) {
         let iter = orig.chars().enumerate();
         for (pos, ch) in iter {
             // Span seems to use half-opened interval, so subtract 1
