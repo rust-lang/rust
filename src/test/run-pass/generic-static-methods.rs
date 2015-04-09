@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-// pretty-expanded FIXME #23616
 
 trait vec_utils<T> {
     fn map_<U, F>(x: &Self, f: F) -> Vec<U> where F: FnMut(&T) -> U;

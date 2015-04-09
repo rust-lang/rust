@@ -11,7 +11,6 @@
 // Uncovered during work on new scoping rules for safe destructors
 // as an important use case to support properly.
 
-// pretty-expanded FIXME #23616
 
 pub struct E<'a> {
     pub f: &'a u8,

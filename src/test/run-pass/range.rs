@@ -10,7 +10,6 @@
 
 // Test range syntax.
 
-// pretty-expanded FIXME #23616
 
 fn foo() -> isize { 42 }
 

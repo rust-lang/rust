@@ -11,7 +11,6 @@
 // Test that when you use ufcs form to invoke a trait method (on a
 // trait object) everything works fine.
 
-// pretty-expanded FIXME #23616
 
 trait Foo {
     fn test(&self) -> i32;

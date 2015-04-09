@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-// pretty-expanded FIXME #23616
 
 trait Pushable<T> {
     fn push_val(&mut self, t: T);

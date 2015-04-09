@@ -10,7 +10,6 @@
 
 // aux-build:xcrate_address_insignificant.rs
 
-// pretty-expanded FIXME #23616
 
 extern crate xcrate_address_insignificant as foo;
 

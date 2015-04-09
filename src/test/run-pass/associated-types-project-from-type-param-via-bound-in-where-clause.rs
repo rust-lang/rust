@@ -12,7 +12,6 @@
 // `Item` originates in a where-clause, not the declaration of
 // `T`. Issue #20300.
 
-// pretty-expanded FIXME #23616
 
 #![feature(core)]
 

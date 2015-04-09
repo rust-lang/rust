@@ -10,7 +10,6 @@
 
 // aux-build:struct_destructuring_cross_crate.rs
 
-// pretty-expanded FIXME #23616
 
 extern crate struct_destructuring_cross_crate;
 

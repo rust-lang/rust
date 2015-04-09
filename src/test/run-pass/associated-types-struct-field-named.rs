@@ -11,7 +11,6 @@
 // Test that we correctly normalize the type of a struct field
 // which has an associated type.
 
-// pretty-expanded FIXME #23616
 
 pub trait UnifyKey {
     type Value;

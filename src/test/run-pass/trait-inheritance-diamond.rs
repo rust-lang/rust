@@ -10,7 +10,6 @@
 
 // B and C both require A, so D does as well, twice, but that's just fine
 
-// pretty-expanded FIXME #23616
 
 trait A { fn a(&self) -> isize; }
 trait B: A { fn b(&self) -> isize; }

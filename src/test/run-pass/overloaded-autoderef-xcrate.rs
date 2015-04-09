@@ -10,7 +10,6 @@
 
 // aux-build:overloaded_autoderef_xc.rs
 
-// pretty-expanded FIXME #23616
 
 extern crate overloaded_autoderef_xc;
 

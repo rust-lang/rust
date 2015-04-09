@@ -11,7 +11,6 @@
 // This test verifies that temporary lifetime is correctly computed
 // for static objects in enclosing scopes.
 
-// pretty-expanded FIXME #23616
 
 use std::cmp::PartialEq;
 

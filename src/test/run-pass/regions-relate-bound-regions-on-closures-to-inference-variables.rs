@@ -17,7 +17,6 @@
 // changes were caught. However, those uses in the compiler could
 // easily get changed or refactored away in the future.
 
-// pretty-expanded FIXME #23616
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]

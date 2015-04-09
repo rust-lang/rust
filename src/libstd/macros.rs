@@ -37,6 +37,7 @@
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable]
 macro_rules! panic {
     () => ({
         panic!("explicit panic")

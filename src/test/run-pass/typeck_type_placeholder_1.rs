@@ -11,7 +11,6 @@
 // This test checks that the `_` type placeholder works
 // correctly for enabling type inference.
 
-// pretty-expanded FIXME #23616
 
 struct TestStruct {
     x: *const isize

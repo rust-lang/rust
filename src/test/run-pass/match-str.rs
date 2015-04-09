@@ -10,7 +10,6 @@
 
 // Issue #53
 
-// pretty-expanded FIXME #23616
 
 pub fn main() {
     match "test" { "not-test" => panic!(), "test" => (), _ => panic!() }

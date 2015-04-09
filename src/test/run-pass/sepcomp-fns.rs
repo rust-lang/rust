@@ -18,7 +18,6 @@
 // Generate some code in the first compilation unit before declaring any
 // modules.  This ensures that the first module doesn't go into the same
 // compilation unit as the top-level module.
-// pretty-expanded FIXME #23616
 
 fn one() -> usize { 1 }
 

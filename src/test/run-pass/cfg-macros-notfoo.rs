@@ -13,7 +13,6 @@
 // check that cfg correctly chooses between the macro impls (see also
 // cfg-macros-foo.rs)
 
-// pretty-expanded FIXME #23616
 
 #[cfg(foo)]
 #[macro_use]

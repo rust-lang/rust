@@ -10,7 +10,6 @@
 
 // Test that we can do shifts by any integral type.
 
-// pretty-expanded FIXME #23616
 
 struct Panolpy {
     i8: i8,

@@ -12,6 +12,5 @@
 
 
 // Testcase for issue #130, operator associativity.
-// pretty-expanded FIXME #23616
 
 pub fn main() { assert!((3 * 5 / 2 == 7)); }

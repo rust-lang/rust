@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
 
 pub fn main() {
     assert!(option_env!("__HOPEFULLY_DOESNT_EXIST__").is_none());

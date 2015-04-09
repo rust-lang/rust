@@ -10,7 +10,6 @@
 
 // pp-exact
 
-// pretty-expanded FIXME #23616
 
 enum color { red = 1, green, blue, imaginary = -1, }
 
