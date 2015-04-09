@@ -35,21 +35,25 @@ pub enum RenderSpan {
     /// the source code covered by the span.
     FullSpan(Span),
 
+    /// Similar to a FullSpan, but the cited position is the end of
+    /// the span, instead of the start. Used, at least, for telling
+    /// compiletest/runtest to look at the last line of the span
+    /// (since `end_highlight_lines` displays an arrow to the end
+    /// of the span).
+    EndSpan(Span),
+
     /// A FileLine renders with just a line for the message prefixed
     /// by file:linenum.
     FileLine(Span),
 }
 
 impl RenderSpan {
-    fn span(self) -> Span {
-        match self {
-            FullSpan(s) | FileLine(s) => s
-        }
-    }
-    fn is_full_span(&self) -> bool {
-        match self {
-            &FullSpan(..) => true,
-            &FileLine(..) => false,
+    fn span(&self) -> Span {
+        match *self {
+            FullSpan(s) |
+            EndSpan(s) |
+            FileLine(s) =>
+                s
         }
     }
 }
@@ -115,7 +119,7 @@ impl SpanHandler {
         self.handler.emit(Some((&self.cm, sp)), msg, Note);
     }
     pub fn span_end_note(&self, sp: Span, msg: &str) {
-        self.handler.custom_emit(&self.cm, FullSpan(sp), msg, Note);
+        self.handler.custom_emit(&self.cm, EndSpan(sp), msg, Note);
     }
     pub fn span_help(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&self.cm, sp)), msg, Help);
@@ -407,8 +411,8 @@ impl Emitter for EmitterWriter {
         let error = match cmsp {
             Some((cm, COMMAND_LINE_SP)) => emit(self, cm,
                                                 FileLine(COMMAND_LINE_SP),
-                                                msg, code, lvl, false),
-            Some((cm, sp)) => emit(self, cm, FullSpan(sp), msg, code, lvl, false),
+                                                msg, code, lvl),
+            Some((cm, sp)) => emit(self, cm, FullSpan(sp), msg, code, lvl),
             None => print_diagnostic(self, "", lvl, msg, code),
         };
 
@@ -420,7 +424,7 @@ impl Emitter for EmitterWriter {
 
     fn custom_emit(&mut self, cm: &codemap::CodeMap,
                    sp: RenderSpan, msg: &str, lvl: Level) {
-        match emit(self, cm, sp, msg, None, lvl, true) {
+        match emit(self, cm, sp, msg, None, lvl) {
             Ok(()) => {}
             Err(e) => panic!("failed to print diagnostics: {:?}", e),
         }
@@ -428,35 +432,38 @@ impl Emitter for EmitterWriter {
 }
 
 fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
-        msg: &str, code: Option<&str>, lvl: Level, custom: bool) -> io::Result<()> {
+        msg: &str, code: Option<&str>, lvl: Level) -> io::Result<()> {
     let sp = rsp.span();
 
     // We cannot check equality directly with COMMAND_LINE_SP
     // since PartialEq is manually implemented to ignore the ExpnId
     let ss = if sp.expn_id == COMMAND_LINE_EXPN {
         "<command line option>".to_string()
+    } else if let EndSpan(_) = rsp {
+        let span_end = Span { lo: sp.hi, hi: sp.hi, expn_id: sp.expn_id};
+        cm.span_to_string(span_end)
     } else {
         cm.span_to_string(sp)
     };
-    if custom {
-        // we want to tell compiletest/runtest to look at the last line of the
-        // span (since `custom_highlight_lines` displays an arrow to the end of
-        // the span)
-        let span_end = Span { lo: sp.hi, hi: sp.hi, expn_id: sp.expn_id};
-        let ses = cm.span_to_string(span_end);
-        try!(print_diagnostic(dst, &ses[..], lvl, msg, code));
-        if rsp.is_full_span() {
-            try!(custom_highlight_lines(dst, cm, sp, lvl, cm.span_to_lines(sp)));
-        }
-    } else {
-        try!(print_diagnostic(dst, &ss[..], lvl, msg, code));
-        if rsp.is_full_span() {
+
+    try!(print_diagnostic(dst, &ss[..], lvl, msg, code));
+
+    match rsp {
+        FullSpan(_) => {
             try!(highlight_lines(dst, cm, sp, lvl, cm.span_to_lines(sp)));
         }
+        EndSpan(_) => {
+            try!(end_highlight_lines(dst, cm, sp, lvl, cm.span_to_lines(sp)));
+        }
+        FileLine(..) => {
+            // no source text in this case!
+        }
     }
+
     if sp != COMMAND_LINE_SP {
         try!(print_macro_backtrace(dst, cm, sp));
     }
+
     match code {
         Some(code) =>
             match dst.registry.as_ref().and_then(|registry| registry.find_description(code)) {
@@ -575,12 +582,12 @@ fn highlight_lines(err: &mut EmitterWriter,
 }
 
 /// Here are the differences between this and the normal `highlight_lines`:
-/// `custom_highlight_lines` will always put arrow on the last byte of the
+/// `end_highlight_lines` will always put arrow on the last byte of the
 /// span (instead of the first byte). Also, when the span is too long (more
-/// than 6 lines), `custom_highlight_lines` will print the first line, then
+/// than 6 lines), `end_highlight_lines` will print the first line, then
 /// dot dot dot, then last line, whereas `highlight_lines` prints the first
 /// six lines.
-fn custom_highlight_lines(w: &mut EmitterWriter,
+fn end_highlight_lines(w: &mut EmitterWriter,
                           cm: &codemap::CodeMap,
                           sp: Span,
                           lvl: Level,
