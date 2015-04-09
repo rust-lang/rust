@@ -18,6 +18,7 @@ use codemap;
 use diagnostics;
 
 use std::cell::{RefCell, Cell};
+use std::cmp;
 use std::fmt;
 use std::io::prelude::*;
 use std::io;
@@ -28,7 +29,7 @@ use libc;
 /// maximum number of lines we will print for each error; arbitrary.
 const MAX_LINES: usize = 6;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum RenderSpan {
     /// A FullSpan renders with both with an initial line for the
     /// message, prefixed by file:linenum, followed by a summary of
@@ -42,6 +43,12 @@ pub enum RenderSpan {
     /// of the span).
     EndSpan(Span),
 
+    /// A suggestion renders with both with an initial line for the
+    /// message, prefixed by file:linenum, followed by a summary
+    /// of hypothetical source code, where the `String` is spliced
+    /// into the lines in place of the code covered by the span.
+    Suggestion(Span, String),
+
     /// A FileLine renders with just a line for the message prefixed
     /// by file:linenum.
     FileLine(Span),
@@ -51,6 +58,7 @@ impl RenderSpan {
     fn span(&self) -> Span {
         match *self {
             FullSpan(s) |
+            Suggestion(s, _) |
             EndSpan(s) |
             FileLine(s) =>
                 s
@@ -123,6 +131,12 @@ impl SpanHandler {
     }
     pub fn span_help(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&self.cm, sp)), msg, Help);
+    }
+    /// Prints out a message with a suggested edit of the code.
+    ///
+    /// See `diagnostic::RenderSpan::Suggestion` for more information.
+    pub fn span_suggestion(&self, sp: Span, msg: &str, suggestion: String) {
+        self.handler.custom_emit(&self.cm, Suggestion(sp, suggestion), msg, Help);
     }
     pub fn fileline_note(&self, sp: Span, msg: &str) {
         self.handler.custom_emit(&self.cm, FileLine(sp), msg, Note);
@@ -455,6 +469,9 @@ fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
         EndSpan(_) => {
             try!(end_highlight_lines(dst, cm, sp, lvl, cm.span_to_lines(sp)));
         }
+        Suggestion(_, ref suggestion) => {
+            try!(highlight_suggestion(dst, cm, sp, suggestion));
+        }
         FileLine(..) => {
             // no source text in this case!
         }
@@ -476,6 +493,53 @@ fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
             },
         None => (),
     }
+    Ok(())
+}
+
+fn highlight_suggestion(err: &mut EmitterWriter,
+                        cm: &codemap::CodeMap,
+                        sp: Span,
+                        suggestion: &str)
+                        -> io::Result<()>
+{
+    let lines = cm.span_to_lines(sp);
+    assert!(!lines.lines.is_empty());
+
+    // To build up the result, we want to take the snippet from the first
+    // line that precedes the span, prepend that with the suggestion, and
+    // then append the snippet from the last line that trails the span.
+    let fm = &lines.file;
+
+    let first_line = &lines.lines[0];
+    let prefix = fm.get_line(first_line.line_index)
+                   .map(|l| &l[..first_line.start_col.0])
+                   .unwrap_or("");
+
+    let last_line = lines.lines.last().unwrap();
+    let suffix = fm.get_line(last_line.line_index)
+                   .map(|l| &l[last_line.end_col.0..])
+                   .unwrap_or("");
+
+    let complete = format!("{}{}{}", prefix, suggestion, suffix);
+
+    // print the suggestion without any line numbers, but leave
+    // space for them. This helps with lining up with previous
+    // snippets from the actual error being reported.
+    let fm = &*lines.file;
+    let mut lines = complete.lines();
+    for (line, line_index) in lines.by_ref().take(MAX_LINES).zip(first_line.line_index..) {
+        let elided_line_num = format!("{}", line_index+1);
+        try!(write!(&mut err.dst, "{0}:{1:2$} {3}\n",
+                    fm.name, "", elided_line_num.len(), line));
+    }
+
+    // if we elided some lines, add an ellipsis
+    if lines.next().is_some() {
+        let elided_line_num = format!("{}", first_line.line_index + MAX_LINES + 1);
+        try!(write!(&mut err.dst, "{0:1$} {0:2$} ...\n",
+                    "", fm.name.len(), elided_line_num.len()));
+    }
+
     Ok(())
 }
 
