@@ -617,11 +617,15 @@ fi
 step_msg "validating $CFG_SELF args"
 validate_opt
 
-# Validate the release channel
+# Validate the release channel, and configure options
 case "$CFG_RELEASE_CHANNEL" in
-    (dev | nightly | beta | stable)
+    nightly )
+	msg "overriding settings for $CFG_RELEASE_CHANNEL"
+	CFG_ENABLE_LLVM_ASSERTIONS=1
 	;;
-    (*)
+    dev | beta | stable)
+	;;
+    *)
         err "release channel must be 'dev', 'nightly', 'beta' or 'stable'"
         ;;
 esac
