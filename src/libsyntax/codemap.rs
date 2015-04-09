@@ -26,6 +26,8 @@ use std::num::ToPrimitive;
 use std::ops::{Add, Sub};
 use std::rc::Rc;
 
+use std::fmt;
+
 use libc::c_uint;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -199,6 +201,7 @@ pub fn original_sp(cm: &CodeMap, sp: Span, enclosing_sp: Span) -> Span {
 //
 
 /// A source code location used for error reporting
+#[derive(Debug)]
 pub struct Loc {
     /// Information about the original source
     pub file: Rc<FileMap>,
@@ -211,6 +214,7 @@ pub struct Loc {
 /// A source code location used as the result of lookup_char_pos_adj
 // Actually, *none* of the clients use the filename *or* file field;
 // perhaps they should just be removed.
+#[derive(Debug)]
 pub struct LocWithOpt {
     pub filename: FileName,
     pub line: usize,
@@ -219,7 +223,9 @@ pub struct LocWithOpt {
 }
 
 // used to be structural records. Better names, anyone?
+#[derive(Debug)]
 pub struct FileMapAndLine { pub fm: Rc<FileMap>, pub line: usize }
+#[derive(Debug)]
 pub struct FileMapAndBytePos { pub fm: Rc<FileMap>, pub pos: BytePos }
 
 
@@ -446,6 +452,12 @@ impl Decodable for FileMap {
                 multibyte_chars: RefCell::new(multibyte_chars)
             })
         })
+    }
+}
+
+impl fmt::Debug for FileMap {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(fmt, "FileMap({})", self.name)
     }
 }
 

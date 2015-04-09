@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(libc)]
+#![feature(libc, std_misc)]
 
 extern crate libc;
 

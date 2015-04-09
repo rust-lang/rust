@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-// pretty-expanded FIXME #23616
 
 fn f<T>(x: Vec<T>) -> T { return x.into_iter().next().unwrap(); }
 

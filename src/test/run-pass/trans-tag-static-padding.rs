@@ -21,7 +21,6 @@
 // Last 7 bytes of Request struct are not occupied by any fields.
 
 
-// pretty-expanded FIXME #23616
 
 enum TestOption<T> {
     TestNone,

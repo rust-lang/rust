@@ -11,7 +11,6 @@
 // Test that we can use method notation to call methods based on a
 // where clause type, and not only type parameters.
 
-// pretty-expanded FIXME #23616
 
 trait Foo {
     fn foo(&self) -> i32;

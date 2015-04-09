@@ -11,7 +11,6 @@
 // Tests the ability for the Self type in default methods to use
 // capabilities granted by builtin kinds as supertraits.
 
-// pretty-expanded FIXME #23616
 
 use std::sync::mpsc::{Sender, channel};
 

@@ -12,7 +12,6 @@
 // closed over contain managed values. This implies that the boxes
 // will have headers that must be skipped over.
 
-// pretty-expanded FIXME #23616
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]

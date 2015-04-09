@@ -10,7 +10,6 @@
 
 // compile-flags: -Z no-landing-pads
 
-// pretty-expanded FIXME #23616
 
 use std::thread;
 

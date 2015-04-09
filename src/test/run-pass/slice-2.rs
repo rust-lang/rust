@@ -10,7 +10,6 @@
 
 // Test slicing expressions on slices and Vecs.
 
-// pretty-expanded FIXME #23616
 
 fn main() {
     let x: &[isize] = &[1, 2, 3, 4, 5];

@@ -10,7 +10,6 @@
 
 // Test direct calls to extern fns.
 
-// pretty-expanded FIXME #23616
 
 extern fn f(x: usize) -> usize { x * 2 }
 

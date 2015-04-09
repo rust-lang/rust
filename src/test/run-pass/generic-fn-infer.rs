@@ -13,7 +13,6 @@
 
 
 // Issue #45: infer type parameters in function applications
-// pretty-expanded FIXME #23616
 
 fn id<T>(x: T) -> T { return x; }
 

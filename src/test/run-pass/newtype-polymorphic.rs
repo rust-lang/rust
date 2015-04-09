@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-// pretty-expanded FIXME #23616
 
 #[derive(Clone)]
 struct myvec<X>(Vec<X> );

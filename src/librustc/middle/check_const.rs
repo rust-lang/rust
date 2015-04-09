@@ -662,7 +662,19 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'tcx> {
               cmt: mc::cmt<'tcx>,
               _loan_region: ty::Region,
               bk: ty::BorrowKind,
-              loan_cause: euv::LoanCause) {
+              loan_cause: euv::LoanCause)
+    {
+        // Kind of hacky, but we allow Unsafe coercions in constants.
+        // These occur when we convert a &T or *T to a *U, as well as
+        // when making a thin pointer (e.g., `*T`) into a fat pointer
+        // (e.g., `*Trait`).
+        match loan_cause {
+            euv::LoanCause::AutoUnsafe => {
+                return;
+            }
+            _ => { }
+        }
+
         let mut cur = &cmt;
         let mut is_interior = false;
         loop {

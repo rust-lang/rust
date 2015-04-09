@@ -14,7 +14,6 @@
 
 // aux-build:go_trait.rs
 
-// pretty-expanded FIXME #23616
 
 extern crate go_trait;
 

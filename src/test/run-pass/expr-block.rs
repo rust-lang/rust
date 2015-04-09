@@ -13,7 +13,6 @@
 
 
 // Tests for standalone blocks as expressions
-// pretty-expanded FIXME #23616
 
 fn test_basic() { let rs: bool = { true }; assert!((rs)); }
 

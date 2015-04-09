@@ -10,7 +10,6 @@
 
 // Why one-tuples? Because macros.
 
-// pretty-expanded FIXME #23616
 
 pub fn main() {
     match ('c',) {

@@ -11,7 +11,6 @@
 // If `Index` used an associated type for its output, this test would
 // work more smoothly.
 
-// pretty-expanded FIXME #23616
 
 #![feature(core)]
 

@@ -10,7 +10,6 @@
 
 // aux-build:cci_nested_lib.rs
 
-// pretty-expanded FIXME #23616
 
 #![feature(globs)]
 

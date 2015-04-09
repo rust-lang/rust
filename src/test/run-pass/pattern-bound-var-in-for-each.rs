@@ -12,7 +12,6 @@
 // pattern-bound var is an upvar (when translating
 // the for-each body)
 
-// pretty-expanded FIXME #23616
 
 fn foo(src: usize) {
 

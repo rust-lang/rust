@@ -10,7 +10,6 @@
 
 // Test a rather underspecified example:
 
-// pretty-expanded FIXME #23616
 
 pub fn main() {
     let f = {|i| i};

@@ -10,7 +10,6 @@
 
 // ignore-windows failing on win32 bot
 // ignore-freebsd: gdb package too new
-// ignore-tidy-linelength
 // ignore-lldb
 // ignore-android: FIXME(#10381)
 // compile-flags:-g

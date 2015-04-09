@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
 
 enum E { V0, V16(u16) }
 static C: (E, u16, u16) = (E::V0, 0x600D, 0xBAD);

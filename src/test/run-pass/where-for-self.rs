@@ -11,7 +11,6 @@
 // Test that we can quantify lifetimes outside a constraint (i.e., including
 // the self type) in a where clause.
 
-// pretty-expanded FIXME #23616
 
 static mut COUNT: u32 = 1;
 

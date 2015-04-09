@@ -11,7 +11,6 @@
 // Ensure that we can do a destructuring bind of a fixed-size array,
 // even when the element type has a destructor.
 
-// pretty-expanded FIXME #23616
 
 #![feature(slice_patterns)]
 

@@ -11,7 +11,6 @@
 
 
 
-// pretty-expanded FIXME #23616
 
 struct Point {x: isize, y: isize}
 
