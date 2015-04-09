@@ -10,6 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
+#![feature(std_misc)]
+
 pub type HANDLE = u32;
 pub type DWORD = u32;
 pub type SIZE_T = u32;
