@@ -198,5 +198,5 @@ let obj = Box::new(graph) as Box<Graph<N=Node, E=Edge>>;
 ```
 
 The `N=Node` syntax allows us to provide a concrete type, `Node`, for the `N`
-type parameter. Same with `E=Edge`. If we didn’t proide this constraint, we
+type parameter. Same with `E=Edge`. If we didn’t provide this constraint, we
 couldn’t be sure which `impl` to match this trait object to.
