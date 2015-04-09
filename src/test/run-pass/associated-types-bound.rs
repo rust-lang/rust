@@ -10,7 +10,6 @@
 
 // Test equality constrai32s on associated types in a where clause.
 
-// pretty-expanded FIXME #23616
 
 pub trait ToI32 {
     fn to_i32(&self) -> i32;

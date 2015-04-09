@@ -14,7 +14,6 @@
 // Tests "capabilities" granted by traits with super-builtin-kinds,
 // even when using them cross-crate.
 
-// pretty-expanded FIXME #23616
 
 extern crate trait_superkinds_in_metadata;
 

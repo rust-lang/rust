@@ -11,7 +11,6 @@
 // Check that the various ways of getting to a reference to a vec (both sized
 // and unsized) work properly.
 
-// pretty-expanded FIXME #23616
 
 const aa: [isize; 3] = [1, 2, 3];
 const ab: &'static [isize; 3] = &aa;

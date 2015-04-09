@@ -10,7 +10,6 @@
 
 // aux-build:issue_9188.rs
 
-// pretty-expanded FIXME #23616
 
 extern crate issue_9188;
 

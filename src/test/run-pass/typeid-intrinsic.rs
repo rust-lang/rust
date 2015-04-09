@@ -11,7 +11,6 @@
 // aux-build:typeid-intrinsic.rs
 // aux-build:typeid-intrinsic2.rs
 
-// pretty-expanded FIXME #23616
 
 #![feature(hash, core)]
 

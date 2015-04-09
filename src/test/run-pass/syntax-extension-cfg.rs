@@ -10,7 +10,6 @@
 
 // compile-flags: --cfg foo --cfg qux="foo"
 
-// pretty-expanded FIXME #23616
 
 pub fn main() {
     // check

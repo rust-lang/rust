@@ -11,7 +11,6 @@
 // Test that we do not leak when the arg pattern must drop part of the
 // argument (in this case, the `y` field).
 
-// pretty-expanded FIXME #23616
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
 // aux-build:coherence_orphan_lib.rs
 
 #![feature(optin_builtin_traits)]

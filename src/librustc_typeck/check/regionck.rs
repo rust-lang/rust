@@ -1119,8 +1119,8 @@ fn link_pattern<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 fn link_autoref(rcx: &Rcx,
                 expr: &ast::Expr,
                 autoderefs: usize,
-                autoref: &ty::AutoRef) {
-
+                autoref: &ty::AutoRef)
+{
     debug!("link_autoref(autoref={:?})", autoref);
     let mc = mc::MemCategorizationContext::new(rcx.fcx);
     let expr_cmt = ignore_err!(mc.cat_expr_autoderefd(expr, autoderefs));
@@ -1128,11 +1128,15 @@ fn link_autoref(rcx: &Rcx,
 
     match *autoref {
         ty::AutoPtr(r, m, _) => {
-            link_region(rcx, expr.span, r,
-                ty::BorrowKind::from_mutbl(m), expr_cmt);
+            link_region(rcx, expr.span, r, ty::BorrowKind::from_mutbl(m), expr_cmt);
         }
 
-        ty::AutoUnsafe(..) | ty::AutoUnsizeUniq(_) | ty::AutoUnsize(_) => {}
+        ty::AutoUnsafe(m, _) => {
+            let r = ty::ReScope(CodeExtent::from_node_id(expr.id));
+            link_region(rcx, expr.span, r, ty::BorrowKind::from_mutbl(m), expr_cmt);
+        }
+
+        ty::AutoUnsizeUniq(_) | ty::AutoUnsize(_) => {}
     }
 }
 

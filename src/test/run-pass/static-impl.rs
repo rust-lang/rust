@@ -10,7 +10,6 @@
 
 
 
-// pretty-expanded FIXME #23616
 
 pub trait plus {
     fn plus(&self) -> isize;

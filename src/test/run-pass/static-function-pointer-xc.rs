@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // aux-build:static-function-pointer-aux.rs
-// pretty-expanded FIXME #23616
 
 extern crate static_function_pointer_aux as aux;
 

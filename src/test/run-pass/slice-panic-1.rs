@@ -10,7 +10,6 @@
 
 // Test that if a slicing expr[..] fails, the correct cleanups happen.
 
-// pretty-expanded FIXME #23616
 
 use std::thread;
 

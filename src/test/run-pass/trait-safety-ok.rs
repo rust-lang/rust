@@ -10,7 +10,6 @@
 
 // Simple smoke test that unsafe traits can be compiled etc.
 
-// pretty-expanded FIXME #23616
 
 unsafe trait Foo {
     fn foo(&self) -> isize;

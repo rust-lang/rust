@@ -10,7 +10,6 @@
 
 // Test associated types appearing in tuple-like enum variants.
 
-// pretty-expanded FIXME #23616
 
 use self::VarValue::*;
 

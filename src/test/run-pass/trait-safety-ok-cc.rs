@@ -12,7 +12,6 @@
 
 // Simple smoke test that unsafe traits can be compiled across crates.
 
-// pretty-expanded FIXME #23616
 
 extern crate trait_safety_lib as lib;
 

@@ -16,7 +16,6 @@
 // around this problem locally by renaming the constant in the `use`
 // form to an uppercase identifier that placates the lint.
 
-// pretty-expanded FIXME #23616
 
 #![deny(non_upper_case_globals)]
 

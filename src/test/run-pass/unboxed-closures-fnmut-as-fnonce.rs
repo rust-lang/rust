@@ -11,7 +11,6 @@
 // Checks that the Fn trait hierarchy rules permit
 // FnMut or FnOnce to be used where FnMut is implemented.
 
-// pretty-expanded FIXME #23616
 
 #![feature(unboxed_closures, core)]
 

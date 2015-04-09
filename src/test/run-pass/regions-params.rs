@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-// pretty-expanded FIXME #23616
 
 fn region_identity(x: &usize) -> &usize { x }
 

@@ -11,7 +11,6 @@
 // Tests that everything still compiles and runs fine even when
 // we reorder the bounds.
 
-// pretty-expanded FIXME #23616
 
 trait A {
     fn a(&self) -> usize;

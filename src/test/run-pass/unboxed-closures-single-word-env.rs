@@ -11,7 +11,6 @@
 // Ensures that single-word environments work right in unboxed closures.
 // These take a different path in codegen.
 
-// pretty-expanded FIXME #23616
 
 #![feature(unboxed_closures)]
 

@@ -11,7 +11,6 @@
 // Tests calls to closure arguments where the closure takes 1 argument.
 // This is a bit tricky due to rust-call ABI.
 
-// pretty-expanded FIXME #23616
 
 fn foo(f: &mut FnMut(isize) -> isize) -> isize {
     f(22)

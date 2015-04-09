@@ -10,7 +10,6 @@
 
 // Testing that the B's are resolved
 
-// pretty-expanded FIXME #23616
 
 trait clam<A> { fn get(self) -> A; }
 

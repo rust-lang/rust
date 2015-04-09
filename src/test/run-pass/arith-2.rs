@@ -10,7 +10,6 @@
 
 
 
-// pretty-expanded FIXME #23616
 
 pub fn main() {
     let i32_c: isize = 0x10101010;

@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // Issue 483 - Assignment expressions result in nil
-// pretty-expanded FIXME #23616
 
 fn test_assign() {
     let mut x: isize;

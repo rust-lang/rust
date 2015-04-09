@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-// pretty-expanded FIXME #23616
 
 fn two<F>(mut it: F) where F: FnMut(isize) { it(0); it(1); }
 

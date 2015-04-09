@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
 
 static mut DROP: isize = 0;
 static mut DROP_S: isize = 0;

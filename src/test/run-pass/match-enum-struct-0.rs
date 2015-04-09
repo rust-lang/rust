@@ -10,7 +10,6 @@
 
 // regression test for issue #5625
 
-// pretty-expanded FIXME #23616
 
 enum E {
     Foo{f : isize},
