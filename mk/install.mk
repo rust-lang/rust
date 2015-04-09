@@ -8,12 +8,6 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-ifdef CFG_DISABLE_VERIFY_INSTALL
-MAYBE_DISABLE_VERIFY=--disable-verify
-else
-MAYBE_DISABLE_VERIFY=
-endif
-
 install:
 ifeq (root user, $(USER) $(patsubst %,user,$(SUDO_USER)))
 # Build the dist as the original user
@@ -22,9 +16,9 @@ else
 	$(Q)$(MAKE) prepare_install
 endif
 ifeq ($(CFG_DISABLE_DOCS),)
-	$(Q)cd tmp/empty_dir && sh ../../tmp/dist/$(DOC_PKG_NAME)-$(CFG_BUILD)/install.sh --prefix="$(DESTDIR)$(CFG_PREFIX)" --libdir="$(DESTDIR)$(CFG_LIBDIR)" --mandir="$(DESTDIR)$(CFG_MANDIR)" "$(MAYBE_DISABLE_VERIFY)"
+	$(Q)cd tmp/empty_dir && sh ../../tmp/dist/$(DOC_PKG_NAME)-$(CFG_BUILD)/install.sh --prefix="$(DESTDIR)$(CFG_PREFIX)" --libdir="$(DESTDIR)$(CFG_LIBDIR)" --mandir="$(DESTDIR)$(CFG_MANDIR)"
 endif
-	$(Q)cd tmp/empty_dir && sh ../../tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix="$(DESTDIR)$(CFG_PREFIX)" --libdir="$(DESTDIR)$(CFG_LIBDIR)" --mandir="$(DESTDIR)$(CFG_MANDIR)" "$(MAYBE_DISABLE_VERIFY)"
+	$(Q)cd tmp/empty_dir && sh ../../tmp/dist/$(PKG_NAME)-$(CFG_BUILD)/install.sh --prefix="$(DESTDIR)$(CFG_PREFIX)" --libdir="$(DESTDIR)$(CFG_LIBDIR)" --mandir="$(DESTDIR)$(CFG_MANDIR)"
 # Remove tmp files because it's a decent amount of disk space
 	$(Q)rm -R tmp/dist
 

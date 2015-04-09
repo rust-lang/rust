@@ -523,29 +523,34 @@ fi
 BOOL_OPTIONS=""
 VAL_OPTIONS=""
 
+opt debug 0 "debug mode"
 opt valgrind 0 "run tests with valgrind (memcheck by default)"
 opt helgrind 0 "run tests with helgrind instead of memcheck"
 opt valgrind-rpass 1 "run rpass-valgrind tests with valgrind"
 opt docs     1 "build standard library documentation"
 opt compiler-docs     0 "build compiler documentation"
-opt optimize 1 "build optimized rust code"
-opt optimize-cxx 1 "build optimized C++ code"
-opt optimize-llvm 1 "build optimized LLVM"
 opt optimize-tests 1 "build tests with optimizations"
 opt libcpp 1 "build with llvm with libc++ instead of libstdc++ when using clang"
-opt llvm-assertions 1 "build LLVM with assertions"
-opt debug 1 "build with extra debug fun"
+opt llvm-assertions 0 "build LLVM with assertions"
+opt debug-assertions 0 "build with debugging assertions"
 opt fast-make 0 "use .gitmodules as timestamp for submodule deps"
 opt ccache 0 "invoke gcc/clang via ccache to reuse object files between builds"
 opt local-rust 0 "use an installed rustc rather than downloading a snapshot"
 opt llvm-static-stdcpp 0 "statically link to libstdc++ for LLVM"
 opt rpath 0 "build rpaths into rustc itself"
-opt nightly 0 "build nightly packages"
-opt verify-install 1 "verify installed binaries work"
 # This is used by the automation to produce single-target nightlies
 opt dist-host-only 0 "only install bins for the host architecture"
 opt inject-std-version 1 "inject the current compiler version of libstd into programs"
 opt llvm-version-check 1 "don't check if the LLVM version is supported, build anyway"
+
+# Optimization and debugging options. These may be overridden by the release channel, etc.
+opt_nosave optimize 1 "build optimized rust code"
+opt_nosave optimize-cxx 1 "build optimized C++ code"
+opt_nosave optimize-llvm 1 "build optimized LLVM"
+opt_nosave llvm-assertions 0 "build LLVM with assertions"
+opt_nosave debug-assertions 0 "build with debugging assertions"
+opt_nosave debuginfo 0 "build with debugger metadata"
+opt_nosave debug-jemalloc 0 "build jemalloc with --enable-debug --enable-fill"
 
 valopt localstatedir "/var/lib" "local state directory"
 valopt sysconfdir "/etc" "install system configuration files"
@@ -556,6 +561,7 @@ valopt llvm-root "" "set LLVM root"
 valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
 valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
 valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
+valopt release-channel "dev" "the name of the release channel to build"
 
 # Many of these are saved below during the "writing configuration" step
 # (others are conditionally saved).
@@ -568,7 +574,6 @@ valopt_nosave local-rust-root "/usr/local" "set prefix for local rust binary"
 valopt_nosave host "${CFG_BUILD}" "GNUs ./configure syntax LLVM host triples"
 valopt_nosave target "${CFG_HOST}" "GNUs ./configure syntax LLVM target triples"
 valopt_nosave mandir "${CFG_PREFIX}/share/man" "install man pages in PATH"
-valopt_nosave release-channel "dev" "the name of the release channel to build"
 
 # Temporarily support old triples until buildbots get updated
 CFG_BUILD=$(to_llvm_triple $CFG_BUILD)
@@ -621,13 +626,24 @@ case "$CFG_RELEASE_CHANNEL" in
         ;;
 esac
 
-# Continue supporting the old --enable-nightly flag to transition the bots
-# XXX Remove me
-if [ ! -z "$CFG_ENABLE_NIGHTLY" ]
-then
-    CFG_RELEASE_CHANNEL=nightly
+# Adjust perf and debug options for debug mode
+if [ -n "$CFG_ENABLE_DEBUG" ]; then
+    msg "debug mode enabled, setting performance options"
+    CFG_DISABLE_OPTIMIZE=1
+    CFG_DISABLE_OPTIMIZE_CXX=1
+    CFG_ENABLE_LLVM_ASSERTIONS=1
+    CFG_ENABLE_DEBUG_ASSERTIONS=1
+    CFG_ENABLE_DEBUG_JEMALLOC=1
 fi
-putvar CFG_RELEASE_CHANNEL
+
+# OK, now write the debugging options
+if [ -n "$CFG_DISABLE_OPTIMIZE" ]; then putvar CFG_DISABLE_OPTIMIZE; fi
+if [ -n "$CFG_DISABLE_OPTIMIZE_CXX" ]; then putvar CFG_DISABLE_OPTIMIZE_CXX; fi
+if [ -n "$CFG_DISABLE_OPTIMIZE_LLVM" ]; then putvar CFG_DISABLE_OPTIMIZE_LLVM; fi
+if [ -n "$CFG_ENABLE_LLVM_ASSERTIONS" ]; then putvar CFG_ENABLE_LLVM_ASSERTIONS; fi
+if [ -n "$CFG_ENABLE_DEBUG_ASSERTIONS" ]; then putvar CFG_ENABLE_DEBUG_ASSERTIONS; fi
+if [ -n "$CFG_ENABLE_DEBUGINFO" ]; then putvar CFG_ENABLE_DEBUGINFO; fi
+if [ -n "$CFG_ENABLE_DEBUG_JEMALLOC" ]; then putvar CFG_ENABLE_DEBUG_JEMALLOC; fi
 
 # A magic value that allows the compiler to use unstable features
 # during the bootstrap even when doing so would normally be an error
@@ -1180,7 +1196,7 @@ do
             LLVM_DBG_OPTS="--enable-optimized"
             LLVM_INST_DIR=$LLVM_BUILD_DIR/Release
         fi
-        if [ ! -z "$CFG_DISABLE_LLVM_ASSERTIONS" ]
+        if [ -z "$CFG_ENABLE_LLVM_ASSERTIONS" ]
         then
             LLVM_ASSERTION_OPTS="--disable-assertions"
         else
@@ -1434,6 +1450,11 @@ move_if_changed config.tmp config.mk
 rm -f config.tmp
 touch config.stamp
 
-step_msg "complete"
+if [ -z "$CFG_ENABLE_DEBUG" ]; then
+    step_msg "configured in release mode. for development consider --enable-debug"
+else
+    step_msg "complete"
+fi
+
 msg "run \`make help\`"
 msg
