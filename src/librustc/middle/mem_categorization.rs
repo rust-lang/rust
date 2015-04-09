@@ -833,6 +833,15 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         ret
     }
 
+    /// Returns the lifetime of a temporary created by expr with id `id`.
+    /// This could be `'static` if `id` is part of a constant expression.
+    pub fn temporary_scope(&self, id: ast::NodeId) -> ty::Region {
+        match self.typer.temporary_scope(id) {
+            Some(scope) => ty::ReScope(scope),
+            None => ty::ReStatic
+        }
+    }
+
     pub fn cat_rvalue_node(&self,
                            id: ast::NodeId,
                            span: Span,
@@ -848,17 +857,12 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             _ => check_const::NOT_CONST
         };
 
+        // Compute maximum lifetime of this rvalue. This is 'static if
+        // we can promote to a constant, otherwise equal to enclosing temp
+        // lifetime.
         let re = match qualif & check_const::NON_STATIC_BORROWS {
-            check_const::PURE_CONST => {
-                // Constant rvalues get promoted to 'static.
-                ty::ReStatic
-            }
-            _ => {
-                match self.typer.temporary_scope(id) {
-                    Some(scope) => ty::ReScope(scope),
-                    None => ty::ReStatic
-                }
-            }
+            check_const::PURE_CONST => ty::ReStatic,
+            _ => self.temporary_scope(id),
         };
         let ret = self.cat_rvalue(id, span, re, expr_ty);
         debug!("cat_rvalue_node ret {}", ret.repr(self.tcx()));

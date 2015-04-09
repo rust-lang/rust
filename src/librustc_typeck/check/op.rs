@@ -20,7 +20,6 @@ use super::{
     PreferMutLvalue,
     structurally_resolved_type,
 };
-use middle::infer;
 use middle::traits;
 use middle::ty::{self, Ty};
 use syntax::ast;
@@ -314,36 +313,9 @@ fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
     let method = match trait_did {
         Some(trait_did) => {
-            // We do eager coercions to make using operators
-            // more ergonomic:
-            //
-            // - If the input is of type &'a T (resp. &'a mut T),
-            //   then reborrow it to &'b T (resp. &'b mut T) where
-            //   'b <= 'a.  This makes things like `x == y`, where
-            //   `x` and `y` are both region pointers, work.  We
-            //   could also solve this with variance or different
-            //   traits that don't force left and right to have same
-            //   type.
-            let (adj_ty, adjustment) = match lhs_ty.sty {
-                ty::ty_rptr(r_in, mt) => {
-                    let r_adj = fcx.infcx().next_region_var(infer::Autoref(lhs_expr.span));
-                    fcx.mk_subr(infer::Reborrow(lhs_expr.span), r_adj, *r_in);
-                    let adjusted_ty = ty::mk_rptr(fcx.tcx(), fcx.tcx().mk_region(r_adj), mt);
-                    let autoptr = ty::AutoPtr(r_adj, mt.mutbl, None);
-                    let adjustment = ty::AutoDerefRef { autoderefs: 1, autoref: Some(autoptr) };
-                    (adjusted_ty, adjustment)
-                }
-                _ => {
-                    (lhs_ty, ty::AutoDerefRef { autoderefs: 0, autoref: None })
-                }
-            };
-
-            debug!("adjusted_ty={} adjustment={:?}",
-                   adj_ty.repr(fcx.tcx()),
-                   adjustment);
-
+            let noop = ty::AutoDerefRef { autoderefs: 0, autoref: None };
             method::lookup_in_trait_adjusted(fcx, expr.span, Some(lhs_expr), opname,
-                                             trait_did, adjustment, adj_ty, Some(other_tys))
+                                             trait_did, noop, lhs_ty, Some(other_tys))
         }
         None => None
     };
