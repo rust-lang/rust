@@ -97,6 +97,27 @@ macro_rules! extern_fn_clone {
             #[inline]
             fn clone(&self) -> extern "Rust" fn($($A),*) -> ReturnType { *self }
         }
+
+        #[unstable(feature = "core", reason = "brand new")]
+        impl<$($A,)* ReturnType> Clone for extern "C" fn($($A),*) -> ReturnType {
+            /// Return a copy of a function pointer
+            #[inline]
+            fn clone(&self) -> extern "C" fn($($A),*) -> ReturnType { *self }
+        }
+
+        #[unstable(feature = "core", reason = "brand new")]
+        impl<$($A,)* ReturnType> Clone for unsafe extern "Rust" fn($($A),*) -> ReturnType {
+            /// Return a copy of a function pointer
+            #[inline]
+            fn clone(&self) -> unsafe extern "Rust" fn($($A),*) -> ReturnType { *self }
+        }
+
+        #[unstable(feature = "core", reason = "brand new")]
+        impl<$($A,)* ReturnType> Clone for unsafe extern "C" fn($($A),*) -> ReturnType {
+            /// Return a copy of a function pointer
+            #[inline]
+            fn clone(&self) -> unsafe extern "C" fn($($A),*) -> ReturnType { *self }
+        }
     )
 }
 
