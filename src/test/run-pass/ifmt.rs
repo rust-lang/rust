@@ -93,9 +93,8 @@ pub fn main() {
     t!(format!("{}", 5 + 5), "10");
     t!(format!("{:#4}", C), "☃123");
 
-    // FIXME(#20676)
-    // let a: &fmt::Debug = &1;
-    // t!(format!("{:?}", a), "1");
+    let a: &fmt::Debug = &1;
+    t!(format!("{:?}", a), "1");
 
 
     // Formatting strings and their arguments
