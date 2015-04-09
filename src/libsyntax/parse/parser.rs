@@ -2880,7 +2880,7 @@ impl<'a> Parser<'a> {
         try!(self.expect_keyword(keywords::In));
         let expr = try!(self.parse_expr_res(RESTRICTION_NO_STRUCT_LITERAL));
         let loop_block = try!(self.parse_block());
-        let hi = self.span.hi;
+        let hi = self.last_span.hi;
 
         Ok(self.mk_expr(lo, hi, ExprForLoop(pat, expr, loop_block, opt_ident)))
     }
