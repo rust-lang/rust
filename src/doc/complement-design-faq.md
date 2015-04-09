@@ -46,7 +46,7 @@ to `struct`s to get the same layout as a C struct would.
 A language that requires a GC is a language that opts into a larger, more
 complex runtime than Rust cares for. Rust is usable on bare metal with no
 extra runtime. Additionally, garbage collection is frequently a source of
-non-deterministic behavior. Rust provides the tools to make using a GC
+non-deterministic behaviour. Rust provides the tools to make using a GC
 possible and even pleasant, but it should not be a requirement for
 implementing the language.
 
