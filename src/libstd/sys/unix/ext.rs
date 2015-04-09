@@ -189,8 +189,12 @@ pub mod ffi {
 #[unstable(feature = "fs_ext",
            reason = "may want a more useful mode abstraction")]
 pub mod fs {
+    use sys;
     use sys_common::{FromInner, AsInner, AsInnerMut};
     use fs::{Permissions, OpenOptions};
+    use path::Path;
+    use convert::AsRef;
+    use io;
 
     /// Unix-specific extensions to `Permissions`
     pub trait PermissionsExt {
@@ -220,6 +224,36 @@ pub mod fs {
             self.as_inner_mut().mode(mode); self
         }
     }
+
+    /// Creates a new symbolic link on the filesystem.
+    ///
+    /// The `dst` path will be a symbolic link pointing to the `src` path.
+    ///
+    /// # Note
+    ///
+    /// On Windows, you must specify whether a symbolic link points to a file
+    /// or directory.  Use `os::windows::fs::symlink_file` to create a
+    /// symbolic link to a file, or `os::windows::fs::symlink_dir` to create a
+    /// symbolic link to a directory.  Additionally, the process must have
+    /// `SeCreateSymbolicLinkPrivilege` in order to be able to create a
+    /// symbolic link.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(fs_ext)]
+    /// use std::os::unix::fs;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// try!(fs::symlink("a.txt", "b.txt"));
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
+    {
+        sys::fs2::symlink(src.as_ref(), dst.as_ref())
+    }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
