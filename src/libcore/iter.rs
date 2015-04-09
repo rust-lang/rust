@@ -171,10 +171,10 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn chain<U>(self, other: U) -> Chain<Self, U> where
-        Self: Sized, U: Iterator<Item=Self::Item>,
+    fn chain<U>(self, other: U) -> Chain<Self, U::IntoIter> where
+        Self: Sized, U: IntoIterator<Item=Self::Item>,
     {
-        Chain{a: self, b: other, flag: false}
+        Chain{a: self, b: other.into_iter(), flag: false}
     }
 
     /// Creates an iterator that iterates over both this and the specified
@@ -207,8 +207,10 @@ pub trait Iterator {
     /// both produce the same output.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn zip<U: Iterator>(self, other: U) -> Zip<Self, U> where Self: Sized {
-        Zip{a: self, b: other}
+    fn zip<U>(self, other: U) -> Zip<Self, U::IntoIter> where
+        Self: Sized, U: IntoIterator
+    {
+        Zip{a: self, b: other.into_iter()}
     }
 
     /// Creates a new iterator that will apply the specified function to each
@@ -443,7 +445,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn flat_map<U, F>(self, f: F) -> FlatMap<Self, U, F>
-        where Self: Sized, U: Iterator, F: FnMut(Self::Item) -> U,
+        where Self: Sized, U: IntoIterator, F: FnMut(Self::Item) -> U,
     {
         FlatMap{iter: self, f: f, frontiter: None, backiter: None }
     }
@@ -933,7 +935,7 @@ pub trait Iterator {
     /// `std::usize::MAX` elements of the original iterator.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn rev(self) -> Rev<Self> where Self: Sized {
+    fn rev(self) -> Rev<Self> where Self: Sized + DoubleEndedIterator {
         Rev{iter: self}
     }
 
@@ -2093,15 +2095,15 @@ impl<B, I, St, F> Iterator for Scan<I, St, F> where
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct FlatMap<I, U, F> {
+pub struct FlatMap<I, U: IntoIterator, F> {
     iter: I,
     f: F,
-    frontiter: Option<U>,
-    backiter: Option<U>,
+    frontiter: Option<U::IntoIter>,
+    backiter: Option<U::IntoIter>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: Iterator, U: Iterator, F> Iterator for FlatMap<I, U, F>
+impl<I: Iterator, U: IntoIterator, F> Iterator for FlatMap<I, U, F>
     where F: FnMut(I::Item) -> U,
 {
     type Item = U::Item;
@@ -2110,13 +2112,13 @@ impl<I: Iterator, U: Iterator, F> Iterator for FlatMap<I, U, F>
     fn next(&mut self) -> Option<U::Item> {
         loop {
             if let Some(ref mut inner) = self.frontiter {
-                for x in inner.by_ref() {
+                if let Some(x) = inner.by_ref().next() {
                     return Some(x)
                 }
             }
             match self.iter.next().map(|x| (self.f)(x)) {
                 None => return self.backiter.as_mut().and_then(|it| it.next()),
-                next => self.frontiter = next,
+                next => self.frontiter = next.map(IntoIterator::into_iter),
             }
         }
     }
@@ -2134,22 +2136,22 @@ impl<I: Iterator, U: Iterator, F> Iterator for FlatMap<I, U, F>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<I: DoubleEndedIterator, U: DoubleEndedIterator, F> DoubleEndedIterator
-    for FlatMap<I, U, F>
-    where F: FnMut(I::Item) -> U
+impl<I: DoubleEndedIterator, U, F> DoubleEndedIterator for FlatMap<I, U, F> where
+    F: FnMut(I::Item) -> U,
+    U: IntoIterator,
+    U::IntoIter: DoubleEndedIterator
 {
     #[inline]
     fn next_back(&mut self) -> Option<U::Item> {
         loop {
             if let Some(ref mut inner) = self.backiter {
-                match inner.next_back() {
-                    None => (),
-                    y => return y
+                if let Some(y) = inner.next_back() {
+                    return Some(y)
                 }
             }
             match self.iter.next_back().map(|x| (self.f)(x)) {
                 None => return self.frontiter.as_mut().and_then(|it| it.next_back()),
-                next => self.backiter = next,
+                next => self.backiter = next.map(IntoIterator::into_iter),
             }
         }
     }
