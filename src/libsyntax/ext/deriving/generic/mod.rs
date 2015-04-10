@@ -706,15 +706,6 @@ impl<'a> TraitDef<'a> {
     }
 }
 
-fn variant_to_pat(cx: &mut ExtCtxt, sp: Span, enum_ident: ast::Ident, variant: &ast::Variant)
-                  -> P<ast::Pat> {
-    let path = cx.path(sp, vec![enum_ident, variant.node.name]);
-    cx.pat(sp, match variant.node.kind {
-        ast::TupleVariantKind(..) => ast::PatEnum(path, None),
-        ast::StructVariantKind(..) => ast::PatStruct(path, Vec::new(), true),
-    })
-}
-
 impl<'a> MethodDef<'a> {
     fn call_substructure_method(&self,
                                 cx: &mut ExtCtxt,
@@ -1044,8 +1035,8 @@ impl<'a> MethodDef<'a> {
             .collect::<Vec<ast::Ident>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
-        // a series of let statements mapping each self_arg to a usize
-        // corresponding to its variant index.
+        // a series of let statements mapping each self_arg to an isize
+        // corresponding to its discriminant value.
         let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
             .map(|name| { let vi_suffix = format!("{}_vi", &name[..]);
                           cx.ident_of(&vi_suffix[..]) })
@@ -1160,33 +1151,39 @@ impl<'a> MethodDef<'a> {
         //   unreachable-pattern error.
         //
         if variants.len() > 1 && self_args.len() > 1 {
-            let arms: Vec<ast::Arm> = variants.iter().enumerate()
-                .map(|(index, variant)| {
-                    let pat = variant_to_pat(cx, sp, type_ident, &**variant);
-                    let lit = ast::LitInt(index as u64, ast::UnsignedIntLit(ast::TyUs));
-                    cx.arm(sp, vec![pat], cx.expr_lit(sp, lit))
-                }).collect();
-
             // Build a series of let statements mapping each self_arg
-            // to a usize corresponding to its variant index.
+            // to its discriminant value. If this is a C-style enum
+            // with a specific repr type, then casts the values to
+            // that type.  Otherwise casts to `isize`.
+            //
             // i.e. for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
             // with three Self args, builds three statements:
             //
             // ```
-            // let __self0_vi = match   self {
-            //     A => 0, B(..) => 1, C(..) => 2
-            // };
-            // let __self1_vi = match __arg1 {
-            //     A => 0, B(..) => 1, C(..) => 2
-            // };
-            // let __self2_vi = match __arg2 {
-            //     A => 0, B(..) => 1, C(..) => 2
-            // };
+            // let __self0_vi = unsafe {
+            //     std::intrinsics::discriminant_value(&self) } as isize;
+            // let __self1_vi = unsafe {
+            //     std::intrinsics::discriminant_value(&__arg1) } as isize;
+            // let __self2_vi = unsafe {
+            //     std::intrinsics::discriminant_value(&__arg2) } as isize;
             // ```
             let mut index_let_stmts: Vec<P<ast::Stmt>> = Vec::new();
             for (&ident, self_arg) in vi_idents.iter().zip(self_args.iter()) {
-                let variant_idx = cx.expr_match(sp, self_arg.clone(), arms.clone());
-                let let_stmt = cx.stmt_let(sp, false, ident, variant_idx);
+                let path = vec![cx.ident_of_std("core"),
+                                cx.ident_of("intrinsics"),
+                                cx.ident_of("discriminant_value")];
+                let call = cx.expr_call_global(
+                    sp, path, vec![cx.expr_addr_of(sp, self_arg.clone())]);
+                let variant_value = cx.expr_block(P(ast::Block {
+                    stmts: vec![],
+                    expr: Some(call),
+                    id: ast::DUMMY_NODE_ID,
+                    rules: ast::UnsafeBlock(ast::CompilerGenerated),
+                    span: sp }));
+
+                let target_ty = cx.ty_ident(sp, cx.ident_of("isize"));
+                let variant_disr = cx.expr_cast(sp, variant_value, target_ty);
+                let let_stmt = cx.stmt_let(sp, false, ident, variant_disr);
                 index_let_stmts.push(let_stmt);
             }
 
