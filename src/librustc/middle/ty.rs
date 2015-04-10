@@ -290,6 +290,12 @@ pub enum AutoAdjustment<'tcx> {
 
 #[derive(Copy, Clone, Debug)]
 pub struct AutoDerefRef<'tcx> {
+    // FIXME with more powerful date structures we could have a better design
+    // here. Some constraints:
+    //  unsize => autoref
+    //  unsize => autodefs == 0
+
+
     /// Apply a number of dereferences, producing an lvalue.
     pub autoderefs: usize,
 
@@ -303,11 +309,11 @@ pub struct AutoDerefRef<'tcx> {
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum AutoRef<'tcx> {
-    /// Convert from T to &T
+    /// Convert from T to &T.
     AutoPtr(&'tcx Region, ast::Mutability),
 
-    /// Convert from T to *T
-    /// Value to thin pointer
+    /// Convert from T to *T.
+    /// Value to thin pointer.
     AutoUnsafe(ast::Mutability),
 }
 
@@ -407,7 +413,7 @@ impl MethodCall {
         }
     }
 
-    pub fn autoderef(expr_id: ast::NodeId, autoderef: usize) -> MethodCall {
+    pub fn autoderef(expr_id: ast::NodeId, autoderef: u32) -> MethodCall {
         MethodCall {
             expr_id: expr_id,
             autoderef: 1 + autoderef
@@ -4487,8 +4493,8 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                             let method_call = MethodCall::autoderef(expr_id, i as u32);
                             match method_type(method_call) {
                                 Some(method_ty) => {
-                                    // overloaded deref operators have all late-bound
-                                    // regions fully instantiated and coverge
+                                    // Overloaded deref operators have all late-bound
+                                    // regions fully instantiated and coverge.
                                     let fn_ret =
                                         ty::no_late_bound_regions(cx,
                                                                   &ty_fn_ret(method_ty)).unwrap();
@@ -4501,8 +4507,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                                 None => {
                                     cx.sess.span_bug(
                                         span,
-                                        &format!("the {}th autoderef failed: \
-                                                {}",
+                                        &format!("the {}th autoderef failed: {}",
                                                 i,
                                                 ty_to_string(cx, adjusted_ty))
                                         );

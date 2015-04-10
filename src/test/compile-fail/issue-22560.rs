@@ -14,6 +14,7 @@ use std::ops::{Add, Sub};
 
 type Test = Add +
             //~^ ERROR the type parameter `RHS` must be explicitly specified in an object type because its default value `Self` references the type `Self`
+            //~^^ ERROR the value of the associated type `Output` (from the trait `core::ops::Add`) must be specified [E0191]
             Sub;
             //~^ ERROR only the builtin traits can be used as closure or object bounds
 

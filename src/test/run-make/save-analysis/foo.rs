@@ -10,7 +10,7 @@
 
 #![ crate_name = "test" ]
 #![allow(unstable)]
-#![feature(box_syntax, old_io, rustc_private, core)]
+#![feature(box_syntax, old_io, rustc_private, core, zero_one)]
 
 extern crate graphviz;
 // A simple rust project
@@ -25,7 +25,7 @@ use std::old_io::stdio::println;
 use sub::sub2 as msalias;
 use sub::sub2;
 use sub::sub2::nested_struct as sub_struct;
-use std::num::Float;
+use std::num::One;
 use std::num::cast;
 use std::num::{from_int,from_i8,from_i32};
 
@@ -42,7 +42,7 @@ fn test_alias<I: Iterator>(i: Option<<I as Iterator>::Item>) {
     let s = sub_struct{ field2: 45, };
 
     // import tests
-    fn foo(x: &Float) {}
+    fn foo(x: &One) {}
     let _: Option<u8> = from_i32(45);
 
     let x = 42;

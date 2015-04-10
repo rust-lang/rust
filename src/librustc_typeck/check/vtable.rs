@@ -13,7 +13,6 @@ use middle::traits::{self, ObjectSafetyViolation, MethodViolationCode};
 use middle::traits::{Obligation, ObligationCause};
 use middle::traits::report_fulfillment_errors;
 use middle::ty::{self, Ty, AsPredicate};
-use syntax::ast;
 use syntax::codemap::Span;
 use util::ppaux::{Repr, UserString};
 

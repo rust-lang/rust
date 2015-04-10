@@ -70,7 +70,7 @@ use option::Option::{self, Some, None};
 use marker::Sized;
 use usize;
 
-fn _assert_is_object_safe(_: &Iterator) {}
+fn _assert_is_object_safe(_: &Iterator<Item=()>) {}
 
 /// An interface for dealing with "external iterators". These types of iterators
 /// can be resumed at any time as all state is stored internally as opposed to
