@@ -1067,8 +1067,8 @@ impl<'a> MethodDef<'a> {
             .collect::<Vec<ast::Ident>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
-        // a series of let statements mapping each self_arg to an isize
-        // corresponding to its discriminant value.
+        // a series of let statements mapping each self_arg to an int
+        // value corresponding to its discriminant.
         let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
             .map(|name| { let vi_suffix = format!("{}_vi", &name[..]);
                           cx.ident_of(&vi_suffix[..]) })
@@ -1186,18 +1186,19 @@ impl<'a> MethodDef<'a> {
             // Build a series of let statements mapping each self_arg
             // to its discriminant value. If this is a C-style enum
             // with a specific repr type, then casts the values to
-            // that type.  Otherwise casts to `isize`.
+            // that type.  Otherwise casts to `i32` (the default repr
+            // type).
             //
             // i.e. for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
             // with three Self args, builds three statements:
             //
             // ```
             // let __self0_vi = unsafe {
-            //     std::intrinsics::discriminant_value(&self) } as isize;
+            //     std::intrinsics::discriminant_value(&self) } as i32;
             // let __self1_vi = unsafe {
-            //     std::intrinsics::discriminant_value(&__arg1) } as isize;
+            //     std::intrinsics::discriminant_value(&__arg1) } as i32;
             // let __self2_vi = unsafe {
-            //     std::intrinsics::discriminant_value(&__arg2) } as isize;
+            //     std::intrinsics::discriminant_value(&__arg2) } as i32;
             // ```
             let mut index_let_stmts: Vec<P<ast::Stmt>> = Vec::new();
 
