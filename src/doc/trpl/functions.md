@@ -122,7 +122,7 @@ So what's the difference? Expressions return a value, and statements do not.
 That’s why we end up with ‘not all control paths return a value’ here: the
 statement `x + 1;` doesn’t return a value. There are two kinds of statements in
 Rust: ‘declaration statements’ and ‘expression statements’. Everything else is
-an expression. Let’s talk about expression statements first.
+an expression. Let’s talk about declaration statements first.
 
 In some languages, variable bindings can be written as expressions, not just
 statements. Like Ruby:
