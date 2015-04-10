@@ -313,7 +313,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     // 2) While ODS may potentially return the pair we *just* inserted after
     // the split, we will never do this. Again, this shouldn't effect the analysis.
 
-    /// Inserts a key-value pair from the map. If the key already had a value
+    /// Inserts a key-value pair into the map. If the key already had a value
     /// present in the map, that value is returned. Otherwise, `None` is returned.
     ///
     /// # Examples
