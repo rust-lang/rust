@@ -856,9 +856,8 @@ macro_rules! int_impl {
         ///
         /// # Return value
         ///
-        /// `None` if the string did not represent a valid number.
-        /// Otherwise, `Some(n)` where `n` is the integer represented
-        /// by `src`.
+        /// `Err(ParseIntError)` if the string did not represent a valid number.
+        /// Otherwise, `Ok(n)` where `n` is the integer represented by `src`.
         #[stable(feature = "rust1", since = "1.0.0")]
         #[allow(deprecated)]
         pub fn from_str_radix(src: &str, radix: u32) -> Result<$T, ParseIntError> {
@@ -1374,9 +1373,8 @@ macro_rules! uint_impl {
         ///
         /// # Return value
         ///
-        /// `None` if the string did not represent a valid number.
-        /// Otherwise, `Some(n)` where `n` is the integer represented
-        /// by `src`.
+        /// `Err(ParseIntError)` if the string did not represent a valid number.
+        /// Otherwise, `Ok(n)` where `n` is the integer represented by `src`.
         #[stable(feature = "rust1", since = "1.0.0")]
         #[allow(deprecated)]
         pub fn from_str_radix(src: &str, radix: u32) -> Result<$T, ParseIntError> {
