@@ -38,6 +38,10 @@ enum Position {
 
 struct Context<'a, 'b:'a> {
     ecx: &'a mut ExtCtxt<'b>,
+    /// The macro's call site. References to unstable formatting internals must
+    /// use this span to pass the stability checker.
+    macsp: Span,
+    /// The span of the format string literal.
     fmtsp: Span,
 
     /// Parsed argument expressions and the types that we've found so far for
@@ -308,7 +312,7 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 
     fn trans_count(&self, c: parse::Count) -> P<ast::Expr> {
-        let sp = self.fmtsp;
+        let sp = self.macsp;
         let count = |c, arg| {
             let mut path = Context::rtpath(self.ecx, "Count");
             path.push(self.ecx.ident_of(c));
@@ -346,7 +350,7 @@ impl<'a, 'b> Context<'a, 'b> {
     /// Translate a `parse::Piece` to a static `rt::Argument` or append
     /// to the `literal` string.
     fn trans_piece(&mut self, piece: &parse::Piece) -> Option<P<ast::Expr>> {
-        let sp = self.fmtsp;
+        let sp = self.macsp;
         match *piece {
             parse::String(s) => {
                 self.literal.push_str(s);
@@ -442,22 +446,22 @@ impl<'a, 'b> Context<'a, 'b> {
                     piece_ty: P<ast::Ty>,
                     pieces: Vec<P<ast::Expr>>)
                     -> P<ast::Expr> {
-        let fmtsp = piece_ty.span;
-        let ty = ecx.ty_rptr(fmtsp,
-            ecx.ty(fmtsp, ast::TyVec(piece_ty)),
-            Some(ecx.lifetime(fmtsp, special_idents::static_lifetime.name)),
+        let sp = piece_ty.span;
+        let ty = ecx.ty_rptr(sp,
+            ecx.ty(sp, ast::TyVec(piece_ty)),
+            Some(ecx.lifetime(sp, special_idents::static_lifetime.name)),
             ast::MutImmutable);
-        let slice = ecx.expr_vec_slice(fmtsp, pieces);
+        let slice = ecx.expr_vec_slice(sp, pieces);
         let st = ast::ItemStatic(ty, ast::MutImmutable, slice);
 
         let name = ecx.ident_of(name);
-        let item = ecx.item(fmtsp, name, vec![], st);
-        let decl = respan(fmtsp, ast::DeclItem(item));
+        let item = ecx.item(sp, name, vec![], st);
+        let decl = respan(sp, ast::DeclItem(item));
 
         // Wrap the declaration in a block so that it forms a single expression.
-        ecx.expr_block(ecx.block(fmtsp,
-            vec![P(respan(fmtsp, ast::StmtDecl(P(decl), ast::DUMMY_NODE_ID)))],
-            Some(ecx.expr_ident(fmtsp, name))))
+        ecx.expr_block(ecx.block(sp,
+            vec![P(respan(sp, ast::StmtDecl(P(decl), ast::DUMMY_NODE_ID)))],
+            Some(ecx.expr_ident(sp, name))))
     }
 
     /// Actually builds the expression which the iformat! block will be expanded
@@ -497,7 +501,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
             let name = self.ecx.ident_of(&format!("__arg{}", i));
             pats.push(self.ecx.pat_ident(e.span, name));
-            locals.push(Context::format_arg(self.ecx, e.span, arg_ty,
+            locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty,
                                             self.ecx.expr_ident(e.span, name)));
             heads.push(self.ecx.expr_addr_of(e.span, e));
         }
@@ -515,7 +519,7 @@ impl<'a, 'b> Context<'a, 'b> {
                                                   *name));
             pats.push(self.ecx.pat_ident(e.span, lname));
             names[*self.name_positions.get(name).unwrap()] =
-                Some(Context::format_arg(self.ecx, e.span, arg_ty,
+                Some(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty,
                                          self.ecx.expr_ident(e.span, lname)));
             heads.push(self.ecx.expr_addr_of(e.span, e));
         }
@@ -566,7 +570,7 @@ impl<'a, 'b> Context<'a, 'b> {
             // Build up the static array which will store our precompiled
             // nonstandard placeholders, if there are any.
             let piece_ty = self.ecx.ty_path(self.ecx.path_global(
-                    self.fmtsp,
+                    self.macsp,
                     Context::rtpath(self.ecx, "Argument")));
             let fmt = Context::static_array(self.ecx,
                                             "__STATIC_FMTARGS",
@@ -576,14 +580,14 @@ impl<'a, 'b> Context<'a, 'b> {
             ("new_v1_formatted", vec![pieces, args_slice, fmt])
         };
 
-        self.ecx.expr_call_global(self.fmtsp, vec!(
+        self.ecx.expr_call_global(self.macsp, vec!(
                 self.ecx.ident_of_std("core"),
                 self.ecx.ident_of("fmt"),
                 self.ecx.ident_of("Arguments"),
                 self.ecx.ident_of(fn_name)), fn_args)
     }
 
-    fn format_arg(ecx: &ExtCtxt, sp: Span,
+    fn format_arg(ecx: &ExtCtxt, macsp: Span, sp: Span,
                   ty: &ArgumentType, arg: P<ast::Expr>)
                   -> P<ast::Expr> {
         let trait_ = match *ty {
@@ -607,7 +611,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 }
             }
             Unsigned => {
-                return ecx.expr_call_global(sp, vec![
+                return ecx.expr_call_global(macsp, vec![
                         ecx.ident_of_std("core"),
                         ecx.ident_of("fmt"),
                         ecx.ident_of("ArgumentV1"),
@@ -620,7 +624,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 ecx.ident_of("fmt"),
                 ecx.ident_of(trait_),
                 ecx.ident_of("fmt")]);
-        ecx.expr_call_global(sp, vec![
+        ecx.expr_call_global(macsp, vec![
                 ecx.ident_of_std("core"),
                 ecx.ident_of("fmt"),
                 ecx.ident_of("ArgumentV1"),
@@ -650,6 +654,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                     names: HashMap<String, P<ast::Expr>>)
                                     -> P<ast::Expr> {
     let arg_types: Vec<_> = (0..args.len()).map(|_| None).collect();
+    let macsp = ecx.call_site();
     // Expand the format literal so that efmt.span will have a backtrace. This
     // is essential for locating a bug when the format literal is generated in
     // a macro. (e.g. println!("{}"), which uses concat!($fmt, "\n")).
@@ -668,6 +673,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         pieces: Vec::new(),
         str_pieces: Vec::new(),
         all_pieces_simple: true,
+        macsp: macsp,
         fmtsp: efmt.span,
     };
     let fmt = match expr_to_string(cx.ecx,
