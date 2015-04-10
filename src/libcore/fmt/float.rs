@@ -242,7 +242,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
                     if i < 0
                     || buf[i as usize] == b'-'
                     || buf[i as usize] == b'+' {
-                        for j in (i as usize + 1..end).rev() {
+                        for j in ((i + 1) as usize..end).rev() {
                             buf[j + 1] = buf[j];
                         }
                         buf[(i + 1) as usize] = value2ascii(1);
