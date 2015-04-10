@@ -42,7 +42,6 @@ use string::String;
 use ops;
 use cmp;
 use hash::{Hash, Hasher};
-use old_path::{Path, GenericPath};
 use vec::Vec;
 
 use sys::os_str::{Buf, Slice};
@@ -444,21 +443,6 @@ impl AsRef<OsStr> for str {
 impl AsRef<OsStr> for String {
     fn as_ref(&self) -> &OsStr {
         unsafe { mem::transmute(Slice::from_str(self)) }
-    }
-}
-
-#[allow(deprecated)]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
-impl AsOsStr for Path {
-    #[cfg(unix)]
-    fn as_os_str(&self) -> &OsStr {
-        unsafe { mem::transmute(self.as_vec()) }
-    }
-    #[cfg(windows)]
-    fn as_os_str(&self) -> &OsStr {
-        // currently .as_str() is actually infallible on windows
-        OsStr::from_str(self.as_str().unwrap())
     }
 }
 

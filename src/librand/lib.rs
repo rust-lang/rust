@@ -24,15 +24,13 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![feature(no_std)]
 #![no_std]
-#![unstable(feature = "rand")]
-#![feature(staged_api)]
 #![staged_api]
+#![unstable(feature = "rand")]
 #![feature(core)]
+#![feature(no_std)]
+#![feature(staged_api)]
 #![feature(step_by)]
-#![deprecated(reason = "use the crates.io `rand` library instead",
-              since = "1.0.0-alpha")]
 
 #![cfg_attr(test, feature(test, rand, rustc_private))]
 

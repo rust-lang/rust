@@ -22,14 +22,12 @@ use io;
 use iter;
 use libc::{self, c_int, c_char, c_void};
 use mem;
-#[allow(deprecated)] use old_io::{IoError, IoResult};
 use ptr;
 use path::{self, PathBuf};
 use slice;
 use str;
 use sys::c;
 use sys::fd;
-use sys::fs::FileDesc;
 use vec;
 
 const BUF_BYTES: usize = 2048;
@@ -445,16 +443,6 @@ pub fn unsetenv(n: &OsStr) {
         if libc::funcs::posix01::unistd::unsetenv(nbuf.as_ptr()) != 0 {
             panic!("failed unsetenv: {}", io::Error::last_os_error());
         }
-    }
-}
-
-#[allow(deprecated)]
-pub unsafe fn pipe() -> IoResult<(FileDesc, FileDesc)> {
-    let mut fds = [0; 2];
-    if libc::pipe(fds.as_mut_ptr()) == 0 {
-        Ok((FileDesc::new(fds[0], true), FileDesc::new(fds[1], true)))
-    } else {
-        Err(IoError::last_error())
     }
 }
 
