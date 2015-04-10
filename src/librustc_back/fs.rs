@@ -35,7 +35,7 @@ pub fn realpath(original: &Path) -> io::Result<PathBuf> {
         if ret == 0 {
             return Err(io::Error::last_os_error())
         }
-        assert!(ret as usize < v.capacity());
+        assert!((ret as usize) < v.capacity());
         v.set_len(ret);
     }
     Ok(PathBuf::from(OsString::from_wide(&v)))
