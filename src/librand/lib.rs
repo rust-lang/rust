@@ -379,7 +379,7 @@ pub struct Closed01<F>(pub F);
 mod test {
     use std::__rand as rand;
 
-    pub struct MyRng { inner: Box<rand::Rng> }
+    pub struct MyRng<R> { inner: R }
 
     impl<R: rand::Rng> ::Rng for MyRng<R> {
         fn next_u32(&mut self) -> u32 {
@@ -388,10 +388,10 @@ mod test {
     }
 
     pub fn rng() -> MyRng<rand::ThreadRng> {
-        MyRng { inner: Box::new(rand::thread_rng()) }
+        MyRng { inner: rand::thread_rng() }
     }
 
     pub fn weak_rng() -> MyRng<rand::ThreadRng> {
-        MyRng { inner: Box::new(rand::thread_rng()) }
+        MyRng { inner: rand::thread_rng() }
     }
 }

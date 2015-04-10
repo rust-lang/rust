@@ -17,8 +17,6 @@
 //
 // See also drop-flag-sanity-check.rs.
 
-#![feature(old_io)]
-
 use std::env;
 use std::process::Command;
 
@@ -28,9 +26,9 @@ fn main() {
         return test();
     }
 
-    let mut p = Command::new(&args[0]).arg("test").spawn().unwrap();
+    let s = Command::new(&args[0]).arg("test").status().unwrap();
     // Invocatinn should succeed as drop-flag sanity check is skipped.
-    assert!(p.wait().unwrap().success());
+    assert!(s.success());
 }
 
 #[derive(Debug)]

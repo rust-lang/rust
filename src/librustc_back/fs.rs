@@ -8,43 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc;
 use std::io;
 use std::path::{Path, PathBuf};
 
 #[cfg(windows)]
 pub fn realpath(original: &Path) -> io::Result<PathBuf> {
-    use std::fs::File;
-    use std::ffi::OsString;
-    use std::os::windows::prelude::*;
-
-    extern "system" {
-        fn GetFinalPathNameByHandleW(hFile: libc::HANDLE,
-                                     lpszFilePath: libc::LPCWSTR,
-                                     cchFilePath: libc::DWORD,
-                                     dwFlags: libc::DWORD) -> libc::DWORD;
-    }
-
-    let mut v = Vec::with_capacity(16 * 1024);
-    let f = try!(File::open(original));
-    unsafe {
-        let ret = GetFinalPathNameByHandleW(f.as_raw_handle(),
-                                            v.as_mut_ptr(),
-                                            v.capacity() as libc::DWORD,
-                                            libc::VOLUME_NAME_DOS);
-        if ret == 0 {
-            return Err(io::Error::last_os_error())
-        }
-        assert!((ret as usize) < v.capacity());
-        v.set_len(ret);
-    }
-    Ok(PathBuf::from(OsString::from_wide(&v)))
+    Ok(original.to_path_buf())
 }
 
 #[cfg(unix)]
 pub fn realpath(original: &Path) -> io::Result<PathBuf> {
-    use std::os::unix::prelude::*;
+    use libc;
     use std::ffi::{OsString, CString};
+    use std::os::unix::prelude::*;
 
     extern {
         fn realpath(pathname: *const libc::c_char, resolved: *mut libc::c_char)

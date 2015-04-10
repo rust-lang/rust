@@ -12,7 +12,7 @@ use std::cmp::Ordering::{Equal, Greater, Less};
 use std::default::Default;
 use std::iter::RandomAccessIterator;
 use std::mem;
-use std::rand::{Rng, thread_rng};
+use std::__rand::{Rng, thread_rng};
 use std::rc::Rc;
 use std::slice::ElementSwaps;
 
@@ -1296,7 +1296,7 @@ fn test_to_vec() {
 mod bench {
     use std::iter::repeat;
     use std::{mem, ptr};
-    use std::rand::{Rng, thread_rng};
+    use std::__rand::{Rng, thread_rng};
 
     use test::{Bencher, black_box};
 
