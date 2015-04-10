@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(core)]
+
 extern crate core;
 use core::intrinsics::discriminant_value;
 
@@ -22,6 +24,14 @@ enum CLike2 {
     A = 5,
     B = 2,
     C = 19,
+    D
+}
+
+#[repr(i8)]
+enum CLike3 {
+    A = 5,
+    B,
+    C = -1,
     D
 }
 
@@ -49,6 +59,11 @@ pub fn main() {
         assert_eq!(discriminant_value(&CLike2::B), 2);
         assert_eq!(discriminant_value(&CLike2::C), 19);
         assert_eq!(discriminant_value(&CLike2::D), 20);
+
+        assert_eq!(discriminant_value(&CLike3::A), 5);
+        assert_eq!(discriminant_value(&CLike3::B), 6);
+        assert_eq!(discriminant_value(&CLike3::C), -1_i8 as u64);
+        assert_eq!(discriminant_value(&CLike3::D), 0);
 
         assert_eq!(discriminant_value(&ADT::First(0,0)), 0);
         assert_eq!(discriminant_value(&ADT::Second(5)), 1);
