@@ -1224,11 +1224,10 @@ macro_rules! int_impl {
         ///
         /// # Examples
         ///
-        /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
+        /// ```
+        /// let x: i32 = 2; // or any other integer type
         ///
-        /// assert_eq!(2.pow(4), 16);
+        /// assert_eq!(x.pow(4), 16);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
