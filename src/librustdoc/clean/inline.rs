@@ -10,6 +10,8 @@
 
 //! Support for inlining external documentation into the current AST.
 
+use std::collections::HashSet;
+
 use syntax::ast;
 use syntax::ast_util;
 use syntax::attr::AttrMetaMethods;
@@ -150,18 +152,21 @@ pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
     let def = ty::lookup_trait_def(tcx, did);
     let trait_items = ty::trait_items(tcx, did).clean(cx);
     let predicates = ty::lookup_predicates(tcx, did);
+    let generics = (&def.generics, &predicates, subst::TypeSpace).clean(cx);
+    let generics = filter_non_trait_generics(did, generics);
+    let (generics, supertrait_bounds) = separate_supertrait_bounds(generics);
     clean::Trait {
         unsafety: def.unsafety,
-        generics: (&def.generics, &predicates, subst::TypeSpace).clean(cx),
+        generics: generics,
         items: trait_items,
-        bounds: vec![], // supertraits can be found in the list of predicates
+        bounds: supertrait_bounds,
     }
 }
 
 fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Function {
     let t = ty::lookup_item_type(tcx, did);
-    let (decl, style) = match t.ty.sty {
-        ty::ty_bare_fn(_, ref f) => ((did, &f.sig).clean(cx), f.unsafety),
+    let (decl, style, abi) = match t.ty.sty {
+        ty::ty_bare_fn(_, ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
         _ => panic!("bad function"),
     };
     let predicates = ty::lookup_predicates(tcx, did);
@@ -169,6 +174,7 @@ fn build_external_function(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> 
         decl: decl,
         generics: (&t.generics, &predicates, subst::FnSpace).clean(cx),
         unsafety: style,
+        abi: abi,
     }
 }
 
@@ -331,9 +337,10 @@ fn build_impl(cx: &DocContext,
                 let did = assoc_ty.def_id;
                 let type_scheme = ty::lookup_item_type(tcx, did);
                 let predicates = ty::lookup_predicates(tcx, did);
-                // Not sure the choice of ParamSpace actually matters here, because an
-                // associated type won't have generics on the LHS
-                let typedef = (type_scheme, predicates, subst::ParamSpace::TypeSpace).clean(cx);
+                // Not sure the choice of ParamSpace actually matters here,
+                // because an associated type won't have generics on the LHS
+                let typedef = (type_scheme, predicates,
+                               subst::ParamSpace::TypeSpace).clean(cx);
                 Some(clean::Item {
                     name: Some(assoc_ty.name.clean(cx)),
                     inner: clean::TypedefItem(typedef),
@@ -395,16 +402,19 @@ fn build_module(cx: &DocContext, tcx: &ty::ctxt,
         is_crate: false,
     };
 
-    // FIXME: this doesn't handle reexports inside the module itself.
-    //        Should they be handled?
     fn fill_in(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId,
                items: &mut Vec<clean::Item>) {
+        // If we're reexporting a reexport it may actually reexport something in
+        // two namespaces, so the target may be listed twice. Make sure we only
+        // visit each node at most once.
+        let mut visited = HashSet::new();
         csearch::each_child_of_item(&tcx.sess.cstore, did, |def, _, vis| {
             match def {
                 decoder::DlDef(def::DefForeignMod(did)) => {
                     fill_in(cx, tcx, did, items);
                 }
                 decoder::DlDef(def) if vis == ast::Public => {
+                    if !visited.insert(def) { return }
                     match try_inline_def(cx, tcx, def) {
                         Some(i) => items.extend(i.into_iter()),
                         None => {}
@@ -445,4 +455,49 @@ fn build_static(cx: &DocContext, tcx: &ty::ctxt,
         mutability: if mutable {clean::Mutable} else {clean::Immutable},
         expr: "\n\n\n".to_string(), // trigger the "[definition]" links
     }
+}
+
+/// A trait's generics clause actually contains all of the predicates for all of
+/// its associated types as well. We specifically move these clauses to the
+/// associated types instead when displaying, so when we're genering the
+/// generics for the trait itself we need to be sure to remove them.
+///
+/// The inverse of this filtering logic can be found in the `Clean`
+/// implementation for `AssociatedType`
+fn filter_non_trait_generics(trait_did: ast::DefId, mut g: clean::Generics)
+                             -> clean::Generics {
+    g.where_predicates.retain(|pred| {
+        match *pred {
+            clean::WherePredicate::BoundPredicate {
+                ty: clean::QPath {
+                    self_type: box clean::Generic(ref s),
+                    trait_: box clean::ResolvedPath { did, .. },
+                    name: ref _name,
+                }, ..
+            } => *s != "Self" || did != trait_did,
+            _ => true,
+        }
+    });
+    return g;
+}
+
+/// Supertrait bounds for a trait are also listed in the generics coming from
+/// the metadata for a crate, so we want to separate those out and create a new
+/// list of explicit supertrait bounds to render nicely.
+fn separate_supertrait_bounds(mut g: clean::Generics)
+                              -> (clean::Generics, Vec<clean::TyParamBound>) {
+    let mut ty_bounds = Vec::new();
+    g.where_predicates.retain(|pred| {
+        match *pred {
+            clean::WherePredicate::BoundPredicate {
+                ty: clean::Generic(ref s),
+                ref bounds
+            } if *s == "Self" => {
+                ty_bounds.extend(bounds.iter().cloned());
+                false
+            }
+            _ => true,
+        }
+    });
+    (g, ty_bounds)
 }

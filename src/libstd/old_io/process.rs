@@ -367,7 +367,7 @@ impl Command {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(old_io, core, convert)]
+    /// # #![feature(old_io)]
     /// use std::old_io::Command;
     ///
     /// let output = match Command::new("cat").arg("foot.txt").output() {

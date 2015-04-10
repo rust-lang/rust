@@ -14,6 +14,7 @@
 //! by adding a glob import to the top of I/O heavy modules:
 //!
 //! ```
+//! # #![allow(unused_imports)]
 //! use std::io::prelude::*;
 //! ```
 //!

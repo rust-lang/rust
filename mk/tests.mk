@@ -22,9 +22,11 @@ $(eval $(call RUST_CRATE,coretest))
 DEPS_collectionstest :=
 $(eval $(call RUST_CRATE,collectionstest))
 
-TEST_TARGET_CRATES = $(filter-out core unicode,$(TARGET_CRATES)) collectionstest coretest
+TEST_TARGET_CRATES = $(filter-out core unicode,$(TARGET_CRATES)) \
+			collectionstest coretest
 TEST_DOC_CRATES = $(DOC_CRATES)
-TEST_HOST_CRATES = $(filter-out rustc_typeck rustc_borrowck rustc_resolve rustc_trans rustc_lint,\
+TEST_HOST_CRATES = $(filter-out rustc_typeck rustc_borrowck rustc_resolve \
+		   		rustc_trans rustc_lint,\
                      $(HOST_CRATES))
 TEST_CRATES = $(TEST_TARGET_CRATES) $(TEST_HOST_CRATES)
 
@@ -304,6 +306,7 @@ check-stage$(1)-T-$(2)-H-$(3)-exec: \
     check-stage$(1)-T-$(2)-H-$(3)-rpass-full-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-cfail-full-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-rmake-exec \
+	check-stage$(1)-T-$(2)-H-$(3)-rustdocck-exec \
         check-stage$(1)-T-$(2)-H-$(3)-crates-exec \
         check-stage$(1)-T-$(2)-H-$(3)-doc-crates-exec \
 	check-stage$(1)-T-$(2)-H-$(3)-bench-exec \
@@ -471,6 +474,7 @@ DEBUGINFO_GDB_RS := $(wildcard $(S)src/test/debuginfo/*.rs)
 DEBUGINFO_LLDB_RS := $(wildcard $(S)src/test/debuginfo/*.rs)
 CODEGEN_RS := $(wildcard $(S)src/test/codegen/*.rs)
 CODEGEN_CC := $(wildcard $(S)src/test/codegen/*.cc)
+RUSTDOCCK_RS := $(wildcard $(S)src/test/rustdoc/*.rs)
 
 # perf tests are the same as bench tests only they run under
 # a performance monitor.
@@ -489,6 +493,7 @@ PRETTY_TESTS := $(PRETTY_RS)
 DEBUGINFO_GDB_TESTS := $(DEBUGINFO_GDB_RS)
 DEBUGINFO_LLDB_TESTS := $(DEBUGINFO_LLDB_RS)
 CODEGEN_TESTS := $(CODEGEN_RS) $(CODEGEN_CC)
+RUSTDOCCK_TESTS := $(RUSTDOCCK_RS)
 
 CTEST_SRC_BASE_rpass = run-pass
 CTEST_BUILD_BASE_rpass = run-pass
@@ -549,6 +554,11 @@ CTEST_SRC_BASE_codegen = codegen
 CTEST_BUILD_BASE_codegen = codegen
 CTEST_MODE_codegen = codegen
 CTEST_RUNTOOL_codegen = $(CTEST_RUNTOOL)
+
+CTEST_SRC_BASE_rustdocck = rustdoc
+CTEST_BUILD_BASE_rustdocck = rustdoc
+CTEST_MODE_rustdocck = rustdoc
+CTEST_RUNTOOL_rustdocck = $(CTEST_RUNTOOL)
 
 # CTEST_DISABLE_$(TEST_GROUP), if set, will cause the test group to be
 # disabled and the associated message to be printed as a warning
@@ -618,12 +628,14 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
 		--compile-lib-path $$(HLIB$(1)_H_$(3)) \
         --run-lib-path $$(TLIB$(1)_T_$(2)_H_$(3)) \
         --rustc-path $$(HBIN$(1)_H_$(3))/rustc$$(X_$(3)) \
+        --rustdoc-path $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
         --clang-path $(if $(CFG_CLANG),$(CFG_CLANG),clang) \
         --llvm-bin-path $(CFG_LLVM_INST_DIR_$(CFG_BUILD))/bin \
         --aux-base $$(S)src/test/auxiliary/ \
         --stage-id stage$(1)-$(2) \
         --target $(2) \
         --host $(3) \
+	--python $$(CFG_PYTHON) \
         --gdb-version="$(CFG_GDB_VERSION)" \
         --lldb-version="$(CFG_LLDB_VERSION)" \
         --android-cross-path=$(CFG_ANDROID_CROSS_PATH) \
@@ -660,6 +672,9 @@ CTEST_DEPS_debuginfo-lldb_$(1)-T-$(2)-H-$(3) = $$(DEBUGINFO_LLDB_TESTS) \
                                                $(S)src/etc/lldb_batchmode.py \
                                                $(S)src/etc/lldb_rust_formatters.py
 CTEST_DEPS_codegen_$(1)-T-$(2)-H-$(3) = $$(CODEGEN_TESTS)
+CTEST_DEPS_rustdocck_$(1)-T-$(2)-H-$(3) = $$(RUSTDOCCK_TESTS) \
+        $$(HBIN$(1)_H_$(3))/rustdoc$$(X_$(3)) \
+	$(S)src/etc/htmldocck.py
 
 endef
 
@@ -722,7 +737,8 @@ endif
 
 endef
 
-CTEST_NAMES = rpass rpass-valgrind rpass-full cfail-full rfail cfail pfail bench perf debuginfo-gdb debuginfo-lldb codegen
+CTEST_NAMES = rpass rpass-valgrind rpass-full cfail-full rfail cfail pfail \
+	bench perf debuginfo-gdb debuginfo-lldb codegen rustdocck
 
 $(foreach host,$(CFG_HOST), \
  $(eval $(foreach target,$(CFG_TARGET), \
@@ -890,6 +906,7 @@ TEST_GROUPS = \
 	bench \
 	perf \
 	rmake \
+	rustdocck \
 	debuginfo-gdb \
 	debuginfo-lldb \
 	codegen \

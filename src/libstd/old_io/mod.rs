@@ -48,7 +48,7 @@
 //! * Read lines from stdin
 //!
 //!     ```rust
-//!     # #![feature(old_io, old_path)]
+//!     # #![feature(old_io)]
 //!     use std::old_io as io;
 //!     use std::old_io::*;
 //!

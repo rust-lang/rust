@@ -186,7 +186,8 @@ def concat_multi_lines(f):
 
         firstlineno = firstlineno or lineno
         if line.endswith('\\'):
-            lastline = line[:-1]
+            if lastline is None:
+                lastline = line[:-1]
             catenated += line[:-1]
         else:
             yield firstlineno, catenated + line

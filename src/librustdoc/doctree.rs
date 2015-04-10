@@ -15,6 +15,7 @@ pub use self::TypeBound::*;
 
 use syntax;
 use syntax::codemap::Span;
+use syntax::abi;
 use syntax::ast;
 use syntax::attr;
 use syntax::ast::{Ident, NodeId};
@@ -134,6 +135,7 @@ pub struct Function {
     pub unsafety: ast::Unsafety,
     pub whence: Span,
     pub generics: ast::Generics,
+    pub abi: abi::Abi,
 }
 
 pub struct Typedef {

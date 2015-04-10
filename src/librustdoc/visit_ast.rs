@@ -12,6 +12,7 @@
 //! usable for clean
 
 use std::collections::HashSet;
+use std::mem;
 
 use syntax::abi;
 use syntax::ast;
@@ -40,6 +41,7 @@ pub struct RustdocVisitor<'a, 'tcx: 'a> {
     pub cx: &'a core::DocContext<'tcx>,
     pub analysis: Option<&'a core::CrateAnalysis>,
     view_item_stack: HashSet<ast::NodeId>,
+    inlining_from_glob: bool,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
@@ -54,6 +56,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             cx: cx,
             analysis: analysis,
             view_item_stack: stack,
+            inlining_from_glob: false,
         }
     }
 
@@ -120,7 +123,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     pub fn visit_fn(&mut self, item: &ast::Item,
                     name: ast::Ident, fd: &ast::FnDecl,
-                    unsafety: &ast::Unsafety, _abi: &abi::Abi,
+                    unsafety: &ast::Unsafety, abi: &abi::Abi,
                     gen: &ast::Generics) -> Function {
         debug!("Visiting fn");
         Function {
@@ -133,6 +136,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             whence: item.span,
             generics: gen.clone(),
             unsafety: *unsafety,
+            abi: *abi,
         }
     }
 
@@ -209,6 +213,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let ret = match tcx.map.get(def.node) {
             ast_map::NodeItem(it) => {
                 if glob {
+                    let prev = mem::replace(&mut self.inlining_from_glob, true);
                     match it.node {
                         ast::ItemMod(ref m) => {
                             for i in &m.items {
@@ -218,6 +223,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         ast::ItemEnum(..) => {}
                         _ => { panic!("glob not mapped to a module or enum"); }
                     }
+                    self.inlining_from_glob = prev;
                 } else {
                     self.visit_item(it, renamed, om);
                 }
@@ -356,7 +362,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     vis: item.vis,
                     stab: self.stability(item.id),
                 };
-                om.impls.push(i);
+                // Don't duplicate impls when inlining glob imports, we'll pick
+                // them up regardless of where they're located.
+                if !self.inlining_from_glob {
+                    om.impls.push(i);
+                }
             },
             ast::ItemDefaultImpl(unsafety, ref trait_ref) => {
                 let i = DefaultImpl {
@@ -366,7 +376,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     attrs: item.attrs.clone(),
                     whence: item.span,
                 };
-                om.def_traits.push(i);
+                // see comment above about ItemImpl
+                if !self.inlining_from_glob {
+                    om.def_traits.push(i);
+                }
             }
             ast::ItemForeignMod(ref fm) => {
                 om.foreigns.push(fm.clone());

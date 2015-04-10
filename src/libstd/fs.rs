@@ -96,14 +96,16 @@ pub struct WalkDir {
 
 /// Options and flags which can be used to configure how a file is opened.
 ///
-/// This builder exposes the ability to configure how a `File` is opened and what operations are
-/// permitted on the open file. The `File::open` and `File::create` methods are aliases for
-/// commonly used options using this builder.
+/// This builder exposes the ability to configure how a `File` is opened and
+/// what operations are permitted on the open file. The `File::open` and
+/// `File::create` methods are aliases for commonly used options using this
+/// builder.
 ///
-/// Generally speaking, when using `OpenOptions`, you'll first call `new()`, then chain calls to
-/// methods to set each option, then call `open()`, passing the path of the file you're trying to
-/// open. This will give you a [`io::Result`][result] with a [`File`][file] inside that you can
-/// further operate on.
+/// Generally speaking, when using `OpenOptions`, you'll first call `new()`,
+/// then chain calls to methods to set each option, then call `open()`, passing
+/// the path of the file you're trying to open. This will give you a
+/// [`io::Result`][result] with a [`File`][file] inside that you can further
+/// operate on.
 ///
 /// [result]: ../io/type.Result.html
 /// [file]: struct.File.html
@@ -113,16 +115,15 @@ pub struct WalkDir {
 /// Opening a file to read:
 ///
 /// ```no_run
-/// use std::fs;
 /// use std::fs::OpenOptions;
 ///
 /// let file = OpenOptions::new().read(true).open("foo.txt");
 /// ```
 ///
-/// Opening a file for both reading and writing, as well as creating it if it doesn't exist:
+/// Opening a file for both reading and writing, as well as creating it if it
+/// doesn't exist:
 ///
 /// ```
-/// use std::fs;
 /// use std::fs::OpenOptions;
 ///
 /// let file = OpenOptions::new()
@@ -771,7 +772,9 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// ```no_run
 /// use std::fs;
 ///
-/// fs::copy("foo.txt", "bar.txt");
+/// # fn foo() -> std::io::Result<()> {
+/// try!(fs::copy("foo.txt", "bar.txt"));
+/// # Ok(()) }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {

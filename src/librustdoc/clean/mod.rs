@@ -44,9 +44,10 @@ use rustc::middle::subst::{self, ParamSpace, VecPerParamSpace};
 use rustc::middle::ty;
 use rustc::middle::stability;
 
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::u32;
-use std::path::PathBuf;
 
 use core::DocContext;
 use doctree;
@@ -57,6 +58,7 @@ use visit_ast;
 pub static SCHEMA_VERSION: &'static str = "0.8.3";
 
 mod inline;
+mod simplify;
 
 // extract the stability index for a node from tcx, if possible
 fn get_stability(cx: &DocContext, def_id: ast::DefId) -> Option<Stability> {
@@ -119,6 +121,7 @@ pub struct Crate {
     pub module: Option<Item>,
     pub externs: Vec<(ast::CrateNum, ExternalCrate)>,
     pub primitives: Vec<PrimitiveType>,
+    pub external_traits: HashMap<ast::DefId, Trait>,
 }
 
 impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
@@ -197,6 +200,8 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
             module: Some(module),
             externs: externs,
             primitives: primitives,
+            external_traits: cx.external_traits.borrow_mut().take()
+                               .unwrap_or(HashMap::new()),
         }
     }
 }
@@ -491,6 +496,35 @@ impl<'tcx> Clean<TyParam> for ty::TypeParameterDef<'tcx> {
 pub enum TyParamBound {
     RegionBound(Lifetime),
     TraitBound(PolyTrait, ast::TraitBoundModifier)
+}
+
+impl TyParamBound {
+    fn maybe_sized(cx: &DocContext) -> TyParamBound {
+        use syntax::ast::TraitBoundModifier as TBM;
+        let mut sized_bound = ty::BuiltinBound::BoundSized.clean(cx);
+        if let TyParamBound::TraitBound(_, ref mut tbm) = sized_bound {
+            *tbm = TBM::Maybe
+        };
+        sized_bound
+    }
+
+    fn is_sized_bound(&self, cx: &DocContext) -> bool {
+        use syntax::ast::TraitBoundModifier as TBM;
+        if let Some(tcx) = cx.tcx_opt() {
+            let sized_did = match tcx.lang_items.sized_trait() {
+                Some(did) => did,
+                None => return false
+            };
+            if let TyParamBound::TraitBound(PolyTrait {
+                trait_: Type::ResolvedPath { did, .. }, ..
+            }, TBM::None) = *self {
+                if did == sized_did {
+                    return true
+                }
+            }
+        }
+        false
+    }
 }
 
 impl Clean<TyParamBound> for ast::TyParamBound {
@@ -830,7 +864,9 @@ impl<'tcx> Clean<Type> for ty::ProjectionTy<'tcx> {
     fn clean(&self, cx: &DocContext) -> Type {
         let trait_ = match self.trait_ref.clean(cx) {
             TyParamBound::TraitBound(t, _) => t.trait_,
-            TyParamBound::RegionBound(_) => panic!("cleaning a trait got a region??"),
+            TyParamBound::RegionBound(_) => {
+                panic!("cleaning a trait got a region")
+            }
         };
         Type::QPath {
             name: self.item_name.clean(cx),
@@ -863,32 +899,13 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
                                     subst::ParamSpace) {
     fn clean(&self, cx: &DocContext) -> Generics {
         use std::collections::HashSet;
-        use syntax::ast::TraitBoundModifier as TBM;
         use self::WherePredicate as WP;
-
-        fn has_sized_bound(bounds: &[TyParamBound], cx: &DocContext) -> bool {
-            if let Some(tcx) = cx.tcx_opt() {
-                let sized_did = match tcx.lang_items.sized_trait() {
-                    Some(did) => did,
-                    None => return false
-                };
-                for bound in bounds {
-                    if let TyParamBound::TraitBound(PolyTrait {
-                        trait_: Type::ResolvedPath { did, .. }, ..
-                    }, TBM::None) = *bound {
-                        if did == sized_did {
-                            return true
-                        }
-                    }
-                }
-            }
-            false
-        }
 
         let (gens, preds, space) = *self;
 
-        // Bounds in the type_params and lifetimes fields are repeated in the predicates
-        // field (see rustc_typeck::collect::ty_generics), so remove them.
+        // Bounds in the type_params and lifetimes fields are repeated in the
+        // predicates field (see rustc_typeck::collect::ty_generics), so remove
+        // them.
         let stripped_typarams = gens.types.get_slice(space).iter().map(|tp| {
             tp.clean(cx)
         }).collect::<Vec<_>>();
@@ -898,33 +915,38 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
             srp.clean(cx)
         }).collect::<Vec<_>>();
 
-        let where_predicates = preds.predicates.get_slice(space).to_vec().clean(cx);
+        let mut where_predicates = preds.predicates.get_slice(space)
+                                                   .to_vec().clean(cx);
 
-        // Type parameters have a Sized bound by default unless removed with ?Sized.
-        // Scan through the predicates and mark any type parameter with a Sized
-        // bound, removing the bounds as we find them.
+        // Type parameters and have a Sized bound by default unless removed with
+        // ?Sized.  Scan through the predicates and mark any type parameter with
+        // a Sized bound, removing the bounds as we find them.
+        //
+        // Note that associated types also have a sized bound by default, but we
+        // don't actually konw the set of associated types right here so that's
+        // handled in cleaning associated types
         let mut sized_params = HashSet::new();
-        let mut where_predicates = where_predicates.into_iter().filter_map(|pred| {
-            if let WP::BoundPredicate { ty: Type::Generic(ref g), ref bounds } = pred {
-                if has_sized_bound(&**bounds, cx) {
-                    sized_params.insert(g.clone());
-                    return None
+        where_predicates.retain(|pred| {
+            match *pred {
+                WP::BoundPredicate { ty: Generic(ref g), ref bounds } => {
+                    if bounds.iter().any(|b| b.is_sized_bound(cx)) {
+                        sized_params.insert(g.clone());
+                        false
+                    } else {
+                        true
+                    }
                 }
+                _ => true,
             }
-            Some(pred)
-        }).collect::<Vec<_>>();
+        });
 
-        // Finally, run through the type parameters again and insert a ?Sized unbound for
-        // any we didn't find to be Sized.
+        // Run through the type parameters again and insert a ?Sized
+        // unbound for any we didn't find to be Sized.
         for tp in &stripped_typarams {
             if !sized_params.contains(&tp.name) {
-                let mut sized_bound = ty::BuiltinBound::BoundSized.clean(cx);
-                if let TyParamBound::TraitBound(_, ref mut tbm) = sized_bound {
-                    *tbm = TBM::Maybe
-                };
                 where_predicates.push(WP::BoundPredicate {
                     ty: Type::Generic(tp.name.clone()),
-                    bounds: vec![sized_bound]
+                    bounds: vec![TyParamBound::maybe_sized(cx)],
                 })
             }
         }
@@ -934,9 +956,9 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
         // and instead see `where T: Foo + Bar + Sized + 'a`
 
         Generics {
-            type_params: stripped_typarams,
+            type_params: simplify::ty_params(stripped_typarams),
             lifetimes: stripped_lifetimes,
-            where_predicates: where_predicates
+            where_predicates: simplify::where_clauses(cx, where_predicates),
         }
     }
 }
@@ -1032,6 +1054,7 @@ pub struct Function {
     pub decl: FnDecl,
     pub generics: Generics,
     pub unsafety: ast::Unsafety,
+    pub abi: abi::Abi
 }
 
 impl Clean<Item> for doctree::Function {
@@ -1047,6 +1070,7 @@ impl Clean<Item> for doctree::Function {
                 decl: self.decl.clean(cx),
                 generics: self.generics.clean(cx),
                 unsafety: self.unsafety,
+                abi: self.abi,
             }),
         }
     }
@@ -1274,6 +1298,35 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
             }
         };
 
+        let generics = (&self.generics, &self.predicates,
+                        subst::FnSpace).clean(cx);
+        let decl = (self.def_id, &sig).clean(cx);
+        let provided = match self.container {
+            ty::ImplContainer(..) => false,
+            ty::TraitContainer(did) => {
+                ty::provided_trait_methods(cx.tcx(), did).iter().any(|m| {
+                    m.def_id == self.def_id
+                })
+            }
+        };
+        let inner = if provided {
+            MethodItem(Method {
+                unsafety: self.fty.unsafety,
+                generics: generics,
+                self_: self_,
+                decl: decl,
+                abi: self.fty.abi
+            })
+        } else {
+            TyMethodItem(TyMethod {
+                unsafety: self.fty.unsafety,
+                generics: generics,
+                self_: self_,
+                decl: decl,
+                abi: self.fty.abi
+            })
+        };
+
         Item {
             name: Some(self.name.clean(cx)),
             visibility: Some(ast::Inherited),
@@ -1281,13 +1334,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
             def_id: self.def_id,
             attrs: inline::load_attrs(cx, cx.tcx(), self.def_id),
             source: Span::empty(),
-            inner: TyMethodItem(TyMethod {
-                unsafety: self.fty.unsafety,
-                generics: (&self.generics, &self.predicates, subst::FnSpace).clean(cx),
-                self_: self_,
-                decl: (self.def_id, &sig).clean(cx),
-                abi: self.fty.abi
-            })
+            inner: inner,
         }
     }
 }
@@ -1365,6 +1412,7 @@ pub enum PrimitiveType {
     Slice,
     Array,
     PrimitiveTuple,
+    PrimitiveRawPointer,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy, Debug)]
@@ -1378,6 +1426,21 @@ pub enum TypeKind {
     TypeTrait,
     TypeVariant,
     TypeTypedef,
+}
+
+impl Type {
+    pub fn primitive_type(&self) -> Option<PrimitiveType> {
+        match *self {
+            Primitive(p) | BorrowedRef { type_: box Primitive(p), ..} => Some(p),
+            Vector(..) | BorrowedRef{ type_: box Vector(..), ..  } => Some(Slice),
+            FixedVector(..) | BorrowedRef { type_: box FixedVector(..), .. } => {
+                Some(Array)
+            }
+            Tuple(..) => Some(PrimitiveTuple),
+            RawPointer(..) => Some(PrimitiveRawPointer),
+            _ => None,
+        }
+    }
 }
 
 impl PrimitiveType {
@@ -1401,6 +1464,7 @@ impl PrimitiveType {
             "array" => Some(Array),
             "slice" => Some(Slice),
             "tuple" => Some(PrimitiveTuple),
+            "pointer" => Some(PrimitiveRawPointer),
             _ => None,
         }
     }
@@ -1446,6 +1510,7 @@ impl PrimitiveType {
             Array => "array",
             Slice => "slice",
             PrimitiveTuple => "tuple",
+            PrimitiveRawPointer => "pointer",
         }
     }
 
@@ -1587,17 +1652,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             }
             ty::ty_tup(ref t) => Tuple(t.clean(cx)),
 
-            ty::ty_projection(ref data) => {
-                let trait_ref = match data.trait_ref.clean(cx) {
-                    TyParamBound::TraitBound(t, _) => t.trait_,
-                    TyParamBound::RegionBound(_) => panic!("cleaning a trait got a region??"),
-                };
-                Type::QPath {
-                    name: data.item_name.clean(cx),
-                    self_type: box data.trait_ref.self_ty().clean(cx),
-                    trait_: box trait_ref,
-                }
-            }
+            ty::ty_projection(ref data) => data.clean(cx),
 
             ty::ty_param(ref p) => Generic(token::get_name(p.name).to_string()),
 
@@ -1869,6 +1924,22 @@ impl Clean<Span> for syntax::codemap::Span {
 pub struct Path {
     pub global: bool,
     pub segments: Vec<PathSegment>,
+}
+
+impl Path {
+    pub fn singleton(name: String) -> Path {
+        Path {
+            global: false,
+            segments: vec![PathSegment {
+                name: name,
+                params: PathParameters::AngleBracketed {
+                    lifetimes: Vec::new(),
+                    types: Vec::new(),
+                    bindings: Vec::new()
+                }
+            }]
+        }
+    }
 }
 
 impl Clean<Path> for ast::Path {
@@ -2262,7 +2333,14 @@ impl Clean<ViewListIdent> for ast::PathListItem {
 
 impl Clean<Vec<Item>> for ast::ForeignMod {
     fn clean(&self, cx: &DocContext) -> Vec<Item> {
-        self.items.clean(cx)
+        let mut items = self.items.clean(cx);
+        for item in &mut items {
+            match item.inner {
+                ForeignFunctionItem(ref mut f) => f.abi = self.abi,
+                _ => {}
+            }
+        }
+        items
     }
 }
 
@@ -2274,6 +2352,7 @@ impl Clean<Item> for ast::ForeignItem {
                     decl: decl.clean(cx),
                     generics: generics.clean(cx),
                     unsafety: ast::Unsafety::Unsafe,
+                    abi: abi::Rust,
                 })
             }
             ast::ForeignItemStatic(ref ty, mutbl) => {
@@ -2506,21 +2585,66 @@ impl Clean<Stability> for attr::Stability {
 
 impl Clean<Item> for ty::AssociatedType {
     fn clean(&self, cx: &DocContext) -> Item {
+        // When loading a cross-crate associated type, the bounds for this type
+        // are actually located on the trait/impl itself, so we need to load
+        // all of the generics from there and then look for bounds that are
+        // applied to this associated type in question.
+        let predicates = ty::lookup_predicates(cx.tcx(), self.container.id());
+        let generics = match self.container {
+            ty::TraitContainer(did) => {
+                let def = ty::lookup_trait_def(cx.tcx(), did);
+                (&def.generics, &predicates, subst::TypeSpace).clean(cx)
+            }
+            ty::ImplContainer(did) => {
+                let ty = ty::lookup_item_type(cx.tcx(), did);
+                (&ty.generics, &predicates, subst::TypeSpace).clean(cx)
+            }
+        };
+        let my_name = self.name.clean(cx);
+        let mut bounds = generics.where_predicates.iter().filter_map(|pred| {
+            let (name, self_type, trait_, bounds) = match *pred {
+                WherePredicate::BoundPredicate {
+                    ty: QPath { ref name, ref self_type, ref trait_ },
+                    ref bounds
+                } => (name, self_type, trait_, bounds),
+                _ => return None,
+            };
+            if *name != my_name { return None }
+            match **trait_ {
+                ResolvedPath { did, .. } if did == self.container.id() => {}
+                _ => return None,
+            }
+            match **self_type {
+                Generic(ref s) if *s == "Self" => {}
+                _ => return None,
+            }
+            Some(bounds)
+        }).flat_map(|i| i.iter().cloned()).collect::<Vec<_>>();
+
+        // Our Sized/?Sized bound didn't get handled when creating the generics
+        // because we didn't actually get our whole set of bounds until just now
+        // (some of them may have come from the trait). If we do have a sized
+        // bound, we remove it, and if we don't then we add the `?Sized` bound
+        // at the end.
+        match bounds.iter().position(|b| b.is_sized_bound(cx)) {
+            Some(i) => { bounds.remove(i); }
+            None => bounds.push(TyParamBound::maybe_sized(cx)),
+        }
+
         Item {
             source: DUMMY_SP.clean(cx),
             name: Some(self.name.clean(cx)),
-            attrs: Vec::new(),
-            // FIXME(#20727): bounds are missing and need to be filled in from the
-            // predicates on the trait itself
-            inner: AssociatedTypeItem(vec![], None),
-            visibility: None,
+            attrs: inline::load_attrs(cx, cx.tcx(), self.def_id),
+            inner: AssociatedTypeItem(bounds, None),
+            visibility: self.vis.clean(cx),
             def_id: self.def_id,
-            stability: None,
+            stability: stability::lookup(cx.tcx(), self.def_id).clean(cx),
         }
     }
 }
 
-impl<'a> Clean<Typedef> for (ty::TypeScheme<'a>, ty::GenericPredicates<'a>, ParamSpace) {
+impl<'a> Clean<Typedef> for (ty::TypeScheme<'a>, ty::GenericPredicates<'a>,
+                             ParamSpace) {
     fn clean(&self, cx: &DocContext) -> Typedef {
         let (ref ty_scheme, ref predicates, ps) = *self;
         Typedef {

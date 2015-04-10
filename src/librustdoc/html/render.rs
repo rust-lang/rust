@@ -44,6 +44,7 @@ use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufWriter, BufReader};
 use std::iter::repeat;
+use std::mem;
 use std::path::{PathBuf, Path};
 use std::str;
 use std::sync::Arc;
@@ -61,7 +62,7 @@ use clean;
 use doctree;
 use fold::DocFolder;
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace, Stability};
-use html::format::{ConciseStability, TyParamBounds, WhereClause};
+use html::format::{ConciseStability, TyParamBounds, WhereClause, href, AbiSpace};
 use html::highlight;
 use html::item_type::ItemType;
 use html::layout;
@@ -134,6 +135,14 @@ pub struct Impl {
     pub impl_: clean::Impl,
     pub dox: Option<String>,
     pub stability: Option<clean::Stability>,
+}
+
+impl Impl {
+    fn trait_did(&self) -> Option<ast::DefId> {
+        self.impl_.trait_.as_ref().and_then(|tr| {
+            if let clean::ResolvedPath { did, .. } = *tr {Some(did)} else {None}
+        })
+    }
 }
 
 /// This cache is used to store information about the `clean::Crate` being
@@ -276,7 +285,9 @@ impl fmt::Display for IndexItemFunctionType {
             return write!(f, "null")
         }
 
-        let inputs: Vec<String> = self.inputs.iter().map(|ref t| format!("{}", t)).collect();
+        let inputs: Vec<String> = self.inputs.iter().map(|ref t| {
+            format!("{}", t)
+        }).collect();
         try!(write!(f, "{{\"inputs\":[{}],\"output\":", inputs.connect(",")));
 
         match self.output {
@@ -383,9 +394,7 @@ pub fn run(mut krate: clean::Crate,
         privmod: false,
         public_items: public_items,
         orphan_methods: Vec::new(),
-        traits: analysis.as_ref().map(|a| {
-            a.external_traits.borrow_mut().take().unwrap()
-        }).unwrap_or(HashMap::new()),
+        traits: mem::replace(&mut krate.external_traits, HashMap::new()),
         typarams: analysis.as_ref().map(|a| {
             a.external_typarams.borrow_mut().take().unwrap()
         }).unwrap_or(HashMap::new()),
@@ -911,9 +920,10 @@ impl DocFolder for Cache {
                         let path = match self.paths.get(&did) {
                             Some(&(_, ItemType::Trait)) =>
                                 Some(&self.stack[..self.stack.len() - 1]),
-                            // The current stack not necessarily has correlation for
-                            // where the type was defined. On the other hand,
-                            // `paths` always has the right information if present.
+                            // The current stack not necessarily has correlation
+                            // for where the type was defined. On the other
+                            // hand, `paths` always has the right
+                            // information if present.
                             Some(&(ref fqp, ItemType::Struct)) |
                             Some(&(ref fqp, ItemType::Enum)) =>
                                 Some(&fqp[..fqp.len() - 1]),
@@ -1015,7 +1025,16 @@ impl DocFolder for Cache {
                         self.parent_stack.push(did);
                         true
                     }
-                    _ => false
+                    ref t => {
+                        match t.primitive_type() {
+                            Some(prim) => {
+                                let did = ast_util::local_def(prim.to_node_id());
+                                self.parent_stack.push(did);
+                                true
+                            }
+                            _ => false,
+                        }
+                    }
                 }
             }
             _ => false
@@ -1027,10 +1046,6 @@ impl DocFolder for Cache {
             Some(item) => {
                 match item {
                     clean::Item{ attrs, inner: clean::ImplItem(i), .. } => {
-                        use clean::{Primitive, Vector, ResolvedPath, BorrowedRef};
-                        use clean::PrimitiveType::{Array, Slice, PrimitiveTuple};
-                        use clean::{FixedVector, Tuple};
-
                         // extract relevant documentation for this impl
                         let dox = match attrs.into_iter().find(|a| {
                             match *a {
@@ -1048,37 +1063,18 @@ impl DocFolder for Cache {
                         // Figure out the id of this impl. This may map to a
                         // primitive rather than always to a struct/enum.
                         let did = match i.for_ {
-                            ResolvedPath { did, .. } => Some(did),
-
-                            // References to primitives are picked up as well to
-                            // recognize implementations for &str, this may not
-                            // be necessary in a DST world.
-                            Primitive(p) |
-                                BorrowedRef { type_: box Primitive(p), ..} =>
-                            {
-                                Some(ast_util::local_def(p.to_node_id()))
+                            clean::ResolvedPath { did, .. } |
+                            clean::BorrowedRef {
+                                type_: box clean::ResolvedPath { did, .. }, ..
+                            } => {
+                                Some(did)
                             }
 
-                            FixedVector(..) |
-                                BorrowedRef { type_: box FixedVector(..), .. } =>
-                            {
-                                Some(ast_util::local_def(Array.to_node_id()))
+                            ref t => {
+                                t.primitive_type().map(|p| {
+                                    ast_util::local_def(p.to_node_id())
+                                })
                             }
-
-                            // In a DST world, we may only need Vector, but for now we
-                            // also pick up borrowed references
-                            Vector(..) |
-                                BorrowedRef{ type_: box Vector(..), ..  } =>
-                            {
-                                Some(ast_util::local_def(Slice.to_node_id()))
-                            }
-
-                            Tuple(..) => {
-                                let id = PrimitiveTuple.to_node_id();
-                                Some(ast_util::local_def(id))
-                            }
-
-                            _ => None,
                         };
 
                         if let Some(did) = did {
@@ -1347,7 +1343,9 @@ impl Context {
     fn ignore_private_item(&self, it: &clean::Item) -> bool {
         match it.inner {
             clean::ModuleItem(ref m) => {
-                (m.items.len() == 0 && it.doc_value().is_none()) ||
+                (m.items.len() == 0 &&
+                 it.doc_value().is_none() &&
+                 it.visibility != Some(ast::Public)) ||
                 (self.passes.contains("strip-private") && it.visibility != Some(ast::Public))
             }
             clean::PrimitiveItem(..) => it.visibility != Some(ast::Public),
@@ -1723,10 +1721,11 @@ fn item_static(w: &mut fmt::Formatter, it: &clean::Item,
 
 fn item_function(w: &mut fmt::Formatter, it: &clean::Item,
                  f: &clean::Function) -> fmt::Result {
-    try!(write!(w, "<pre class='rust fn'>{vis}{unsafety}fn \
+    try!(write!(w, "<pre class='rust fn'>{vis}{unsafety}{abi}fn \
                     {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(it.visibility),
            unsafety = UnsafetySpace(f.unsafety),
+           abi = AbiSpace(f.abi),
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
            where_clause = WhereClause(&f.generics),
@@ -1773,7 +1772,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         try!(write!(w, "{{\n"));
         for t in &types {
             try!(write!(w, "    "));
-            try!(render_method(w, t));
+            try!(render_method(w, t, MethodLink::Anchor));
             try!(write!(w, ";\n"));
         }
         if types.len() > 0 && required.len() > 0 {
@@ -1781,7 +1780,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in &required {
             try!(write!(w, "    "));
-            try!(render_method(w, m));
+            try!(render_method(w, m, MethodLink::Anchor));
             try!(write!(w, ";\n"));
         }
         if required.len() > 0 && provided.len() > 0 {
@@ -1789,7 +1788,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in &provided {
             try!(write!(w, "    "));
-            try!(render_method(w, m));
+            try!(render_method(w, m, MethodLink::Anchor));
             try!(write!(w, " {{ ... }}\n"));
         }
         try!(write!(w, "}}"));
@@ -1805,7 +1804,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                     shortty(m),
                     *m.name.as_ref().unwrap(),
                     ConciseStability(&m.stability)));
-        try!(render_method(w, m));
+        try!(render_method(w, m, MethodLink::Anchor));
         try!(write!(w, "</code></h3>"));
         try!(document(w, m));
         Ok(())
@@ -1843,6 +1842,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         try!(write!(w, "</div>"));
     }
+
+    // If there are methods directly on this trait object, render them here.
+    try!(render_methods(w, it));
 
     let cache = cache();
     try!(write!(w, "
@@ -1889,14 +1891,23 @@ fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
     Ok(())
 }
 
-fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
+fn render_method(w: &mut fmt::Formatter, meth: &clean::Item,
+                 link: MethodLink) -> fmt::Result {
     fn method(w: &mut fmt::Formatter, it: &clean::Item,
               unsafety: ast::Unsafety, abi: abi::Abi,
               g: &clean::Generics, selfty: &clean::SelfTy,
-              d: &clean::FnDecl) -> fmt::Result {
+              d: &clean::FnDecl, link: MethodLink) -> fmt::Result {
         use syntax::abi::Abi;
 
-        write!(w, "{}{}fn <a href='#{ty}.{name}' class='fnname'>{name}</a>\
+        let name = it.name.as_ref().unwrap();
+        let anchor = format!("#{}.{}", shortty(it), name);
+        let href = match link {
+            MethodLink::Anchor => anchor,
+            MethodLink::GotoSource(did) => {
+                href(did).map(|p| format!("{}{}", p.0, anchor)).unwrap_or(anchor)
+            }
+        };
+        write!(w, "{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                match unsafety {
                    ast::Unsafety::Unsafe => "unsafe ",
@@ -1906,18 +1917,20 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
                    Abi::Rust => String::new(),
                    a => format!("extern {} ", a.to_string())
                },
-               ty = shortty(it),
-               name = it.name.as_ref().unwrap(),
+               href = href,
+               name = name,
                generics = *g,
                decl = Method(selfty, d),
                where_clause = WhereClause(g))
     }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
-            method(w, meth, m.unsafety, m.abi, &m.generics, &m.self_, &m.decl)
+            method(w, meth, m.unsafety, m.abi, &m.generics, &m.self_, &m.decl,
+                   link)
         }
         clean::MethodItem(ref m) => {
-            method(w, meth, m.unsafety, m.abi, &m.generics, &m.self_, &m.decl)
+            method(w, meth, m.unsafety, m.abi, &m.generics, &m.self_, &m.decl,
+                   link)
         }
         clean::AssociatedTypeItem(ref bounds, ref default) => {
             assoc_type(w, meth, bounds, default)
@@ -2144,69 +2157,73 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
     Ok(())
 }
 
+#[derive(Copy, Clone)]
+enum MethodLink {
+    Anchor,
+    GotoSource(ast::DefId),
+}
+
 fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
-    match cache().impls.get(&it.def_id) {
-        Some(v) => {
-            let (non_trait, traits): (Vec<_>, _) = v.iter().cloned()
-                .partition(|i| i.impl_.trait_.is_none());
-            if non_trait.len() > 0 {
-                try!(write!(w, "<h2 id='methods'>Methods</h2>"));
-                for i in &non_trait {
-                    try!(render_impl(w, i));
-                }
-            }
-            if traits.len() > 0 {
-                try!(write!(w, "<h2 id='implementations'>Trait \
-                                  Implementations</h2>"));
-                let (derived, manual): (Vec<_>, _) = traits.into_iter()
-                    .partition(|i| i.impl_.derived);
-                for i in &manual {
-                    try!(render_impl(w, i));
-                }
-                if derived.len() > 0 {
-                    try!(write!(w, "<h3 id='derived_implementations'>Derived Implementations \
-                                </h3>"));
-                    for i in &derived {
-                        try!(render_impl(w, i));
-                    }
-                }
+    let v = match cache().impls.get(&it.def_id) {
+        Some(v) => v.clone(),
+        None => return Ok(()),
+    };
+    let (non_trait, traits): (Vec<_>, _) = v.into_iter()
+        .partition(|i| i.impl_.trait_.is_none());
+    if non_trait.len() > 0 {
+        try!(write!(w, "<h2 id='methods'>Methods</h2>"));
+        for i in &non_trait {
+            try!(render_impl(w, i, MethodLink::Anchor));
+        }
+    }
+    if traits.len() > 0 {
+        try!(write!(w, "<h2 id='implementations'>Trait \
+                          Implementations</h2>"));
+        let (derived, manual): (Vec<_>, _) = traits.into_iter()
+            .partition(|i| i.impl_.derived);
+        for i in &manual {
+            let did = i.trait_did().unwrap();
+            try!(render_impl(w, i, MethodLink::GotoSource(did)));
+        }
+        if derived.len() > 0 {
+            try!(write!(w, "<h3 id='derived_implementations'>\
+                Derived Implementations \
+            </h3>"));
+            for i in &derived {
+                let did = i.trait_did().unwrap();
+                try!(render_impl(w, i, MethodLink::GotoSource(did)));
             }
         }
-        None => {}
     }
     Ok(())
 }
 
-fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
+fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: MethodLink)
+               -> fmt::Result {
     try!(write!(w, "<h3 class='impl'>{}<code>impl{} ",
                 ConciseStability(&i.stability),
                 i.impl_.generics));
-    match i.impl_.polarity {
-        Some(clean::ImplPolarity::Negative) => try!(write!(w, "!")),
-        _ => {}
+    if let Some(clean::ImplPolarity::Negative) = i.impl_.polarity {
+        try!(write!(w, "!"));
     }
-    match i.impl_.trait_ {
-        Some(ref ty) => try!(write!(w, "{} for ", *ty)),
-        None => {}
+    if let Some(ref ty) = i.impl_.trait_ {
+        try!(write!(w, "{} for ", *ty));
     }
-    try!(write!(w, "{}{}</code></h3>", i.impl_.for_, WhereClause(&i.impl_.generics)));
-    match i.dox {
-        Some(ref dox) => {
-            try!(write!(w, "<div class='docblock'>{}</div>",
-                          Markdown(dox)));
-        }
-        None => {}
+    try!(write!(w, "{}{}</code></h3>", i.impl_.for_,
+                WhereClause(&i.impl_.generics)));
+    if let Some(ref dox) = i.dox {
+        try!(write!(w, "<div class='docblock'>{}</div>", Markdown(dox)));
     }
 
-    fn doctraititem(w: &mut fmt::Formatter, item: &clean::Item, dox: bool)
-                    -> fmt::Result {
+    fn doctraititem(w: &mut fmt::Formatter, item: &clean::Item,
+                    dox: bool, link: MethodLink) -> fmt::Result {
         match item.inner {
             clean::MethodItem(..) | clean::TyMethodItem(..) => {
                 try!(write!(w, "<h4 id='method.{}' class='{}'>{}<code>",
                             *item.name.as_ref().unwrap(),
                             shortty(item),
                             ConciseStability(&item.stability)));
-                try!(render_method(w, item));
+                try!(render_method(w, item, link));
                 try!(write!(w, "</code></h4>\n"));
             }
             clean::TypedefItem(ref tydef) => {
@@ -2239,11 +2256,12 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     }
 
     try!(write!(w, "<div class='impl-items'>"));
-    for trait_item in &i.impl_.items {
-        try!(doctraititem(w, trait_item, true));
+    for trait_item in i.impl_.items.iter() {
+        try!(doctraititem(w, trait_item, true, link));
     }
 
     fn render_default_methods(w: &mut fmt::Formatter,
+                              did: ast::DefId,
                               t: &clean::Trait,
                               i: &clean::Impl) -> fmt::Result {
         for trait_item in &t.items {
@@ -2253,7 +2271,8 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
                 None => {}
             }
 
-            try!(doctraititem(w, trait_item, false));
+            try!(doctraititem(w, trait_item, false,
+                              MethodLink::GotoSource(did)));
         }
         Ok(())
     }
@@ -2262,17 +2281,10 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     // default methods which weren't overridden in the implementation block.
     // FIXME: this also needs to be done for associated types, whenever defaults
     // for them work.
-    match i.impl_.trait_ {
-        Some(clean::ResolvedPath { did, .. }) => {
-            try!({
-                match cache().traits.get(&did) {
-                    Some(t) => try!(render_default_methods(w, t, &i.impl_)),
-                    None => {}
-                }
-                Ok(())
-            })
+    if let Some(clean::ResolvedPath { did, .. }) = i.impl_.trait_ {
+        if let Some(t) = cache().traits.get(&did) {
+            try!(render_default_methods(w, did, t, &i.impl_));
         }
-        Some(..) | None => {}
     }
     try!(write!(w, "</div>"));
     Ok(())

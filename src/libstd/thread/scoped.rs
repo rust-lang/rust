@@ -110,7 +110,7 @@ macro_rules! __scoped_thread_local_inner {
                       target_os = "openbsd",
                       target_arch = "aarch64")))]
         const _INIT: __Key<$t> = __Key {
-            inner: ::std::thread::__scoped::__impl::KeyInner {
+            inner: ::std::thread::__scoped::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: 0 as *mut _ },
             }
         };
@@ -121,8 +121,8 @@ macro_rules! __scoped_thread_local_inner {
                   target_os = "openbsd",
                   target_arch = "aarch64"))]
         const _INIT: __Key<$t> = __Key {
-            inner: ::std::thread::__scoped::__impl::KeyInner {
-                inner: ::std::thread::__scoped::__impl::OS_INIT,
+            inner: ::std::thread::__scoped::KeyInner {
+                inner: ::std::thread::__scoped::OS_INIT,
                 marker: ::std::marker::PhantomData::<::std::cell::Cell<$t>>,
             }
         };

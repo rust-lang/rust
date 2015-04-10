@@ -1264,7 +1264,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_paren_sugar(rbml_w, trait_def.paren_sugar);
         encode_defaulted(rbml_w, ty::trait_has_default_impl(tcx, def_id));
         encode_associated_type_names(rbml_w, &trait_def.associated_type_names);
-        encode_generics(rbml_w, ecx, &trait_def.generics, &trait_predicates, tag_item_generics);
+        encode_generics(rbml_w, ecx, &trait_def.generics, &trait_predicates,
+                        tag_item_generics);
         encode_predicates(rbml_w, ecx, &ty::lookup_super_predicates(tcx, def_id),
                           tag_item_super_predicates);
         encode_trait_ref(rbml_w, ecx, &*trait_def.trait_ref, tag_item_trait_ref);
