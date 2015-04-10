@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,18 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
+// Regression test for unwrapping the result of `join`, issue #21291
 
-fn id<T>(t: T) -> T { t }
-
-fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
-    id(Box::new(|| *v))
-        //~^ ERROR E0373
-        //~| ERROR cannot move out of borrowed content
-}
+use std::thread;
 
 fn main() {
-    let v = &5;
-    println!("{}", f(v).call_mut(()));
+    thread::spawn(|| {}).join().unwrap()
 }

@@ -114,6 +114,16 @@ impl fmt::Debug for Any {
     }
 }
 
+// Ensure that the result of e.g. joining a thread can be printed and
+// hence used with `unwrap`. May eventually no longer be needed if
+// dispatch works with upcasting.
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for Any + Send {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Any")
+    }
+}
+
 impl Any {
     /// Returns true if the boxed type is the same as `T`
     #[stable(feature = "rust1", since = "1.0.0")]

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::region;
 use middle::subst::{Substs, VecPerParamSpace};
 use middle::infer::InferCtxt;
 use middle::ty::{self, Ty, AsPredicate, ToPolyTraitRef};
@@ -302,34 +301,6 @@ pub fn fresh_type_vars_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
     let tcx = infcx.tcx;
     let impl_generics = ty::lookup_item_type(tcx, impl_def_id).generics;
     infcx.fresh_substs_for_generics(span, &impl_generics)
-}
-
-// determine the `self` type, using fresh variables for all variables
-// declared on the impl declaration e.g., `impl<A,B> for Box<[(A,B)]>`
-// would return ($0, $1) where $0 and $1 are freshly instantiated type
-// variables.
-pub fn free_substs_for_impl<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
-                                      _span: Span,
-                                      impl_def_id: ast::DefId)
-                                      -> Substs<'tcx>
-{
-    let tcx = infcx.tcx;
-    let impl_generics = ty::lookup_item_type(tcx, impl_def_id).generics;
-
-    let some_types = impl_generics.types.map(|def| {
-        ty::mk_param_from_def(tcx, def)
-    });
-
-    let some_regions = impl_generics.regions.map(|def| {
-        // FIXME. This destruction scope information is pretty darn
-        // bogus; after all, the impl might not even be in this crate!
-        // But given what we do in coherence, it is harmless enough
-        // for now I think. -nmatsakis
-        let extent = region::DestructionScopeData::new(ast::DUMMY_NODE_ID);
-        ty::free_region_from_def(extent, def)
-    });
-
-    Substs::new(some_types, some_regions)
 }
 
 impl<'tcx, N> fmt::Debug for VtableImplData<'tcx, N> {

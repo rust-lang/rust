@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn ignore<F>(_f: F) where F: for<'z> FnOnce(&'z isize) -> &'z isize {}
+// Check that we detect an overlap here in the case where:
+//
+//    for some type X:
+//      T = (X,)
+//      T11 = X, U11 = X
+//
+// Seems pretty basic, but then there was issue #24241. :)
 
-fn nested() {
-    let y = 3;
-    ignore(
-        |z| { //~ ERROR E0373
-            if false { &y } else { z }
-        });
+trait From<U> {
 }
 
-fn main() {}
+impl <T> From<T> for T { //~ ERROR E0119
+}
+
+impl <T11, U11> From<(U11,)> for (T11,) {
+}
+
+fn main() { }

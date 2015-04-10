@@ -143,6 +143,13 @@ impl Session {
     pub fn span_end_note(&self, sp: Span, msg: &str) {
         self.diagnostic().span_end_note(sp, msg)
     }
+
+    /// Prints out a message with a suggested edit of the code.
+    ///
+    /// See `diagnostic::RenderSpan::Suggestion` for more information.
+    pub fn span_suggestion(&self, sp: Span, msg: &str, suggestion: String) {
+        self.diagnostic().span_suggestion(sp, msg, suggestion)
+    }
     pub fn span_help(&self, sp: Span, msg: &str) {
         self.diagnostic().span_help(sp, msg)
     }
