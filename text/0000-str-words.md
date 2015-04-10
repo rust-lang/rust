@@ -12,14 +12,14 @@ Rename or replace `str::words` to side-step the ambiguity of “a word”.
 
 The [`str::words`](http://doc.rust-lang.org/std/primitive.str.html#method.words) method
 is currently marked `#[unstable(reason = "the precise algorithm to use is unclear")]`.
-Indeed, the concept of “a word” is not easy to define in precense of punctuation
+Indeed, the concept of “a word” is not easy to define in presence of punctuation
 or languages with various conventions, including not using spaces at all to separate words.
 
 [Issue #15628](https://github.com/rust-lang/rust/issues/15628) suggests
 changing the algorithm to be based on [the *Word Boundaries* section of
 *Unicode Standard Annex #29: Unicode Text Segmentation*](http://www.unicode.org/reports/tr29/#Word_Boundaries).
 
-While a Rust implemention of UAX#29 would be useful, it belong on crates.io more than in `std`:
+While a Rust implementation of UAX#29 would be useful, it belong on crates.io more than in `std`:
 
 * It carries significant complexity that may be surprising from something that looks as simple
   as a parameter-less “words” method in the standard library.
