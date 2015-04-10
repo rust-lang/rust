@@ -29,6 +29,7 @@ the direction the language is evolving in.
 * [0141-lifetime-elision.md](text/0141-lifetime-elision.md)
 * [0195-associated-items.md](text/0195-associated-items.md)
 * [0213-defaulted-type-params.md](text/0213-defaulted-type-params.md)
+* [0218-empty-struct-with-braces.md](text/0218-empty-struct-with-braces.md)
 * [0320-nonzeroing-dynamic-drop.md](text/0320-nonzeroing-dynamic-drop.md)
 * [0339-statically-sized-literals.md](text/0339-statically-sized-literals.md)
 * [0385-module-system-cleanup.md](text/0385-module-system-cleanup.md)
