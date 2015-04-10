@@ -20,14 +20,13 @@ use self::Classification::*;
 
 use super::{RegionVariableOrigin, SubregionOrigin, TypeTrace, MiscVariable};
 
+use rustc_data_structures::graph::{self, Direction, NodeIndex};
 use middle::region;
 use middle::ty::{self, Ty};
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
 use middle::ty::{ReEmpty, ReStatic, ReInfer, ReFree, ReEarlyBound};
 use middle::ty::{ReLateBound, ReScope, ReVar, ReSkolemized, BrFresh};
 use middle::ty_relate::RelateResult;
-use middle::graph;
-use middle::graph::{Direction, NodeIndex};
 use util::common::indenter;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::{Repr, UserString};
@@ -1325,10 +1324,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         let num_vars = self.num_vars();
 
         let constraints = self.constraints.borrow();
-        let num_edges = constraints.len();
 
-        let mut graph = graph::Graph::with_capacity(num_vars as usize + 1,
-                                                    num_edges);
+        let mut graph = graph::Graph::new();
 
         for _ in 0..num_vars {
             graph.add_node(());
@@ -1370,10 +1367,10 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         // not contained by an upper-bound.
         let (mut lower_bounds, lower_dup) =
             self.collect_concrete_regions(graph, var_data, node_idx,
-                                          graph::Incoming, dup_vec);
+                                          graph::INCOMING, dup_vec);
         let (mut upper_bounds, upper_dup) =
             self.collect_concrete_regions(graph, var_data, node_idx,
-                                          graph::Outgoing, dup_vec);
+                                          graph::OUTGOING, dup_vec);
 
         if lower_dup || upper_dup {
             return;
@@ -1433,7 +1430,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         // that have no intersection.
         let (upper_bounds, dup_found) =
             self.collect_concrete_regions(graph, var_data, node_idx,
-                                          graph::Outgoing, dup_vec);
+                                          graph::OUTGOING, dup_vec);
 
         if dup_found {
             return;
@@ -1508,8 +1505,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             // figure out the direction from which this node takes its
             // values, and search for concrete regions etc in that direction
             let dir = match classification {
-                Expanding => graph::Incoming,
-                Contracting => graph::Outgoing,
+                Expanding => graph::INCOMING,
+                Contracting => graph::OUTGOING,
             };
 
             process_edges(self, &mut state, graph, node_idx, dir);
@@ -1519,14 +1516,14 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         return (result, dup_found);
 
         fn process_edges<'a, 'tcx>(this: &RegionVarBindings<'a, 'tcx>,
-                         state: &mut WalkState<'tcx>,
-                         graph: &RegionGraph,
-                         source_vid: RegionVid,
-                         dir: Direction) {
+                                   state: &mut WalkState<'tcx>,
+                                   graph: &RegionGraph,
+                                   source_vid: RegionVid,
+                                   dir: Direction) {
             debug!("process_edges(source_vid={:?}, dir={:?})", source_vid, dir);
 
             let source_node_index = NodeIndex(source_vid.index as usize);
-            graph.each_adjacent_edge(source_node_index, dir, |_, edge| {
+            for (_, edge) in graph.adjacent_edges(source_node_index, dir) {
                 match edge.data {
                     ConstrainVarSubVar(from_vid, to_vid) => {
                         let opp_vid =
@@ -1544,8 +1541,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                         });
                     }
                 }
-                true
-            });
+            }
         }
     }
 
