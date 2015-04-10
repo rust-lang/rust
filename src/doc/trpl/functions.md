@@ -1,6 +1,6 @@
 % Functions
 
-You've already seen one function so far, the `main` function:
+Every Rust program has at least one function, the `main` function:
 
 ```rust
 fn main() {
@@ -8,16 +8,16 @@ fn main() {
 ```
 
 This is the simplest possible function declaration. As we mentioned before,
-`fn` says "this is a function," followed by the name, some parentheses because
+`fn` says ‘this is a function’, followed by the name, some parentheses because
 this function takes no arguments, and then some curly braces to indicate the
-body. Here's a function named `foo`:
+body. Here’s a function named `foo`:
 
 ```rust
 fn foo() {
 }
 ```
 
-So, what about taking arguments? Here's a function that prints a number:
+So, what about taking arguments? Here’s a function that prints a number:
 
 ```rust
 fn print_number(x: i32) {
@@ -25,7 +25,7 @@ fn print_number(x: i32) {
 }
 ```
 
-Here's a complete program that uses `print_number`:
+Here’s a complete program that uses `print_number`:
 
 ```rust
 fn main() {
@@ -40,7 +40,7 @@ fn print_number(x: i32) {
 As you can see, function arguments work very similar to `let` declarations:
 you add a type to the argument name, after a colon.
 
-Here's a complete program that adds two numbers together and prints them:
+Here’s a complete program that adds two numbers together and prints them:
 
 ```rust
 fn main() {
@@ -58,7 +58,7 @@ as when you declare it.
 Unlike `let`, you _must_ declare the types of function arguments. This does
 not work:
 
-```{rust,ignore}
+```rust,ignore
 fn print_sum(x, y) {
     println!("sum is: {}", x + y);
 }
@@ -67,8 +67,8 @@ fn print_sum(x, y) {
 You get this error:
 
 ```text
-hello.rs:5:18: 5:19 expected one of `!`, `:`, or `@`, found `)`
-hello.rs:5 fn print_number(x, y) {
+expected one of `!`, `:`, or `@`, found `)`
+fn print_number(x, y) {
 ```
 
 This is a deliberate design decision. While full-program inference is possible,
@@ -77,7 +77,7 @@ types explicitly is a best-practice. We agree that forcing functions to declare
 types while allowing for inference inside of function bodies is a wonderful
 sweet spot between full inference and no inference.
 
-What about returning a value? Here's a function that adds one to an integer:
+What about returning a value? Here’s a function that adds one to an integer:
 
 ```rust
 fn add_one(x: i32) -> i32 {
@@ -86,11 +86,11 @@ fn add_one(x: i32) -> i32 {
 ```
 
 Rust functions return exactly one value, and you declare the type after an
-"arrow," which is a dash (`-`) followed by a greater-than sign (`>`).
+‘arrow’, which is a dash (`-`) followed by a greater-than sign (`>`). The last
+line of a function determines what it returns. You’ll note the lack of a
+semicolon here. If we added it in:
 
-You'll note the lack of a semicolon here. If we added it in:
-
-```{rust,ignore}
+```rust,ignore
 fn add_one(x: i32) -> i32 {
     x + 1;
 }
@@ -109,24 +109,79 @@ help: consider removing this semicolon:
           ^
 ```
 
-Remember our earlier discussions about semicolons and `()`? Our function claims
-to return an `i32`, but with a semicolon, it would return `()` instead. Rust
-realizes this probably isn't what we want, and suggests removing the semicolon.
+This reveals two interesting things about Rust: it is an expression-based
+language, and semicolons are different from semicolons in other ‘curly brace
+and semicolon’-based languages. These two things are related.
 
-This is very much like our `if` statement before: the result of the block
-(`{}`) is the value of the expression. Other expression-oriented languages,
-such as Ruby, work like this, but it's a bit unusual in the systems programming
-world. When people first learn about this, they usually assume that it
-introduces bugs. But because Rust's type system is so strong, and because unit
-is its own unique type, we have never seen an issue where adding or removing a
-semicolon in a return position would cause a bug.
+## Expressions vs. Statements
+
+Rust is primarily an expression-based language. There are only two kinds of
+statements, and everything else is an expression.
+
+So what's the difference? Expressions return a value, and statements do not.
+That’s why we end up with ‘not all control paths return a value’ here: the
+statement `x + 1;` doesn’t return a value. There are two kinds of statements in
+Rust: ‘declaration statements’ and ‘expression statements’. Everything else is
+an expression. Let’s talk about expression statements first.
+
+In some languages, variable bindings can be written as expressions, not just
+statements. Like Ruby:
+
+```ruby
+x = y = 5
+```
+
+In Rust, however, using `let` to introduce a binding is _not_ an expression. The
+following will produce a compile-time error:
+
+```ignore
+let x = (let y = 5); // expected identifier, found keyword `let`
+```
+
+The compiler is telling us here that it was expecting to see the beginning of
+an expression, and a `let` can only begin a statement, not an expression.
+
+Note that assigning to an already-bound variable (e.g. `y = 5`) is still an
+expression, although its value is not particularly useful. Unlike other
+languages where an assignment evaluates to the assigned value (e.g. `5` in the
+previous example), in Rust the value of an assignment is an empty tuple `()`:
+
+```
+let mut y = 5;
+
+let x = (y = 6);  // x has the value `()`, not `6`
+```
+
+The second kind of statement in Rust is the *expression statement*. Its
+purpose is to turn any expression into a statement. In practical terms, Rust's
+grammar expects statements to follow other statements. This means that you use
+semicolons to separate expressions from each other. This means that Rust
+looks a lot like most other languages that require you to use semicolons
+at the end of every line, and you will see semicolons at the end of almost
+every line of Rust code you see.
+
+What is this exception that makes us say "almost"? You saw it already, in this
+code:
+
+```rust
+fn add_one(x: i32) -> i32 {
+    x + 1
+}
+```
+
+Our function claims to return an `i32`, but with a semicolon, it would return
+`()` instead. Rust realizes this probably isn’t what we want, and suggests
+removing the semicolon in the error we saw before.
+
+## Early returns
 
 But what about early returns? Rust does have a keyword for that, `return`:
 
 ```rust
 fn foo(x: i32) -> i32 {
-    if x < 5 { return x; }
+    return x;
 
+    // we never run this code!
     x + 1
 }
 ```
@@ -136,33 +191,17 @@ style:
 
 ```rust
 fn foo(x: i32) -> i32 {
-    if x < 5 { return x; }
-
     return x + 1;
 }
 ```
 
-The previous definition without `return` may look a bit strange if you haven't
+The previous definition without `return` may look a bit strange if you haven’t
 worked in an expression-based language before, but it becomes intuitive over
-time. If this were production code, we wouldn't write it in that way anyway,
-we'd write this:
-
-```rust
-fn foo(x: i32) -> i32 {
-    if x < 5 {
-        x
-    } else {
-        x + 1
-    }
-}
-```
-
-Because `if` is an expression, and it's the only expression in this function,
-the value will be the result of the `if`.
+time.
 
 ## Diverging functions
 
-Rust has some special syntax for 'diverging functions', which are functions that
+Rust has some special syntax for ‘diverging functions’, which are functions that
 do not return:
 
 ```
@@ -171,23 +210,18 @@ fn diverges() -> ! {
 }
 ```
 
-`panic!` is a macro, similar to `println!()` that we've already seen. Unlike
+`panic!` is a macro, similar to `println!()` that we’ve already seen. Unlike
 `println!()`, `panic!()` causes the current thread of execution to crash with
 the given message.
 
 Because this function will cause a crash, it will never return, and so it has
-the type '`!`', which is read "diverges." A diverging function can be used
+the type ‘`!`’, which is read ‘diverges’. A diverging function can be used
 as any type:
 
 ```should_panic
 # fn diverges() -> ! {
 #    panic!("This function never returns!");
 # }
-
 let x: i32 = diverges();
 let x: String = diverges();
 ```
-
-We don't have a good use for diverging functions yet, because they're used in
-conjunction with other Rust features. But when you see `-> !` later, you'll
-know what it's called.
