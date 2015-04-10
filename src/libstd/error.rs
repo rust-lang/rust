@@ -122,10 +122,7 @@ impl Error for str::ParseBoolError {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::Utf8Error {
     fn description(&self) -> &str {
-        match *self {
-            str::Utf8Error::TooShort => "invalid utf-8: not enough bytes",
-            str::Utf8Error::InvalidByte(..) => "invalid utf-8: corrupt contents",
-        }
+        "invalid utf-8: corrupt contents"
     }
 }
 
