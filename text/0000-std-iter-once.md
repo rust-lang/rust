@@ -4,11 +4,11 @@
 
 # Summary
 
-Add a `once` function to `std::iter` to construct an iterator yielding a given value one time.
+Add a `once` function to `std::iter` to construct an iterator yielding a given value one time, and an `empty` function to construct an iterator yielding no values.
 
 # Motivation
 
-This is a common task when working with iterators. Currently, this can be done in many ways, most of which are unergonomic, do not work for all types (e.g. requiring Copy/Clone), or both. `once` is simple to implement, simple to use, and simple to understand.
+This is a common task when working with iterators. Currently, this can be done in many ways, most of which are unergonomic, do not work for all types (e.g. requiring Copy/Clone), or both. `once` and `empty` are simple to implement, simple to use, and simple to understand.
 
 # Detailed design
 
@@ -24,7 +24,19 @@ pub fn once<T>(x: T) -> Once<T> {
 }
 ```
 
-The `Once` wrapper struct exists to allow future backwards-compatible changes, and hide the implementation. 
+`empty` is similar:
+
+```rust
+pub struct Empty<T>(std::option::IntoIter<T>);
+
+pub fn empty<T>(x: T) -> Empty<T> {
+	Empty(
+		None.into_iter()
+	)
+}
+```
+
+These wrapper structs exist to allow future backwards-compatible changes, and hide the implementation. 
 
 # Drawbacks
 
