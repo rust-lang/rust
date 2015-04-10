@@ -90,24 +90,6 @@ pub struct Weighted<T> {
 /// `IndependentSample` traits. Note that `&T` is (cheaply) `Clone` for
 /// all `T`, as is `usize`, so one can store references or indices into
 /// another vector.
-///
-/// # Examples
-///
-/// ```
-/// # #![feature(rand)]
-/// use std::rand;
-/// use std::rand::distributions::{Weighted, WeightedChoice, IndependentSample};
-///
-/// let mut items = vec!(Weighted { weight: 2, item: 'a' },
-///                      Weighted { weight: 4, item: 'b' },
-///                      Weighted { weight: 1, item: 'c' });
-/// let wc = WeightedChoice::new(&mut items[..]);
-/// let mut rng = rand::thread_rng();
-/// for _ in 0..16 {
-///      // on average prints 'a' 4 times, 'b' 8 and 'c' twice.
-///      println!("{}", wc.ind_sample(&mut rng));
-/// }
-/// ```
 pub struct WeightedChoice<'a, T:'a> {
     items: &'a mut [Weighted<T>],
     weight_range: Range<usize>
