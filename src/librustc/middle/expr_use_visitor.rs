@@ -849,7 +849,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         self.walk_autoderefs(expr, adj.autoderefs);
 
         // Weird hacky special case: AutoUnsizeUniq, which converts
-        // from a Box<T> to a Box<Trait> etc, always comes in a stylized
+        // from a ~T to a ~Trait etc, always comes in a stylized
         // fashion. In particular, we want to consume the ~ pointer
         // being dereferenced, not the dereferenced content (as the
         // content is, at least for upcasts, unsized).
@@ -865,7 +865,6 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             }
         }
 
-        //let autoref = adj.autoref.as_ref();
         let cmt_derefd = return_if_err!(
             self.mc.cat_expr_autoderefd(expr, adj.autoderefs));
         self.walk_autoref(expr, cmt_derefd, adj.autoref);
