@@ -901,3 +901,34 @@ fn bench_multiple_take(b: &mut Bencher) {
         }
     });
 }
+
+fn scatter(x: i32) -> i32 { (x * 31) % 127 }
+
+#[bench]
+fn bench_max_by(b: &mut Bencher) {
+    b.iter(|| {
+        let it = 0..100;
+        it.max_by(|&x| scatter(x))
+    })
+}
+
+// http://www.reddit.com/r/rust/comments/31syce/using_iterators_to_find_the_index_of_the_min_or/
+#[bench]
+fn bench_max_by2(b: &mut Bencher) {
+    fn max_index_iter(array: &[i32]) -> usize {
+        array.iter().enumerate().max_by(|&(_, item)| item).unwrap().0
+    }
+
+    let mut data = vec![0i32; 1638];
+    data[514] = 9999;
+
+    b.iter(|| max_index_iter(&data));
+}
+
+#[bench]
+fn bench_max(b: &mut Bencher) {
+    b.iter(|| {
+        let it = 0..100;
+        it.map(scatter).max()
+    })
+}

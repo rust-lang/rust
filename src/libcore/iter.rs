@@ -744,12 +744,12 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn max(self) -> Option<Self::Item> where Self: Sized, Self::Item: Ord
     {
-        self.fold(None, |max, y| {
-            match max {
-                None    => Some(y),
-                Some(x) => Some(cmp::max(x, y))
-            }
-        })
+        select_fold1(self,
+                     |_| (),
+                     // switch to y even if it is only equal, to preserve
+                     // stability.
+                     |_, x, _, y| *x <= *y)
+            .map(|(_, x)| x)
     }
 
     /// Consumes the entire iterator to return the minimum element.
@@ -767,12 +767,12 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn min(self) -> Option<Self::Item> where Self: Sized, Self::Item: Ord
     {
-        self.fold(None, |min, y| {
-            match min {
-                None    => Some(y),
-                Some(x) => Some(cmp::min(x, y))
-            }
-        })
+        select_fold1(self,
+                     |_| (),
+                     // only switch to y if it is strictly smaller, to
+                     // preserve stability.
+                     |_, x, _, y| *x > *y)
+            .map(|(_, x)| x)
     }
 
     /// `min_max` finds the minimum and maximum elements in the iterator.
@@ -870,21 +870,16 @@ pub trait Iterator {
     #[inline]
     #[unstable(feature = "core",
                reason = "may want to produce an Ordering directly; see #15311")]
-    fn max_by<B: Ord, F>(self, mut f: F) -> Option<Self::Item> where
+    fn max_by<B: Ord, F>(self, f: F) -> Option<Self::Item> where
         Self: Sized,
         F: FnMut(&Self::Item) -> B,
     {
-        self.fold(None, |max: Option<(Self::Item, B)>, y| {
-            let y_val = f(&y);
-            match max {
-                None             => Some((y, y_val)),
-                Some((x, x_val)) => if y_val >= x_val {
-                    Some((y, y_val))
-                } else {
-                    Some((x, x_val))
-                }
-            }
-        }).map(|(x, _)| x)
+        select_fold1(self,
+                     f,
+                     // switch to y even if it is only equal, to preserve
+                     // stability.
+                     |x_p, _, y_p, _| x_p <= y_p)
+            .map(|(_, x)| x)
     }
 
     /// Return the element that gives the minimum value from the
@@ -904,21 +899,16 @@ pub trait Iterator {
     #[inline]
     #[unstable(feature = "core",
                reason = "may want to produce an Ordering directly; see #15311")]
-    fn min_by<B: Ord, F>(self, mut f: F) -> Option<Self::Item> where
+    fn min_by<B: Ord, F>(self, f: F) -> Option<Self::Item> where
         Self: Sized,
         F: FnMut(&Self::Item) -> B,
     {
-        self.fold(None, |min: Option<(Self::Item, B)>, y| {
-            let y_val = f(&y);
-            match min {
-                None             => Some((y, y_val)),
-                Some((x, x_val)) => if x_val <= y_val {
-                    Some((x, x_val))
-                } else {
-                    Some((y, y_val))
-                }
-            }
-        }).map(|(x, _)| x)
+        select_fold1(self,
+                     f,
+                     // only switch to y if it is strictly smaller, to
+                     // preserve stability.
+                     |x_p, _, y_p, _| x_p > y_p)
+            .map(|(_, x)| x)
     }
 
     /// Change the direction of the iterator
@@ -1064,6 +1054,37 @@ pub trait Iterator {
     {
         self.fold(One::one(), |p, e| p * e)
     }
+}
+
+/// Select an element from an iterator based on the given projection
+/// and "comparison" function.
+///
+/// This is an idiosyncratic helper to try to factor out the
+/// commonalities of {max,min}{,_by}. In particular, this avoids
+/// having to implement optimisations several times.
+#[inline]
+fn select_fold1<I,B, FProj, FCmp>(mut it: I,
+                                  mut f_proj: FProj,
+                                  mut f_cmp: FCmp) -> Option<(B, I::Item)>
+    where I: Iterator,
+          FProj: FnMut(&I::Item) -> B,
+          FCmp: FnMut(&B, &I::Item, &B, &I::Item) -> bool
+{
+    // start with the first element as our selection. This avoids
+    // having to use `Option`s inside the loop, translating to a
+    // sizeable performance gain (6x in one case).
+    it.next().map(|mut sel| {
+        let mut sel_p = f_proj(&sel);
+
+        for x in it {
+            let x_p = f_proj(&x);
+            if f_cmp(&sel_p,  &sel, &x_p, &x) {
+                sel = x;
+                sel_p = x_p;
+            }
+        }
+        (sel_p, sel)
+    })
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
