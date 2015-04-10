@@ -26,8 +26,7 @@ fn main() {
     if cfg!(target_pointer_width = "32") {
         assert_eq!(format!("{:#p}", p),
                    "0x00000000");
-    }
-    if cfg!(target_pointer_width = "64") {
+    } else {
         assert_eq!(format!("{:#p}", p),
                    "0x0000000000000000");
     }
