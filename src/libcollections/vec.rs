@@ -525,8 +525,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if `index` is not between `0` and the vector's length (both
-    /// bounds inclusive).
+    /// Panics if `index` is greater than the vector's length.
     ///
     /// # Examples
     ///
