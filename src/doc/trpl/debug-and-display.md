@@ -1,3 +1,3 @@
-% `Debug` and `Display`
+% Debug and Display
 
 Coming soon!
