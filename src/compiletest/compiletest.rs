@@ -12,9 +12,7 @@
 
 #![feature(box_syntax)]
 #![feature(collections)]
-#![feature(old_io)]
 #![feature(rustc_private)]
-#![feature(unboxed_closures)]
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(path_ext)]
@@ -42,6 +40,7 @@ pub mod header;
 pub mod runtest;
 pub mod common;
 pub mod errors;
+mod raise_fd_limit;
 
 pub fn main() {
     let config = parse_config(env::args().collect());
@@ -245,11 +244,7 @@ pub fn run_tests(config: &Config) {
     // sadly osx needs some file descriptor limits raised for running tests in
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
-    #[allow(deprecated)]
-    fn raise_fd_limit() {
-        std::old_io::test::raise_fd_limit();
-    }
-    raise_fd_limit();
+    raise_fd_limit::raise_fd_limit();
     // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
     // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
     env::set_var("__COMPAT_LAYER", "RunAsInvoker");
