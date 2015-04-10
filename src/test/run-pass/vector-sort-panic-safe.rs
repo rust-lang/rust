@@ -12,7 +12,7 @@
 #![feature(rand, core)]
 
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
-use std::rand::{thread_rng, Rng, Rand};
+use std::__rand::{thread_rng, Rng};
 use std::thread;
 
 const REPEATS: usize = 5;
@@ -36,18 +36,7 @@ static drop_counts: [AtomicUsize;  MAX_LEN] =
 static creation_count: AtomicUsize = ATOMIC_USIZE_INIT;
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord)]
-struct DropCounter { x: usize, creation_id: usize }
-
-impl Rand for DropCounter {
-    fn rand<R: Rng>(rng: &mut R) -> DropCounter {
-        // (we're not using this concurrently, so Relaxed is fine.)
-        let num = creation_count.fetch_add(1, Ordering::Relaxed);
-        DropCounter {
-            x: rng.gen(),
-            creation_id: num
-        }
-    }
-}
+struct DropCounter { x: u32, creation_id: usize }
 
 impl Drop for DropCounter {
     fn drop(&mut self) {
@@ -64,9 +53,13 @@ pub fn main() {
             // IDs start from 0.
             creation_count.store(0, Ordering::Relaxed);
 
-            let main = thread_rng().gen_iter::<DropCounter>()
-                                 .take(len)
-                                 .collect::<Vec<DropCounter>>();
+            let mut rng = thread_rng();
+            let main = (0..len).map(|_| {
+                DropCounter {
+                    x: rng.next_u32(),
+                    creation_id: creation_count.fetch_add(1, Ordering::Relaxed),
+                }
+            }).collect::<Vec<_>>();
 
             // work out the total number of comparisons required to sort
             // this array...

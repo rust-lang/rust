@@ -17,10 +17,18 @@ use std::default::Default;
 use std::iter::FromIterator;
 use std::ops::Add;
 use std::option::IntoIter as OptionIter;
-use std::rand::Rand;
-use std::rand::XorShiftRng as DummyRng;
-// FIXME the glob std::prelude::*; import of Vec is missing non-static inherent methods.
+// FIXME the glob std::prelude::*; import of Vec is missing non-static inherent
+// methods.
 use std::vec::Vec;
+
+pub struct XorShiftRng;
+use XorShiftRng as DummyRng;
+impl Rng for XorShiftRng {}
+pub trait Rng {}
+pub trait Rand: Default + Sized {
+    fn rand<R: Rng>(rng: &mut R) -> Self { Default::default() }
+}
+impl Rand for i32 { }
 
 #[derive(PartialEq, Eq)]
 struct Newt<T>(T);
@@ -29,7 +37,7 @@ fn id<T>(x: T) -> T { x }
 fn eq<T: Eq>(a: T, b: T) -> bool { a == b }
 fn u8_as_i8(x: u8) -> i8 { x as i8 }
 fn odd(x: usize) -> bool { x % 2 == 1 }
-fn dummy_rng() -> DummyRng { DummyRng::new_unseeded() }
+fn dummy_rng() -> DummyRng { XorShiftRng }
 
 trait Size: Sized {
     fn size() -> usize { std::mem::size_of::<Self>() }

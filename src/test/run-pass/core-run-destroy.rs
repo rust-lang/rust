@@ -16,34 +16,34 @@
 // instead of in std.
 
 #![reexport_test_harness_main = "test_main"]
-#![feature(old_io, libc, std_misc)]
+#![feature(libc, std_misc)]
 
 extern crate libc;
 
-use std::old_io::{Process, Command, timer};
-use std::time::Duration;
+use std::process::{self, Command, Child, Output};
 use std::str;
 use std::sync::mpsc::channel;
 use std::thread;
+use std::time::Duration;
 
-macro_rules! succeed { ($e:expr) => (
-    match $e { Ok(..) => {}, Err(e) => panic!("panic: {}", e) }
-) }
+macro_rules! t {
+    ($e:expr) => (match $e { Ok(e) => e, Err(e) => panic!("error: {}", e) })
+}
 
 fn test_destroy_once() {
     let mut p = sleeper();
-    match p.signal_exit() {
+    match p.kill() {
         Ok(()) => {}
         Err(e) => panic!("error: {}", e),
     }
 }
 
 #[cfg(unix)]
-pub fn sleeper() -> Process {
+pub fn sleeper() -> Child {
     Command::new("sleep").arg("1000").spawn().unwrap()
 }
 #[cfg(windows)]
-pub fn sleeper() -> Process {
+pub fn sleeper() -> Child {
     // There's a `timeout` command on windows, but it doesn't like having
     // its output piped, so instead just ping ourselves a few times with
     // gaps in between so we're sure this process is alive for awhile
@@ -52,16 +52,12 @@ pub fn sleeper() -> Process {
 
 fn test_destroy_twice() {
     let mut p = sleeper();
-    succeed!(p.signal_exit()); // this shouldn't crash...
-    let _ = p.signal_exit(); // ...and nor should this (and nor should the destructor)
+    t!(p.kill()); // this shouldn't crash...
+    let _ = p.kill(); // ...and nor should this (and nor should the destructor)
 }
 
-pub fn test_destroy_actually_kills(force: bool) {
-    use std::old_io::process::{Command, ProcessOutput, ExitStatus, ExitSignal};
-    use std::old_io::timer;
-    use libc;
-    use std::str;
-
+#[test]
+fn test_destroy_actually_kills() {
     #[cfg(all(unix,not(target_os="android")))]
     static BLOCK_COMMAND: &'static str = "cat";
 
@@ -74,34 +70,16 @@ pub fn test_destroy_actually_kills(force: bool) {
     // this process will stay alive indefinitely trying to read from stdin
     let mut p = Command::new(BLOCK_COMMAND).spawn().unwrap();
 
-    assert!(p.signal(0).is_ok());
-
-    if force {
-        p.signal_kill().unwrap();
-    } else {
-        p.signal_exit().unwrap();
-    }
+    p.kill().unwrap();
 
     // Don't let this test time out, this should be quick
-    let (tx, rx1) = channel();
-    let mut t = timer::Timer::new().unwrap();
-    let rx2 = t.oneshot(Duration::milliseconds(1000));
+    let (tx, rx) = channel();
     thread::spawn(move|| {
-        select! {
-            _ = rx2.recv() => unsafe { libc::exit(1) },
-            _ = rx1.recv() => {}
+        thread::sleep_ms(1000);
+        if rx.try_recv().is_err() {
+            process::exit(1);
         }
     });
-    match p.wait().unwrap() {
-        ExitStatus(..) => panic!("expected a signal"),
-        ExitSignal(..) => tx.send(()).unwrap(),
-    }
-}
-
-fn test_unforced_destroy_actually_kills() {
-    test_destroy_actually_kills(false);
-}
-
-fn test_forced_destroy_actually_kills() {
-    test_destroy_actually_kills(true);
+    assert!(p.wait().unwrap().code().is_none());
+    tx.send(());
 }
