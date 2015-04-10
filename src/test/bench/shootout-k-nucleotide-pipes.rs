@@ -13,18 +13,17 @@
 
 // multi tasking k-nucleotide
 
-#![feature(box_syntax, std_misc, old_io, collections, os)]
+#![allow(bad_style)]
 
-use std::ascii::{AsciiExt, OwnedAsciiExt};
+use std::ascii::AsciiExt;
 use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::collections::HashMap;
 use std::mem::replace;
-use std::num::Float;
-use std::option;
-use std::os;
 use std::env;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::thread;
+use std::io;
+use std::io::prelude::*;
 
 fn f64_cmp(x: f64, y: f64) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
@@ -75,10 +74,10 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , usize>, total: usize) -> String {
 
 // given a map, search for the frequency of a pattern
 fn find(mm: &HashMap<Vec<u8> , usize>, key: String) -> usize {
-   let key = key.into_ascii_lowercase();
+   let key = key.to_ascii_lowercase();
    match mm.get(key.as_bytes()) {
-      option::Option::None      => { return 0; }
-      option::Option::Some(&num) => { return num; }
+      None => 0,
+      Some(&num) => num,
    }
 }
 
@@ -123,7 +122,7 @@ fn make_sequence_processor(sz: usize,
        line = from_parent.recv().unwrap();
        if line == Vec::new() { break; }
 
-       carry.push_all(&line);
+       carry.extend(line);
        carry = windows_with_carry(&carry, sz, |window| {
            update_freq(&mut freqs, window);
            total += 1;
@@ -147,15 +146,13 @@ fn make_sequence_processor(sz: usize,
 
 // given a FASTA file on stdin, process sequence THREE
 fn main() {
-    use std::old_io::*;
-
+    let input = io::stdin();
     let rdr = if env::var_os("RUST_BENCH").is_some() {
-        let foo = include_bytes!("shootout-k-nucleotide.data");
-        box MemReader::new(foo.to_vec()) as Box<Reader>
+        let foo: &[u8] = include_bytes!("shootout-k-nucleotide.data");
+        Box::new(foo) as Box<BufRead>
     } else {
-        box stdio::stdin() as Box<Reader>
+        Box::new(input.lock()) as Box<BufRead>
     };
-    let mut rdr = BufferedReader::new(rdr);
 
     // initialize each sequence sorter
     let sizes: Vec<usize> = vec!(1,2,3,4,6,12,18);

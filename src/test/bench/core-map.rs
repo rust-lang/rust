@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures, std_misc, rand)]
+#![feature(std_misc, rand)]
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::env;
-use std::rand::{Rng, IsaacRng, SeedableRng};
+use std::__rand::{Rng, thread_rng};
 use std::time::Duration;
 
 fn timed<F>(label: &str, f: F) where F: FnMut() {
@@ -114,7 +114,7 @@ fn main() {
 
     {
         let seed: &[_] = &[1, 1, 1, 1, 1, 1, 1];
-        let mut rng: IsaacRng = SeedableRng::from_seed(seed);
+        let mut rng = thread_rng();
         let mut set = HashSet::new();
         while set.len() != n_keys {
             let next = rng.gen();
