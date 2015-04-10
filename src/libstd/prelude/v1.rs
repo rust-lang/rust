@@ -47,6 +47,3 @@
 #[doc(no_inline)] pub use string::{String, ToString};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use vec::Vec;
-
-#[allow(deprecated)] pub use slice::AsSlice;
-#[allow(deprecated)] pub use str::Str;
