@@ -522,6 +522,16 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     pub fn report(&self, err: BckError<'tcx>) {
+        // Catch and handle some particular cases.
+        match (&err.code, &err.cause) {
+            (&err_out_of_scope(ty::ReScope(_), ty::ReStatic), &euv::ClosureCapture(span)) |
+            (&err_out_of_scope(ty::ReScope(_), ty::ReFree(..)), &euv::ClosureCapture(span)) => {
+                return self.report_out_of_scope_escaping_closure_capture(&err, span);
+            }
+            _ => { }
+        }
+
+        // General fallback.
         self.span_err(
             err.span,
             &self.bckerr_to_string(&err));
@@ -796,16 +806,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 format!("{} does not live long enough", msg)
             }
             err_borrowed_pointer_too_short(..) => {
-                let descr = match opt_loan_path(&err.cmt) {
-                    Some(lp) => {
-                        format!("`{}`", self.loan_path_to_string(&*lp))
-                    }
-                    None => self.cmt_to_string(&*err.cmt),
-                };
-
+                let descr = self.cmt_to_path_or_string(&err.cmt);
                 format!("lifetime of {} is too short to guarantee \
-                                its contents can be safely reborrowed",
-                               descr)
+                         its contents can be safely reborrowed",
+                        descr)
             }
         }
     }
@@ -886,6 +890,39 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 span,
                 "closures behind references must be called via `&mut`");
         }
+    }
+
+    fn report_out_of_scope_escaping_closure_capture(&self,
+                                                    err: &BckError<'tcx>,
+                                                    capture_span: Span)
+    {
+        let cmt_path_or_string = self.cmt_to_path_or_string(&err.cmt);
+
+        span_err!(
+            self.tcx.sess, err.span, E0373,
+            "closure may outlive the current function, \
+             but it borrows {}, \
+             which is owned by the current function",
+            cmt_path_or_string);
+
+        self.tcx.sess.span_note(
+            capture_span,
+            &format!("{} is borrowed here",
+                     cmt_path_or_string));
+
+        let suggestion =
+            match self.tcx.sess.codemap().span_to_snippet(err.span) {
+                Ok(string) => format!("move {}", string),
+                Err(_) => format!("move |<args>| <body>")
+            };
+
+        self.tcx.sess.span_suggestion(
+            err.span,
+            &format!("to force the closure to take ownership of {} \
+                      (and any other referenced variables), \
+                      use the `move` keyword, as shown:",
+                     cmt_path_or_string),
+            suggestion);
     }
 
     pub fn note_and_explain_bckerr(&self, err: BckError<'tcx>) {
@@ -1034,6 +1071,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
 
     pub fn cmt_to_string(&self, cmt: &mc::cmt_<'tcx>) -> String {
         cmt.descriptive_string(self.tcx)
+    }
+
+    pub fn cmt_to_path_or_string(&self, cmt: &mc::cmt<'tcx>) -> String {
+        match opt_loan_path(cmt) {
+            Some(lp) => format!("`{}`", self.loan_path_to_string(&lp)),
+            None => self.cmt_to_string(cmt),
+        }
     }
 }
 

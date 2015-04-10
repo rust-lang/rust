@@ -15,7 +15,7 @@ fn id<T>(t: T) -> T { t }
 fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     id(Box::new(|| *v))
-        //~^ ERROR `v` does not live long enough
+        //~^ ERROR E0373
         //~| ERROR cannot move out of borrowed content
 }
 
