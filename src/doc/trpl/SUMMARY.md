@@ -67,3 +67,4 @@
     * [Benchmark Tests](benchmark-tests.md)
     * [Box Syntax and Patterns](box-syntax-and-patterns.md)
 * [Glossary](glossary.md)
+* [Academic Research](academic-research.md)
