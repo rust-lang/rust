@@ -18,6 +18,7 @@ use io::prelude::*;
 
 use ffi::OsStr;
 use fmt;
+use fs::File;
 use io::{self, Error, ErrorKind};
 use libc;
 use path;
@@ -347,6 +348,9 @@ fn setup_io(io: &StdioImp, fd: libc::c_int, readable: bool)
                 (Some(writer), Some(reader))
             }
         }
+        Redirect(ref pipe) => {
+            (Some(pipe.clone()), None)
+        }
     })
 }
 
@@ -375,6 +379,7 @@ enum StdioImp {
     Piped,
     Inherit,
     Null,
+    Redirect(AnonPipe),
 }
 
 impl Stdio {
@@ -390,6 +395,58 @@ impl Stdio {
     /// stream to `/dev/null`
     #[stable(feature = "process", since = "1.0.0")]
     pub fn null() -> Stdio { Stdio(StdioImp::Null) }
+
+    /// This stream will use a currently opened file. The file must have been
+    /// opened with the appropriate read/write permissions.
+    ///
+    /// Note: this call will make an internal duplicate of the file handle, so
+    /// when using a file handle created as part of a pipe (e.g. from `std::fs::Pipe`)
+    /// keep in mind that an extra copy of it will remain open until it is dropped.
+    /// Thus it is possible to deadlock when reading from the pipe if writers to that
+    /// pipe remain open, e.g. the original argument to this method and its returned value.
+    ///
+    /// ```
+    /// #![feature(fs_pipe)]
+    /// #![feature(process_redirect)]
+    /// use std::process::{Command, Stdio};
+    /// use std::fs::Pipe;
+    /// use std::io::Write;
+    ///
+    /// let pipe = Pipe::new().unwrap_or_else(|e| {
+    ///     panic!("unable to create a pipe: {}", e)
+    /// });
+    ///
+    /// let mut write_to_cmd = pipe.writer;
+    /// let mut cmd_stdin = pipe.reader;
+    ///
+    /// let mut cmd = Command::new("cat");
+    /// cmd.stdout(Stdio::piped());
+    /// cmd.stdin(Stdio::redirect(&mut cmd_stdin, false).unwrap_or_else(|e| {
+    ///     panic!("unable to redirect stdin: {}", e);
+    /// }));
+    ///
+    /// let child = cmd.spawn().unwrap_or_else(|e| {
+    ///     panic!("failed to spawn process: {}", e);
+    /// });
+    ///
+    /// // This indirectly drops the extra writer copy of
+    /// // the pipe, only write_to_cmd remains.
+    /// drop(cmd);
+    ///
+    /// write_to_cmd.write_all("hello world!".as_bytes()).unwrap();
+    /// write_to_cmd.flush().unwrap();
+    /// drop(write_to_cmd); // Nothing else to write, signal that we are done!
+    ///
+    /// let output = child.wait_with_output().unwrap_or_else(|e| {
+    ///     panic!("failed to get child's output: {}", e);
+    /// });
+    ///
+    /// assert_eq!("hello world!", String::from_utf8(output.stdout).unwrap());
+    /// ```
+    #[unstable(feature = "process_redirect", reason = "feature was recently added")]
+    pub fn redirect(f: &mut File, writable: bool) -> io::Result<Stdio> {
+        Ok(Stdio(StdioImp::Redirect(try!(f.as_inner_mut().dup_as_anon_pipe(writable)))))
+    }
 }
 
 /// Describes the result of a process after it has terminated.
@@ -542,12 +599,27 @@ mod tests {
     use prelude::v1::*;
     use io::prelude::*;
 
+    use fs::{File, OpenOptions, Pipe, remove_file};
     use io::ErrorKind;
     use old_path::{self, GenericPath};
     use old_io::fs::PathExtensions;
     use rt::running_on_valgrind;
     use str;
     use super::{Command, Output, Stdio};
+
+    // Poor man's mktemp
+    macro_rules! unique_test_path {
+        () => {
+            {
+                use env;
+                use path::Path;
+                let name = Path::new(file!()).file_name().unwrap().to_str().unwrap();
+                let mut path = env::temp_dir();
+                path.set_file_name(format!("rust-test-{}:{}", name, line!()));
+                path
+            }
+        };
+    }
 
     // FIXME(#10380) these tests should not all be ignored on android.
 
@@ -878,5 +950,231 @@ mod tests {
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
+    }
+
+    #[cfg(not(target_os="android"))]
+    fn shell_cmd(c_flag: bool) -> Command {
+        let mut cmd = Command::new("sh");
+        if c_flag { cmd.arg("-c"); }
+        cmd
+    }
+
+    #[cfg(target_os="android")]
+    fn shell_cmd(c_flag: bool) -> Command {
+        let mut cmd = Command::new("/system/bin/sh");
+        if c_flag { cmd.arg("-c"); }
+        cmd
+    }
+
+    #[test]
+    fn test_redirect_stdio_with_file() {
+        let in_path = unique_test_path!();
+        let out_path = unique_test_path!();
+        let err_path = unique_test_path!();
+
+        {
+            let in_path = in_path.clone();
+            let mut in_file = File::create(in_path).ok().expect("failed to open stdin file");
+            in_file.write_all("echo stdout\necho stderr 1>&2\n".as_bytes()).unwrap();
+            in_file.flush().unwrap();
+        }
+
+        {
+            let in_path = in_path.clone();
+            let out_path = out_path.clone();
+            let err_path = err_path.clone();
+
+            let mut in_file = File::open(in_path).ok().expect("failed to open stdout file");
+            let mut out_file = File::create(out_path).ok().expect("failed to open stdout file");
+            let mut err_file = File::create(err_path).ok().expect("failed to open stderr file");
+
+            let mut cmd = shell_cmd(false);
+            cmd.stdin(Stdio::redirect(&mut in_file, false).unwrap());
+            cmd.stdout(Stdio::redirect(&mut out_file, true).unwrap());
+            cmd.stderr(Stdio::redirect(&mut err_file, true).unwrap());
+
+            assert!(cmd.status().ok().expect("unabled to spawn child").success());
+        }
+
+        let mut out_file = File::open(out_path.clone()).ok().expect("missing stdout file");
+        let mut err_file = File::open(err_path.clone()).ok().expect("missing stderr file");
+
+        let mut stdout = String::new();
+        let mut stderr = String::new();
+
+        out_file.read_to_string(&mut stdout).ok().expect("failed to read from stdout file");
+        err_file.read_to_string(&mut stderr).ok().expect("failed to read from stderr file");
+
+        assert_eq!(stdout, "stdout\n");
+        assert_eq!(stderr, "stderr\n");
+
+        let _ = remove_file(in_path);
+        let _ = remove_file(out_path);
+        let _ = remove_file(err_path);
+    }
+
+    #[test]
+    fn test_redirect_reuse() {
+        let out_path = unique_test_path!();
+
+        {
+            let out_path = out_path.clone();
+            let mut out_file = File::create(out_path).ok().expect("failed to open stdout file");
+
+            let mut cmd = shell_cmd(true);
+            cmd.arg("echo stdout\necho stderr 1>&2\n");
+            cmd.stdout(Stdio::redirect(&mut out_file, true).unwrap());
+            cmd.stderr(Stdio::redirect(&mut out_file, true).unwrap());
+
+            assert!(cmd.status().ok().expect("unabled to spawn child").success());
+        }
+
+        let mut out_file = File::open(out_path.clone()).ok().expect("missing stdout file");
+
+        let mut stdout = String::new();
+        out_file.read_to_string(&mut stdout).ok().expect("failed to read from stdout file");
+        assert_eq!(stdout, "stdout\nstderr\n");
+
+        let _ = remove_file(out_path);
+    }
+
+    #[test]
+    fn test_redirect_reuse_as_stdin_and_stdout() {
+        use io::SeekFrom;
+
+        let path = unique_test_path!();
+        let mut file = OpenOptions::new().create(true).truncate(true)
+            .read(true).write(true).open(path.clone()).ok().expect("failed to open file");
+
+        let mut cmd_writer = shell_cmd(true);
+        cmd_writer.arg("echo 'echo stdout\necho stderr 1>&2\n'");
+        cmd_writer.stdout(Stdio::redirect(&mut file, true).unwrap());
+
+        let mut cmd_reader = shell_cmd(false);
+        cmd_reader.stdin(Stdio::redirect(&mut file, false).unwrap());
+
+        assert!(cmd_writer.status().ok().expect("unabled to spawn writer").success());
+
+        file.seek(SeekFrom::Start(0)).unwrap();
+
+        let output = cmd_reader.output().ok().expect("unable to spawn reader");
+        assert_eq!(output.stdout, "stdout\n".as_bytes());
+        assert_eq!(output.stderr, "stderr\n".as_bytes());
+
+        let _ = remove_file(path);
+    }
+
+    #[test]
+    fn test_redirect_file_remains_valid() {
+        let out_path = unique_test_path!();
+        let mut out_file = File::create(out_path.clone())
+            .ok().expect("failed to open stdout file for writing");
+        out_file.write_all("pre-cmd write\n".as_bytes()).unwrap();
+        out_file.flush().unwrap();
+
+        {
+            let mut cmd = shell_cmd(true);
+            cmd.arg("echo stdout\necho stderr 1>&2\n");
+            cmd.stdout(Stdio::redirect(&mut out_file, true).unwrap());
+            cmd.stderr(Stdio::redirect(&mut out_file, true).unwrap());
+
+            assert!(cmd.status().ok().expect("unabled to spawn child").success());
+        }
+
+        out_file.write_all("post-cmd write\n".as_bytes()).unwrap();
+        out_file.flush().unwrap();
+
+        let mut out_read = File::open(out_path.clone())
+            .ok().expect("failed to open stdout for reading");
+
+        let mut stdout = String::new();
+        out_read.read_to_string(&mut stdout).ok().expect("failed to read from stdout file");
+        assert_eq!(stdout, "pre-cmd write\nstdout\nstderr\npost-cmd write\n");
+
+        let _ = remove_file(out_path);
+    }
+
+    #[test]
+    fn test_redirect_stdio_with_pipe() {
+        let (mut cmd_stdin, mut send_to_cmd) = {
+            let pipe = Pipe::new().ok().expect("unable to create pipe");
+            (pipe.reader, pipe.writer)
+        };
+
+        let (mut read_from_cmd, mut cmd_stdout) = {
+            let pipe = Pipe::new().ok().expect("unable to create pipe");
+            (pipe.reader, pipe.writer)
+        };
+
+        {
+            let mut cmd = shell_cmd(false);
+            cmd.stdin(Stdio::redirect(&mut cmd_stdin, false).unwrap());
+            cmd.stdout(Stdio::redirect(&mut cmd_stdout, true).unwrap());
+            cmd.stderr(Stdio::redirect(&mut cmd_stdout, true).unwrap());
+
+            // cmd has a copy of cmd_stdout (the pipe writer), since we don't intend
+            // to write anything in this end, we had better close it to avoid hanging
+            // while trying to read from the other end.
+            drop(cmd_stdout);
+            drop(cmd_stdin); // We also don't care about reading from the child's pipe
+
+            let mut child = cmd.spawn().ok().expect("unsable to spawn child");
+
+            send_to_cmd.write("echo stdout\necho stderr 1>&2\nexit 0\n".as_bytes()).unwrap();
+            drop(send_to_cmd);
+
+            assert!(child.wait().ok().expect("unable to wait on child").success());
+
+            // cmd goes out of scope here and closes its (duplicated) end of the pipe
+        }
+
+        let mut output = String::new();
+        read_from_cmd.read_to_string(&mut output).ok().expect("failed to read from stdout file");
+        assert_eq!(output, "stdout\nstderr\n");
+    }
+
+    #[test]
+    fn test_redirect_pipe_remains_valid() {
+        let (mut cmd_stdin, mut send_to_cmd) = {
+            let pipe = Pipe::new().ok().expect("unable to create pipe");
+            (pipe.reader, pipe.writer)
+        };
+
+        let (mut read_from_cmd, mut cmd_stdout) = {
+            let pipe = Pipe::new().ok().expect("unable to create pipe");
+            (pipe.reader, pipe.writer)
+        };
+
+        {
+            let mut cmd = shell_cmd(false);
+            cmd.stdin(Stdio::redirect(&mut cmd_stdin, false).unwrap());
+            cmd.stdout(Stdio::redirect(&mut cmd_stdout, true).unwrap());
+            cmd.stderr(Stdio::redirect(&mut cmd_stdout, true).unwrap());
+
+            // cmd has a copy of cmd_stdout (the pipe writer), since we don't intend
+            // to write anything in this end, we had better close it to avoid hanging
+            // while trying to read from the other end.
+            drop(cmd_stdout);
+
+            let mut child = cmd.spawn().ok().expect("unsable to spawn child");
+
+            send_to_cmd.write("echo stdout\necho stderr 1>&2\nexit 0\n".as_bytes()).unwrap();
+            assert!(child.wait().ok().expect("unable to wait on child").success());
+
+            // cmd goes out of scope here and closes its (duplicated) end of the pipe
+        }
+
+        send_to_cmd.write("post cmd\n".as_bytes()).unwrap();
+
+        // Make sure there are no writers left before we read from the pipe
+        drop(send_to_cmd);
+
+        let mut output = String::new();
+        read_from_cmd.read_to_string(&mut output).unwrap();
+        assert_eq!(output, "stdout\nstderr\n");
+
+        let mut output = String::new();
+        cmd_stdin.read_to_string(&mut output).unwrap();
+        assert_eq!(output, "post cmd\n");
     }
 }

@@ -10,6 +10,8 @@
 
 use prelude::v1::*;
 
+use sync::Arc;
+use sys::cvt_r;
 use sys::fd::FileDesc;
 use io;
 use libc;
@@ -18,7 +20,10 @@ use libc;
 // Anonymous pipes
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct AnonPipe(FileDesc);
+#[derive(Clone)]
+pub struct AnonPipe {
+    inner: Arc<FileDesc>
+}
 
 pub unsafe fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     let mut fds = [0; 2];
@@ -32,18 +37,22 @@ pub unsafe fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
 
 impl AnonPipe {
     pub fn from_fd(fd: libc::c_int) -> AnonPipe {
-        AnonPipe(FileDesc::new(fd))
+        AnonPipe { inner: Arc::new(FileDesc::new(fd)) }
+    }
+
+    pub fn clone_fd(fd: libc::c_int) -> io::Result<AnonPipe> {
+        unsafe { Ok(AnonPipe::from_fd(try!(cvt_r(|| libc::dup(fd))))) }
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        self.0.read(buf)
+        self.inner.read(buf)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        self.0.write(buf)
+        self.inner.write(buf)
     }
 
     pub fn raw(&self) -> libc::c_int {
-        self.0.raw()
+        self.inner.raw()
     }
 }

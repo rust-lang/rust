@@ -10,7 +10,8 @@
 
 use prelude::v1::*;
 
-use sys::handle;
+use sync::Arc;
+use sys::{handle, retry};
 use io;
 use libc::{self, c_int, HANDLE};
 
@@ -18,8 +19,13 @@ use libc::{self, c_int, HANDLE};
 // Anonymous pipes
 ////////////////////////////////////////////////////////////////////////////////
 
-pub struct AnonPipe {
+struct InnerFd {
     fd: c_int
+}
+
+#[derive(Clone)]
+pub struct AnonPipe {
+    inner: Arc<InnerFd>
 }
 
 pub unsafe fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
@@ -43,11 +49,22 @@ pub unsafe fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
 
 impl AnonPipe {
     pub fn from_fd(fd: libc::c_int) -> AnonPipe {
-        AnonPipe { fd: fd }
+        AnonPipe { inner: Arc::new(InnerFd { fd: fd }) }
+    }
+
+    pub fn clone_fd(fd: libc::c_int) -> io::Result<AnonPipe> {
+        unsafe {
+            let fd = retry(|| libc::dup(fd));
+            if fd != -1 {
+                Ok(AnonPipe::from_fd(fd))
+            } else {
+                Err(io::Error::last_os_error())
+            }
+        }
     }
 
     pub fn raw(&self) -> HANDLE {
-        unsafe { libc::get_osfhandle(self.fd) as libc::HANDLE }
+        unsafe { libc::get_osfhandle(self.inner.fd) as libc::HANDLE }
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -59,7 +76,7 @@ impl AnonPipe {
     }
 }
 
-impl Drop for AnonPipe {
+impl Drop for InnerFd {
     fn drop(&mut self) {
         // closing stdio file handles makes no sense, so never do it. Also, note
         // that errors are ignored when closing a file descriptor. The reason

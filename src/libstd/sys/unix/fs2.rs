@@ -20,6 +20,7 @@ use path::{Path, PathBuf};
 use ptr;
 use sync::Arc;
 use sys::fd::FileDesc;
+use sys::pipe2::AnonPipe;
 use sys::{c, cvt, cvt_r};
 use sys_common::FromInner;
 use vec::Vec;
@@ -55,6 +56,12 @@ pub struct OpenOptions {
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FilePermissions { mode: mode_t }
+
+impl File {
+    pub fn dup_as_anon_pipe(&self, _writable: bool) -> io::Result<AnonPipe> {
+        AnonPipe::clone_fd(self.0.raw())
+    }
+}
 
 impl FileAttr {
     pub fn is_dir(&self) -> bool {
@@ -380,4 +387,16 @@ pub fn utimes(p: &Path, atime: u64, mtime: u64) -> io::Result<()> {
     let buf = [super::ms_to_timeval(atime), super::ms_to_timeval(mtime)];
     try!(cvt(unsafe { c::utimes(p.as_ptr(), buf.as_ptr()) }));
     Ok(())
+}
+
+pub fn pipe() -> io::Result<(File, File)> {
+    unsafe {
+        let mut fds = [0; 2];
+        if let Ok(0) = cvt_r(|| libc::pipe(fds.as_mut_ptr())) {
+            Ok((File::from_inner(fds[0]),
+                File::from_inner(fds[1])))
+        } else {
+            Err(io::Error::last_os_error())
+        }
+    }
 }

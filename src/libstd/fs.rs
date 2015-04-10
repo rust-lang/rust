@@ -145,6 +145,17 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Permissions(fs_imp::FilePermissions);
 
+/// A low-level OS in-memory pipe.
+#[unstable(feature = "fs_pipe", reason = "feature was recently added")]
+pub struct Pipe {
+    /// A file representing the read end of the pipe. Data written
+    /// on the `writer` file can be read from this file.
+    pub reader: File,
+    /// A file representing the write end of the pipe. Data written
+    /// to this file can be read from the `reader` file.
+    pub writer: File,
+}
+
 impl File {
     /// Attempts to open a file in read-only mode.
     ///
@@ -298,6 +309,9 @@ impl File {
 
 impl AsInner<fs_imp::File> for File {
     fn as_inner(&self) -> &fs_imp::File { &self.inner }
+}
+impl AsInnerMut<fs_imp::File> for File {
+    fn as_inner_mut(&mut self) -> &mut fs_imp::File { &mut self.inner }
 }
 impl FromInner<fs_imp::File> for File {
     fn from_inner(f: fs_imp::File) -> File {
@@ -625,6 +639,21 @@ impl FromInner<fs_imp::FilePermissions> for Permissions {
 
 impl AsInner<fs_imp::FilePermissions> for Permissions {
     fn as_inner(&self) -> &fs_imp::FilePermissions { &self.0 }
+}
+
+impl Pipe {
+    /// Creates a new low-level OS in-memory pipe.
+    ///
+    /// This function will return an error if there are no more resources
+    /// available to allocate a pipe.
+    #[unstable(feature = "fs_pipe", reason = "feature was recently added")]
+    pub fn new() -> io::Result<Pipe> {
+        let (reader, writer) = try!(fs_imp::pipe());
+        Ok(Pipe {
+            reader: File::from_inner(reader),
+            writer: File::from_inner(writer),
+        })
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
