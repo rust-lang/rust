@@ -26,7 +26,7 @@ use syntax::codemap::{DUMMY_SP, Span};
 use util::ppaux::Repr;
 
 #[derive(Copy, Clone)]
-struct ParamIsLocal(bool);
+struct InferIsLocal(bool);
 
 /// True if there exist types that satisfy both of the two given impls.
 pub fn overlapping_impls(infcx: &InferCtxt,
@@ -60,7 +60,7 @@ fn overlap(selcx: &mut SelectionContext,
 
     let (a_trait_ref, a_obligations) = impl_trait_ref_and_oblig(selcx,
                                                                 a_def_id,
-                                                                util::free_substs_for_impl);
+                                                                util::fresh_type_vars_for_impl);
 
     let (b_trait_ref, b_obligations) = impl_trait_ref_and_oblig(selcx,
                                                                 b_def_id,
@@ -104,7 +104,7 @@ pub fn trait_ref_is_knowable<'tcx>(tcx: &ty::ctxt<'tcx>, trait_ref: &ty::TraitRe
 
     // if the orphan rules pass, that means that no ancestor crate can
     // impl this, so it's up to us.
-    if orphan_check_trait_ref(tcx, trait_ref, ParamIsLocal(false)).is_ok() {
+    if orphan_check_trait_ref(tcx, trait_ref, InferIsLocal(false)).is_ok() {
         debug!("trait_ref_is_knowable: orphan check passed");
         return true;
     }
@@ -126,7 +126,7 @@ pub fn trait_ref_is_knowable<'tcx>(tcx: &ty::ctxt<'tcx>, trait_ref: &ty::TraitRe
     // implemented by an upstream crate, which means that the impl
     // must be visible to us, and -- since the trait is fundamental
     // -- we can test.
-    orphan_check_trait_ref(tcx, trait_ref, ParamIsLocal(true)).is_err()
+    orphan_check_trait_ref(tcx, trait_ref, InferIsLocal(true)).is_err()
 }
 
 type SubstsFn = for<'a,'tcx> fn(infcx: &InferCtxt<'a, 'tcx>,
@@ -196,16 +196,16 @@ pub fn orphan_check<'tcx>(tcx: &ty::ctxt<'tcx>,
         return Ok(());
     }
 
-    orphan_check_trait_ref(tcx, &trait_ref, ParamIsLocal(false))
+    orphan_check_trait_ref(tcx, &trait_ref, InferIsLocal(false))
 }
 
 fn orphan_check_trait_ref<'tcx>(tcx: &ty::ctxt<'tcx>,
                                 trait_ref: &ty::TraitRef<'tcx>,
-                                param_is_local: ParamIsLocal)
+                                infer_is_local: InferIsLocal)
                                 -> Result<(), OrphanCheckErr<'tcx>>
 {
-    debug!("orphan_check_trait_ref(trait_ref={}, param_is_local={})",
-           trait_ref.repr(tcx), param_is_local.0);
+    debug!("orphan_check_trait_ref(trait_ref={}, infer_is_local={})",
+           trait_ref.repr(tcx), infer_is_local.0);
 
     // First, create an ordered iterator over all the type parameters to the trait, with the self
     // type appearing first.
@@ -215,12 +215,12 @@ fn orphan_check_trait_ref<'tcx>(tcx: &ty::ctxt<'tcx>,
     // Find the first input type that either references a type parameter OR
     // some local type.
     for input_ty in input_tys {
-        if ty_is_local(tcx, input_ty, param_is_local) {
+        if ty_is_local(tcx, input_ty, infer_is_local) {
             debug!("orphan_check_trait_ref: ty_is_local `{}`", input_ty.repr(tcx));
 
             // First local input type. Check that there are no
             // uncovered type parameters.
-            let uncovered_tys = uncovered_tys(tcx, input_ty, param_is_local);
+            let uncovered_tys = uncovered_tys(tcx, input_ty, infer_is_local);
             for uncovered_ty in uncovered_tys {
                 if let Some(param) = uncovered_ty.walk().find(|t| is_type_parameter(t)) {
                     debug!("orphan_check_trait_ref: uncovered type `{}`", param.repr(tcx));
@@ -234,7 +234,7 @@ fn orphan_check_trait_ref<'tcx>(tcx: &ty::ctxt<'tcx>,
 
         // Otherwise, enforce invariant that there are no type
         // parameters reachable.
-        if !param_is_local.0 {
+        if !infer_is_local.0 {
             if let Some(param) = input_ty.walk().find(|t| is_type_parameter(t)) {
                 debug!("orphan_check_trait_ref: uncovered type `{}`", param.repr(tcx));
                 return Err(OrphanCheckErr::UncoveredTy(param));
@@ -249,14 +249,14 @@ fn orphan_check_trait_ref<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 fn uncovered_tys<'tcx>(tcx: &ty::ctxt<'tcx>,
                        ty: Ty<'tcx>,
-                       param_is_local: ParamIsLocal)
+                       infer_is_local: InferIsLocal)
                        -> Vec<Ty<'tcx>>
 {
-    if ty_is_local_constructor(tcx, ty, param_is_local) {
+    if ty_is_local_constructor(tcx, ty, infer_is_local) {
         vec![]
     } else if fundamental_ty(tcx, ty) {
         ty.walk_shallow()
-          .flat_map(|t| uncovered_tys(tcx, t, param_is_local).into_iter())
+          .flat_map(|t| uncovered_tys(tcx, t, infer_is_local).into_iter())
           .collect()
     } else {
         vec![ty]
@@ -271,10 +271,10 @@ fn is_type_parameter<'tcx>(ty: Ty<'tcx>) -> bool {
     }
 }
 
-fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>, param_is_local: ParamIsLocal) -> bool
+fn ty_is_local<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>, infer_is_local: InferIsLocal) -> bool
 {
-    ty_is_local_constructor(tcx, ty, param_is_local) ||
-        fundamental_ty(tcx, ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, param_is_local))
+    ty_is_local_constructor(tcx, ty, infer_is_local) ||
+        fundamental_ty(tcx, ty) && ty.walk_shallow().any(|t| ty_is_local(tcx, t, infer_is_local))
 }
 
 fn fundamental_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool
@@ -293,7 +293,7 @@ fn fundamental_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool
 
 fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
                                  ty: Ty<'tcx>,
-                                 param_is_local: ParamIsLocal)
+                                 infer_is_local: InferIsLocal)
                                  -> bool
 {
     debug!("ty_is_local_constructor({})", ty.repr(tcx));
@@ -310,13 +310,13 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>,
         ty::ty_ptr(..) |
         ty::ty_rptr(..) |
         ty::ty_tup(..) |
-        ty::ty_infer(..) |
+        ty::ty_param(..) |
         ty::ty_projection(..) => {
             false
         }
 
-        ty::ty_param(..) => {
-            param_is_local.0
+        ty::ty_infer(..) => {
+            infer_is_local.0
         }
 
         ty::ty_enum(def_id, _) |

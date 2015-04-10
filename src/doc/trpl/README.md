@@ -1,39 +1,192 @@
 % The Rust Programming Language
 
-Welcome! This book will teach you about [the Rust Programming
-Language](http://www.rust-lang.org/). Rust is a modern systems programming
-language focusing on safety and speed. It accomplishes these goals by being
-memory safe without using garbage collection.
+Welcome! This book will teach you about the [Rust Programming Language][rust].
+Rust is a systems programming language focused on three goals: safety, speed,
+and concurrency. It maintains these goals without having a garbage collector,
+making it a useful language for a number of use cases other languages aren’t
+good at: embedding in other languages, programs with specific space and time
+requirements, and writing low-level code, like device drivers and operating
+systems. It improves on current languages targeting this space by having a
+number of compile-time safety checks that produce no runtime overhead, while
+eliminating all data races. Rust also aims to achieve ‘zero-cost abstrations’
+even though some of these abstractions feel like those of a high-level
+language. Even then, Rust still allows precise control like a low-level
+language would.
 
-"The Rust Programming Language" is split into three sections, which you can
-navigate through the menu on the left.
+[rust]: http://rust-lang.org
 
-<h2 class="section-header"><a href="basic.html">Basics</a></h2>
+“The Rust Programming Language” is split into seven sections. This introduction
+is the first. After this:
 
-This section is a linear introduction to the basic syntax and semantics of
-Rust. It has individual sections on each part of Rust's syntax.
+* [Getting started][gs] - Set up your computer for Rust development.
+* [Learn Rust][lr] - Learn Rust programming through small projects.
+* [Effective Rust][er] - Higher-level concepts for writing excellent Rust code.
+* [Syntax and Semantics][ss] - Each bit of Rust, broken down into small chunks.
+* [Nightly Rust][nr] - Cutting-edge features that aren’t in stable builds yet.
+* [Glossary][gl] - A reference of terms used in the book.
 
-After reading "Basics," you will have a good foundation to learn more about
-Rust, and can write very simple programs.
+[gs]: getting-started.html
+[lr]: learn-rust.html
+[er]: effective-rust.html
+[ss]: syntax-and-semantics.html
+[nr]: nightly-rust.html
+[gl]: glossary.html
 
-<h2 class="section-header"><a href="intermediate.html">Intermediate</a></h2>
+After reading this introduction, you’ll want to dive into either ‘Learn Rust’
+or ‘Syntax and Semantics’, depending on your preference: ‘Learn Rust’ if you
+want to dive in with a project, or ‘Syntax and Semantics’ if you prefer to
+start small, and learn a single concept thoroughly before moving onto the next.
+Copious cross-linking connects these parts together.
 
-This section contains individual chapters, which are self-contained. They focus
-on specific topics, and can be read in any order.
+## A brief introduction to Rust
 
-After reading "Intermediate," you will have a solid understanding of Rust,
-and will be able to understand most Rust code and write more complex programs.
+Is Rust a language you might be interested in? Let’s examine a few small code
+samples to show off a few of its strengths.
 
-<h2 class="section-header"><a href="advanced.html">Advanced</a></h2>
+The main concept that makes Rust unique is called ‘ownership’. Consider this
+small example:
 
-In a similar fashion to "Intermediate," this section is full of individual,
-deep-dive chapters, which stand alone and can be read in any order. These
-chapters focus on Rust's most complex features.
+```rust
+fn main() {
+    let mut x = vec!["Hello", "world"];
+}
+```
 
-<h2 class="section-header"><a href="unstable.html">Unstable</a></h2>
+This program makes a [variable binding][var] named `x`. The value of this
+binding is a `Vec<T>`, a ‘vector’, that we create through a [macro][macro]
+defined in the standard library. This macro is called `vec`, and we invoke
+macros with a `!`. This follows a general principle of Rust: make things
+explicit. Macros can do significantly more complicated things than function
+calls, and so they’re visually distinct. The `!` also helps with parsing,
+making tooling easier to write, which is also important.
 
-In a similar fashion to "Intermediate," this section is full of individual,
-deep-dive chapters, which stand alone and can be read in any order.
+We used `mut` to make `x` mutable: bindings are immutable by default in Rust.
+We’ll be mutating this vector later in the example.
 
-This chapter contains things that are only available on the nightly channel of
-Rust.
+It’s also worth noting that we didn’t need a type annotation here: while Rust
+is statically typed, we didn’t need to explicitly annotate the type. Rust has
+type inference to balance out the power of static typing with the verbosity of
+annotating types.
+
+Rust prefers stack allocation to heap allocation: `x` is placed directly on the
+stack. However, the `Vec<T>` type allocates space for the elements of the
+vector on the heap. If you’re not familiar with this distinction, you can
+ignore it for now, or check out [‘The Stack and the Heap’][heap]. As a systems
+programming language, Rust gives you the ability to control how your memory is
+allocated, but when we’re getting started, it’s less of a big deal.
+
+[var]: variable-bindings.html
+[macro]: macros.html
+[heap]: the-stack-and-the-heap.html
+
+Earlier, we mentioned that ‘ownership’ is the key new concept in Rust. In Rust
+parlance, `x` is said to ‘own’ the vector. This means that when `x` goes out of
+scope, the vector’s memory will be de-allocated. This is done deterministically
+by the Rust compiler, rather than through a mechanism such as a garbage
+collector. In other words, in Rust, you don’t call functions like `malloc` and
+`free` yourself: the compiler statically determines when you need to allocate
+or deallocate memory, and inserts those calls itself. To err is to be human,
+but compilers never forget.
+
+Let’s add another line to our example:
+
+```rust
+fn main() {
+    let mut x = vec!["Hello", "world"];
+
+    let y = &x[0];
+}
+```
+
+We’ve introduced another binding, `y`. In this case, `y` is a ‘reference’ to
+the first element of the vector. Rust’s references are similar to pointers in
+other languages, but with additional compile-time safety checks. References
+interact with the ownership system by [‘borrowing’][borrowing] what they point
+to, rather than owning it. The difference is, when the reference goes out of
+scope, it will not deallocate the underlying memory. If it did, we’d
+de-allocate twice, which is bad!
+
+[borrowing]: references-and-borrowing.html
+
+Let’s add a third line. It looks innocent enough, but causes a compiler error:
+
+```rust,ignore
+fn main() {
+    let mut x = vec!["Hello", "world"];
+
+    let y = &x[0];
+
+    x.push(4);
+}
+```
+
+`push` is a method on vectors that appends another element to the end of the
+vector. When we try to compile this program, we get an error:
+
+```text
+error: cannot borrow `x` as mutable because it is also borrowed as immutable
+    x.push(4);
+    ^
+note: previous borrow of `x` occurs here; the immutable borrow prevents
+subsequent moves or mutable borrows of `x` until the borrow ends
+    let y = &x[0];
+             ^
+note: previous borrow ends here
+fn main() {
+
+}
+^
+```
+
+Whew! The Rust compiler gives quite detailed errors at times, and this is one
+of those times. As the error explains, while we made our binding mutable, we
+still cannot call `push`. This is because we already have a reference to an
+element of the vector, `y`. Mutating something while another reference exists
+is dangerous, because we may invalidate the reference. In this specific case,
+when we create the vector, we may have only allocated space for three elements.
+Adding a fourth would mean allocating a new chunk of memory for all those elements,
+copying the old values over, and updating the internal pointer to that memory.
+That all works just fine. The problem is that `y` wouldn’t get updated, and so
+we’d have a ‘dangling pointer’. That’s bad. Any use of `y` would be an error in
+this case, and so the compiler has caught this for us.
+
+So how do we solve this problem? There are two approaches we can take. The first
+is making a copy rather than using a reference:
+
+```rust
+fn main() {
+    let mut x = vec!["Hello", "world"];
+
+    let y = x[0].clone();
+
+    x.push(4);
+}
+```
+
+Rust has [move semantics][move] by default, so if we want to make a copy of some
+data, we call the `clone()` method. In this example, `y` is no longer a reference
+to the vector stored in `x`, but a copy of its first element, `"hello"`. Now
+that we don’t have a reference, our `push()` works just fine.
+
+[move]: move-semantics.html
+
+If we truly want a reference, we need the other option: ensure that our reference
+goes out of scope before we try to do the mutation. That looks like this:
+
+```rust
+fn main() {
+    let mut x = vec!["Hello", "world"];
+
+    {
+        let y = &x[0];
+    }
+
+    x.push(4);
+}
+```
+
+We created an inner scope with an additional set of curly braces. `y` will go out of
+scope before we call `push()`, and so we’re all good.
+
+This concept of ownership isn’t just good for preventing danging pointers, but an
+entire set of related problems, like iterator invalidation, concurrency, and more.
