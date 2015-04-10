@@ -8,70 +8,67 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use libc;
 use std::io;
-use std::env;
-#[allow(deprecated)] use std::old_path::{self, GenericPath};
-#[allow(deprecated)] use std::old_io;
 use std::path::{Path, PathBuf};
 
-/// Returns an absolute path in the filesystem that `path` points to. The
-/// returned path does not contain any symlinks in its hierarchy.
-#[allow(deprecated)] // readlink is deprecated
+#[cfg(windows)]
 pub fn realpath(original: &Path) -> io::Result<PathBuf> {
-    let old = old_path::Path::new(original.to_str().unwrap());
-    match old_realpath(&old) {
-        Ok(p) => Ok(PathBuf::from(p.as_str().unwrap())),
-        Err(e) => Err(io::Error::new(io::ErrorKind::Other, e))
+    use std::fs::File;
+    use std::ffi::OsString;
+    use std::os::windows::prelude::*;
+
+    extern "system" {
+        fn GetFinalPathNameByHandleW(hFile: libc::HANDLE,
+                                     lpszFilePath: libc::LPCWSTR,
+                                     cchFilePath: libc::DWORD,
+                                     dwFlags: libc::DWORD) -> libc::DWORD;
     }
+
+    let mut v = Vec::with_capacity(16 * 1024);
+    let f = try!(File::open(original));
+    unsafe {
+        let ret = GetFinalPathNameByHandleW(f.as_raw_handle(),
+                                            v.as_mut_ptr(),
+                                            v.capacity() as libc::DWORD,
+                                            libc::VOLUME_NAME_DOS);
+        if ret == 0 {
+            return Err(io::Error::last_os_error())
+        }
+        assert!(ret as usize < v.capacit());
+        v.set_len(ret);
+    }
+    Ok(PathBuf::from(OsString::from_wide(&v)))
 }
 
-#[allow(deprecated)]
-fn old_realpath(original: &old_path::Path) -> old_io::IoResult<old_path::Path> {
-    use std::old_io::fs;
-    const MAX_LINKS_FOLLOWED: usize = 256;
-    let original = old_path::Path::new(env::current_dir().unwrap()
-                                           .to_str().unwrap()).join(original);
+#[cfg(unix)]
+pub fn realpath(original: &Path) -> io::Result<PathBuf> {
+    use std::os::unix::prelude::*;
+    use std::ffi::{OsString, CString};
 
-    // Right now lstat on windows doesn't work quite well
-    if cfg!(windows) {
-        return Ok(original)
+    extern {
+        fn realpath(pathname: *const libc::c_char, resolved: *mut libc::c_char)
+                    -> *mut libc::c_char;
     }
 
-    let result = original.root_path();
-    let mut result = result.expect("make_absolute has no root_path");
-    let mut followed = 0;
-
-    for part in original.components() {
-        result.push(part);
-
-        loop {
-            if followed == MAX_LINKS_FOLLOWED {
-                return Err(old_io::standard_error(old_io::InvalidInput))
-            }
-
-            match fs::lstat(&result) {
-                Err(..) => break,
-                Ok(ref stat) if stat.kind != old_io::FileType::Symlink => break,
-                Ok(..) => {
-                    followed += 1;
-                    let path = try!(fs::readlink(&result));
-                    result.pop();
-                    result.push(path);
-                }
-            }
+    let path = try!(CString::new(original.as_os_str().as_bytes()));
+    let mut buf = vec![0u8; 16 * 1024];
+    unsafe {
+        let r = realpath(path.as_ptr(), buf.as_mut_ptr() as *mut _);
+        if r.is_null() {
+            return Err(io::Error::last_os_error())
         }
     }
-
-    return Ok(result);
+    let p = buf.iter().position(|i| *i == 0).unwrap();
+    buf.truncate(p);
+    Ok(PathBuf::from(OsString::from_vec(buf)))
 }
 
 #[cfg(all(not(windows), test))]
 mod test {
-    use std::old_io;
-    use std::old_io::fs::{File, symlink, mkdir, mkdir_recursive};
-    use super::old_realpath as realpath;
-    use std::old_io::TempDir;
-    use std::old_path::{Path, GenericPath};
+    use tempdir::TempDir;
+    use std::fs::{self, File};
+    use std::path::{Path, PathBuf};
 
     #[test]
     fn realpath_works() {
@@ -83,15 +80,15 @@ mod test {
         let linkdir = tmpdir.join("test3");
 
         File::create(&file).unwrap();
-        mkdir(&dir, old_io::USER_RWX).unwrap();
-        symlink(&file, &link).unwrap();
-        symlink(&dir, &linkdir).unwrap();
+        fs::create_dir(&dir).unwrap();
+        fs::soft_link(&file, &link).unwrap();
+        fs::soft_link(&dir, &linkdir).unwrap();
 
-        assert!(realpath(&tmpdir).unwrap() == tmpdir);
-        assert!(realpath(&file).unwrap() == file);
-        assert!(realpath(&link).unwrap() == file);
-        assert!(realpath(&linkdir).unwrap() == dir);
-        assert!(realpath(&linkdir.join("link")).unwrap() == file);
+        assert_eq!(realpath(&tmpdir).unwrap(), tmpdir);
+        assert_eq!(realpath(&file).unwrap(), file);
+        assert_eq!(realpath(&link).unwrap(), file);
+        assert_eq!(realpath(&linkdir).unwrap(), dir);
+        assert_eq!(realpath(&linkdir.join("link")).unwrap(), file);
     }
 
     #[test]
@@ -106,13 +103,13 @@ mod test {
         let e = d.join("e");
         let f = a.join("f");
 
-        mkdir_recursive(&b, old_io::USER_RWX).unwrap();
-        mkdir_recursive(&d, old_io::USER_RWX).unwrap();
+        fs::create_dir_all(&b).unwrap();
+        fs::create_dir_all(&d).unwrap();
         File::create(&f).unwrap();
-        symlink(&Path::new("../d/e"), &c).unwrap();
-        symlink(&Path::new("../f"), &e).unwrap();
+        fs::soft_link("../d/e", &c).unwrap();
+        fs::soft_link("../f", &e).unwrap();
 
-        assert!(realpath(&c).unwrap() == f);
-        assert!(realpath(&e).unwrap() == f);
+        assert_eq!(realpath(&c).unwrap(), f);
+        assert_eq!(realpath(&e).unwrap(), f);
     }
 }
