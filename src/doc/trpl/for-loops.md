@@ -1,4 +1,4 @@
-% `for` Loops
+% for Loops
 
 The `for` loop is used to loop a particular number of times. Rust's `for` loops
 work a bit differently than in other systems languages, however. Rust's `for`

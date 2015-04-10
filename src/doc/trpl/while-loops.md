@@ -1,4 +1,4 @@
-% `while` loops
+% while loops
 
 The other kind of looping construct in Rust is the `while` loop. It looks like
 this:
