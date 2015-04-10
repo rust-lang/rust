@@ -26,8 +26,6 @@ pub fn expand_syntax_ext<'cx>(cx: &'cx mut base::ExtCtxt,
         return base::DummyResult::any(sp);
     }
 
-    cx.print_backtrace();
-
     println!("{}", print::pprust::tts_to_string(tts));
 
     // any so that `log_syntax` can be invoked as an expression and item.
