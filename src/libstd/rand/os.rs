@@ -18,10 +18,10 @@ mod imp {
     use prelude::v1::*;
     use self::OsRngInner::*;
 
+    use fs::File;
+    use io;
     use libc;
     use mem;
-    use old_io::{IoResult, File};
-    use old_path::Path;
     use rand::Rng;
     use rand::reader::ReaderRng;
     use sys::os::errno;
@@ -147,12 +147,12 @@ mod imp {
 
     impl OsRng {
         /// Create a new `OsRng`.
-        pub fn new() -> IoResult<OsRng> {
+        pub fn new() -> io::Result<OsRng> {
             if is_getrandom_available() {
                 return Ok(OsRng { inner: OsGetrandomRng });
             }
 
-            let reader = try!(File::open(&Path::new("/dev/urandom")));
+            let reader = try!(File::open("/dev/urandom"));
             let reader_rng = ReaderRng::new(reader);
 
             Ok(OsRng { inner: OsReaderRng(reader_rng) })
@@ -186,7 +186,6 @@ mod imp {
     use prelude::v1::*;
 
     use io;
-    use old_io::IoResult;
     use mem;
     use rand::Rng;
     use libc::{c_int, size_t};
@@ -202,7 +201,8 @@ mod imp {
     ///
     /// This does not block.
     pub struct OsRng {
-        // dummy field to ensure that this struct cannot be constructed outside of this module
+        // dummy field to ensure that this struct cannot be constructed outside
+        // of this module
         _dummy: (),
     }
 
@@ -220,7 +220,7 @@ mod imp {
 
     impl OsRng {
         /// Create a new `OsRng`.
-        pub fn new() -> IoResult<OsRng> {
+        pub fn new() -> io::Result<OsRng> {
             Ok(OsRng { _dummy: () })
         }
     }
@@ -238,10 +238,12 @@ mod imp {
         }
         fn fill_bytes(&mut self, v: &mut [u8]) {
             let ret = unsafe {
-                SecRandomCopyBytes(kSecRandomDefault, v.len() as size_t, v.as_mut_ptr())
+                SecRandomCopyBytes(kSecRandomDefault, v.len() as size_t,
+                                   v.as_mut_ptr())
             };
             if ret == -1 {
-                panic!("couldn't generate random bytes: {}", io::Error::last_os_error());
+                panic!("couldn't generate random bytes: {}",
+                       io::Error::last_os_error());
             }
         }
     }
@@ -253,7 +255,6 @@ mod imp {
 
     use io;
     use mem;
-    use old_io::{IoResult, IoError};
     use rand::Rng;
     use libc::types::os::arch::extra::{LONG_PTR};
     use libc::{DWORD, BYTE, LPCSTR, BOOL};
@@ -293,7 +294,7 @@ mod imp {
 
     impl OsRng {
         /// Create a new `OsRng`.
-        pub fn new() -> IoResult<OsRng> {
+        pub fn new() -> io::Result<OsRng> {
             let mut hcp = 0;
             let ret = unsafe {
                 CryptAcquireContextA(&mut hcp, 0 as LPCSTR, 0 as LPCSTR,
@@ -302,7 +303,7 @@ mod imp {
             };
 
             if ret == 0 {
-                Err(IoError::last_error())
+                Err(io::Error::last_os_error())
             } else {
                 Ok(OsRng { hcryptprov: hcp })
             }

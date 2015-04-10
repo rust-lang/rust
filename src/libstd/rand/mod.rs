@@ -224,27 +224,22 @@
 //! ```
 
 #![unstable(feature = "rand")]
-#![deprecated(reason = "use the crates.io `rand` library instead",
-              since = "1.0.0-alpha")]
-#![allow(deprecated)]
+
+use prelude::v1::*;
 
 use cell::RefCell;
-use clone::Clone;
-use old_io::IoResult;
-use iter::Iterator;
+use io;
 use mem;
 use rc::Rc;
-use result::Result::{Ok, Err};
-use vec::Vec;
 
 #[cfg(target_pointer_width = "32")]
 use core_rand::IsaacRng as IsaacWordRng;
 #[cfg(target_pointer_width = "64")]
 use core_rand::Isaac64Rng as IsaacWordRng;
 
-pub use core_rand::{Rand, Rng, SeedableRng, Open01, Closed01};
-pub use core_rand::{XorShiftRng, IsaacRng, Isaac64Rng, ChaChaRng};
-pub use core_rand::{distributions, reseeding};
+pub use core_rand::{Rand, Rng, SeedableRng};
+pub use core_rand::{XorShiftRng, IsaacRng, Isaac64Rng};
+pub use core_rand::reseeding;
 pub use rand::os::OsRng;
 
 pub mod os;
@@ -269,7 +264,7 @@ impl StdRng {
     ///
     /// Reading the randomness from the OS may fail, and any error is
     /// propagated via the `IoResult` return value.
-    pub fn new() -> IoResult<StdRng> {
+    pub fn new() -> io::Result<StdRng> {
         OsRng::new().map(|mut r| StdRng { rng: r.gen() })
     }
 }
@@ -295,22 +290,6 @@ impl<'a> SeedableRng<&'a [usize]> for StdRng {
 
     fn from_seed(seed: &'a [usize]) -> StdRng {
         StdRng { rng: SeedableRng::from_seed(unsafe {mem::transmute(seed)}) }
-    }
-}
-
-/// Create a weak random number generator with a default algorithm and seed.
-///
-/// It returns the fastest `Rng` algorithm currently available in Rust without
-/// consideration for cryptography or security. If you require a specifically
-/// seeded `Rng` for consistency over time you should pick one algorithm and
-/// create the `Rng` yourself.
-///
-/// This will read randomness from the operating system to seed the
-/// generator.
-pub fn weak_rng() -> XorShiftRng {
-    match OsRng::new() {
-        Ok(mut r) => r.gen(),
-        Err(e) => panic!("weak_rng: failed to create seeded RNG: {:?}", e)
     }
 }
 
@@ -374,83 +353,6 @@ impl Rng for ThreadRng {
     fn fill_bytes(&mut self, bytes: &mut [u8]) {
         self.rng.borrow_mut().fill_bytes(bytes)
     }
-}
-
-/// Generates a random value using the thread-local random number generator.
-///
-/// `random()` can generate various types of random things, and so may require
-/// type hinting to generate the specific type you want.
-///
-/// This function uses the thread local random number generator. This means
-/// that if you're calling `random()` in a loop, caching the generator can
-/// increase performance. An example is shown below.
-///
-/// # Examples
-///
-/// ```
-/// # #![feature(rand)]
-/// use std::rand;
-///
-/// let x: u8 = rand::random();
-/// println!("{}", 2 * x as u16);
-///
-/// let y = rand::random::<f64>();
-/// println!("{}", y);
-///
-/// if rand::random() { // generates a boolean
-///     println!("Better lucky than good!");
-/// }
-/// ```
-///
-/// Caching the thread local random number generator:
-///
-/// ```
-/// # #![feature(rand)]
-/// use std::rand;
-/// use std::rand::Rng;
-///
-/// let mut v = vec![1, 2, 3];
-///
-/// for x in v.iter_mut() {
-///     *x = rand::random()
-/// }
-///
-/// // would be faster as
-///
-/// let mut rng = rand::thread_rng();
-///
-/// for x in v.iter_mut() {
-///     *x = rng.gen();
-/// }
-/// ```
-#[inline]
-pub fn random<T: Rand>() -> T {
-    thread_rng().gen()
-}
-
-/// Randomly sample up to `amount` elements from an iterator.
-///
-/// # Examples
-///
-/// ```
-/// # #![feature(rand)]
-/// use std::rand::{thread_rng, sample};
-///
-/// let mut rng = thread_rng();
-/// let sample = sample(&mut rng, 1..100, 5);
-/// println!("{:?}", sample);
-/// ```
-pub fn sample<T, I: Iterator<Item=T>, R: Rng>(rng: &mut R,
-                                         mut iter: I,
-                                         amount: usize) -> Vec<T> {
-    let mut reservoir: Vec<T> = iter.by_ref().take(amount).collect();
-    for (i, elem) in iter.enumerate() {
-        let k = rng.gen_range(0, i + 1 + amount);
-        if k < amount {
-            reservoir[k] = elem;
-        }
-    }
-    return reservoir;
 }
 
 #[cfg(test)]

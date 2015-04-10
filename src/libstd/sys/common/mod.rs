@@ -10,24 +10,11 @@
 
 #![allow(missing_docs)]
 
-use old_io::{self, IoError, IoResult};
 use prelude::v1::*;
-use sys::{last_error, retry};
-use ffi::CString;
-#[allow(deprecated)] // Int
-use num::Int;
-
-#[allow(deprecated)]
-use old_path::BytesContainer;
-
-use collections;
-
-#[macro_use] pub mod helper_thread;
 
 pub mod backtrace;
 pub mod condvar;
 pub mod mutex;
-pub mod net;
 pub mod net2;
 pub mod poison;
 pub mod remutex;
@@ -39,72 +26,6 @@ pub mod thread_local;
 pub mod wtf8;
 
 // common error constructors
-
-#[allow(deprecated)]
-pub fn eof() -> IoError {
-    IoError {
-        kind: old_io::EndOfFile,
-        desc: "end of file",
-        detail: None,
-    }
-}
-
-#[allow(deprecated)]
-pub fn timeout(desc: &'static str) -> IoError {
-    IoError {
-        kind: old_io::TimedOut,
-        desc: desc,
-        detail: None,
-    }
-}
-
-#[allow(deprecated)]
-pub fn short_write(n: usize, desc: &'static str) -> IoError {
-    IoError {
-        kind: if n == 0 { old_io::TimedOut } else { old_io::ShortWrite(n) },
-        desc: desc,
-        detail: None,
-    }
-}
-
-#[allow(deprecated)]
-pub fn unimpl() -> IoError {
-    IoError {
-        kind: old_io::IoUnavailable,
-        desc: "operations not yet supported",
-        detail: None,
-    }
-}
-
-// unix has nonzero values as errors
-#[allow(deprecated)]
-pub fn mkerr_libc<T: Int>(ret: T) -> IoResult<()> {
-    if ret != Int::zero() {
-        Err(last_error())
-    } else {
-        Ok(())
-    }
-}
-
-pub fn keep_going<F>(data: &[u8], mut f: F) -> i64 where
-    F: FnMut(*const u8, usize) -> i64,
-{
-    let origamt = data.len();
-    let mut data = data.as_ptr();
-    let mut amt = origamt;
-    while amt > 0 {
-        let ret = retry(|| f(data, amt));
-        if ret == 0 {
-            break
-        } else if ret != -1 {
-            amt -= ret as usize;
-            data = unsafe { data.offset(ret as isize) };
-        } else {
-            return ret;
-        }
-    }
-    return (origamt - amt) as i64;
-}
 
 /// A trait for viewing representations from std types
 #[doc(hidden)]
@@ -128,16 +49,4 @@ pub trait IntoInner<Inner> {
 #[doc(hidden)]
 pub trait FromInner<Inner> {
     fn from_inner(inner: Inner) -> Self;
-}
-
-#[doc(hidden)]
-#[allow(deprecated)]
-pub trait ProcessConfig<K: BytesContainer, V: BytesContainer> {
-    fn program(&self) -> &CString;
-    fn args(&self) -> &[CString];
-    fn env(&self) -> Option<&collections::HashMap<K, V>>;
-    fn cwd(&self) -> Option<&CString>;
-    fn uid(&self) -> Option<usize>;
-    fn gid(&self) -> Option<usize>;
-    fn detach(&self) -> bool;
 }
