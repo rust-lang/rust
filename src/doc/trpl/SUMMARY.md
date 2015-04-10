@@ -67,4 +67,5 @@
     * [Link args](link-args.md)
     * [Benchmark Tests](benchmark-tests.md)
     * [Box Syntax and Patterns](box-syntax-and-patterns.md)
+    * [Slice Patterns](slice-patterns.md)
 * [Glossary](glossary.md)
