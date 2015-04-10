@@ -105,11 +105,18 @@ pub struct Process {
     handle: Handle,
 }
 
+pub enum Stdio {
+    Inherit,
+    Piped(AnonPipe),
+    None,
+}
+
 impl Process {
     #[allow(deprecated)]
     pub fn spawn(cfg: &Command,
-                 in_fd: Option<AnonPipe>, out_fd: Option<AnonPipe>, err_fd: Option<AnonPipe>)
-                 -> io::Result<Process>
+                 in_fd: Stdio,
+                 out_fd: Stdio,
+                 err_fd: Stdio) -> io::Result<Process>
     {
         use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
         use libc::consts::os::extra::{
@@ -156,13 +163,16 @@ impl Process {
 
             let cur_proc = GetCurrentProcess();
 
-            // Similarly to unix, we don't actually leave holes for the stdio file
-            // descriptors, but rather open up /dev/null equivalents. These
-            // equivalents are drawn from libuv's windows process spawning.
-            let set_fd = |fd: &Option<AnonPipe>, slot: &mut HANDLE,
+            let set_fd = |fd: &Stdio, slot: &mut HANDLE,
                           is_stdin: bool| {
                 match *fd {
-                    None => {
+                    Stdio::Inherit => {}
+
+                    // Similarly to unix, we don't actually leave holes for the
+                    // stdio file descriptors, but rather open up /dev/null
+                    // equivalents. These equivalents are drawn from libuv's
+                    // windows process spawning.
+                    Stdio::None => {
                         let access = if is_stdin {
                             libc::FILE_GENERIC_READ
                         } else {
@@ -188,11 +198,8 @@ impl Process {
                             return Err(Error::last_os_error())
                         }
                     }
-                    Some(ref pipe) => {
+                    Stdio::Piped(ref pipe) => {
                         let orig = pipe.raw();
-                        if orig == INVALID_HANDLE_VALUE {
-                            return Err(Error::last_os_error())
-                        }
                         if DuplicateHandle(cur_proc, orig, cur_proc, slot,
                                            0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
                             return Err(Error::last_os_error())
@@ -235,9 +242,15 @@ impl Process {
                 })
             });
 
-            assert!(CloseHandle(si.hStdInput) != 0);
-            assert!(CloseHandle(si.hStdOutput) != 0);
-            assert!(CloseHandle(si.hStdError) != 0);
+            if !in_fd.inherited() {
+                assert!(CloseHandle(si.hStdInput) != 0);
+            }
+            if !out_fd.inherited() {
+                assert!(CloseHandle(si.hStdOutput) != 0);
+            }
+            if !err_fd.inherited() {
+                assert!(CloseHandle(si.hStdError) != 0);
+            }
 
             match create_err {
                 Some(err) => return Err(err),
@@ -293,6 +306,12 @@ impl Process {
                 }
             }
         }
+    }
+}
+
+impl Stdio {
+    fn inherited(&self) -> bool {
+        match *self { Stdio::Inherit => true, _ => false }
     }
 }
 

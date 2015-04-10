@@ -13,14 +13,14 @@ use os::unix::prelude::*;
 
 use collections::HashMap;
 use env;
-use ffi::{OsString, OsStr, CString};
+use ffi::{OsString, OsStr, CString, CStr};
 use fmt;
 use io::{self, Error, ErrorKind};
 use libc::{self, pid_t, c_void, c_int, gid_t, uid_t};
-use mem;
 use ptr;
 use sys::pipe2::AnonPipe;
 use sys::{self, retry, c, cvt};
+use sys::fs2::{File, OpenOptions};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -119,6 +119,12 @@ pub struct Process {
     pid: pid_t
 }
 
+pub enum Stdio {
+    Inherit,
+    Piped(AnonPipe),
+    None,
+}
+
 const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
 impl Process {
@@ -128,221 +134,185 @@ impl Process {
     }
 
     pub fn spawn(cfg: &Command,
-                 in_fd: Option<AnonPipe>, out_fd: Option<AnonPipe>, err_fd: Option<AnonPipe>)
-                 -> io::Result<Process>
-    {
-        use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
+                 in_fd: Stdio,
+                 out_fd: Stdio,
+                 err_fd: Stdio) -> io::Result<Process> {
+        let dirp = cfg.cwd.as_ref().map(|c| c.as_ptr()).unwrap_or(ptr::null());
 
-        mod rustrt {
-            extern {
-                pub fn rust_unset_sigprocmask();
+        let (envp, _a, _b) = make_envp(cfg.env.as_ref());
+        let (argv, _a) = make_argv(&cfg.program, &cfg.args);
+        let (input, output) = try!(sys::pipe2::anon_pipe());
+
+        let pid = unsafe {
+            match libc::fork() {
+                0 => {
+                    drop(input);
+                    Process::child_after_fork(cfg, output, argv, envp, dirp,
+                                              in_fd, out_fd, err_fd)
+                }
+                n if n < 0 => return Err(Error::last_os_error()),
+                n => n,
+            }
+        };
+
+        let p = Process{ pid: pid };
+        drop(output);
+        let mut bytes = [0; 8];
+
+        // loop to handle EINTR
+        loop {
+            match input.read(&mut bytes) {
+                Ok(0) => return Ok(p),
+                Ok(8) => {
+                    assert!(combine(CLOEXEC_MSG_FOOTER) == combine(&bytes[4.. 8]),
+                            "Validation on the CLOEXEC pipe failed: {:?}", bytes);
+                    let errno = combine(&bytes[0.. 4]);
+                    assert!(p.wait().is_ok(),
+                            "wait() should either return Ok or panic");
+                    return Err(Error::from_raw_os_error(errno))
+                }
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                Err(e) => {
+                    assert!(p.wait().is_ok(),
+                            "wait() should either return Ok or panic");
+                    panic!("the CLOEXEC pipe failed: {:?}", e)
+                },
+                Ok(..) => { // pipe I/O up to PIPE_BUF bytes should be atomic
+                    assert!(p.wait().is_ok(),
+                            "wait() should either return Ok or panic");
+                    panic!("short read on the CLOEXEC pipe")
+                }
             }
         }
 
-        unsafe fn set_cloexec(fd: c_int) {
-            let ret = c::ioctl(fd, c::FIOCLEX);
-            assert_eq!(ret, 0);
+        fn combine(arr: &[u8]) -> i32 {
+            let a = arr[0] as u32;
+            let b = arr[1] as u32;
+            let c = arr[2] as u32;
+            let d = arr[3] as u32;
+
+            ((a << 24) | (b << 16) | (c << 8) | (d << 0)) as i32
+        }
+    }
+
+    // And at this point we've reached a special time in the life of the
+    // child. The child must now be considered hamstrung and unable to
+    // do anything other than syscalls really. Consider the following
+    // scenario:
+    //
+    //      1. Thread A of process 1 grabs the malloc() mutex
+    //      2. Thread B of process 1 forks(), creating thread C
+    //      3. Thread C of process 2 then attempts to malloc()
+    //      4. The memory of process 2 is the same as the memory of
+    //         process 1, so the mutex is locked.
+    //
+    // This situation looks a lot like deadlock, right? It turns out
+    // that this is what pthread_atfork() takes care of, which is
+    // presumably implemented across platforms. The first thing that
+    // threads to *before* forking is to do things like grab the malloc
+    // mutex, and then after the fork they unlock it.
+    //
+    // Despite this information, libnative's spawn has been witnessed to
+    // deadlock on both OSX and FreeBSD. I'm not entirely sure why, but
+    // all collected backtraces point at malloc/free traffic in the
+    // child spawned process.
+    //
+    // For this reason, the block of code below should contain 0
+    // invocations of either malloc of free (or their related friends).
+    //
+    // As an example of not having malloc/free traffic, we don't close
+    // this file descriptor by dropping the FileDesc (which contains an
+    // allocation). Instead we just close it manually. This will never
+    // have the drop glue anyway because this code never returns (the
+    // child will either exec() or invoke libc::exit)
+    unsafe fn child_after_fork(cfg: &Command,
+                               mut output: AnonPipe,
+                               argv: *const *const libc::c_char,
+                               envp: *const libc::c_void,
+                               dirp: *const libc::c_char,
+                               in_fd: Stdio,
+                               out_fd: Stdio,
+                               err_fd: Stdio) -> ! {
+        fn fail(output: &mut AnonPipe) -> ! {
+            let errno = sys::os::errno() as u32;
+            let bytes = [
+                (errno >> 24) as u8,
+                (errno >> 16) as u8,
+                (errno >>  8) as u8,
+                (errno >>  0) as u8,
+                CLOEXEC_MSG_FOOTER[0], CLOEXEC_MSG_FOOTER[1],
+                CLOEXEC_MSG_FOOTER[2], CLOEXEC_MSG_FOOTER[3]
+            ];
+            // pipe I/O up to PIPE_BUF bytes should be atomic, and then we want
+            // to be sure we *don't* run at_exit destructors as we're being torn
+            // down regardless
+            assert!(output.write(&bytes).is_ok());
+            unsafe { libc::_exit(1) }
         }
 
-        #[cfg(all(target_os = "android", target_arch = "aarch64"))]
-        unsafe fn getdtablesize() -> c_int {
-            libc::sysconf(libc::consts::os::sysconf::_SC_OPEN_MAX) as c_int
-        }
+        let setup = |src: Stdio, dst: c_int| {
+            let fd = match src {
+                Stdio::Inherit => return true,
+                Stdio::Piped(pipe) => pipe.into_fd(),
 
-        #[cfg(not(all(target_os = "android", target_arch = "aarch64")))]
-        unsafe fn getdtablesize() -> c_int {
-            libc::funcs::bsd44::getdtablesize()
-        }
-
-        let dirp = cfg.cwd.as_ref().map(|c| c.as_ptr()).unwrap_or(ptr::null());
-
-        with_envp(cfg.env.as_ref(), |envp: *const c_void| {
-            with_argv(&cfg.program, &cfg.args, |argv: *const *const libc::c_char| unsafe {
-                let (input, mut output) = try!(sys::pipe2::anon_pipe());
-
-                // We may use this in the child, so perform allocations before the
-                // fork
-                let devnull = b"/dev/null\0";
-
-                set_cloexec(output.raw());
-
-                let pid = fork();
-                if pid < 0 {
-                    return Err(Error::last_os_error())
-                } else if pid > 0 {
-                    #[inline]
-                    fn combine(arr: &[u8]) -> i32 {
-                        let a = arr[0] as u32;
-                        let b = arr[1] as u32;
-                        let c = arr[2] as u32;
-                        let d = arr[3] as u32;
-
-                        ((a << 24) | (b << 16) | (c << 8) | (d << 0)) as i32
-                    }
-
-                    let p = Process{ pid: pid };
-                    drop(output);
-                    let mut bytes = [0; 8];
-
-                    // loop to handle EINTER
-                    loop {
-                        match input.read(&mut bytes) {
-                            Ok(8) => {
-                                assert!(combine(CLOEXEC_MSG_FOOTER) == combine(&bytes[4.. 8]),
-                                        "Validation on the CLOEXEC pipe failed: {:?}", bytes);
-                                let errno = combine(&bytes[0.. 4]);
-                                assert!(p.wait().is_ok(),
-                                        "wait() should either return Ok or panic");
-                                return Err(Error::from_raw_os_error(errno))
-                            }
-                            Ok(0) => return Ok(p),
-                            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
-                            Err(e) => {
-                                assert!(p.wait().is_ok(),
-                                        "wait() should either return Ok or panic");
-                                panic!("the CLOEXEC pipe failed: {:?}", e)
-                            },
-                            Ok(..) => { // pipe I/O up to PIPE_BUF bytes should be atomic
-                                assert!(p.wait().is_ok(),
-                                        "wait() should either return Ok or panic");
-                                panic!("short read on the CLOEXEC pipe")
-                            }
-                        }
+                // If a stdio file descriptor is set to be ignored, we open up
+                // /dev/null into that file descriptor. Otherwise, the first
+                // file descriptor opened up in the child would be numbered as
+                // one of the stdio file descriptors, which is likely to wreak
+                // havoc.
+                Stdio::None => {
+                    let mut opts = OpenOptions::new();
+                    opts.read(dst == libc::STDIN_FILENO);
+                    opts.write(dst != libc::STDIN_FILENO);
+                    let devnull = CStr::from_ptr(b"/dev/null\0".as_ptr()
+                                                    as *const _);
+                    if let Ok(f) = File::open_c(devnull, &opts) {
+                        f.into_fd()
+                    } else {
+                        return false
                     }
                 }
+            };
+            retry(|| libc::dup2(fd.raw(), dst)) != -1
+        };
 
-                // And at this point we've reached a special time in the life of the
-                // child. The child must now be considered hamstrung and unable to
-                // do anything other than syscalls really. Consider the following
-                // scenario:
-                //
-                //      1. Thread A of process 1 grabs the malloc() mutex
-                //      2. Thread B of process 1 forks(), creating thread C
-                //      3. Thread C of process 2 then attempts to malloc()
-                //      4. The memory of process 2 is the same as the memory of
-                //         process 1, so the mutex is locked.
-                //
-                // This situation looks a lot like deadlock, right? It turns out
-                // that this is what pthread_atfork() takes care of, which is
-                // presumably implemented across platforms. The first thing that
-                // threads to *before* forking is to do things like grab the malloc
-                // mutex, and then after the fork they unlock it.
-                //
-                // Despite this information, libnative's spawn has been witnessed to
-                // deadlock on both OSX and FreeBSD. I'm not entirely sure why, but
-                // all collected backtraces point at malloc/free traffic in the
-                // child spawned process.
-                //
-                // For this reason, the block of code below should contain 0
-                // invocations of either malloc of free (or their related friends).
-                //
-                // As an example of not having malloc/free traffic, we don't close
-                // this file descriptor by dropping the FileDesc (which contains an
-                // allocation). Instead we just close it manually. This will never
-                // have the drop glue anyway because this code never returns (the
-                // child will either exec() or invoke libc::exit)
-                let _ = libc::close(input.raw());
+        if !setup(in_fd, libc::STDIN_FILENO) { fail(&mut output) }
+        if !setup(out_fd, libc::STDOUT_FILENO) { fail(&mut output) }
+        if !setup(err_fd, libc::STDERR_FILENO) { fail(&mut output) }
 
-                fn fail(output: &mut AnonPipe) -> ! {
-                    let errno = sys::os::errno() as u32;
-                    let bytes = [
-                        (errno >> 24) as u8,
-                        (errno >> 16) as u8,
-                        (errno >>  8) as u8,
-                        (errno >>  0) as u8,
-                        CLOEXEC_MSG_FOOTER[0], CLOEXEC_MSG_FOOTER[1],
-                        CLOEXEC_MSG_FOOTER[2], CLOEXEC_MSG_FOOTER[3]
-                    ];
-                    // pipe I/O up to PIPE_BUF bytes should be atomic
-                    assert!(output.write(&bytes).is_ok());
-                    unsafe { libc::_exit(1) }
-                }
-
-                rustrt::rust_unset_sigprocmask();
-
-                // If a stdio file descriptor is set to be ignored, we don't
-                // actually close it, but rather open up /dev/null into that
-                // file descriptor. Otherwise, the first file descriptor opened
-                // up in the child would be numbered as one of the stdio file
-                // descriptors, which is likely to wreak havoc.
-                let setup = |src: Option<AnonPipe>, dst: c_int| {
-                    let src = match src {
-                        None => {
-                            let flags = if dst == libc::STDIN_FILENO {
-                                libc::O_RDONLY
-                            } else {
-                                libc::O_RDWR
-                            };
-                            libc::open(devnull.as_ptr() as *const _, flags, 0)
-                        }
-                        Some(obj) => {
-                            let fd = obj.raw();
-                            // Leak the memory and the file descriptor. We're in the
-                            // child now an all our resources are going to be
-                            // cleaned up very soon
-                            mem::forget(obj);
-                            fd
-                        }
-                    };
-                    src != -1 && retry(|| dup2(src, dst)) != -1
-                };
-
-                if !setup(in_fd, libc::STDIN_FILENO) { fail(&mut output) }
-                if !setup(out_fd, libc::STDOUT_FILENO) { fail(&mut output) }
-                if !setup(err_fd, libc::STDERR_FILENO) { fail(&mut output) }
-
-                // close all other fds
-                for fd in (3..getdtablesize()).rev() {
-                    if fd != output.raw() {
-                        let _ = close(fd as c_int);
-                    }
-                }
-
-                match cfg.gid {
-                    Some(u) => {
-                        if libc::setgid(u as libc::gid_t) != 0 {
-                            fail(&mut output);
-                        }
-                    }
-                    None => {}
-                }
-                match cfg.uid {
-                    Some(u) => {
-                        // When dropping privileges from root, the `setgroups` call
-                        // will remove any extraneous groups. If we don't call this,
-                        // then even though our uid has dropped, we may still have
-                        // groups that enable us to do super-user things. This will
-                        // fail if we aren't root, so don't bother checking the
-                        // return value, this is just done as an optimistic
-                        // privilege dropping function.
-                        extern {
-                            fn setgroups(ngroups: libc::c_int,
-                                         ptr: *const libc::c_void) -> libc::c_int;
-                        }
-                        let _ = setgroups(0, ptr::null());
-
-                        if libc::setuid(u as libc::uid_t) != 0 {
-                            fail(&mut output);
-                        }
-                    }
-                    None => {}
-                }
-                if cfg.detach {
-                    // Don't check the error of setsid because it fails if we're the
-                    // process leader already. We just forked so it shouldn't return
-                    // error, but ignore it anyway.
-                    let _ = libc::setsid();
-                }
-                if !dirp.is_null() && chdir(dirp) == -1 {
-                    fail(&mut output);
-                }
-                if !envp.is_null() {
-                    *sys::os::environ() = envp as *const _;
-                }
-                let _ = execvp(*argv, argv as *mut _);
+        if let Some(u) = cfg.gid {
+            if libc::setgid(u as libc::gid_t) != 0 {
                 fail(&mut output);
-            })
-        })
+            }
+        }
+        if let Some(u) = cfg.uid {
+            // When dropping privileges from root, the `setgroups` call
+            // will remove any extraneous groups. If we don't call this,
+            // then even though our uid has dropped, we may still have
+            // groups that enable us to do super-user things. This will
+            // fail if we aren't root, so don't bother checking the
+            // return value, this is just done as an optimistic
+            // privilege dropping function.
+            let _ = c::setgroups(0, ptr::null());
+
+            if libc::setuid(u as libc::uid_t) != 0 {
+                fail(&mut output);
+            }
+        }
+        if cfg.detach {
+            // Don't check the error of setsid because it fails if we're the
+            // process leader already. We just forked so it shouldn't return
+            // error, but ignore it anyway.
+            let _ = libc::setsid();
+        }
+        if !dirp.is_null() && libc::chdir(dirp) == -1 {
+            fail(&mut output);
+        }
+        if !envp.is_null() {
+            *sys::os::environ() = envp as *const _;
+        }
+        let _ = libc::execvp(*argv, argv as *mut _);
+        fail(&mut output)
     }
 
     pub fn wait(&self) -> io::Result<ExitStatus> {
@@ -364,8 +334,8 @@ impl Process {
     }
 }
 
-fn with_argv<T,F>(prog: &CString, args: &[CString], cb: F) -> T
-    where F : FnOnce(*const *const libc::c_char) -> T
+fn make_argv(prog: &CString, args: &[CString])
+             -> (*const *const libc::c_char, Vec<*const libc::c_char>)
 {
     let mut ptrs: Vec<*const libc::c_char> = Vec::with_capacity(args.len()+1);
 
@@ -380,40 +350,38 @@ fn with_argv<T,F>(prog: &CString, args: &[CString], cb: F) -> T
     // Add a terminating null pointer (required by libc).
     ptrs.push(ptr::null());
 
-    cb(ptrs.as_ptr())
+    (ptrs.as_ptr(), ptrs)
 }
 
-fn with_envp<T, F>(env: Option<&HashMap<OsString, OsString>>, cb: F) -> T
-    where F : FnOnce(*const c_void) -> T
+fn make_envp(env: Option<&HashMap<OsString, OsString>>)
+             -> (*const c_void, Vec<Vec<u8>>, Vec<*const libc::c_char>)
 {
     // On posixy systems we can pass a char** for envp, which is a
     // null-terminated array of "k=v\0" strings. Since we must create
     // these strings locally, yet expose a raw pointer to them, we
     // create a temporary vector to own the CStrings that outlives the
     // call to cb.
-    match env {
-        Some(env) => {
-            let mut tmps = Vec::with_capacity(env.len());
+    if let Some(env) = env {
+        let mut tmps = Vec::with_capacity(env.len());
 
-            for pair in env {
-                let mut kv = Vec::new();
-                kv.push_all(pair.0.as_bytes());
-                kv.push('=' as u8);
-                kv.push_all(pair.1.as_bytes());
-                kv.push(0); // terminating null
-                tmps.push(kv);
-            }
-
-            // As with `with_argv`, this is unsafe, since cb could leak the pointers.
-            let mut ptrs: Vec<*const libc::c_char> =
-                tmps.iter()
-                    .map(|tmp| tmp.as_ptr() as *const libc::c_char)
-                    .collect();
-            ptrs.push(ptr::null());
-
-            cb(ptrs.as_ptr() as *const c_void)
+        for pair in env {
+            let mut kv = Vec::new();
+            kv.push_all(pair.0.as_bytes());
+            kv.push('=' as u8);
+            kv.push_all(pair.1.as_bytes());
+            kv.push(0); // terminating null
+            tmps.push(kv);
         }
-        _ => cb(ptr::null())
+
+        let mut ptrs: Vec<*const libc::c_char> =
+            tmps.iter()
+                .map(|tmp| tmp.as_ptr() as *const libc::c_char)
+                .collect();
+        ptrs.push(ptr::null());
+
+        (ptrs.as_ptr() as *const _, tmps, ptrs)
+    } else {
+        (0 as *const _, Vec::new(), Vec::new())
     }
 }
 

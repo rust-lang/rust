@@ -22,22 +22,24 @@ pub struct AnonPipe {
     fd: c_int
 }
 
-pub unsafe fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
+pub fn anon_pipe() -> io::Result<(AnonPipe, AnonPipe)> {
     // Windows pipes work subtly differently than unix pipes, and their
     // inheritance has to be handled in a different way that I do not
     // fully understand. Here we explicitly make the pipe non-inheritable,
     // which means to pass it to a subprocess they need to be duplicated
     // first, as in std::run.
     let mut fds = [0; 2];
-    match libc::pipe(fds.as_mut_ptr(), 1024 as ::libc::c_uint,
-    (libc::O_BINARY | libc::O_NOINHERIT) as c_int) {
-        0 => {
-            assert!(fds[0] != -1 && fds[0] != 0);
-            assert!(fds[1] != -1 && fds[1] != 0);
+    unsafe {
+        match libc::pipe(fds.as_mut_ptr(), 1024 as ::libc::c_uint,
+                         (libc::O_BINARY | libc::O_NOINHERIT) as c_int) {
+            0 => {
+                assert!(fds[0] != -1 && fds[0] != 0);
+                assert!(fds[1] != -1 && fds[1] != 0);
 
-            Ok((AnonPipe::from_fd(fds[0]), AnonPipe::from_fd(fds[1])))
+                Ok((AnonPipe::from_fd(fds[0]), AnonPipe::from_fd(fds[1])))
+            }
+            _ => Err(io::Error::last_os_error()),
         }
-        _ => Err(io::Error::last_os_error()),
     }
 }
 
