@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn ignore<F>(_f: F) where F: for<'z> FnOnce(&'z isize) -> &'z isize {}
+#![allow(non_snake_case)]
 
-fn nested() {
-    let y = 3;
-    ignore(
-        |z| { //~ ERROR E0373
-            if false { &y } else { z }
-        });
+register_diagnostics! {
+    E0373 // closure may outlive current fn, but it borrows {}, which is owned by current fn
 }
 
-fn main() {}
+__build_diagnostic_array! { DIAGNOSTICS }
