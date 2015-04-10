@@ -368,7 +368,7 @@ impl Builder {
 ///
 /// # Panics
 ///
-/// Panicks if the OS fails to create a thread; use `Builder::spawn`
+/// Panics if the OS fails to create a thread; use `Builder::spawn`
 /// to recover from such errors.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn spawn<F>(f: F) -> JoinHandle where F: FnOnce(), F: Send + 'static {
@@ -386,7 +386,7 @@ pub fn spawn<F>(f: F) -> JoinHandle where F: FnOnce(), F: Send + 'static {
 ///
 /// # Panics
 ///
-/// Panicks if the OS fails to create a thread; use `Builder::scoped`
+/// Panics if the OS fails to create a thread; use `Builder::scoped`
 /// to recover from such errors.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn scoped<'a, T, F>(f: F) -> JoinGuard<'a, T> where
