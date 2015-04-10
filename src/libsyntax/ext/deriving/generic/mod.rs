@@ -1181,6 +1181,17 @@ impl<'a> MethodDef<'a> {
                     rules: ast::UnsafeBlock(ast::CompilerGenerated),
                     span: sp }));
 
+                // FIXME: This unconditionally casts to `isize`. However:
+                //
+                // 1. On 32-bit platforms, that will truncate 64-bit enums
+                //    that are making use of the upper 32 bits, and
+                //
+                // 2. On all platforms, it will misinterpret the sign bit
+                //    of a 64-bit enum.
+                //
+                // What it should do is lookup whether the enum has an
+                // repr-attribute and cast to that if necessary. But
+                // attributes are not yet available to this function.
                 let target_ty = cx.ty_ident(sp, cx.ident_of("isize"));
                 let variant_disr = cx.expr_cast(sp, variant_value, target_ty);
                 let let_stmt = cx.stmt_let(sp, false, ident, variant_disr);
