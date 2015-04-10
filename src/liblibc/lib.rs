@@ -2856,6 +2856,7 @@ pub mod consts {
             pub const O_APPEND : c_int = 1024;
             pub const O_CREAT : c_int = 64;
             pub const O_EXCL : c_int = 128;
+            pub const O_NOCTTY : c_int = 256;
             pub const O_TRUNC : c_int = 512;
             pub const S_IFIFO : mode_t = 4096;
             pub const S_IFCHR : mode_t = 8192;
@@ -3077,6 +3078,7 @@ pub mod consts {
             pub const O_APPEND : c_int = 8;
             pub const O_CREAT : c_int = 256;
             pub const O_EXCL : c_int = 1024;
+            pub const O_NOCTTY : c_int = 2048;
             pub const O_TRUNC : c_int = 512;
             pub const S_IFIFO : mode_t = 4096;
             pub const S_IFCHR : mode_t = 8192;
@@ -3813,6 +3815,7 @@ pub mod consts {
             pub const O_APPEND : c_int = 8;
             pub const O_CREAT : c_int = 512;
             pub const O_EXCL : c_int = 2048;
+            pub const O_NOCTTY : c_int = 32768;
             pub const O_TRUNC : c_int = 1024;
             pub const S_IFIFO : mode_t = 4096;
             pub const S_IFCHR : mode_t = 8192;
@@ -4267,6 +4270,7 @@ pub mod consts {
             pub const O_APPEND : c_int = 8;
             pub const O_CREAT : c_int = 512;
             pub const O_EXCL : c_int = 2048;
+            pub const O_NOCTTY : c_int = 32768;
             pub const O_TRUNC : c_int = 1024;
             pub const S_IFIFO : mode_t = 4096;
             pub const S_IFCHR : mode_t = 8192;
@@ -4687,6 +4691,7 @@ pub mod consts {
             pub const O_APPEND : c_int = 8;
             pub const O_CREAT : c_int = 512;
             pub const O_EXCL : c_int = 2048;
+            pub const O_NOCTTY : c_int = 131072;
             pub const O_TRUNC : c_int = 1024;
             pub const S_IFIFO : mode_t = 4096;
             pub const S_IFCHR : mode_t = 8192;
