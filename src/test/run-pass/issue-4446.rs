@@ -10,9 +10,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(old_io)]
-
-use std::old_io::println;
 use std::sync::mpsc::channel;
 use std::thread;
 
@@ -22,6 +19,6 @@ pub fn main() {
     tx.send("hello, world").unwrap();
 
     thread::spawn(move|| {
-        println(rx.recv().unwrap());
+        println!("{}", rx.recv().unwrap());
     }).join().ok().unwrap();
 }

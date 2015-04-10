@@ -9,9 +9,7 @@
 // except according to those terms.
 
 
-#![feature(old_io)]
-
-use std::old_io::Command;
+use std::process::Command;
 use std::env;
 
 #[cfg(all(unix, not(target_os="android")))]
@@ -49,7 +47,7 @@ fn main() {
 
     let prog = cmd.spawn().unwrap();
     let result = prog.wait_with_output().unwrap();
-    let output = String::from_utf8_lossy(&result.output);
+    let output = String::from_utf8_lossy(&result.stdout);
 
     assert!(!output.contains("RUN_TEST_NEW_ENV"),
             "found RUN_TEST_NEW_ENV inside of:\n\n{}", output);

@@ -10,11 +10,11 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(old_io, io)]
+pub trait Writer {
+    fn write(&mut self, b: &[u8]) -> Result<(), ()>;
+}
 
-use std::old_io;
-
-fn foo(a: &mut old_io::Writer) {
+fn foo(a: &mut Writer) {
     a.write(&[]).unwrap();
 }
 
