@@ -99,6 +99,7 @@
 //! `println!` and `panic!` for the child thread:
 //!
 //! ```rust
+//! # #![allow(unused_must_use)]
 //! use std::thread;
 //!
 //! thread::Builder::new().name("child1".to_string()).spawn(move || {
@@ -167,14 +168,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::__local::{LocalKey, LocalKeyState};
-
-#[unstable(feature = "scoped_tls",
-            reason = "scoped TLS has yet to have wide enough use to fully consider \
-                      stabilizing its interface")]
-pub use self::__scoped::ScopedKey;
-
 use prelude::v1::*;
 
 use any::Any;
@@ -193,13 +186,19 @@ use time::Duration;
 // Thread-local storage
 ////////////////////////////////////////////////////////////////////////////////
 
-#[macro_use]
-#[doc(hidden)]
-#[path = "local.rs"] pub mod __local;
+#[macro_use] mod local;
+#[macro_use] mod scoped;
 
-#[macro_use]
-#[doc(hidden)]
-#[path = "scoped.rs"] pub mod __scoped;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::local::{LocalKey, LocalKeyState};
+
+#[unstable(feature = "scoped_tls",
+            reason = "scoped TLS has yet to have wide enough use to fully \
+                      consider stabilizing its interface")]
+pub use self::scoped::ScopedKey;
+
+#[doc(hidden)] pub use self::local::__impl as __local;
+#[doc(hidden)] pub use self::scoped::__impl as __scoped;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder

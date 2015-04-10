@@ -89,6 +89,7 @@
 //! of unsafe pointers in Rust.
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![doc(primitive = "pointer")]
 
 use mem;
 use clone::Clone;

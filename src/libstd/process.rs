@@ -38,8 +38,6 @@ use thread;
 /// # Examples
 ///
 /// ```should_panic
-/// # #![feature(process)]
-///
 /// use std::process::Command;
 ///
 /// let output = Command::new("/bin/cat").arg("file.txt").output().unwrap_or_else(|e| {
@@ -267,10 +265,8 @@ impl Command {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(process)]
     /// use std::process::Command;
-    ///
-    /// let output = Command::new("cat").arg("foot.txt").output().unwrap_or_else(|e| {
+    /// let output = Command::new("cat").arg("foo.txt").output().unwrap_or_else(|e| {
     ///     panic!("failed to execute process: {}", e)
     /// });
     ///
@@ -291,7 +287,6 @@ impl Command {
     /// # Examples
     ///
     /// ```
-    /// # #![feature(process)]
     /// use std::process::Command;
     ///
     /// let status = Command::new("ls").status().unwrap_or_else(|e| {

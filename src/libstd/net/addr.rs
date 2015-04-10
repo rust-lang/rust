@@ -281,7 +281,6 @@ impl hash::Hash for SocketAddrV6 {
 /// Some examples:
 ///
 /// ```no_run
-/// # #![feature(net)]
 /// use std::net::{SocketAddrV4, TcpStream, UdpSocket, TcpListener, Ipv4Addr};
 ///
 /// fn main() {
@@ -302,7 +301,7 @@ impl hash::Hash for SocketAddrV6 {
 ///     let tcp_l = TcpListener::bind("localhost:12345");
 ///
 ///     let mut udp_s = UdpSocket::bind(("127.0.0.1", port)).unwrap();
-///     udp_s.send_to(&[7], (ip, 23451));
+///     udp_s.send_to(&[7], (ip, 23451)).unwrap();
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]

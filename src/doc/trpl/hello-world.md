@@ -89,7 +89,9 @@ This line does all of the work in our little program. There are a number of
 details that are important here. The first is that it's indented with four
 spaces, not tabs. Please configure your editor of choice to insert four spaces
 with the tab key. We provide some [sample configurations for various
-editors](https://github.com/rust-lang/rust/tree/master/src/etc/CONFIGS.md).
+editors][configs].
+
+[configs]: https://github.com/rust-lang/rust/tree/master/src/etc/CONFIGS.md
 
 The second point is the `println!()` part. This is calling a Rust *macro*,
 which is how metaprogramming is done in Rust. If it were a function instead, it

@@ -29,9 +29,10 @@
 
 use libc;
 use std::ascii::AsciiExt;
-use std::ffi::CString;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::default::Default;
+use std::ffi::CString;
 use std::fmt;
 use std::slice;
 use std::str;
@@ -182,7 +183,9 @@ impl hoedown_buffer {
 /// left as-is.)
 fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     let trimmed = s.trim();
-    if trimmed.starts_with("# ") {
+    if trimmed == "#" {
+        Some("")
+    } else if trimmed.starts_with("# ") {
         Some(&trimmed[2..])
     } else {
         None
@@ -244,7 +247,8 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                         stripped_filtered_line(l).unwrap_or(l)
                     }).collect::<Vec<&str>>().connect("\n");
                     let krate = krate.as_ref().map(|s| &**s);
-                    let test = test::maketest(&test, krate, false, false, true);
+                    let test = test::maketest(&test, krate, false,
+                                              &Default::default());
                     s.push_str(&format!("<span class='rusttest'>{}</span>", Escape(&test)));
                 });
                 s.push_str(&highlight::highlight(&text,
