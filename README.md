@@ -39,6 +39,7 @@ the direction the language is evolving in.
 * [0509-collections-reform-part-2.md](text/0509-collections-reform-part-2.md)
 * [0517-io-os-reform.md](text/0517-io-os-reform.md)
 * [0560-integer-overflow.md](text/0560-integer-overflow.md)
+* [0639-discriminant-intrinsic.md](text/0639-discriminant-intrinsic.md)
 * [0769-sound-generic-drop.md](text/0769-sound-generic-drop.md)
 * [0803-type-ascription.md](text/0803-type-ascription.md)
 * [0809-box-and-in-for-stdlib.md](text/0809-box-and-in-for-stdlib.md)

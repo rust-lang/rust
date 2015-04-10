@@ -1,6 +1,6 @@
 - Start Date: 2015-01-21
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#639](https://github.com/rust-lang/rfcs/pull/639)
+- Rust Issue: [rust-lang/rust#24263](https://github.com/rust-lang/rust/issues/24263)
 
 # Summary
 
@@ -342,3 +342,18 @@ pub enum SqlState {
     Unknown(String),
 }
 ```
+
+# History
+
+This RFC was accepted on a provisional basis on 2015-10-04.  The
+intention is to implement and experiment with the proposed
+intrinsic. Some concerns expressed in the RFC discussion that will
+require resolution before the RFC can be fully accepted:
+
+- Using bounds such as `T:Reflect` to help ensure parametricity.
+- Do we want to change the return type in some way?
+  - It may not be helpful if we expose discriminant directly in the
+    case of (potentially) negative discriminants.
+  - We might want to return something more opaque to guard against
+    unintended representation exposure.
+- Does this intrinsic need to be unsafe?    
