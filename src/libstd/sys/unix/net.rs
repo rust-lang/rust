@@ -47,7 +47,9 @@ impl Socket {
         };
         unsafe {
             let fd = try!(cvt(libc::socket(fam, ty, 0)));
-            Ok(Socket(FileDesc::new(fd)))
+            let fd = FileDesc::new(fd);
+            fd.set_cloexec();
+            Ok(Socket(fd))
         }
     }
 
@@ -56,13 +58,16 @@ impl Socket {
         let fd = try!(cvt_r(|| unsafe {
             libc::accept(self.0.raw(), storage, len)
         }));
-        Ok(Socket(FileDesc::new(fd)))
+        let fd = FileDesc::new(fd);
+        fd.set_cloexec();
+        Ok(Socket(fd))
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {
-        cvt(unsafe { libc::dup(self.0.raw()) }).map(|fd| {
-            Socket(FileDesc::new(fd))
-        })
+        let fd = try!(cvt(unsafe { libc::dup(self.0.raw()) }));
+        let fd = FileDesc::new(fd);
+        fd.set_cloexec();
+        Ok(Socket(fd))
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {

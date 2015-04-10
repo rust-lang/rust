@@ -26,39 +26,35 @@ use libc;
           target_os = "dragonfly",
           target_os = "bitrig",
           target_os = "openbsd"))]
-pub const FIONBIO: libc::c_ulong = 0x8004667e;
+mod consts {
+    use libc;
+    pub const FIONBIO: libc::c_ulong = 0x8004667e;
+    pub const FIOCLEX: libc::c_ulong = 0x20006601;
+    pub const FIONCLEX: libc::c_ulong = 0x20006602;
+}
 #[cfg(any(all(target_os = "linux",
               any(target_arch = "x86",
                   target_arch = "x86_64",
                   target_arch = "arm",
                   target_arch = "aarch64")),
           target_os = "android"))]
-pub const FIONBIO: libc::c_ulong = 0x5421;
+mod consts {
+    use libc;
+    pub const FIONBIO: libc::c_ulong = 0x5421;
+    pub const FIOCLEX: libc::c_ulong = 0x5451;
+    pub const FIONCLEX: libc::c_ulong = 0x5450;
+}
 #[cfg(all(target_os = "linux",
           any(target_arch = "mips",
               target_arch = "mipsel",
               target_arch = "powerpc")))]
-pub const FIONBIO: libc::c_ulong = 0x667e;
-
-#[cfg(any(target_os = "macos",
-          target_os = "ios",
-          target_os = "freebsd",
-          target_os = "dragonfly",
-          target_os = "bitrig",
-          target_os = "openbsd"))]
-pub const FIOCLEX: libc::c_ulong = 0x20006601;
-#[cfg(any(all(target_os = "linux",
-              any(target_arch = "x86",
-                  target_arch = "x86_64",
-                  target_arch = "arm",
-                  target_arch = "aarch64")),
-          target_os = "android"))]
-pub const FIOCLEX: libc::c_ulong = 0x5451;
-#[cfg(all(target_os = "linux",
-          any(target_arch = "mips",
-              target_arch = "mipsel",
-              target_arch = "powerpc")))]
-pub const FIOCLEX: libc::c_ulong = 0x6601;
+mod consts {
+    use libc;
+    pub const FIONBIO: libc::c_ulong = 0x667e;
+    pub const FIOCLEX: libc::c_ulong = 0x6601;
+    pub const FIONCLEX: libc::c_ulong = 0x6600;
+}
+pub use self::consts::*;
 
 #[cfg(any(target_os = "macos",
           target_os = "ios",
@@ -163,6 +159,8 @@ extern {
     pub fn utimes(filename: *const libc::c_char,
                   times: *const libc::timeval) -> libc::c_int;
     pub fn gai_strerror(errcode: libc::c_int) -> *const libc::c_char;
+    pub fn setgroups(ngroups: libc::c_int,
+                     ptr: *const libc::c_void) -> libc::c_int;
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
