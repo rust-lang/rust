@@ -288,13 +288,44 @@ pub enum AutoAdjustment<'tcx> {
     AdjustDerefRef(AutoDerefRef<'tcx>),
 }
 
+/// Represents coercing a pointer to a different kind of pointer - where 'kind'
+/// here means either or both of raw vs borrowed vs unique and fat vs thin.
+/// The simplest cases are where the pointer is not adjusted fat vs thin. Here
+/// the pointer will be dereferenced N times (where a dereference can happen to
+/// to raw or borrowed pointers or any smart pointer which implements Deref,
+/// including Box<_>). The number of dereferences is given by `autoderefs`.
+/// It can then be auto-referenced zero or one times, indicated by `autoref`, to
+/// either a raw or borrowed pointer. In these cases unsize is None.
+///
+/// A DST coercon involves unsizing the underlying data. We start with a thin
+/// pointer, deref a number of times, unsize the underlying data, then autoref.
+/// The 'unsize' phase may change a fixed length array to a dynamically sized one,
+/// a concrete object to a trait object, or statically sized struct to a dyncamically
+/// sized one.
+/// E.g., &[i32; 4] -> &[i32] is represented by:
+/// AutoDerefRef {
+///     autoderefs: 1,          // &[i32; 4] -> [i32; 4]
+///     unsize: Some([i32]),    // [i32; 4] -> [i32]
+///     autoref: Some(AutoPtr), // [i32] -> &[i32]
+/// }
+/// Note that for a struct, the 'deep' unsizing of the struct is not recorded.
+/// E.g., `struct Foo<T> { x: T }` we can coerce &Foo<[i32; 4]> to &Foo<[i32]>
+/// The autoderef and -ref are the same as in the above example, but the type
+/// stored in `unsize` is `Foo<[i32]>`, we don't store any further detail about
+/// the underlying conversions from `[i32; 4]` to `[i32]`.
+///
+/// Box pointers are treated somewhat differently, the last deref is not counted,
+/// nor is the 'ref' to a `Box<_>`. Imagine them more like structs.
+/// E.g., Box<[i32; 4]> -> Box<[i32]> is represented by:
+/// AutoDerefRef {
+///     autoderefs: 0,
+///     unsize: Some(Box<[i32]>),
+///     autoref: None,
+/// }
 #[derive(Copy, Clone, Debug)]
 pub struct AutoDerefRef<'tcx> {
     // FIXME with more powerful date structures we could have a better design
-    // here. Some constraints:
-    //  unsize => autoref
-    //  unsize => autodefs == 0
-
+    // here.
 
     /// Apply a number of dereferences, producing an lvalue.
     pub autoderefs: usize,
