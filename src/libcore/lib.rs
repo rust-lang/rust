@@ -157,6 +157,7 @@ mod tuple;
 
 #[doc(hidden)]
 mod core {
+    pub use intrinsics;
     pub use panicking;
     pub use fmt;
     pub use clone;
