@@ -67,17 +67,16 @@ mod test {
     use prelude::v1::*;
 
     use super::ReaderRng;
-    use old_io::MemReader;
     use num::Int;
     use rand::Rng;
 
     #[test]
     fn test_reader_rng_u64() {
         // transmute from the target to avoid endianness concerns.
-        let v = vec![0, 0, 0, 0, 0, 0, 0, 1,
-                     0  , 0, 0, 0, 0, 0, 0, 2,
-                     0,   0, 0, 0, 0, 0, 0, 3];
-        let mut rng = ReaderRng::new(MemReader::new(v));
+        let v = &[0, 0, 0, 0, 0, 0, 0, 1,
+                  0  , 0, 0, 0, 0, 0, 0, 2,
+                  0,   0, 0, 0, 0, 0, 0, 3][..];
+        let mut rng = ReaderRng::new(v);
 
         assert_eq!(rng.next_u64(), 1.to_be());
         assert_eq!(rng.next_u64(), 2.to_be());
@@ -85,8 +84,8 @@ mod test {
     }
     #[test]
     fn test_reader_rng_u32() {
-        let v = vec![0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3];
-        let mut rng = ReaderRng::new(MemReader::new(v));
+        let v = &[0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3][..];
+        let mut rng = ReaderRng::new(v);
 
         assert_eq!(rng.next_u32(), 1.to_be());
         assert_eq!(rng.next_u32(), 2.to_be());
@@ -97,7 +96,7 @@ mod test {
         let v = [1, 2, 3, 4, 5, 6, 7, 8];
         let mut w = [0; 8];
 
-        let mut rng = ReaderRng::new(MemReader::new(v.to_vec()));
+        let mut rng = ReaderRng::new(&v[..]);
         rng.fill_bytes(&mut w);
 
         assert!(v == w);
@@ -106,7 +105,7 @@ mod test {
     #[test]
     #[should_panic]
     fn test_reader_rng_insufficient_bytes() {
-        let mut rng = ReaderRng::new(MemReader::new(vec!()));
+        let mut rng = ReaderRng::new(&[][..]);
         let mut v = [0; 3];
         rng.fill_bytes(&mut v);
     }

@@ -15,7 +15,7 @@ use std::io::prelude::*;
 use std::iter::repeat;
 use std::path::Path;
 use std::process::Command;
-use std::rand::{thread_rng, Rng};
+use std::__rand::{thread_rng, Rng};
 use std::{char, env};
 
 // creates a file with `fn main() { <random ident> }` and checks the

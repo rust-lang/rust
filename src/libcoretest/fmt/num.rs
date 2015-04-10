@@ -169,42 +169,42 @@ fn test_radix_base_too_large() {
 mod u32 {
     use test::Bencher;
     use core::fmt::radix;
-    use std::rand::{weak_rng, Rng};
+    use std::__rand::{thread_rng, Rng};
     use std::io::{Write, sink};
 
     #[bench]
     fn format_bin(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| { write!(&mut sink(), "{:b}", rng.gen::<u32>()) })
     }
 
     #[bench]
     fn format_oct(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| { write!(&mut sink(), "{:o}", rng.gen::<u32>()) })
     }
 
     #[bench]
     fn format_dec(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| { write!(&mut sink(), "{}", rng.gen::<u32>()) })
     }
 
     #[bench]
     fn format_hex(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| { write!(&mut sink(), "{:x}", rng.gen::<u32>()) })
     }
 
     #[bench]
     fn format_show(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| { write!(&mut sink(), "{:?}", rng.gen::<u32>()) })
     }
 
     #[bench]
     fn format_base_36(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| { write!(&mut sink(), "{}", radix(rng.gen::<u32>(), 36)) })
     }
 }
@@ -212,42 +212,42 @@ mod u32 {
 mod i32 {
     use test::Bencher;
     use core::fmt::radix;
-    use std::rand::{weak_rng, Rng};
+    use std::__rand::{thread_rng, Rng};
     use std::io::{Write, sink};
 
     #[bench]
     fn format_bin(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| { write!(&mut sink(), "{:b}", rng.gen::<i32>()) })
     }
 
     #[bench]
     fn format_oct(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| { write!(&mut sink(), "{:o}", rng.gen::<i32>()) })
     }
 
     #[bench]
     fn format_dec(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| { write!(&mut sink(), "{}", rng.gen::<i32>()) })
     }
 
     #[bench]
     fn format_hex(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| { write!(&mut sink(), "{:x}", rng.gen::<i32>()) })
     }
 
     #[bench]
     fn format_show(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| { write!(&mut sink(), "{:?}", rng.gen::<i32>()) })
     }
 
     #[bench]
     fn format_base_36(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| { write!(&mut sink(), "{}", radix(rng.gen::<i32>(), 36)) })
     }
 }

@@ -943,7 +943,7 @@ mod test {
     use std::clone::Clone;
     use std::iter::Iterator;
     use std::option::Option::{Some, None, self};
-    use std::rand;
+    use std::__rand::{thread_rng, Rng};
     use std::thread;
     use std::vec::Vec;
 
@@ -1095,7 +1095,7 @@ mod test {
         let mut v = vec![];
         for i in 0..sz {
             check_links(&m);
-            let r: u8 = rand::random();
+            let r: u8 = thread_rng().next_u32() as u8;
             match r % 6 {
                 0 => {
                     m.pop_back();

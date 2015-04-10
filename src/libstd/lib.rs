@@ -288,7 +288,7 @@ mod rand;
 #[doc(hidden)]
 #[unstable(feature = "rand")]
 pub mod __rand {
-    pub use rand::{thread_rng, Rng};
+    pub use rand::{thread_rng, ThreadRng, Rng};
 }
 
 // Modules that exist purely to document + host impl docs for primitive types

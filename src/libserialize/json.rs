@@ -2627,9 +2627,9 @@ mod tests {
     use super::{Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
                 StackElement, Stack, Decoder, Encoder, EncoderError};
     use std::{i64, u64, f32, f64};
+    use std::io::prelude::*;
     use std::collections::BTreeMap;
     use std::string;
-    use std::old_io::Writer;
 
     #[derive(RustcDecodable, Eq, PartialEq, Debug)]
     struct OptionData {
@@ -3464,7 +3464,6 @@ mod tests {
     #[test]
     fn test_encode_hashmap_with_numeric_key() {
         use std::str::from_utf8;
-        use std::old_io::Writer;
         use std::collections::HashMap;
         let mut hm: HashMap<usize, bool> = HashMap::new();
         hm.insert(1, true);
@@ -3480,7 +3479,6 @@ mod tests {
     #[test]
     fn test_prettyencode_hashmap_with_numeric_key() {
         use std::str::from_utf8;
-        use std::old_io::Writer;
         use std::collections::HashMap;
         let mut hm: HashMap<usize, bool> = HashMap::new();
         hm.insert(1, true);

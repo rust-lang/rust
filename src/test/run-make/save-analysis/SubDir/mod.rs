@@ -12,21 +12,18 @@
 
 use sub::sub2 as msalias;
 use sub::sub2;
-use std::old_io::stdio::println;
 
 static yy: usize = 25;
 
 mod sub {
     pub mod sub2 {
-        use std::old_io::stdio::println;
         pub mod sub3 {
-            use std::old_io::stdio::println;
             pub fn hello() {
-                println("hello from module 3");
+                println!("hello from module 3");
             }
         }
         pub fn hello() {
-            println("hello from a module");
+            println!("hello from a module");
         }
 
         pub struct nested_struct {
