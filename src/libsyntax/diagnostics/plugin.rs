@@ -92,6 +92,18 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         }
         _ => unreachable!()
     };
+    // Check that the description starts and ends with a newline.
+    description.map(|raw_msg| {
+        let msg = raw_msg.as_str();
+        let last = msg.len() - 1;
+        if &msg[0..1] != "\n" || &msg[last..] != "\n" {
+            ecx.span_err(span, &format!(
+                "description for error code {} doesn't start and end with a newline",
+                token::get_ident(*code)
+            ));
+        }
+        raw_msg
+    });
     with_registered_diagnostics(|diagnostics| {
         if diagnostics.insert(code.name, description).is_some() {
             ecx.span_err(span, &format!(
