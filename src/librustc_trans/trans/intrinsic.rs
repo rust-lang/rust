@@ -14,6 +14,7 @@ use llvm;
 use llvm::{SequentiallyConsistent, Acquire, Release, AtomicXchg, ValueRef, TypeKind};
 use middle::subst;
 use middle::subst::FnSpace;
+use trans::adt;
 use trans::base::*;
 use trans::build::*;
 use trans::callee;
@@ -680,6 +681,17 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 C_null(Type::i8p(ccx))
             } else {
                 PointerCast(bcx, llvm::get_param(fcx.llfn, 0), Type::i8p(ccx))
+            }
+        }
+
+        (_, "discriminant_value") => {
+            let val_ty = substs.types.get(FnSpace, 0);
+            match val_ty.sty {
+                ty::ty_enum(..) => {
+                    let repr = adt::represent_type(ccx, *val_ty);
+                    adt::trans_get_discr(bcx, &*repr, llargs[0], Some(llret_ty))
+                }
+                _ => C_null(llret_ty)
             }
         }
 

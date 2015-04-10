@@ -201,6 +201,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{self, DUMMY_SP};
 use codemap::Span;
+use diagnostic::SpanHandler;
 use fold::MoveMap;
 use owned_slice::OwnedSlice;
 use parse::token::InternedString;
@@ -391,6 +392,7 @@ impl<'a> TraitDef<'a> {
             ast::ItemEnum(ref enum_def, ref generics) => {
                 self.expand_enum_def(cx,
                                      enum_def,
+                                     &item.attrs[..],
                                      item.ident,
                                      generics)
             }
@@ -653,6 +655,7 @@ impl<'a> TraitDef<'a> {
     fn expand_enum_def(&self,
                        cx: &mut ExtCtxt,
                        enum_def: &EnumDef,
+                       type_attrs: &[ast::Attribute],
                        type_ident: Ident,
                        generics: &Generics) -> P<ast::Item> {
         let mut field_tys = Vec::new();
@@ -687,6 +690,7 @@ impl<'a> TraitDef<'a> {
                 method_def.expand_enum_method_body(cx,
                                                    self,
                                                    enum_def,
+                                                   type_attrs,
                                                    type_ident,
                                                    self_args,
                                                    &nonself_args[..])
@@ -706,13 +710,30 @@ impl<'a> TraitDef<'a> {
     }
 }
 
-fn variant_to_pat(cx: &mut ExtCtxt, sp: Span, enum_ident: ast::Ident, variant: &ast::Variant)
-                  -> P<ast::Pat> {
-    let path = cx.path(sp, vec![enum_ident, variant.node.name]);
-    cx.pat(sp, match variant.node.kind {
-        ast::TupleVariantKind(..) => ast::PatEnum(path, None),
-        ast::StructVariantKind(..) => ast::PatStruct(path, Vec::new(), true),
-    })
+fn find_repr_type_name(diagnostic: &SpanHandler,
+                       type_attrs: &[ast::Attribute]) -> &'static str {
+    let mut repr_type_name = "i32";
+    for a in type_attrs {
+        for r in &attr::find_repr_attrs(diagnostic, a) {
+            repr_type_name = match *r {
+                attr::ReprAny | attr::ReprPacked => continue,
+                attr::ReprExtern => "i32",
+
+                attr::ReprInt(_, attr::SignedInt(ast::TyIs)) => "isize",
+                attr::ReprInt(_, attr::SignedInt(ast::TyI8)) => "i8",
+                attr::ReprInt(_, attr::SignedInt(ast::TyI16)) => "i16",
+                attr::ReprInt(_, attr::SignedInt(ast::TyI32)) => "i32",
+                attr::ReprInt(_, attr::SignedInt(ast::TyI64)) => "i64",
+
+                attr::ReprInt(_, attr::UnsignedInt(ast::TyUs)) => "usize",
+                attr::ReprInt(_, attr::UnsignedInt(ast::TyU8)) => "u8",
+                attr::ReprInt(_, attr::UnsignedInt(ast::TyU16)) => "u16",
+                attr::ReprInt(_, attr::UnsignedInt(ast::TyU32)) => "u32",
+                attr::ReprInt(_, attr::UnsignedInt(ast::TyU64)) => "u64",
+            }
+        }
+    }
+    repr_type_name
 }
 
 impl<'a> MethodDef<'a> {
@@ -983,12 +1004,13 @@ impl<'a> MethodDef<'a> {
                                cx: &mut ExtCtxt,
                                trait_: &TraitDef,
                                enum_def: &EnumDef,
+                               type_attrs: &[ast::Attribute],
                                type_ident: Ident,
                                self_args: Vec<P<Expr>>,
                                nonself_args: &[P<Expr>])
                                -> P<Expr> {
         self.build_enum_match_tuple(
-            cx, trait_, enum_def, type_ident, self_args, nonself_args)
+            cx, trait_, enum_def, type_attrs, type_ident, self_args, nonself_args)
     }
 
 
@@ -1022,6 +1044,7 @@ impl<'a> MethodDef<'a> {
         cx: &mut ExtCtxt,
         trait_: &TraitDef,
         enum_def: &EnumDef,
+        type_attrs: &[ast::Attribute],
         type_ident: Ident,
         self_args: Vec<P<Expr>>,
         nonself_args: &[P<Expr>]) -> P<Expr> {
@@ -1044,8 +1067,8 @@ impl<'a> MethodDef<'a> {
             .collect::<Vec<ast::Ident>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
-        // a series of let statements mapping each self_arg to a usize
-        // corresponding to its variant index.
+        // a series of let statements mapping each self_arg to an int
+        // value corresponding to its discriminant.
         let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
             .map(|name| { let vi_suffix = format!("{}_vi", &name[..]);
                           cx.ident_of(&vi_suffix[..]) })
@@ -1160,33 +1183,44 @@ impl<'a> MethodDef<'a> {
         //   unreachable-pattern error.
         //
         if variants.len() > 1 && self_args.len() > 1 {
-            let arms: Vec<ast::Arm> = variants.iter().enumerate()
-                .map(|(index, variant)| {
-                    let pat = variant_to_pat(cx, sp, type_ident, &**variant);
-                    let lit = ast::LitInt(index as u64, ast::UnsignedIntLit(ast::TyUs));
-                    cx.arm(sp, vec![pat], cx.expr_lit(sp, lit))
-                }).collect();
-
             // Build a series of let statements mapping each self_arg
-            // to a usize corresponding to its variant index.
+            // to its discriminant value. If this is a C-style enum
+            // with a specific repr type, then casts the values to
+            // that type.  Otherwise casts to `i32` (the default repr
+            // type).
+            //
             // i.e. for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
             // with three Self args, builds three statements:
             //
             // ```
-            // let __self0_vi = match   self {
-            //     A => 0, B(..) => 1, C(..) => 2
-            // };
-            // let __self1_vi = match __arg1 {
-            //     A => 0, B(..) => 1, C(..) => 2
-            // };
-            // let __self2_vi = match __arg2 {
-            //     A => 0, B(..) => 1, C(..) => 2
-            // };
+            // let __self0_vi = unsafe {
+            //     std::intrinsics::discriminant_value(&self) } as i32;
+            // let __self1_vi = unsafe {
+            //     std::intrinsics::discriminant_value(&__arg1) } as i32;
+            // let __self2_vi = unsafe {
+            //     std::intrinsics::discriminant_value(&__arg2) } as i32;
             // ```
             let mut index_let_stmts: Vec<P<ast::Stmt>> = Vec::new();
+
+            let target_type_name =
+                find_repr_type_name(&cx.parse_sess.span_diagnostic, type_attrs);
+
             for (&ident, self_arg) in vi_idents.iter().zip(self_args.iter()) {
-                let variant_idx = cx.expr_match(sp, self_arg.clone(), arms.clone());
-                let let_stmt = cx.stmt_let(sp, false, ident, variant_idx);
+                let path = vec![cx.ident_of_std("core"),
+                                cx.ident_of("intrinsics"),
+                                cx.ident_of("discriminant_value")];
+                let call = cx.expr_call_global(
+                    sp, path, vec![cx.expr_addr_of(sp, self_arg.clone())]);
+                let variant_value = cx.expr_block(P(ast::Block {
+                    stmts: vec![],
+                    expr: Some(call),
+                    id: ast::DUMMY_NODE_ID,
+                    rules: ast::UnsafeBlock(ast::CompilerGenerated),
+                    span: sp }));
+
+                let target_ty = cx.ty_ident(sp, cx.ident_of(target_type_name));
+                let variant_disr = cx.expr_cast(sp, variant_value, target_ty);
+                let let_stmt = cx.stmt_let(sp, false, ident, variant_disr);
                 index_let_stmts.push(let_stmt);
             }
 
