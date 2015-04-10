@@ -2705,8 +2705,8 @@ macro_rules! from_str_radix_float_impl {
             ///
             /// # Return value
             ///
-            /// `None` if the string did not represent a valid number.  Otherwise,
-            /// `Some(n)` where `n` is the floating-point number represented by `src`.
+            /// `Err(ParseIntError)` if the string did not represent a valid number.  Otherwise,
+            /// Otherwise, `Ok(n)` where `n` is the floating-point number represented by `src`.
             #[inline]
             #[allow(deprecated)]
             fn from_str(src: &str) -> Result<$T, ParseFloatError> {
@@ -2734,9 +2734,8 @@ macro_rules! from_str_radix_float_impl {
             ///
             /// # Return value
             ///
-            /// `None` if the string did not represent a valid number.
-            /// Otherwise, `Some(n)` where `n` is the floating-point number
-            /// represented by `src`.
+            /// `Err(ParseIntError)` if the string did not represent a valid number.  Otherwise,
+            /// Otherwise, `Ok(n)` where `n` is the floating-point number represented by `src`.
             fn from_str_radix(src: &str, radix: u32)
                               -> Result<$T, ParseFloatError> {
                 use self::FloatErrorKind::*;
