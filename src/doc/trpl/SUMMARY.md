@@ -41,6 +41,7 @@
     * [Traits](traits.md)
     * [Operators and Overloading](operators-and-overloading.md)
     * [Generics](generics.md)
+    * [if let](if-let.md)
     * [Trait Objects](trait-objects.md)
     * [Closures](closures.md)
     * [Universal Function Call Syntax](ufcs.md)
