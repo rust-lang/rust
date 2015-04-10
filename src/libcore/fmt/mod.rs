@@ -861,8 +861,7 @@ impl<T> Pointer for *const T {
                 // The formats need two extra bytes, for the 0x
                 if cfg!(target_pointer_width = "32") {
                     f.width = Some(10);
-                }
-                if cfg!(target_pointer_width = "64") {
+                } else {
                     f.width = Some(18);
                 }
             }

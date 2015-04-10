@@ -75,8 +75,7 @@ pub fn main() {
     if cfg!(target_pointer_width = "32") {
         t!(format!("{:#p}", 0x1234 as *const isize), "0x00001234");
         t!(format!("{:#p}", 0x1234 as *mut isize), "0x00001234");
-    }
-    if cfg!(target_pointer_width = "64") {
+    } else {
         t!(format!("{:#p}", 0x1234 as *const isize), "0x0000000000001234");
         t!(format!("{:#p}", 0x1234 as *mut isize), "0x0000000000001234");
     }
