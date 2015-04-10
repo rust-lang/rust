@@ -54,7 +54,8 @@ TARGET_CRATES := libc std flate arena term \
                  log graphviz core rbml alloc \
                  unicode rustc_bitflags
 RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
-                rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint
+                rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint \
+                rustc_data_structures
 HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc fmt_macros
 CRATES := $(TARGET_CRATES) $(HOST_CRATES)
 TOOLS := compiletest rustdoc rustc rustbook
@@ -80,9 +81,10 @@ DEPS_rustc_resolve := rustc log syntax
 DEPS_rustc_privacy := rustc log syntax
 DEPS_rustc_lint := rustc log syntax
 DEPS_rustc := syntax flate arena serialize getopts rbml \
-              log graphviz rustc_llvm rustc_back
+              log graphviz rustc_llvm rustc_back rustc_data_structures
 DEPS_rustc_llvm := native:rustllvm libc std
 DEPS_rustc_back := std syntax rustc_llvm flate log libc
+DEPS_rustc_data_structures := std log serialize
 DEPS_rustdoc := rustc rustc_driver native:hoedown serialize getopts \
                 test rustc_lint
 DEPS_rustc_bitflags := core
@@ -141,16 +143,17 @@ DOC_CRATES := $(filter-out rustc, \
 	   $(filter-out rustc_trans, \
 	   $(filter-out rustc_typeck, \
 	   $(filter-out rustc_borrowck, \
+	   $(filter-out rustc_data_structures, \
 	   $(filter-out rustc_resolve, \
 	   $(filter-out rustc_driver, \
 	   $(filter-out rustc_privacy, \
 	   $(filter-out rustc_lint, \
 	   $(filter-out log, \
 	   $(filter-out getopts, \
-	   $(filter-out syntax, $(CRATES))))))))))))
+	   $(filter-out syntax, $(CRATES)))))))))))))
 #endif
 #endif
-COMPILER_DOC_CRATES := rustc rustc_trans rustc_borrowck rustc_resolve \
+COMPILER_DOC_CRATES := rustc rustc_trans rustc_borrowck rustc_data_structures rustc_resolve \
                        rustc_typeck rustc_driver syntax rustc_privacy \
                        rustc_lint
 

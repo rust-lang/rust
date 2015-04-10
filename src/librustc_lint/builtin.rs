@@ -1886,14 +1886,13 @@ impl LintPass for UnconditionalRecursion {
                 continue;
             }
             // add the successors of this node to explore the graph further.
-            cfg.graph.each_outgoing_edge(idx, |_, edge| {
+            for (_, edge) in cfg.graph.outgoing_edges(idx) {
                 let target_idx = edge.target();
                 let target_cfg_id = target_idx.node_id();
                 if !visited.contains(&target_cfg_id) {
                     work_queue.push(target_idx)
                 }
-                true
-            });
+            }
         }
 
         // Check the number of self calls because a function that

@@ -530,10 +530,9 @@ impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
                                                pred_bits: &[usize],
                                                cfg: &cfg::CFG,
                                                cfgidx: CFGIndex) {
-        cfg.graph.each_outgoing_edge(cfgidx, |_e_idx, edge| {
+        for (_, edge) in cfg.graph.outgoing_edges(cfgidx) {
             self.propagate_bits_into_entry_set_for(pred_bits, edge);
-            true
-        });
+        }
     }
 
     fn propagate_bits_into_entry_set_for(&mut self,
