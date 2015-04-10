@@ -345,8 +345,8 @@ pub struct SendError<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RecvError;
 
-/// This enumeration is the list of the possible reasons that try_recv could not
-/// return data when called.
+/// This enumeration is the list of the possible reasons that `try_recv` could
+/// not return data when called.
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum TryRecvError {
