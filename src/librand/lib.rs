@@ -516,25 +516,21 @@ pub struct Closed01<F>(pub F);
 
 #[cfg(test)]
 mod test {
-    use std::rand;
+    use std::__rand as rand;
 
-    pub struct MyRng<R> { inner: R }
+    pub struct MyRng { inner: Box<rand::Rng> }
 
     impl<R: rand::Rng> ::Rng for MyRng<R> {
         fn next_u32(&mut self) -> u32 {
-            fn next<T: rand::Rng>(t: &mut T) -> u32 {
-                use std::rand::Rng;
-                t.next_u32()
-            }
-            next(&mut self.inner)
+            rand::Rng::next_u32(&mut self.inner)
         }
     }
 
     pub fn rng() -> MyRng<rand::ThreadRng> {
-        MyRng { inner: rand::thread_rng() }
+        MyRng { inner: Box::new(rand::thread_rng()) }
     }
 
-    pub fn weak_rng() -> MyRng<rand::XorShiftRng> {
-        MyRng { inner: rand::weak_rng() }
+    pub fn weak_rng() -> MyRng<rand::ThreadRng> {
+        MyRng { inner: Box::new(rand::thread_rng()) }
     }
 }

@@ -123,7 +123,7 @@ pub struct WalkDir {
 /// Opening a file for both reading and writing, as well as creating it if it
 /// doesn't exist:
 ///
-/// ```
+/// ```no_run
 /// use std::fs::OpenOptions;
 ///
 /// let file = OpenOptions::new()
@@ -1195,7 +1195,8 @@ mod tests {
 
     pub fn tmpdir() -> TempDir {
         let p = env::temp_dir();
-        let ret = p.join(&format!("rust-{}", rand::random::<u32>()));
+        let mut r = rand::thread_rng();
+        let ret = p.join(&format!("rust-{}", r.next_u32()));
         check!(fs::create_dir(&ret));
         TempDir(ret)
     }

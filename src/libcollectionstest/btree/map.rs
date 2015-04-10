@@ -251,7 +251,7 @@ fn test_entry(){
 
 mod bench {
     use std::collections::BTreeMap;
-    use std::rand::{Rng, weak_rng};
+    use std::rand::{Rng, thread_rng};
 
     use test::{Bencher, black_box};
 
@@ -269,7 +269,7 @@ mod bench {
 
     fn bench_iter(b: &mut Bencher, size: i32) {
         let mut map = BTreeMap::<i32, i32>::new();
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
 
         for _ in 0..size {
             map.insert(rng.gen(), rng.gen());

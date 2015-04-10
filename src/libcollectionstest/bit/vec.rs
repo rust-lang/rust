@@ -633,15 +633,14 @@ fn test_bit_vec_extend() {
 mod bench {
     use std::collections::BitVec;
     use std::u32;
-    use std::rand::{Rng, self};
+    use std::__rand::{Rng, thread_rng};
 
     use test::{Bencher, black_box};
 
     const BENCH_BITS : usize = 1 << 14;
 
-    fn rng() -> rand::IsaacRng {
-        let seed: &[_] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 0];
-        rand::SeedableRng::from_seed(seed)
+    fn rng() -> ThreadRng {
+        thread_rng()
     }
 
     #[bench]

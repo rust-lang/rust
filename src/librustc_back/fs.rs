@@ -68,7 +68,7 @@ pub fn realpath(original: &Path) -> io::Result<PathBuf> {
 mod test {
     use tempdir::TempDir;
     use std::fs::{self, File};
-    use std::path::{Path, PathBuf};
+    use super::realpath;
 
     #[test]
     fn realpath_works() {
