@@ -799,18 +799,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                     self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
                 }
                 ty::AdjustDerefRef(ref adj) => {
-                    self.walk_autoderefs(expr, adj.autoderefs);
-                    if let Some(ref r) = adj.autoref {
-                        self.walk_autoref(expr, r, adj.autoderefs);
-                    } else if adj.unsize.is_some() {
-                        assert!(adj.autoderefs == 0,
-                                format!("Expected no derefs with \
-                                         unsize AutoRefs, found: {}",
-                                         adj.repr(self.tcx())));
-                        let cmt_unadjusted =
-                            return_if_err!(self.mc.cat_expr_unadjusted(expr));
-                        self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
-                    }
+                    self.walk_autoderefref(expr, adj);
                 }
             }
         }
@@ -860,28 +849,28 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         self.walk_autoderefs(expr, adj.autoderefs);
 
         // Weird hacky special case: AutoUnsizeUniq, which converts
-        // from a ~T to a ~Trait etc, always comes in a stylized
+        // from a Box<T> to a Box<Trait> etc, always comes in a stylized
         // fashion. In particular, we want to consume the ~ pointer
         // being dereferenced, not the dereferenced content (as the
         // content is, at least for upcasts, unsized).
-        match adj.autoref {
-            Some(ty::AutoUnsizeUniq(_)) => {
-                assert!(adj.autoderefs == 1,
-                        format!("Expected exactly 1 deref with Uniq AutoRefs, found: {}",
-                                adj.autoderefs));
+        if let Some(ty) = adj.unsize {
+            if let ty::ty_uniq(_) = ty.sty {
+                assert!(adj.autoderefs == 0,
+                        format!("Expected no derefs with unsize AutoRefs, found: {}",
+                                 adj.repr(self.tcx())));
                 let cmt_unadjusted =
                     return_if_err!(self.mc.cat_expr_unadjusted(expr));
                 self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
                 return;
             }
-            _ => { }
         }
 
-        let autoref = adj.autoref.as_ref();
+        //let autoref = adj.autoref.as_ref();
         let cmt_derefd = return_if_err!(
             self.mc.cat_expr_autoderefd(expr, adj.autoderefs));
-        self.walk_autoref(expr, &cmt_derefd, autoref);
+        self.walk_autoref(expr, cmt_derefd, adj.autoref);
     }
+
 
     /// Walks the autoref `opt_autoref` applied to the autoderef'd
     /// `expr`. `cmt_derefd` is the mem-categorized form of `expr`
@@ -893,24 +882,24 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     /// autoref.
     fn walk_autoref(&mut self,
                     expr: &ast::Expr,
-                    cmt_derefd: &mc::cmt<'tcx>,
-                    opt_autoref: Option<&ty::AutoRef<'tcx>>)
+                    cmt_base: mc::cmt<'tcx>,
+                    opt_autoref: Option<ty::AutoRef<'tcx>>)
                     -> mc::cmt<'tcx>
     {
         debug!("walk_autoref(expr.id={} cmt_derefd={} opt_autoref={:?})",
                expr.id,
-               cmt_derefd.repr(self.tcx()),
+               cmt_base.repr(self.tcx()),
                opt_autoref);
 
+        let cmt_base_ty = cmt_base.ty;
+
         let autoref = match opt_autoref {
-            Some(autoref) => autoref,
+            Some(ref autoref) => autoref,
             None => {
-                // No recursive step here, this is a base case.
-                return cmt_derefd.clone();
+                // No AutoRef.
+                return cmt_base;
             }
         };
-
-        let cmt_base = self.walk_autoref_recursively(expr, cmt_derefd, baseref);
 
         debug!("walk_autoref: expr.id={} cmt_base={}",
                expr.id,
@@ -920,15 +909,13 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             ty::AutoPtr(r, m) => {
                 self.delegate.borrow(expr.id,
                                      expr.span,
-                                     cmt_derefd,
+                                     cmt_base,
                                      *r,
                                      ty::BorrowKind::from_mutbl(m),
                                      AutoRef);
             }
 
-            ty::AutoUnsafe(m, ref baseref) => {
-                let cmt_base = self.walk_autoref_recursively(expr, cmt_derefd, baseref);
-
+            ty::AutoUnsafe(m) => {
                 debug!("walk_autoref: expr.id={} cmt_base={}",
                        expr.id,
                        cmt_base.repr(self.tcx()));
@@ -953,22 +940,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
 
         let adj_ty =
             ty::adjust_ty_for_autoref(self.tcx(),
-                                      expr.span,
-                                      cmt_derefd.ty,
+                                      cmt_base_ty,
                                       opt_autoref);
 
         self.mc.cat_rvalue_node(expr.id, expr.span, adj_ty)
-    }
-
-    fn walk_autoref_recursively(&mut self,
-                                expr: &ast::Expr,
-                                cmt_derefd: &mc::cmt<'tcx>,
-                                autoref: &Option<Box<ty::AutoRef<'tcx>>>)
-                                -> mc::cmt<'tcx>
-    {
-        // Shuffle from a ref to an optional box to an optional ref.
-        let autoref: Option<&ty::AutoRef<'tcx>> = autoref.as_ref().map(|b| &**b);
-        self.walk_autoref(expr, cmt_derefd, autoref)
     }
 
 

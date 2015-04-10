@@ -1134,7 +1134,7 @@ fn link_autoref(rcx: &Rcx,
 
         ty::AutoUnsafe(m) => {
             let r = ty::ReScope(CodeExtent::from_node_id(expr.id));
-            link_region(rcx, expr.span, r, ty::BorrowKind::from_mutbl(m), expr_cmt);
+            link_region(rcx, expr.span, &r, ty::BorrowKind::from_mutbl(m), expr_cmt);
         }
     }
 }

@@ -79,7 +79,6 @@ use syntax::ast;
 struct Coerce<'a, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     origin: infer::TypeOrigin,
-    trace: TypeTrace<'tcx>,
     unsizing_obligation: Cell<Option<Ty<'tcx>>>
 }
 
@@ -266,7 +265,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 if let Some(target) = self.unsize_ty(mt_a.ty, mt_b.ty) {
                     try!(coerce_mutbls(mt_a.mutbl, mt_b.mutbl));
 
-                    let coercion = Coercion(self.trace.clone());
+                    let coercion = Coercion(self.origin.span());
                     let r_borrow = self.fcx.infcx().next_region_var(coercion);
                     let region = self.tcx().mk_region(r_borrow);
                     (Some(ty::AutoPtr(region, mt_b.mutbl)), target)
@@ -293,7 +292,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         };
 
         let target = ty::adjust_ty_for_autoref(self.tcx(), target, reborrow);
-        try!(self.fcx.infcx().try(|_| self.subtype(target, b)));
+        try!(self.subtype(target, b));
         let adjustment = AutoDerefRef {
             autoderefs: if reborrow.is_some() { 1 } else { 0 },
             autoref: reborrow,
@@ -374,7 +373,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     assert!(ty_substs_a.len() == ty_substs_b.len());
 
                     let tps = ty_substs_a.iter().zip(ty_substs_b.iter()).enumerate();
-                    for (i, (&tp_a, &tp_b)) in tps {
+                    for (i, (tp_a, tp_b)) in tps {
                         if self.subtype(*tp_a, *tp_b).is_ok() {
                             continue;
                         }
@@ -498,12 +497,10 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                              -> RelateResult<'tcx, ()> {
     debug!("mk_assignty({} -> {})", a.repr(fcx.tcx()), b.repr(fcx.tcx()));
     let (adjustment, unsizing_obligation) = try!(indent(|| {
-        fcx.infcx().commit_if_ok(|| {
-            let origin = infer::ExprAssignable(expr.span);
+        fcx.infcx().commit_if_ok(|_| {
             let coerce = Coerce {
                 fcx: fcx,
                 origin: infer::ExprAssignable(expr.span),
-                trace: infer::TypeTrace::types(origin, false, a, b),
                 unsizing_obligation: Cell::new(None)
             };
             Ok((try!(coerce.coerce(expr, a, b)),
