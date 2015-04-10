@@ -49,7 +49,7 @@ pub struct BytePos(pub u32);
 /// A character offset. Because of multibyte utf8 characters, a byte offset
 /// is not equivalent to a character offset. The CodeMap will convert BytePos
 /// values to CharPos values as necessary.
-#[derive(Copy, Clone, PartialEq, Hash, PartialOrd, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Debug)]
 pub struct CharPos(pub usize);
 
 // FIXME: Lots of boilerplate in these impls, but so far my attempts to fix
@@ -305,9 +305,21 @@ impl ExpnId {
 
 pub type FileName = String;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct LineInfo {
+    /// Index of line, starting from 0.
+    pub line_index: usize,
+
+    /// Column in line where span begins, starting from 0.
+    pub start_col: CharPos,
+
+    /// Column in line where span ends, starting from 0, exclusive.
+    pub end_col: CharPos,
+}
+
 pub struct FileLines {
     pub file: Rc<FileMap>,
-    pub lines: Vec<usize>
+    pub lines: Vec<LineInfo>
 }
 
 /// Identifies an offset of a multi-byte character in a FileMap
@@ -479,9 +491,9 @@ impl FileMap {
         lines.push(pos);
     }
 
-    /// get a line from the list of pre-computed line-beginnings
-    ///
-    pub fn get_line(&self, line_number: usize) -> Option<String> {
+    /// get a line from the list of pre-computed line-beginnings.
+    /// line-number here is 0-based.
+    pub fn get_line(&self, line_number: usize) -> Option<&str> {
         match self.src {
             Some(ref src) => {
                 let lines = self.lines.borrow();
@@ -492,7 +504,7 @@ impl FileMap {
                     match slice.find('\n') {
                         Some(e) => &slice[..e],
                         None => slice
-                    }.to_string()
+                    }
                 })
             }
             None => None
@@ -661,10 +673,29 @@ impl CodeMap {
     pub fn span_to_lines(&self, sp: Span) -> FileLines {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
-        let mut lines = Vec::new();
-        for i in lo.line - 1..hi.line {
-            lines.push(i);
-        };
+        let mut lines = Vec::with_capacity(hi.line - lo.line + 1);
+
+        // The span starts partway through the first line,
+        // but after that it starts from offset 0.
+        let mut start_col = lo.col;
+
+        // For every line but the last, it extends from `start_col`
+        // and to the end of the line. Be careful because the line
+        // numbers in Loc are 1-based, so we subtract 1 to get 0-based
+        // lines.
+        for line_index in lo.line-1 .. hi.line-1 {
+            let line_len = lo.file.get_line(line_index).map(|s| s.len()).unwrap_or(0);
+            lines.push(LineInfo { line_index: line_index,
+                                  start_col: start_col,
+                                  end_col: CharPos::from_usize(line_len) });
+            start_col = CharPos::from_usize(0);
+        }
+
+        // For the last line, it extends from `start_col` to `hi.col`:
+        lines.push(LineInfo { line_index: hi.line - 1,
+                              start_col: start_col,
+                              end_col: hi.col });
+
         FileLines {file: lo.file, lines: lines}
     }
 
@@ -919,6 +950,7 @@ pub struct MalformedCodemapPositions {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::rc::Rc;
 
     #[test]
     fn t1 () {
@@ -926,10 +958,10 @@ mod test {
         let fm = cm.new_filemap("blork.rs".to_string(),
                                 "first line.\nsecond line".to_string());
         fm.next_line(BytePos(0));
-        assert_eq!(fm.get_line(0), Some("first line.".to_string()));
+        assert_eq!(fm.get_line(0), Some("first line."));
         // TESTING BROKEN BEHAVIOR:
         fm.next_line(BytePos(10));
-        assert_eq!(fm.get_line(1), Some(".".to_string()));
+        assert_eq!(fm.get_line(1), Some("."));
     }
 
     #[test]
@@ -1057,7 +1089,54 @@ mod test {
 
         assert_eq!(file_lines.file.name, "blork.rs");
         assert_eq!(file_lines.lines.len(), 1);
-        assert_eq!(file_lines.lines[0], 1);
+        assert_eq!(file_lines.lines[0].line_index, 1);
+    }
+
+    /// Given a string like " ^~~~~~~~~~~~ ", produces a span
+    /// coverting that range. The idea is that the string has the same
+    /// length as the input, and we uncover the byte positions.  Note
+    /// that this can span lines and so on.
+    fn span_from_selection(input: &str, selection: &str) -> Span {
+        assert_eq!(input.len(), selection.len());
+        let left_index = selection.find('^').unwrap() as u32;
+        let right_index = selection.rfind('~').unwrap() as u32;
+        Span { lo: BytePos(left_index), hi: BytePos(right_index + 1), expn_id: NO_EXPANSION }
+    }
+
+    fn new_filemap_and_lines(cm: &CodeMap, filename: &str, input: &str) -> Rc<FileMap> {
+        let fm = cm.new_filemap(filename.to_string(), input.to_string());
+        let mut byte_pos: u32 = 0;
+        for line in input.lines() {
+            // register the start of this line
+            fm.next_line(BytePos(byte_pos));
+
+            // update byte_pos to include this line and the \n at the end
+            byte_pos += line.len() as u32 + 1;
+        }
+        fm
+    }
+
+    /// Test span_to_snippet and span_to_lines for a span coverting 3
+    /// lines in the middle of a file.
+    #[test]
+    fn span_to_snippet_and_lines_spanning_multiple_lines() {
+        let cm = CodeMap::new();
+        let inputtext = "aaaaa\nbbbbBB\nCCC\nDDDDDddddd\neee\n";
+        let selection = "     \n    ^~\n~~~\n~~~~~     \n   \n";
+        new_filemap_and_lines(&cm, "blork.rs", inputtext);
+        let span = span_from_selection(inputtext, selection);
+
+        // check that we are extracting the text we thought we were extracting
+        assert_eq!(&cm.span_to_snippet(span).unwrap(), "BB\nCCC\nDDDDD");
+
+        // check that span_to_lines gives us the complete result with the lines/cols we expected
+        let lines = cm.span_to_lines(span);
+        let expected = vec![
+            LineInfo { line_index: 1, start_col: CharPos(4), end_col: CharPos(6) },
+            LineInfo { line_index: 2, start_col: CharPos(0), end_col: CharPos(3) },
+            LineInfo { line_index: 3, start_col: CharPos(0), end_col: CharPos(5) }
+            ];
+        assert_eq!(lines.lines, expected);
     }
 
     #[test]

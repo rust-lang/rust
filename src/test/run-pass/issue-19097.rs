@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn ignore<F>(_f: F) where F: for<'z> FnOnce(&'z isize) -> &'z isize {}
+// regression test for #19097
 
-fn nested() {
-    let y = 3;
-    ignore(
-        |z| { //~ ERROR E0373
-            if false { &y } else { z }
-        });
+struct Foo<T>(T);
+
+impl<'a, T> Foo<&'a T> {
+    fn foo(&self) {}
+}
+impl<'a, T> Foo<&'a mut T> {
+    fn foo(&self) {}
 }
 
 fn main() {}
