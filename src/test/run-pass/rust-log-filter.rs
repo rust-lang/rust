@@ -10,7 +10,6 @@
 
 // exec-env:RUST_LOG=rust_log_filter/foo
 
-// pretty-expanded FIXME #23616
 
 #![allow(unknown_features)]
 #![feature(box_syntax, std_misc, rustc_private)]
