@@ -40,6 +40,10 @@ pub use borrowck::check_crate;
 pub use borrowck::build_borrowck_dataflow_data_for_fn;
 pub use borrowck::FnPartsWithCFG;
 
+// NB: This module needs to be declared first so diagnostics are
+// registered before they are used.
+pub mod diagnostics;
+
 mod borrowck;
 
 pub mod graphviz;

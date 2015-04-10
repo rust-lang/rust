@@ -362,10 +362,6 @@ fn test_arena_destructors_fail() {
 }
 
 /// A faster arena that can hold objects of only one type.
-///
-/// Safety note: Modifying objects in the arena that have already had their
-/// `drop` destructors run can cause leaks, because the destructor will not
-/// run again for these objects.
 pub struct TypedArena<T> {
     /// A pointer to the next object to be allocated.
     ptr: Cell<*const T>,
