@@ -633,7 +633,7 @@ fn test_bit_vec_extend() {
 mod bench {
     use std::collections::BitVec;
     use std::u32;
-    use std::__rand::{Rng, thread_rng};
+    use std::__rand::{Rng, thread_rng, ThreadRng};
 
     use test::{Bencher, black_box};
 

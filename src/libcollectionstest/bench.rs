@@ -74,7 +74,7 @@ macro_rules! map_find_rand_bench {
             let n: usize = $n;
 
             // setup
-            let mut rng = rand::thread_rng();
+            let mut rng = thread_rng();
             let mut keys: Vec<_> = (0..n).map(|_| rng.gen::<usize>() % n).collect();
 
             for &k in &keys {

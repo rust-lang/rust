@@ -20,7 +20,7 @@
 
 extern crate libc;
 
-use std::process::{self, Command, Child, Output};
+use std::process::{self, Command, Child, Output, Stdio};
 use std::str;
 use std::sync::mpsc::channel;
 use std::thread;
@@ -68,7 +68,9 @@ fn test_destroy_actually_kills() {
     static BLOCK_COMMAND: &'static str = "cmd";
 
     // this process will stay alive indefinitely trying to read from stdin
-    let mut p = Command::new(BLOCK_COMMAND).spawn().unwrap();
+    let mut p = Command::new(BLOCK_COMMAND)
+                        .stdin(Stdio::piped())
+                        .spawn().unwrap();
 
     p.kill().unwrap();
 
@@ -80,6 +82,11 @@ fn test_destroy_actually_kills() {
             process::exit(1);
         }
     });
-    assert!(p.wait().unwrap().code().is_none());
+    let code = p.wait().unwrap().code();
+    if cfg!(windows) {
+        assert!(code.is_some());
+    } else {
+        assert!(code.is_none());
+    }
     tx.send(());
 }

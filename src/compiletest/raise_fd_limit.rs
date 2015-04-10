@@ -1,3 +1,13 @@
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
 /// darwin_fd_limit exists to work around an issue where launchctl on Mac OS X
 /// defaults the rlimit maxfiles to 256/unlimited. The default soft limit of 256
 /// ends up being far too low for our multithreaded scheduler testing, depending
@@ -6,10 +16,15 @@
 /// This fixes issue #7772.
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 #[allow(non_camel_case_types)]
-pub fn raise_fd_limit() {
+pub unsafe fn raise_fd_limit() {
     use libc;
+    use std::cmp;
+    use std::io;
+    use std::mem::size_of_val;
+    use std::ptr::null_mut;
 
     type rlim_t = libc::uint64_t;
+
     #[repr(C)]
     struct rlimit {
         rlim_cur: rlim_t,
@@ -31,9 +46,6 @@ pub fn raise_fd_limit() {
     // The strategy here is to fetch the current resource limits, read the
     // kern.maxfilesperproc sysctl value, and bump the soft resource limit for
     // maxfiles up to the sysctl value.
-    use ptr::null_mut;
-    use mem::size_of_val;
-    use io;
 
     // Fetch the kern.maxfilesperproc value
     let mut mib: [libc::c_int; 2] = [CTL_KERN, KERN_MAXFILESPERPROC];
@@ -54,7 +66,7 @@ pub fn raise_fd_limit() {
 
     // Bump the soft limit to the smaller of kern.maxfilesperproc and the hard
     // limit
-    rlim.rlim_cur = ::cmp::min(maxfiles as rlim_t, rlim.rlim_max);
+    rlim.rlim_cur = cmp::min(maxfiles as rlim_t, rlim.rlim_max);
 
     // Set our newly-increased resource limit
     if setrlimit(RLIMIT_NOFILE, &rlim) != 0 {
@@ -64,4 +76,4 @@ pub fn raise_fd_limit() {
 }
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
-pub fn raise_fd_limit() {}
+pub unsafe fn raise_fd_limit() {}

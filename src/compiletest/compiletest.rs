@@ -17,9 +17,11 @@
 #![feature(test)]
 #![feature(path_ext)]
 #![feature(str_char)]
+#![feature(libc)]
 
 #![deny(warnings)]
 
+extern crate libc;
 extern crate test;
 extern crate getopts;
 
@@ -244,7 +246,7 @@ pub fn run_tests(config: &Config) {
     // sadly osx needs some file descriptor limits raised for running tests in
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
-    raise_fd_limit::raise_fd_limit();
+    unsafe { raise_fd_limit::raise_fd_limit(); }
     // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
     // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
     env::set_var("__COMPAT_LAYER", "RunAsInvoker");

@@ -251,7 +251,7 @@ fn test_entry(){
 
 mod bench {
     use std::collections::BTreeMap;
-    use std::rand::{Rng, thread_rng};
+    use std::__rand::{Rng, thread_rng};
 
     use test::{Bencher, black_box};
 
