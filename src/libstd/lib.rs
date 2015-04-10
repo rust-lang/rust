@@ -280,6 +280,17 @@ pub mod rt;
 mod panicking;
 mod rand;
 
+// Some external utilities of the standard library rely on randomness (aka
+// rustc_back::TempDir and tests) and need a way to get at the OS rng we've got
+// here. This module is not at all intended for stabilization as-is, however,
+// but it may be stabilized long-term. As a result we're exposing a hidden,
+// unstable module so we can get our build working.
+#[doc(hidden)]
+#[unstable(feature = "rand")]
+pub mod __rand {
+    pub use rand::{thread_rng, Rng};
+}
+
 // Modules that exist purely to document + host impl docs for primitive types
 
 mod array;
