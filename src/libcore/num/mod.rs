@@ -217,7 +217,7 @@ pub trait Int
                reason = "pending integer conventions")]
     fn trailing_zeros(self) -> u32;
 
-    /// Shifts the bits to the left by a specified amount amount, `n`, wrapping
+    /// Shifts the bits to the left by a specified amount, `n`, wrapping
     /// the truncated bits to the end of the resulting integer.
     ///
     /// # Examples
@@ -235,7 +235,7 @@ pub trait Int
                reason = "pending integer conventions")]
     fn rotate_left(self, n: u32) -> Self;
 
-    /// Shifts the bits to the right by a specified amount amount, `n`, wrapping
+    /// Shifts the bits to the right by a specified amount, `n`, wrapping
     /// the truncated bits to the beginning of the resulting integer.
     ///
     /// # Examples
@@ -937,7 +937,7 @@ macro_rules! int_impl {
             (self as $UnsignedT).trailing_zeros()
         }
 
-        /// Shifts the bits to the left by a specified amount amount, `n`,
+        /// Shifts the bits to the left by a specified amount, `n`,
         /// wrapping the truncated bits to the end of the resulting integer.
         ///
         /// # Examples
@@ -957,7 +957,7 @@ macro_rules! int_impl {
             (self as $UnsignedT).rotate_left(n) as $T
         }
 
-        /// Shifts the bits to the right by a specified amount amount, `n`,
+        /// Shifts the bits to the right by a specified amount, `n`,
         /// wrapping the truncated bits to the beginning of the resulting
         /// integer.
         ///
@@ -1456,7 +1456,7 @@ macro_rules! uint_impl {
             unsafe { $cttz(self as $ActualT) as u32 }
         }
 
-        /// Shifts the bits to the left by a specified amount amount, `n`,
+        /// Shifts the bits to the left by a specified amount, `n`,
         /// wrapping the truncated bits to the end of the resulting integer.
         ///
         /// # Examples
@@ -1478,7 +1478,7 @@ macro_rules! uint_impl {
             (self << n) | (self >> (($BITS - n) % $BITS))
         }
 
-        /// Shifts the bits to the right by a specified amount amount, `n`,
+        /// Shifts the bits to the right by a specified amount, `n`,
         /// wrapping the truncated bits to the beginning of the resulting
         /// integer.
         ///
