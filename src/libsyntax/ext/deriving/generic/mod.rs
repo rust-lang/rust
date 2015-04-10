@@ -201,6 +201,7 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use codemap::{self, DUMMY_SP};
 use codemap::Span;
+use diagnostic::SpanHandler;
 use fold::MoveMap;
 use owned_slice::OwnedSlice;
 use parse::token::InternedString;
@@ -391,6 +392,7 @@ impl<'a> TraitDef<'a> {
             ast::ItemEnum(ref enum_def, ref generics) => {
                 self.expand_enum_def(cx,
                                      enum_def,
+                                     &item.attrs[..],
                                      item.ident,
                                      generics)
             }
@@ -653,6 +655,7 @@ impl<'a> TraitDef<'a> {
     fn expand_enum_def(&self,
                        cx: &mut ExtCtxt,
                        enum_def: &EnumDef,
+                       type_attrs: &[ast::Attribute],
                        type_ident: Ident,
                        generics: &Generics) -> P<ast::Item> {
         let mut field_tys = Vec::new();
@@ -687,6 +690,7 @@ impl<'a> TraitDef<'a> {
                 method_def.expand_enum_method_body(cx,
                                                    self,
                                                    enum_def,
+                                                   type_attrs,
                                                    type_ident,
                                                    self_args,
                                                    &nonself_args[..])
@@ -704,6 +708,32 @@ impl<'a> TraitDef<'a> {
 
         self.create_derived_impl(cx, type_ident, generics, field_tys, methods)
     }
+}
+
+fn find_repr_type_name(diagnostic: &SpanHandler,
+                       type_attrs: &[ast::Attribute]) -> &'static str {
+    let mut repr_type_name = "i32";
+    for a in type_attrs {
+        for r in &attr::find_repr_attrs(diagnostic, a) {
+            repr_type_name = match *r {
+                attr::ReprAny | attr::ReprPacked => continue,
+                attr::ReprExtern => "i32",
+
+                attr::ReprInt(_, attr::SignedInt(ast::TyIs)) => "isize",
+                attr::ReprInt(_, attr::SignedInt(ast::TyI8)) => "i8",
+                attr::ReprInt(_, attr::SignedInt(ast::TyI16)) => "i16",
+                attr::ReprInt(_, attr::SignedInt(ast::TyI32)) => "i32",
+                attr::ReprInt(_, attr::SignedInt(ast::TyI64)) => "i64",
+
+                attr::ReprInt(_, attr::UnsignedInt(ast::TyUs)) => "usize",
+                attr::ReprInt(_, attr::UnsignedInt(ast::TyU8)) => "u8",
+                attr::ReprInt(_, attr::UnsignedInt(ast::TyU16)) => "u16",
+                attr::ReprInt(_, attr::UnsignedInt(ast::TyU32)) => "u32",
+                attr::ReprInt(_, attr::UnsignedInt(ast::TyU64)) => "u64",
+            }
+        }
+    }
+    repr_type_name
 }
 
 impl<'a> MethodDef<'a> {
@@ -974,12 +1004,13 @@ impl<'a> MethodDef<'a> {
                                cx: &mut ExtCtxt,
                                trait_: &TraitDef,
                                enum_def: &EnumDef,
+                               type_attrs: &[ast::Attribute],
                                type_ident: Ident,
                                self_args: Vec<P<Expr>>,
                                nonself_args: &[P<Expr>])
                                -> P<Expr> {
         self.build_enum_match_tuple(
-            cx, trait_, enum_def, type_ident, self_args, nonself_args)
+            cx, trait_, enum_def, type_attrs, type_ident, self_args, nonself_args)
     }
 
 
@@ -1013,6 +1044,7 @@ impl<'a> MethodDef<'a> {
         cx: &mut ExtCtxt,
         trait_: &TraitDef,
         enum_def: &EnumDef,
+        type_attrs: &[ast::Attribute],
         type_ident: Ident,
         self_args: Vec<P<Expr>>,
         nonself_args: &[P<Expr>]) -> P<Expr> {
@@ -1168,6 +1200,10 @@ impl<'a> MethodDef<'a> {
             //     std::intrinsics::discriminant_value(&__arg2) } as isize;
             // ```
             let mut index_let_stmts: Vec<P<ast::Stmt>> = Vec::new();
+
+            let target_type_name =
+                find_repr_type_name(&cx.parse_sess.span_diagnostic, type_attrs);
+
             for (&ident, self_arg) in vi_idents.iter().zip(self_args.iter()) {
                 let path = vec![cx.ident_of_std("core"),
                                 cx.ident_of("intrinsics"),
@@ -1181,18 +1217,7 @@ impl<'a> MethodDef<'a> {
                     rules: ast::UnsafeBlock(ast::CompilerGenerated),
                     span: sp }));
 
-                // FIXME: This unconditionally casts to `isize`. However:
-                //
-                // 1. On 32-bit platforms, that will truncate 64-bit enums
-                //    that are making use of the upper 32 bits, and
-                //
-                // 2. On all platforms, it will misinterpret the sign bit
-                //    of a 64-bit enum.
-                //
-                // What it should do is lookup whether the enum has an
-                // repr-attribute and cast to that if necessary. But
-                // attributes are not yet available to this function.
-                let target_ty = cx.ty_ident(sp, cx.ident_of("isize"));
+                let target_ty = cx.ty_ident(sp, cx.ident_of(target_type_name));
                 let variant_disr = cx.expr_cast(sp, variant_value, target_ty);
                 let let_stmt = cx.stmt_let(sp, false, ident, variant_disr);
                 index_let_stmts.push(let_stmt);
