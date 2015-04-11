@@ -79,29 +79,7 @@ impl<T> SmallVector<T> {
                     _ => unreachable!()
                 }
             }
-            Many(..) => {
-                let mut many = mem::replace(&mut self.repr, Zero);
-                let item =
-                    match many {
-                        Many(ref mut vs) if vs.len() == 1 => {
-                            // self.repr is already Zero
-                            vs.pop()
-                        },
-                        Many(ref mut vs) if vs.len() == 2 => {
-                            let item = vs.pop();
-                            mem::replace(&mut self.repr, One(vs.pop().unwrap()));
-                            item
-                        },
-                        Many(ref mut vs) if vs.len() > 2 => {
-                            let item = vs.pop();
-                            let rest = mem::replace(vs, vec!());
-                            mem::replace(&mut self.repr, Many(rest));
-                            item
-                        },
-                        _ => unreachable!()
-                    };
-                item
-            }
+            Many(ref mut vs) => vs.pop(),
         }
     }
 
