@@ -771,7 +771,7 @@ fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
 
     // If this is a macro invocation with a semicolon, then apply that
     // semicolon to the final statement produced by expansion.
-    if style == MacStmtWithSemicolon && !fully_expanded.is_empty() {
+    if style == MacStmtWithSemicolon {
         match fully_expanded.pop() {
             Some(stmt) => {
                 let new_stmt = stmt.map(|Spanned {node, span}| {
