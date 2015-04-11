@@ -758,25 +758,23 @@ fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
                          |stmts, mark| stmts.move_map(|m| mark_stmt(m, mark)),
                          fld);
 
-    let fully_expanded = match maybe_new_items {
+    let mut fully_expanded = match maybe_new_items {
         Some(stmts) => {
             // Keep going, outside-in.
-            let new_items = stmts.into_iter().flat_map(|s| {
+            stmts.into_iter().flat_map(|s| {
                 fld.fold_stmt(s).into_iter()
-            }).collect();
-            fld.cx.bt_pop();
-            new_items
+            }).collect()
         }
         None => SmallVector::zero()
     };
+    fld.cx.bt_pop();
 
     // If this is a macro invocation with a semicolon, then apply that
     // semicolon to the final statement produced by expansion.
-    if style == MacStmtWithSemicolon && fully_expanded.len() > 0 {
-        let last_index = fully_expanded.len() - 1;
-        fully_expanded.into_iter().enumerate().map(|(i, stmt)|
-            if i == last_index {
-                stmt.map(|Spanned {node, span}| {
+    if style == MacStmtWithSemicolon && !fully_expanded.is_empty() {
+        match fully_expanded.pop() {
+            Some(stmt) => {
+                let new_stmt = stmt.map(|Spanned {node, span}| {
                     Spanned {
                         node: match node {
                             StmtExpr(e, stmt_id) => StmtSemi(e, stmt_id),
@@ -784,13 +782,14 @@ fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
                         },
                         span: span
                     }
-                })
-            } else {
-                stmt
-            }).collect()
-    } else {
-        fully_expanded
+                });
+                fully_expanded.push(new_stmt);
+            }
+            None => (),
+        }
     }
+
+    fully_expanded
 }
 
 // expand a non-macro stmt. this is essentially the fallthrough for
