@@ -116,7 +116,7 @@ fn main() {
 
     let y = &x[0];
 
-    x.push(4);
+    x.push("foo");
 }
 ```
 
@@ -159,7 +159,7 @@ fn main() {
 
     let y = x[0].clone();
 
-    x.push(4);
+    x.push("foo");
 }
 ```
 
@@ -181,7 +181,7 @@ fn main() {
         let y = &x[0];
     }
 
-    x.push(4);
+    x.push("foo");
 }
 ```
 
