@@ -576,7 +576,7 @@ impl<V> VecMap<V> {
         }
     }
 
-    /// Inserts a key-value pair from the map. If the key already had a value
+    /// Inserts a key-value pair into the map. If the key already had a value
     /// present in the map, that value is returned. Otherwise, `None` is returned.
     ///
     /// # Examples
