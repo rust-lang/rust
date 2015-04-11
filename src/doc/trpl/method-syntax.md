@@ -4,7 +4,7 @@ Functions are great, but if you want to call a bunch of them on some data, it
 can be awkward. Consider this code:
 
 ```{rust,ignore}
-baz(bar(foo(x)));
+baz(bar(foo)));
 ```
 
 We would read this left-to right, and so we see "baz bar foo." But this isn't the
@@ -12,7 +12,7 @@ order that the functions would get called in, that's inside-out: "foo bar baz."
 Wouldn't it be nice if we could do this instead?
 
 ```{rust,ignore}
-x.foo().bar().baz();
+foo.bar().baz();
 ```
 
 Luckily, as you may have guessed with the leading question, you can! Rust provides
@@ -47,8 +47,8 @@ This will print `12.566371`.
 We've made a struct that represents a circle. We then write an `impl` block,
 and inside it, define a method, `area`. Methods take a  special first
 parameter, of which there are three variants: `self`, `&self`, and `&mut self`.
-You can think of this first parameter as being the `x` in `x.foo()`. The three
-variants correspond to the three kinds of thing `x` could be: `self` if it's
+You can think of this first parameter as being the `foo` in `foo.bar()`. The three
+variants correspond to the three kinds of things `foo` could be: `self` if it's
 just a value on the stack, `&self` if it's a reference, and `&mut self` if it's
 a mutable reference. We should default to using `&self`, as you should prefer
 borrowing over taking ownership, as well as taking immutable references
