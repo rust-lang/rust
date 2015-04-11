@@ -16,7 +16,7 @@
 //! interface for panicking is:
 //!
 //! ```ignore
-//! fn panic_impl(fmt: fmt::Arguments, &(&'static str, usize)) -> !;
+//! fn panic_impl(fmt: fmt::Arguments, &(&'static str, u32)) -> !;
 //! ```
 //!
 //! This definition allows for panicking with any general message, but it does not
@@ -58,8 +58,8 @@ pub fn panic_fmt(fmt: fmt::Arguments, file_line: &(&'static str, u32)) -> ! {
     #[allow(improper_ctypes)]
     extern {
         #[lang = "panic_fmt"]
-        fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: usize) -> !;
+        fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: u32) -> !;
     }
     let (file, line) = *file_line;
-    unsafe { panic_impl(fmt, file, line as usize) }
+    unsafe { panic_impl(fmt, file, line) }
 }

@@ -26,7 +26,7 @@ thread_local! {
     }
 }
 
-pub fn on_panic(obj: &(Any+Send), file: &'static str, line: usize) {
+pub fn on_panic(obj: &(Any+Send), file: &'static str, line: u32) {
     let msg = match obj.downcast_ref::<&'static str>() {
         Some(s) => *s,
         None => match obj.downcast_ref::<String>() {
