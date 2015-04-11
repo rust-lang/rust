@@ -761,13 +761,14 @@ fn expand_stmt(stmt: P<Stmt>, fld: &mut MacroExpander) -> SmallVector<P<Stmt>> {
     let mut fully_expanded = match maybe_new_items {
         Some(stmts) => {
             // Keep going, outside-in.
-            stmts.into_iter().flat_map(|s| {
+            let new_items = stmts.into_iter().flat_map(|s| {
                 fld.fold_stmt(s).into_iter()
-            }).collect()
+            }).collect();
+            fld.cx.bt_pop();
+            new_items
         }
         None => SmallVector::zero()
     };
-    fld.cx.bt_pop();
 
     // If this is a macro invocation with a semicolon, then apply that
     // semicolon to the final statement produced by expansion.
