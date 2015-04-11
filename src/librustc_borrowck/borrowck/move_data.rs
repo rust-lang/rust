@@ -18,6 +18,7 @@ use rustc::middle::cfg;
 use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
 use rustc::middle::dataflow::DataFlowOperator;
+use rustc::middle::dataflow::KillFrom;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::ty;
 use rustc::util::nodemap::{FnvHashMap, NodeSet};
@@ -473,11 +474,13 @@ impl<'tcx> MoveData<'tcx> {
 
         for (i, assignment) in self.var_assignments.borrow().iter().enumerate() {
             dfcx_assign.add_gen(assignment.id, i);
-            self.kill_moves(assignment.path, assignment.id, dfcx_moves);
+            self.kill_moves(assignment.path, assignment.id,
+                            KillFrom::Execution, dfcx_moves);
         }
 
         for assignment in &*self.path_assignments.borrow() {
-            self.kill_moves(assignment.path, assignment.id, dfcx_moves);
+            self.kill_moves(assignment.path, assignment.id,
+                            KillFrom::Execution, dfcx_moves);
         }
 
         // Kill all moves related to a variable `x` when
@@ -487,7 +490,8 @@ impl<'tcx> MoveData<'tcx> {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = path.loan_path.kill_scope(tcx);
                     let path = *self.path_map.borrow().get(&path.loan_path).unwrap();
-                    self.kill_moves(path, kill_scope.node_id(), dfcx_moves);
+                    self.kill_moves(path, kill_scope.node_id(),
+                                    KillFrom::ScopeEnd, dfcx_moves);
                 }
                 LpExtend(..) => {}
             }
@@ -500,7 +504,9 @@ impl<'tcx> MoveData<'tcx> {
             match lp.kind {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = lp.kill_scope(tcx);
-                    dfcx_assign.add_kill(kill_scope.node_id(), assignment_index);
+                    dfcx_assign.add_kill(KillFrom::ScopeEnd,
+                                         kill_scope.node_id(),
+                                         assignment_index);
                 }
                 LpExtend(..) => {
                     tcx.sess.bug("var assignment for non var path");
@@ -568,6 +574,7 @@ impl<'tcx> MoveData<'tcx> {
     fn kill_moves(&self,
                   path: MovePathIndex,
                   kill_id: ast::NodeId,
+                  kill_kind: KillFrom,
                   dfcx_moves: &mut MoveDataFlow) {
         // We can only perform kills for paths that refer to a unique location,
         // since otherwise we may kill a move from one location with an
@@ -576,7 +583,9 @@ impl<'tcx> MoveData<'tcx> {
         let loan_path = self.path_loan_path(path);
         if loan_path_is_precise(&*loan_path) {
             self.each_applicable_move(path, |move_index| {
-                dfcx_moves.add_kill(kill_id, move_index.get());
+                debug!("kill_moves add_kill {:?} kill_id={} move_index={}",
+                       kill_kind, kill_id, move_index.get());
+                dfcx_moves.add_kill(kill_kind, kill_id, move_index.get());
                 true
             });
         }
