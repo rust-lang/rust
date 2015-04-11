@@ -18,6 +18,7 @@ use codemap;
 use diagnostics;
 
 use std::cell::{RefCell, Cell};
+use std::cmp;
 use std::fmt;
 use std::io::prelude::*;
 use std::io;
@@ -28,12 +29,25 @@ use libc;
 /// maximum number of lines we will print for each error; arbitrary.
 const MAX_LINES: usize = 6;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub enum RenderSpan {
     /// A FullSpan renders with both with an initial line for the
     /// message, prefixed by file:linenum, followed by a summary of
     /// the source code covered by the span.
     FullSpan(Span),
+
+    /// Similar to a FullSpan, but the cited position is the end of
+    /// the span, instead of the start. Used, at least, for telling
+    /// compiletest/runtest to look at the last line of the span
+    /// (since `end_highlight_lines` displays an arrow to the end
+    /// of the span).
+    EndSpan(Span),
+
+    /// A suggestion renders with both with an initial line for the
+    /// message, prefixed by file:linenum, followed by a summary
+    /// of hypothetical source code, where the `String` is spliced
+    /// into the lines in place of the code covered by the span.
+    Suggestion(Span, String),
 
     /// A FileLine renders with just a line for the message prefixed
     /// by file:linenum.
@@ -41,15 +55,13 @@ pub enum RenderSpan {
 }
 
 impl RenderSpan {
-    fn span(self) -> Span {
-        match self {
-            FullSpan(s) | FileLine(s) => s
-        }
-    }
-    fn is_full_span(&self) -> bool {
-        match self {
-            &FullSpan(..) => true,
-            &FileLine(..) => false,
+    fn span(&self) -> Span {
+        match *self {
+            FullSpan(s) |
+            Suggestion(s, _) |
+            EndSpan(s) |
+            FileLine(s) =>
+                s
         }
     }
 }
@@ -115,10 +127,16 @@ impl SpanHandler {
         self.handler.emit(Some((&self.cm, sp)), msg, Note);
     }
     pub fn span_end_note(&self, sp: Span, msg: &str) {
-        self.handler.custom_emit(&self.cm, FullSpan(sp), msg, Note);
+        self.handler.custom_emit(&self.cm, EndSpan(sp), msg, Note);
     }
     pub fn span_help(&self, sp: Span, msg: &str) {
         self.handler.emit(Some((&self.cm, sp)), msg, Help);
+    }
+    /// Prints out a message with a suggested edit of the code.
+    ///
+    /// See `diagnostic::RenderSpan::Suggestion` for more information.
+    pub fn span_suggestion(&self, sp: Span, msg: &str, suggestion: String) {
+        self.handler.custom_emit(&self.cm, Suggestion(sp, suggestion), msg, Help);
     }
     pub fn fileline_note(&self, sp: Span, msg: &str) {
         self.handler.custom_emit(&self.cm, FileLine(sp), msg, Note);
@@ -407,8 +425,8 @@ impl Emitter for EmitterWriter {
         let error = match cmsp {
             Some((cm, COMMAND_LINE_SP)) => emit(self, cm,
                                                 FileLine(COMMAND_LINE_SP),
-                                                msg, code, lvl, false),
-            Some((cm, sp)) => emit(self, cm, FullSpan(sp), msg, code, lvl, false),
+                                                msg, code, lvl),
+            Some((cm, sp)) => emit(self, cm, FullSpan(sp), msg, code, lvl),
             None => print_diagnostic(self, "", lvl, msg, code),
         };
 
@@ -420,7 +438,7 @@ impl Emitter for EmitterWriter {
 
     fn custom_emit(&mut self, cm: &codemap::CodeMap,
                    sp: RenderSpan, msg: &str, lvl: Level) {
-        match emit(self, cm, sp, msg, None, lvl, true) {
+        match emit(self, cm, sp, msg, None, lvl) {
             Ok(()) => {}
             Err(e) => panic!("failed to print diagnostics: {:?}", e),
         }
@@ -428,35 +446,41 @@ impl Emitter for EmitterWriter {
 }
 
 fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
-        msg: &str, code: Option<&str>, lvl: Level, custom: bool) -> io::Result<()> {
+        msg: &str, code: Option<&str>, lvl: Level) -> io::Result<()> {
     let sp = rsp.span();
 
     // We cannot check equality directly with COMMAND_LINE_SP
     // since PartialEq is manually implemented to ignore the ExpnId
     let ss = if sp.expn_id == COMMAND_LINE_EXPN {
         "<command line option>".to_string()
+    } else if let EndSpan(_) = rsp {
+        let span_end = Span { lo: sp.hi, hi: sp.hi, expn_id: sp.expn_id};
+        cm.span_to_string(span_end)
     } else {
         cm.span_to_string(sp)
     };
-    if custom {
-        // we want to tell compiletest/runtest to look at the last line of the
-        // span (since `custom_highlight_lines` displays an arrow to the end of
-        // the span)
-        let span_end = Span { lo: sp.hi, hi: sp.hi, expn_id: sp.expn_id};
-        let ses = cm.span_to_string(span_end);
-        try!(print_diagnostic(dst, &ses[..], lvl, msg, code));
-        if rsp.is_full_span() {
-            try!(custom_highlight_lines(dst, cm, sp, lvl, cm.span_to_lines(sp)));
-        }
-    } else {
-        try!(print_diagnostic(dst, &ss[..], lvl, msg, code));
-        if rsp.is_full_span() {
+
+    try!(print_diagnostic(dst, &ss[..], lvl, msg, code));
+
+    match rsp {
+        FullSpan(_) => {
             try!(highlight_lines(dst, cm, sp, lvl, cm.span_to_lines(sp)));
         }
+        EndSpan(_) => {
+            try!(end_highlight_lines(dst, cm, sp, lvl, cm.span_to_lines(sp)));
+        }
+        Suggestion(_, ref suggestion) => {
+            try!(highlight_suggestion(dst, cm, sp, suggestion));
+        }
+        FileLine(..) => {
+            // no source text in this case!
+        }
     }
+
     if sp != COMMAND_LINE_SP {
         try!(print_macro_backtrace(dst, cm, sp));
     }
+
     match code {
         Some(code) =>
             match dst.registry.as_ref().and_then(|registry| registry.find_description(code)) {
@@ -472,29 +496,90 @@ fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
     Ok(())
 }
 
+fn highlight_suggestion(err: &mut EmitterWriter,
+                        cm: &codemap::CodeMap,
+                        sp: Span,
+                        suggestion: &str)
+                        -> io::Result<()>
+{
+    let lines = cm.span_to_lines(sp);
+    assert!(!lines.lines.is_empty());
+
+    // To build up the result, we want to take the snippet from the first
+    // line that precedes the span, prepend that with the suggestion, and
+    // then append the snippet from the last line that trails the span.
+    let fm = &lines.file;
+
+    let first_line = &lines.lines[0];
+    let prefix = fm.get_line(first_line.line_index)
+                   .map(|l| &l[..first_line.start_col.0])
+                   .unwrap_or("");
+
+    let last_line = lines.lines.last().unwrap();
+    let suffix = fm.get_line(last_line.line_index)
+                   .map(|l| &l[last_line.end_col.0..])
+                   .unwrap_or("");
+
+    let complete = format!("{}{}{}", prefix, suggestion, suffix);
+
+    // print the suggestion without any line numbers, but leave
+    // space for them. This helps with lining up with previous
+    // snippets from the actual error being reported.
+    let fm = &*lines.file;
+    let mut lines = complete.lines();
+    for (line, line_index) in lines.by_ref().take(MAX_LINES).zip(first_line.line_index..) {
+        let elided_line_num = format!("{}", line_index+1);
+        try!(write!(&mut err.dst, "{0}:{1:2$} {3}\n",
+                    fm.name, "", elided_line_num.len(), line));
+    }
+
+    // if we elided some lines, add an ellipsis
+    if lines.next().is_some() {
+        let elided_line_num = format!("{}", first_line.line_index + MAX_LINES + 1);
+        try!(write!(&mut err.dst, "{0:1$} {0:2$} ...\n",
+                    "", fm.name.len(), elided_line_num.len()));
+    }
+
+    Ok(())
+}
+
 fn highlight_lines(err: &mut EmitterWriter,
                    cm: &codemap::CodeMap,
                    sp: Span,
                    lvl: Level,
-                   lines: codemap::FileLines) -> io::Result<()> {
+                   lines: codemap::FileLines)
+                   -> io::Result<()>
+{
     let fm = &*lines.file;
 
-    let mut elided = false;
-    let mut display_lines = &lines.lines[..];
-    if display_lines.len() > MAX_LINES {
-        display_lines = &display_lines[0..MAX_LINES];
-        elided = true;
-    }
+    let line_strings: Option<Vec<&str>> =
+        lines.lines.iter()
+                   .map(|info| fm.get_line(info.line_index))
+                   .collect();
+
+    let line_strings = match line_strings {
+        None => { return Ok(()); }
+        Some(line_strings) => line_strings
+    };
+
+    // Display only the first MAX_LINES lines.
+    let all_lines = lines.lines.len();
+    let display_lines = cmp::min(all_lines, MAX_LINES);
+    let display_line_infos = &lines.lines[..display_lines];
+    let display_line_strings = &line_strings[..display_lines];
+
     // Print the offending lines
-    for &line_number in display_lines {
-        if let Some(line) = fm.get_line(line_number) {
-            try!(write!(&mut err.dst, "{}:{} {}\n", fm.name,
-                        line_number + 1, line));
-        }
+    for (line_info, line) in display_line_infos.iter().zip(display_line_strings.iter()) {
+        try!(write!(&mut err.dst, "{}:{} {}\n",
+                    fm.name,
+                    line_info.line_index + 1,
+                    line));
     }
-    if elided {
-        let last_line = display_lines[display_lines.len() - 1];
-        let s = format!("{}:{} ", fm.name, last_line + 1);
+
+    // If we elided something, put an ellipsis.
+    if display_lines < all_lines {
+        let last_line_index = display_line_infos.last().unwrap().line_index;
+        let s = format!("{}:{} ", fm.name, last_line_index + 1);
         try!(write!(&mut err.dst, "{0:1$}...\n", "", s.len()));
     }
 
@@ -503,7 +588,7 @@ fn highlight_lines(err: &mut EmitterWriter,
     if lines.lines.len() == 1 {
         let lo = cm.lookup_char_pos(sp.lo);
         let mut digits = 0;
-        let mut num = (lines.lines[0] + 1) / 10;
+        let mut num = (lines.lines[0].line_index + 1) / 10;
 
         // how many digits must be indent past?
         while num > 0 { num /= 10; digits += 1; }
@@ -515,7 +600,7 @@ fn highlight_lines(err: &mut EmitterWriter,
         for _ in 0..skip {
             s.push(' ');
         }
-        if let Some(orig) = fm.get_line(lines.lines[0]) {
+        if let Some(orig) = fm.get_line(lines.lines[0].line_index) {
             let mut col = skip;
             let mut lastc = ' ';
             let mut iter = orig.chars().enumerate();
@@ -575,12 +660,12 @@ fn highlight_lines(err: &mut EmitterWriter,
 }
 
 /// Here are the differences between this and the normal `highlight_lines`:
-/// `custom_highlight_lines` will always put arrow on the last byte of the
+/// `end_highlight_lines` will always put arrow on the last byte of the
 /// span (instead of the first byte). Also, when the span is too long (more
-/// than 6 lines), `custom_highlight_lines` will print the first line, then
+/// than 6 lines), `end_highlight_lines` will print the first line, then
 /// dot dot dot, then last line, whereas `highlight_lines` prints the first
 /// six lines.
-fn custom_highlight_lines(w: &mut EmitterWriter,
+fn end_highlight_lines(w: &mut EmitterWriter,
                           cm: &codemap::CodeMap,
                           sp: Span,
                           lvl: Level,
@@ -590,32 +675,32 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
 
     let lines = &lines.lines[..];
     if lines.len() > MAX_LINES {
-        if let Some(line) = fm.get_line(lines[0]) {
+        if let Some(line) = fm.get_line(lines[0].line_index) {
             try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
-                        lines[0] + 1, line));
+                        lines[0].line_index + 1, line));
         }
         try!(write!(&mut w.dst, "...\n"));
-        let last_line_number = lines[lines.len() - 1];
-        if let Some(last_line) = fm.get_line(last_line_number) {
+        let last_line_index = lines[lines.len() - 1].line_index;
+        if let Some(last_line) = fm.get_line(last_line_index) {
             try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
-                        last_line_number + 1, last_line));
+                        last_line_index + 1, last_line));
         }
     } else {
-        for &line_number in lines {
-            if let Some(line) = fm.get_line(line_number) {
+        for line_info in lines {
+            if let Some(line) = fm.get_line(line_info.line_index) {
                 try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
-                            line_number + 1, line));
+                            line_info.line_index + 1, line));
             }
         }
     }
-    let last_line_start = format!("{}:{} ", fm.name, lines[lines.len()-1]+1);
+    let last_line_start = format!("{}:{} ", fm.name, lines[lines.len()-1].line_index + 1);
     let hi = cm.lookup_char_pos(sp.hi);
     let skip = last_line_start.width(false);
     let mut s = String::new();
     for _ in 0..skip {
         s.push(' ');
     }
-    if let Some(orig) = fm.get_line(lines[0]) {
+    if let Some(orig) = fm.get_line(lines[0].line_index) {
         let iter = orig.chars().enumerate();
         for (pos, ch) in iter {
             // Span seems to use half-opened interval, so subtract 1
