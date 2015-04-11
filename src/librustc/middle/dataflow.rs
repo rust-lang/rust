@@ -64,8 +64,14 @@ pub struct DataFlowContext<'a, 'tcx: 'a, O> {
     /// bits generated as we exit the cfg node. Updated by `add_gen()`.
     gens: Vec<usize>,
 
-    /// bits killed as we exit the cfg node. Updated by `add_kill()`.
-    kills: Vec<usize>,
+    /// bits killed as we exit the cfg node, or non-locally jump over
+    /// it. Updated by `add_kill(KillFrom::ScopeEnd)`.
+    scope_kills: Vec<usize>,
+
+    /// bits killed as we exit the cfg node directly; if it is jumped
+    /// over, e.g. via `break`, the kills are not reflected in the
+    /// jump's effects. Updated by `add_kill(KillFrom::Execution)`.
+    action_kills: Vec<usize>,
 
     /// bits that are valid on entry to the cfg node. Updated by
     /// `propagate()`.
@@ -130,15 +136,23 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
                 "".to_string()
             };
 
-            let kills = &self.kills[start .. end];
-            let kills_str = if kills.iter().any(|&u| u != 0) {
-                format!(" kill: {}", bits_to_string(kills))
+            let action_kills = &self.action_kills[start .. end];
+            let action_kills_str = if action_kills.iter().any(|&u| u != 0) {
+                format!(" action_kill: {}", bits_to_string(action_kills))
             } else {
                 "".to_string()
             };
 
-            try!(ps.synth_comment(format!("id {}: {}{}{}", id, entry_str,
-                                          gens_str, kills_str)));
+            let scope_kills = &self.scope_kills[start .. end];
+            let scope_kills_str = if scope_kills.iter().any(|&u| u != 0) {
+                format!(" scope_kill: {}", bits_to_string(scope_kills))
+            } else {
+                "".to_string()
+            };
+
+            try!(ps.synth_comment(
+                format!("id {}: {}{}{}{}", id, entry_str,
+                        gens_str, action_kills_str, scope_kills_str)));
             try!(pp::space(&mut ps.s));
         }
         Ok(())
@@ -187,6 +201,25 @@ fn build_nodeid_to_index(decl: Option<&ast::FnDecl>,
     }
 }
 
+/// Flag used by `add_kill` to indicate whether the provided kill
+/// takes effect only when control flows directly through the node in
+/// question, or if the kill's effect is associated with any
+/// control-flow directly through or indirectly over the node.
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub enum KillFrom {
+    /// A `ScopeEnd` kill is one that takes effect when any control
+    /// flow goes over the node. A kill associated with the end of the
+    /// scope of a variable declaration `let x;` is an example of a
+    /// `ScopeEnd` kill.
+    ScopeEnd,
+
+    /// An `Execution` kill is one that takes effect only when control
+    /// flow goes through the node to completion. A kill associated
+    /// with an assignment statement `x = expr;` is an example of an
+    /// `Execution` kill.
+    Execution,
+}
+
 impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
     pub fn new(tcx: &'a ty::ctxt<'tcx>,
                analysis_name: &'static str,
@@ -206,8 +239,10 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
         let entry = if oper.initial_value() { usize::MAX } else {0};
 
-        let gens: Vec<_> = repeat(0).take(num_nodes * words_per_id).collect();
-        let kills: Vec<_> = repeat(0).take(num_nodes * words_per_id).collect();
+        let zeroes: Vec<_> = repeat(0).take(num_nodes * words_per_id).collect();
+        let gens: Vec<_> = zeroes.clone();
+        let kills1: Vec<_> = zeroes.clone();
+        let kills2: Vec<_> = zeroes;
         let on_entry: Vec<_> = repeat(entry).take(num_nodes * words_per_id).collect();
 
         let nodeid_to_index = build_nodeid_to_index(decl, cfg);
@@ -220,7 +255,8 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
             bits_per_id: bits_per_id,
             oper: oper,
             gens: gens,
-            kills: kills,
+            action_kills: kills1,
+            scope_kills: kills2,
             on_entry: on_entry
         }
     }
@@ -240,7 +276,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         }
     }
 
-    pub fn add_kill(&mut self, id: ast::NodeId, bit: usize) {
+    pub fn add_kill(&mut self, kind: KillFrom, id: ast::NodeId, bit: usize) {
         //! Indicates that `id` kills `bit`
         debug!("{} add_kill(id={}, bit={})",
                self.analysis_name, id, bit);
@@ -250,7 +286,10 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         let indices = get_cfg_indices(id, &self.nodeid_to_index);
         for &cfgidx in indices {
             let (start, end) = self.compute_id_range(cfgidx);
-            let kills = &mut self.kills[start.. end];
+            let kills = match kind {
+                KillFrom::Execution => &mut self.action_kills[start.. end],
+                KillFrom::ScopeEnd =>  &mut self.scope_kills[start.. end],
+            };
             set_bit(kills, bit);
         }
     }
@@ -264,7 +303,9 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         let (start, end) = self.compute_id_range(cfgidx);
         let gens = &self.gens[start.. end];
         bitwise(bits, gens, &Union);
-        let kills = &self.kills[start.. end];
+        let kills = &self.action_kills[start.. end];
+        bitwise(bits, kills, &Subtract);
+        let kills = &self.scope_kills[start.. end];
         bitwise(bits, kills, &Subtract);
 
         debug!("{} apply_gen_kill(cfgidx={:?}, bits={}) [after]",
@@ -278,7 +319,8 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
         assert!(start < self.gens.len());
         assert!(end <= self.gens.len());
-        assert!(self.gens.len() == self.kills.len());
+        assert!(self.gens.len() == self.action_kills.len());
+        assert!(self.gens.len() == self.scope_kills.len());
         assert!(self.gens.len() == self.on_entry.len());
 
         (start, end)
@@ -412,7 +454,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         cfg.graph.each_edge(|_edge_index, edge| {
             let flow_exit = edge.source();
             let (start, end) = self.compute_id_range(flow_exit);
-            let mut orig_kills = self.kills[start.. end].to_vec();
+            let mut orig_kills = self.scope_kills[start.. end].to_vec();
 
             let mut changed = false;
             for &node_id in &edge.data.exiting_scopes {
@@ -421,8 +463,12 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                     Some(indices) => {
                         for &cfg_idx in indices {
                             let (start, end) = self.compute_id_range(cfg_idx);
-                            let kills = &self.kills[start.. end];
+                            let kills = &self.scope_kills[start.. end];
                             if bitwise(&mut orig_kills, kills, &Union) {
+                                debug!("scope exits: scope id={} \
+                                        (node={:?} of {:?}) added killset: {}",
+                                       node_id, cfg_idx, indices,
+                                       bits_to_string(kills));
                                 changed = true;
                             }
                         }
@@ -436,7 +482,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
             }
 
             if changed {
-                let bits = &mut self.kills[start.. end];
+                let bits = &mut self.scope_kills[start.. end];
                 debug!("{} add_kills_from_flow_exits flow_exit={:?} bits={} [before]",
                        self.analysis_name, flow_exit, mut_bits_to_string(bits));
                 bits.clone_from_slice(&orig_kills[..]);
