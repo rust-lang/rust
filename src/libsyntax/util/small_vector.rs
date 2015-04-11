@@ -69,6 +69,20 @@ impl<T> SmallVector<T> {
         }
     }
 
+    pub fn pop(&mut self) -> Option<T> {
+        match self.repr {
+            Zero => None,
+            One(..) => {
+                let one = mem::replace(&mut self.repr, Zero);
+                match one {
+                    One(v1) => Some(v1),
+                    _ => unreachable!()
+                }
+            }
+            Many(ref mut vs) => vs.pop(),
+        }
+    }
+
     pub fn push(&mut self, v: T) {
         match self.repr {
             Zero => self.repr = One(v),
