@@ -5690,7 +5690,7 @@ else
     lt_cv_sys_max_cmd_len=8192;
     ;;
 
-  netbsd* | freebsd* | openbsd* | darwin* | dragonfly*)
+  netbsd* | freebsd* | openbsd* | darwin* | dragonfly* | bitrig*)
     # This has been around since 386BSD, at least.  Likely further.
     if test -x /sbin/sysctl; then
       lt_cv_sys_max_cmd_len=`/sbin/sysctl -n kern.argmax`
@@ -9372,7 +9372,7 @@ if test -z "$aix_libpath"; then aix_libpath="/usr/lib:/lib"; fi
       ;;
 
     # FreeBSD 3 and greater uses gcc -shared to do shared libraries.
-    freebsd* | dragonfly*)
+    freebsd* | dragonfly* | bitrig* | openbsd*)
       archive_cmds='$CC -shared -o $lib $libobjs $deplibs $compiler_flags'
       hardcode_libdir_flag_spec='-R$libdir'
       hardcode_direct=yes
