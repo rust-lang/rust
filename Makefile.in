@@ -159,6 +159,13 @@
 #
 # Admittedly this is a little convoluted.
 #
+# If you find yourself working on the make infrastructure itself, and trying to
+# find the value of a given variable after expansion, you can use:
+#
+# make print-VARIABLE_NAME
+#
+# To extract it
+#
 # </nitty-gritty>
 #
 
