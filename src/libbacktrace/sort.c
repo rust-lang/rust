@@ -1,4 +1,4 @@
-/* read.c -- File views without mmap.
+/* sort.c -- Sort without allocating memory
    Copyright (C) 2012-2015 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Google.
 
@@ -32,65 +32,77 @@ POSSIBILITY OF SUCH DAMAGE.  */
 
 #include "config.h"
 
-#include <errno.h>
-#include <stdlib.h>
+#include <stddef.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 #include "backtrace.h"
 #include "internal.h"
 
-/* This file implements file views when mmap is not available.  */
+/* The GNU glibc version of qsort allocates memory, which we must not
+   do if we are invoked by a signal handler.  So provide our own
+   sort.  */
 
-/* Create a view of SIZE bytes from DESCRIPTOR at OFFSET.  */
-
-int
-backtrace_get_view (struct backtrace_state *state, int descriptor,
-		    off_t offset, size_t size,
-		    backtrace_error_callback error_callback,
-		    void *data, struct backtrace_view *view)
+static void
+swap (char *a, char *b, size_t size)
 {
-  ssize_t got;
+  size_t i;
 
-  if (lseek (descriptor, offset, SEEK_SET) < 0)
+  for (i = 0; i < size; i++, a++, b++)
     {
-      error_callback (data, "lseek", errno);
-      return 0;
+      char t;
+
+      t = *a;
+      *a = *b;
+      *b = t;
     }
-
-  view->base = backtrace_alloc (state, size, error_callback, data);
-  if (view->base == NULL)
-    return 0;
-  view->data = view->base;
-  view->len = size;
-
-  got = read (descriptor, view->base, size);
-  if (got < 0)
-    {
-      error_callback (data, "read", errno);
-      free (view->base);
-      return 0;
-    }
-
-  if ((size_t) got < size)
-    {
-      error_callback (data, "file too short", 0);
-      free (view->base);
-      return 0;
-    }
-
-  return 1;
 }
 
-/* Release a view read by backtrace_get_view.  */
-
 void
-backtrace_release_view (struct backtrace_state *state,
-			struct backtrace_view *view,
-			backtrace_error_callback error_callback,
-			void *data)
+backtrace_qsort (void *basearg, size_t count, size_t size,
+		 int (*compar) (const void *, const void *))
 {
-  backtrace_free (state, view->base, view->len, error_callback, data);
-  view->data = NULL;
-  view->base = NULL;
+  char *base = (char *) basearg;
+  size_t i;
+  size_t mid;
+
+ tail_recurse:
+  if (count < 2)
+    return;
+
+  /* The symbol table and DWARF tables, which is all we use this
+     routine for, tend to be roughly sorted.  Pick the middle element
+     in the array as our pivot point, so that we are more likely to
+     cut the array in half for each recursion step.  */
+  swap (base, base + (count / 2) * size, size);
+
+  mid = 0;
+  for (i = 1; i < count; i++)
+    {
+      if ((*compar) (base, base + i * size) > 0)
+	{
+	  ++mid;
+	  if (i != mid)
+	    swap (base + mid * size, base + i * size, size);
+	}
+    }
+
+  if (mid > 0)
+    swap (base, base + mid * size, size);
+
+  /* Recurse with the smaller array, loop with the larger one.  That
+     ensures that our maximum stack depth is log count.  */
+  if (2 * mid < count)
+    {
+      backtrace_qsort (base, mid, size, compar);
+      base += (mid + 1) * size;
+      count -= mid + 1;
+      goto tail_recurse;
+    }
+  else
+    {
+      backtrace_qsort (base + (mid + 1) * size, count - (mid + 1),
+		       size, compar);
+      count = mid;
+      goto tail_recurse;
+    }
 }

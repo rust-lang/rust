@@ -1,3 +1,56 @@
+2015-01-24  Matthias Klose  <doko@ubuntu.com>
+
+	* configure.ac: Move AM_ENABLE_MULTILIB before AC_PROG_CC.
+	* configure: Regenerate.
+
+2015-01-05  Jakub Jelinek  <jakub@redhat.com>
+
+	Update copyright years.
+
+2014-11-21  H.J. Lu  <hongjiu.lu@intel.com>
+
+	PR bootstrap/63784
+	* configure: Regenerated.
+
+2014-11-11  David Malcolm  <dmalcolm@redhat.com>
+
+	* ChangeLog.jit: New.
+
+2014-11-11  Francois-Xavier Coudert  <fxcoudert@gcc.gnu.org>
+
+	PR target/63610
+	* configure: Regenerate.
+
+2014-10-23  Ian Lance Taylor  <iant@google.com>
+
+	* internal.h (backtrace_atomic_load_pointer) [no atomic or sync]:
+	Fix to return void *.
+
+2014-05-08  Ian Lance Taylor  <iant@google.com>
+
+	* mmap.c (backtrace_free): If freeing a large aligned block of
+	memory, call munmap rather than holding onto it.
+	(backtrace_vector_grow): When growing a vector, double the number
+	of pages requested.  When releasing the old version of a grown
+	vector, pass the correct size to backtrace_free.
+
+2014-03-07  Ian Lance Taylor  <iant@google.com>
+
+	* sort.c (backtrace_qsort): Use middle element as pivot.
+
+2014-03-06  Ian Lance Taylor  <iant@google.com>
+
+	* sort.c: New file.
+	* stest.c: New file.
+	* internal.h (backtrace_qsort): Declare.
+	* dwarf.c (read_abbrevs): Call backtrace_qsort instead of qsort.
+	(read_line_info, read_function_entry): Likewise.
+	(read_function_info, build_dwarf_data): Likewise.
+	* elf.c (elf_initialize_syminfo): Likewise.
+	* Makefile.am (libbacktrace_la_SOURCES): Add sort.c.
+	(stest_SOURCES, stest_LDADD): Define.
+	(check_PROGRAMS): Add stest.
+
 2014-02-07  Misty De Meo  <misty@brew.sh>
 
 	PR target/58710

@@ -614,7 +614,6 @@ PIC_FLAG
 WARN_FLAGS
 EXTRA_FLAGS
 BACKTRACE_FILE
-multi_basedir
 OTOOL64
 OTOOL
 LIPO
@@ -680,6 +679,7 @@ build_os
 build_vendor
 build_cpu
 build
+multi_basedir
 target_alias
 host_alias
 build_alias
@@ -721,6 +721,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+enable_multilib
 enable_maintainer_mode
 with_target_subdir
 enable_shared
@@ -729,7 +730,6 @@ with_pic
 enable_fast_install
 with_gnu_ld
 enable_libtool_lock
-enable_multilib
 with_system_libunwind
 enable_host_shared
 '
@@ -1362,6 +1362,7 @@ Optional Features:
   --disable-option-checking  ignore unrecognized --enable/--with options
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-multilib       build many library versions (default)
   --enable-maintainer-mode  enable make rules and dependencies not useful
 			  (and sometimes confusing) to the casual installer
   --enable-shared[=PKGS]  build shared libraries [default=no]
@@ -1369,7 +1370,6 @@ Optional Features:
   --enable-fast-install[=PKGS]
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
-  --enable-multilib       build many library versions (default)
   --enable-host-shared    build host code as shared libraries
 
 Optional Packages:
@@ -2452,6 +2452,46 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 ac_config_headers="$ac_config_headers config.h"
 
+
+if test -n "${with_target_subdir}"; then
+  # Default to --enable-multilib
+# Check whether --enable-multilib was given.
+if test "${enable_multilib+set}" = set; then :
+  enableval=$enable_multilib; case "$enableval" in
+  yes) multilib=yes ;;
+  no)  multilib=no ;;
+  *)   as_fn_error "bad value $enableval for multilib option" "$LINENO" 5 ;;
+ esac
+else
+  multilib=yes
+fi
+
+
+# We may get other options which we leave undocumented:
+# --with-target-subdir, --with-multisrctop, --with-multisubdir
+# See config-ml.in if you want the gory details.
+
+if test "$srcdir" = "."; then
+  if test "$with_target_subdir" != "."; then
+    multi_basedir="$srcdir/$with_multisrctop../.."
+  else
+    multi_basedir="$srcdir/$with_multisrctop.."
+  fi
+else
+  multi_basedir="$srcdir/.."
+fi
+
+
+# Even if the default multilib is not a cross compilation,
+# it may be that some of the other multilibs are.
+if test $cross_compiling = no && test $multilib = yes \
+   && test "x${with_multisubdir}" != x ; then
+   cross_compiling=maybe
+fi
+
+ac_config_commands="$ac_config_commands default-1"
+
+fi
 
 ac_aux_dir=
 for ac_dir in "$srcdir" "$srcdir/.." "$srcdir/../.."; do
@@ -5650,7 +5690,7 @@ else
     lt_cv_sys_max_cmd_len=8192;
     ;;
 
-  netbsd* | freebsd* | openbsd* | darwin* | dragonfly* | bitrig*)
+  netbsd* | freebsd* | openbsd* | darwin* | dragonfly*)
     # This has been around since 386BSD, at least.  Likely further.
     if test -x /sbin/sysctl; then
       lt_cv_sys_max_cmd_len=`/sbin/sysctl -n kern.argmax`
@@ -7576,7 +7616,7 @@ $as_echo "$lt_cv_ld_force_load" >&6; }
       case ${MACOSX_DEPLOYMENT_TARGET-10.0},$host in
 	10.0,*86*-darwin8*|10.0,*-darwin[91]*)
 	  _lt_dar_allow_undefined='${wl}-undefined ${wl}dynamic_lookup' ;;
-	10.[012]*)
+	10.[012][,.]*)
 	  _lt_dar_allow_undefined='${wl}-flat_namespace ${wl}-undefined ${wl}suppress' ;;
 	10.*)
 	  _lt_dar_allow_undefined='${wl}-undefined ${wl}dynamic_lookup' ;;
@@ -8879,7 +8919,7 @@ _LT_EOF
       if $LD --help 2>&1 | $EGREP ': supported targets:.* elf' > /dev/null \
 	 && test "$tmp_diet" = no
       then
-	tmp_addflag=
+	tmp_addflag=' $pic_flag'
 	tmp_sharedflag='-shared'
 	case $cc_basename,$host_cpu in
         pgcc*)				# Portland Group C compiler
@@ -9332,7 +9372,7 @@ if test -z "$aix_libpath"; then aix_libpath="/usr/lib:/lib"; fi
       ;;
 
     # FreeBSD 3 and greater uses gcc -shared to do shared libraries.
-    freebsd* | dragonfly* | bitrig* | openbsd*)
+    freebsd* | dragonfly*)
       archive_cmds='$CC -shared -o $lib $libobjs $deplibs $compiler_flags'
       hardcode_libdir_flag_spec='-R$libdir'
       hardcode_direct=yes
@@ -11089,7 +11129,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11092 "configure"
+#line 11132 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11195,7 +11235,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<_LT_EOF
-#line 11198 "configure"
+#line 11238 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11439,43 +11479,6 @@ backtrace_supported=yes
 if test -n "${with_target_subdir}"; then
   # We are compiling a GCC library.  We can assume that the unwind
   # library exists.
-  # Default to --enable-multilib
-# Check whether --enable-multilib was given.
-if test "${enable_multilib+set}" = set; then :
-  enableval=$enable_multilib; case "$enableval" in
-  yes) multilib=yes ;;
-  no)  multilib=no ;;
-  *)   as_fn_error "bad value $enableval for multilib option" "$LINENO" 5 ;;
- esac
-else
-  multilib=yes
-fi
-
-
-# We may get other options which we leave undocumented:
-# --with-target-subdir, --with-multisrctop, --with-multisubdir
-# See config-ml.in if you want the gory details.
-
-if test "$srcdir" = "."; then
-  if test "$with_target_subdir" != "."; then
-    multi_basedir="$srcdir/$with_multisrctop../.."
-  else
-    multi_basedir="$srcdir/$with_multisrctop.."
-  fi
-else
-  multi_basedir="$srcdir/.."
-fi
-
-
-# Even if the default multilib is not a cross compilation,
-# it may be that some of the other multilibs are.
-if test $cross_compiling = no && test $multilib = yes \
-   && test "x${with_multisubdir}" != x ; then
-   cross_compiling=maybe
-fi
-
-ac_config_commands="$ac_config_commands default-1"
-
   BACKTRACE_FILE="backtrace.lo simple.lo"
 else
   ac_fn_c_check_header_mongrel "$LINENO" "unwind.h" "ac_cv_header_unwind_h" "$ac_includes_default"
@@ -13174,6 +13177,20 @@ cat >>$CONFIG_STATUS <<_ACEOF || ac_write_fail=1
 # INIT-COMMANDS
 #
 
+srcdir="$srcdir"
+host="$host"
+target="$target"
+with_multisubdir="$with_multisubdir"
+with_multisrctop="$with_multisrctop"
+with_target_subdir="$with_target_subdir"
+ac_configure_args="${multilib_arg} ${ac_configure_args}"
+multi_basedir="$multi_basedir"
+CONFIG_SHELL=${CONFIG_SHELL-/bin/sh}
+CC="$CC"
+CXX="$CXX"
+GFORTRAN="$GFORTRAN"
+GCJ="$GCJ"
+
 
 # The HP-UX ksh and POSIX shell print the target directory to stdout
 # if CDPATH is set.
@@ -13434,20 +13451,6 @@ fi
 
 
 
-srcdir="$srcdir"
-host="$host"
-target="$target"
-with_multisubdir="$with_multisubdir"
-with_multisrctop="$with_multisrctop"
-with_target_subdir="$with_target_subdir"
-ac_configure_args="${multilib_arg} ${ac_configure_args}"
-multi_basedir="$multi_basedir"
-CONFIG_SHELL=${CONFIG_SHELL-/bin/sh}
-CC="$CC"
-CXX="$CXX"
-GFORTRAN="$GFORTRAN"
-GCJ="$GCJ"
-
 GCC="$GCC"
 CC="$CC"
 acx_cv_header_stdint="$acx_cv_header_stdint"
@@ -13480,8 +13483,8 @@ for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
     "config.h") CONFIG_HEADERS="$CONFIG_HEADERS config.h" ;;
-    "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
     "default-1") CONFIG_COMMANDS="$CONFIG_COMMANDS default-1" ;;
+    "libtool") CONFIG_COMMANDS="$CONFIG_COMMANDS libtool" ;;
     "gstdint.h") CONFIG_COMMANDS="$CONFIG_COMMANDS gstdint.h" ;;
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "backtrace-supported.h") CONFIG_FILES="$CONFIG_FILES backtrace-supported.h" ;;
@@ -14070,6 +14073,14 @@ $as_echo "$as_me: executing $ac_file commands" >&6;}
 
 
   case $ac_file$ac_mode in
+    "default-1":C)
+# Only add multilib support code if we just rebuilt the top-level
+# Makefile.
+case " $CONFIG_FILES " in
+ *" Makefile "*)
+   ac_file=Makefile . ${multi_basedir}/config-ml.in
+   ;;
+esac ;;
     "libtool":C)
 
     # See if we are running on zsh, and set the options which allow our
@@ -14709,14 +14720,6 @@ _LT_EOF
   chmod +x "$ofile"
 
  ;;
-    "default-1":C)
-# Only add multilib support code if we just rebuilt the top-level
-# Makefile.
-case " $CONFIG_FILES " in
- *" Makefile "*)
-   ac_file=Makefile . ${multi_basedir}/config-ml.in
-   ;;
-esac ;;
     "gstdint.h":C)
 if test "$GCC" = yes; then
   echo "/* generated for " `$CC --version | sed 1q` "*/" > tmp-stdint.h
@@ -15153,3 +15156,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
+

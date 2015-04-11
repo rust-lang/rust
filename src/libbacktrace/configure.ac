@@ -1,18 +1,18 @@
 # configure.ac -- Backtrace configure script.
-# Copyright (C) 2012-2014 Free Software Foundation, Inc.
+# Copyright (C) 2012-2015 Free Software Foundation, Inc.
 
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
 # met:
 
 #     (1) Redistributions of source code must retain the above copyright
-#     notice, this list of conditions and the following disclaimer.
+#     notice, this list of conditions and the following disclaimer. 
 
 #     (2) Redistributions in binary form must reproduce the above copyright
 #     notice, this list of conditions and the following disclaimer in
 #     the documentation and/or other materials provided with the
-#     distribution.
-
+#     distribution.  
+    
 #     (3) The name of the author may not be used to
 #     endorse or promote products derived from this software without
 #     specific prior written permission.
@@ -33,6 +33,10 @@ AC_PREREQ(2.64)
 AC_INIT(package-unused, version-unused,, libbacktrace)
 AC_CONFIG_SRCDIR(backtrace.h)
 AC_CONFIG_HEADER(config.h)
+
+if test -n "${with_target_subdir}"; then
+  AM_ENABLE_MULTILIB(, ..)
+fi
 
 AC_CANONICAL_SYSTEM
 target_alias=${target_alias-$host_alias}
@@ -83,7 +87,6 @@ backtrace_supported=yes
 if test -n "${with_target_subdir}"; then
   # We are compiling a GCC library.  We can assume that the unwind
   # library exists.
-  AM_ENABLE_MULTILIB(, ..)
   BACKTRACE_FILE="backtrace.lo simple.lo"
 else
   AC_CHECK_HEADER([unwind.h],
