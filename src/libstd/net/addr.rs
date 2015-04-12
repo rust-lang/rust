@@ -615,7 +615,7 @@ mod tests {
     fn ipv4_properties() {
         fn check(octets: &[u8; 4], unspec: bool, loopback: bool,
                  private: bool, link_local: bool, global: bool,
-                 multicast: bool) {
+                 multicast: bool, broadcast: bool, documentation: bool) {
             let ip = Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3]);
             assert_eq!(octets, &ip.octets());
 
@@ -625,20 +625,23 @@ mod tests {
             assert_eq!(ip.is_link_local(), link_local);
             assert_eq!(ip.is_global(), global);
             assert_eq!(ip.is_multicast(), multicast);
+            assert_eq!(ip.is_broadcast(), broadcast);
+            assert_eq!(ip.is_documentation(), documentation);
         }
 
-        //    address                unspec loopbk privt  linloc global multicast
-        check(&[0, 0, 0, 0],         true,  false, false, false, true,  false);
-        check(&[0, 0, 0, 1],         false, false, false, false, true,  false);
-        check(&[1, 0, 0, 0],         false, false, false, false, true,  false);
-        check(&[10, 9, 8, 7],        false, false, true,  false, false, false);
-        check(&[127, 1, 2, 3],       false, true,  false, false, false, false);
-        check(&[172, 31, 254, 253],  false, false, true,  false, false,  false);
-        check(&[169, 254, 253, 242], false, false, false, true,  false, false);
-        check(&[192, 168, 254, 253], false, false, true,  false, false, false);
-        check(&[224, 0, 0, 0],       false, false, false, false, true,  true);
-        check(&[239, 255, 255, 255], false, false, false, false, true,  true);
-        check(&[255, 255, 255, 255], false, false, false, false, true,  false);
+        //    address                unspec loopbk privt  linloc global multicast brdcast doc
+        check(&[0, 0, 0, 0],         true,  false, false, false, true,  false,    false,  false);
+        check(&[0, 0, 0, 1],         false, false, false, false, true,  false,    false,  false);
+        check(&[1, 0, 0, 0],         false, false, false, false, true,  false,    false,  false);
+        check(&[10, 9, 8, 7],        false, false, true,  false, false, false,    false,  false);
+        check(&[127, 1, 2, 3],       false, true,  false, false, false, false,    false,  false);
+        check(&[172, 31, 254, 253],  false, false, true,  false, false, false,    false,  false);
+        check(&[169, 254, 253, 242], false, false, false, true,  false, false,    false,  false);
+        check(&[192, 168, 254, 253], false, false, true,  false, false, false,    false,  false);
+        check(&[224, 0, 0, 0],       false, false, false, false, true,  true,     false,  false);
+        check(&[239, 255, 255, 255], false, false, false, false, true,  true,     false,  false);
+        check(&[255, 255, 255, 255], false, false, false, false, false, false,    true,  false);
+        check(&[198, 51, 100, 0],    false, false, false, false, false, false,    false,  true);
     }
 
     #[test]
