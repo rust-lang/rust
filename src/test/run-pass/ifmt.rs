@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -143,6 +143,12 @@ pub fn main() {
     t!(format!("{:10.3e}", 1.2345e6f64),   "   1.234e6");
     t!(format!("{:+10.3e}", 1.2345e6f64),  "  +1.234e6");
     t!(format!("{:+10.3e}", -1.2345e6f64), "  -1.234e6");
+
+    // Float edge cases
+    t!(format!("{}", -0.0), "0");
+    t!(format!("{:?}", -0.0), "-0");
+    t!(format!("{:?}", 0.0), "0");
+
 
     // Test that pointers don't get truncated.
     {
