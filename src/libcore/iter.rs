@@ -2197,13 +2197,9 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
         if self.done {
             None
         } else {
-            match self.iter.next() {
-                None => {
-                    self.done = true;
-                    None
-                }
-                x => x
-            }
+            let next = self.iter.next();
+            self.done = next.is_none();
+            next
         }
     }
 
@@ -2224,13 +2220,9 @@ impl<I> DoubleEndedIterator for Fuse<I> where I: DoubleEndedIterator {
         if self.done {
             None
         } else {
-            match self.iter.next_back() {
-                None => {
-                    self.done = true;
-                    None
-                }
-                x => x
-            }
+            let next = self.iter.next_back();
+            self.done = next.is_none();
+            next
         }
     }
 }
