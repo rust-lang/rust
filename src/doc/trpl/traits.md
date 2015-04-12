@@ -273,8 +273,8 @@ not, because both the trait and the type aren't in our crate.
 
 One last thing about traits: generic functions with a trait bound use
 *monomorphization* (*mono*: one, *morph*: form), so they are statically
-dispatched. What's that mean? Check out the chapter on [static and dynamic
-dispatch](static-and-dynamic-dispatch.html) for more.
+dispatched. What's that mean? Check out the chapter on [trait
+objects](trait-objects.html) for more.
 
 ## Multiple trait bounds
 
