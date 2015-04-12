@@ -309,10 +309,10 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
         if self.cap - self.len < additional {
-            let err_msg = "Vec::reserve: `isize` overflow";
+            const ERR_MSG: &'static str  = "Vec::reserve: `isize` overflow";
 
-            let new_min_cap = self.len.checked_add(additional).expect(err_msg);
-            if new_min_cap > MAX_MEMORY_SIZE { panic!(err_msg) }
+            let new_min_cap = self.len.checked_add(additional).expect(ERR_MSG);
+            if new_min_cap > MAX_MEMORY_SIZE { panic!(ERR_MSG) }
             self.grow_capacity(match new_min_cap.checked_next_power_of_two() {
                 Some(x) if x > MAX_MEMORY_SIZE => MAX_MEMORY_SIZE,
                 None => MAX_MEMORY_SIZE,
