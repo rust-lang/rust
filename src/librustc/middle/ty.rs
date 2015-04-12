@@ -1092,6 +1092,13 @@ impl<'tcx> FnOutput<'tcx> {
             ty::FnDiverging => unreachable!()
         }
     }
+
+    pub fn unwrap_or(self, def: Ty<'tcx>) -> Ty<'tcx> {
+        match self {
+            ty::FnConverging(t) => t,
+            ty::FnDiverging => def
+        }
+    }
 }
 
 pub type PolyFnOutput<'tcx> = Binder<FnOutput<'tcx>>;
