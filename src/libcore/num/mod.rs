@@ -2705,7 +2705,7 @@ macro_rules! from_str_radix_float_impl {
             ///
             /// # Return value
             ///
-            /// `Err(ParseIntError)` if the string did not represent a valid number.  Otherwise,
+            /// `Err(ParseFloatError)` if the string did not represent a valid number.
             /// Otherwise, `Ok(n)` where `n` is the floating-point number represented by `src`.
             #[inline]
             #[allow(deprecated)]
@@ -2734,7 +2734,7 @@ macro_rules! from_str_radix_float_impl {
             ///
             /// # Return value
             ///
-            /// `Err(ParseIntError)` if the string did not represent a valid number.  Otherwise,
+            /// `Err(ParseFloatError)` if the string did not represent a valid number.
             /// Otherwise, `Ok(n)` where `n` is the floating-point number represented by `src`.
             fn from_str_radix(src: &str, radix: u32)
                               -> Result<$T, ParseFloatError> {
