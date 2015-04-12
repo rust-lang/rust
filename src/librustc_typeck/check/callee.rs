@@ -387,10 +387,11 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                     demand::eqtype(fcx, self.call_expr.span, self_arg_ty, method_arg_ty);
                 }
 
+                let nilty = ty::mk_nil(fcx.tcx());
                 demand::eqtype(fcx,
                                self.call_expr.span,
-                               method_sig.output.unwrap(),
-                               self.fn_sig.output.unwrap());
+                               method_sig.output.unwrap_or(nilty),
+                               self.fn_sig.output.unwrap_or(nilty));
 
                 write_overloaded_call_method_map(fcx, self.call_expr, method_callee);
             }
