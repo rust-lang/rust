@@ -20,6 +20,7 @@ use trans::base;
 use trans::builder::Builder;
 use trans::common::{ExternMap,BuilderRef_res};
 use trans::debuginfo;
+use trans::declare;
 use trans::monomorphize::MonoId;
 use trans::type_::{Type, TypeNames};
 use middle::subst::Substs;
@@ -133,7 +134,6 @@ pub struct LocalCrateContext<'tcx> {
     llsizingtypes: RefCell<FnvHashMap<Ty<'tcx>, Type>>,
     adt_reprs: RefCell<FnvHashMap<Ty<'tcx>, Rc<adt::Repr<'tcx>>>>,
     type_hashcodes: RefCell<FnvHashMap<Ty<'tcx>, String>>,
-    all_llvm_symbols: RefCell<FnvHashSet<String>>,
     int_type: Type,
     opaque_vec_type: Type,
     builder: BuilderRef_res,
@@ -413,7 +413,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 llsizingtypes: RefCell::new(FnvHashMap()),
                 adt_reprs: RefCell::new(FnvHashMap()),
                 type_hashcodes: RefCell::new(FnvHashMap()),
-                all_llvm_symbols: RefCell::new(FnvHashSet()),
                 int_type: Type::from_ref(ptr::null_mut()),
                 opaque_vec_type: Type::from_ref(ptr::null_mut()),
                 builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
@@ -653,10 +652,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.type_hashcodes
     }
 
-    pub fn all_llvm_symbols<'a>(&'a self) -> &'a RefCell<FnvHashSet<String>> {
-        &self.local.all_llvm_symbols
-    }
-
     pub fn stats<'a>(&'a self) -> &'a Stats {
         &self.shared.stats
     }
@@ -743,17 +738,16 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     macro_rules! ifn {
         ($name:expr, fn() -> $ret:expr) => (
             if *key == $name {
-                let f = base::decl_cdecl_fn(
-                    ccx, $name, Type::func(&[], &$ret),
-                    ty::mk_nil(ccx.tcx()));
+                let f = declare::declare_cfn(ccx, $name, Type::func(&[], &$ret),
+                                             ty::mk_nil(ccx.tcx()));
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
         );
         ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
             if *key == $name {
-                let f = base::decl_cdecl_fn(ccx, $name,
-                                  Type::func(&[$($arg),*], &$ret), ty::mk_nil(ccx.tcx()));
+                let f = declare::declare_cfn(ccx, $name, Type::func(&[$($arg),*], &$ret),
+                                             ty::mk_nil(ccx.tcx()));
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }
@@ -888,9 +882,9 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
                 // The `if key == $name` is already in ifn!
                 ifn!($name, fn($($arg),*) -> $ret);
             } else if *key == $name {
-                let f = base::decl_cdecl_fn(ccx, stringify!($cname),
-                                      Type::func(&[$($arg),*], &$ret),
-                                      ty::mk_nil(ccx.tcx()));
+                let f = declare::declare_cfn(ccx, stringify!($cname),
+                                             Type::func(&[$($arg),*], &$ret),
+                                             ty::mk_nil(ccx.tcx()));
                 ccx.intrinsics().borrow_mut().insert($name, f.clone());
                 return Some(f);
             }

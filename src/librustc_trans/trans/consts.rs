@@ -25,6 +25,7 @@ use middle::const_eval::{const_int_checked_shr, const_uint_checked_shr};
 use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
 use trans::common::*;
+use trans::declare;
 use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of;
@@ -35,6 +36,7 @@ use util::ppaux::{Repr, ty_to_string};
 use std::iter::repeat;
 use libc::c_uint;
 use syntax::{ast, ast_util};
+use syntax::parse::token;
 use syntax::ptr::P;
 
 pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
@@ -83,7 +85,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
         ast::LitBool(b) => C_bool(cx, b),
         ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
         ast::LitBinary(ref data) => {
-            addr_of(cx, C_bytes(cx, &data[..]), "binary", e.id)
+            addr_of(cx, C_bytes(cx, &data[..]), "binary")
         }
     }
 }
@@ -96,13 +98,16 @@ pub fn ptrcast(val: ValueRef, ty: Type) -> ValueRef {
 
 fn addr_of_mut(ccx: &CrateContext,
                cv: ValueRef,
-               kind: &str,
-               id: ast::NodeId)
+               kind: &str)
                -> ValueRef {
     unsafe {
-        let name = format!("{}{}\0", kind, id);
-        let gv = llvm::LLVMAddGlobal(ccx.llmod(), val_ty(cv).to_ref(),
-                                     name.as_ptr() as *const _);
+        // FIXME: this totally needs a better name generation scheme, perhaps a simple global
+        // counter? Also most other uses of gensym in trans.
+        let gsym = token::gensym("_");
+        let name = format!("{}{}", kind, gsym.usize());
+        let gv = declare::define_global(ccx, &name[..], val_ty(cv)).unwrap_or_else(||{
+            ccx.sess().bug(&format!("symbol `{}` is already defined", name));
+        });
         llvm::LLVMSetInitializer(gv, cv);
         SetLinkage(gv, InternalLinkage);
         SetUnnamedAddr(gv, true);
@@ -112,14 +117,13 @@ fn addr_of_mut(ccx: &CrateContext,
 
 pub fn addr_of(ccx: &CrateContext,
                cv: ValueRef,
-               kind: &str,
-               id: ast::NodeId)
+               kind: &str)
                -> ValueRef {
     match ccx.const_globals().borrow().get(&cv) {
         Some(&gv) => return gv,
         None => {}
     }
-    let gv = addr_of_mut(ccx, cv, kind, id);
+    let gv = addr_of_mut(ccx, cv, kind);
     unsafe {
         llvm::LLVMSetGlobalConstant(gv, True);
     }
@@ -233,7 +237,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
     };
 
-    let lvalue = addr_of(ccx, val, "const", expr.id);
+    let lvalue = addr_of(ccx, val, "const");
     ccx.const_values().borrow_mut().insert(key, lvalue);
     lvalue
 }
@@ -284,7 +288,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     if adj.autoderefs == 0 {
                         // Don't copy data to do a deref+ref
                         // (i.e., skip the last auto-deref).
-                        llconst = addr_of(cx, llconst, "autoref", e.id);
+                        llconst = addr_of(cx, llconst, "autoref");
                     } else {
                         // Seeing as we are deref'ing here and take a reference
                         // again to make the pointer part of the far pointer below,
@@ -312,7 +316,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 None => {}
                 Some(box ty::AutoUnsafe(_, None)) |
                 Some(box ty::AutoPtr(_, _, None)) => {
-                    llconst = addr_of(cx, llconst, "autoref", e.id);
+                    llconst = addr_of(cx, llconst, "autoref");
                 }
                 Some(box ty::AutoUnsize(ref k)) => {
                     let info =
@@ -711,12 +715,12 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                   // If this isn't the address of a static, then keep going through
                   // normal constant evaluation.
                   let (v, _) = const_expr(cx, &**sub, param_substs);
-                  addr_of(cx, v, "ref", e.id)
+                  addr_of(cx, v, "ref")
               }
           }
           ast::ExprAddrOf(ast::MutMutable, ref sub) => {
               let (v, _) = const_expr(cx, &**sub, param_substs);
-              addr_of_mut(cx, v, "ref_mut_slice", e.id)
+              addr_of_mut(cx, v, "ref_mut_slice")
           }
           ast::ExprTup(ref es) => {
               let repr = adt::represent_type(cx, ety);
@@ -862,7 +866,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn trans_static(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) {
+pub fn trans_static(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) -> ValueRef {
     unsafe {
         let _icx = push_ctxt("trans_static");
         let g = base::get_item_val(ccx, id);
@@ -888,6 +892,7 @@ pub fn trans_static(ccx: &CrateContext, m: ast::Mutability, id: ast::NodeId) {
             }
         }
         debuginfo::create_global_var_metadata(ccx, id, g);
+        g
     }
 }
 

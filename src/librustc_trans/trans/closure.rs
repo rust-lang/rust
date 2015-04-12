@@ -13,6 +13,7 @@ use back::link::{self, mangle_internal_name_by_path_and_seq};
 use llvm::{ValueRef, get_param};
 use middle::mem_categorization::Typer;
 use trans::adt;
+use trans::attributes;
 use trans::base::*;
 use trans::build::*;
 use trans::callee::{self, ArgVals, Callee, TraitItem, MethodData};
@@ -20,6 +21,7 @@ use trans::cleanup::{CleanupMethods, CustomScope, ScopeId};
 use trans::common::*;
 use trans::datum::{self, Datum, rvalue_scratch_datum, Rvalue, ByValue};
 use trans::debuginfo::{self, DebugLoc};
+use trans::declare;
 use trans::expr;
 use trans::monomorphize::{self, MonoId};
 use trans::type_of::*;
@@ -161,10 +163,14 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
         mangle_internal_name_by_path_and_seq(path, "closure")
     });
 
-    let llfn = decl_internal_rust_fn(ccx, function_type, &symbol[..]);
+    // Currently there’s only a single user of get_or_create_declaration_if_closure and it
+    // unconditionally defines the function, therefore we use define_* here.
+    let llfn = declare::define_internal_rust_fn(ccx, &symbol[..], function_type).unwrap_or_else(||{
+        ccx.sess().bug(&format!("symbol `{}` already defined", symbol));
+    });
 
     // set an inline hint for all closures
-    set_inline_hint(llfn);
+    attributes::inline(llfn, attributes::InlineAttr::Hint);
 
     debug!("get_or_create_declaration_if_closure(): inserting new \
             closure {:?} (type {})",
@@ -380,7 +386,10 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 
     // Create the by-value helper.
     let function_name = link::mangle_internal_name_by_type_and_seq(ccx, llonce_fn_ty, "once_shim");
-    let lloncefn = decl_internal_rust_fn(ccx, llonce_fn_ty, &function_name);
+    let lloncefn = declare::define_internal_rust_fn(ccx, &function_name[..], llonce_fn_ty)
+        .unwrap_or_else(||{
+            ccx.sess().bug(&format!("symbol `{}` already defined", function_name));
+        });
 
     let sig = ty::erase_late_bound_regions(tcx, &llonce_bare_fn_ty.sig);
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);

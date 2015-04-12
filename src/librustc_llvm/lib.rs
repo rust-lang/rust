@@ -157,7 +157,7 @@ bitflags! {
 #[derive(Copy, Clone)]
 pub enum OtherAttribute {
     // The following are not really exposed in
-    // the LLVM c api so instead to add these
+    // the LLVM C api so instead to add these
     // we call a wrapper function in RustWrapper
     // that uses the C++ api.
     SanitizeAddressAttribute = 1 << 32,
@@ -912,6 +912,7 @@ extern {
                                        AddressSpace: c_uint)
                                        -> ValueRef;
     pub fn LLVMGetNamedGlobal(M: ModuleRef, Name: *const c_char) -> ValueRef;
+    pub fn LLVMGetOrInsertGlobal(M: ModuleRef, Name: *const c_char, T: TypeRef) -> ValueRef;
     pub fn LLVMGetFirstGlobal(M: ModuleRef) -> ValueRef;
     pub fn LLVMGetLastGlobal(M: ModuleRef) -> ValueRef;
     pub fn LLVMGetNextGlobal(GlobalVar: ValueRef) -> ValueRef;
@@ -924,6 +925,7 @@ extern {
     pub fn LLVMSetThreadLocal(GlobalVar: ValueRef, IsThreadLocal: Bool);
     pub fn LLVMIsGlobalConstant(GlobalVar: ValueRef) -> Bool;
     pub fn LLVMSetGlobalConstant(GlobalVar: ValueRef, IsConstant: Bool);
+    pub fn LLVMGetNamedValue(M: ModuleRef, Name: *const c_char) -> ValueRef;
 
     /* Operations on aliases */
     pub fn LLVMAddAlias(M: ModuleRef,
@@ -957,6 +959,7 @@ extern {
     pub fn LLVMAddFunctionAttrString(Fn: ValueRef, index: c_uint, Name: *const c_char);
     pub fn LLVMRemoveFunctionAttrString(Fn: ValueRef, index: c_uint, Name: *const c_char);
     pub fn LLVMGetFunctionAttr(Fn: ValueRef) -> c_ulonglong;
+    pub fn LLVMRemoveFunctionAttr(Fn: ValueRef, val: c_ulonglong);
 
     /* Operations on parameters */
     pub fn LLVMCountParams(Fn: ValueRef) -> c_uint;

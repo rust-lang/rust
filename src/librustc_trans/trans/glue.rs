@@ -15,11 +15,13 @@
 
 use back::abi;
 use back::link::*;
-use llvm::{ValueRef, get_param};
 use llvm;
+use llvm::{ValueRef, get_param};
+use metadata::csearch;
 use middle::lang_items::ExchangeFreeFnLangItem;
 use middle::subst;
 use middle::subst::{Subst, Substs};
+use middle::ty::{self, Ty};
 use trans::adt;
 use trans::adt::GetDtorType; // for tcx.dtor_type()
 use trans::base::*;
@@ -30,13 +32,16 @@ use trans::cleanup::CleanupMethods;
 use trans::common::*;
 use trans::datum;
 use trans::debuginfo::DebugLoc;
+use trans::declare;
 use trans::expr;
+use trans::foreign;
+use trans::inline;
 use trans::machine::*;
+use trans::monomorphize;
+use trans::type_of::{type_of, type_of_dtor, sizing_type_of, align_of};
 use trans::type_::Type;
-use trans::type_of::{type_of, sizing_type_of, align_of};
-use middle::ty::{self, Ty};
-use util::ppaux::{ty_to_short_str, Repr};
 use util::ppaux;
+use util::ppaux::{ty_to_short_str, Repr};
 
 use arena::TypedArena;
 use libc::c_uint;
@@ -178,14 +183,15 @@ pub fn get_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Val
     // To avoid infinite recursion, don't `make_drop_glue` until after we've
     // added the entry to the `drop_glues` cache.
     if let Some(old_sym) = ccx.available_drop_glues().borrow().get(&t) {
-        let llfn = decl_cdecl_fn(ccx, &old_sym, llfnty, ty::mk_nil(ccx.tcx()));
+        let llfn = declare::declare_cfn(ccx, &old_sym, llfnty, ty::mk_nil(ccx.tcx()));
         ccx.drop_glues().borrow_mut().insert(t, llfn);
         return llfn;
     };
 
     let fn_nm = mangle_internal_name_by_type_and_seq(ccx, t, "drop");
-    let llfn = decl_cdecl_fn(ccx, &fn_nm, llfnty, ty::mk_nil(ccx.tcx()));
-    note_unique_llvm_symbol(ccx, fn_nm.clone());
+    let llfn = declare::define_cfn(ccx, &fn_nm, llfnty, ty::mk_nil(ccx.tcx())).unwrap_or_else(||{
+       ccx.sess().bug(&format!("symbol `{}` already defined", fn_nm));
+    });
     ccx.available_drop_glues().borrow_mut().insert(t, fn_nm);
 
     let _s = StatRecorder::new(ccx, format!("drop {}", ty_to_short_str(ccx.tcx(), t)));
@@ -257,6 +263,40 @@ fn trans_struct_drop_flag<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         trans_struct_drop(cx, t, v0, dtor_did, class_did, substs)
     })
 
+}
+
+pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                              did: ast::DefId,
+                              t: Ty<'tcx>,
+                              parent_id: ast::DefId,
+                              substs: &Substs<'tcx>)
+                              -> ValueRef {
+    let _icx = push_ctxt("trans_res_dtor");
+    let did = inline::maybe_instantiate_inline(ccx, did);
+
+    if !substs.types.is_empty() {
+        assert_eq!(did.krate, ast::LOCAL_CRATE);
+
+        // Since we're in trans we don't care for any region parameters
+        let substs = ccx.tcx().mk_substs(Substs::erased(substs.types.clone()));
+
+        let (val, _, _) = monomorphize::monomorphic_fn(ccx, did, substs, None);
+
+        val
+    } else if did.krate == ast::LOCAL_CRATE {
+        get_item_val(ccx, did.node)
+    } else {
+        let tcx = ccx.tcx();
+        let name = csearch::get_symbol(&ccx.sess().cstore, did);
+        let class_ty = ty::lookup_item_type(tcx, parent_id).ty.subst(tcx, substs);
+        let llty = type_of_dtor(ccx, class_ty);
+        let dtor_ty = ty::mk_ctor_fn(ccx.tcx(),
+                                     did,
+                                     &[get_drop_glue_type(ccx, t)],
+                                     ty::mk_nil(ccx.tcx()));
+        foreign::get_extern_fn(ccx, &mut *ccx.externs().borrow_mut(), &name[..], llvm::CCallConv,
+                               llty, dtor_ty)
+    }
 }
 
 fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,

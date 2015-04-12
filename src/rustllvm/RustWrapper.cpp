@@ -77,11 +77,22 @@ extern "C" void LLVMRustPrintPassTimings() {
   TimerGroup::printAll(OS);
 }
 
+extern "C" LLVMValueRef LLVMGetNamedValue(LLVMModuleRef M,
+                                          const char* Name) {
+    return wrap(unwrap(M)->getNamedValue(Name));
+}
+
 extern "C" LLVMValueRef LLVMGetOrInsertFunction(LLVMModuleRef M,
                                                 const char* Name,
                                                 LLVMTypeRef FunctionTy) {
   return wrap(unwrap(M)->getOrInsertFunction(Name,
                                              unwrap<FunctionType>(FunctionTy)));
+}
+
+extern "C" LLVMValueRef LLVMGetOrInsertGlobal(LLVMModuleRef M,
+                                              const char* Name,
+                                              LLVMTypeRef Ty) {
+  return wrap(unwrap(M)->getOrInsertGlobal(Name, unwrap(Ty)));
 }
 
 extern "C" LLVMTypeRef LLVMMetadataTypeInContext(LLVMContextRef C) {
