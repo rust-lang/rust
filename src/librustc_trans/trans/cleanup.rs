@@ -126,6 +126,7 @@ use trans::callee;
 use trans::common;
 use trans::common::{Block, FunctionContext, ExprId, NodeIdAndSpan};
 use trans::debuginfo::{DebugLoc, ToDebugLoc};
+use trans::declare;
 use trans::glue;
 use middle::region;
 use trans::type_::Type;
@@ -844,10 +845,8 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                     Some(llpersonality) => llpersonality,
                     None => {
                         let fty = Type::variadic_func(&[], &Type::i32(self.ccx));
-                        let f = base::decl_cdecl_fn(self.ccx,
-                                                    "rust_eh_personality",
-                                                    fty,
-                                                    self.ccx.tcx().types.i32);
+                        let f = declare::declare_cfn(self.ccx, "rust_eh_personality", fty,
+                                                     self.ccx.tcx().types.i32);
                         *personality = Some(f);
                         f
                     }

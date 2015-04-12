@@ -31,6 +31,7 @@ use trans::cleanup;
 use trans::consts;
 use trans::datum;
 use trans::debuginfo::{self, DebugLoc};
+use trans::declare;
 use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
@@ -871,9 +872,10 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
                                                 !null_terminated as Bool);
 
         let gsym = token::gensym("str");
-        let buf = CString::new(format!("str{}", gsym.usize()));
-        let buf = buf.unwrap();
-        let g = llvm::LLVMAddGlobal(cx.llmod(), val_ty(sc).to_ref(), buf.as_ptr());
+        let sym = format!("str{}", gsym.usize());
+        let g = declare::define_global(cx, &sym[..], val_ty(sc)).unwrap_or_else(||{
+            cx.sess().bug(&format!("symbol `{}` is already defined", sym));
+        });
         llvm::LLVMSetInitializer(g, sc);
         llvm::LLVMSetGlobalConstant(g, True);
         llvm::SetLinkage(g, llvm::InternalLinkage);

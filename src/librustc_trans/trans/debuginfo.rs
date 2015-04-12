@@ -196,8 +196,9 @@ use llvm::debuginfo::*;
 use metadata::csearch;
 use middle::subst::{self, Substs};
 use trans::{self, adt, machine, type_of};
-use trans::common::{self, NodeIdAndSpan, CrateContext, FunctionContext, Block,
-                    C_bytes, NormalizingClosureTyper};
+use trans::common::{self, NodeIdAndSpan, CrateContext, FunctionContext, Block, C_bytes,
+                    NormalizingClosureTyper};
+use trans::declare;
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::monomorphize;
 use trans::type_::Type;
@@ -4067,7 +4068,7 @@ pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext) 
 /// section.
 fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
                                                   -> llvm::ValueRef {
-    let section_var_name = b"__rustc_debug_gdb_scripts_section__\0";
+    let section_var_name = "__rustc_debug_gdb_scripts_section__";
 
     let section_var = unsafe {
         llvm::LLVMGetNamedGlobal(ccx.llmod(),
@@ -4081,10 +4082,11 @@ fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
         unsafe {
             let llvm_type = Type::array(&Type::i8(ccx),
                                         section_contents.len() as u64);
-            let section_var = llvm::LLVMAddGlobal(ccx.llmod(),
-                                                  llvm_type.to_ref(),
-                                                  section_var_name.as_ptr()
-                                                    as *const _);
+
+            let section_var = declare::define_global(ccx, section_var_name,
+                                                     llvm_type).unwrap_or_else(||{
+                ccx.sess().bug(&format!("symbol `{}` is already defined", section_var_name))
+            });
             llvm::LLVMSetSection(section_var, section_name.as_ptr() as *const _);
             llvm::LLVMSetInitializer(section_var, C_bytes(ccx, section_contents));
             llvm::LLVMSetGlobalConstant(section_var, llvm::True);
