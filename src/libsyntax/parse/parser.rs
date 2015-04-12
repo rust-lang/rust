@@ -2162,13 +2162,13 @@ impl<'a> Parser<'a> {
                             &token::CloseDelim(delim),
                             seq_sep_none(),
                             |p| p.parse_token_tree()));
-                        let hi = self.span.hi;
+                        let hi = self.last_span.hi;
 
                         return Ok(self.mk_mac_expr(lo,
-                                                hi,
-                                                MacInvocTT(pth,
-                                                           tts,
-                                                           EMPTY_CTXT)));
+                                                   hi,
+                                                   MacInvocTT(pth,
+                                                              tts,
+                                                              EMPTY_CTXT)));
                     }
                     if self.check(&token::OpenDelim(token::Brace)) {
                         // This is a struct literal, unless we're prohibited
@@ -3449,7 +3449,7 @@ impl<'a> Parser<'a> {
                 seq_sep_none(),
                 |p| p.parse_token_tree()
             ));
-            let hi = self.span.hi;
+            let hi = self.last_span.hi;
 
             let style = if delim == token::Brace {
                 MacStmtWithBraces
@@ -3567,7 +3567,7 @@ impl<'a> Parser<'a> {
                         token::Semi => {
                             stmts.push(P(Spanned {
                                 node: StmtMac(mac, MacStmtWithSemicolon),
-                                span: span,
+                                span: mk_sp(span.lo, self.span.hi),
                             }));
                             try!(self.bump());
                         }
@@ -3591,7 +3591,7 @@ impl<'a> Parser<'a> {
                         token::Semi => {
                             stmts.push(P(Spanned {
                                 node: StmtMac(m, MacStmtWithSemicolon),
-                                span: span,
+                                span: mk_sp(span.lo, self.span.hi),
                             }));
                             try!(self.bump());
                         }
@@ -3610,13 +3610,15 @@ impl<'a> Parser<'a> {
                     }
                 }
                 _ => { // all other kinds of statements:
+                    let mut hi = span.hi;
                     if classify::stmt_ends_with_semi(&node) {
                         try!(self.commit_stmt_expecting(token::Semi));
+                        hi = self.last_span.hi;
                     }
 
                     stmts.push(P(Spanned {
                         node: node,
-                        span: span
+                        span: mk_sp(span.lo, hi)
                     }));
                 }
             }
