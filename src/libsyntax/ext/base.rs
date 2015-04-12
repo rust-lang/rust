@@ -605,7 +605,6 @@ impl<'a> ExtCtxt<'a> {
             None => self.bug("missing top span")
         })
     }
-    pub fn print_backtrace(&self) { }
     pub fn backtrace(&self) -> ExpnId { self.backtrace }
     pub fn original_span(&self) -> Span {
         let mut expn_id = self.backtrace;
@@ -700,7 +699,6 @@ impl<'a> ExtCtxt<'a> {
     ///   substitute; we never hit resolve/type-checking so the dummy
     ///   value doesn't have to match anything)
     pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
-        self.print_backtrace();
         panic!(self.parse_sess.span_diagnostic.span_fatal(sp, msg));
     }
 
@@ -710,35 +708,27 @@ impl<'a> ExtCtxt<'a> {
     /// Compilation will be stopped in the near future (at the end of
     /// the macro expansion phase).
     pub fn span_err(&self, sp: Span, msg: &str) {
-        self.print_backtrace();
         self.parse_sess.span_diagnostic.span_err(sp, msg);
     }
     pub fn span_warn(&self, sp: Span, msg: &str) {
-        self.print_backtrace();
         self.parse_sess.span_diagnostic.span_warn(sp, msg);
     }
     pub fn span_unimpl(&self, sp: Span, msg: &str) -> ! {
-        self.print_backtrace();
         self.parse_sess.span_diagnostic.span_unimpl(sp, msg);
     }
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
-        self.print_backtrace();
         self.parse_sess.span_diagnostic.span_bug(sp, msg);
     }
     pub fn span_note(&self, sp: Span, msg: &str) {
-        self.print_backtrace();
         self.parse_sess.span_diagnostic.span_note(sp, msg);
     }
     pub fn span_help(&self, sp: Span, msg: &str) {
-        self.print_backtrace();
         self.parse_sess.span_diagnostic.span_help(sp, msg);
     }
     pub fn fileline_help(&self, sp: Span, msg: &str) {
-        self.print_backtrace();
         self.parse_sess.span_diagnostic.fileline_help(sp, msg);
     }
     pub fn bug(&self, msg: &str) -> ! {
-        self.print_backtrace();
         self.parse_sess.span_diagnostic.handler().bug(msg);
     }
     pub fn trace_macros(&self) -> bool {

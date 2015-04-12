@@ -465,20 +465,19 @@ fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
     match rsp {
         FullSpan(_) => {
             try!(highlight_lines(dst, cm, sp, lvl, cm.span_to_lines(sp)));
+            try!(print_macro_backtrace(dst, cm, sp));
         }
         EndSpan(_) => {
             try!(end_highlight_lines(dst, cm, sp, lvl, cm.span_to_lines(sp)));
+            try!(print_macro_backtrace(dst, cm, sp));
         }
         Suggestion(_, ref suggestion) => {
             try!(highlight_suggestion(dst, cm, sp, suggestion));
+            try!(print_macro_backtrace(dst, cm, sp));
         }
         FileLine(..) => {
             // no source text in this case!
         }
-    }
-
-    if sp != COMMAND_LINE_SP {
-        try!(print_macro_backtrace(dst, cm, sp));
     }
 
     match code {
