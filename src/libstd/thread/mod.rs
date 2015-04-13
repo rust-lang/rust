@@ -274,7 +274,8 @@ impl Builder {
     /// Unlike the `scoped` free function, this method yields an
     /// `io::Result` to capture any failure to create the thread at
     /// the OS level.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "scoped",
+               reason = "memory unsafe if destructor is avoided, see #24292")]
     pub fn scoped<'a, T, F>(self, f: F) -> io::Result<JoinGuard<'a, T>> where
         T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
     {
@@ -387,7 +388,8 @@ pub fn spawn<F>(f: F) -> JoinHandle where F: FnOnce(), F: Send + 'static {
 ///
 /// Panics if the OS fails to create a thread; use `Builder::scoped`
 /// to recover from such errors.
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "scoped",
+           reason = "memory unsafe if destructor is avoided, see #24292")]
 pub fn scoped<'a, T, F>(f: F) -> JoinGuard<'a, T> where
     T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
 {
@@ -674,7 +676,8 @@ impl Drop for JoinHandle {
 /// handle: the ability to join a child thread is a uniquely-owned
 /// permission.
 #[must_use = "thread will be immediately joined if `JoinGuard` is not used"]
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "scoped",
+           reason = "memory unsafe if destructor is avoided, see #24292")]
 pub struct JoinGuard<'a, T: Send + 'a> {
     inner: JoinInner<T>,
     _marker: PhantomData<&'a T>,
@@ -706,7 +709,8 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
 }
 
 #[unsafe_destructor]
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "scoped",
+           reason = "memory unsafe if destructor is avoided, see #24292")]
 impl<'a, T: Send + 'a> Drop for JoinGuard<'a, T> {
     fn drop(&mut self) {
         if !self.inner.joined {
