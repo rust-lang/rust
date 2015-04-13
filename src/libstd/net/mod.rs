@@ -98,15 +98,16 @@ impl Iterator for LookupHost {
 /// # Examples
 ///
 /// ```no_run
-/// # #![feature(lookup_host)]
+/// #![feature(lookup_host)]
 /// use std::net;
 ///
-/// # fn foo() -> std::io::Result<()> {
+/// fn foo() -> std::io::Result<()> {
 /// for host in try!(net::lookup_host("rust-lang.org")) {
 ///     println!("found address: {}", try!(host));
 /// }
-/// # Ok(())
-/// # }
+/// Ok(())
+/// let _ = foo();
+/// }
 /// ```
 #[unstable(feature = "lookup_host", reason = "unsure about the returned \
                                               iterator and returning socket \
