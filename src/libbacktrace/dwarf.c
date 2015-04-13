@@ -1,5 +1,5 @@
 /* dwarf.c -- Get file/line information from DWARF for backtraces.
-   Copyright (C) 2012-2014 Free Software Foundation, Inc.
+   Copyright (C) 2012-2015 Free Software Foundation, Inc.
    Written by Ian Lance Taylor, Google.
 
 Redistribution and use in source and binary forms, with or without
@@ -7,13 +7,13 @@ modification, are permitted provided that the following conditions are
 met:
 
     (1) Redistributions of source code must retain the above copyright
-    notice, this list of conditions and the following disclaimer.
+    notice, this list of conditions and the following disclaimer. 
 
     (2) Redistributions in binary form must reproduce the above copyright
     notice, this list of conditions and the following disclaimer in
     the documentation and/or other materials provided with the
-    distribution.
-
+    distribution.  
+    
     (3) The name of the author may not be used to
     endorse or promote products derived from this software without
     specific prior written permission.
@@ -1134,8 +1134,8 @@ read_abbrevs (struct backtrace_state *state, uint64_t abbrev_offset,
       ++num_abbrevs;
     }
 
-  qsort (abbrevs->abbrevs, abbrevs->num_abbrevs, sizeof (struct abbrev),
-	 abbrev_compare);
+  backtrace_qsort (abbrevs->abbrevs, abbrevs->num_abbrevs,
+		   sizeof (struct abbrev), abbrev_compare);
 
   return 1;
 
@@ -1241,7 +1241,7 @@ add_unit_ranges (struct backtrace_state *state, uintptr_t base_address,
 
 static int
 find_address_ranges (struct backtrace_state *state, uintptr_t base_address,
-		     struct dwarf_buf *unit_buf,
+		     struct dwarf_buf *unit_buf, 
 		     const unsigned char *dwarf_str, size_t dwarf_str_size,
 		     const unsigned char *dwarf_ranges,
 		     size_t dwarf_ranges_size,
@@ -1599,7 +1599,7 @@ read_line_header (struct backtrace_state *state, struct unit *u,
 
   if (!advance (line_buf, hdrlen))
     return 0;
-
+  
   hdr->min_insn_len = read_byte (&hdr_buf);
   if (hdr->version < 4)
     hdr->max_ops_per_insn = 1;
@@ -1608,7 +1608,7 @@ read_line_header (struct backtrace_state *state, struct unit *u,
 
   /* We don't care about default_is_stmt.  */
   read_byte (&hdr_buf);
-
+  
   hdr->line_base = read_sbyte (&hdr_buf);
   hdr->line_range = read_byte (&hdr_buf);
 
@@ -2016,7 +2016,7 @@ read_line_info (struct backtrace_state *state, struct dwarf_data *ddata,
     goto fail;
 
   ln = (struct line *) vec.vec.base;
-  qsort (ln, vec.count, sizeof (struct line), line_compare);
+  backtrace_qsort (ln, vec.count, sizeof (struct line), line_compare);
 
   *lines = ln;
   *lines_count = vec.count;
@@ -2476,9 +2476,9 @@ read_function_entry (struct backtrace_state *state, struct dwarf_data *ddata,
 		    return 0;
 
 		  faddrs = (struct function_addrs *) fvec.vec.base;
-		  qsort (faddrs, fvec.count,
-			 sizeof (struct function_addrs),
-			 function_addrs_compare);
+		  backtrace_qsort (faddrs, fvec.count,
+				   sizeof (struct function_addrs),
+				   function_addrs_compare);
 
 		  function->function_addrs = faddrs;
 		  function->function_addrs_count = fvec.count;
@@ -2555,8 +2555,8 @@ read_function_info (struct backtrace_state *state, struct dwarf_data *ddata,
       fvec->count = 0;
     }
 
-  qsort (addrs, addrs_count, sizeof (struct function_addrs),
-	 function_addrs_compare);
+  backtrace_qsort (addrs, addrs_count, sizeof (struct function_addrs),
+		   function_addrs_compare);
 
   *ret_addrs = addrs;
   *ret_addrs_count = addrs_count;
@@ -2923,7 +2923,8 @@ build_dwarf_data (struct backtrace_state *state,
     return NULL;
   addrs = (struct unit_addrs *) addrs_vec.vec.base;
   addrs_count = addrs_vec.count;
-  qsort (addrs, addrs_count, sizeof (struct unit_addrs), unit_addrs_compare);
+  backtrace_qsort (addrs, addrs_count, sizeof (struct unit_addrs),
+		   unit_addrs_compare);
 
   fdata = ((struct dwarf_data *)
 	   backtrace_alloc (state, sizeof (struct dwarf_data),
