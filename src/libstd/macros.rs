@@ -38,6 +38,7 @@
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable]
+#[cfg(stage0)]
 macro_rules! panic {
     () => ({
         panic!("explicit panic")
@@ -55,7 +56,53 @@ macro_rules! panic {
             // used inside a dead function. Just `#[allow(dead_code)]` is
             // insufficient, since the user may have
             // `#[forbid(dead_code)]` and which cannot be overridden.
-            static _FILE_LINE: (&'static str, usize) = (file!(), line!() as usize);
+            static _FILE_LINE: (&'static str, u32) = (file!(), line!());
+            &_FILE_LINE
+        })
+    });
+}
+
+/// The entry point for panic of Rust tasks.
+///
+/// This macro is used to inject panic into a Rust task, causing the task to
+/// unwind and panic entirely. Each task's panic can be reaped as the
+/// `Box<Any>` type, and the single-argument form of the `panic!` macro will be
+/// the value which is transmitted.
+///
+/// The multi-argument form of this macro panics with a string and has the
+/// `format!` syntax for building a string.
+///
+/// # Examples
+///
+/// ```should_panic
+/// # #![allow(unreachable_code)]
+/// panic!();
+/// panic!("this is a terrible mistake!");
+/// panic!(4); // panic with the value of 4 to be collected elsewhere
+/// panic!("this is a {} {message}", "fancy", message = "message");
+/// ```
+#[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[allow_internal_unstable]
+#[cfg(not(stage0))]
+macro_rules! panic {
+    () => ({
+        panic!("explicit panic")
+    });
+    ($msg:expr) => ({
+        $crate::rt::begin_unwind($msg, {
+            // static requires less code at runtime, more constant data
+            static _FILE_LINE: (&'static str, u32) = (file!(), line!());
+            &_FILE_LINE
+        })
+    });
+    ($fmt:expr, $($arg:tt)+) => ({
+        $crate::rt::begin_unwind_fmt(format_args!($fmt, $($arg)+), {
+            // The leading _'s are to avoid dead code warnings if this is
+            // used inside a dead function. Just `#[allow(dead_code)]` is
+            // insufficient, since the user may have
+            // `#[forbid(dead_code)]` and which cannot be overridden.
+            static _FILE_LINE: (&'static str, u32) = (file!(), line!());
             &_FILE_LINE
         })
     });

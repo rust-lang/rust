@@ -78,7 +78,7 @@ struct Exception {
     cause: Option<Box<Any + Send + 'static>>,
 }
 
-pub type Callback = fn(msg: &(Any + Send), file: &'static str, line: usize);
+pub type Callback = fn(msg: &(Any + Send), file: &'static str, line: u32);
 
 // Variables used for invoking callbacks when a thread starts to unwind.
 //
@@ -484,7 +484,7 @@ pub mod eabi {
 /// Entry point of panic from the libcore crate.
 #[lang = "panic_fmt"]
 pub extern fn rust_begin_unwind(msg: fmt::Arguments,
-                                file: &'static str, line: usize) -> ! {
+                                file: &'static str, line: u32) -> ! {
     begin_unwind_fmt(msg, &(file, line))
 }
 
@@ -495,7 +495,7 @@ pub extern fn rust_begin_unwind(msg: fmt::Arguments,
 /// on (e.g.) the inlining of other functions as possible), by moving
 /// the actual formatting into this shared place.
 #[inline(never)] #[cold]
-pub fn begin_unwind_fmt(msg: fmt::Arguments, file_line: &(&'static str, usize)) -> ! {
+pub fn begin_unwind_fmt(msg: fmt::Arguments, file_line: &(&'static str, u32)) -> ! {
     use fmt::Write;
 
     // We do two allocations here, unfortunately. But (a) they're
@@ -510,7 +510,24 @@ pub fn begin_unwind_fmt(msg: fmt::Arguments, file_line: &(&'static str, usize)) 
 
 /// This is the entry point of unwinding for panic!() and assert!().
 #[inline(never)] #[cold] // avoid code bloat at the call sites as much as possible
+#[cfg(stage0)]
 pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, usize)) -> ! {
+    // Note that this should be the only allocation performed in this code path.
+    // Currently this means that panic!() on OOM will invoke this code path,
+    // but then again we're not really ready for panic on OOM anyway. If
+    // we do start doing this, then we should propagate this allocation to
+    // be performed in the parent of this thread instead of the thread that's
+    // panicking.
+
+    // see below for why we do the `Any` coercion here.
+    let (file, line) = *file_line;
+    begin_unwind_inner(Box::new(msg), &(file, line as u32))
+}
+
+/// This is the entry point of unwinding for panic!() and assert!().
+#[inline(never)] #[cold] // avoid code bloat at the call sites as much as possible
+#[cfg(not(stage0))]
+pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, u32)) -> ! {
     // Note that this should be the only allocation performed in this code path.
     // Currently this means that panic!() on OOM will invoke this code path,
     // but then again we're not really ready for panic on OOM anyway. If
@@ -533,7 +550,7 @@ pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, usize)) ->
 /// }` from ~1900/3700 (-O/no opts) to 180/590.
 #[inline(never)] #[cold] // this is the slow path, please never inline this
 fn begin_unwind_inner(msg: Box<Any + Send>,
-                      file_line: &(&'static str, usize)) -> ! {
+                      file_line: &(&'static str, u32)) -> ! {
     // Make sure the default failure handler is registered before we look at the
     // callbacks. We also use a raw sys-based mutex here instead of a
     // `std::sync` one as accessing TLS can cause weird recursive problems (and
