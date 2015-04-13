@@ -187,7 +187,7 @@ use time::Duration;
 ////////////////////////////////////////////////////////////////////////////////
 
 #[macro_use] mod local;
-#[macro_use] mod scoped;
+#[macro_use] mod scoped_tls;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{LocalKey, LocalKeyState};
@@ -195,10 +195,10 @@ pub use self::local::{LocalKey, LocalKeyState};
 #[unstable(feature = "scoped_tls",
             reason = "scoped TLS has yet to have wide enough use to fully \
                       consider stabilizing its interface")]
-pub use self::scoped::ScopedKey;
+pub use self::scoped_tls::ScopedKey;
 
 #[doc(hidden)] pub use self::local::__impl as __local;
-#[doc(hidden)] pub use self::scoped::__impl as __scoped;
+#[doc(hidden)] pub use self::scoped_tls::__impl as __scoped;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
