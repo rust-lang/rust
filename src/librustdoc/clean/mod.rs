@@ -313,6 +313,22 @@ impl Item {
     pub fn is_fn(&self) -> bool {
         match self.inner { FunctionItem(..) => true, _ => false }
     }
+
+    pub fn stability_class(&self) -> String {
+        match self.stability {
+            Some(ref s) => {
+                let mut base = match s.level {
+                    attr::Unstable => "unstable".to_string(),
+                    attr::Stable => String::new(),
+                };
+                if s.deprecated_since.len() > 0 {
+                    base.push_str(" deprecated");
+                }
+                base
+            }
+            _ => String::new(),
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
