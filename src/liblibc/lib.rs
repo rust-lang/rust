@@ -3729,12 +3729,14 @@ pub mod consts {
             pub const _SC_2_FORT_RUN : c_int = 50;
             pub const _SC_2_SW_DEV : c_int = 51;
             pub const _SC_2_LOCALEDEF : c_int = 52;
+            pub const _SC_NPROCESSORS_ONLN : c_int = 84;
             pub const _SC_2_CHAR_TERM : c_int = 95;
             pub const _SC_2_C_VERSION : c_int = 96;
             pub const _SC_2_UPE : c_int = 97;
             pub const _SC_XBS5_ILP32_OFF32 : c_int = 125;
             pub const _SC_XBS5_ILP32_OFFBIG : c_int = 126;
             pub const _SC_XBS5_LPBIG_OFFBIG : c_int = 128;
+
         }
         #[cfg(target_os = "nacl")]
         pub mod sysconf {
@@ -3743,12 +3745,6 @@ pub mod consts {
             pub static _SC_SENDMSG_MAX_SIZE : c_int = 0;
             pub static _SC_NPROCESSORS_ONLN : c_int = 1;
             pub static _SC_PAGESIZE : c_int = 2;
-        }
-
-        #[cfg(target_os = "linux")]
-        pub mod sysconf {
-            use types::os::arch::c95::c_int;
-            pub static _SC_NPROCESSORS_ONLN : c_int = 84;
         }
 
         #[cfg(target_os = "macos")]
