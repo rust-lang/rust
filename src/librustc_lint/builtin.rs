@@ -2121,6 +2121,72 @@ impl LintPass for InvalidNoMangleItems {
     }
 }
 
+#[derive(Clone, Copy)]
+pub struct MutableTransmutes;
+
+declare_lint! {
+    MUTABLE_TRANSMUTES,
+    Deny,
+    "mutating transmuted &mut T from &T may cause undefined behavior"
+}
+
+impl LintPass for MutableTransmutes {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(MUTABLE_TRANSMUTES)
+    }
+
+    fn check_expr(&mut self, cx: &Context, expr: &ast::Expr) {
+        use syntax::ast::DefId;
+        use syntax::abi::RustIntrinsic;
+        let msg = "mutating transmuted &mut T from &T may cause undefined behavior,\
+                   consider instead using an UnsafeCell";
+        match get_transmute_from_to(cx, expr) {
+            Some((&ty::ty_rptr(_, from_mt), &ty::ty_rptr(_, to_mt))) => {
+                if to_mt.mutbl == ast::Mutability::MutMutable
+                    && from_mt.mutbl == ast::Mutability::MutImmutable {
+                    cx.span_lint(MUTABLE_TRANSMUTES, expr.span, msg);
+                }
+            }
+            _ => ()
+        }
+
+        fn get_transmute_from_to<'a, 'tcx>(cx: &Context<'a, 'tcx>, expr: &ast::Expr)
+            -> Option<(&'tcx ty::sty<'tcx>, &'tcx ty::sty<'tcx>)> {
+            match expr.node {
+                ast::ExprPath(..) => (),
+                _ => return None
+            }
+            if let DefFn(did, _) = ty::resolve_expr(cx.tcx, expr) {
+                if !def_id_is_transmute(cx, did) {
+                    return None;
+                }
+                let typ = ty::node_id_to_type(cx.tcx, expr.id);
+                match typ.sty {
+                    ty::ty_bare_fn(_, ref bare_fn) if bare_fn.abi == RustIntrinsic => {
+                        if let ty::FnConverging(to) = bare_fn.sig.0.output {
+                            let from = bare_fn.sig.0.inputs[0];
+                            return Some((&from.sty, &to.sty));
+                        }
+                    },
+                    _ => ()
+                }
+            }
+            None
+        }
+
+        fn def_id_is_transmute(cx: &Context, def_id: DefId) -> bool {
+            match ty::lookup_item_type(cx.tcx, def_id).ty.sty {
+                ty::ty_bare_fn(_, ref bfty) if bfty.abi == RustIntrinsic => (),
+                _ => return false
+            }
+            ty::with_path(cx.tcx, def_id, |path| match path.last() {
+                Some(ref last) => last.name().as_str() == "transmute",
+                _ => false
+            })
+        }
+    }
+}
+
 /// Forbids using the `#[feature(...)]` attribute
 #[derive(Copy, Clone)]
 pub struct UnstableFeatures;
