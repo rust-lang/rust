@@ -481,9 +481,12 @@ em.stab.unstable { background: #FFF5D6; border-color: #FFC600; }
 em.stab.deprecated { background: #F3DFFF; border-color: #7F0087; }
 em.stab {
     display: inline-block;
-    border-width: 2px;
+    border-width: 1px;
     border-style: solid;
-    padding: 5px;
+    padding: 3px;
+    margin-bottom: 5px;
+    font-size: 90%;
+    font-style: normal;
 }
 em.stab p {
     display: inline;
@@ -492,6 +495,7 @@ em.stab p {
 .module-item .stab {
     border-width: 0;
     padding: 0;
+    margin: 0;
     background: inherit !important;
 }
 
