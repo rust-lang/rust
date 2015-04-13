@@ -209,6 +209,7 @@ pub struct Cache {
     privmod: bool,
     remove_priv: bool,
     public_items: NodeSet,
+    deref_trait_did: Option<ast::DefId>,
 
     // In rare case where a structure is defined in one module but implemented
     // in another, if the implementing module is parsed before defining module,
@@ -396,6 +397,7 @@ pub fn run(mut krate: clean::Crate,
         public_items: public_items,
         orphan_methods: Vec::new(),
         traits: mem::replace(&mut krate.external_traits, HashMap::new()),
+        deref_trait_did: analysis.as_ref().and_then(|a| a.deref_trait_did),
         typarams: analysis.as_ref().map(|a| {
             a.external_typarams.borrow_mut().take().unwrap()
         }).unwrap_or(HashMap::new()),
@@ -403,8 +405,6 @@ pub fn run(mut krate: clean::Crate,
             a.inlined.borrow_mut().take().unwrap()
         }).unwrap_or(HashSet::new()),
     };
-    cache.stack.push(krate.name.clone());
-    krate = cache.fold_crate(krate);
 
     // Cache where all our extern crates are located
     for &(n, ref e) in &krate.externs {
@@ -426,6 +426,9 @@ pub fn run(mut krate: clean::Crate,
     for &prim in &krate.primitives {
         cache.primitive_locations.insert(prim, ast::LOCAL_CRATE);
     }
+
+    cache.stack.push(krate.name.clone());
+    krate = cache.fold_crate(krate);
 
     // Build our search index
     let index = try!(build_index(&krate, &mut cache));
@@ -1069,8 +1072,11 @@ impl DocFolder for Cache {
                             }
 
                             ref t => {
-                                t.primitive_type().map(|p| {
-                                    ast_util::local_def(p.to_node_id())
+                                t.primitive_type().and_then(|t| {
+                                    self.primitive_locations.get(&t).map(|n| {
+                                        let id = t.to_node_id();
+                                        ast::DefId { krate: *n, node: id }
+                                    })
                                 })
                             }
                         };
@@ -1684,12 +1690,12 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
 fn short_stability(item: &clean::Item, show_reason: bool) -> Option<String> {
     item.stability.as_ref().and_then(|stab| {
-        let reason = if show_reason && stab.reason.len() > 0 {
+        let reason = if show_reason && !stab.reason.is_empty() {
             format!(": {}", stab.reason)
         } else {
             String::new()
         };
-        let text = if stab.deprecated_since.len() > 0 {
+        let text = if !stab.deprecated_since.is_empty() {
             let since = if show_reason {
                 format!(" since {}", Escape(&stab.deprecated_since))
             } else {
@@ -1865,7 +1871,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }
 
     // If there are methods directly on this trait object, render them here.
-    try!(render_methods(w, it));
+    try!(render_methods(w, it.def_id, MethodRender::All));
 
     let cache = cache();
     try!(write!(w, "
@@ -1995,7 +2001,7 @@ fn item_struct(w: &mut fmt::Formatter, it: &clean::Item,
             try!(write!(w, "</table>"));
         }
     }
-    render_methods(w, it)
+    render_methods(w, it.def_id, MethodRender::All)
 }
 
 fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
@@ -2094,7 +2100,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
         try!(write!(w, "</table>"));
 
     }
-    try!(render_methods(w, it));
+    try!(render_methods(w, it.def_id, MethodRender::All));
     Ok(())
 }
 
@@ -2183,27 +2189,61 @@ enum MethodLink {
     GotoSource(ast::DefId),
 }
 
-fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
-    let v = match cache().impls.get(&it.def_id) {
-        Some(v) => v.clone(),
+enum MethodRender<'a> {
+    All,
+    DerefFor { trait_: &'a clean::Type, type_: &'a clean::Type },
+}
+
+fn render_methods(w: &mut fmt::Formatter,
+                  it: ast::DefId,
+                  what: MethodRender) -> fmt::Result {
+    let c = cache();
+    let v = match c.impls.get(&it) {
+        Some(v) => v,
         None => return Ok(()),
     };
-    let (non_trait, traits): (Vec<_>, _) = v.into_iter()
-        .partition(|i| i.impl_.trait_.is_none());
+    let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| {
+        i.impl_.trait_.is_none()
+    });
     if !non_trait.is_empty() {
-        try!(write!(w, "<h2 id='methods'>Methods</h2>"));
+        let render_header = match what {
+            MethodRender::All => {
+                try!(write!(w, "<h2 id='methods'>Methods</h2>"));
+                true
+            }
+            MethodRender::DerefFor { trait_, type_ } => {
+                try!(write!(w, "<h2 id='deref-methods'>Methods from \
+                                    {}&lt;Target={}&gt;</h2>", trait_, type_));
+                false
+            }
+        };
         for i in &non_trait {
-            try!(render_impl(w, i, MethodLink::Anchor));
+            try!(render_impl(w, i, MethodLink::Anchor, render_header));
         }
     }
+    if let MethodRender::DerefFor { .. } = what {
+        return Ok(())
+    }
     if !traits.is_empty() {
+        let deref_impl = traits.iter().find(|t| {
+            match *t.impl_.trait_.as_ref().unwrap() {
+                clean::ResolvedPath { did, .. } => {
+                    Some(did) == c.deref_trait_did
+                }
+                _ => false
+            }
+        });
+        if let Some(impl_) = deref_impl {
+            try!(render_deref_methods(w, impl_));
+        }
         try!(write!(w, "<h2 id='implementations'>Trait \
                           Implementations</h2>"));
-        let (derived, manual): (Vec<_>, _) = traits.into_iter()
-            .partition(|i| i.impl_.derived);
+        let (derived, manual): (Vec<_>, _) = traits.iter().partition(|i| {
+            i.impl_.derived
+        });
         for i in &manual {
             let did = i.trait_did().unwrap();
-            try!(render_impl(w, i, MethodLink::GotoSource(did)));
+            try!(render_impl(w, i, MethodLink::GotoSource(did), true));
         }
         if !derived.is_empty() {
             try!(write!(w, "<h3 id='derived_implementations'>\
@@ -2211,27 +2251,52 @@ fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
             </h3>"));
             for i in &derived {
                 let did = i.trait_did().unwrap();
-                try!(render_impl(w, i, MethodLink::GotoSource(did)));
+                try!(render_impl(w, i, MethodLink::GotoSource(did), true));
             }
         }
     }
     Ok(())
 }
 
-fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: MethodLink)
-               -> fmt::Result {
-    try!(write!(w, "<h3 class='impl'><code>impl{} ",
-                i.impl_.generics));
-    if let Some(clean::ImplPolarity::Negative) = i.impl_.polarity {
-        try!(write!(w, "!"));
+fn render_deref_methods(w: &mut fmt::Formatter, impl_: &Impl) -> fmt::Result {
+    let deref_type = impl_.impl_.trait_.as_ref().unwrap();
+    let target = impl_.impl_.items.iter().filter_map(|item| {
+        match item.inner {
+            clean::TypedefItem(ref t) => Some(&t.type_),
+            _ => None,
+        }
+    }).next().unwrap();
+    let what = MethodRender::DerefFor { trait_: deref_type, type_: target };
+    match *target {
+        clean::ResolvedPath { did, .. } => render_methods(w, did, what),
+        _ => {
+            if let Some(prim) = target.primitive_type() {
+                if let Some(c) = cache().primitive_locations.get(&prim) {
+                    let did = ast::DefId { krate: *c, node: prim.to_node_id() };
+                    try!(render_methods(w, did, what));
+                }
+            }
+            Ok(())
+        }
     }
-    if let Some(ref ty) = i.impl_.trait_ {
-        try!(write!(w, "{} for ", *ty));
-    }
-    try!(write!(w, "{}{}</code></h3>", i.impl_.for_,
-                WhereClause(&i.impl_.generics)));
-    if let Some(ref dox) = i.dox {
-        try!(write!(w, "<div class='docblock'>{}</div>", Markdown(dox)));
+}
+
+fn render_impl(w: &mut fmt::Formatter, i: &Impl, link: MethodLink,
+               render_header: bool) -> fmt::Result {
+    if render_header {
+        try!(write!(w, "<h3 class='impl'><code>impl{} ",
+                    i.impl_.generics));
+        if let Some(clean::ImplPolarity::Negative) = i.impl_.polarity {
+            try!(write!(w, "!"));
+        }
+        if let Some(ref ty) = i.impl_.trait_ {
+            try!(write!(w, "{} for ", *ty));
+        }
+        try!(write!(w, "{}{}</code></h3>", i.impl_.for_,
+                    WhereClause(&i.impl_.generics)));
+        if let Some(ref dox) = i.dox {
+            try!(write!(w, "<div class='docblock'>{}</div>", Markdown(dox)));
+        }
     }
 
     fn doctraititem(w: &mut fmt::Formatter, item: &clean::Item,
@@ -2393,7 +2458,7 @@ fn item_primitive(w: &mut fmt::Formatter,
                   it: &clean::Item,
                   _p: &clean::PrimitiveType) -> fmt::Result {
     try!(document(w, it));
-    render_methods(w, it)
+    render_methods(w, it.def_id, MethodRender::All)
 }
 
 fn get_basic_keywords() -> &'static str {

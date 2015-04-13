@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::RefCell;
+use std::cell::{RefCell, Cell};
 use std::collections::{HashSet, HashMap};
 use std::dynamic_lib::DynamicLibrary;
 use std::env;
@@ -92,6 +92,7 @@ pub fn run(input: &str,
         external_typarams: RefCell::new(None),
         inlined: RefCell::new(None),
         populated_crate_impls: RefCell::new(HashSet::new()),
+        deref_trait_did: Cell::new(None),
     };
 
     let mut v = RustdocVisitor::new(&ctx, None);

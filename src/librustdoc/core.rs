@@ -20,7 +20,7 @@ use rustc_resolve as resolve;
 
 use syntax::{ast, ast_map, codemap, diagnostic};
 
-use std::cell::RefCell;
+use std::cell::{RefCell, Cell};
 use std::collections::{HashMap, HashSet};
 
 use visit_ast::RustdocVisitor;
@@ -48,6 +48,7 @@ pub struct DocContext<'tcx> {
     pub external_typarams: RefCell<Option<HashMap<ast::DefId, String>>>,
     pub inlined: RefCell<Option<HashSet<ast::DefId>>>,
     pub populated_crate_impls: RefCell<HashSet<ast::CrateNum>>,
+    pub deref_trait_did: Cell<Option<ast::DefId>>,
 }
 
 impl<'tcx> DocContext<'tcx> {
@@ -77,6 +78,7 @@ pub struct CrateAnalysis {
     pub external_paths: ExternalPaths,
     pub external_typarams: RefCell<Option<HashMap<ast::DefId, String>>>,
     pub inlined: RefCell<Option<HashSet<ast::DefId>>>,
+    pub deref_trait_did: Option<ast::DefId>,
 }
 
 pub type Externs = HashMap<String, Vec<String>>;
@@ -147,15 +149,17 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
         external_paths: RefCell::new(Some(HashMap::new())),
         inlined: RefCell::new(Some(HashSet::new())),
         populated_crate_impls: RefCell::new(HashSet::new()),
+        deref_trait_did: Cell::new(None),
     };
     debug!("crate: {:?}", ctxt.krate);
 
-    let analysis = CrateAnalysis {
+    let mut analysis = CrateAnalysis {
         exported_items: exported_items,
         public_items: public_items,
         external_paths: RefCell::new(None),
         external_typarams: RefCell::new(None),
         inlined: RefCell::new(None),
+        deref_trait_did: None,
     };
 
     let krate = {
@@ -170,5 +174,6 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     *analysis.external_typarams.borrow_mut() = map;
     let map = ctxt.inlined.borrow_mut().take();
     *analysis.inlined.borrow_mut() = map;
+    analysis.deref_trait_did = ctxt.deref_trait_did.get();
     (krate, analysis)
 }
