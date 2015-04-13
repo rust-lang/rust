@@ -957,7 +957,7 @@ impl LintPass for NonSnakeCase {
                 fk: visit::FnKind, _: &ast::FnDecl,
                 _: &ast::Block, span: Span, id: ast::NodeId) {
         match fk {
-            visit::FkMethod(ident, _) => match method_context(cx, id, span) {
+            visit::FkMethod(ident, _, _) => match method_context(cx, id, span) {
                 MethodContext::PlainImpl => {
                     self.check_snake_case(cx, "method", ident, span)
                 },
@@ -966,7 +966,7 @@ impl LintPass for NonSnakeCase {
                 },
                 _ => (),
             },
-            visit::FkItemFn(ident, _, _, _) => {
+            visit::FkItemFn(ident, _, _, _, _) => {
                 self.check_snake_case(cx, "function", ident, span)
             },
             _ => (),
@@ -1290,10 +1290,10 @@ impl LintPass for UnsafeCode {
     fn check_fn(&mut self, cx: &Context, fk: visit::FnKind, _: &ast::FnDecl,
                 _: &ast::Block, span: Span, _: ast::NodeId) {
         match fk {
-            visit::FkItemFn(_, _, ast::Unsafety::Unsafe, _) =>
+            visit::FkItemFn(_, _, ast::Unsafety::Unsafe, _, _) =>
                 cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` function"),
 
-            visit::FkMethod(_, sig) => {
+            visit::FkMethod(_, sig, _) => {
                 if sig.unsafety == ast::Unsafety::Unsafe {
                     cx.span_lint(UNSAFE_CODE, span, "implementation of an `unsafe` method")
                 }
@@ -1818,8 +1818,8 @@ impl LintPass for UnconditionalRecursion {
                               ast::NodeId, ast::NodeId, ast::Ident, ast::NodeId) -> bool;
 
         let (name, checker) = match fn_kind {
-            visit::FkItemFn(name, _, _, _) => (name, id_refers_to_this_fn as F),
-            visit::FkMethod(name, _) => (name, id_refers_to_this_method as F),
+            visit::FkItemFn(name, _, _, _, _) => (name, id_refers_to_this_fn as F),
+            visit::FkMethod(name, _, _) => (name, id_refers_to_this_method as F),
             // closures can't recur, so they don't matter.
             visit::FkFnBlock => return
         };
