@@ -18,15 +18,15 @@ declare_lint!(pub LINKEDLIST, Warn,
 /// Matches a type with a provided string, and returns its type parameters if successful
 pub fn match_ty_unwrap<'a>(ty: &'a Ty, segments: &[&str]) -> Option<&'a [P<Ty>]> {
     match ty.node {
-        TyPath(Path {segments: ref seg, ..}, _) => {
+        TyPath(_, Path {segments: ref seg, ..}) => {
             // So ast::Path isn't the full path, just the tokens that were provided.
             // I could muck around with the maps and find the full path
             // however the more efficient way is to simply reverse the iterators and zip them
             // which will compare them in reverse until one of them runs out of segments
             if seg.iter().rev().zip(segments.iter().rev()).all(|(a,b)| a.identifier.as_str() == *b) {
-                match seg.as_slice().last() {
+                match seg[..].last() {
                     Some(&PathSegment {parameters: AngleBracketedParameters(ref a), ..}) => {
-                        Some(a.types.as_slice())
+                        Some(&a.types[..])
                     }
                     _ => None
                 }
@@ -74,7 +74,7 @@ impl LintPass for TypePass {
                       vec!["std","collections","linked_list","LinkedList"],
                       vec!["collections","linked_list","LinkedList"]];
         for path in dlists.iter() {
-            if match_ty_unwrap(ty, path.as_slice()).is_some() {
+            if match_ty_unwrap(ty, &path[..]).is_some() {
                 span_note_and_lint(cx, LINKEDLIST, ty.span,
                                    "I see you're using a LinkedList! Perhaps you meant some other data structure?",
                                    "A RingBuf might work.");
