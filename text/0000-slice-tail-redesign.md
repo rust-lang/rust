@@ -96,6 +96,10 @@ Is the name correct? There's precedent in this name in the form of
 [`str::slice_shift_char()`][slice_shift_char]. An alternative name might be
 `pop_first()`/`pop_last()`, or `shift_front()`/`shift_back()` (although the
 usage of `first`/`last` was chosen to match the existing methods `first()` and
-`last()`).
+`last()`). Another option is `split_first()`/`split_last()`.
+
+Should `shift_last()` return `Option<(&T, &[T])>` or `Option<(&[T], &T)>`?
+I believe that the former is correct with this name, but the latter might be
+more suitable given the name `split_last()`.
 
 [slice_shift_char]: http://doc.rust-lang.org/nightly/std/primitive.str.html#method.slice_shift_char
