@@ -147,7 +147,7 @@ $ ./main  # or main.exe on Windows
 
 This prints out our `Hello, world!` text to our terminal.
 
-If you come from a dynamically typed language like Ruby, Python, or JavaScript,
+If you come from a dynamically evaluated language like Ruby, Python, or JavaScript,
 you may not be used to these two steps being separate. Rust is an
 ‘ahead-of-time compiled language’, which means that you can compile a program,
 give it to someone else, and they don't need to have Rust installed. If you
