@@ -18,7 +18,7 @@
 
 // STACK BY REF
 // gdb-command:print *self
-// gdb-check:$1 = {100, -100.5}
+// gdb-check:$1 = {__0 = 100, __1 = -100.5}
 // gdb-command:print arg1
 // gdb-check:$2 = -1
 // gdb-command:print arg2
@@ -27,7 +27,7 @@
 
 // STACK BY VAL
 // gdb-command:print self
-// gdb-check:$4 = {100, -100.5}
+// gdb-check:$4 = {__0 = 100, __1 = -100.5}
 // gdb-command:print arg1
 // gdb-check:$5 = -3
 // gdb-command:print arg2
@@ -36,7 +36,7 @@
 
 // OWNED BY REF
 // gdb-command:print *self
-// gdb-check:$7 = {200, -200.5}
+// gdb-check:$7 = {__0 = 200, __1 = -200.5}
 // gdb-command:print arg1
 // gdb-check:$8 = -5
 // gdb-command:print arg2
@@ -45,7 +45,7 @@
 
 // OWNED BY VAL
 // gdb-command:print self
-// gdb-check:$10 = {200, -200.5}
+// gdb-check:$10 = {__0 = 200, __1 = -200.5}
 // gdb-command:print arg1
 // gdb-check:$11 = -7
 // gdb-command:print arg2
@@ -54,7 +54,7 @@
 
 // OWNED MOVED
 // gdb-command:print *self
-// gdb-check:$13 = {200, -200.5}
+// gdb-check:$13 = {__0 = 200, __1 = -200.5}
 // gdb-command:print arg1
 // gdb-check:$14 = -9
 // gdb-command:print arg2

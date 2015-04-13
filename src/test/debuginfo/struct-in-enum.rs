@@ -19,13 +19,13 @@
 // gdb-command:run
 
 // gdb-command:print case1
-// gdb-check:$1 = {{RUST$ENUM$DISR = Case1, 0, {x = 2088533116, y = 2088533116, z = 31868}}, {RUST$ENUM$DISR = Case1, 0, 8970181431921507452, 31868}}
+// gdb-check:$1 = {{RUST$ENUM$DISR = Case1, __0 = 0, __1 = {x = 2088533116, y = 2088533116, z = 31868}}, {RUST$ENUM$DISR = Case1, __0 = 0, __1 = 8970181431921507452, __2 = 31868}}
 
 // gdb-command:print case2
-// gdb-check:$2 = {{RUST$ENUM$DISR = Case2, 0, {x = 286331153, y = 286331153, z = 4369}}, {RUST$ENUM$DISR = Case2, 0, 1229782938247303441, 4369}}
+// gdb-check:$2 = {{RUST$ENUM$DISR = Case2, __0 = 0, __1 = {x = 286331153, y = 286331153, z = 4369}}, {RUST$ENUM$DISR = Case2, __0 = 0, __1 = 1229782938247303441, __2 = 4369}}
 
 // gdb-command:print univariant
-// gdb-check:$3 = {{{x = 123, y = 456, z = 789}}}
+// gdb-check:$3 = {{__0 = {x = 123, y = 456, z = 789}}}
 
 
 // === LLDB TESTS ==================================================================================

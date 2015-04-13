@@ -19,7 +19,7 @@
 
 // STACK BY REF
 // gdb-command:print *self
-// gdb-check:$1 = {{RUST$ENUM$DISR = Variant2, [...]}, {RUST$ENUM$DISR = Variant2, 117901063}}
+// gdb-check:$1 = {{RUST$ENUM$DISR = Variant2, [...]}, {RUST$ENUM$DISR = Variant2, __0 = 117901063}}
 // gdb-command:print arg1
 // gdb-check:$2 = -1
 // gdb-command:print arg2
@@ -28,7 +28,7 @@
 
 // STACK BY VAL
 // gdb-command:print self
-// gdb-check:$4 = {{RUST$ENUM$DISR = Variant2, [...]}, {RUST$ENUM$DISR = Variant2, 117901063}}
+// gdb-check:$4 = {{RUST$ENUM$DISR = Variant2, [...]}, {RUST$ENUM$DISR = Variant2, __0 = 117901063}}
 // gdb-command:print arg1
 // gdb-check:$5 = -3
 // gdb-command:print arg2
