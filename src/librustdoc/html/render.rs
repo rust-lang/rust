@@ -193,7 +193,7 @@ pub struct Cache {
     pub implementors: HashMap<ast::DefId, Vec<Implementor>>,
 
     /// Cache of where external crate documentation can be found.
-    pub extern_locations: HashMap<ast::CrateNum, ExternalLocation>,
+    pub extern_locations: HashMap<ast::CrateNum, (String, ExternalLocation)>,
 
     /// Cache of where documentation for primitives can be found.
     pub primitive_locations: HashMap<clean::PrimitiveType, ast::CrateNum>,
@@ -408,7 +408,8 @@ pub fn run(mut krate: clean::Crate,
 
     // Cache where all our extern crates are located
     for &(n, ref e) in &krate.externs {
-        cache.extern_locations.insert(n, extern_location(e, &cx.dst));
+        cache.extern_locations.insert(n, (e.name.clone(),
+                                          extern_location(e, &cx.dst)));
         let did = ast::DefId { krate: n, node: ast::CRATE_NODE_ID };
         cache.paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
     }
@@ -1343,22 +1344,43 @@ impl<'a> Item<'a> {
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
     fn href(&self, cx: &Context) -> Option<String> {
+        let href = if self.item.source.loline == self.item.source.hiline {
+            format!("{}", self.item.source.loline)
+        } else {
+            format!("{}-{}", self.item.source.loline, self.item.source.hiline)
+        };
+
+        // First check to see if this is an imported macro source. In this case
+        // we need to handle it specially as cross-crate inlined macros have...
+        // odd locations!
+        let imported_macro_from = match self.item.inner {
+            clean::MacroItem(ref m) => m.imported_from.as_ref(),
+            _ => None,
+        };
+        if let Some(krate) = imported_macro_from {
+            let cache = cache();
+            let root = cache.extern_locations.values().find(|&&(ref n, _)| {
+                *krate == *n
+            }).map(|l| &l.1);
+            let root = match root {
+                Some(&Remote(ref s)) => s.to_string(),
+                Some(&Local) => self.cx.root_path.clone(),
+                None | Some(&Unknown) => return None,
+            };
+            Some(format!("{root}/{krate}/macro.{name}.html?gotomacrosrc=1",
+                         root = root,
+                         krate = krate,
+                         name = self.item.name.as_ref().unwrap()))
+
         // If this item is part of the local crate, then we're guaranteed to
         // know the span, so we plow forward and generate a proper url. The url
         // has anchors for the line numbers that we're linking to.
-        if ast_util::is_local(self.item.def_id) {
+        } else if ast_util::is_local(self.item.def_id) {
             let mut path = Vec::new();
             clean_srcpath(&cx.src_root, Path::new(&self.item.source.filename),
                           true, |component| {
                 path.push(component.to_string());
             });
-            let href = if self.item.source.loline == self.item.source.hiline {
-                format!("{}", self.item.source.loline)
-            } else {
-                format!("{}-{}",
-                        self.item.source.loline,
-                        self.item.source.hiline)
-            };
             Some(format!("{root}src/{krate}/{path}.html#{href}",
                          root = self.cx.root_path,
                          krate = self.cx.layout.krate,
@@ -1380,9 +1402,9 @@ impl<'a> Item<'a> {
             let cache = cache();
             let path = &cache.external_paths[&self.item.def_id];
             let root = match cache.extern_locations[&self.item.def_id.krate] {
-                Remote(ref s) => s.to_string(),
-                Local => self.cx.root_path.clone(),
-                Unknown => return None,
+                (_, Remote(ref s)) => s.to_string(),
+                (_, Local) => self.cx.root_path.clone(),
+                (_, Unknown) => return None,
             };
             Some(format!("{root}{path}/{file}?gotosrc={goto}",
                          root = root,
@@ -1444,7 +1466,8 @@ impl<'a> fmt::Display for Item<'a> {
         if self.cx.include_sources && !is_primitive {
             match self.href(self.cx) {
                 Some(l) => {
-                    try!(write!(fmt, "<a id='src-{}' href='{}'>[src]</a>",
+                    try!(write!(fmt, "<a id='src-{}' class='srclink' \
+                                       href='{}'>[src]</a>",
                                 self.item.def_id.node, l));
                 }
                 None => {}

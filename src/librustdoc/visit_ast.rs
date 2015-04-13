@@ -398,6 +398,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             name: def.ident,
             whence: def.span,
             stab: self.stability(def.id),
+            imported_from: def.imported_from,
         }
     }
 }

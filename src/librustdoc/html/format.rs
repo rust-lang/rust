@@ -288,9 +288,9 @@ pub fn href(did: ast::DefId) -> Option<(String, ItemType, Vec<String>)> {
         repeat("../").take(loc.len()).collect::<String>()
     } else {
         match cache.extern_locations[&did.krate] {
-            render::Remote(ref s) => s.to_string(),
-            render::Local => repeat("../").take(loc.len()).collect::<String>(),
-            render::Unknown => return None,
+            (_, render::Remote(ref s)) => s.to_string(),
+            (_, render::Local) => repeat("../").take(loc.len()).collect(),
+            (_, render::Unknown) => return None,
         }
     };
     for component in &fqp[..fqp.len() - 1] {
@@ -379,12 +379,12 @@ fn primitive_link(f: &mut fmt::Formatter,
                 node: ast::CRATE_NODE_ID,
             }];
             let loc = match m.extern_locations[&cnum] {
-                render::Remote(ref s) => Some(s.to_string()),
-                render::Local => {
+                (_, render::Remote(ref s)) => Some(s.to_string()),
+                (_, render::Local) => {
                     let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
                     Some(repeat("../").take(len).collect::<String>())
                 }
-                render::Unknown => None,
+                (_, render::Unknown) => None,
             };
             match loc {
                 Some(root) => {
