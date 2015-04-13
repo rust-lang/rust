@@ -56,7 +56,8 @@ macro_rules! panic {
 macro_rules! assert {
     ($cond:expr) => (
         if !$cond {
-            panic!(concat!("assertion failed: ", stringify!($cond)))
+            const MSG: &'static str = concat!("assertion failed: ", stringify!($cond));
+            panic!(MSG)
         }
     );
     ($cond:expr, $($arg:tt)+) => (
