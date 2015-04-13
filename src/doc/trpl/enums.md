@@ -143,7 +143,5 @@ matching, a tool that will let us deconstruct sum types (the type theory term
 for enums) like `Ordering` in a very elegant way that avoids all these messy
 and brittle `if`/`else`s.
 
-
-[arity]: ./glossary.html#arity
 [match]: ./match.html
 [generics]: ./generics.html
