@@ -19,6 +19,7 @@ use libc::{self, HANDLE};
 use mem;
 use path::{Path, PathBuf};
 use ptr;
+use slice;
 use sync::Arc;
 use sys::handle::Handle;
 use sys::{c, cvt};
@@ -364,22 +365,40 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    use sys::c::compat::kernel32::GetFinalPathNameByHandleW;
     let mut opts = OpenOptions::new();
     opts.read(true);
-    let file = try!(File::open(p, &opts));;
+    opts.flags_and_attributes(c::FILE_FLAG_OPEN_REPARSE_POINT as i32);
+    let file = try!(File::open(p, &opts));
 
-    // Specify (sz - 1) because the documentation states that it's the size
-    // without the null pointer
-    //
-    // FIXME: I have a feeling that this reads intermediate symlinks as well.
-    let ret: OsString = try!(super::fill_utf16_buf_new(|buf, sz| unsafe {
-        GetFinalPathNameByHandleW(file.handle.raw(),
-                                  buf as *const u16,
-                                  sz - 1,
-                                  libc::VOLUME_NAME_DOS)
-    }, |s| OsStringExt::from_wide(s)));
-    Ok(PathBuf::from(&ret))
+    let mut space = [0u8; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+    let mut bytes = 0;
+
+    unsafe {
+        try!(cvt({
+            c::DeviceIoControl(file.handle.raw(),
+                               c::FSCTL_GET_REPARSE_POINT,
+                               0 as *mut _,
+                               0,
+                               space.as_mut_ptr() as *mut _,
+                               space.len() as libc::DWORD,
+                               &mut bytes,
+                               0 as *mut _)
+        }));
+        let buf: *const c::REPARSE_DATA_BUFFER = space.as_ptr() as *const _;
+        if (*buf).ReparseTag != c::IO_REPARSE_TAG_SYMLINK {
+            return Err(io::Error::new(io::ErrorKind::Other, "not a symlink"))
+        }
+        let info: *const c::SYMBOLIC_LINK_REPARSE_BUFFER =
+                &(*buf).rest as *const _ as *const _;
+        let path_buffer = &(*info).PathBuffer as *const _ as *const u16;
+        let subst_off = (*info).SubstituteNameOffset / 2;
+        let subst_ptr = path_buffer.offset(subst_off as isize);
+        let subst_len = (*info).SubstituteNameLength / 2;
+        let subst = slice::from_raw_parts(subst_ptr, subst_len as usize);
+
+        Ok(PathBuf::from(OsString::from_wide(subst)))
+    }
+
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
