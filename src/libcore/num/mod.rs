@@ -1219,6 +1219,66 @@ macro_rules! int_impl {
             }
         }
 
+        /// Wrapping (modular) division. Computes `floor(self / other)`,
+        /// wrapping around at the boundary of the type.
+        ///
+        /// The only case where such wrapping can occur is when one
+        /// divides `MIN / -1` on a signed type (where `MIN` is the
+        /// negative minimal value for the type); this is equivalent
+        /// to `-MIN`, a positive value that is too large to represent
+        /// in the type. In such a case, this function returns `MIN`
+        /// itself..
+        #[unstable(feature = "core", since = "1.0.0")]
+        #[inline(always)]
+        pub fn wrapping_div(self, rhs: $T) -> $T {
+            self.overflowing_div(rhs).0
+        }
+
+        /// Wrapping (modular) remainder. Computes `self % other`,
+        /// wrapping around at the boundary of the type.
+        ///
+        /// Such wrap-around never actually occurs mathematically;
+        /// implementation artifacts make `x % y` illegal for `MIN /
+        /// -1` on a signed type illegal (where `MIN` is the negative
+        /// minimal value). In such a case, this function returns `0`.
+        #[unstable(feature = "core", since = "1.0.0")]
+        #[inline(always)]
+        pub fn wrapping_rem(self, rhs: $T) -> $T {
+            self.overflowing_rem(rhs).0
+        }
+
+        /// Wrapping (modular) negation. Computes `-self`,
+        /// wrapping around at the boundary of the type.
+        ///
+        /// The only case where such wrapping can occur is when one
+        /// negates `MIN` on a signed type (where `MIN` is the
+        /// negative minimal value for the type); this is a positive
+        /// value that is too large to represent in the type. In such
+        /// a case, this function returns `MIN` itself.
+        #[unstable(feature = "core", since = "1.0.0")]
+        #[inline(always)]
+        pub fn wrapping_neg(self) -> $T {
+            self.overflowing_neg().0
+        }
+
+        /// Panic-free bitwise shift-left; yields `self << mask(rhs)`,
+        /// where `mask` removes any high-order bits of `rhs` that
+        /// would cause the shift to exceed the bitwidth of the type.
+        #[unstable(feature = "core", since = "1.0.0")]
+        #[inline(always)]
+        pub fn wrapping_shl(self, rhs: u32) -> $T {
+            self.overflowing_shl(rhs).0
+        }
+
+        /// Panic-free bitwise shift-left; yields `self >> mask(rhs)`,
+        /// where `mask` removes any high-order bits of `rhs` that
+        /// would cause the shift to exceed the bitwidth of the type.
+        #[unstable(feature = "core", since = "1.0.0")]
+        #[inline(always)]
+        pub fn wrapping_shr(self, rhs: u32) -> $T {
+            self.overflowing_shr(rhs).0
+        }
+
         /// Raises self to the power of `exp`, using exponentiation by squaring.
         ///
         /// # Examples
@@ -1737,6 +1797,66 @@ macro_rules! uint_impl {
             unsafe {
                 intrinsics::overflowing_mul(self, rhs)
             }
+        }
+
+        /// Wrapping (modular) division. Computes `floor(self / other)`,
+        /// wrapping around at the boundary of the type.
+        ///
+        /// The only case where such wrapping can occur is when one
+        /// divides `MIN / -1` on a signed type (where `MIN` is the
+        /// negative minimal value for the type); this is equivalent
+        /// to `-MIN`, a positive value that is too large to represent
+        /// in the type. In such a case, this function returns `MIN`
+        /// itself..
+        #[unstable(feature = "core", since = "1.0.0")]
+        #[inline(always)]
+        pub fn wrapping_div(self, rhs: $T) -> $T {
+            self.overflowing_div(rhs).0
+        }
+
+        /// Wrapping (modular) remainder. Computes `self % other`,
+        /// wrapping around at the boundary of the type.
+        ///
+        /// Such wrap-around never actually occurs mathematically;
+        /// implementation artifacts make `x % y` illegal for `MIN /
+        /// -1` on a signed type illegal (where `MIN` is the negative
+        /// minimal value). In such a case, this function returns `0`.
+        #[unstable(feature = "core", since = "1.0.0")]
+        #[inline(always)]
+        pub fn wrapping_rem(self, rhs: $T) -> $T {
+            self.overflowing_rem(rhs).0
+        }
+
+        /// Wrapping (modular) negation. Computes `-self`,
+        /// wrapping around at the boundary of the type.
+        ///
+        /// The only case where such wrapping can occur is when one
+        /// negates `MIN` on a signed type (where `MIN` is the
+        /// negative minimal value for the type); this is a positive
+        /// value that is too large to represent in the type. In such
+        /// a case, this function returns `MIN` itself.
+        #[unstable(feature = "core", since = "1.0.0")]
+        #[inline(always)]
+        pub fn wrapping_neg(self) -> $T {
+            self.overflowing_neg().0
+        }
+
+        /// Panic-free bitwise shift-left; yields `self << mask(rhs)`,
+        /// where `mask` removes any high-order bits of `rhs` that
+        /// would cause the shift to exceed the bitwidth of the type.
+        #[unstable(feature = "core", since = "1.0.0")]
+        #[inline(always)]
+        pub fn wrapping_shl(self, rhs: u32) -> $T {
+            self.overflowing_shl(rhs).0
+        }
+
+        /// Panic-free bitwise shift-left; yields `self >> mask(rhs)`,
+        /// where `mask` removes any high-order bits of `rhs` that
+        /// would cause the shift to exceed the bitwidth of the type.
+        #[unstable(feature = "core", since = "1.0.0")]
+        #[inline(always)]
+        pub fn wrapping_shr(self, rhs: u32) -> $T {
+            self.overflowing_shr(rhs).0
         }
 
         /// Raises self to the power of `exp`, using exponentiation by squaring.
