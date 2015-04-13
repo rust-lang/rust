@@ -85,7 +85,7 @@ impl UdpSocket {
         self.0.socket_addr()
     }
 
-    /// Create a new independently owned handle to the underlying socket.
+    /// Creates a new independently owned handle to the underlying socket.
     ///
     /// The returned `UdpSocket` is a reference to the same socket that this
     /// object references. Both handles will read and write the same port, and
@@ -100,7 +100,7 @@ impl UdpSocket {
         self.0.set_broadcast(on)
     }
 
-    /// Set the multicast loop flag to the specified value
+    /// Sets the multicast loop flag to the specified value
     ///
     /// This lets multicast packets loop back to local sockets (if enabled)
     pub fn set_multicast_loop(&self, on: bool) -> io::Result<()> {

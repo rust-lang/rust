@@ -194,7 +194,7 @@ impl Command {
         self
     }
 
-    /// Set the working directory for the child process.
+    /// Sets the working directory for the child process.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn current_dir<P: AsRef<path::Path>>(&mut self, dir: P) -> &mut Command {
         self.inner.cwd(dir.as_ref().as_ref());
@@ -396,7 +396,7 @@ impl ExitStatus {
         self.0.success()
     }
 
-    /// Return the exit code of the process, if any.
+    /// Returns the exit code of the process, if any.
     ///
     /// On Unix, this will return `None` if the process was terminated
     /// by a signal; `std::os::unix` provides an extension trait for
@@ -453,7 +453,7 @@ impl Child {
         unsafe { self.handle.kill() }
     }
 
-    /// Wait for the child to exit completely, returning the status that it
+    /// Waits for the child to exit completely, returning the status that it
     /// exited with. This function will continue to have the same return value
     /// after it has been called at least once.
     ///
@@ -474,7 +474,7 @@ impl Child {
         }
     }
 
-    /// Simultaneously wait for the child to exit and collect all remaining
+    /// Simultaneously waits for the child to exit and collect all remaining
     /// output on the stdout/stderr handles, returning a `Output`
     /// instance.
     ///

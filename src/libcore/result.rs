@@ -311,7 +311,7 @@ impl<T, E> Result<T, E> {
     // Adapter for each variant
     /////////////////////////////////////////////////////////////////////////
 
-    /// Convert from `Result<T, E>` to `Option<T>`
+    /// Converts from `Result<T, E>` to `Option<T>`
     ///
     /// Converts `self` into an `Option<T>`, consuming `self`,
     /// and discarding the error, if any.
@@ -334,7 +334,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Convert from `Result<T, E>` to `Option<E>`
+    /// Converts from `Result<T, E>` to `Option<E>`
     ///
     /// Converts `self` into an `Option<E>`, consuming `self`,
     /// and discarding the success value, if any.
@@ -361,7 +361,7 @@ impl<T, E> Result<T, E> {
     // Adapter for working with references
     /////////////////////////////////////////////////////////////////////////
 
-    /// Convert from `Result<T, E>` to `Result<&T, &E>`
+    /// Converts from `Result<T, E>` to `Result<&T, &E>`
     ///
     /// Produces a new `Result`, containing a reference
     /// into the original, leaving the original in place.
@@ -382,7 +382,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Convert from `Result<T, E>` to `Result<&mut T, &mut E>`
+    /// Converts from `Result<T, E>` to `Result<&mut T, &mut E>`
     ///
     /// ```
     /// fn mutate(r: &mut Result<i32, i32>) {
@@ -409,7 +409,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Convert from `Result<T, E>` to `&[T]` (without copying)
+    /// Converts from `Result<T, E>` to `&[T]` (without copying)
     #[inline]
     #[unstable(feature = "as_slice", since = "unsure of the utility here")]
     pub fn as_slice(&self) -> &[T] {
@@ -423,7 +423,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Convert from `Result<T, E>` to `&mut [T]` (without copying)
+    /// Converts from `Result<T, E>` to `&mut [T]` (without copying)
     ///
     /// ```
     /// # #![feature(core)]
@@ -811,7 +811,7 @@ impl<T: fmt::Debug, E> Result<T, E> {
              reason = "use inherent method instead")]
 #[allow(deprecated)]
 impl<T, E> AsSlice<T> for Result<T, E> {
-    /// Convert from `Result<T, E>` to `&[T]` (without copying)
+    /// Converts from `Result<T, E>` to `&[T]` (without copying)
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a [T] {
         match *self {
@@ -974,7 +974,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 // FromIterator
 /////////////////////////////////////////////////////////////////////////////
 
-/// Perform a fold operation over the result values from an iterator.
+/// Performs a fold operation over the result values from an iterator.
 ///
 /// If an `Err` is encountered, it is immediately returned.
 /// Otherwise, the folded value is returned.

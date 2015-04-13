@@ -223,7 +223,7 @@ impl<T> Option<T> {
     // Adapter for working with references
     /////////////////////////////////////////////////////////////////////////
 
-    /// Convert from `Option<T>` to `Option<&T>`
+    /// Converts from `Option<T>` to `Option<&T>`
     ///
     /// # Examples
     ///
@@ -248,7 +248,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Convert from `Option<T>` to `Option<&mut T>`
+    /// Converts from `Option<T>` to `Option<&mut T>`
     ///
     /// # Examples
     ///
@@ -269,7 +269,7 @@ impl<T> Option<T> {
         }
     }
 
-    /// Convert from `Option<T>` to `&mut [T]` (without copying)
+    /// Converts from `Option<T>` to `&mut [T]` (without copying)
     ///
     /// # Examples
     ///
@@ -704,7 +704,7 @@ impl<T> Option<T> {
         mem::replace(self, None)
     }
 
-    /// Convert from `Option<T>` to `&[T]` (without copying)
+    /// Converts from `Option<T>` to `&[T]` (without copying)
     #[inline]
     #[unstable(feature = "as_slice", since = "unsure of the utility here")]
     pub fn as_slice<'a>(&'a self) -> &'a [T] {

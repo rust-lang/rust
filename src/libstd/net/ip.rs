@@ -58,7 +58,7 @@ pub enum Ipv6MulticastScope {
 }
 
 impl Ipv4Addr {
-    /// Create a new IPv4 address from four eight-bit octets.
+    /// Creates a new IPv4 address from four eight-bit octets.
     ///
     /// The result will represent the IP address a.b.c.d
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -127,7 +127,7 @@ impl Ipv4Addr {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
     }
 
-    /// Convert this address to an IPv4-compatible IPv6 address
+    /// Converts this address to an IPv4-compatible IPv6 address
     ///
     /// a.b.c.d becomes ::a.b.c.d
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -137,7 +137,7 @@ impl Ipv4Addr {
                       ((self.octets()[2] as u16) << 8) | self.octets()[3] as u16)
     }
 
-    /// Convert this address to an IPv4-mapped IPv6 address
+    /// Converts this address to an IPv4-mapped IPv6 address
     ///
     /// a.b.c.d becomes ::ffff:a.b.c.d
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -220,7 +220,7 @@ impl FromInner<libc::in_addr> for Ipv4Addr {
 }
 
 impl Ipv6Addr {
-    /// Create a new IPv6 address from eight 16-bit segments.
+    /// Creates a new IPv6 address from eight 16-bit segments.
     ///
     /// The result will represent the IP address a:b:c:d:e:f:g:h
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -234,7 +234,7 @@ impl Ipv6Addr {
         }
     }
 
-    /// Return the eight 16-bit segments that make up this address
+    /// Returns the eight 16-bit segments that make up this address
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn segments(&self) -> [u16; 8] {
         [ntoh(self.inner.s6_addr[0]),
@@ -324,7 +324,7 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xff00) == 0xff00
     }
 
-    /// Convert this address to an IPv4 address. Returns None if this address is
+    /// Converts this address to an IPv4 address. Returns None if this address is
     /// neither IPv4-compatible or IPv4-mapped.
     ///
     /// ::a.b.c.d and ::ffff:a.b.c.d become a.b.c.d

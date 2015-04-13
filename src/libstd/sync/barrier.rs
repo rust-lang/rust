@@ -49,7 +49,7 @@ struct BarrierState {
 pub struct BarrierWaitResult(bool);
 
 impl Barrier {
-    /// Create a new barrier that can block a given number of threads.
+    /// Creates a new barrier that can block a given number of threads.
     ///
     /// A barrier will block `n`-1 threads which call `wait` and then wake up
     /// all threads at once when the `n`th thread calls `wait`.
@@ -65,7 +65,7 @@ impl Barrier {
         }
     }
 
-    /// Block the current thread until all threads has rendezvoused here.
+    /// Blocks the current thread until all threads has rendezvoused here.
     ///
     /// Barriers are re-usable after all threads have rendezvoused once, and can
     /// be used continuously.
@@ -97,7 +97,7 @@ impl Barrier {
 }
 
 impl BarrierWaitResult {
-    /// Return whether this thread from `wait` is the "leader thread".
+    /// Returns whether this thread from `wait` is the "leader thread".
     ///
     /// Only one thread will have `true` returned from their result, all other
     /// threads will have `false` returned.

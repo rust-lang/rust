@@ -38,7 +38,7 @@ unsafe impl Zeroable for u64 {}
 pub struct NonZero<T: Zeroable>(T);
 
 impl<T: Zeroable> NonZero<T> {
-    /// Create an instance of NonZero with the provided value.
+    /// Creates an instance of NonZero with the provided value.
     /// You must indeed ensure that the value is actually "non-zero".
     #[inline(always)]
     pub unsafe fn new(inner: T) -> NonZero<T> {
