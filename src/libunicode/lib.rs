@@ -39,9 +39,6 @@
 
 extern crate core;
 
-// regex module
-pub use tables::regex;
-
 mod normalize;
 mod tables;
 mod u_str;
