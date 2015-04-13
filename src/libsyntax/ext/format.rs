@@ -632,6 +632,71 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 }
 
+/// Expands `ensure_not_fmt_string_literal!(<where-literal>, <expr>)`
+/// into `<expr>`, but ensures that if `<expr>` is a string-literal,
+/// then it is not a potential format string literal.
+pub fn ensure_not_fmt_string_literal<'cx>(cx: &'cx mut ExtCtxt,
+                                          sp: Span,
+                                          tts: &[ast::TokenTree])
+                                          -> Box<base::MacResult+'cx> {
+    use fold::Folder;
+    let takes_two_args = |cx: &ExtCtxt, rest| {
+        cx.span_err(sp, &format!("`ensure_not_fmt_string_literal!` \
+                                  takes 2 arguments, {}", rest));
+        DummyResult::expr(sp)
+    };
+    let mut p = cx.new_parser_from_tts(tts);
+    if p.token == token::Eof { return takes_two_args(cx, "given 0"); }
+    let arg1 = cx.expander().fold_expr(p.parse_expr());
+    if p.token == token::Eof { return takes_two_args(cx, "given 1"); }
+    if !panictry!(p.eat(&token::Comma)) { return takes_two_args(cx, "comma-separated"); }
+    if p.token == token::Eof { return takes_two_args(cx, "given 1"); }
+    let arg2 = cx.expander().fold_expr(p.parse_expr());
+    if p.token != token::Eof {
+        takes_two_args(cx, "given too many");
+        // (but do not return; handle two provided, nonetheless)
+    }
+
+    // First argument is name of where this was invoked (for error messages).
+    let lit_str_with_extended_lifetime;
+    let name: &str = match expr_string_lit(cx, arg1) {
+        Ok((_, lit_str, _)) => {
+            lit_str_with_extended_lifetime = lit_str;
+            &lit_str_with_extended_lifetime
+        }
+        Err(expr) => {
+            let msg = "first argument to `ensure_not_fmt_string_literal!` \
+                       must be string literal";
+            cx.span_err(expr.span, msg);
+            // Compile proceeds using "ensure_not_fmt_string_literal"
+            // as the name.
+            "ensure_not_fmt_string_literal!"
+        }
+    };
+
+    // Second argument is the expression we are checking.
+    let expr = match expr_string_lit(cx, arg2) {
+        Err(expr) => {
+            // input was not a string literal; just ignore it.
+            expr
+        }
+        Ok((expr, lit_str, _style)) => {
+            let m = format!("{} input cannot be format string literal", name);
+            for c in lit_str.chars() {
+                if c == '{' || c == '}' {
+                    cx.span_err(sp, &m);
+                    break;
+                }
+            }
+            // we still return the expr itself, to allow catching of
+            // further errors in the input.
+            expr
+        }
+    };
+
+    MacEager::expr(expr)
+}
+
 pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt, sp: Span,
                                tts: &[ast::TokenTree])
                                -> Box<base::MacResult+'cx> {

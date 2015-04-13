@@ -16,6 +16,13 @@
 
 #![unstable(feature = "std_misc")]
 
+// SNAP 5520801
+#[cfg(stage0)]
+#[macro_export]
+macro_rules! ensure_not_fmt_string_literal {
+    ($name:expr, $e:expr) => { $e }
+}
+
 /// The entry point for panic of Rust tasks.
 ///
 /// This macro is used to inject panic into a Rust task, causing the task to
@@ -44,7 +51,7 @@ macro_rules! panic {
         panic!("explicit panic")
     });
     ($msg:expr) => ({
-        $crate::rt::begin_unwind($msg, {
+        $crate::rt::begin_unwind(ensure_not_fmt_string_literal!("panic!", $msg), {
             // static requires less code at runtime, more constant data
             static _FILE_LINE: (&'static str, usize) = (file!(), line!() as usize);
             &_FILE_LINE
