@@ -153,6 +153,7 @@ impl LiveNode {
     fn get(&self) -> usize { let LiveNode(v) = *self; v }
 }
 
+#[cfg(stage0)]
 impl Clone for LiveNode {
     fn clone(&self) -> LiveNode {
         LiveNode(self.get())

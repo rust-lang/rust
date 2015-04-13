@@ -278,7 +278,7 @@ impl<'tcx> Loan<'tcx> {
     }
 }
 
-#[derive(Eq, Hash, Debug)]
+#[derive(Hash, Debug)]
 pub struct LoanPath<'tcx> {
     kind: LoanPathKind<'tcx>,
     ty: ty::Ty<'tcx>,
@@ -292,6 +292,9 @@ impl<'tcx> PartialEq for LoanPath<'tcx> {
         r
     }
 }
+
+impl<'tcx> Eq for LoanPath<'tcx> {}
+
 
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub enum LoanPathKind<'tcx> {

@@ -14,6 +14,7 @@
 
 use cell::{Cell, RefCell, Ref, RefMut, BorrowState};
 use char::CharExt;
+#[cfg(stage0)]
 use clone::Clone;
 use iter::Iterator;
 use marker::{Copy, PhantomData, Sized};
@@ -141,6 +142,7 @@ pub struct ArgumentV1<'a> {
     formatter: fn(&Void, &mut Formatter) -> Result,
 }
 
+#[cfg(stage0)]
 impl<'a> Clone for ArgumentV1<'a> {
     fn clone(&self) -> ArgumentV1<'a> {
         *self

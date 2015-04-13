@@ -793,6 +793,7 @@ impl<'a, 'b> Pattern<'a> for &'b String {
     }
 }
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for String {
     #[inline]
