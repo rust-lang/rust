@@ -1,11 +1,12 @@
-#![feature(plugin)]
+#![feature(plugin, collections)]
 
 #![plugin(clippy)]
+#![deny(clippy)]
 
 extern crate collections;
 use collections::linked_list::LinkedList;
 
-pub fn test(foo: LinkedList<uint>) {
+pub fn test(foo: LinkedList<u8>) {  //~ ERROR I see you're using a LinkedList!
     println!("{:?}", foo)
 }
 

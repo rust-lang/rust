@@ -8,3 +8,7 @@ authors = ["Manish Goregaokar <manishsmail@gmail.com>"]
 name = "clippy"
 crate_type = ["dylib"]
 
+
+
+[dev-dependencies.compiletest]
+git = "https://github.com/laumann/compiletest-rs.git"

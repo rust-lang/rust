@@ -1,8 +1,10 @@
 #![feature(plugin)]
 
 #![plugin(clippy)]
+#![deny(clippy)]
+#![allow(unused)]
 
-fn the_answer(ref mut x: u8) {
+fn the_answer(ref mut x: u8) {  //~ ERROR `ref` directly on a function argument is ignored
   *x = 42;
 }
 
