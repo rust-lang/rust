@@ -19,7 +19,7 @@ use std::time::Duration;
 
 pub fn main() {
     let (tx, rx) = channel();
-    let _t = thread::scoped(move||{
+    let t = thread::spawn(move||{
         let mut timer = Timer::new().unwrap();
         timer.sleep(Duration::milliseconds(10));
         tx.send(()).unwrap();
@@ -31,4 +31,5 @@ pub fn main() {
             Err(TryRecvError::Disconnected) => unreachable!()
         }
     }
+    t.join();
 }

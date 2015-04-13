@@ -22,11 +22,13 @@ pub fn main() {
     let x: Box<isize> = box 1;
     let x_in_parent = &(*x) as *const isize as usize;
 
-    let _t = thread::scoped(move || {
+    let t = thread::spawn(move || {
         let x_in_child = &(*x) as *const isize as usize;
         tx.send(x_in_child).unwrap();
     });
 
     let x_in_child = rx.recv().unwrap();
     assert_eq!(x_in_parent, x_in_child);
+
+    t.join();
 }

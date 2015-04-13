@@ -26,7 +26,7 @@ fn test05_start(tx : &Sender<isize>) {
 
 fn test05() {
     let (tx, rx) = channel();
-    let _t = thread::scoped(move|| { test05_start(&tx) });
+    let t = thread::spawn(move|| { test05_start(&tx) });
     let mut value: isize = rx.recv().unwrap();
     println!("{}", value);
     value = rx.recv().unwrap();
@@ -34,4 +34,5 @@ fn test05() {
     value = rx.recv().unwrap();
     println!("{}", value);
     assert_eq!(value, 30);
+    t.join();
 }

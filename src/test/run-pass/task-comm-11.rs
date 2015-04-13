@@ -22,8 +22,9 @@ fn start(tx: &Sender<Sender<isize>>) {
 
 pub fn main() {
     let (tx, rx) = channel();
-    let _child = thread::scoped(move|| {
+    let child = thread::spawn(move|| {
         start(&tx)
     });
     let _tx = rx.recv().unwrap();
+    child.join();
 }

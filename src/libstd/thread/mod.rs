@@ -93,6 +93,7 @@
 //! a join before any relevant stack frames are popped:
 //!
 //! ```rust
+//! # #![feature(scoped)]
 //! use std::thread;
 //!
 //! let guard = thread::scoped(move || {

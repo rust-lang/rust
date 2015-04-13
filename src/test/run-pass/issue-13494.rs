@@ -26,7 +26,7 @@ fn helper(rx: Receiver<Sender<()>>) {
 
 fn main() {
     let (tx, rx) = channel();
-    let _t = thread::scoped(move|| { helper(rx) });
+    let t = thread::spawn(move|| { helper(rx) });
     let (snd, rcv) = channel::<isize>();
     for _ in 1..100000 {
         snd.send(1).unwrap();
@@ -38,4 +38,5 @@ fn main() {
         }
     }
     drop(tx);
+    t.join();
 }

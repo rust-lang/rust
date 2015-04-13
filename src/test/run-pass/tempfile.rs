@@ -64,7 +64,7 @@ fn test_rm_tempdir() {
             TempDir::new("test_rm_tempdir").unwrap()
         };
         // FIXME(#16640) `: TempDir` annotation shouldn't be necessary
-        let tmp: TempDir = thread::scoped(f).join();
+        let tmp: TempDir = thread::spawn(f).join().unwrap();
         path = tmp.path().clone();
         assert!(path.exists());
     }
@@ -108,7 +108,7 @@ fn test_rm_tempdir_close() {
             TempDir::new("test_rm_tempdir").unwrap()
         };
         // FIXME(#16640) `: TempDir` annotation shouldn't be necessary
-        let tmp: TempDir = thread::scoped(f).join();
+        let tmp: TempDir = thread::spawn(f).join().unwrap();
         path = tmp.path().clone();
         assert!(path.exists());
         tmp.close();
