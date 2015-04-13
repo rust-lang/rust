@@ -1270,6 +1270,7 @@ impl Clean<Item> for ast::ImplItem {
             ast::MacImplItem(_) => {
                 MacroItem(Macro {
                     source: self.span.to_src(cx),
+                    imported_from: None,
                 })
             }
         };
@@ -2557,6 +2558,7 @@ fn resolve_def(cx: &DocContext, id: ast::NodeId) -> Option<ast::DefId> {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Macro {
     pub source: String,
+    pub imported_from: Option<String>,
 }
 
 impl Clean<Item> for doctree::Macro {
@@ -2570,6 +2572,7 @@ impl Clean<Item> for doctree::Macro {
             def_id: ast_util::local_def(self.id),
             inner: MacroItem(Macro {
                 source: self.whence.to_src(cx),
+                imported_from: self.imported_from.clean(cx),
             }),
         }
     }
