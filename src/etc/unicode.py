@@ -305,33 +305,13 @@ def emit_table(f, name, t_data, t_type = "&'static [(char, char)]", is_pub=True,
     format_table_content(f, data, 8)
     f.write("\n    ];\n\n")
 
-def emit_property_module(f, mod, tbl, emit_fn):
+def emit_property_module(f, mod, tbl, emit):
     f.write("pub mod %s {\n" % mod)
-    keys = tbl.keys()
-    keys.sort()
-    for cat in keys:
+    for cat in sorted(emit):
         emit_table(f, "%s_table" % cat, tbl[cat])
-        if cat in emit_fn:
-            f.write("    pub fn %s(c: char) -> bool {\n" % cat)
-            f.write("        super::bsearch_range_table(c, %s_table)\n" % cat)
-            f.write("    }\n\n")
-    f.write("}\n\n")
-
-def emit_regex_module(f, cats, w_data):
-    f.write("pub mod regex {\n")
-    regex_class = "&'static [(char, char)]"
-    class_table = "&'static [(&'static str, %s)]" % regex_class
-
-    emit_table(f, "UNICODE_CLASSES", cats, class_table,
-        pfun=lambda x: "(\"%s\",super::%s::%s_table)" % (x[0], x[1], x[0]))
-
-    f.write("    pub const PERLD: %s = super::general_category::Nd_table;\n\n"
-            % regex_class)
-    f.write("    pub const PERLS: %s = super::property::White_Space_table;\n\n"
-            % regex_class)
-
-    emit_table(f, "PERLW", w_data, regex_class)
-
+        f.write("    pub fn %s(c: char) -> bool {\n" % cat)
+        f.write("        super::bsearch_range_table(c, %s_table)\n" % cat)
+        f.write("    }\n\n")
     f.write("}\n\n")
 
 def emit_conversions_module(f, lowerupper, upperlower):
@@ -605,8 +585,7 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
         (canon_decomp, compat_decomp, gencats, combines,
                 lowerupper, upperlower) = load_unicode_data("UnicodeData.txt")
         want_derived = ["XID_Start", "XID_Continue", "Alphabetic", "Lowercase", "Uppercase"]
-        other_derived = ["Default_Ignorable_Code_Point"]
-        derived = load_properties("DerivedCoreProperties.txt", want_derived + other_derived)
+        derived = load_properties("DerivedCoreProperties.txt", want_derived)
         scripts = load_properties("Scripts.txt", [])
         props = load_properties("PropList.txt",
                 ["White_Space", "Join_Control", "Noncharacter_Code_Point"])
@@ -616,27 +595,11 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
         # bsearch_range_table is used in all the property modules below
         emit_bsearch_range_table(rf)
 
-        # all of these categories will also be available as \p{} in libregex
-        allcats = []
+        # category tables
         for (name, cat, pfuns) in ("general_category", gencats, ["N", "Cc"]), \
                                   ("derived_property", derived, want_derived), \
-                                  ("script", scripts, []), \
                                   ("property", props, ["White_Space"]):
             emit_property_module(rf, name, cat, pfuns)
-            allcats.extend(map(lambda x: (x, name), cat))
-        allcats.sort(key=lambda c: c[0])
-
-        # the \w regex corresponds to Alphabetic + Mark + Decimal_Number +
-        # Connector_Punctuation + Join-Control according to UTS#18
-        # http://www.unicode.org/reports/tr18/#Compatibility_Properties
-        perl_words = []
-        for cat in derived["Alphabetic"], gencats["M"], gencats["Nd"], \
-                   gencats["Pc"], props["Join_Control"]:
-            perl_words.extend(ungroup_cat(cat))
-        perl_words = group_cat(perl_words)
-
-        # emit lookup tables for \p{}, along with \d, \w, and \s for libregex
-        emit_regex_module(rf, allcats, perl_words)
 
         # normalizations and conversions module
         emit_norm_module(rf, canon_decomp, compat_decomp, combines, norm_props)
