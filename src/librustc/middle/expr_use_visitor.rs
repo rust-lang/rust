@@ -848,26 +848,16 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
 
         self.walk_autoderefs(expr, adj.autoderefs);
 
-        // Weird hacky special case: AutoUnsizeUniq, which converts
-        // from a ~T to a ~Trait etc, always comes in a stylized
-        // fashion. In particular, we want to consume the ~ pointer
-        // being dereferenced, not the dereferenced content (as the
-        // content is, at least for upcasts, unsized).
-        if let Some(ty) = adj.unsize {
-            if let ty::ty_uniq(_) = ty.sty {
-                assert!(adj.autoderefs == 0,
-                        format!("Expected no derefs with unsize AutoRefs, found: {}",
-                                 adj.repr(self.tcx())));
-                let cmt_unadjusted =
-                    return_if_err!(self.mc.cat_expr_unadjusted(expr));
-                self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
-                return;
-            }
-        }
+        let cmt_derefd =
+            return_if_err!(self.mc.cat_expr_autoderefd(expr, adj.autoderefs));
 
-        let cmt_derefd = return_if_err!(
-            self.mc.cat_expr_autoderefd(expr, adj.autoderefs));
-        self.walk_autoref(expr, cmt_derefd, adj.autoref);
+        let cmt_refd =
+            self.walk_autoref(expr, cmt_derefd, adj.autoref);
+
+        if adj.unsize.is_some() {
+            // Unsizing consumes the thin pointer and produces a fat one.
+            self.delegate_consume(expr.id, expr.span, cmt_refd);
+        }
     }
 
 

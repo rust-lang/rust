@@ -143,7 +143,10 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 ty::adjust_ty_for_autoref(self.tcx(), target, Some(autoref))
             }))
         } else {
-            // No unsizing should be performed without autoref.
+            // No unsizing should be performed without autoref (at
+            // least during method dispach). This is because we
+            // currently only unsize `[T;N]` to `[T]`, and naturally
+            // that must occur being a reference.
             assert!(pick.unsize.is_none());
             (None, None)
         };
