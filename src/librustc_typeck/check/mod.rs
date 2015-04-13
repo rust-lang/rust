@@ -315,7 +315,8 @@ impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxt<'a, 'tcx> {
     }
     fn type_moves_by_default(&self, span: Span, ty: Ty<'tcx>) -> bool {
         let ty = self.infcx().resolve_type_vars_if_possible(&ty);
-        !traits::type_known_to_meet_builtin_bound(self.infcx(), self, ty, ty::BoundCopy, span)
+        let infcx = infer::new_infer_ctxt(self.tcx());
+        !traits::type_known_to_meet_builtin_bound(&infcx, self, ty, ty::BoundCopy, span)
     }
     fn node_method_ty(&self, method_call: ty::MethodCall)
                       -> Option<Ty<'tcx>> {
