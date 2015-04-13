@@ -91,7 +91,6 @@ pub mod html {
 pub mod markdown;
 pub mod passes;
 pub mod plugins;
-pub mod stability_summary;
 pub mod visit_ast;
 pub mod test;
 mod flock;

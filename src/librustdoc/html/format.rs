@@ -23,10 +23,8 @@ use syntax::ast;
 use syntax::ast_util;
 
 use clean;
-use stability_summary::ModuleSummary;
 use html::item_type::ItemType;
 use html::render;
-use html::escape::Escape;
 use html::render::{cache, CURRENT_LOCATION_KEY};
 
 /// Helper to render an optional visibility with a space after it (if the
@@ -45,10 +43,6 @@ pub struct MutableSpace(pub clean::Mutability);
 /// Similar to VisSpace, but used for mutability
 #[derive(Copy, Clone)]
 pub struct RawMutableSpace(pub clean::Mutability);
-/// Wrapper struct for properly emitting the stability level.
-pub struct Stability<'a>(pub &'a Option<clean::Stability>);
-/// Wrapper struct for emitting the stability level concisely.
-pub struct ConciseStability<'a>(pub &'a Option<clean::Stability>);
 /// Wrapper struct for emitting a where clause from Generics.
 pub struct WhereClause<'a>(pub &'a clean::Generics);
 /// Wrapper struct for emitting type parameter bounds.
@@ -700,121 +694,5 @@ impl fmt::Display for AbiSpace {
             Abi::C => write!(f, "extern "),
             abi => write!(f, "extern {} ", abi),
         }
-    }
-}
-
-impl<'a> fmt::Display for Stability<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let Stability(stab) = *self;
-        match *stab {
-            Some(ref stability) => {
-                let lvl = if stability.deprecated_since.is_empty() {
-                    format!("{}", stability.level)
-                } else {
-                    "Deprecated".to_string()
-                };
-                write!(f, "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
-                       lvl = Escape(&*lvl),
-                       reason = Escape(&*stability.reason))
-            }
-            None => Ok(())
-        }
-    }
-}
-
-impl<'a> fmt::Display for ConciseStability<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let ConciseStability(stab) = *self;
-        match *stab {
-            Some(ref stability) => {
-                let lvl = if stability.deprecated_since.is_empty() {
-                    format!("{}", stability.level)
-                } else {
-                    "Deprecated".to_string()
-                };
-                write!(f, "<a class='stability {lvl}' title='{lvl}{colon}{reason}'></a>",
-                       lvl = Escape(&*lvl),
-                       colon = if !stability.reason.is_empty() { ": " } else { "" },
-                       reason = Escape(&*stability.reason))
-            }
-            None => {
-                write!(f, "<a class='stability Unmarked' title='No stability level'></a>")
-            }
-        }
-    }
-}
-
-impl fmt::Display for ModuleSummary {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fn fmt_inner<'a>(f: &mut fmt::Formatter,
-                         context: &mut Vec<&'a str>,
-                         m: &'a ModuleSummary)
-                     -> fmt::Result {
-            let cnt = m.counts;
-            let tot = cnt.total();
-            if tot == 0 { return Ok(()) }
-
-            context.push(&m.name);
-            let path = context.connect("::");
-
-            try!(write!(f, "<tr>"));
-            try!(write!(f, "<td><a href='{}'>{}</a></td>", {
-                            let mut url = context[1..].to_vec();
-                            url.push("index.html");
-                            url.connect("/")
-                        },
-                        path));
-            try!(write!(f, "<td class='summary-column'>"));
-            try!(write!(f, "<span class='summary Stable' \
-                            style='width: {:.4}%; display: inline-block'>&nbsp</span>",
-                        (100 * cnt.stable) as f64/tot as f64));
-            try!(write!(f, "<span class='summary Unstable' \
-                            style='width: {:.4}%; display: inline-block'>&nbsp</span>",
-                        (100 * cnt.unstable) as f64/tot as f64));
-            try!(write!(f, "<span class='summary Deprecated' \
-                            style='width: {:.4}%; display: inline-block'>&nbsp</span>",
-                        (100 * cnt.deprecated) as f64/tot as f64));
-            try!(write!(f, "<span class='summary Unmarked' \
-                            style='width: {:.4}%; display: inline-block'>&nbsp</span>",
-                        (100 * cnt.unmarked) as f64/tot as f64));
-            try!(write!(f, "</td></tr>"));
-
-            for submodule in &m.submodules {
-                try!(fmt_inner(f, context, submodule));
-            }
-            context.pop();
-            Ok(())
-        }
-
-        let mut context = Vec::new();
-
-        let tot = self.counts.total();
-        let (stable, unstable, deprecated, unmarked) = if tot == 0 {
-            (0, 0, 0, 0)
-        } else {
-            ((100 * self.counts.stable)/tot,
-             (100 * self.counts.unstable)/tot,
-             (100 * self.counts.deprecated)/tot,
-             (100 * self.counts.unmarked)/tot)
-        };
-
-        try!(write!(f,
-r"<h1 class='fqn'>Stability dashboard: crate <a class='mod' href='index.html'>{name}</a></h1>
-This dashboard summarizes the stability levels for all of the public modules of
-the crate, according to the total number of items at each level in the module and
-its children (percentages total for {name}):
-<blockquote>
-<a class='stability Stable'></a> stable ({}%),<br/>
-<a class='stability Unstable'></a> unstable ({}%),<br/>
-<a class='stability Deprecated'></a> deprecated ({}%),<br/>
-<a class='stability Unmarked'></a> unmarked ({}%)
-</blockquote>
-The counts do not include methods or trait
-implementations that are visible only through a re-exported type.",
-stable, unstable, deprecated, unmarked,
-name=self.name));
-        try!(write!(f, "<table>"));
-        try!(fmt_inner(f, &mut context, self));
-        write!(f, "</table>")
     }
 }
