@@ -71,16 +71,16 @@ Once you have this file in place, we should be ready to build! Try this:
 ```bash
 $ cargo build
    Compiling hello_world v0.0.1 (file:///home/yourname/projects/hello_world)
-$ ./target/debug/hello_world
+$ ./target/hello_world
 Hello, world!
 ```
 
 Bam! We build our project with `cargo build`, and run it with
-`./target/debug/hello_world`. We can do both in one step with `cargo run`:
+`./target/hello_world`. We can do both in one step with `cargo run`:
 
 ```bash
 $ cargo run
-     Running `target/debug/hello_world`
+     Running `target/hello_world`
 Hello, world!
 ```
 
@@ -91,7 +91,7 @@ made a modification, we would have seen it do both:
 ```bash
 $ cargo build
    Compiling hello_world v0.0.1 (file:///home/yourname/projects/hello_world)
-     Running `target/debug/hello_world`
+     Running `target/hello_world`
 Hello, world!
 ```
 
