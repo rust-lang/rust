@@ -67,11 +67,30 @@
 //! thread. This means that it can outlive its parent (the thread that spawned
 //! it), unless this parent is the main thread.
 //!
+//! The parent thread can also wait on the completion of the child
+//! thread; a call to `spawn` produces a `JoinHandle`, which provides
+//! a `join` method for waiting:
+//!
+//! ```rust
+//! use std::thread;
+//!
+//! let child = thread::spawn(move || {
+//!     // some work here
+//! });
+//! // some work here
+//! let res = child.join();
+//! ```
+//!
+//! The `join` method returns a `Result` containing `Ok` of the final
+//! value produced by the child thread, or `Err` of the value given to
+//! a call to `panic!` if the child panicked.
+//!
 //! ## Scoped threads
 //!
-//! Often a parent thread uses a child thread to perform some particular task,
-//! and at some point must wait for the child to complete before continuing.
-//! For this scenario, use the `thread::scoped` function:
+//! The `spawn` method does not allow the child and parent threads to
+//! share any stack data, since that is not safe in general. However,
+//! `scoped` makes it possible to share the parent's stack by forcing
+//! a join before any relevant stack frames are popped:
 //!
 //! ```rust
 //! use std::thread;
@@ -253,8 +272,8 @@ impl Builder {
     /// `io::Result` to capture any failure to create the thread at
     /// the OS level.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn spawn<F>(self, f: F) -> io::Result<JoinHandle> where
-        F: FnOnce(), F: Send + 'static
+    pub fn spawn<F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
+        F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
     {
         self.spawn_inner(Box::new(f)).map(|i| JoinHandle(i))
     }
@@ -371,7 +390,9 @@ impl Builder {
 /// Panics if the OS fails to create a thread; use `Builder::spawn`
 /// to recover from such errors.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn spawn<F>(f: F) -> JoinHandle where F: FnOnce(), F: Send + 'static {
+pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
+    F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
+{
     Builder::new().spawn(f).unwrap()
 }
 
@@ -637,9 +658,9 @@ impl<T> JoinInner<T> {
 /// handle: the ability to join a child thread is a uniquely-owned
 /// permission.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct JoinHandle(JoinInner<()>);
+pub struct JoinHandle<T>(JoinInner<T>);
 
-impl JoinHandle {
+impl<T> JoinHandle<T> {
     /// Extract a handle to the underlying thread
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn thread(&self) -> &Thread {
@@ -651,13 +672,14 @@ impl JoinHandle {
     /// If the child thread panics, `Err` is returned with the parameter given
     /// to `panic`.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn join(mut self) -> Result<()> {
+    pub fn join(mut self) -> Result<T> {
         self.0.join()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Drop for JoinHandle {
+#[unsafe_destructor]
+impl<T> Drop for JoinHandle<T> {
     fn drop(&mut self) {
         if !self.0.joined {
             unsafe { imp::detach(self.0.native) }
