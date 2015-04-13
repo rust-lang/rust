@@ -3344,6 +3344,8 @@ pub mod consts {
             pub const _SC_XOPEN_REALTIME : c_int = 130;
             pub const _SC_XOPEN_REALTIME_THREADS : c_int = 131;
 
+
+
             pub const PTHREAD_CREATE_JOINABLE: c_int = 0;
             pub const PTHREAD_CREATE_DETACHED: c_int = 1;
 
@@ -3742,6 +3744,19 @@ pub mod consts {
             pub static _SC_NPROCESSORS_ONLN : c_int = 1;
             pub static _SC_PAGESIZE : c_int = 2;
         }
+
+        #[cfg(target_os = "linux")]
+        pub mod sysconf {
+            use types::os::arch::c95::c_int;
+            pub static _SC_NPROCESSORS_ONLN : c_int = 84;
+        }
+
+        #[cfg(target_os = "macos")]
+        pub mod sysconf {
+            use types::os::arch::c95::c_int;
+            pub static _SC_NPROCESSORS_ONLN : c_int = 58;
+        }
+
         #[cfg(target_os = "android")]
         pub mod sysconf {
             use types::os::arch::c95::c_int;
