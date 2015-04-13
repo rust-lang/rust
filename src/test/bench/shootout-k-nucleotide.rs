@@ -307,17 +307,17 @@ fn main() {
 
     let nb_freqs: Vec<_> = (1..3).map(|i| {
         let input = input.clone();
-        (i, thread::scoped(move|| generate_frequencies(&input, i)))
+        (i, thread::spawn(move|| generate_frequencies(&input, i)))
     }).collect();
     let occ_freqs: Vec<_> = OCCURRENCES.iter().map(|&occ| {
         let input = input.clone();
-        thread::scoped(move|| generate_frequencies(&input, occ.len()))
+        thread::spawn(move|| generate_frequencies(&input, occ.len()))
     }).collect();
 
     for (i, freq) in nb_freqs {
-        print_frequencies(&freq.join(), i);
+        print_frequencies(&freq.join().unwrap(), i);
     }
     for (&occ, freq) in OCCURRENCES.iter().zip(occ_freqs.into_iter()) {
-        print_occurrences(&mut freq.join(), occ);
+        print_occurrences(&mut freq.join().unwrap(), occ);
     }
 }

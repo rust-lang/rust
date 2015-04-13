@@ -10,7 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(core, std_misc)]
+#![feature(core, std_misc, scoped)]
 use std::thread;
 use std::sync::Mutex;
 
@@ -25,7 +25,6 @@ fn par_for<I, F>(iter: I, f: F)
             f(elem)
         })
     }).collect();
-
 }
 
 fn sum(x: &[i32]) {

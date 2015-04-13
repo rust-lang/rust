@@ -27,7 +27,7 @@ fn main(){
     if env::args().count() == 2 {
         let barrier = sync::Arc::new(sync::Barrier::new(2));
         let tbarrier = barrier.clone();
-        let t = thread::scoped(||{
+        let t = thread::spawn(move || {
             tbarrier.wait();
             do_print(1);
         });

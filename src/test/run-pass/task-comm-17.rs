@@ -22,5 +22,5 @@ fn f() {
 }
 
 pub fn main() {
-    let _t = thread::scoped(move|| f() ).join();
+    thread::spawn(move|| f() ).join();
 }
