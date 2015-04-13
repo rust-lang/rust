@@ -116,7 +116,7 @@ impl<T: Send> Error for PoisonError<T> {
 }
 
 impl<T> PoisonError<T> {
-    /// Create a `PoisonError`.
+    /// Creates a `PoisonError`.
     #[unstable(feature = "std_misc")]
     pub fn new(guard: T) -> PoisonError<T> {
         PoisonError { guard: guard }

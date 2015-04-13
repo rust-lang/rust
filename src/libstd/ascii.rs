@@ -23,12 +23,12 @@ use mem;
 #[unstable(feature = "std_misc",
            reason = "would prefer to do this in a more general way")]
 pub trait OwnedAsciiExt {
-    /// Convert the string to ASCII upper case:
+    /// Converts the string to ASCII upper case:
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
     fn into_ascii_uppercase(self) -> Self;
 
-    /// Convert the string to ASCII lower case:
+    /// Converts the string to ASCII lower case:
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
     fn into_ascii_lowercase(self) -> Self;
@@ -41,7 +41,7 @@ pub trait AsciiExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     type Owned;
 
-    /// Check if within the ASCII range.
+    /// Checks if within the ASCII range.
     ///
     /// # Examples
     ///
@@ -95,7 +95,7 @@ pub trait AsciiExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_ascii_lowercase(&self) -> Self::Owned;
 
-    /// Check that two strings are an ASCII case-insensitive match.
+    /// Checks that two strings are an ASCII case-insensitive match.
     ///
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporary strings.
@@ -117,7 +117,7 @@ pub trait AsciiExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn eq_ignore_ascii_case(&self, other: &Self) -> bool;
 
-    /// Convert this type to its ASCII upper case equivalent in-place.
+    /// Converts this type to its ASCII upper case equivalent in-place.
     ///
     /// See `to_ascii_uppercase` for more information.
     ///
@@ -136,7 +136,7 @@ pub trait AsciiExt {
     #[unstable(feature = "ascii")]
     fn make_ascii_uppercase(&mut self);
 
-    /// Convert this type to its ASCII lower case equivalent in-place.
+    /// Converts this type to its ASCII lower case equivalent in-place.
     ///
     /// See `to_ascii_lowercase` for more information.
     ///

@@ -91,7 +91,7 @@ pub trait Iterator {
     #[stable(feature = "rust1", since = "1.0.0")]
     type Item;
 
-    /// Advance the iterator and return the next value. Return `None` when the
+    /// Advances the iterator and returns the next value. Returns `None` when the
     /// end is reached.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next(&mut self) -> Option<Self::Item>;
@@ -670,7 +670,7 @@ pub trait Iterator {
         None
     }
 
-    /// Return the index of the first element satisfying the specified predicate
+    /// Returns the index of the first element satisfying the specified predicate
     ///
     /// Does not consume the iterator past the first found element.
     ///
@@ -698,7 +698,7 @@ pub trait Iterator {
         None
     }
 
-    /// Return the index of the last element satisfying the specified predicate
+    /// Returns the index of the last element satisfying the specified predicate
     ///
     /// If no element matches, None is returned.
     ///
@@ -853,7 +853,7 @@ pub trait Iterator {
         MinMax(min, max)
     }
 
-    /// Return the element that gives the maximum value from the
+    /// Returns the element that gives the maximum value from the
     /// specified function.
     ///
     /// Returns the rightmost element if the comparison determines two elements
@@ -882,7 +882,7 @@ pub trait Iterator {
             .map(|(_, x)| x)
     }
 
-    /// Return the element that gives the minimum value from the
+    /// Returns the element that gives the minimum value from the
     /// specified function.
     ///
     /// Returns the leftmost element if the comparison determines two elements
@@ -1099,7 +1099,7 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
 #[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
                           built from an iterator over elements of type `{A}`"]
 pub trait FromIterator<A> {
-    /// Build a container with elements from something iterable.
+    /// Builds a container with elements from something iterable.
     ///
     /// # Examples
     ///
@@ -1158,7 +1158,7 @@ impl<I: Iterator> IntoIterator for I {
 /// A type growable from an `Iterator` implementation
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Extend<A> {
-    /// Extend a container with the elements yielded by an arbitrary iterator
+    /// Extends a container with the elements yielded by an arbitrary iterator
     #[stable(feature = "rust1", since = "1.0.0")]
     fn extend<T: IntoIterator<Item=A>>(&mut self, iterable: T);
 }
@@ -1170,7 +1170,7 @@ pub trait Extend<A> {
 /// independently of each other.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait DoubleEndedIterator: Iterator {
-    /// Yield an element from the end of the range, returning `None` if the
+    /// Yields an element from the end of the range, returning `None` if the
     /// range is empty.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
@@ -1191,11 +1191,11 @@ impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
            reason = "not widely used, may be better decomposed into Index \
                      and ExactSizeIterator")]
 pub trait RandomAccessIterator: Iterator {
-    /// Return the number of indexable elements. At most `std::usize::MAX`
+    /// Returns the number of indexable elements. At most `std::usize::MAX`
     /// elements are indexable, even if the iterator represents a longer range.
     fn indexable(&self) -> usize;
 
-    /// Return an element at an index, or `None` if the index is out of bounds
+    /// Returns an element at an index, or `None` if the index is out of bounds
     fn idx(&mut self, index: usize) -> Option<Self::Item>;
 }
 
@@ -1210,7 +1210,7 @@ pub trait RandomAccessIterator: Iterator {
 pub trait ExactSizeIterator: Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    /// Return the exact length of the iterator.
+    /// Returns the exact length of the iterator.
     fn len(&self) -> usize {
         let (lower, upper) = self.size_hint();
         // Note: This assertion is overly defensive, but it checks the invariant
@@ -1856,7 +1856,7 @@ impl<I: ExactSizeIterator> ExactSizeIterator for Peekable<I> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator> Peekable<I> {
-    /// Return a reference to the next element of the iterator with out
+    /// Returns a reference to the next element of the iterator with out
     /// advancing it, or None if the iterator is exhausted.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1870,7 +1870,7 @@ impl<I: Iterator> Peekable<I> {
         }
     }
 
-    /// Check whether peekable iterator is empty or not.
+    /// Checks whether peekable iterator is empty or not.
     #[inline]
     pub fn is_empty(&mut self) -> bool {
         self.peek().is_none()
@@ -2401,12 +2401,12 @@ pub trait Step: PartialOrd {
     /// Steps `self` if possible.
     fn step(&self, by: &Self) -> Option<Self>;
 
-    /// The number of steps between two step objects.
+    /// Returns the number of steps between two step objects.
     ///
     /// `start` should always be less than `end`, so the result should never
     /// be negative.
     ///
-    /// Return `None` if it is not possible to calculate steps_between
+    /// Returns `None` if it is not possible to calculate steps_between
     /// without overflow.
     fn steps_between(start: &Self, end: &Self, by: &Self) -> Option<usize>;
 }
@@ -2549,7 +2549,7 @@ pub struct RangeInclusive<A> {
     done: bool,
 }
 
-/// Return an iterator over the range [start, stop]
+/// Returns an iterator over the range [start, stop].
 #[inline]
 #[unstable(feature = "core",
            reason = "likely to be replaced by range notation and adapters")]
@@ -2657,7 +2657,7 @@ pub struct RangeStepInclusive<A> {
     done: bool,
 }
 
-/// Return an iterator over the range [start, stop] by `step`.
+/// Returns an iterator over the range [start, stop] by `step`.
 ///
 /// It handles overflow by stopping.
 ///
@@ -2827,7 +2827,7 @@ type IterateState<T, F> = (F, Option<T>, bool);
 #[unstable(feature = "core")]
 pub type Iterate<T, F> = Unfold<IterateState<T, F>, fn(&mut IterateState<T, F>) -> Option<T>>;
 
-/// Create a new iterator that produces an infinite sequence of
+/// Creates a new iterator that produces an infinite sequence of
 /// repeated applications of the given function `f`.
 #[unstable(feature = "core")]
 pub fn iterate<T, F>(seed: T, f: F) -> Iterate<T, F> where
@@ -2853,7 +2853,7 @@ pub fn iterate<T, F>(seed: T, f: F) -> Iterate<T, F> where
     Unfold::new((f, Some(seed), true), next)
 }
 
-/// Create a new iterator that endlessly repeats the element `elt`.
+/// Creates a new iterator that endlessly repeats the element `elt`.
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
@@ -2940,7 +2940,7 @@ pub mod order {
         }
     }
 
-    /// Compare `a` and `b` for nonequality (Using partial equality, `PartialEq`)
+    /// Compares `a` and `b` for nonequality (Using partial equality, `PartialEq`)
     pub fn ne<L: Iterator, R: Iterator>(mut a: L, mut b: R) -> bool where
         L::Item: PartialEq<R::Item>,
     {
@@ -2953,7 +2953,7 @@ pub mod order {
         }
     }
 
-    /// Return `a` < `b` lexicographically (Using partial order, `PartialOrd`)
+    /// Returns `a` < `b` lexicographically (Using partial order, `PartialOrd`)
     pub fn lt<R: Iterator, L: Iterator>(mut a: L, mut b: R) -> bool where
         L::Item: PartialOrd<R::Item>,
     {
@@ -2967,7 +2967,7 @@ pub mod order {
         }
     }
 
-    /// Return `a` <= `b` lexicographically (Using partial order, `PartialOrd`)
+    /// Returns `a` <= `b` lexicographically (Using partial order, `PartialOrd`)
     pub fn le<L: Iterator, R: Iterator>(mut a: L, mut b: R) -> bool where
         L::Item: PartialOrd<R::Item>,
     {
@@ -2981,7 +2981,7 @@ pub mod order {
         }
     }
 
-    /// Return `a` > `b` lexicographically (Using partial order, `PartialOrd`)
+    /// Returns `a` > `b` lexicographically (Using partial order, `PartialOrd`)
     pub fn gt<L: Iterator, R: Iterator>(mut a: L, mut b: R) -> bool where
         L::Item: PartialOrd<R::Item>,
     {
@@ -2995,7 +2995,7 @@ pub mod order {
         }
     }
 
-    /// Return `a` >= `b` lexicographically (Using partial order, `PartialOrd`)
+    /// Returns `a` >= `b` lexicographically (Using partial order, `PartialOrd`)
     pub fn ge<L: Iterator, R: Iterator>(mut a: L, mut b: R) -> bool where
         L::Item: PartialOrd<R::Item>,
     {

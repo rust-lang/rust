@@ -284,7 +284,7 @@ impl<T: Ord> BTreeSet<T> {
         Union{a: self.iter().peekable(), b: other.iter().peekable()}
     }
 
-    /// Return the number of elements in the set
+    /// Returns the number of elements in the set.
     ///
     /// # Examples
     ///
@@ -299,7 +299,7 @@ impl<T: Ord> BTreeSet<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize { self.map.len() }
 
-    /// Returns true if the set contains no elements
+    /// Returns true if the set contains no elements.
     ///
     /// # Examples
     ///

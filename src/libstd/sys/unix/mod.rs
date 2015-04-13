@@ -85,7 +85,7 @@ pub fn last_gai_error(s: libc::c_int) -> IoError {
     err
 }
 
-/// Convert an `errno` value into a high-level error variant and description.
+/// Converts an `errno` value into a high-level error variant and description.
 #[allow(deprecated)]
 pub fn decode_error(errno: i32) -> IoError {
     // FIXME: this should probably be a bit more descriptive...

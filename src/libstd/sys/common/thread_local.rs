@@ -207,7 +207,7 @@ impl StaticKey {
 }
 
 impl Key {
-    /// Create a new managed OS TLS key.
+    /// Creates a new managed OS TLS key.
     ///
     /// This key will be deallocated when the key falls out of scope.
     ///

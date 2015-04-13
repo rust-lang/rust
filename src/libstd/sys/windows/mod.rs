@@ -95,7 +95,7 @@ pub fn last_gai_error(_errno: i32) -> IoError {
     last_net_error()
 }
 
-/// Convert an `errno` value into a high-level error variant and description.
+/// Converts an `errno` value into a high-level error variant and description.
 #[allow(deprecated)]
 pub fn decode_error(errno: i32) -> IoError {
     let (kind, desc) = match errno {

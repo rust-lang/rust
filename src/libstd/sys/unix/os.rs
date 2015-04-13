@@ -86,7 +86,7 @@ pub fn errno() -> i32 {
     }
 }
 
-/// Get a detailed string description for the given error number
+/// Gets a detailed string description for the given error number.
 pub fn error_string(errno: i32) -> String {
     #[cfg(target_os = "linux")]
     extern {

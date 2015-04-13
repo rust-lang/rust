@@ -38,7 +38,7 @@ pub mod io {
     /// Extract raw handles.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub trait AsRawHandle {
-        /// Extract the raw handle, without taking any ownership.
+        /// Extracts the raw handle, without taking any ownership.
         #[stable(feature = "rust1", since = "1.0.0")]
         fn as_raw_handle(&self) -> RawHandle;
     }
@@ -47,7 +47,7 @@ pub mod io {
     #[unstable(feature = "from_raw_os",
                reason = "recent addition to the std::os::windows::io module")]
     pub trait FromRawHandle {
-        /// Construct a new I/O object from the specified raw handle.
+        /// Constructs a new I/O object from the specified raw handle.
         ///
         /// This function will **consume ownership** of the handle given,
         /// passing responsibility for closing the handle to the returned
@@ -112,7 +112,7 @@ pub mod io {
     /// Extract raw sockets.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub trait AsRawSocket {
-        /// Extract the underlying raw socket from this object.
+        /// Extracts the underlying raw socket from this object.
         #[stable(feature = "rust1", since = "1.0.0")]
         fn as_raw_socket(&self) -> RawSocket;
     }
@@ -214,7 +214,7 @@ pub mod ffi {
     /// Windows-specific extensions to `OsString`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub trait OsStringExt {
-        /// Create an `OsString` from a potentially ill-formed UTF-16 slice of
+        /// Creates an `OsString` from a potentially ill-formed UTF-16 slice of
         /// 16-bit code units.
         ///
         /// This is lossless: calling `.encode_wide()` on the resulting string
@@ -233,7 +233,7 @@ pub mod ffi {
     /// Windows-specific extensions to `OsStr`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub trait OsStrExt {
-        /// Re-encode an `OsStr` as a wide character sequence,
+        /// Re-encodes an `OsStr` as a wide character sequence,
         /// i.e. potentially ill-formed UTF-16.
         ///
         /// This is lossless. Note that the encoding does not include a final
@@ -258,25 +258,25 @@ pub mod fs {
 
     /// Windows-specific extensions to `OpenOptions`
     pub trait OpenOptionsExt {
-        /// Override the `dwDesiredAccess` argument to the call to `CreateFile`
+        /// Overrides the `dwDesiredAccess` argument to the call to `CreateFile`
         /// with the specified value.
         fn desired_access(&mut self, access: i32) -> &mut Self;
 
-        /// Override the `dwCreationDisposition` argument to the call to
+        /// Overrides the `dwCreationDisposition` argument to the call to
         /// `CreateFile` with the specified value.
         ///
         /// This will override any values of the standard `create` flags, for
         /// example.
         fn creation_disposition(&mut self, val: i32) -> &mut Self;
 
-        /// Override the `dwFlagsAndAttributes` argument to the call to
+        /// Overrides the `dwFlagsAndAttributes` argument to the call to
         /// `CreateFile` with the specified value.
         ///
         /// This will override any values of the standard flags on the
         /// `OpenOptions` structure.
         fn flags_and_attributes(&mut self, val: i32) -> &mut Self;
 
-        /// Override the `dwShareMode` argument to the call to `CreateFile` with
+        /// Overrides the `dwShareMode` argument to the call to `CreateFile` with
         /// the specified value.
         ///
         /// This will override any values of the standard flags on the

@@ -347,7 +347,7 @@ impl String {
         String { vec: bytes }
     }
 
-    /// Return the underlying byte buffer, encoded as UTF-8.
+    /// Returns the underlying byte buffer, encoded as UTF-8.
     ///
     /// # Examples
     ///
@@ -363,7 +363,7 @@ impl String {
         self.vec
     }
 
-    /// Extract a string slice containing the entire string.
+    /// Extracts a string slice containing the entire string.
     #[inline]
     #[unstable(feature = "convert",
                reason = "waiting on RFC revision")]
@@ -607,7 +607,7 @@ impl String {
         ch
     }
 
-    /// Insert a character into the string buffer at byte position `idx`.
+    /// Inserts a character into the string buffer at byte position `idx`.
     ///
     /// # Warning
     ///
@@ -662,7 +662,7 @@ impl String {
         &mut self.vec
     }
 
-    /// Return the number of bytes in this string.
+    /// Returns the number of bytes in this string.
     ///
     /// # Examples
     ///
@@ -705,12 +705,12 @@ impl String {
 }
 
 impl FromUtf8Error {
-    /// Consume this error, returning the bytes that were attempted to make a
+    /// Consumes this error, returning the bytes that were attempted to make a
     /// `String` with.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_bytes(self) -> Vec<u8> { self.bytes }
 
-    /// Access the underlying UTF8-error that was the cause of this error.
+    /// Accesss the underlying UTF8-error that was the cause of this error.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn utf8_error(&self) -> Utf8Error { self.error }
 }
@@ -959,7 +959,7 @@ impl<'a> Deref for DerefString<'a> {
     }
 }
 
-/// Convert a string slice to a wrapper type providing a `&String` reference.
+/// Converts a string slice to a wrapper type providing a `&String` reference.
 ///
 /// # Examples
 ///

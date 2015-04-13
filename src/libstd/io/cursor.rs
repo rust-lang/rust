@@ -34,21 +34,21 @@ pub struct Cursor<T> {
 }
 
 impl<T> Cursor<T> {
-    /// Create a new cursor wrapping the provided underlying I/O object.
+    /// Creates a new cursor wrapping the provided underlying I/O object.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(inner: T) -> Cursor<T> {
         Cursor { pos: 0, inner: inner }
     }
 
-    /// Consume this cursor, returning the underlying value.
+    /// Consumes this cursor, returning the underlying value.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> T { self.inner }
 
-    /// Get a reference to the underlying value in this cursor.
+    /// Gets a reference to the underlying value in this cursor.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_ref(&self) -> &T { &self.inner }
 
-    /// Get a mutable reference to the underlying value in this cursor.
+    /// Gets a mutable reference to the underlying value in this cursor.
     ///
     /// Care should be taken to avoid modifying the internal I/O state of the
     /// underlying value as it may corrupt this cursor's position.
