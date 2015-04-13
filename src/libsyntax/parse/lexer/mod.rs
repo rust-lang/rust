@@ -843,12 +843,18 @@ impl<'a> StringReader<'a> {
                                     if ascii_only { "unknown byte escape" }
                                     else { "unknown character escape" },
                                     c);
+                                let sp = codemap::mk_sp(escaped_pos, last_pos);
                                 if e == '\r' {
-                                    let sp = codemap::mk_sp(escaped_pos, last_pos);
                                     self.span_diagnostic.span_help(
                                         sp,
                                         "this is an isolated carriage return; consider checking \
                                          your editor and version control settings")
+                                }
+                                if (e == '{' || e == '}') && !ascii_only {
+                                    self.span_diagnostic.span_help(
+                                        sp,
+                                        "if used in a formatting string, \
+                                        curly braces are escaped with `{{` and `}}`")
                                 }
                                 false
                             }
