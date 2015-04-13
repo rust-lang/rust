@@ -13,11 +13,11 @@
 use std::thread;
 
 fn _foo() {
-    let _t = thread::scoped(move || { // no need for -> ()
+    thread::spawn(move || { // no need for -> ()
         loop {
             println!("hello");
         }
-    });
+    }).join();
 }
 
 fn main() {}

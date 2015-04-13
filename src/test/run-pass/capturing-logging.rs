@@ -36,7 +36,7 @@ impl Logger for MyWriter {
 fn main() {
     let (tx, rx) = channel();
     let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-    let _t = thread::scoped(move|| {
+    let t = thread::spawn(move|| {
         set_logger(box MyWriter(w) as Box<Logger+Send>);
         debug!("debug");
         info!("info");
@@ -44,4 +44,5 @@ fn main() {
     let s = r.read_to_string().unwrap();
     assert!(s.contains("info"));
     assert!(!s.contains("debug"));
+    t.join();
 }

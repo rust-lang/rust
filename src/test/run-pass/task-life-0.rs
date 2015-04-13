@@ -15,7 +15,7 @@
 use std::thread;
 
 pub fn main() {
-    let _t = thread::scoped(move|| child("Hello".to_string()) );
+    thread::spawn(move|| child("Hello".to_string()) ).join();
 }
 
 fn child(_s: String) {
