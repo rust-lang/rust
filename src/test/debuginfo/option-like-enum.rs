@@ -18,13 +18,13 @@
 // gdb-command:run
 
 // gdb-command:print some
-// gdb-check:$1 = {RUST$ENCODED$ENUM$0$None = {0x12345678}}
+// gdb-check:$1 = {RUST$ENCODED$ENUM$0$None = {__0 = 0x12345678}}
 
 // gdb-command:print none
-// gdb-check:$2 = {RUST$ENCODED$ENUM$0$None = {0x0}}
+// gdb-check:$2 = {RUST$ENCODED$ENUM$0$None = {__0 = 0x0}}
 
 // gdb-command:print full
-// gdb-check:$3 = {RUST$ENCODED$ENUM$1$Empty = {454545, 0x87654321, 9988}}
+// gdb-check:$3 = {RUST$ENCODED$ENUM$1$Empty = {__0 = 454545, __1 = 0x87654321, __2 = 9988}}
 
 // gdb-command:print empty_gdb->discr
 // gdb-check:$4 = (isize *) 0x0
@@ -36,10 +36,10 @@
 // gdb-check:$6 = (isize *) 0x0
 
 // gdb-command:print nested_non_zero_yep
-// gdb-check:$7 = {RUST$ENCODED$ENUM$1$2$Nope = {10.5, {a = 10, b = 20, c = [...]}}}
+// gdb-check:$7 = {RUST$ENCODED$ENUM$1$2$Nope = {__0 = 10.5, __1 = {a = 10, b = 20, c = [...]}}}
 
 // gdb-command:print nested_non_zero_nope
-// gdb-check:$8 = {RUST$ENCODED$ENUM$1$2$Nope = {[...], {a = [...], b = [...], c = 0x0}}}
+// gdb-check:$8 = {RUST$ENCODED$ENUM$1$2$Nope = {__0 = [...], __1 = {a = [...], b = [...], c = 0x0}}}
 
 // gdb-command:continue
 

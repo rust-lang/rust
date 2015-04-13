@@ -9,7 +9,7 @@
 # except according to those terms.
 
 import lldb
-
+import re
 
 def print_val(val, internal_dict):
     '''Prints the given value with Rust syntax'''
@@ -61,14 +61,14 @@ def print_struct_val_starting_from(field_start_index, val, internal_dict):
         # The only field of this struct is the enum discriminant
         return type_name
 
-    has_field_names = type_has_field_names(t)
+    is_tuple_like = type_is_tuple_like(t)
 
-    if has_field_names:
-        template = "%(type_name)s {\n%(body)s\n}"
-        separator = ", \n"
-    else:
+    if is_tuple_like:
         template = "%(type_name)s(%(body)s)"
         separator = ", "
+    else:
+        template = "%(type_name)s {\n%(body)s\n}"
+        separator = ", \n"
 
     if type_name.startswith("("):
         # this is a tuple, so don't print the type name
@@ -76,7 +76,7 @@ def print_struct_val_starting_from(field_start_index, val, internal_dict):
 
     def render_child(child_index):
         this = ""
-        if has_field_names:
+        if not is_tuple_like:
             field_name = t.GetFieldAtIndex(child_index).GetName()
             this += field_name + ": "
 
@@ -233,13 +233,15 @@ def extract_type_name(qualified_type_name):
         return qualified_type_name[index + 2:]
 
 
-def type_has_field_names(ty):
+def type_is_tuple_like(ty):
     '''Returns true of this is a type with field names (struct, struct-like enum variant)'''
-    # This may also be an enum variant where the first field doesn't have a name but the rest has
-    if ty.GetNumberOfFields() > 1:
-        return ty.GetFieldAtIndex(1).GetName() is not None
-    else:
-        return ty.GetFieldAtIndex(0).GetName() is not None
+    for field in ty.fields:
+        if field.GetName() == "RUST$ENUM$DISR":
+            # Ignore the enum discriminant field if there is one.
+            continue
+        if (field.GetName() is None) or (re.match(r"__\d+$", field.GetName()) is None):
+            return False
+    return True
 
 
 def is_vec_slice(val):

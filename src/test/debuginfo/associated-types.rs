@@ -30,7 +30,7 @@
 // gdb-command:continue
 
 // gdb-command:print arg
-// gdb-check:$5 = {4, 5}
+// gdb-check:$5 = {__0 = 4, __1 = 5}
 // gdb-command:continue
 
 // gdb-command:print a

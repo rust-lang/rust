@@ -18,13 +18,13 @@
 // gdb-command:run
 
 // gdb-command:print *the_a_ref
-// gdb-check:$1 = {{RUST$ENUM$DISR = TheA, x = 0, y = 8970181431921507452}, {RUST$ENUM$DISR = TheA, 0, 2088533116, 2088533116}}
+// gdb-check:$1 = {{RUST$ENUM$DISR = TheA, x = 0, y = 8970181431921507452}, {RUST$ENUM$DISR = TheA, __0 = 0, __1 = 2088533116, __2 = 2088533116}}
 
 // gdb-command:print *the_b_ref
-// gdb-check:$2 = {{RUST$ENUM$DISR = TheB, x = 0, y = 1229782938247303441}, {RUST$ENUM$DISR = TheB, 0, 286331153, 286331153}}
+// gdb-check:$2 = {{RUST$ENUM$DISR = TheB, x = 0, y = 1229782938247303441}, {RUST$ENUM$DISR = TheB, __0 = 0, __1 = 286331153, __2 = 286331153}}
 
 // gdb-command:print *univariant_ref
-// gdb-check:$3 = {{4820353753753434}}
+// gdb-check:$3 = {{__0 = 4820353753753434}}
 
 
 // === LLDB TESTS ==================================================================================

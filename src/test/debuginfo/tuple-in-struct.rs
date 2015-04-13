@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 // min-lldb-version: 310
 
 // compile-flags:-g
@@ -15,29 +17,29 @@
 // gdb-command:run
 
 // gdb-command:print no_padding1
-// gdb-check:$1 = {x = {0, 1}, y = 2, z = {3, 4, 5}}
+// gdb-check:$1 = {x = {__0 = 0, __1 = 1}, y = 2, z = {__0 = 3, __1 = 4, __2 = 5}}
 // gdb-command:print no_padding2
-// gdb-check:$2 = {x = {6, 7}, y = {{8, 9}, 10}}
+// gdb-check:$2 = {x = {__0 = 6, __1 = 7}, y = {__0 = {__0 = 8, __1 = 9}, __1 = 10}}
 
 // gdb-command:print tuple_internal_padding
-// gdb-check:$3 = {x = {11, 12}, y = {13, 14}}
+// gdb-check:$3 = {x = {__0 = 11, __1 = 12}, y = {__0 = 13, __1 = 14}}
 // gdb-command:print struct_internal_padding
-// gdb-check:$4 = {x = {15, 16}, y = {17, 18}}
+// gdb-check:$4 = {x = {__0 = 15, __1 = 16}, y = {__0 = 17, __1 = 18}}
 // gdb-command:print both_internally_padded
-// gdb-check:$5 = {x = {19, 20, 21}, y = {22, 23}}
+// gdb-check:$5 = {x = {__0 = 19, __1 = 20, __2 = 21}, y = {__0 = 22, __1 = 23}}
 
 // gdb-command:print single_tuple
-// gdb-check:$6 = {x = {24, 25, 26}}
+// gdb-check:$6 = {x = {__0 = 24, __1 = 25, __2 = 26}}
 
 // gdb-command:print tuple_padded_at_end
-// gdb-check:$7 = {x = {27, 28}, y = {29, 30}}
+// gdb-check:$7 = {x = {__0 = 27, __1 = 28}, y = {__0 = 29, __1 = 30}}
 // gdb-command:print struct_padded_at_end
-// gdb-check:$8 = {x = {31, 32}, y = {33, 34}}
+// gdb-check:$8 = {x = {__0 = 31, __1 = 32}, y = {__0 = 33, __1 = 34}}
 // gdb-command:print both_padded_at_end
-// gdb-check:$9 = {x = {35, 36, 37}, y = {38, 39}}
+// gdb-check:$9 = {x = {__0 = 35, __1 = 36, __2 = 37}, y = {__0 = 38, __1 = 39}}
 
 // gdb-command:print mixed_padding
-// gdb-check:$10 = {x = {{40, 41, 42}, {43, 44}}, y = {45, 46, 47, 48}}
+// gdb-check:$10 = {x = {__0 = {__0 = 40, __1 = 41, __2 = 42}, __1 = {__0 = 43, __1 = 44}}, y = {__0 = 45, __1 = 46, __2 = 47, __3 = 48}}
 
 #![allow(unused_variables)]
 #![omit_gdb_pretty_printer_section]

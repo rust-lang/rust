@@ -17,13 +17,13 @@
 // gdb-command:run
 
 // gdb-command:print *stack_val_ref
-// gdb-check:$1 = {-14, -19}
+// gdb-check:$1 = {__0 = -14, __1 = -19}
 
 // gdb-command:print *ref_to_unnamed
-// gdb-check:$2 = {-15, -20}
+// gdb-check:$2 = {__0 = -15, __1 = -20}
 
 // gdb-command:print *unique_val_ref
-// gdb-check:$3 = {-17, -22}
+// gdb-check:$3 = {__0 = -17, __1 = -22}
 
 
 // === LLDB TESTS ==================================================================================
