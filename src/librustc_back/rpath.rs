@@ -97,8 +97,9 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig, lib: &Path) -> String 
     let cwd = env::current_dir().unwrap();
     let mut lib = (config.realpath)(&cwd.join(lib)).unwrap();
     lib.pop();
-    let mut output = (config.realpath)(&cwd.join(&config.out_filename)).unwrap();
+    let mut output = cwd.join(&config.out_filename);
     output.pop();
+    let output = (config.realpath)(&output).unwrap();
     let relative = path_relative_from(&lib, &output)
         .expect(&format!("couldn't create relative path from {:?} to {:?}", output, lib));
     // FIXME (#9639): This needs to handle non-utf8 paths

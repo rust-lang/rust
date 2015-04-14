@@ -43,7 +43,6 @@ pub trait Stats <T: Float + FromPrimitive> {
     /// Depends on IEEE-754 arithmetic guarantees. See proof of correctness at:
     /// ["Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric Predicates"]
     /// (http://www.cs.cmu.edu/~quake-papers/robust-arithmetic.ps)
-    /// *Discrete & Computational Geometry 18*, 3 (Oct 1997), 305-363, Shewchuk J.R.
     fn sum(&self) -> T;
 
     /// Minimum value of the samples.
@@ -334,8 +333,9 @@ pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
 mod tests {
     use stats::Stats;
     use stats::Summary;
-    use std::old_io::{self, Writer};
     use std::f64;
+    use std::io::prelude::*;
+    use std::io;
 
     macro_rules! assert_approx_eq {
         ($a:expr, $b:expr) => ({
@@ -350,7 +350,7 @@ mod tests {
 
         let summ2 = Summary::new(samples);
 
-        let mut w = old_io::stdout();
+        let mut w = io::sink();
         let w = &mut w;
         (write!(w, "\n")).unwrap();
 

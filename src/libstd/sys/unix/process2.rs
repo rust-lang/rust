@@ -328,8 +328,8 @@ impl Process {
         }) {
             n if n == self.pid => Some(translate_status(status)),
             0 => None,
-            n => panic!("unknown waitpid error `{:?}`: {:?}", n,
-                       super::last_error()),
+            n => panic!("unknown waitpid error `{}`: {}", n,
+                       io::Error::last_os_error()),
         }
     }
 }

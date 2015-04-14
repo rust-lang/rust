@@ -35,17 +35,16 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(old_fs)]
-#![feature(old_io)]
-#![feature(old_path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(rand)]
 #![feature(path_ext)]
 #![feature(step_by)]
+#![feature(libc)]
 #![cfg_attr(test, feature(test, rand))]
 
 extern crate syntax;
+extern crate libc;
 extern crate serialize;
 #[macro_use] extern crate log;
 

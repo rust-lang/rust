@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(old_io, io)]
-
 fn main() {
-    let _ = std::old_io::stdin();
     let _ = std::io::stdin();
+    let _ = std::io::stdout();
+    let _ = std::io::stderr();
 }

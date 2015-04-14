@@ -16,7 +16,7 @@
 
 use std::f32::consts::PI;
 use std::num::Float;
-use std::rand::{Rng, StdRng};
+use std::__rand::{Rng, thread_rng};
 
 #[derive(Copy, Clone)]
 struct Vec2 {
@@ -44,7 +44,7 @@ struct Noise2DContext {
 
 impl Noise2DContext {
     fn new() -> Noise2DContext {
-        let mut rng = StdRng::new().unwrap();
+        let mut rng = thread_rng();
 
         let mut rgradients = [Vec2 { x: 0.0, y: 0.0 }; 256];
         for x in &mut rgradients[..] {

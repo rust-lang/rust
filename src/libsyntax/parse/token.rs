@@ -23,10 +23,7 @@ use util::interner;
 
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
-use std::mem;
 use std::ops::Deref;
-#[allow(deprecated)]
-use std::old_path::BytesContainer;
 use std::rc::Rc;
 
 #[allow(non_camel_case_types)]
@@ -637,19 +634,6 @@ impl Deref for InternedString {
     type Target = str;
 
     fn deref(&self) -> &str { &*self.string }
-}
-
-#[allow(deprecated)]
-impl BytesContainer for InternedString {
-    fn container_as_bytes<'a>(&'a self) -> &'a [u8] {
-        // FIXME #12938: This is a workaround for the incorrect signature
-        // of `BytesContainer`, which is itself a workaround for the lack of
-        // DST.
-        unsafe {
-            let this = &self[..];
-            mem::transmute::<&[u8],&[u8]>(this.container_as_bytes())
-        }
-    }
 }
 
 impl fmt::Debug for InternedString {

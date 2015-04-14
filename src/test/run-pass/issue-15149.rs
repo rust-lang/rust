@@ -10,14 +10,15 @@
 
 // no-prefer-dynamic
 
+#![feature(rustc_private)]
 
-#![feature(fs, process, env, path, rand)]
+extern crate rustc_back;
 
 use std::env;
 use std::fs;
 use std::process;
-use std::rand::random;
 use std::str;
+use rustc_back::tempdir::TempDir;
 
 fn main() {
     // If we're the child, make sure we were invoked correctly
@@ -27,7 +28,8 @@ fn main() {
         // checking that it ends_with the executable name. This
         // is needed because of Windows, which has a different behavior.
         // See #15149 for more info.
-        return assert!(args[0].ends_with(&format!("mytest{}", env::consts::EXE_SUFFIX)));
+        return assert!(args[0].ends_with(&format!("mytest{}",
+                                                  env::consts::EXE_SUFFIX)));
     }
 
     test();
@@ -38,9 +40,8 @@ fn test() {
     let my_path = env::current_exe().unwrap();
     let my_dir  = my_path.parent().unwrap();
 
-    let random_u32: u32 = random();
-    let child_dir = my_dir.join(&format!("issue-15149-child-{}", random_u32));
-    fs::create_dir(&child_dir).unwrap();
+    let child_dir = TempDir::new_in(&my_dir, "issue-15140-child").unwrap();
+    let child_dir = child_dir.path();
 
     let child_path = child_dir.join(&format!("mytest{}",
                                              env::consts::EXE_SUFFIX));

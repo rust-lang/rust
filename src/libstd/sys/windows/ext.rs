@@ -24,9 +24,6 @@ pub mod io {
     use sys_common::{net2, AsInner, FromInner};
     use sys;
 
-    #[allow(deprecated)]
-    use old_io;
-
     /// Raw HANDLEs.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub type RawHandle = libc::HANDLE;
@@ -61,14 +58,6 @@ pub mod io {
         unsafe fn from_raw_handle(handle: RawHandle) -> Self;
     }
 
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawHandle for old_io::fs::File {
-        fn as_raw_handle(&self) -> RawHandle {
-            self.as_inner().handle()
-        }
-    }
-
     #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawHandle for fs::File {
         fn as_raw_handle(&self) -> RawHandle {
@@ -80,38 +69,6 @@ pub mod io {
     impl FromRawHandle for fs::File {
         unsafe fn from_raw_handle(handle: RawHandle) -> fs::File {
             fs::File::from_inner(sys::fs2::File::from_inner(handle))
-        }
-    }
-
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawHandle for old_io::pipe::PipeStream {
-        fn as_raw_handle(&self) -> RawHandle {
-            self.as_inner().handle()
-        }
-    }
-
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawHandle for old_io::net::pipe::UnixStream {
-        fn as_raw_handle(&self) -> RawHandle {
-            self.as_inner().handle()
-        }
-    }
-
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawHandle for old_io::net::pipe::UnixListener {
-        fn as_raw_handle(&self) -> RawHandle {
-            self.as_inner().handle()
-        }
-    }
-
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawHandle for old_io::net::pipe::UnixAcceptor {
-        fn as_raw_handle(&self) -> RawHandle {
-            self.as_inner().handle()
         }
     }
 
@@ -137,38 +94,6 @@ pub mod io {
         /// accidentally allow violating this contract which can cause memory
         /// unsafety in code that relies on it being true.
         unsafe fn from_raw_socket(sock: RawSocket) -> Self;
-    }
-
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawSocket for old_io::net::tcp::TcpStream {
-        fn as_raw_socket(&self) -> RawSocket {
-            self.as_inner().fd()
-        }
-    }
-
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawSocket for old_io::net::tcp::TcpListener {
-        fn as_raw_socket(&self) -> RawSocket {
-            self.as_inner().socket()
-        }
-    }
-
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawSocket for old_io::net::tcp::TcpAcceptor {
-        fn as_raw_socket(&self) -> RawSocket {
-            self.as_inner().socket()
-        }
-    }
-
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawSocket for old_io::net::udp::UdpSocket {
-        fn as_raw_socket(&self) -> RawSocket {
-            self.as_inner().fd()
-        }
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
