@@ -50,7 +50,7 @@ Next we'll want to get the sourcecode from Github.
 $ git clone --recursive https://github.com/brson/multirust
 ```
 
-We will then move to the new mulirust directory.
+We will then move to the new multirust directory.
 
 ```bash
 $ cd ./rust/multirust
@@ -68,10 +68,11 @@ And finally we will install 'multirust' which will handle the installation of Ru
 ```bash
 ./build.sh && sudo ./install.sh
 ```
+See [multirust](../doc/trpl/multirust_advsetup.md) advanced setup for toolchain configuration options and everything you ever wanted to know and more about multirust.
 
 Otherwise if you are working on your own machine and trust the development team.
 
-Install multiboot via
+Install multirust via
 
 ```bash
 $ sudo curl -sf https://raw.githubusercontent.com/brson/multirust/master/blastoff.sh | sh
@@ -86,8 +87,7 @@ $ curl -sf -L https://static.rust-lang.org/rustup.sh | sudo sh
 
 If you decide you don't want Rust anymore, we'll make sure to keep your seat warm until you get back.
 
-If you used the Windows installer, just re-run the `.msi` and it will give you
-an uninstall option.
+If you used the Windows installer, just re-run the `.msi` and it will give you an uninstall option.
 
 If you maintain your Rust installation via multirust uninstall is simple.
 
@@ -100,13 +100,23 @@ $ sudo ./install.sh --uninstall
 Upgrading to the latest nightly is easy!
 
 For multirust:
+
 ```bash
 $ multirust upgrade nightly
 ```
+Note: We recommend the beta unless you absolutely need features in the nightly.
 
 For source/direct installation upgrades 
+
 ```bash
+#Hopefully deprecated by launch
 $ curl -sf -L https://static.rust-lang.org/rustup.sh | sudo sh
+```
+If you didn't install multirust and want to get the current nightly.
+(Please just get multirust instead of doing this, it will make it way simpler to debug when you can cross compile with different versions of nightlies.)
+
+```bash
+$ curl -sf -L https://static.rustlang.org/rustup.sh | sudo sh -s -- --channel=nightly
 ```
 
 To test if installation was successful use:
