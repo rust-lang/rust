@@ -132,7 +132,7 @@ impl String {
     ///
     /// let invalid_vec = vec![240, 144, 128];
     /// let s = String::from_utf8(invalid_vec).err().unwrap();
-    /// assert_eq!(s.utf8_error(), Utf8Error::TooShort);
+    /// let err = s.utf8_error();
     /// assert_eq!(s.into_bytes(), [240, 144, 128]);
     /// ```
     #[inline]
@@ -156,14 +156,10 @@ impl String {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> Cow<'a, str> {
-        let mut i = 0;
+        let mut i;
         match str::from_utf8(v) {
             Ok(s) => return Cow::Borrowed(s),
-            Err(e) => {
-                if let Utf8Error::InvalidByte(firstbad) = e {
-                    i = firstbad;
-                }
-            }
+            Err(e) => i = e.valid_up_to(),
         }
 
         const TAG_CONT_U8: u8 = 128;
@@ -188,9 +184,9 @@ impl String {
             };
         }
 
-        // subseqidx is the index of the first byte of the subsequence we're looking at.
-        // It's used to copy a bunch of contiguous good codepoints at once instead of copying
-        // them one by one.
+        // subseqidx is the index of the first byte of the subsequence we're
+        // looking at.  It's used to copy a bunch of contiguous good codepoints
+        // at once instead of copying them one by one.
         let mut subseqidx = i;
 
         while i < total {
