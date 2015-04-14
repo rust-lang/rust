@@ -232,7 +232,7 @@ macro_rules! signed_overflowing_impl {
             #[inline(always)]
             fn overflowing_div(self, rhs: $t) -> ($t, bool) {
                 if self == $t::MIN && rhs == -1 {
-                    (1, true)
+                    (self, true)
                 } else {
                     (self/rhs, false)
                 }
