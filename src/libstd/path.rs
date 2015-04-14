@@ -1570,7 +1570,7 @@ impl Path {
     /// # Examples
     ///
     /// ```
-    /// use std::path::Path;
+    /// use std::path::{Path, PathBuf};
     ///
     /// let path = Path::new("/tmp/foo.rs");
     ///
