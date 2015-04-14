@@ -131,6 +131,26 @@ let Irrefutable(x) = irr;
 foo(x);
 "##,
 
+E0165: r##"
+A while-let pattern attempts to match the pattern, and enters the body if the
+match was succesful. If the match is irrefutable (when it cannot fail to match),
+use a regular `let`-binding inside a `loop` instead. For instance:
+
+struct Irrefutable(i32);
+let irr = Irrefutable(0);
+
+// This fails to compile because the match is irrefutable.
+while let Irrefutable(x) = irr {
+    ...
+}
+
+// Try this instead:
+loop {
+    let Irrefutable(x) = irr;
+    ...
+}
+"##,
+
 E0297: r##"
 Patterns used to bind names must be irrefutable. That is, they must guarantee
 that a name will be extracted in all cases. Instead of pattern matching the
@@ -239,7 +259,6 @@ register_diagnostics! {
     E0152,
     E0158,
     E0161,
-    E0165,
     E0170,
     E0261, // use of undeclared lifetime name
     E0262, // illegal lifetime parameter name
