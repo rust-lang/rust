@@ -32,7 +32,7 @@ so; while on Unix, ordinary users can create symlinks, and any additional
 security policy (such as [Grsecurity][2]) generally restricts
 whether applications follow symlinks, not whether a user can create them.
 
-[1]: (https://technet.microsoft.com/en-us/library/cc766301%28WS.10%29.aspx) in order to be able to do
+[1]: https://technet.microsoft.com/en-us/library/cc766301%28WS.10%29.aspx
 [2]: https://en.wikibooks.org/wiki/Grsecurity/Appendix/Grsecurity_and_PaX_Configuration_Options#Linking_restrictions
 
 Thus, there needs to be a way to distinguish between the two operations on
