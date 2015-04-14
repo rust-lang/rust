@@ -5,5 +5,5 @@
 -include ../tools.mk
 
 all:
-	$(RUSTC) -o $(TMPDIR)/hello -Z trace-macros hello.rs &> $(TMPDIR)/hello.trace
+	$(RUSTC) -Z trace-macros hello.rs &> $(TMPDIR)/hello.trace
 	diff -u $(TMPDIR)/hello.trace hello.trace
