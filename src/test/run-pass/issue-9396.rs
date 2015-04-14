@@ -13,7 +13,7 @@ use std::thread;
 
 pub fn main() {
     let (tx, rx) = channel();
-    let _t = thread::scoped(move||{
+    let t = thread::spawn(move||{
         thread::sleep_ms(10);
         tx.send(()).unwrap();
     });
@@ -24,4 +24,5 @@ pub fn main() {
             Err(TryRecvError::Disconnected) => unreachable!()
         }
     }
+    t.join();
 }

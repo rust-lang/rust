@@ -22,8 +22,8 @@ struct Pair {
 pub fn main() {
     let z: Box<_> = box Pair { a : 10, b : 12};
 
-    let _t = thread::scoped(move|| {
+    thread::spawn(move|| {
         assert_eq!(z.a, 10);
         assert_eq!(z.b, 12);
-    });
+    }).join();
 }

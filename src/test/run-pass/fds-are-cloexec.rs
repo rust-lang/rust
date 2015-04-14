@@ -34,14 +34,12 @@ fn main() {
 
 fn parent() {
     let file = File::open("Makefile").unwrap();
-    let _dir = fs::read_dir("/").unwrap();
     let tcp1 = TcpListener::bind("127.0.0.1:0").unwrap();
-    assert_eq!(tcp1.as_raw_fd(), file.as_raw_fd() + 2);
     let tcp2 = tcp1.try_clone().unwrap();
     let addr = tcp1.local_addr().unwrap();
-    let t = thread::scoped(|| TcpStream::connect(addr).unwrap());
+    let t = thread::spawn(move || TcpStream::connect(addr).unwrap());
     let tcp3 = tcp1.accept().unwrap().0;
-    let tcp4 = t.join();
+    let tcp4 = t.join().unwrap();
     let tcp5 = tcp3.try_clone().unwrap();
     let tcp6 = tcp4.try_clone().unwrap();
     let udp1 = UdpSocket::bind("127.0.0.1:0").unwrap();
@@ -49,7 +47,6 @@ fn parent() {
 
     let status = Command::new(env::args().next().unwrap())
                         .arg(file.as_raw_fd().to_string())
-                        .arg((file.as_raw_fd() + 1).to_string())
                         .arg(tcp1.as_raw_fd().to_string())
                         .arg(tcp2.as_raw_fd().to_string())
                         .arg(tcp3.as_raw_fd().to_string())

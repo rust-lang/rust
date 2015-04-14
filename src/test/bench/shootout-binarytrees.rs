@@ -111,11 +111,11 @@ fn main() {
     let messages = (min_depth..max_depth + 1).step_by(2).map(|depth| {
         use std::num::Int;
         let iterations = 2.pow((max_depth - depth + min_depth) as u32);
-        thread::scoped(move || inner(depth, iterations))
+        thread::spawn(move || inner(depth, iterations))
     }).collect::<Vec<_>>();
 
     for message in messages {
-        println!("{}", message.join());
+        println!("{}", message.join().unwrap());
     }
 
     println!("long lived tree of depth {}\t check: {}",
