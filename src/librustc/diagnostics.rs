@@ -126,6 +126,24 @@ attributes:
 See also https://doc.rust-lang.org/book/no-stdlib.html
 "##,
 
+E0158: r##"
+`const` and `static` mean different things. A `const` is a compile-time
+constant, an alias for a literal value. This property means you can match it
+directly within a pattern.
+
+The `static` keyword, on the other hand, guarantees a fixed location in memory.
+This does not always mean that the value is constant. For example, a global
+mutex can be declared `static` as well.
+
+If you want to match against a `static`, consider using a guard instead:
+
+static FORTY_TWO: i32 = 42;
+match Some(42) {
+    Some(x) if x == FORTY_TWO => ...
+    ...
+}
+"##,
+
 E0162: r##"
 An if-let pattern attempts to match the pattern, and enters the body if the
 match was succesful. If the match is irrefutable (when it cannot fail to match),
@@ -270,7 +288,6 @@ register_diagnostics! {
     E0137,
     E0138,
     E0139,
-    E0158,
     E0161,
     E0170,
     E0261, // use of undeclared lifetime name
