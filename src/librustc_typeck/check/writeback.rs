@@ -92,10 +92,10 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     // operating on scalars, we clear the overload.
     fn fix_scalar_binary_expr(&mut self, e: &ast::Expr) {
         if let ast::ExprBinary(ref op, ref lhs, ref rhs) = e.node {
-            let lhs_ty = self.fcx.expr_ty(lhs.id);
+            let lhs_ty = self.fcx.node_ty(lhs.id);
             let lhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
 
-            let rhs_ty = self.fcx.expr_ty(rhs.id);
+            let rhs_ty = self.fcx.node_ty(rhs.id);
             let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
 
             if ty::type_is_scalar(lhs_ty) && ty::type_is_scalar(rhs_ty) {
