@@ -322,7 +322,17 @@ pub fn evaluate_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
     // anyhow).
     let cause = ObligationCause::misc(span, ast::DUMMY_NODE_ID);
 
-    fulfill_cx.register_builtin_bound(infcx, ty, bound, cause);
+    // Relax region constraints that result from trait selection by
+    // inserting an inference variable.  This mimics the behavior
+    // of method confirmation where fresh inference variables are
+    // substituted into the method self type, which is then unified
+    // with the adjusted receiver type and handed to trait selection.
+    let relax_ty = infcx.next_ty_var();
+    try!(infcx.sub_types(false, infer::Misc(span), ty, relax_ty).map_err(|_| Unimplemented));
+    let relax_ty = infcx.resolve_type_vars_if_possible(&relax_ty);
+    debug!("relax_ty: {}", relax_ty.repr(infcx.tcx));
+
+    fulfill_cx.register_builtin_bound(infcx, relax_ty, bound, cause);
 
     // Note: we only assume something is `Copy` if we can
     // *definitively* show that it implements `Copy`. Otherwise,
