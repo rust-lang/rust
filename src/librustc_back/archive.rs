@@ -11,13 +11,14 @@
 //! A helper class for dealing with static archives
 
 use std::env;
-use std::fs;
+use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 use std::str;
 use syntax::diagnostic::Handler as ErrorHandler;
+use rustc_llvm::archive_ro::ArchiveRO;
 
 use tempdir::TempDir;
 
@@ -282,17 +283,14 @@ impl<'a> ArchiveBuilder<'a> {
                       mut skip: F) -> io::Result<()>
         where F: FnMut(&str) -> bool,
     {
-        let loc = TempDir::new("rsar").unwrap();
-
-        // First, extract the contents of the archive to a temporary directory.
-        // We don't unpack directly into `self.work_dir` due to the possibility
-        // of filename collisions.
-        let archive = env::current_dir().unwrap().join(archive);
-        run_ar(self.archive.handler, &self.archive.maybe_ar_prog,
-               "x", Some(loc.path()), &[&archive]);
+        let archive = match ArchiveRO::open(archive) {
+            Some(ar) => ar,
+            None => return Err(io::Error::new(io::ErrorKind::Other,
+                                              "failed to open archive")),
+        };
 
         // Next, we must rename all of the inputs to "guaranteed unique names".
-        // We move each file into `self.work_dir` under its new unique name.
+        // We write each file into `self.work_dir` under its new unique name.
         // The reason for this renaming is that archives are keyed off the name
         // of the files, so if two files have the same name they will override
         // one another in the archive (bad).
@@ -300,27 +298,46 @@ impl<'a> ArchiveBuilder<'a> {
         // We skip any files explicitly desired for skipping, and we also skip
         // all SYMDEF files as these are just magical placeholders which get
         // re-created when we make a new archive anyway.
-        let files = try!(fs::read_dir(loc.path()));
-        for file in files {
-            let file = try!(file).path();
-            let filename = file.file_name().unwrap().to_str().unwrap();
-            if skip(filename) { continue }
-            if filename.contains(".SYMDEF") { continue }
-
-            let filename = format!("r-{}-{}", name, filename);
-            // LLDB (as mentioned in back::link) crashes on filenames of exactly
-            // 16 bytes in length. If we're including an object file with
-            // exactly 16-bytes of characters, give it some prefix so that it's
-            // not 16 bytes.
-            let filename = if filename.len() == 16 {
-                format!("lldb-fix-{}", filename)
-            } else {
-                filename
+        for file in archive.iter() {
+            let filename = match file.name() {
+                Some(s) => s,
+                None => continue,
             };
-            let new_filename = self.work_dir.path().join(&filename[..]);
-            try!(fs::rename(&file, &new_filename));
-            self.members.push(PathBuf::from(filename));
+            if filename.contains(".SYMDEF") { continue }
+            if skip(filename) { continue }
+
+            // An archive can contain files of the same name multiple times, so
+            // we need to be sure to not have them overwrite one another when we
+            // extract them. Consequently we need to find a truly unique file
+            // name for us!
+            let mut new_filename = String::new();
+            for n in 0.. {
+                let n = if n == 0 {String::new()} else {format!("-{}", n)};
+                new_filename = format!("r{}-{}-{}", n, name, filename);
+
+                // LLDB (as mentioned in back::link) crashes on filenames of
+                // exactly
+                // 16 bytes in length. If we're including an object file with
+                //    exactly 16-bytes of characters, give it some prefix so
+                //    that it's not 16 bytes.
+                new_filename = if new_filename.len() == 16 {
+                    format!("lldb-fix-{}", new_filename)
+                } else {
+                    new_filename
+                };
+
+                let present = self.members.iter().filter_map(|p| {
+                    p.file_name().and_then(|f| f.to_str())
+                }).any(|s| s == new_filename);
+                if !present {
+                    break
+                }
+            }
+            let dst = self.work_dir.path().join(&new_filename);
+            try!(try!(File::create(&dst)).write_all(file.data()));
+            self.members.push(PathBuf::from(new_filename));
         }
+
         Ok(())
     }
 }
