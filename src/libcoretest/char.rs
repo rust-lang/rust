@@ -209,30 +209,3 @@ fn test_len_utf16() {
     assert!('\u{a66e}'.len_utf16() == 1);
     assert!('\u{1f4a9}'.len_utf16() == 2);
 }
-
-#[test]
-fn test_width() {
-    assert_eq!('\x00'.width(false),Some(0));
-    assert_eq!('\x00'.width(true),Some(0));
-
-    assert_eq!('\x0A'.width(false),None);
-    assert_eq!('\x0A'.width(true),None);
-
-    assert_eq!('w'.width(false),Some(1));
-    assert_eq!('w'.width(true),Some(1));
-
-    assert_eq!('ｈ'.width(false),Some(2));
-    assert_eq!('ｈ'.width(true),Some(2));
-
-    assert_eq!('\u{AD}'.width(false),Some(1));
-    assert_eq!('\u{AD}'.width(true),Some(1));
-
-    assert_eq!('\u{1160}'.width(false),Some(0));
-    assert_eq!('\u{1160}'.width(true),Some(0));
-
-    assert_eq!('\u{a1}'.width(false),Some(1));
-    assert_eq!('\u{a1}'.width(true),Some(2));
-
-    assert_eq!('\u{300}'.width(false),Some(0));
-    assert_eq!('\u{300}'.width(true),Some(0));
-}

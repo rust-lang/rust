@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2011-2013 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2011-2015 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -13,7 +13,6 @@
 # This script uses the following Unicode tables:
 # - DerivedCoreProperties.txt
 # - DerivedNormalizationProps.txt
-# - EastAsianWidth.txt
 # - auxiliary/GraphemeBreakProperty.txt
 # - PropList.txt
 # - ReadMe.txt
@@ -236,43 +235,6 @@ def load_properties(f, interestingprops):
         props[prop].append((d_lo, d_hi))
     return props
 
-# load all widths of want_widths, except those in except_cats
-def load_east_asian_width(want_widths, except_cats):
-    f = "EastAsianWidth.txt"
-    fetch(f)
-    widths = {}
-    re1 = re.compile("^([0-9A-F]+);(\w+) +# (\w+)")
-    re2 = re.compile("^([0-9A-F]+)\.\.([0-9A-F]+);(\w+) +# (\w+)")
-
-    for line in fileinput.input(f):
-        width = None
-        d_lo = 0
-        d_hi = 0
-        cat = None
-        m = re1.match(line)
-        if m:
-            d_lo = m.group(1)
-            d_hi = m.group(1)
-            width = m.group(2)
-            cat = m.group(3)
-        else:
-            m = re2.match(line)
-            if m:
-                d_lo = m.group(1)
-                d_hi = m.group(2)
-                width = m.group(3)
-                cat = m.group(4)
-            else:
-                continue
-        if cat in except_cats or width not in want_widths:
-            continue
-        d_lo = int(d_lo, 16)
-        d_hi = int(d_hi, 16)
-        if width not in widths:
-            widths[width] = []
-        widths[width].append((d_lo, d_hi))
-    return widths
-
 def escape_char(c):
     return "'\\u{%x}'" % c
 
@@ -395,48 +357,6 @@ def emit_grapheme_module(f, grapheme_table, grapheme_cats):
         is_pub=False)
     f.write("}\n")
 
-def emit_charwidth_module(f, width_table):
-    f.write("pub mod charwidth {\n")
-    f.write("    use core::option::Option;\n")
-    f.write("    use core::option::Option::{Some, None};\n")
-    f.write("    use core::slice::SliceExt;\n")
-    f.write("    use core::result::Result::{Ok, Err};\n")
-    f.write("""
-    fn bsearch_range_value_table(c: char, is_cjk: bool, r: &'static [(char, char, u8, u8)]) -> u8 {
-        use core::cmp::Ordering::{Equal, Less, Greater};
-        match r.binary_search_by(|&(lo, hi, _, _)| {
-            if lo <= c && c <= hi { Equal }
-            else if hi < c { Less }
-            else { Greater }
-        }) {
-            Ok(idx) => {
-                let (_, _, r_ncjk, r_cjk) = r[idx];
-                if is_cjk { r_cjk } else { r_ncjk }
-            }
-            Err(_) => 1
-        }
-    }
-""")
-
-    f.write("""
-    pub fn width(c: char, is_cjk: bool) -> Option<usize> {
-        match c as usize {
-            _c @ 0 => Some(0),          // null is zero width
-            cu if cu < 0x20 => None,    // control sequences have no width
-            cu if cu < 0x7F => Some(1), // ASCII
-            cu if cu < 0xA0 => None,    // more control sequences
-            _ => Some(bsearch_range_value_table(c, is_cjk, charwidth_table) as usize)
-        }
-    }
-
-""")
-
-    f.write("    // character width table. Based on Markus Kuhn's free wcwidth() implementation,\n")
-    f.write("    //     http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c\n")
-    emit_table(f, "charwidth_table", width_table, "&'static [(char, char, u8, u8)]", is_pub=False,
-            pfun=lambda x: "(%s,%s,%s,%s)" % (escape_char(x[0]), escape_char(x[1]), x[2], x[3]))
-    f.write("}\n\n")
-
 def emit_norm_module(f, canon, compat, combine, norm_props):
     canon_keys = canon.keys()
     canon_keys.sort()
@@ -527,43 +447,6 @@ def emit_norm_module(f, canon, compat, combine, norm_props):
 
 """)
 
-def remove_from_wtable(wtable, val):
-    wtable_out = []
-    while wtable:
-        if wtable[0][1] < val:
-            wtable_out.append(wtable.pop(0))
-        elif wtable[0][0] > val:
-            break
-        else:
-            (wt_lo, wt_hi, width, width_cjk) = wtable.pop(0)
-            if wt_lo == wt_hi == val:
-                continue
-            elif wt_lo == val:
-                wtable_out.append((wt_lo+1, wt_hi, width, width_cjk))
-            elif wt_hi == val:
-                wtable_out.append((wt_lo, wt_hi-1, width, width_cjk))
-            else:
-                wtable_out.append((wt_lo, val-1, width, width_cjk))
-                wtable_out.append((val+1, wt_hi, width, width_cjk))
-    if wtable:
-        wtable_out.extend(wtable)
-    return wtable_out
-
-
-
-def optimize_width_table(wtable):
-    wtable_out = []
-    w_this = wtable.pop(0)
-    while wtable:
-        if w_this[1] == wtable[0][0] - 1 and w_this[2:3] == wtable[0][2:3]:
-            w_tmp = wtable.pop(0)
-            w_this = (w_this[0], w_tmp[1], w_tmp[2], w_tmp[3])
-        else:
-            wtable_out.append(w_this)
-            w_this = wtable.pop(0)
-    wtable_out.append(w_this)
-    return wtable_out
-
 if __name__ == "__main__":
     r = "tables.rs"
     if os.path.exists(r):
@@ -604,29 +487,6 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
         # normalizations and conversions module
         emit_norm_module(rf, canon_decomp, compat_decomp, combines, norm_props)
         emit_conversions_module(rf, lowerupper, upperlower)
-
-        ### character width module
-        width_table = []
-        for zwcat in ["Me", "Mn", "Cf"]:
-            width_table.extend(map(lambda (lo, hi): (lo, hi, 0, 0), gencats[zwcat]))
-        width_table.append((4448, 4607, 0, 0))
-
-        # get widths, except those that are explicitly marked zero-width above
-        ea_widths = load_east_asian_width(["W", "F", "A"], ["Me", "Mn", "Cf"])
-        # these are doublewidth
-        for dwcat in ["W", "F"]:
-            width_table.extend(map(lambda (lo, hi): (lo, hi, 2, 2), ea_widths[dwcat]))
-        width_table.extend(map(lambda (lo, hi): (lo, hi, 1, 2), ea_widths["A"]))
-
-        width_table.sort(key=lambda w: w[0])
-
-        # soft hyphen is not zero width in preformatted text; it's used to indicate
-        # a hyphen inserted to facilitate a linebreak.
-        width_table = remove_from_wtable(width_table, 173)
-
-        # optimize the width table by collapsing adjacent entities when possible
-        width_table = optimize_width_table(width_table)
-        emit_charwidth_module(rf, width_table)
 
         ### grapheme cluster module
         # from http://www.unicode.org/reports/tr29/#Grapheme_Cluster_Break_Property_Values

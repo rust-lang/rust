@@ -35,7 +35,6 @@
 #![feature(staged_api)]
 #![feature(exit_status)]
 #![feature(set_stdio)]
-#![feature(unicode)]
 
 extern crate arena;
 extern crate flate;
@@ -574,7 +573,7 @@ Available lint options:
     let builtin_groups = sort_lint_groups(builtin_groups);
 
     let max_name_len = plugin.iter().chain(builtin.iter())
-        .map(|&s| s.name.width(true))
+        .map(|&s| s.name.chars().count())
         .max().unwrap_or(0);
     let padded = |x: &str| {
         let mut s = repeat(" ").take(max_name_len - x.chars().count())
@@ -601,7 +600,7 @@ Available lint options:
 
 
     let max_name_len = plugin_groups.iter().chain(builtin_groups.iter())
-        .map(|&(s, _)| s.width(true))
+        .map(|&(s, _)| s.chars().count())
         .max().unwrap_or(0);
     let padded = |x: &str| {
         let mut s = repeat(" ").take(max_name_len - x.chars().count())
