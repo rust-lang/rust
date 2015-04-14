@@ -5,7 +5,7 @@
 
 # Summary
 
-Rename `std::fs::soft_link` into platform-specific versions:
+Deprecate `std::fs::soft_link` in favor of platform-specific versions:
 `std::os::unix::fs::symlink`, `std::os::windows::fs::symlink_file`, and
 `std::os::windows::fs::symlink_dir`.
 
@@ -103,7 +103,7 @@ that call `CreateSymbolicLink` with the appropriate arguments.
 Keep a deprecated compatibility wrapper `std::fs::soft_link` which wraps
 `std::os::unix::fs::symlink` or `std::os::windows::fs::symlink_file`,
 depending on the platform (as that is the current behavior of
-`std::fs::softlink`, to create a file symbolic link).
+`std::fs::soft_link`, to create a file symbolic link).
 
 # Drawbacks
 
