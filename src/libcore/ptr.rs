@@ -15,7 +15,7 @@
 //! Working with unsafe pointers in Rust is uncommon,
 //! typically limited to a few patterns.
 //!
-//! Use the [`null` function](fn.null.html) to create null pointers, and
+//! Use the [`null` function](ptr/fn.null.html) to create null pointers, and
 //! the `is_null` method of the `*const T` type  to check for null.
 //! The `*const T` type also defines the `offset` method, for pointer math.
 //!
