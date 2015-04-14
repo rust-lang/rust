@@ -112,6 +112,20 @@ reference when using guards or refactor the entire expression, perhaps by
 putting the condition inside the body of the arm.
 "##,
 
+E0152: r##"
+Lang items are already implemented in the standard library. Unless you are
+writing a free-standing application (e.g. a kernel), you do not need to provide
+them yourself.
+
+You can build a free-standing crate by adding `#![no_std]` to the crate
+attributes:
+
+#![feature(no_std)]
+#![no_std]
+
+See also https://doc.rust-lang.org/book/no-stdlib.html
+"##,
+
 E0162: r##"
 An if-let pattern attempts to match the pattern, and enters the body if the
 match was succesful. If the match is irrefutable (when it cannot fail to match),
@@ -256,7 +270,6 @@ register_diagnostics! {
     E0137,
     E0138,
     E0139,
-    E0152,
     E0158,
     E0161,
     E0170,
