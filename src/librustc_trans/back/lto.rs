@@ -63,13 +63,13 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         let file = &file[3..file.len() - 5]; // chop off lib/.rlib
         debug!("reading {}", file);
         for i in 0.. {
-            let bc_encoded = time(sess.time_passes(),
-                                  &format!("check for {}.{}.bytecode.deflate", name, i),
-                                  (),
-                                  |_| {
-                                      archive.read(&format!("{}.{}.bytecode.deflate",
-                                                           file, i))
-                                  });
+            let filename = format!("{}.{}.bytecode.deflate", file, i);
+            let msg = format!("check for {}", filename);
+            let bc_encoded = time(sess.time_passes(), &msg, (), |_| {
+                archive.iter().find(|section| {
+                    section.name() == Some(&filename[..])
+                })
+            });
             let bc_encoded = match bc_encoded {
                 Some(data) => data,
                 None => {
@@ -79,9 +79,10 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                                            path.display()));
                     }
                     // No more bitcode files to read.
-                    break;
-                },
+                    break
+                }
             };
+            let bc_encoded = bc_encoded.data();
 
             let bc_decoded = if is_versioned_bytecode_format(bc_encoded) {
                 time(sess.time_passes(), &format!("decode {}.{}.bc", file, i), (), |_| {

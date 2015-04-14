@@ -692,11 +692,16 @@ pub fn note_crate_name(diag: &SpanHandler, name: &str) {
 
 impl ArchiveMetadata {
     fn new(ar: ArchiveRO) -> Option<ArchiveMetadata> {
-        let data = match ar.read(METADATA_FILENAME) {
-            Some(data) => data as *const [u8],
-            None => {
-                debug!("didn't find '{}' in the archive", METADATA_FILENAME);
-                return None;
+        let data = {
+            let section = ar.iter().find(|sect| {
+                sect.name() == Some(METADATA_FILENAME)
+            });
+            match section {
+                Some(s) => s.data() as *const [u8],
+                None => {
+                    debug!("didn't find '{}' in the archive", METADATA_FILENAME);
+                    return None;
+                }
             }
         };
 
