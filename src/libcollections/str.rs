@@ -79,6 +79,7 @@ pub use core::str::{MatchIndices, RMatchIndices};
 pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
 pub use core::str::{from_utf8_unchecked, ParseBoolError};
 pub use unicode::str::{Words, Graphemes, GraphemeIndices};
+pub use unicode::str::{UnicodeWords, UWordBounds, UWordBoundIndices};
 pub use core::str::pattern;
 
 /*
@@ -1736,6 +1737,30 @@ impl str {
         UnicodeStr::words(&self[..])
     }
 
+    /// An iterator over the words of `self`, separated on
+    /// [UAX#29 word boundaries](http://www.unicode.org/reports/tr29/#Word_Boundaries).
+    ///
+    /// In this function, "words" are just those substrings which, after splitting on
+    /// UAX#29 word boundaries, contain any alphanumeric characters. That is, the
+    /// substring must contain at least one character with the
+    /// [Alphabetic](http://unicode.org/reports/tr44/#Alphabetic)
+    /// property, or with
+    /// [General_Category=Number](http://unicode.org/reports/tr44/#General_Category_Values).
+    ///
+    /// # Example
+    /// # #![feature(unicode, core)]
+    /// let uws = "The quick (\"brown\") fox can't jump 32.3 feet, right?";
+    /// let uw1 = uws.words_unicode().collect::<Vec<&str>>();
+    /// let b: &[_] = &["The", "quick", "brown", "fox", "can't", "jump", "32.3", "feet", "right"];
+    ///
+    /// assert_eq!(&uw1[..], b);
+    /// ```
+    #[unstable(feature = "unicode",
+               reason = "questions remain regarding the naming of words() and words_unicode()")]
+    pub fn words_unicode(&self) -> UnicodeWords {
+        UnicodeStr::words_unicode(&self[..])
+    }
+
     /// Returns a string's displayed width in columns.
     ///
     /// Control characters have zero width.
@@ -1818,5 +1843,44 @@ impl str {
         let mut s = String::with_capacity(self.len());
         s.extend(self[..].chars().flat_map(|c| c.to_uppercase()));
         return s;
+    }
+
+    /// Returns an iterator over substrings of `self` separated on
+    /// [UAX#29 word boundaries](http://www.unicode.org/reports/tr29/#Word_Boundaries).
+    ///
+    /// The concatenation of the substrings returned by this function is just the original string.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #![feature(unicode, core)]
+    /// let swu1 = "The quick (\"brown\")  fox".split_words_uax29().collect::<Vec<&str>>();
+    /// let b: &[_] = &["The", " ", "quick", " ", "(", "\"", "brown", "\"", ")", " ", " ", "fox"];
+    ///
+    /// assert_eq!(&swu1[..], b);
+    /// ```
+    #[unstable(feature = "unicode",
+               reason = "this functionality may only be provided by libunicode")]
+    pub fn split_words_uax29(&self) -> UWordBounds {
+        UnicodeStr::split_words_uax29(&self[..])
+    }
+
+    /// Returns an iterator over substrings of `self`, split on UAX#29 word boundaries,
+    /// and their offsets. See `split_words_uax29()` for more information.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #![feature(unicode, core)]
+    /// let swi1 = "Brr, it's 29.3°F!".split_words_uax29_indices().collect::<Vec<(usize, &str)>>();
+    /// let b: &[_] = &[(0, "Brr"), (3, ","), (4, " "), (5, "it's"), (9, " "), (10, "29.3"),
+    ///                 (14, "°"), (16, "F"), (17, "!")];
+    ///
+    /// assert_eq!(&swi1[..], b);
+    /// ```
+    #[unstable(feature = "unicode",
+               reason = "this functionality may only be provided by libunicode")]
+    pub fn split_words_uax29_indices(&self) -> UWordBoundIndices {
+        UnicodeStr::split_words_uax29_indices(&self[..])
     }
 }

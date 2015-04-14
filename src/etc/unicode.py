@@ -15,6 +15,7 @@
 # - DerivedNormalizationProps.txt
 # - EastAsianWidth.txt
 # - auxiliary/GraphemeBreakProperty.txt
+# - auxiliary/WordBreakProperty.txt
 # - PropList.txt
 # - ReadMe.txt
 # - Scripts.txt
@@ -290,11 +291,13 @@ fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
 """)
 
 def emit_table(f, name, t_data, t_type = "&'static [(char, char)]", is_pub=True,
-        pfun=lambda x: "(%s,%s)" % (escape_char(x[0]), escape_char(x[1]))):
-    pub_string = ""
+        pfun=lambda x: "(%s,%s)" % (escape_char(x[0]), escape_char(x[1])), is_const=True):
+    pub_string = "const"
+    if not is_const:
+        pub_string = "let"
     if is_pub:
-        pub_string = "pub "
-    f.write("    %sconst %s: %s = &[\n" % (pub_string, name, t_type))
+        pub_string = "pub " + pub_string
+    f.write("    %s %s: %s = &[\n" % (pub_string, name, t_type))
     data = ""
     first = True
     for dat in t_data:
@@ -355,21 +358,25 @@ def emit_conversions_module(f, lowerupper, upperlower):
         sorted(lowerupper.iteritems(), key=operator.itemgetter(0)), is_pub=False)
     f.write("}\n\n")
 
-def emit_grapheme_module(f, grapheme_table, grapheme_cats):
-    f.write("""pub mod grapheme {
+def emit_break_module(f, break_table, break_cats, name):
+    Name = name.capitalize()
+    f.write("""pub mod %s {
     use core::slice::SliceExt;
-    pub use self::GraphemeCat::*;
+    pub use self::%sCat::*;
     use core::result::Result::{Ok, Err};
 
     #[allow(non_camel_case_types)]
-    #[derive(Clone, Copy)]
-    pub enum GraphemeCat {
-""")
-    for cat in grapheme_cats + ["Any"]:
-        f.write("        GC_" + cat + ",\n")
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    pub enum %sCat {
+""" % (name, Name, Name))
+
+    break_cats.append("Any")
+    break_cats.sort()
+    for cat in break_cats:
+        f.write(("        %sC_" % Name[0]) + cat + ",\n")
     f.write("""    }
 
-    fn bsearch_range_value_table(c: char, r: &'static [(char, char, GraphemeCat)]) -> GraphemeCat {
+    fn bsearch_range_value_table(c: char, r: &'static [(char, char, %sCat)]) -> %sCat {
         use core::cmp::Ordering::{Equal, Less, Greater};
         match r.binary_search_by(|&(lo, hi, _)| {
             if lo <= c && c <= hi { Equal }
@@ -380,19 +387,19 @@ def emit_grapheme_module(f, grapheme_table, grapheme_cats):
                 let (_, _, cat) = r[idx];
                 cat
             }
-            Err(_) => GC_Any
+            Err(_) => %sC_Any
         }
     }
 
-    pub fn grapheme_category(c: char) -> GraphemeCat {
-        bsearch_range_value_table(c, grapheme_cat_table)
+    pub fn %s_category(c: char) -> %sCat {
+        bsearch_range_value_table(c, %s_cat_table)
     }
 
-""")
+""" % (Name, Name, Name[0], name, Name, name))
 
-    emit_table(f, "grapheme_cat_table", grapheme_table, "&'static [(char, char, GraphemeCat)]",
-        pfun=lambda x: "(%s,%s,GC_%s)" % (escape_char(x[0]), escape_char(x[1]), x[2]),
-        is_pub=False)
+    emit_table(f, "%s_cat_table" % name, break_table, "&'static [(char, char, %sCat)]" % Name,
+        pfun=lambda x: "(%s,%s,%sC_%s)" % (escape_char(x[0]), escape_char(x[1]), Name[0], x[2]),
+        is_pub=False, is_const=True)
     f.write("}\n")
 
 def emit_charwidth_module(f, width_table):
@@ -653,4 +660,12 @@ pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
         for cat in grapheme_cats:
             grapheme_table.extend([(x, y, cat) for (x, y) in grapheme_cats[cat]])
         grapheme_table.sort(key=lambda w: w[0])
-        emit_grapheme_module(rf, grapheme_table, grapheme_cats.keys())
+        emit_break_module(rf, grapheme_table, grapheme_cats.keys(), "grapheme")
+        rf.write("\n")
+
+        word_cats = load_properties("auxiliary/WordBreakProperty.txt", [])
+        word_table = []
+        for cat in word_cats:
+            word_table.extend([(x, y, cat) for (x, y) in word_cats[cat]])
+        word_table.sort(key=lambda w: w[0])
+        emit_break_module(rf, word_table, word_cats.keys(), "word")
