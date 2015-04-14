@@ -1,24 +1,24 @@
 % Installing Rust
 
 The first step to using Rust is to install it! There are a number of ways to
-install Rust, but the easiest is to use the `rustup` script. If you're on Linux
-or a Mac, all you need to do is this (note that you don't need to type in the
-`$`s, they just indicate the start of each command):
+install Rust, but first we ought to go over the officially supported arch's.
 
-```bash
-$ curl -sf -L https://static.rust-lang.org/rustup.sh | sudo sh
-```
+* Windows (7, 8, Server 2008 R2)***
+* Linux (2.6.18 or later, various distributions), x86 and x86-64
+* OSX 10.7 (Lion) or greater, x86 and x86-64
 
-If you're concerned about the [potential insecurity][insecurity] of using `curl
-| sudo sh`, please keep reading and see our disclaimer below. And feel free to
-use a two-step version of the installation and examine our installation script:
+We extensively test Rust on these platforms, there are plans to support Android
+in the future, that documentation will be public as it becomes available.
 
-```bash
-$ curl -f -L https://static.rust-lang.org/rustup.sh -O
-$ sudo sh rustup.sh
-```
+***Rust considers Windows to be a first-class platform upon release, but if we're 
+truly honest, the Windows experience isn't as integrated as the Linux/OS X experience is.
+Each and every commit is tested against Windows just like any other platform, if anything
+does not work it is a bug.  Please let us know if you encounter one we'll squash it for you.
 
-[insecurity]: http://curlpipesh.tumblr.com
+Rust also installs a copy of the documentation locally, so you can
+read it offline. On UNIX systems, `/usr/local/share/doc/rust` is the location.
+On Windows, it's in a `share/doc` directory, inside wherever you installed Rust
+to.(Default C:\Program Files\Rust beta 1.0\ )
 
 If you're on Windows, please download either the [32-bit installer][win32] or
 the [64-bit installer][win64] and run it.
@@ -26,48 +26,90 @@ the [64-bit installer][win64] and run it.
 [win32]: https://static.rust-lang.org/dist/rust-1.0.0-beta-i686-pc-windows-gnu.msi
 [win64]: https://static.rust-lang.org/dist/rust-1.0.0-beta-x86_64-pc-windows-gnu.msi
 
-## Uninstalling
-
-If you decide you don't want Rust anymore, we'll be a bit sad, but that's okay.
-Not every programming language is great for everyone. Just run the uninstall
-script:
-
-```bash
-$ sudo /usr/local/lib/rustlib/uninstall.sh
-```
-
-If you used the Windows installer, just re-run the `.msi` and it will give you
-an uninstall option.
-
-Some people, and somewhat rightfully so, get very upset when we tell you to
-`curl | sudo sh`. Basically, when you do this, you are trusting that the good
-people who maintain Rust aren't going to hack your computer and do bad things.
-That's a good instinct! If you're one of those people, please check out the
-documentation on [building Rust from Source][from source], or [the official
-binary downloads][install page]. And we promise that this method will not be
-the way to install Rust forever: it's just the easiest way to keep people
-updated while Rust is in its alpha state.
+If you would like to build from source, please check out the
+documentation on [building Rust from Source][from source], there is always [the official
+binary downloads][install page]as well. 
 
 [from source]: https://github.com/rust-lang/rust#building-from-source
 [install page]: http://www.rust-lang.org/install.html
 
-Oh, we should also mention the officially supported platforms:
+If you're on Linux or Mac rust has a tool called ['multirust'](https://github.com/brson/multirust/README.md) for managing
+Rust, Cargo, and multiple custom toolchains; mappable to any working directory. Multirust is still a work in progress
+and is not a part of Rust:master.(Yet)
 
-* Windows (7, 8, Server 2008 R2)
-* Linux (2.6.18 or later, various distributions), x86 and x86-64
-* OSX 10.7 (Lion) or greater, x86 and x86-64
+Rust is signed with a [PGPKey](../trpl/pgp.key)!
 
-We extensively test Rust on these platforms, and a few others, too, like
-Android. But these are the ones most likely to work, as they have the most
-testing.
+To install 'multirust' from Github first move to your project directory.
 
-Finally, a comment about Windows. Rust considers Windows to be a first-class
-platform upon release, but if we're honest, the Windows experience isn't as
-integrated as the Linux/OS X experience is. We're working on it! If anything
-does not work, it is a bug. Please let us know if that happens. Each and every
-commit is tested against Windows just like any other platform.
+````bash
+$ cd /home/$usr/rust/
+```
+Next we'll want to get the sourcecode from Github.
 
-If you've got Rust installed, you can open up a shell, and type this:
+```bash
+$ git clone --recursive https://github.com/brson/multirust
+```
+
+We will then move to the new mulirust directory.
+
+```bash
+$ cd ./rust/multirust
+```
+
+Now we will initialize the submodule
+
+```bash
+$ git submodule update --init
+```
+
+And finally we will install 'multirust' which will handle the installation of Rust and Cargo!
+(This step will require your root password)
+
+```bash
+./build.sh && sudo ./install.sh
+```
+
+Otherwise if you are working on your own machine and trust the development team.
+
+Install multiboot via
+
+```bash
+$ sudo curl -sf https://raw.githubusercontent.com/brson/multirust/master/blastoff.sh | sh
+```
+Or Rust proper (minus multirust)
+
+```bash
+$ curl -sf -L https://static.rust-lang.org/rustup.sh | sudo sh
+```
+
+## Uninstalling
+
+If you decide you don't want Rust anymore, we'll make sure to keep your seat warm until you get back.
+
+If you used the Windows installer, just re-run the `.msi` and it will give you
+an uninstall option.
+
+If you maintain your Rust installation via multirust uninstall is simple.
+
+```bash
+$ sudo ./install.sh --uninstall
+```
+
+##Installation test and Upgrade!
+
+Upgrading to the latest nightly is easy!
+
+For multirust:
+```bash
+$ multirust upgrade nightly
+```
+
+For source/direct installation upgrades 
+```bash
+$ curl -sf -L https://static.rust-lang.org/rustup.sh | sudo sh
+```
+
+To test if installation was successful use:
 
 ```bash
 $ rustc --version
@@ -79,20 +121,16 @@ You should see the version number, commit hash, commit date and build date:
 rustc 1.0.0-beta (9854143cb 2015-04-02) (built 2015-04-02)
 ```
 
-If you did, Rust has been installed successfully! Congrats!
-
-This installer also installs a copy of the documentation locally, so you can
-read it offline. On UNIX systems, `/usr/local/share/doc/rust` is the location.
-On Windows, it's in a `share/doc` directory, inside wherever you installed Rust
-to.
+If you did, Rust has been installed successfully! Yay!
 
 If not, there are a number of places where you can get help. The easiest is
 [the #rust IRC channel on irc.mozilla.org][irc], which you can access through
 [Mibbit][mibbit]. Click that link, and you'll be chatting with other Rustaceans
 (a silly nickname we call ourselves), and we can help you out. Other great
-resources include [the user’s forum][users], and [Stack Overflow][stack
-overflow].
+resources include [the user’s forum][users], [Stack Overflow][stackoverflow],
+and [Reddit][reddit].  Project specific IRC channels can be found in the reddit sidebar.
 
+[reddit]: http://www.reddit.com/r/rust
 [irc]: irc://irc.mozilla.org/#rust
 [mibbit]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
 [users]: http://users.rust-lang.org/ 
