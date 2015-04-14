@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // no-prefer-dynamic
+// ignore-android
 
 #![feature(rustc_private)]
 
