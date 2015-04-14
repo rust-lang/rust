@@ -14,7 +14,7 @@ use std::thread;
 
 pub fn main() {
     let x = "Hello world!".to_string();
-    let _t = thread::scoped(move|| {
+    thread::spawn(move|| {
         println!("{}", x);
-    });
+    }).join();
 }

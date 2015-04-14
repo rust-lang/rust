@@ -40,7 +40,7 @@
 
 // ignore-android see #10393 #13206
 
-#![feature(libc)]
+#![feature(libc, scoped)]
 
 extern crate libc;
 

@@ -23,9 +23,10 @@ fn producer(tx: &Sender<Vec<u8>>) {
 
 pub fn main() {
     let (tx, rx) = channel::<Vec<u8>>();
-    let _prod = thread::scoped(move|| {
+    let prod = thread::spawn(move|| {
         producer(&tx)
     });
 
     let _data: Vec<u8> = rx.recv().unwrap();
+    prod.join();
 }

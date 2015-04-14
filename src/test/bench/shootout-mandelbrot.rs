@@ -81,7 +81,7 @@ fn mandelbrot<W: Write>(w: usize, mut out: W) -> io::Result<()> {
     let mut precalc_i = Vec::with_capacity(h);
 
     let precalc_futures = (0..WORKERS).map(|i| {
-        thread::scoped(move|| {
+        thread::spawn(move|| {
             let mut rs = Vec::with_capacity(w / WORKERS);
             let mut is = Vec::with_capacity(w / WORKERS);
 
@@ -107,7 +107,7 @@ fn mandelbrot<W: Write>(w: usize, mut out: W) -> io::Result<()> {
     }).collect::<Vec<_>>();
 
     for res in precalc_futures {
-        let (rs, is) = res.join();
+        let (rs, is) = res.join().unwrap();
         precalc_r.extend(rs.into_iter());
         precalc_i.extend(is.into_iter());
     }
@@ -122,7 +122,7 @@ fn mandelbrot<W: Write>(w: usize, mut out: W) -> io::Result<()> {
         let vec_init_r = arc_init_r.clone();
         let vec_init_i = arc_init_i.clone();
 
-        thread::scoped(move|| {
+        thread::spawn(move|| {
             let mut res: Vec<u8> = Vec::with_capacity((chunk_size * w) / 8);
             let init_r_slice = vec_init_r;
 
@@ -143,7 +143,7 @@ fn mandelbrot<W: Write>(w: usize, mut out: W) -> io::Result<()> {
 
     try!(writeln!(&mut out, "P4\n{} {}", w, h));
     for res in data {
-        try!(out.write_all(&res.join()));
+        try!(out.write_all(&res.join().unwrap()));
     }
     out.flush()
 }

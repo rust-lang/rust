@@ -30,19 +30,19 @@ fn test00() {
     let number_of_messages: isize = 10;
 
     let tx2 = tx.clone();
-    let _t = thread::scoped(move|| {
+    let t1 = thread::spawn(move|| {
         test00_start(&tx2, number_of_messages * 0, number_of_messages);
     });
     let tx2 = tx.clone();
-    let _t = thread::scoped(move|| {
+    let t2 = thread::spawn(move|| {
         test00_start(&tx2, number_of_messages * 1, number_of_messages);
     });
     let tx2 = tx.clone();
-    let _t = thread::scoped(move|| {
+    let t3 = thread::spawn(move|| {
         test00_start(&tx2, number_of_messages * 2, number_of_messages);
     });
     let tx2 = tx.clone();
-    let _t = thread::scoped(move|| {
+    let t4 = thread::spawn(move|| {
         test00_start(&tx2, number_of_messages * 3, number_of_messages);
     });
 
@@ -60,4 +60,9 @@ fn test00() {
     }
 
     assert_eq!(sum, number_of_messages * 4 * (number_of_messages * 4 - 1) / 2);
+
+    t1.join();
+    t2.join();
+    t3.join();
+    t4.join();
 }
