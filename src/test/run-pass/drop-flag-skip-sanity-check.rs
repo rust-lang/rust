@@ -63,5 +63,4 @@ fn test() {
         // drop-glue should detect the corruption of (at least one of)
         // the drop-flags.
     }
-    println!("We should never get here.");
 }
