@@ -11,7 +11,8 @@
 #![feature(rustc_attrs)]
 #![allow(warnings)]
 
-pub fn fail(x: Option<& (Iterator+Send)>) -> Option<&Iterator> {
+pub fn fail(x: Option<&(Iterator<Item=()>+Send)>)
+            -> Option<&Iterator<Item=()>> {
     // This call used to trigger an LLVM assertion because the return
     // slot had type "Option<&Iterator>"* instead of
     // "Option<&(Iterator+Send)>"* -- but this now yields a
@@ -23,7 +24,8 @@ pub fn fail(x: Option<& (Iterator+Send)>) -> Option<&Iterator> {
     inner(x) //~ ERROR mismatched types
 }
 
-pub fn inner(x: Option<& (Iterator+Send)>) -> Option<&(Iterator+Send)> {
+pub fn inner(x: Option<&(Iterator<Item=()>+Send)>)
+             -> Option<&(Iterator<Item=()>+Send)> {
     x
 }
 

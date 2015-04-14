@@ -787,23 +787,19 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     // process.
     fn walk_adjustment(&mut self, expr: &ast::Expr) {
         let typer = self.typer;
-        match typer.adjustments().borrow().get(&expr.id) {
-            None => { }
-            Some(adjustment) => {
-                match *adjustment {
-                    ty::AdjustReifyFnPointer(..) |
-                    ty::AdjustUnsafeFnPointer(..) => {
-                        // Creating a closure/fn-pointer consumes the
-                        // input and stores it into the resulting
-                        // rvalue.
-                        debug!("walk_adjustment(AutoAddEnv|AdjustReifyFnPointer)");
-                        let cmt_unadjusted =
-                            return_if_err!(self.mc.cat_expr_unadjusted(expr));
-                        self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
-                    }
-                    ty::AdjustDerefRef(ref adj) => {
-                        self.walk_autoderefref(expr, adj);
-                    }
+        if let Some(adjustment) = typer.adjustments().borrow().get(&expr.id) {
+            match *adjustment {
+                ty::AdjustReifyFnPointer |
+                ty::AdjustUnsafeFnPointer => {
+                    // Creating a closure/fn-pointer or unsizing consumes
+                    // the input and stores it into the resulting rvalue.
+                    debug!("walk_adjustment(AdjustReifyFnPointer|AdjustUnsafeFnPointer)");
+                    let cmt_unadjusted =
+                        return_if_err!(self.mc.cat_expr_unadjusted(expr));
+                    self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
+                }
+                ty::AdjustDerefRef(ref adj) => {
+                    self.walk_autoderefref(expr, adj);
                 }
             }
         }
@@ -818,7 +814,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         debug!("walk_autoderefs expr={} autoderefs={}", expr.repr(self.tcx()), autoderefs);
 
         for i in 0..autoderefs {
-            let deref_id = ty::MethodCall::autoderef(expr.id, i);
+            let deref_id = ty::MethodCall::autoderef(expr.id, i as u32);
             match self.typer.node_method_ty(deref_id) {
                 None => {}
                 Some(method_ty) => {
@@ -852,29 +848,18 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
 
         self.walk_autoderefs(expr, adj.autoderefs);
 
-        // Weird hacky special case: AutoUnsizeUniq, which converts
-        // from a ~T to a ~Trait etc, always comes in a stylized
-        // fashion. In particular, we want to consume the ~ pointer
-        // being dereferenced, not the dereferenced content (as the
-        // content is, at least for upcasts, unsized).
-        match adj.autoref {
-            Some(ty::AutoUnsizeUniq(_)) => {
-                assert!(adj.autoderefs == 1,
-                        format!("Expected exactly 1 deref with Uniq AutoRefs, found: {}",
-                                adj.autoderefs));
-                let cmt_unadjusted =
-                    return_if_err!(self.mc.cat_expr_unadjusted(expr));
-                self.delegate_consume(expr.id, expr.span, cmt_unadjusted);
-                return;
-            }
-            _ => { }
-        }
+        let cmt_derefd =
+            return_if_err!(self.mc.cat_expr_autoderefd(expr, adj.autoderefs));
 
-        let autoref = adj.autoref.as_ref();
-        let cmt_derefd = return_if_err!(
-            self.mc.cat_expr_autoderefd(expr, adj.autoderefs));
-        self.walk_autoref(expr, &cmt_derefd, autoref);
+        let cmt_refd =
+            self.walk_autoref(expr, cmt_derefd, adj.autoref);
+
+        if adj.unsize.is_some() {
+            // Unsizing consumes the thin pointer and produces a fat one.
+            self.delegate_consume(expr.id, expr.span, cmt_refd);
+        }
     }
+
 
     /// Walks the autoref `opt_autoref` applied to the autoderef'd
     /// `expr`. `cmt_derefd` is the mem-categorized form of `expr`
@@ -886,79 +871,40 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     /// autoref.
     fn walk_autoref(&mut self,
                     expr: &ast::Expr,
-                    cmt_derefd: &mc::cmt<'tcx>,
-                    opt_autoref: Option<&ty::AutoRef<'tcx>>)
+                    cmt_base: mc::cmt<'tcx>,
+                    opt_autoref: Option<ty::AutoRef<'tcx>>)
                     -> mc::cmt<'tcx>
     {
         debug!("walk_autoref(expr.id={} cmt_derefd={} opt_autoref={:?})",
                expr.id,
-               cmt_derefd.repr(self.tcx()),
+               cmt_base.repr(self.tcx()),
                opt_autoref);
 
+        let cmt_base_ty = cmt_base.ty;
+
         let autoref = match opt_autoref {
-            Some(autoref) => autoref,
+            Some(ref autoref) => autoref,
             None => {
-                // No recursive step here, this is a base case.
-                return cmt_derefd.clone();
+                // No AutoRef.
+                return cmt_base;
             }
         };
 
+        debug!("walk_autoref: expr.id={} cmt_base={}",
+               expr.id,
+               cmt_base.repr(self.tcx()));
+
         match *autoref {
-            ty::AutoPtr(r, m, ref baseref) => {
-                let cmt_base = self.walk_autoref_recursively(expr, cmt_derefd, baseref);
-
-                debug!("walk_autoref: expr.id={} cmt_base={}",
-                       expr.id,
-                       cmt_base.repr(self.tcx()));
-
+            ty::AutoPtr(r, m) => {
                 self.delegate.borrow(expr.id,
                                      expr.span,
                                      cmt_base,
-                                     r,
+                                     *r,
                                      ty::BorrowKind::from_mutbl(m),
                                      AutoRef);
             }
 
-            ty::AutoUnsize(_) => {
-                // Converting a `[T; N]` to `[T]` or `T` to `Trait`
-                // isn't really a borrow, move, etc, in and of itself.
-                // Also, no recursive step here, this is a base case.
-
-                // It may seem a bit odd to return the cmt_derefd
-                // unmodified here, but in fact I think it's the right
-                // thing to do. Essentially the unsize transformation
-                // isn't really relevant to the borrowing rules --
-                // it's best thought of as a kind of side-modifier to
-                // the autoref, adding additional data that is
-                // attached to the pointer that is produced, but not
-                // affecting the data being borrowed in any other
-                // way. To see what I mean, consider this example:
-                //
-                //    fn foo<'a>(&'a self) -> &'a Trait { self }
-                //
-                // This is valid because the underlying `self` value
-                // lives for the lifetime 'a. If we were to treat the
-                // "unsizing" as e.g. producing an rvalue, that would
-                // only be valid for the temporary scope, which isn't
-                // enough to justify the return value, which have the
-                // lifetime 'a.
-                //
-                // Another option would be to add a variant for
-                // categorization (like downcast) that wraps
-                // cmt_derefd and represents the unsizing operation.
-                // But I don't think there is any particular use for
-                // this (yet). -nmatsakis
-                return cmt_derefd.clone();
-            }
-
-            ty::AutoUnsizeUniq(_) => {
-                // these are handled via special case above
-                self.tcx().sess.span_bug(expr.span, "nexpected AutoUnsizeUniq");
-            }
-
-            ty::AutoUnsafe(m, ref baseref) => {
-                let cmt_base = self.walk_autoref_recursively(expr, cmt_derefd, baseref);
-
+            ty::AutoUnsafe(m) => {
                 debug!("walk_autoref: expr.id={} cmt_base={}",
                        expr.id,
                        cmt_base.repr(self.tcx()));
@@ -983,22 +929,10 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
 
         let adj_ty =
             ty::adjust_ty_for_autoref(self.tcx(),
-                                      expr.span,
-                                      cmt_derefd.ty,
+                                      cmt_base_ty,
                                       opt_autoref);
 
         self.mc.cat_rvalue_node(expr.id, expr.span, adj_ty)
-    }
-
-    fn walk_autoref_recursively(&mut self,
-                                expr: &ast::Expr,
-                                cmt_derefd: &mc::cmt<'tcx>,
-                                autoref: &Option<Box<ty::AutoRef<'tcx>>>)
-                                -> mc::cmt<'tcx>
-    {
-        // Shuffle from a ref to an optional box to an optional ref.
-        let autoref: Option<&ty::AutoRef<'tcx>> = autoref.as_ref().map(|b| &**b);
-        self.walk_autoref(expr, cmt_derefd, autoref)
     }
 
 

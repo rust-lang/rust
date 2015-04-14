@@ -313,9 +313,15 @@ fn lookup_op_method<'a, 'tcx>(fcx: &'a FnCtxt<'a, 'tcx>,
 
     let method = match trait_did {
         Some(trait_did) => {
-            let noop = ty::AutoDerefRef { autoderefs: 0, autoref: None };
-            method::lookup_in_trait_adjusted(fcx, expr.span, Some(lhs_expr), opname,
-                                             trait_did, noop, lhs_ty, Some(other_tys))
+            method::lookup_in_trait_adjusted(fcx,
+                                             expr.span,
+                                             Some(lhs_expr),
+                                             opname,
+                                             trait_did,
+                                             0,
+                                             false,
+                                             lhs_ty,
+                                             Some(other_tys))
         }
         None => None
     };
