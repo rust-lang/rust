@@ -8,9 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const TUP: (usize,) = (42,);
+// Tests that enum-to-float casts are disallowed.
 
-fn main() {
-    let a: [isize; TUP.1];
-    //~^ ERROR attempted out-of-bounds tuple index
+enum E {
+    L0 = -1,
+    H0 = 1
+}
+
+enum F {
+    L1 = 1,
+    H1 = 0xFFFFFFFFFFFFFFFF
+}
+
+pub fn main() {
+    let a = E::L0 as f32;  //~ ERROR illegal cast
+    let c = F::H1 as f32;  //~ ERROR illegal cast
+    assert_eq!(a, -1.0f32);
+    assert_eq!(c, -1.0f32);
 }
