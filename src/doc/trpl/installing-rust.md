@@ -1,7 +1,7 @@
 % Installing Rust
 
 The first step to using Rust is to install it! There are a number of ways to
-install Rust, but first we ought to go over the officially supported arch's.
+install Rust, but first we ought to go over the officially supported architecture's.
 
 * Windows (7, 8, Server 2008 R2)***
 * Linux (2.6.18 or later, various distributions), x86 and x86-64
@@ -28,7 +28,7 @@ the [64-bit installer][win64] and run it.
 
 If you would like to build from source, please check out the
 documentation on [building Rust from Source][from source], there is always [the official
-binary downloads][install page]as well. 
+binary downloads][install page] as well. 
 
 [from source]: https://github.com/rust-lang/rust#building-from-source
 [install page]: http://www.rust-lang.org/install.html
