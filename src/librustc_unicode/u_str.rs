@@ -75,6 +75,7 @@ impl UnicodeStr for str {
     #[inline]
     fn is_alphanumeric(&self) -> bool { self.chars().all(|c| c.is_alphanumeric()) }
 
+    #[allow(deprecated)]
     #[inline]
     fn width(&self, is_cjk: bool) -> usize {
         self.chars().map(|c| c.width(is_cjk).unwrap_or(0)).sum()
@@ -481,9 +482,9 @@ impl<'a> Iterator for Utf16Items<'a> {
 ///
 /// ```
 /// # #![feature(unicode)]
-/// extern crate unicode;
+/// extern crate rustc_unicode;
 ///
-/// use unicode::str::Utf16Item::{ScalarValue, LoneSurrogate};
+/// use rustc_unicode::str::Utf16Item::{ScalarValue, LoneSurrogate};
 ///
 /// fn main() {
 ///     // 𝄞mus<invalid>ic<invalid>
@@ -491,7 +492,7 @@ impl<'a> Iterator for Utf16Items<'a> {
 ///              0x0073, 0xDD1E, 0x0069, 0x0063,
 ///              0xD834];
 ///
-///     assert_eq!(unicode::str::utf16_items(&v).collect::<Vec<_>>(),
+///     assert_eq!(rustc_unicode::str::utf16_items(&v).collect::<Vec<_>>(),
 ///                vec![ScalarValue('𝄞'),
 ///                     ScalarValue('m'), ScalarValue('u'), ScalarValue('s'),
 ///                     LoneSurrogate(0xDD1E),

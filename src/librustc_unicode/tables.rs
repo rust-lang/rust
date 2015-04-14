@@ -3951,6 +3951,10 @@ pub mod normalization {
         '\u{1d244}', 230), ('\u{1e8d0}', '\u{1e8d6}', 220)
     ];
 
+    #[deprecated(reason = "use the crates.io `unicode-normalization` lib instead",
+                 since = "1.0.0")]
+    #[unstable(feature = "unicode",
+               reason = "this functionality will be moved to crates.io")]
     pub fn canonical_combining_class(c: char) -> u8 {
         bsearch_range_value_table(c, combining_class_table)
     }

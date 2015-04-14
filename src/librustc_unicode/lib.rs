@@ -22,7 +22,7 @@
 
 // Do not remove on snapshot creation. Needed for bootstrap. (Issue #22364)
 #![cfg_attr(stage0, feature(custom_attribute))]
-#![crate_name = "unicode"]
+#![crate_name = "rustc_unicode"]
 #![unstable(feature = "unicode")]
 #![feature(lang_items)]
 #![feature(staged_api)]

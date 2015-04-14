@@ -27,7 +27,7 @@
 
 extern crate collections;
 extern crate test;
-extern crate unicode;
+extern crate rustc_unicode;
 
 #[cfg(test)] #[macro_use] mod bench;
 

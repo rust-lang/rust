@@ -52,7 +52,7 @@
 TARGET_CRATES := libc std flate arena term \
                  serialize getopts collections test rand \
                  log graphviz core rbml alloc \
-                 unicode rustc_bitflags
+                 rustc_unicode rustc_bitflags
 RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy rustc_lint
 HOST_CRATES := syntax $(RUSTC_CRATES) rustdoc fmt_macros
@@ -61,9 +61,9 @@ TOOLS := compiletest rustdoc rustc rustbook
 
 DEPS_core :=
 DEPS_libc := core
-DEPS_unicode := core
+DEPS_rustc_unicode := core
 DEPS_alloc := core libc native:jemalloc
-DEPS_std := core libc rand alloc collections unicode \
+DEPS_std := core libc rand alloc collections rustc_unicode \
 	native:rust_builtin native:backtrace native:rustrt_native \
 	rustc_bitflags
 DEPS_graphviz := std
@@ -94,7 +94,7 @@ DEPS_serialize := std log
 DEPS_rbml := std log serialize
 DEPS_term := std log
 DEPS_getopts := std
-DEPS_collections := core alloc unicode
+DEPS_collections := core alloc rustc_unicode
 DEPS_num := std
 DEPS_test := std getopts serialize rbml term native:rust_test_helpers
 DEPS_rand := core
@@ -115,11 +115,11 @@ ONLY_RLIB_libc := 1
 ONLY_RLIB_alloc := 1
 ONLY_RLIB_rand := 1
 ONLY_RLIB_collections := 1
-ONLY_RLIB_unicode := 1
+ONLY_RLIB_rustc_unicode := 1
 ONLY_RLIB_rustc_bitflags := 1
 
 # Documented-by-default crates
-DOC_CRATES := std alloc collections core libc unicode
+DOC_CRATES := std alloc collections core libc rustc_unicode
 
 ################################################################################
 # You should not need to edit below this line

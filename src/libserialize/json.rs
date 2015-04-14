@@ -211,8 +211,8 @@ use std::str::FromStr;
 use std::string;
 use std::{char, f64, fmt, num, str};
 use std;
-use unicode::str as unicode_str;
-use unicode::str::Utf16Item;
+use rustc_unicode::str as unicode_str;
+use rustc_unicode::str::Utf16Item;
 
 use Encodable;
 

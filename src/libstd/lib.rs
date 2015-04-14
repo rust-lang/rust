@@ -151,7 +151,7 @@ extern crate collections as core_collections;
 
 #[allow(deprecated)] extern crate rand as core_rand;
 extern crate alloc;
-extern crate unicode;
+extern crate rustc_unicode;
 extern crate libc;
 
 #[macro_use] #[no_link] extern crate rustc_bitflags;
@@ -196,7 +196,7 @@ pub use core_collections::string;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core_collections::vec;
 
-pub use unicode::char;
+pub use rustc_unicode::char;
 
 /* Exported macros */
 
