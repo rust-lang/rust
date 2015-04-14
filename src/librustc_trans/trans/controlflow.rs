@@ -131,7 +131,9 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     match b.expr {
         Some(ref e) => {
-            bcx = expr::trans_into(bcx, &**e, dest);
+            if !bcx.unreachable.get() {
+                bcx = expr::trans_into(bcx, &**e, dest);
+            }
         }
         None => {
             assert!(dest == expr::Ignore || bcx.unreachable.get());
