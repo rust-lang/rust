@@ -17,7 +17,8 @@
 
 use std::mem;
 use std::slice;
-use std::old_io::IoResult;
+
+pub type IoResult<T> = Result<T, ()>;
 
 trait MyWriter {
     fn my_write(&mut self, buf: &[u8]) -> IoResult<()>;

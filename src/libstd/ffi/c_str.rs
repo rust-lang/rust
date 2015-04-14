@@ -18,8 +18,6 @@ use io;
 use iter::Iterator;
 use libc;
 use mem;
-#[allow(deprecated)]
-use old_io;
 use ops::Deref;
 use option::Option::{self, Some, None};
 use result::Result::{self, Ok, Err};
@@ -242,18 +240,6 @@ impl From<NulError> for io::Error {
     fn from(_: NulError) -> io::Error {
         io::Error::new(io::ErrorKind::InvalidInput,
                        "data provided contains a nul byte")
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-impl From<NulError> for old_io::IoError {
-    fn from(_: NulError) -> old_io::IoError {
-        old_io::IoError {
-            kind: old_io::IoErrorKind::InvalidInput,
-            desc: "data provided contains a nul byte",
-            detail: None
-        }
     }
 }
 

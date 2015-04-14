@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
-
-#![feature(old_io)]
-
-use std::old_io::Reader;
+pub trait Reader {}
 
 enum Wrapper<'a> {
     WrapReader(&'a (Reader + 'a))

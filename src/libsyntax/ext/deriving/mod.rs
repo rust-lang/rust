@@ -61,7 +61,6 @@ pub mod clone;
 pub mod encodable;
 pub mod decodable;
 pub mod hash;
-pub mod rand;
 pub mod show;
 pub mod default;
 pub mod primitive;
@@ -167,8 +166,6 @@ derive_traits! {
     "Eq" => totaleq::expand_deriving_totaleq,
     "PartialOrd" => ord::expand_deriving_ord,
     "Ord" => totalord::expand_deriving_totalord,
-
-    "Rand" => rand::expand_deriving_rand,
 
     "Debug" => show::expand_deriving_show,
 

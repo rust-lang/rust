@@ -8,20 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
-
-#![feature(old_io, std_misc)]
-
 use std::sync::mpsc::{TryRecvError, channel};
-use std::old_io::timer::Timer;
 use std::thread;
-use std::time::Duration;
 
 pub fn main() {
     let (tx, rx) = channel();
     let _t = thread::scoped(move||{
-        let mut timer = Timer::new().unwrap();
-        timer.sleep(Duration::milliseconds(10));
+        thread::sleep_ms(10);
         tx.send(()).unwrap();
     });
     loop {

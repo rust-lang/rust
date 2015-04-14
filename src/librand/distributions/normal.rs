@@ -72,19 +72,6 @@ impl Rand for StandardNormal {
 ///
 /// This uses the ZIGNOR variant of the Ziggurat method, see
 /// `StandardNormal` for more details.
-///
-/// # Examples
-///
-/// ```
-/// # #![feature(rand)]
-/// use std::rand;
-/// use std::rand::distributions::{Normal, IndependentSample};
-///
-/// // mean 2, standard deviation 3
-/// let normal = Normal::new(2.0, 3.0);
-/// let v = normal.ind_sample(&mut rand::thread_rng());
-/// println!("{} is from a N(2, 9) distribution", v)
-/// ```
 #[derive(Copy, Clone)]
 pub struct Normal {
     mean: f64,
@@ -121,19 +108,6 @@ impl IndependentSample<f64> for Normal {
 ///
 /// If `X` is log-normal distributed, then `ln(X)` is `N(mean,
 /// std_dev**2)` distributed.
-///
-/// # Examples
-///
-/// ```
-/// # #![feature(rand)]
-/// use std::rand;
-/// use std::rand::distributions::{LogNormal, IndependentSample};
-///
-/// // mean 2, standard deviation 3
-/// let log_normal = LogNormal::new(2.0, 3.0);
-/// let v = log_normal.ind_sample(&mut rand::thread_rng());
-/// println!("{} is from an ln N(2, 9) distribution", v)
-/// ```
 #[derive(Copy, Clone)]
 pub struct LogNormal {
     norm: Normal

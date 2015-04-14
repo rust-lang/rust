@@ -32,23 +32,6 @@ use distributions::{Sample, IndependentSample};
 /// including `high`, but this may be very difficult. All the
 /// primitive integer types satisfy this property, and the float types
 /// normally satisfy it, but rounding may mean `high` can occur.
-///
-/// # Examples
-///
-/// ```
-/// # #![feature(rand)]
-/// use std::rand::distributions::{IndependentSample, Range};
-///
-/// fn main() {
-///     let between = Range::new(10, 10000);
-///     let mut rng = std::rand::thread_rng();
-///     let mut sum = 0;
-///     for _ in 0..1000 {
-///         sum += between.ind_sample(&mut rng);
-///     }
-///     println!("{}", sum);
-/// }
-/// ```
 pub struct Range<X> {
     low: X,
     range: X,

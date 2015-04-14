@@ -728,7 +728,6 @@ mod test {
     use any::Any;
     use sync::mpsc::{channel, Sender};
     use result;
-    use std::old_io::{ChanReader, ChanWriter};
     use super::{Builder};
     use thread;
     use thunk::Thunk;
@@ -967,13 +966,11 @@ mod test {
 
     #[test]
     fn test_park_timeout_unpark_called_other_thread() {
-        use std::old_io;
-
         for _ in 0..10 {
             let th = thread::current();
 
             let _guard = thread::spawn(move || {
-                old_io::timer::sleep(Duration::milliseconds(50));
+                super::sleep_ms(50);
                 th.unpark();
             });
 

@@ -155,12 +155,11 @@ pub fn inflate_bytes_zlib(bytes: &[u8]) -> Result<Bytes,Error> {
 mod tests {
     #![allow(deprecated)]
     use super::{inflate_bytes, deflate_bytes};
-    use std::rand;
-    use std::rand::Rng;
+    use std::__rand::{thread_rng, Rng};
 
     #[test]
     fn test_flate_round_trip() {
-        let mut r = rand::thread_rng();
+        let mut r = thread_rng();
         let mut words = vec![];
         for _ in 0..20 {
             let range = r.gen_range(1, 10);

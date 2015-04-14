@@ -15,14 +15,12 @@
 //!
 //! # Example
 //!
-//! ```rust,ignore
-//! #![feature(globs)]
-//!
-//! use std::old_io::fs::File;
+//! ```no_run
+//! use std::fs::File;
 //! use std::os::unix::prelude::*;
 //!
 //! fn main() {
-//!     let f = File::create(&Path::new("foo.txt")).unwrap();
+//!     let f = File::create("foo.txt").unwrap();
 //!     let fd = f.as_raw_fd();
 //!
 //!     // use fd with native unix bindings
@@ -34,7 +32,6 @@
 /// Unix-specific extensions to general I/O primitives
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod io {
-    #[allow(deprecated)] use old_io;
     use fs;
     use libc;
     use net;
@@ -82,14 +79,6 @@ pub mod io {
         unsafe fn from_raw_fd(fd: RawFd) -> Self;
     }
 
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawFd for old_io::fs::File {
-        fn as_raw_fd(&self) -> RawFd {
-            self.as_inner().fd()
-        }
-    }
-
     #[stable(feature = "rust1", since = "1.0.0")]
     impl AsRawFd for fs::File {
         fn as_raw_fd(&self) -> RawFd {
@@ -100,70 +89,6 @@ pub mod io {
     impl FromRawFd for fs::File {
         unsafe fn from_raw_fd(fd: RawFd) -> fs::File {
             fs::File::from_inner(sys::fs2::File::from_inner(fd))
-        }
-    }
-
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawFd for old_io::pipe::PipeStream {
-        fn as_raw_fd(&self) -> RawFd {
-            self.as_inner().fd()
-        }
-    }
-
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawFd for old_io::net::pipe::UnixStream {
-        fn as_raw_fd(&self) -> RawFd {
-            self.as_inner().fd()
-        }
-    }
-
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawFd for old_io::net::pipe::UnixListener {
-        fn as_raw_fd(&self) -> RawFd {
-            self.as_inner().fd()
-        }
-    }
-
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawFd for old_io::net::pipe::UnixAcceptor {
-        fn as_raw_fd(&self) -> RawFd {
-            self.as_inner().fd()
-        }
-    }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow(deprecated)]
-    impl AsRawFd for old_io::net::tcp::TcpStream {
-        fn as_raw_fd(&self) -> RawFd {
-            self.as_inner().fd()
-        }
-    }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow(deprecated)]
-    impl AsRawFd for old_io::net::tcp::TcpListener {
-        fn as_raw_fd(&self) -> RawFd {
-            self.as_inner().fd()
-        }
-    }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[allow(deprecated)]
-    impl AsRawFd for old_io::net::tcp::TcpAcceptor {
-        fn as_raw_fd(&self) -> RawFd {
-            self.as_inner().fd()
-        }
-    }
-
-    #[allow(deprecated)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl AsRawFd for old_io::net::udp::UdpSocket {
-        fn as_raw_fd(&self) -> RawFd {
-            self.as_inner().fd()
         }
     }
 

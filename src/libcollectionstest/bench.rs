@@ -12,14 +12,13 @@ macro_rules! map_insert_rand_bench {
     ($name: ident, $n: expr, $map: ident) => (
         #[bench]
         pub fn $name(b: &mut ::test::Bencher) {
-            use std::rand;
-            use std::rand::Rng;
+            use std::__rand::{thread_rng, Rng};
             use test::black_box;
 
             let n: usize = $n;
             let mut map = $map::new();
             // setup
-            let mut rng = rand::weak_rng();
+            let mut rng = thread_rng();
 
             for _ in 0..n {
                 let i = rng.gen::<usize>() % n;
@@ -67,8 +66,7 @@ macro_rules! map_find_rand_bench {
         #[bench]
         pub fn $name(b: &mut ::test::Bencher) {
             use std::iter::Iterator;
-            use std::rand::Rng;
-            use std::rand;
+            use std::__rand::{thread_rng, Rng};
             use std::vec::Vec;
             use test::black_box;
 
@@ -76,7 +74,7 @@ macro_rules! map_find_rand_bench {
             let n: usize = $n;
 
             // setup
-            let mut rng = rand::weak_rng();
+            let mut rng = thread_rng();
             let mut keys: Vec<_> = (0..n).map(|_| rng.gen::<usize>() % n).collect();
 
             for &k in &keys {
