@@ -112,6 +112,25 @@ reference when using guards or refactor the entire expression, perhaps by
 putting the condition inside the body of the arm.
 "##,
 
+E0162: r##"
+An if-let pattern attempts to match the pattern, and enters the body if the
+match was succesful. If the match is irrefutable (when it cannot fail to match),
+use a regular `let`-binding instead. For instance:
+
+struct Irrefutable(i32);
+let irr = Irrefutable(0);
+
+// This fails to compile because the match is irrefutable.
+if let Irrefutable(x) = irr {
+    // This body will always be executed.
+    foo(x);
+}
+
+// Try this instead:
+let Irrefutable(x) = irr;
+foo(x);
+"##,
+
 E0297: r##"
 Patterns used to bind names must be irrefutable. That is, they must guarantee
 that a name will be extracted in all cases. Instead of pattern matching the
@@ -220,7 +239,6 @@ register_diagnostics! {
     E0152,
     E0158,
     E0161,
-    E0162,
     E0165,
     E0170,
     E0261, // use of undeclared lifetime name
