@@ -12,7 +12,6 @@
 // for completeness since .rs files linked from .rc files support this
 // notation to specify their module's attributes
 
-// pretty-expanded FIXME #23616
 
 #![feature(custom_attribute, libc)]
 #![allow(unused_attribute)]
