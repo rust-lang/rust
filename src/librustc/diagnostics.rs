@@ -112,6 +112,33 @@ reference when using guards or refactor the entire expression, perhaps by
 putting the condition inside the body of the arm.
 "##,
 
+E0297: r##"
+Patterns used to bind names must be irrefutable. That is, they must guarantee
+that a name will be extracted in all cases. Instead of pattern matching the
+loop variable, consider using a `match` or `if let` inside the loop body. For
+instance:
+
+// This fails because `None` is not covered.
+for Some(x) in xs {
+    ...
+}
+
+// Match inside the loop instead:
+for item in xs {
+    match item {
+        Some(x) => ...
+        None => ...
+    }
+}
+
+// Or use `if let`:
+for item in xs {
+    if let Some(x) = item {
+        ...
+    }
+}
+"##,
+
 E0303: r##"
 In certain cases it is possible for sub-bindings to violate memory safety.
 Updates to the borrow checker in a future version of Rust may remove this
@@ -194,7 +221,6 @@ register_diagnostics! {
     E0284, // cannot resolve type
     E0285, // overflow evaluation builtin bounds
     E0296, // malformed recursion limit attribute
-    E0297, // refutable pattern in for loop binding
     E0298, // mismatched types between arms
     E0299, // mismatched types between arms
     E0300, // unexpanded macro
