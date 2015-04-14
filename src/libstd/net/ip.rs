@@ -115,9 +115,11 @@ impl Ipv4Addr {
     ///
     /// Non-globally-routable networks include the private networks (10.0.0.0/8,
     /// 172.16.0.0/12 and 192.168.0.0/16), the loopback network (127.0.0.0/8),
-    /// and the link-local network (169.254.0.0/16).
+    /// the link-local network (169.254.0.0/16), the broadcast address (255.255.255.255/32) and
+    /// the test networks used for documentation (192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24)
     pub fn is_global(&self) -> bool {
-        !self.is_private() && !self.is_loopback() && !self.is_link_local()
+        !self.is_private() && !self.is_loopback() && !self.is_link_local() &&
+        !self.is_broadcast() && !self.is_documentation()
     }
 
     /// Returns true if this is a multicast address.
@@ -125,6 +127,29 @@ impl Ipv4Addr {
     /// Multicast addresses have a most significant octet between 224 and 239.
     pub fn is_multicast(&self) -> bool {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
+    }
+
+    /// Returns true if this is a broadcast address.
+    ///
+    /// A broadcast address has all octets set to 255 as defined in RFC 919
+    pub fn is_broadcast(&self) -> bool {
+        self.octets()[0] == 255 && self.octets()[1] == 255 &&
+        self.octets()[2] == 255 && self.octets()[3] == 255
+    }
+
+    /// Returns true if this address is in a range designated for documentation
+    ///
+    /// This is defined in RFC 5737
+    /// - 192.0.2.0/24 (TEST-NET-1)
+    /// - 198.51.100.0/24 (TEST-NET-2)
+    /// - 203.0.113.0/24 (TEST-NET-3)
+    pub fn is_documentation(&self) -> bool {
+        match(self.octets()[0], self.octets()[1], self.octets()[2], self.octets()[3]) {
+            (192, _, 2, _) => true,
+            (198, 51, 100, _) => true,
+            (203, _, 113, _) => true,
+            _ => false
+        }
     }
 
     /// Convert this address to an IPv4-compatible IPv6 address
