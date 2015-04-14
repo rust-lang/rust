@@ -94,6 +94,14 @@ If you maintain your Rust installation via multirust uninstall is simple.
 ```bash
 $ sudo ./install.sh --uninstall
 ```
+Note: If you added additional install options as described on the [multirust](../doc/trpl/multirust_advsetup.md)
+page you will want to see that same page for the additional uninstallation options.
+
+If you did not use multirust the command is 
+
+```bash
+$ sudo /usr/local/lib/rustlib/uninstall.sh
+```
 
 ##Installation test and Upgrade!
 
