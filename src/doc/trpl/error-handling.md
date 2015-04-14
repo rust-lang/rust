@@ -297,5 +297,5 @@ It's worth noting that you can only use `try!` from a function that returns a
 `Result`, which means that you cannot use `try!` inside of `main()`, because
 `main()` doesn't return anything.
 
-`try!` makes use of [`FromError`](../std/error/#the-fromerror-trait) to determine
+`try!` makes use of [`From<Error>`](../std/convert/trait.From.hml) to determine
 what to return in the error case.
