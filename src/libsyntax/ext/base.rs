@@ -554,7 +554,6 @@ pub struct ExtCtxt<'a> {
     pub use_std: bool,
 
     pub mod_path: Vec<ast::Ident> ,
-    pub trace_mac: bool,
     pub exported_macros: Vec<ast::MacroDef>,
 
     pub syntax_env: SyntaxEnv,
@@ -572,7 +571,6 @@ impl<'a> ExtCtxt<'a> {
             mod_path: Vec::new(),
             ecfg: ecfg,
             use_std: true,
-            trace_mac: false,
             exported_macros: Vec::new(),
             syntax_env: env,
             recursion_count: 0,
@@ -732,10 +730,10 @@ impl<'a> ExtCtxt<'a> {
         self.parse_sess.span_diagnostic.handler().bug(msg);
     }
     pub fn trace_macros(&self) -> bool {
-        self.trace_mac
+        self.ecfg.trace_mac
     }
     pub fn set_trace_macros(&mut self, x: bool) {
-        self.trace_mac = x
+        self.ecfg.trace_mac = x
     }
     pub fn ident_of(&self, st: &str) -> ast::Ident {
         str_to_ident(st)

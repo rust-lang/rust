@@ -606,6 +606,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "Force overflow checks on or off"),
     force_dropflag_checks: Option<bool> = (None, parse_opt_bool,
           "Force drop flag checks on or off"),
+    trace_macros: bool = (false, parse_bool,
+          "For every macro invocation, print its name and arguments"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -667,7 +669,7 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
         Ok(t) => t,
         Err(e) => {
             sp.handler().fatal(&format!("Error loading target specification: {}", e));
-    }
+        }
     };
 
     let (int_type, uint_type) = match &target.target_pointer_width[..] {
