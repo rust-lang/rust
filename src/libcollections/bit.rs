@@ -923,7 +923,7 @@ impl BitVec {
         self.set(insert_pos, elem);
     }
 
-    /// Return the total number of bits in this vector
+    /// Returns the total number of bits in this vector
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize { self.nbits }
@@ -1695,7 +1695,7 @@ impl BitSet {
         self.other_op(other, |w1, w2| w1 ^ w2);
     }
 
-    /// Return the number of set bits in this set.
+    /// Returns the number of set bits in this set.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize  {

@@ -534,7 +534,7 @@ impl f64 {
     #[inline]
     pub fn round(self) -> f64 { num::Float::round(self) }
 
-    /// Return the integer part of a number.
+    /// Returns the integer part of a number.
     ///
     /// ```
     /// let f = 3.3_f64;
@@ -671,7 +671,7 @@ impl f64 {
     #[inline]
     pub fn mul_add(self, a: f64, b: f64) -> f64 { num::Float::mul_add(self, a, b) }
 
-    /// Take the reciprocal (inverse) of a number, `1/x`.
+    /// Takes the reciprocal (inverse) of a number, `1/x`.
     ///
     /// ```
     /// let x = 2.0_f64;
@@ -683,7 +683,7 @@ impl f64 {
     #[inline]
     pub fn recip(self) -> f64 { num::Float::recip(self) }
 
-    /// Raise a number to an integer power.
+    /// Raises a number to an integer power.
     ///
     /// Using this function is generally faster than using `powf`
     ///
@@ -697,7 +697,7 @@ impl f64 {
     #[inline]
     pub fn powi(self, n: i32) -> f64 { num::Float::powi(self, n) }
 
-    /// Raise a number to a floating point power.
+    /// Raises a number to a floating point power.
     ///
     /// ```
     /// let x = 2.0_f64;
@@ -709,7 +709,7 @@ impl f64 {
     #[inline]
     pub fn powf(self, n: f64) -> f64 { num::Float::powf(self, n) }
 
-    /// Take the square root of a number.
+    /// Takes the square root of a number.
     ///
     /// Returns NaN if `self` is a negative number.
     ///
@@ -726,7 +726,7 @@ impl f64 {
     #[inline]
     pub fn sqrt(self) -> f64 { num::Float::sqrt(self) }
 
-    /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
+    /// Takes the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     ///
     /// ```
     /// # #![feature(std_misc)]
@@ -835,7 +835,7 @@ impl f64 {
     #[inline]
     pub fn log10(self) -> f64 { num::Float::log10(self) }
 
-    /// Convert radians to degrees.
+    /// Converts radians to degrees.
     ///
     /// ```
     /// use std::f64::consts;
@@ -850,7 +850,7 @@ impl f64 {
     #[inline]
     pub fn to_degrees(self) -> f64 { num::Float::to_degrees(self) }
 
-    /// Convert degrees to radians.
+    /// Converts degrees to radians.
     ///
     /// ```
     /// use std::f64::consts;
@@ -978,7 +978,7 @@ impl f64 {
         unsafe { cmath::fdim(self, other) }
     }
 
-    /// Take the cubic root of a number.
+    /// Takes the cubic root of a number.
     ///
     /// ```
     /// let x = 8.0_f64;
@@ -994,7 +994,7 @@ impl f64 {
         unsafe { cmath::cbrt(self) }
     }
 
-    /// Calculate the length of the hypotenuse of a right-angle triangle given
+    /// Calculates the length of the hypotenuse of a right-angle triangle given
     /// legs of length `x` and `y`.
     ///
     /// ```

@@ -1248,7 +1248,7 @@ impl str {
         core_str::StrExt::trim_right_matches(&self[..], pat)
     }
 
-    /// Check that `index`-th byte lies at the start and/or end of a
+    /// Checks that `index`-th byte lies at the start and/or end of a
     /// UTF-8 code point sequence.
     ///
     /// The start and end of the string (when `index == self.len()`) are
@@ -1435,7 +1435,7 @@ impl str {
         core_str::StrExt::char_at_reverse(&self[..], i)
     }
 
-    /// Convert `self` to a byte slice.
+    /// Converts `self` to a byte slice.
     ///
     /// # Examples
     ///
@@ -1591,7 +1591,7 @@ impl str {
         core_str::StrExt::subslice_offset(&self[..], inner)
     }
 
-    /// Return an unsafe pointer to the `&str`'s buffer.
+    /// Returns an unsafe pointer to the `&str`'s buffer.
     ///
     /// The caller must ensure that the string outlives this pointer, and
     /// that it is not
@@ -1609,7 +1609,7 @@ impl str {
         core_str::StrExt::as_ptr(&self[..])
     }
 
-    /// Return an iterator of `u16` over the string encoded as UTF-16.
+    /// Returns an iterator of `u16` over the string encoded as UTF-16.
     #[unstable(feature = "collections",
                reason = "this functionality may only be provided by libunicode")]
     pub fn utf16_units(&self) -> Utf16Units {

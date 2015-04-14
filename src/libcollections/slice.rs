@@ -549,7 +549,7 @@ impl<T> [T] {
         core_slice::SliceExt::binary_search_by(self, f)
     }
 
-    /// Return the number of elements in the slice
+    /// Returns the number of elements in the slice.
     ///
     /// # Example
     ///
@@ -757,7 +757,7 @@ impl<T> [T] {
         core_slice::SliceExt::get_unchecked_mut(self, index)
     }
 
-    /// Return an unsafe mutable pointer to the slice's buffer.
+    /// Returns an unsafe mutable pointer to the slice's buffer.
     ///
     /// The caller must ensure that the slice outlives the pointer this
     /// function returns, or else it will end up pointing to garbage.
@@ -984,7 +984,7 @@ impl<T> [T] {
         core_slice::SliceExt::ends_with(self, needle)
     }
 
-    /// Convert `self` into a vector without clones or allocation.
+    /// Converts `self` into a vector without clones or allocation.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn into_vec(self: Box<Self>) -> Vec<T> {

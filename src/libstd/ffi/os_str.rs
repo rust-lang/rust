@@ -68,7 +68,7 @@ impl OsString {
         OsString { inner: Buf::from_string(String::new()) }
     }
 
-    /// Construct an `OsString` from a byte sequence.
+    /// Constructs an `OsString` from a byte sequence.
     ///
     /// # Platform behavior
     ///
@@ -93,13 +93,13 @@ impl OsString {
         from_bytes_inner(bytes.into())
     }
 
-    /// Convert to an `OsStr` slice.
+    /// Converts to an `OsStr` slice.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(&self) -> &OsStr {
         self
     }
 
-    /// Convert the `OsString` into a `String` if it contains valid Unicode data.
+    /// Converts the `OsString` into a `String` if it contains valid Unicode data.
     ///
     /// On failure, ownership of the original `OsString` is returned.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -107,7 +107,7 @@ impl OsString {
         self.inner.into_string().map_err(|buf| OsString { inner: buf} )
     }
 
-    /// Extend the string with the given `&OsStr` slice.
+    /// Extends the string with the given `&OsStr` slice.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push<T: AsRef<OsStr>>(&mut self, s: T) {
         self.inner.push_slice(&s.as_ref().inner)
@@ -220,13 +220,13 @@ impl Hash for OsString {
 }
 
 impl OsStr {
-    /// Coerce into an `OsStr` slice.
+    /// Coerces into an `OsStr` slice.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &OsStr {
         s.as_ref()
     }
 
-    /// Coerce directly from a `&str` slice to a `&OsStr` slice.
+    /// Coerces directly from a `&str` slice to a `&OsStr` slice.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[deprecated(since = "1.0.0",
                  reason = "use `OsStr::new` instead")]
@@ -234,7 +234,7 @@ impl OsStr {
         unsafe { mem::transmute(Slice::from_str(s)) }
     }
 
-    /// Yield a `&str` slice if the `OsStr` is valid unicode.
+    /// Yields a `&str` slice if the `OsStr` is valid unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -242,7 +242,7 @@ impl OsStr {
         self.inner.to_str()
     }
 
-    /// Convert an `OsStr` to a `Cow<str>`.
+    /// Converts an `OsStr` to a `Cow<str>`.
     ///
     /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -250,13 +250,13 @@ impl OsStr {
         self.inner.to_string_lossy()
     }
 
-    /// Copy the slice into an owned `OsString`.
+    /// Copies the slice into an owned `OsString`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_os_string(&self) -> OsString {
         OsString { inner: self.inner.to_owned() }
     }
 
-    /// Yield this `OsStr` as a byte slice.
+    /// Yields this `OsStr` as a byte slice.
     ///
     /// # Platform behavior
     ///
@@ -274,7 +274,7 @@ impl OsStr {
         }
     }
 
-    /// Create a `CString` containing this `OsStr` data.
+    /// Creates a `CString` containing this `OsStr` data.
     ///
     /// Fails if the `OsStr` contains interior nulls.
     ///
@@ -286,7 +286,7 @@ impl OsStr {
         self.to_bytes().and_then(|b| CString::new(b).ok())
     }
 
-    /// Get the underlying byte representation.
+    /// Gets the underlying byte representation.
     ///
     /// Note: it is *crucial* that this API is private, to avoid
     /// revealing the internal, platform-specific encodings.

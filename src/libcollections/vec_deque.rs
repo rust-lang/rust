@@ -481,7 +481,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Shorten a ringbuf, dropping excess elements from the back.
+    /// Shortens a ringbuf, dropping excess elements from the back.
     ///
     /// If `len` is greater than the ringbuf's current length, this has no
     /// effect.

@@ -39,7 +39,7 @@ pub fn errno() -> i32 {
     unsafe { libc::GetLastError() as i32 }
 }
 
-/// Get a detailed string description for the given error number
+/// Gets a detailed string description for the given error number.
 pub fn error_string(errnum: i32) -> String {
     use libc::types::os::arch::extra::DWORD;
     use libc::types::os::arch::extra::LPWSTR;

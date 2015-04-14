@@ -226,7 +226,7 @@ pub enum LocalKeyState {
 }
 
 impl<T: 'static> LocalKey<T> {
-    /// Acquire a reference to the value in this TLS key.
+    /// Acquires a reference to the value in this TLS key.
     ///
     /// This will lazily initialize the value if this thread has not referenced
     /// this key yet.

@@ -383,7 +383,7 @@ pub trait Float
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn round(self) -> Self;
-    /// Return the integer part of a number.
+    /// Returns the integer part of a number.
     ///
     /// ```
     /// use std::num::Float;
@@ -509,7 +509,7 @@ pub trait Float
     #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn mul_add(self, a: Self, b: Self) -> Self;
-    /// Take the reciprocal (inverse) of a number, `1/x`.
+    /// Takes the reciprocal (inverse) of a number, `1/x`.
     ///
     /// ```
     /// # #![feature(std_misc)]
@@ -524,7 +524,7 @@ pub trait Float
                reason = "unsure about its place in the world")]
     fn recip(self) -> Self;
 
-    /// Raise a number to an integer power.
+    /// Raises a number to an integer power.
     ///
     /// Using this function is generally faster than using `powf`
     ///
@@ -538,7 +538,7 @@ pub trait Float
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn powi(self, n: i32) -> Self;
-    /// Raise a number to a floating point power.
+    /// Raises a number to a floating point power.
     ///
     /// ```
     /// use std::num::Float;
@@ -550,7 +550,7 @@ pub trait Float
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn powf(self, n: Self) -> Self;
-    /// Take the square root of a number.
+    /// Takes the square root of a number.
     ///
     /// Returns NaN if `self` is a negative number.
     ///
@@ -569,7 +569,7 @@ pub trait Float
     #[stable(feature = "rust1", since = "1.0.0")]
     fn sqrt(self) -> Self;
 
-    /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
+    /// Takes the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     ///
     /// ```
     /// # #![feature(std_misc)]
@@ -679,7 +679,7 @@ pub trait Float
     #[stable(feature = "rust1", since = "1.0.0")]
     fn log10(self) -> Self;
 
-    /// Convert radians to degrees.
+    /// Converts radians to degrees.
     ///
     /// ```
     /// use std::num::Float;
@@ -693,7 +693,7 @@ pub trait Float
     /// ```
     #[unstable(feature = "std_misc", reason = "desirability is unclear")]
     fn to_degrees(self) -> Self;
-    /// Convert degrees to radians.
+    /// Converts degrees to radians.
     ///
     /// ```
     /// # #![feature(std_misc)]
@@ -807,7 +807,7 @@ pub trait Float
     /// ```
     #[unstable(feature = "std_misc", reason = "may be renamed")]
     fn abs_sub(self, other: Self) -> Self;
-    /// Take the cubic root of a number.
+    /// Takes the cubic root of a number.
     ///
     /// ```
     /// # #![feature(std_misc)]
@@ -822,7 +822,7 @@ pub trait Float
     /// ```
     #[unstable(feature = "std_misc", reason = "may be renamed")]
     fn cbrt(self) -> Self;
-    /// Calculate the length of the hypotenuse of a right-angle triangle given
+    /// Calculates the length of the hypotenuse of a right-angle triangle given
     /// legs of length `x` and `y`.
     ///
     /// ```

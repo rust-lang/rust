@@ -232,7 +232,7 @@ impl<T> Mutex<T> {
         }
     }
 
-    /// Determine whether the lock is poisoned.
+    /// Determines whether the lock is poisoned.
     ///
     /// If another thread is active, the lock can still become poisoned at any
     /// time.  You should not trust a `false` value for program correctness

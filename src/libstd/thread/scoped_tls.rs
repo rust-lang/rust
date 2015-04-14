@@ -135,7 +135,7 @@ macro_rules! __scoped_thread_local_inner {
            reason = "scoped TLS has yet to have wide enough use to fully consider \
                      stabilizing its interface")]
 impl<T> ScopedKey<T> {
-    /// Insert a value into this scoped thread local storage slot for a
+    /// Inserts a value into this scoped thread local storage slot for a
     /// duration of a closure.
     ///
     /// While `cb` is running, the value `t` will be returned by `get` unless
@@ -188,7 +188,7 @@ impl<T> ScopedKey<T> {
         cb()
     }
 
-    /// Get a value out of this scoped variable.
+    /// Gets a value out of this scoped variable.
     ///
     /// This function takes a closure which receives the value of this
     /// variable.

@@ -1339,7 +1339,7 @@ impl<K, V> BTreeMap<K, V> {
         Values { inner: self.iter().map(second) }
     }
 
-    /// Return the number of elements in the map.
+    /// Returns the number of elements in the map.
     ///
     /// # Examples
     ///
@@ -1354,7 +1354,7 @@ impl<K, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize { self.length }
 
-    /// Return true if the map contains no elements.
+    /// Returns true if the map contains no elements.
     ///
     /// # Examples
     ///

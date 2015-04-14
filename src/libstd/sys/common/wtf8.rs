@@ -69,7 +69,7 @@ impl fmt::Debug for CodePoint {
 }
 
 impl CodePoint {
-    /// Unsafely create a new `CodePoint` without checking the value.
+    /// Unsafely creates a new `CodePoint` without checking the value.
     ///
     /// Only use when `value` is known to be less than or equal to 0x10FFFF.
     #[inline]
@@ -77,9 +77,9 @@ impl CodePoint {
         CodePoint { value: value }
     }
 
-    /// Create a new `CodePoint` if the value is a valid code point.
+    /// Creates a new `CodePoint` if the value is a valid code point.
     ///
-    /// Return `None` if `value` is above 0x10FFFF.
+    /// Returns `None` if `value` is above 0x10FFFF.
     #[inline]
     pub fn from_u32(value: u32) -> Option<CodePoint> {
         match value {
@@ -88,7 +88,7 @@ impl CodePoint {
         }
     }
 
-    /// Create a new `CodePoint` from a `char`.
+    /// Creates a new `CodePoint` from a `char`.
     ///
     /// Since all Unicode scalar values are code points, this always succeeds.
     #[inline]
@@ -96,15 +96,15 @@ impl CodePoint {
         CodePoint { value: value as u32 }
     }
 
-    /// Return the numeric value of the code point.
+    /// Returns the numeric value of the code point.
     #[inline]
     pub fn to_u32(&self) -> u32 {
         self.value
     }
 
-    /// Optionally return a Unicode scalar value for the code point.
+    /// Optionally returns a Unicode scalar value for the code point.
     ///
-    /// Return `None` if the code point is a surrogate (from U+D800 to U+DFFF).
+    /// Returns `None` if the code point is a surrogate (from U+D800 to U+DFFF).
     #[inline]
     pub fn to_char(&self) -> Option<char> {
         match self.value {
@@ -113,9 +113,9 @@ impl CodePoint {
         }
     }
 
-    /// Return a Unicode scalar value for the code point.
+    /// Returns a Unicode scalar value for the code point.
     ///
-    /// Return `'\u{FFFD}'` (the replacement character “�”)
+    /// Returns `'\u{FFFD}'` (the replacement character “�”)
     /// if the code point is a surrogate (from U+D800 to U+DFFF).
     #[inline]
     pub fn to_char_lossy(&self) -> char {
@@ -151,19 +151,19 @@ impl fmt::Debug for Wtf8Buf {
 }
 
 impl Wtf8Buf {
-    /// Create an new, empty WTF-8 string.
+    /// Creates an new, empty WTF-8 string.
     #[inline]
     pub fn new() -> Wtf8Buf {
         Wtf8Buf { bytes: Vec::new() }
     }
 
-    /// Create an new, empty WTF-8 string with pre-allocated capacity for `n` bytes.
+    /// Creates an new, empty WTF-8 string with pre-allocated capacity for `n` bytes.
     #[inline]
     pub fn with_capacity(n: usize) -> Wtf8Buf {
         Wtf8Buf { bytes: Vec::with_capacity(n) }
     }
 
-    /// Create a WTF-8 string from an UTF-8 `String`.
+    /// Creates a WTF-8 string from an UTF-8 `String`.
     ///
     /// This takes ownership of the `String` and does not copy.
     ///
@@ -173,7 +173,7 @@ impl Wtf8Buf {
         Wtf8Buf { bytes: string.into_bytes() }
     }
 
-    /// Create a WTF-8 string from an UTF-8 `&str` slice.
+    /// Creates a WTF-8 string from an UTF-8 `&str` slice.
     ///
     /// This copies the content of the slice.
     ///
@@ -183,7 +183,7 @@ impl Wtf8Buf {
         Wtf8Buf { bytes: <[_]>::to_vec(str.as_bytes()) }
     }
 
-    /// Create a WTF-8 string from a potentially ill-formed UTF-16 slice of 16-bit code units.
+    /// Creates a WTF-8 string from a potentially ill-formed UTF-16 slice of 16-bit code units.
     ///
     /// This is lossless: calling `.encode_wide()` on the resulting string
     /// will always return the original code units.
@@ -319,7 +319,7 @@ impl Wtf8Buf {
         self.bytes.truncate(new_len)
     }
 
-    /// Consume the WTF-8 string and try to convert it to UTF-8.
+    /// Consumes the WTF-8 string and tries to convert it to UTF-8.
     ///
     /// This does not copy the data.
     ///
@@ -333,7 +333,7 @@ impl Wtf8Buf {
         }
     }
 
-    /// Consume the WTF-8 string and convert it lossily to UTF-8.
+    /// Consumes the WTF-8 string and converts it lossily to UTF-8.
     ///
     /// This does not copy the data (but may overwrite parts of it in place).
     ///
@@ -454,7 +454,7 @@ impl fmt::Debug for Wtf8 {
 }
 
 impl Wtf8 {
-    /// Create a WTF-8 slice from a UTF-8 `&str` slice.
+    /// Creates a WTF-8 slice from a UTF-8 `&str` slice.
     ///
     /// Since WTF-8 is a superset of UTF-8, this always succeeds.
     #[inline]
@@ -462,13 +462,13 @@ impl Wtf8 {
         unsafe { mem::transmute(value.as_bytes()) }
     }
 
-    /// Return the length, in WTF-8 bytes.
+    /// Returns the length, in WTF-8 bytes.
     #[inline]
     pub fn len(&self) -> usize {
         self.bytes.len()
     }
 
-    /// Return the code point at `position` if it is in the ASCII range,
+    /// Returns the code point at `position` if it is in the ASCII range,
     /// or `b'\xFF' otherwise.
     ///
     /// # Panics
@@ -482,7 +482,7 @@ impl Wtf8 {
         }
     }
 
-    /// Return the code point at `position`.
+    /// Returns the code point at `position`.
     ///
     /// # Panics
     ///
@@ -494,7 +494,7 @@ impl Wtf8 {
         code_point
     }
 
-    /// Return the code point at `position`
+    /// Returns the code point at `position`
     /// and the position of the next code point.
     ///
     /// # Panics
@@ -507,15 +507,15 @@ impl Wtf8 {
         (CodePoint { value: c }, n)
     }
 
-    /// Return an iterator for the string’s code points.
+    /// Returns an iterator for the string’s code points.
     #[inline]
     pub fn code_points(&self) -> Wtf8CodePoints {
         Wtf8CodePoints { bytes: self.bytes.iter() }
     }
 
-    /// Try to convert the string to UTF-8 and return a `&str` slice.
+    /// Tries to convert the string to UTF-8 and return a `&str` slice.
     ///
-    /// Return `None` if the string contains surrogates.
+    /// Returns `None` if the string contains surrogates.
     ///
     /// This does not copy the data.
     #[inline]
@@ -528,8 +528,8 @@ impl Wtf8 {
         }
     }
 
-    /// Lossily convert the string to UTF-8.
-    /// Return an UTF-8 `&str` slice if the contents are well-formed in UTF-8.
+    /// Lossily converts the string to UTF-8.
+    /// Returns an UTF-8 `&str` slice if the contents are well-formed in UTF-8.
     ///
     /// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “�”).
     ///
@@ -559,7 +559,7 @@ impl Wtf8 {
         }
     }
 
-    /// Convert the WTF-8 string to potentially ill-formed UTF-16
+    /// Converts the WTF-8 string to potentially ill-formed UTF-16
     /// and return an iterator of 16-bit code units.
     ///
     /// This is lossless:
