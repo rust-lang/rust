@@ -15,7 +15,7 @@
 
 use strings::string_buffer::StringBuffer;
 use std::collections::HashMap;
-use syntax::codemap::{CodeMap, Span};
+use syntax::codemap::{CodeMap, Span,BytePos};
 use std::fmt;
 
 // This is basically a wrapper around a bunch of Ropes which makes it convenient
@@ -23,6 +23,7 @@ use std::fmt;
 pub struct ChangeSet<'a> {
     file_map: HashMap<String, StringBuffer>,
     codemap: &'a CodeMap,
+    file_spans: Vec<(u32, u32)>,
 }
 
 impl<'a> ChangeSet<'a> {
@@ -31,6 +32,7 @@ impl<'a> ChangeSet<'a> {
         let mut result = ChangeSet {
             file_map: HashMap::new(),
             codemap: codemap,
+            file_spans: Vec::with_capacity(codemap.files.borrow().len()),
         };
 
         for f in codemap.files.borrow().iter() {
@@ -39,9 +41,47 @@ impl<'a> ChangeSet<'a> {
             // power of two. TODO check that or do it here.
             result.file_map.insert(f.name.clone(),
                                    StringBuffer::with_capacity(f.src.as_ref().unwrap().len()));
+
+            result.file_spans.push((f.start_pos.0, f.end_pos.0));
         }
 
+        result.file_spans.sort();
+
         result
+    }
+
+    pub fn filespans_for_span(&self, start: BytePos, end: BytePos) -> Vec<(u32, u32)> {
+        assert!(start.0 <= end.0);
+
+        if self.file_spans.len() == 0 {
+            return Vec::new();
+        }
+
+        let mut idx = match self.file_spans.binary_search(&(start.0, ::std::u32::MAX)) {
+            Ok(i) => i,
+            Err(0) => 0,
+            Err(i) => i - 1,
+        };
+
+        let mut result = Vec::new();
+        let mut start = start.0;
+        loop {
+            let cur_file = &self.file_spans[idx];
+            idx += 1;
+
+            if idx >= self.file_spans.len() || start >= end.0 {
+                if start < end.0 {
+                    result.push((start, end.0));
+                }
+                return result;
+            }
+
+            let end = ::std::cmp::min(cur_file.1 - 1, end.0);
+            if start < end {
+                result.push((start, end));
+            }
+            start = self.file_spans[idx].0;
+        }
     }
 
     pub fn push_str(&mut self, file_name: &str, text: &str) {

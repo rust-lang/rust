@@ -22,8 +22,8 @@
 // TODO priorities
 // Fix fns and methods properly - need visibility in visit
 // Writing output
-// Working on multiple files, inclding empty ones
 // Smoke testing till we can use it
+// end of multi-line string has wspace
 
 #[macro_use]
 extern crate log;
@@ -123,10 +123,9 @@ struct FmtVisitor<'a> {
 
 impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     fn visit_expr(&mut self, ex: &'v ast::Expr) {
-        // TODO uncomment
-        // debug!("visit_expr: {:?} {:?}",
-        //        self.codemap.lookup_char_pos(ex.span.lo),
-        //        self.codemap.lookup_char_pos(ex.span.hi));
+        debug!("visit_expr: {:?} {:?}",
+               self.codemap.lookup_char_pos(ex.span.lo),
+               self.codemap.lookup_char_pos(ex.span.hi));
         self.format_missing(ex.span.lo);
         let offset = self.changes.cur_offset_span(ex.span);
         let new_str = self.rewrite_expr(ex, MAX_WIDTH - offset, offset);
@@ -135,10 +134,9 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     }
 
     fn visit_block(&mut self, b: &'v ast::Block) {
-        // TODO uncomment
-        // debug!("visit_block: {:?} {:?}",
-        //        self.codemap.lookup_char_pos(b.span.lo),
-        //        self.codemap.lookup_char_pos(b.span.hi));
+        debug!("visit_block: {:?} {:?}",
+               self.codemap.lookup_char_pos(b.span.lo),
+               self.codemap.lookup_char_pos(b.span.hi));
         self.format_missing(b.span.lo);
 
         self.changes.push_str_span(b.span, "{");
@@ -240,6 +238,15 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
     fn visit_mac(&mut self, mac: &'v ast::Mac) {
         visit::walk_mac(self, mac)
+    }
+
+    fn visit_mod(&mut self, m: &'v ast::Mod, s: Span, _: ast::NodeId) {
+        // Only visit inline mods here.
+        if self.codemap.lookup_char_pos(s.lo).file.name !=
+           self.codemap.lookup_char_pos(m.inner.lo).file.name {
+            return;
+        }
+        visit::walk_mod(self, m);
     }
 }
 
@@ -413,63 +420,67 @@ impl<'a> FmtVisitor<'a> {
                                                                       process_last_snippet: F)
     {
         let start = self.last_pos;
-        // TODO uncomment
-        // debug!("format_missing_inner: {:?} to {:?}",
-        //        self.codemap.lookup_char_pos(start),
-        //        self.codemap.lookup_char_pos(end));
-
-        // TODO(#11) gets tricky if we're missing more than one file
-        // assert!(self.codemap.lookup_char_pos(start).file.name == self.codemap.lookup_char_pos(end).file.name,
-        //         "not implemented: unformated span across files: {} and {}",
-        //         self.codemap.lookup_char_pos(start).file.name,
-        //         self.codemap.lookup_char_pos(end).file.name);
-        // assert!(start <= end,
-        //         "Request to format inverted span: {:?} to {:?}",
-        //         self.codemap.lookup_char_pos(start),
-        //         self.codemap.lookup_char_pos(end));
+        debug!("format_missing_inner: {:?} to {:?}",
+               self.codemap.lookup_char_pos(start),
+               self.codemap.lookup_char_pos(end));
 
         if start == end {
             return;
         }
 
+        assert!(start < end,
+                "Request to format inverted span: {:?} to {:?}",
+                self.codemap.lookup_char_pos(start),
+                self.codemap.lookup_char_pos(end));
+
+
         self.last_pos = end;
-        let span = codemap::mk_sp(start, end);
-        let snippet = self.snippet(span);
+        let spans = self.changes.filespans_for_span(start, end);
+        for (i, &(start, end)) in spans.iter().enumerate() {
+            let span = codemap::mk_sp(BytePos(start), BytePos(end));
+            let snippet = self.snippet(span);
 
-        // Trim whitespace from the right hand side of each line.
-        // Annoyingly, the library functions for splitting by lines etc. are not
-        // quite right, so we must do it ourselves.
-        let mut line_start = 0;
-        let mut last_wspace = None;
-        for (i, c) in snippet.char_indices() {
-            if c == '\n' {
-                if let Some(lw) = last_wspace {
-                    self.changes.push_str_span(span, &snippet[line_start..lw]);
-                    self.changes.push_str_span(span, "\n");
-                } else {
-                    self.changes.push_str_span(span, &snippet[line_start..i+1]);
-                }
-
-                line_start = i + 1;
-                last_wspace = None;
-            } else {
-                if c.is_whitespace() {
-                    if last_wspace.is_none() {
-                        last_wspace = Some(i);
+            // Trim whitespace from the right hand side of each line.
+            // Annoyingly, the library functions for splitting by lines etc. are not
+            // quite right, so we must do it ourselves.
+            let mut line_start = 0;
+            let mut last_wspace = None;
+            for (i, c) in snippet.char_indices() {
+                if c == '\n' {
+                    if let Some(lw) = last_wspace {
+                        self.changes.push_str_span(span, &snippet[line_start..lw]);
+                        self.changes.push_str_span(span, "\n");
+                    } else {
+                        self.changes.push_str_span(span, &snippet[line_start..i+1]);
                     }
-                } else {
+
+                    line_start = i + 1;
                     last_wspace = None;
+                } else {
+                    if c.is_whitespace() {
+                        if last_wspace.is_none() {
+                            last_wspace = Some(i);
+                        }
+                    } else {
+                        last_wspace = None;
+                    }
                 }
             }
+            if i == spans.len() - 1 {
+                process_last_snippet(self, &snippet[line_start..], span, &snippet);
+            } else {
+                self.changes.push_str_span(span, &snippet[line_start..]);
+            }
         }
-        process_last_snippet(self, &snippet[line_start..], span, &snippet);
     }
 
     fn snippet(&self, span: Span) -> String {
         match self.codemap.span_to_snippet(span) {
             Ok(s) => s,
             Err(_) => {
-                println!("Couldn't make snippet for span {:?}", span);
+                println!("Couldn't make snippet for span {:?}->{:?}",
+                         self.codemap.lookup_char_pos(span.lo),
+                         self.codemap.lookup_char_pos(span.hi));
                 "".to_string()
             }
         }
