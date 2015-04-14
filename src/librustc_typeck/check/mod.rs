@@ -1292,21 +1292,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn write_autoderef_adjustment(&self,
                                       node_id: ast::NodeId,
-                                      span: Span,
                                       derefs: usize) {
-        if derefs == 0 { return; }
         self.write_adjustment(
             node_id,
-            span,
             ty::AdjustDerefRef(ty::AutoDerefRef {
                 autoderefs: derefs,
-                autoref: None })
+                autoref: None,
+                unsize: None
+            })
         );
     }
 
     pub fn write_adjustment(&self,
                             node_id: ast::NodeId,
-                            span: Span,
                             adj: ty::AutoAdjustment<'tcx>) {
         debug!("write_adjustment(node_id={}, adj={})", node_id, adj.repr(self.tcx()));
 
@@ -1314,13 +1312,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
 
-        // Careful: adjustments can imply trait obligations if we are
-        // casting from a concrete type to an object type. I think
-        // it'd probably be nicer to move the logic that creates the
-        // obligation into the code that creates the adjustment, but
-        // that's a bit awkward, so instead we go digging and pull the
-        // obligation out here.
-        self.register_adjustment_obligations(span, &adj);
         self.inh.adjustments.borrow_mut().insert(node_id, adj);
     }
 
@@ -1381,74 +1372,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                            item_name: item_name,
                                        },
                                        cause)
-    }
-
-    fn register_adjustment_obligations(&self,
-                                       span: Span,
-                                       adj: &ty::AutoAdjustment<'tcx>) {
-        match *adj {
-            ty::AdjustReifyFnPointer(..) => { }
-            ty::AdjustUnsafeFnPointer => { }
-            ty::AdjustDerefRef(ref d_r) => {
-                match d_r.autoref {
-                    Some(ref a_r) => {
-                        self.register_autoref_obligations(span, a_r);
-                    }
-                    None => {}
-                }
-            }
-        }
-    }
-
-    fn register_autoref_obligations(&self,
-                                    span: Span,
-                                    autoref: &ty::AutoRef<'tcx>) {
-        match *autoref {
-            ty::AutoUnsize(ref unsize) => {
-                self.register_unsize_obligations(span, unsize);
-            }
-            ty::AutoPtr(_, _, None) |
-            ty::AutoUnsafe(_, None) => {
-            }
-            ty::AutoPtr(_, _, Some(ref a_r)) |
-            ty::AutoUnsafe(_, Some(ref a_r)) => {
-                self.register_autoref_obligations(span, &**a_r)
-            }
-            ty::AutoUnsizeUniq(ref unsize) => {
-                self.register_unsize_obligations(span, unsize);
-            }
-        }
-    }
-
-    fn register_unsize_obligations(&self,
-                                   span: Span,
-                                   unsize: &ty::UnsizeKind<'tcx>) {
-        debug!("register_unsize_obligations: unsize={:?}", unsize);
-
-        match *unsize {
-            ty::UnsizeLength(..) => {}
-            ty::UnsizeStruct(ref u, _) => {
-                self.register_unsize_obligations(span, &**u)
-            }
-            ty::UnsizeVtable(ref ty_trait, self_ty) => {
-                vtable::check_object_safety(self.tcx(), ty_trait, span);
-
-                // If the type is `Foo+'a`, ensures that the type
-                // being cast to `Foo+'a` implements `Foo`:
-                vtable::register_object_cast_obligations(self,
-                                                         span,
-                                                         ty_trait,
-                                                         self_ty);
-
-                // If the type is `Foo+'a`, ensures that the type
-                // being cast to `Foo+'a` outlives `'a`:
-                let cause = traits::ObligationCause { span: span,
-                                                      body_id: self.body_id,
-                                                      code: traits::ObjectCastObligation(self_ty) };
-                self.register_region_obligation(self_ty, ty_trait.bounds.region_bound, cause);
-            }
-            ty::UnsizeUpcast(_) => { }
-        }
     }
 
     /// Returns the type of `def_id` with all generics replaced by by fresh type/region variables.
@@ -1881,7 +1804,8 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
         let mt = match ty::deref(resolved_t, false) {
             Some(mt) => Some(mt),
             None => {
-                let method_call = opt_expr.map(|expr| MethodCall::autoderef(expr.id, autoderefs));
+                let method_call =
+                    opt_expr.map(|expr| MethodCall::autoderef(expr.id, autoderefs as u32));
 
                 // Super subtle: it might seem as though we should
                 // pass `opt_expr` to `try_overloaded_deref`, so that
@@ -1972,13 +1896,13 @@ fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
-fn autoderef_for_index<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
-                                       base_expr: &ast::Expr,
-                                       base_ty: Ty<'tcx>,
-                                       lvalue_pref: LvaluePreference,
-                                       mut step: F)
-                                       -> Option<T> where
-    F: FnMut(Ty<'tcx>, ty::AutoDerefRef<'tcx>) -> Option<T>,
+fn lookup_indexing<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                             expr: &ast::Expr,
+                             base_expr: &'tcx ast::Expr,
+                             base_ty: Ty<'tcx>,
+                             idx_ty: Ty<'tcx>,
+                             lvalue_pref: LvaluePreference)
+                             -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
 {
     // FIXME(#18741) -- this is almost but not quite the same as the
     // autoderef that normal method probing does. They could likely be
@@ -1991,9 +1915,9 @@ fn autoderef_for_index<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                UnresolvedTypeAction::Error,
                                                lvalue_pref,
                                                |adj_ty, idx| {
-            let autoderefref = ty::AutoDerefRef { autoderefs: idx, autoref: None };
-            step(adj_ty, autoderefref)
-        });
+        try_index_step(fcx, MethodCall::expr(expr.id), expr, base_expr,
+                       adj_ty, idx, false, lvalue_pref, idx_ty)
+    });
 
     if final_mt.is_some() {
         return final_mt;
@@ -2001,41 +1925,38 @@ fn autoderef_for_index<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
 
     // After we have fully autoderef'd, if the resulting type is [T, ..n], then
     // do a final unsized coercion to yield [T].
-    match ty.sty {
-        ty::ty_vec(element_ty, Some(n)) => {
-            let adjusted_ty = ty::mk_vec(fcx.tcx(), element_ty, None);
-            let autoderefref = ty::AutoDerefRef {
-                autoderefs: autoderefs,
-                autoref: Some(ty::AutoUnsize(ty::UnsizeLength(n)))
-            };
-            step(adjusted_ty, autoderefref)
-        }
-        _ => {
-            None
-        }
+    if let ty::ty_vec(element_ty, Some(_)) = ty.sty {
+        let adjusted_ty = ty::mk_vec(fcx.tcx(), element_ty, None);
+        try_index_step(fcx, MethodCall::expr(expr.id), expr, base_expr,
+                       adjusted_ty, autoderefs, true, lvalue_pref, idx_ty)
+    } else {
+        None
     }
 }
 
 /// To type-check `base_expr[index_expr]`, we progressively autoderef (and otherwise adjust)
 /// `base_expr`, looking for a type which either supports builtin indexing or overloaded indexing.
 /// This loop implements one step in that search; the autoderef loop is implemented by
-/// `autoderef_for_index`.
+/// `lookup_indexing`.
 fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                             method_call: MethodCall,
                             expr: &ast::Expr,
                             base_expr: &'tcx ast::Expr,
                             adjusted_ty: Ty<'tcx>,
-                            adjustment: ty::AutoDerefRef<'tcx>,
+                            autoderefs: usize,
+                            unsize: bool,
                             lvalue_pref: LvaluePreference,
                             index_ty: Ty<'tcx>)
                             -> Option<(/*index type*/ Ty<'tcx>, /*element type*/ Ty<'tcx>)>
 {
     let tcx = fcx.tcx();
-    debug!("try_index_step(expr={}, base_expr.id={}, adjusted_ty={}, adjustment={:?}, index_ty={})",
+    debug!("try_index_step(expr={}, base_expr.id={}, adjusted_ty={}, \
+                           autoderefs={}, unsize={}, index_ty={})",
            expr.repr(tcx),
            base_expr.repr(tcx),
            adjusted_ty.repr(tcx),
-           adjustment,
+           autoderefs,
+           unsize,
            index_ty.repr(tcx));
 
     let input_ty = fcx.infcx().next_ty_var();
@@ -2044,7 +1965,9 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     match (ty::index(adjusted_ty), &index_ty.sty) {
         (Some(ty), &ty::ty_uint(ast::TyUs)) | (Some(ty), &ty::ty_infer(ty::IntVar(_))) => {
             debug!("try_index_step: success, using built-in indexing");
-            fcx.write_adjustment(base_expr.id, base_expr.span, ty::AdjustDerefRef(adjustment));
+            // If we had `[T; N]`, we should've caught it before unsizing to `[T]`.
+            assert!(!unsize);
+            fcx.write_autoderef_adjustment(base_expr.id, autoderefs);
             return Some((tcx.types.usize, ty));
         }
         _ => {}
@@ -2058,7 +1981,8 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                              Some(&*base_expr),
                                              token::intern("index_mut"),
                                              trait_did,
-                                             adjustment.clone(),
+                                             autoderefs,
+                                             unsize,
                                              adjusted_ty,
                                              Some(vec![input_ty]))
         }
@@ -2073,7 +1997,8 @@ fn try_index_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                              Some(&*base_expr),
                                              token::intern("index"),
                                              trait_did,
-                                             adjustment.clone(),
+                                             autoderefs,
+                                             unsize,
                                              adjusted_ty,
                                              Some(vec![input_ty]))
         }
@@ -2662,7 +2587,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         match field_ty {
             Some(field_ty) => {
                 fcx.write_ty(expr.id, field_ty);
-                fcx.write_autoderef_adjustment(base.id, base.span, autoderefs);
+                fcx.write_autoderef_adjustment(base.id, autoderefs);
                 return;
             }
             None => {}
@@ -2773,7 +2698,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         match field_ty {
             Some(field_ty) => {
                 fcx.write_ty(expr.id, field_ty);
-                fcx.write_autoderef_adjustment(base.id, base.span, autoderefs);
+                fcx.write_autoderef_adjustment(base.id, autoderefs);
                 return;
             }
             None => {}
@@ -3600,26 +3525,13 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                   fcx.write_ty(id, idx_t);
               } else {
                   let base_t = structurally_resolved_type(fcx, expr.span, base_t);
-
-                  let result =
-                      autoderef_for_index(fcx, &**base, base_t, lvalue_pref, |adj_ty, adj| {
-                          try_index_step(fcx,
-                                         MethodCall::expr(expr.id),
-                                         expr,
-                                         &**base,
-                                         adj_ty,
-                                         adj,
-                                         lvalue_pref,
-                                         idx_t)
-                      });
-
-                  match result {
+                  match lookup_indexing(fcx, expr, base, base_t, idx_t, lvalue_pref) {
                       Some((index_ty, element_ty)) => {
                           let idx_expr_ty = fcx.expr_ty(idx);
                           demand::eqtype(fcx, expr.span, index_ty, idx_expr_ty);
                           fcx.write_ty(id, element_ty);
                       }
-                      _ => {
+                      None => {
                           check_expr_has_type(fcx, &**idx, fcx.tcx().types.err);
                           fcx.type_error_message(
                               expr.span,

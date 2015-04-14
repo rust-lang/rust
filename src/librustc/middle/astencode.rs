@@ -601,18 +601,18 @@ impl tr for ty::UpvarCapture {
 
 trait read_method_callee_helper<'tcx> {
     fn read_method_callee<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-        -> (ty::ExprAdjustment, MethodCallee<'tcx>);
+                                  -> (u32, MethodCallee<'tcx>);
 }
 
 fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
                                   rbml_w: &mut Encoder,
-                                  adjustment: ty::ExprAdjustment,
+                                  autoderef: u32,
                                   method: &MethodCallee<'tcx>) {
     use serialize::Encoder;
 
     rbml_w.emit_struct("MethodCallee", 4, |rbml_w| {
-        rbml_w.emit_struct_field("adjustment", 0, |rbml_w| {
-            adjustment.encode(rbml_w)
+        rbml_w.emit_struct_field("autoderef", 0, |rbml_w| {
+            autoderef.encode(rbml_w)
         });
         rbml_w.emit_struct_field("origin", 1, |rbml_w| {
             Ok(rbml_w.emit_method_origin(ecx, &method.origin))
@@ -628,13 +628,13 @@ fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
 
 impl<'a, 'tcx> read_method_callee_helper<'tcx> for reader::Decoder<'a> {
     fn read_method_callee<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-        -> (ty::ExprAdjustment, MethodCallee<'tcx>) {
+                                  -> (u32, MethodCallee<'tcx>) {
 
         self.read_struct("MethodCallee", 4, |this| {
-            let adjustment = this.read_struct_field("adjustment", 0, |this| {
+            let autoderef = this.read_struct_field("autoderef", 0, |this| {
                 Decodable::decode(this)
             }).unwrap();
-            Ok((adjustment, MethodCallee {
+            Ok((autoderef, MethodCallee {
                 origin: this.read_struct_field("origin", 1, |this| {
                     Ok(this.read_method_origin(dcx))
                 }).unwrap(),
@@ -688,7 +688,7 @@ pub trait vtable_decoder_helpers<'tcx> {
     fn read_vtable_res_with_key(&mut self,
                                 tcx: &ty::ctxt<'tcx>,
                                 cdata: &cstore::crate_metadata)
-                                -> (ty::ExprAdjustment, ty::vtable_res<'tcx>);
+                                -> (u32, ty::vtable_res<'tcx>);
     fn read_vtable_res(&mut self,
                        tcx: &ty::ctxt<'tcx>, cdata: &cstore::crate_metadata)
                       -> ty::vtable_res<'tcx>;
@@ -713,12 +713,12 @@ impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_vtable_res_with_key(&mut self,
                                 tcx: &ty::ctxt<'tcx>,
                                 cdata: &cstore::crate_metadata)
-                                -> (ty::ExprAdjustment, ty::vtable_res<'tcx>) {
+                                -> (u32, ty::vtable_res<'tcx>) {
         self.read_struct("VtableWithKey", 2, |this| {
-            let adjustment = this.read_struct_field("adjustment", 0, |this| {
+            let autoderef = this.read_struct_field("autoderef", 0, |this| {
                 Decodable::decode(this)
             }).unwrap();
-            Ok((adjustment, this.read_struct_field("vtable_res", 1, |this| {
+            Ok((autoderef, this.read_struct_field("vtable_res", 1, |this| {
                 Ok(this.read_vtable_res(tcx, cdata))
             }).unwrap()))
         }).unwrap()
@@ -845,12 +845,9 @@ trait rbml_writer_helpers<'tcx> {
     fn emit_builtin_bounds(&mut self, ecx: &e::EncodeContext, bounds: &ty::BuiltinBounds);
     fn emit_auto_adjustment<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                                 adj: &ty::AutoAdjustment<'tcx>);
-    fn emit_autoref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                        autoref: &ty::AutoRef<'tcx>);
+    fn emit_autoref<'a>(&mut self, autoref: &ty::AutoRef<'tcx>);
     fn emit_auto_deref_ref<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
                                auto_deref_ref: &ty::AutoDerefRef<'tcx>);
-    fn emit_unsize_kind<'a>(&mut self, ecx: &e::EncodeContext<'a, 'tcx>,
-                            uk: &ty::UnsizeKind<'tcx>);
 }
 
 impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
@@ -1012,10 +1009,8 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
         self.emit_enum("AutoAdjustment", |this| {
             match *adj {
-                ty::AdjustReifyFnPointer(def_id) => {
-                    this.emit_enum_variant("AdjustReifyFnPointer", 1, 2, |this| {
-                        this.emit_enum_variant_arg(0, |this| def_id.encode(this))
-                    })
+                ty::AdjustReifyFnPointer=> {
+                    this.emit_enum_variant("AdjustReifyFnPointer", 1, 0, |_| Ok(()))
                 }
 
                 ty::AdjustUnsafeFnPointer => {
@@ -1034,50 +1029,20 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
         });
     }
 
-    fn emit_autoref<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                        autoref: &ty::AutoRef<'tcx>) {
+    fn emit_autoref<'b>(&mut self, autoref: &ty::AutoRef<'tcx>) {
         use serialize::Encoder;
 
         self.emit_enum("AutoRef", |this| {
             match autoref {
-                &ty::AutoPtr(r, m, None) => {
-                    this.emit_enum_variant("AutoPtr", 0, 3, |this| {
+                &ty::AutoPtr(r, m) => {
+                    this.emit_enum_variant("AutoPtr", 0, 2, |this| {
                         this.emit_enum_variant_arg(0, |this| r.encode(this));
-                        this.emit_enum_variant_arg(1, |this| m.encode(this));
-                        this.emit_enum_variant_arg(2,
-                            |this| this.emit_option(|this| this.emit_option_none()))
+                        this.emit_enum_variant_arg(1, |this| m.encode(this))
                     })
                 }
-                &ty::AutoPtr(r, m, Some(box ref a)) => {
-                    this.emit_enum_variant("AutoPtr", 0, 3, |this| {
-                        this.emit_enum_variant_arg(0, |this| r.encode(this));
-                        this.emit_enum_variant_arg(1, |this| m.encode(this));
-                        this.emit_enum_variant_arg(2, |this| this.emit_option(
-                            |this| this.emit_option_some(|this| Ok(this.emit_autoref(ecx, a)))))
-                    })
-                }
-                &ty::AutoUnsize(ref uk) => {
-                    this.emit_enum_variant("AutoUnsize", 1, 1, |this| {
-                        this.emit_enum_variant_arg(0, |this| Ok(this.emit_unsize_kind(ecx, uk)))
-                    })
-                }
-                &ty::AutoUnsizeUniq(ref uk) => {
-                    this.emit_enum_variant("AutoUnsizeUniq", 2, 1, |this| {
-                        this.emit_enum_variant_arg(0, |this| Ok(this.emit_unsize_kind(ecx, uk)))
-                    })
-                }
-                &ty::AutoUnsafe(m, None) => {
-                    this.emit_enum_variant("AutoUnsafe", 3, 2, |this| {
-                        this.emit_enum_variant_arg(0, |this| m.encode(this));
-                        this.emit_enum_variant_arg(1,
-                            |this| this.emit_option(|this| this.emit_option_none()))
-                    })
-                }
-                &ty::AutoUnsafe(m, Some(box ref a)) => {
-                    this.emit_enum_variant("AutoUnsafe", 3, 2, |this| {
-                        this.emit_enum_variant_arg(0, |this| m.encode(this));
-                        this.emit_enum_variant_arg(1, |this| this.emit_option(
-                            |this| this.emit_option_some(|this| Ok(this.emit_autoref(ecx, a)))))
+                &ty::AutoUnsafe(m) => {
+                    this.emit_enum_variant("AutoUnsafe", 1, 1, |this| {
+                        this.emit_enum_variant_arg(0, |this| m.encode(this))
                     })
                 }
             }
@@ -1090,55 +1055,26 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
 
         self.emit_struct("AutoDerefRef", 2, |this| {
             this.emit_struct_field("autoderefs", 0, |this| auto_deref_ref.autoderefs.encode(this));
+
             this.emit_struct_field("autoref", 1, |this| {
                 this.emit_option(|this| {
                     match auto_deref_ref.autoref {
                         None => this.emit_option_none(),
-                        Some(ref a) => this.emit_option_some(|this| Ok(this.emit_autoref(ecx, a))),
+                        Some(ref a) => this.emit_option_some(|this| Ok(this.emit_autoref(a))),
+                    }
+                })
+            });
+
+            this.emit_struct_field("unsize", 2, |this| {
+                this.emit_option(|this| {
+                    match auto_deref_ref.unsize {
+                        None => this.emit_option_none(),
+                        Some(target) => this.emit_option_some(|this| {
+                            Ok(this.emit_ty(ecx, target))
+                        })
                     }
                 })
             })
-        });
-    }
-
-    fn emit_unsize_kind<'b>(&mut self, ecx: &e::EncodeContext<'b, 'tcx>,
-                            uk: &ty::UnsizeKind<'tcx>) {
-        use serialize::Encoder;
-
-        self.emit_enum("UnsizeKind", |this| {
-            match *uk {
-                ty::UnsizeLength(len) => {
-                    this.emit_enum_variant("UnsizeLength", 0, 1, |this| {
-                        this.emit_enum_variant_arg(0, |this| len.encode(this))
-                    })
-                }
-                ty::UnsizeStruct(box ref uk, idx) => {
-                    this.emit_enum_variant("UnsizeStruct", 1, 2, |this| {
-                        this.emit_enum_variant_arg(0, |this| Ok(this.emit_unsize_kind(ecx, uk)));
-                        this.emit_enum_variant_arg(1, |this| idx.encode(this))
-                    })
-                }
-                ty::UnsizeVtable(ty::TyTrait { ref principal,
-                                               bounds: ref b },
-                                 self_ty) => {
-                    this.emit_enum_variant("UnsizeVtable", 2, 4, |this| {
-                        this.emit_enum_variant_arg(0, |this| {
-                            try!(this.emit_struct_field("principal", 0, |this| {
-                                Ok(this.emit_trait_ref(ecx, &*principal.0))
-                            }));
-                            this.emit_struct_field("bounds", 1, |this| {
-                                Ok(this.emit_existential_bounds(ecx, b))
-                            })
-                        });
-                        this.emit_enum_variant_arg(1, |this| Ok(this.emit_ty(ecx, self_ty)))
-                    })
-                }
-                ty::UnsizeUpcast(target_ty) => {
-                    this.emit_enum_variant("UnsizeUpcast", 3, 1, |this| {
-                        this.emit_enum_variant_arg(0, |this| Ok(this.emit_ty(ecx, target_ty)))
-                    })
-                }
-            }
         });
     }
 }
@@ -1258,7 +1194,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     if let Some(method) = tcx.method_map.borrow().get(&method_call) {
         rbml_w.tag(c::tag_table_method_map, |rbml_w| {
             rbml_w.id(id);
-            encode_method_callee(ecx, rbml_w, method_call.adjustment, method)
+            encode_method_callee(ecx, rbml_w, method_call.autoderef, method)
         })
     }
 
@@ -1271,31 +1207,19 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     if let Some(adjustment) = tcx.adjustments.borrow().get(&id) {
         match *adjustment {
-            _ if ty::adjust_is_object(adjustment) => {
-                let method_call = MethodCall::autoobject(id);
-                if let Some(method) = tcx.method_map.borrow().get(&method_call) {
-                    rbml_w.tag(c::tag_table_method_map, |rbml_w| {
-                        rbml_w.id(id);
-                        encode_method_callee(ecx, rbml_w, method_call.adjustment, method)
-                    })
-                }
-            }
             ty::AdjustDerefRef(ref adj) => {
-                assert!(!ty::adjust_is_object(adjustment));
                 for autoderef in 0..adj.autoderefs {
-                    let method_call = MethodCall::autoderef(id, autoderef);
+                    let method_call = MethodCall::autoderef(id, autoderef as u32);
                     if let Some(method) = tcx.method_map.borrow().get(&method_call) {
                         rbml_w.tag(c::tag_table_method_map, |rbml_w| {
                             rbml_w.id(id);
                             encode_method_callee(ecx, rbml_w,
-                                                 method_call.adjustment, method)
+                                                 method_call.autoderef, method)
                         })
                     }
                 }
             }
-            _ => {
-                assert!(!ty::adjust_is_object(adjustment));
-            }
+            _ => {}
         }
 
         rbml_w.tag(c::tag_table_adjustments, |rbml_w| {
@@ -1367,8 +1291,6 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                                    -> ty::AutoDerefRef<'tcx>;
     fn read_autoref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                             -> ty::AutoRef<'tcx>;
-    fn read_unsize_kind<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                -> ty::UnsizeKind<'tcx>;
     fn convert_def_id(&mut self,
                       dcx: &DecodeContext,
                       source: DefIdSource,
@@ -1640,18 +1562,11 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
     fn read_auto_adjustment<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
                                     -> ty::AutoAdjustment<'tcx> {
         self.read_enum("AutoAdjustment", |this| {
-            let variants = ["AutoAddEnv", "AutoDerefRef"];
+            let variants = ["AdjustReifyFnPointer", "AdjustUnsafeFnPointer", "AdjustDerefRef"];
             this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
-                    1 => {
-                        let def_id: ast::DefId =
-                            this.read_def_id(dcx);
-
-                        ty::AdjustReifyFnPointer(def_id)
-                    }
-                    2 => {
-                        ty::AdjustUnsafeFnPointer
-                    }
+                    1 => ty::AdjustReifyFnPointer,
+                    2 => ty::AdjustUnsafeFnPointer,
                     3 => {
                         let auto_deref_ref: ty::AutoDerefRef =
                             this.read_enum_variant_arg(0,
@@ -1681,16 +1596,23 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                         }
                     })
                 }).unwrap(),
+                unsize: this.read_struct_field("unsize", 2, |this| {
+                    this.read_option(|this, b| {
+                        if b {
+                            Ok(Some(this.read_ty(dcx)))
+                        } else {
+                            Ok(None)
+                        }
+                    })
+                }).unwrap(),
             })
         }).unwrap()
     }
 
-    fn read_autoref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>) -> ty::AutoRef<'tcx> {
+    fn read_autoref<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
+                            -> ty::AutoRef<'tcx> {
         self.read_enum("AutoRef", |this| {
-            let variants = ["AutoPtr",
-                            "AutoUnsize",
-                            "AutoUnsizeUniq",
-                            "AutoUnsafe"];
+            let variants = ["AutoPtr", "AutoUnsafe"];
             this.read_enum_variant(&variants, |this, i| {
                 Ok(match i {
                     0 => {
@@ -1698,94 +1620,16 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                             this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
                         let m: ast::Mutability =
                             this.read_enum_variant_arg(1, |this| Decodable::decode(this)).unwrap();
-                        let a: Option<Box<ty::AutoRef>> =
-                            this.read_enum_variant_arg(2, |this| this.read_option(|this, b| {
-                                if b {
-                                    Ok(Some(box this.read_autoref(dcx)))
-                                } else {
-                                    Ok(None)
-                                }
-                            })).unwrap();
 
-                        ty::AutoPtr(r.tr(dcx), m, a)
+                        ty::AutoPtr(dcx.tcx.mk_region(r.tr(dcx)), m)
                     }
                     1 => {
-                        let uk: ty::UnsizeKind =
-                            this.read_enum_variant_arg(0,
-                                |this| Ok(this.read_unsize_kind(dcx))).unwrap();
-
-                        ty::AutoUnsize(uk)
-                    }
-                    2 => {
-                        let uk: ty::UnsizeKind =
-                            this.read_enum_variant_arg(0,
-                                |this| Ok(this.read_unsize_kind(dcx))).unwrap();
-
-                        ty::AutoUnsizeUniq(uk)
-                    }
-                    3 => {
                         let m: ast::Mutability =
                             this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
-                        let a: Option<Box<ty::AutoRef>> =
-                            this.read_enum_variant_arg(1, |this| this.read_option(|this, b| {
-                                if b {
-                                    Ok(Some(box this.read_autoref(dcx)))
-                                } else {
-                                    Ok(None)
-                                }
-                            })).unwrap();
 
-                        ty::AutoUnsafe(m, a)
+                        ty::AutoUnsafe(m)
                     }
                     _ => panic!("bad enum variant for ty::AutoRef")
-                })
-            })
-        }).unwrap()
-    }
-
-    fn read_unsize_kind<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                -> ty::UnsizeKind<'tcx> {
-        self.read_enum("UnsizeKind", |this| {
-            let variants = &["UnsizeLength", "UnsizeStruct", "UnsizeVtable", "UnsizeUpcast"];
-            this.read_enum_variant(variants, |this, i| {
-                Ok(match i {
-                    0 => {
-                        let len: usize =
-                            this.read_enum_variant_arg(0, |this| Decodable::decode(this)).unwrap();
-
-                        ty::UnsizeLength(len)
-                    }
-                    1 => {
-                        let uk: ty::UnsizeKind =
-                            this.read_enum_variant_arg(0,
-                                |this| Ok(this.read_unsize_kind(dcx))).unwrap();
-                        let idx: usize =
-                            this.read_enum_variant_arg(1, |this| Decodable::decode(this)).unwrap();
-
-                        ty::UnsizeStruct(box uk, idx)
-                    }
-                    2 => {
-                        let ty_trait = try!(this.read_enum_variant_arg(0, |this| {
-                            let principal = try!(this.read_struct_field("principal", 0, |this| {
-                                Ok(this.read_poly_trait_ref(dcx))
-                            }));
-                            Ok(ty::TyTrait {
-                                principal: principal,
-                                bounds: try!(this.read_struct_field("bounds", 1, |this| {
-                                    Ok(this.read_existential_bounds(dcx))
-                                })),
-                            })
-                        }));
-                        let self_ty =
-                            this.read_enum_variant_arg(1, |this| Ok(this.read_ty(dcx))).unwrap();
-                        ty::UnsizeVtable(ty_trait, self_ty)
-                    }
-                    3 => {
-                        let target_ty =
-                            this.read_enum_variant_arg(0, |this| Ok(this.read_ty(dcx))).unwrap();
-                        ty::UnsizeUpcast(target_ty)
-                    }
-                    _ => panic!("bad enum variant for ty::UnsizeKind")
                 })
             })
         }).unwrap()
@@ -1922,10 +1766,10 @@ fn decode_side_tables(dcx: &DecodeContext,
                         dcx.tcx.ty_param_defs.borrow_mut().insert(id, bounds);
                     }
                     c::tag_table_method_map => {
-                        let (adjustment, method) = val_dsr.read_method_callee(dcx);
+                        let (autoderef, method) = val_dsr.read_method_callee(dcx);
                         let method_call = MethodCall {
                             expr_id: id,
-                            adjustment: adjustment
+                            autoderef: autoderef
                         };
                         dcx.tcx.method_map.borrow_mut().insert(method_call, method);
                     }

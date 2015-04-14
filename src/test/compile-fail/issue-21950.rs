@@ -14,7 +14,7 @@ use std::ops::Add;
 
 fn main() {
     let x = &10 as
-            //~^ ERROR the value of the associated type `Output` (from the trait `core::ops::Add`) must be specified
             &Add;
             //~^ ERROR the type parameter `RHS` must be explicitly specified in an object type because its default value `Self` references the type `Self`
+            //~^^ ERROR the value of the associated type `Output` (from the trait `core::ops::Add`) must be specified
 }

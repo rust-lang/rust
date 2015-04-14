@@ -254,7 +254,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                             &ty::expr_ty_adjusted(cx.tcx(), e));
     let opt_adj = cx.tcx().adjustments.borrow().get(&e.id).cloned();
     match opt_adj {
-        Some(ty::AdjustReifyFnPointer(_def_id)) => {
+        Some(ty::AdjustReifyFnPointer) => {
             // FIXME(#19925) once fn item types are
             // zero-sized, we'll need to do something here
         }
@@ -272,73 +272,56 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
 
-            let second_autoref = match adj.autoref {
-                None => {
-                    let (dv, dt) = const_deref(cx, llconst, ty);
-                    llconst = dv;
-
-                    // If we derefed a fat pointer then we will have an
-                    // open type here. So we need to update the type with
-                    // the one returned from const_deref.
-                    ety_adjusted = dt;
-                    None
-                }
-                Some(ty::AutoUnsafe(_, opt_autoref)) |
-                Some(ty::AutoPtr(_, _, opt_autoref)) => {
-                    if adj.autoderefs == 0 {
-                        // Don't copy data to do a deref+ref
-                        // (i.e., skip the last auto-deref).
-                        llconst = addr_of(cx, llconst, "autoref");
-                    } else {
-                        // Seeing as we are deref'ing here and take a reference
-                        // again to make the pointer part of the far pointer below,
-                        // we just skip the whole thing. We still need the type
-                        // though. This works even if we don't need to deref
-                        // because of byref semantics. Note that this is not just
-                        // an optimisation, it is necessary for mutable vectors to
-                        // work properly.
-                        ty = match ty::deref(ty, true) {
-                            Some(mt) => mt.ty,
-                            None => {
-                                cx.sess().bug(&format!("unexpected dereferenceable type {}",
-                                                       ty_to_string(cx.tcx(), ty)))
-                            }
-                        }
-                    }
-                    opt_autoref
-                }
-                Some(autoref) => {
-                    cx.sess().span_bug(e.span,
-                        &format!("unimplemented const first autoref {:?}", autoref))
-                }
-            };
-            match second_autoref {
-                None => {}
-                Some(box ty::AutoUnsafe(_, None)) |
-                Some(box ty::AutoPtr(_, _, None)) => {
+            if adj.autoref.is_some() {
+                if adj.autoderefs == 0 {
+                    // Don't copy data to do a deref+ref
+                    // (i.e., skip the last auto-deref).
                     llconst = addr_of(cx, llconst, "autoref");
+                    ty = ty::mk_imm_rptr(cx.tcx(), cx.tcx().mk_region(ty::ReStatic), ty);
                 }
-                Some(box ty::AutoUnsize(ref k)) => {
-                    let info =
-                        expr::unsized_info(
-                            cx, k, e.id, ty, param_substs,
-                            || const_get_elt(cx, llconst, &[abi::FAT_PTR_EXTRA as u32]));
+            } else {
+                let (dv, dt) = const_deref(cx, llconst, ty);
+                llconst = dv;
 
-                    let unsized_ty = ty::unsize_ty(cx.tcx(), ty, k, e.span);
-                    let ptr_ty = type_of::in_memory_type_of(cx, unsized_ty).ptr_to();
-                    let base = ptrcast(llconst, ptr_ty);
+                // If we derefed a fat pointer then we will have an
+                // open type here. So we need to update the type with
+                // the one returned from const_deref.
+                ety_adjusted = dt;
+            }
 
-                    let prev_const = cx.const_unsized().borrow_mut()
-                                       .insert(base, llconst);
-                    assert!(prev_const.is_none() || prev_const == Some(llconst));
-                    assert_eq!(abi::FAT_PTR_ADDR, 0);
-                    assert_eq!(abi::FAT_PTR_EXTRA, 1);
-                    llconst = C_struct(cx, &[base, info], false);
-                }
-                Some(autoref) => {
-                    cx.sess().span_bug(e.span,
-                        &format!("unimplemented const second autoref {:?}", autoref))
-                }
+            if let Some(target) = adj.unsize {
+                let target = monomorphize::apply_param_substs(cx.tcx(),
+                                                              param_substs,
+                                                              &target);
+
+                let pointee_ty = ty::deref(ty, true)
+                    .expect("consts: unsizing got non-pointer type").ty;
+                let (base, old_info) = if !type_is_sized(cx.tcx(), pointee_ty) {
+                    // Normally, the source is a thin pointer and we are
+                    // adding extra info to make a fat pointer. The exception
+                    // is when we are upcasting an existing object fat pointer
+                    // to use a different vtable. In that case, we want to
+                    // load out the original data pointer so we can repackage
+                    // it.
+                    (const_get_elt(cx, llconst, &[abi::FAT_PTR_ADDR as u32]),
+                     Some(const_get_elt(cx, llconst, &[abi::FAT_PTR_EXTRA as u32])))
+                } else {
+                    (llconst, None)
+                };
+
+                let unsized_ty = ty::deref(target, true)
+                    .expect("consts: unsizing got non-pointer target type").ty;
+                let ptr_ty = type_of::in_memory_type_of(cx, unsized_ty).ptr_to();
+                let base = ptrcast(base, ptr_ty);
+                let info = expr::unsized_info(cx, pointee_ty, unsized_ty,
+                                              old_info, param_substs);
+
+                let prev_const = cx.const_unsized().borrow_mut()
+                                   .insert(base, llconst);
+                assert!(prev_const.is_none() || prev_const == Some(llconst));
+                assert_eq!(abi::FAT_PTR_ADDR, 0);
+                assert_eq!(abi::FAT_PTR_EXTRA, 1);
+                llconst = C_struct(cx, &[base, info], false);
             }
         }
         None => {}
