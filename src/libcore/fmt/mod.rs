@@ -38,7 +38,8 @@ mod num;
 mod float;
 mod builders;
 
-#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(stage0, stable(feature = "rust1", since = "1.0.0"))]
+#[cfg_attr(not(stage0), unstable(feature = "core", reason = "internal to format_args!"))]
 #[doc(hidden)]
 pub mod rt {
     pub mod v1;
@@ -134,7 +135,8 @@ enum Void {}
 /// compile time it is ensured that the function and the value have the correct
 /// types, and then this struct is used to canonicalize arguments to one type.
 #[derive(Copy)]
-#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(stage0, stable(feature = "rust1", since = "1.0.0"))]
+#[cfg_attr(not(stage0), unstable(feature = "core", reason = "internal to format_args!"))]
 #[doc(hidden)]
 pub struct ArgumentV1<'a> {
     value: &'a Void,
@@ -154,7 +156,8 @@ impl<'a> ArgumentV1<'a> {
     }
 
     #[doc(hidden)]
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(stage0, stable(feature = "rust1", since = "1.0.0"))]
+    #[cfg_attr(not(stage0), unstable(feature = "core", reason = "internal to format_args!"))]
     pub fn new<'b, T>(x: &'b T,
                       f: fn(&T, &mut Formatter) -> Result) -> ArgumentV1<'b> {
         unsafe {
@@ -166,7 +169,8 @@ impl<'a> ArgumentV1<'a> {
     }
 
     #[doc(hidden)]
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(stage0, stable(feature = "rust1", since = "1.0.0"))]
+    #[cfg_attr(not(stage0), unstable(feature = "core", reason = "internal to format_args!"))]
     pub fn from_usize(x: &usize) -> ArgumentV1 {
         ArgumentV1::new(x, ArgumentV1::show_usize)
     }
@@ -189,7 +193,8 @@ impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
     /// Arguments structure.
     #[doc(hidden)] #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(stage0, stable(feature = "rust1", since = "1.0.0"))]
+    #[cfg_attr(not(stage0), unstable(feature = "core", reason = "internal to format_args!"))]
     pub fn new_v1(pieces: &'a [&'a str],
                   args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
         Arguments {
@@ -206,7 +211,8 @@ impl<'a> Arguments<'a> {
     /// created with `argumentusize`. However, failing to do so doesn't cause
     /// unsafety, but will ignore invalid .
     #[doc(hidden)] #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(stage0, stable(feature = "rust1", since = "1.0.0"))]
+    #[cfg_attr(not(stage0), unstable(feature = "core", reason = "internal to format_args!"))]
     pub fn new_v1_formatted(pieces: &'a [&'a str],
                             args: &'a [ArgumentV1<'a>],
                             fmt: &'a [rt::v1::Argument]) -> Arguments<'a> {
