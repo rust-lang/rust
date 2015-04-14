@@ -131,7 +131,7 @@ pub struct CStr {
 pub struct NulError(usize, Vec<u8>);
 
 impl CString {
-    /// Create a new C-compatible string from a container of bytes.
+    /// Creates a new C-compatible string from a container of bytes.
     ///
     /// This method will consume the provided data and use the underlying bytes
     /// to construct a new string, ensuring that there is a trailing 0 byte.
@@ -167,7 +167,7 @@ impl CString {
         }
     }
 
-    /// Create a C-compatible string from a byte vector without checking for
+    /// Creates a C-compatible string from a byte vector without checking for
     /// interior 0 bytes.
     ///
     /// This method is equivalent to `new` except that no runtime assertion
@@ -245,7 +245,7 @@ impl From<NulError> for io::Error {
 }
 
 impl CStr {
-    /// Cast a raw C string to a safe C string wrapper.
+    /// Casts a raw C string to a safe C string wrapper.
     ///
     /// This function will cast the provided `ptr` to the `CStr` wrapper which
     /// allows inspection and interoperation of non-owned C strings. This method
@@ -288,7 +288,7 @@ impl CStr {
         mem::transmute(slice::from_raw_parts(ptr, len as usize + 1))
     }
 
-    /// Return the inner pointer to this C string.
+    /// Returns the inner pointer to this C string.
     ///
     /// The returned pointer will be valid for as long as `self` is and points
     /// to a contiguous region of memory terminated with a 0 byte to represent
@@ -298,7 +298,7 @@ impl CStr {
         self.inner.as_ptr()
     }
 
-    /// Convert this C string to a byte slice.
+    /// Converts this C string to a byte slice.
     ///
     /// This function will calculate the length of this string (which normally
     /// requires a linear amount of work to be done) and then return the
@@ -316,7 +316,7 @@ impl CStr {
         &bytes[..bytes.len() - 1]
     }
 
-    /// Convert this C string to a byte slice containing the trailing 0 byte.
+    /// Converts this C string to a byte slice containing the trailing 0 byte.
     ///
     /// This function is the equivalent of `to_bytes` except that it will retain
     /// the trailing nul instead of chopping it off.

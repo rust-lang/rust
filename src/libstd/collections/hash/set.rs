@@ -111,7 +111,7 @@ pub struct HashSet<T, S = RandomState> {
 }
 
 impl<T: Hash + Eq> HashSet<T, RandomState> {
-    /// Create an empty HashSet.
+    /// Creates an empty HashSet.
     ///
     /// # Examples
     ///
@@ -125,7 +125,7 @@ impl<T: Hash + Eq> HashSet<T, RandomState> {
         HashSet::with_capacity(INITIAL_CAPACITY)
     }
 
-    /// Create an empty HashSet with space for at least `n` elements in
+    /// Creates an empty HashSet with space for at least `n` elements in
     /// the hash table.
     ///
     /// # Examples
@@ -166,7 +166,7 @@ impl<T, S> HashSet<T, S>
         HashSet::with_capacity_and_hash_state(INITIAL_CAPACITY, hash_state)
     }
 
-    /// Create an empty HashSet with space for at least `capacity`
+    /// Creates an empty HashSet with space for at least `capacity`
     /// elements in the hash table, using `hasher` to hash the keys.
     ///
     /// Warning: `hasher` is normally randomly generated, and
@@ -402,7 +402,7 @@ impl<T, S> HashSet<T, S>
         Union { iter: self.iter().chain(other.difference(self)) }
     }
 
-    /// Return the number of elements in the set
+    /// Returns the number of elements in the set.
     ///
     /// # Examples
     ///
@@ -417,7 +417,7 @@ impl<T, S> HashSet<T, S>
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize { self.map.len() }
 
-    /// Returns true if the set contains no elements
+    /// Returns true if the set contains no elements.
     ///
     /// # Examples
     ///

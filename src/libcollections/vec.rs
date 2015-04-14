@@ -393,7 +393,7 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Convert the vector into Box<[T]>.
+    /// Converts the vector into Box<[T]>.
     ///
     /// Note that this will drop any excess capacity. Calling this and
     /// converting back to a vector with `into_vec()` is equivalent to calling
@@ -434,7 +434,7 @@ impl<T> Vec<T> {
         }
     }
 
-    /// Extract a slice containing the entire vector.
+    /// Extracts a slice containing the entire vector.
     #[inline]
     #[unstable(feature = "convert",
                reason = "waiting on RFC revision")]
@@ -1936,7 +1936,7 @@ impl<'a, T> Drop for DerefVec<'a, T> {
     }
 }
 
-/// Convert a slice to a wrapper type providing a `&Vec<T>` reference.
+/// Converts a slice to a wrapper type providing a `&Vec<T>` reference.
 #[unstable(feature = "collections")]
 pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
     unsafe {

@@ -25,6 +25,6 @@ mod os_str;
 /// Freely convertible to an `&OsStr` slice.
 #[unstable(feature = "std_misc")]
 pub trait AsOsStr {
-    /// Convert to an `&OsStr` slice.
+    /// Converts to an `&OsStr` slice.
     fn as_os_str(&self) -> &OsStr;
 }

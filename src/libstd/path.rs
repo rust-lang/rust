@@ -312,7 +312,7 @@ impl<'a> Prefix<'a> {
 
     }
 
-    /// Determine if the prefix is verbatim, i.e. begins `\\?\`.
+    /// Determines if the prefix is verbatim, i.e. begins `\\?\`.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_verbatim(&self) -> bool {
@@ -341,7 +341,7 @@ impl<'a> Prefix<'a> {
 // Exposed parsing helpers
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Determine whether the character is one of the permitted path
+/// Determines whether the character is one of the permitted path
 /// separators for the current platform.
 ///
 /// # Examples
@@ -524,7 +524,7 @@ pub enum Component<'a> {
 }
 
 impl<'a> Component<'a> {
-    /// Extract the underlying `OsStr` slice
+    /// Extracts the underlying `OsStr` slice
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(self) -> &'a OsStr {
         match self {
@@ -629,7 +629,7 @@ impl<'a> Components<'a> {
         }
     }
 
-    /// Extract a slice corresponding to the portion of the path remaining for iteration.
+    /// Extracts a slice corresponding to the portion of the path remaining for iteration.
     ///
     /// # Examples
     ///
@@ -750,7 +750,7 @@ impl<'a> AsRef<OsStr> for Components<'a> {
 }
 
 impl<'a> Iter<'a> {
-    /// Extract a slice corresponding to the portion of the path remaining for iteration.
+    /// Extracts a slice corresponding to the portion of the path remaining for iteration.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &'a Path {
         self.inner.as_path()
@@ -941,19 +941,19 @@ impl PathBuf {
         unsafe { mem::transmute(self) }
     }
 
-    /// Allocate an empty `PathBuf`.
+    /// Allocates an empty `PathBuf`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> PathBuf {
         PathBuf { inner: OsString::new() }
     }
 
-    /// Coerce to a `Path` slice.
+    /// Coerces to a `Path` slice.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &Path {
         self
     }
 
-    /// Extend `self` with `path`.
+    /// Extends `self` with `path`.
     ///
     /// If `path` is absolute, it replaces the current path.
     ///
@@ -1064,7 +1064,7 @@ impl PathBuf {
         true
     }
 
-    /// Consume the `PathBuf`, yielding its internal `OsString` storage
+    /// Consumes the `PathBuf`, yielding its internal `OsString` storage.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_os_string(self) -> OsString {
         self.inner
@@ -1254,7 +1254,7 @@ impl Path {
         unsafe { mem::transmute(s.as_ref()) }
     }
 
-    /// Yield the underlying `OsStr` slice.
+    /// Yields the underlying `OsStr` slice.
     ///
     /// # Examples
     ///
@@ -1268,7 +1268,7 @@ impl Path {
         &self.inner
     }
 
-    /// Yield a `&str` slice if the `Path` is valid unicode.
+    /// Yields a `&str` slice if the `Path` is valid unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
     ///
@@ -1284,7 +1284,7 @@ impl Path {
         self.inner.to_str()
     }
 
-    /// Convert a `Path` to a `Cow<str>`.
+    /// Converts a `Path` to a `Cow<str>`.
     ///
     /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
     ///
@@ -1300,7 +1300,7 @@ impl Path {
         self.inner.to_string_lossy()
     }
 
-    /// Convert a `Path` to an owned `PathBuf`.
+    /// Converts a `Path` to an owned `PathBuf`.
     ///
     /// # Examples
     ///
@@ -1477,7 +1477,7 @@ impl Path {
         iter_after(self.components().rev(), child.as_ref().components().rev()).is_some()
     }
 
-    /// Extract the stem (non-extension) portion of `self.file()`.
+    /// Extracts the stem (non-extension) portion of `self.file()`.
     ///
     /// The stem is:
     ///
@@ -1500,7 +1500,7 @@ impl Path {
         self.file_name().map(split_file_at_dot).and_then(|(before, after)| before.or(after))
     }
 
-    /// Extract the extension of `self.file()`, if possible.
+    /// Extracts the extension of `self.file()`, if possible.
     ///
     /// The extension is:
     ///
@@ -1715,7 +1715,7 @@ impl cmp::Ord for Path {
 #[unstable(feature = "std_misc")]
 #[deprecated(since = "1.0.0", reason = "use std::convert::AsRef<Path> instead")]
 pub trait AsPath {
-    /// Convert to a `Path`.
+    /// Converts to a `Path`.
     #[unstable(feature = "std_misc")]
     fn as_path(&self) -> &Path;
 }

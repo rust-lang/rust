@@ -50,7 +50,7 @@ pub mod io {
     /// and `AsRawSocket` set of traits.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub trait AsRawFd {
-        /// Extract the raw file descriptor.
+        /// Extracts the raw file descriptor.
         ///
         /// This method does **not** pass ownership of the raw file descriptor
         /// to the caller. The descriptor is only guarantee to be valid while
@@ -144,11 +144,11 @@ pub mod ffi {
     /// Unix-specific extensions to `OsString`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub trait OsStringExt {
-        /// Create an `OsString` from a byte vector.
+        /// Creates an `OsString` from a byte vector.
         #[stable(feature = "rust1", since = "1.0.0")]
         fn from_vec(vec: Vec<u8>) -> Self;
 
-        /// Yield the underlying byte vector of this `OsString`.
+        /// Yields the underlying byte vector of this `OsString`.
         #[stable(feature = "rust1", since = "1.0.0")]
         fn into_vec(self) -> Vec<u8>;
     }
@@ -169,7 +169,7 @@ pub mod ffi {
         #[stable(feature = "rust1", since = "1.0.0")]
         fn from_bytes(slice: &[u8]) -> &Self;
 
-        /// Get the underlying byte view of the `OsStr` slice.
+        /// Gets the underlying byte view of the `OsStr` slice.
         #[stable(feature = "rust1", since = "1.0.0")]
         fn as_bytes(&self) -> &[u8];
     }
@@ -208,7 +208,7 @@ pub mod fs {
 
     /// Unix-specific extensions to `OpenOptions`
     pub trait OpenOptionsExt {
-        /// Set the mode bits that a new file will be created with.
+        /// Sets the mode bits that a new file will be created with.
         ///
         /// If a new file is created as part of a `File::open_opts` call then this
         /// specified `mode` will be used as the permission bits for the new file.

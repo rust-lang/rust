@@ -102,7 +102,7 @@ impl Condvar {
         }
     }
 
-    /// Block the current thread until this condition variable receives a
+    /// Blocks the current thread until this condition variable receives a
     /// notification.
     ///
     /// This function will atomically unlock the mutex specified (represented by
@@ -137,7 +137,7 @@ impl Condvar {
         }
     }
 
-    /// Wait on this condition variable for a notification, timing out after a
+    /// Waits on this condition variable for a notification, timing out after a
     /// specified duration.
     ///
     /// The semantics of this function are equivalent to `wait()`
@@ -169,7 +169,7 @@ impl Condvar {
         self.wait_timeout_ms(guard, dur.num_milliseconds() as u32)
     }
 
-    /// Wait on this condition variable for a notification, timing out after a
+    /// Waits on this condition variable for a notification, timing out after a
     /// specified duration.
     ///
     /// The semantics of this function are equivalent to `wait_timeout` except
@@ -189,7 +189,7 @@ impl Condvar {
         }
     }
 
-    /// Wake up one blocked thread on this condvar.
+    /// Wakes up one blocked thread on this condvar.
     ///
     /// If there is a blocked thread on this condition variable, then it will
     /// be woken up from its call to `wait` or `wait_timeout`. Calls to
@@ -199,7 +199,7 @@ impl Condvar {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn notify_one(&self) { unsafe { self.inner.inner.notify_one() } }
 
-    /// Wake up all blocked threads on this condvar.
+    /// Wakes up all blocked threads on this condvar.
     ///
     /// This method will ensure that any current waiters on the condition
     /// variable are awoken. Calls to `notify_all()` are not buffered in any
@@ -218,7 +218,7 @@ impl Drop for Condvar {
 }
 
 impl StaticCondvar {
-    /// Block the current thread until this condition variable receives a
+    /// Blocks the current thread until this condition variable receives a
     /// notification.
     ///
     /// See `Condvar::wait`.
@@ -239,7 +239,7 @@ impl StaticCondvar {
         }
     }
 
-    /// Wait on this condition variable for a notification, timing out after a
+    /// Waits on this condition variable for a notification, timing out after a
     /// specified duration.
     ///
     /// See `Condvar::wait_timeout`.
@@ -260,7 +260,7 @@ impl StaticCondvar {
         }
     }
 
-    /// Wait on this condition variable for a notification, timing out after a
+    /// Waits on this condition variable for a notification, timing out after a
     /// specified duration.
     ///
     /// The implementation will repeatedly wait while the duration has not
@@ -306,21 +306,21 @@ impl StaticCondvar {
         poison::map_result(guard_result, |g| (g, true))
     }
 
-    /// Wake up one blocked thread on this condvar.
+    /// Wakes up one blocked thread on this condvar.
     ///
     /// See `Condvar::notify_one`.
     #[unstable(feature = "std_misc",
                reason = "may be merged with Condvar in the future")]
     pub fn notify_one(&'static self) { unsafe { self.inner.notify_one() } }
 
-    /// Wake up all blocked threads on this condvar.
+    /// Wakes up all blocked threads on this condvar.
     ///
     /// See `Condvar::notify_all`.
     #[unstable(feature = "std_misc",
                reason = "may be merged with Condvar in the future")]
     pub fn notify_all(&'static self) { unsafe { self.inner.notify_all() } }
 
-    /// Deallocate all resources associated with this static condvar.
+    /// Deallocates all resources associated with this static condvar.
     ///
     /// This method is unsafe to call as there is no guarantee that there are no
     /// active users of the condvar, and this also doesn't prevent any future
