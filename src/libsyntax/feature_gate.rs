@@ -644,13 +644,13 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 span: Span,
                 _node_id: NodeId) {
         match fn_kind {
-            visit::FkItemFn(_, _, _, abi) if abi == Abi::RustIntrinsic => {
+            visit::FkItemFn(_, _, _, abi, _) if abi == Abi::RustIntrinsic => {
                 self.gate_feature("intrinsics",
                                   span,
                                   "intrinsics are subject to change")
             }
-            visit::FkItemFn(_, _, _, abi) |
-            visit::FkMethod(_, &ast::MethodSig { abi, .. }) if abi == Abi::RustCall => {
+            visit::FkItemFn(_, _, _, abi, _) |
+            visit::FkMethod(_, &ast::MethodSig { abi, .. }, _) if abi == Abi::RustCall => {
                 self.gate_feature("unboxed_closures",
                                   span,
                                   "rust-call ABI is subject to change")
