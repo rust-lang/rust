@@ -300,7 +300,7 @@ pub fn maketest(s: &str, cratename: Option<&str>, dont_insert_main: bool,
 }
 
 fn partition_source(s: &str) -> (String, String) {
-    use unicode::str::UnicodeStr;
+    use rustc_unicode::str::UnicodeStr;
 
     let mut after_header = false;
     let mut before = String::new();

@@ -15,14 +15,14 @@
 
 # The names of crates that must be tested
 
-# libcore/libunicode tests are in a separate crate
+# libcore/librustc_unicode tests are in a separate crate
 DEPS_coretest :=
 $(eval $(call RUST_CRATE,coretest))
 
 DEPS_collectionstest :=
 $(eval $(call RUST_CRATE,collectionstest))
 
-TEST_TARGET_CRATES = $(filter-out core unicode,$(TARGET_CRATES)) \
+TEST_TARGET_CRATES = $(filter-out core rustc_unicode,$(TARGET_CRATES)) \
 			collectionstest coretest
 TEST_DOC_CRATES = $(DOC_CRATES)
 TEST_HOST_CRATES = $(filter-out rustc_typeck rustc_borrowck rustc_resolve \

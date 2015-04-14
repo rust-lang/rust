@@ -44,7 +44,7 @@ use slice;
 use str;
 use string::String;
 use sys_common::AsInner;
-use unicode::str::{Utf16Item, utf16_items};
+use rustc_unicode::str::{Utf16Item, utf16_items};
 use vec::Vec;
 
 const UTF8_REPLACEMENT_CHARACTER: &'static [u8] = b"\xEF\xBF\xBD";
