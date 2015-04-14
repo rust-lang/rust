@@ -35,7 +35,7 @@ fn main() {
     // n == m
     let &x = &1 as &T;      //~ ERROR type `&T` cannot be dereferenced
     let &&x = &(&1 as &T);  //~ ERROR type `&T` cannot be dereferenced
-    let box x = box 1 as Box<T>; //~ ERROR type `Box<T>` cannot be dereferenced
+    let box x = box 1 as Box<T>; //~ ERROR the trait `core::marker::Sized` is not implemented
 
     // n > m
     let &&x = &1 as &T;
