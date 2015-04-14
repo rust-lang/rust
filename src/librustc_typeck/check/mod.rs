@@ -2616,8 +2616,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                             actual)
                 },
                 expr_t, None);
-            if let Some(t) = ty::ty_to_def_id(expr_t) {
-                suggest_field_names(t, field, tcx, vec![]);
+            if let ty::ty_struct(did, _) = expr_t.sty {
+                suggest_field_names(did, field, tcx, vec![]);
             }
         }
 
