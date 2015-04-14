@@ -562,7 +562,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
                 span: codemap::Span, id: ast::NodeId) {
         // Have to warn method here because methods are not ast::Item
         match fk {
-            visit::FkMethod(name, _) => {
+            visit::FkMethod(name, _, _) => {
                 if !self.symbol_is_live(id, None) {
                     self.warn_dead_code(id, span, name.name, "method");
                 }

@@ -35,10 +35,10 @@ use owned_slice::OwnedSlice;
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {
     /// fn foo() or extern "Abi" fn foo()
-    FkItemFn(Ident, &'a Generics, Unsafety, Abi),
+    FkItemFn(Ident, &'a Generics, Unsafety, Abi, Visibility),
 
     /// fn foo(&self)
-    FkMethod(Ident, &'a MethodSig),
+    FkMethod(Ident, &'a MethodSig, Option<Visibility>),
 
     /// |x, y| ...
     /// proc(x, y) ...
@@ -247,7 +247,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_expr(&**expr);
         }
         ItemFn(ref declaration, fn_style, abi, ref generics, ref body) => {
-            visitor.visit_fn(FkItemFn(item.ident, generics, fn_style, abi),
+            visitor.visit_fn(FkItemFn(item.ident, generics, fn_style, abi, item.vis),
                              &**declaration,
                              &**body,
                              item.span,
@@ -600,10 +600,10 @@ pub fn walk_fn<'v, V: Visitor<'v>>(visitor: &mut V,
     walk_fn_decl(visitor, function_declaration);
 
     match function_kind {
-        FkItemFn(_, generics, _, _) => {
+        FkItemFn(_, generics, _, _, _) => {
             visitor.visit_generics(generics);
         }
-        FkMethod(_, sig) => {
+        FkMethod(_, sig, _) => {
             visitor.visit_generics(&sig.generics);
             visitor.visit_explicit_self(&sig.explicit_self);
         }
@@ -625,7 +625,7 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(visitor: &mut V, trait_item: &'v Trai
             walk_fn_decl(visitor, &sig.decl);
         }
         MethodTraitItem(ref sig, Some(ref body)) => {
-            visitor.visit_fn(FkMethod(trait_item.ident, sig), &sig.decl,
+            visitor.visit_fn(FkMethod(trait_item.ident, sig, None), &sig.decl,
                              body, trait_item.span, trait_item.id);
         }
         TypeTraitItem(ref bounds, ref default) => {
@@ -642,7 +642,7 @@ pub fn walk_impl_item<'v, V: Visitor<'v>>(visitor: &mut V, impl_item: &'v ImplIt
     }
     match impl_item.node {
         MethodImplItem(ref sig, ref body) => {
-            visitor.visit_fn(FkMethod(impl_item.ident, sig), &sig.decl,
+            visitor.visit_fn(FkMethod(impl_item.ident, sig, Some(impl_item.vis)), &sig.decl,
                              body, impl_item.span, impl_item.id);
         }
         TypeImplItem(ref ty) => {

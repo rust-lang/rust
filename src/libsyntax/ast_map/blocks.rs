@@ -121,6 +121,7 @@ struct ItemFnParts<'a> {
     decl:     &'a ast::FnDecl,
     unsafety: ast::Unsafety,
     abi:      abi::Abi,
+    vis:      ast::Visibility,
     generics: &'a ast::Generics,
     body:     &'a Block,
     id:       ast::NodeId,
@@ -155,44 +156,50 @@ impl<'a> FnLikeNode<'a> {
 
     pub fn body(self) -> &'a Block {
         self.handle(|i: ItemFnParts<'a>|  &*i.body,
-                    |_, _, _: &'a ast::MethodSig, body: &'a ast::Block, _|  body,
+                    |_, _, _: &'a ast::MethodSig, _, body: &'a ast::Block, _|  body,
                     |c: ClosureParts<'a>| c.body)
     }
 
     pub fn decl(self) -> &'a FnDecl {
         self.handle(|i: ItemFnParts<'a>|  &*i.decl,
-                    |_, _, sig: &'a ast::MethodSig, _, _|  &sig.decl,
+                    |_, _, sig: &'a ast::MethodSig, _, _, _|  &sig.decl,
                     |c: ClosureParts<'a>| c.decl)
     }
 
     pub fn span(self) -> Span {
         self.handle(|i: ItemFnParts|     i.span,
-                    |_, _, _: &'a ast::MethodSig, _, span| span,
+                    |_, _, _: &'a ast::MethodSig, _, _, span| span,
                     |c: ClosureParts|    c.span)
     }
 
     pub fn id(self) -> NodeId {
         self.handle(|i: ItemFnParts|     i.id,
-                    |id, _, _: &'a ast::MethodSig, _, _| id,
+                    |id, _, _: &'a ast::MethodSig, _, _, _| id,
                     |c: ClosureParts|    c.id)
     }
 
     pub fn kind(self) -> visit::FnKind<'a> {
         let item = |p: ItemFnParts<'a>| -> visit::FnKind<'a> {
-            visit::FkItemFn(p.ident, p.generics, p.unsafety, p.abi)
+            visit::FkItemFn(p.ident, p.generics, p.unsafety, p.abi, p.vis)
         };
         let closure = |_: ClosureParts| {
             visit::FkFnBlock
         };
-        let method = |_, ident, sig: &'a ast::MethodSig, _, _| {
-            visit::FkMethod(ident, sig)
+        let method = |_, ident, sig: &'a ast::MethodSig, vis, _, _| {
+            visit::FkMethod(ident, sig, vis)
         };
         self.handle(item, method, closure)
     }
 
     fn handle<A, I, M, C>(self, item_fn: I, method: M, closure: C) -> A where
         I: FnOnce(ItemFnParts<'a>) -> A,
-        M: FnOnce(NodeId, ast::Ident, &'a ast::MethodSig, &'a ast::Block, Span) -> A,
+        M: FnOnce(NodeId,
+                  ast::Ident,
+                  &'a ast::MethodSig,
+                  Option<ast::Visibility>,
+                  &'a ast::Block,
+                  Span)
+                  -> A,
         C: FnOnce(ClosureParts<'a>) -> A,
     {
         match self.node {
@@ -200,20 +207,20 @@ impl<'a> FnLikeNode<'a> {
                 ast::ItemFn(ref decl, unsafety, abi, ref generics, ref block) =>
                     item_fn(ItemFnParts{
                         ident: i.ident, decl: &**decl, unsafety: unsafety, body: &**block,
-                        generics: generics, abi: abi, id: i.id, span: i.span
+                        generics: generics, abi: abi, vis: i.vis, id: i.id, span: i.span
                     }),
                 _ => panic!("item FnLikeNode that is not fn-like"),
             },
             ast_map::NodeTraitItem(ti) => match ti.node {
                 ast::MethodTraitItem(ref sig, Some(ref body)) => {
-                    method(ti.id, ti.ident, sig, body, ti.span)
+                    method(ti.id, ti.ident, sig, None, body, ti.span)
                 }
                 _ => panic!("trait method FnLikeNode that is not fn-like"),
             },
             ast_map::NodeImplItem(ii) => {
                 match ii.node {
                     ast::MethodImplItem(ref sig, ref body) => {
-                        method(ii.id, ii.ident, sig, body, ii.span)
+                        method(ii.id, ii.ident, sig, Some(ii.vis), body, ii.span)
                     }
                     ast::TypeImplItem(_) |
                     ast::MacImplItem(_) => {
