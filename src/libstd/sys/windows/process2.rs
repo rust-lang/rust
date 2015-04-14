@@ -199,7 +199,7 @@ impl Process {
                         }
                     }
                     Stdio::Piped(ref pipe) => {
-                        let orig = pipe.raw();
+                        let orig = pipe.handle().raw();
                         if DuplicateHandle(cur_proc, orig, cur_proc, slot,
                                            0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
                             return Err(Error::last_os_error())

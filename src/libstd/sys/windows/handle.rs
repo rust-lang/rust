@@ -36,11 +36,34 @@ impl Handle {
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        read(self.0, buf)
+        let mut read = 0;
+        let res = cvt(unsafe {
+            libc::ReadFile(self.0, buf.as_ptr() as libc::LPVOID,
+                           buf.len() as libc::DWORD, &mut read,
+                           ptr::null_mut())
+        });
+
+        match res {
+            Ok(_) => Ok(read as usize),
+
+            // The special treatment of BrokenPipe is to deal with Windows
+            // pipe semantics, which yields this error when *reading* from
+            // a pipe after the other end has closed; we interpret that as
+            // EOF on the pipe.
+            Err(ref e) if e.kind() == ErrorKind::BrokenPipe => Ok(0),
+
+            Err(e) => Err(e)
+        }
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        write(self.0, buf)
+        let mut amt = 0;
+        try!(cvt(unsafe {
+            libc::WriteFile(self.0, buf.as_ptr() as libc::LPVOID,
+                            buf.len() as libc::DWORD, &mut amt,
+                            ptr::null_mut())
+        }));
+        Ok(amt as usize)
     }
 }
 
@@ -48,36 +71,4 @@ impl Drop for Handle {
     fn drop(&mut self) {
         unsafe { let _ = libc::CloseHandle(self.0); }
     }
-}
-
-
-pub fn read(h: HANDLE, buf: &mut [u8]) -> io::Result<usize> {
-    let mut read = 0;
-    let res = cvt(unsafe {
-        libc::ReadFile(h, buf.as_ptr() as libc::LPVOID,
-                       buf.len() as libc::DWORD, &mut read,
-                       ptr::null_mut())
-    });
-
-    match res {
-        Ok(_) => Ok(read as usize),
-
-        // The special treatment of BrokenPipe is to deal with Windows
-        // pipe semantics, which yields this error when *reading* from
-        // a pipe after the other end has closed; we interpret that as
-        // EOF on the pipe.
-        Err(ref e) if e.kind() == ErrorKind::BrokenPipe => Ok(0),
-
-        Err(e) => Err(e)
-    }
-}
-
-pub fn write(h: HANDLE, buf: &[u8]) -> io::Result<usize> {
-    let mut amt = 0;
-    try!(cvt(unsafe {
-        libc::WriteFile(h, buf.as_ptr() as libc::LPVOID,
-                        buf.len() as libc::DWORD, &mut amt,
-                        ptr::null_mut())
-    }));
-    Ok(amt as usize)
 }
