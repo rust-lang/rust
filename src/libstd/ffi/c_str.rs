@@ -170,8 +170,9 @@ impl CString {
     /// Create a C-compatible string from a byte vector without checking for
     /// interior 0 bytes.
     ///
-    /// This method is equivalent to `from_vec` except that no runtime assertion
-    /// is made that `v` contains no 0 bytes.
+    /// This method is equivalent to `new` except that no runtime assertion
+    /// is made that `v` contains no 0 bytes, and it requires an actual
+    /// byte vector, not anyhting that can be converted to one with Into.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> CString {
         v.push(0);
@@ -213,7 +214,7 @@ impl fmt::Debug for CString {
 
 impl NulError {
     /// Returns the position of the nul byte in the slice that was provided to
-    /// `CString::from_vec`.
+    /// `CString::new`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn nul_position(&self) -> usize { self.0 }
 
