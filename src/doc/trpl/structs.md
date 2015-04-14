@@ -55,8 +55,8 @@ fn main() {
 
 This will print `The point is at (5, 0)`.
 
-Rust does not support mutability at the field level, so you cannot write
-something like this:
+Rust does not support field mutability at the language level, so you cannot
+write something like this:
 
 ```rust,ignore
 struct Point {
@@ -82,8 +82,8 @@ fn main() {
 
     point.x = 5;
 
-    let point = point; // this new binding is immutable
+    let point = point; // this new binding can’t change now
 
-    point.y = 6; // this causes an error, because `point` is immutable!
+    point.y = 6; // this causes an error
 }
 ```
