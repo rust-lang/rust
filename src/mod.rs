@@ -12,8 +12,6 @@
 #![feature(box_patterns)]
 #![feature(rustc_private)]
 #![feature(collections)]
-#![feature(core)]
-#![feature(unicode)]
 #![feature(exit_status)]
 #![feature(str_char)]
 
@@ -23,7 +21,6 @@
 
 // TODO priorities
 // Fix fns and methods properly - need visibility in visit
-// Use strings crate
 // Writing output
 // Working on multiple files, inclding empty ones
 // Smoke testing till we can use it
@@ -35,6 +32,8 @@ extern crate getopts;
 extern crate rustc;
 extern crate rustc_driver;
 extern crate syntax;
+
+extern crate strings;
 
 use rustc::session::Session;
 use rustc::session::config::{self, Input};
@@ -51,8 +50,6 @@ use std::path::PathBuf;
 
 use changes::ChangeSet;
 
-pub mod rope;
-pub mod string_buffer;
 mod changes;
 
 const IDEAL_WIDTH: usize = 80;

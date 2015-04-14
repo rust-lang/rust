@@ -13,7 +13,7 @@
 // print to files 
 // tests
 
-use string_buffer::StringBuffer;
+use strings::string_buffer::StringBuffer;
 use std::collections::HashMap;
 use syntax::codemap::{CodeMap, Span};
 use std::fmt;

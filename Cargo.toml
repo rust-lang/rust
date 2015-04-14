@@ -8,9 +8,9 @@ repository = "https://github.com/nick29581/rustfmt"
 readme = "README.md"
 license = "Apache-2.0/MIT"
 
-#[dependencies.reprint]
-#reprint = "0.0.1"
-#path = "/home/ncameron/reprint"
+[dependencies.strings]
+strings = "0.0.1"
+git = "https://github.com/nrc/strings.rs.git"
 
 [[bin]]
 name = "rustfmt"
