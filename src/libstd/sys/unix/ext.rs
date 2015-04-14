@@ -74,9 +74,12 @@ pub mod io {
         /// descriptor. The returned object will take responsibility for closing
         /// it when the object goes out of scope.
         ///
-        /// Callers should normally only pass in a valid file descriptor to this
-        /// method or otherwise methods will return errors.
-        fn from_raw_fd(fd: RawFd) -> Self;
+        /// This function is also unsafe as the primitives currently returned
+        /// have the contract that they are the sole owner of the file
+        /// descriptor they are wrapping. Usage of this function could
+        /// accidentally allow violating this contract which can cause memory
+        /// unsafety in code that relies on it being true.
+        unsafe fn from_raw_fd(fd: RawFd) -> Self;
     }
 
     #[allow(deprecated)]
@@ -95,7 +98,7 @@ pub mod io {
     }
     #[unstable(feature = "from_raw_os", reason = "trait is unstable")]
     impl FromRawFd for fs::File {
-        fn from_raw_fd(fd: RawFd) -> fs::File {
+        unsafe fn from_raw_fd(fd: RawFd) -> fs::File {
             fs::File::from_inner(sys::fs2::File::from_inner(fd))
         }
     }
@@ -179,21 +182,21 @@ pub mod io {
 
     #[unstable(feature = "from_raw_os", reason = "trait is unstable")]
     impl FromRawFd for net::TcpStream {
-        fn from_raw_fd(fd: RawFd) -> net::TcpStream {
+        unsafe fn from_raw_fd(fd: RawFd) -> net::TcpStream {
             let socket = sys::net::Socket::from_inner(fd);
             net::TcpStream::from_inner(net2::TcpStream::from_inner(socket))
         }
     }
     #[unstable(feature = "from_raw_os", reason = "trait is unstable")]
     impl FromRawFd for net::TcpListener {
-        fn from_raw_fd(fd: RawFd) -> net::TcpListener {
+        unsafe fn from_raw_fd(fd: RawFd) -> net::TcpListener {
             let socket = sys::net::Socket::from_inner(fd);
             net::TcpListener::from_inner(net2::TcpListener::from_inner(socket))
         }
     }
     #[unstable(feature = "from_raw_os", reason = "trait is unstable")]
     impl FromRawFd for net::UdpSocket {
-        fn from_raw_fd(fd: RawFd) -> net::UdpSocket {
+        unsafe fn from_raw_fd(fd: RawFd) -> net::UdpSocket {
             let socket = sys::net::Socket::from_inner(fd);
             net::UdpSocket::from_inner(net2::UdpSocket::from_inner(socket))
         }
