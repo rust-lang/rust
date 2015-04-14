@@ -192,6 +192,7 @@ valopt_core() {
     then
         local UOP=$(echo $OP | tr '[:lower:]' '[:upper:]' | tr '\-' '\_')
         local V="CFG_${UOP}"
+        local V_PROVIDED="${V}_PROVIDED"
         eval $V="$DEFAULT"
         for arg in $CFG_CONFIGURE_ARGS
         do
@@ -199,6 +200,7 @@ valopt_core() {
             then
                 val=$(echo "$arg" | cut -f2 -d=)
                 eval $V=$val
+                eval $V_PROVIDED=1
             fi
         done
         if [ "$SAVE" = "save" ]
@@ -247,8 +249,10 @@ opt_core() {
     if [ $DEFAULT -eq 0 ]
     then
         FLAG="enable"
+        DEFAULT_FLAG="disable"
     else
         FLAG="disable"
+        DEFAULT_FLAG="enable"
         DOC="don't $DOC"
     fi
 
@@ -261,11 +265,19 @@ opt_core() {
                 OP=$(echo $OP | tr 'a-z-' 'A-Z_')
                 FLAG=$(echo $FLAG | tr 'a-z' 'A-Z')
                 local V="CFG_${FLAG}_${OP}"
+                local V_PROVIDED="CFG_${FLAG}_${OP}_PROVIDED"
                 eval $V=1
+                eval $V_PROVIDED=1
                 if [ "$SAVE" = "save" ]
                 then
                    putvar $V
                 fi
+            elif [ "$arg" = "--${DEFAULT_FLAG}-${OP}" ]
+            then
+                OP=$(echo $OP | tr 'a-z-' 'A-Z_')
+                DEFAULT_FLAG=$(echo $DEFAULT_FLAG | tr 'a-z' 'A-Z')
+                local V_PROVIDED="CFG_${DEFAULT_FLAG}_${OP}_PROVIDED"
+                eval $V_PROVIDED=1
             fi
         done
     else
