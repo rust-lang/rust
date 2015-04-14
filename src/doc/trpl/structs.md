@@ -1,8 +1,15 @@
 % Structs
 
-A struct is another form of a *record type*, just like a tuple. There's a
-difference: structs give each element that they contain a name, called a
-*field* or a *member*. Check it out:
+Structs are a way of creating more complex datatypes. For example, if we were
+doing calculations involving coordinates in 2D space, we would need both an `x`
+and a `y` value:
+
+```rust
+let origin_x = 0;
+let origin_y = 0;
+```
+
+A struct lets us combine these two into a single, unified datatype:
 
 ```rust
 struct Point {
@@ -17,7 +24,7 @@ fn main() {
 }
 ```
 
-There's a lot going on here, so let's break it down. We declare a struct with
+There’s a lot going on here, so let’s break it down. We declare a struct with
 the `struct` keyword, and then with a name. By convention, structs begin with a
 capital letter and are also camel cased: `PointInSpace`, not `Point_In_Space`.
 
@@ -31,7 +38,7 @@ notation: `origin.x`.
 The values in structs are immutable by default, like other bindings in Rust.
 Use `mut` to make them mutable:
 
-```{rust}
+```rust
 struct Point {
     x: i32,
     y: i32,
@@ -47,3 +54,36 @@ fn main() {
 ```
 
 This will print `The point is at (5, 0)`.
+
+Rust does not support field mutability at the language level, so you cannot
+write something like this:
+
+```rust,ignore
+struct Point {
+    mut x: i32,
+    y: i32,
+}
+```
+
+Mutability is a property of the binding, not of the structure itself. If you’re
+used to field-level mutability, this may seem strange at first, but it
+significantly simplifies things. It even lets you make things mutable for a short
+time only:
+
+
+```rust,ignore
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+fn main() {
+    let mut point = Point { x: 0, y: 0 };
+
+    point.x = 5;
+
+    let point = point; // this new binding can’t change now
+
+    point.y = 6; // this causes an error
+}
+```
