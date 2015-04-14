@@ -557,7 +557,9 @@ fn link_rlib<'a>(sess: &'a Session,
             cstore::NativeStatic => {
                 ab.add_native_library(&l[..]).unwrap();
             }
-            cstore::NativeFramework | cstore::NativeUnknown => {}
+            cstore::NativeFramework
+            | cstore::NativeFilepath
+            | cstore::NativeUnknown => {}
         }
     }
 
@@ -776,6 +778,7 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
         let name = match kind {
             cstore::NativeStatic => "static library",
             cstore::NativeUnknown => "library",
+            cstore::NativeFilepath => "filepath",
             cstore::NativeFramework => "framework",
         };
         sess.note(&format!("{}: {}", name, *lib));
@@ -1128,6 +1131,9 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
             cstore::NativeUnknown => {
                 cmd.arg(&format!("-l{}", l));
             }
+            cstore::NativeFilepath => {
+                cmd.arg(&l[..]);
+            }
             cstore::NativeFramework => {
                 cmd.arg("-framework").arg(&l[..]);
             }
@@ -1313,6 +1319,9 @@ fn add_upstream_native_libraries(cmd: &mut Command, sess: &Session) {
             match kind {
                 cstore::NativeUnknown => {
                     cmd.arg(&format!("-l{}", *lib));
+                }
+                cstore::NativeFilepath => {
+                    cmd.arg(&lib[..]);
                 }
                 cstore::NativeFramework => {
                     cmd.arg("-framework");

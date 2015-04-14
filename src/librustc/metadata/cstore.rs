@@ -72,6 +72,7 @@ pub enum LinkagePreference {
 pub enum NativeLibraryKind {
     NativeStatic,    // native static library (.a archive)
     NativeFramework, // OSX-specific
+    NativeFilepath,  // dynamic library passed by filepath
     NativeUnknown,   // default way to specify a dynamic library
 }
 

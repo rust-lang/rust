@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags:-l bar=foo
-// error-pattern: unknown library kind `bar`, expected one of dylib, framework, or static
+// error-pattern: unknown library kind `bar`, expected one of dylib, framework, filepath, or static
 
 fn main() {
 }
