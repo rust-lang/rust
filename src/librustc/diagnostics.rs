@@ -807,6 +807,9 @@ register_diagnostics! {
     E0017,
     E0019,
     E0022,
+    E0038,
+    E0079, // enum variant: expected signed integer constant
+    E0080, // enum variant: constant evaluation error
     E0109,
     E0110,
     E0134,

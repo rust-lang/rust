@@ -890,10 +890,6 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             }
         };
 
-        debug!("walk_autoref: expr.id={} cmt_base={}",
-               expr.id,
-               cmt_base.repr(self.tcx()));
-
         match *autoref {
             ty::AutoPtr(r, m) => {
                 self.delegate.borrow(expr.id,

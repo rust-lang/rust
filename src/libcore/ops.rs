@@ -70,6 +70,9 @@
 use marker::Sized;
 use fmt;
 
+#[cfg(not(stage0))] // SNAP c64d671
+use marker::Unsize;
+
 /// The `Drop` trait is used to run some code when a value goes out of scope. This
 /// is sometimes called a 'destructor'.
 ///
@@ -1207,3 +1210,34 @@ mod impls {
         }
     }
 }
+
+/// Trait that indicates that this is a pointer or a wrapper for one,
+/// where unsizing can be performed on the pointee.
+#[unstable(feature = "core")]
+#[cfg(not(stage0))] // SNAP c64d671
+#[lang="coerce_unsized"]
+pub trait CoerceUnsized<T> {
+    // Empty.
+}
+
+#[cfg(not(stage0))] // SNAP c64d671
+impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a mut U> for &'a mut T {}
+#[cfg(not(stage0))] // SNAP c64d671
+impl<'a, 'b: 'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b mut T {}
+#[cfg(not(stage0))] // SNAP c64d671
+impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for &'a mut T {}
+#[cfg(not(stage0))] // SNAP c64d671
+impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a mut T {}
+
+#[cfg(not(stage0))] // SNAP c64d671
+impl<'a, 'b: 'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+#[cfg(not(stage0))] // SNAP c64d671
+impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for &'a T {}
+
+#[cfg(not(stage0))] // SNAP c64d671
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*mut U> for *mut T {}
+#[cfg(not(stage0))] // SNAP c64d671
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
+
+#[cfg(not(stage0))] // SNAP c64d671
+impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}

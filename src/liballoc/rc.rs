@@ -173,9 +173,9 @@ use core::intrinsics::assume;
 use heap::deallocate;
 
 struct RcBox<T> {
-    value: T,
     strong: Cell<usize>,
-    weak: Cell<usize>
+    weak: Cell<usize>,
+    value: T
 }
 
 /// A reference-counted pointer type over an immutable value.

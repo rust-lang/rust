@@ -16,7 +16,9 @@
 // mappings. That mapping code resides here.
 
 
+use middle::lang_items::UnsizeTraitLangItem;
 use middle::subst::{self, Subst};
+use middle::traits;
 use middle::ty::RegionEscape;
 use middle::ty::{ImplContainer, ImplOrTraitItemId, ConstTraitItemId};
 use middle::ty::{MethodTraitItemId, TypeTraitItemId, ParameterEnvironment};
@@ -28,8 +30,7 @@ use middle::ty::{ty_uint, ty_closure, ty_uniq, ty_bare_fn};
 use middle::ty::ty_projection;
 use middle::ty;
 use CrateCtxt;
-use middle::infer::InferCtxt;
-use middle::infer::new_infer_ctxt;
+use middle::infer::{self, InferCtxt, new_infer_ctxt};
 use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::ast::{Crate, DefId};
@@ -133,6 +134,10 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
         // Check to make sure implementations of `Copy` are legal.
         self.check_implementations_of_copy();
+
+        // Check to make sure implementations of `CoerceUnsized` are legal
+        // and collect the necessary information from them.
+        self.check_implementations_of_coerce_unsized();
     }
 
     fn check_implementation(&self, item: &Item, opt_trait: Option<&TraitRef>) {
@@ -418,6 +423,169 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                 }
             }
         });
+    }
+
+    /// Process implementations of the built-in trait `CoerceUnsized`.
+    fn check_implementations_of_coerce_unsized(&self) {
+        let tcx = self.crate_context.tcx;
+        let coerce_unsized_trait = match tcx.lang_items.coerce_unsized_trait() {
+            Some(id) => id,
+            None => return,
+        };
+        let unsize_trait = match tcx.lang_items.require(UnsizeTraitLangItem) {
+            Ok(id) => id,
+            Err(err) => {
+                tcx.sess.fatal(&format!("`CoerceUnsized` implementation {}", err));
+            }
+        };
+
+        let trait_impls = match tcx.trait_impls
+                                   .borrow()
+                                   .get(&coerce_unsized_trait)
+                                   .cloned() {
+            None => {
+                debug!("check_implementations_of_coerce_unsized(): no types \
+                        with implementations of `CoerceUnsized` found");
+                return
+            }
+            Some(found_impls) => found_impls
+        };
+
+        // Clone first to avoid a double borrow error.
+        let trait_impls = trait_impls.borrow().clone();
+
+        for &impl_did in &trait_impls {
+            debug!("check_implementations_of_coerce_unsized: impl_did={}",
+                   impl_did.repr(tcx));
+
+            if impl_did.krate != ast::LOCAL_CRATE {
+                debug!("check_implementations_of_coerce_unsized(): impl not \
+                        in this crate");
+                continue
+            }
+
+            let source = self.get_self_type_for_implementation(impl_did).ty;
+            let trait_ref = ty::impl_id_to_trait_ref(self.crate_context.tcx,
+                                                     impl_did.node);
+            let target = *trait_ref.substs.types.get(subst::TypeSpace, 0);
+            debug!("check_implementations_of_coerce_unsized: {} -> {} (bound)",
+                   source.repr(tcx), target.repr(tcx));
+
+            let span = tcx.map.span(impl_did.node);
+            let param_env = ParameterEnvironment::for_item(tcx, impl_did.node);
+            let source = source.subst(tcx, &param_env.free_substs);
+            let target = target.subst(tcx, &param_env.free_substs);
+            assert!(!source.has_escaping_regions());
+
+            debug!("check_implementations_of_coerce_unsized: {} -> {} (free)",
+                   source.repr(tcx), target.repr(tcx));
+
+            let infcx = new_infer_ctxt(tcx);
+
+            let check_mutbl = |mt_a: ty::mt<'tcx>, mt_b: ty::mt<'tcx>,
+                               mk_ptr: &Fn(Ty<'tcx>) -> Ty<'tcx>| {
+                if (mt_a.mutbl, mt_b.mutbl) == (ast::MutImmutable, ast::MutMutable) {
+                    infcx.report_mismatched_types(span, mk_ptr(mt_b.ty),
+                                                  target, &ty::terr_mutability);
+                }
+                (mt_a.ty, mt_b.ty, unsize_trait, None)
+            };
+            let (source, target, trait_def_id, kind) = match (&source.sty, &target.sty) {
+                (&ty::ty_uniq(a), &ty::ty_uniq(b)) => (a, b, unsize_trait, None),
+
+                (&ty::ty_rptr(r_a, mt_a), &ty::ty_rptr(r_b, mt_b)) => {
+                    infer::mk_subr(&infcx, infer::RelateObjectBound(span), *r_b, *r_a);
+                    check_mutbl(mt_a, mt_b, &|ty| ty::mk_imm_rptr(tcx, r_b, ty))
+                }
+
+                (&ty::ty_rptr(_, mt_a), &ty::ty_ptr(mt_b)) |
+                (&ty::ty_ptr(mt_a), &ty::ty_ptr(mt_b)) => {
+                    check_mutbl(mt_a, mt_b, &|ty| ty::mk_imm_ptr(tcx, ty))
+                }
+
+                (&ty::ty_struct(def_id_a, substs_a), &ty::ty_struct(def_id_b, substs_b)) => {
+                    if def_id_a != def_id_b {
+                        let source_path = ty::item_path_str(tcx, def_id_a);
+                        let target_path = ty::item_path_str(tcx, def_id_b);
+                        span_err!(tcx.sess, span, E0373,
+                                  "the trait `CoerceUnsized` may only be implemented \
+                                   for a coercion between structures with the same \
+                                   definition; expected {}, found {}",
+                                  source_path, target_path);
+                        continue;
+                    }
+
+                    let origin = infer::Misc(span);
+                    let fields = ty::lookup_struct_fields(tcx, def_id_a);
+                    let diff_fields = fields.iter().enumerate().filter_map(|(i, f)| {
+                        let ty = ty::lookup_field_type_unsubstituted(tcx, def_id_a, f.id);
+                        let (a, b) = (ty.subst(tcx, substs_a), ty.subst(tcx, substs_b));
+                        if infcx.sub_types(false, origin, b, a).is_ok() {
+                            None
+                        } else {
+                            Some((i, a, b))
+                        }
+                    }).collect::<Vec<_>>();
+
+                    if diff_fields.is_empty() {
+                        span_err!(tcx.sess, span, E0374,
+                                  "the trait `CoerceUnsized` may only be implemented \
+                                   for a coercion between structures with one field \
+                                   being coerced, none found");
+                        continue;
+                    } else if diff_fields.len() > 1 {
+                        span_err!(tcx.sess, span, E0375,
+                                  "the trait `CoerceUnsized` may only be implemented \
+                                   for a coercion between structures with one field \
+                                   being coerced, but {} fields need coercions: {}",
+                                   diff_fields.len(), diff_fields.iter().map(|&(i, a, b)| {
+                                        let name = fields[i].name;
+                                        format!("{} ({} to {})",
+                                                if name == token::special_names::unnamed_field {
+                                                    i.to_string()
+                                                } else {
+                                                    token::get_name(name).to_string()
+                                                },
+                                                a.repr(tcx),
+                                                b.repr(tcx))
+                                   }).collect::<Vec<_>>().connect(", "));
+                        continue;
+                    }
+
+                    let (i, a, b) = diff_fields[0];
+                    let kind = ty::CustomCoerceUnsized::Struct(i);
+                    (a, b, coerce_unsized_trait, Some(kind))
+                }
+
+                _ => {
+                    span_err!(tcx.sess, span, E0376,
+                              "the trait `CoerceUnsized` may only be implemented \
+                               for a coercion between structures");
+                    continue;
+                }
+            };
+
+            let mut fulfill_cx = traits::FulfillmentContext::new();
+
+            // Register an obligation for `A: Trait<B>`.
+            let cause = traits::ObligationCause::misc(span, impl_did.node);
+            let predicate = traits::predicate_for_trait_def(tcx, cause, trait_def_id,
+                                                            0, source, vec![target]);
+            fulfill_cx.register_predicate_obligation(&infcx, predicate);
+
+            // Check that all transitive obligations are satisfied.
+            if let Err(errors) = fulfill_cx.select_all_or_error(&infcx, &param_env) {
+                traits::report_fulfillment_errors(&infcx, &errors);
+            }
+
+            // Finally, resolve all regions. This catches wily misuses of lifetime
+            // parameters.
+            infcx.resolve_regions_and_report_errors(impl_did.node);
+
+            if let Some(kind) = kind {
+                tcx.custom_coerce_unsized_kinds.borrow_mut().insert(impl_did, kind);
+            }
+        }
     }
 }
 

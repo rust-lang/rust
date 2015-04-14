@@ -81,7 +81,7 @@ fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
     // which fails to type check.
 
     ss
-        //~^ ERROR lifetime of the source pointer does not outlive lifetime bound
+        //~^ ERROR lifetime bound not satisfied
         //~| ERROR cannot infer
 }
 
