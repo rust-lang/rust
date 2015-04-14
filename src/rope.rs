@@ -1063,7 +1063,7 @@ impl Lnode {
         debug_assert!(start + new_str.len() <= self.len);
         let addr = (self.text as usize + start) as *mut u8;
         unsafe {
-            ::std::intrinsics::copy_nonoverlapping_memory(addr, &new_str.as_bytes()[0], new_str.len());
+            ::std::intrinsics::volatile_copy_nonoverlapping_memory(addr, &new_str.as_bytes()[0], new_str.len());
         }
     }
 

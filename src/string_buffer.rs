@@ -81,7 +81,11 @@ impl StringBuffer {
     pub fn cur_offset(&self) -> usize {
         unsafe {
             let result = (&*self.last).cur_offset();
-            result.unwrap_or_else(|| panic!("Unimplemented cur_offset across node boundaries"))
+            // TODO
+            result.unwrap_or_else(|| {
+                println!(" FIXME Unimplemented cur_offset across node boundaries");
+                0
+            })
         }
     }
 

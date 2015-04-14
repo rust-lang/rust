@@ -12,14 +12,21 @@
 #![feature(box_patterns)]
 #![feature(rustc_private)]
 #![feature(collections)]
-#![feature(os)]
 #![feature(core)]
 #![feature(unicode)]
 #![feature(exit_status)]
-#![feature(path)]
+#![feature(str_char)]
 
 // TODO we're going to allocate a whole bunch of temp Strings, is it worth
 // keeping some scratch mem for this and running our own StrPool?
+// TODO for lint violations of names, emit a refactor script
+
+// TODO priorities
+// Fix fns and methods properly - need visibility in visit
+// Use strings crate
+// Writing output
+// Working on multiple files, inclding empty ones
+// Smoke testing till we can use it
 
 #[macro_use]
 extern crate log;
@@ -33,7 +40,7 @@ use rustc::session::Session;
 use rustc::session::config::{self, Input};
 use rustc_driver::{driver, CompilerCalls, Compilation};
 
-use syntax::{ast, ptr};
+use syntax::{ast, ptr, abi};
 use syntax::codemap::{self, CodeMap, Span, Pos, BytePos};
 use syntax::diagnostics;
 use syntax::parse::token;
@@ -41,7 +48,6 @@ use syntax::print::pprust;
 use syntax::visit;
 
 use std::path::PathBuf;
-use std::slice::SliceConcatExt;
 
 use changes::ChangeSet;
 
@@ -53,6 +59,7 @@ const IDEAL_WIDTH: usize = 80;
 const LEEWAY: usize = 5;
 const MAX_WIDTH: usize = 100;
 const MIN_STRING: usize = 10;
+const TAB_SPACES: usize = 4;
 
 // Formatting which depends on the AST.
 fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap) -> ChangeSet<'a> {
@@ -71,7 +78,7 @@ fn fmt_lines(changes: &mut ChangeSet) {
     // Iterate over the chars in the change set.
     for (f, text) in changes.text() {
         let mut trims = vec![];
-        let mut last_wspace = None;
+        let mut last_wspace: Option<usize> = None;
         let mut line_len = 0;
         let mut cur_line = 1;
         for (c, b) in text.chars() {
@@ -113,11 +120,16 @@ struct FmtVisitor<'a> {
     codemap: &'a CodeMap,
     changes: ChangeSet<'a>,
     last_pos: BytePos,
+    // TODO RAII util for indenting
     block_indent: usize,
 }
 
 impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     fn visit_expr(&mut self, ex: &'v ast::Expr) {
+        // TODO uncomment
+        // debug!("visit_expr: {:?} {:?}",
+        //        self.codemap.lookup_char_pos(ex.span.lo),
+        //        self.codemap.lookup_char_pos(ex.span.hi));
         self.format_missing(ex.span.lo);
         let offset = self.changes.cur_offset_span(ex.span);
         let new_str = self.rewrite_expr(ex, MAX_WIDTH - offset, offset);
@@ -126,15 +138,19 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     }
 
     fn visit_block(&mut self, b: &'v ast::Block) {
+        // TODO uncomment
+        // debug!("visit_block: {:?} {:?}",
+        //        self.codemap.lookup_char_pos(b.span.lo),
+        //        self.codemap.lookup_char_pos(b.span.hi));
         self.format_missing(b.span.lo);
 
         self.changes.push_str_span(b.span, "{");
         self.last_pos = self.last_pos + BytePos(1);
-        self.block_indent += 4;
+        self.block_indent += TAB_SPACES;
 
         for stmt in &b.stmts {
             self.format_missing_with_indent(stmt.span.lo);
-            self.visit_stmt(&**stmt)
+            self.visit_stmt(&stmt)
         }
         match b.expr {
             Some(ref e) => {
@@ -144,7 +160,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             None => {}
         }
 
-        self.block_indent -= 4;
+        self.block_indent -= TAB_SPACES;
         // TODO we should compress any newlines here to just one
         self.format_missing_with_indent(b.span.hi - BytePos(1));
         self.changes.push_str_span(b.span, "}");
@@ -157,10 +173,44 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 b: &'v ast::Block,
                 s: Span,
                 _: ast::NodeId) {
-        if let Some(new_str) = self.formal_args(fk, fd) {
-            self.changes.push_str_span(s, &new_str);            
+        // TODO need to get the visibility from somewhere
+        self.format_missing(s.lo);
+        self.last_pos = s.lo;
+
+        // TODO need to check against expected indent
+        let indent = self.codemap.lookup_char_pos(s.lo).col.0;
+        match fk {
+            visit::FkItemFn(ident, ref generics, ref unsafety, ref abi) => {
+                let new_fn = self.rewrite_fn(indent,
+                                             ident,
+                                             fd,
+                                             None,
+                                             generics,
+                                             unsafety,
+                                             abi,
+                                             ast::Visibility::Inherited);
+                self.changes.push_str_span(s, &new_fn);
+            }
+            visit::FkMethod(ident, ref sig) => {
+                let new_fn = self.rewrite_fn(indent,
+                                             ident,
+                                             fd,
+                                             Some(&sig.explicit_self),
+                                             &sig.generics,
+                                             &sig.unsafety,
+                                             &sig.abi,
+                                             ast::Visibility::Inherited);
+                self.changes.push_str_span(s, &new_fn);
+            }
+            visit::FkFnBlock(..) => {}
         }
-        visit::walk_fn(self, fk, fd, b, s);
+
+        // FIXME we'll miss anything between the end of the signature and the start
+        // of the body, but we need more spans from the compiler to solve this.
+        self.changes.push_str_span(s, "\n");
+        self.changes.push_str_span(s, &make_indent(self.block_indent));
+        self.last_pos = b.span.lo;
+        self.visit_block(b)
     }
 
     fn visit_item(&mut self, item: &'v ast::Item) {
@@ -169,7 +219,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 match vp.node {
                     ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
                         self.format_missing(item.span.lo);
-                        let new_str = self.fix_use_list(path, path_list, vp.span);
+                        let new_str = self.rewrite_use_list(path, path_list, vp.span);
                         self.changes.push_str_span(item.span, &new_str);
                         self.last_pos = item.span.hi;
                     }
@@ -181,14 +231,18 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 visit::walk_item(self, item);
             }
             ast::Item_::ItemImpl(..) => {
-                self.block_indent += 4;
+                self.block_indent += TAB_SPACES;
                 visit::walk_item(self, item);
-                self.block_indent -= 4;
+                self.block_indent -= TAB_SPACES;
             }
             _ => {
                 visit::walk_item(self, item);
             }
         }
+    }
+
+    fn visit_mac(&mut self, mac: &'v ast::Mac) {
+        visit::walk_mac(self, mac)
     }
 }
 
@@ -198,6 +252,131 @@ fn make_indent(width: usize) -> String {
         indent.push(' ')
     }
     indent
+}
+
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+enum ListTactic {
+    // One item per row.
+    Vertical,
+    // All items on one row.
+    Horizontal,
+    // Try Horizontal layout, if that fails then vertical
+    HorizontalVertical,
+    // Pack as many items as possible per row over (possibly) many rows.
+    Mixed,
+}
+
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+enum SeparatorTactic {
+    Always,
+    Never,
+    Vertical,
+}
+
+struct ListFormatting<'a> {
+    tactic: ListTactic,
+    separator: &'a str,
+    trailing_separator: SeparatorTactic,
+    indent: usize,
+    // Available width if we layout horizontally.
+    h_width: usize,
+    // Available width if we layout vertically
+    v_width: usize,
+}
+
+// Format a list of strings into a string.
+fn write_list<'b>(items:&[(String, String)], formatting: &ListFormatting<'b>) -> String {
+    if items.len() == 0 {
+        return String::new();
+    }
+
+    let mut tactic = formatting.tactic;
+
+    let h_width = formatting.h_width;
+    let v_width = formatting.v_width;
+    let sep_len = formatting.separator.len();
+
+    // Conservatively overestimates because of the changing separator tactic.
+    let sep_count = if formatting.trailing_separator != SeparatorTactic::Never {
+        items.len()
+    } else {
+        items.len() - 1
+    };
+
+    // TODO count dead space too.
+    let total_width = items.iter().map(|&(ref s, _)| s.len()).fold(0, |a, l| a + l);
+
+    // Check if we need to fallback from horizontal listing, if possible.
+    if tactic == ListTactic::HorizontalVertical { 
+        if (total_width + (sep_len + 1) * sep_count) > h_width {
+            tactic = ListTactic::Vertical;
+        } else {
+            tactic = ListTactic::Horizontal;
+        }
+    }
+
+    // Now that we know how we will layout, we can decide for sure if there
+    // will be a trailing separator.
+    let trailing_separator = match formatting.trailing_separator {
+        SeparatorTactic::Always => true,
+        SeparatorTactic::Vertical => tactic == ListTactic::Vertical,
+        SeparatorTactic::Never => false,
+    };
+
+    // Create a buffer for the result.
+    // TODO could use a StringBuffer or rope for this
+    let alloc_width = if tactic == ListTactic::Horizontal {
+        total_width + (sep_len + 1) * sep_count
+    } else {
+        total_width + items.len() * (formatting.indent + 1)
+    };
+    let mut result = String::with_capacity(alloc_width);
+
+    let mut line_len = 0;
+    let indent_str = &make_indent(formatting.indent);
+    for (i, &(ref item, _)) in items.iter().enumerate() {
+        let first = i == 0;
+        let separate = i != items.len() - 1 || trailing_separator;
+
+        match tactic {
+            ListTactic::Horizontal if !first => {
+                result.push(' ');
+            }
+            ListTactic::Vertical if !first => {
+                result.push('\n');
+                result.push_str(indent_str);
+            }
+            ListTactic::Mixed => {
+                let mut item_width = item.len();
+                if separate {
+                    item_width += sep_len;
+                }
+
+                if line_len > 0 && line_len + item_width > v_width {
+                    result.push('\n');
+                    result.push_str(indent_str);
+                    line_len = 0;
+                }
+
+                if line_len > 0 {
+                    result.push(' ');
+                    line_len += 1;
+                }
+
+                line_len += item_width;
+            }
+            _ => {}
+        }
+
+        result.push_str(item);
+        
+        if separate {
+            result.push_str(formatting.separator);
+        }
+        // TODO dead spans
+    }
+
+    result
 }
 
 impl<'a> FmtVisitor<'a> {
@@ -210,6 +389,8 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
+    // TODO these format_missing methods are ugly. Refactor and add unit tests
+    // for the central whitespace stripping loop.
     fn format_missing(&mut self, end: BytePos) {
         self.format_missing_inner(end, |this, last_snippet, span, _| {
             this.changes.push_str_span(span, last_snippet)
@@ -226,7 +407,7 @@ impl<'a> FmtVisitor<'a> {
                 this.changes.push_str_span(span, last_snippet.trim_right());
             }
             let indent = make_indent(this.block_indent);
-            this.changes.push_str_span(span, &indent);           
+            this.changes.push_str_span(span, &indent);
         })
     }
 
@@ -235,14 +416,30 @@ impl<'a> FmtVisitor<'a> {
                                                                       process_last_snippet: F)
     {
         let start = self.last_pos;
+        // TODO uncomment
+        // debug!("format_missing_inner: {:?} to {:?}",
+        //        self.codemap.lookup_char_pos(start),
+        //        self.codemap.lookup_char_pos(end));
+
         // TODO(#11) gets tricky if we're missing more than one file
-        assert!(self.codemap.lookup_char_pos(start).file.name == self.codemap.lookup_char_pos(end).file.name,
-                "not implemented: unformated span across files");
+        // assert!(self.codemap.lookup_char_pos(start).file.name == self.codemap.lookup_char_pos(end).file.name,
+        //         "not implemented: unformated span across files: {} and {}",
+        //         self.codemap.lookup_char_pos(start).file.name,
+        //         self.codemap.lookup_char_pos(end).file.name);
+        // assert!(start <= end,
+        //         "Request to format inverted span: {:?} to {:?}",
+        //         self.codemap.lookup_char_pos(start),
+        //         self.codemap.lookup_char_pos(end));
+
+        if start == end {
+            return;
+        }
 
         self.last_pos = end;
         let span = codemap::mk_sp(start, end);
         let snippet = self.snippet(span);
 
+        // Trim whitespace from the right hand side of each line.
         // Annoyingly, the library functions for splitting by lines etc. are not
         // quite right, so we must do it ourselves.
         let mut line_start = 0;
@@ -282,7 +479,7 @@ impl<'a> FmtVisitor<'a> {
     }
 
     // TODO NEEDS TESTS
-    fn rewrite_string(&mut self, s: &str, span: Span, width: usize, offset: usize) -> String {
+    fn rewrite_string_lit(&mut self, s: &str, span: Span, width: usize, offset: usize) -> String {
         // FIXME I bet this stomps unicode escapes in the source string
 
         // Check if there is anything to fix: we always try to fixup multi-line
@@ -346,123 +543,328 @@ impl<'a> FmtVisitor<'a> {
     }
 
     // Basically just pretty prints a multi-item import.
-    fn fix_use_list(&mut self,
-                    path: &ast::Path,
-                    path_list: &[ast::PathListItem],
-                    vp_span: Span) -> String {
+    fn rewrite_use_list(&mut self,
+                        path: &ast::Path,
+                        path_list: &[ast::PathListItem],
+                        vp_span: Span) -> String {
         // FIXME remove unused imports
 
         // FIXME check indentation
         let l_loc = self.codemap.lookup_char_pos(vp_span.lo);
-        let path_str = pprust::path_to_string(&path);
-        let indent = l_loc.col.0;
-        // After accounting for the overhead, how much space left for
-        // the item list? ( 5 = :: + { + } + ; )
-        let space = IDEAL_WIDTH - (indent + path_str.len() + 5);
-        // 4 = `use` + one space
-        // TODO might be pub use
-        let indent = make_indent(indent-4);
 
-        let mut cur_str = String::new();
-        let mut first = true;
+        let path_str = pprust::path_to_string(&path);
+
+        // 3 = :: + {
+        let indent = l_loc.col.0 + path_str.len() + 3;
+        let fmt = ListFormatting {
+            tactic: ListTactic::Mixed,
+            separator: ",",
+            trailing_separator: SeparatorTactic::Never,
+            indent: indent,
+            // 2 = } + ;
+            h_width: IDEAL_WIDTH - (indent + path_str.len() + 2),
+            v_width: IDEAL_WIDTH - (indent + path_str.len() + 2),
+        };
+
+        // TODO handle any comments inbetween items.
         // If `self` is in the list, put it first.
-        if path_list.iter().any(|vpi|
+        let head = if path_list.iter().any(|vpi|
             if let ast::PathListItem_::PathListMod{ .. } = vpi.node {
                 true
             } else {
                 false
             }
         ) {
-            cur_str = "self".to_string();
-            first = false;
-        }
+            Some(("self".to_string(), String::new()))
+        } else {
+            None
+        };
 
-        let mut new_str = String::new();
-        for vpi in path_list.iter() {
+        let items: Vec<_> = head.into_iter().chain(path_list.iter().filter_map(|vpi| {
             match vpi.node {
                 ast::PathListItem_::PathListIdent{ name, .. } => {
-                    let next_item = &token::get_ident(name);
-                    if cur_str.len() + next_item.len() > space {
-                        let cur_line = format!("{}use {}::{{{}}};\n", indent, path_str, cur_str);
-                        new_str.push_str(&cur_line);
-
-                        cur_str = String::new();
-                        first = true;
-                    }
-
-                    if first {
-                        first = false;
-                    } else {
-                        cur_str.push_str(", ");
-                    }
-
-                    cur_str.push_str(next_item);
+                    Some((token::get_ident(name).to_string(), String::new()))
                 }
-                ast::PathListItem_::PathListMod{ .. } => {}
+                // Skip `self`, because we added it above.
+                ast::PathListItem_::PathListMod{ .. } => None,
+            }
+        })).collect();
+
+        format!("use {}::{{{}}};", path_str, write_list(&items, &fmt))
+    }
+
+    fn rewrite_fn(&mut self,
+                  indent: usize,
+                  ident: ast::Ident,
+                  fd: &ast::FnDecl,
+                  explicit_self: Option<&ast::ExplicitSelf>,
+                  generics: &ast::Generics,
+                  unsafety: &ast::Unsafety,
+                  abi: &abi::Abi,
+                  vis: ast::Visibility)
+        -> String
+    {
+        // FIXME we'll lose any comments in between parts of the function decl, but anyone
+        // who comments there probably deserves what they get.
+
+        let mut result = String::with_capacity(1024);
+        // Vis unsafety abi.
+        if vis == ast::Visibility::Public {
+            result.push_str("pub ");
+        }
+        if let &ast::Unsafety::Unsafe = unsafety {
+            result.push_str("unsafe ");
+        }
+        if *abi != abi::Rust {
+            result.push_str("extern ");
+            result.push_str(&abi.to_string());
+            result.push(' ');
+        }
+
+        // fn foo
+        result.push_str("fn ");
+        result.push_str(&token::get_ident(ident));
+
+        // Generics.
+        // FIXME convert bounds to where clauses where they get too big or if
+        // there is a where clause at all.
+        let lifetimes: &[_] = &generics.lifetimes;
+        let tys: &[_] = &generics.ty_params;
+        let where_clause = &generics.where_clause;
+        if lifetimes.len() + tys.len() > 0 {
+            let budget = MAX_WIDTH - indent - result.len() - 2;
+            // TODO might need to insert a newline if the generics are really long
+            result.push('<');
+
+            let lt_strs = lifetimes.iter().map(|l| self.rewrite_lifetime_def(l));
+            let ty_strs = tys.iter().map(|ty| self.rewrite_ty_param(ty));
+            let generics_strs: Vec<_> = lt_strs.chain(ty_strs).map(|s| (s, String::new())).collect();
+            let fmt = ListFormatting {
+                tactic: ListTactic::HorizontalVertical,
+                separator: ",",
+                trailing_separator: SeparatorTactic::Never,
+                indent: indent + result.len() + 1,
+                h_width: budget,
+                v_width: budget,
+            };
+            result.push_str(&write_list(&generics_strs, &fmt));
+
+            result.push('>');
+        }
+
+        let ret_str = match fd.output {
+            ast::FunctionRetTy::DefaultReturn(_) => String::new(),
+            ast::FunctionRetTy::NoReturn(_) => "-> !".to_string(),
+            ast::FunctionRetTy::Return(ref ty) => "-> ".to_string() + &pprust::ty_to_string(ty),
+        };
+
+        // Args.
+        let args = &fd.inputs;
+
+        let mut budgets = None;
+
+        // Try keeping everything on the same line
+        if !result.contains("\n") {
+            // 3 = `() `, space is before ret_string
+            let used_space = indent + result.len() + 3 + ret_str.len();
+            let one_line_budget = if used_space > MAX_WIDTH {
+                0
+            } else {
+                MAX_WIDTH - used_space
+            };
+
+            let used_space = indent + result.len() + 2;
+            let max_space = IDEAL_WIDTH + LEEWAY;
+            if used_space < max_space {
+                budgets = Some((one_line_budget,
+                                // 2 = `()`
+                                max_space - used_space,
+                                indent + result.len() + 1));
             }
         }
 
-        assert!(!first);
-        let cur_line = format!("{}use {}::{{{}}};", indent, path_str, cur_str);
-        new_str.push_str(&cur_line);
+        // Didn't work. we must force vertical layout and put args on a newline.
+        if let None = budgets {
+            result.push('\n');
+            result.push_str(&make_indent(indent + 4));
+            // 6 = new indent + `()`
+            let used_space = indent + 6;
+            let max_space = IDEAL_WIDTH + LEEWAY;
+            if used_space > max_space {
+                // Whoops! bankrupt.
+                // TODO take evasive action, perhaps kill the indent or something.
+            } else {
+                // 5 = new indent + `(`
+                budgets = Some((0, max_space - used_space, indent + 5));
+            }
+        }
 
-        new_str
+        let (one_line_budget, multi_line_budget, arg_indent) = budgets.unwrap();
+        result.push('(');
+
+        let fmt = ListFormatting {
+            tactic: ListTactic::HorizontalVertical,
+            separator: ",",
+            trailing_separator: SeparatorTactic::Never,
+            indent: arg_indent,
+            h_width: one_line_budget,
+            v_width: multi_line_budget,
+        };
+        // TODO dead spans
+        let mut arg_strs: Vec<_> = args.iter().map(|a| (self.rewrite_fn_input(a), String::new())).collect();
+        // Account for sugary self.
+        if let Some(explicit_self) = explicit_self {
+            match explicit_self.node {
+                ast::ExplicitSelf_::SelfRegion(ref lt, ref m, _) => {
+                    let lt_str = match lt {
+                        &Some(ref l) => format!("{} ", pprust::lifetime_to_string(l)),
+                        &None => String::new(),
+                    };
+                    let mut_str = match m {
+                        &ast::Mutability::MutMutable => "mut ".to_string(),
+                        &ast::Mutability::MutImmutable => String::new(),
+                    };
+                    arg_strs[0].0 = format!("&{}{}self", lt_str, mut_str)
+                }
+                ast::ExplicitSelf_::SelfExplicit(ref ty, _) => {
+                    arg_strs[0].0 = format!("self: {}", pprust::ty_to_string(ty))
+                }
+                _ => {}
+            }
+        }
+        result.push_str(&write_list(&arg_strs, &fmt));
+
+        result.push(')');
+
+        // Where clause.
+        if where_clause.predicates.len() > 0 {
+            result.push('\n');
+            result.push_str(&make_indent(indent + 4));
+            result.push_str("where ");
+
+            let budget = IDEAL_WIDTH + LEEWAY - indent - 10;
+            let fmt = ListFormatting {
+                tactic: ListTactic::Vertical,
+                separator: ",",
+                trailing_separator: SeparatorTactic::Always,
+                indent: indent + 10,
+                h_width: budget,
+                v_width: budget,
+            };
+            let where_strs: Vec<_> = where_clause.predicates.iter().map(|p| (self.rewrite_pred(p), String::new())).collect();
+            result.push_str(&write_list(&where_strs, &fmt));
+        }
+
+        // Return type.
+        if ret_str.len() > 0 {
+            // If we've already gone multi-line, or the return type would push
+            // over the max width, then put the return type on a new line.
+            if result.contains("\n") ||
+               result.len() + indent + ret_str.len() > MAX_WIDTH {
+                let indent = indent + 4;
+                result.push('\n');
+                result.push_str(&make_indent(indent));
+            } else {
+                result.push(' ');
+            }
+            result.push_str(&ret_str);
+        }
+
+        result
     }
 
-    fn formal_args<'v>(&mut self, fk: visit::FnKind<'v>, fd: &'v ast::FnDecl) -> Option<String> {
-        // For now, just check the arguments line up and make them per-row if the line is too long.
-        let args = &fd.inputs;
+    // TODO we farm this out, but this could spill over the column limit, so we ought to handle it properly
+    fn rewrite_fn_input(&self, arg: &ast::Arg) -> String {
+        format!("{}: {}",
+                pprust::pat_to_string(&arg.pat),
+                pprust::ty_to_string(&arg.ty))
+    }
 
-        let ret_str = match fd.output {
-            ast::FunctionRetTy::DefaultReturn(_) => "".to_string(),
-            ast::FunctionRetTy::NoReturn(_) => " -> !".to_string(),
-            ast::FunctionRetTy::Return(ref ty) => pprust::ty_to_string(ty),
-        };
+    fn rewrite_pred(&self, predicate: &ast::WherePredicate) -> String
+    {
+        // TODO dead spans
+        // TODO assumes we'll always fit on one line...
+        match predicate {
+            &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ref bound_lifetimes,
+                                                                          ref bounded_ty,
+                                                                          ref bounds,
+                                                                          ..}) => {
+                if bound_lifetimes.len() > 0 {
+                    format!("for<{}> {}: {}",
+                            bound_lifetimes.iter().map(|l| self.rewrite_lifetime_def(l)).collect::<Vec<_>>().connect(", "),
+                            pprust::ty_to_string(bounded_ty),
+                            bounds.iter().map(|b| self.rewrite_ty_bound(b)).collect::<Vec<_>>().connect("+"))
 
-        // TODO don't return, want to do the return type etc.
-        if args.len() == 0 {
-            return None;
+                } else {
+                    format!("{}: {}",
+                            pprust::ty_to_string(bounded_ty),
+                            bounds.iter().map(|b| self.rewrite_ty_bound(b)).collect::<Vec<_>>().connect("+"))
+                }
+            }
+            &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
+                                                                            ref bounds,
+                                                                            ..}) => {
+                format!("{}: {}",
+                        pprust::lifetime_to_string(lifetime),
+                        bounds.iter().map(|l| pprust::lifetime_to_string(l)).collect::<Vec<_>>().connect("+"))
+            }
+            &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref path, ref ty, ..}) => {
+                format!("{} = {}", pprust::path_to_string(path), pprust::ty_to_string(ty))
+            }
+        }
+    }
+
+    fn rewrite_lifetime_def(&self, lifetime: &ast::LifetimeDef) -> String
+    {
+        if lifetime.bounds.len() == 0 {
+            return pprust::lifetime_to_string(&lifetime.lifetime);
         }
 
-        // TODO not really using the hi positions
-        let spans: Vec<_> = args.iter().map(|a| (a.pat.span.lo, a.ty.span.hi)).collect();
-        let locs: Vec<_> = spans.iter().map(|&(a, b)| {
-            (self.codemap.lookup_char_pos(a), self.codemap.lookup_char_pos(b))
-        }).collect();
-        let first_col = locs[0].0.col.0;
+        format!("{}: {}",
+                pprust::lifetime_to_string(&lifetime.lifetime),
+                lifetime.bounds.iter().map(|l| pprust::lifetime_to_string(l)).collect::<Vec<_>>().connect("+"))
+    }
 
-        // Print up to the start of the args.
-        self.format_missing(spans[0].0);
-        self.last_pos = spans.last().unwrap().1;
-
-        let arg_strs: Vec<_> = args.iter().map(|a| format!("{}: {}",
-                                                           pprust::pat_to_string(&a.pat),
-                                                           pprust::ty_to_string(&a.ty))).collect();
-
-        // Try putting everything on one row:
-        let mut len = arg_strs.iter().fold(0, |a, b| a + b.len());
-        // Account for punctuation and spacing.
-        len += 2 * arg_strs.len() + 2 * (arg_strs.len()-1);
-        // Return type.
-        len += ret_str.len();
-        // Opening brace if no where clause.
-        match fk {
-            visit::FnKind::FkItemFn(_, &ref g, _, _) |
-            visit::FnKind::FkMethod(_, &ast::MethodSig { generics: ref g, ..})
-            if g.where_clause.predicates.len() > 0 => {}
-            _ => len += 2 // ` {`
+    fn rewrite_ty_bound(&self, bound: &ast::TyParamBound) -> String
+    {
+        match *bound {
+            ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::None) => {
+                self.rewrite_poly_trait_ref(tref)
+            }
+            ast::TyParamBound::TraitTyParamBound(ref tref, ast::TraitBoundModifier::Maybe) => {
+                format!("?{}", self.rewrite_poly_trait_ref(tref))
+            }
+            ast::TyParamBound::RegionTyParamBound(ref l) => {
+                pprust::lifetime_to_string(l)
+            }
         }
-        len += first_col;
+    }
 
-        if len <= IDEAL_WIDTH + LEEWAY || args.len() == 1 {
-            // It should all fit on one line.
-            return Some(arg_strs.connect(", "));
+    fn rewrite_ty_param(&self, ty_param: &ast::TyParam) -> String
+    {
+        let mut result = String::with_capacity(128);
+        result.push_str(&token::get_ident(ty_param.ident));
+        if ty_param.bounds.len() > 0 {
+            result.push_str(": ");
+            result.push_str(&ty_param.bounds.iter().map(|b| self.rewrite_ty_bound(b)).collect::<Vec<_>>().connect(", "));
+        }
+        if let Some(ref def) = ty_param.default {
+            result.push_str(" = ");
+            result.push_str(&pprust::ty_to_string(&def));
+        }
+
+        result
+    }
+
+    fn rewrite_poly_trait_ref(&self, t: &ast::PolyTraitRef) -> String
+    {
+        if t.bound_lifetimes.len() > 0 {
+            format!("for<{}> {}",
+                    t.bound_lifetimes.iter().map(|l| self.rewrite_lifetime_def(l)).collect::<Vec<_>>().connect(", "),
+                    pprust::path_to_string(&t.trait_ref.path))
+
         } else {
-            // TODO multi-line
-            let mut indent = String::with_capacity(first_col + 2);
-            indent.push_str(",\n");
-            for _ in 0..first_col { indent.push(' '); }
-            return Some(arg_strs.connect(&indent));
+            pprust::path_to_string(&t.trait_ref.path)
         }
     }
 
@@ -482,18 +884,28 @@ impl<'a> FmtVisitor<'a> {
         let remaining_width = width - callee_str.len() - 2;
         let offset = callee_str.len() + 1 + offset;
         let arg_count = args.len();
-        let args: Vec<_> = args.iter().map(|e| self.rewrite_expr(e,
-                                                                 remaining_width,
-                                                                 offset)).collect();
-        debug!("rewrite_call, args: `{}`", args.connect(","));
 
-        let multi_line = args.iter().any(|s| s.contains('\n'));
-        let args_width = args.iter().map(|s| s.len()).fold(0, |a, l| a + l);
-        let over_wide = args_width + (arg_count - 1) * 2 > remaining_width;
-        let args_str = if multi_line || over_wide {
-            args.connect(&(",\n".to_string() + &make_indent(offset)))
+        let args_str = if arg_count > 0 {
+            let args: Vec<_> = args.iter().map(|e| (self.rewrite_expr(e,
+                                                                      remaining_width,
+                                                                      offset), String::new())).collect();
+            // TODO move this into write_list
+            let tactics = if args.iter().any(|&(ref s, _)| s.contains('\n')) {
+                ListTactic::Vertical
+            } else {
+                ListTactic::HorizontalVertical
+            };
+            let fmt = ListFormatting {
+                tactic: tactics,
+                separator: ",",
+                trailing_separator: SeparatorTactic::Never,
+                indent: offset,
+                h_width: remaining_width,
+                v_width: remaining_width,
+            };
+            write_list(&args, &fmt)
         } else {
-            args.connect(", ")
+            String::new()
         };
 
         format!("{}({})", callee_str, args_str)
@@ -504,7 +916,7 @@ impl<'a> FmtVisitor<'a> {
             ast::Expr_::ExprLit(ref l) => {
                 match l.node {
                     ast::Lit_::LitStr(ref is, _) => {
-                        return self.rewrite_string(&is, l.span, width, offset);
+                        return self.rewrite_string_lit(&is, l.span, width, offset);
                     }
                     _ => {}
                 }
@@ -596,9 +1008,6 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
 
             println!("{}", changes);
             // FIXME(#5) Should be user specified whether to show or replace.
-
-            // TODO we stop before expansion, but we still seem to get expanded for loops which
-            // cause problems - probably a rustc bug
         };
 
         control
@@ -606,10 +1015,30 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
 }
 
 fn main() {
-    let args = std::os::args();
+    let args: Vec<_> = std::env::args().collect();
     let mut call_ctxt = RustFmtCalls { input_path: None };
     rustc_driver::run_compiler(&args, &mut call_ctxt);
     std::env::set_exit_status(0);
+
+    // TODO unit tests
+    // let fmt = ListFormatting {
+    //     tactic: ListTactic::Horizontal,
+    //     separator: ",",
+    //     trailing_separator: SeparatorTactic::Vertical,
+    //     indent: 2,
+    //     h_width: 80,
+    //     v_width: 100,
+    // };
+    // let inputs = vec![(format!("foo"), String::new()),
+    //                   (format!("foo"), String::new()),
+    //                   (format!("foo"), String::new()),
+    //                   (format!("foo"), String::new()),
+    //                   (format!("foo"), String::new()),
+    //                   (format!("foo"), String::new()),
+    //                   (format!("foo"), String::new()),
+    //                   (format!("foo"), String::new())];
+    // let s = write_list(&inputs, &fmt);
+    // println!("  {}", s);
 }
 
 // FIXME comments

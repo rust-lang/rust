@@ -45,7 +45,8 @@ impl<'a> ChangeSet<'a> {
     }
 
     pub fn push_str(&mut self, file_name: &str, text: &str) {
-        self.file_map[*file_name].push_str(text)
+        let buf = self.file_map.get_mut(&*file_name).unwrap();
+        buf.push_str(text)
     }
 
     pub fn push_str_span(&mut self, span: Span, text: &str) {
@@ -54,7 +55,7 @@ impl<'a> ChangeSet<'a> {
     }
 
     pub fn cur_offset(&mut self, file_name: &str) -> usize {
-        self.file_map[*file_name].cur_offset()
+        self.file_map[&*file_name].cur_offset()
     }
 
     pub fn cur_offset_span(&mut self, span: Span) -> usize {
@@ -91,7 +92,7 @@ impl<'c, 'a> Iterator for FileIterator<'c, 'a> {
 
         let key = self.keys[self.cur_key];
         self.cur_key += 1;
-        return Some((&key, &self.change_set.file_map[*key]))
+        return Some((&key, &self.change_set.file_map[&*key]))
     }
 }
 
