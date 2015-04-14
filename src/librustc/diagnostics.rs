@@ -153,6 +153,20 @@ match Some(()) {
 }
 "##,
 
+E0302: r##"
+Assignments are not allowed in pattern guards, because matching cannot have
+side effects. Side effects could alter the matched object or the environment
+on which the match depends in such a way, that the match would not be
+exhaustive. For instance, the following would not match any arm if assignments
+were allowed:
+
+match Some(()) {
+    None => { },
+    option if { option = None; false } { },
+    Some(_) => { } // When the previous match failed, the option became `None`.
+}
+"##,
+
 E0303: r##"
 In certain cases it is possible for sub-bindings to violate memory safety.
 Updates to the borrow checker in a future version of Rust may remove this
@@ -238,7 +252,6 @@ register_diagnostics! {
     E0298, // mismatched types between arms
     E0299, // mismatched types between arms
     E0300, // unexpanded macro
-    E0302, // cannot assign in a pattern guard
     E0304, // expected signed integer constant
     E0305, // expected constant
     E0306, // expected positive integer for repeat count
