@@ -3855,7 +3855,7 @@ impl<'a> Parser<'a> {
     /// ```
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
-    fn parse_where_clause(&mut self) -> PResult<ast::WhereClause> {
+    pub fn parse_where_clause(&mut self) -> PResult<ast::WhereClause> {
         let mut where_clause = WhereClause {
             id: ast::DUMMY_NODE_ID,
             predicates: Vec::new(),
