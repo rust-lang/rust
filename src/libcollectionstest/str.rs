@@ -37,15 +37,6 @@ fn test_len() {
     assert_eq!("\u{2620}".chars().count(), 1);
     assert_eq!("\u{1d11e}".chars().count(), 1);
     assert_eq!("ประเทศไทย中华Việt Nam".chars().count(), 19);
-
-    assert_eq!("ｈｅｌｌｏ".width(false), 10);
-    assert_eq!("ｈｅｌｌｏ".width(true), 10);
-    assert_eq!("\0\0\0\0\0".width(false), 0);
-    assert_eq!("\0\0\0\0\0".width(true), 0);
-    assert_eq!("".width(false), 0);
-    assert_eq!("".width(true), 0);
-    assert_eq!("\u{2081}\u{2082}\u{2083}\u{2084}".width(false), 4);
-    assert_eq!("\u{2081}\u{2082}\u{2083}\u{2084}".width(true), 8);
 }
 
 #[test]

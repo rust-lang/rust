@@ -1736,25 +1736,6 @@ impl str {
         UnicodeStr::words(&self[..])
     }
 
-    /// Returns a string's displayed width in columns.
-    ///
-    /// Control characters have zero width.
-    ///
-    /// `is_cjk` determines behavior for characters in the Ambiguous category:
-    /// if `is_cjk` is
-    /// `true`, these are 2 columns wide; otherwise, they are 1.
-    /// In CJK locales, `is_cjk` should be
-    /// `true`, else it should be `false`.
-    /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
-    /// recommends that these
-    /// characters be treated as 1 column (i.e., `is_cjk = false`) if the
-    /// locale is unknown.
-    #[unstable(feature = "unicode",
-               reason = "this functionality may only be provided by libunicode")]
-    pub fn width(&self, is_cjk: bool) -> usize {
-        UnicodeStr::width(&self[..], is_cjk)
-    }
-
     /// Returns a `&str` with leading and trailing whitespace removed.
     ///
     /// # Examples
