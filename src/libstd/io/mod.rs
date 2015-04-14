@@ -172,14 +172,11 @@ pub trait Read {
     /// Read all bytes until EOF in this source, placing them into `buf`.
     ///
     /// All bytes read from this source will be appended to the specified buffer
-    /// `buf`. This function will return a call to `read` either:
+    /// `buf`. This function will continuously call `read` to append more data to
+    /// `buf` until `read` returns either `Ok(0)` or an error of
+    /// non-`ErrorKind::Interrupted` kind.
     ///
-    /// 1. Returns `Ok(0)`.
-    /// 2. Returns an error which is not of the kind `ErrorKind::Interrupted`.
-    ///
-    /// Until one of these conditions is met the function will continuously
-    /// invoke `read` to append more data to `buf`. If successful, this function
-    /// will return the total number of bytes read.
+    /// If successful, this function will return the total number of bytes read.
     ///
     /// # Errors
     ///
