@@ -57,36 +57,49 @@ impl<'a> Annotator<'a> {
                    attrs: &Vec<Attribute>, item_sp: Span, f: F, required: bool) where
         F: FnOnce(&mut Annotator),
     {
-        debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
-        match attr::find_stability(self.sess.diagnostic(), attrs, item_sp) {
-            Some(stab) => {
-                debug!("annotate: found {:?}", stab);
-                self.index.local.insert(id, stab.clone());
+        if self.index.staged_api {
+            debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
+            match attr::find_stability(self.sess.diagnostic(), attrs, item_sp) {
+                Some(stab) => {
+                    debug!("annotate: found {:?}", stab);
+                    self.index.local.insert(id, stab.clone());
 
-                // Don't inherit #[stable(feature = "rust1", since = "1.0.0")]
-                if stab.level != attr::Stable {
-                    let parent = replace(&mut self.parent, Some(stab));
-                    f(self);
-                    self.parent = parent;
-                } else {
-                    f(self);
-                }
-            }
-            None => {
-                debug!("annotate: not found, use_parent = {:?}, parent = {:?}",
-                       use_parent, self.parent);
-                if use_parent {
-                    if let Some(stab) = self.parent.clone() {
-                        self.index.local.insert(id, stab);
-                    } else if self.index.staged_api && required
-                           && self.export_map.contains(&id)
-                           && !self.sess.opts.test {
-                        self.sess.span_err(item_sp,
-                                           "This node does not have a stability attribute");
+                    // Don't inherit #[stable(feature = "rust1", since = "1.0.0")]
+                    if stab.level != attr::Stable {
+                        let parent = replace(&mut self.parent, Some(stab));
+                        f(self);
+                        self.parent = parent;
+                    } else {
+                        f(self);
                     }
                 }
-                f(self);
+                None => {
+                    debug!("annotate: not found, use_parent = {:?}, parent = {:?}",
+                           use_parent, self.parent);
+                    if use_parent {
+                        if let Some(stab) = self.parent.clone() {
+                            self.index.local.insert(id, stab);
+                        } else if self.index.staged_api && required
+                            && self.export_map.contains(&id)
+                            && !self.sess.opts.test {
+                                self.sess.span_err(item_sp,
+                                                   "This node does not have a stability attribute");
+                            }
+                    }
+                    f(self);
+                }
             }
+        } else {
+            // Emit warnings for non-staged-api crates. These should be errors.
+            for attr in attrs {
+                let tag = attr.name();
+                if tag == "unstable" || tag == "stable" || tag == "deprecated" {
+                    attr::mark_used(attr);
+                    self.sess.span_warn(attr.span(),
+                                        "stability attributes are deprecated and will soon become errors");
+                }
+            }
+            f(self);
         }
     }
 }
@@ -157,9 +170,6 @@ impl<'a, 'v> Visitor<'v> for Annotator<'a> {
 impl Index {
     /// Construct the stability index for a crate being compiled.
     pub fn build(&mut self, sess: &Session, krate: &Crate, export_map: &PublicItems) {
-        if !self.staged_api {
-            return;
-        }
         let mut annotator = Annotator {
             sess: sess,
             index: self,
