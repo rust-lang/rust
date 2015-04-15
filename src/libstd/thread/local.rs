@@ -373,7 +373,7 @@ mod imp {
                                       arg: *mut u8,
                                       dso_handle: *mut u8) -> libc::c_int;
             mem::transmute::<*const (), F>(__cxa_thread_atexit_impl)
-            (dtor, t, __dso_handle);
+            (dtor, t, &__dso_handle as *const _ as *mut _);
             return
         }
 
