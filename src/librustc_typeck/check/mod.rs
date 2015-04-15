@@ -3515,34 +3515,34 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       }
       ast::ExprIndex(ref base, ref idx) => {
           check_expr_with_lvalue_pref(fcx, &**base, lvalue_pref);
+          check_expr(fcx, &**idx);
+
           let base_t = fcx.expr_ty(&**base);
+          let idx_t = fcx.expr_ty(&**idx);
+
           if ty::type_is_error(base_t) {
               fcx.write_ty(id, base_t);
+          } else if ty::type_is_error(idx_t) {
+              fcx.write_ty(id, idx_t);
           } else {
-              check_expr(fcx, &**idx);
-              let idx_t = fcx.expr_ty(&**idx);
-              if ty::type_is_error(idx_t) {
-                  fcx.write_ty(id, idx_t);
-              } else {
-                  let base_t = structurally_resolved_type(fcx, expr.span, base_t);
-                  match lookup_indexing(fcx, expr, base, base_t, idx_t, lvalue_pref) {
-                      Some((index_ty, element_ty)) => {
-                          let idx_expr_ty = fcx.expr_ty(idx);
-                          demand::eqtype(fcx, expr.span, index_ty, idx_expr_ty);
-                          fcx.write_ty(id, element_ty);
-                      }
-                      None => {
-                          check_expr_has_type(fcx, &**idx, fcx.tcx().types.err);
-                          fcx.type_error_message(
-                              expr.span,
-                              |actual| {
-                                  format!("cannot index a value of type `{}`",
-                                          actual)
-                              },
-                              base_t,
-                              None);
-                          fcx.write_ty(id, fcx.tcx().types.err);
-                      }
+              let base_t = structurally_resolved_type(fcx, expr.span, base_t);
+              match lookup_indexing(fcx, expr, base, base_t, idx_t, lvalue_pref) {
+                  Some((index_ty, element_ty)) => {
+                      let idx_expr_ty = fcx.expr_ty(idx);
+                      demand::eqtype(fcx, expr.span, index_ty, idx_expr_ty);
+                      fcx.write_ty(id, element_ty);
+                  }
+                  None => {
+                      check_expr_has_type(fcx, &**idx, fcx.tcx().types.err);
+                      fcx.type_error_message(
+                          expr.span,
+                          |actual| {
+                              format!("cannot index a value of type `{}`",
+                                      actual)
+                          },
+                          base_t,
+                          None);
+                      fcx.write_ty(id, fcx.tcx().types.err);
                   }
               }
           }
