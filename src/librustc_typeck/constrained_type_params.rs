@@ -8,49 +8,101 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use middle::ty::{self};
+use middle::subst;
+use middle::ty::{self, Ty};
 
 use std::collections::HashSet;
 use std::rc::Rc;
 
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub enum Parameter {
+    Type(ty::ParamTy),
+    Region(ty::EarlyBoundRegion),
+}
+
+pub fn parameters_for_type<'tcx>(ty: Ty<'tcx>) -> Vec<Parameter> {
+    ty.walk()
+      .flat_map(|ty| parameters_for_type_shallow(ty).into_iter())
+      .collect()
+}
+
+pub fn parameters_for_trait_ref<'tcx>(trait_ref: &Rc<ty::TraitRef<'tcx>>) -> Vec<Parameter> {
+    let mut region_parameters =
+        parameters_for_regions_in_substs(&trait_ref.substs);
+
+    let type_parameters =
+        trait_ref.substs.types.iter()
+                              .flat_map(|ty| parameters_for_type(ty).into_iter());
+
+    region_parameters.extend(type_parameters);
+
+    region_parameters
+}
+
+fn parameters_for_type_shallow<'tcx>(ty: Ty<'tcx>) -> Vec<Parameter> {
+    match ty.sty {
+        ty::ty_param(ref d) =>
+            vec![Parameter::Type(d.clone())],
+        ty::ty_rptr(region, _) =>
+            parameters_for_region(region).into_iter().collect(),
+        ty::ty_struct(_, substs) |
+        ty::ty_enum(_, substs) =>
+            parameters_for_regions_in_substs(substs),
+        ty::ty_trait(ref data) =>
+            parameters_for_regions_in_substs(&data.principal.skip_binder().substs),
+        _ =>
+            vec![],
+    }
+}
+
+fn parameters_for_regions_in_substs(substs: &subst::Substs) -> Vec<Parameter> {
+    substs.regions()
+          .iter()
+          .filter_map(|r| parameters_for_region(r))
+          .collect()
+}
+
+fn parameters_for_region(region: &ty::Region) -> Option<Parameter> {
+    match *region {
+        ty::ReEarlyBound(data) => Some(Parameter::Region(data)),
+        _ => None,
+    }
+}
+
 pub fn identify_constrained_type_params<'tcx>(_tcx: &ty::ctxt<'tcx>,
                                               predicates: &[ty::Predicate<'tcx>],
                                               impl_trait_ref: Option<Rc<ty::TraitRef<'tcx>>>,
-                                              input_parameters: &mut HashSet<ty::ParamTy>)
+                                              input_parameters: &mut HashSet<Parameter>)
 {
     loop {
         let num_inputs = input_parameters.len();
 
-        let projection_predicates =
+        let poly_projection_predicates = // : iterator over PolyProjectionPredicate
             predicates.iter()
                       .filter_map(|predicate| {
                           match *predicate {
-                              // Ignore higher-ranked binders. For the purposes
-                              // of this check, they don't matter because they
-                              // only affect named regions, and we're just
-                              // concerned about type parameters here.
-                              ty::Predicate::Projection(ref data) => Some(data.0.clone()),
+                              ty::Predicate::Projection(ref data) => Some(data.clone()),
                               _ => None,
                           }
                       });
 
-        for projection in projection_predicates {
+        for poly_projection in poly_projection_predicates {
+            // Note that we can skip binder here because the impl
+            // trait ref never contains any late-bound regions.
+            let projection = poly_projection.skip_binder();
+
             // Special case: watch out for some kind of sneaky attempt
-            // to project out an associated type defined by this very trait.
-            if Some(projection.projection_ty.trait_ref.clone()) == impl_trait_ref {
+            // to project out an associated type defined by this very
+            // trait.
+            let unbound_trait_ref = &projection.projection_ty.trait_ref;
+            if Some(unbound_trait_ref.clone()) == impl_trait_ref {
                 continue;
             }
 
-            let relies_only_on_inputs =
-                projection.projection_ty.trait_ref.input_types()
-                                                  .iter()
-                                                  .flat_map(|t| t.walk())
-                                                  .filter_map(|t| t.as_opt_param_ty())
-                                                  .all(|t| input_parameters.contains(&t));
-
+            let inputs = parameters_for_trait_ref(&projection.projection_ty.trait_ref);
+            let relies_only_on_inputs = inputs.iter().all(|p| input_parameters.contains(&p));
             if relies_only_on_inputs {
-                input_parameters.extend(
-                    projection.ty.walk().filter_map(|t| t.as_opt_param_ty()));
+                input_parameters.extend(parameters_for_type(projection.ty));
             }
         }
 
