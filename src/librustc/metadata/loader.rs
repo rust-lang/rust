@@ -129,7 +129,7 @@
 //! > Dear rustc,
 //! >
 //! > When you are attempting to load the immediate dependency `crate-name`, I
-//! > would like you too assume that the library is located at
+//! > would like you to assume that the library is located at
 //! > `path/to/the/crate.rlib`, and look nowhere else. Also, please do not
 //! > assume that the path I specified has the name `crate-name`.
 //!
