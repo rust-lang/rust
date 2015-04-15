@@ -1130,7 +1130,7 @@ pub trait FromIterator<A> {
 /// Conversion into an `Iterator`
 ///
 /// Implementing this trait allows you to use your type with Rust's `for` loop. See
-/// the [module level documentation](../index.html) for more details.
+/// the [module level documentation](index.html) for more details.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
     /// The type of the elements being iterated
