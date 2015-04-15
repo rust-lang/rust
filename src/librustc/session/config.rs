@@ -770,8 +770,8 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                    "[KIND=]PATH"),
         opt::multi("l", "",   "Link the generated crate(s) to the specified native
                              library NAME. The optional KIND can be one of,
-                             static, dylib, or framework. If omitted, dylib is
-                             assumed.", "[KIND=]NAME"),
+                             static, dylib, filepath, or framework. If omitted, dylib
+                             is assumed.", "[KIND=]NAME"),
         opt::multi("", "crate-type", "Comma separated list of types of crates
                                     for the compiler to emit",
                    "[bin|lib|rlib|dylib|staticlib]"),
@@ -963,11 +963,12 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         let (name, kind) = match (parts.next(), kind) {
             (None, name) |
             (Some(name), "dylib") => (name, cstore::NativeUnknown),
+            (Some(name), "filepath") => (name, cstore::NativeFilepath),
             (Some(name), "framework") => (name, cstore::NativeFramework),
             (Some(name), "static") => (name, cstore::NativeStatic),
             (_, s) => {
                 early_error(&format!("unknown library kind `{}`, expected \
-                                     one of dylib, framework, or static",
+                                     one of dylib, framework, filepath, or static",
                                     s));
             }
         };

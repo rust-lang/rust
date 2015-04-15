@@ -264,6 +264,8 @@ impl<'a> CrateReader<'a> {
                                         cstore::NativeFramework
                                     } else if k == "framework" {
                                         cstore::NativeFramework
+                                    } else if k == "filepath" {
+                                        cstore::NativeFilepath
                                     } else if k == "dylib" {
                                         cstore::NativeUnknown
                                     } else {

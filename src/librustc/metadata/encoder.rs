@@ -1726,7 +1726,9 @@ fn encode_native_libraries(ecx: &EncodeContext, rbml_w: &mut Encoder) {
                                .borrow().iter() {
         match kind {
             cstore::NativeStatic => {} // these libraries are not propagated
-            cstore::NativeFramework | cstore::NativeUnknown => {
+            cstore::NativeFramework
+            | cstore::NativeFilepath
+            | cstore::NativeUnknown => {
                 rbml_w.start_tag(tag_native_libraries_lib);
                 rbml_w.wr_tagged_u32(tag_native_libraries_kind, kind as u32);
                 rbml_w.wr_tagged_str(tag_native_libraries_name, lib);
