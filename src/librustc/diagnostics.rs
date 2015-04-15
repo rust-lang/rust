@@ -114,6 +114,54 @@ reference when using guards or refactor the entire expression, perhaps by
 putting the condition inside the body of the arm.
 "##,
 
+E0009: r##"
+In a pattern, all values that don't implement the `Copy` trait have to be bound
+the same way. The goal here is to avoid binding simultaneously by-move and
+by-ref.
+
+This limitation may be removed in a future version of Rust.
+
+Wrong example:
+
+```
+struct X { x: (), }
+
+let x = Some((X { x: () }, X { x: () }));
+match x {
+    Some((y, ref z)) => {},
+    None => panic!()
+}
+```
+
+You have two solutions:
+1. Bind the pattern's values the same way:
+
+```
+struct X { x: (), }
+
+let x = Some((X { x: () }, X { x: () }));
+match x {
+    Some((ref y, ref z)) => {},
+    // or Some((y, z)) => {}
+    None => panic!()
+}
+```
+
+2. Implement the `Copy` trait for the X structure (however, please
+keep in mind that the first solution should be preferred!):
+
+```
+#[derive(Clone, Copy)]
+struct X { x: (), }
+
+let x = Some((X { x: () }, X { x: () }));
+match x {
+    Some((y, ref z)) => {},
+    None => panic!()
+}
+```
+"##,
+
 E0015: r##"
 The only function calls allowed in static or constant expressions are enum
 variant constructors or struct constructors (for unit or tuple structs). This
@@ -343,7 +391,6 @@ a compile-time constant.
 }
 
 register_diagnostics! {
-    E0009,
     E0010,
     E0011,
     E0012,
