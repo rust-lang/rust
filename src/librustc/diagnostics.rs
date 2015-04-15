@@ -217,6 +217,26 @@ use Method::*;
 enum Method { GET, POST }
 "##,
 
+E0267: r##"
+This error indicates the use of loop keyword (break or continue) inside a
+closure but outside of any loop. Break and continue can be used as normal
+inside closures as long as they are also contained within a loop. To halt the
+execution of a closure you should instead use a return statement.
+"##,
+
+E0268: r##"
+This error indicates the use of loop keyword (break or continue) outside of a
+loop. Without a loop to break out of or continue in, no sensible action can be
+taken.
+"##,
+
+E0296: r##"
+This error indicates that the given recursion limit could not be parsed. Ensure
+that the value provided is a positive integer between quotes, like so:
+
+#![recursion_limit="1000"]
+"##,
+
 E0297: r##"
 Patterns used to bind names must be irrefutable. That is, they must guarantee
 that a name will be extracted in all cases. Instead of pattern matching the
@@ -277,20 +297,22 @@ In certain cases it is possible for sub-bindings to violate memory safety.
 Updates to the borrow checker in a future version of Rust may remove this
 restriction, but for now patterns must be rewritten without sub-bindings.
 
-// Code like this...
-match Some(5) {
-    ref op_num @ Some(num) => ...
+// Before.
+match Some("hi".to_string()) {
+    ref op_string_ref @ Some(ref s) => ...
     None => ...
 }
 
-// ... should be updated to code like this.
-match Some(5) {
-    Some(num) => {
-        let op_num = &Some(num);
+// After.
+match Some("hi".to_string()) {
+    Some(ref s) => {
+        let op_string_ref = &Some(&s);
         ...
     }
     None => ...
 }
+
+The `op_string_ref` binding has type &Option<&String> in both cases.
 
 See also https://github.com/rust-lang/rust/issues/14587
 "##,
@@ -338,8 +360,6 @@ register_diagnostics! {
     E0264, // unknown external lang item
     E0265, // recursive constant
     E0266, // expected item
-    E0267, // thing inside of a closure
-    E0268, // thing outside of a loop
     E0269, // not all control paths return a value
     E0270, // computation may converge in a function marked as diverging
     E0271, // type mismatch resolving
@@ -357,7 +377,6 @@ register_diagnostics! {
     E0283, // cannot resolve type
     E0284, // cannot resolve type
     E0285, // overflow evaluation builtin bounds
-    E0296, // malformed recursion limit attribute
     E0298, // mismatched types between arms
     E0299, // mismatched types between arms
     E0300, // unexpanded macro
