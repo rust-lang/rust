@@ -10,7 +10,7 @@
 
 use astconv::AstConv;
 use check::{FnCtxt, Inherited, blank_fn_ctxt, vtable, regionck};
-use constrained_type_params::identify_constrained_type_params;
+use constrained_type_params::{identify_constrained_type_params, Parameter};
 use CrateCtxt;
 use middle::region;
 use middle::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
@@ -287,10 +287,11 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
         let mut constrained_parameters: HashSet<_> =
             variances.types
-            .iter_enumerated()
-            .filter(|&(_, _, &variance)| variance != ty::Bivariant)
-            .map(|(space, index, _)| self.param_ty(ast_generics, space, index))
-            .collect();
+                     .iter_enumerated()
+                     .filter(|&(_, _, &variance)| variance != ty::Bivariant)
+                     .map(|(space, index, _)| self.param_ty(ast_generics, space, index))
+                     .map(|p| Parameter::Type(p))
+                     .collect();
 
         identify_constrained_type_params(self.tcx(),
                                          ty_predicates.predicates.as_slice(),
@@ -299,7 +300,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
 
         for (space, index, _) in variances.types.iter_enumerated() {
             let param_ty = self.param_ty(ast_generics, space, index);
-            if constrained_parameters.contains(&param_ty) {
+            if constrained_parameters.contains(&Parameter::Type(param_ty)) {
                 continue;
             }
             let span = self.ty_param_span(ast_generics, item, space, index);
