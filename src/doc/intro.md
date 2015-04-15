@@ -389,6 +389,7 @@ safe concurrent programs.
 Here's an example of a concurrent Rust program:
 
 ```{rust}
+# #![feature(scoped)]
 use std::thread;
 
 fn main() {
@@ -421,6 +422,7 @@ problem.
 Let's see an example. This Rust code will not compile:
 
 ```{rust,ignore}
+# #![feature(scoped)]
 use std::thread;
 
 fn main() {
@@ -467,6 +469,7 @@ that our mutation doesn't cause a data race.
 Here's what using a Mutex looks like:
 
 ```{rust}
+# #![feature(scoped)]
 use std::thread;
 use std::sync::Mutex;
 
@@ -527,6 +530,7 @@ As an example, Rust's ownership system is _entirely_ at compile time. The
 safety check that makes this an error about moved values:
 
 ```{rust,ignore}
+# #![feature(scoped)]
 use std::thread;
 
 fn main() {

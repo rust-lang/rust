@@ -36,11 +36,11 @@ fn test() {
 
     let (srv_tx, srv_rx) = channel();
     let (cli_tx, cli_rx) = channel();
-    let _t = (0..N).map(|_| {
+    let ts1 = (0..N).map(|_| {
         let a = a.clone();
         let cnt = cnt.clone();
         let srv_tx = srv_tx.clone();
-        thread::scoped(move|| {
+        thread::spawn(move|| {
             let mut a = a;
             loop {
                 match a.accept() {
@@ -57,7 +57,7 @@ fn test() {
         })
     }).collect::<Vec<_>>();
 
-    let _t = (0..N).map(|_| {
+    let ts2 = (0..N).map(|_| {
         let cli_tx = cli_tx.clone();
         thread::scoped(move|| {
             for _ in 0..M {
@@ -85,4 +85,7 @@ fn test() {
 
     // Everything should have been accepted.
     assert_eq!(cnt.load(Ordering::SeqCst), N * M);
+
+    for t in ts1 { t.join(); }
+    for t in ts2 { t.join(); }
 }

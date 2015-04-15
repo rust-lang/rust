@@ -37,7 +37,7 @@ fn recurse() {
 fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() > 1 && args[1] == "recurse" {
-        let _t = thread::scoped(recurse);
+        thread::spawn(recurse).join();
     } else {
         let recurse = Command::new(&args[0]).arg("recurse").output().unwrap();
         assert!(!recurse.status.success());

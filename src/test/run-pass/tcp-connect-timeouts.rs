@@ -34,7 +34,7 @@ fn eventual_timeout() {
 
     let (tx1, rx1) = channel();
     let (_tx2, rx2) = channel::<()>();
-    let _t = thread::scoped(move|| {
+    let t = thread::spawn(move|| {
         let _l = TcpListener::bind(addr).unwrap().listen();
         tx1.send(()).unwrap();
         let _ = rx2.recv();
@@ -50,6 +50,7 @@ fn eventual_timeout() {
         }
     }
     panic!("never timed out!");
+    t.join();
 }
 
 fn timeout_success() {
