@@ -273,8 +273,9 @@ pub trait Iterator {
         FilterMap { iter: self, f: f }
     }
 
-    /// Creates an iterator that yields a pair of the value returned by this
-    /// iterator plus the current index of iteration.
+    /// Creates an iterator that yields pairs `(i, val)` where `i` is the
+    /// current index of iteration and `val` is the value returned by the
+    /// iterator.
     ///
     /// `enumerate` keeps its count as a `usize`. If you want to count by a
     /// different sized integer, the `zip` function provides similar
