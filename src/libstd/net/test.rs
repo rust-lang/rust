@@ -11,7 +11,7 @@
 use prelude::v1::*;
 
 use env;
-use net::{SocketAddr, SocketAddrV4, SocketAddrV6, Ipv4Addr, Ipv6Addr};
+use net::{SocketAddr, SocketAddrV4, SocketAddrV6, Ipv4Addr, Ipv6Addr, ToSocketAddrs};
 use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
 static PORT: AtomicUsize = ATOMIC_USIZE_INIT;
@@ -25,6 +25,21 @@ pub fn next_test_ip6() -> SocketAddr {
     let port = PORT.fetch_add(1, Ordering::SeqCst) as u16 + base_port();
     SocketAddr::V6(SocketAddrV6::new(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1),
                                      port, 0, 0))
+}
+
+pub fn sa4(a: Ipv4Addr, p: u16) -> SocketAddr {
+    SocketAddr::V4(SocketAddrV4::new(a, p))
+}
+
+pub fn sa6(a: Ipv6Addr, p: u16) -> SocketAddr {
+    SocketAddr::V6(SocketAddrV6::new(a, p, 0, 0))
+}
+
+pub fn tsa<A: ToSocketAddrs>(a: A) -> Result<Vec<SocketAddr>, String> {
+    match a.to_socket_addrs() {
+        Ok(a) => Ok(a.collect()),
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 // The bots run multiple builds at the same time, and these builds
