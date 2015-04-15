@@ -144,6 +144,14 @@ match Some(42) {
 }
 "##,
 
+E0161: r##"
+In Rust, you can only move a value when its size is known at compile time.
+
+To work around this restriction, consider "hiding" the value behind a reference:
+either `&x` or `&mut x`. Since a reference has a fixed size, this lets you move
+it around as usual.
+"##,
+
 E0162: r##"
 An if-let pattern attempts to match the pattern, and enters the body if the
 match was succesful. If the match is irrefutable (when it cannot fail to match),
@@ -288,7 +296,6 @@ register_diagnostics! {
     E0137,
     E0138,
     E0139,
-    E0161,
     E0170,
     E0261, // use of undeclared lifetime name
     E0262, // illegal lifetime parameter name
