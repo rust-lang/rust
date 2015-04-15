@@ -166,7 +166,7 @@ pub fn uncompress(src: &[u8]) -> Option<Vec<u8>> {
 }
 ```
 
-For reference, the examples used here are also available as an [library on
+For reference, the examples used here are also available as a [library on
 GitHub](https://github.com/thestinger/rust-snappy).
 
 # Destructors
