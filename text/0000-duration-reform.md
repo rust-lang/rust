@@ -80,7 +80,8 @@ pub struct Duration {
 
 impl Duration {
     /// create a Duration from a number of seconds and an
-    /// additional nanosecond precision
+    /// additional nanosecond precision. If nanos is one
+    /// billion or greater, it carries into secs.
     pub fn new(secs: u64, nanos: u32) -> Timeout;
 
     /// create a Duration from a number of seconds
@@ -89,7 +90,7 @@ impl Duration {
     /// create a Duration from a number of milliseconds
     pub fn from_millis(millis: u64) -> Timeout;
 
-    /// the number of seconds represented by the Timeout
+    /// the number of seconds represented by the Duration
     pub fn secs(self) -> u64;
 
     /// the number of additional nanosecond precision
@@ -97,16 +98,22 @@ impl Duration {
 }
 ```
 
-When `Duration` is used with a system API that expects `u32` milliseconds, the nanosecond precision is dropped, and the time is truncated to `u32::MAX`.
+When `Duration` is used with a system API that expects `u32` milliseconds, the `Duration`'s precision is coarsened to milliseconds, and, and the number is truncated to `u32::MAX`.
+
+In general, this RFC assumes that timeout APIs permit spurious updates (see, for example, [pthread_cond_timedwait][pthread_cond_timedwait], "Spurious wakeups from the pthread_cond_timedwait() or pthread_cond_wait() functions may occur").
+
+[pthread_cond_timedwait]: http://pubs.opengroup.org/onlinepubs/009695399/functions/pthread_cond_timedwait.html
 
 `Duration` implements:
 
 * `Add`, `Sub`, `Mul`, `Div` which follow the overflow and underflow
-  rules for `u64` when applied to the `secs` field. Nanoseconds
-  can never exceed 1 billion or be less than 0, and carry into the
-  `secs` field.
+  rules for `u64` when applied to the `secs` field (in particular,
+  `Sub` will panic if the result would be negative). Nanoseconds
+  must be less than 1 billion and great than or equal to 0, and carry 
+  into the `secs` field.
 * `Display`, which prints a number of seconds, milliseconds and
-  nanoseconds (if more than 0).
+  nanoseconds (if more than 0). For example, a `Duration` would be 
+  represented as `"15 seconds, 306 milliseconds, and 13 nanoseconds"`
 * `Debug`, `Ord` (and `PartialOrd`), `Eq` (and `PartialEq`), `Copy`
   and `Clone`, which are derived.
 
