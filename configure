@@ -750,6 +750,15 @@ then
     fi
 fi
 
+# By default the test suite *requires* valgrind. Detect it's absence.
+if [ -z "$CFG_VALGRIND" ]
+then
+    if [ ! -z "$CFG_ENABLE_VALGRIND" ] || [ -z "$CFG_DISABLE_VALGRIND_RPASS" ]
+    then
+	err "valgrind not found, but needed. consider adding --disable-valgrind-rpass"
+    fi
+fi
+
 step_msg "looking for target specific programs"
 
 probe CFG_ADB        adb
