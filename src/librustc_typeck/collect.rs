@@ -1217,10 +1217,12 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             generics.lifetimes
                     .iter()
                     .enumerate()
-                    .map(|(i, def)| ty::ReEarlyBound(def.lifetime.id,
-                                                     TypeSpace,
-                                                     i as u32,
-                                                     def.lifetime.name))
+                    .map(|(i, def)| ty::ReEarlyBound(ty::EarlyBoundRegion {
+                        param_id: def.lifetime.id,
+                        space: TypeSpace,
+                        index: i as u32,
+                        name: def.lifetime.name
+                    }))
                     .collect();
 
         // Start with the generics in the type parameters...
@@ -1691,7 +1693,13 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     let early_lifetimes = early_bound_lifetimes_from_generics(space, ast_generics);
     for (index, param) in early_lifetimes.iter().enumerate() {
         let index = index as u32;
-        let region = ty::ReEarlyBound(param.lifetime.id, space, index, param.lifetime.name);
+        let region =
+            ty::ReEarlyBound(ty::EarlyBoundRegion {
+                param_id: param.lifetime.id,
+                space: space,
+                index: index,
+                name: param.lifetime.name
+            });
         for bound in &param.bounds {
             let bound_region = ast_region_to_region(ccx.tcx, bound);
             let outlives = ty::Binder(ty::OutlivesPredicate(region, bound_region));
@@ -2168,10 +2176,10 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
 
         ty_fold::fold_regions(tcx, value, |region, _| {
             match region {
-                ty::ReEarlyBound(id, _, _, name) => {
-                    let def_id = local_def(id);
+                ty::ReEarlyBound(data) => {
+                    let def_id = local_def(data.param_id);
                     ty::ReFree(ty::FreeRegion { scope: scope,
-                                                bound_region: ty::BrNamed(def_id, name) })
+                                                bound_region: ty::BrNamed(def_id, data.name) })
                 }
                 _ => region
             }

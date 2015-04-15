@@ -241,12 +241,12 @@ pub fn enc_region(w: &mut Encoder, cx: &ctxt, r: ty::Region) {
             enc_bound_region(w, cx, br);
             mywrite!(w, "]");
         }
-        ty::ReEarlyBound(node_id, space, index, name) => {
+        ty::ReEarlyBound(ref data) => {
             mywrite!(w, "B[{}|{}|{}|{}]",
-                     node_id,
-                     space.to_uint(),
-                     index,
-                     token::get_name(name));
+                     data.param_id,
+                     data.space.to_uint(),
+                     data.index,
+                     token::get_name(data.name));
         }
         ty::ReFree(ref fr) => {
             mywrite!(w, "f[");
