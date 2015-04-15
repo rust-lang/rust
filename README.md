@@ -42,6 +42,7 @@ the direction the language is evolving in.
 * [0560-integer-overflow.md](text/0560-integer-overflow.md)
 * [0639-discriminant-intrinsic.md](text/0639-discriminant-intrinsic.md)
 * [0769-sound-generic-drop.md](text/0769-sound-generic-drop.md)
+* [0771-std-iter-once.md](text/0771-std-iter-once.md)
 * [0803-type-ascription.md](text/0803-type-ascription.md)
 * [0809-box-and-in-for-stdlib.md](text/0809-box-and-in-for-stdlib.md)
 * [0888-compiler-fences.md](text/0888-compiler-fences.md)

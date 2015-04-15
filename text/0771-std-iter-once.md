@@ -1,6 +1,6 @@
 - Start Date: 2015-1-30
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/771
+- Rust Issue: https://github.com/rust-lang/rust/issues/24443
 
 # Summary
 
@@ -36,7 +36,7 @@ pub fn empty<T>(x: T) -> Empty<T> {
 }
 ```
 
-These wrapper structs exist to allow future backwards-compatible changes, and hide the implementation. 
+These wrapper structs exist to allow future backwards-compatible changes, and hide the implementation.
 
 # Drawbacks
 
