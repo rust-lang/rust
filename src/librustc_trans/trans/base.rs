@@ -566,6 +566,25 @@ fn cast_shift_rhs<F, G>(op: ast::BinOp_,
     }
 }
 
+pub fn llty_and_min_for_signed_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+                                              val_t: Ty<'tcx>) -> (Type, u64) {
+    match val_t.sty {
+        ty::ty_int(t) => {
+            let llty = Type::int_from_ty(cx.ccx(), t);
+            let min = match t {
+                ast::TyIs if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
+                ast::TyIs => i64::MIN as u64,
+                ast::TyI8 => i8::MIN as u64,
+                ast::TyI16 => i16::MIN as u64,
+                ast::TyI32 => i32::MIN as u64,
+                ast::TyI64 => i64::MIN as u64,
+            };
+            (llty, min)
+        }
+        _ => unreachable!(),
+    }
+}
+
 pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
                                 cx: Block<'blk, 'tcx>,
                                 call_info: NodeIdAndSpan,
@@ -620,21 +639,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
     // signed division/remainder which would trigger overflow. For unsigned
     // integers, no action beyond checking for zero need be taken.
     if is_signed {
-        let (llty, min) = match rhs_t.sty {
-            ty::ty_int(t) => {
-                let llty = Type::int_from_ty(cx.ccx(), t);
-                let min = match t {
-                    ast::TyIs if llty == Type::i32(cx.ccx()) => i32::MIN as u64,
-                    ast::TyIs => i64::MIN as u64,
-                    ast::TyI8 => i8::MIN as u64,
-                    ast::TyI16 => i16::MIN as u64,
-                    ast::TyI32 => i32::MIN as u64,
-                    ast::TyI64 => i64::MIN as u64,
-                };
-                (llty, min)
-            }
-            _ => unreachable!(),
-        };
+        let (llty, min) = llty_and_min_for_signed_ty(cx, rhs_t);
         let minus_one = ICmp(bcx, llvm::IntEQ, rhs,
                              C_integral(llty, !0, false), debug_loc);
         with_cond(bcx, minus_one, |bcx| {
