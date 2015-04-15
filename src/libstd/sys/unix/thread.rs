@@ -10,8 +10,9 @@
 
 #![allow(dead_code)]
 
-use core::prelude::*;
+use prelude::v1::*;
 
+use alloc::boxed::FnBox;
 use cmp;
 use ffi::CString;
 use io;
@@ -20,13 +21,148 @@ use libc;
 use mem;
 use ptr;
 use sys::os;
-use thunk::Thunk;
 use time::Duration;
 
 use sys_common::stack::RED_ZONE;
 use sys_common::thread::*;
 
-pub type rust_thread = libc::pthread_t;
+pub struct Thread {
+    id: libc::pthread_t,
+}
+
+// Some platforms may have pthread_t as a pointer in which case we still want
+// a thread to be Send/Sync
+unsafe impl Send for Thread {}
+unsafe impl Sync for Thread {}
+
+impl Thread {
+    pub unsafe fn new<'a>(stack: usize, p: Box<FnBox() + 'a>)
+                          -> io::Result<Thread> {
+        let p = box p;
+        let mut native: libc::pthread_t = mem::zeroed();
+        let mut attr: libc::pthread_attr_t = mem::zeroed();
+        assert_eq!(pthread_attr_init(&mut attr), 0);
+
+        // Reserve room for the red zone, the runtime's stack of last resort.
+        let stack_size = cmp::max(stack, RED_ZONE + min_stack_size(&attr));
+        match pthread_attr_setstacksize(&mut attr, stack_size as libc::size_t) {
+            0 => {}
+            n => {
+                assert_eq!(n, libc::EINVAL);
+                // EINVAL means |stack_size| is either too small or not a
+                // multiple of the system page size.  Because it's definitely
+                // >= PTHREAD_STACK_MIN, it must be an alignment issue.
+                // Round up to the nearest page and try again.
+                let page_size = os::page_size();
+                let stack_size = (stack_size + page_size - 1) &
+                                 (-(page_size as isize - 1) as usize - 1);
+                let stack_size = stack_size as libc::size_t;
+                assert_eq!(pthread_attr_setstacksize(&mut attr, stack_size), 0);
+            }
+        };
+
+        let ret = pthread_create(&mut native, &attr, thread_start,
+                                 &*p as *const _ as *mut _);
+        assert_eq!(pthread_attr_destroy(&mut attr), 0);
+
+        return if ret != 0 {
+            Err(io::Error::from_raw_os_error(ret))
+        } else {
+            mem::forget(p); // ownership passed to pthread_create
+            Ok(Thread { id: native })
+        };
+
+        #[no_stack_check]
+        extern fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
+            unsafe { start_thread(main); }
+            0 as *mut _
+        }
+    }
+
+    pub fn yield_now() {
+        let ret = unsafe { sched_yield() };
+        debug_assert_eq!(ret, 0);
+    }
+
+    #[cfg(any(target_os = "linux", target_os = "android"))]
+    pub fn set_name(name: &str) {
+        // pthread wrapper only appeared in glibc 2.12, so we use syscall
+        // directly.
+        extern {
+            fn prctl(option: libc::c_int, arg2: libc::c_ulong,
+                     arg3: libc::c_ulong, arg4: libc::c_ulong,
+                     arg5: libc::c_ulong) -> libc::c_int;
+        }
+        const PR_SET_NAME: libc::c_int = 15;
+        let cname = CString::new(name).unwrap_or_else(|_| {
+            panic!("thread name may not contain interior null bytes")
+        });
+        unsafe {
+            prctl(PR_SET_NAME, cname.as_ptr() as libc::c_ulong, 0, 0, 0);
+        }
+    }
+
+    #[cfg(any(target_os = "freebsd",
+              target_os = "dragonfly",
+              target_os = "bitrig",
+              target_os = "openbsd"))]
+    pub fn set_name(name: &str) {
+        extern {
+            fn pthread_set_name_np(tid: libc::pthread_t,
+                                   name: *const libc::c_char);
+        }
+        let cname = CString::new(name).unwrap();
+        unsafe {
+            pthread_set_name_np(pthread_self(), cname.as_ptr());
+        }
+    }
+
+    #[cfg(any(target_os = "macos", target_os = "ios"))]
+    pub fn set_name(name: &str) {
+        extern {
+            fn pthread_setname_np(name: *const libc::c_char) -> libc::c_int;
+        }
+        let cname = CString::new(name).unwrap();
+        unsafe {
+            pthread_setname_np(cname.as_ptr());
+        }
+    }
+
+    pub fn sleep(dur: Duration) {
+        if dur < Duration::zero() {
+            return Thread::yield_now()
+        }
+        let seconds = dur.num_seconds();
+        let ns = dur - Duration::seconds(seconds);
+        let mut ts = libc::timespec {
+            tv_sec: seconds as libc::time_t,
+            tv_nsec: ns.num_nanoseconds().unwrap() as libc::c_long,
+        };
+
+        // If we're awoken with a signal then the return value will be -1 and
+        // nanosleep will fill in `ts` with the remaining time.
+        unsafe {
+            while libc::nanosleep(&ts, &mut ts) == -1 {
+                assert_eq!(os::errno(), libc::EINTR);
+            }
+        }
+    }
+
+    pub fn join(self) {
+        unsafe {
+            let ret = pthread_join(self.id, ptr::null_mut());
+            mem::forget(self);
+            debug_assert_eq!(ret, 0);
+        }
+    }
+}
+
+impl Drop for Thread {
+    fn drop(&mut self) {
+        let ret = unsafe { pthread_detach(self.id) };
+        debug_assert_eq!(ret, 0);
+    }
+}
 
 #[cfg(all(not(target_os = "linux"),
           not(target_os = "macos"),
@@ -183,128 +319,6 @@ pub mod guard {
     }
 }
 
-pub unsafe fn create(stack: usize, p: Thunk) -> io::Result<rust_thread> {
-    let p = box p;
-    let mut native: libc::pthread_t = mem::zeroed();
-    let mut attr: libc::pthread_attr_t = mem::zeroed();
-    assert_eq!(pthread_attr_init(&mut attr), 0);
-
-    // Reserve room for the red zone, the runtime's stack of last resort.
-    let stack_size = cmp::max(stack, RED_ZONE + min_stack_size(&attr) as usize);
-    match pthread_attr_setstacksize(&mut attr, stack_size as libc::size_t) {
-        0 => {}
-        n => {
-            assert_eq!(n, libc::EINVAL);
-            // EINVAL means |stack_size| is either too small or not a
-            // multiple of the system page size.  Because it's definitely
-            // >= PTHREAD_STACK_MIN, it must be an alignment issue.
-            // Round up to the nearest page and try again.
-            let page_size = os::page_size();
-            let stack_size = (stack_size + page_size - 1) &
-                             (-(page_size as isize - 1) as usize - 1);
-            assert_eq!(pthread_attr_setstacksize(&mut attr,
-                                                 stack_size as libc::size_t), 0);
-        }
-    };
-
-    let ret = pthread_create(&mut native, &attr, thread_start,
-                             &*p as *const _ as *mut _);
-    assert_eq!(pthread_attr_destroy(&mut attr), 0);
-
-    return if ret != 0 {
-        Err(io::Error::from_raw_os_error(ret))
-    } else {
-        mem::forget(p); // ownership passed to pthread_create
-        Ok(native)
-    };
-
-    #[no_stack_check]
-    extern fn thread_start(main: *mut libc::c_void) -> *mut libc::c_void {
-        start_thread(main);
-        0 as *mut _
-    }
-}
-
-#[cfg(any(target_os = "linux", target_os = "android"))]
-pub unsafe fn set_name(name: &str) {
-    // pthread wrapper only appeared in glibc 2.12, so we use syscall directly.
-    extern {
-        fn prctl(option: libc::c_int, arg2: libc::c_ulong, arg3: libc::c_ulong,
-                 arg4: libc::c_ulong, arg5: libc::c_ulong) -> libc::c_int;
-    }
-    const PR_SET_NAME: libc::c_int = 15;
-    let cname = CString::new(name).unwrap_or_else(|_| {
-        panic!("thread name may not contain interior null bytes")
-    });
-    prctl(PR_SET_NAME, cname.as_ptr() as libc::c_ulong, 0, 0, 0);
-}
-
-#[cfg(any(target_os = "freebsd",
-          target_os = "dragonfly",
-          target_os = "bitrig",
-          target_os = "openbsd"))]
-pub unsafe fn set_name(name: &str) {
-    extern {
-        fn pthread_set_name_np(tid: libc::pthread_t, name: *const libc::c_char);
-    }
-    let cname = CString::new(name).unwrap();
-    pthread_set_name_np(pthread_self(), cname.as_ptr());
-}
-
-#[cfg(any(target_os = "macos", target_os = "ios"))]
-pub unsafe fn set_name(name: &str) {
-    extern {
-        fn pthread_setname_np(name: *const libc::c_char) -> libc::c_int;
-    }
-    let cname = CString::new(name).unwrap();
-    pthread_setname_np(cname.as_ptr());
-}
-
-pub unsafe fn join(native: rust_thread) {
-    assert_eq!(pthread_join(native, ptr::null_mut()), 0);
-}
-
-pub unsafe fn detach(native: rust_thread) {
-    assert_eq!(pthread_detach(native), 0);
-}
-
-pub unsafe fn yield_now() {
-    assert_eq!(sched_yield(), 0);
-}
-
-pub fn sleep(dur: Duration) {
-    unsafe {
-        if dur < Duration::zero() {
-            return yield_now()
-        }
-        let seconds = dur.num_seconds();
-        let ns = dur - Duration::seconds(seconds);
-        let mut ts = libc::timespec {
-            tv_sec: seconds as libc::time_t,
-            tv_nsec: ns.num_nanoseconds().unwrap() as libc::c_long,
-        };
-        // If we're awoken with a signal then the return value will be -1 and
-        // nanosleep will fill in `ts` with the remaining time.
-        while dosleep(&mut ts) == -1 {
-            assert_eq!(os::errno(), libc::EINTR);
-        }
-    }
-
-    #[cfg(target_os = "linux")]
-    unsafe fn dosleep(ts: *mut libc::timespec) -> libc::c_int {
-        extern {
-            fn clock_nanosleep(clock_id: libc::c_int, flags: libc::c_int,
-                               request: *const libc::timespec,
-                               remain: *mut libc::timespec) -> libc::c_int;
-        }
-        clock_nanosleep(libc::CLOCK_MONOTONIC, 0, ts, ts)
-    }
-    #[cfg(not(target_os = "linux"))]
-    unsafe fn dosleep(ts: *mut libc::timespec) -> libc::c_int {
-        libc::nanosleep(ts, ts)
-    }
-}
-
 // glibc >= 2.15 has a __pthread_get_minstack() function that returns
 // PTHREAD_STACK_MIN plus however many bytes are needed for thread-local
 // storage.  We need that information to avoid blowing up when a small stack
@@ -319,7 +333,7 @@ pub fn sleep(dur: Duration) {
 // but that caused Debian to detect an unnecessarily strict versioned
 // dependency on libc6 (#23628).
 #[cfg(target_os = "linux")]
-fn min_stack_size(attr: *const libc::pthread_attr_t) -> libc::size_t {
+fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
     use dynamic_lib::DynamicLibrary;
     use sync::{Once, ONCE_INIT};
 
@@ -337,16 +351,16 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> libc::size_t {
     });
 
     match unsafe { __pthread_get_minstack } {
-        None => PTHREAD_STACK_MIN,
-        Some(f) => unsafe { f(attr) },
+        None => PTHREAD_STACK_MIN as usize,
+        Some(f) => unsafe { f(attr) as usize },
     }
 }
 
 // No point in looking up __pthread_get_minstack() on non-glibc
 // platforms.
 #[cfg(not(target_os = "linux"))]
-fn min_stack_size(_: *const libc::pthread_attr_t) -> libc::size_t {
-    PTHREAD_STACK_MIN
+fn min_stack_size(_: *const libc::pthread_attr_t) -> usize {
+    PTHREAD_STACK_MIN as usize
 }
 
 extern {
