@@ -1134,10 +1134,7 @@ pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
     // parameters are substituted.
-    ReEarlyBound(/* param id */ ast::NodeId,
-                 subst::ParamSpace,
-                 /*index*/ u32,
-                 ast::Name),
+    ReEarlyBound(EarlyBoundRegion),
 
     // Region bound in a function scope, which will be substituted when the
     // function is called.
@@ -1167,6 +1164,14 @@ pub enum Region {
     /// The only way to get an instance of ReEmpty is to have a region
     /// variable with no constraints.
     ReEmpty,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
+pub struct EarlyBoundRegion {
+    pub param_id: ast::NodeId,
+    pub space: subst::ParamSpace,
+    pub index: u32,
+    pub name: ast::Name,
 }
 
 /// Upvars do not get their own node-id. Instead, we use the pair of
@@ -1761,7 +1766,12 @@ pub struct RegionParameterDef {
 
 impl RegionParameterDef {
     pub fn to_early_bound_region(&self) -> ty::Region {
-        ty::ReEarlyBound(self.def_id.node, self.space, self.index, self.name)
+        ty::ReEarlyBound(ty::EarlyBoundRegion {
+            param_id: self.def_id.node,
+            space: self.space,
+            index: self.index,
+            name: self.name,
+        })
     }
     pub fn to_bound_region(&self) -> ty::BoundRegion {
         ty::BoundRegion::BrNamed(self.def_id, self.name)
@@ -7071,8 +7081,7 @@ pub fn make_substs_for_receiver_types<'tcx>(tcx: &ty::ctxt<'tcx>,
     let meth_regions: Vec<ty::Region> =
         method.generics.regions.get_slice(subst::FnSpace)
               .iter()
-              .map(|def| ty::ReEarlyBound(def.def_id.node, def.space,
-                                          def.index, def.name))
+              .map(|def| def.to_early_bound_region())
               .collect();
     trait_ref.substs.clone().with_method(meth_tps, meth_regions)
 }

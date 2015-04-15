@@ -496,8 +496,13 @@ impl tr for ty::Region {
             ty::ReLateBound(debruijn, br) => {
                 ty::ReLateBound(debruijn, br.tr(dcx))
             }
-            ty::ReEarlyBound(id, space, index, ident) => {
-                ty::ReEarlyBound(dcx.tr_id(id), space, index, ident)
+            ty::ReEarlyBound(data) => {
+                ty::ReEarlyBound(ty::EarlyBoundRegion {
+                    param_id: dcx.tr_id(data.param_id),
+                    space: data.space,
+                    index: data.index,
+                    name: data.name,
+                })
             }
             ty::ReScope(scope) => {
                 ty::ReScope(scope.tr(dcx))

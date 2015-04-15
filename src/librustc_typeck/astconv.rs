@@ -161,7 +161,12 @@ pub fn ast_region_to_region(tcx: &ty::ctxt, lifetime: &ast::Lifetime)
         }
 
         Some(&rl::DefEarlyBoundRegion(space, index, id)) => {
-            ty::ReEarlyBound(id, space, index, lifetime.name)
+            ty::ReEarlyBound(ty::EarlyBoundRegion {
+                param_id: id,
+                space: space,
+                index: index,
+                name: lifetime.name
+            })
         }
 
         Some(&rl::DefFreeRegion(scope, id)) => {
