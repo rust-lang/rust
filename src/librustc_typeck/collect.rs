@@ -902,9 +902,10 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                 tcx.impl_trait_refs.borrow_mut().insert(it.id, trait_ref);
             }
 
-            enforce_impl_ty_params_are_constrained(tcx,
-                                                   generics,
-                                                   local_def(it.id));
+            enforce_impl_params_are_constrained(tcx,
+                                                generics,
+                                                local_def(it.id),
+                                                impl_items);
         },
         ast::ItemTrait(_, _, _, ref trait_items) => {
             let trait_def = trait_def_of_item(ccx, it);
@@ -2188,9 +2189,10 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
 }
 
 /// Checks that all the type parameters on an impl
-fn enforce_impl_ty_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                                ast_generics: &ast::Generics,
-                                                impl_def_id: ast::DefId)
+fn enforce_impl_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                             ast_generics: &ast::Generics,
+                                             impl_def_id: ast::DefId,
+                                             impl_items: &[P<ast::ImplItem>])
 {
     let impl_scheme = ty::lookup_item_type(tcx, impl_def_id);
     let impl_predicates = ty::lookup_predicates(tcx, impl_def_id);
@@ -2216,11 +2218,67 @@ fn enforce_impl_ty_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
         let param_ty = ty::ParamTy { space: TypeSpace,
                                      idx: index as u32,
                                      name: ty_param.ident.name };
-        if !input_parameters.contains(&param_ty) {
-            span_err!(tcx.sess, ty_param.span, E0207,
-                "the type parameter `{}` is not constrained by the \
-                         impl trait, self type, or predicates",
-                        param_ty.user_string(tcx));
+        if !input_parameters.contains(&ctp::Parameter::Type(param_ty)) {
+            report_unused_parameter(tcx, ty_param.span, "type", &param_ty.user_string(tcx));
         }
     }
+
+    // Every lifetime used in an associated type must be constrained.
+
+    let lifetimes_in_associated_types: HashSet<_> =
+        impl_items.iter()
+                  .filter_map(|item| match item.node {
+                      ast::TypeImplItem(..) => Some(ty::node_id_to_type(tcx, item.id)),
+                      ast::MethodImplItem(..) | ast::MacImplItem(..) => None,
+                  })
+                  .flat_map(|ty| ctp::parameters_for_type(ty).into_iter())
+                  .filter_map(|p| match p {
+                      ctp::Parameter::Type(_) => None,
+                      ctp::Parameter::Region(r) => Some(r),
+                  })
+                  .collect();
+
+    for (index, lifetime_def) in ast_generics.lifetimes.iter().enumerate() {
+        let region = ty::EarlyBoundRegion { param_id: lifetime_def.lifetime.id,
+                                            space: TypeSpace,
+                                            index: index as u32,
+                                            name: lifetime_def.lifetime.name };
+        if
+            lifetimes_in_associated_types.contains(&region) && // (*)
+            !input_parameters.contains(&ctp::Parameter::Region(region))
+        {
+            report_unused_parameter(tcx, lifetime_def.lifetime.span,
+                                    "lifetime", &region.name.user_string(tcx));
+        }
+    }
+
+    // (*) This is a horrible concession to reality. I think it'd be
+    // better to just ban unconstrianed lifetimes outright, but in
+    // practice people do non-hygenic macros like:
+    //
+    // ```
+    // macro_rules! __impl_slice_eq1 {
+    //     ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
+    //         impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
+    //            ....
+    //         }
+    //     }
+    // }
+    // ```
+    //
+    // In a concession to backwards compatbility, we continue to
+    // permit those, so long as the lifetimes aren't used in
+    // associated types. I believe this is sound, because lifetimes
+    // used elsewhere are not projected back out.
+}
+
+fn report_unused_parameter(tcx: &ty::ctxt,
+                           span: Span,
+                           kind: &str,
+                           name: &str)
+{
+    span_err!(tcx.sess, span, E0207,
+              "the {} parameter `{}` is not constrained by the \
+               impl trait, self type, or predicates",
+              kind, name);
 }
