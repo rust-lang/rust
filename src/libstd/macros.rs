@@ -19,8 +19,8 @@
 // SNAP 5520801
 #[cfg(stage0)]
 #[macro_export]
-macro_rules! ensure_not_fmt_string_literal {
-    ($name:expr, $e:expr) => { $e }
+macro_rules! __unstable_rustc_ensure_not_fmt_string_literal {
+    ($name:expr, $e:expr) => { ((), $e) }
 }
 
 /// The entry point for panic of Rust tasks.
@@ -51,7 +51,8 @@ macro_rules! panic {
         panic!("explicit panic")
     });
     ($msg:expr) => ({
-        $crate::rt::begin_unwind(ensure_not_fmt_string_literal!("panic!", $msg), {
+        $crate::rt::begin_unwind(
+            __unstable_rustc_ensure_not_fmt_string_literal!("unary `panic!`", $msg).1, {
             // static requires less code at runtime, more constant data
             static _FILE_LINE: (&'static str, usize) = (file!(), line!() as usize);
             &_FILE_LINE
@@ -97,11 +98,12 @@ macro_rules! panic {
         panic!("explicit panic")
     });
     ($msg:expr) => ({
-        $crate::rt::begin_unwind($msg, {
-            // static requires less code at runtime, more constant data
-            static _FILE_LINE: (&'static str, u32) = (file!(), line!());
-            &_FILE_LINE
-        })
+        $crate::rt::begin_unwind(
+            __unstable_rustc_ensure_not_fmt_string_literal!("unary `panic!`", $msg), {
+                // static requires less code at runtime, more constant data
+                static _FILE_LINE: (&'static str, u32) = (file!(), line!());
+                &_FILE_LINE
+            })
     });
     ($fmt:expr, $($arg:tt)+) => ({
         $crate::rt::begin_unwind_fmt(format_args!($fmt, $($arg)+), {

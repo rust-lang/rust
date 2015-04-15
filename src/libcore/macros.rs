@@ -11,8 +11,8 @@
 // SNAP 5520801
 #[cfg(stage0)]
 #[macro_export]
-macro_rules! ensure_not_fmt_string_literal {
-    ($name:expr, $e:expr) => { $e }
+macro_rules! __unstable_rustc_ensure_not_fmt_string_literal {
+    ($name:expr, $e:expr) => { ((), $e) }
 }
 
 /// Entry point of task panic, for details, see std::macros
@@ -23,7 +23,8 @@ macro_rules! panic {
     );
     ($msg:expr) => ({
         static _MSG_FILE_LINE: (&'static str, &'static str, u32) =
-            (ensure_not_fmt_string_literal!("panic!", $msg), file!(), line!());
+            (__unstable_rustc_ensure_not_fmt_string_literal!("unary `panic!`", $msg).1,
+             file!(), line!());
         ::core::panicking::panic(&_MSG_FILE_LINE)
     });
     ($fmt:expr, $($arg:tt)*) => ({
