@@ -103,7 +103,7 @@ necessary functionality for writing idiomatic and effective Rust code.
 As an example, here is a program that will calculate the dot product of two
 vectors provided from C, using idiomatic Rust practices.
 
-```
+```ignore
 #![feature(lang_items, start, no_std, core, libc)]
 #![no_std]
 

@@ -273,8 +273,9 @@ pub trait Iterator {
         FilterMap { iter: self, f: f }
     }
 
-    /// Creates an iterator that yields a pair of the value returned by this
-    /// iterator plus the current index of iteration.
+    /// Creates an iterator that yields pairs `(i, val)` where `i` is the
+    /// current index of iteration and `val` is the value returned by the
+    /// iterator.
     ///
     /// `enumerate` keeps its count as a `usize`. If you want to count by a
     /// different sized integer, the `zip` function provides similar
@@ -1129,7 +1130,7 @@ pub trait FromIterator<A> {
 /// Conversion into an `Iterator`
 ///
 /// Implementing this trait allows you to use your type with Rust's `for` loop. See
-/// the [module level documentation](../index.html) for more details.
+/// the [module level documentation](index.html) for more details.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
     /// The type of the elements being iterated

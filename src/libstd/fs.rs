@@ -1099,8 +1099,8 @@ impl PathExt for Path {
 /// Changes the timestamps for a file's last modification and access time.
 ///
 /// The file at the path specified will have its last access time set to
-/// `atime` and its modification time set to `mtime`. The times specified should
-/// be in milliseconds.
+/// `accessed` and its modification time set to `modified`. The times specified
+/// should be in milliseconds.
 #[unstable(feature = "fs_time",
            reason = "the argument type of u64 is not quite appropriate for \
                      this function and may change if the standard library \
