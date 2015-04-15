@@ -213,7 +213,7 @@ impl TcpListener {
     /// Returns an iterator over the connections being received on this
     /// listener.
     ///
-    /// The returned iterator will never returned `None` and will also not yield
+    /// The returned iterator will never return `None` and will also not yield
     /// the peer's `SocketAddr` structure.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn incoming(&self) -> Incoming {
