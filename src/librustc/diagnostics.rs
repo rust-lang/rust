@@ -293,6 +293,16 @@ match Some(5) {
 }
 
 See also https://github.com/rust-lang/rust/issues/14587
+"##,
+
+E0306: r##"
+In an array literal `[x; N]`, `N` is the number of elements in the array. This
+number cannot be negative.
+"##,
+
+E0307: r##"
+The length of an array is part of its type. For this reason, this length must be
+a compile-time constant.
 "##
 
 }
@@ -353,8 +363,6 @@ register_diagnostics! {
     E0300, // unexpanded macro
     E0304, // expected signed integer constant
     E0305, // expected constant
-    E0306, // expected positive integer for repeat count
-    E0307, // expected constant integer for repeat count
     E0308,
     E0309, // thing may not live long enough
     E0310, // thing may not live long enough
