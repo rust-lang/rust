@@ -104,10 +104,10 @@ We’ll get to the details eventually, you’ll just have to trust us for now.
 
 Next, `"Hello, world!"` is a ‘string’. Strings are a surprisingly complicated
 topic in a systems programming language, and this is a ‘statically allocated’
-string. If you want to read further about allocation, check out [the stack and
-the heap], but you don’t need to right now if you don’t want to. We pass this
-string as an argument to `println!`, which prints the string to the screen.
-Easy enough!
+string. If you want to read further about allocation, check out
+[the stack and the heap][allocation], but you don’t need to right now if you
+don’t want to. We pass this string as an argument to `println!`, which prints the
+string to the screen. Easy enough!
 
 [allocation]: the-stack-and-the-heap.html
 
