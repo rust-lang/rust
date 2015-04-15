@@ -67,13 +67,33 @@
 //! thread. This means that it can outlive its parent (the thread that spawned
 //! it), unless this parent is the main thread.
 //!
-//! ## Scoped threads
-//!
-//! Often a parent thread uses a child thread to perform some particular task,
-//! and at some point must wait for the child to complete before continuing.
-//! For this scenario, use the `thread::scoped` function:
+//! The parent thread can also wait on the completion of the child
+//! thread; a call to `spawn` produces a `JoinHandle`, which provides
+//! a `join` method for waiting:
 //!
 //! ```rust
+//! use std::thread;
+//!
+//! let child = thread::spawn(move || {
+//!     // some work here
+//! });
+//! // some work here
+//! let res = child.join();
+//! ```
+//!
+//! The `join` method returns a `Result` containing `Ok` of the final
+//! value produced by the child thread, or `Err` of the value given to
+//! a call to `panic!` if the child panicked.
+//!
+//! ## Scoped threads
+//!
+//! The `spawn` method does not allow the child and parent threads to
+//! share any stack data, since that is not safe in general. However,
+//! `scoped` makes it possible to share the parent's stack by forcing
+//! a join before any relevant stack frames are popped:
+//!
+//! ```rust
+//! # #![feature(scoped)]
 //! use std::thread;
 //!
 //! let guard = thread::scoped(move || {
@@ -215,7 +235,7 @@ pub struct Builder {
 }
 
 impl Builder {
-    /// Generate the base configuration for spawning a thread, from which
+    /// Generates the base configuration for spawning a thread, from which
     /// configuration methods can be chained.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
@@ -225,7 +245,7 @@ impl Builder {
         }
     }
 
-    /// Name the thread-to-be. Currently the name is used for identification
+    /// Names the thread-to-be. Currently the name is used for identification
     /// only in panic messages.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(mut self, name: String) -> Builder {
@@ -233,14 +253,14 @@ impl Builder {
         self
     }
 
-    /// Set the size of the stack for the new thread.
+    /// Sets the size of the stack for the new thread.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stack_size(mut self, size: usize) -> Builder {
         self.stack_size = Some(size);
         self
     }
 
-    /// Spawn a new thread, and return a join handle for it.
+    /// Spawns a new thread, and returns a join handle for it.
     ///
     /// The child thread may outlive the parent (unless the parent thread
     /// is the main thread; the whole process is terminated when the main
@@ -253,14 +273,14 @@ impl Builder {
     /// `io::Result` to capture any failure to create the thread at
     /// the OS level.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn spawn<F>(self, f: F) -> io::Result<JoinHandle> where
-        F: FnOnce(), F: Send + 'static
+    pub fn spawn<F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
+        F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
     {
         self.spawn_inner(Box::new(f)).map(|i| JoinHandle(i))
     }
 
-    /// Spawn a new child thread that must be joined within a given
-    /// scope, and return a `JoinGuard`.
+    /// Spawns a new child thread that must be joined within a given
+    /// scope, and returns a `JoinGuard`.
     ///
     /// The join guard can be used to explicitly join the child thread (via
     /// `join`), returning `Result<T>`, or it will implicitly join the child
@@ -274,7 +294,8 @@ impl Builder {
     /// Unlike the `scoped` free function, this method yields an
     /// `io::Result` to capture any failure to create the thread at
     /// the OS level.
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "scoped",
+               reason = "memory unsafe if destructor is avoided, see #24292")]
     pub fn scoped<'a, T, F>(self, f: F) -> io::Result<JoinGuard<'a, T>> where
         T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
     {
@@ -355,7 +376,7 @@ impl Builder {
 // Free functions
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Spawn a new thread, returning a `JoinHandle` for it.
+/// Spawns a new thread, returning a `JoinHandle` for it.
 ///
 /// The join handle will implicitly *detach* the child thread upon being
 /// dropped. In this case, the child thread may outlive the parent (unless
@@ -370,11 +391,13 @@ impl Builder {
 /// Panics if the OS fails to create a thread; use `Builder::spawn`
 /// to recover from such errors.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn spawn<F>(f: F) -> JoinHandle where F: FnOnce(), F: Send + 'static {
+pub fn spawn<F, T>(f: F) -> JoinHandle<T> where
+    F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
+{
     Builder::new().spawn(f).unwrap()
 }
 
-/// Spawn a new *scoped* thread, returning a `JoinGuard` for it.
+/// Spawns a new *scoped* thread, returning a `JoinGuard` for it.
 ///
 /// The join guard can be used to explicitly join the child thread (via
 /// `join`), returning `Result<T>`, or it will implicitly join the child
@@ -387,7 +410,8 @@ pub fn spawn<F>(f: F) -> JoinHandle where F: FnOnce(), F: Send + 'static {
 ///
 /// Panics if the OS fails to create a thread; use `Builder::scoped`
 /// to recover from such errors.
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "scoped",
+           reason = "memory unsafe if destructor is avoided, see #24292")]
 pub fn scoped<'a, T, F>(f: F) -> JoinGuard<'a, T> where
     T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
 {
@@ -400,7 +424,7 @@ pub fn current() -> Thread {
     thread_info::current_thread()
 }
 
-/// Cooperatively give up a timeslice to the OS scheduler.
+/// Cooperatively gives up a timeslice to the OS scheduler.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn yield_now() {
     unsafe { imp::yield_now() }
@@ -413,7 +437,7 @@ pub fn panicking() -> bool {
     unwind::panicking()
 }
 
-/// Invoke a closure, capturing the cause of panic if one occurs.
+/// Invokes a closure, capturing the cause of panic if one occurs.
 ///
 /// This function will return `Ok(())` if the closure does not panic, and will
 /// return `Err(cause)` if the closure panics. The `cause` returned is the
@@ -462,7 +486,7 @@ pub fn catch_panic<F, R>(f: F) -> Result<R>
     Ok(result.unwrap())
 }
 
-/// Put the current thread to sleep for the specified amount of time.
+/// Puts the current thread to sleep for the specified amount of time.
 ///
 /// The thread may sleep longer than the duration specified due to scheduling
 /// specifics or platform-dependent functionality. Note that on unix platforms
@@ -482,7 +506,7 @@ pub fn sleep(dur: Duration) {
     imp::sleep(dur)
 }
 
-/// Block unless or until the current thread's token is made available (may wake spuriously).
+/// Blocks unless or until the current thread's token is made available (may wake spuriously).
 ///
 /// See the module doc for more detail.
 //
@@ -501,7 +525,7 @@ pub fn park() {
     *guard = false;
 }
 
-/// Block unless or until the current thread's token is made available or
+/// Blocks unless or until the current thread's token is made available or
 /// the specified duration has been reached (may wake spuriously).
 ///
 /// The semantics of this function are equivalent to `park()` except that the
@@ -573,7 +597,7 @@ impl Thread {
         }
     }
 
-    /// Get the thread's name.
+    /// Gets the thread's name.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(&self) -> Option<&str> {
         self.inner.name.as_ref().map(|s| &**s)
@@ -635,27 +659,28 @@ impl<T> JoinInner<T> {
 /// handle: the ability to join a child thread is a uniquely-owned
 /// permission.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct JoinHandle(JoinInner<()>);
+pub struct JoinHandle<T>(JoinInner<T>);
 
-impl JoinHandle {
-    /// Extract a handle to the underlying thread
+impl<T> JoinHandle<T> {
+    /// Extracts a handle to the underlying thread
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn thread(&self) -> &Thread {
         &self.0.thread
     }
 
-    /// Wait for the associated thread to finish.
+    /// Waits for the associated thread to finish.
     ///
     /// If the child thread panics, `Err` is returned with the parameter given
     /// to `panic`.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn join(mut self) -> Result<()> {
+    pub fn join(mut self) -> Result<T> {
         self.0.join()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Drop for JoinHandle {
+#[unsafe_destructor]
+impl<T> Drop for JoinHandle<T> {
     fn drop(&mut self) {
         if !self.0.joined {
             unsafe { imp::detach(self.0.native) }
@@ -674,7 +699,8 @@ impl Drop for JoinHandle {
 /// handle: the ability to join a child thread is a uniquely-owned
 /// permission.
 #[must_use = "thread will be immediately joined if `JoinGuard` is not used"]
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "scoped",
+           reason = "memory unsafe if destructor is avoided, see #24292")]
 pub struct JoinGuard<'a, T: Send + 'a> {
     inner: JoinInner<T>,
     _marker: PhantomData<&'a T>,
@@ -684,13 +710,13 @@ pub struct JoinGuard<'a, T: Send + 'a> {
 unsafe impl<'a, T: Send + 'a> Sync for JoinGuard<'a, T> {}
 
 impl<'a, T: Send + 'a> JoinGuard<'a, T> {
-    /// Extract a handle to the thread this guard will join on.
+    /// Extracts a handle to the thread this guard will join on.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn thread(&self) -> &Thread {
         &self.inner.thread
     }
 
-    /// Wait for the associated thread to finish, returning the result of the
+    /// Waits for the associated thread to finish, returning the result of the
     /// thread's calculation.
     ///
     /// # Panics
@@ -706,7 +732,8 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
 }
 
 #[unsafe_destructor]
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "scoped",
+           reason = "memory unsafe if destructor is avoided, see #24292")]
 impl<'a, T: Send + 'a> Drop for JoinGuard<'a, T> {
     fn drop(&mut self) {
         if !self.inner.joined {
@@ -728,7 +755,6 @@ mod test {
     use any::Any;
     use sync::mpsc::{channel, Sender};
     use result;
-    use std::old_io::{ChanReader, ChanWriter};
     use super::{Builder};
     use thread;
     use thunk::Thunk;
@@ -967,13 +993,11 @@ mod test {
 
     #[test]
     fn test_park_timeout_unpark_called_other_thread() {
-        use std::old_io;
-
         for _ in 0..10 {
             let th = thread::current();
 
             let _guard = thread::spawn(move || {
-                old_io::timer::sleep(Duration::milliseconds(50));
+                super::sleep_ms(50);
                 th.unpark();
             });
 

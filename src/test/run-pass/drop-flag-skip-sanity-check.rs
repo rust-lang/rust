@@ -17,10 +17,8 @@
 //
 // See also drop-flag-sanity-check.rs.
 
-#![feature(old_io)]
-
 use std::env;
-use std::old_io::process::{Command, ExitSignal, ExitStatus};
+use std::process::Command;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -28,9 +26,9 @@ fn main() {
         return test();
     }
 
-    let mut p = Command::new(&args[0]).arg("test").spawn().unwrap();
+    let s = Command::new(&args[0]).arg("test").status().unwrap();
     // Invocatinn should succeed as drop-flag sanity check is skipped.
-    assert!(p.wait().unwrap().success());
+    assert!(s.success());
 }
 
 #[derive(Debug)]
@@ -65,5 +63,4 @@ fn test() {
         // drop-glue should detect the corruption of (at least one of)
         // the drop-flags.
     }
-    println!("We should never get here.");
 }

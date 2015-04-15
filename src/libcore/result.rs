@@ -69,7 +69,7 @@
 //! let good_result: Result<bool, i32> = good_result.and_then(|i| Ok(i == 11));
 //!
 //! // Use `or_else` to handle the error.
-//! let bad_result: Result<i32, i32> = bad_result.or_else(|i| Ok(11));
+//! let bad_result: Result<i32, i32> = bad_result.or_else(|i| Ok(i + 20));
 //!
 //! // Consume the result and return the contents with `unwrap`.
 //! let final_awesome_result = good_result.unwrap();
@@ -85,35 +85,32 @@
 //! functions that may encounter errors but don't otherwise return a
 //! useful value.
 //!
-//! Consider the `write_line` method defined for I/O types
-//! by the [`Writer`](../old_io/trait.Writer.html) trait:
+//! Consider the `write_all` method defined for I/O types
+//! by the [`Write`](../io/trait.Write.html) trait:
 //!
 //! ```
-//! # #![feature(old_io)]
-//! use std::old_io::IoError;
+//! use std::io;
 //!
 //! trait Writer {
-//!     fn write_line(&mut self, s: &str) -> Result<(), IoError>;
+//!     fn write_all(&mut self, bytes: &[u8]) -> Result<(), io::Error>;
 //! }
 //! ```
 //!
-//! *Note: The actual definition of `Writer` uses `IoResult`, which
-//! is just a synonym for `Result<T, IoError>`.*
+//! *Note: The actual definition of `Write` uses `io::Result`, which
+//! is just a synonym for `Result<T, io::Error>`.*
 //!
 //! This method doesn't produce a value, but the write may
 //! fail. It's crucial to handle the error case, and *not* write
 //! something like this:
 //!
-//! ```{.ignore}
-//! # #![feature(old_io)]
-//! use std::old_io::*;
-//! use std::old_path::Path;
+//! ```no_run
+//! use std::fs::File;
+//! use std::io::prelude::*;
 //!
-//! let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
-//! // If `write_line` errors, then we'll never know, because the return
+//! let mut file = File::create("valuable_data.txt").unwrap();
+//! // If `write_all` errors, then we'll never know, because the return
 //! // value is ignored.
-//! file.write_line("important message");
-//! drop(file);
+//! file.write_all(b"important message");
 //! ```
 //!
 //! If you *do* write that in Rust, the compiler will give you a
@@ -125,37 +122,31 @@
 //! a marginally useful message indicating why:
 //!
 //! ```{.no_run}
-//! # #![feature(old_io, old_path)]
-//! use std::old_io::*;
-//! use std::old_path::Path;
+//! use std::fs::File;
+//! use std::io::prelude::*;
 //!
-//! let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
-//! file.write_line("important message").ok().expect("failed to write message");
-//! drop(file);
+//! let mut file = File::create("valuable_data.txt").unwrap();
+//! file.write_all(b"important message").ok().expect("failed to write message");
 //! ```
 //!
 //! You might also simply assert success:
 //!
 //! ```{.no_run}
-//! # #![feature(old_io, old_path)]
-//! # use std::old_io::*;
-//! # use std::old_path::Path;
-//!
-//! # let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
-//! assert!(file.write_line("important message").is_ok());
-//! # drop(file);
+//! # use std::fs::File;
+//! # use std::io::prelude::*;
+//! # let mut file = File::create("valuable_data.txt").unwrap();
+//! assert!(file.write_all(b"important message").is_ok());
 //! ```
 //!
 //! Or propagate the error up the call stack with `try!`:
 //!
 //! ```
-//! # #![feature(old_io, old_path)]
-//! # use std::old_io::*;
-//! # use std::old_path::Path;
-//! fn write_message() -> Result<(), IoError> {
-//!     let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
-//!     try!(file.write_line("important message"));
-//!     drop(file);
+//! # use std::fs::File;
+//! # use std::io::prelude::*;
+//! # use std::io;
+//! fn write_message() -> io::Result<()> {
+//!     let mut file = try!(File::create("valuable_data.txt"));
+//!     try!(file.write_all(b"important message"));
 //!     Ok(())
 //! }
 //! ```
@@ -170,9 +161,9 @@
 //! It replaces this:
 //!
 //! ```
-//! # #![feature(old_io, old_path)]
-//! use std::old_io::*;
-//! use std::old_path::Path;
+//! use std::fs::File;
+//! use std::io::prelude::*;
+//! use std::io;
 //!
 //! struct Info {
 //!     name: String,
@@ -180,25 +171,28 @@
 //!     rating: i32,
 //! }
 //!
-//! fn write_info(info: &Info) -> Result<(), IoError> {
-//!     let mut file = File::open_mode(&Path::new("my_best_friends.txt"), Open, Write);
+//! fn write_info(info: &Info) -> io::Result<()> {
+//!     let mut file = try!(File::create("my_best_friends.txt"));
 //!     // Early return on error
-//!     if let Err(e) = file.write_line(&format!("name: {}", info.name)) {
+//!     if let Err(e) = file.write_all(format!("name: {}\n", info.name).as_bytes()) {
 //!         return Err(e)
 //!     }
-//!     if let Err(e) = file.write_line(&format!("age: {}", info.age)) {
+//!     if let Err(e) = file.write_all(format!("age: {}\n", info.age).as_bytes()) {
 //!         return Err(e)
 //!     }
-//!     file.write_line(&format!("rating: {}", info.rating))
+//!     if let Err(e) = file.write_all(format!("rating: {}\n", info.rating).as_bytes()) {
+//!         return Err(e)
+//!     }
+//!     Ok(())
 //! }
 //! ```
 //!
 //! With this:
 //!
 //! ```
-//! # #![feature(old_io, old_path)]
-//! use std::old_io::*;
-//! use std::old_path::Path;
+//! use std::fs::File;
+//! use std::io::prelude::*;
+//! use std::io;
 //!
 //! struct Info {
 //!     name: String,
@@ -206,12 +200,12 @@
 //!     rating: i32,
 //! }
 //!
-//! fn write_info(info: &Info) -> Result<(), IoError> {
-//!     let mut file = File::open_mode(&Path::new("my_best_friends.txt"), Open, Write);
+//! fn write_info(info: &Info) -> io::Result<()> {
+//!     let mut file = try!(File::create("my_best_friends.txt"));
 //!     // Early return on error
-//!     try!(file.write_line(&format!("name: {}", info.name)));
-//!     try!(file.write_line(&format!("age: {}", info.age)));
-//!     try!(file.write_line(&format!("rating: {}", info.rating)));
+//!     try!(file.write_all(format!("name: {}\n", info.name).as_bytes()));
+//!     try!(file.write_all(format!("age: {}\n", info.age).as_bytes()));
+//!     try!(file.write_all(format!("rating: {}\n", info.rating).as_bytes()));
 //!     Ok(())
 //! }
 //! ```
@@ -311,7 +305,7 @@ impl<T, E> Result<T, E> {
     // Adapter for each variant
     /////////////////////////////////////////////////////////////////////////
 
-    /// Convert from `Result<T, E>` to `Option<T>`
+    /// Converts from `Result<T, E>` to `Option<T>`
     ///
     /// Converts `self` into an `Option<T>`, consuming `self`,
     /// and discarding the error, if any.
@@ -334,7 +328,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Convert from `Result<T, E>` to `Option<E>`
+    /// Converts from `Result<T, E>` to `Option<E>`
     ///
     /// Converts `self` into an `Option<E>`, consuming `self`,
     /// and discarding the success value, if any.
@@ -361,7 +355,7 @@ impl<T, E> Result<T, E> {
     // Adapter for working with references
     /////////////////////////////////////////////////////////////////////////
 
-    /// Convert from `Result<T, E>` to `Result<&T, &E>`
+    /// Converts from `Result<T, E>` to `Result<&T, &E>`
     ///
     /// Produces a new `Result`, containing a reference
     /// into the original, leaving the original in place.
@@ -382,7 +376,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Convert from `Result<T, E>` to `Result<&mut T, &mut E>`
+    /// Converts from `Result<T, E>` to `Result<&mut T, &mut E>`
     ///
     /// ```
     /// fn mutate(r: &mut Result<i32, i32>) {
@@ -409,7 +403,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Convert from `Result<T, E>` to `&[T]` (without copying)
+    /// Converts from `Result<T, E>` to `&[T]` (without copying)
     #[inline]
     #[unstable(feature = "as_slice", since = "unsure of the utility here")]
     pub fn as_slice(&self) -> &[T] {
@@ -423,7 +417,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Convert from `Result<T, E>` to `&mut [T]` (without copying)
+    /// Converts from `Result<T, E>` to `&mut [T]` (without copying)
     ///
     /// ```
     /// # #![feature(core)]
@@ -464,29 +458,17 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// Sum the lines of a buffer by mapping strings to numbers,
-    /// ignoring I/O and parse errors:
+    /// Print the numbers on each line of a string multiplied by two.
     ///
     /// ```
-    /// # #![feature(old_io)]
-    /// use std::old_io::*;
+    /// let line = "1\n2\n3\n4\n";
     ///
-    /// let mut buffer: &[u8] = b"1\n2\n3\n4\n";
-    /// let mut buffer = &mut buffer;
-    ///
-    /// let mut sum = 0;
-    ///
-    /// while !buffer.is_empty() {
-    ///     let line: IoResult<String> = buffer.read_line();
-    ///     // Convert the string line to a number using `map` and `from_str`
-    ///     let val: IoResult<i32> = line.map(|line| {
-    ///         line.trim_right().parse::<i32>().unwrap_or(0)
-    ///     });
-    ///     // Add the value if there were no errors, otherwise add 0
-    ///     sum += val.unwrap_or(0);
+    /// for num in line.lines() {
+    ///     match num.parse::<i32>().map(|i| i * 2) {
+    ///         Ok(n) => println!("{}", n),
+    ///         Err(..) => {}
+    ///     }
     /// }
-    ///
-    /// assert!(sum == 10);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -811,7 +793,7 @@ impl<T: fmt::Debug, E> Result<T, E> {
              reason = "use inherent method instead")]
 #[allow(deprecated)]
 impl<T, E> AsSlice<T> for Result<T, E> {
-    /// Convert from `Result<T, E>` to `&[T]` (without copying)
+    /// Converts from `Result<T, E>` to `&[T]` (without copying)
     #[inline]
     fn as_slice<'a>(&'a self) -> &'a [T] {
         match *self {
@@ -974,7 +956,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 // FromIterator
 /////////////////////////////////////////////////////////////////////////////
 
-/// Perform a fold operation over the result values from an iterator.
+/// Performs a fold operation over the result values from an iterator.
 ///
 /// If an `Err` is encountered, it is immediately returned.
 /// Otherwise, the folded value is returned.

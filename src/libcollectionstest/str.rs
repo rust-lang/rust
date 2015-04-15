@@ -1502,7 +1502,7 @@ fn test_str_from_utf8() {
     assert_eq!(from_utf8(xs), Ok("ศไทย中华Việt Nam"));
 
     let xs = b"hello\xFF";
-    assert_eq!(from_utf8(xs), Err(Utf8Error::TooShort));
+    assert!(from_utf8(xs).is_err());
 }
 
 #[test]

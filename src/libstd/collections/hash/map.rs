@@ -506,7 +506,7 @@ impl<K, V, S> HashMap<K, V, S>
 }
 
 impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
-    /// Create an empty HashMap.
+    /// Creates an empty HashMap.
     ///
     /// # Examples
     ///
@@ -563,7 +563,7 @@ impl<K, V, S> HashMap<K, V, S>
         }
     }
 
-    /// Create an empty HashMap with space for at least `capacity`
+    /// Creates an empty HashMap with space for at least `capacity`
     /// elements, using `hasher` to hash the keys.
     ///
     /// Warning: `hasher` is normally randomly generated, and
@@ -1596,7 +1596,7 @@ pub struct RandomState {
 #[unstable(feature = "std_misc",
            reason = "hashing an hash maps may be altered")]
 impl RandomState {
-    /// Construct a new `RandomState` that is initialized with random keys.
+    /// Constructs a new `RandomState` that is initialized with random keys.
     #[inline]
     #[allow(deprecated)]
     pub fn new() -> RandomState {
@@ -1631,7 +1631,7 @@ mod test_map {
     use super::Entry::{Occupied, Vacant};
     use iter::{range_inclusive, range_step_inclusive, repeat};
     use cell::RefCell;
-    use rand::{weak_rng, Rng};
+    use rand::{thread_rng, Rng};
 
     #[test]
     fn test_create_capacity_zero() {
@@ -2290,7 +2290,7 @@ mod test_map {
         }
 
         let mut m = HashMap::new();
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
 
         // Populate the map with some items.
         for _ in 0..50 {

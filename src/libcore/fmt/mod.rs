@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,6 +18,7 @@ use clone::Clone;
 use iter::Iterator;
 use marker::{Copy, PhantomData, Sized};
 use mem;
+use num::Float;
 use option::Option;
 use option::Option::{Some, None};
 use result::Result::Ok;
@@ -910,33 +911,38 @@ impl<'a, T> Pointer for &'a mut T {
     }
 }
 
+// Common code of floating point Debug and Display.
+fn float_to_str_common<T: Float, F>(num: &T, precision: Option<usize>, post: F) -> Result
+        where F : FnOnce(&str) -> Result {
+    let digits = match precision {
+        Some(i) => float::DigExact(i),
+        None => float::DigMax(6),
+    };
+    float::float_to_str_bytes_common(num.abs(),
+                                     digits,
+                                     float::ExpNone,
+                                     false,
+                                     post)
+}
+
 macro_rules! floating { ($ty:ident) => {
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Debug for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
-            Display::fmt(self, fmt)
+            float_to_str_common(self, fmt.precision, |absolute| {
+                // is_positive() counts -0.0 as negative
+                fmt.pad_integral(self.is_nan() || self.is_positive(), "", absolute)
+            })
         }
     }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Display for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
-            use num::Float;
-
-            let digits = match fmt.precision {
-                Some(i) => float::DigExact(i),
-                None => float::DigMax(6),
-            };
-            float::float_to_str_bytes_common(self.abs(),
-                                             10,
-                                             true,
-                                             float::SignNeg,
-                                             digits,
-                                             float::ExpNone,
-                                             false,
-                                             |bytes| {
-                fmt.pad_integral(self.is_nan() || *self >= 0.0, "", bytes)
+            float_to_str_common(self, fmt.precision, |absolute| {
+                // simple comparison counts -0.0 as positive
+                fmt.pad_integral(self.is_nan() || *self >= 0.0, "", absolute)
             })
         }
     }
@@ -951,9 +957,6 @@ macro_rules! floating { ($ty:ident) => {
                 None => float::DigMax(6),
             };
             float::float_to_str_bytes_common(self.abs(),
-                                             10,
-                                             true,
-                                             float::SignNeg,
                                              digits,
                                              float::ExpDec,
                                              false,
@@ -973,9 +976,6 @@ macro_rules! floating { ($ty:ident) => {
                 None => float::DigMax(6),
             };
             float::float_to_str_bytes_common(self.abs(),
-                                             10,
-                                             true,
-                                             float::SignNeg,
                                              digits,
                                              float::ExpDec,
                                              true,

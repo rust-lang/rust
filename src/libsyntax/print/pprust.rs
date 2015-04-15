@@ -352,6 +352,10 @@ pub fn stmt_to_string(stmt: &ast::Stmt) -> String {
     $to_string(|s| s.print_stmt(stmt))
 }
 
+pub fn attr_to_string(attr: &ast::Attribute) -> String {
+    $to_string(|s| s.print_attribute(attr))
+}
+
 pub fn item_to_string(i: &ast::Item) -> String {
     $to_string(|s| s.print_item(i))
 }

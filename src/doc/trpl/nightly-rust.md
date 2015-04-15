@@ -18,7 +18,7 @@ use a two-step version of the installation and examine our installation script:
 
 ```bash
 $ curl -f -L https://static.rust-lang.org/rustup.sh -O
-$ sudo sh rustup.sh
+$ sudo sh rustup.sh --channel=nightly
 ```
 
 [insecurity]: http://curlpipesh.tumblr.com

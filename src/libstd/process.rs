@@ -194,7 +194,7 @@ impl Command {
         self
     }
 
-    /// Set the working directory for the child process.
+    /// Sets the working directory for the child process.
     #[stable(feature = "process", since = "1.0.0")]
     pub fn current_dir<P: AsRef<path::Path>>(&mut self, dir: P) -> &mut Command {
         self.inner.cwd(dir.as_ref().as_ref());
@@ -396,7 +396,7 @@ impl ExitStatus {
         self.0.success()
     }
 
-    /// Return the exit code of the process, if any.
+    /// Returns the exit code of the process, if any.
     ///
     /// On Unix, this will return `None` if the process was terminated
     /// by a signal; `std::os::unix` provides an extension trait for
@@ -453,7 +453,7 @@ impl Child {
         unsafe { self.handle.kill() }
     }
 
-    /// Wait for the child to exit completely, returning the status that it
+    /// Waits for the child to exit completely, returning the status that it
     /// exited with. This function will continue to have the same return value
     /// after it has been called at least once.
     ///
@@ -474,7 +474,7 @@ impl Child {
         }
     }
 
-    /// Simultaneously wait for the child to exit and collect all remaining
+    /// Simultaneously waits for the child to exit and collect all remaining
     /// output on the stdout/stderr handles, returning a `Output`
     /// instance.
     ///
@@ -534,8 +534,6 @@ mod tests {
     use io::prelude::*;
 
     use io::ErrorKind;
-    use old_path::{self, GenericPath};
-    use old_io::fs::PathExtensions;
     use rt::running_on_valgrind;
     use str;
     use super::{Command, Output, Stdio};
@@ -746,43 +744,6 @@ mod tests {
         let mut cmd = Command::new("cmd");
         cmd.arg("/c").arg("cd");
         cmd
-    }
-
-    #[cfg(not(target_arch = "aarch64"))]
-    #[test]
-    fn test_keep_current_working_dir() {
-        use os;
-        let prog = pwd_cmd().spawn().unwrap();
-
-        let output = String::from_utf8(prog.wait_with_output().unwrap().stdout).unwrap();
-        let parent_dir = ::env::current_dir().unwrap().to_str().unwrap().to_string();
-        let parent_dir = old_path::Path::new(parent_dir);
-        let child_dir = old_path::Path::new(output.trim());
-
-        let parent_stat = parent_dir.stat().unwrap();
-        let child_stat = child_dir.stat().unwrap();
-
-        assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
-        assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
-    }
-
-    #[test]
-    fn test_change_working_directory() {
-        use os;
-        // test changing to the parent of os::getcwd() because we know
-        // the path exists (and os::getcwd() is not expected to be root)
-        let parent_dir = ::env::current_dir().unwrap().to_str().unwrap().to_string();
-        let parent_dir = old_path::Path::new(parent_dir).dir_path();
-        let result = pwd_cmd().current_dir(parent_dir.as_str().unwrap()).output().unwrap();
-
-        let output = String::from_utf8(result.stdout).unwrap();
-        let child_dir = old_path::Path::new(output.trim());
-
-        let parent_stat = parent_dir.stat().unwrap();
-        let child_stat = child_dir.stat().unwrap();
-
-        assert_eq!(parent_stat.unstable.device, child_stat.unstable.device);
-        assert_eq!(parent_stat.unstable.inode, child_stat.unstable.inode);
     }
 
     #[cfg(all(unix, not(target_os="android")))]

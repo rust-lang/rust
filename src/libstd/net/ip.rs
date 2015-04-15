@@ -58,7 +58,7 @@ pub enum Ipv6MulticastScope {
 }
 
 impl Ipv4Addr {
-    /// Create a new IPv4 address from four eight-bit octets.
+    /// Creates a new IPv4 address from four eight-bit octets.
     ///
     /// The result will represent the IP address a.b.c.d
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -115,9 +115,11 @@ impl Ipv4Addr {
     ///
     /// Non-globally-routable networks include the private networks (10.0.0.0/8,
     /// 172.16.0.0/12 and 192.168.0.0/16), the loopback network (127.0.0.0/8),
-    /// and the link-local network (169.254.0.0/16).
+    /// the link-local network (169.254.0.0/16), the broadcast address (255.255.255.255/32) and
+    /// the test networks used for documentation (192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24)
     pub fn is_global(&self) -> bool {
-        !self.is_private() && !self.is_loopback() && !self.is_link_local()
+        !self.is_private() && !self.is_loopback() && !self.is_link_local() &&
+        !self.is_broadcast() && !self.is_documentation()
     }
 
     /// Returns true if this is a multicast address.
@@ -127,7 +129,30 @@ impl Ipv4Addr {
         self.octets()[0] >= 224 && self.octets()[0] <= 239
     }
 
-    /// Convert this address to an IPv4-compatible IPv6 address
+    /// Returns true if this is a broadcast address.
+    ///
+    /// A broadcast address has all octets set to 255 as defined in RFC 919
+    pub fn is_broadcast(&self) -> bool {
+        self.octets()[0] == 255 && self.octets()[1] == 255 &&
+        self.octets()[2] == 255 && self.octets()[3] == 255
+    }
+
+    /// Returns true if this address is in a range designated for documentation
+    ///
+    /// This is defined in RFC 5737
+    /// - 192.0.2.0/24 (TEST-NET-1)
+    /// - 198.51.100.0/24 (TEST-NET-2)
+    /// - 203.0.113.0/24 (TEST-NET-3)
+    pub fn is_documentation(&self) -> bool {
+        match(self.octets()[0], self.octets()[1], self.octets()[2], self.octets()[3]) {
+            (192, _, 2, _) => true,
+            (198, 51, 100, _) => true,
+            (203, _, 113, _) => true,
+            _ => false
+        }
+    }
+
+    /// Converts this address to an IPv4-compatible IPv6 address
     ///
     /// a.b.c.d becomes ::a.b.c.d
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -137,7 +162,7 @@ impl Ipv4Addr {
                       ((self.octets()[2] as u16) << 8) | self.octets()[3] as u16)
     }
 
-    /// Convert this address to an IPv4-mapped IPv6 address
+    /// Converts this address to an IPv4-mapped IPv6 address
     ///
     /// a.b.c.d becomes ::ffff:a.b.c.d
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -220,7 +245,7 @@ impl FromInner<libc::in_addr> for Ipv4Addr {
 }
 
 impl Ipv6Addr {
-    /// Create a new IPv6 address from eight 16-bit segments.
+    /// Creates a new IPv6 address from eight 16-bit segments.
     ///
     /// The result will represent the IP address a:b:c:d:e:f:g:h
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -234,7 +259,7 @@ impl Ipv6Addr {
         }
     }
 
-    /// Return the eight 16-bit segments that make up this address
+    /// Returns the eight 16-bit segments that make up this address
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn segments(&self) -> [u16; 8] {
         [ntoh(self.inner.s6_addr[0]),
@@ -324,7 +349,7 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xff00) == 0xff00
     }
 
-    /// Convert this address to an IPv4 address. Returns None if this address is
+    /// Converts this address to an IPv4 address. Returns None if this address is
     /// neither IPv4-compatible or IPv4-mapped.
     ///
     /// ::a.b.c.d and ::ffff:a.b.c.d become a.b.c.d

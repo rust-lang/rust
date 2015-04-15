@@ -12,7 +12,7 @@ use std::cmp::Ordering::{Equal, Greater, Less};
 use std::default::Default;
 use std::iter::RandomAccessIterator;
 use std::mem;
-use std::rand::{Rng, thread_rng};
+use std::__rand::{Rng, thread_rng};
 use std::rc::Rc;
 use std::slice::ElementSwaps;
 
@@ -1296,7 +1296,7 @@ fn test_to_vec() {
 mod bench {
     use std::iter::repeat;
     use std::{mem, ptr};
-    use std::rand::{Rng, weak_rng};
+    use std::__rand::{Rng, thread_rng};
 
     use test::{Bencher, black_box};
 
@@ -1465,7 +1465,7 @@ mod bench {
 
     #[bench]
     fn random_inserts(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| {
             let mut v: Vec<_> = repeat((0, 0)).take(30).collect();
             for _ in 0..100 {
@@ -1477,7 +1477,7 @@ mod bench {
     }
     #[bench]
     fn random_removes(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| {
             let mut v: Vec<_> = repeat((0, 0)).take(130).collect();
             for _ in 0..100 {
@@ -1489,7 +1489,7 @@ mod bench {
 
     #[bench]
     fn sort_random_small(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| {
             let mut v: Vec<_> = rng.gen_iter::<u64>().take(5).collect();
             v.sort();
@@ -1499,7 +1499,7 @@ mod bench {
 
     #[bench]
     fn sort_random_medium(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| {
             let mut v: Vec<_> = rng.gen_iter::<u64>().take(100).collect();
             v.sort();
@@ -1509,7 +1509,7 @@ mod bench {
 
     #[bench]
     fn sort_random_large(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| {
             let mut v: Vec<_> = rng.gen_iter::<u64>().take(10000).collect();
             v.sort();
@@ -1530,7 +1530,7 @@ mod bench {
 
     #[bench]
     fn sort_big_random_small(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<BigSortable>().take(5)
                            .collect::<Vec<BigSortable>>();
@@ -1541,7 +1541,7 @@ mod bench {
 
     #[bench]
     fn sort_big_random_medium(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<BigSortable>().take(100)
                            .collect::<Vec<BigSortable>>();
@@ -1552,7 +1552,7 @@ mod bench {
 
     #[bench]
     fn sort_big_random_large(b: &mut Bencher) {
-        let mut rng = weak_rng();
+        let mut rng = thread_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<BigSortable>().take(10000)
                            .collect::<Vec<BigSortable>>();

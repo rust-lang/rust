@@ -38,14 +38,12 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![feature(old_io, old_path, io, core)]
-
 use std::cmp::min;
-use std::old_io::*;
-use std::old_io;
-use std::old_path::Path;
-use std::num::Float;
 use std::env;
+use std::fs::File;
+use std::io::{self, BufWriter};
+use std::io::prelude::*;
+use std::num::Float;
 
 const LINE_LENGTH: usize = 60;
 const IM: u32 = 139968;
@@ -87,9 +85,9 @@ impl<'a> Iterator for AAGen<'a> {
     }
 }
 
-fn make_fasta<W: Writer, I: Iterator<Item=u8>>(
+fn make_fasta<W: Write, I: Iterator<Item=u8>>(
     wr: &mut W, header: &str, mut it: I, mut n: usize)
-    -> std::old_io::IoResult<()>
+    -> io::Result<()>
 {
     try!(wr.write(header.as_bytes()));
     let mut line = [0; LINE_LENGTH + 1];
@@ -105,7 +103,7 @@ fn make_fasta<W: Writer, I: Iterator<Item=u8>>(
     Ok(())
 }
 
-fn run<W: Writer>(writer: &mut W) -> std::old_io::IoResult<()> {
+fn run<W: Write>(writer: &mut W) -> io::Result<()> {
     let mut args = env::args();
     let n = if env::var_os("RUST_BENCH").is_some() {
         25000000
@@ -146,10 +144,10 @@ fn run<W: Writer>(writer: &mut W) -> std::old_io::IoResult<()> {
 
 fn main() {
     let res = if env::var_os("RUST_BENCH").is_some() {
-        let mut file = BufferedWriter::new(File::create(&Path::new("./shootout-fasta.data")));
+        let mut file = BufWriter::new(File::create("./shootout-fasta.data").unwrap());
         run(&mut file)
     } else {
-        run(&mut old_io::stdout())
+        run(&mut io::stdout())
     };
     res.unwrap()
 }

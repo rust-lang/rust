@@ -169,7 +169,7 @@ impl<T> RwLock<T> {
         RwLockReadGuard::new(&*self.inner, &self.data)
     }
 
-    /// Attempt to acquire this lock with shared read access.
+    /// Attempts to acquire this lock with shared read access.
     ///
     /// This function will never block and will return immediately if `read`
     /// would otherwise succeed. Returns `Some` of an RAII guard which will
@@ -194,7 +194,7 @@ impl<T> RwLock<T> {
         }
     }
 
-    /// Lock this rwlock with exclusive write access, blocking the current
+    /// Locks this rwlock with exclusive write access, blocking the current
     /// thread until it can be acquired.
     ///
     /// This function will not return while other writers or other readers
@@ -215,7 +215,7 @@ impl<T> RwLock<T> {
         RwLockWriteGuard::new(&*self.inner, &self.data)
     }
 
-    /// Attempt to lock this rwlock with exclusive write access.
+    /// Attempts to lock this rwlock with exclusive write access.
     ///
     /// This function does not ever block, and it will return `None` if a call
     /// to `write` would otherwise block. If successful, an RAII guard is
@@ -237,7 +237,7 @@ impl<T> RwLock<T> {
         }
     }
 
-    /// Determine whether the lock is poisoned.
+    /// Determines whether the lock is poisoned.
     ///
     /// If another thread is active, the lock can still become poisoned at any
     /// time.  You should not trust a `false` value for program correctness
@@ -287,7 +287,7 @@ impl StaticRwLock {
         RwLockReadGuard::new(self, &DUMMY.0)
     }
 
-    /// Attempt to acquire this lock with shared read access.
+    /// Attempts to acquire this lock with shared read access.
     ///
     /// See `RwLock::try_read`.
     #[inline]
@@ -302,7 +302,7 @@ impl StaticRwLock {
         }
     }
 
-    /// Lock this rwlock with exclusive write access, blocking the current
+    /// Locks this rwlock with exclusive write access, blocking the current
     /// thread until it can be acquired.
     ///
     /// See `RwLock::write`.
@@ -314,7 +314,7 @@ impl StaticRwLock {
         RwLockWriteGuard::new(self, &DUMMY.0)
     }
 
-    /// Attempt to lock this rwlock with exclusive write access.
+    /// Attempts to lock this rwlock with exclusive write access.
     ///
     /// See `RwLock::try_write`.
     #[inline]
@@ -329,7 +329,7 @@ impl StaticRwLock {
         }
     }
 
-    /// Deallocate all resources associated with this static lock.
+    /// Deallocates all resources associated with this static lock.
     ///
     /// This method is unsafe to call as there is no guarantee that there are no
     /// active users of the lock, and this also doesn't prevent any future users

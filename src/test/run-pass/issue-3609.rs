@@ -23,7 +23,7 @@ enum Msg
 }
 
 fn foo(name: String, samples_chan: Sender<Msg>) {
-    let _t = thread::scoped(move|| {
+    thread::spawn(move|| {
         let mut samples_chan = samples_chan;
 
         // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
@@ -34,7 +34,7 @@ fn foo(name: String, samples_chan: Sender<Msg>) {
         });
 
         samples_chan.send(Msg::GetSamples(name.clone(), callback));
-    });
+    }).join();
 }
 
 pub fn main() {}

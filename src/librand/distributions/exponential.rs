@@ -56,18 +56,6 @@ impl Rand for Exp1 {
 ///
 /// This distribution has density function: `f(x) = lambda *
 /// exp(-lambda * x)` for `x > 0`.
-///
-/// # Examples
-///
-/// ```
-/// # #![feature(rand)]
-/// use std::rand;
-/// use std::rand::distributions::{Exp, IndependentSample};
-///
-/// let exp = Exp::new(2.0);
-/// let v = exp.ind_sample(&mut rand::thread_rng());
-/// println!("{} is from a Exp(2) distribution", v);
-/// ```
 #[derive(Copy, Clone)]
 pub struct Exp {
     /// `lambda` stored as `1/lambda`, since this is what we scale by.

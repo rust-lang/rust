@@ -18,7 +18,7 @@ fn start(_task_number: isize) { println!("Started / Finished task."); }
 
 fn test00() {
     let i: isize = 0;
-    let mut result = thread::scoped(move|| {
+    let mut result = thread::spawn(move|| {
         start(i)
     });
 

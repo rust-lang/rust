@@ -527,7 +527,7 @@ impl f32 {
     #[inline]
     pub fn round(self) -> f32 { num::Float::round(self) }
 
-    /// Return the integer part of a number.
+    /// Returns the integer part of a number.
     ///
     /// ```
     /// let f = 3.3_f32;
@@ -666,7 +666,7 @@ impl f32 {
     #[inline]
     pub fn mul_add(self, a: f32, b: f32) -> f32 { num::Float::mul_add(self, a, b) }
 
-    /// Take the reciprocal (inverse) of a number, `1/x`.
+    /// Takes the reciprocal (inverse) of a number, `1/x`.
     ///
     /// ```
     /// use std::f32;
@@ -680,7 +680,7 @@ impl f32 {
     #[inline]
     pub fn recip(self) -> f32 { num::Float::recip(self) }
 
-    /// Raise a number to an integer power.
+    /// Raises a number to an integer power.
     ///
     /// Using this function is generally faster than using `powf`
     ///
@@ -696,7 +696,7 @@ impl f32 {
     #[inline]
     pub fn powi(self, n: i32) -> f32 { num::Float::powi(self, n) }
 
-    /// Raise a number to a floating point power.
+    /// Raises a number to a floating point power.
     ///
     /// ```
     /// use std::f32;
@@ -710,7 +710,7 @@ impl f32 {
     #[inline]
     pub fn powf(self, n: f32) -> f32 { num::Float::powf(self, n) }
 
-    /// Take the square root of a number.
+    /// Takes the square root of a number.
     ///
     /// Returns NaN if `self` is a negative number.
     ///
@@ -729,7 +729,7 @@ impl f32 {
     #[inline]
     pub fn sqrt(self) -> f32 { num::Float::sqrt(self) }
 
-    /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
+    /// Takes the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     ///
     /// ```
     /// # #![feature(std_misc)]
@@ -852,7 +852,7 @@ impl f32 {
     #[inline]
     pub fn log10(self) -> f32 { num::Float::log10(self) }
 
-    /// Convert radians to degrees.
+    /// Converts radians to degrees.
     ///
     /// ```
     /// # #![feature(std_misc)]
@@ -868,7 +868,7 @@ impl f32 {
     #[inline]
     pub fn to_degrees(self) -> f32 { num::Float::to_degrees(self) }
 
-    /// Convert degrees to radians.
+    /// Converts degrees to radians.
     ///
     /// ```
     /// # #![feature(std_misc)]
@@ -1003,7 +1003,7 @@ impl f32 {
         unsafe { cmath::fdimf(self, other) }
     }
 
-    /// Take the cubic root of a number.
+    /// Takes the cubic root of a number.
     ///
     /// ```
     /// use std::f32;
@@ -1021,7 +1021,7 @@ impl f32 {
         unsafe { cmath::cbrtf(self) }
     }
 
-    /// Calculate the length of the hypotenuse of a right-angle triangle given
+    /// Calculates the length of the hypotenuse of a right-angle triangle given
     /// legs of length `x` and `y`.
     ///
     /// ```

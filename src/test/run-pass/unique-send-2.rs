@@ -23,10 +23,10 @@ pub fn main() {
     let (tx, rx) = channel();
     let n = 100;
     let mut expected = 0;
-    let _t = (0..n).map(|i| {
+    let ts = (0..n).map(|i| {
         expected += i;
         let tx = tx.clone();
-        thread::scoped(move|| {
+        thread::spawn(move|| {
             child(&tx, i)
         })
     }).collect::<Vec<_>>();
@@ -38,4 +38,6 @@ pub fn main() {
     }
 
     assert_eq!(expected, actual);
+
+    for t in ts { t.join(); }
 }

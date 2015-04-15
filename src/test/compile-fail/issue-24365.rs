@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,26 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
-
-trait B {
-    fn f(&self);
+pub enum Attribute {
+    Code {attr_name_idx: u16},
 }
 
-trait T : B {
+pub enum Foo {
+    Bar
 }
 
-struct A;
-
-impl<U: T> B for U {
-    fn f(&self) { }
-}
-
-impl T for A {
+fn test(a: Foo) {
+    println!("{}", a.b); //~ ERROR attempted access of field
 }
 
 fn main() {
-    let a = A;
-    let br = &a as &B;
-    br.f();
+    let x = Attribute::Code {
+        attr_name_idx: 42,
+    };
+    let z = (&x).attr_name_idx; //~ ERROR attempted access of field
+    let y = x.attr_name_idx; //~ ERROR attempted access of field
 }

@@ -10,11 +10,8 @@
 
 // ignore-windows
 
-#![feature(old_io)]
-#![feature(os)]
-
 use std::env;
-use std::old_io::process::{Command, ExitSignal, ExitStatus};
+use std::process::Command;
 
 pub fn main() {
     let args: Vec<String> = env::args().collect();
@@ -23,11 +20,6 @@ pub fn main() {
         unsafe { *(0 as *mut isize) = 0; }
     } else {
         let status = Command::new(&args[0]).arg("signal").status().unwrap();
-        // Windows does not have signal, so we get exit status 0xC0000028 (STATUS_BAD_STACK).
-        match status {
-            ExitSignal(_) if cfg!(unix) => {},
-            ExitStatus(0xC0000028) if cfg!(windows) => {},
-            _ => panic!("invalid termination (was not signalled): {}", status)
-        }
+        assert!(status.code().is_none());
     }
 }

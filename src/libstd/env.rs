@@ -261,7 +261,7 @@ pub fn set_var<K: ?Sized, V: ?Sized>(k: &K, v: &V)
     os_imp::setenv(k.as_ref(), v.as_ref())
 }
 
-/// Remove an environment variable from the environment of the currently running process.
+/// Removes an environment variable from the environment of the currently running process.
 ///
 /// # Examples
 ///

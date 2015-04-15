@@ -191,7 +191,7 @@ impl Error {
         }
     }
 
-    /// Return the corresponding `ErrorKind` for this error.
+    /// Returns the corresponding `ErrorKind` for this error.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn kind(&self) -> ErrorKind {
         match self.repr {

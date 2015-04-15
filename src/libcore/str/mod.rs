@@ -106,19 +106,19 @@ Section: Creating a string
 
 /// Errors which can occur when attempting to interpret a byte slice as a `str`.
 #[derive(Copy, Eq, PartialEq, Clone, Debug)]
-#[unstable(feature = "core",
-           reason = "error enumeration recently added and definitions may be refined")]
-pub enum Utf8Error {
-    /// An invalid byte was detected at the byte offset given.
-    ///
-    /// The offset is guaranteed to be in bounds of the slice in question, and
-    /// the byte at the specified offset was the first invalid byte in the
-    /// sequence detected.
-    InvalidByte(usize),
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct Utf8Error {
+    valid_up_to: usize,
+}
 
-    /// The byte slice was invalid because more bytes were needed but no more
-    /// bytes were available.
-    TooShort,
+impl Utf8Error {
+    /// Returns the index in the given string up to which valid UTF-8 was
+    /// verified.
+    ///
+    /// Starting at the index provided, but not necessarily at it precisely, an
+    /// invalid UTF-8 encoding sequence was found.
+    #[unstable(feature = "utf8_error", reason = "method just added")]
+    pub fn valid_up_to(&self) -> usize { self.valid_up_to }
 }
 
 /// Converts a slice of bytes to a string slice without performing any
@@ -147,14 +147,7 @@ pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Utf8Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match *self {
-            Utf8Error::InvalidByte(n) => {
-                write!(f, "invalid utf-8: invalid byte at index {}", n)
-            }
-            Utf8Error::TooShort => {
-                write!(f, "invalid utf-8: byte slice too short")
-            }
-        }
+        write!(f, "invalid utf-8: invalid byte near index {}", self.valid_up_to)
     }
 }
 
@@ -1218,14 +1211,16 @@ fn run_utf8_validation_iterator(iter: &mut slice::Iter<u8>)
         // restore the iterator we had at the start of this codepoint.
         macro_rules! err { () => {{
             *iter = old.clone();
-            return Err(Utf8Error::InvalidByte(whole.len() - iter.as_slice().len()))
+            return Err(Utf8Error {
+                valid_up_to: whole.len() - iter.as_slice().len()
+            })
         }}}
 
         macro_rules! next { () => {
             match iter.next() {
                 Some(a) => *a,
                 // we needed data, but there was none: error!
-                None => return Err(Utf8Error::TooShort),
+                None => err!(),
             }
         }}
 

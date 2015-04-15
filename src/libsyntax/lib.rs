@@ -30,7 +30,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(libc)]
-#![feature(old_path)]
 #![feature(quote, unsafe_destructor)]
 #![feature(rustc_private)]
 #![feature(staged_api)]

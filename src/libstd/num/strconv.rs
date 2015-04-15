@@ -464,7 +464,7 @@ mod bench {
 
     mod usize {
         use super::test::Bencher;
-        use rand::{weak_rng, Rng};
+        use rand::{thread_rng, Rng};
         use std::fmt;
 
         #[inline]
@@ -474,38 +474,38 @@ mod bench {
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng = thread_rng();
             b.iter(|| { to_string(rng.gen::<usize>(), 2); })
         }
 
         #[bench]
         fn to_str_oct(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng = thread_rng();
             b.iter(|| { to_string(rng.gen::<usize>(), 8); })
         }
 
         #[bench]
         fn to_str_dec(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng = thread_rng();
             b.iter(|| { to_string(rng.gen::<usize>(), 10); })
         }
 
         #[bench]
         fn to_str_hex(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng = thread_rng();
             b.iter(|| { to_string(rng.gen::<usize>(), 16); })
         }
 
         #[bench]
         fn to_str_base_36(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng = thread_rng();
             b.iter(|| { to_string(rng.gen::<usize>(), 36); })
         }
     }
 
     mod isize {
         use super::test::Bencher;
-        use rand::{weak_rng, Rng};
+        use rand::{thread_rng, Rng};
         use std::fmt;
 
         #[inline]
@@ -515,43 +515,43 @@ mod bench {
 
         #[bench]
         fn to_str_bin(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng = thread_rng();
             b.iter(|| { to_string(rng.gen::<isize>(), 2); })
         }
 
         #[bench]
         fn to_str_oct(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng = thread_rng();
             b.iter(|| { to_string(rng.gen::<isize>(), 8); })
         }
 
         #[bench]
         fn to_str_dec(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng = thread_rng();
             b.iter(|| { to_string(rng.gen::<isize>(), 10); })
         }
 
         #[bench]
         fn to_str_hex(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng = thread_rng();
             b.iter(|| { to_string(rng.gen::<isize>(), 16); })
         }
 
         #[bench]
         fn to_str_base_36(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng = thread_rng();
             b.iter(|| { to_string(rng.gen::<isize>(), 36); })
         }
     }
 
     mod f64 {
         use super::test::Bencher;
-        use rand::{weak_rng, Rng};
+        use rand::{thread_rng, Rng};
         use f64;
 
         #[bench]
         fn float_to_string(b: &mut Bencher) {
-            let mut rng = weak_rng();
+            let mut rng = thread_rng();
             b.iter(|| { f64::to_string(rng.gen()); })
         }
     }

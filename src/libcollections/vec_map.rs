@@ -452,7 +452,7 @@ impl<V> VecMap<V> {
         Drain { iter: self.v.drain().enumerate().filter_map(filter) }
     }
 
-    /// Return the number of elements in the map.
+    /// Returns the number of elements in the map.
     ///
     /// # Examples
     ///
@@ -470,7 +470,7 @@ impl<V> VecMap<V> {
         self.v.iter().filter(|elt| elt.is_some()).count()
     }
 
-    /// Return true if the map contains no elements.
+    /// Returns true if the map contains no elements.
     ///
     /// # Examples
     ///

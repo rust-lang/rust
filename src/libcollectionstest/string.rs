@@ -45,7 +45,6 @@ fn test_from_utf8() {
 
     let xs = b"hello\xFF".to_vec();
     let err = String::from_utf8(xs).err().unwrap();
-    assert_eq!(err.utf8_error(), Utf8Error::TooShort);
     assert_eq!(err.into_bytes(), b"hello\xff".to_vec());
 }
 

@@ -132,7 +132,7 @@ impl String {
     ///
     /// let invalid_vec = vec![240, 144, 128];
     /// let s = String::from_utf8(invalid_vec).err().unwrap();
-    /// assert_eq!(s.utf8_error(), Utf8Error::TooShort);
+    /// let err = s.utf8_error();
     /// assert_eq!(s.into_bytes(), [240, 144, 128]);
     /// ```
     #[inline]
@@ -156,14 +156,10 @@ impl String {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> Cow<'a, str> {
-        let mut i = 0;
+        let mut i;
         match str::from_utf8(v) {
             Ok(s) => return Cow::Borrowed(s),
-            Err(e) => {
-                if let Utf8Error::InvalidByte(firstbad) = e {
-                    i = firstbad;
-                }
-            }
+            Err(e) => i = e.valid_up_to(),
         }
 
         const TAG_CONT_U8: u8 = 128;
@@ -188,9 +184,9 @@ impl String {
             };
         }
 
-        // subseqidx is the index of the first byte of the subsequence we're looking at.
-        // It's used to copy a bunch of contiguous good codepoints at once instead of copying
-        // them one by one.
+        // subseqidx is the index of the first byte of the subsequence we're
+        // looking at.  It's used to copy a bunch of contiguous good codepoints
+        // at once instead of copying them one by one.
         let mut subseqidx = i;
 
         while i < total {
@@ -347,7 +343,7 @@ impl String {
         String { vec: bytes }
     }
 
-    /// Return the underlying byte buffer, encoded as UTF-8.
+    /// Returns the underlying byte buffer, encoded as UTF-8.
     ///
     /// # Examples
     ///
@@ -363,7 +359,7 @@ impl String {
         self.vec
     }
 
-    /// Extract a string slice containing the entire string.
+    /// Extracts a string slice containing the entire string.
     #[inline]
     #[unstable(feature = "convert",
                reason = "waiting on RFC revision")]
@@ -607,7 +603,7 @@ impl String {
         ch
     }
 
-    /// Insert a character into the string buffer at byte position `idx`.
+    /// Inserts a character into the string buffer at byte position `idx`.
     ///
     /// # Warning
     ///
@@ -662,7 +658,7 @@ impl String {
         &mut self.vec
     }
 
-    /// Return the number of bytes in this string.
+    /// Returns the number of bytes in this string.
     ///
     /// # Examples
     ///
@@ -705,12 +701,12 @@ impl String {
 }
 
 impl FromUtf8Error {
-    /// Consume this error, returning the bytes that were attempted to make a
+    /// Consumes this error, returning the bytes that were attempted to make a
     /// `String` with.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_bytes(self) -> Vec<u8> { self.bytes }
 
-    /// Access the underlying UTF8-error that was the cause of this error.
+    /// Accesss the underlying UTF8-error that was the cause of this error.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn utf8_error(&self) -> Utf8Error { self.error }
 }
@@ -959,7 +955,7 @@ impl<'a> Deref for DerefString<'a> {
     }
 }
 
-/// Convert a string slice to a wrapper type providing a `&String` reference.
+/// Converts a string slice to a wrapper type providing a `&String` reference.
 ///
 /// # Examples
 ///

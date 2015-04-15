@@ -51,7 +51,7 @@ pub const ONCE_INIT: Once = Once {
 };
 
 impl Once {
-    /// Perform an initialization routine once and only once. The given closure
+    /// Performs an initialization routine once and only once. The given closure
     /// will be executed if this is the first time `call_once` has been called,
     /// and otherwise the routine will *not* be invoked.
     ///

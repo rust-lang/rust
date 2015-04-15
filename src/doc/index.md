@@ -15,6 +15,12 @@ Rust, its syntax, and its concepts. Upon completing the book, you'll be an
 intermediate Rust developer, and will have a good grasp of the fundamental
 ideas behind Rust.
 
+[Rust By Example][rbe] was originally a community resource, but was then
+donated to the Rust project. As the name implies, it teaches you Rust through a
+series of small examples.
+
+[rbe]: rustbyexample.com
+
 # Community & Getting Help
 
 If you need help with something, or just want to talk about Rust with others,
@@ -76,17 +82,3 @@ We have [API documentation for the entire standard
 library](std/index.html). There's a list of crates on the left with more
 specific sections, or you can use the search bar at the top to search for
 something if you know its name.
-
-# External documentation
-
-*Note: While these are great resources for learning Rust, they may track a
-particular version of Rust that is likely not exactly the same as that for
-which this documentation was generated.*
-
-* [Rust by Example] - Short examples of common tasks in Rust (tracks the master
-  branch).
-* [Rust for Rubyists] - The first community tutorial for Rust. Tracks the last
-  stable release. Not just for Ruby programmers.
-
-[Rust by Example]: http://rustbyexample.com/
-[Rust for Rubyists]: http://www.rustforrubyists.com/

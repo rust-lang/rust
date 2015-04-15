@@ -32,17 +32,17 @@ pub trait Pattern<'a>: Sized {
     /// Associated searcher for this pattern
     type Searcher: Searcher<'a>;
 
-    /// Construct the associated searcher from
+    /// Constructs the associated searcher from
     /// `self` and the `haystack` to search in.
     fn into_searcher(self, haystack: &'a str) -> Self::Searcher;
 
-    /// Check whether the pattern matches anywhere in the haystack
+    /// Checks whether the pattern matches anywhere in the haystack
     #[inline]
     fn is_contained_in(self, haystack: &'a str) -> bool {
         self.into_searcher(haystack).next_match().is_some()
     }
 
-    /// Check whether the pattern matches at the front of the haystack
+    /// Checks whether the pattern matches at the front of the haystack
     #[inline]
     fn is_prefix_of(self, haystack: &'a str) -> bool {
         match self.into_searcher(haystack).next() {
@@ -51,7 +51,7 @@ pub trait Pattern<'a>: Sized {
         }
     }
 
-    /// Check whether the pattern matches at the back of the haystack
+    /// Checks whether the pattern matches at the back of the haystack
     #[inline]
     fn is_suffix_of(self, haystack: &'a str) -> bool
         where Self::Searcher: ReverseSearcher<'a>

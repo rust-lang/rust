@@ -14,7 +14,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use std::process::Command;
-use std::rand::{thread_rng, Rng};
+use std::__rand::{thread_rng, Rng};
 use std::{char, env};
 
 // creates unicode_input_multiple_files_{main,chars}.rs, where the
