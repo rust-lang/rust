@@ -765,9 +765,14 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
     }
 
     let ptr = to_arg_ty_ptr(cx, ptr, t);
+    let align = type_of::align_of(cx.ccx(), t);
 
     if type_is_immediate(cx.ccx(), t) && type_of::type_of(cx.ccx(), t).is_aggregate() {
-        return Load(cx, ptr);
+        let load = Load(cx, ptr);
+        unsafe {
+            llvm::LLVMSetAlignment(load, align);
+        }
+        return load;
     }
 
     unsafe {
@@ -793,13 +798,24 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         Load(cx, ptr)
     };
 
+    unsafe {
+        llvm::LLVMSetAlignment(val, align);
+    }
+
     from_arg_ty(cx, val, t)
 }
 
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values.
 pub fn store_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
-    Store(cx, to_arg_ty(cx, v, t), to_arg_ty_ptr(cx, dst, t));
+    if cx.unreachable.get() {
+        return;
+    }
+
+    let store = Store(cx, to_arg_ty(cx, v, t), to_arg_ty_ptr(cx, dst, t));
+    unsafe {
+        llvm::LLVMSetAlignment(store, type_of::align_of(cx.ccx(), t));
+    }
 }
 
 pub fn to_arg_ty(bcx: Block, val: ValueRef, ty: Ty) -> ValueRef {
