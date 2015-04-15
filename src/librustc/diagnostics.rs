@@ -191,6 +191,32 @@ loop {
 }
 "##,
 
+E0170: r##"
+Enum variants are qualified by default. For example, given this type:
+
+enum Method {
+    GET,
+    POST
+}
+
+you would match it using:
+
+match m {
+    Method::GET => ...
+    Method::POST => ...
+}
+
+If you don't qualify the names, the code will bind new variables named "GET" and
+"POST" instead. This behavior is likely not what you want, so rustc warns when
+that happens.
+
+Qualified names are good practice, and most code works well with them. But if
+you prefer them unqualified, you can import the variants into scope:
+
+use Method::*;
+enum Method { GET, POST }
+"##,
+
 E0297: r##"
 Patterns used to bind names must be irrefutable. That is, they must guarantee
 that a name will be extracted in all cases. Instead of pattern matching the
@@ -296,7 +322,6 @@ register_diagnostics! {
     E0137,
     E0138,
     E0139,
-    E0170,
     E0261, // use of undeclared lifetime name
     E0262, // illegal lifetime parameter name
     E0263, // lifetime name declared twice in same scope
