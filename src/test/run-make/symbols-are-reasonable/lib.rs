@@ -16,5 +16,5 @@ impl Foo for usize {}
 
 pub fn dummy() {
     // force the vtable to be created
-    let _x = &1us as &Foo;
+    let _x = &1usize as &Foo;
 }
