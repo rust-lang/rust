@@ -714,8 +714,6 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
             "u16" => ast::UnsignedIntLit(ast::TyU16),
             "u32" => ast::UnsignedIntLit(ast::TyU32),
             "u64" => ast::UnsignedIntLit(ast::TyU64),
-            "is" => ast::SignedIntLit(ast::TyIs, ast::Plus),
-            "us" => ast::UnsignedIntLit(ast::TyUs),
             _ => {
                 // i<digits> and u<digits> look like widths, so lets
                 // give an error message along those lines
