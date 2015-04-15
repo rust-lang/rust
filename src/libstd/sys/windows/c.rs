@@ -465,6 +465,10 @@ extern "system" {
                            nOutBufferSize: libc::DWORD,
                            lpBytesReturned: libc::LPDWORD,
                            lpOverlapped: libc::LPOVERLAPPED) -> libc::BOOL;
+    pub fn CreatePipe(hReadPipe: libc::LPHANDLE,
+                      hWritePipe: libc::LPHANDLE,
+                      lpPipeAttributes: libc::LPSECURITY_ATTRIBUTES,
+                      nSize: libc::DWORD) -> libc::BOOL;
 }
 
 #[link(name = "userenv")]
