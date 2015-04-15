@@ -544,19 +544,19 @@ unsafe impl<T: Send + ?Sized> Send for Unique<T> { }
 unsafe impl<T: Sync + ?Sized> Sync for Unique<T> { }
 
 impl<T: ?Sized> Unique<T> {
-    /// Create a new `Unique`.
+    /// Creates a new `Unique`.
     #[unstable(feature = "unique")]
     pub unsafe fn new(ptr: *mut T) -> Unique<T> {
         Unique { pointer: NonZero::new(ptr), _marker: PhantomData }
     }
 
-    /// Dereference the content.
+    /// Dereferences the content.
     #[unstable(feature = "unique")]
     pub unsafe fn get(&self) -> &T {
         &**self.pointer
     }
 
-    /// Mutably dereference the content.
+    /// Mutably dereferences the content.
     #[unstable(feature = "unique")]
     pub unsafe fn get_mut(&mut self) -> &mut T {
         &mut ***self

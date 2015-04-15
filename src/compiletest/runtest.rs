@@ -29,7 +29,6 @@ use std::net::TcpStream;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, ExitStatus};
 use std::str;
-use std::time::Duration;
 use test::MetricMap;
 
 pub fn run(config: Config, testfile: &Path) {
@@ -452,11 +451,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 .expect(&format!("failed to exec `{:?}`", config.adb_path));
             loop {
                 //waiting 1 second for gdbserver start
-                #[allow(deprecated)]
-                fn sleep() {
-                    ::std::old_io::timer::sleep(Duration::milliseconds(1000));
-                }
-                sleep();
+                ::std::thread::sleep_ms(1000);
                 if TcpStream::connect("127.0.0.1:5039").is_ok() {
                     break
                 }

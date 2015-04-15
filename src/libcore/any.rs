@@ -91,7 +91,7 @@ use marker::{Reflect, Sized};
 /// [mod]: index.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Any: Reflect + 'static {
-    /// Get the `TypeId` of `self`
+    /// Gets the `TypeId` of `self`.
     #[unstable(feature = "core",
                reason = "this method will likely be replaced by an associated static")]
     fn get_type_id(&self) -> TypeId;

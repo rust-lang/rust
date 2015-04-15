@@ -12,7 +12,7 @@ use std::env;
 use std::io::{self, Error, ErrorKind};
 use std::fs;
 use std::path::{self, PathBuf, Path};
-use std::rand::{thread_rng, Rng};
+use std::__rand::{thread_rng, Rng};
 
 /// A wrapper for a path to temporary directory implementing automatic
 /// scope-based deletion.

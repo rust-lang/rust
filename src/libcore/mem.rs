@@ -134,7 +134,7 @@ pub fn align_of_val<T>(_val: &T) -> usize {
     align_of::<T>()
 }
 
-/// Create a value initialized to zero.
+/// Creates a value initialized to zero.
 ///
 /// This function is similar to allocating space for a local variable and zeroing it out (an unsafe
 /// operation).
@@ -158,7 +158,7 @@ pub unsafe fn zeroed<T>() -> T {
     intrinsics::init()
 }
 
-/// Create a value initialized to an unspecified series of bytes.
+/// Creates a value initialized to an unspecified series of bytes.
 ///
 /// The byte sequence usually indicates that the value at the memory
 /// in question has been dropped. Thus, *if* T carries a drop flag,
@@ -179,7 +179,7 @@ pub unsafe fn dropped<T>() -> T {
     dropped_impl()
 }
 
-/// Create an uninitialized value.
+/// Creates an uninitialized value.
 ///
 /// Care must be taken when using this function, if the type `T` has a destructor and the value
 /// falls out of scope (due to unwinding or returning) before being initialized, then the
@@ -234,7 +234,7 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
     }
 }
 
-/// Replace the value at a mutable location with a new one, returning the old value, without
+/// Replaces the value at a mutable location with a new one, returning the old value, without
 /// deinitialising or copying either one.
 ///
 /// This is primarily used for transferring and swapping ownership of a value in a mutable

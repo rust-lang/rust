@@ -40,7 +40,7 @@ impl log::Logger for ChannelLogger {
 pub fn main() {
     let (logger, rx) = ChannelLogger::new();
 
-    let _t = thread::scoped(move|| {
+    let t = thread::spawn(move|| {
         log::set_logger(logger);
 
         info!("foo");
@@ -53,4 +53,6 @@ pub fn main() {
     assert_eq!(rx.recv().unwrap(), "foo bar");
     assert_eq!(rx.recv().unwrap(), "bar foo");
     assert!(rx.recv().is_err());
+
+    t.join();
 }

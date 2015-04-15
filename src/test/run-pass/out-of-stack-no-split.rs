@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//ignore-android
-//ignore-linux
-//ignore-freebsd
-//ignore-ios
-//ignore-dragonfly
-//ignore-bitrig
+// ignore-android
+// ignore-linux
+// ignore-freebsd
+// ignore-ios
+// ignore-dragonfly
+// ignore-bitrig
 
-#![feature(asm, old_io)]
+#![feature(asm)]
 
-use std::old_io::process::Command;
+use std::process::Command;
 use std::env;
 
 // lifted from the test module
@@ -41,7 +41,7 @@ fn main() {
     } else {
         let recurse = Command::new(&args[0]).arg("recurse").output().unwrap();
         assert!(!recurse.status.success());
-        let error = String::from_utf8_lossy(&recurse.error);
+        let error = String::from_utf8_lossy(&recurse.stderr);
         assert!(error.contains("has overflowed its stack"));
     }
 }

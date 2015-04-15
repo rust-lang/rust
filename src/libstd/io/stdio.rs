@@ -45,7 +45,7 @@ struct StdoutRaw(stdio::Stdout);
 /// the `std::io::stdio::stderr_raw` function.
 struct StderrRaw(stdio::Stderr);
 
-/// Construct a new raw handle to the standard input of this process.
+/// Constructs a new raw handle to the standard input of this process.
 ///
 /// The returned handle does not interact with any other handles created nor
 /// handles returned by `std::io::stdin`. Data buffered by the `std::io::stdin`
@@ -54,7 +54,7 @@ struct StderrRaw(stdio::Stderr);
 /// The returned handle has no external synchronization or buffering.
 fn stdin_raw() -> StdinRaw { StdinRaw(stdio::Stdin::new()) }
 
-/// Construct a new raw handle to the standard input stream of this process.
+/// Constructs a new raw handle to the standard input stream of this process.
 ///
 /// The returned handle does not interact with any other handles created nor
 /// handles returned by `std::io::stdout`. Note that data is buffered by the
@@ -65,7 +65,7 @@ fn stdin_raw() -> StdinRaw { StdinRaw(stdio::Stdin::new()) }
 /// top.
 fn stdout_raw() -> StdoutRaw { StdoutRaw(stdio::Stdout::new()) }
 
-/// Construct a new raw handle to the standard input stream of this process.
+/// Constructs a new raw handle to the standard input stream of this process.
 ///
 /// The returned handle does not interact with any other handles created nor
 /// handles returned by `std::io::stdout`.
@@ -109,7 +109,7 @@ pub struct StdinLock<'a> {
     inner: MutexGuard<'a, BufReader<StdinRaw>>,
 }
 
-/// Create a new handle to the global standard input stream of this process.
+/// Creates a new handle to the global standard input stream of this process.
 ///
 /// The handle returned refers to a globally shared buffer between all threads.
 /// Access is synchronized and can be explicitly controlled with the `lock()`
@@ -139,7 +139,7 @@ pub fn stdin() -> Stdin {
 }
 
 impl Stdin {
-    /// Lock this handle to the standard input stream, returning a readable
+    /// Locks this handle to the standard input stream, returning a readable
     /// guard.
     ///
     /// The lock is released when the returned lock goes out of scope. The
@@ -243,7 +243,7 @@ pub fn stdout() -> Stdout {
 }
 
 impl Stdout {
-    /// Lock this handle to the standard output stream, returning a writable
+    /// Locks this handle to the standard output stream, returning a writable
     /// guard.
     ///
     /// The lock is released when the returned lock goes out of scope. The
@@ -315,7 +315,7 @@ pub fn stderr() -> Stderr {
 }
 
 impl Stderr {
-    /// Lock this handle to the standard error stream, returning a writable
+    /// Locks this handle to the standard error stream, returning a writable
     /// guard.
     ///
     /// The lock is released when the returned lock goes out of scope. The

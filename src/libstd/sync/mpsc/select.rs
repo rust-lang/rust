@@ -254,11 +254,11 @@ impl Select {
 }
 
 impl<'rx, T: Send> Handle<'rx, T> {
-    /// Retrieve the id of this handle.
+    /// Retrieves the id of this handle.
     #[inline]
     pub fn id(&self) -> usize { self.id }
 
-    /// Block to receive a value on the underlying receiver, returning `Some` on
+    /// Blocks to receive a value on the underlying receiver, returning `Some` on
     /// success or `None` if the channel disconnects. This function has the same
     /// semantics as `Receiver.recv`
     pub fn recv(&mut self) -> Result<T, RecvError> { self.rx.recv() }

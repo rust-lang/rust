@@ -22,15 +22,12 @@ use io;
 use libc::types::os::arch::extra::LPWCH;
 use libc::{self, c_int, c_void};
 use mem;
-#[allow(deprecated)]
-use old_io::{IoError, IoResult};
 use ops::Range;
 use os::windows::ffi::EncodeWide;
 use path::{self, PathBuf};
 use ptr;
 use slice;
 use sys::c;
-use sys::fs::FileDesc;
 use sys::handle::Handle;
 
 use libc::funcs::extra::kernel32::{
@@ -42,7 +39,7 @@ pub fn errno() -> i32 {
     unsafe { libc::GetLastError() as i32 }
 }
 
-/// Get a detailed string description for the given error number
+/// Gets a detailed string description for the given error number.
 pub fn error_string(errnum: i32) -> String {
     use libc::types::os::arch::extra::DWORD;
     use libc::types::os::arch::extra::LPWSTR;
@@ -233,13 +230,13 @@ impl StdError for JoinPathsError {
 }
 
 pub fn current_exe() -> io::Result<PathBuf> {
-    super::fill_utf16_buf_new(|buf, sz| unsafe {
+    super::fill_utf16_buf(|buf, sz| unsafe {
         libc::GetModuleFileNameW(ptr::null_mut(), buf, sz)
     }, super::os2path)
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
-    super::fill_utf16_buf_new(|buf, sz| unsafe {
+    super::fill_utf16_buf(|buf, sz| unsafe {
         libc::GetCurrentDirectoryW(sz, buf)
     }, super::os2path)
 }
@@ -259,7 +256,7 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
 
 pub fn getenv(k: &OsStr) -> Option<OsString> {
     let k = super::to_utf16_os(k);
-    super::fill_utf16_buf_new(|buf, sz| unsafe {
+    super::fill_utf16_buf(|buf, sz| unsafe {
         libc::GetEnvironmentVariableW(k.as_ptr(), buf, sz)
     }, |buf| {
         OsStringExt::from_wide(buf)
@@ -336,27 +333,8 @@ pub fn page_size() -> usize {
     }
 }
 
-#[allow(deprecated)]
-pub unsafe fn pipe() -> IoResult<(FileDesc, FileDesc)> {
-    // Windows pipes work subtly differently than unix pipes, and their
-    // inheritance has to be handled in a different way that I do not
-    // fully understand. Here we explicitly make the pipe non-inheritable,
-    // which means to pass it to a subprocess they need to be duplicated
-    // first, as in std::run.
-    let mut fds = [0; 2];
-    match libc::pipe(fds.as_mut_ptr(), 1024 as ::libc::c_uint,
-    (libc::O_BINARY | libc::O_NOINHERIT) as c_int) {
-        0 => {
-            assert!(fds[0] != -1 && fds[0] != 0);
-            assert!(fds[1] != -1 && fds[1] != 0);
-            Ok((FileDesc::new(fds[0], true), FileDesc::new(fds[1], true)))
-        }
-        _ => Err(IoError::last_error()),
-    }
-}
-
 pub fn temp_dir() -> PathBuf {
-    super::fill_utf16_buf_new(|buf, sz| unsafe {
+    super::fill_utf16_buf(|buf, sz| unsafe {
         c::GetTempPathW(sz, buf)
     }, super::os2path).unwrap()
 }
@@ -371,7 +349,7 @@ pub fn home_dir() -> Option<PathBuf> {
             return None
         }
         let _handle = Handle::new(token);
-        super::fill_utf16_buf_new(|buf, mut sz| {
+        super::fill_utf16_buf(|buf, mut sz| {
             match c::GetUserProfileDirectoryW(token, buf, &mut sz) {
                 0 if libc::GetLastError() != 0 => 0,
                 0 => sz,

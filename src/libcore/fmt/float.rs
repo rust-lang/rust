@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(missing_docs)]
-
 pub use self::ExponentFormat::*;
 pub use self::SignificantDigits::*;
-pub use self::SignFormat::*;
 
-use char;
-use char::CharExt;
+use char::{self, CharExt};
 use fmt;
 use iter::Iterator;
 use num::{cast, Float, ToPrimitive};
@@ -46,50 +42,29 @@ pub enum SignificantDigits {
     DigExact(usize)
 }
 
-/// How to emit the sign of a number.
-pub enum SignFormat {
-    /// `-` will be printed for negative values, but no sign will be emitted
-    /// for positive numbers.
-    SignNeg
-}
-
-const DIGIT_E_RADIX: u32 = ('e' as u32) - ('a' as u32) + 11;
-
-/// Converts a number to its string representation as a byte vector.
-/// This is meant to be a common base implementation for all numeric string
-/// conversion functions like `to_string()` or `to_str_radix()`.
+/// Converts a float number to its string representation.
+/// This is meant to be a common base implementation for various formatting styles.
+/// The number is assumed to be non-negative, callers use `Formatter::pad_integral`
+/// to add the right sign, if any.
 ///
 /// # Arguments
 ///
-/// - `num`           - The number to convert. Accepts any number that
+/// - `num`           - The number to convert (non-negative). Accepts any number that
 ///                     implements the numeric traits.
-/// - `radix`         - Base to use. Accepts only the values 2-36. If the exponential notation
-///                     is used, then this base is only used for the significand. The exponent
-///                     itself always printed using a base of 10.
-/// - `negative_zero` - Whether to treat the special value `-0` as
-///                     `-0` or as `+0`.
-/// - `sign`          - How to emit the sign. See `SignFormat`.
 /// - `digits`        - The amount of digits to use for emitting the fractional
 ///                     part, if any. See `SignificantDigits`.
 /// - `exp_format`   - Whether or not to use the exponential (scientific) notation.
 ///                    See `ExponentFormat`.
 /// - `exp_capital`   - Whether or not to use a capital letter for the exponent sign, if
 ///                     exponential notation is desired.
-/// - `f`             - A closure to invoke with the bytes representing the
+/// - `f`             - A closure to invoke with the string representing the
 ///                     float.
 ///
 /// # Panics
 ///
-/// - Panics if `radix` < 2 or `radix` > 36.
-/// - Panics if `radix` > 14 and `exp_format` is `ExpDec` due to conflict
-///   between digit and exponent sign `'e'`.
-/// - Panics if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
-///   between digit and exponent sign `'p'`.
+/// - Panics if `num` is negative.
 pub fn float_to_str_bytes_common<T: Float, U, F>(
     num: T,
-    radix: u32,
-    negative_zero: bool,
-    sign: SignFormat,
     digits: SignificantDigits,
     exp_format: ExponentFormat,
     exp_upper: bool,
@@ -97,16 +72,12 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
 ) -> U where
     F: FnOnce(&str) -> U,
 {
-    assert!(2 <= radix && radix <= 36);
-    match exp_format {
-        ExpDec if radix >= DIGIT_E_RADIX       // decimal exponent 'e'
-          => panic!("float_to_str_bytes_common: radix {} incompatible with \
-                    use of 'e' as decimal exponent", radix),
-        _ => ()
-    }
-
     let _0: T = Float::zero();
     let _1: T = Float::one();
+    let radix: u32 = 10;
+    let radix_f: T = cast(radix).unwrap();
+
+    assert!(num.is_nan() || num >= _0, "float_to_str_bytes_common: number is negative");
 
     match num.classify() {
         Fp::Nan => return f("NaN"),
@@ -119,41 +90,28 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
         _ => {}
     }
 
-    let neg = num < _0 || (negative_zero && _1 / num == Float::neg_infinity());
-    // For an f64 the exponent is in the range of [-1022, 1023] for base 2, so
-    // we may have up to that many digits. Give ourselves some extra wiggle room
-    // otherwise as well.
-    let mut buf = [0; 1536];
+    // For an f64 the (decimal) exponent is roughly in the range of [-307, 308], so
+    // we may have up to that many digits. We err on the side of caution and
+    // add 50% extra wiggle room.
+    let mut buf = [0; 462];
     let mut end = 0;
-    let radix_gen: T = cast(radix as isize).unwrap();
 
     let (num, exp) = match exp_format {
-        ExpNone => (num, 0),
-        ExpDec if num == _0 => (num, 0),
-        ExpDec => {
-            let (exp, exp_base) = match exp_format {
-                ExpDec => (num.abs().log10().floor(), cast::<f64, T>(10.0f64).unwrap()),
-                ExpNone => panic!("unreachable"),
-            };
-
-            (num / exp_base.powf(exp), cast::<T, i32>(exp).unwrap())
+        ExpDec if num != _0 => {
+            let exp = num.log10().floor();
+            (num / radix_f.powf(exp), cast::<T, i32>(exp).unwrap())
         }
+        _ => (num, 0)
     };
 
     // First emit the non-fractional part, looping at least once to make
     // sure at least a `0` gets emitted.
     let mut deccum = num.trunc();
     loop {
-        // Calculate the absolute value of each digit instead of only
-        // doing it once for the whole number because a
-        // representable negative number doesn't necessary have an
-        // representable additive inverse of the same type
-        // (See twos complement). But we assume that for the
-        // numbers [-35 .. 0] we always have [0 .. 35].
-        let current_digit = (deccum % radix_gen).abs();
+        let current_digit = deccum % radix_f;
 
         // Decrease the deccumulator one digit at a time
-        deccum = deccum / radix_gen;
+        deccum = deccum / radix_f;
         deccum = deccum.trunc();
 
         let c = char::from_digit(current_digit.to_isize().unwrap() as u32, radix);
@@ -169,15 +127,6 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
         DigMax(count)   => (true, count + 1, false),
         DigExact(count) => (true, count + 1, true)
     };
-
-    // Decide what sign to put in front
-    match sign {
-        SignNeg if neg => {
-            buf[end] = b'-';
-            end += 1;
-        }
-        _ => ()
-    }
 
     buf[..end].reverse();
 
@@ -205,14 +154,11 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
               )
         ) {
             // Shift first fractional digit into the integer part
-            deccum = deccum * radix_gen;
+            deccum = deccum * radix_f;
 
-            // Calculate the absolute value of each digit.
-            // See note in first loop.
-            let current_digit = deccum.trunc().abs();
+            let current_digit = deccum.trunc();
 
-            let c = char::from_digit(current_digit.to_isize().unwrap() as u32,
-                                     radix);
+            let c = char::from_digit(current_digit.to_isize().unwrap() as u32, radix);
             buf[end] = c.unwrap() as u8;
             end += 1;
 
@@ -301,12 +247,8 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
 
     match exp_format {
         ExpNone => {},
-        _ => {
-            buf[end] = match exp_format {
-                ExpDec if exp_upper => 'E',
-                ExpDec if !exp_upper => 'e',
-                _ => panic!("unreachable"),
-            } as u8;
+        ExpDec => {
+            buf[end] = if exp_upper { b'E' } else { b'e' };
             end += 1;
 
             struct Filler<'a> {
@@ -324,11 +266,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
             }
 
             let mut filler = Filler { buf: &mut buf, end: &mut end };
-            match sign {
-                SignNeg => {
-                    let _ = fmt::write(&mut filler, format_args!("{:-}", exp));
-                }
-            }
+            let _ = fmt::write(&mut filler, format_args!("{:-}", exp));
         }
     }
 

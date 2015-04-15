@@ -13,124 +13,30 @@
 
 use prelude::v1::*;
 
-use ffi::CStr;
 use io::{self, ErrorKind};
 use libc;
 use num::{Int, SignedInt};
-use old_io::{self, IoError};
-use str;
-use sys_common::mkerr_libc;
 
 pub mod backtrace;
 pub mod c;
 pub mod condvar;
 pub mod ext;
 pub mod fd;
-pub mod fs;  // support for std::old_io
-pub mod fs2; // support for std::fs
-pub mod helper_signal;
+pub mod fs2;
 pub mod mutex;
 pub mod net;
 pub mod os;
 pub mod os_str;
-pub mod pipe;
 pub mod pipe2;
-pub mod process;
 pub mod process2;
 pub mod rwlock;
 pub mod stack_overflow;
 pub mod sync;
-pub mod tcp;
 pub mod thread;
 pub mod thread_local;
 pub mod time;
-pub mod timer;
-pub mod tty;
-pub mod udp;
 pub mod stdio;
 
-pub mod addrinfo {
-    pub use sys_common::net::get_host_addresses;
-    pub use sys_common::net::get_address_name;
-}
-
-// FIXME: move these to c module
-pub type sock_t = self::fs::fd_t;
-pub type wrlen = libc::size_t;
-pub type msglen_t = libc::size_t;
-pub unsafe fn close_sock(sock: sock_t) { let _ = libc::close(sock); }
-
-#[allow(deprecated)]
-pub fn last_error() -> IoError {
-    decode_error_detailed(os::errno() as i32)
-}
-
-#[allow(deprecated)]
-pub fn last_net_error() -> IoError {
-    last_error()
-}
-
-extern "system" {
-    fn gai_strerror(errcode: libc::c_int) -> *const libc::c_char;
-}
-
-#[allow(deprecated)]
-pub fn last_gai_error(s: libc::c_int) -> IoError {
-
-    let mut err = decode_error(s);
-    err.detail = Some(unsafe {
-        let data = CStr::from_ptr(gai_strerror(s));
-        str::from_utf8(data.to_bytes()).unwrap().to_string()
-    });
-    err
-}
-
-/// Convert an `errno` value into a high-level error variant and description.
-#[allow(deprecated)]
-pub fn decode_error(errno: i32) -> IoError {
-    // FIXME: this should probably be a bit more descriptive...
-    let (kind, desc) = match errno {
-        libc::EOF => (old_io::EndOfFile, "end of file"),
-        libc::ECONNREFUSED => (old_io::ConnectionRefused, "connection refused"),
-        libc::ECONNRESET => (old_io::ConnectionReset, "connection reset"),
-        libc::EPERM | libc::EACCES =>
-            (old_io::PermissionDenied, "permission denied"),
-        libc::EPIPE => (old_io::BrokenPipe, "broken pipe"),
-        libc::ENOTCONN => (old_io::NotConnected, "not connected"),
-        libc::ECONNABORTED => (old_io::ConnectionAborted, "connection aborted"),
-        libc::EADDRNOTAVAIL => (old_io::ConnectionRefused, "address not available"),
-        libc::EADDRINUSE => (old_io::ConnectionRefused, "address in use"),
-        libc::ENOENT => (old_io::FileNotFound, "no such file or directory"),
-        libc::EISDIR => (old_io::InvalidInput, "illegal operation on a directory"),
-        libc::ENOSYS => (old_io::IoUnavailable, "function not implemented"),
-        libc::EINVAL => (old_io::InvalidInput, "invalid argument"),
-        libc::ENOTTY =>
-            (old_io::MismatchedFileTypeForOperation,
-             "file descriptor is not a TTY"),
-        libc::ETIMEDOUT => (old_io::TimedOut, "operation timed out"),
-        libc::ECANCELED => (old_io::TimedOut, "operation aborted"),
-        libc::consts::os::posix88::EEXIST =>
-            (old_io::PathAlreadyExists, "path already exists"),
-
-        // These two constants can have the same value on some systems,
-        // but different values on others, so we can't use a match
-        // clause
-        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
-            (old_io::ResourceUnavailable, "resource temporarily unavailable"),
-
-        _ => (old_io::OtherIoError, "unknown error")
-    };
-    IoError { kind: kind, desc: desc, detail: None }
-}
-
-#[allow(deprecated)]
-pub fn decode_error_detailed(errno: i32) -> IoError {
-    let mut err = decode_error(errno);
-    err.detail = Some(os::error_string(errno));
-    err
-}
-
-#[allow(deprecated)]
 pub fn decode_error_kind(errno: i32) -> ErrorKind {
     match errno as libc::c_int {
         libc::ECONNREFUSED => ErrorKind::ConnectionRefused,
@@ -199,18 +105,3 @@ pub fn ms_to_timeval(ms: u64) -> libc::timeval {
         tv_usec: ((ms % 1000) * 1000) as libc::suseconds_t,
     }
 }
-
-#[allow(deprecated)]
-pub fn wouldblock() -> bool {
-    let err = os::errno();
-    err == libc::EWOULDBLOCK as i32 || err == libc::EAGAIN as i32
-}
-
-#[allow(deprecated)]
-pub fn set_nonblocking(fd: sock_t, nb: bool) {
-    let set = nb as libc::c_int;
-    mkerr_libc(retry(|| unsafe { c::ioctl(fd, c::FIONBIO, &set) })).unwrap();
-}
-
-// nothing needed on unix platforms
-pub fn init_net() {}

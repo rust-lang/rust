@@ -130,10 +130,10 @@ struct Output {
 
 pub fn main() {
     const STACK_SIZE: usize = 32000000; // 32MB
-    let res = std::thread::Builder::new().stack_size(STACK_SIZE).scoped(move || {
+    let res = std::thread::Builder::new().stack_size(STACK_SIZE).spawn(move || {
         let s = env::args().collect::<Vec<_>>();
         main_args(&s)
-    }).unwrap().join();
+    }).unwrap().join().unwrap();
     env::set_exit_status(res as i32);
 }
 

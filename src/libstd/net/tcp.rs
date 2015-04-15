@@ -82,7 +82,7 @@ pub struct TcpListener(net_imp::TcpListener);
 pub struct Incoming<'a> { listener: &'a TcpListener }
 
 impl TcpStream {
-    /// Open a TCP connection to a remote host.
+    /// Opens a TCP connection to a remote host.
     ///
     /// `addr` is an address of the remote host. Anything which implements
     /// `ToSocketAddrs` trait can be supplied for the address; see this trait
@@ -104,7 +104,7 @@ impl TcpStream {
         self.0.socket_addr()
     }
 
-    /// Shut down the read, write, or both halves of this connection.
+    /// Shuts down the read, write, or both halves of this connection.
     ///
     /// This function will cause all pending and future I/O on the specified
     /// portions to return immediately with an appropriate value (see the
@@ -114,7 +114,7 @@ impl TcpStream {
         self.0.shutdown(how)
     }
 
-    /// Create a new independently owned handle to the underlying socket.
+    /// Creates a new independently owned handle to the underlying socket.
     ///
     /// The returned `TcpStream` is a reference to the same stream that this
     /// object references. Both handles will read and write the same stream of
@@ -190,7 +190,7 @@ impl TcpListener {
         self.0.socket_addr()
     }
 
-    /// Create a new independently owned handle to the underlying socket.
+    /// Creates a new independently owned handle to the underlying socket.
     ///
     /// The returned `TcpListener` is a reference to the same socket that this
     /// object references. Both handles can be used to accept incoming

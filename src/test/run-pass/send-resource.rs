@@ -32,7 +32,7 @@ fn test(f: isize) -> test {
 pub fn main() {
     let (tx, rx) = channel();
 
-    let _t = thread::scoped(move|| {
+    let t = thread::spawn(move|| {
         let (tx2, rx2) = channel();
         tx.send(tx2).unwrap();
 
@@ -40,4 +40,6 @@ pub fn main() {
     });
 
     rx.recv().unwrap().send(test(42)).unwrap();
+
+    t.join();
 }

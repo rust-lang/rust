@@ -9,11 +9,11 @@
 // except according to those terms.
 
 
-#![feature(libc, old_io)]
+#![feature(libc)]
 
 extern crate libc;
 
-use std::old_io::process::Command;
+use std::process::Command;
 
 use libc::funcs::posix88::unistd;
 
@@ -38,7 +38,7 @@ fn find_zombies() {
 
     // http://pubs.opengroup.org/onlinepubs/9699919799/utilities/ps.html
     let ps_cmd_output = Command::new("ps").args(&["-A", "-o", "pid,ppid,args"]).output().unwrap();
-    let ps_output = String::from_utf8_lossy(&ps_cmd_output.output);
+    let ps_output = String::from_utf8_lossy(&ps_cmd_output.stdout);
 
     for (line_no, line) in ps_output.split('\n').enumerate() {
         if 0 < line_no && 0 < line.len() &&
@@ -59,7 +59,7 @@ fn main() {
     let too_long = format!("/NoSuchCommand{:0300}", 0u8);
 
     let _failures = (0..100).map(|_| {
-        let cmd = Command::new(&too_long);
+        let mut cmd = Command::new(&too_long);
         let failed = cmd.spawn();
         assert!(failed.is_err(), "Make sure the command fails to spawn(): {:?}", cmd);
         failed

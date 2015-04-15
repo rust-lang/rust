@@ -26,7 +26,7 @@ const SIZE: usize = 1024 * 1024;
 
 fn main() {
     // do the test in a new thread to avoid (spurious?) stack overflows
-    let _ = thread::scoped(|| {
+    thread::spawn(|| {
         let _memory: [u8; SIZE] = unsafe { init() };
     }).join();
 }

@@ -750,7 +750,7 @@ impl<T> Receiver<T> {
         }
     }
 
-    /// Attempt to wait for a value on this receiver, returning an error if the
+    /// Attempts to wait for a value on this receiver, returning an error if the
     /// corresponding channel has hung up.
     ///
     /// This function will always block the current thread if there is no data

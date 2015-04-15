@@ -123,7 +123,7 @@ pub struct WalkDir {
 /// Opening a file for both reading and writing, as well as creating it if it
 /// doesn't exist:
 ///
-/// ```
+/// ```no_run
 /// use std::fs::OpenOptions;
 ///
 /// let file = OpenOptions::new()
@@ -171,7 +171,7 @@ impl File {
         OpenOptions::new().read(true).open(path)
     }
 
-    /// Open a file in write-only mode.
+    /// Opens a file in write-only mode.
     ///
     /// This function will create a file if it does not exist,
     /// and will truncate it if it does.
@@ -201,7 +201,7 @@ impl File {
         self.path.as_ref().map(|p| &**p)
     }
 
-    /// Attempt to sync all OS-internal metadata to disk.
+    /// Attempts to sync all OS-internal metadata to disk.
     ///
     /// This function will attempt to ensure that all in-core data reaches the
     /// filesystem before returning.
@@ -362,7 +362,7 @@ impl OpenOptions {
         OpenOptions(fs_imp::OpenOptions::new())
     }
 
-    /// Set the option for read access.
+    /// Sets the option for read access.
     ///
     /// This option, when true, will indicate that the file should be
     /// `read`-able if opened.
@@ -379,7 +379,7 @@ impl OpenOptions {
         self.0.read(read); self
     }
 
-    /// Set the option for write access.
+    /// Sets the option for write access.
     ///
     /// This option, when true, will indicate that the file should be
     /// `write`-able if opened.
@@ -396,7 +396,7 @@ impl OpenOptions {
         self.0.write(write); self
     }
 
-    /// Set the option for the append mode.
+    /// Sets the option for the append mode.
     ///
     /// This option, when true, means that writes will append to a file instead
     /// of overwriting previous contents.
@@ -413,7 +413,7 @@ impl OpenOptions {
         self.0.append(append); self
     }
 
-    /// Set the option for truncating a previous file.
+    /// Sets the option for truncating a previous file.
     ///
     /// If a file is successfully opened with this option set it will truncate
     /// the file to 0 length if it already exists.
@@ -430,7 +430,7 @@ impl OpenOptions {
         self.0.truncate(truncate); self
     }
 
-    /// Set the option for creating a new file.
+    /// Sets the option for creating a new file.
     ///
     /// This option indicates whether a new file will be created if the file
     /// does not yet already exist.
@@ -447,7 +447,7 @@ impl OpenOptions {
         self.0.create(create); self
     }
 
-    /// Open a file at `path` with the options specified by `self`.
+    /// Opens a file at `path` with the options specified by `self`.
     ///
     /// # Errors
     ///
@@ -587,7 +587,7 @@ impl Permissions {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn readonly(&self) -> bool { self.0.readonly() }
 
-    /// Modify the readonly flag for this set of permissions.
+    /// Modifies the readonly flag for this set of permissions.
     ///
     /// This operation does **not** modify the filesystem. To modify the
     /// filesystem use the `fs::set_permissions` function.
@@ -670,7 +670,7 @@ impl DirEntry {
     pub fn path(&self) -> PathBuf { self.0.path() }
 }
 
-/// Remove a file from the underlying filesystem.
+/// Removes a file from the underlying filesystem.
 ///
 /// Note that, just because an unlink call was successful, it is not
 /// guaranteed that a file is immediately deleted (e.g. depending on
@@ -856,7 +856,7 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     fs_imp::readlink(path.as_ref())
 }
 
-/// Create a new, empty directory at the provided path
+/// Creates a new, empty directory at the provided path
 ///
 /// # Errors
 ///
@@ -906,7 +906,7 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     create_dir(path)
 }
 
-/// Remove an existing, empty directory
+/// Removes an existing, empty directory.
 ///
 /// # Errors
 ///
@@ -1058,7 +1058,7 @@ impl Iterator for WalkDir {
            reason = "the precise set of methods exposed on this trait may \
                      change and some methods may be removed")]
 pub trait PathExt {
-    /// Get information on the file, directory, etc at this path.
+    /// Gets information on the file, directory, etc at this path.
     ///
     /// Consult the `fs::stat` documentation for more info.
     ///
@@ -1195,7 +1195,8 @@ mod tests {
 
     pub fn tmpdir() -> TempDir {
         let p = env::temp_dir();
-        let ret = p.join(&format!("rust-{}", rand::random::<u32>()));
+        let mut r = rand::thread_rng();
+        let ret = p.join(&format!("rust-{}", r.next_u32()));
         check!(fs::create_dir(&ret));
         TempDir(ret)
     }

@@ -38,13 +38,13 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![feature(simd, old_io, core, io)]
+#![feature(simd, core)]
 
 // ignore-pretty very bad with line comments
 
-use std::old_io;
-use std::old_io::*;
 use std::env;
+use std::io::prelude::*;
+use std::io;
 use std::simd::f64x2;
 use std::sync::Arc;
 use std::thread;
@@ -53,8 +53,7 @@ const ITER: usize = 50;
 const LIMIT: f64 = 2.0;
 const WORKERS: usize = 16;
 
-#[inline(always)]
-fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
+fn mandelbrot<W: Write>(w: usize, mut out: W) -> io::Result<()> {
     assert!(WORKERS % 2 == 0);
 
     // Ensure w and h are multiples of 8.
@@ -82,7 +81,7 @@ fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
     let mut precalc_i = Vec::with_capacity(h);
 
     let precalc_futures = (0..WORKERS).map(|i| {
-        thread::scoped(move|| {
+        thread::spawn(move|| {
             let mut rs = Vec::with_capacity(w / WORKERS);
             let mut is = Vec::with_capacity(w / WORKERS);
 
@@ -108,7 +107,7 @@ fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
     }).collect::<Vec<_>>();
 
     for res in precalc_futures {
-        let (rs, is) = res.join();
+        let (rs, is) = res.join().unwrap();
         precalc_r.extend(rs.into_iter());
         precalc_i.extend(is.into_iter());
     }
@@ -123,7 +122,7 @@ fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
         let vec_init_r = arc_init_r.clone();
         let vec_init_i = arc_init_i.clone();
 
-        thread::scoped(move|| {
+        thread::spawn(move|| {
             let mut res: Vec<u8> = Vec::with_capacity((chunk_size * w) / 8);
             let init_r_slice = vec_init_r;
 
@@ -142,9 +141,9 @@ fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
         })
     }).collect::<Vec<_>>();
 
-    try!(writeln!(&mut out as &mut Writer, "P4\n{} {}", w, h));
+    try!(writeln!(&mut out, "P4\n{} {}", w, h));
     for res in data {
-        try!(out.write(&res.join()));
+        try!(out.write_all(&res.join().unwrap()));
     }
     out.flush()
 }
@@ -202,9 +201,9 @@ fn main() {
     let res = if args.len() < 2 {
         println!("Test mode: do not dump the image because it's not utf8, \
                   which interferes with the test runner.");
-        mandelbrot(1000, old_io::util::NullWriter)
+        mandelbrot(1000, io::sink())
     } else {
-        mandelbrot(args.nth(1).unwrap().parse().unwrap(), old_io::stdout())
+        mandelbrot(args.nth(1).unwrap().parse().unwrap(), io::stdout())
     };
     res.unwrap();
 }

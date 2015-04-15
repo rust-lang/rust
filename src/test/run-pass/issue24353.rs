@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
-
-#![feature(old_io, std_misc)]
-
-use std::time::Duration;
-use std::thread;
-
 fn main() {
-    thread::spawn(move|| customtask()).join().ok().unwrap();
-}
+    return ();
 
-fn customtask() {
-    let mut timer = std::old_io::timer::Timer::new().unwrap();
-    let periodic = timer.periodic(Duration::milliseconds(10));
-    periodic.recv();
+    let x = ();
+    x
 }
