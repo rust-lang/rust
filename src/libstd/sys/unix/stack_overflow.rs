@@ -81,7 +81,7 @@ mod imp {
         // We're calling into functions with stack checks
         stack::record_sp_limit(0);
 
-        let guard = thread_info::stack_guard();
+        let guard = thread_info::stack_guard().unwrap_or(0);
         let addr = (*info).si_addr as usize;
 
         if guard == 0 || addr < guard - PAGE_SIZE || addr >= guard {

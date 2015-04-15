@@ -407,7 +407,9 @@ pub fn scoped<'a, T, F>(f: F) -> JoinGuard<'a, T> where
 /// Gets a handle to the thread that invokes it.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn current() -> Thread {
-    thread_info::current_thread()
+    thread_info::current_thread().expect("use of std::thread::current() is not \
+                                          possible after the thread's local \
+                                          data has been destroyed")
 }
 
 /// Cooperatively gives up a timeslice to the OS scheduler.
