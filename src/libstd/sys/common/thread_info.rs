@@ -25,10 +25,9 @@ struct ThreadInfo {
 thread_local! { static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(None) }
 
 impl ThreadInfo {
-    fn with<R, F>(f: F) -> R where F: FnOnce(&mut ThreadInfo) -> R {
+    fn with<R, F>(f: F) -> Option<R> where F: FnOnce(&mut ThreadInfo) -> R {
         if THREAD_INFO.state() == LocalKeyState::Destroyed {
-            panic!("Use of std::thread::current() is not possible after \
-                    the thread's local data has been destroyed");
+            return None
         }
 
         THREAD_INFO.with(move |c| {
@@ -38,16 +37,16 @@ impl ThreadInfo {
                     thread: NewThread::new(None),
                 })
             }
-            f(c.borrow_mut().as_mut().unwrap())
+            Some(f(c.borrow_mut().as_mut().unwrap()))
         })
     }
 }
 
-pub fn current_thread() -> Thread {
+pub fn current_thread() -> Option<Thread> {
     ThreadInfo::with(|info| info.thread.clone())
 }
 
-pub fn stack_guard() -> usize {
+pub fn stack_guard() -> Option<usize> {
     ThreadInfo::with(|info| info.stack_guard)
 }
 
