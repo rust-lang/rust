@@ -274,7 +274,7 @@ pub fn get_mut<T>(this: &mut Arc<T>) -> Option<&mut T> {
         // reference to the inner data.
         let inner = unsafe { &mut **this._ptr };
         Some(&mut inner.data)
-    }else {
+    } else {
         None
     }
 }
