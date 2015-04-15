@@ -675,16 +675,23 @@ pub fn ensure_not_fmt_string_literal<'cx>(cx: &'cx mut ExtCtxt,
     };
 
     // Second argument is the expression we are checking.
+    let warning = |cx: &ExtCtxt, c: char| {
+        cx.span_warn(sp, &format!("{} literal argument contains `{}`", name, c));
+        cx.span_note(sp, "Is it meant to be a `format!` string?");
+        cx.span_help(sp, "You can wrap the argument in parentheses \
+                          to sidestep this warning");
+    };
+
     let expr = match expr_string_lit(cx, arg2) {
         Err(expr) => {
             // input was not a string literal; just ignore it.
             expr
         }
+
         Ok((expr, lit_str, _style)) => {
-            let m = format!("{} input cannot be format string literal", name);
             for c in lit_str.chars() {
                 if c == '{' || c == '}' {
-                    cx.span_err(sp, &m);
+                    warning(cx, c);
                     break;
                 }
             }
@@ -693,6 +700,39 @@ pub fn ensure_not_fmt_string_literal<'cx>(cx: &'cx mut ExtCtxt,
             expr
         }
     };
+
+    let unstable_marker = cx.expr_path(cx.path_global(sp, vec![
+        cx.ident_of_std("core"),
+        cx.ident_of("fmt"),
+        cx.ident_of("ENSURE_NOT_FMT_STRING_LITERAL_IS_UNSTABLE")]));
+
+    // Total hack: We do not (yet) have hygienic-marking of stabilty.
+    // Thus an unstable macro (like `ensure_not_fmt_string!`) can leak
+    // through another macro (like `panic!`), where the latter is just
+    // using the former as an implementation detail.
+    //
+    // The `#[allow_internal_unstable]` system does not suffice to
+    // address this; it explicitly (as described on Issue #22899)
+    // disallows the use of unstable functionality via a helper macro
+    // like `ensure_not_fmt_string!`, by design.
+    //
+    // So, the hack: the `ensure_not_fmt_string!` macro has just one
+    // stable client: `panic!`.  So we give `panic!` a backdoor: we
+    // allow its name literal string to give it stable access. Any
+    // other argument that is passed in will cause us to emit the
+    // unstable-marker, which will then be checked against the enabled
+    // feature-set.
+    //
+    // This, combined with the awkward actual name of the unstable
+    // macro (hint: the real name is far more awkward than the one
+    // given in this comment) should suffice to ensure that people do
+    // not accidentally commit to using it.
+    let marker = if name == "unary `panic!`" {
+        cx.expr_tuple(sp, vec![]) // i.e. `()`
+    } else {
+        unstable_marker
+    };
+    let expr = cx.expr_tuple(sp, vec![marker, expr]);
 
     MacEager::expr(expr)
 }
