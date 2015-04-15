@@ -66,7 +66,7 @@ There are some shortcomings in this design:
 
 use astconv::{self, AstConv, ty_of_arg, ast_ty_to_ty, ast_region_to_region};
 use middle::def;
-use constrained_type_params::identify_constrained_type_params;
+use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::region;
 use middle::resolve_lifetime;
@@ -2200,23 +2200,21 @@ fn enforce_impl_ty_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
     // reachable from there, to start (if this is an inherent impl,
     // then just examine the self type).
     let mut input_parameters: HashSet<_> =
-        impl_trait_ref.iter()
-                      .flat_map(|t| t.input_types().iter()) // Types in trait ref, if any
-                      .chain(Some(impl_scheme.ty).iter())   // Self type, always
-                      .flat_map(|t| t.walk())
-                      .filter_map(|t| t.as_opt_param_ty())
-                      .collect();
+        ctp::parameters_for_type(impl_scheme.ty).into_iter().collect();
+    if let Some(ref trait_ref) = impl_trait_ref {
+        input_parameters.extend(ctp::parameters_for_trait_ref(trait_ref));
+    }
 
-    identify_constrained_type_params(tcx,
-                                     impl_predicates.predicates.as_slice(),
-                                     impl_trait_ref,
-                                     &mut input_parameters);
+    ctp::identify_constrained_type_params(tcx,
+                                          impl_predicates.predicates.as_slice(),
+                                          impl_trait_ref,
+                                          &mut input_parameters);
 
     for (index, ty_param) in ast_generics.ty_params.iter().enumerate() {
         let param_ty = ty::ParamTy { space: TypeSpace,
                                      idx: index as u32,
                                      name: ty_param.ident.name };
-        if !input_parameters.contains(&param_ty) {
+        if !input_parameters.contains(&ctp::Parameter::Type(param_ty)) {
             span_err!(tcx.sess, ty_param.span, E0207,
                 "the type parameter `{}` is not constrained by the \
                          impl trait, self type, or predicates",
