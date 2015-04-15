@@ -1972,7 +1972,7 @@ impl<'a> Parser<'a> {
                 }
                 try!(self.bump());
 
-                hi = self.span.hi;
+                hi = self.last_span.hi;
                 return if es.len() == 1 && !trailing_comma {
                     Ok(self.mk_expr(lo, hi, ExprParen(es.into_iter().nth(0).unwrap())))
                 } else {
