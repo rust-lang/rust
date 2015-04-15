@@ -55,15 +55,17 @@ underscore `_` wildcard pattern can be added after all other patterns to match
 
 // FIXME: Remove duplication here?
 E0005: r##"
-Patterns used to bind names must be irrefutable, that is, they must guarantee that a
-name will be extracted in all cases. If you encounter this error you probably need
-to use a `match` or `if let` to deal with the possibility of failure.
+Patterns used to bind names must be irrefutable, that is, they must guarantee
+that a name will be extracted in all cases. If you encounter this error you
+probably need to use a `match` or `if let` to deal with the possibility of
+failure.
 "##,
 
 E0006: r##"
-Patterns used to bind names must be irrefutable, that is, they must guarantee that a
-name will be extracted in all cases. If you encounter this error you probably need
-to use a `match` or `if let` to deal with the possibility of failure.
+Patterns used to bind names must be irrefutable, that is, they must guarantee
+that a name will be extracted in all cases. If you encounter this error you
+probably need to use a `match` or `if let` to deal with the possibility of
+failure.
 "##,
 
 E0007: r##"
