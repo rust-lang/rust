@@ -19,7 +19,7 @@ ideas behind Rust.
 donated to the Rust project. As the name implies, it teaches you Rust through a
 series of small examples.
 
-[rbe]: rustbyexample.com
+[rbe]: http://rustbyexample.com/
 
 # Community & Getting Help
 
