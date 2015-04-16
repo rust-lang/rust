@@ -437,7 +437,7 @@ pub struct MethodObject<'tcx> {
     pub vtable_index: usize,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MethodCallee<'tcx> {
     pub origin: MethodOrigin<'tcx>,
     pub ty: Ty<'tcx>,
