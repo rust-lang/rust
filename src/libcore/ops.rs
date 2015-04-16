@@ -969,7 +969,7 @@ pub struct RangeFull;
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for RangeFull {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt("..", fmt)
+        write!(fmt, "..")
     }
 }
 
