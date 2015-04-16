@@ -37,6 +37,7 @@ pub use self::Count::*;
 
 use std::str;
 use std::string;
+use std::fmt::FlagV2;
 
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
@@ -104,17 +105,18 @@ pub enum Alignment {
 /// Various flags which can be applied to format strings. The meaning of these
 /// flags is defined by the formatters themselves.
 #[derive(Copy, Clone, PartialEq)]
+#[repr(C)]
 pub enum Flag {
     /// A `+` will be used to denote positive numbers.
-    FlagSignPlus,
+    FlagSignPlus = FlagV2::SIGN_PLUS,
     /// A `-` will be used to denote negative numbers. This is the default.
-    FlagSignMinus,
+    FlagSignMinus = FlagV2::SIGN_MINUS,
     /// An alternate form will be used for the value. In the case of numbers,
     /// this means that the number will be prefixed with the supplied string.
-    FlagAlternate,
+    FlagAlternate = FlagV2::ALTERNATE,
     /// For numbers, this means that the number will be padded with zeroes,
     /// and the sign (`+` or `-`) will precede them.
-    FlagSignAwareZeroPad,
+    FlagSignAwareZeroPad = FlagV2::SIGN_AWARE_ZERO_PAD,
 }
 
 /// A count is used for the precision and width parameters of an integer, and
@@ -315,13 +317,13 @@ impl<'a> Parser<'a> {
         }
         // Sign flags
         if self.consume('+') {
-            spec.flags |= 1 << (FlagSignPlus as u32);
+            spec.flags |= FlagSignPlus;
         } else if self.consume('-') {
-            spec.flags |= 1 << (FlagSignMinus as u32);
+            spec.flags |= FlagSignMinus;
         }
         // Alternate marker
         if self.consume('#') {
-            spec.flags |= 1 << (FlagAlternate as u32);
+            spec.flags |= FlagAlternate;
         }
         // Width and precision
         let mut havewidth = false;
@@ -334,7 +336,7 @@ impl<'a> Parser<'a> {
                 spec.width = CountIsParam(0);
                 havewidth = true;
             } else {
-                spec.flags |= 1 << (FlagSignAwareZeroPad as u32);
+                spec.flags |= FlagSignAwareZeroPad;
             }
         }
         if !havewidth {
@@ -618,7 +620,7 @@ mod tests {
             format: FormatSpec {
                 fill: None,
                 align: AlignUnknown,
-                flags: (1 << FlagSignMinus as u32),
+                flags: FlagSignMinus,
                 precision: CountImplied,
                 width: CountImplied,
                 ty: "",
@@ -629,7 +631,7 @@ mod tests {
             format: FormatSpec {
                 fill: None,
                 align: AlignUnknown,
-                flags: (1 << FlagSignPlus as u32) | (1 << FlagAlternate as u32),
+                flags: FlagSignPlus | FlagAlternate,
                 precision: CountImplied,
                 width: CountImplied,
                 ty: "",
