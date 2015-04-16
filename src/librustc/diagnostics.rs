@@ -114,6 +114,11 @@ reference when using guards or refactor the entire expression, perhaps by
 putting the condition inside the body of the arm.
 "##,
 
+E0020: r##"
+This error indicates that an attempt was made to divide by zero (or take the
+remainder of a zero divisor) in a static or constant expression.
+"##,
+
 E0152: r##"
 Lang items are already implemented in the standard library. Unless you are
 writing a free-standing application (e.g. a kernel), you do not need to provide
@@ -343,7 +348,6 @@ register_diagnostics! {
     E0017,
     E0018,
     E0019,
-    E0020,
     E0022,
     E0079, // enum variant: expected signed integer constant
     E0080, // enum variant: constant evaluation error
