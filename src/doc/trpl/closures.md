@@ -205,11 +205,11 @@ you tons of control over what your code does, and closures are no different.
 
 Rust's implementation of closures is a bit different than other languages. They
 are effectively syntax sugar for traits. You'll want to make sure to have read
-the [traits chapter][traits] before this one, as well as the chapter on [static
-and dynamic dispatch][dispatch], which talks about trait objects.
+the [traits chapter][traits] before this one, as well as the chapter on [trait
+objects][trait-objects].
 
 [traits]: traits.html
-[dispatch]: static-and-dynamic-dispatch.html
+[trait-objects]: trait-objects.html
 
 Got all that? Good.
 
