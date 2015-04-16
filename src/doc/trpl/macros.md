@@ -33,7 +33,7 @@ mind.
 You may have seen the `vec!` macro, used to initialize a [vector][] with any
 number of elements.
 
-[vector]: arrays-vectors-and-slices.html
+[vector]: vectors.html
 
 ```rust
 let x: Vec<u32> = vec![1, 2, 3];
