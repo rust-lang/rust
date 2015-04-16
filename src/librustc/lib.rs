@@ -40,6 +40,7 @@
 #![feature(path_ext)]
 #![feature(str_char)]
 #![feature(into_cow)]
+#![feature(fs_canonicalize)]
 #![feature(slice_patterns)]
 #![cfg_attr(test, feature(test))]
 
@@ -139,7 +140,6 @@ pub mod plugin;
 pub mod lint;
 
 pub mod util {
-    pub use rustc_back::fs;
     pub use rustc_back::sha2;
 
     pub mod common;

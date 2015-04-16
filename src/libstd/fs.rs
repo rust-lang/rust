@@ -20,6 +20,7 @@
 use core::prelude::*;
 
 use fmt;
+use ffi::OsString;
 use io::{self, Error, ErrorKind, SeekFrom, Seek, Read, Write};
 use path::{Path, PathBuf};
 use sys::fs2 as fs_imp;
@@ -145,6 +146,11 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Permissions(fs_imp::FilePermissions);
+
+/// An structure representing a type of file with accessors for each file type.
+#[unstable(feature = "file_type", reason = "recently added API")]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct FileType(fs_imp::FileType);
 
 impl File {
     /// Attempts to open a file in read-only mode.
@@ -485,6 +491,12 @@ impl AsInnerMut<fs_imp::OpenOptions> for OpenOptions {
 }
 
 impl Metadata {
+    /// Returns the file type for this metadata.
+    #[unstable(feature = "file_type", reason = "recently added API")]
+    pub fn file_type(&self) -> FileType {
+        FileType(self.0.file_type())
+    }
+
     /// Returns whether this metadata is for a directory.
     ///
     /// # Examples
@@ -500,7 +512,7 @@ impl Metadata {
     /// # }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_dir(&self) -> bool { self.0.is_dir() }
+    pub fn is_dir(&self) -> bool { self.file_type().is_dir() }
 
     /// Returns whether this metadata is for a regular file.
     ///
@@ -517,7 +529,7 @@ impl Metadata {
     /// # }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_file(&self) -> bool { self.0.is_file() }
+    pub fn is_file(&self) -> bool { self.file_type().is_file() }
 
     /// Returns the size of the file, in bytes, this metadata is for.
     ///
@@ -562,7 +574,11 @@ impl Metadata {
                reason = "the return type of u64 is not quite appropriate for \
                          this method and may change if the standard library \
                          gains a type to represent a moment in time")]
-    pub fn accessed(&self) -> u64 { self.0.accessed() }
+    #[deprecated(since = "1.1.0",
+                 reason = "use os::platform::fs::MetadataExt extension traits")]
+    pub fn accessed(&self) -> u64 {
+        self.adjust_time(self.0.accessed())
+    }
 
     /// Returns the most recent modification time for a file.
     ///
@@ -571,7 +587,21 @@ impl Metadata {
                reason = "the return type of u64 is not quite appropriate for \
                          this method and may change if the standard library \
                          gains a type to represent a moment in time")]
-    pub fn modified(&self) -> u64 { self.0.modified() }
+    #[deprecated(since = "1.1.0",
+                 reason = "use os::platform::fs::MetadataExt extension traits")]
+    pub fn modified(&self) -> u64 {
+        self.adjust_time(self.0.modified())
+    }
+
+    fn adjust_time(&self, val: u64) -> u64 {
+        // FILETIME (what `val` represents) is in 100ns intervals and there are
+        // 10000 intervals in a millisecond.
+        if cfg!(windows) {val / 10000} else {val}
+    }
+}
+
+impl AsInner<fs_imp::FileAttr> for Metadata {
+    fn as_inner(&self) -> &fs_imp::FileAttr { &self.0 }
 }
 
 impl Permissions {
@@ -624,6 +654,18 @@ impl Permissions {
     }
 }
 
+#[unstable(feature = "file_type", reason = "recently added API")]
+impl FileType {
+    /// Test whether this file type represents a directory.
+    pub fn is_dir(&self) -> bool { self.0.is_dir() }
+
+    /// Test whether this file type represents a regular file.
+    pub fn is_file(&self) -> bool { self.0.is_file() }
+
+    /// Test whether this file type represents a symbolic link.
+    pub fn is_symlink(&self) -> bool { self.0.is_symlink() }
+}
+
 impl FromInner<fs_imp::FilePermissions> for Permissions {
     fn from_inner(f: fs_imp::FilePermissions) -> Permissions {
         Permissions(f)
@@ -674,6 +716,47 @@ impl DirEntry {
     /// The exact text, of course, depends on what files you have in `.`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn path(&self) -> PathBuf { self.0.path() }
+
+    /// Return the metadata for the file that this entry points at.
+    ///
+    /// This function will not traverse symlinks if this entry points at a
+    /// symlink.
+    ///
+    /// # Platform behavior
+    ///
+    /// On Windows this function is cheap to call (no extra system calls
+    /// needed), but on Unix platforms this function is the equivalent of
+    /// calling `symlink_metadata` on the path.
+    #[unstable(feature = "dir_entry_ext", reason = "recently added API")]
+    pub fn metadata(&self) -> io::Result<Metadata> {
+        self.0.metadata().map(Metadata)
+    }
+
+    /// Return the file type for the file that this entry points at.
+    ///
+    /// This function will not traverse symlinks if this entry points at a
+    /// symlink.
+    ///
+    /// # Platform behavior
+    ///
+    /// On Windows and most Unix platforms this function is free (no extra
+    /// system calls needed), but some Unix platforms may require the equivalent
+    /// call to `symlink_metadata` to learn about the target file type.
+    #[unstable(feature = "dir_entry_ext", reason = "recently added API")]
+    pub fn file_type(&self) -> io::Result<FileType> {
+        self.0.file_type().map(FileType)
+    }
+
+    /// Returns the bare file name of this directory entry without any other
+    /// leading path component.
+    #[unstable(feature = "dir_entry_ext", reason = "recently added API")]
+    pub fn file_name(&self) -> OsString {
+        self.0.file_name()
+    }
+}
+
+impl AsInner<fs_imp::DirEntry> for DirEntry {
+    fn as_inner(&self) -> &fs_imp::DirEntry { &self.0 }
 }
 
 /// Removes a file from the underlying filesystem.
@@ -729,6 +812,25 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
     fs_imp::stat(path.as_ref()).map(Metadata)
+}
+
+/// Query the metadata about a file without following symlinks.
+///
+/// # Examples
+///
+/// ```rust
+/// #![feature(symlink_metadata)]
+/// # fn foo() -> std::io::Result<()> {
+/// use std::fs;
+///
+/// let attr = try!(fs::symlink_metadata("/some/file/path.txt"));
+/// // inspect attr ...
+/// # Ok(())
+/// # }
+/// ```
+#[unstable(feature = "symlink_metadata", reason = "recently added API")]
+pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
+    fs_imp::lstat(path.as_ref()).map(Metadata)
 }
 
 /// Rename a file or directory to a new name.
@@ -869,6 +971,13 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     fs_imp::readlink(path.as_ref())
 }
 
+/// Returns the canonical form of a path with all intermediate components
+/// normalized and symbolic links resolved.
+#[unstable(feature = "fs_canonicalize", reason = "recently added API")]
+pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
+    fs_imp::canonicalize(path.as_ref())
+}
+
 /// Creates a new, empty directory at the provided path
 ///
 /// # Errors
@@ -966,19 +1075,14 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
     let path = path.as_ref();
     for child in try!(read_dir(path)) {
         let child = try!(child).path();
-        let stat = try!(lstat(&*child));
+        let stat = try!(symlink_metadata(&*child));
         if stat.is_dir() {
             try!(remove_dir_all(&*child));
         } else {
             try!(remove_file(&*child));
         }
     }
-    return remove_dir(path);
-
-    #[cfg(unix)]
-    fn lstat(path: &Path) -> io::Result<fs_imp::FileAttr> { fs_imp::lstat(path) }
-    #[cfg(windows)]
-    fn lstat(path: &Path) -> io::Result<fs_imp::FileAttr> { fs_imp::stat(path) }
+    remove_dir(path)
 }
 
 /// Returns an iterator over the entries within a directory.
@@ -1073,10 +1177,36 @@ impl Iterator for WalkDir {
 pub trait PathExt {
     /// Gets information on the file, directory, etc at this path.
     ///
-    /// Consult the `fs::stat` documentation for more info.
+    /// Consult the `fs::metadata` documentation for more info.
     ///
-    /// This call preserves identical runtime/error semantics with `file::stat`.
+    /// This call preserves identical runtime/error semantics with
+    /// `fs::metadata`.
     fn metadata(&self) -> io::Result<Metadata>;
+
+    /// Gets information on the file, directory, etc at this path.
+    ///
+    /// Consult the `fs::symlink_metadata` documentation for more info.
+    ///
+    /// This call preserves identical runtime/error semantics with
+    /// `fs::symlink_metadata`.
+    fn symlink_metadata(&self) -> io::Result<Metadata>;
+
+    /// Returns the canonical form of a path, normalizing all components and
+    /// eliminate all symlinks.
+    ///
+    /// This call preserves identical runtime/error semantics with
+    /// `fs::canonicalize`.
+    fn canonicalize(&self) -> io::Result<PathBuf>;
+
+    /// Reads the symlink at this path.
+    ///
+    /// For more information see `fs::read_link`.
+    fn read_link(&self) -> io::Result<PathBuf>;
+
+    /// Reads the directory at this path.
+    ///
+    /// For more information see `fs::read_dir`.
+    fn read_dir(&self) -> io::Result<ReadDir>;
 
     /// Boolean value indicator whether the underlying file exists on the local
     /// filesystem. Returns false in exactly the cases where `fs::stat` fails.
@@ -1098,12 +1228,16 @@ pub trait PathExt {
 
 impl PathExt for Path {
     fn metadata(&self) -> io::Result<Metadata> { metadata(self) }
-
+    fn symlink_metadata(&self) -> io::Result<Metadata> { symlink_metadata(self) }
+    fn canonicalize(&self) -> io::Result<PathBuf> { canonicalize(self) }
+    fn read_link(&self) -> io::Result<PathBuf> { read_link(self) }
+    fn read_dir(&self) -> io::Result<ReadDir> { read_dir(self) }
     fn exists(&self) -> bool { metadata(self).is_ok() }
 
     fn is_file(&self) -> bool {
         metadata(self).map(|s| s.is_file()).unwrap_or(false)
     }
+
     fn is_dir(&self) -> bool {
         metadata(self).map(|s| s.is_dir()).unwrap_or(false)
     }
@@ -1923,5 +2057,75 @@ mod tests {
         let tmpdir = tmpdir();
         let path = tmpdir.join("file");
         check!(fs::create_dir_all(&path.join("a/")));
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn realpath_works() {
+        let tmpdir = tmpdir();
+        let tmpdir = fs::canonicalize(tmpdir.path()).unwrap();
+        let file = tmpdir.join("test");
+        let dir = tmpdir.join("test2");
+        let link = dir.join("link");
+        let linkdir = tmpdir.join("test3");
+
+        File::create(&file).unwrap();
+        fs::create_dir(&dir).unwrap();
+        fs::soft_link(&file, &link).unwrap();
+        fs::soft_link(&dir, &linkdir).unwrap();
+
+        assert!(link.symlink_metadata().unwrap().file_type().is_symlink());
+
+        assert_eq!(fs::canonicalize(&tmpdir).unwrap(), tmpdir);
+        assert_eq!(fs::canonicalize(&file).unwrap(), file);
+        assert_eq!(fs::canonicalize(&link).unwrap(), file);
+        assert_eq!(fs::canonicalize(&linkdir).unwrap(), dir);
+        assert_eq!(fs::canonicalize(&linkdir.join("link")).unwrap(), file);
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn realpath_works_tricky() {
+        let tmpdir = tmpdir();
+        let tmpdir = fs::canonicalize(tmpdir.path()).unwrap();
+
+        let a = tmpdir.join("a");
+        let b = a.join("b");
+        let c = b.join("c");
+        let d = a.join("d");
+        let e = d.join("e");
+        let f = a.join("f");
+
+        fs::create_dir_all(&b).unwrap();
+        fs::create_dir_all(&d).unwrap();
+        File::create(&f).unwrap();
+        fs::soft_link("../d/e", &c).unwrap();
+        fs::soft_link("../f", &e).unwrap();
+
+        assert_eq!(fs::canonicalize(&c).unwrap(), f);
+        assert_eq!(fs::canonicalize(&e).unwrap(), f);
+    }
+
+    #[test]
+    fn dir_entry_methods() {
+        let tmpdir = tmpdir();
+
+        fs::create_dir_all(&tmpdir.join("a")).unwrap();
+        File::create(&tmpdir.join("b")).unwrap();
+
+        for file in tmpdir.path().read_dir().unwrap().map(|f| f.unwrap()) {
+            let fname = file.file_name();
+            match fname.to_str() {
+                Some("a") => {
+                    assert!(file.file_type().unwrap().is_dir());
+                    assert!(file.metadata().unwrap().is_dir());
+                }
+                Some("b") => {
+                    assert!(file.file_type().unwrap().is_file());
+                    assert!(file.metadata().unwrap().is_file());
+                }
+                f => panic!("unknown file name: {:?}", f),
+            }
+        }
     }
 }
