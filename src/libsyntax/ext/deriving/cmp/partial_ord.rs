@@ -47,7 +47,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
     let ordering_ty = Literal(path_std!(cx, core::cmp::Ordering));
     let ret_ty = Literal(Path::new_(pathvec_std!(cx, core::option::Option),
                                     None,
-                                    vec![box ordering_ty],
+                                    vec![Box::new(ordering_ty)],
                                     true));
 
     let inline = cx.meta_word(span, InternedString::new("inline"));

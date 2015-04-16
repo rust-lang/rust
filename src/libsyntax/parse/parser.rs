@@ -897,7 +897,7 @@ impl<'a> Parser<'a> {
         self.last_span = self.span;
         // Stash token for error recovery (sometimes; clone is not necessarily cheap).
         self.last_token = if self.token.is_ident() || self.token.is_path() {
-            Some(box self.token.clone())
+            Some(Box::new(self.token.clone()))
         } else {
             None
         };
@@ -1578,8 +1578,8 @@ impl<'a> Parser<'a> {
             token::Interpolated(token::NtPath(_)) => Some(try!(self.bump_and_get())),
             _ => None,
         };
-        if let Some(token::Interpolated(token::NtPath(box path))) = found {
-            return Ok(path);
+        if let Some(token::Interpolated(token::NtPath(path))) = found {
+            return Ok(*path);
         }
 
         let lo = self.span.lo;
