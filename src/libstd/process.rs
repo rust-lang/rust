@@ -456,6 +456,12 @@ impl Child {
         unsafe { self.handle.kill() }
     }
 
+    /// Returns the OS-assigned process identifier associated with this child.
+    #[unstable(feature = "process_id", reason = "api recently added")]
+    pub fn id(&self) -> u32 {
+        self.handle.id()
+    }
+
     /// Waits for the child to exit completely, returning the status that it
     /// exited with. This function will continue to have the same return value
     /// after it has been called at least once.
