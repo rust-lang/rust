@@ -1469,7 +1469,6 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 }
 
 impl<'a, K, V> Entry<'a, K, V> {
-    /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant.
     #[unstable(feature = "std_misc",
                reason = "will soon be replaced by or_insert")]
     #[deprecated(since = "1.0",
