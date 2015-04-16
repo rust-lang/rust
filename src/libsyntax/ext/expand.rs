@@ -1962,8 +1962,8 @@ foo_module!();
                 "xx" == string
             }).collect();
         let cxbinds: &[&ast::Ident] = &cxbinds[..];
-        let cxbind = match cxbinds {
-            [b] => b,
+        let cxbind = match (cxbinds.len(), cxbinds.get(0)) {
+            (1, Some(b)) => *b,
             _ => panic!("expected just one binding for ext_cx")
         };
         let resolved_binding = mtwt::resolve(*cxbind);

@@ -834,28 +834,44 @@ mod test {
     fn string_to_tts_macro () {
         let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
         let tts: &[ast::TokenTree] = &tts[..];
-        match tts {
-            [ast::TtToken(_, token::Ident(name_macro_rules, token::Plain)),
-             ast::TtToken(_, token::Not),
-             ast::TtToken(_, token::Ident(name_zip, token::Plain)),
-             ast::TtDelimited(_, ref macro_delimed)]
+
+        match (tts.len(), tts.get(0), tts.get(1), tts.get(2), tts.get(3)) {
+            (
+                4,
+                Some(&ast::TtToken(_, token::Ident(name_macro_rules, token::Plain))),
+                Some(&ast::TtToken(_, token::Not)),
+                Some(&ast::TtToken(_, token::Ident(name_zip, token::Plain))),
+                Some(&ast::TtDelimited(_, ref macro_delimed)),
+            )
             if name_macro_rules.as_str() == "macro_rules"
             && name_zip.as_str() == "zip" => {
-                match &macro_delimed.tts[..] {
-                    [ast::TtDelimited(_, ref first_delimed),
-                     ast::TtToken(_, token::FatArrow),
-                     ast::TtDelimited(_, ref second_delimed)]
+                let tts = &macro_delimed.tts[..];
+                match (tts.len(), tts.get(0), tts.get(1), tts.get(2)) {
+                    (
+                        3,
+                        Some(&ast::TtDelimited(_, ref first_delimed)),
+                        Some(&ast::TtToken(_, token::FatArrow)),
+                        Some(&ast::TtDelimited(_, ref second_delimed)),
+                    )
                     if macro_delimed.delim == token::Paren => {
-                        match &first_delimed.tts[..] {
-                            [ast::TtToken(_, token::Dollar),
-                             ast::TtToken(_, token::Ident(name, token::Plain))]
+                        let tts = &first_delimed.tts[..];
+                        match (tts.len(), tts.get(0), tts.get(1)) {
+                            (
+                                2,
+                                Some(&ast::TtToken(_, token::Dollar)),
+                                Some(&ast::TtToken(_, token::Ident(name, token::Plain))),
+                            )
                             if first_delimed.delim == token::Paren
                             && name.as_str() == "a" => {},
                             _ => panic!("value 3: {:?}", **first_delimed),
                         }
-                        match &second_delimed.tts[..] {
-                            [ast::TtToken(_, token::Dollar),
-                             ast::TtToken(_, token::Ident(name, token::Plain))]
+                        let tts = &second_delimed.tts[..];
+                        match (tts.len(), tts.get(0), tts.get(1)) {
+                            (
+                                2,
+                                Some(&ast::TtToken(_, token::Dollar)),
+                                Some(&ast::TtToken(_, token::Ident(name, token::Plain))),
+                            )
                             if second_delimed.delim == token::Paren
                             && name.as_str() == "a" => {},
                             _ => panic!("value 4: {:?}", **second_delimed),

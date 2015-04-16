@@ -284,8 +284,15 @@ impl<'a> fold::Folder for CfgAttrFolder<'a> {
             return fold::noop_fold_attribute(attr, self);
         }
 
-        let (cfg, mi) = match attr.meta_item_list() {
-            Some([ref cfg, ref mi]) => (cfg, mi),
+        let attr_list = match attr.meta_item_list() {
+            Some(attr_list) => attr_list,
+            None => {
+                self.diag.span_err(attr.span, "expected `#[cfg_attr(<cfg pattern>, <attr>)]`");
+                return None;
+            }
+        };
+        let (cfg, mi) = match (attr_list.len(), attr_list.get(0), attr_list.get(1)) {
+            (2, Some(cfg), Some(mi)) => (cfg, mi),
             _ => {
                 self.diag.span_err(attr.span, "expected `#[cfg_attr(<cfg pattern>, <attr>)]`");
                 return None;
