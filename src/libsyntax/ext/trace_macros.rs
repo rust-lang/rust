@@ -28,12 +28,11 @@ pub fn expand_trace_macros(cx: &mut ExtCtxt,
         return base::DummyResult::any(sp);
     }
 
-
-    match tt {
-        [ast::TtToken(_, ref tok)] if tok.is_keyword(keywords::True) => {
+    match (tt.len(), tt.first()) {
+        (1, Some(&ast::TtToken(_, ref tok))) if tok.is_keyword(keywords::True) => {
             cx.set_trace_macros(true);
         }
-        [ast::TtToken(_, ref tok)] if tok.is_keyword(keywords::False) => {
+        (1, Some(&ast::TtToken(_, ref tok))) if tok.is_keyword(keywords::False) => {
             cx.set_trace_macros(false);
         }
         _ => cx.span_err(sp, "trace_macros! accepts only `true` or `false`"),

@@ -54,8 +54,8 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
                                    span: Span,
                                    token_tree: &[TokenTree])
                                    -> Box<MacResult+'cx> {
-    let code = match token_tree {
-        [ast::TtToken(_, token::Ident(code, _))] => code,
+    let code = match (token_tree.len(), token_tree.get(0)) {
+        (1, Some(&ast::TtToken(_, token::Ident(code, _)))) => code,
         _ => unreachable!()
     };
     with_used_diagnostics(|diagnostics| {
@@ -84,13 +84,18 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
                                        span: Span,
                                        token_tree: &[TokenTree])
                                        -> Box<MacResult+'cx> {
-    let (code, description) = match token_tree {
-        [ast::TtToken(_, token::Ident(ref code, _))] => {
+    let (code, description) = match (
+        token_tree.len(),
+        token_tree.get(0),
+        token_tree.get(1),
+        token_tree.get(2)
+    ) {
+        (1, Some(&ast::TtToken(_, token::Ident(ref code, _))), None, None) => {
             (code, None)
         },
-        [ast::TtToken(_, token::Ident(ref code, _)),
-         ast::TtToken(_, token::Comma),
-         ast::TtToken(_, token::Literal(token::StrRaw(description, _), None))] => {
+        (3, Some(&ast::TtToken(_, token::Ident(ref code, _))),
+            Some(&ast::TtToken(_, token::Comma)),
+            Some(&ast::TtToken(_, token::Literal(token::StrRaw(description, _), None)))) => {
             (code, Some(description))
         }
         _ => unreachable!()
@@ -130,8 +135,8 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
                                           span: Span,
                                           token_tree: &[TokenTree])
                                           -> Box<MacResult+'cx> {
-    let name = match token_tree {
-        [ast::TtToken(_, token::Ident(ref name, _))] => name,
+    let name = match (token_tree.len(), token_tree.get(0)) {
+        (1, Some(&ast::TtToken(_, token::Ident(ref name, _)))) => name,
         _ => unreachable!()
     };
 
