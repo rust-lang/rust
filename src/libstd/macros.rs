@@ -99,7 +99,7 @@ macro_rules! panic {
     });
     ($msg:expr) => ({
         $crate::rt::begin_unwind(
-            __unstable_rustc_ensure_not_fmt_string_literal!("unary `panic!`", $msg), {
+            __unstable_rustc_ensure_not_fmt_string_literal!("unary `panic!`", $msg).1, {
                 // static requires less code at runtime, more constant data
                 static _FILE_LINE: (&'static str, u32) = (file!(), line!());
                 &_FILE_LINE
