@@ -2177,6 +2177,14 @@ The following configurations must be defined by the implementation:
 * `unix`. See `target_family`.
 * `windows`. See `target_family`.
 
+You can also set another attribute based on a `cfg` variable with `cfg_attr`:
+
+```rust
+#[cfg_attr(a, b)]
+```
+
+Will be the same as `#[b]` if `a` is set by `cfg`, and nothing otherwise.
+
 ### Lint check attributes
 
 A lint check names a potentially undesirable coding pattern, such as
@@ -2444,7 +2452,9 @@ The currently implemented features of the reference compiler are:
 * `simd_ffi` - Allows use of SIMD vectors in signatures for foreign functions.
                The SIMD interface is subject to change.
 
-* `staged_api` - Allows usage of stability markers and `#![staged_api]` in a crate
+* `staged_api` - Allows usage of stability markers and `#![staged_api]` in a
+                 crate. Stability markers are also attributes: `#[stable]`,
+                 `#[unstable]`, and `#[deprecated]` are the three levels.
 
 * `static_assert` - The `#[static_assert]` functionality is experimental and
                     unstable. The attribute can be attached to a `static` of
