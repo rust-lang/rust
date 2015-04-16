@@ -446,7 +446,7 @@ fn visit_local(rcx: &mut Rcx, l: &ast::Local) {
 fn constrain_bindings_in_pat(pat: &ast::Pat, rcx: &mut Rcx) {
     let tcx = rcx.fcx.tcx();
     debug!("regionck::visit_pat(pat={})", pat.repr(tcx));
-    pat_util::pat_bindings(&tcx.def_map, pat, |_, id, span, _| {
+    pat_util::pat_bindings(&tcx.def_map.borrow(), pat, |_, id, span, _| {
         // If we have a variable that contains region'd data, that
         // data will be accessible from anywhere that the variable is
         // accessed. We must be wary of loops like this:

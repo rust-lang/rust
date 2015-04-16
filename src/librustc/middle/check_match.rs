@@ -692,7 +692,7 @@ fn is_useful(cx: &MatchCheckCtxt,
 
             Some(constructor) => {
                 let matrix = rows.iter().filter_map(|r| {
-                    if pat_is_binding_or_wild(&cx.tcx.def_map, raw_pat(r[0])) {
+                    if pat_is_binding_or_wild(&cx.tcx.def_map.borrow(), raw_pat(r[0])) {
                         Some(r.tail().to_vec())
                     } else {
                         None
@@ -1069,7 +1069,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     let def_map = &tcx.def_map;
     let mut by_ref_span = None;
     for pat in pats {
-        pat_bindings(def_map, &**pat, |bm, _, span, _path| {
+        pat_bindings(&def_map.borrow(), &**pat, |bm, _, span, _path| {
             match bm {
                 ast::BindByRef(_) => {
                     by_ref_span = Some(span);
@@ -1084,7 +1084,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
         // check legality of moving out of the enum
 
         // x @ Foo(..) is legal, but x @ Foo(y) isn't.
-        if sub.map_or(false, |p| pat_contains_bindings(def_map, &*p)) {
+        if sub.map_or(false, |p| pat_contains_bindings(&def_map.borrow(), &*p)) {
             span_err!(cx.tcx.sess, p.span, E0007, "cannot bind by-move with sub-bindings");
         } else if has_guard {
             span_err!(cx.tcx.sess, p.span, E0008, "cannot bind by-move into a pattern guard");
@@ -1097,7 +1097,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
 
     for pat in pats {
         ast_util::walk_pat(&**pat, |p| {
-            if pat_is_binding(def_map, &*p) {
+            if pat_is_binding(&def_map.borrow(), &*p) {
                 match p.node {
                     ast::PatIdent(ast::BindByValue(_), _, ref sub) => {
                         let pat_ty = ty::node_id_to_type(tcx, p.id);
@@ -1182,7 +1182,7 @@ struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
     fn visit_pat(&mut self, pat: &Pat) {
-        if !self.bindings_allowed && pat_is_binding(&self.cx.tcx.def_map, pat) {
+        if !self.bindings_allowed && pat_is_binding(&self.cx.tcx.def_map.borrow(), pat) {
             span_err!(self.cx.tcx.sess, pat.span, E0303,
                                       "pattern bindings are not allowed \
                                        after an `@`");

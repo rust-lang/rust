@@ -17,8 +17,6 @@ use util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::ast_util::local_def;
 
-use std::cell::RefCell;
-
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Def {
     DefFn(ast::DefId, bool /* is_ctor */),
@@ -100,7 +98,7 @@ impl PathResolution {
 }
 
 // Definition mapping
-pub type DefMap = RefCell<NodeMap<PathResolution>>;
+pub type DefMap = NodeMap<PathResolution>;
 // This is the replacement export map. It maps a module to all of the exports
 // within.
 pub type ExportMap = NodeMap<Vec<Export>>;

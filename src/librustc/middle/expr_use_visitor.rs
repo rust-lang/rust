@@ -689,7 +689,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         match local.init {
             None => {
                 let delegate = &mut self.delegate;
-                pat_util::pat_bindings(&self.typer.tcx().def_map, &*local.pat,
+                pat_util::pat_bindings(&self.typer.tcx().def_map.borrow(), &*local.pat,
                                        |_, id, span, _| {
                     delegate.decl_without_init(id, span);
                 })
@@ -1020,7 +1020,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |_mc, cmt_pat, pat| {
             let tcx = self.tcx();
             let def_map = &self.tcx().def_map;
-            if pat_util::pat_is_binding(def_map, pat) {
+            if pat_util::pat_is_binding(&def_map.borrow(), pat) {
                 match pat.node {
                     ast::PatIdent(ast::BindByRef(_), _, _) =>
                         mode.lub(BorrowingMatch),
@@ -1055,7 +1055,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         let def_map = &self.tcx().def_map;
         let delegate = &mut self.delegate;
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |mc, cmt_pat, pat| {
-            if pat_util::pat_is_binding(def_map, pat) {
+            if pat_util::pat_is_binding(&def_map.borrow(), pat) {
                 let tcx = typer.tcx();
 
                 debug!("binding cmt_pat={} pat={} match_mode={:?}",

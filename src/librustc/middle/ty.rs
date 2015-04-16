@@ -616,7 +616,7 @@ pub struct ctxt<'tcx> {
     pub types: CommonTypes<'tcx>,
 
     pub sess: Session,
-    pub def_map: DefMap,
+    pub def_map: RefCell<DefMap>,
 
     pub named_region_map: resolve_lifetime::NamedRegionMap,
 
@@ -2554,7 +2554,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         item_variance_map: RefCell::new(DefIdMap()),
         variance_computed: Cell::new(false),
         sess: s,
-        def_map: def_map,
+        def_map: RefCell::new(def_map),
         region_maps: region_maps,
         node_types: RefCell::new(FnvHashMap()),
         item_substs: RefCell::new(NodeMap()),
@@ -2676,11 +2676,11 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn pat_contains_ref_binding(&self, pat: &ast::Pat) -> bool {
-        pat_util::pat_contains_ref_binding(&self.def_map, pat)
+        pat_util::pat_contains_ref_binding(&self.def_map.borrow(), pat)
     }
 
     pub fn arm_contains_ref_binding(&self, arm: &ast::Arm) -> bool {
-        pat_util::arm_contains_ref_binding(&self.def_map, arm)
+        pat_util::arm_contains_ref_binding(&self.def_map.borrow(), arm)
     }
 }
 

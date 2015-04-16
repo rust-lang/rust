@@ -1329,7 +1329,7 @@ impl UnusedMut {
 
         let mut mutables = FnvHashMap();
         for p in pats {
-            pat_util::pat_bindings(&cx.tcx.def_map, &**p, |mode, id, _, path1| {
+            pat_util::pat_bindings(&cx.tcx.def_map.borrow(), &**p, |mode, id, _, path1| {
                 let ident = path1.node;
                 if let ast::BindByValue(ast::MutMutable) = mode {
                     if !token::get_ident(ident).starts_with("_") {

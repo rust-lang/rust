@@ -34,7 +34,7 @@ pub fn pat_is_refutable(dm: &DefMap, pat: &ast::Pat) -> bool {
         ast::PatEnum(_, _) |
         ast::PatIdent(_, _, None) |
         ast::PatStruct(..) => {
-            match dm.borrow().get(&pat.id).map(|d| d.full_def()) {
+            match dm.get(&pat.id).map(|d| d.full_def()) {
                 Some(DefVariant(..)) => true,
                 _ => false
             }
@@ -49,7 +49,7 @@ pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &ast::Pat) -> bool {
         ast::PatEnum(_, _) |
         ast::PatIdent(_, _, None) |
         ast::PatStruct(..) => {
-            match dm.borrow().get(&pat.id).map(|d| d.full_def()) {
+            match dm.get(&pat.id).map(|d| d.full_def()) {
                 Some(DefVariant(..)) | Some(DefStruct(..)) => true,
                 _ => false
             }
@@ -61,7 +61,7 @@ pub fn pat_is_variant_or_struct(dm: &DefMap, pat: &ast::Pat) -> bool {
 pub fn pat_is_const(dm: &DefMap, pat: &ast::Pat) -> bool {
     match pat.node {
         ast::PatIdent(_, _, None) | ast::PatEnum(..) => {
-            match dm.borrow().get(&pat.id).map(|d| d.full_def()) {
+            match dm.get(&pat.id).map(|d| d.full_def()) {
                 Some(DefConst(..)) => true,
                 _ => false
             }
