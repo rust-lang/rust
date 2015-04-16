@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use prelude::*;
-use fmt::{self, Write, FlagV1};
+use fmt::{self, Write, FlagV2};
 
 struct PadAdapter<'a, 'b: 'a> {
     fmt: &'a mut fmt::Formatter<'b>,
@@ -110,7 +110,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     }
 
     fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+        self.fmt.flags() & FlagV2::Alternate != 0
     }
 }
 
@@ -173,7 +173,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     }
 
     fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+        self.fmt.flags() & FlagV2::Alternate != 0
     }
 }
 
@@ -205,7 +205,7 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
     }
 
     fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+        self.fmt.flags() & FlagV2::Alternate != 0
     }
 }
 
@@ -328,6 +328,6 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     }
 
     fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+        self.fmt.flags() & FlagV2::Alternate != 0
     }
 }
