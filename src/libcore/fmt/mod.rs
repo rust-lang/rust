@@ -185,11 +185,12 @@ impl<'a> ArgumentV1<'a> {
     }
 }
 
+// A faux enum used for formatting flags.
+//
+// Public visibility only so that it can be consumed by libfmt_macros
+#[doc(hidden)]
 #[allow(dead_code)] // SIGN_MINUS isn't currently used
 #[allow(non_snake_case)]
-/// A faux enum used for formatting flags.
-///
-/// Public visibility only so that it can be consumed by libfmt_macros
 pub mod FlagV2 {
     pub const SIGN_PLUS             : u32 = 0b00000001;
     pub const SIGN_MINUS            : u32 = 0b00000010;
