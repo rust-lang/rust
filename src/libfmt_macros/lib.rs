@@ -28,6 +28,9 @@
 
 #![feature(staged_api)]
 #![feature(unicode)]
+#![feature(core)]
+
+extern crate core;
 
 pub use self::Piece::*;
 pub use self::Position::*;
@@ -37,7 +40,7 @@ pub use self::Count::*;
 
 use std::str;
 use std::string;
-use std::fmt::FlagV2;
+use core::fmt::FlagV2;
 
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
@@ -108,15 +111,15 @@ pub enum Alignment {
 #[repr(C)]
 pub enum Flag {
     /// A `+` will be used to denote positive numbers.
-    FlagSignPlus = FlagV2::SIGN_PLUS,
+    FlagSignPlus = FlagV2::SIGN_PLUS as isize,
     /// A `-` will be used to denote negative numbers. This is the default.
-    FlagSignMinus = FlagV2::SIGN_MINUS,
+    FlagSignMinus = FlagV2::SIGN_MINUS as isize,
     /// An alternate form will be used for the value. In the case of numbers,
     /// this means that the number will be prefixed with the supplied string.
-    FlagAlternate = FlagV2::ALTERNATE,
+    FlagAlternate = FlagV2::ALTERNATE as isize,
     /// For numbers, this means that the number will be padded with zeroes,
     /// and the sign (`+` or `-`) will precede them.
-    FlagSignAwareZeroPad = FlagV2::SIGN_AWARE_ZERO_PAD,
+    FlagSignAwareZeroPad = FlagV2::SIGN_AWARE_ZERO_PAD as isize,
 }
 
 /// A count is used for the precision and width parameters of an integer, and
@@ -317,13 +320,13 @@ impl<'a> Parser<'a> {
         }
         // Sign flags
         if self.consume('+') {
-            spec.flags |= FlagSignPlus;
+            spec.flags |= FlagSignPlus as u32;
         } else if self.consume('-') {
-            spec.flags |= FlagSignMinus;
+            spec.flags |= FlagSignMinus as u32;
         }
         // Alternate marker
         if self.consume('#') {
-            spec.flags |= FlagAlternate;
+            spec.flags |= FlagAlternate as u32;
         }
         // Width and precision
         let mut havewidth = false;
@@ -336,7 +339,7 @@ impl<'a> Parser<'a> {
                 spec.width = CountIsParam(0);
                 havewidth = true;
             } else {
-                spec.flags |= FlagSignAwareZeroPad;
+                spec.flags |= FlagSignAwareZeroPad as u32;
             }
         }
         if !havewidth {
