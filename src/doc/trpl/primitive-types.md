@@ -216,6 +216,18 @@ In systems programming languages, strings are a bit more complex than in other
 languages. For now, just read `&str` as a *string slice*, and we’ll learn more
 soon.
 
+You can assign one tuple into another, if they have the same contained types
+and [arity]. Tuples have the same arity when they have the same length.
+
+[arity]: glossary.html#arity
+
+```rust
+let mut x = (1, 2); // x: (i32, i32)
+let y = (2, 3); // y: (i32, i32)
+
+x = y;
+```
+
 You can access the fields in a tuple through a *destructuring let*. Here’s
 an example:
 
@@ -235,19 +247,23 @@ or "breaks up," the tuple, and assigns the bits to three bindings.
 
 This pattern is very powerful, and we’ll see it repeated more later.
 
-There are also a few things you can do with a tuple as a whole, without
-destructuring. You can assign one tuple into another, if they have the same
-contained types and [arity]. Tuples have the same arity when they have the same
-length.
+## Tuple Indexing
 
-[arity]: glossary.html#arity
+You can also access fields of a tuple with indexing syntax:
+
 
 ```rust
-let mut x = (1, 2); // x: (i32, i32)
-let y = (2, 3); // y: (i32, i32)
+let tuple = (1, 2, 3);
 
-x = y;
+let x = tuple.0;
+let y = tuple.1;
+let z = tuple.2;
+
+println!("x is {}", x);
 ```
+
+Like array indexing, it starts at zero, but unlike array indexing, it uses a
+`.`, rather than `[]`s.
 
 You can find more documentation for tuples [in the standard library
 documentation][tuple].
