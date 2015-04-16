@@ -19,7 +19,7 @@ When using any of the convenience macros that write to either `stdout` or `stder
 
 Update the methods `std::io::stdin` `std::io::stdout` and `std::io::stderr` as follows:
 * If `stdout` or `stderr` does not exist, return the equivalent of `std::io::sink`.
-* If `stderr` does not exist, return the equivalent of `std::io::empty`.
+* If `stdin` does not exist, return the equivalent of `std::io::empty`.
 * For the raw versions, return a `Result`, and if the respective handle does not exist, return an `Err`.
 
 # Drawbacks
