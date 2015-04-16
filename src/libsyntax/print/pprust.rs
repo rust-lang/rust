@@ -188,7 +188,7 @@ pub fn to_string<F>(f: F) -> String where
     F: FnOnce(&mut State) -> io::Result<()>,
 {
     use std::raw::TraitObject;
-    let mut s = rust_printer(box Vec::new());
+    let mut s = rust_printer(Box::new(Vec::new()));
     f(&mut s).unwrap();
     eof(&mut s.s).unwrap();
     let wr = unsafe {

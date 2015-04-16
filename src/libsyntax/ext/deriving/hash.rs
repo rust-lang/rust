@@ -41,7 +41,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                                   vec![path_std!(cx, core::hash::Hasher)])],
                 },
                 explicit_self: borrowed_explicit_self(),
-                args: vec!(Ptr(box Literal(arg), Borrowed(None, MutMutable))),
+                args: vec!(Ptr(Box::new(Literal(arg)), Borrowed(None, MutMutable))),
                 ret_ty: nil_ty(),
                 attributes: vec![],
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {

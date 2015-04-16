@@ -807,7 +807,7 @@ impl<'a> MethodDef<'a> {
                 Self_ if nonstatic  => {
                     self_args.push(arg_expr);
                 }
-                Ptr(box Self_, _) if nonstatic => {
+                Ptr(ref ty, _) if **ty == Self_ && nonstatic => {
                     self_args.push(cx.expr_deref(trait_.span, arg_expr))
                 }
                 _ => {
