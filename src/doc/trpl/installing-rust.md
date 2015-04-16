@@ -91,9 +91,9 @@ If not, there are a number of places where you can get help. The easiest is
 [Mibbit][mibbit]. Click that link, and you'll be chatting with other Rustaceans
 (a silly nickname we call ourselves), and we can help you out. Other great
 resources include [the user’s forum][users], and
-[Stack Overflow][stack overflow].
+[Stack Overflow][stackoverflow].
 
 [irc]: irc://irc.mozilla.org/#rust
 [mibbit]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
 [users]: http://users.rust-lang.org/ 
-[stack overflow]: http://stackoverflow.com/questions/tagged/rust
+[stackoverflow]: http://stackoverflow.com/questions/tagged/rust
