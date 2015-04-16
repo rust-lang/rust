@@ -841,7 +841,7 @@ fn expand_non_macro_stmt(Spanned {node, span: stmt_span}: Stmt, fld: &mut MacroE
 fn expand_arm(arm: ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
     // expand pats... they might contain macro uses:
     let expanded_pats = arm.pats.move_map(|pat| fld.fold_pat(pat));
-    if expanded_pats.len() == 0 {
+    if expanded_pats.is_empty() {
         panic!("encountered match arm with 0 patterns");
     }
     // all of the pats must have the same set of bindings, so use the
@@ -1887,7 +1887,7 @@ mod test {
             let binding_name = mtwt::resolve(bindings[binding_idx]);
             let binding_marks = mtwt::marksof(bindings[binding_idx].ctxt, invalid_name);
             // shouldmatch can't name varrefs that don't exist:
-            assert!((shouldmatch.len() == 0) ||
+            assert!((shouldmatch.is_empty()) ||
                     (varrefs.len() > *shouldmatch.iter().max().unwrap()));
             for (idx,varref) in varrefs.iter().enumerate() {
                 let print_hygiene_debug_info = || {

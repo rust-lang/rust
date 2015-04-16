@@ -558,7 +558,7 @@ pub fn parameterized<'tcx,GG>(cx: &ctxt<'tcx>,
                     &strs[0][..]
                 },
                 tail)
-    } else if strs.len() > 0 {
+    } else if !strs.is_empty() {
         format!("{}<{}>", base, strs.connect(", "))
     } else {
         format!("{}", base)
@@ -1269,7 +1269,7 @@ impl<'tcx, T> UserString<'tcx> for ty::Binder<T>
         let names: Vec<_> = names.iter().map(|s| &s[..]).collect();
 
         let value_str = unbound_value.user_string(tcx);
-        if names.len() == 0 {
+        if names.is_empty() {
             value_str
         } else {
             format!("for<{}> {}", names.connect(","), value_str)

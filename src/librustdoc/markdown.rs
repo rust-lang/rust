@@ -74,7 +74,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
     };
 
     let (metadata, text) = extract_leading_metadata(&input_str);
-    if metadata.len() == 0 {
+    if metadata.is_empty() {
         let _ = writeln!(&mut io::stderr(),
                          "invalid markdown file: expecting initial line with `% ...TITLE...`");
         return 5;

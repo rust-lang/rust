@@ -65,7 +65,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenT
 pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                        -> Box<base::MacResult+'cx> {
     let mut exprs = match get_exprs_from_tts(cx, sp, tts) {
-        Some(ref exprs) if exprs.len() == 0 => {
+        Some(ref exprs) if exprs.is_empty() => {
             cx.span_err(sp, "env! takes 1 or 2 arguments");
             return DummyResult::expr(sp);
         }

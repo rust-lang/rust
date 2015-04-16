@@ -425,7 +425,7 @@ impl RustcDefaultCalls {
                         odir: &Option<PathBuf>,
                         ofile: &Option<PathBuf>)
                         -> Compilation {
-        if sess.opts.prints.len() == 0 {
+        if sess.opts.prints.is_empty() {
             return Compilation::Continue;
         }
 

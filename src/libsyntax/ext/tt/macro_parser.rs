@@ -457,7 +457,7 @@ pub fn parse(sess: &ParseSess,
                 return Failure(sp, "unexpected end of macro invocation".to_string());
             }
         } else {
-            if (bb_eis.len() > 0 && next_eis.len() > 0)
+            if (!bb_eis.is_empty() && !next_eis.is_empty())
                 || bb_eis.len() > 1 {
                 let nts = bb_eis.iter().map(|ei| {
                     match ei.top_elts.get_tt(ei.idx) {
@@ -472,12 +472,12 @@ pub fn parse(sess: &ParseSess,
                     "local ambiguity: multiple parsing options: \
                      built-in NTs {} or {} other options.",
                     nts, next_eis.len()).to_string());
-            } else if bb_eis.len() == 0 && next_eis.len() == 0 {
+            } else if bb_eis.is_empty() && next_eis.is_empty() {
                 return Failure(sp, format!("no rules expected the token `{}`",
                             pprust::token_to_string(&tok)).to_string());
-            } else if next_eis.len() > 0 {
+            } else if !next_eis.is_empty() {
                 /* Now process the next token */
-                while next_eis.len() > 0 {
+                while !next_eis.is_empty() {
                     cur_eis.push(next_eis.pop().unwrap());
                 }
                 rdr.next_token();
@@ -504,7 +504,7 @@ pub fn parse(sess: &ParseSess,
             }
         }
 
-        assert!(cur_eis.len() > 0);
+        assert!(!cur_eis.is_empty());
     }
 }
 

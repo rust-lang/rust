@@ -585,6 +585,9 @@ impl <K, V> Node<K, V> {
         self._len
     }
 
+    /// Does the node not contain any key-value pairs
+    pub fn is_empty(&self) -> bool { self.len() == 0 }
+
     /// How many key-value pairs the node can fit
     pub fn capacity(&self) -> usize {
         self._capacity
@@ -1097,7 +1100,7 @@ impl<K, V> Node<K, V> {
     /// When a node has no keys or values and only a single edge, extract that edge.
     pub fn hoist_lone_child(&mut self) {
         // Necessary for correctness, but in a private module
-        debug_assert!(self.len() == 0);
+        debug_assert!(self.is_empty());
         debug_assert!(!self.is_leaf());
 
         unsafe {
@@ -1225,7 +1228,7 @@ impl<K, V> Node<K, V> {
     /// because we have one too many, and our parent now has one too few
     fn split(&mut self) -> (K, V, Node<K, V>) {
         // Necessary for correctness, but in a private function
-        debug_assert!(self.len() > 0);
+        debug_assert!(!self.is_empty());
 
         let mut right = if self.is_leaf() {
             Node::new_leaf(self.capacity())

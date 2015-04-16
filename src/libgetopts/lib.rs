@@ -804,7 +804,7 @@ fn format_option(opt: &OptGroup) -> String {
     }
 
     // Use short_name is possible, but fallback to long_name.
-    if opt.short_name.len() > 0 {
+    if !opt.short_name.is_empty() {
         line.push('-');
         line.push_str(&opt.short_name[..]);
     } else {

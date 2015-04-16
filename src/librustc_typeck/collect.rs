@@ -576,7 +576,7 @@ fn get_enum_variant_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         // Nullary enum constructors get turned into constants; n-ary enum
         // constructors get turned into functions.
         let result_ty = match variant.node.kind {
-            ast::TupleVariantKind(ref args) if args.len() > 0 => {
+            ast::TupleVariantKind(ref args) if !args.is_empty() => {
                 let rs = ExplicitRscope;
                 let input_tys: Vec<_> = args.iter().map(|va| icx.to_ty(&rs, &*va.ty)).collect();
                 ty::mk_ctor_fn(tcx, variant_def_id, &input_tys, enum_scheme.ty)
@@ -1035,7 +1035,7 @@ fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     match struct_def.ctor_id {
         None => {}
         Some(ctor_id) => {
-            if struct_def.fields.len() == 0 {
+            if struct_def.fields.is_empty() {
                 // Enum-like.
                 write_ty_to_tcx(tcx, ctor_id, selfty);
 
@@ -1893,7 +1893,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                   .flat_map(|predicate| {
                       match *predicate {
                           ast::WherePredicate::BoundPredicate(ref data) => {
-                              if data.bound_lifetimes.len() == 0 &&
+                              if data.bound_lifetimes.is_empty() &&
                                   is_param(ccx.tcx, &data.bounded_ty, param_id)
                               {
                                   from_bounds(ccx, &data.bounds).into_iter()

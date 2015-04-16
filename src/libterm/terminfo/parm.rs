@@ -123,7 +123,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
             Percent => {
                 match cur {
                     '%' => { output.push(c); state = Nothing },
-                    'c' => if stack.len() > 0 {
+                    'c' => if !stack.is_empty() {
                         match stack.pop().unwrap() {
                             // if c is 0, use 0200 (128) for ncurses compatibility
                             Number(c) => {
@@ -141,7 +141,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     'g' => state = GetVar,
                     '\'' => state = CharConstant,
                     '{' => state = IntConstant(0),
-                    'l' => if stack.len() > 0 {
+                    'l' => if !stack.is_empty() {
                         match stack.pop().unwrap() {
                             Words(s) => stack.push(Number(s.len() as isize)),
                             _        => return Err("a non-str was used with %l".to_string())
@@ -231,14 +231,14 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                             _ => return Err("non-numbers on stack with logical or".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
-                    '!' => if stack.len() > 0 {
+                    '!' => if !stack.is_empty() {
                         match stack.pop().unwrap() {
                             Number(0) => stack.push(Number(1)),
                             Number(_) => stack.push(Number(0)),
                             _ => return Err("non-number on stack with logical not".to_string())
                         }
                     } else { return Err("stack is empty".to_string()) },
-                    '~' => if stack.len() > 0 {
+                    '~' => if !stack.is_empty() {
                         match stack.pop().unwrap() {
                             Number(x) => stack.push(Number(!x)),
                             _         => return Err("non-number on stack with %~".to_string())
@@ -253,7 +253,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
                     },
 
                     // printf-style support for %doxXs
-                    'd'|'o'|'x'|'X'|'s' => if stack.len() > 0 {
+                    'd'|'o'|'x'|'X'|'s' => if !stack.is_empty() {
                         let flags = Flags::new();
                         let res = format(stack.pop().unwrap(), FormatOp::from_char(cur), flags);
                         if res.is_err() { return res }
@@ -278,7 +278,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
 
                     // conditionals
                     '?' => (),
-                    't' => if stack.len() > 0 {
+                    't' => if !stack.is_empty() {
                         match stack.pop().unwrap() {
                             Number(0) => state = SeekIfElse(0),
                             Number(_) => (),
@@ -303,12 +303,12 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
             },
             SetVar => {
                 if cur >= 'A' && cur <= 'Z' {
-                    if stack.len() > 0 {
+                    if !stack.is_empty() {
                         let idx = (cur as u8) - b'A';
                         vars.sta[idx as usize] = stack.pop().unwrap();
                     } else { return Err("stack is empty".to_string()) }
                 } else if cur >= 'a' && cur <= 'z' {
-                    if stack.len() > 0 {
+                    if !stack.is_empty() {
                         let idx = (cur as u8) - b'a';
                         vars.dyn[idx as usize] = stack.pop().unwrap();
                     } else { return Err("stack is empty".to_string()) }
@@ -352,7 +352,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
             FormatPattern(ref mut flags, ref mut fstate) => {
                 old_state = Nothing;
                 match (*fstate, cur) {
-                    (_,'d')|(_,'o')|(_,'x')|(_,'X')|(_,'s') => if stack.len() > 0 {
+                    (_,'d')|(_,'o')|(_,'x')|(_,'X')|(_,'s') => if !stack.is_empty() {
                         let res = format(stack.pop().unwrap(), FormatOp::from_char(cur), *flags);
                         if res.is_err() { return res }
                         output.push_all(&res.unwrap());

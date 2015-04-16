@@ -457,7 +457,7 @@ fn str_search_step<F, G>(mut m: &mut StrSearcher,
 {
     if m.state.done() {
         SearchStep::Done
-    } else if m.needle.len() == 0 && m.start <= m.end {
+    } else if m.needle.is_empty() && m.start <= m.end {
         // Case for needle == ""
         if let State::Reject(a, b) = m.state.take() {
             SearchStep::Reject(a, b)

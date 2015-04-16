@@ -864,7 +864,7 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
                 }
                 first = false;
             }
-            if !failed && rest.len() == 0 {
+            if !failed && rest.is_empty() {
                 i += 1;
             }
             if i == num_check_lines {
@@ -1662,7 +1662,7 @@ fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
 // codegen tests (vs. clang)
 
 fn append_suffix_to_stem(p: &Path, suffix: &str) -> PathBuf {
-    if suffix.len() == 0 {
+    if suffix.is_empty() {
         p.to_path_buf()
     } else {
         let mut stem = p.file_stem().unwrap().to_os_string();

@@ -3036,7 +3036,7 @@ pub fn mk_trait<'tcx>(cx: &ctxt<'tcx>,
 }
 
 fn bound_list_is_sorted(bounds: &[ty::PolyProjectionPredicate]) -> bool {
-    bounds.len() == 0 ||
+    bounds.is_empty() ||
         bounds[1..].iter().enumerate().all(
             |(index, bound)| bounds[index].sort_key() <= bound.sort_key())
 }
@@ -3665,7 +3665,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                     res = res | TC::OwnsDtor;
                 }
 
-                if variants.len() != 0 {
+                if !variants.is_empty() {
                     let repr_hints = lookup_repr_hints(cx, did);
                     if repr_hints.len() > 1 {
                         // this is an error later on, but this type isn't safe
@@ -3687,7 +3687,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                             if variants.len() == 2 {
                                 let mut data_idx = 0;
 
-                                if variants[0].args.len() == 0 {
+                                if variants[0].args.is_empty() {
                                     data_idx = 1;
                                 }
 
@@ -4200,10 +4200,10 @@ pub fn type_is_c_like_enum(cx: &ctxt, ty: Ty) -> bool {
     match ty.sty {
         ty_enum(did, _) => {
             let variants = enum_variants(cx, did);
-            if variants.len() == 0 {
+            if variants.is_empty() {
                 false
             } else {
-                variants.iter().all(|v| v.args.len() == 0)
+                variants.iter().all(|v| v.args.is_empty())
             }
         }
         _ => false
@@ -4654,7 +4654,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             match resolve_expr(tcx, expr) {
                 def::DefVariant(tid, vid, _) => {
                     let variant_info = enum_variant_with_id(tcx, tid, vid);
-                    if variant_info.args.len() > 0 {
+                    if !variant_info.args.is_empty() {
                         // N-ary variant.
                         RvalueDatumExpr
                     } else {
@@ -5259,7 +5259,7 @@ impl<'tcx> VariantInfo<'tcx> {
 
         match ast_variant.node.kind {
             ast::TupleVariantKind(ref args) => {
-                let arg_tys = if args.len() > 0 {
+                let arg_tys = if !args.is_empty() {
                     // the regions in the argument types come from the
                     // enum def'n, and hence will all be early bound
                     ty::no_late_bound_regions(cx, &ty_fn_args(ctor_ty)).unwrap()
@@ -5280,7 +5280,7 @@ impl<'tcx> VariantInfo<'tcx> {
             ast::StructVariantKind(ref struct_def) => {
                 let fields: &[StructField] = &struct_def.fields;
 
-                assert!(fields.len() > 0);
+                assert!(!fields.is_empty());
 
                 let arg_tys = struct_def.fields.iter()
                     .map(|field| node_id_to_type(cx, field.node.id)).collect();

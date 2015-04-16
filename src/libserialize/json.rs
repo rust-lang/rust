@@ -3837,7 +3837,7 @@ mod tests {
         let mut stack = Stack::new();
 
         assert!(stack.is_empty());
-        assert!(stack.len() == 0);
+        assert!(stack.is_empty());
         assert!(!stack.last_is_index());
 
         stack.push_index(0);

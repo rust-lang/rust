@@ -469,7 +469,7 @@ fn each_auxiliary_node_id<F>(item: &ast::Item, callback: F) -> bool where
         ast::ItemStruct(ref struct_def, _) => {
             // If this is a newtype struct, return the constructor.
             match struct_def.ctor_id {
-                Some(ctor_id) if struct_def.fields.len() > 0 &&
+                Some(ctor_id) if !struct_def.fields.is_empty() &&
                         struct_def.fields[0].node.kind.is_unnamed() => {
                     continue_ = callback(ctor_id);
                 }
@@ -1751,7 +1751,7 @@ fn encode_codemap(ecx: &EncodeContext, rbml_w: &mut Encoder) {
 
     for filemap in &codemap.files.borrow()[..] {
 
-        if filemap.lines.borrow().len() == 0 || filemap.is_imported() {
+        if filemap.lines.borrow().is_empty() || filemap.is_imported() {
             // No need to export empty filemaps, as they can't contain spans
             // that need translation.
             // Also no need to re-export imported filemaps, as any downstream

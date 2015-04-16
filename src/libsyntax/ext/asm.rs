@@ -90,7 +90,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                       p.token != token::Colon &&
                       p.token != token::ModSep {
 
-                    if outputs.len() != 0 {
+                    if !outputs.is_empty() {
                         panictry!(p.eat(&token::Comma));
                     }
 
@@ -130,7 +130,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                       p.token != token::Colon &&
                       p.token != token::ModSep {
 
-                    if inputs.len() != 0 {
+                    if !inputs.is_empty() {
                         panictry!(p.eat(&token::Comma));
                     }
 
@@ -154,7 +154,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                       p.token != token::Colon &&
                       p.token != token::ModSep {
 
-                    if clobs.len() != 0 {
+                    if !clobs.is_empty() {
                         panictry!(p.eat(&token::Comma));
                     }
 

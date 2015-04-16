@@ -175,7 +175,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                                      please_inline)
                 }).collect::<Vec<ast::PathListItem>>();
 
-                if mine.len() == 0 {
+                if mine.is_empty() {
                     None
                 } else {
                     Some(ast::ViewPathList(p, mine))

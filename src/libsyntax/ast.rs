@@ -429,14 +429,14 @@ pub struct Generics {
 }
 
 impl Generics {
-    pub fn is_parameterized(&self) -> bool {
-        self.lifetimes.len() + self.ty_params.len() > 0
-    }
     pub fn is_lt_parameterized(&self) -> bool {
-        self.lifetimes.len() > 0
+        !self.lifetimes.is_empty()
     }
     pub fn is_type_parameterized(&self) -> bool {
-        self.ty_params.len() > 0
+        !self.ty_params.is_empty()
+    }
+    pub fn is_parameterized(&self) -> bool {
+        self.is_lt_parameterized() || self.is_type_parameterized()
     }
 }
 

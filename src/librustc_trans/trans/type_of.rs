@@ -69,7 +69,7 @@ pub fn untuple_arguments_if_necessary<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         return inputs.iter().cloned().collect()
     }
 
-    if inputs.len() == 0 {
+    if inputs.is_empty() {
         return Vec::new()
     }
 

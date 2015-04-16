@@ -51,7 +51,7 @@ impl<R: Read> Rng for ReaderRng<R> {
         unsafe { *(bytes.as_ptr() as *const u64) }
     }
     fn fill_bytes(&mut self, mut v: &mut [u8]) {
-        while v.len() > 0 {
+        while !v.is_empty() {
             let t = v;
             match self.reader.read(t) {
                 Ok(0) => panic!("ReaderRng.fill_bytes: EOF reached"),

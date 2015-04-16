@@ -215,9 +215,9 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 match i.inner {
                     // emptied modules/impls have no need to exist
                     clean::ModuleItem(ref m)
-                        if m.items.len() == 0 &&
+                        if m.items.is_empty() &&
                            i.doc_value().is_none() => None,
-                    clean::ImplItem(ref i) if i.items.len() == 0 => None,
+                    clean::ImplItem(ref i) if i.items.is_empty() => None,
                     _ => {
                         self.retained.insert(i.def_id.node);
                         Some(i)
@@ -294,7 +294,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
                 &clean::NameValue(ref x, _) if "doc" == *x => false,
                 _ => true
             }).cloned().collect();
-            if docstr.len() > 0 {
+            if !docstr.is_empty() {
                 a.push(clean::NameValue("doc".to_string(), docstr));
             }
             i.attrs = a;
@@ -350,7 +350,7 @@ pub fn unindent(s: &str) -> String {
         }
     });
 
-    if lines.len() >= 1 {
+    if !lines.is_empty() {
         let mut unindented = vec![ lines[0].trim().to_string() ];
         unindented.push_all(&lines.tail().iter().map(|&line| {
             if line.chars().all(|c| c.is_whitespace()) {

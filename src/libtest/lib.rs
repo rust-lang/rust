@@ -373,7 +373,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     if matches.opt_present("h") { usage(&args[0]); return None; }
 
-    let filter = if matches.free.len() > 0 {
+    let filter = if !matches.free.is_empty() {
         Some(matches.free[0].clone())
     } else {
         None
@@ -588,14 +588,14 @@ impl<T: Write> ConsoleTestState<T> {
         let mut fail_out = String::new();
         for &(ref f, ref stdout) in &self.failures {
             failures.push(f.name.to_string());
-            if stdout.len() > 0 {
+            if !stdout.is_empty() {
                 fail_out.push_str(&format!("---- {} stdout ----\n\t", f.name));
                 let output = String::from_utf8_lossy(stdout);
                 fail_out.push_str(&output);
                 fail_out.push_str("\n");
             }
         }
-        if fail_out.len() > 0 {
+        if !fail_out.is_empty() {
             try!(self.write_plain("\n"));
             try!(self.write_plain(&fail_out));
         }
