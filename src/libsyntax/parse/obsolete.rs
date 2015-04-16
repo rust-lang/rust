@@ -80,7 +80,8 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             self.span_warn(sp, &format!("obsolete syntax: {}", kind_str));
         }
 
-        if !self.obsolete_set.contains(&kind) {
+        if !self.obsolete_set.contains(&kind) &&
+            (error || self.sess.span_diagnostic.handler().can_emit_warnings) {
             self.sess
                 .span_diagnostic
                 .handler()
