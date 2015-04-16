@@ -17,7 +17,10 @@ There is also precedent with C and C++. On both Linux and Windows, if `stdout` i
 
 When using any of the convenience macros that write to either `stdout` or `stderr`, such as `println!` `print!` `panic!` and `assert!`, change the implementation to ignore the specific error of `stdout` or `stderr` not existing. The behavior of all other errors will be unaffected. This can be implemented by redirecting `stdout` and `stderr` to `std::io::sink` if the original handles do not exist.
 
-Update the methods `std::io::stdin` `std::io::stdout` and `std::io::stderr` (and any raw versions of these) to return a `Result`. If their respective handles do not exist, then return `Err`.
+Update the methods `std::io::stdin` `std::io::stdout` and `std::io::stderr` as follows:
+* If `stdout` or `stderr` does not exist, return the equivalent of `std::io::sink`.
+* If `stderr` does not exist, return the equivalent of `std::io::empty`.
+* For the raw versions, return a `Result`, and if the respective handle does not exist, return an `Err`.
 
 # Drawbacks
 
@@ -28,8 +31,8 @@ Update the methods `std::io::stdin` `std::io::stdout` and `std::io::stderr` (and
 
 * Make `println!` `print!` `panic!` `assert!` return errors that the user has to handle. This would lose a large part of the convenience of these macros.
 * Continue with the status quo and panic if `stdout` or `stderr` doesn't exist.
-* For `std::io::stdin` `std::io::stdout` and `std::io::stderr`, make them return the equivalent of `std::io::empty` or `std::io::sink` if their respective handles don't exist. This leaves people unable to explicitly handle the case of them not existing, but has the advantage of not breaking stable signatures.
-** Or they could simply error upon attempting to write to/read from the handles.
+* For `std::io::stdin` `std::io::stdout` and `std::io::stderr`, make them return a `Result`. This would be a breaking change to the signature, so if this is desired it should be done immediately before 1.0.
+** Alternatively, make the objects returned by these methods error upon attempting to write to/read from them if their respective handle doesn't exist.
 
 # Unresolved questions
 
