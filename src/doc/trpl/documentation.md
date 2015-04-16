@@ -380,7 +380,10 @@ $ rustdoc --test path/to/my/crate/root.rs
 $ cargo test
 ```
 
-That's right, `cargo test` tests embedded documentation too.
+That's right, `cargo test` tests embedded documentation too. However, 
+`cargo test` will not test binary crates, only library ones. This is
+due to the way `rustdoc` works: it links against the library to be tested,
+but with a binary, there’s nothing to link to.
 
 There are a few more annotations that are useful to help `rustdoc` do the right
 thing when testing your code:
