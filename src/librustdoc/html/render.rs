@@ -37,7 +37,7 @@ pub use self::ExternalLocation::*;
 use std::ascii::OwnedAsciiExt;
 use std::cell::RefCell;
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::default::Default;
 use std::fmt;
 use std::fs::{self, File};
@@ -1319,8 +1319,9 @@ impl Context {
         }
     }
 
-    fn build_sidebar_items(&self, m: &clean::Module) -> HashMap<String, Vec<NameDoc>> {
-        let mut map = HashMap::new();
+    fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<NameDoc>> {
+        // BTreeMap instead of HashMap to get a sorted output
+        let mut map = BTreeMap::new();
         for item in &m.items {
             if self.ignore_private_item(item) { continue }
 
