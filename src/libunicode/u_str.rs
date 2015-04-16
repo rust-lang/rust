@@ -157,7 +157,7 @@ impl<'a> Iterator for Graphemes<'a> {
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         use tables::grapheme as gr;
-        if self.string.len() == 0 {
+        if self.string.is_empty() {
             return None;
         }
 
@@ -257,7 +257,7 @@ impl<'a> DoubleEndedIterator for Graphemes<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> {
         use tables::grapheme as gr;
-        if self.string.len() == 0 {
+        if self.string.is_empty() {
             return None;
         }
 

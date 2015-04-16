@@ -698,7 +698,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // is checked for in `evaluate_stack` (and hence users
         // who might care about this case, like coherence, should use
         // that function).
-        if candidates.len() == 0 {
+        if candidates.is_empty() {
             return Err(Unimplemented);
         }
 
@@ -873,7 +873,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         try!(self.assemble_candidates_from_caller_bounds(stack, &mut candidates));
         // Default implementations have lower priority, so we only
         // consider triggering a default if there is no other impl that can apply.
-        if candidates.vec.len() == 0 {
+        if candidates.vec.is_empty() {
             try!(self.assemble_candidates_from_default_impls(obligation, &mut candidates));
         }
         debug!("candidate list size: {}", candidates.vec.len());

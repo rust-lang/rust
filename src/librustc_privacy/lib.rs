@@ -1055,7 +1055,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
         let check_inherited = |sp: Span, vis: ast::Visibility, note: &str| {
             if vis != ast::Inherited {
                 tcx.sess.span_err(sp, "unnecessary visibility qualifier");
-                if note.len() > 0 {
+                if !note.is_empty() {
                     tcx.sess.span_note(sp, note);
                 }
             }

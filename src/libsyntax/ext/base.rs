@@ -774,7 +774,7 @@ pub fn check_zero_tts(cx: &ExtCtxt,
                       sp: Span,
                       tts: &[ast::TokenTree],
                       name: &str) {
-    if tts.len() != 0 {
+    if !tts.is_empty() {
         cx.span_err(sp, &format!("{} takes no arguments", name));
     }
 }

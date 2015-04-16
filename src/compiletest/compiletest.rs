@@ -368,7 +368,7 @@ pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::Test
 fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
     match full_version_line {
         Some(ref full_version_line)
-          if full_version_line.trim().len() > 0 => {
+          if !full_version_line.trim().is_empty() => {
             let full_version_line = full_version_line.trim();
 
             // used to be a regex "(^|[^0-9])([0-9]\.[0-9])([^0-9]|$)"
@@ -408,7 +408,7 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
 
     match full_version_line {
         Some(ref full_version_line)
-          if full_version_line.trim().len() > 0 => {
+          if !full_version_line.trim().is_empty() => {
             let full_version_line = full_version_line.trim();
 
             for (pos, l) in full_version_line.char_indices() {
@@ -426,7 +426,7 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
                 let vers = full_version_line[pos + 5..].chars().take_while(|c| {
                     c.is_digit(10)
                 }).collect::<String>();
-                if vers.len() > 0 { return Some(vers) }
+                if !vers.is_empty() { return Some(vers) }
             }
             println!("Could not extract LLDB version from line '{}'",
                      full_version_line);

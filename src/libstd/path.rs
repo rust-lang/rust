@@ -218,7 +218,7 @@ mod platform {
                     return Some(DeviceNS(u8_slice_as_os_str(slice)));
                 }
                 match parse_two_comps(path, is_sep_byte) {
-                    Some((server, share)) if server.len() > 0 && share.len() > 0 => {
+                    Some((server, share)) if !server.is_empty() && !share.is_empty() => {
                         // \\server\share
                         return Some(UNC(u8_slice_as_os_str(server),
                                         u8_slice_as_os_str(share)));
@@ -401,7 +401,7 @@ unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
 /// Says whether the first byte after the prefix is a separator.
 fn has_physical_root(s: &[u8], prefix: Option<Prefix>) -> bool {
     let path = if let Some(p) = prefix { &s[p.len()..] } else { s };
-    path.len() > 0 && is_sep_byte(path[0])
+    !path.is_empty() && is_sep_byte(path[0])
 }
 
 // basic workhorse for splitting stem and extension
@@ -810,7 +810,7 @@ impl<'a> Iterator for Components<'a> {
                 State::StartDir => {
                     self.front = State::Body;
                     if self.has_physical_root {
-                        debug_assert!(self.path.len() > 0);
+                        debug_assert!(!self.path.is_empty());
                         self.path = &self.path[1..];
                         return Some(Component::RootDir)
                     } else if let Some(p) = self.prefix {
@@ -818,7 +818,7 @@ impl<'a> Iterator for Components<'a> {
                             return Some(Component::RootDir)
                         }
                     } else if self.include_cur_dir() {
-                        debug_assert!(self.path.len() > 0);
+                        debug_assert!(!self.path.is_empty());
                         self.path = &self.path[1..];
                         return Some(Component::CurDir)
                     }
@@ -1055,7 +1055,7 @@ impl PathBuf {
         };
 
         let extension = extension.as_ref();
-        if os_str_as_u8_slice(extension).len() > 0 {
+        if !os_str_as_u8_slice(extension).is_empty() {
             stem.push(".");
             stem.push(extension);
         }

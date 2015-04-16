@@ -174,7 +174,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 }
 
                 // For DST, all intermediate types must be sized.
-                if variant.fields.len() > 0 {
+                if !variant.fields.is_empty() {
                     for field in variant.fields.init() {
                         fcx.register_builtin_bound(
                             field.ty,
@@ -658,7 +658,7 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     enum_def.variants.iter()
         .map(|variant| {
             match variant.node.kind {
-                ast::TupleVariantKind(ref args) if args.len() > 0 => {
+                ast::TupleVariantKind(ref args) if !args.is_empty() => {
                     let ctor_ty = ty::node_id_to_type(fcx.tcx(), variant.node.id);
 
                     // the regions in the argument types come from the

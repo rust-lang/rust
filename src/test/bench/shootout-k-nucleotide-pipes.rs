@@ -184,7 +184,7 @@ fn main() {
    for line in rdr.lines() {
        let line = line.unwrap().trim().to_string();
 
-       if line.len() == 0 { continue; }
+       if line.is_empty() { continue; }
 
        match (line.as_bytes()[0] as char, proc_mode) {
 

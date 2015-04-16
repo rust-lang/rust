@@ -2392,7 +2392,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     ccx.sess().bug("struct variant kind unexpected in get_item_val")
                 }
             };
-            assert!(args.len() != 0);
+            assert!(!args.is_empty());
             let ty = ty::node_id_to_type(ccx.tcx(), id);
             let parent = ccx.tcx().map.get_parent(id);
             let enm = ccx.tcx().map.expect_item(parent);

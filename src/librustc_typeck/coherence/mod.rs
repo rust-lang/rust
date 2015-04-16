@@ -387,7 +387,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
         for &impl_did in &*trait_impls.borrow() {
             let items = impl_items.get(&impl_did).unwrap();
-            if items.len() < 1 {
+            if items.is_empty() {
                 // We'll error out later. For now, just don't ICE.
                 continue;
             }

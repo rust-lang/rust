@@ -594,7 +594,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             for (subpat, arg_ty) in subpats.iter().zip(arg_tys.iter()) {
                 check_pat(pcx, &**subpat, *arg_ty);
             }
-        } else if arg_tys.len() == 0 {
+        } else if arg_tys.is_empty() {
             span_err!(tcx.sess, pat.span, E0024,
                       "this pattern has {} field{}, but the corresponding {} has no fields",
                       subpats.len(), if subpats.len() == 1 {""} else {"s"}, kind_name);

@@ -246,7 +246,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     fn in_snapshot(&self) -> bool {
-        self.undo_log.borrow().len() > 0
+        !self.undo_log.borrow().is_empty()
     }
 
     pub fn start_snapshot(&self) -> RegionSnapshot {

@@ -371,7 +371,7 @@ impl<'a> Parser<'a> {
             None => {
                 let tmp = self.cur.clone();
                 match self.word() {
-                    word if word.len() > 0 => {
+                    word if !word.is_empty() => {
                         if self.consume('$') {
                             CountIsName(word)
                         } else {
@@ -463,7 +463,7 @@ mod tests {
     fn musterr(s: &str) {
         let mut p = Parser::new(s);
         p.next();
-        assert!(p.errors.len() != 0);
+        assert!(!p.errors.is_empty());
     }
 
     #[test]

@@ -1125,7 +1125,7 @@ fn one_bound_for_assoc_type<'tcx>(tcx: &ty::ctxt<'tcx>,
                                   span: Span)
     -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
 {
-    if bounds.len() == 0 {
+    if bounds.is_empty() {
         span_err!(tcx.sess, span, E0220,
                   "associated type `{}` not found for `{}`",
                   assoc_name,
@@ -2025,7 +2025,7 @@ fn compute_object_lifetime_bound<'tcx>(
             "only a single explicit lifetime bound is permitted");
     }
 
-    if explicit_region_bounds.len() != 0 {
+    if !explicit_region_bounds.is_empty() {
         // Explicitly specified region bound. Use that.
         let r = explicit_region_bounds[0];
         return ast_region_to_region(tcx, r);
@@ -2042,7 +2042,7 @@ fn compute_object_lifetime_bound<'tcx>(
 
     // If there are no derived region bounds, then report back that we
     // can find no region bound.
-    if derived_region_bounds.len() == 0 {
+    if derived_region_bounds.is_empty() {
         match rscope.object_lifetime_default(span) {
             Some(r) => { return r; }
             None => {
@@ -2130,11 +2130,11 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                                                      &mut builtin_bounds) {
                             let segments = &b.trait_ref.path.segments;
                             let parameters = &segments[segments.len() - 1].parameters;
-                            if parameters.types().len() > 0 {
+                            if !parameters.types().is_empty() {
                                 check_type_argument_count(tcx, b.trait_ref.path.span,
                                                           parameters.types().len(), 0, 0);
                             }
-                            if parameters.lifetimes().len() > 0 {
+                            if !parameters.lifetimes().is_empty() {
                                 report_lifetime_number_error(tcx, b.trait_ref.path.span,
                                                              parameters.lifetimes().len(), 0);
                             }

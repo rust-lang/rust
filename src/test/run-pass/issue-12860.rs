@@ -30,7 +30,7 @@ fn main() {
     let middle = XYZ{x: 0, y: 0, z: 0};
     border.insert(middle);
 
-    while border.len() > 0 && connected.len() < 10000 {
+    while !border.is_empty() && connected.len() < 10000 {
         let choice = *(border.iter().next().unwrap());
         border.remove(&choice);
         connected.insert(choice);

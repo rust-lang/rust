@@ -716,7 +716,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             None => {
                 // Vanilla 'break' or 'loop', so use the enclosing
                 // loop scope
-                if self.loop_scope.len() == 0 {
+                if self.loop_scope.is_empty() {
                     self.ir.tcx.sess.span_bug(sp, "break outside loop");
                 } else {
                     *self.loop_scope.last().unwrap()
@@ -1527,7 +1527,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                     // for nil return types, it is ok to not return a value expl.
                 } else {
                     let ends_with_stmt = match body.expr {
-                        None if body.stmts.len() > 0 =>
+                        None if !body.stmts.is_empty() =>
                             match body.stmts.first().unwrap().node {
                                 ast::StmtSemi(ref e, _) => {
                                     ty::expr_ty(self.ir.tcx, &**e) == t_ret
@@ -1586,7 +1586,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn should_warn(&self, var: Variable) -> Option<String> {
         let name = self.ir.variable_name(var);
-        if name.len() == 0 || name.as_bytes()[0] == ('_' as u8) {
+        if name.is_empty() || name.as_bytes()[0] == ('_' as u8) {
             None
         } else {
             Some(name)

@@ -63,7 +63,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         let mut i = 0;
         let mut j = lines.len();
         // first line of all-stars should be omitted
-        if lines.len() > 0 &&
+        if !lines.is_empty() &&
                 lines[0].chars().all(|c| c == '*') {
             i += 1;
         }
@@ -294,7 +294,7 @@ fn read_block_comment(rdr: &mut StringReader,
                 }
             }
         }
-        if curr_line.len() != 0 {
+        if !curr_line.is_empty() {
             trim_whitespace_prefix_and_push_line(&mut lines,
                                                  curr_line,
                                                  col);

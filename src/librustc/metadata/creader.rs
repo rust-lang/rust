@@ -80,7 +80,7 @@ pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
             (None, Some(sess)) => sess.err(s),
         }
     };
-    if s.len() == 0 {
+    if s.is_empty() {
         say("crate name must not be empty");
     }
     for c in s.chars() {

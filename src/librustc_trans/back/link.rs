@@ -269,7 +269,7 @@ pub fn sanitize(s: &str) -> String {
     }
 
     // Underscore-qualify anything that didn't start as an ident.
-    if result.len() > 0 &&
+    if !result.is_empty() &&
         result.as_bytes()[0] != '_' as u8 &&
         ! (result.as_bytes()[0] as char).is_xid_start() {
         return format!("_{}", &result[..]);
@@ -463,7 +463,7 @@ pub fn filename_for_input(sess: &Session,
         }
         config::CrateTypeExecutable => {
             let suffix = &sess.target.target.options.exe_suffix;
-            if suffix.len() == 0 {
+            if suffix.is_empty() {
                 out_filename.to_path_buf()
             } else {
                 out_filename.with_extension(&suffix[1..])

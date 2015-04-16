@@ -89,7 +89,7 @@ fn cs_clone(
         }
     }
 
-    if all_fields.len() >= 1 && all_fields[0].name.is_none() {
+    if !all_fields.is_empty() && all_fields[0].name.is_none() {
         // enum-like
         let subcalls = all_fields.iter().map(subcall).collect();
         let path = cx.expr_path(ctor_path);

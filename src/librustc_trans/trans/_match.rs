@@ -988,7 +988,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _indenter = indenter();
     let _icx = push_ctxt("match::compile_submatch");
     let mut bcx = bcx;
-    if m.len() == 0 {
+    if m.is_empty() {
         if chk.is_fallible() {
             chk.handle_fail(bcx);
         }
@@ -1112,7 +1112,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let mut kind = NoBranch;
     let mut test_val = val;
     debug!("test_val={}", bcx.val_to_string(test_val));
-    if opts.len() > 0 {
+    if !opts.is_empty() {
         match opts[0] {
             ConstantValue(..) | ConstantRange(..) => {
                 test_val = load_if_immediate(bcx, val, left_ty);
@@ -1152,7 +1152,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     };
 
     let defaults = enter_default(else_cx, dm, m, col, val);
-    let exhaustive = chk.is_infallible() && defaults.len() == 0;
+    let exhaustive = chk.is_infallible() && defaults.is_empty();
     let len = opts.len();
 
     // Compile subtrees for each option

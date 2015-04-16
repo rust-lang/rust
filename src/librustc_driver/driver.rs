@@ -887,9 +887,9 @@ pub fn collect_crate_types(session: &Session,
     // command line, then reuse the empty `base` Vec to hold the types that
     // will be found in crate attributes.
     let mut base = session.opts.crate_types.clone();
-    if base.len() == 0 {
+    if base.is_empty() {
         base.extend(attr_types.into_iter());
-        if base.len() == 0 {
+        if base.is_empty() {
             base.push(link::default_output_for_target(session));
         }
         base.sort();

@@ -79,7 +79,7 @@ pub fn main() {
 
     // Zero size vec.
     let f5: &Fat<[isize]> = &Fat { ptr: [] };
-    assert!(f5.ptr.len() == 0);
+    assert!(f5.ptr.is_empty());
     let f5: &Fat<[Bar]> = &Fat { ptr: [] };
-    assert!(f5.ptr.len() == 0);
+    assert!(f5.ptr.is_empty());
 }

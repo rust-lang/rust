@@ -20,7 +20,7 @@ use std::path::PathBuf;
 /// Return path to database entry for `term`
 #[allow(deprecated)]
 pub fn get_dbpath_for_term(term: &str) -> Option<Box<PathBuf>> {
-    if term.len() == 0 {
+    if term.is_empty() {
         return None;
     }
 
