@@ -34,7 +34,6 @@
 #![feature(unicode)]
 #![feature(path_ext)]
 #![feature(str_char)]
-#![feature(into_cow)]
 
 extern crate arena;
 extern crate fmt_macros;

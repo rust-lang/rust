@@ -16,7 +16,7 @@ use ext::tt::transcribe::tt_next_token;
 use parse::token;
 use parse::token::str_to_ident;
 
-use std::borrow::{IntoCow, Cow};
+use std::borrow::Cow;
 use std::char;
 use std::fmt;
 use std::mem::replace;
@@ -293,7 +293,7 @@ impl<'a> StringReader<'a> {
             let next = i + ch.len_utf8();
             if ch == '\r' {
                 if next < s.len() && s.char_at(next) == '\n' {
-                    return translate_crlf_(self, start, s, errmsg, i).into_cow();
+                    return translate_crlf_(self, start, s, errmsg, i).into();
                 }
                 let pos = start + BytePos(i as u32);
                 let end_pos = start + BytePos(next as u32);
@@ -301,7 +301,7 @@ impl<'a> StringReader<'a> {
             }
             i = next;
         }
-        return s.into_cow();
+        return s.into();
 
         fn translate_crlf_(rdr: &StringReader, start: BytePos,
                         s: &str, errmsg: &str, mut i: usize) -> String {
@@ -564,7 +564,7 @@ impl<'a> StringReader<'a> {
                 let string = if has_cr {
                     self.translate_crlf(start_bpos, string,
                                         "bare CR not allowed in block doc-comment")
-                } else { string.into_cow() };
+                } else { string.into() };
                 token::DocComment(token::intern(&string[..]))
             } else {
                 token::Comment
