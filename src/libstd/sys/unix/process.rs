@@ -315,6 +315,10 @@ impl Process {
         fail(&mut output)
     }
 
+    pub fn id(&self) -> u32 {
+        self.pid as u32
+    }
+
     pub fn wait(&self) -> io::Result<ExitStatus> {
         let mut status = 0 as c_int;
         try!(cvt_r(|| unsafe { c::waitpid(self.pid, &mut status, 0) }));
