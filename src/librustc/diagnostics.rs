@@ -114,6 +114,12 @@ reference when using guards or refactor the entire expression, perhaps by
 putting the condition inside the body of the arm.
 "##,
 
+E0015: r##"
+The only function calls allowed in static or constant expressions are enum
+variant constructors or struct constructors (for unit or tuple structs). This
+is because Rust currently does not support compile-time function execution.
+"##,
+
 E0020: r##"
 This error indicates that an attempt was made to divide by zero (or take the
 remainder of a zero divisor) in a static or constant expression.
@@ -343,7 +349,6 @@ register_diagnostics! {
     E0012,
     E0013,
     E0014,
-    E0015,
     E0016,
     E0017,
     E0018,
