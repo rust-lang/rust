@@ -361,7 +361,7 @@ fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         InBoundsGEP(bcx, data_ptr, &[loop_counter])
     };
     let bcx = f(bcx, lleltptr, vt.unit_ty);
-    let plusone = Add(bcx, loop_counter, C_uint(bcx.ccx(), 1us), DebugLoc::None);
+    let plusone = Add(bcx, loop_counter, C_uint(bcx.ccx(), 1usize), DebugLoc::None);
     AddIncomingToPhi(loop_counter, plusone, bcx.llbb);
 
     let cond_val = ICmp(bcx, llvm::IntULT, plusone, count, DebugLoc::None);
