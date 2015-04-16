@@ -218,15 +218,17 @@ fn build_type(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEn
     })
 }
 
-fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
-               did: ast::DefId) -> Vec<clean::Item> {
+pub fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
+                   did: ast::DefId) -> Vec<clean::Item> {
     ty::populate_implementations_for_type_if_necessary(tcx, did);
     let mut impls = Vec::new();
 
     match tcx.inherent_impls.borrow().get(&did) {
         None => {}
         Some(i) => {
-            impls.extend(i.iter().map(|&did| { build_impl(cx, tcx, did) }));
+            for &did in i.iter() {
+                build_impl(cx, tcx, did, &mut impls);
+            }
         }
     }
 
@@ -247,9 +249,9 @@ fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
 
         fn populate_impls(cx: &DocContext, tcx: &ty::ctxt,
                           def: decoder::DefLike,
-                          impls: &mut Vec<Option<clean::Item>>) {
+                          impls: &mut Vec<clean::Item>) {
             match def {
-                decoder::DlImpl(did) => impls.push(build_impl(cx, tcx, did)),
+                decoder::DlImpl(did) => build_impl(cx, tcx, did, impls),
                 decoder::DlDef(def::DefMod(did)) => {
                     csearch::each_child_of_item(&tcx.sess.cstore,
                                                 did,
@@ -262,14 +264,15 @@ fn build_impls(cx: &DocContext, tcx: &ty::ctxt,
         }
     }
 
-    impls.into_iter().filter_map(|a| a).collect()
+    return impls;
 }
 
-fn build_impl(cx: &DocContext,
-              tcx: &ty::ctxt,
-              did: ast::DefId) -> Option<clean::Item> {
+pub fn build_impl(cx: &DocContext,
+                  tcx: &ty::ctxt,
+                  did: ast::DefId,
+                  ret: &mut Vec<clean::Item>) {
     if !cx.inlined.borrow_mut().as_mut().unwrap().insert(did) {
-        return None
+        return
     }
 
     let attrs = load_attrs(cx, tcx, did);
@@ -278,13 +281,13 @@ fn build_impl(cx: &DocContext,
         // If this is an impl for a #[doc(hidden)] trait, be sure to not inline
         let trait_attrs = load_attrs(cx, tcx, t.def_id);
         if trait_attrs.iter().any(|a| is_doc_hidden(a)) {
-            return None
+            return
         }
     }
 
     // If this is a defaulted impl, then bail out early here
     if csearch::is_default_impl(&tcx.sess.cstore, did) {
-        return Some(clean::Item {
+        return ret.push(clean::Item {
             inner: clean::DefaultImplItem(clean::DefaultImpl {
                 // FIXME: this should be decoded
                 unsafety: ast::Unsafety::Normal,
@@ -352,19 +355,25 @@ fn build_impl(cx: &DocContext,
                 })
             }
         }
-    }).collect();
+    }).collect::<Vec<_>>();
     let polarity = csearch::get_impl_polarity(tcx, did);
     let ty = ty::lookup_item_type(tcx, did);
-    return Some(clean::Item {
+    let trait_ = associated_trait.clean(cx).map(|bound| {
+        match bound {
+            clean::TraitBound(polyt, _) => polyt.trait_,
+            clean::RegionBound(..) => unreachable!(),
+        }
+    });
+    if let Some(clean::ResolvedPath { did, .. }) = trait_ {
+        if Some(did) == cx.deref_trait_did.get() {
+            super::build_deref_target_impls(cx, &trait_items, ret);
+        }
+    }
+    ret.push(clean::Item {
         inner: clean::ImplItem(clean::Impl {
             unsafety: ast::Unsafety::Normal, // FIXME: this should be decoded
             derived: clean::detect_derived(&attrs),
-            trait_: associated_trait.clean(cx).map(|bound| {
-                match bound {
-                    clean::TraitBound(polyt, _) => polyt.trait_,
-                    clean::RegionBound(..) => unreachable!(),
-                }
-            }),
+            trait_: trait_,
             for_: ty.ty.clean(cx),
             generics: (&ty.generics, &predicates, subst::TypeSpace).clean(cx),
             items: trait_items,

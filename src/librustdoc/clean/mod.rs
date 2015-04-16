@@ -128,6 +128,10 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
     fn clean(&self, cx: &DocContext) -> Crate {
         use rustc::session::config::Input;
 
+        if let Some(t) = cx.tcx_opt() {
+            cx.deref_trait_did.set(t.lang_items.deref_trait());
+        }
+
         let mut externs = Vec::new();
         cx.sess().cstore.iter_crate_data(|n, meta| {
             externs.push((n, meta.clean(cx)));
@@ -313,6 +317,22 @@ impl Item {
     pub fn is_fn(&self) -> bool {
         match self.inner { FunctionItem(..) => true, _ => false }
     }
+
+    pub fn stability_class(&self) -> String {
+        match self.stability {
+            Some(ref s) => {
+                let mut base = match s.level {
+                    attr::Unstable => "unstable".to_string(),
+                    attr::Stable => String::new(),
+                };
+                if !s.deprecated_since.is_empty() {
+                    base.push_str(" deprecated");
+                }
+                base
+            }
+            _ => String::new(),
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
@@ -371,7 +391,7 @@ impl Clean<Item> for doctree::Module {
         items.extend(self.statics.iter().map(|x| x.clean(cx)));
         items.extend(self.constants.iter().map(|x| x.clean(cx)));
         items.extend(self.traits.iter().map(|x| x.clean(cx)));
-        items.extend(self.impls.iter().map(|x| x.clean(cx)));
+        items.extend(self.impls.iter().flat_map(|x| x.clean(cx).into_iter()));
         items.extend(self.macros.iter().map(|x| x.clean(cx)));
         items.extend(self.def_traits.iter().map(|x| x.clean(cx)));
 
@@ -1254,6 +1274,7 @@ impl Clean<Item> for ast::ImplItem {
             ast::MacImplItem(_) => {
                 MacroItem(Macro {
                     source: self.span.to_src(cx),
+                    imported_from: None,
                 })
             }
         };
@@ -2169,9 +2190,21 @@ fn detect_derived<M: AttrMetaMethods>(attrs: &[M]) -> bool {
     attr::contains_name(attrs, "automatically_derived")
 }
 
-impl Clean<Item> for doctree::Impl {
-    fn clean(&self, cx: &DocContext) -> Item {
-        Item {
+impl Clean<Vec<Item>> for doctree::Impl {
+    fn clean(&self, cx: &DocContext) -> Vec<Item> {
+        let mut ret = Vec::new();
+        let trait_ = self.trait_.clean(cx);
+        let items = self.items.clean(cx);
+
+        // If this impl block is an implementation of the Deref trait, then we
+        // need to try inlining the target's inherent impl blocks as well.
+        if let Some(ResolvedPath { did, .. }) = trait_ {
+            if Some(did) == cx.deref_trait_did.get() {
+                build_deref_target_impls(cx, &items, &mut ret);
+            }
+        }
+
+        ret.push(Item {
             name: None,
             attrs: self.attrs.clean(cx),
             source: self.whence.clean(cx),
@@ -2181,12 +2214,66 @@ impl Clean<Item> for doctree::Impl {
             inner: ImplItem(Impl {
                 unsafety: self.unsafety,
                 generics: self.generics.clean(cx),
-                trait_: self.trait_.clean(cx),
+                trait_: trait_,
                 for_: self.for_.clean(cx),
-                items: self.items.clean(cx),
+                items: items,
                 derived: detect_derived(&self.attrs),
                 polarity: Some(self.polarity.clean(cx)),
             }),
+        });
+        return ret;
+    }
+}
+
+fn build_deref_target_impls(cx: &DocContext,
+                            items: &[Item],
+                            ret: &mut Vec<Item>) {
+    let tcx = match cx.tcx_opt() {
+        Some(t) => t,
+        None => return,
+    };
+
+    for item in items {
+        let target = match item.inner {
+            TypedefItem(ref t) => &t.type_,
+            _ => continue,
+        };
+        let primitive = match *target {
+            ResolvedPath { did, .. } if ast_util::is_local(did) => continue,
+            ResolvedPath { did, .. } => {
+                ret.extend(inline::build_impls(cx, tcx, did));
+                continue
+            }
+            _ => match target.primitive_type() {
+                Some(prim) => prim,
+                None => continue,
+            }
+        };
+        let did = match primitive {
+            Isize => tcx.lang_items.isize_impl(),
+            I8 => tcx.lang_items.i8_impl(),
+            I16 => tcx.lang_items.i16_impl(),
+            I32 => tcx.lang_items.i32_impl(),
+            I64 => tcx.lang_items.i64_impl(),
+            Usize => tcx.lang_items.usize_impl(),
+            U8 => tcx.lang_items.u8_impl(),
+            U16 => tcx.lang_items.u16_impl(),
+            U32 => tcx.lang_items.u32_impl(),
+            U64 => tcx.lang_items.u64_impl(),
+            F32 => tcx.lang_items.f32_impl(),
+            F64 => tcx.lang_items.f64_impl(),
+            Char => tcx.lang_items.char_impl(),
+            Bool => None,
+            Str => tcx.lang_items.str_impl(),
+            Slice => tcx.lang_items.slice_impl(),
+            Array => tcx.lang_items.slice_impl(),
+            PrimitiveTuple => None,
+            PrimitiveRawPointer => tcx.lang_items.const_ptr_impl(),
+        };
+        if let Some(did) = did {
+            if !ast_util::is_local(did) {
+                inline::build_impl(cx, tcx, did, ret);
+            }
         }
     }
 }
@@ -2541,6 +2628,7 @@ fn resolve_def(cx: &DocContext, id: ast::NodeId) -> Option<ast::DefId> {
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Macro {
     pub source: String,
+    pub imported_from: Option<String>,
 }
 
 impl Clean<Item> for doctree::Macro {
@@ -2554,6 +2642,7 @@ impl Clean<Item> for doctree::Macro {
             def_id: ast_util::local_def(self.id),
             inner: MacroItem(Macro {
                 source: self.whence.to_src(cx),
+                imported_from: self.imported_from.clean(cx),
             }),
         }
     }

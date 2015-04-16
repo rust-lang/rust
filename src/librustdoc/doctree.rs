@@ -214,6 +214,7 @@ pub struct Macro {
     pub attrs: Vec<ast::Attribute>,
     pub whence: Span,
     pub stab: Option<attr::Stability>,
+    pub imported_from: Option<Ident>,
 }
 
 pub struct ExternCrate {
