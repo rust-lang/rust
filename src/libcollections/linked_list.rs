@@ -25,10 +25,9 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use core::cmp::Ordering;
-use core::default::Default;
 use core::fmt;
 use core::hash::{Hasher, Hash};
-use core::iter::{self, FromIterator, IntoIterator};
+use core::iter::{self, FromIterator};
 use core::mem;
 use core::ptr;
 
@@ -294,13 +293,6 @@ impl<T> LinkedList<T> {
             tail: self.list_tail,
             list: self
         }
-    }
-
-    /// Consumes the list into an iterator yielding elements by value.
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_iter(self) -> IntoIter<T> {
-        IntoIter{list: self}
     }
 
     /// Returns `true` if the `LinkedList` is empty.
@@ -852,8 +844,10 @@ impl<T> IntoIterator for LinkedList<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
+    /// Consumes the list into an iterator yielding elements by value.
+    #[inline]
     fn into_iter(self) -> IntoIter<T> {
-        self.into_iter()
+        IntoIter{list: self}
     }
 }
 
@@ -941,7 +935,7 @@ impl<A: Hash> Hash for LinkedList<A> {
 #[cfg(test)]
 mod test {
     use std::clone::Clone;
-    use std::iter::Iterator;
+    use std::iter::{Iterator, IntoIterator};
     use std::option::Option::{Some, None, self};
     use std::__rand::{thread_rng, Rng};
     use std::thread;

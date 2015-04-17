@@ -16,14 +16,14 @@
 
 use core::prelude::*;
 
-use core::default::Default;
 use core::fmt;
 use core::hash;
-use core::iter::{IntoIterator, FromIterator};
+use core::iter::FromIterator;
 use core::mem;
 use core::ops::{self, Deref, Add, Index};
 use core::ptr;
 use core::slice;
+#[allow(deprecated)] use core::str::Str;
 use core::str::pattern::Pattern;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
