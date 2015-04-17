@@ -42,6 +42,3 @@ pub use option::Option::{self, Some, None};
 pub use result::Result::{self, Ok, Err};
 pub use slice::SliceExt;
 pub use str::StrExt;
-
-#[allow(deprecated)] pub use slice::AsSlice;
-#[allow(deprecated)] pub use str::Str;

@@ -46,7 +46,6 @@ use vec::Vec;
 
 use sys::os_str::{Buf, Slice};
 use sys_common::{AsInner, IntoInner, FromInner};
-use super::AsOsStr;
 
 /// Owned, mutable OS strings.
 #[derive(Clone)]
@@ -226,14 +225,6 @@ impl OsStr {
         s.as_ref()
     }
 
-    /// Coerces directly from a `&str` slice to a `&OsStr` slice.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0",
-                 reason = "use `OsStr::new` instead")]
-    pub fn from_str(s: &str) -> &OsStr {
-        unsafe { mem::transmute(Slice::from_str(s)) }
-    }
-
     /// Yields a `&str` slice if the `OsStr` is valid unicode.
     ///
     /// This conversion may entail doing a check for UTF-8 validity.
@@ -376,46 +367,6 @@ impl Borrow<OsStr> for OsString {
 impl ToOwned for OsStr {
     type Owned = OsString;
     fn to_owned(&self) -> OsString { self.to_os_string() }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
-impl<'a, T: AsOsStr + ?Sized> AsOsStr for &'a T {
-    fn as_os_str(&self) -> &OsStr {
-        (*self).as_os_str()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
-impl AsOsStr for OsStr {
-    fn as_os_str(&self) -> &OsStr {
-        self
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
-impl AsOsStr for OsString {
-    fn as_os_str(&self) -> &OsStr {
-        &self[..]
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
-impl AsOsStr for str {
-    fn as_os_str(&self) -> &OsStr {
-        unsafe { mem::transmute(Slice::from_str(self)) }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
-impl AsOsStr for String {
-    fn as_os_str(&self) -> &OsStr {
-        unsafe { mem::transmute(Slice::from_str(self)) }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

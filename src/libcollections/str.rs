@@ -67,7 +67,7 @@ use rustc_unicode;
 use vec::Vec;
 use slice::SliceConcatExt;
 
-pub use core::str::{FromStr, Utf8Error, Str};
+pub use core::str::{FromStr, Utf8Error};
 pub use core::str::{Lines, LinesAny, CharRange};
 pub use core::str::{Split, RSplit};
 pub use core::str::{SplitN, RSplitN};
