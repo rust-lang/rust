@@ -1530,11 +1530,26 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::UnNeg => {
             let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
             let val = datum.to_llscalarish(bcx);
-            let llneg = {
+            let (bcx, llneg) = {
                 if ty::type_is_fp(un_ty) {
-                    FNeg(bcx, val, debug_loc)
+                    let result = FNeg(bcx, val, debug_loc);
+                    (bcx, result)
                 } else {
-                    Neg(bcx, val, debug_loc)
+                    let is_signed = ty::type_is_signed(un_ty);
+                    let result = Neg(bcx, val, debug_loc);
+                    let bcx = if bcx.ccx().check_overflow() && is_signed {
+                        let (llty, min) = base::llty_and_min_for_signed_ty(bcx, un_ty);
+                        let is_min = ICmp(bcx, llvm::IntEQ, val,
+                                          C_integral(llty, min, true), debug_loc);
+                        with_cond(bcx, is_min, |bcx| {
+                            let msg = InternedString::new(
+                                "attempted to negate with overflow");
+                            controlflow::trans_fail(bcx, expr_info(expr), msg)
+                        })
+                    } else {
+                        bcx
+                    };
+                    (bcx, result)
                 }
             };
             immediate_rvalue_bcx(bcx, llneg, un_ty).to_expr_datumblock()
