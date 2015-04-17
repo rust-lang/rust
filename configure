@@ -1171,7 +1171,7 @@ then
     fi
 
     msg "git: submodule update"
-    "${CFG_GIT}" submodule update
+    "${CFG_GIT}" submodule update --depth 1
     need_ok "git failed"
 
     msg "git: submodule foreach sync"
