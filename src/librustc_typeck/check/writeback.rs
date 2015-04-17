@@ -85,6 +85,32 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     fn tcx(&self) -> &'cx ty::ctxt<'tcx> {
         self.fcx.tcx()
     }
+
+    // Hacky hack: During type-checking, we treat *all* operators
+    // as potentially overloaded. But then, during writeback, if
+    // we observe that something like `a+b` is (known to be)
+    // operating on scalars, we clear the overload.
+    fn fix_scalar_binary_expr(&mut self, e: &ast::Expr) {
+        if let ast::ExprBinary(ref op, ref lhs, ref rhs) = e.node {
+            let lhs_ty = self.fcx.node_ty(lhs.id);
+            let lhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
+
+            let rhs_ty = self.fcx.node_ty(rhs.id);
+            let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
+
+            if ty::type_is_scalar(lhs_ty) && ty::type_is_scalar(rhs_ty) {
+                self.fcx.inh.method_map.borrow_mut().remove(&MethodCall::expr(e.id));
+
+                // weird but true: the by-ref binops put an
+                // adjustment on the lhs but not the rhs; the
+                // adjustment for rhs is kind of baked into the
+                // system.
+                if !ast_util::is_by_value_binop(op.node) {
+                    self.fcx.inh.adjustments.borrow_mut().remove(&lhs.id);
+                }
+            }
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -114,43 +140,16 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
             return;
         }
 
-        // Hacky hack: During type-checking, we treat *all* operators
-        // as potentially overloaded. But then, during writeback, if
-        // we observe that something like `a+b` is (known to be)
-        // operating on scalars, we clear the overload.
-        match e.node {
-            ast::ExprBinary(ref op, ref lhs, ref rhs) => {
-                let lhs_ty = self.fcx.expr_ty(lhs);
-                let lhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&lhs_ty);
-                let rhs_ty = self.fcx.expr_ty(rhs);
-                let rhs_ty = self.fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
-                if ty::type_is_scalar(lhs_ty) && ty::type_is_scalar(rhs_ty) {
-                    self.fcx.inh.method_map.borrow_mut().remove(&MethodCall::expr(e.id));
-
-                    // weird but true: the by-ref binops put an
-                    // adjustment on the lhs but not the rhs; the
-                    // adjustment for rhs is kind of baked into the
-                    // system.
-                    if !ast_util::is_by_value_binop(op.node) {
-                        self.fcx.inh.adjustments.borrow_mut().remove(&lhs.id);
-                    }
-                }
-            }
-            _ => { }
-        }
+        self.fix_scalar_binary_expr(e);
 
         self.visit_node_id(ResolvingExpr(e.span), e.id);
         self.visit_method_map_entry(ResolvingExpr(e.span),
                                     MethodCall::expr(e.id));
 
-        match e.node {
-            ast::ExprClosure(_, ref decl, _) => {
-                for input in &decl.inputs {
-                    let _ = self.visit_node_id(ResolvingExpr(e.span),
-                                               input.id);
-                }
+        if let ast::ExprClosure(_, ref decl, _) = e.node {
+            for input in &decl.inputs {
+                self.visit_node_id(ResolvingExpr(e.span), input.id);
             }
-            _ => {}
         }
 
         visit::walk_expr(self, e);
