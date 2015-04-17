@@ -89,7 +89,7 @@ we hadn’t changed the source file, and so it just ran the binary. If we had
 made a modification, we would have seen it do both:
 
 ```bash
-$ cargo build
+$ cargo run
    Compiling hello_world v0.0.1 (file:///home/yourname/projects/hello_world)
      Running `target/debug/hello_world`
 Hello, world!

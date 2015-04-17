@@ -1,0 +1,2 @@
+println! { "Hello, World!" }
+print! { concat ! ( "Hello, World!" , "\n" ) }
