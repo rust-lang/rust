@@ -51,7 +51,6 @@ use vec::Vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct File {
     inner: fs_imp::File,
-    path: Option<PathBuf>,
 }
 
 /// Metadata information about a file.
@@ -193,12 +192,12 @@ impl File {
         OpenOptions::new().write(true).create(true).truncate(true).open(path)
     }
 
-    /// Returns the original path that was used to open this file.
+    /// Returns `None`.
     #[unstable(feature = "file_path",
-               reason = "this abstraction is imposed by this library instead \
-                         of the underlying OS and may be removed")]
+               reason = "this abstraction was imposed by this library and was removed")]
+    #[deprecated(since = "1.0.0", reason = "abstraction was removed")]
     pub fn path(&self) -> Option<&Path> {
-        self.path.as_ref().map(|p| &**p)
+        None
     }
 
     /// Attempts to sync all OS-internal metadata to disk.
@@ -302,7 +301,7 @@ impl AsInner<fs_imp::File> for File {
 }
 impl FromInner<fs_imp::File> for File {
     fn from_inner(f: fs_imp::File) -> File {
-        File { inner: f, path: None }
+        File { inner: f }
     }
 }
 
@@ -470,7 +469,7 @@ impl OpenOptions {
     pub fn open<P: AsRef<Path>>(&self, path: P) -> io::Result<File> {
         let path = path.as_ref();
         let inner = try!(fs_imp::File::open(path, &self.0));
-        Ok(File { path: Some(path.to_path_buf()), inner: inner })
+        Ok(File { inner: inner })
     }
 }
 
