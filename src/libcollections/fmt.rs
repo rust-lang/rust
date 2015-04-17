@@ -443,6 +443,6 @@ use string;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn format(args: Arguments) -> string::String {
     let mut output = string::String::new();
-    let _ = write!(&mut output, "{}", args);
+    let _ = output.write_fmt(args);
     output
 }
