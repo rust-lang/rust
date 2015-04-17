@@ -436,10 +436,11 @@ impl<'a> Parser<'a> {
             // leave it in the input
             Ok(())
         } else {
-            let mut expected = edible.iter().map(|x| TokenType::Token(x.clone()))
-                                            .collect::<Vec<_>>();
-            expected.extend(inedible.iter().map(|x| TokenType::Token(x.clone())));
-            expected.push_all(&*self.expected_tokens);
+            let mut expected = edible.iter()
+                .map(|x| TokenType::Token(x.clone()))
+                .chain(inedible.iter().map(|x| TokenType::Token(x.clone())))
+                .chain(self.expected_tokens.iter().cloned())
+                .collect::<Vec<_>>();
             expected.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
             expected.dedup();
             let expect = tokens_to_string(&expected[..]);
@@ -490,8 +491,10 @@ impl<'a> Parser<'a> {
         debug!("commit_expr {:?}", e);
         if let ExprPath(..) = e.node {
             // might be unit-struct construction; check for recoverableinput error.
-            let mut expected = edible.iter().cloned().collect::<Vec<_>>();
-            expected.push_all(inedible);
+            let expected = edible.iter()
+                .cloned()
+                .chain(inedible.iter().cloned())
+                .collect::<Vec<_>>();
             try!(self.check_for_erroneous_unit_struct_expecting(&expected[..]));
         }
         self.expect_one_of(edible, inedible)
@@ -509,8 +512,10 @@ impl<'a> Parser<'a> {
         if self.last_token
                .as_ref()
                .map_or(false, |t| t.is_ident() || t.is_path()) {
-            let mut expected = edible.iter().cloned().collect::<Vec<_>>();
-            expected.push_all(&inedible);
+            let expected = edible.iter()
+                .cloned()
+                .chain(inedible.iter().cloned())
+                .collect::<Vec<_>>();
             try!(self.check_for_erroneous_unit_struct_expecting(&expected));
         }
         self.expect_one_of(edible, inedible)
@@ -1187,7 +1192,7 @@ impl<'a> Parser<'a> {
                     debug!("parse_trait_methods(): parsing provided method");
                     let (inner_attrs, body) =
                         try!(p.parse_inner_attrs_and_block());
-                    attrs.push_all(&inner_attrs[..]);
+                    attrs.extend(inner_attrs.iter().cloned());
                     Some(body)
                   }
 
