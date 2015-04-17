@@ -288,8 +288,14 @@ subteam to decide, but:
 * Each subteam will have a dedicated
   [discuss forum](http://internals.rust-lang.org/) tag.
 
+* Subteams should actively seek out discussion and input from stakeholders who
+  are not members of the team.
+
 * Subteams should have some kind of regular meeting or other way of making
-  decisions.
+  decisions. The content of this meeting should be summarized with the rationale
+  for each decision -- and, as explained below, decisions should generally be
+  about weighting a set of already-known tradeoffs, not discussing or
+  discovering new rationale.
 
 * Subteams should regularly publish the status of RFCs, PRs, and other news
   related to their area. Ideally, this would be done in part via a dashboard
