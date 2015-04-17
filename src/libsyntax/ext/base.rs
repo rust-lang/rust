@@ -458,9 +458,14 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
     syntax_expanders.insert(intern("format_args"),
                             // format_args uses `unstable` things internally.
                             NormalTT(Box::new(ext::format::expand_format_args), None, true));
-    syntax_expanders.insert(intern("__unstable_rustc_ensure_not_fmt_string_literal"),
-                            builtin_normal_expander(
-                                    ext::format::ensure_not_fmt_string_literal));
+
+    // ensure_not_fmt_string_literal is passed `unstable` things to
+    // use in its expansion. (Of course, that should not actually
+    // force us to pass `true` to allow the use of unstable things;
+    // i.e. this is working around a bug elsewhere.)
+    let tt = NormalTT(Box::new(ext::format::ensure_not_fmt_string_literal), None, true);
+    syntax_expanders.insert(intern("__unstable_rustc_ensure_not_fmt_string_literal"), tt);
+
     syntax_expanders.insert(intern("env"),
                             builtin_normal_expander(
                                     ext::env::expand_env));
