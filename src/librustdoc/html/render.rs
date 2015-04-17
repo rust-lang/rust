@@ -1178,7 +1178,6 @@ impl Context {
     {
         fn render(w: File, cx: &Context, it: &clean::Item,
                   pushname: bool) -> io::Result<()> {
-            info!("Rendering an item to {}", w.path().unwrap().display());
             // A little unfortunate that this is done like this, but it sure
             // does make formatting *a lot* nicer.
             CURRENT_LOCATION_KEY.with(|slot| {
