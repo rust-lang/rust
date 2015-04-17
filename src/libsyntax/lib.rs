@@ -28,7 +28,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(libc)]
-#![feature(quote, unsafe_destructor)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(unicode)]

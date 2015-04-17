@@ -77,7 +77,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
             ));
         }
     });
-    MacEager::expr(quote_expr!(ecx, ()))
+    MacEager::expr(ecx.expr_tuple(span, Vec::new()))
 }
 
 pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
@@ -128,7 +128,15 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
     let sym = Ident::new(token::gensym(&(
         "__register_diagnostic_".to_string() + &token::get_ident(*code)
     )));
-    MacEager::items(SmallVector::many(vec![quote_item!(ecx, mod $sym {}).unwrap()]))
+    MacEager::items(SmallVector::many(vec![
+        ecx.item_mod(
+            span,
+            span,
+            sym,
+            Vec::new(),
+            Vec::new()
+        )
+    ]))
 }
 
 pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
@@ -153,7 +161,37 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
             (descriptions.len(), ecx.expr_vec(span, descriptions))
         });
 
-    MacEager::items(SmallVector::many(vec![quote_item!(ecx,
-        pub static $name: [(&'static str, &'static str); $count] = $expr;
-    ).unwrap()]))
+    let static_ = ecx.lifetime(span, ecx.name_of("'static"));
+    let ty_str = ecx.ty_rptr(
+        span,
+        ecx.ty_ident(span, ecx.ident_of("str")),
+        Some(static_),
+        ast::MutImmutable,
+    );
+
+    let ty = ecx.ty(
+        span,
+        ast::TyFixedLengthVec(
+            ecx.ty(
+                span,
+                ast::TyTup(vec![ty_str.clone(), ty_str])
+            ),
+            ecx.expr_usize(span, count),
+        ),
+    );
+
+    MacEager::items(SmallVector::many(vec![
+        P(ast::Item {
+            ident: name.clone(),
+            attrs: Vec::new(),
+            id: ast::DUMMY_NODE_ID,
+            node: ast::ItemStatic(
+                ty,
+                ast::MutImmutable,
+                expr,
+            ),
+            vis: ast::Public,
+            span: span,
+        })
+    ]))
 }
