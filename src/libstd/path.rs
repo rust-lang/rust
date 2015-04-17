@@ -103,7 +103,7 @@ use core::prelude::*;
 use ascii::*;
 use borrow::{Borrow, IntoCow, ToOwned, Cow};
 use cmp;
-use iter::{self, IntoIterator};
+use iter;
 use mem;
 use ops::{self, Deref};
 use string::String;

@@ -21,9 +21,8 @@
 use core::prelude::*;
 
 use core::cmp::Ordering;
-use core::default::Default;
 use core::fmt;
-use core::iter::{self, repeat, FromIterator, IntoIterator, RandomAccessIterator};
+use core::iter::{self, repeat, FromIterator, RandomAccessIterator};
 use core::mem;
 use core::ops::{Index, IndexMut};
 use core::ptr::{self, Unique};
@@ -557,14 +556,6 @@ impl<T> VecDeque<T> {
             tail: self.tail,
             head: self.head,
             ring: unsafe { self.buffer_as_mut_slice() },
-        }
-    }
-
-    /// Consumes the list into a front-to-back iterator yielding elements by value.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_iter(self) -> IntoIter<T> {
-        IntoIter {
-            inner: self,
         }
     }
 
@@ -1731,8 +1722,12 @@ impl<T> IntoIterator for VecDeque<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
+    /// Consumes the list into a front-to-back iterator yielding elements by
+    /// value.
     fn into_iter(self) -> IntoIter<T> {
-        self.into_iter()
+        IntoIter {
+            inner: self,
+        }
     }
 }
 

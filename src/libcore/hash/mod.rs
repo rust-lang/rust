@@ -62,7 +62,6 @@
 
 use prelude::*;
 
-use default::Default;
 use mem;
 
 pub use self::sip::SipHasher;
