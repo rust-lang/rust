@@ -341,7 +341,12 @@ fn parse_region_<F>(st: &mut PState, conv: &mut F) -> ty::Region where
         let index = parse_u32(st);
         assert_eq!(next(st), '|');
         let nm = token::str_to_ident(&parse_str(st, ']'));
-        ty::ReEarlyBound(node_id, space, index, nm.name)
+        ty::ReEarlyBound(ty::EarlyBoundRegion {
+            param_id: node_id,
+            space: space,
+            index: index,
+            name: nm.name
+        })
       }
       'f' => {
         assert_eq!(next(st), '[');

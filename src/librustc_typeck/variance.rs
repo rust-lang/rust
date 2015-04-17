@@ -1046,9 +1046,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    region: ty::Region,
                                    variance: VarianceTermPtr<'a>) {
         match region {
-            ty::ReEarlyBound(param_id, _, _, _) => {
-                if self.is_to_be_inferred(param_id) {
-                    let index = self.inferred_index(param_id);
+            ty::ReEarlyBound(ref data) => {
+                if self.is_to_be_inferred(data.param_id) {
+                    let index = self.inferred_index(data.param_id);
                     self.add_constraint(index, variance);
                 }
             }

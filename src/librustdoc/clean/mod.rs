@@ -775,7 +775,7 @@ impl Clean<Option<Lifetime>> for ty::Region {
             ty::ReStatic => Some(Lifetime::statik()),
             ty::ReLateBound(_, ty::BrNamed(_, name)) =>
                 Some(Lifetime(token::get_name(name).to_string())),
-            ty::ReEarlyBound(_, _, _, name) => Some(Lifetime(name.clean(cx))),
+            ty::ReEarlyBound(ref data) => Some(Lifetime(data.name.clean(cx))),
 
             ty::ReLateBound(..) |
             ty::ReFree(..) |
