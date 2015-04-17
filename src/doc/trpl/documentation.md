@@ -560,3 +560,12 @@ This sets a few different options, with a logo, favicon, and a root URL.
 - `--html-before-content FILE`: includes the contents of FILE directly after
   `<body>`, before the rendered content (including the search bar).
 - `--html-after-content FILE`: includes the contents of FILE after all the rendered content.
+
+## Security note
+
+The Markdown in documentation comments is placed without processing into
+the final webpage. Be careful with literal HTML:
+
+```rust
+/// <script>alert(document.cookie)</script>
+```
