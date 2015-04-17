@@ -32,7 +32,6 @@
 #![feature(test)]
 #![feature(unicode)]
 #![feature(str_words)]
-#![feature(file_path)]
 #![feature(path_ext)]
 #![feature(path_relative_from)]
 #![feature(slice_patterns)]
