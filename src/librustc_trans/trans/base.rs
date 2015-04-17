@@ -1142,7 +1142,8 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
 // return slot alloca. This can cause errors related to clean-up due to
 // the clobbering of the existing value in the return slot.
 fn has_nested_returns(tcx: &ty::ctxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bool {
-    for n in cfg.graph.depth_traverse(cfg.entry) {
+    for index in cfg.graph.depth_traverse(cfg.entry) {
+        let n = cfg.graph.node_data(index);
         match tcx.map.find(n.id()) {
             Some(ast_map::NodeExpr(ex)) => {
                 if let ast::ExprRet(Some(ref ret_expr)) = ex.node {
