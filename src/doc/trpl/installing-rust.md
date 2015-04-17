@@ -86,7 +86,19 @@ read it offline. On UNIX systems, `/usr/local/share/doc/rust` is the location.
 On Windows, it's in a `share/doc` directory, inside wherever you installed Rust
 to.
 
-If not, there are a number of places where you can get help. The easiest is
+If not, but you saw this error:
+
+```
+rustc: error while loading shared libraries: librustc_driver-4e7c5e5c.so: cannot open shared object file: No such file or directory
+```
+
+You can fix it by running:
+
+```
+sudo ldconfig
+```
+
+Otherwise, there are a number of places where you can get help. The easiest is
 [the #rust IRC channel on irc.mozilla.org][irc], which you can access through
 [Mibbit][mibbit]. Click that link, and you'll be chatting with other Rustaceans
 (a silly nickname we call ourselves), and we can help you out. Other great
