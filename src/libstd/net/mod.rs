@@ -18,8 +18,6 @@
 use prelude::v1::*;
 
 use io::{self, Error, ErrorKind};
-#[allow(deprecated)] // Int
-use num::Int;
 use sys_common::net2 as net_imp;
 
 pub use self::ip::{IpAddr, Ipv4Addr, Ipv6Addr, Ipv6MulticastScope};
@@ -55,10 +53,21 @@ pub enum Shutdown {
     Both,
 }
 
-#[allow(deprecated)] // Int
-fn hton<I: Int>(i: I) -> I { i.to_be() }
-#[allow(deprecated)] // Int
-fn ntoh<I: Int>(i: I) -> I { Int::from_be(i) }
+#[doc(hidden)]
+trait NetInt {
+    fn from_be(i: Self) -> Self;
+    fn to_be(&self) -> Self;
+}
+macro_rules! doit {
+    ($($t:ident)*) => ($(impl NetInt for $t {
+        fn from_be(i: Self) -> Self { <$t>::from_be(i) }
+        fn to_be(&self) -> Self { <$t>::to_be(*self) }
+    })*)
+}
+doit! { i8 i16 i32 i64 isize u8 u16 u32 u64 usize }
+
+fn hton<I: NetInt>(i: I) -> I { i.to_be() }
+fn ntoh<I: NetInt>(i: I) -> I { I::from_be(i) }
 
 fn each_addr<A: ToSocketAddrs, F, T>(addr: A, mut f: F) -> io::Result<T>
     where F: FnMut(&SocketAddr) -> io::Result<T>

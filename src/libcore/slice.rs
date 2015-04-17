@@ -51,7 +51,7 @@ use result::Result::{Ok, Err};
 use ptr;
 use mem;
 use mem::size_of;
-use marker::{Send, Sized, Sync, self};
+use marker::{Send, Sync, self};
 use raw::Repr;
 // Avoid conflicts with *both* the Slice trait (buggy) and the `slice::raw` module.
 use raw::Slice as RawSlice;

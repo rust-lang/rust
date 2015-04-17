@@ -172,13 +172,6 @@ impl Error {
         Error { repr: Repr::Os(code) }
     }
 
-    /// Creates a new instance of an `Error` from a particular OS error code.
-    #[unstable(feature = "io", reason = "deprecated")]
-    #[deprecated(since = "1.0.0", reason = "renamed to from_raw_os_error")]
-    pub fn from_os_error(code: i32) -> Error {
-        Error { repr: Repr::Os(code) }
-    }
-
     /// Returns the OS error that this error represents (if any).
     ///
     /// If this `Error` was constructed via `last_os_error` then this function

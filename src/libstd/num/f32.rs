@@ -15,20 +15,14 @@
 #![allow(unsigned_negation)]
 #![doc(primitive = "f32")]
 
-use prelude::v1::*;
-
 use intrinsics;
 use libc::c_int;
-use num::{Float, FpCategory};
-use num::strconv;
-use num::strconv::ExponentFormat::{ExpNone, ExpDec};
-use num::strconv::SignificantDigits::{DigAll, DigMax, DigExact};
-use num::strconv::SignFormat::SignNeg;
+use num::FpCategory;
 
 use core::num;
 
-pub use core::f32::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON, MIN_VALUE};
-pub use core::f32::{MIN_POS_VALUE, MAX_VALUE, MIN_EXP, MAX_EXP, MIN_10_EXP};
+pub use core::f32::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON};
+pub use core::f32::{MIN_EXP, MAX_EXP, MIN_10_EXP};
 pub use core::f32::{MAX_10_EXP, NAN, INFINITY, NEG_INFINITY};
 pub use core::f32::{MIN, MIN_POSITIVE, MAX};
 pub use core::f32::consts;
@@ -71,290 +65,6 @@ mod cmath {
         #[cfg(windows)]
         #[link_name="__lgammaf_r"]
         pub fn lgammaf_r(n: c_float, sign: &mut c_int) -> c_float;
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[allow(deprecated)]
-impl Float for f32 {
-    #[inline]
-    fn nan() -> f32 { num::Float::nan() }
-    #[inline]
-    fn infinity() -> f32 { num::Float::infinity() }
-    #[inline]
-    fn neg_infinity() -> f32 { num::Float::neg_infinity() }
-    #[inline]
-    fn zero() -> f32 { num::Float::zero() }
-    #[inline]
-    fn neg_zero() -> f32 { num::Float::neg_zero() }
-    #[inline]
-    fn one() -> f32 { num::Float::one() }
-
-    #[allow(deprecated)]
-    #[inline]
-    fn mantissa_digits(unused_self: Option<f32>) -> usize {
-        num::Float::mantissa_digits(unused_self)
-    }
-    #[allow(deprecated)]
-    #[inline]
-    fn digits(unused_self: Option<f32>) -> usize { num::Float::digits(unused_self) }
-    #[allow(deprecated)]
-    #[inline]
-    fn epsilon() -> f32 { num::Float::epsilon() }
-    #[allow(deprecated)]
-    #[inline]
-    fn min_exp(unused_self: Option<f32>) -> isize { num::Float::min_exp(unused_self) }
-    #[allow(deprecated)]
-    #[inline]
-    fn max_exp(unused_self: Option<f32>) -> isize { num::Float::max_exp(unused_self) }
-    #[allow(deprecated)]
-    #[inline]
-    fn min_10_exp(unused_self: Option<f32>) -> isize { num::Float::min_10_exp(unused_self) }
-    #[allow(deprecated)]
-    #[inline]
-    fn max_10_exp(unused_self: Option<f32>) -> isize { num::Float::max_10_exp(unused_self) }
-    #[allow(deprecated)]
-    #[inline]
-    fn min_value() -> f32 { num::Float::min_value() }
-    #[allow(deprecated)]
-    #[inline]
-    fn min_pos_value(unused_self: Option<f32>) -> f32 { num::Float::min_pos_value(unused_self) }
-    #[allow(deprecated)]
-    #[inline]
-    fn max_value() -> f32 { num::Float::max_value() }
-
-    #[inline]
-    fn is_nan(self) -> bool { num::Float::is_nan(self) }
-    #[inline]
-    fn is_infinite(self) -> bool { num::Float::is_infinite(self) }
-    #[inline]
-    fn is_finite(self) -> bool { num::Float::is_finite(self) }
-    #[inline]
-    fn is_normal(self) -> bool { num::Float::is_normal(self) }
-    #[inline]
-    fn classify(self) -> FpCategory { num::Float::classify(self) }
-
-    #[inline]
-    fn integer_decode(self) -> (u64, i16, i8) { num::Float::integer_decode(self) }
-
-    #[inline]
-    fn floor(self) -> f32 { num::Float::floor(self) }
-    #[inline]
-    fn ceil(self) -> f32 { num::Float::ceil(self) }
-    #[inline]
-    fn round(self) -> f32 { num::Float::round(self) }
-    #[inline]
-    fn trunc(self) -> f32 { num::Float::trunc(self) }
-    #[inline]
-    fn fract(self) -> f32 { num::Float::fract(self) }
-
-    #[inline]
-    fn abs(self) -> f32 { num::Float::abs(self) }
-    #[inline]
-    fn signum(self) -> f32 { num::Float::signum(self) }
-    #[inline]
-    fn is_positive(self) -> bool { num::Float::is_positive(self) }
-    #[inline]
-    fn is_negative(self) -> bool { num::Float::is_negative(self) }
-
-    #[inline]
-    fn mul_add(self, a: f32, b: f32) -> f32 { num::Float::mul_add(self, a, b) }
-    #[inline]
-    fn recip(self) -> f32 { num::Float::recip(self) }
-
-    #[inline]
-    fn powi(self, n: i32) -> f32 { num::Float::powi(self, n) }
-    #[inline]
-    fn powf(self, n: f32) -> f32 { num::Float::powf(self, n) }
-
-    #[inline]
-    fn sqrt(self) -> f32 { num::Float::sqrt(self) }
-    #[inline]
-    fn rsqrt(self) -> f32 { num::Float::rsqrt(self) }
-
-    #[inline]
-    fn exp(self) -> f32 { num::Float::exp(self) }
-    #[inline]
-    fn exp2(self) -> f32 { num::Float::exp2(self) }
-    #[inline]
-    fn ln(self) -> f32 { num::Float::ln(self) }
-    #[inline]
-    fn log(self, base: f32) -> f32 { num::Float::log(self, base) }
-    #[inline]
-    fn log2(self) -> f32 { num::Float::log2(self) }
-    #[inline]
-    fn log10(self) -> f32 { num::Float::log10(self) }
-    #[inline]
-    fn to_degrees(self) -> f32 { num::Float::to_degrees(self) }
-    #[inline]
-    fn to_radians(self) -> f32 { num::Float::to_radians(self) }
-
-    /// Constructs a floating point number by multiplying `x` by 2 raised to the
-    /// power of `exp`
-    #[inline]
-    fn ldexp(self, exp: isize) -> f32 {
-        unsafe { cmath::ldexpf(self, exp as c_int) }
-    }
-
-    /// Breaks the number into a normalized fraction and a base-2 exponent,
-    /// satisfying:
-    ///
-    /// - `self = x * pow(2, exp)`
-    /// - `0.5 <= abs(x) < 1.0`
-    #[inline]
-    fn frexp(self) -> (f32, isize) {
-        unsafe {
-            let mut exp = 0;
-            let x = cmath::frexpf(self, &mut exp);
-            (x, exp as isize)
-        }
-    }
-
-    /// Returns the next representable floating-point value in the direction of
-    /// `other`.
-    #[inline]
-    fn next_after(self, other: f32) -> f32 {
-        unsafe { cmath::nextafterf(self, other) }
-    }
-
-    #[inline]
-    fn max(self, other: f32) -> f32 {
-        unsafe { cmath::fmaxf(self, other) }
-    }
-
-    #[inline]
-    fn min(self, other: f32) -> f32 {
-        unsafe { cmath::fminf(self, other) }
-    }
-
-    #[inline]
-    fn abs_sub(self, other: f32) -> f32 {
-        unsafe { cmath::fdimf(self, other) }
-    }
-
-    #[inline]
-    fn cbrt(self) -> f32 {
-        unsafe { cmath::cbrtf(self) }
-    }
-
-    #[inline]
-    fn hypot(self, other: f32) -> f32 {
-        unsafe { cmath::hypotf(self, other) }
-    }
-
-    #[inline]
-    fn sin(self) -> f32 {
-        unsafe { intrinsics::sinf32(self) }
-    }
-
-    #[inline]
-    fn cos(self) -> f32 {
-        unsafe { intrinsics::cosf32(self) }
-    }
-
-    #[inline]
-    fn tan(self) -> f32 {
-        unsafe { cmath::tanf(self) }
-    }
-
-    #[inline]
-    fn asin(self) -> f32 {
-        unsafe { cmath::asinf(self) }
-    }
-
-    #[inline]
-    fn acos(self) -> f32 {
-        unsafe { cmath::acosf(self) }
-    }
-
-    #[inline]
-    fn atan(self) -> f32 {
-        unsafe { cmath::atanf(self) }
-    }
-
-    #[inline]
-    fn atan2(self, other: f32) -> f32 {
-        unsafe { cmath::atan2f(self, other) }
-    }
-
-    /// Simultaneously computes the sine and cosine of the number
-    #[inline]
-    fn sin_cos(self) -> (f32, f32) {
-        (self.sin(), self.cos())
-    }
-
-    /// Returns the exponential of the number, minus `1`, in a way that is
-    /// accurate even if the number is close to zero
-    #[inline]
-    fn exp_m1(self) -> f32 {
-        unsafe { cmath::expm1f(self) }
-    }
-
-    /// Returns the natural logarithm of the number plus `1` (`ln(1+n)`) more
-    /// accurately than if the operations were performed separately
-    #[inline]
-    fn ln_1p(self) -> f32 {
-        unsafe { cmath::log1pf(self) }
-    }
-
-    #[inline]
-    fn sinh(self) -> f32 {
-        unsafe { cmath::sinhf(self) }
-    }
-
-    #[inline]
-    fn cosh(self) -> f32 {
-        unsafe { cmath::coshf(self) }
-    }
-
-    #[inline]
-    fn tanh(self) -> f32 {
-        unsafe { cmath::tanhf(self) }
-    }
-
-    /// Inverse hyperbolic sine
-    ///
-    /// # Returns
-    ///
-    /// - on success, the inverse hyperbolic sine of `self` will be returned
-    /// - `self` if `self` is `0.0`, `-0.0`, `INFINITY`, or `NEG_INFINITY`
-    /// - `NAN` if `self` is `NAN`
-    #[inline]
-    fn asinh(self) -> f32 {
-        match self {
-            NEG_INFINITY => NEG_INFINITY,
-            x => (x + ((x * x) + 1.0).sqrt()).ln(),
-        }
-    }
-
-    /// Inverse hyperbolic cosine
-    ///
-    /// # Returns
-    ///
-    /// - on success, the inverse hyperbolic cosine of `self` will be returned
-    /// - `INFINITY` if `self` is `INFINITY`
-    /// - `NAN` if `self` is `NAN` or `self < 1.0` (including `NEG_INFINITY`)
-    #[inline]
-    fn acosh(self) -> f32 {
-        match self {
-            x if x < 1.0 => Float::nan(),
-            x => (x + ((x * x) - 1.0).sqrt()).ln(),
-        }
-    }
-
-    /// Inverse hyperbolic tangent
-    ///
-    /// # Returns
-    ///
-    /// - on success, the inverse hyperbolic tangent of `self` will be returned
-    /// - `self` if `self` is `0.0` or `-0.0`
-    /// - `INFINITY` if `self` is `1.0`
-    /// - `NEG_INFINITY` if `self` is `-1.0`
-    /// - `NAN` if the `self` is `NAN` or outside the domain of `-1.0 <= self <= 1.0`
-    ///   (including `INFINITY` and `NEG_INFINITY`)
-    #[inline]
-    fn atanh(self) -> f32 {
-        0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
 }
 
@@ -617,11 +327,6 @@ impl f32 {
     #[inline]
     pub fn is_sign_positive(self) -> bool { num::Float::is_positive(self) }
 
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "renamed to is_sign_positive")]
-    #[inline]
-    pub fn is_positive(self) -> bool { num::Float::is_positive(self) }
-
     /// Returns `true` if `self`'s sign is negative, including `-0.0`
     /// and `NEG_INFINITY`.
     ///
@@ -640,11 +345,6 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is_sign_negative(self) -> bool { num::Float::is_negative(self) }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "renamed to is_sign_negative")]
-    #[inline]
-    pub fn is_negative(self) -> bool { num::Float::is_negative(self) }
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error. This produces a more accurate result with better performance than
@@ -728,24 +428,6 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn sqrt(self) -> f32 { num::Float::sqrt(self) }
-
-    /// Takes the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
-    ///
-    /// ```
-    /// # #![feature(std_misc)]
-    /// use std::f32;
-    ///
-    /// let f = 4.0f32;
-    ///
-    /// let abs_difference = (f.rsqrt() - 0.5).abs();
-    ///
-    /// assert!(abs_difference <= f32::EPSILON);
-    /// ```
-    #[unstable(feature = "std_misc",
-               reason = "unsure about its place in the world")]
-    #[deprecated(since = "1.0.0", reason = "use self.sqrt().recip() instead")]
-    #[inline]
-    pub fn rsqrt(self) -> f32 { num::Float::rsqrt(self) }
 
     /// Returns `e^(self)`, (the exponential function).
     ///
@@ -1339,7 +1021,7 @@ impl f32 {
     #[inline]
     pub fn acosh(self) -> f32 {
         match self {
-            x if x < 1.0 => Float::nan(),
+            x if x < 1.0 => num::Float::nan(),
             x => (x + ((x * x) - 1.0).sqrt()).ln(),
         }
     }
@@ -1361,114 +1043,6 @@ impl f32 {
     pub fn atanh(self) -> f32 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
     }
-}
-
-//
-// Section: String Conversions
-//
-
-/// Converts a float to a string
-///
-/// # Arguments
-///
-/// * num - The float value
-#[inline]
-#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
-#[deprecated(since = "1.0.0", reason = "use the ToString trait instead")]
-pub fn to_string(num: f32) -> String {
-    let (r, _) = strconv::float_to_str_common(
-        num, 10, true, SignNeg, DigAll, ExpNone, false);
-    r
-}
-
-/// Converts a float to a string in hexadecimal format
-///
-/// # Arguments
-///
-/// * num - The float value
-#[inline]
-#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
-#[deprecated(since = "1.0.0", reason = "use format! instead")]
-pub fn to_str_hex(num: f32) -> String {
-    let (r, _) = strconv::float_to_str_common(
-        num, 16, true, SignNeg, DigAll, ExpNone, false);
-    r
-}
-
-/// Converts a float to a string in a given radix, and a flag indicating
-/// whether it's a special value
-///
-/// # Arguments
-///
-/// * num - The float value
-/// * radix - The base to use
-#[inline]
-#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
-#[deprecated(since = "1.0.0", reason = "use format! instead")]
-pub fn to_str_radix_special(num: f32, rdx: u32) -> (String, bool) {
-    strconv::float_to_str_common(num, rdx, true, SignNeg, DigAll, ExpNone, false)
-}
-
-/// Converts a float to a string with exactly the number of
-/// provided significant digits
-///
-/// # Arguments
-///
-/// * num - The float value
-/// * digits - The number of significant digits
-#[inline]
-#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
-pub fn to_str_exact(num: f32, dig: usize) -> String {
-    let (r, _) = strconv::float_to_str_common(
-        num, 10, true, SignNeg, DigExact(dig), ExpNone, false);
-    r
-}
-
-/// Converts a float to a string with a maximum number of
-/// significant digits
-///
-/// # Arguments
-///
-/// * num - The float value
-/// * digits - The number of significant digits
-#[inline]
-#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
-pub fn to_str_digits(num: f32, dig: usize) -> String {
-    let (r, _) = strconv::float_to_str_common(
-        num, 10, true, SignNeg, DigMax(dig), ExpNone, false);
-    r
-}
-
-/// Converts a float to a string using the exponential notation with exactly the number of
-/// provided digits after the decimal point in the significand
-///
-/// # Arguments
-///
-/// * num - The float value
-/// * digits - The number of digits after the decimal point
-/// * upper - Use `E` instead of `e` for the exponent sign
-#[inline]
-#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
-pub fn to_str_exp_exact(num: f32, dig: usize, upper: bool) -> String {
-    let (r, _) = strconv::float_to_str_common(
-        num, 10, true, SignNeg, DigExact(dig), ExpDec, upper);
-    r
-}
-
-/// Converts a float to a string using the exponential notation with the maximum number of
-/// digits after the decimal point in the significand
-///
-/// # Arguments
-///
-/// * num - The float value
-/// * digits - The number of digits after the decimal point
-/// * upper - Use `E` instead of `e` for the exponent sign
-#[inline]
-#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
-pub fn to_str_exp_digits(num: f32, dig: usize, upper: bool) -> String {
-    let (r, _) = strconv::float_to_str_common(
-        num, 10, true, SignNeg, DigMax(dig), ExpDec, upper);
-    r
 }
 
 #[cfg(test)]

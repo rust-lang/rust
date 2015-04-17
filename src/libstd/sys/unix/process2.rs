@@ -19,7 +19,7 @@ use io::{self, Error, ErrorKind};
 use libc::{self, pid_t, c_void, c_int, gid_t, uid_t};
 use ptr;
 use sys::pipe2::AnonPipe;
-use sys::{self, retry, c, cvt};
+use sys::{self, c, cvt, cvt_r};
 use sys::fs2::{File, OpenOptions};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -273,7 +273,7 @@ impl Process {
                     }
                 }
             };
-            retry(|| libc::dup2(fd.raw(), dst)) != -1
+            cvt_r(|| libc::dup2(fd.raw(), dst)).is_ok()
         };
 
         if !setup(in_fd, libc::STDIN_FILENO) { fail(&mut output) }
@@ -317,19 +317,19 @@ impl Process {
 
     pub fn wait(&self) -> io::Result<ExitStatus> {
         let mut status = 0 as c_int;
-        try!(cvt(retry(|| unsafe { c::waitpid(self.pid, &mut status, 0) })));
+        try!(cvt_r(|| unsafe { c::waitpid(self.pid, &mut status, 0) }));
         Ok(translate_status(status))
     }
 
     pub fn try_wait(&self) -> Option<ExitStatus> {
         let mut status = 0 as c_int;
-        match retry(|| unsafe {
+        match cvt_r(|| unsafe {
             c::waitpid(self.pid, &mut status, c::WNOHANG)
         }) {
-            n if n == self.pid => Some(translate_status(status)),
-            0 => None,
-            n => panic!("unknown waitpid error `{}`: {}", n,
-                       io::Error::last_os_error()),
+            Ok(0) => None,
+            Ok(n) if n == self.pid => Some(translate_status(status)),
+            Ok(n) => panic!("unkown pid: {}", n),
+            Err(e) => panic!("unknown waitpid error: {}", e),
         }
     }
 }

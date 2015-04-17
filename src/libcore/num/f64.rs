@@ -20,7 +20,6 @@ use intrinsics;
 use mem;
 use num::Float;
 use num::FpCategory as Fp;
-use option::Option;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const RADIX: u32 = 2;
@@ -32,19 +31,6 @@ pub const DIGITS: u32 = 15;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
-
-/// Smallest finite f64 value
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "use `std::f64::MIN`")]
-pub const MIN_VALUE: f64 = -1.7976931348623157e+308_f64;
-/// Smallest positive, normalized f64 value
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "use `std::f64::MIN_POSITIVE`")]
-pub const MIN_POS_VALUE: f64 = 2.2250738585072014e-308_f64;
-/// Largest finite f64 value
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "use `std::f64::MAX`")]
-pub const MAX_VALUE: f64 = 1.7976931348623157e+308_f64;
 
 /// Smallest finite f64 value
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -118,25 +104,13 @@ pub mod consts {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_2_SQRT_PI: f64 = 1.12837916709551257389615890312154517_f64;
 
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "renamed to FRAC_2_SQRT_PI")]
-    pub const FRAC_2_SQRTPI: f64 = 1.12837916709551257389615890312154517_f64;
-
     /// sqrt(2.0)
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const SQRT_2: f64 = 1.41421356237309504880168872420969808_f64;
 
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "renamed to SQRT_2")]
-    pub const SQRT2: f64 = 1.41421356237309504880168872420969808_f64;
-
     /// 1.0/sqrt(2.0)
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_1_SQRT_2: f64 = 0.707106781186547524400844362104849039_f64;
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "renamed to FRAC_1_SQRT_2")]
-    pub const FRAC_1_SQRT2: f64 = 0.707106781186547524400844362104849039_f64;
 
     /// Euler's number
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -217,56 +191,6 @@ impl Float for f64 {
             _             => Fp::Normal,
         }
     }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn mantissa_digits(_: Option<f64>) -> usize { MANTISSA_DIGITS as usize }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn digits(_: Option<f64>) -> usize { DIGITS as usize }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn epsilon() -> f64 { EPSILON }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn min_exp(_: Option<f64>) -> isize { MIN_EXP as isize }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn max_exp(_: Option<f64>) -> isize { MAX_EXP as isize }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn min_10_exp(_: Option<f64>) -> isize { MIN_10_EXP as isize }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn max_10_exp(_: Option<f64>) -> isize { MAX_10_EXP as isize }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn min_value() -> f64 { MIN }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn min_pos_value(_: Option<f64>) -> f64 { MIN_POSITIVE }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn max_value() -> f64 { MAX }
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8) {

@@ -15,8 +15,6 @@ use super::Wrapping;
 
 use ops::*;
 
-use intrinsics::{overflowing_add, overflowing_sub, overflowing_mul};
-
 use intrinsics::{i8_add_with_overflow, u8_add_with_overflow};
 use intrinsics::{i16_add_with_overflow, u16_add_with_overflow};
 use intrinsics::{i32_add_with_overflow, u32_add_with_overflow};
@@ -31,14 +29,6 @@ use intrinsics::{i32_mul_with_overflow, u32_mul_with_overflow};
 use intrinsics::{i64_mul_with_overflow, u64_mul_with_overflow};
 
 use ::{i8,i16,i32,i64};
-
-#[unstable(feature = "core", reason = "may be removed, renamed, or relocated")]
-#[deprecated(since = "1.0.0", reason = "moved to inherent methods")]
-pub trait WrappingOps {
-    fn wrapping_add(self, rhs: Self) -> Self;
-    fn wrapping_sub(self, rhs: Self) -> Self;
-    fn wrapping_mul(self, rhs: Self) -> Self;
-}
 
 #[unstable(feature = "core", reason = "may be removed, renamed, or relocated")]
 pub trait OverflowingOps {
@@ -99,27 +89,6 @@ sh_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 
 macro_rules! wrapping_impl {
     ($($t:ty)*) => ($(
-        impl WrappingOps for $t {
-            #[inline(always)]
-            fn wrapping_add(self, rhs: $t) -> $t {
-                unsafe {
-                    overflowing_add(self, rhs)
-                }
-            }
-            #[inline(always)]
-            fn wrapping_sub(self, rhs: $t) -> $t {
-                unsafe {
-                    overflowing_sub(self, rhs)
-                }
-            }
-            #[inline(always)]
-            fn wrapping_mul(self, rhs: $t) -> $t {
-                unsafe {
-                    overflowing_mul(self, rhs)
-                }
-            }
-        }
-
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Add for Wrapping<$t> {
             type Output = Wrapping<$t>;

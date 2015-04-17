@@ -12,21 +12,16 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use prelude::*;
+
 use cell::{Cell, RefCell, Ref, RefMut, BorrowState};
-use char::CharExt;
-use clone::Clone;
-use iter::Iterator;
-use marker::{Copy, PhantomData, Sized};
+use marker::PhantomData;
 use mem;
-use num::Float;
-use option::Option;
-use option::Option::{Some, None};
-use result::Result::Ok;
-use ops::{Deref, FnOnce};
+use ops::Deref;
 use result;
-use slice::SliceExt;
+use num::Float;
 use slice;
-use str::{self, StrExt};
+use str;
 use self::rt::v1::Alignment;
 
 pub use self::num::radix;
@@ -912,7 +907,8 @@ impl<'a, T> Pointer for &'a mut T {
 }
 
 // Common code of floating point Debug and Display.
-fn float_to_str_common<T: Float, F>(num: &T, precision: Option<usize>, post: F) -> Result
+fn float_to_str_common<T: float::MyFloat, F>(num: &T, precision: Option<usize>,
+                                             post: F) -> Result
         where F : FnOnce(&str) -> Result {
     let digits = match precision {
         Some(i) => float::DigExact(i),
@@ -950,8 +946,6 @@ macro_rules! floating { ($ty:ident) => {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl LowerExp for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
-            use num::Float;
-
             let digits = match fmt.precision {
                 Some(i) => float::DigExact(i),
                 None => float::DigMax(6),
@@ -969,8 +963,6 @@ macro_rules! floating { ($ty:ident) => {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl UpperExp for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
-            use num::Float;
-
             let digits = match fmt.precision {
                 Some(i) => float::DigExact(i),
                 None => float::DigMax(6),
