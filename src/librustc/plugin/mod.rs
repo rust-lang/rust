@@ -47,7 +47,7 @@
 //! #![plugin(myplugin)]
 //! ```
 //!
-//! See the [Plugins Chapter](../../book/plugins.html) of the book
+//! See the [Plugins Chapter](../../book/compiler-plugins.html) of the book
 //! for more examples.
 
 pub use self::registry::Registry;

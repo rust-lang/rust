@@ -176,8 +176,8 @@ Here's the error:
                   ^~~~~~~~~~~~~
 ```
 
-You see, [`Mutex`](std/sync/struct.Mutex.html) has a
-[`lock`](http://doc.rust-lang.org/nightly/std/sync/struct.Mutex.html#method.lock)
+You see, [`Mutex`](../std/sync/struct.Mutex.html) has a
+[`lock`](../std/sync/struct.Mutex.html#method.lock)
 method which has this signature:
 
 ```ignore

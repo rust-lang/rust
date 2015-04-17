@@ -112,6 +112,46 @@ reference when using guards or refactor the entire expression, perhaps by
 putting the condition inside the body of the arm.
 "##,
 
+E0152: r##"
+Lang items are already implemented in the standard library. Unless you are
+writing a free-standing application (e.g. a kernel), you do not need to provide
+them yourself.
+
+You can build a free-standing crate by adding `#![no_std]` to the crate
+attributes:
+
+#![feature(no_std)]
+#![no_std]
+
+See also https://doc.rust-lang.org/book/no-stdlib.html
+"##,
+
+E0158: r##"
+`const` and `static` mean different things. A `const` is a compile-time
+constant, an alias for a literal value. This property means you can match it
+directly within a pattern.
+
+The `static` keyword, on the other hand, guarantees a fixed location in memory.
+This does not always mean that the value is constant. For example, a global
+mutex can be declared `static` as well.
+
+If you want to match against a `static`, consider using a guard instead:
+
+static FORTY_TWO: i32 = 42;
+match Some(42) {
+    Some(x) if x == FORTY_TWO => ...
+    ...
+}
+"##,
+
+E0161: r##"
+In Rust, you can only move a value when its size is known at compile time.
+
+To work around this restriction, consider "hiding" the value behind a reference:
+either `&x` or `&mut x`. Since a reference has a fixed size, this lets you move
+it around as usual.
+"##,
+
 E0162: r##"
 An if-let pattern attempts to match the pattern, and enters the body if the
 match was succesful. If the match is irrefutable (when it cannot fail to match),
@@ -149,6 +189,32 @@ loop {
     let Irrefutable(x) = irr;
     ...
 }
+"##,
+
+E0170: r##"
+Enum variants are qualified by default. For example, given this type:
+
+enum Method {
+    GET,
+    POST
+}
+
+you would match it using:
+
+match m {
+    Method::GET => ...
+    Method::POST => ...
+}
+
+If you don't qualify the names, the code will bind new variables named "GET" and
+"POST" instead. This behavior is likely not what you want, so rustc warns when
+that happens.
+
+Qualified names are good practice, and most code works well with them. But if
+you prefer them unqualified, you can import the variants into scope:
+
+use Method::*;
+enum Method { GET, POST }
 "##,
 
 E0297: r##"
@@ -227,6 +293,16 @@ match Some(5) {
 }
 
 See also https://github.com/rust-lang/rust/issues/14587
+"##,
+
+E0306: r##"
+In an array literal `[x; N]`, `N` is the number of elements in the array. This
+number cannot be negative.
+"##,
+
+E0307: r##"
+The length of an array is part of its type. For this reason, this length must be
+a compile-time constant.
 "##
 
 }
@@ -256,10 +332,6 @@ register_diagnostics! {
     E0137,
     E0138,
     E0139,
-    E0152,
-    E0158,
-    E0161,
-    E0170,
     E0261, // use of undeclared lifetime name
     E0262, // illegal lifetime parameter name
     E0263, // lifetime name declared twice in same scope
@@ -291,8 +363,6 @@ register_diagnostics! {
     E0300, // unexpanded macro
     E0304, // expected signed integer constant
     E0305, // expected constant
-    E0306, // expected positive integer for repeat count
-    E0307, // expected constant integer for repeat count
     E0308,
     E0309, // thing may not live long enough
     E0310, // thing may not live long enough

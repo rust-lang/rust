@@ -56,7 +56,7 @@ Types which are [`Sync`][sync] are thread-safe when multiple shared
 references to them are used concurrently. Types which are not `Sync` are not
 thread-safe, and thus when used in a global require unsafe code to use.
 
-[sync]: core/kinds/trait.Sync.html
+[sync]: core/marker/trait.Sync.html
 
 ### If mutable static items that implement `Sync` are safe, why is taking &mut SHARABLE unsafe?
 
@@ -139,7 +139,7 @@ and explicitly calling the `clone` method. Making user-defined copy operators
 explicit surfaces the underlying complexity, forcing the developer to opt-in
 to potentially expensive operations.
 
-[copy]: core/kinds/trait.Copy.html
+[copy]: core/marker/trait.Copy.html
 [clone]: core/clone/trait.Clone.html
 
 ## No move constructors
