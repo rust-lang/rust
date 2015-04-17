@@ -810,8 +810,12 @@ impl<'tcx> Repr<'tcx> for ty::TraitRef<'tcx> {
         // to enumerate the `for<...>` etc because the debruijn index
         // tells you everything you need to know.
         let base = ty::item_path_str(tcx, self.def_id);
-        parameterized(tcx, &base, self.substs, self.def_id, &[],
-                      || ty::lookup_trait_def(tcx, self.def_id).generics.clone())
+        let result = parameterized(tcx, &base, self.substs, self.def_id, &[],
+                      || ty::lookup_trait_def(tcx, self.def_id).generics.clone());
+        match self.substs.self_ty() {
+            None => result,
+            Some(sty) => format!("<{} as {}>", sty.repr(tcx), result)
+        }
     }
 }
 
@@ -1504,8 +1508,7 @@ impl<'tcx> UserString<'tcx> for ty::ProjectionPredicate<'tcx> {
 
 impl<'tcx> Repr<'tcx> for ty::ProjectionTy<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("<{} as {}>::{}",
-                self.trait_ref.substs.self_ty().repr(tcx),
+        format!("{}::{}",
                 self.trait_ref.repr(tcx),
                 self.item_name.repr(tcx))
     }
