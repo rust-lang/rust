@@ -29,7 +29,7 @@ impl<'a> Test<'a> for Foo<'a> {
 impl<'a> NoLifetime for Foo<'a> {
     fn get<'p, T : Test<'a>>(&self) -> T {
 //~^ ERROR lifetime parameters or bounds on method `get` do not match the trait declaration
-        return *self as T; //~ ERROR non-scalar cast: `Foo<'a>` as `T`
+        return *self as T;
     }
 }
 
