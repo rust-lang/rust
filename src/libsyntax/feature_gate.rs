@@ -10,7 +10,7 @@
 
 //! Feature gating
 //!
-//! This modules implements the gating necessary for preventing certain compiler
+//! This module implements the gating necessary for preventing certain compiler
 //! features from being used by default. This module will crawl a pre-expanded
 //! AST to ensure that there are no features which are used that are not
 //! enabled.

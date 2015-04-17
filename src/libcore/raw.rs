@@ -71,11 +71,11 @@ impl<T> Clone for Slice<T> {
 /// The representation of a trait object like `&SomeTrait`.
 ///
 /// This struct has the same layout as types like `&SomeTrait` and
-/// `Box<AnotherTrait>`. The [Static and Dynamic Dispatch chapter of the
+/// `Box<AnotherTrait>`. The [Trait Objects chapter of the
 /// Book][moreinfo] contains more details about the precise nature of
 /// these internals.
 ///
-/// [moreinfo]: ../../book/static-and-dynamic-dispatch.html#representation
+/// [moreinfo]: ../../book/trait-objects.html#representation
 ///
 /// `TraitObject` is guaranteed to match layouts, but it is not the
 /// type of trait objects (e.g. the fields are not directly accessible

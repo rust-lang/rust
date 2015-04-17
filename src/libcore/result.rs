@@ -86,12 +86,12 @@
 //! useful value.
 //!
 //! Consider the `write_all` method defined for I/O types
-//! by the [`Write`](../io/trait.Write.html) trait:
+//! by the [`Write`](../../std/io/trait.Write.html) trait:
 //!
 //! ```
 //! use std::io;
 //!
-//! trait Writer {
+//! trait Write {
 //!     fn write_all(&mut self, bytes: &[u8]) -> Result<(), io::Error>;
 //! }
 //! ```

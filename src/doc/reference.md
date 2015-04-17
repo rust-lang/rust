@@ -2177,6 +2177,14 @@ The following configurations must be defined by the implementation:
 * `unix`. See `target_family`.
 * `windows`. See `target_family`.
 
+You can also set another attribute based on a `cfg` variable with `cfg_attr`:
+
+```rust,ignore
+#[cfg_attr(a, b)]
+```
+
+Will be the same as `#[b]` if `a` is set by `cfg`, and nothing otherwise.
+
 ### Lint check attributes
 
 A lint check names a potentially undesirable coding pattern, such as
@@ -2368,7 +2376,7 @@ The currently implemented features of the reference compiler are:
                     removed entirely for something more wholesome.
 
 * `custom_attribute` - Allows the usage of attributes unknown to the compiler
-                       so that new attributes can be added in a bacwards compatible
+                       so that new attributes can be added in a backwards compatible
                        manner (RFC 572).
 
 * `custom_derive` - Allows the use of `#[derive(Foo,Bar)]` as sugar for
@@ -2397,7 +2405,7 @@ The currently implemented features of the reference compiler are:
                  nasty hack that will certainly be removed.
 
 * `main` - Allows use of the `#[main]` attribute, which changes the entry point
-           into a Rust program. This capabiilty is subject to change.
+           into a Rust program. This capability is subject to change.
 
 * `macro_reexport` - Allows macros to be re-exported from one crate after being imported
                      from another. This feature was originally designed with the sole
@@ -2444,7 +2452,9 @@ The currently implemented features of the reference compiler are:
 * `simd_ffi` - Allows use of SIMD vectors in signatures for foreign functions.
                The SIMD interface is subject to change.
 
-* `staged_api` - Allows usage of stability markers and `#![staged_api]` in a crate
+* `staged_api` - Allows usage of stability markers and `#![staged_api]` in a
+                 crate. Stability markers are also attributes: `#[stable]`,
+                 `#[unstable]`, and `#[deprecated]` are the three levels.
 
 * `static_assert` - The `#[static_assert]` functionality is experimental and
                     unstable. The attribute can be attached to a `static` of
@@ -2453,7 +2463,7 @@ The currently implemented features of the reference compiler are:
                     is unintuitive and suboptimal.
 
 * `start` - Allows use of the `#[start]` attribute, which changes the entry point
-            into a Rust program. This capabiilty, especially the signature for the
+            into a Rust program. This capability, especially the signature for the
             annotated function, is subject to change.
 
 * `struct_inherit` - Allows using struct inheritance, which is barely
