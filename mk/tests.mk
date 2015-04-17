@@ -753,19 +753,21 @@ PRETTY_DEPS_pretty-rpass-full = $(RPASS_FULL_TESTS)
 PRETTY_DEPS_pretty-rfail = $(RFAIL_TESTS)
 PRETTY_DEPS_pretty-bench = $(BENCH_TESTS)
 PRETTY_DEPS_pretty-pretty = $(PRETTY_TESTS)
-# The stage- and host-specific dependencies are for e.g. macro_crate_test which pulls in
-# external crates.
-PRETTY_DEPS$(1)_H_$(3)_pretty-rpass =
-PRETTY_DEPS$(1)_H_$(3)_pretty-rpass-full = $$(HLIB$(1)_H_$(3))/stamp.syntax $$(HLIB$(1)_H_$(3))/stamp.rustc
-PRETTY_DEPS$(1)_H_$(3)_pretty-rfail =
-PRETTY_DEPS$(1)_H_$(3)_pretty-bench =
-PRETTY_DEPS$(1)_H_$(3)_pretty-pretty =
 PRETTY_DIRNAME_pretty-rpass = run-pass
 PRETTY_DIRNAME_pretty-rpass-valgrind = run-pass-valgrind
 PRETTY_DIRNAME_pretty-rpass-full = run-pass-fulldeps
 PRETTY_DIRNAME_pretty-rfail = run-fail
 PRETTY_DIRNAME_pretty-bench = bench
 PRETTY_DIRNAME_pretty-pretty = pretty
+
+define DEF_PRETTY_FULLDEPS
+PRETTY_DEPS$(1)_T_$(2)_H_$(3)_pretty-rpass-full = $$(CSREQ$(1)_T_$(3)_H_$(3))
+endef
+
+$(foreach host,$(CFG_HOST), \
+ $(foreach target,$(CFG_TARGET), \
+  $(foreach stage,$(STAGES), \
+   $(eval $(call DEF_PRETTY_FULLDEPS,$(stage),$(target),$(host))))))
 
 define DEF_RUN_PRETTY_TEST
 
@@ -780,7 +782,7 @@ check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 	        $$(TEST_SREQ$(1)_T_$(2)_H_$(3)) \
 	        $$(PRETTY_DEPS_$(4)) \
-	        $$(PRETTY_DEPS$(1)_H_$(3)_$(4))
+	        $$(PRETTY_DEPS$(1)_T_$(2)_H_$(3)_$(4))
 	@$$(call E, run pretty-rpass [$(2)]: $$<)
 	$$(Q)touch $$@.start_time
 	$$(Q)$$(call CFG_RUN_CTEST_$(2),$(1),$$<,$(3)) \
