@@ -594,8 +594,8 @@ impl CodeMap {
     pub fn new_imported_filemap(&self,
                                 filename: FileName,
                                 source_len: usize,
-                                file_local_lines: Vec<BytePos>,
-                                file_local_multibyte_chars: Vec<MultiByteChar>)
+                                mut file_local_lines: Vec<BytePos>,
+                                mut file_local_multibyte_chars: Vec<MultiByteChar>)
                                 -> Rc<FileMap> {
         let mut files = self.files.borrow_mut();
         let start_pos = match files.last() {
@@ -606,19 +606,21 @@ impl CodeMap {
         let end_pos = Pos::from_usize(start_pos + source_len);
         let start_pos = Pos::from_usize(start_pos);
 
-        let lines = file_local_lines.map_in_place(|pos| pos + start_pos);
-        let multibyte_chars = file_local_multibyte_chars.map_in_place(|mbc| MultiByteChar {
-            pos: mbc.pos + start_pos,
-            bytes: mbc.bytes
-        });
+        for pos in &mut file_local_lines {
+            *pos = *pos + start_pos;
+        }
+
+        for mbc in &mut file_local_multibyte_chars {
+            mbc.pos = mbc.pos + start_pos;
+        }
 
         let filemap = Rc::new(FileMap {
             name: filename,
             src: None,
             start_pos: start_pos,
             end_pos: end_pos,
-            lines: RefCell::new(lines),
-            multibyte_chars: RefCell::new(multibyte_chars),
+            lines: RefCell::new(file_local_lines),
+            multibyte_chars: RefCell::new(file_local_multibyte_chars),
         });
 
         files.push(filemap.clone());
