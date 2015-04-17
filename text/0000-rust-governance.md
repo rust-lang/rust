@@ -29,7 +29,7 @@ then discuss what needs to be improved.
 ## Background: today's governance structure
 
 Rust is governed by a
-[core team](https://github.com/rust-lang/rust/wiki/Note-core-team),
+[core team](https://github.com/rust-lang/rust-wiki-backup/blob/master/Note-core-team.md),
 which is ultimately responsible for all decision-making in the
 project. Specifically, the core team:
 
@@ -262,10 +262,11 @@ Each subteam is led by a member of the core team. **The leader is responsible fo
 * Setting up the subteam:
 
     * Deciding on the initial membership of the subteam (in consultation with
-      the core team).
+      the core team). Once the subteam is up and running.
 
     * Working with subteam members to determine and publish subteam policies and
-      mechanics.
+      mechanics, including the way that subteam members join or leave the team
+      (which should be based on subteam consensus).
 
 * Communicating core team vision downward to the subteam.
 
@@ -284,13 +285,15 @@ subteam to decide, but:
 * Technical discussion should take place as much as possible on public forums,
   ideally on RFC/PR threads and tagged discuss posts.
 
-* Each subteam will have a dedicated discuss forum tag.
+* Each subteam will have a dedicated
+  [discuss forum](http://internals.rust-lang.org/) tag.
 
 * Subteams should have some kind of regular meeting or other way of making
   decisions.
 
 * Subteams should regularly publish the status of RFCs, PRs, and other news
-  related to their area.
+  related to their area. Ideally, this would be done in part via a dashboard
+  like [the Homu queue](http://buildbot.rust-lang.org/homu/queue/rust)
 
 ## Core team
 
