@@ -290,7 +290,12 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                           -> ty::Region
     {
         let name = token::intern(name);
-        ty::ReEarlyBound(ast::DUMMY_NODE_ID, space, index, name)
+        ty::ReEarlyBound(ty::EarlyBoundRegion {
+            param_id: ast::DUMMY_NODE_ID,
+            space: space,
+            index: index,
+            name: name
+        })
     }
 
     pub fn re_late_bound_with_debruijn(&self, id: u32, debruijn: ty::DebruijnIndex) -> ty::Region {
