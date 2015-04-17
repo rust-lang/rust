@@ -116,37 +116,39 @@ pub const tag_items_data_item_reexport_def_id: usize = 0x47;
 pub const tag_items_data_item_reexport_name: usize = 0x48;
 
 // used to encode crate_ctxt side tables
-#[derive(Copy, Clone, PartialEq, FromPrimitive)]
-#[repr(usize)]
-pub enum astencode_tag { // Reserves 0x50 -- 0x6f
-    tag_ast = 0x50,
+enum_from_u32! {
+    #[derive(Copy, Clone, PartialEq)]
+    #[repr(usize)]
+    pub enum astencode_tag { // Reserves 0x50 -- 0x6f
+        tag_ast = 0x50,
 
-    tag_tree = 0x51,
+        tag_tree = 0x51,
 
-    tag_id_range = 0x52,
+        tag_id_range = 0x52,
 
-    tag_table = 0x53,
-    // GAP 0x54, 0x55
-    tag_table_def = 0x56,
-    tag_table_node_type = 0x57,
-    tag_table_item_subst = 0x58,
-    tag_table_freevars = 0x59,
-    tag_table_tcache = 0x5a,
-    tag_table_param_defs = 0x5b,
-    tag_table_mutbl = 0x5c,
-    tag_table_last_use = 0x5d,
-    tag_table_spill = 0x5e,
-    tag_table_method_map = 0x5f,
-    tag_table_vtable_map = 0x60,
-    tag_table_adjustments = 0x61,
-    tag_table_moves_map = 0x62,
-    tag_table_capture_map = 0x63,
-    tag_table_closure_tys = 0x64,
-    tag_table_closure_kinds = 0x65,
-    tag_table_upvar_capture_map = 0x66,
-    tag_table_capture_modes = 0x67,
-    tag_table_object_cast_map = 0x68,
-    tag_table_const_qualif = 0x69,
+        tag_table = 0x53,
+        // GAP 0x54, 0x55
+        tag_table_def = 0x56,
+        tag_table_node_type = 0x57,
+        tag_table_item_subst = 0x58,
+        tag_table_freevars = 0x59,
+        tag_table_tcache = 0x5a,
+        tag_table_param_defs = 0x5b,
+        tag_table_mutbl = 0x5c,
+        tag_table_last_use = 0x5d,
+        tag_table_spill = 0x5e,
+        tag_table_method_map = 0x5f,
+        tag_table_vtable_map = 0x60,
+        tag_table_adjustments = 0x61,
+        tag_table_moves_map = 0x62,
+        tag_table_capture_map = 0x63,
+        tag_table_closure_tys = 0x64,
+        tag_table_closure_kinds = 0x65,
+        tag_table_upvar_capture_map = 0x66,
+        tag_table_capture_modes = 0x67,
+        tag_table_object_cast_map = 0x68,
+        tag_table_const_qualif = 0x69,
+    }
 }
 
 pub const tag_item_trait_item_sort: usize = 0x70;

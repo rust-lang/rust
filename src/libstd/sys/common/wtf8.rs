@@ -37,8 +37,6 @@ use fmt;
 use hash::{Hash, Hasher};
 use iter::{FromIterator, IntoIterator};
 use mem;
-#[allow(deprecated)] // Int
-use num::Int;
 use ops;
 use slice;
 use str;

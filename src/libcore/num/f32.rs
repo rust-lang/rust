@@ -20,7 +20,6 @@ use intrinsics;
 use mem;
 use num::Float;
 use num::FpCategory as Fp;
-use option::Option;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const RADIX: u32 = 2;
@@ -32,19 +31,6 @@ pub const DIGITS: u32 = 6;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const EPSILON: f32 = 1.19209290e-07_f32;
-
-/// Smallest finite f32 value
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "use `std::f32::MIN`")]
-pub const MIN_VALUE: f32 = -3.40282347e+38_f32;
-/// Smallest positive, normalized f32 value
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "use `std::f32::MIN_POSITIVE`")]
-pub const MIN_POS_VALUE: f32 = 1.17549435e-38_f32;
-/// Largest finite f32 value
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "use `std::f32::MAX`")]
-pub const MAX_VALUE: f32 = 3.40282347e+38_f32;
 
 /// Smallest finite f32 value
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -118,25 +104,13 @@ pub mod consts {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_2_SQRT_PI: f32 = 1.12837916709551257389615890312154517_f32;
 
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "renamed to FRAC_2_SQRT_PI")]
-    pub const FRAC_2_SQRTPI: f32 = 1.12837916709551257389615890312154517_f32;
-
     /// sqrt(2.0)
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const SQRT_2: f32 = 1.41421356237309504880168872420969808_f32;
 
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "renamed to SQRT_2")]
-    pub const SQRT2: f32 = 1.41421356237309504880168872420969808_f32;
-
     /// 1.0/sqrt(2.0)
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const FRAC_1_SQRT_2: f32 = 0.707106781186547524400844362104849039_f32;
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    #[deprecated(since = "1.0.0", reason = "renamed to FRAC_1_SQRT_2")]
-    pub const FRAC_1_SQRT2: f32 = 0.707106781186547524400844362104849039_f32;
 
     /// Euler's number
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -217,56 +191,6 @@ impl Float for f32 {
             _             => Fp::Normal,
         }
     }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn mantissa_digits(_: Option<f32>) -> usize { MANTISSA_DIGITS as usize }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn digits(_: Option<f32>) -> usize { DIGITS as usize }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn epsilon() -> f32 { EPSILON }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn min_exp(_: Option<f32>) -> isize { MIN_EXP as isize }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn max_exp(_: Option<f32>) -> isize { MAX_EXP as isize }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn min_10_exp(_: Option<f32>) -> isize { MIN_10_EXP as isize }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn max_10_exp(_: Option<f32>) -> isize { MAX_10_EXP as isize }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn min_value() -> f32 { MIN }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn min_pos_value(_: Option<f32>) -> f32 { MIN_POSITIVE }
-
-    #[inline]
-    #[unstable(feature = "core")]
-    #[deprecated(since = "1.0.0")]
-    fn max_value() -> f32 { MAX }
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8) {

@@ -836,7 +836,6 @@ pub mod writer {
     use std::io::prelude::*;
     use std::io::{self, SeekFrom, Cursor};
     use std::slice::bytes;
-    use std::num::ToPrimitive;
 
     use super::{ EsVec, EsMap, EsEnum, EsSub8, EsSub32, EsVecElt, EsMapKey,
         EsU64, EsU32, EsU16, EsU8, EsI64, EsI32, EsI16, EsI8,
@@ -1070,10 +1069,10 @@ pub mod writer {
     impl<'a> Encoder<'a> {
         // used internally to emit things like the vector length and so on
         fn _emit_tagged_sub(&mut self, v: usize) -> EncodeResult {
-            if let Some(v) = v.to_u8() {
-                self.wr_tagged_raw_u8(EsSub8 as usize, v)
-            } else if let Some(v) = v.to_u32() {
-                self.wr_tagged_raw_u32(EsSub32 as usize, v)
+            if v as u8 as usize == v {
+                self.wr_tagged_raw_u8(EsSub8 as usize, v as u8)
+            } else if v as u32 as usize == v {
+                self.wr_tagged_raw_u32(EsSub32 as usize, v as u32)
             } else {
                 Err(io::Error::new(io::ErrorKind::Other,
                                    &format!("length or variant id too big: {}",
@@ -1101,21 +1100,24 @@ pub mod writer {
             self.emit_u64(v as u64)
         }
         fn emit_u64(&mut self, v: u64) -> EncodeResult {
-            match v.to_u32() {
-                Some(v) => self.emit_u32(v),
-                None => self.wr_tagged_raw_u64(EsU64 as usize, v)
+            if v as u32 as u64 == v {
+                self.emit_u32(v as u32)
+            } else {
+                self.wr_tagged_raw_u64(EsU64 as usize, v)
             }
         }
         fn emit_u32(&mut self, v: u32) -> EncodeResult {
-            match v.to_u16() {
-                Some(v) => self.emit_u16(v),
-                None => self.wr_tagged_raw_u32(EsU32 as usize, v)
+            if v as u16 as u32 == v {
+                self.emit_u16(v as u16)
+            } else {
+                self.wr_tagged_raw_u32(EsU32 as usize, v)
             }
         }
         fn emit_u16(&mut self, v: u16) -> EncodeResult {
-            match v.to_u8() {
-                Some(v) => self.emit_u8(v),
-                None => self.wr_tagged_raw_u16(EsU16 as usize, v)
+            if v as u8 as u16 == v {
+                self.emit_u8(v as u8)
+            } else {
+                self.wr_tagged_raw_u16(EsU16 as usize, v)
             }
         }
         fn emit_u8(&mut self, v: u8) -> EncodeResult {
@@ -1126,21 +1128,24 @@ pub mod writer {
             self.emit_i64(v as i64)
         }
         fn emit_i64(&mut self, v: i64) -> EncodeResult {
-            match v.to_i32() {
-                Some(v) => self.emit_i32(v),
-                None => self.wr_tagged_raw_i64(EsI64 as usize, v)
+            if v as i32 as i64 == v {
+                self.emit_i32(v as i32)
+            } else {
+                self.wr_tagged_raw_i64(EsI64 as usize, v)
             }
         }
         fn emit_i32(&mut self, v: i32) -> EncodeResult {
-            match v.to_i16() {
-                Some(v) => self.emit_i16(v),
-                None => self.wr_tagged_raw_i32(EsI32 as usize, v)
+            if v as i16 as i32 == v {
+                self.emit_i16(v as i16)
+            } else {
+                self.wr_tagged_raw_i32(EsI32 as usize, v)
             }
         }
         fn emit_i16(&mut self, v: i16) -> EncodeResult {
-            match v.to_i8() {
-                Some(v) => self.emit_i8(v),
-                None => self.wr_tagged_raw_i16(EsI16 as usize, v)
+            if v as i8 as i16 == v {
+                self.emit_i8(v as i8)
+            } else {
+                self.wr_tagged_raw_i16(EsI16 as usize, v)
             }
         }
         fn emit_i8(&mut self, v: i8) -> EncodeResult {

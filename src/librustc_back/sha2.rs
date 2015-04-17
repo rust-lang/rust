@@ -12,10 +12,7 @@
 //! use. This implementation is not intended for external use or for any use where security is
 //! important.
 
-#![allow(deprecated)] // to_be32
-
 use std::iter::repeat;
-use std::num::Int;
 use std::slice::bytes::{MutableByteVector, copy_memory};
 use serialize::hex::ToHex;
 
@@ -61,10 +58,10 @@ impl ToBits for u64 {
 
 /// Adds the specified number of bytes to the bit count. panic!() if this would cause numeric
 /// overflow.
-fn add_bytes_to_bits<T: Int + ToBits>(bits: T, bytes: T) -> T {
+fn add_bytes_to_bits(bits: u64, bytes: u64) -> u64 {
     let (new_high_bits, new_low_bits) = bytes.to_bits();
 
-    if new_high_bits > T::zero() {
+    if new_high_bits > 0 {
         panic!("numeric overflow occurred.")
     }
 

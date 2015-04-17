@@ -10,12 +10,17 @@
 
 //! Exposes the NonZero lang item which provides optimization hints.
 
-use marker::{Sized, MarkerTrait};
+use marker::Sized;
 use ops::Deref;
+#[cfg(stage0)] use marker::MarkerTrait;
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
-#[allow(deprecated)]
-pub unsafe trait Zeroable : MarkerTrait {}
+#[cfg(not(stage0))]
+pub unsafe trait Zeroable {}
+
+/// Unsafe trait to indicate what types are usable with the NonZero struct
+#[cfg(stage0)]
+pub unsafe trait Zeroable: MarkerTrait {}
 
 unsafe impl<T:?Sized> Zeroable for *const T {}
 unsafe impl<T:?Sized> Zeroable for *mut T {}
