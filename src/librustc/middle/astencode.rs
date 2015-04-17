@@ -41,7 +41,6 @@ use syntax;
 use std::cell::Cell;
 use std::io::SeekFrom;
 use std::io::prelude::*;
-use std::num::FromPrimitive;
 use std::rc::Rc;
 use std::fmt::Debug;
 
@@ -1708,7 +1707,8 @@ fn decode_side_tables(dcx: &DecodeContext,
         debug!(">> Side table document with tag 0x{:x} \
                 found for id {} (orig {})",
                tag, id, id0);
-        let decoded_tag: Option<c::astencode_tag> = FromPrimitive::from_usize(tag);
+        let tag = tag as u32;
+        let decoded_tag: Option<c::astencode_tag> = c::astencode_tag::from_u32(tag);
         match decoded_tag {
             None => {
                 dcx.tcx.sess.bug(

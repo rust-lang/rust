@@ -21,8 +21,6 @@ use util::ppaux::Repr;
 
 use trans::type_::Type;
 
-#[allow(deprecated)]
-use std::num::Int;
 use syntax::abi;
 use syntax::ast;
 

@@ -22,8 +22,6 @@ use std::cell::{Cell, RefCell};
 use std::fs::File;
 use std::io::Read;
 use std::iter;
-#[allow(deprecated)] // Int
-use std::num::Int;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str;

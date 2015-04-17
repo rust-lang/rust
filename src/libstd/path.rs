@@ -110,7 +110,7 @@ use string::String;
 use vec::Vec;
 use fmt;
 
-use ffi::{OsStr, OsString, AsOsStr};
+use ffi::{OsStr, OsString};
 
 use self::platform::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 

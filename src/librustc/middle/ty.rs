@@ -63,6 +63,7 @@ use util::ppaux::{Repr, UserString};
 use util::common::{memoized, ErrorReported};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::FnvHashMap;
+use util::num::ToPrimitive;
 
 use arena::TypedArena;
 use std::borrow::{Borrow, Cow};
@@ -71,7 +72,6 @@ use std::cmp;
 use std::fmt;
 use std::hash::{Hash, SipHasher, Hasher};
 use std::mem;
-use std::num::ToPrimitive;
 use std::ops;
 use std::rc::Rc;
 use std::vec::IntoIter;

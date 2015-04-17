@@ -161,14 +161,6 @@ impl Condvar {
         }
     }
 
-    /// Deprecated: use `wait_timeout_ms` instead.
-    #[unstable(feature = "std_misc")]
-    #[deprecated(since = "1.0.0", reason = "use wait_timeout_ms instead")]
-    pub fn wait_timeout<'a, T>(&self, guard: MutexGuard<'a, T>, dur: Duration)
-                               -> LockResult<(MutexGuard<'a, T>, bool)> {
-        self.wait_timeout_ms(guard, dur.num_milliseconds() as u32)
-    }
-
     /// Waits on this condition variable for a notification, timing out after a
     /// specified duration.
     ///

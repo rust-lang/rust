@@ -21,9 +21,6 @@ use libc;
 use flate;
 
 use std::ffi::CString;
-use std::mem;
-#[allow(deprecated)]
-use std::num::Int;
 
 pub fn run(sess: &session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[String]) {
@@ -198,19 +195,15 @@ fn is_versioned_bytecode_format(bc: &[u8]) -> bool {
 }
 
 fn extract_bytecode_format_version(bc: &[u8]) -> u32 {
-    return read_from_le_bytes::<u32>(bc, link::RLIB_BYTECODE_OBJECT_VERSION_OFFSET);
+    let pos = link::RLIB_BYTECODE_OBJECT_VERSION_OFFSET;
+    let byte_data = &bc[pos..pos + 4];
+    let data = unsafe { *(byte_data.as_ptr() as *const u32) };
+    u32::from_le(data)
 }
 
 fn extract_compressed_bytecode_size_v1(bc: &[u8]) -> u64 {
-    return read_from_le_bytes::<u64>(bc, link::RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET);
-}
-
-#[allow(deprecated)]
-fn read_from_le_bytes<T: Int>(bytes: &[u8], position_in_bytes: usize) -> T {
-    let byte_data = &bytes[position_in_bytes..position_in_bytes + mem::size_of::<T>()];
-    let data = unsafe {
-        *(byte_data.as_ptr() as *const T)
-    };
-
-    Int::from_le(data)
+    let pos = link::RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET;
+    let byte_data = &bc[pos..pos + 8];
+    let data = unsafe { *(byte_data.as_ptr() as *const u64) };
+    u64::from_le(data)
 }

@@ -128,6 +128,7 @@
 #![feature(std_misc)]
 #![feature(slice_patterns)]
 #![feature(debug_builders)]
+#![feature(zero_one)]
 #![cfg_attr(test, feature(test, rustc_private, std_misc))]
 
 // Don't link to std. We are std.

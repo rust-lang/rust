@@ -1049,14 +1049,6 @@ impl<'a> IntoCow<'a, str> for &'a str {
     }
 }
 
-#[allow(deprecated)]
-impl<'a> Str for Cow<'a, str> {
-    #[inline]
-    fn as_slice<'b>(&'b self) -> &'b str {
-        &**self
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Write for String {
     #[inline]

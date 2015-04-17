@@ -11,8 +11,6 @@
 //! The ChaCha random number generator.
 
 use core::prelude::*;
-use core::num::Int;
-use core::num::wrapping::WrappingOps;
 use {Rng, SeedableRng, Rand};
 
 const KEY_WORDS    : usize =  8; // 8 words for the 256-bit key

@@ -35,7 +35,6 @@ use std::collections::HashMap;
 use std::hash::{self, Hash, SipHasher};
 use std::io::prelude::*;
 use std::io;
-use std::num::FromPrimitive;
 use std::rc::Rc;
 use std::slice::bytes;
 use std::str;
@@ -1349,7 +1348,7 @@ pub fn get_native_libraries(cdata: Cmd)
         let kind_doc = reader::get_doc(lib_doc, tag_native_libraries_kind);
         let name_doc = reader::get_doc(lib_doc, tag_native_libraries_name);
         let kind: cstore::NativeLibraryKind =
-            FromPrimitive::from_u32(reader::doc_as_u32(kind_doc)).unwrap();
+            cstore::NativeLibraryKind::from_u32(reader::doc_as_u32(kind_doc)).unwrap();
         let name = name_doc.as_str().to_string();
         result.push((kind, name));
         true
@@ -1359,7 +1358,7 @@ pub fn get_native_libraries(cdata: Cmd)
 
 pub fn get_plugin_registrar_fn(data: &[u8]) -> Option<ast::NodeId> {
     reader::maybe_get_doc(rbml::Doc::new(data), tag_plugin_registrar_fn)
-        .map(|doc| FromPrimitive::from_u32(reader::doc_as_u32(doc)).unwrap())
+        .map(|doc| reader::doc_as_u32(doc))
 }
 
 pub fn each_exported_macro<F>(data: &[u8], intr: &IdentInterner, mut f: F) where
@@ -1407,7 +1406,7 @@ pub fn get_missing_lang_items(cdata: Cmd)
     let mut result = Vec::new();
     reader::tagged_docs(items, tag_lang_items_missing, |missing_docs| {
         let item: lang_items::LangItem =
-            FromPrimitive::from_u32(reader::doc_as_u32(missing_docs)).unwrap();
+            lang_items::LangItem::from_u32(reader::doc_as_u32(missing_docs)).unwrap();
         result.push(item);
         true
     });

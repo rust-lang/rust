@@ -20,6 +20,7 @@ use middle::{astencode, def};
 use middle::pat_util::def_to_path;
 use middle::ty::{self, Ty};
 use middle::astconv_util::ast_ty_to_prim_ty;
+use util::num::ToPrimitive;
 
 use syntax::ast::{self, Expr};
 use syntax::codemap::Span;
@@ -30,7 +31,6 @@ use syntax::{ast_map, ast_util, codemap};
 
 use std::borrow::{Cow, IntoCow};
 use std::num::wrapping::OverflowingOps;
-use std::num::ToPrimitive;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry::Vacant;
 use std::{i8, i16, i32, i64};
