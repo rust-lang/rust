@@ -19,6 +19,7 @@
 // SNAP 5520801
 #[cfg(stage0)]
 #[macro_export]
+#[allow_internal_unstable]
 macro_rules! __unstable_rustc_ensure_not_fmt_string_literal {
     ($name:expr, $e:expr) => { ((), $e) }
 }
