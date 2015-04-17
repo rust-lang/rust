@@ -234,8 +234,6 @@ use fmt;
 use iter::{Iterator, DoubleEndedIterator, FromIterator, ExactSizeIterator, IntoIterator};
 use ops::{FnMut, FnOnce};
 use option::Option::{self, None, Some};
-#[allow(deprecated)]
-use slice::AsSlice;
 use slice;
 
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
@@ -779,30 +777,6 @@ impl<T: fmt::Debug, E> Result<T, E> {
             Ok(t) =>
                 panic!("called `Result::unwrap_err()` on an `Ok` value: {:?}", t),
             Err(e) => e
-        }
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////
-// Trait implementations
-/////////////////////////////////////////////////////////////////////////////
-
-#[unstable(feature = "core",
-           reason = "waiting on the stability of the trait itself")]
-#[deprecated(since = "1.0.0",
-             reason = "use inherent method instead")]
-#[allow(deprecated)]
-impl<T, E> AsSlice<T> for Result<T, E> {
-    /// Converts from `Result<T, E>` to `&[T]` (without copying)
-    #[inline]
-    fn as_slice<'a>(&'a self) -> &'a [T] {
-        match *self {
-            Ok(ref x) => slice::ref_slice(x),
-            Err(_) => {
-                // work around lack of implicit coercion from fixed-size array to slice
-                let emp: &[_] = &[];
-                emp
-            }
         }
     }
 }

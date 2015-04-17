@@ -98,7 +98,7 @@ use self::Direction::*;
 use borrow::{Borrow, BorrowMut, ToOwned};
 use vec::Vec;
 
-pub use core::slice::{Chunks, AsSlice, Windows};
+pub use core::slice::{Chunks, Windows};
 pub use core::slice::{Iter, IterMut};
 pub use core::slice::{IntSliceExt, SplitMut, ChunksMut, Split};
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
