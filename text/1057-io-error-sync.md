@@ -1,7 +1,7 @@
 - Feature Name: `io_error_sync`
 - Start Date: 2015-04-11
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1057](https://github.com/rust-lang/rfcs/pull/1057)
+- Rust Issue: [rust-lang/rust#24133](https://github.com/rust-lang/rust/pull/24133)
 
 # Summary
 
