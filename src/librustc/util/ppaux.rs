@@ -163,8 +163,8 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
 
       ReEmpty => { ("the empty lifetime".to_string(), None) }
 
-      ReEarlyBound(_, _, _, name) => {
-        (format!("{}", token::get_name(name)), None)
+      ReEarlyBound(ref data) => {
+        (format!("{}", token::get_name(data.name)), None)
       }
 
       // I believe these cases should not occur (except when debugging,
@@ -223,8 +223,8 @@ pub fn region_to_string(cx: &ctxt, prefix: &str, space: bool, region: Region) ->
     // `explain_region()` or `note_and_explain_region()`.
     match region {
         ty::ReScope(_) => prefix.to_string(),
-        ty::ReEarlyBound(_, _, _, name) => {
-            token::get_name(name).to_string()
+        ty::ReEarlyBound(ref data) => {
+            token::get_name(data.name).to_string()
         }
         ty::ReLateBound(_, br) => bound_region_to_string(cx, prefix, space, br),
         ty::ReFree(ref fr) => bound_region_to_string(cx, prefix, space, fr.bound_region),
@@ -903,12 +903,12 @@ impl<'tcx> Repr<'tcx> for ty::BoundRegion {
 impl<'tcx> Repr<'tcx> for ty::Region {
     fn repr(&self, tcx: &ctxt) -> String {
         match *self {
-            ty::ReEarlyBound(id, space, index, name) => {
+            ty::ReEarlyBound(ref data) => {
                 format!("ReEarlyBound({}, {:?}, {}, {})",
-                               id,
-                               space,
-                               index,
-                               token::get_name(name))
+                        data.param_id,
+                        data.space,
+                        data.index,
+                        token::get_name(data.name))
             }
 
             ty::ReLateBound(binder_id, ref bound_region) => {
