@@ -71,16 +71,9 @@ pub fn main() {
     let x: Vec1 = Vec1 { x: 1.0 } * 2.0; // this is OK
 
     let x: Vec2 = Vec2 { x: 1.0, y: 2.0 } * 2.0; // trait had reversed order
-    //~^ ERROR mismatched types
-    //~| expected `Vec2`
-    //~| found `_`
-    //~| expected struct `Vec2`
-    //~| found floating-point variable
-    //~| ERROR mismatched types
-    //~| expected `Vec2`
-    //~| found `f64`
-    //~| expected struct `Vec2`
-    //~| found f64
+    // (we no longer signal a compile error here, since the
+    //  error in the trait signature will cause compilation to
+    //  abort before we bother looking at function bodies.)
 
     let x: i32 = Vec3 { x: 1.0, y: 2.0, z: 3.0 } * 2.0;
 }

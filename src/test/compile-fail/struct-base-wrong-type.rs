@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Check that `base` in `Fru { field: expr, ..base }` must have right type.
+//
+// See also struct-base-wrong-type-2.rs, which tests same condition
+// within a function body.
+
 struct Foo { a: isize, b: isize }
 struct Bar { x: isize }
 
@@ -25,14 +30,10 @@ static foo_i: Foo = Foo { a: 2, ..4 }; //~  ERROR mismatched types
 
 fn main() {
     let b = Bar { x: 5 };
-    let f = Foo { a: 2, ..b }; //~  ERROR mismatched types
-                               //~| expected `Foo`
-                               //~| found `Bar`
-                               //~| expected struct `Foo`
-                               //~| found struct `Bar`
-    let f__isize = Foo { a: 2, ..4 }; //~  ERROR mismatched types
-                                 //~| expected `Foo`
-                                 //~| found `_`
-                                 //~| expected struct `Foo`
-                                 //~| found integral variable
+    // errors below are no longer caught since error above causes
+    // compilation to abort before we bother checking function bodies.
+    // See also struct-base-wrong-type-2.rs, which checks that we
+    // would catch these errors eventually.
+    let f = Foo { a: 2, ..b };
+    let f__isize = Foo { a: 2, ..4 };
 }

@@ -441,10 +441,11 @@ fn static_inherited_fields<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>)
 }
 
 struct CheckItemTypesVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
+struct CheckItemBodiesVisitor<'a, 'tcx: 'a> { ccx: &'a CrateCtxt<'a, 'tcx> }
 
 impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &'tcx ast::Item) {
-        check_item(self.ccx, i);
+        check_item_type(self.ccx, i);
         visit::walk_item(self, i);
     }
 
@@ -460,6 +461,13 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
     }
 }
 
+impl<'a, 'tcx> Visitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
+    fn visit_item(&mut self, i: &'tcx ast::Item) {
+        check_item_body(self.ccx, i);
+        visit::walk_item(self, i);
+    }
+}
+
 pub fn check_item_types(ccx: &CrateCtxt) {
     let krate = ccx.tcx.map.krate();
     let mut visit = wf::CheckTypeWellFormedVisitor::new(ccx);
@@ -470,6 +478,11 @@ pub fn check_item_types(ccx: &CrateCtxt) {
     ccx.tcx.sess.abort_if_errors();
 
     let mut visit = CheckItemTypesVisitor { ccx: ccx };
+    visit::walk_crate(&mut visit, krate);
+
+    ccx.tcx.sess.abort_if_errors();
+
+    let mut visit = CheckItemBodiesVisitor { ccx: ccx };
     visit::walk_crate(&mut visit, krate);
 
     ccx.tcx.sess.abort_if_errors();
@@ -713,13 +726,13 @@ pub fn check_struct(ccx: &CrateCtxt, id: ast::NodeId, span: Span) {
     }
 }
 
-pub fn check_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
-    debug!("check_item(it.id={}, it.ident={})",
+pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
+    debug!("check_item_type(it.id={}, it.ident={})",
            it.id,
            ty::item_path_str(ccx.tcx, local_def(it.id)));
     let _indenter = indenter();
-
     match it.node {
+      // Consts can play a role in type-checking, so they are included here.
       ast::ItemStatic(_, _, ref e) |
       ast::ItemConst(_, ref e) => check_const(ccx, it.span, &**e, it.id),
       ast::ItemEnum(ref enum_definition, _) => {
@@ -728,16 +741,9 @@ pub fn check_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
                             &enum_definition.variants,
                             it.id);
       }
-      ast::ItemFn(ref decl, _, _, _, ref body) => {
-        let fn_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
-        let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
-        check_bare_fn(ccx, &**decl, &**body, it.id, it.span, fn_pty.ty, param_env);
-      }
+      ast::ItemFn(_, _, _, _, _) => {} // entirely within check_item_body
       ast::ItemImpl(_, _, _, _, _, ref impl_items) => {
-        debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
-
-        let impl_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
-
+          debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
           match ty::impl_trait_ref(ccx.tcx, local_def(it.id)) {
               Some(impl_trait_ref) => {
                 check_impl_items_against_trait(ccx,
@@ -747,39 +753,9 @@ pub fn check_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
               }
               None => { }
           }
-
-        for impl_item in impl_items {
-            match impl_item.node {
-                ast::MethodImplItem(ref sig, ref body) => {
-                    check_method_body(ccx, &impl_pty.generics, sig, body,
-                                      impl_item.id, impl_item.span);
-                }
-                ast::TypeImplItem(_) |
-                ast::MacImplItem(_) => {
-                    // Nothing to do here.
-                }
-            }
-        }
-
       }
-      ast::ItemTrait(_, ref generics, _, ref trait_items) => {
+      ast::ItemTrait(_, ref generics, _, _) => {
         check_trait_on_unimplemented(ccx, generics, it);
-        let trait_def = ty::lookup_trait_def(ccx.tcx, local_def(it.id));
-        for trait_item in trait_items {
-            match trait_item.node {
-                ast::MethodTraitItem(_, None) => {
-                    // Nothing to do, since required methods don't have
-                    // bodies to check.
-                }
-                ast::MethodTraitItem(ref sig, Some(ref body)) => {
-                    check_method_body(ccx, &trait_def.generics, sig, body,
-                                      trait_item.id, trait_item.span);
-                }
-                ast::TypeTraitItem(..) => {
-                    // Nothing to do.
-                }
-            }
-        }
       }
       ast::ItemStruct(..) => {
         check_struct(ccx, it.id, it.span);
@@ -806,6 +782,57 @@ pub fn check_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
                         span_err!(ccx.tcx.sess, item.span, E0045,
                                   "variadic function must have C calling convention");
                     }
+                }
+            }
+        }
+      }
+      _ => {/* nothing to do */ }
+    }
+}
+
+pub fn check_item_body<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
+    debug!("check_item_body(it.id={}, it.ident={})",
+           it.id,
+           ty::item_path_str(ccx.tcx, local_def(it.id)));
+    let _indenter = indenter();
+    match it.node {
+      ast::ItemFn(ref decl, _, _, _, ref body) => {
+        let fn_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
+        let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
+        check_bare_fn(ccx, &**decl, &**body, it.id, it.span, fn_pty.ty, param_env);
+      }
+      ast::ItemImpl(_, _, _, _, _, ref impl_items) => {
+        debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
+
+        let impl_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
+
+        for impl_item in impl_items {
+            match impl_item.node {
+                ast::MethodImplItem(ref sig, ref body) => {
+                    check_method_body(ccx, &impl_pty.generics, sig, body,
+                                      impl_item.id, impl_item.span);
+                }
+                ast::TypeImplItem(_) |
+                ast::MacImplItem(_) => {
+                    // Nothing to do here.
+                }
+            }
+        }
+      }
+      ast::ItemTrait(_, _, _, ref trait_items) => {
+        let trait_def = ty::lookup_trait_def(ccx.tcx, local_def(it.id));
+        for trait_item in trait_items {
+            match trait_item.node {
+                ast::MethodTraitItem(_, None) => {
+                    // Nothing to do, since required methods don't have
+                    // bodies to check.
+                }
+                ast::MethodTraitItem(ref sig, Some(ref body)) => {
+                    check_method_body(ccx, &trait_def.generics, sig, body,
+                                      trait_item.id, trait_item.span);
+                }
+                ast::TypeTraitItem(..) => {
+                    // Nothing to do.
                 }
             }
         }
