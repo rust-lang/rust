@@ -101,13 +101,13 @@ fn main() {
     check_mul_no_wrap!(0xfedc_u16 as i16, -2);
     check_mul_no_wrap!(0xfedc_ba98_u32 as i32, -2);
     check_mul_no_wrap!(0xfedc_ba98_7654_3217_u64 as i64, -2);
-    check_mul_no_wrap!(0xfedc_ba98_7654_3217_u64 as u64 as isize, -2);
+    check_mul_no_wrap!(0xfedc_ba98_fedc_ba98_u64 as u64 as isize, -2);
 
     check_mul_no_wrap!(0xfe_u8 as i8, 2);
     check_mul_no_wrap!(0xfedc_u16 as i16, 2);
     check_mul_no_wrap!(0xfedc_ba98_u32 as i32, 2);
     check_mul_no_wrap!(0xfedc_ba98_7654_3217_u64 as i64, 2);
-    check_mul_no_wrap!(0xfedc_ba98_7654_3217_u64 as u64 as isize, 2);
+    check_mul_no_wrap!(0xfedc_ba98_fedc_ba98_u64 as u64 as isize, 2);
 
     check_mul_wraps!(0x80_u8 as i8, -1);
     check_mul_wraps!(0x8000_u16 as i16, -1);
