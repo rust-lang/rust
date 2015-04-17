@@ -76,7 +76,7 @@
 #
 #   * `CFG_ENABLE_VALGRIND=1` - Run tests under valgrind
 #   * `VALGRIND_COMPILE=1` - Run the compiler itself under valgrind
-#                            (may require `CFG_ENABLE_VALGRIND`)
+#                            (requires `CFG_ENABLE_VALGRIND`)
 #
 #   * `NO_REBUILD=1` - Don't rebootstrap when testing std
 #                      (and possibly other crates)
