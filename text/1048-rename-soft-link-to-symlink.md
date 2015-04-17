@@ -1,7 +1,7 @@
-- Feature Name: rename_soft_link_to_symlink
+- Feature Name: `rename_soft_link_to_symlink`
 - Start Date: 2015-04-09
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1048](https://github.com/rust-lang/rfcs/pull/1048)
+- Rust Issue: [rust-lang/rust#24222](https://github.com/rust-lang/rust/pull/24222)
 
 # Summary
 
