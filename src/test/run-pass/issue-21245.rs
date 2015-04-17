@@ -20,19 +20,19 @@ use std::ptr;
 trait IntoIterator {
     type Iter: Iterator;
 
-    fn into_iter(self) -> Self::Iter;
+    fn into_iter2(self) -> Self::Iter;
 }
 
 impl<I> IntoIterator for I where I: Iterator {
     type Iter = I;
 
-    fn into_iter(self) -> I {
+    fn into_iter2(self) -> I {
         self
     }
 }
 
 fn desugared_for_loop_bad<T>(v: Vec<T>) {
-    match IntoIterator::into_iter(v.iter()) {
+    match IntoIterator::into_iter2(v.iter()) {
         mut iter => {
             loop {
                 match ::std::iter::Iterator::next(&mut iter) {
