@@ -28,7 +28,7 @@ use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
 use std_inject;
 
-use std::{ascii, mem};
+use std::ascii;
 use std::io::{self, Write, Read};
 use std::iter;
 
@@ -187,18 +187,13 @@ impl<'a> State<'a> {
 pub fn to_string<F>(f: F) -> String where
     F: FnOnce(&mut State) -> io::Result<()>,
 {
-    use std::raw::TraitObject;
-    let mut s = rust_printer(Box::new(Vec::new()));
-    f(&mut s).unwrap();
-    eof(&mut s.s).unwrap();
-    let wr = unsafe {
-        // FIXME(pcwalton): A nasty function to extract the string from an `Write`
-        // that we "know" to be a `Vec<u8>` that works around the lack of checked
-        // downcasts.
-        let obj: &TraitObject = mem::transmute(&s.s.out);
-        mem::transmute::<*mut (), &Vec<u8>>(obj.data)
-    };
-    String::from_utf8(wr.clone()).unwrap()
+    let mut wr = Vec::new();
+    {
+        let mut printer = rust_printer(Box::new(&mut wr));
+        f(&mut printer).unwrap();
+        eof(&mut printer.s).unwrap();
+    }
+    String::from_utf8(wr).unwrap()
 }
 
 pub fn binop_to_string(op: BinOpToken) -> &'static str {
