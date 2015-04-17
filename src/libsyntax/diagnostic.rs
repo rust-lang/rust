@@ -13,17 +13,14 @@ pub use self::RenderSpan::*;
 pub use self::ColorConfig::*;
 use self::Destination::*;
 
-use codemap::{COMMAND_LINE_SP, COMMAND_LINE_EXPN, Pos, Span};
-use codemap;
+use codemap::{self, COMMAND_LINE_SP, COMMAND_LINE_EXPN, Pos, Span};
 use diagnostics;
 
 use std::cell::{RefCell, Cell};
-use std::cmp;
-use std::fmt;
+use std::{cmp, error, fmt};
 use std::io::prelude::*;
 use std::io;
-use term::WriterWrapper;
-use term;
+use term::{self, WriterWrapper};
 use libc;
 
 /// maximum number of lines we will print for each error; arbitrary.
@@ -83,14 +80,38 @@ pub trait Emitter {
 /// Used as a return value to signify a fatal error occurred. (It is also
 /// used as the argument to panic at the moment, but that will eventually
 /// not be true.)
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[must_use]
 pub struct FatalError;
 
+impl fmt::Display for FatalError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "parser fatal error")
+    }
+}
+
+impl error::Error for FatalError {
+    fn description(&self) -> &str {
+        "The parser has encountered a fatal error"
+    }
+}
+
 /// Signifies that the compiler died with an explicit call to `.bug`
 /// or `.span_bug` rather than a failed assertion, etc.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct ExplicitBug;
+
+impl fmt::Display for ExplicitBug {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(f, "parser internal bug")
+    }
+}
+
+impl error::Error for ExplicitBug {
+    fn description(&self) -> &str {
+        "The parser has encountered an internal bug"
+    }
+}
 
 /// A span-handler is like a handler but also
 /// accepts span information for source-location
