@@ -131,7 +131,7 @@ pub fn buf_str(toks: &[Token],
     assert_eq!(n, szs.len());
     let mut i = left;
     let mut l = lim;
-    let mut s = string::String::from_str("[");
+    let mut s = string::String::from("[");
     while i != right && l != 0 {
         l -= 1;
         if i != left {

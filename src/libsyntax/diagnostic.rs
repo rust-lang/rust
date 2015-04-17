@@ -644,7 +644,7 @@ fn highlight_lines(err: &mut EmitterWriter,
             }
 
             try!(write!(&mut err.dst, "{}", s));
-            let mut s = String::from_str("^");
+            let mut s = String::from("^");
             let count = match lastc {
                 // Most terminals have a tab stop every eight columns by default
                 '\t' => 8 - col%8,

@@ -238,7 +238,7 @@ pub fn name_to_dummy_lifetime(name: Name) -> Lifetime {
 pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: Option<&Ty>) -> Ident {
     let mut pretty = match ty {
         Some(t) => pprust::ty_to_string(t),
-        None => String::from_str("..")
+        None => String::from("..")
     };
 
     match *trait_ref {
