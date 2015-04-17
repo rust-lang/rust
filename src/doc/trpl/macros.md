@@ -653,6 +653,116 @@ macro_rules! bct {
 Exercise: use macros to reduce duplication in the above definition of the
 `bct!` macro.
 
+# Common macros
+
+Here are some common macros you’ll see in Rust code.
+
+## panic!
+
+This macro causes the current thread to panic. You can give it a message
+to panic with:
+
+```rust,no_run
+panic!("oh no!");
+```
+
+## vec!
+
+The `vec!` macro is used throughout the book, so you’ve probably seen it
+already. It creates `Vec<T>`s with ease:
+
+```rust
+let v = vec![1, 2, 3, 4, 5];
+```
+
+It also lets you make vectors with repeating values. For example, a hundred
+zeroes:
+
+```rust
+let v = vec![0; 100];
+```
+
+## assert! and assert_eq!
+
+These two macros are used in tests. `assert!` takes a boolean, and `assert_eq!`
+takes two values and compares them. Truth passes, success `panic!`s. Like
+this:
+
+```rust,no_run
+// A-ok!
+
+assert!(true);
+assert_eq!(5, 3 + 2);
+
+// nope :(
+
+assert!(5 < 3);
+assert_eq!(5, 3);
+```
+## try!
+
+`try!` is used for error handling. It takes something that can return a
+`Result<T, E>`, and gives `T` if it’s a `Ok<T>`, and `return`s with the
+`Err(E)` if it’s that. Like this:
+
+```rust,no_run
+use std::fs::File;
+
+fn foo() -> std::io::Result<()> {
+    let f = try!(File::create("foo.txt"));
+
+    Ok(())
+}
+```
+
+This is cleaner than doing this:
+
+```rust,no_run
+use std::fs::File;
+
+fn foo() -> std::io::Result<()> {
+    let f = File::create("foo.txt");
+
+    let f = match f {
+        Ok(t) => t,
+        Err(e) => return Err(e),
+    };
+
+    Ok(())
+}
+```
+
+## unreachable!
+
+This macro is used when you think some code should never execute:
+
+```rust
+if false {
+    unreachable!();
+}
+```
+
+Sometimes, the compiler may make you have a different branch that you know
+will never, ever run. In these cases, use this macro, so that if you end
+up wrong, you’ll get a `panic!` about it.
+
+```rust
+let x: Option<i32> = None;
+
+match x {
+    Some(_) => unreachable!(),
+    None => println!("I know x is None!"),
+}
+```
+
+## unimplemented!
+
+The `unimplemented!` macro can be used when you’re trying to get your functions
+to typecheck, and don’t want to worry about writing out the body of the
+function. One example of this situation is implementing a trait with multiple
+required methods, where you want to tackle one at a time. Define the others
+as `unimplemented!` until you’re ready to write them.
+
 # Procedural macros
 
 If Rust's macro system can't do what you need, you may want to write a
