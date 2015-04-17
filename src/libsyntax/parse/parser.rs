@@ -4834,7 +4834,7 @@ impl<'a> Parser<'a> {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
         match included_mod_stack.iter().position(|p| *p == path) {
             Some(i) => {
-                let mut err = String::from_str("circular modules: ");
+                let mut err = String::from("circular modules: ");
                 let len = included_mod_stack.len();
                 for p in &included_mod_stack[i.. len] {
                     err.push_str(&p.to_string_lossy());

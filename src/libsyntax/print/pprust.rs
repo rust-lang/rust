@@ -2794,13 +2794,13 @@ impl<'a> State<'a> {
         match lit.node {
             ast::LitStr(ref st, style) => self.print_string(&st, style),
             ast::LitByte(byte) => {
-                let mut res = String::from_str("b'");
+                let mut res = String::from("b'");
                 res.extend(ascii::escape_default(byte).map(|c| c as char));
                 res.push('\'');
                 word(&mut self.s, &res[..])
             }
             ast::LitChar(ch) => {
-                let mut res = String::from_str("'");
+                let mut res = String::from("'");
                 res.extend(ch.escape_default());
                 res.push('\'');
                 word(&mut self.s, &res[..])

@@ -557,9 +557,9 @@ impl CodeMap {
         // FIXME #12884: no efficient/safe way to remove from the start of a string
         // and reuse the allocation.
         let mut src = if src.starts_with("\u{feff}") {
-            String::from_str(&src[3..])
+            String::from(&src[3..])
         } else {
-            String::from_str(&src[..])
+            String::from(&src[..])
         };
 
         // Append '\n' in case it's not already there.
