@@ -394,7 +394,7 @@ impl<'a> Context<'a> {
                                are reserved for internal compiler diagnostics");
         } else if name.starts_with("derive_") {
             self.gate_feature("custom_derive", attr.span,
-                              "attributes of the form `#[derive_*]` are reserved
+                              "attributes of the form `#[derive_*]` are reserved \
                                for the compiler");
         } else {
             self.gate_feature("custom_attribute", attr.span,
