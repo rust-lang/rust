@@ -735,13 +735,11 @@ Rust syntax is restricted in two ways:
 
 # Crates and source files
 
-Rust is a *compiled* language. Its semantics obey a *phase distinction*
-between compile-time and run-time. Those semantic rules that have a *static
-interpretation* govern the success or failure of compilation. We refer to
-these rules as "static semantics". Semantic rules called "dynamic semantics"
-govern the behavior of programs at run-time. A program that fails to compile
-due to violation of a compile-time rule has no defined dynamic semantics; the
-compiler should halt with an error report, and produce no executable artifact.
+Rust is a *compiled* language. Its semantics obey a *phase distinction* between
+compile-time and run-time. Those semantic rules that have a *static
+interpretation* govern the success or failure of compilation. Those semantics
+that have a *dynamic interpretation* govern the behavior of the program at
+run-time.
 
 The compilation model centers on artifacts called _crates_. Each compilation
 processes a single crate in source form, and if successful, produces a single
