@@ -303,9 +303,62 @@ number cannot be negative.
 E0307: r##"
 The length of an array is part of its type. For this reason, this length must be
 a compile-time constant.
+"##, 
+
+E0308: r##"
+This error occurs when the compiler was unable to infer the concrete type of a
+variable. This error can occur for several cases, the most common of which is
+that there is a mismatch in the expected type that the compiler inferred, and
+the actual type that the user defined a variable as.
+
+let a: char = 7;    // An integral type can't contained in a character, so 
+                    // there is a mismatch.
+
+let b: u32 = 7;     // Either use the right type...
+let c = 7;          // ...or let the compiler infer it.
+
+let d: char = c;    // This also causes a mismatch because c is some sort
+                    // of number whereas d is definitely a character.
+"##,
+
+E0309: r##"
+Types in type definitions have lifetimes associated with them that represent
+how long the data stored within them is guaranteed to be live. This lifetime
+must be as long as the data needs to be alive, and missing the constraint that
+denotes this will cause this error.
+
+// This won't compile because T is not constrained, meaning the data
+// stored in it is not guaranteed to last as long as the reference
+struct Foo<'a, T> {
+    foo: &'a T
+}
+
+// This will compile, because it has the constraint on the type parameter
+struct Foo<'a, T: 'a> {
+    foo: &'a T
+}
+"##,
+
+E0310: r##"
+Types in type definitions have lifetimes associated with them that represent
+how long the data stored within them is guaranteed to be live. This lifetime
+must be as long as the data needs to be alive, and missing the constraint that
+denotes this will cause this error.
+
+// This won't compile because T is not constrained to the static lifetime
+// the reference needs
+struct Foo<T> {
+    foo: &'static T
+}
+
+// This will compile, because it has the constraint on the type parameter
+struct Foo<T: 'static> {
+    foo: &'static T
+}
 "##
 
 }
+
 
 register_diagnostics! {
     E0009,
@@ -363,9 +416,6 @@ register_diagnostics! {
     E0300, // unexpanded macro
     E0304, // expected signed integer constant
     E0305, // expected constant
-    E0308,
-    E0309, // thing may not live long enough
-    E0310, // thing may not live long enough
     E0311, // thing may not live long enough
     E0312, // lifetime of reference outlives lifetime of borrowed content
     E0313, // lifetime of borrowed pointer outlives lifetime of captured variable
