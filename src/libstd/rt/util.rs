@@ -65,7 +65,7 @@ pub const ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) ||
                                   cfg!(rtassert);
 
 pub fn dumb_print(args: fmt::Arguments) {
-    let _ = write!(&mut Stderr::new(), "{}", args);
+    let _ = Stderr::new().write_fmt(args);
 }
 
 pub fn abort(args: fmt::Arguments) -> ! {
