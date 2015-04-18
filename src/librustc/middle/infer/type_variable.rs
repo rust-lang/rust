@@ -17,7 +17,7 @@ use std::cmp::min;
 use std::marker::PhantomData;
 use std::mem;
 use std::u32;
-use util::snapshot_vec as sv;
+use rustc_data_structures::snapshot_vec as sv;
 
 pub struct TypeVariableTable<'tcx> {
     values: sv::SnapshotVec<Delegate<'tcx>>,
@@ -65,7 +65,7 @@ impl RelationDir {
 
 impl<'tcx> TypeVariableTable<'tcx> {
     pub fn new() -> TypeVariableTable<'tcx> {
-        TypeVariableTable { values: sv::SnapshotVec::new(Delegate(PhantomData)) }
+        TypeVariableTable { values: sv::SnapshotVec::new() }
     }
 
     fn relations<'a>(&'a mut self, a: ty::TyVid) -> &'a mut Vec<Relation> {
@@ -201,9 +201,7 @@ impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
     type Value = TypeVariableData<'tcx>;
     type Undo = UndoEntry;
 
-    fn reverse(&mut self,
-               values: &mut Vec<TypeVariableData<'tcx>>,
-               action: UndoEntry) {
+    fn reverse(values: &mut Vec<TypeVariableData<'tcx>>, action: UndoEntry) {
         match action {
             SpecifyVar(vid, relations) => {
                 values[vid.index as usize].value = Bounded(relations);
