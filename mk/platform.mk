@@ -46,8 +46,9 @@ endif
 # see https://blog.mozilla.org/jseward/2012/06/05/valgrind-now-supports-jemalloc-builds-directly/
 ifdef CFG_VALGRIND
   CFG_VALGRIND += --error-exitcode=100 \
-                  --soname-synonyms=somalloc=NONE \
+                  --fair-sched=try \
                   --quiet \
+                  --soname-synonyms=somalloc=NONE \
                   --suppressions=$(CFG_SRC_DIR)src/etc/x86.supp \
                   $(OS_SUPP)
   ifdef CFG_ENABLE_HELGRIND
