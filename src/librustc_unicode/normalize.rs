@@ -33,9 +33,17 @@ fn bsearch_table<T>(c: char, r: &'static [(char, &'static [T])]) -> Option<&'sta
 }
 
 /// Compute canonical Unicode decomposition for character
+#[deprecated(reason = "use the crates.io `unicode-normalization` library instead",
+             since = "1.0.0")]
+#[unstable(feature = "unicode",
+           reason = "this functionality will be moved to crates.io")]
 pub fn decompose_canonical<F>(c: char, mut i: F) where F: FnMut(char) { d(c, &mut i, false); }
 
 /// Compute canonical or compatible Unicode decomposition for character
+#[deprecated(reason = "use the crates.io `unicode-normalization` library instead",
+             since = "1.0.0")]
+#[unstable(feature = "unicode",
+           reason = "this functionality will be moved to crates.io")]
 pub fn decompose_compatible<F>(c: char, mut i: F) where F: FnMut(char) { d(c, &mut i, true); }
 
 // FIXME(#19596) This is a workaround, we should use `F` instead of `&mut F`
@@ -78,6 +86,10 @@ fn d<F>(c: char, i: &mut F, k: bool) where F: FnMut(char) {
     (*i)(c);
 }
 
+#[deprecated(reason = "use the crates.io `unicode-normalization` library instead",
+             since = "1.0.0")]
+#[unstable(feature = "unicode",
+           reason = "this functionality will be moved to crates.io")]
 pub fn compose(a: char, b: char) -> Option<char> {
     compose_hangul(a, b).or_else(|| {
         match bsearch_table(a, composition_table) {

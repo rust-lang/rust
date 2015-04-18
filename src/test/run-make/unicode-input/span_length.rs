@@ -96,9 +96,12 @@ fn main() {
                                 repeat(" ").take(offset + 7).collect::<String>(),
                                 repeat("~").take(8).collect::<String>());
     assert!(err.contains(&expected_span));
-    // Second snake is 8 ~s long, with 36 preceding spaces
+    // Second snake is only 7 ~s long, with 36 preceding spaces,
+    // because rustc counts chars() now rather than width(). This
+    // is because width() functions are to be removed from
+    // librustc_unicode
     let expected_span = format!("\n{}^{}\n",
                                 repeat(" ").take(offset + 36).collect::<String>(),
-                                repeat("~").take(8).collect::<String>());
+                                repeat("~").take(7).collect::<String>());
     assert!(err.contains(&expected_span));
 }

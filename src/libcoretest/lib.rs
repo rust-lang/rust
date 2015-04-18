@@ -32,7 +32,7 @@
 extern crate core;
 extern crate test;
 extern crate libc;
-extern crate unicode;
+extern crate rustc_unicode;
 
 mod any;
 mod atomic;

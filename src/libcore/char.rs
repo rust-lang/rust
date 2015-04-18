@@ -10,7 +10,7 @@
 
 //! Character manipulation.
 //!
-//! For more details, see ::unicode::char (a.k.a. std::char)
+//! For more details, see ::rustc_unicode::char (a.k.a. std::char)
 
 #![allow(non_snake_case)]
 #![doc(primitive = "char")]
