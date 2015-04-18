@@ -418,7 +418,7 @@ macro_rules! options {
                       -> bool {
             match v {
                 Some(s) => {
-                    for s in s.words() {
+                    for s in s.split_whitespace() {
                         slot.push(s.to_string());
                     }
                     true
@@ -431,7 +431,7 @@ macro_rules! options {
                       -> bool {
             match v {
                 Some(s) => {
-                    let v = s.words().map(|s| s.to_string()).collect();
+                    let v = s.split_whitespace().map(|s| s.to_string()).collect();
                     *slot = Some(v);
                     true
                 },
