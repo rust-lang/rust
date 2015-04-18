@@ -40,7 +40,6 @@
 //! ```
 //! # #![feature(collections, core, step_by)]
 //! use std::collections::{BitSet, BitVec};
-//! use std::num::Float;
 //! use std::iter;
 //!
 //! let max_prime = 10000;

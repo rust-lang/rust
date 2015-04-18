@@ -1624,7 +1624,7 @@ mod test_map {
 
     use super::HashMap;
     use super::Entry::{Occupied, Vacant};
-    use iter::{range_inclusive, range_step_inclusive, repeat};
+    use iter::{range_inclusive, repeat};
     use cell::RefCell;
     use rand::{thread_rng, Rng};
 
@@ -1860,7 +1860,7 @@ mod test_map {
             }
 
             // remove backwards
-            for i in range_step_inclusive(1000, 1, -1) {
+            for i in (1..1001).rev() {
                 assert!(m.remove(&i).is_some());
 
                 for j in range_inclusive(i, 1000) {

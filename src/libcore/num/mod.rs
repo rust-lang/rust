@@ -21,7 +21,6 @@ use char::CharExt;
 use cmp::{Eq, PartialOrd};
 use fmt;
 use intrinsics;
-use iter::Iterator;
 use marker::Copy;
 use mem::size_of;
 use option::Option::{self, Some, None};
@@ -150,9 +149,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
-        ///
         /// let n = 0b01001100u8;
         ///
         /// assert_eq!(n.count_ones(), 3);
@@ -166,9 +162,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
-        ///
         /// let n = 0b01001100u8;
         ///
         /// assert_eq!(n.count_zeros(), 5);
@@ -185,9 +178,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
-        ///
         /// let n = 0b0101000u16;
         ///
         /// assert_eq!(n.leading_zeros(), 10);
@@ -204,9 +194,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
-        ///
         /// let n = 0b0101000u16;
         ///
         /// assert_eq!(n.trailing_zeros(), 3);
@@ -223,9 +210,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         /// let m = 0x3456789ABCDEF012u64;
         ///
@@ -244,9 +228,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         /// let m = 0xDEF0123456789ABCu64;
         ///
@@ -263,8 +244,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         /// let m = 0xEFCDAB8967452301u64;
         ///
@@ -284,14 +263,12 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         ///
         /// if cfg!(target_endian = "big") {
-        ///     assert_eq!(Int::from_be(n), n)
+        ///     assert_eq!(u64::from_be(n), n)
         /// } else {
-        ///     assert_eq!(Int::from_be(n), n.swap_bytes())
+        ///     assert_eq!(u64::from_be(n), n.swap_bytes())
         /// }
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -308,14 +285,12 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         ///
         /// if cfg!(target_endian = "little") {
-        ///     assert_eq!(Int::from_le(n), n)
+        ///     assert_eq!(u64::from_le(n), n)
         /// } else {
-        ///     assert_eq!(Int::from_le(n), n.swap_bytes())
+        ///     assert_eq!(u64::from_le(n), n.swap_bytes())
         /// }
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -332,8 +307,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         ///
         /// if cfg!(target_endian = "big") {
@@ -356,8 +329,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         ///
         /// if cfg!(target_endian = "little") {
@@ -378,8 +349,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// assert_eq!(5u16.checked_add(65530), Some(65535));
         /// assert_eq!(6u16.checked_add(65530), None);
         /// ```
@@ -395,8 +364,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// assert_eq!((-127i8).checked_sub(1), Some(-128));
         /// assert_eq!((-128i8).checked_sub(1), None);
         /// ```
@@ -412,8 +379,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// assert_eq!(5u8.checked_mul(51), Some(255));
         /// assert_eq!(5u8.checked_mul(52), None);
         /// ```
@@ -429,8 +394,6 @@ macro_rules! int_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// assert_eq!((-127i8).checked_div(-1), Some(127));
         /// assert_eq!((-128i8).checked_div(-1), None);
         /// assert_eq!((1i8).checked_div(0), None);
@@ -670,9 +633,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
-        ///
         /// let n = 0b01001100u8;
         ///
         /// assert_eq!(n.count_ones(), 3);
@@ -688,9 +648,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
-        ///
         /// let n = 0b01001100u8;
         ///
         /// assert_eq!(n.count_zeros(), 5);
@@ -707,9 +664,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
-        ///
         /// let n = 0b0101000u16;
         ///
         /// assert_eq!(n.leading_zeros(), 10);
@@ -726,9 +680,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
-        ///
         /// let n = 0b0101000u16;
         ///
         /// assert_eq!(n.trailing_zeros(), 3);
@@ -745,9 +696,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         /// let m = 0x3456789ABCDEF012u64;
         ///
@@ -768,9 +716,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         /// let m = 0xDEF0123456789ABCu64;
         ///
@@ -789,8 +734,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         /// let m = 0xEFCDAB8967452301u64;
         ///
@@ -810,14 +753,12 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         ///
         /// if cfg!(target_endian = "big") {
-        ///     assert_eq!(Int::from_be(n), n)
+        ///     assert_eq!(u64::from_be(n), n)
         /// } else {
-        ///     assert_eq!(Int::from_be(n), n.swap_bytes())
+        ///     assert_eq!(u64::from_be(n), n.swap_bytes())
         /// }
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -834,14 +775,12 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         ///
         /// if cfg!(target_endian = "little") {
-        ///     assert_eq!(Int::from_le(n), n)
+        ///     assert_eq!(u64::from_le(n), n)
         /// } else {
-        ///     assert_eq!(Int::from_le(n), n.swap_bytes())
+        ///     assert_eq!(u64::from_le(n), n.swap_bytes())
         /// }
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -858,8 +797,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         ///
         /// if cfg!(target_endian = "big") {
@@ -882,8 +819,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// let n = 0x0123456789ABCDEFu64;
         ///
         /// if cfg!(target_endian = "little") {
@@ -904,8 +839,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// assert_eq!(5u16.checked_add(65530), Some(65535));
         /// assert_eq!(6u16.checked_add(65530), None);
         /// ```
@@ -921,8 +854,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// assert_eq!((-127i8).checked_sub(1), Some(-128));
         /// assert_eq!((-128i8).checked_sub(1), None);
         /// ```
@@ -938,8 +869,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// assert_eq!(5u8.checked_mul(51), Some(255));
         /// assert_eq!(5u8.checked_mul(52), None);
         /// ```
@@ -955,8 +884,6 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// use std::num::Int;
-        ///
         /// assert_eq!((-127i8).checked_div(-1), Some(127));
         /// assert_eq!((-128i8).checked_div(-1), None);
         /// assert_eq!((1i8).checked_div(0), None);
@@ -1029,10 +956,7 @@ macro_rules! uint_impl {
         /// # Examples
         ///
         /// ```rust
-        /// # #![feature(core)]
-        /// use std::num::Int;
-        ///
-        /// assert_eq!(2.pow(4), 16);
+        /// assert_eq!(2i32.pow(4), 16);
         /// ```
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
@@ -1210,6 +1134,8 @@ pub trait Float {
     fn zero() -> Self;
     /// Returns 1.0.
     fn one() -> Self;
+    /// Parses the string `s` with the radix `r` as a float.
+    fn from_str_radix(s: &str, r: u32) -> Result<Self, ParseFloatError>;
 
     /// Returns true if this value is NaN and false otherwise.
     fn is_nan(self) -> bool;
@@ -1294,8 +1220,8 @@ pub trait Float {
     fn to_radians(self) -> Self;
 }
 
-macro_rules! from_str_radix_float_impl {
-    ($T:ty) => {
+macro_rules! from_str_float_impl {
+    ($T:ident) => {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStr for $T {
             type Err = ParseFloatError;
@@ -1323,152 +1249,19 @@ macro_rules! from_str_radix_float_impl {
             ///
             /// # Return value
             ///
-            /// `Err(ParseFloatError)` if the string did not represent a valid number.
-            /// Otherwise, `Ok(n)` where `n` is the floating-point number represented by `src`.
+            /// `Err(ParseFloatError)` if the string did not represent a valid
+            /// number.  Otherwise, `Ok(n)` where `n` is the floating-point
+            /// number represented by `src`.
             #[inline]
             #[allow(deprecated)]
             fn from_str(src: &str) -> Result<$T, ParseFloatError> {
-                use self::FloatErrorKind::*;
-                use self::ParseFloatError as PFE;
-                let radix = 10;
-
-                // Special values
-                match src {
-                    "inf"   => return Ok(Float::infinity()),
-                    "-inf"  => return Ok(Float::neg_infinity()),
-                    "NaN"   => return Ok(Float::nan()),
-                    _       => {},
-                }
-
-                let (is_positive, src) =  match src.slice_shift_char() {
-                    None             => return Err(PFE { kind: Empty }),
-                    Some(('-', ""))  => return Err(PFE { kind: Empty }),
-                    Some(('-', src)) => (false, src),
-                    Some((_, _))     => (true,  src),
-                };
-
-                // The significand to accumulate
-                let mut sig = if is_positive { 0.0 } else { -0.0 };
-                // Necessary to detect overflow
-                let mut prev_sig = sig;
-                let mut cs = src.chars().enumerate();
-                // Exponent prefix and exponent index offset
-                let mut exp_info = None::<(char, usize)>;
-
-                // Parse the integer part of the significand
-                for (i, c) in cs.by_ref() {
-                    match c.to_digit(radix) {
-                        Some(digit) => {
-                            // shift significand one digit left
-                            sig = sig * (radix as $T);
-
-                            // add/subtract current digit depending on sign
-                            if is_positive {
-                                sig = sig + ((digit as isize) as $T);
-                            } else {
-                                sig = sig - ((digit as isize) as $T);
-                            }
-
-                            // Detect overflow by comparing to last value, except
-                            // if we've not seen any non-zero digits.
-                            if prev_sig != 0.0 {
-                                if is_positive && sig <= prev_sig
-                                    { return Ok(Float::infinity()); }
-                                if !is_positive && sig >= prev_sig
-                                    { return Ok(Float::neg_infinity()); }
-
-                                // Detect overflow by reversing the shift-and-add process
-                                if is_positive && (prev_sig != (sig - digit as $T) / radix as $T)
-                                    { return Ok(Float::infinity()); }
-                                if !is_positive && (prev_sig != (sig + digit as $T) / radix as $T)
-                                    { return Ok(Float::neg_infinity()); }
-                            }
-                            prev_sig = sig;
-                        },
-                        None => match c {
-                            'e' | 'E' | 'p' | 'P' => {
-                                exp_info = Some((c, i + 1));
-                                break;  // start of exponent
-                            },
-                            '.' => {
-                                break;  // start of fractional part
-                            },
-                            _ => {
-                                return Err(PFE { kind: Invalid });
-                            },
-                        },
-                    }
-                }
-
-                // If we are not yet at the exponent parse the fractional
-                // part of the significand
-                if exp_info.is_none() {
-                    let mut power = 1.0;
-                    for (i, c) in cs.by_ref() {
-                        match c.to_digit(radix) {
-                            Some(digit) => {
-                                // Decrease power one order of magnitude
-                                power = power / (radix as $T);
-                                // add/subtract current digit depending on sign
-                                sig = if is_positive {
-                                    sig + (digit as $T) * power
-                                } else {
-                                    sig - (digit as $T) * power
-                                };
-                                // Detect overflow by comparing to last value
-                                if is_positive && sig < prev_sig
-                                    { return Ok(Float::infinity()); }
-                                if !is_positive && sig > prev_sig
-                                    { return Ok(Float::neg_infinity()); }
-                                prev_sig = sig;
-                            },
-                            None => match c {
-                                'e' | 'E' | 'p' | 'P' => {
-                                    exp_info = Some((c, i + 1));
-                                    break; // start of exponent
-                                },
-                                _ => {
-                                    return Err(PFE { kind: Invalid });
-                                },
-                            },
-                        }
-                    }
-                }
-
-                // Parse and calculate the exponent
-                let exp = match exp_info {
-                    Some((c, offset)) => {
-                        let base = match c {
-                            'E' | 'e' if radix == 10 => 10.0,
-                            'P' | 'p' if radix == 16 => 2.0,
-                            _ => return Err(PFE { kind: Invalid }),
-                        };
-
-                        // Parse the exponent as decimal integer
-                        let src = &src[offset..];
-                        let (is_positive, exp) = match src.slice_shift_char() {
-                            Some(('-', src)) => (false, src.parse::<usize>()),
-                            Some(('+', src)) => (true,  src.parse::<usize>()),
-                            Some((_, _))     => (true,  src.parse::<usize>()),
-                            None             => return Err(PFE { kind: Invalid }),
-                        };
-
-                        match (is_positive, exp) {
-                            (true,  Ok(exp)) => base.powi(exp as i32),
-                            (false, Ok(exp)) => 1.0 / base.powi(exp as i32),
-                            (_, Err(_))      => return Err(PFE { kind: Invalid }),
-                        }
-                    },
-                    None => 1.0, // no exponent
-                };
-
-                Ok(sig * exp)
+                $T::from_str_radix(src, 10)
             }
         }
     }
 }
-from_str_radix_float_impl! { f32 }
-from_str_radix_float_impl! { f64 }
+from_str_float_impl!(f32);
+from_str_float_impl!(f64);
 
 macro_rules! from_str_radix_int_impl {
     ($($T:ident)*) => {$(
@@ -1598,11 +1391,10 @@ impl fmt::Display for ParseIntError {
 
 /// An error which can be returned when parsing a float.
 #[derive(Debug, Clone, PartialEq)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct ParseFloatError { kind: FloatErrorKind }
+pub struct ParseFloatError { pub kind: FloatErrorKind }
 
 #[derive(Debug, Clone, PartialEq)]
-enum FloatErrorKind {
+pub enum FloatErrorKind {
     Empty,
     Invalid,
 }

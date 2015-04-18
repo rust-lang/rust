@@ -16,7 +16,6 @@
 use std::io::prelude::*;
 use std::io;
 use std::iter::repeat;
-use std::num::Int;
 use std::env;
 
 // Computes a single solution to a given 9x9 sudoku

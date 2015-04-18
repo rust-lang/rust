@@ -15,8 +15,8 @@ use libc::consts::os::extra::INVALID_SOCKET;
 use libc::{self, c_int, c_void};
 use mem;
 use net::SocketAddr;
-#[allow(deprecated)]
-use num::{SignedInt, Int};
+use num::One;
+use ops::Neg;
 use rt;
 use sync::{Once, ONCE_INIT};
 use sys::c;
@@ -49,11 +49,8 @@ fn last_error() -> io::Error {
 /// Checks if the signed integer is the Windows constant `SOCKET_ERROR` (-1)
 /// and if so, returns the last error from the Windows socket interface. . This
 /// function must be called before another call to the socket API is made.
-///
-/// FIXME: generics needed?
-#[allow(deprecated)]
-pub fn cvt<T: SignedInt>(t: T) -> io::Result<T> {
-    let one: T = Int::one();
+pub fn cvt<T: One + Neg<Output=T> + PartialEq>(t: T) -> io::Result<T> {
+    let one: T = T::one();
     if t == -one {
         Err(last_error())
     } else {
@@ -70,7 +67,9 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
 
 /// Provides the functionality of `cvt` for a closure.
 #[allow(deprecated)]
-pub fn cvt_r<T: SignedInt, F>(mut f: F) -> io::Result<T> where F: FnMut() -> T {
+pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
+    where F: FnMut() -> T, T: One + Neg<Output=T> + PartialEq
+{
     cvt(f())
 }
 

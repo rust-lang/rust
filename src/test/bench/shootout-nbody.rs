@@ -38,9 +38,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#![feature(core)]
-
-use std::num::Float;
+use std::mem;
 
 const PI: f64 = 3.141592653589793;
 const SOLAR_MASS: f64 = 4.0 * PI * PI;
@@ -193,16 +191,9 @@ fn main() {
 /// longer contain the mutable reference. This is a safe operation because the
 /// two mutable borrows are entirely disjoint.
 fn shift_mut_ref<'a, T>(r: &mut &'a mut [T]) -> Option<&'a mut T> {
-    use std::mem;
-    use std::raw::Repr;
-
-    if r.is_empty() { return None }
-    unsafe {
-        let mut raw = r.repr();
-        let ret = raw.data as *mut T;
-        raw.data = raw.data.offset(1);
-        raw.len -= 1;
-        *r = mem::transmute(raw);
-        Some({ &mut *ret })
-    }
+    let res = mem::replace(r, &mut []);
+    if res.is_empty() { return None }
+    let (a, b) = res.split_at_mut(1);
+    *r = b;
+    Some(&mut a[0])
 }
