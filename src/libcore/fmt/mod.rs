@@ -185,10 +185,18 @@ impl<'a> ArgumentV1<'a> {
     }
 }
 
-// flags available in the v1 format of format_args
-#[derive(Copy, Clone)]
-#[allow(dead_code)] // SignMinus isn't currently used
-enum FlagV1 { SignPlus, SignMinus, Alternate, SignAwareZeroPad, }
+// A faux enum used for formatting flags.
+//
+// Public visibility only so that it can be consumed by libfmt_macros
+#[doc(hidden)]
+#[allow(dead_code)] // SIGN_MINUS isn't currently used
+#[allow(non_snake_case)]
+pub mod FlagV2 {
+    pub const SIGN_PLUS             : u32 = 0b00000001;
+    pub const SIGN_MINUS            : u32 = 0b00000010;
+    pub const ALTERNATE             : u32 = 0b00000100;
+    pub const SIGN_AWARE_ZERO_PAD   : u32 = 0b00001000;
+}
 
 impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
@@ -441,7 +449,7 @@ impl<'a> Formatter<'a> {
     /// # Arguments
     ///
     /// * is_positive - whether the original integer was positive or not.
-    /// * prefix - if the '#' character (Alternate) is provided, this
+    /// * prefix - if the '#' character (ALTERNATE) is provided, this
     ///   is the prefix to put in front of the number.
     /// * buf - the byte array that the number has been formatted into
     ///
@@ -460,12 +468,12 @@ impl<'a> Formatter<'a> {
         let mut sign = None;
         if !is_positive {
             sign = Some('-'); width += 1;
-        } else if self.flags & (1 << (FlagV1::SignPlus as u32)) != 0 {
+        } else if self.flags & FlagV2::SIGN_PLUS != 0 {
             sign = Some('+'); width += 1;
         }
 
         let mut prefixed = false;
-        if self.flags & (1 << (FlagV1::Alternate as u32)) != 0 {
+        if self.flags & FlagV2::ALTERNATE != 0 {
             prefixed = true; width += prefix.char_len();
         }
 
@@ -495,7 +503,7 @@ impl<'a> Formatter<'a> {
             }
             // The sign and prefix goes before the padding if the fill character
             // is zero
-            Some(min) if self.flags & (1 << (FlagV1::SignAwareZeroPad as u32)) != 0 => {
+            Some(min) if self.flags & FlagV2::SIGN_AWARE_ZERO_PAD != 0 => {
                 self.fill = '0';
                 try!(write_prefix(self));
                 self.with_padding(min - width, Alignment::Right, |f| {
@@ -861,8 +869,8 @@ impl<T> Pointer for *const T {
         // it denotes whether to prefix with 0x. We use it to work out whether
         // or not to zero extend, and then unconditionally set it to get the
         // prefix.
-        if f.flags & 1 << (FlagV1::Alternate as u32) > 0 {
-            f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
+        if f.flags & FlagV2::ALTERNATE > 0 {
+            f.flags |= FlagV2::SIGN_AWARE_ZERO_PAD;
 
             if let None = f.width {
                 // The formats need two extra bytes, for the 0x
@@ -873,7 +881,7 @@ impl<T> Pointer for *const T {
                 }
             }
         }
-        f.flags |= 1 << (FlagV1::Alternate as u32);
+        f.flags |= FlagV2::ALTERNATE;
 
         let ret = LowerHex::fmt(&(*self as usize), f);
 
