@@ -456,13 +456,20 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         (_, "volatile_load") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
-            from_arg_ty(bcx, VolatileLoad(bcx, ptr), tp_ty)
+            let load = VolatileLoad(bcx, ptr);
+            unsafe {
+                llvm::LLVMSetAlignment(load, type_of::align_of(ccx, tp_ty));
+            }
+            from_arg_ty(bcx, load, tp_ty)
         },
         (_, "volatile_store") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
             let ptr = to_arg_ty_ptr(bcx, llargs[0], tp_ty);
             let val = to_arg_ty(bcx, llargs[1], tp_ty);
-            VolatileStore(bcx, val, ptr);
+            let store = VolatileStore(bcx, val, ptr);
+            unsafe {
+                llvm::LLVMSetAlignment(store, type_of::align_of(ccx, tp_ty));
+            }
             C_nil(ccx)
         },
 

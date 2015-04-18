@@ -646,13 +646,13 @@ pub fn LoadNonNull(cx: Block, ptr: ValueRef) -> ValueRef {
     }
 }
 
-pub fn Store(cx: Block, val: ValueRef, ptr: ValueRef) {
-    if cx.unreachable.get() { return; }
+pub fn Store(cx: Block, val: ValueRef, ptr: ValueRef) -> ValueRef {
+    if cx.unreachable.get() { return C_nil(cx.ccx()); }
     B(cx).store(val, ptr)
 }
 
-pub fn VolatileStore(cx: Block, val: ValueRef, ptr: ValueRef) {
-    if cx.unreachable.get() { return; }
+pub fn VolatileStore(cx: Block, val: ValueRef, ptr: ValueRef) -> ValueRef {
+    if cx.unreachable.get() { return C_nil(cx.ccx()); }
     B(cx).volatile_store(val, ptr)
 }
 
