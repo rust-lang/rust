@@ -37,7 +37,9 @@ use tables::{derived_property, property, general_category, conversions, charwidt
 pub use core::char::{MAX, from_u32, from_digit, EscapeUnicode, EscapeDefault};
 
 // unstable reexports
+#[allow(deprecated)]
 pub use normalize::{decompose_canonical, decompose_compatible, compose};
+#[allow(deprecated)]
 pub use tables::normalization::canonical_combining_class;
 pub use tables::UNICODE_VERSION;
 
@@ -445,6 +447,8 @@ impl char {
     /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// recommends that these characters be treated as 1 column (i.e.,
     /// `is_cjk` = `false`) if the context cannot be reliably determined.
+    #[deprecated(reason = "use the crates.io `unicode-width` library instead",
+                 since = "1.0.0")]
     #[unstable(feature = "unicode",
                reason = "needs expert opinion. is_cjk flag stands out as ugly")]
     pub fn width(self, is_cjk: bool) -> Option<usize> { charwidth::width(self, is_cjk) }

@@ -19,6 +19,7 @@ fn test_le() {
     assert!("foo" != "bar");
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_len() {
     assert_eq!("".len(), 0);
@@ -498,7 +499,7 @@ fn test_is_utf8() {
 
 #[test]
 fn test_is_utf16() {
-    use unicode::str::is_utf16;
+    use rustc_unicode::str::is_utf16;
 
     macro_rules! pos {
         ($($e:expr),*) => { { $(assert!(is_utf16($e));)* } }
@@ -944,6 +945,7 @@ fn test_words() {
     assert_eq!(words, ["Märy", "häd", "ä", "little", "lämb", "Little", "lämb"])
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_nfd_chars() {
     macro_rules! t {
@@ -963,6 +965,7 @@ fn test_nfd_chars() {
     t!("\u{ac1c}", "\u{1100}\u{1162}");
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_nfkd_chars() {
     macro_rules! t {
@@ -982,6 +985,7 @@ fn test_nfkd_chars() {
     t!("\u{ac1c}", "\u{1100}\u{1162}");
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_nfc_chars() {
     macro_rules! t {
@@ -1002,6 +1006,7 @@ fn test_nfc_chars() {
     t!("a\u{300}\u{305}\u{315}\u{5ae}b", "\u{e0}\u{5ae}\u{305}\u{315}b");
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_nfkc_chars() {
     macro_rules! t {
@@ -1033,6 +1038,7 @@ fn test_lines() {
     assert_eq!(lines, ["", "Märy häd ä little lämb", "", "Little lämb"]);
 }
 
+#[allow(deprecated)]
 #[test]
 fn test_graphemes() {
     use std::iter::order;
@@ -1629,7 +1635,7 @@ fn test_rev_split_char_iterator_no_trailing() {
 
 #[test]
 fn test_utf16_code_units() {
-    use unicode::str::Utf16Encoder;
+    use rustc_unicode::str::Utf16Encoder;
     assert_eq!(Utf16Encoder::new(vec!['é', '\u{1F4A9}'].into_iter()).collect::<Vec<u16>>(),
                [0xE9, 0xD83D, 0xDCA9])
 }

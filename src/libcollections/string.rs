@@ -25,8 +25,8 @@ use core::ops::{self, Deref, Add, Index};
 use core::ptr;
 use core::slice;
 use core::str::pattern::Pattern;
-use unicode::str as unicode_str;
-use unicode::str::Utf16Item;
+use rustc_unicode::str as unicode_str;
+use rustc_unicode::str::Utf16Item;
 
 use borrow::{Cow, IntoCow};
 use str::{self, FromStr, Utf8Error};

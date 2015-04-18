@@ -50,7 +50,7 @@
 #[macro_use]
 extern crate core;
 
-extern crate unicode;
+extern crate rustc_unicode;
 extern crate alloc;
 
 #[cfg(test)] #[macro_use] extern crate std;

@@ -41,7 +41,7 @@ Core encoding and decoding interfaces.
 #[cfg(test)] extern crate test;
 #[macro_use] extern crate log;
 
-extern crate unicode;
+extern crate rustc_unicode;
 extern crate collections;
 
 pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,

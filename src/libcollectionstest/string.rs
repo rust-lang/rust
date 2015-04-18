@@ -135,7 +135,7 @@ fn test_from_utf16() {
         let s_as_utf16 = s.utf16_units().collect::<Vec<u16>>();
         let u_as_string = String::from_utf16(&u).unwrap();
 
-        assert!(::unicode::str::is_utf16(&u));
+        assert!(::rustc_unicode::str::is_utf16(&u));
         assert_eq!(s_as_utf16, u);
 
         assert_eq!(u_as_string, s);
