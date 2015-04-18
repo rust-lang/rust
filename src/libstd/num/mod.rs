@@ -16,32 +16,56 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
-#[cfg(test)] use fmt::Debug;
+use fmt;
+use core::num;
 
 pub use core::num::{Zero, One};
-pub use core::num::{FpCategory, ParseIntError, ParseFloatError};
+pub use core::num::{FpCategory, ParseIntError};
 pub use core::num::{wrapping, Wrapping};
+
+#[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
+#[cfg(test)] use cmp::PartialEq;
+#[cfg(test)] use marker::Copy;
 
 /// Helper function for testing numeric operations
 #[cfg(test)]
 pub fn test_num<T>(ten: T, two: T) where
-    T: PartialEq + NumCast
+    T: PartialEq
      + Add<Output=T> + Sub<Output=T>
      + Mul<Output=T> + Div<Output=T>
-     + Rem<Output=T> + Debug
+     + Rem<Output=T> + fmt::Debug
      + Copy
 {
-    assert_eq!(ten.add(two),  cast(12).unwrap());
-    assert_eq!(ten.sub(two),  cast(8).unwrap());
-    assert_eq!(ten.mul(two),  cast(20).unwrap());
-    assert_eq!(ten.div(two),  cast(5).unwrap());
-    assert_eq!(ten.rem(two),  cast(0).unwrap());
-
     assert_eq!(ten.add(two),  ten + two);
     assert_eq!(ten.sub(two),  ten - two);
     assert_eq!(ten.mul(two),  ten * two);
     assert_eq!(ten.div(two),  ten / two);
     assert_eq!(ten.rem(two),  ten % two);
+}
+
+/// An error which can be returned when parsing a float.
+#[derive(Debug, Clone, PartialEq)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct ParseFloatError { inner: num::ParseFloatError }
+
+impl ::sys_common::FromInner<num::ParseFloatError> for ParseFloatError {
+    fn from_inner(inner: num::ParseFloatError) -> ParseFloatError {
+        ParseFloatError { inner: inner }
+    }
+}
+
+impl ParseFloatError {
+    #[unstable(feature = "core", reason = "available through Error trait")]
+    pub fn description(&self) -> &str {
+        self.inner.description()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Display for ParseFloatError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
+    }
 }
 
 #[cfg(test)]
@@ -59,432 +83,7 @@ mod tests {
     use u64;
     use usize;
     use string::ToString;
-
-    macro_rules! test_cast_20 {
-        ($_20:expr) => ({
-            let _20 = $_20;
-
-            assert_eq!(20usize, _20.to_uint().unwrap());
-            assert_eq!(20u8,    _20.to_u8().unwrap());
-            assert_eq!(20u16,   _20.to_u16().unwrap());
-            assert_eq!(20u32,   _20.to_u32().unwrap());
-            assert_eq!(20u64,   _20.to_u64().unwrap());
-            assert_eq!(20,      _20.to_int().unwrap());
-            assert_eq!(20i8,    _20.to_i8().unwrap());
-            assert_eq!(20i16,   _20.to_i16().unwrap());
-            assert_eq!(20i32,   _20.to_i32().unwrap());
-            assert_eq!(20i64,   _20.to_i64().unwrap());
-            assert_eq!(20f32,   _20.to_f32().unwrap());
-            assert_eq!(20f64,   _20.to_f64().unwrap());
-
-            assert_eq!(_20, NumCast::from(20usize).unwrap());
-            assert_eq!(_20, NumCast::from(20u8).unwrap());
-            assert_eq!(_20, NumCast::from(20u16).unwrap());
-            assert_eq!(_20, NumCast::from(20u32).unwrap());
-            assert_eq!(_20, NumCast::from(20u64).unwrap());
-            assert_eq!(_20, NumCast::from(20).unwrap());
-            assert_eq!(_20, NumCast::from(20i8).unwrap());
-            assert_eq!(_20, NumCast::from(20i16).unwrap());
-            assert_eq!(_20, NumCast::from(20i32).unwrap());
-            assert_eq!(_20, NumCast::from(20i64).unwrap());
-            assert_eq!(_20, NumCast::from(20f32).unwrap());
-            assert_eq!(_20, NumCast::from(20f64).unwrap());
-
-            assert_eq!(_20, cast(20usize).unwrap());
-            assert_eq!(_20, cast(20u8).unwrap());
-            assert_eq!(_20, cast(20u16).unwrap());
-            assert_eq!(_20, cast(20u32).unwrap());
-            assert_eq!(_20, cast(20u64).unwrap());
-            assert_eq!(_20, cast(20).unwrap());
-            assert_eq!(_20, cast(20i8).unwrap());
-            assert_eq!(_20, cast(20i16).unwrap());
-            assert_eq!(_20, cast(20i32).unwrap());
-            assert_eq!(_20, cast(20i64).unwrap());
-            assert_eq!(_20, cast(20f32).unwrap());
-            assert_eq!(_20, cast(20f64).unwrap());
-        })
-    }
-
-    #[test] fn test_u8_cast()    { test_cast_20!(20u8)    }
-    #[test] fn test_u16_cast()   { test_cast_20!(20u16)   }
-    #[test] fn test_u32_cast()   { test_cast_20!(20u32)   }
-    #[test] fn test_u64_cast()   { test_cast_20!(20u64)   }
-    #[test] fn test_uint_cast()  { test_cast_20!(20usize) }
-    #[test] fn test_i8_cast()    { test_cast_20!(20i8)    }
-    #[test] fn test_i16_cast()   { test_cast_20!(20i16)   }
-    #[test] fn test_i32_cast()   { test_cast_20!(20i32)   }
-    #[test] fn test_i64_cast()   { test_cast_20!(20i64)   }
-    #[test] fn test_int_cast()   { test_cast_20!(20)      }
-    #[test] fn test_f32_cast()   { test_cast_20!(20f32)   }
-    #[test] fn test_f64_cast()   { test_cast_20!(20f64)   }
-
-    #[test]
-    fn test_cast_range_int_min() {
-        assert_eq!(isize::MIN.to_int(),  Some(isize::MIN as isize));
-        assert_eq!(isize::MIN.to_i8(),   None);
-        assert_eq!(isize::MIN.to_i16(),  None);
-        // isize::MIN.to_i32() is word-size specific
-        assert_eq!(isize::MIN.to_i64(),  Some(isize::MIN as i64));
-        assert_eq!(isize::MIN.to_uint(), None);
-        assert_eq!(isize::MIN.to_u8(),   None);
-        assert_eq!(isize::MIN.to_u16(),  None);
-        assert_eq!(isize::MIN.to_u32(),  None);
-        assert_eq!(isize::MIN.to_u64(),  None);
-
-        #[cfg(target_pointer_width = "32")]
-        fn check_word_size() {
-            assert_eq!(isize::MIN.to_i32(), Some(isize::MIN as i32));
-        }
-
-        #[cfg(target_pointer_width = "64")]
-        fn check_word_size() {
-            assert_eq!(isize::MIN.to_i32(), None);
-        }
-
-        check_word_size();
-    }
-
-    #[test]
-    fn test_cast_range_i8_min() {
-        assert_eq!(i8::MIN.to_int(),  Some(i8::MIN as isize));
-        assert_eq!(i8::MIN.to_i8(),   Some(i8::MIN as i8));
-        assert_eq!(i8::MIN.to_i16(),  Some(i8::MIN as i16));
-        assert_eq!(i8::MIN.to_i32(),  Some(i8::MIN as i32));
-        assert_eq!(i8::MIN.to_i64(),  Some(i8::MIN as i64));
-        assert_eq!(i8::MIN.to_uint(), None);
-        assert_eq!(i8::MIN.to_u8(),   None);
-        assert_eq!(i8::MIN.to_u16(),  None);
-        assert_eq!(i8::MIN.to_u32(),  None);
-        assert_eq!(i8::MIN.to_u64(),  None);
-    }
-
-    #[test]
-    fn test_cast_range_i16_min() {
-        assert_eq!(i16::MIN.to_int(),  Some(i16::MIN as isize));
-        assert_eq!(i16::MIN.to_i8(),   None);
-        assert_eq!(i16::MIN.to_i16(),  Some(i16::MIN as i16));
-        assert_eq!(i16::MIN.to_i32(),  Some(i16::MIN as i32));
-        assert_eq!(i16::MIN.to_i64(),  Some(i16::MIN as i64));
-        assert_eq!(i16::MIN.to_uint(), None);
-        assert_eq!(i16::MIN.to_u8(),   None);
-        assert_eq!(i16::MIN.to_u16(),  None);
-        assert_eq!(i16::MIN.to_u32(),  None);
-        assert_eq!(i16::MIN.to_u64(),  None);
-    }
-
-    #[test]
-    fn test_cast_range_i32_min() {
-        assert_eq!(i32::MIN.to_int(),  Some(i32::MIN as isize));
-        assert_eq!(i32::MIN.to_i8(),   None);
-        assert_eq!(i32::MIN.to_i16(),  None);
-        assert_eq!(i32::MIN.to_i32(),  Some(i32::MIN as i32));
-        assert_eq!(i32::MIN.to_i64(),  Some(i32::MIN as i64));
-        assert_eq!(i32::MIN.to_uint(), None);
-        assert_eq!(i32::MIN.to_u8(),   None);
-        assert_eq!(i32::MIN.to_u16(),  None);
-        assert_eq!(i32::MIN.to_u32(),  None);
-        assert_eq!(i32::MIN.to_u64(),  None);
-    }
-
-    #[test]
-    fn test_cast_range_i64_min() {
-        // i64::MIN.to_int() is word-size specific
-        assert_eq!(i64::MIN.to_i8(),   None);
-        assert_eq!(i64::MIN.to_i16(),  None);
-        assert_eq!(i64::MIN.to_i32(),  None);
-        assert_eq!(i64::MIN.to_i64(),  Some(i64::MIN as i64));
-        assert_eq!(i64::MIN.to_uint(), None);
-        assert_eq!(i64::MIN.to_u8(),   None);
-        assert_eq!(i64::MIN.to_u16(),  None);
-        assert_eq!(i64::MIN.to_u32(),  None);
-        assert_eq!(i64::MIN.to_u64(),  None);
-
-        #[cfg(target_pointer_width = "32")]
-        fn check_word_size() {
-            assert_eq!(i64::MIN.to_int(), None);
-        }
-
-        #[cfg(target_pointer_width = "64")]
-        fn check_word_size() {
-            assert_eq!(i64::MIN.to_int(), Some(i64::MIN as isize));
-        }
-
-        check_word_size();
-    }
-
-    #[test]
-    fn test_cast_range_int_max() {
-        assert_eq!(isize::MAX.to_int(),  Some(isize::MAX as isize));
-        assert_eq!(isize::MAX.to_i8(),   None);
-        assert_eq!(isize::MAX.to_i16(),  None);
-        // isize::MAX.to_i32() is word-size specific
-        assert_eq!(isize::MAX.to_i64(),  Some(isize::MAX as i64));
-        assert_eq!(isize::MAX.to_u8(),   None);
-        assert_eq!(isize::MAX.to_u16(),  None);
-        // isize::MAX.to_u32() is word-size specific
-        assert_eq!(isize::MAX.to_u64(),  Some(isize::MAX as u64));
-
-        #[cfg(target_pointer_width = "32")]
-        fn check_word_size() {
-            assert_eq!(isize::MAX.to_i32(), Some(isize::MAX as i32));
-            assert_eq!(isize::MAX.to_u32(), Some(isize::MAX as u32));
-        }
-
-        #[cfg(target_pointer_width = "64")]
-        fn check_word_size() {
-            assert_eq!(isize::MAX.to_i32(), None);
-            assert_eq!(isize::MAX.to_u32(), None);
-        }
-
-        check_word_size();
-    }
-
-    #[test]
-    fn test_cast_range_i8_max() {
-        assert_eq!(i8::MAX.to_int(),  Some(i8::MAX as isize));
-        assert_eq!(i8::MAX.to_i8(),   Some(i8::MAX as i8));
-        assert_eq!(i8::MAX.to_i16(),  Some(i8::MAX as i16));
-        assert_eq!(i8::MAX.to_i32(),  Some(i8::MAX as i32));
-        assert_eq!(i8::MAX.to_i64(),  Some(i8::MAX as i64));
-        assert_eq!(i8::MAX.to_uint(), Some(i8::MAX as usize));
-        assert_eq!(i8::MAX.to_u8(),   Some(i8::MAX as u8));
-        assert_eq!(i8::MAX.to_u16(),  Some(i8::MAX as u16));
-        assert_eq!(i8::MAX.to_u32(),  Some(i8::MAX as u32));
-        assert_eq!(i8::MAX.to_u64(),  Some(i8::MAX as u64));
-    }
-
-    #[test]
-    fn test_cast_range_i16_max() {
-        assert_eq!(i16::MAX.to_int(),  Some(i16::MAX as isize));
-        assert_eq!(i16::MAX.to_i8(),   None);
-        assert_eq!(i16::MAX.to_i16(),  Some(i16::MAX as i16));
-        assert_eq!(i16::MAX.to_i32(),  Some(i16::MAX as i32));
-        assert_eq!(i16::MAX.to_i64(),  Some(i16::MAX as i64));
-        assert_eq!(i16::MAX.to_uint(), Some(i16::MAX as usize));
-        assert_eq!(i16::MAX.to_u8(),   None);
-        assert_eq!(i16::MAX.to_u16(),  Some(i16::MAX as u16));
-        assert_eq!(i16::MAX.to_u32(),  Some(i16::MAX as u32));
-        assert_eq!(i16::MAX.to_u64(),  Some(i16::MAX as u64));
-    }
-
-    #[test]
-    fn test_cast_range_i32_max() {
-        assert_eq!(i32::MAX.to_int(),  Some(i32::MAX as isize));
-        assert_eq!(i32::MAX.to_i8(),   None);
-        assert_eq!(i32::MAX.to_i16(),  None);
-        assert_eq!(i32::MAX.to_i32(),  Some(i32::MAX as i32));
-        assert_eq!(i32::MAX.to_i64(),  Some(i32::MAX as i64));
-        assert_eq!(i32::MAX.to_uint(), Some(i32::MAX as usize));
-        assert_eq!(i32::MAX.to_u8(),   None);
-        assert_eq!(i32::MAX.to_u16(),  None);
-        assert_eq!(i32::MAX.to_u32(),  Some(i32::MAX as u32));
-        assert_eq!(i32::MAX.to_u64(),  Some(i32::MAX as u64));
-    }
-
-    #[test]
-    fn test_cast_range_i64_max() {
-        // i64::MAX.to_int() is word-size specific
-        assert_eq!(i64::MAX.to_i8(),   None);
-        assert_eq!(i64::MAX.to_i16(),  None);
-        assert_eq!(i64::MAX.to_i32(),  None);
-        assert_eq!(i64::MAX.to_i64(),  Some(i64::MAX as i64));
-        // i64::MAX.to_uint() is word-size specific
-        assert_eq!(i64::MAX.to_u8(),   None);
-        assert_eq!(i64::MAX.to_u16(),  None);
-        assert_eq!(i64::MAX.to_u32(),  None);
-        assert_eq!(i64::MAX.to_u64(),  Some(i64::MAX as u64));
-
-        #[cfg(target_pointer_width = "32")]
-        fn check_word_size() {
-            assert_eq!(i64::MAX.to_int(),  None);
-            assert_eq!(i64::MAX.to_uint(), None);
-        }
-
-        #[cfg(target_pointer_width = "64")]
-        fn check_word_size() {
-            assert_eq!(i64::MAX.to_int(),  Some(i64::MAX as isize));
-            assert_eq!(i64::MAX.to_uint(), Some(i64::MAX as usize));
-        }
-
-        check_word_size();
-    }
-
-    #[test]
-    fn test_cast_range_uint_min() {
-        assert_eq!(usize::MIN.to_int(),  Some(usize::MIN as isize));
-        assert_eq!(usize::MIN.to_i8(),   Some(usize::MIN as i8));
-        assert_eq!(usize::MIN.to_i16(),  Some(usize::MIN as i16));
-        assert_eq!(usize::MIN.to_i32(),  Some(usize::MIN as i32));
-        assert_eq!(usize::MIN.to_i64(),  Some(usize::MIN as i64));
-        assert_eq!(usize::MIN.to_uint(), Some(usize::MIN as usize));
-        assert_eq!(usize::MIN.to_u8(),   Some(usize::MIN as u8));
-        assert_eq!(usize::MIN.to_u16(),  Some(usize::MIN as u16));
-        assert_eq!(usize::MIN.to_u32(),  Some(usize::MIN as u32));
-        assert_eq!(usize::MIN.to_u64(),  Some(usize::MIN as u64));
-    }
-
-    #[test]
-    fn test_cast_range_u8_min() {
-        assert_eq!(u8::MIN.to_int(),  Some(u8::MIN as isize));
-        assert_eq!(u8::MIN.to_i8(),   Some(u8::MIN as i8));
-        assert_eq!(u8::MIN.to_i16(),  Some(u8::MIN as i16));
-        assert_eq!(u8::MIN.to_i32(),  Some(u8::MIN as i32));
-        assert_eq!(u8::MIN.to_i64(),  Some(u8::MIN as i64));
-        assert_eq!(u8::MIN.to_uint(), Some(u8::MIN as usize));
-        assert_eq!(u8::MIN.to_u8(),   Some(u8::MIN as u8));
-        assert_eq!(u8::MIN.to_u16(),  Some(u8::MIN as u16));
-        assert_eq!(u8::MIN.to_u32(),  Some(u8::MIN as u32));
-        assert_eq!(u8::MIN.to_u64(),  Some(u8::MIN as u64));
-    }
-
-    #[test]
-    fn test_cast_range_u16_min() {
-        assert_eq!(u16::MIN.to_int(),  Some(u16::MIN as isize));
-        assert_eq!(u16::MIN.to_i8(),   Some(u16::MIN as i8));
-        assert_eq!(u16::MIN.to_i16(),  Some(u16::MIN as i16));
-        assert_eq!(u16::MIN.to_i32(),  Some(u16::MIN as i32));
-        assert_eq!(u16::MIN.to_i64(),  Some(u16::MIN as i64));
-        assert_eq!(u16::MIN.to_uint(), Some(u16::MIN as usize));
-        assert_eq!(u16::MIN.to_u8(),   Some(u16::MIN as u8));
-        assert_eq!(u16::MIN.to_u16(),  Some(u16::MIN as u16));
-        assert_eq!(u16::MIN.to_u32(),  Some(u16::MIN as u32));
-        assert_eq!(u16::MIN.to_u64(),  Some(u16::MIN as u64));
-    }
-
-    #[test]
-    fn test_cast_range_u32_min() {
-        assert_eq!(u32::MIN.to_int(),  Some(u32::MIN as isize));
-        assert_eq!(u32::MIN.to_i8(),   Some(u32::MIN as i8));
-        assert_eq!(u32::MIN.to_i16(),  Some(u32::MIN as i16));
-        assert_eq!(u32::MIN.to_i32(),  Some(u32::MIN as i32));
-        assert_eq!(u32::MIN.to_i64(),  Some(u32::MIN as i64));
-        assert_eq!(u32::MIN.to_uint(), Some(u32::MIN as usize));
-        assert_eq!(u32::MIN.to_u8(),   Some(u32::MIN as u8));
-        assert_eq!(u32::MIN.to_u16(),  Some(u32::MIN as u16));
-        assert_eq!(u32::MIN.to_u32(),  Some(u32::MIN as u32));
-        assert_eq!(u32::MIN.to_u64(),  Some(u32::MIN as u64));
-    }
-
-    #[test]
-    fn test_cast_range_u64_min() {
-        assert_eq!(u64::MIN.to_int(),  Some(u64::MIN as isize));
-        assert_eq!(u64::MIN.to_i8(),   Some(u64::MIN as i8));
-        assert_eq!(u64::MIN.to_i16(),  Some(u64::MIN as i16));
-        assert_eq!(u64::MIN.to_i32(),  Some(u64::MIN as i32));
-        assert_eq!(u64::MIN.to_i64(),  Some(u64::MIN as i64));
-        assert_eq!(u64::MIN.to_uint(), Some(u64::MIN as usize));
-        assert_eq!(u64::MIN.to_u8(),   Some(u64::MIN as u8));
-        assert_eq!(u64::MIN.to_u16(),  Some(u64::MIN as u16));
-        assert_eq!(u64::MIN.to_u32(),  Some(u64::MIN as u32));
-        assert_eq!(u64::MIN.to_u64(),  Some(u64::MIN as u64));
-    }
-
-    #[test]
-    fn test_cast_range_uint_max() {
-        assert_eq!(usize::MAX.to_int(),  None);
-        assert_eq!(usize::MAX.to_i8(),   None);
-        assert_eq!(usize::MAX.to_i16(),  None);
-        assert_eq!(usize::MAX.to_i32(),  None);
-        // usize::MAX.to_i64() is word-size specific
-        assert_eq!(usize::MAX.to_u8(),   None);
-        assert_eq!(usize::MAX.to_u16(),  None);
-        // usize::MAX.to_u32() is word-size specific
-        assert_eq!(usize::MAX.to_u64(),  Some(usize::MAX as u64));
-
-        #[cfg(target_pointer_width = "32")]
-        fn check_word_size() {
-            assert_eq!(usize::MAX.to_u32(), Some(usize::MAX as u32));
-            assert_eq!(usize::MAX.to_i64(), Some(usize::MAX as i64));
-        }
-
-        #[cfg(target_pointer_width = "64")]
-        fn check_word_size() {
-            assert_eq!(usize::MAX.to_u32(), None);
-            assert_eq!(usize::MAX.to_i64(), None);
-        }
-
-        check_word_size();
-    }
-
-    #[test]
-    fn test_cast_range_u8_max() {
-        assert_eq!(u8::MAX.to_int(),  Some(u8::MAX as isize));
-        assert_eq!(u8::MAX.to_i8(),   None);
-        assert_eq!(u8::MAX.to_i16(),  Some(u8::MAX as i16));
-        assert_eq!(u8::MAX.to_i32(),  Some(u8::MAX as i32));
-        assert_eq!(u8::MAX.to_i64(),  Some(u8::MAX as i64));
-        assert_eq!(u8::MAX.to_uint(), Some(u8::MAX as usize));
-        assert_eq!(u8::MAX.to_u8(),   Some(u8::MAX as u8));
-        assert_eq!(u8::MAX.to_u16(),  Some(u8::MAX as u16));
-        assert_eq!(u8::MAX.to_u32(),  Some(u8::MAX as u32));
-        assert_eq!(u8::MAX.to_u64(),  Some(u8::MAX as u64));
-    }
-
-    #[test]
-    fn test_cast_range_u16_max() {
-        assert_eq!(u16::MAX.to_int(),  Some(u16::MAX as isize));
-        assert_eq!(u16::MAX.to_i8(),   None);
-        assert_eq!(u16::MAX.to_i16(),  None);
-        assert_eq!(u16::MAX.to_i32(),  Some(u16::MAX as i32));
-        assert_eq!(u16::MAX.to_i64(),  Some(u16::MAX as i64));
-        assert_eq!(u16::MAX.to_uint(), Some(u16::MAX as usize));
-        assert_eq!(u16::MAX.to_u8(),   None);
-        assert_eq!(u16::MAX.to_u16(),  Some(u16::MAX as u16));
-        assert_eq!(u16::MAX.to_u32(),  Some(u16::MAX as u32));
-        assert_eq!(u16::MAX.to_u64(),  Some(u16::MAX as u64));
-    }
-
-    #[test]
-    fn test_cast_range_u32_max() {
-        // u32::MAX.to_int() is word-size specific
-        assert_eq!(u32::MAX.to_i8(),   None);
-        assert_eq!(u32::MAX.to_i16(),  None);
-        assert_eq!(u32::MAX.to_i32(),  None);
-        assert_eq!(u32::MAX.to_i64(),  Some(u32::MAX as i64));
-        assert_eq!(u32::MAX.to_uint(), Some(u32::MAX as usize));
-        assert_eq!(u32::MAX.to_u8(),   None);
-        assert_eq!(u32::MAX.to_u16(),  None);
-        assert_eq!(u32::MAX.to_u32(),  Some(u32::MAX as u32));
-        assert_eq!(u32::MAX.to_u64(),  Some(u32::MAX as u64));
-
-        #[cfg(target_pointer_width = "32")]
-        fn check_word_size() {
-            assert_eq!(u32::MAX.to_int(),  None);
-        }
-
-        #[cfg(target_pointer_width = "64")]
-        fn check_word_size() {
-            assert_eq!(u32::MAX.to_int(),  Some(u32::MAX as isize));
-        }
-
-        check_word_size();
-    }
-
-    #[test]
-    fn test_cast_range_u64_max() {
-        assert_eq!(u64::MAX.to_int(),  None);
-        assert_eq!(u64::MAX.to_i8(),   None);
-        assert_eq!(u64::MAX.to_i16(),  None);
-        assert_eq!(u64::MAX.to_i32(),  None);
-        assert_eq!(u64::MAX.to_i64(),  None);
-        // u64::MAX.to_uint() is word-size specific
-        assert_eq!(u64::MAX.to_u8(),   None);
-        assert_eq!(u64::MAX.to_u16(),  None);
-        assert_eq!(u64::MAX.to_u32(),  None);
-        assert_eq!(u64::MAX.to_u64(),  Some(u64::MAX as u64));
-
-        #[cfg(target_pointer_width = "32")]
-        fn check_word_size() {
-            assert_eq!(u64::MAX.to_uint(), None);
-        }
-
-        #[cfg(target_pointer_width = "64")]
-        fn check_word_size() {
-            assert_eq!(u64::MAX.to_uint(), Some(u64::MAX as usize));
-        }
-
-        check_word_size();
-    }
+    use ops::Mul;
 
     #[test]
     fn test_saturating_add_uint() {
@@ -507,23 +106,23 @@ mod tests {
     #[test]
     fn test_saturating_add_int() {
         use isize::{MIN,MAX};
-        assert_eq!(3.saturating_add(5), 8);
-        assert_eq!(3.saturating_add(MAX-1), MAX);
+        assert_eq!(3i32.saturating_add(5), 8);
+        assert_eq!(3isize.saturating_add(MAX-1), MAX);
         assert_eq!(MAX.saturating_add(MAX), MAX);
         assert_eq!((MAX-2).saturating_add(1), MAX-1);
-        assert_eq!(3.saturating_add(-5), -2);
+        assert_eq!(3i32.saturating_add(-5), -2);
         assert_eq!(MIN.saturating_add(-1), MIN);
-        assert_eq!((-2).saturating_add(-MAX), MIN);
+        assert_eq!((-2isize).saturating_add(-MAX), MIN);
     }
 
     #[test]
     fn test_saturating_sub_int() {
         use isize::{MIN,MAX};
-        assert_eq!(3.saturating_sub(5), -2);
+        assert_eq!(3i32.saturating_sub(5), -2);
         assert_eq!(MIN.saturating_sub(1), MIN);
-        assert_eq!((-2).saturating_sub(MAX), MIN);
-        assert_eq!(3.saturating_sub(-5), 8);
-        assert_eq!(3.saturating_sub(-(MAX-1)), MAX);
+        assert_eq!((-2isize).saturating_sub(MAX), MIN);
+        assert_eq!(3i32.saturating_sub(-5), 8);
+        assert_eq!(3isize.saturating_sub(-(MAX-1)), MAX);
         assert_eq!(MAX.saturating_sub(-MAX), MAX);
         assert_eq!((MAX-2).saturating_sub(-1), MAX-1);
     }
@@ -627,56 +226,10 @@ mod tests {
     test_checked_next_power_of_two! { test_checked_next_power_of_two_u64, u64 }
     test_checked_next_power_of_two! { test_checked_next_power_of_two_uint, usize }
 
-    #[derive(PartialEq, Debug)]
-    struct Value { x: isize }
-
-    impl ToPrimitive for Value {
-        fn to_i64(&self) -> Option<i64> { self.x.to_i64() }
-        fn to_u64(&self) -> Option<u64> { self.x.to_u64() }
-    }
-
-    impl FromPrimitive for Value {
-        fn from_i64(n: i64) -> Option<Value> { Some(Value { x: n as isize }) }
-        fn from_u64(n: u64) -> Option<Value> { Some(Value { x: n as isize }) }
-    }
-
-    #[test]
-    fn test_to_primitive() {
-        let value = Value { x: 5 };
-        assert_eq!(value.to_int(),  Some(5));
-        assert_eq!(value.to_i8(),   Some(5));
-        assert_eq!(value.to_i16(),  Some(5));
-        assert_eq!(value.to_i32(),  Some(5));
-        assert_eq!(value.to_i64(),  Some(5));
-        assert_eq!(value.to_uint(), Some(5));
-        assert_eq!(value.to_u8(),   Some(5));
-        assert_eq!(value.to_u16(),  Some(5));
-        assert_eq!(value.to_u32(),  Some(5));
-        assert_eq!(value.to_u64(),  Some(5));
-        assert_eq!(value.to_f32(),  Some(5f32));
-        assert_eq!(value.to_f64(),  Some(5f64));
-    }
-
-    #[test]
-    fn test_from_primitive() {
-        assert_eq!(from_int(5),    Some(Value { x: 5 }));
-        assert_eq!(from_i8(5),     Some(Value { x: 5 }));
-        assert_eq!(from_i16(5),    Some(Value { x: 5 }));
-        assert_eq!(from_i32(5),    Some(Value { x: 5 }));
-        assert_eq!(from_i64(5),    Some(Value { x: 5 }));
-        assert_eq!(from_uint(5),   Some(Value { x: 5 }));
-        assert_eq!(from_u8(5),     Some(Value { x: 5 }));
-        assert_eq!(from_u16(5),    Some(Value { x: 5 }));
-        assert_eq!(from_u32(5),    Some(Value { x: 5 }));
-        assert_eq!(from_u64(5),    Some(Value { x: 5 }));
-        assert_eq!(from_f32(5f32), Some(Value { x: 5 }));
-        assert_eq!(from_f64(5f64), Some(Value { x: 5 }));
-    }
-
     #[test]
     fn test_pow() {
-        fn naive_pow<T: Int>(base: T, exp: usize) -> T {
-            let one: T = Int::one();
+        fn naive_pow<T: Mul<Output=T> + One + Copy>(base: T, exp: usize) -> T {
+            let one: T = T::one();
             (0..exp).fold(one, |acc, _| acc * base)
         }
         macro_rules! assert_pow {
@@ -686,11 +239,11 @@ mod tests {
                 assert_eq!(result, naive_pow($num, $exp));
             }}
         }
-        assert_pow!((3,     0 ) => 1);
-        assert_pow!((5,     1 ) => 5);
-        assert_pow!((-4,    2 ) => 16);
-        assert_pow!((8,     3 ) => 512);
-        assert_pow!((2u64,   50) => 1125899906842624);
+        assert_pow!((3u32,     0 ) => 1);
+        assert_pow!((5u32,     1 ) => 5);
+        assert_pow!((-4i32,    2 ) => 16);
+        assert_pow!((8u32,     3 ) => 512);
+        assert_pow!((2u64,     50) => 1125899906842624);
     }
 
     #[test]
@@ -765,12 +318,11 @@ mod tests {
 mod bench {
     extern crate test;
     use self::test::Bencher;
-    use num::Int;
     use prelude::v1::*;
 
     #[bench]
     fn bench_pow_function(b: &mut Bencher) {
-        let v = (0..1024).collect::<Vec<_>>();
-        b.iter(|| {v.iter().fold(0, |old, new| old.pow(*new as u32));});
+        let v = (0..1024).collect::<Vec<u32>>();
+        b.iter(|| {v.iter().fold(0u32, |old, new| old.pow(*new as u32));});
     }
 }

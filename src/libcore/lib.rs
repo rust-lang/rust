@@ -108,6 +108,7 @@ mod uint_macros;
 #[path = "num/f32.rs"]   pub mod f32;
 #[path = "num/f64.rs"]   pub mod f64;
 
+#[macro_use]
 pub mod num;
 
 /* The libcore prelude, not as all-encompassing as the libstd prelude */

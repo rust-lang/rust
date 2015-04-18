@@ -336,7 +336,7 @@ This shows off the additional feature of `where` clauses: they allow bounds
 where the left-hand side is an arbitrary type (`i32` in this case), not just a
 plain type parameter (like `T`).
 
-# Default methods
+## Default methods
 
 There’s one last feature of traits we should cover: default methods. It’s
 easiest just to show an example:

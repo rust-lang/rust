@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits, core)]
+#![feature(optin_builtin_traits)]
 
 // pp-exact
 
-use std::marker::MarkerTrait;
-
-trait MyTrait: MarkerTrait { }
+trait MyTrait { }
 
 impl MyTrait for .. { }
 
