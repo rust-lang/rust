@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(rustc_attrs)]
-#![feature(ensure_not_fmt_string_literal)]
 
 // Issue 22932: `panic!("{}");` should not compile.
 
