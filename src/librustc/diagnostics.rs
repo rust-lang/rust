@@ -55,15 +55,17 @@ underscore `_` wildcard pattern can be added after all other patterns to match
 
 // FIXME: Remove duplication here?
 E0005: r##"
-Patterns used to bind names must be irrefutable, that is, they must guarantee that a
-name will be extracted in all cases. If you encounter this error you probably need
-to use a `match` or `if let` to deal with the possibility of failure.
+Patterns used to bind names must be irrefutable, that is, they must guarantee
+that a name will be extracted in all cases. If you encounter this error you
+probably need to use a `match` or `if let` to deal with the possibility of
+failure.
 "##,
 
 E0006: r##"
-Patterns used to bind names must be irrefutable, that is, they must guarantee that a
-name will be extracted in all cases. If you encounter this error you probably need
-to use a `match` or `if let` to deal with the possibility of failure.
+Patterns used to bind names must be irrefutable, that is, they must guarantee
+that a name will be extracted in all cases. If you encounter this error you
+probably need to use a `match` or `if let` to deal with the possibility of
+failure.
 "##,
 
 E0007: r##"
@@ -110,6 +112,65 @@ The value would be dropped in the guard then become unavailable not only in the
 body of that arm but also in all subsequent arms! The solution is to bind by
 reference when using guards or refactor the entire expression, perhaps by
 putting the condition inside the body of the arm.
+"##,
+
+E0009: r##"
+In a pattern, all values that don't implement the `Copy` trait have to be bound
+the same way. The goal here is to avoid binding simultaneously by-move and
+by-ref.
+
+This limitation may be removed in a future version of Rust.
+
+Wrong example:
+
+```
+struct X { x: (), }
+
+let x = Some((X { x: () }, X { x: () }));
+match x {
+    Some((y, ref z)) => {},
+    None => panic!()
+}
+```
+
+You have two solutions:
+1. Bind the pattern's values the same way:
+
+```
+struct X { x: (), }
+
+let x = Some((X { x: () }, X { x: () }));
+match x {
+    Some((ref y, ref z)) => {},
+    // or Some((y, z)) => {}
+    None => panic!()
+}
+```
+
+2. Implement the `Copy` trait for the X structure (however, please
+keep in mind that the first solution should be preferred!):
+
+```
+#[derive(Clone, Copy)]
+struct X { x: (), }
+
+let x = Some((X { x: () }, X { x: () }));
+match x {
+    Some((y, ref z)) => {},
+    None => panic!()
+}
+```
+"##,
+
+E0015: r##"
+The only function calls allowed in static or constant expressions are enum
+variant constructors or struct constructors (for unit or tuple structs). This
+is because Rust currently does not support compile-time function execution.
+"##,
+
+E0020: r##"
+This error indicates that an attempt was made to divide by zero (or take the
+remainder of a zero divisor) in a static or constant expression.
 "##,
 
 E0152: r##"
@@ -217,6 +278,26 @@ use Method::*;
 enum Method { GET, POST }
 "##,
 
+E0267: r##"
+This error indicates the use of loop keyword (break or continue) inside a
+closure but outside of any loop. Break and continue can be used as normal
+inside closures as long as they are also contained within a loop. To halt the
+execution of a closure you should instead use a return statement.
+"##,
+
+E0268: r##"
+This error indicates the use of loop keyword (break or continue) outside of a
+loop. Without a loop to break out of or continue in, no sensible action can be
+taken.
+"##,
+
+E0296: r##"
+This error indicates that the given recursion limit could not be parsed. Ensure
+that the value provided is a positive integer between quotes, like so:
+
+#![recursion_limit="1000"]
+"##,
+
 E0297: r##"
 Patterns used to bind names must be irrefutable. That is, they must guarantee
 that a name will be extracted in all cases. Instead of pattern matching the
@@ -277,20 +358,22 @@ In certain cases it is possible for sub-bindings to violate memory safety.
 Updates to the borrow checker in a future version of Rust may remove this
 restriction, but for now patterns must be rewritten without sub-bindings.
 
-// Code like this...
-match Some(5) {
-    ref op_num @ Some(num) => ...
+// Before.
+match Some("hi".to_string()) {
+    ref op_string_ref @ Some(ref s) => ...
     None => ...
 }
 
-// ... should be updated to code like this.
-match Some(5) {
-    Some(num) => {
-        let op_num = &Some(num);
+// After.
+match Some("hi".to_string()) {
+    Some(ref s) => {
+        let op_string_ref = &Some(&s);
         ...
     }
     None => ...
 }
+
+The `op_string_ref` binding has type &Option<&String> in both cases.
 
 See also https://github.com/rust-lang/rust/issues/14587
 "##,
@@ -308,18 +391,15 @@ a compile-time constant.
 }
 
 register_diagnostics! {
-    E0009,
     E0010,
     E0011,
     E0012,
     E0013,
     E0014,
-    E0015,
     E0016,
     E0017,
     E0018,
     E0019,
-    E0020,
     E0022,
     E0079, // enum variant: expected signed integer constant
     E0080, // enum variant: constant evaluation error
@@ -338,8 +418,6 @@ register_diagnostics! {
     E0264, // unknown external lang item
     E0265, // recursive constant
     E0266, // expected item
-    E0267, // thing inside of a closure
-    E0268, // thing outside of a loop
     E0269, // not all control paths return a value
     E0270, // computation may converge in a function marked as diverging
     E0271, // type mismatch resolving
@@ -357,7 +435,6 @@ register_diagnostics! {
     E0283, // cannot resolve type
     E0284, // cannot resolve type
     E0285, // overflow evaluation builtin bounds
-    E0296, // malformed recursion limit attribute
     E0298, // mismatched types between arms
     E0299, // mismatched types between arms
     E0300, // unexpanded macro
