@@ -2,9 +2,9 @@
 
 A *vector* is a dynamic or "growable" array, implemented as the standard
 library type [`Vec<T>`](../std/vec/) (Where `<T>` is a [Generic](./generics.md)
-statement). Vectors always allocate their data on the heap. Vectors are to
-[slices][slices] what [`String`][string] is to `&str`. You can
-create them with the `vec!` macro:
+statement). Vectors always allocate their data on the heap. A Vector `Vec<T>`
+is to a slice `&[T]` what [`String`][string] is to `&str`. You can create them
+with the `vec!` macro:
 
 ```{rust}
 let v = vec![1, 2, 3]; // v: Vec<i32>
