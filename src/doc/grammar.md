@@ -5,8 +5,7 @@
 This document is the primary reference for the Rust programming language grammar. It
 provides only one kind of material:
 
-  - Chapters that formally define the language grammar and, for each
-    construct.
+  - Chapters that formally define the language grammar.
 
 This document does not serve as an introduction to the language. Background
 familiarity with the language is assumed. A separate [guide] is available to
@@ -427,7 +426,7 @@ meta_seq : meta_item [ ',' meta_seq ] ? ;
 **FIXME:** grammar?
 
 A _declaration statement_ is one that introduces one or more *names* into the
-enclosing statement block. The declared names may denote new slots or new
+enclosing statement block. The declared names may denote new variables or new
 items.
 
 #### Item declarations
@@ -441,7 +440,7 @@ function, enumeration, structure, type, static, trait, implementation or module
 scope to a narrow region containing all of its uses; it is otherwise identical
 in meaning to declaring the item outside the statement block.
 
-#### Slot declarations
+#### Variable declarations
 
 ```antlr
 let_decl : "let" pat [':' type ] ? [ init ] ? ';' ;
@@ -763,7 +762,7 @@ bound := path | lifetime
 
 ### Memory ownership
 
-### Memory slots
+### Variables
 
 ### Boxes
 
