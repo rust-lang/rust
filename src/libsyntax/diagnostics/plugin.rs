@@ -20,6 +20,9 @@ use parse::token;
 use ptr::P;
 use util::small_vector::SmallVector;
 
+// Maximum width of any line in an extended error description (inclusive).
+const MAX_DESCRIPTION_WIDTH: usize = 80;
+
 thread_local! {
     static REGISTERED_DIAGNOSTICS: RefCell<BTreeMap<Name, Option<Name>>> = {
         RefCell::new(BTreeMap::new())
@@ -92,6 +95,24 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         }
         _ => unreachable!()
     };
+    // Check that the description starts and ends with a newline and doesn't
+    // overflow the maximum line width.
+    description.map(|raw_msg| {
+        let msg = raw_msg.as_str();
+        if !msg.starts_with("\n") || !msg.ends_with("\n") {
+            ecx.span_err(span, &format!(
+                "description for error code {} doesn't start and end with a newline",
+                token::get_ident(*code)
+            ));
+        }
+        if msg.lines().any(|line| line.len() > MAX_DESCRIPTION_WIDTH) {
+            ecx.span_err(span, &format!(
+                "description for error code {} contains a line longer than {} characters",
+                token::get_ident(*code), MAX_DESCRIPTION_WIDTH
+            ));
+        }
+        raw_msg
+    });
     with_registered_diagnostics(|diagnostics| {
         if diagnostics.insert(code.name, description).is_some() {
             ecx.span_err(span, &format!(
