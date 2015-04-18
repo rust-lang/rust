@@ -25,10 +25,16 @@ use core::str::Split;
 
 use tables::grapheme::GraphemeCat;
 
-/// An iterator over the words of a string, separated by a sequence of whitespace
+#[deprecated(reason = "struct Words is being replaced by struct SplitWhitespace",
+             since = "1.1.0")]
 #[unstable(feature = "str_words",
            reason = "words() will be replaced by split_whitespace() in 1.1.0")]
-pub struct Words<'a> {
+pub type Words<'a> = SplitWhitespace<'a>;
+
+/// An iterator over the non-whitespace substrings of a string,
+/// separated by any amount of whitespace.
+#[stable(feature = "split_whitespace", since = "1.1.0")]
+pub struct SplitWhitespace<'a> {
     inner: Filter<Split<'a, fn(char) -> bool>, fn(&&str) -> bool>,
 }
 
@@ -37,7 +43,9 @@ pub struct Words<'a> {
 pub trait UnicodeStr {
     fn graphemes<'a>(&'a self, is_extended: bool) -> Graphemes<'a>;
     fn grapheme_indices<'a>(&'a self, is_extended: bool) -> GraphemeIndices<'a>;
+    #[allow(deprecated)]
     fn words<'a>(&'a self) -> Words<'a>;
+    fn split_whitespace<'a>(&'a self) -> SplitWhitespace<'a>;
     fn is_whitespace(&self) -> bool;
     fn is_alphanumeric(&self) -> bool;
     fn width(&self, is_cjk: bool) -> usize;
@@ -57,15 +65,21 @@ impl UnicodeStr for str {
         GraphemeIndices { start_offset: self.as_ptr() as usize, iter: self.graphemes(is_extended) }
     }
 
+    #[allow(deprecated)]
     #[inline]
     fn words(&self) -> Words {
+        self.split_whitespace()
+    }
+
+    #[inline]
+    fn split_whitespace(&self) -> SplitWhitespace {
         fn is_not_empty(s: &&str) -> bool { !s.is_empty() }
         let is_not_empty: fn(&&str) -> bool = is_not_empty; // coerce to fn pointer
 
         fn is_whitespace(c: char) -> bool { c.is_whitespace() }
         let is_whitespace: fn(char) -> bool = is_whitespace; // coerce to fn pointer
 
-        Words { inner: self.split(is_whitespace).filter(is_not_empty) }
+        SplitWhitespace { inner: self.split(is_whitespace).filter(is_not_empty) }
     }
 
     #[inline]
@@ -546,11 +560,11 @@ impl<I> Iterator for Utf16Encoder<I> where I: Iterator<Item=char> {
     }
 }
 
-impl<'a> Iterator for Words<'a> {
+impl<'a> Iterator for SplitWhitespace<'a> {
     type Item = &'a str;
 
     fn next(&mut self) -> Option<&'a str> { self.inner.next() }
 }
-impl<'a> DoubleEndedIterator for Words<'a> {
+impl<'a> DoubleEndedIterator for SplitWhitespace<'a> {
     fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }
 }
