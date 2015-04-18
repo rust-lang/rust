@@ -45,12 +45,14 @@ use middle::check_const;
 use middle::const_eval;
 use middle::def::{self, DefMap, ExportMap};
 use middle::dependency_format;
+use middle::free_region::FreeRegionMap;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::mem_categorization as mc;
 use middle::region;
 use middle::resolve_lifetime;
 use middle::infer;
 use middle::pat_util;
+use middle::region::RegionMaps;
 use middle::stability;
 use middle::subst::{self, ParamSpace, Subst, Substs, VecPerParamSpace};
 use middle::traits;
@@ -620,7 +622,14 @@ pub struct ctxt<'tcx> {
 
     pub named_region_map: resolve_lifetime::NamedRegionMap,
 
-    pub region_maps: middle::region::RegionMaps,
+    pub region_maps: RegionMaps,
+
+    // For each fn declared in the local crate, type check stores the
+    // free-region relationships that were deduced from its where
+    // clauses and parameter types. These are then read-again by
+    // borrowck. (They are not used during trans, and hence are not
+    // serialized or needed for cross-crate fns.)
+    free_region_maps: RefCell<NodeMap<FreeRegionMap>>,
 
     /// Stores the types for various nodes in the AST.  Note that this table
     /// is not guaranteed to be populated until after typeck.  See
@@ -794,6 +803,15 @@ impl<'tcx> ctxt<'tcx> {
     pub fn node_types(&self) -> Ref<NodeMap<Ty<'tcx>>> { self.node_types.borrow() }
     pub fn node_type_insert(&self, id: NodeId, ty: Ty<'tcx>) {
         self.node_types.borrow_mut().insert(id, ty);
+    }
+
+    pub fn store_free_region_map(&self, id: NodeId, map: FreeRegionMap) {
+        self.free_region_maps.borrow_mut()
+                             .insert(id, map);
+    }
+
+    pub fn free_region_map(&self, id: NodeId) -> FreeRegionMap {
+        self.free_region_maps.borrow()[&id].clone()
     }
 }
 
@@ -2546,7 +2564,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
                      freevars: RefCell<FreevarMap>,
-                     region_maps: middle::region::RegionMaps,
+                     region_maps: RegionMaps,
                      lang_items: middle::lang_items::LanguageItems,
                      stability: stability::Index) -> ctxt<'tcx>
 {
@@ -2561,11 +2579,12 @@ pub fn mk_ctxt<'tcx>(s: Session,
         region_interner: RefCell::new(FnvHashMap()),
         types: common_types,
         named_region_map: named_region_map,
+        region_maps: region_maps,
+        free_region_maps: RefCell::new(FnvHashMap()),
         item_variance_map: RefCell::new(DefIdMap()),
         variance_computed: Cell::new(false),
         sess: s,
         def_map: def_map,
-        region_maps: region_maps,
         node_types: RefCell::new(FnvHashMap()),
         item_substs: RefCell::new(NodeMap()),
         impl_trait_refs: RefCell::new(NodeMap()),
@@ -6537,14 +6556,6 @@ pub fn construct_parameter_environment<'a,'tcx>(
     let bounds = liberate_late_bound_regions(tcx, free_id_outlive, &ty::Binder(bounds));
     let predicates = bounds.predicates.into_vec();
 
-    //
-    // Compute region bounds. For now, these relations are stored in a
-    // global table on the tcx, so just enter them there. I'm not
-    // crazy about this scheme, but it's convenient, at least.
-    //
-
-    record_region_bounds(tcx, &*predicates);
-
     debug!("construct_parameter_environment: free_id={:?} free_subst={:?} predicates={:?}",
            free_id,
            free_substs.repr(tcx),
@@ -6573,37 +6584,7 @@ pub fn construct_parameter_environment<'a,'tcx>(
     };
 
     let cause = traits::ObligationCause::misc(span, free_id);
-    return traits::normalize_param_env_or_error(unnormalized_env, cause);
-
-    fn record_region_bounds<'tcx>(tcx: &ty::ctxt<'tcx>, predicates: &[ty::Predicate<'tcx>]) {
-        debug!("record_region_bounds(predicates={:?})", predicates.repr(tcx));
-
-        for predicate in predicates {
-            match *predicate {
-                Predicate::Projection(..) |
-                Predicate::Trait(..) |
-                Predicate::Equate(..) |
-                Predicate::TypeOutlives(..) => {
-                    // No region bounds here
-                }
-                Predicate::RegionOutlives(ty::Binder(ty::OutlivesPredicate(r_a, r_b))) => {
-                    match (r_a, r_b) {
-                        (ty::ReFree(fr_a), ty::ReFree(fr_b)) => {
-                            // Record that `'a:'b`. Or, put another way, `'b <= 'a`.
-                            tcx.region_maps.relate_free_regions(fr_b, fr_a);
-                        }
-                        _ => {
-                            // All named regions are instantiated with free regions.
-                            tcx.sess.bug(
-                                &format!("record_region_bounds: non free region: {} / {}",
-                                         r_a.repr(tcx),
-                                         r_b.repr(tcx)));
-                        }
-                    }
-                }
-            }
-        }
-    }
+    traits::normalize_param_env_or_error(unnormalized_env, cause)
 }
 
 impl BorrowKind {

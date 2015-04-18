@@ -22,6 +22,7 @@ pub use middle::ty::IntVarValue;
 pub use self::freshen::TypeFreshener;
 pub use self::region_inference::GenericKind;
 
+use middle::free_region::FreeRegionMap;
 use middle::subst;
 use middle::subst::Substs;
 use middle::ty::{TyVid, IntVid, FloatVid, RegionVid, UnconstrainedNumeric};
@@ -855,8 +856,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         self.region_vars.new_bound(debruijn)
     }
 
-    pub fn resolve_regions_and_report_errors(&self, subject_node_id: ast::NodeId) {
-        let errors = self.region_vars.resolve_regions(subject_node_id);
+    pub fn resolve_regions_and_report_errors(&self,
+                                             free_regions: &FreeRegionMap,
+                                             subject_node_id: ast::NodeId) {
+        let errors = self.region_vars.resolve_regions(free_regions, subject_node_id);
         self.report_region_errors(&errors); // see error_reporting.rs
     }
 
