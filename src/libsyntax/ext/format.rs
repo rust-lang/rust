@@ -701,39 +701,6 @@ pub fn ensure_not_fmt_string_literal<'cx>(cx: &'cx mut ExtCtxt,
         }
     };
 
-    let unstable_marker = cx.expr_path(cx.path_global(sp, vec![
-        cx.ident_of_std("core"),
-        cx.ident_of("fmt"),
-        cx.ident_of("ENSURE_NOT_FMT_STRING_LITERAL_IS_UNSTABLE")]));
-
-    // Total hack: We do not (yet) have hygienic-marking of stabilty.
-    // Thus an unstable macro (like `ensure_not_fmt_string!`) can leak
-    // through another macro (like `panic!`), where the latter is just
-    // using the former as an implementation detail.
-    //
-    // The `#[allow_internal_unstable]` system does not suffice to
-    // address this; it explicitly (as described on Issue #22899)
-    // disallows the use of unstable functionality via a helper macro
-    // like `ensure_not_fmt_string!`, by design.
-    //
-    // So, the hack: the `ensure_not_fmt_string!` macro has just one
-    // stable client: `panic!`.  So we give `panic!` a backdoor: we
-    // allow its name literal string to give it stable access. Any
-    // other argument that is passed in will cause us to emit the
-    // unstable-marker, which will then be checked against the enabled
-    // feature-set.
-    //
-    // This, combined with the awkward actual name of the unstable
-    // macro (hint: the real name is far more awkward than the one
-    // given in this comment) should suffice to ensure that people do
-    // not accidentally commit to using it.
-    let marker = if name == "unary `panic!`" {
-        cx.expr_tuple(sp, vec![]) // i.e. `()`
-    } else {
-        unstable_marker
-    };
-    let expr = cx.expr_tuple(sp, vec![marker, expr]);
-
     MacEager::expr(expr)
 }
 
