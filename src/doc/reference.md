@@ -3898,44 +3898,7 @@ state. Subsequent statements within a function may or may not initialize the
 local variables. Local variables can be used only after they have been
 initialized; this is enforced by the compiler.
 
-# Runtime services, linkage and debugging
-
-The Rust _runtime_ is a relatively compact collection of Rust code that
-provides fundamental services and datatypes to all Rust threads at run-time. It
-is smaller and simpler than many modern language runtimes. It is tightly
-integrated into the language's execution model of memory, threads, communication
-and logging.
-
-### Memory allocation
-
-The runtime memory-management system is based on a _service-provider
-interface_, through which the runtime requests blocks of memory from its
-environment and releases them back to its environment when they are no longer
-needed. The default implementation of the service-provider interface consists
-of the C runtime functions `malloc` and `free`.
-
-The runtime memory-management system, in turn, supplies Rust threads with
-facilities for allocating releasing stacks, as well as allocating and freeing
-heap data.
-
-### Built in types
-
-The runtime provides C and Rust code to assist with various built-in types,
-such as arrays, strings, and the low level communication system (ports,
-channels, threads).
-
-Support for other built-in types such as simple types, tuples and enums is
-open-coded by the Rust compiler.
-
-### Thread scheduling and communication
-
-The runtime provides code to manage inter-thread communication. This includes
-the system of thread-lifecycle state transitions depending on the contents of
-queues, as well as code to copy values between queues and their recipients and
-to serialize values for transmission over operating-system inter-process
-communication facilities.
-
-### Linkage
+# Linkage
 
 The Rust compiler supports various methods to link crates together both
 statically and dynamically. This section will explore the various methods to
