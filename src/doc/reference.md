@@ -564,7 +564,7 @@ type_path_tail : '<' type_expr [ ',' type_expr ] + '>'
 
 A _path_ is a sequence of one or more path components _logically_ separated by
 a namespace qualifier (`::`). If a path consists of only one component, it may
-refer to either an [item](#items) or a [slot](#memory-slots) in a local control
+refer to either an [item](#items) or a [variable](#variables) in a local control
 scope. If a path has multiple components, it refers to an item.
 
 Every item has a _canonical path_ within its crate, but the path naming an item
@@ -1062,9 +1062,9 @@ fn main() {}
 A _function item_ defines a sequence of [statements](#statements) and an
 optional final [expression](#expressions), along with a name and a set of
 parameters. Functions are declared with the keyword `fn`. Functions declare a
-set of *input* [*slots*](#memory-slots) as parameters, through which the caller
-passes arguments into the function, and an *output* [*slot*](#memory-slots)
-through which the function passes results back to the caller.
+set of *input* [*variables*](#variables) as parameters, through which the caller
+passes arguments into the function, and the *output* [*type*](#types)
+of the value the function will return to its caller on completion.
 
 A function may also be copied into a first-class *value*, in which case the
 value has the corresponding [*function type*](#function-types), and can be used
@@ -1227,7 +1227,7 @@ be undesired.
 #### Diverging functions
 
 A special kind of function can be declared with a `!` character where the
-output slot type would normally be. For example:
+output type would normally be. For example:
 
 ```
 fn my_err(s: &str) -> ! {
@@ -2542,7 +2542,7 @@ statements](#expression-statements).
 ### Declaration statements
 
 A _declaration statement_ is one that introduces one or more *names* into the
-enclosing statement block. The declared names may denote new slots or new
+enclosing statement block. The declared names may denote new variables or new
 items.
 
 #### Item declarations
@@ -2557,18 +2557,18 @@ in meaning to declaring the item outside the statement block.
 > **Note**: there is no implicit capture of the function's dynamic environment when
 > declaring a function-local item.
 
-#### Slot declarations
+#### Variable declarations
 
 ```{.ebnf .gram}
 let_decl : "let" pat [':' type ] ? [ init ] ? ';' ;
 init : [ '=' ] expr ;
 ```
 
-A _slot declaration_ introduces a new set of slots, given by a pattern. The
+A _variable declaration_ introduces a new set of variable, given by a pattern. The
 pattern may be followed by a type annotation, and/or an initializer expression.
 When no type annotation is given, the compiler will infer the type, or signal
 an error if insufficient type information is available for definite inference.
-Any slots introduced by a slot declaration are visible from the point of
+Any variables introduced by a variable declaration are visible from the point of
 declaration until the end of the enclosing block scope.
 
 ### Expression statements
@@ -2623,7 +2623,7 @@ of any reference that points to it.
 
 #### Moved and copied types
 
-When a [local variable](#memory-slots) is used as an
+When a [local variable](#variables) is used as an
 [rvalue](#lvalues,-rvalues-and-temporaries) the variable will either be moved
 or copied, depending on its type. All values whose type implements `Copy` are
 copied, all others are moved.
@@ -3033,10 +3033,9 @@ paren_expr_list : '(' expr_list ')' ;
 call_expr : expr paren_expr_list ;
 ```
 
-A _call expression_ invokes a function, providing zero or more input slots and
-an optional reference slot to serve as the function's output, bound to the
-`lval` on the right hand side of the call. If the function eventually returns,
-then the expression completes.
+A _call expression_ invokes a function, providing zero or more input variables
+and an optional location to move the function's output into. If the function
+eventually returns, then the expression completes.
 
 Some examples of call expressions:
 
@@ -3447,9 +3446,9 @@ return_expr : "return" expr ? ;
 ```
 
 Return expressions are denoted with the keyword `return`. Evaluating a `return`
-expression moves its argument into the output slot of the current function,
-destroys the current function activation frame, and transfers control to the
-caller frame.
+expression moves its argument into the designated output location for the
+current function call, destroys the current function activation frame, and
+transfers control to the caller frame.
 
 An example of a `return` expression:
 
@@ -3466,7 +3465,7 @@ fn max(a: i32, b: i32) -> i32 {
 
 ## Types
 
-Every slot, item and value in a Rust program has a type. The _type_ of a
+Every variable, item and value in a Rust program has a type. The _type_ of a
 *value* defines the interpretation of the memory holding it.
 
 Built-in types and type-constructors are tightly integrated into the language,
@@ -3484,7 +3483,7 @@ The primitive types are the following:
 * The machine-dependent integer and floating-point types.
 
 [^unittype]: The "unit" value `()` is *not* a sentinel "null pointer" value for
-    reference slots; the "unit" type is the implicit return type from functions
+    reference variables; the "unit" type is the implicit return type from functions
     otherwise lacking a return type, and can be used in other contexts (such as
     message-sending or type-parametric code) as a zero-size type.]
 
@@ -3844,7 +3843,7 @@ A Rust program's memory consists of a static set of *items* and a *heap*.
 Immutable portions of the heap may be shared between threads, mutable portions
 may not.
 
-Allocations in the stack consist of *slots*, and allocations in the heap
+Allocations in the stack consist of *variables*, and allocations in the heap
 consist of *boxes*.
 
 ### Memory allocation and lifetime
@@ -3863,10 +3862,11 @@ in the heap, heap allocations may outlive the frame they are allocated within.
 When a stack frame is exited, its local allocations are all released, and its
 references to boxes are dropped.
 
-### Memory slots
+### Variables
 
-A _slot_ is a component of a stack frame, either a function parameter, a
-[temporary](#lvalues,-rvalues-and-temporaries), or a local variable.
+A _variable_ is a component of a stack frame, either a named function parameter,
+an anonymous [temporary](#lvalues,-rvalues-and-temporaries), or a named local
+variable.
 
 A _local variable_ (or *stack-local* allocation) holds a value directly,
 allocated within the stack's memory. The value is a part of the stack frame.
@@ -3879,7 +3879,7 @@ Box<i32>, y: Box<i32>)` declare one mutable variable `x` and one immutable
 variable `y`).
 
 Methods that take either `self` or `Box<Self>` can optionally place them in a
-mutable slot by prefixing them with `mut` (similar to regular arguments):
+mutable variable by prefixing them with `mut` (similar to regular arguments):
 
 ```
 trait Changer {
