@@ -260,9 +260,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// let mut map = BTreeMap::new();
     /// map.insert(1, "a");
-    /// match map.get_mut(&1) {
-    ///     Some(x) => *x = "b",
-    ///     None => (),
+    /// if let Some(x) = map.get_mut(&1) {
+    ///     *x = "b";
     /// }
     /// assert_eq!(map[&1], "b");
     /// ```
