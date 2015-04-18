@@ -40,7 +40,7 @@ println!("v[0] is: {}", v[0]);
 A similar thing happens if we define a function which takes ownership, and
 try to use something after we’ve passed it as an argument:
 
-```rust
+```rust,ignore
 fn take(v: Vec<i32>) {
     // what happens here isn’t important.
 }
