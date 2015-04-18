@@ -124,7 +124,7 @@ Yes. Calling C code from Rust is simple and exactly as efficient as calling C co
 
 Yes. The Rust code has to be exposed via an `extern` declaration, which makes it C-ABI compatible. Such a function can be passed to C code as a function pointer or, if given the `#[no_mangle]` attribute to disable symbol mangling, can be called directly from C code.
 
-## Why aren't function signatures inferred? Why only local slots?
+## Why aren't function signatures inferred? Why only local variables?
 
 * Mechanically, it simplifies the inference algorithm; inference only requires looking at one function at a time.
 * The same simplification goes double for human readers. A reader does not need an IDE running an inference algorithm across an entire crate to be able to guess at a function's argument types; it's always explicit and nearby.
