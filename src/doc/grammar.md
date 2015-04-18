@@ -5,8 +5,7 @@
 This document is the primary reference for the Rust programming language grammar. It
 provides only one kind of material:
 
-  - Chapters that formally define the language grammar and, for each
-    construct.
+  - Chapters that formally define the language grammar.
 
 This document does not serve as an introduction to the language. Background
 familiarity with the language is assumed. A separate [guide] is available to
