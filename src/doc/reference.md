@@ -1300,18 +1300,11 @@ contiguous stack segments like C.
 
 A _type alias_ defines a new name for an existing [type](#types). Type
 aliases are declared with the keyword `type`. Every value has a single,
-specific type; the type-specified aspects of a value include:
+specific type, but may implement several different traits, or be compatible with
+several different type constraints.
 
-* Whether the value is composed of sub-values or is indivisible.
-* Whether the value represents textual or numerical information.
-* Whether the value represents integral or floating-point information.
-* The sequence of memory operations required to access the value.
-* The [kind](#type-kinds) of the type.
-
-For example, the type `(u8, u8)` defines the set of immutable values that are
-composite pairs, each containing two unsigned 8-bit integers accessed by
-pattern-matching and laid out in memory with the `x` component preceding the
-`y` component:
+For example, the following defines the type `Point` as a synonym for the type
+`(u8, u8)`, the type of pairs of unsigned 8 bit integers.:
 
 ```
 type Point = (u8, u8);
