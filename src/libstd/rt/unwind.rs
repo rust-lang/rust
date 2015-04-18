@@ -504,7 +504,7 @@ pub fn begin_unwind_fmt(msg: fmt::Arguments, file_line: &(&'static str, u32)) ->
     // below).
 
     let mut s = String::new();
-    let _ = write!(&mut s, "{}", msg);
+    let _ = s.write_fmt(msg);
     begin_unwind_inner(Box::new(s), file_line)
 }
 
