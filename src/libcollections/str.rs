@@ -1751,7 +1751,7 @@ impl str {
     /// locale is unknown.
     #[unstable(feature = "unicode",
                reason = "this functionality may only be provided by libunicode")]
-    pub fn width(&self, is_cjk: bool) -> usize {
+    pub fn width(&self, is_cjk: bool) -> u32 {
         UnicodeStr::width(&self[..], is_cjk)
     }
 

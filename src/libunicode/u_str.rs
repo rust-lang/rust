@@ -41,7 +41,7 @@ pub trait UnicodeStr {
     fn words<'a>(&'a self) -> Words<'a>;
     fn is_whitespace(&self) -> bool;
     fn is_alphanumeric(&self) -> bool;
-    fn width(&self, is_cjk: bool) -> usize;
+    fn width(&self, is_cjk: bool) -> u32;
     fn trim<'a>(&'a self) -> &'a str;
     fn trim_left<'a>(&'a self) -> &'a str;
     fn trim_right<'a>(&'a self) -> &'a str;
@@ -76,7 +76,7 @@ impl UnicodeStr for str {
     fn is_alphanumeric(&self) -> bool { self.chars().all(|c| c.is_alphanumeric()) }
 
     #[inline]
-    fn width(&self, is_cjk: bool) -> usize {
+    fn width(&self, is_cjk: bool) -> u32 {
         self.chars().map(|c| c.width(is_cjk).unwrap_or(0)).sum()
     }
 
