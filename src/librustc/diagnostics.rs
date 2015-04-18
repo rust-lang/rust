@@ -173,6 +173,21 @@ This error indicates that an attempt was made to divide by zero (or take the
 remainder of a zero divisor) in a static or constant expression.
 "##,
 
+E0133: r##"
+Using unsafe functionality, such as dereferencing raw pointers and calling
+functions via FFI or marked as unsafe, is potentially dangerous and disallowed
+by safety checks. As such, those safety checks can be temporarily relaxed by
+wrapping the unsafe instructions inside an `unsafe` block. For instance:
+
+unsafe fn f() { return; }
+
+fn main() {
+    unsafe { f(); }
+}
+
+See also http://doc.rust-lang.org/book/unsafe-code.html
+"##,
+
 E0152: r##"
 Lang items are already implemented in the standard library. Unless you are
 writing a free-standing application (e.g. a kernel), you do not need to provide
@@ -405,7 +420,6 @@ register_diagnostics! {
     E0080, // enum variant: constant evaluation error
     E0109,
     E0110,
-    E0133,
     E0134,
     E0135,
     E0136,
