@@ -3821,18 +3821,20 @@ impl Printable for String {
 `self` refers to the value of type `String` that is the receiver for a call to
 the method `make_string`.
 
-# The `Copy` trait
+# Special traits
 
-Rust has a special trait, `Copy`, which when implemented changes the semantics
-of a value. Values whose type implements `Copy` are copied rather than moved
-upon assignment.
+Several traits define special evaluation behavior.
 
-# The `Sized` trait
+## The `Copy` trait
 
-`Sized` is a special trait which indicates that the size of this type is known
-at compile-time.
+The `Copy` trait changes the semantics of a type implementing it. Values whose
+type implements `Copy` are copied rather than moved upon assignment.
 
-# The `Drop` trait
+## The `Sized` trait
+
+The `Sized` trait indicates that the size of this type is known at compile-time.
+
+## The `Drop` trait
 
 The `Drop` trait provides a destructor, to be run whenever a value of this type
 is to be destroyed.
