@@ -165,12 +165,13 @@ particularly easy to read.
 
 ## Why is `let` used to introduce variables?
 
-We don't use the term "variable", instead, we use "variable bindings". The
-simplest way for binding is the `let` syntax, other ways including `if let`,
-`while let` and `match`. Bindings also exist in function arguments positions.
+Instead of the term "variable", we use "variable bindings". The
+simplest way for creating a binding is by using the `let` syntax.
+Other ways include `if let`, `while let`, and `match`. Bindings also
+exist in function argument positions.
 
 Bindings always happen in pattern matching positions, and it's also Rust's way
-to declare mutability. One can also redeclare mutability of a binding in
+to declare mutability. One can also re-declare mutability of a binding in
 pattern matching. This is useful to avoid unnecessary `mut` annotations. An
 interesting historical note is that Rust comes, syntactically, most closely
 from ML, which also uses `let` to introduce bindings.
