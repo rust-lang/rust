@@ -85,8 +85,9 @@
 use astconv::AstConv;
 use check::dropck;
 use check::FnCtxt;
-use check::implicator;
 use check::vtable;
+use middle::free_region::FreeRegionMap;
+use middle::implicator;
 use middle::mem_categorization as mc;
 use middle::region::CodeExtent;
 use middle::subst::Substs;
@@ -124,6 +125,8 @@ pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
 
 pub fn regionck_item(fcx: &FnCtxt, item: &ast::Item) {
     let mut rcx = Rcx::new(fcx, RepeatingScope(item.id), item.id, Subject(item.id));
+    let tcx = fcx.tcx();
+    rcx.free_region_map.relate_free_regions_from_predicates(tcx, &fcx.inh.param_env.caller_bounds);
     rcx.visit_region_obligations(item.id);
     rcx.resolve_regions_and_report_errors();
 }
@@ -135,12 +138,21 @@ pub fn regionck_fn(fcx: &FnCtxt,
                    blk: &ast::Block) {
     debug!("regionck_fn(id={})", fn_id);
     let mut rcx = Rcx::new(fcx, RepeatingScope(blk.id), blk.id, Subject(fn_id));
+
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
         rcx.visit_fn_body(fn_id, decl, blk, fn_span);
     }
 
+    let tcx = fcx.tcx();
+    rcx.free_region_map.relate_free_regions_from_predicates(tcx, &fcx.inh.param_env.caller_bounds);
+
     rcx.resolve_regions_and_report_errors();
+
+    // For the top-level fn, store the free-region-map. We don't store
+    // any map for closures; they just share the same map as the
+    // function that created them.
+    fcx.tcx().store_free_region_map(fn_id, rcx.free_region_map);
 }
 
 /// Checks that the types in `component_tys` are well-formed. This will add constraints into the
@@ -167,6 +179,8 @@ pub struct Rcx<'a, 'tcx: 'a> {
 
     region_bound_pairs: Vec<(ty::Region, GenericKind<'tcx>)>,
 
+    free_region_map: FreeRegionMap,
+
     // id of innermost fn body id
     body_id: ast::NodeId,
 
@@ -191,7 +205,8 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
               repeating_scope: initial_repeating_scope,
               body_id: initial_body_id,
               subject: subject,
-              region_bound_pairs: Vec::new()
+              region_bound_pairs: Vec::new(),
+              free_region_map: FreeRegionMap::new(),
         }
     }
 
@@ -277,13 +292,16 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             }
         };
 
-        let len = self.region_bound_pairs.len();
+        let old_region_bounds_pairs_len = self.region_bound_pairs.len();
+
         let old_body_id = self.set_body_id(body.id);
         self.relate_free_regions(&fn_sig[..], body.id, span);
         link_fn_args(self, CodeExtent::from_node_id(body.id), &fn_decl.inputs[..]);
         self.visit_block(body);
         self.visit_region_obligations(body.id);
-        self.region_bound_pairs.truncate(len);
+
+        self.region_bound_pairs.truncate(old_region_bounds_pairs_len);
+
         self.set_body_id(old_body_id);
     }
 
@@ -340,14 +358,16 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             let body_scope = ty::ReScope(body_scope);
             let implications = implicator::implications(self.fcx.infcx(), self.fcx, body_id,
                                                         ty, body_scope, span);
+
+            // Record any relations between free regions that we observe into the free-region-map.
+            self.free_region_map.relate_free_regions_from_implications(tcx, &implications);
+
+            // But also record other relationships, such as `T:'x`,
+            // that don't go into the free-region-map but which we use
+            // here.
             for implication in implications {
                 debug!("implication: {}", implication.repr(tcx));
                 match implication {
-                    implicator::Implication::RegionSubRegion(_,
-                                                             ty::ReFree(free_a),
-                                                             ty::ReFree(free_b)) => {
-                        tcx.region_maps.relate_free_regions(free_a, free_b);
-                    }
                     implicator::Implication::RegionSubRegion(_,
                                                              ty::ReFree(free_a),
                                                              ty::ReInfer(ty::ReVar(vid_b))) => {
@@ -388,7 +408,8 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             }
         };
 
-        self.fcx.infcx().resolve_regions_and_report_errors(subject_node_id);
+        self.fcx.infcx().resolve_regions_and_report_errors(&self.free_region_map,
+                                                           subject_node_id);
     }
 }
 
