@@ -65,14 +65,14 @@ pub mod show;
 pub mod default;
 pub mod primitive;
 
+#[path="cmp/partial_eq.rs"]
+pub mod partial_eq;
 #[path="cmp/eq.rs"]
 pub mod eq;
-#[path="cmp/totaleq.rs"]
-pub mod totaleq;
+#[path="cmp/partial_ord.rs"]
+pub mod partial_ord;
 #[path="cmp/ord.rs"]
 pub mod ord;
-#[path="cmp/totalord.rs"]
-pub mod totalord;
 
 
 pub mod generic;
@@ -118,7 +118,7 @@ fn expand_derive(cx: &mut ExtCtxt,
 }
 
 macro_rules! derive_traits {
-    ($( $name:expr => $func:path, )*) => {
+    ($( $name:expr => $func:path, )+) => {
         pub fn register_all(env: &mut SyntaxEnv) {
             // Define the #[derive_*] extensions.
             $({
@@ -132,13 +132,13 @@ macro_rules! derive_traits {
                               item: &Item,
                               push: &mut FnMut(P<Item>)) {
                         warn_if_deprecated(ecx, sp, $name);
-                        $func(ecx, sp, mitem, item, |i| push(i));
+                        $func(ecx, sp, mitem, item, push);
                     }
                 }
 
                 env.insert(intern(concat!("derive_", $name)),
                            Decorator(Box::new(DeriveExtension)));
-            })*
+            })+
 
             env.insert(intern("derive"),
                        Modifier(Box::new(expand_derive)));
@@ -146,7 +146,7 @@ macro_rules! derive_traits {
 
         fn is_builtin_trait(name: &str) -> bool {
             match name {
-                $( $name )|* => true,
+                $( $name )|+ => true,
                 _ => false,
             }
         }
@@ -162,10 +162,10 @@ derive_traits! {
 
     "RustcDecodable" => decodable::expand_deriving_rustc_decodable,
 
-    "PartialEq" => eq::expand_deriving_eq,
-    "Eq" => totaleq::expand_deriving_totaleq,
-    "PartialOrd" => ord::expand_deriving_ord,
-    "Ord" => totalord::expand_deriving_totalord,
+    "PartialEq" => partial_eq::expand_deriving_partial_eq,
+    "Eq" => eq::expand_deriving_eq,
+    "PartialOrd" => partial_ord::expand_deriving_partial_ord,
+    "Ord" => ord::expand_deriving_ord,
 
     "Debug" => show::expand_deriving_show,
 
