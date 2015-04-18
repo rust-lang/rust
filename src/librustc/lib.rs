@@ -54,6 +54,7 @@ extern crate graphviz;
 extern crate libc;
 extern crate rustc_llvm;
 extern crate rustc_back;
+extern crate rustc_data_structures;
 extern crate serialize;
 extern crate rbml;
 extern crate collections;
@@ -103,7 +104,6 @@ pub mod middle {
     pub mod entry;
     pub mod expr_use_visitor;
     pub mod fast_reject;
-    pub mod graph;
     pub mod intrinsicck;
     pub mod infer;
     pub mod lang_items;
@@ -141,7 +141,6 @@ pub mod util {
     pub mod common;
     pub mod ppaux;
     pub mod nodemap;
-    pub mod snapshot_vec;
     pub mod lev_distance;
 }
 
