@@ -802,7 +802,9 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     // appropriately sized integer and we have to convert it
                     let tmp = builder.bitcast(llforeign_arg,
                                               type_of::arg_type_of(ccx, rust_ty).ptr_to());
-                    builder.load(tmp)
+                    let load = builder.load(tmp);
+                    llvm::LLVMSetAlignment(load, type_of::align_of(ccx, rust_ty));
+                    load
                 } else {
                     builder.load(llforeign_arg)
                 }

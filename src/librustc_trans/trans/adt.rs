@@ -880,7 +880,7 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
         CEnum(ity, min, max) => {
             assert_discr_in_range(ity, min, max, discr);
             Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true),
-                  val)
+                  val);
         }
         General(ity, ref cases, dtor) => {
             if dtor_active(dtor) {
@@ -889,7 +889,7 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
                 Store(bcx, C_u8(bcx.ccx(), DTOR_NEEDED as usize), ptr);
             }
             Store(bcx, C_integral(ll_inttype(bcx.ccx(), ity), discr as u64, true),
-                  GEPi(bcx, val, &[0, 0]))
+                  GEPi(bcx, val, &[0, 0]));
         }
         Univariant(ref st, dtor) => {
             assert_eq!(discr, 0);
@@ -901,14 +901,14 @@ pub fn trans_set_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
         RawNullablePointer { nndiscr, nnty, ..} => {
             if discr != nndiscr {
                 let llptrty = type_of::sizing_type_of(bcx.ccx(), nnty);
-                Store(bcx, C_null(llptrty), val)
+                Store(bcx, C_null(llptrty), val);
             }
         }
         StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
             if discr != nndiscr {
                 let llptrptr = GEPi(bcx, val, &discrfield[..]);
                 let llptrty = val_ty(llptrptr).element_type();
-                Store(bcx, C_null(llptrty), llptrptr)
+                Store(bcx, C_null(llptrty), llptrptr);
             }
         }
     }

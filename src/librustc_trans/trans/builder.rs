@@ -509,18 +509,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         value
     }
 
-    pub fn store(&self, val: ValueRef, ptr: ValueRef) {
+    pub fn store(&self, val: ValueRef, ptr: ValueRef) -> ValueRef {
         debug!("Store {} -> {}",
                self.ccx.tn().val_to_string(val),
                self.ccx.tn().val_to_string(ptr));
         assert!(!self.llbuilder.is_null());
         self.count_insn("store");
         unsafe {
-            llvm::LLVMBuildStore(self.llbuilder, val, ptr);
+            llvm::LLVMBuildStore(self.llbuilder, val, ptr)
         }
     }
 
-    pub fn volatile_store(&self, val: ValueRef, ptr: ValueRef) {
+    pub fn volatile_store(&self, val: ValueRef, ptr: ValueRef) -> ValueRef {
         debug!("Store {} -> {}",
                self.ccx.tn().val_to_string(val),
                self.ccx.tn().val_to_string(ptr));
@@ -529,6 +529,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         unsafe {
             let insn = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
             llvm::LLVMSetVolatile(insn, llvm::True);
+            insn
         }
     }
 
