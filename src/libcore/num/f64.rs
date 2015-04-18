@@ -16,10 +16,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use prelude::*;
+
 use intrinsics;
 use mem;
-use num::Float;
 use num::FpCategory as Fp;
+use num::{Float, ParseFloatError};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const RADIX: u32 = 2;
@@ -153,6 +155,8 @@ impl Float for f64 {
     #[inline]
     fn one() -> f64 { 1.0 }
 
+    from_str_radix_float_impl! { f64 }
+
     /// Returns `true` if the number is NaN.
     #[inline]
     fn is_nan(self) -> bool { self != self }
@@ -234,9 +238,6 @@ impl Float for f64 {
     /// The fractional part of the number, satisfying:
     ///
     /// ```
-    /// # #![feature(core)]
-    /// use std::num::Float;
-    ///
     /// let x = 1.65f64;
     /// assert!(x == x.trunc() + x.fract())
     /// ```

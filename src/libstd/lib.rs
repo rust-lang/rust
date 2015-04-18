@@ -129,6 +129,7 @@
 #![feature(slice_patterns)]
 #![feature(debug_builders)]
 #![feature(zero_one)]
+#![cfg_attr(test, feature(float_from_str_radix))]
 #![cfg_attr(test, feature(test, rustc_private, std_misc))]
 
 // Don't link to std. We are std.

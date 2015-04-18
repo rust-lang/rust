@@ -2327,9 +2327,8 @@ impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
 /// An iterator that yields sequential Fibonacci numbers, and stops on overflow.
 ///
 /// ```
-/// # #![feature(core)]
+/// #![feature(core)]
 /// use std::iter::Unfold;
-/// use std::num::Int; // For `.checked_add()`
 ///
 /// // This iterator will yield up to the last Fibonacci number before the max
 /// // value of `u32`. You can simply change `u32` to `u64` in this line if

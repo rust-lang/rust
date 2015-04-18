@@ -140,7 +140,7 @@ impl Process {
         // read the *child's* PATH if one is provided. See #15149 for more details.
         let program = cfg.env.as_ref().and_then(|env| {
             for (key, v) in env {
-                if OsStr::from_str("PATH") != &**key { continue }
+                if OsStr::new("PATH") != &**key { continue }
 
                 // Split the value and test each path to see if the
                 // program exists.
@@ -463,7 +463,7 @@ mod tests {
     fn test_make_command_line() {
         fn test_wrapper(prog: &str, args: &[&str]) -> String {
             String::from_utf16(
-                &make_command_line(OsStr::from_str(prog),
+                &make_command_line(OsStr::new(prog),
                                    &args.iter()
                                         .map(|a| OsString::from(a))
                                         .collect::<Vec<OsString>>())).unwrap()

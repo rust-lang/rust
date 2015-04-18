@@ -46,7 +46,6 @@
 use std::iter::repeat;
 use std::thread;
 use std::mem;
-use std::num::Float;
 use std::os;
 use std::env;
 use std::raw::Repr;

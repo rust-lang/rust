@@ -540,14 +540,14 @@ mod tests {
     // A normal addition - no overflow occurs
     #[test]
     fn test_add_bytes_to_bits_ok() {
-        assert!(super::add_bytes_to_bits::<u64>(100, 10) == 180);
+        assert!(super::add_bytes_to_bits(100, 10) == 180);
     }
 
     // A simple failure case - adding 1 to the max value
     #[test]
     #[should_panic]
     fn test_add_bytes_to_bits_overflow() {
-        super::add_bytes_to_bits::<u64>(u64::MAX, 1);
+        super::add_bytes_to_bits(u64::MAX, 1);
     }
 
     struct Test {
