@@ -10,7 +10,7 @@
 
 #![feature(optin_builtin_traits)]
 
-trait MyTrait : ::std::marker::MarkerTrait {}
+trait MyTrait {}
 
 struct TestType<T>(::std::marker::PhantomData<T>);
 

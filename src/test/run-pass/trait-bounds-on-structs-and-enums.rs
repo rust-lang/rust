@@ -12,10 +12,10 @@
 
 #![feature(core)]
 
-trait U : ::std::marker::MarkerTrait {}
+trait U {}
 trait T<X: U> { fn get(self) -> X; }
 
-trait S2<Y: U> : ::std::marker::MarkerTrait {
+trait S2<Y: U> {
     fn m(x: Box<T<Y>+'static>) {}
 }
 

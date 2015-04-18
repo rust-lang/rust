@@ -10,10 +10,8 @@
 
 // Test implicit coercions involving DSTs and raw pointers.
 
-use std::marker::MarkerTrait;
-
 struct S;
-trait T : MarkerTrait {}
+trait T {}
 impl T for S {}
 
 struct Foo<T: ?Sized> {

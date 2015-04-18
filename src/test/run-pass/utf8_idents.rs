@@ -11,8 +11,6 @@
 
 #![feature(non_ascii_idents)]
 
-use std::num::Float;
-
 pub fn main() {
     let ε = 0.00001f64;
     let Π = 3.14f64;
