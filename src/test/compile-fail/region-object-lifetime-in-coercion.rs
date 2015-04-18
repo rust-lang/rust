@@ -11,7 +11,7 @@
 // Test that attempts to implicitly coerce a value into an
 // object respect the lifetime bound on the object type.
 
-trait Foo : ::std::marker::MarkerTrait {}
+trait Foo {}
 impl<'a> Foo for &'a [u8] {}
 
 // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.

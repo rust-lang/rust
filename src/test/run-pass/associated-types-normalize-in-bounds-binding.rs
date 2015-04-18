@@ -13,12 +13,9 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(core)]
 #![allow(dead_code)]
 
-use std::marker::MarkerTrait;
-
-pub trait Integral : MarkerTrait {
+pub trait Integral {
     type Opposite;
 }
 

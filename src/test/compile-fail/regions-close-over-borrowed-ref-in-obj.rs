@@ -10,9 +10,7 @@
 
 #![feature(box_syntax)]
 
-use std::marker::MarkerTrait;
-
-trait Foo : MarkerTrait { }
+trait Foo { }
 
 impl<'a> Foo for &'a isize { }
 

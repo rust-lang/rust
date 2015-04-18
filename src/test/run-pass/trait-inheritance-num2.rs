@@ -10,12 +10,7 @@
 
 // A more complex example of numeric extensions
 
-#![feature(core)]
-
-use std::cmp::{PartialEq, PartialOrd};
-use std::num::NumCast;
-
-pub trait TypeExt : ::std::marker::MarkerTrait { }
+pub trait TypeExt {}
 
 impl TypeExt for u8 {}
 impl TypeExt for u16 {}
@@ -33,7 +28,7 @@ impl TypeExt for f32 {}
 impl TypeExt for f64 {}
 
 
-pub trait NumExt: TypeExt + PartialEq + PartialOrd + NumCast {}
+pub trait NumExt: TypeExt + PartialEq + PartialOrd {}
 
 impl NumExt for u8 {}
 impl NumExt for u16 {}

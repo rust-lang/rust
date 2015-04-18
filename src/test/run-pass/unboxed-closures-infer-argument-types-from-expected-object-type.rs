@@ -13,11 +13,15 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(unboxed_closures, core)]
+pub trait ToPrimitive {
+    fn to_int(&self) {}
+}
 
-use std::num::ToPrimitive;
+impl ToPrimitive for isize {}
+impl ToPrimitive for i32 {}
+impl ToPrimitive for usize {}
 
-fn doit<T>(val: T, f: &Fn(T)) { f.call((val,)) }
+fn doit<T>(val: T, f: &Fn(T)) { f(val) }
 
 pub fn main() {
     doit(0, &|x /*: isize*/ | { x.to_int(); });
