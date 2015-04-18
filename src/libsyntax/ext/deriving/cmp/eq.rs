@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{MetaItem, Item, Expr, self};
+use ast::{MetaItem, Item, Expr};
 use codemap::Span;
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
@@ -17,77 +17,52 @@ use ext::deriving::generic::ty::*;
 use parse::token::InternedString;
 use ptr::P;
 
-pub fn expand_deriving_eq<F>(cx: &mut ExtCtxt,
-                             span: Span,
-                             mitem: &MetaItem,
-                             item: &Item,
-                             push: F) where
-    F: FnOnce(P<Item>),
+pub fn expand_deriving_eq(cx: &mut ExtCtxt,
+                          span: Span,
+                          mitem: &MetaItem,
+                          item: &Item,
+                          push: &mut FnMut(P<Item>))
 {
-    // structures are equal if all fields are equal, and non equal, if
-    // any fields are not equal or if the enum variants are different
-    fn cs_eq(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
-        cs_fold(
-            true,  // use foldl
-            |cx, span, subexpr, self_f, other_fs| {
-                let other_f = match other_fs {
-                    [ref o_f] => o_f,
-                    _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`")
-                };
-
-                let eq = cx.expr_binary(span, ast::BiEq, self_f, other_f.clone());
-
-                cx.expr_binary(span, ast::BiAnd, subexpr, eq)
+    fn cs_total_eq_assert(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
+        cs_same_method(
+            |cx, span, exprs| {
+                // create `a.<method>(); b.<method>(); c.<method>(); ...`
+                // (where method is `assert_receiver_is_total_eq`)
+                let stmts = exprs.into_iter().map(|e| cx.stmt_expr(e)).collect();
+                let block = cx.block(span, stmts, None);
+                cx.expr_block(block)
             },
-            cx.expr_bool(span, true),
-            Box::new(|cx, span, _, _| cx.expr_bool(span, false)),
-            cx, span, substr)
-    }
-    fn cs_ne(cx: &mut ExtCtxt, span: Span, substr: &Substructure) -> P<Expr> {
-        cs_fold(
-            true,  // use foldl
-            |cx, span, subexpr, self_f, other_fs| {
-                let other_f = match other_fs {
-                    [ref o_f] => o_f,
-                    _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`")
-                };
-
-                let eq = cx.expr_binary(span, ast::BiNe, self_f, other_f.clone());
-
-                cx.expr_binary(span, ast::BiOr, subexpr, eq)
-            },
-            cx.expr_bool(span, false),
-            Box::new(|cx, span, _, _| cx.expr_bool(span, true)),
-            cx, span, substr)
+            Box::new(|cx, sp, _, _| {
+                cx.span_bug(sp, "non matching enums in derive(Eq)?") }),
+            cx,
+            span,
+            substr
+        )
     }
 
-    macro_rules! md {
-        ($name:expr, $f:ident) => { {
-            let inline = cx.meta_word(span, InternedString::new("inline"));
-            let attrs = vec!(cx.attribute(span, inline));
-            MethodDef {
-                name: $name,
-                generics: LifetimeBounds::empty(),
-                explicit_self: borrowed_explicit_self(),
-                args: vec!(borrowed_self()),
-                ret_ty: Literal(path_local!(bool)),
-                attributes: attrs,
-                combine_substructure: combine_substructure(Box::new(|a, b, c| {
-                    $f(a, b, c)
-                }))
-            }
-        } }
-    }
-
+    let inline = cx.meta_word(span, InternedString::new("inline"));
+    let hidden = cx.meta_word(span, InternedString::new("hidden"));
+    let doc = cx.meta_list(span, InternedString::new("doc"), vec!(hidden));
+    let attrs = vec!(cx.attribute(span, inline),
+                     cx.attribute(span, doc));
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: path_std!(cx, core::cmp::PartialEq),
+        path: path_std!(cx, core::cmp::Eq),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(
-            md!("eq", cs_eq),
-            md!("ne", cs_ne)
+            MethodDef {
+                name: "assert_receiver_is_total_eq",
+                generics: LifetimeBounds::empty(),
+                explicit_self: borrowed_explicit_self(),
+                args: vec!(),
+                ret_ty: nil_ty(),
+                attributes: attrs,
+                combine_substructure: combine_substructure(Box::new(|a, b, c| {
+                    cs_total_eq_assert(a, b, c)
+                }))
+            }
         ),
         associated_types: Vec::new(),
     };
