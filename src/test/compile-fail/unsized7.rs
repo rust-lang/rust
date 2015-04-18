@@ -10,9 +10,7 @@
 
 // Test sized-ness checking in substitution in impls.
 
-use std::marker::MarkerTrait;
-
-trait T : MarkerTrait {}
+trait T {}
 
 // I would like these to fail eventually.
 // impl - bounded

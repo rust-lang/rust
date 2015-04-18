@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
-
 use std::any::Any;
 use std::any::TypeId;
-use std::marker::MarkerTrait;
 
-pub trait Pt : MarkerTrait {}
-pub trait Rt : MarkerTrait {}
+pub trait Pt {}
+pub trait Rt {}
 
 trait Private<P: Pt, R: Rt> {
     fn call(&self, p: P, r: R);

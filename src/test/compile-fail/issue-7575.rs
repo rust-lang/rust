@@ -10,14 +10,12 @@
 
 // Test the mechanism for warning about possible missing `self` declarations.
 
-use std::marker::MarkerTrait;
-
 trait CtxtFn {
     fn f8(self, usize) -> usize;
     fn f9(usize) -> usize; //~ NOTE candidate
 }
 
-trait OtherTrait : MarkerTrait {
+trait OtherTrait {
     fn f9(usize) -> usize; //~ NOTE candidate
 }
 
@@ -26,7 +24,7 @@ trait OtherTrait : MarkerTrait {
 // declaration to match against, so we wind up prisizeing it as a
 // candidate. This seems not unreasonable -- perhaps the user meant to
 // implement it, after all.
-trait UnusedTrait : MarkerTrait {
+trait UnusedTrait {
     fn f9(usize) -> usize; //~ NOTE candidate
 }
 
@@ -54,7 +52,7 @@ impl Myisize {
     }
 }
 
-trait ManyImplTrait : MarkerTrait {
+trait ManyImplTrait {
     fn is_str() -> bool { //~ NOTE candidate
         false
     }

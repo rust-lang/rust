@@ -10,10 +10,9 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(core)]
-
-use std::cmp::PartialOrd;
-use std::num::NumCast;
+pub trait NumCast {
+    fn from(i: i32) -> Option<Self>;
+}
 
 pub trait NumExt: NumCast + PartialOrd { }
 

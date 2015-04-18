@@ -15,15 +15,13 @@
 
 #![feature(optin_builtin_traits)]
 
-use std::marker::MarkerTrait;
-
-trait Defaulted : MarkerTrait { }
+trait Defaulted { }
 impl Defaulted for .. { }
 impl<'a,T:Signed> Defaulted for &'a T { }
 impl<'a,T:Signed> Defaulted for &'a mut T { }
 fn is_defaulted<T:Defaulted>() { }
 
-trait Signed : MarkerTrait { }
+trait Signed { }
 impl Signed for i32 { }
 
 fn main() {

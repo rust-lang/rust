@@ -10,9 +10,7 @@
 
 // Test `?Sized` local variables.
 
-use std::marker;
-
-trait T : marker::MarkerTrait { }
+trait T {}
 
 fn f1<X: ?Sized>(x: &X) {
     let _: X; // <-- this is OK, no bindings created, no initializer.

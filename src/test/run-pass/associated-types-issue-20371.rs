@@ -13,10 +13,6 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(core)]
-
-use std::marker::MarkerTrait;
-
 impl X for f64 { type Y = isize; }
-trait X : MarkerTrait { type Y; }
+trait X { type Y; }
 fn main() {}

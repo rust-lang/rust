@@ -105,7 +105,7 @@ impl PrivTrait for (Private<isize>,) {
     fn bar(&self) -> Private<isize> { panic!() }
 }
 
-pub trait ParamTrait<T> : marker::MarkerTrait {
+pub trait ParamTrait<T> {
     fn foo() -> T;
 }
 

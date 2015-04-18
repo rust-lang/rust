@@ -12,9 +12,7 @@
 // trait impl is only applied to a trait object, not concrete types which implement
 // the trait.
 
-use std::marker::MarkerTrait;
-
-trait T : MarkerTrait {}
+trait T {}
 
 impl<'a> T+'a {
     fn foo(&self) {}

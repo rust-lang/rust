@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(std_misc)]
-
-use std::num::Float;
+use std::f64;
 
 pub fn main() {
-  let nan: f64 = Float::nan();
+  let nan: f64 = f64::NAN;
   assert!((nan).is_nan());
 
-  let inf: f64 = Float::infinity();
-  let neg_inf: f64 = Float::neg_infinity();
+  let inf: f64 = f64::INFINITY;
+  let neg_inf: f64 = -f64::INFINITY;
   assert_eq!(-inf, neg_inf);
 
   assert!( nan !=  nan);

@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::marker::MarkerTrait;
-
-pub trait AbstractRenderer : MarkerTrait {}
+pub trait AbstractRenderer {}
 
 fn _create_render(_: &()) ->
     AbstractRenderer

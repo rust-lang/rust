@@ -12,9 +12,7 @@
 
 #![feature(optin_builtin_traits)]
 
-use std::marker::MarkerTrait;
-
-unsafe trait Trait: MarkerTrait {
+unsafe trait Trait {
 //~^ error: traits with default impls (`e.g. unsafe impl Trait for ..`) must have no methods or associated items
     type Output;
 }
