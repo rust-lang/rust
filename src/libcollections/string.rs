@@ -1013,9 +1013,20 @@ impl AsRef<str> for String {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&'a str> for String {
+    #[cfg(not(test))]
     #[inline]
     fn from(s: &'a str) -> String {
-        s.to_string()
+        String { vec: <[_]>::to_vec(s.as_bytes()) }
+    }
+
+    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
+    // required for this method definition, is not available. Since we don't
+    // require this method for testing purposes, I'll just stub it
+    // NB see the slice::hack module in slice.rs for more information
+    #[inline]
+    #[cfg(test)]
+    fn from(_: &str) -> String {
+        panic!("not available with cfg(test)");
     }
 }
 
