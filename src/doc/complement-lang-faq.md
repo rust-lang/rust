@@ -42,10 +42,7 @@ Let the fact that this is an easily countable number be a warning.
 
 ## Does it run on Windows?
 
-Yes. All development happens in lockstep on all 3 target platforms (using MinGW, not Cygwin). Note that the Windows implementation currently has some limitations; in particular, the 64-bit build is [not fully supported yet][win64], and all executables created by rustc [depend on libgcc DLL at runtime][libgcc].
-
-[win64]: https://github.com/rust-lang/rust/issues/1237
-[libgcc]: https://github.com/rust-lang/rust/issues/11782
+Yes. All development happens in lockstep on all 3 target platforms (using MinGW, not Cygwin).
 
 ## Is it OO? How do I do this thing I normally do in an OO language?
 
