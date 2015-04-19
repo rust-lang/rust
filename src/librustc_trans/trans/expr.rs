@@ -58,7 +58,7 @@ use middle::check_const;
 use middle::def;
 use middle::lang_items::CoerceUnsizedTraitLangItem;
 use middle::mem_categorization::Typer;
-use middle::subst::{Subst, Substs, VecPerParamSpace};
+use middle::subst::{Substs, VecPerParamSpace};
 use middle::traits;
 use trans::{_match, adt, asm, base, callee, closure, consts, controlflow};
 use trans::base::*;
@@ -476,8 +476,8 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
 
         // This can be extended to enums and tuples in the future.
-        // (&ty::ty_enum(def_id_a, substs_a), &ty::ty_enum(def_id_b, substs_b)) |
-        (&ty::ty_struct(def_id_a, substs_a), &ty::ty_struct(def_id_b, substs_b)) => {
+        // (&ty::ty_enum(def_id_a, _), &ty::ty_enum(def_id_b, _)) |
+        (&ty::ty_struct(def_id_a, _), &ty::ty_struct(def_id_b, _)) => {
             assert_eq!(def_id_a, def_id_b);
 
             // The target is already by-ref because it's to be written to.
@@ -504,35 +504,41 @@ fn coerce_unsized<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
 
             let repr_source = adt::represent_type(bcx.ccx(), source.ty);
+            let src_fields = match &*repr_source {
+                &adt::Repr::Univariant(ref s, _) => &s.fields,
+                _ => bcx.sess().span_bug(span,
+                                         &format!("Non univariant struct? (repr_source: {:?})",
+                                                  repr_source)),
+            };
             let repr_target = adt::represent_type(bcx.ccx(), target.ty);
-            let fields = ty::lookup_struct_fields(bcx.tcx(), def_id_a);
+            let target_fields = match &*repr_target {
+                &adt::Repr::Univariant(ref s, _) => &s.fields,
+                _ => bcx.sess().span_bug(span,
+                                         &format!("Non univariant struct? (repr_target: {:?})",
+                                                  repr_target)),
+            };
 
             let coerce_index = match kind {
                 ty::CustomCoerceUnsized::Struct(i) => i
             };
-            assert!(coerce_index < fields.len());
+            assert!(coerce_index < src_fields.len() && src_fields.len() == target_fields.len());
 
-            for (i, field) in fields.iter().enumerate() {
+            let iter = src_fields.iter().zip(target_fields.iter()).enumerate();
+            for (i, (src_ty, target_ty)) in iter {
                 let ll_source = adt::trans_field_ptr(bcx, &repr_source, source.val, 0, i);
                 let ll_target = adt::trans_field_ptr(bcx, &repr_target, target.val, 0, i);
-
-                let ty = ty::lookup_field_type_unsubstituted(bcx.tcx(),
-                                                             def_id_a,
-                                                             field.id);
-                let field_source = ty.subst(bcx.tcx(), substs_a);
-                let field_target = ty.subst(bcx.tcx(), substs_b);
 
                 // If this is the field we need to coerce, recurse on it.
                 if i == coerce_index {
                     coerce_unsized(bcx, span,
-                                   Datum::new(ll_source, field_source,
+                                   Datum::new(ll_source, src_ty,
                                               Rvalue::new(ByRef)),
-                                   Datum::new(ll_target, field_target,
+                                   Datum::new(ll_target, target_ty,
                                               Rvalue::new(ByRef)));
                 } else {
                     // Otherwise, simply copy the data from the source.
-                    assert_eq!(field_source, field_target);
-                    memcpy_ty(bcx, ll_target, ll_source, field_source);
+                    assert_eq!(src_ty, target_ty);
+                    memcpy_ty(bcx, ll_target, ll_source, src_ty);
                 }
             }
         }
@@ -2013,6 +2019,7 @@ fn float_cast(bcx: Block,
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum cast_kind {
     cast_pointer,
+    cast_fat_ptr,
     cast_integral,
     cast_float,
     cast_enum,
@@ -2027,7 +2034,7 @@ pub fn cast_type_kind<'tcx>(tcx: &ty::ctxt<'tcx>, t: Ty<'tcx>) -> cast_kind {
             if type_is_sized(tcx, mt.ty) {
                 cast_pointer
             } else {
-                cast_other
+                cast_fat_ptr
             }
         }
         ty::ty_bare_fn(..) => cast_pointer,
@@ -2103,9 +2110,17 @@ fn trans_imm_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let llexpr = datum.to_llscalarish(bcx);
             PtrToInt(bcx, llexpr, ll_t_out)
         }
+        (cast_fat_ptr, cast_integral) => {
+            let data_ptr = Load(bcx, get_dataptr(bcx, datum.val));
+            PtrToInt(bcx, data_ptr, ll_t_out)
+        }
         (cast_pointer, cast_pointer) => {
             let llexpr = datum.to_llscalarish(bcx);
             PointerCast(bcx, llexpr, ll_t_out)
+        }
+        (cast_fat_ptr, cast_pointer) => {
+            let data_ptr = Load(bcx, get_dataptr(bcx, datum.val));
+            PointerCast(bcx, data_ptr, ll_t_out)
         }
         (cast_enum, cast_integral) |
         (cast_enum, cast_float) => {

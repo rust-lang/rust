@@ -544,7 +544,8 @@ impl<T: ?Sized> Drop for Rc<T> {
     fn drop(&mut self) {
         unsafe {
             let ptr = *self._ptr;
-            if !(*(&ptr as *const _ as *const *const ())).is_null() {
+            if !(*(&ptr as *const _ as *const *const ())).is_null() &&
+               ptr as usize != mem::POST_DROP_USIZE {
                 self.dec_strong();
                 if self.strong() == 0 {
                     // destroy the contained object
@@ -1010,7 +1011,8 @@ impl<T: ?Sized> Drop for Weak<T> {
     fn drop(&mut self) {
         unsafe {
             let ptr = *self._ptr;
-            if !(*(&ptr as *const _ as *const *const ())).is_null() {
+            if !(*(&ptr as *const _ as *const *const ())).is_null() &&
+               ptr as usize != mem::POST_DROP_USIZE {
                 self.dec_weak();
                 // the weak count starts at 1, and will only go to zero if all
                 // the strong pointers have disappeared.

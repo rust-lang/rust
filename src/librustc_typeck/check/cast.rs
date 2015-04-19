@@ -99,6 +99,7 @@ pub fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
     let t_1_is_bare_fn = ty::type_is_bare_fn(t_1);
     let t_1_is_float = ty::type_is_floating_point(t_1);
     let t_1_is_c_enum = ty::type_is_c_like_enum(fcx.tcx(), t_1);
+    let t1_is_fat_ptr = fcx.type_is_fat_ptr(t_1, span);
 
     // casts to scalars other than `char` and `bare fn` are trivial
     let t_1_is_trivial = t_1_is_scalar && !t_1_is_char && !t_1_is_bare_fn;
@@ -170,18 +171,16 @@ pub fn check_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, cast: &CastCheck<'tcx>) {
                 demand::coerce(fcx, e.span, t_1, &e);
             }
         }
-    } else if fcx.type_is_fat_ptr(t_e, span) != fcx.type_is_fat_ptr(t_1, span) {
+    } else if t1_is_fat_ptr {
+        // FIXME This should be allowed where the lefthandside is also a fat
+        // pointer and is the same kind of fat pointer, i.e., array to array,
+        // trait object to trait object.
         fcx.type_error_message(span, |actual| {
-            format!("illegal cast; cast to or from fat pointer: `{}` as `{}` \
-                     involving incompatible type.",
-                    actual, fcx.infcx().ty_to_string(t_1))
+            format!("cast to fat pointer: `{}` as `{}`",
+                    actual,
+                    fcx.infcx().ty_to_string(t_1))
         }, t_e, None);
     } else if !(t_e_is_scalar && t_1_is_trivial) {
-        /*
-        If more type combinations should be supported than are
-        supported here, then file an enhancement issue and
-        record the issue number in this comment.
-        */
         fcx.type_error_message(span, |actual| {
             format!("non-scalar cast: `{}` as `{}`",
                     actual,
