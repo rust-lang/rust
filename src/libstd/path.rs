@@ -704,7 +704,7 @@ impl<'a> Components<'a> {
         (comp.len() + extra, self.parse_single_component(comp))
     }
 
-    // trim away repeated separators (i.e. emtpy components) on the left
+    // trim away repeated separators (i.e. empty components) on the left
     fn trim_left(&mut self) {
         while !self.path.is_empty() {
             let (size, comp) = self.parse_next_component();
@@ -716,7 +716,7 @@ impl<'a> Components<'a> {
         }
     }
 
-    // trim away repeated separators (i.e. emtpy components) on the right
+    // trim away repeated separators (i.e. empty components) on the right
     fn trim_right(&mut self) {
         while self.path.len() > self.len_before_body() {
             let (size, comp) = self.parse_next_component_back();
