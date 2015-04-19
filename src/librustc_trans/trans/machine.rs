@@ -101,7 +101,8 @@ pub fn llalign_of_min(cx: &CrateContext, ty: Type) -> llalign {
 
 pub fn llelement_offset(cx: &CrateContext, struct_ty: Type, element: usize) -> u64 {
     unsafe {
-        return llvm::LLVMOffsetOfElement(cx.td().lltd, struct_ty.to_ref(),
+        return llvm::LLVMOffsetOfElement(cx.td().lltd,
+                                         struct_ty.to_ref(),
                                          element as u32);
     }
 }

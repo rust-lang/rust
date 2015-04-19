@@ -5606,8 +5606,7 @@ impl DtorKind {
     }
 }
 
-/* If struct_id names a struct with a dtor, return Some(the dtor's id).
-   Otherwise return none. */
+/* If struct_id names a struct with a dtor. */
 pub fn ty_dtor(cx: &ctxt, struct_id: DefId) -> DtorKind {
     match cx.destructor_for_type.borrow().get(&struct_id) {
         Some(&method_def_id) => {
