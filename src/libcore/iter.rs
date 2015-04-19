@@ -2246,8 +2246,9 @@ impl<I> RandomAccessIterator for Fuse<I> where I: RandomAccessIterator {
 impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {}
 
 impl<I> Fuse<I> {
-    /// Resets the fuse such that the next call to .next() or .next_back() will
-    /// call the underlying iterator again even if it previously returned None.
+    /// Resets the `Fuse` such that the next call to `.next()` or
+    /// `.next_back()` will call the underlying iterator again even if it
+    /// previously returned `None`.
     #[inline]
     #[unstable(feature = "core", reason = "seems marginal")]
     pub fn reset_fuse(&mut self) {
