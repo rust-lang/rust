@@ -301,9 +301,10 @@ impl<T: ?Sized> *const T {
     ///
     /// # Safety
     ///
-    /// The offset must be in-bounds of the object, or one-byte-past-the-end.
-    /// Otherwise `offset` invokes Undefined Behaviour, regardless of whether
-    /// the pointer is used.
+    /// Both the starting and resulting pointer must be either in bounds or one
+    /// byte past the end of an allocated object. If either pointer is out of
+    /// bounds or arithmetic overflow occurs then
+    /// any further use of the returned value will result in undefined behavior.
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub unsafe fn offset(self, count: isize) -> *const T where T: Sized {
