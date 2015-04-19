@@ -620,7 +620,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                   pattern.span,
                                   "multiple-element slice matches anywhere \
                                    but at the end of a slice (e.g. \
-                                   `[0, ..xs, 0]` are experimental")
+                                   `[0, ..xs, 0]`) are experimental")
             }
             ast::PatVec(..) => {
                 self.gate_feature("slice_patterns",
