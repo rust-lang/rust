@@ -14,6 +14,7 @@ use os::windows::prelude::*;
 
 use default::Default;
 use ffi::{OsString, AsOsStr};
+use fmt;
 use io::{self, Error, SeekFrom};
 use libc::{self, HANDLE};
 use mem;
@@ -268,6 +269,15 @@ impl File {
 impl FromInner<libc::HANDLE> for File {
     fn from_inner(handle: libc::HANDLE) -> File {
         File { handle: Handle::new(handle) }
+    }
+}
+
+impl fmt::Debug for File {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // FIXME(#24570): add more info here (e.g. path, mode)
+        f.debug_struct("File")
+            .field("handle", &self.handle.raw())
+            .finish()
     }
 }
 
