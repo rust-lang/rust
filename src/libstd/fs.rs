@@ -19,6 +19,7 @@
 
 use core::prelude::*;
 
+use fmt;
 use io::{self, Error, ErrorKind, SeekFrom, Seek, Read, Write};
 use path::{Path, PathBuf};
 use sys::fs2 as fs_imp;
@@ -302,6 +303,12 @@ impl AsInner<fs_imp::File> for File {
 impl FromInner<fs_imp::File> for File {
     fn from_inner(f: fs_imp::File) -> File {
         File { inner: f }
+    }
+}
+
+impl fmt::Debug for File {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.inner.fmt(f)
     }
 }
 
