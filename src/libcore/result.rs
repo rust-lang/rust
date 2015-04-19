@@ -706,8 +706,8 @@ impl<T, E: fmt::Debug> Result<T, E> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is an `Err`, with a custom panic message provided
-    /// by the `Err`'s value.
+    /// Panics if the value is an `Err`, with a panic message provided by the
+    /// `Err`'s value.
     ///
     /// # Examples
     ///
