@@ -78,6 +78,7 @@ use parse::PResult;
 use diagnostic::FatalError;
 
 use std::collections::HashSet;
+use std::fs;
 use std::io::prelude::*;
 use std::mem;
 use std::path::{Path, PathBuf};
@@ -4775,8 +4776,8 @@ impl<'a> Parser<'a> {
                 let secondary_path_str = format!("{}/mod.rs", mod_name);
                 let default_path = dir_path.join(&default_path_str[..]);
                 let secondary_path = dir_path.join(&secondary_path_str[..]);
-                let default_exists = default_path.exists();
-                let secondary_exists = secondary_path.exists();
+                let default_exists = fs::metadata(&default_path).is_ok();
+                let secondary_exists = fs::metadata(&secondary_path).is_ok();
 
                 if !self.owns_directory {
                     self.span_err(id_sp,
