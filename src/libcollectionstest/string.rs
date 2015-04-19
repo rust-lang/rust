@@ -450,3 +450,30 @@ fn bench_exact_size_shrink_to_fit(b: &mut Bencher) {
         r
     });
 }
+
+#[bench]
+fn bench_from_str(b: &mut Bencher) {
+    let s = "Hello there, the quick brown fox jumped over the lazy dog! \
+             Lorem ipsum dolor sit amet, consectetur. ";
+    b.iter(|| {
+        String::from_str(s)
+    })
+}
+
+#[bench]
+fn bench_from(b: &mut Bencher) {
+    let s = "Hello there, the quick brown fox jumped over the lazy dog! \
+             Lorem ipsum dolor sit amet, consectetur. ";
+    b.iter(|| {
+        String::from(s)
+    })
+}
+
+#[bench]
+fn bench_to_string(b: &mut Bencher) {
+    let s = "Hello there, the quick brown fox jumped over the lazy dog! \
+             Lorem ipsum dolor sit amet, consectetur. ";
+    b.iter(|| {
+        s.to_string()
+    })
+}
