@@ -720,7 +720,6 @@ impl<'a> FmtVisitor<'a> {
         // TODO dead spans
         let mut arg_strs: Vec<_> = args.iter().map(|a| (self.rewrite_fn_input(a), String::new())).collect();
         // Account for sugary self.
-        // TODO busted with by value self
         if let Some(explicit_self) = explicit_self {
             match explicit_self.node {
                 ast::ExplicitSelf_::SelfRegion(ref lt, ref m, _) => {
@@ -732,10 +731,13 @@ impl<'a> FmtVisitor<'a> {
                         &ast::Mutability::MutMutable => "mut ".to_string(),
                         &ast::Mutability::MutImmutable => String::new(),
                     };
-                    arg_strs[0].0 = format!("&{}{}self", lt_str, mut_str)
+                    arg_strs[0].0 = format!("&{}{}self", lt_str, mut_str);
                 }
                 ast::ExplicitSelf_::SelfExplicit(ref ty, _) => {
-                    arg_strs[0].0 = format!("self: {}", pprust::ty_to_string(ty))
+                    arg_strs[0].0 = format!("self: {}", pprust::ty_to_string(ty));
+                }
+                ast::ExplicitSelf_::SelfValue(_) => {
+                    arg_strs[0].0 = "self".to_string();
                 }
                 _ => {}
             }
