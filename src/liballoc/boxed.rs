@@ -10,14 +10,9 @@
 
 //! A pointer type for heap allocation.
 //!
-//! `Box<T>`, casually referred to as a 'box', provides the simplest form of
-//! heap allocation in Rust. Boxes provide ownership for this allocation, and
-//! drop their contents when they go out of scope.
-//!
-//! Boxes are useful in two situations: recursive data structures, and
-//! occasionally when returning data. [The Pointer chapter of the
-//! Book](../../../book/pointers.html#best-practices-1) explains these cases in
-//! detail.
+//! `Box<T>`, casually referred to as a 'box', provides the simplest form of heap allocation in
+//! Rust. Boxes provide ownership for this allocation, and drop their contents when they go out of
+//! scope.
 //!
 //! # Examples
 //!
@@ -43,6 +38,16 @@
 //! ```
 //!
 //! This will print `Cons(1, Box(Cons(2, Box(Nil))))`.
+//!
+//! Recursive structures must be boxed, because if the definition of `Cons` looked like this:
+//!
+//! ```rust,ignore
+//! Cons(T, List<T>),
+//! ```
+//!
+//! It wouldn't work. This is because the size of a `List` depends on how many elements are in the
+//! list, and so we don't know how much memory to allocate for a `Cons`. By introducing a `Box`,
+//! which has a defined size, we know how big `Cons` needs to be.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
