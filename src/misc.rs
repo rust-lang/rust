@@ -37,9 +37,9 @@ impl LintPass for MiscPass {
                         let map = cx.sess().codemap();
                         span_note_and_lint(cx, SINGLE_MATCH, expr.span,
                               "You seem to be trying to use match for destructuring a single type. Did you mean to use `if let`?",
-                              format!("Try if let {} = {} {{ ... }}",
-                                      map.span_to_snippet(arms[0].pats[0].span).unwrap_or("..".to_string()),
-                                      map.span_to_snippet(ex.span).unwrap_or("..".to_string())).as_slice()
+                              &*format!("Try if let {} = {} {{ ... }}",
+                                      &*map.span_to_snippet(arms[0].pats[0].span).unwrap_or("..".to_string()),
+                                      &*map.span_to_snippet(ex.span).unwrap_or("..".to_string()))
                         );
                     }
                 }
