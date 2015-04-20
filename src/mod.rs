@@ -20,7 +20,7 @@
 // TODO for lint violations of names, emit a refactor script
 
 // TODO priorities
-// Fix fns and methods properly - need visibility in visit
+// Fix fns and methods properly
 // Writing output
 // Smoke testing till we can use it
 // end of multi-line string has wspace
@@ -168,14 +168,13 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 b: &'v ast::Block,
                 s: Span,
                 _: ast::NodeId) {
-        // TODO need to get the visibility from somewhere
         self.format_missing(s.lo);
         self.last_pos = s.lo;
 
         // TODO need to check against expected indent
         let indent = self.codemap.lookup_char_pos(s.lo).col.0;
         match fk {
-            visit::FkItemFn(ident, ref generics, ref unsafety, ref abi) => {
+            visit::FkItemFn(ident, ref generics, ref unsafety, ref abi, vis) => {
                 let new_fn = self.rewrite_fn(indent,
                                              ident,
                                              fd,
@@ -183,10 +182,10 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              generics,
                                              unsafety,
                                              abi,
-                                             ast::Visibility::Inherited);
+                                             vis);
                 self.changes.push_str_span(s, &new_fn);
             }
-            visit::FkMethod(ident, ref sig) => {
+            visit::FkMethod(ident, ref sig, vis) => {
                 let new_fn = self.rewrite_fn(indent,
                                              ident,
                                              fd,
@@ -194,7 +193,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              &sig.generics,
                                              &sig.unsafety,
                                              &sig.abi,
-                                             ast::Visibility::Inherited);
+                                             vis.unwrap_or(ast::Visibility::Inherited));
                 self.changes.push_str_span(s, &new_fn);
             }
             visit::FkFnBlock(..) => {}
@@ -721,6 +720,7 @@ impl<'a> FmtVisitor<'a> {
         // TODO dead spans
         let mut arg_strs: Vec<_> = args.iter().map(|a| (self.rewrite_fn_input(a), String::new())).collect();
         // Account for sugary self.
+        // TODO busted with by value self
         if let Some(explicit_self) = explicit_self {
             match explicit_self.node {
                 ast::ExplicitSelf_::SelfRegion(ref lt, ref m, _) => {
