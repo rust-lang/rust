@@ -1,31 +1,13 @@
 % Generics
 
 Sometimes, when writing a function or data type, we may want it to work for
-multiple types of arguments. For example, remember our `OptionalInt` type?
+multiple types of arguments. Luckily, Rust has a feature that gives us a better
+way: generics. Generics are called ‘parametric polymorphism’ in type theory,
+which means that they are types or functions that have multiple forms (‘poly’
+is multiple, ‘morph’ is form) over a given parameter (‘parametric’).
 
-```{rust}
-enum OptionalInt {
-    Value(i32),
-    Missing,
-}
-```
-
-If we wanted to also have an `OptionalFloat64`, we would need a new enum:
-
-```{rust}
-enum OptionalFloat64 {
-    Valuef64(f64),
-    Missingf64,
-}
-```
-
-This is really unfortunate. Luckily, Rust has a feature that gives us a better
-way: generics. Generics are called *parametric polymorphism* in type theory,
-which means that they are types or functions that have multiple forms (*poly*
-is multiple, *morph* is form) over a given parameter (*parametric*).
-
-Anyway, enough with type theory declarations, let's check out the generic form
-of `OptionalInt`. It is actually provided by Rust itself, and looks like this:
+Anyway, enough with type theory, let’s check out some generic code. Rust’s
+standard library provides a type, `Option<T>`, that’s generic:
 
 ```rust
 enum Option<T> {
@@ -34,41 +16,40 @@ enum Option<T> {
 }
 ```
 
-The `<T>` part, which you've seen a few times before, indicates that this is
+The `<T>` part, which you’ve seen a few times before, indicates that this is
 a generic data type. Inside the declaration of our enum, wherever we see a `T`,
-we substitute that type for the same type used in the generic. Here's an
+we substitute that type for the same type used in the generic. Here’s an
 example of using `Option<T>`, with some extra type annotations:
 
-```{rust}
+```rust
 let x: Option<i32> = Some(5);
 ```
 
 In the type declaration, we say `Option<i32>`. Note how similar this looks to
 `Option<T>`. So, in this particular `Option`, `T` has the value of `i32`. On
 the right-hand side of the binding, we do make a `Some(T)`, where `T` is `5`.
-Since that's an `i32`, the two sides match, and Rust is happy. If they didn't
-match, we'd get an error:
+Since that’s an `i32`, the two sides match, and Rust is happy. If they didn’t
+match, we’d get an error:
 
-```{rust,ignore}
+```rust,ignore
 let x: Option<f64> = Some(5);
 // error: mismatched types: expected `core::option::Option<f64>`,
 // found `core::option::Option<_>` (expected f64 but found integral variable)
 ```
 
-That doesn't mean we can't make `Option<T>`s that hold an `f64`! They just have to
-match up:
+That doesn’t mean we can’t make `Option<T>`s that hold an `f64`! They just have
+to match up:
 
-```{rust}
+```rust
 let x: Option<i32> = Some(5);
 let y: Option<f64> = Some(5.0f64);
 ```
 
 This is just fine. One definition, multiple uses.
 
-Generics don't have to only be generic over one type. Consider Rust's built-in
-`Result<T, E>` type:
+Generics don’t have to only be generic over one type. Consider another type from Rust’s standard library that’s similar, `Result<T, E>`:
 
-```{rust}
+```rust
 enum Result<T, E> {
     Ok(T),
     Err(E),
@@ -76,9 +57,9 @@ enum Result<T, E> {
 ```
 
 This type is generic over _two_ types: `T` and `E`. By the way, the capital letters
-can be any letter you'd like. We could define `Result<T, E>` as:
+can be any letter you’d like. We could define `Result<T, E>` as:
 
-```{rust}
+```rust
 enum Result<A, Z> {
     Ok(A),
     Err(Z),
@@ -86,92 +67,58 @@ enum Result<A, Z> {
 ```
 
 if we wanted to. Convention says that the first generic parameter should be
-`T`, for 'type,' and that we use `E` for 'error.' Rust doesn't care, however.
+`T`, for ‘type’, and that we use `E` for ‘error’. Rust doesn’t care, however.
 
 The `Result<T, E>` type is intended to be used to return the result of a
-computation, and to have the ability to return an error if it didn't work out.
-Here's an example:
+computation, and to have the ability to return an error if it didn’t work out.
 
-```{rust}
-let x: Result<f64, String> = Ok(2.3f64);
-let y: Result<f64, String> = Err("There was an error.".to_string());
-```
+## Generic functions
 
-This particular Result will return an `f64` if there's a success, and a
-`String` if there's a failure. Let's write a function that uses `Result<T, E>`:
+We can write functions that take generic types with a similar syntax:
 
-```{rust}
-fn inverse(x: f64) -> Result<f64, String> {
-    if x == 0.0f64 { return Err("x cannot be zero!".to_string()); }
-
-    Ok(1.0f64 / x)
+```rust
+fn takes_anything<T>(x: T) {
+    // do something with x
 }
 ```
 
-We don't want to take the inverse of zero, so we check to make sure that we
-weren't passed zero. If we were, then we return an `Err`, with a message. If
-it's okay, we return an `Ok`, with the answer.
+The syntax has two parts: the `<T>` says “this function is generic over one
+type, `T`”, and the `x: T` says “x has the type `T`.”
 
-Why does this matter? Well, remember how `match` does exhaustive matches?
-Here's how this function gets used:
+Multiple arguments can have the same generic type:
 
-```{rust}
-# fn inverse(x: f64) -> Result<f64, String> {
-#     if x == 0.0f64 { return Err("x cannot be zero!".to_string()); }
-#     Ok(1.0f64 / x)
-# }
-let x = inverse(25.0f64);
-
-match x {
-    Ok(x) => println!("The inverse of 25 is {}", x),
-    Err(msg) => println!("Error: {}", msg),
+```rust
+fn takes_two_of_the_same_things<T>(x: T, y: T) {
+    // ...
 }
 ```
 
-The `match` enforces that we handle the `Err` case. In addition, because the
-answer is wrapped up in an `Ok`, we can't just use the result without doing
-the match:
+We could write a version that takes multiple types:
 
-```{rust,ignore}
-let x = inverse(25.0f64);
-println!("{}", x + 2.0f64); // error: binary operation `+` cannot be applied
-           // to type `core::result::Result<f64,collections::string::String>`
-```
-
-This function is great, but there's one other problem: it only works for 64 bit
-floating point values. What if we wanted to handle 32 bit floating point as
-well? We'd have to write this:
-
-```{rust}
-fn inverse32(x: f32) -> Result<f32, String> {
-    if x == 0.0f32 { return Err("x cannot be zero!".to_string()); }
-
-    Ok(1.0f32 / x)
+```rust
+fn takes_two_things<T, U>(x: T, y: U) {
+    // ...
 }
 ```
 
-Bummer. What we need is a *generic function*. Luckily, we can write one!
-However, it won't _quite_ work yet. Before we get into that, let's talk syntax.
-A generic version of `inverse` would look something like this:
+Generic functions are most useful with ‘trait bounds’, which we’ll cover in the
+[section on traits][traits].
 
-```{rust,ignore}
-fn inverse<T>(x: T) -> Result<T, String> {
-    if x == 0.0 { return Err("x cannot be zero!".to_string()); }
+[traits]: traits.html
 
-    Ok(1.0 / x)
+## Generic structs
+
+You can store a generic type in a `struct` as well:
+
+```
+struct Point<T> {
+    x: T,
+    y: T,
 }
+
+let int_origin = Point { x: 0, y: 0 };
+let float_origin = Point { x: 0.0, y: 0.0 };
 ```
 
-Just like how we had `Option<T>`, we use a similar syntax for `inverse<T>`.
-We can then use `T` inside the rest of the signature: `x` has type `T`, and half
-of the `Result` has type `T`. However, if we try to compile that example, we'll get
-an error:
-
-```text
-error: binary operation `==` cannot be applied to type `T`
-```
-
-Because `T` can be _any_ type, it may be a type that doesn't implement `==`,
-and therefore, the first line would be wrong. What do we do?
-
-To fix this example, we need to learn about another Rust feature: traits.
+Similarly to functions, the `<T>` is where we declare the generic parameters,
+and we then use `x: T` in the type declaration, too.
