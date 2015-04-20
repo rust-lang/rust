@@ -88,7 +88,7 @@ impl_full_ops! {
     u8:  add(intrinsics::u8_add_with_overflow),  mul/div(u16);
     u16: add(intrinsics::u16_add_with_overflow), mul/div(u32);
     u32: add(intrinsics::u32_add_with_overflow), mul/div(u64);
-//  u64: add(intrinsics::u64_add_with_overflow), mul/div(u128); // damn!
+//  u64: add(intrinsics::u64_add_with_overflow), mul/div(u128); // see RFC #521 for enabling this.
 }
 
 macro_rules! define_bignum {
@@ -103,11 +103,12 @@ macro_rules! define_bignum {
         /// All operations available to bignums panic in the case of over/underflows.
         /// The caller is responsible to use large enough bignum types.
         pub struct $name {
-            /// One plus the offset to the maximum "digit" in the use.
+            /// One plus the offset to the maximum "digit" in use.
             /// This does not decrease, so be aware of the computation order.
             /// `base[size..]` should be zero.
             size: usize,
-            /// Digits. `[a, b, c, ...]` represents `a + b*n + c*n^2 + ...`.
+            /// Digits. `[a, b, c, ...]` represents `a + b*2^W + c*2^(2W) + ...`
+            /// where `W` is the number of bits in the digit type.
             base: [$ty; $n]
         }
 
@@ -215,7 +216,7 @@ macro_rules! define_bignum {
                     self.base[i] = 0;
                 }
 
-                // shift by `nbits` bits
+                // shift by `bits` bits
                 let mut sz = self.size + digits;
                 if bits > 0 {
                     let last = sz;
@@ -236,8 +237,9 @@ macro_rules! define_bignum {
                 self
             }
 
-            /// Multiplies itself by a number described by `other[0] + other[1] * n +
-            /// other[2] * n^2 + ...` and returns its own mutable reference.
+            /// Multiplies itself by a number described by `other[0] + other[1] * 2^W +
+            /// other[2] * 2^(2W) + ...` (where `W` is the number of bits in the digit type)
+            /// and returns its own mutable reference.
             pub fn mul_digits<'a>(&'a mut self, other: &[$ty]) -> &'a mut $name {
                 // the internal routine. works best when aa.len() <= bb.len().
                 fn mul_inner(ret: &mut [$ty; $n], aa: &[$ty], bb: &[$ty]) -> usize {
