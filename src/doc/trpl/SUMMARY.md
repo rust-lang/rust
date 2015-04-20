@@ -54,7 +54,7 @@
     * [Associated Types](associated-types.md)
     * [Unsized Types](unsized-types.md)
     * [Macros](macros.md)
-    * [`unsafe` Code](unsafe-code.md)
+    * [Raw Pointers](raw-pointers.md)
 * [Nightly Rust](nightly-rust.md)
     * [Compiler Plugins](compiler-plugins.md)
     * [Inline Assembly](inline-assembly.md)
