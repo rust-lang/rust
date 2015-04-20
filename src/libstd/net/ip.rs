@@ -172,6 +172,15 @@ impl Ipv4Addr {
                       ((self.octets()[2] as u16) << 8) | self.octets()[3] as u16)
     }
 
+    /// Converts a IPv4 address to a network byte ordered 32 bit int
+    pub fn to_int(&self) -> u32 {
+        self.as_inner().s_addr
+    }
+
+    /// Converts a 32 bit int to a valid Ipv4Addr
+    pub fn from_int(ip: u32) -> Ipv4Addr {
+        Ipv4Addr::from_inner(libc::in_addr { s_addr: hton(ip) })
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -737,5 +746,17 @@ mod tests {
     fn to_socket_addr_socketaddr() {
         let a = sa4(Ipv4Addr::new(77, 88, 21, 11), 12345);
         assert_eq!(Ok(vec![a]), tsa(a));
+    }
+
+    #[test]
+    fn test_ipv4_to_int() {
+        let a = Ipv4Addr::new(127, 0, 0, 1);
+        assert_eq!(a.to_int(), 16777343);
+    }
+
+    #[test]
+    fn test_int_to_ipv4() {
+        let a = Ipv4Addr::new(127, 0, 0, 1);
+        assert_eq!(Ipv4Addr::from_int(16777343, a));
     }
 }
