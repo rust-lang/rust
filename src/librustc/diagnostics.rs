@@ -168,6 +168,29 @@ variant constructors or struct constructors (for unit or tuple structs). This
 is because Rust currently does not support compile-time function execution.
 "##,
 
+E0018: r##"
+The value of static and const variables must be known at compile time. You
+can't cast a pointer as an integer because we can't know what value the
+address will take.
+
+However, pointers to other constants' addresses are allowed in constants,
+example:
+
+```
+const X: u32 = 50;
+const Y: *const u32 = &X;
+```
+
+Therefore, casting one of these non-constant pointers to an integer results
+in a non-constant integer which lead to this error. Example:
+
+```
+const X: u32 = 50;
+const Y: *const u32 = &X;
+println!("{:?}", Y);
+```
+"##,
+
 E0020: r##"
 This error indicates that an attempt was made to divide by zero (or take the
 remainder of a zero divisor) in a static or constant expression.
@@ -413,7 +436,6 @@ register_diagnostics! {
     E0014,
     E0016,
     E0017,
-    E0018,
     E0019,
     E0022,
     E0079, // enum variant: expected signed integer constant
