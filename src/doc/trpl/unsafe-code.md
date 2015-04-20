@@ -1,84 +1,128 @@
-% Raw Pointers
+% Unsafe Code
 
-Rust offers two additional pointer types (*raw pointers*), written as
-`*const T` and `*mut T`. They're an approximation of C's `const T*` and `T*`
-respectively; indeed, one of their most common uses is for FFI,
-interfacing with external C libraries.
+Rust’s main draw is its powerful static guarantees about behavior. But safety
+checks are conservative by nature: there are some programs that are actually
+safe, but the compiler is not able to verify this is true. To write these kinds
+of programs, we need to tell the compiler to relax its restrictions a bit. For
+this, Rust has a keyword, `unsafe`. Code using `unsafe` has less restrictions
+than normal code does.
 
-Raw pointers have much fewer guarantees than other pointer types
-offered by the Rust language and libraries. For example, they
+Let’s go over the syntax, and then we’ll talk semantics. `unsafe` is used in
+two contexts. The first one is to mark a function as unsafe:
 
-- are not guaranteed to point to valid memory and are not even
-  guaranteed to be non-null (unlike both `Box` and `&`);
-- do not have any automatic clean-up, unlike `Box`, and so require
-  manual resource management;
-- are plain-old-data, that is, they don't move ownership, again unlike
-  `Box`, hence the Rust compiler cannot protect against bugs like
-  use-after-free;
-- lack any form of lifetimes, unlike `&`, and so the compiler cannot
-  reason about dangling pointers; and
-- have no guarantees about aliasing or mutability other than mutation
-  not being allowed directly through a `*const T`.
-
-Fortunately, they come with a redeeming feature: the weaker guarantees
-mean weaker restrictions. The missing restrictions make raw pointers
-appropriate as a building block for implementing things like smart
-pointers and vectors inside libraries. For example, `*` pointers are
-allowed to alias, allowing them to be used to write shared-ownership
-types like reference counted and garbage collected pointers, and even
-thread-safe shared memory types (`Rc` and the `Arc` types are both
-implemented entirely in Rust).
-
-There are two things that you are required to be careful about
-(i.e. require an `unsafe { ... }` block) with raw pointers:
-
-- dereferencing: they can have any value: so possible results include
-  a crash, a read of uninitialised memory, a use-after-free, or
-  reading data as normal.
-- pointer arithmetic via the `offset` [intrinsic](#intrinsics) (or
-  `.offset` method): this intrinsic uses so-called "in-bounds"
-  arithmetic, that is, it is only defined behaviour if the result is
-  inside (or one-byte-past-the-end) of the object from which the
-  original pointer came.
-
-The latter assumption allows the compiler to optimize more
-effectively. As can be seen, actually *creating* a raw pointer is not
-unsafe, and neither is converting to an integer.
-
-### References and raw pointers
-
-At runtime, a raw pointer `*` and a reference pointing to the same
-piece of data have an identical representation. In fact, an `&T`
-reference will implicitly coerce to an `*const T` raw pointer in safe code
-and similarly for the `mut` variants (both coercions can be performed
-explicitly with, respectively, `value as *const T` and `value as *mut T`).
-
-Going the opposite direction, from `*const` to a reference `&`, is not
-safe. A `&T` is always valid, and so, at a minimum, the raw pointer
-`*const T` has to point to a valid instance of type `T`. Furthermore,
-the resulting pointer must satisfy the aliasing and mutability laws of
-references. The compiler assumes these properties are true for any
-references, no matter how they are created, and so any conversion from
-raw pointers is asserting that they hold. The programmer *must*
-guarantee this.
-
-The recommended method for the conversion is
-
-```
-let i: u32 = 1;
-// explicit cast
-let p_imm: *const u32 = &i as *const u32;
-let mut m: u32 = 2;
-// implicit coercion
-let p_mut: *mut u32 = &mut m;
-
-unsafe {
-    let ref_imm: &u32 = &*p_imm;
-    let ref_mut: &mut u32 = &mut *p_mut;
+```rust
+unsafe fn danger_will_robinson() {
+    // scary stuff 
 }
 ```
 
-The `&*x` dereferencing style is preferred to using a `transmute`.
-The latter is far more powerful than necessary, and the more
-restricted operation is harder to use incorrectly; for example, it
-requires that `x` is a pointer (unlike `transmute`).
+All functions called from [FFI][ffi] must be marked as `unsafe`, for example.
+The second use of `unsafe` is an unsafe block:
+
+[ffi]: ffi.html
+
+```rust
+unsafe {
+    // scary stuff
+}
+```
+
+It’s important to be able to explicitly delineate code that may have bugs that
+cause big problems. If a Rust program segfaults, you can be sure it’s somewhere
+in the sections marked `unsafe`.
+
+# What does ‘safe’ mean?
+
+Safe, in the context of Rust, means “doesn’t do anything unsafe.” Easy!
+
+Okay, let’s try again: what is not safe to do? Here’s a list:
+
+* Data races
+* Dereferencing a null/dangling raw pointer
+* Reads of [undef][undef] (uninitialized) memory
+* Breaking the [pointer aliasing rules][aliasing] with raw pointers.
+* `&mut T` and `&T` follow LLVM’s scoped [noalias][noalias] model, except if
+  the `&T` contains an `UnsafeCell<U>`. Unsafe code must not violate these
+  aliasing guarantees.
+* Mutating an immutable value/reference without `UnsafeCell<U>`
+* Invoking undefined behavior via compiler intrinsics:
+  * Indexing outside of the bounds of an object with `std::ptr::offset`
+    (`offset` intrinsic), with
+    the exception of one byte past the end which is permitted.
+  * Using `std::ptr::copy_nonoverlapping_memory` (`memcpy32`/`memcpy64`
+    intrinsics) on overlapping buffers
+* Invalid values in primitive types, even in private fields/locals:
+  * Null/dangling references or boxes
+  * A value other than `false` (0) or `true` (1) in a `bool`
+  * A discriminant in an `enum` not included in its type definition
+  * A value in a `char` which is a surrogate or above `char::MAX`
+  * Non-UTF-8 byte sequences in a `str`
+* Unwinding into Rust from foreign code or unwinding from Rust into foreign
+  code.
+
+[noalias]: http://llvm.org/docs/LangRef.html#noalias
+[undef]: http://llvm.org/docs/LangRef.html#undefined-values
+[aliasing]: http://llvm.org/docs/LangRef.html#pointer-aliasing-rules
+
+Whew! That’s a bunch of stuff. It’s also important to notice all kinds of
+behaviors that are certainly bad, but are expressly _not_ unsafe:
+
+* Deadlocks
+* Reading data from private fields
+* Leaks due to reference count cycles
+* Exiting without calling destructors
+* Sending signals
+* Accessing/modifying the file system
+* Integer overflow
+
+Rust cannot prevent all kinds of software problems. Buggy code can and will be
+written in Rust. These things arne’t great, but they don’t qualify as `unsafe`
+specifically.
+
+# Unsafe Superpowers
+
+In both unsafe functions and unsafe blocks, Rust will let you do three things
+that you normally can not do. Just three. Here they are:
+
+1. Access or update a [static mutable variable][static].
+2. Dereference a raw pointer.
+3. Call unsafe functions. This is the most powerful ability.
+
+That’s it. It’s important that `unsafe` does not, for example, ‘turn off the
+borrow checker’. Adding `unsafe` to some random Rust code doesn’t change its
+semantics, it won’t just start accepting anything.
+
+But it will let you write things that _do_ break some of the rules. Let’s go
+over these three abilities in order.
+
+## Access or update a `static mut`
+
+Rust has a feature called ‘`static mut`’ which allows for mutable global state.
+Doing so can cause a data race, and as such is inherently not safe. For more
+details, see the [static][static] section of the book.
+
+[static]: static.html
+
+## Dereference a raw pointer
+
+Raw pointers let you do arbitrary pointer arithmetic, and can cause a number of
+different memory safety and security issues. In some senses, the ability to
+dereference an arbitrary pointer is one of the most dangerous things you can
+do. For more on raw pointers, see [their section of the book][rawpointers].
+
+[rawpointers]: raw-pointers.html
+
+## Call unsafe functions
+
+This last ability works with both aspects of `unsafe`: you can only call
+functions marked `unsafe` from inside an unsafe block.
+
+This ability is powerful and varied. Rust exposes some [compiler
+intrinsics][intrinsics] as unsafe functions, and some unsafe functions bypass
+safety checks, trading safety for speed.
+
+I’ll repeat again: even though you _can_ do arbitrary things in unsafe blocks
+and functions doesn’t mean you should. The compiler will act as though you’re
+upholding its invariants, so be careful!
+
+[intrinsics]: intrinsics.html
