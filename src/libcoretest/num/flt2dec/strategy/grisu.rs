@@ -66,7 +66,7 @@ fn shortest_f32_exhaustive_equivalence_test() {
     f32_exhaustive_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS);
 }
 
-#[test] #[ignore] // is is too expensive
+#[test] #[ignore] // it is too expensive
 fn shortest_f64_hard_random_equivalence_test() {
     // this again probably has to use appropriate rustc flags.
 
