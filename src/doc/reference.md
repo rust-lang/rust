@@ -973,8 +973,7 @@ Use declarations support a number of convenient shortcuts:
 
 An example of `use` declarations:
 
-```
-# #![feature(core)]
+```rust
 use std::option::Option::{Some, None};
 use std::collections::hash_map::{self, HashMap};
 
@@ -1031,16 +1030,17 @@ declarations.
 An example of what will and will not work for `use` items:
 
 ```
-# #![feature(core)]
 # #![allow(unused_imports)]
-use foo::core::iter;  // good: foo is at the root of the crate
 use foo::baz::foobaz;    // good: foo is at the root of the crate
 
 mod foo {
-    extern crate core;
 
-    use foo::core::iter; // good: foo is at crate root
-//  use core::iter;      // bad:  core is not at the crate root
+    mod example {
+        pub mod iter {}
+    }
+
+    use foo::example::iter; // good: foo is at crate root
+//  use example::iter;      // bad:  core is not at the crate root
     use self::baz::foobaz;  // good: self refers to module 'foo'
     use foo::bar::foobar;   // good: foo is at crate root
 
@@ -1368,9 +1368,7 @@ a = Animal::Cat;
 
 Enumeration constructors can have either named or unnamed fields:
 
-```
-# #![feature(struct_variant)]
-# fn main() {
+```rust
 enum Animal {
     Dog (String, f64),
     Cat { name: String, weight: f64 }
@@ -1378,7 +1376,6 @@ enum Animal {
 
 let mut a: Animal = Animal::Dog("Cocoa".to_string(), 37.2);
 a = Animal::Cat { name: "Spotty".to_string(), weight: 2.7 };
-# }
 ```
 
 In this example, `Cat` is a _struct-like enum variant_,
@@ -1718,17 +1715,6 @@ Functions within external blocks are declared in the same way as other Rust
 functions, with the exception that they may not have a body and are instead
 terminated by a semicolon.
 
-```
-# #![feature(libc)]
-extern crate libc;
-use libc::{c_char, FILE};
-
-extern {
-    fn fopen(filename: *const c_char, mode: *const c_char) -> *mut FILE;
-}
-# fn main() {}
-```
-
 Functions within external blocks may be called by Rust code, just like
 functions defined in Rust. The Rust compiler automatically translates between
 the Rust ABI and the foreign ABI.
@@ -1739,7 +1725,7 @@ By default external blocks assume that the library they are calling uses the
 standard C "cdecl" ABI. Other ABIs may be specified using an `abi` string, as
 shown here:
 
-```{.ignore}
+```ignore
 // Interface to the Windows API
 extern "stdcall" { }
 ```
@@ -3231,55 +3217,7 @@ expression.
 
 In a pattern whose head expression has an `enum` type, a placeholder (`_`)
 stands for a *single* data field, whereas a wildcard `..` stands for *all* the
-fields of a particular variant. For example:
-
-```
-#![feature(box_patterns)]
-#![feature(box_syntax)]
-enum List<X> { Nil, Cons(X, Box<List<X>>) }
-
-fn main() {
-    let x: List<i32> = List::Cons(10, box List::Cons(11, box List::Nil));
-
-    match x {
-        List::Cons(_, box List::Nil) => panic!("singleton list"),
-        List::Cons(..)               => return,
-        List::Nil                    => panic!("empty list")
-    }
-}
-```
-
-The first pattern matches lists constructed by applying `Cons` to any head
-value, and a tail value of `box Nil`. The second pattern matches _any_ list
-constructed with `Cons`, ignoring the values of its arguments. The difference
-between `_` and `..` is that the pattern `C(_)` is only type-correct if `C` has
-exactly one argument, while the pattern `C(..)` is type-correct for any enum
-variant `C`, regardless of how many arguments `C` has.
-
-Used inside an array pattern, `..` stands for any number of elements, when the
-`advanced_slice_patterns` feature gate is turned on. This wildcard can be used
-at most once for a given array, which implies that it cannot be used to
-specifically match elements that are at an unknown distance from both ends of a
-array, like `[.., 42, ..]`. If preceded by a variable name, it will bind the
-corresponding slice to the variable. Example:
-
-```
-# #![feature(advanced_slice_patterns, slice_patterns)]
-fn is_symmetric(list: &[u32]) -> bool {
-    match list {
-        [] | [_]                   => true,
-        [x, inside.., y] if x == y => is_symmetric(inside),
-        _                          => false
-    }
-}
-
-fn main() {
-    let sym     = &[0, 1, 4, 2, 4, 1, 0];
-    let not_sym = &[0, 1, 7, 2, 4, 1, 0];
-    assert!(is_symmetric(sym));
-    assert!(!is_symmetric(not_sym));
-}
-```
+fields of a particular variant.
 
 A `match` behaves differently depending on whether or not the head expression
 is an [lvalue or an rvalue](#lvalues,-rvalues-and-temporaries). If the head
@@ -3298,30 +3236,15 @@ the inside of the match.
 An example of a `match` expression:
 
 ```
-#![feature(box_patterns)]
-#![feature(box_syntax)]
-# fn process_pair(a: i32, b: i32) { }
-# fn process_ten() { }
+let x = 1;
 
-enum List<X> { Nil, Cons(X, Box<List<X>>) }
-
-fn main() {
-    let x: List<i32> = List::Cons(10, box List::Cons(11, box List::Nil));
-
-    match x {
-        List::Cons(a, box List::Cons(b, _)) => {
-            process_pair(a, b);
-        }
-        List::Cons(10, _) => {
-            process_ten();
-        }
-        List::Nil => {
-            return;
-        }
-        _ => {
-            panic!();
-        }
-    }
+match x {
+    1 => println!("one"),
+    2 => println!("two"),
+    3 => println!("three"),
+    4 => println!("four"),
+    5 => println!("five"),
+    _ => println!("something else"),
 }
 ```
 
@@ -3334,28 +3257,12 @@ Subpatterns can also be bound to variables by the use of the syntax `variable @
 subpattern`. For example:
 
 ```
-#![feature(box_patterns)]
-#![feature(box_syntax)]
+let x = 1;
 
-enum List { Nil, Cons(u32, Box<List>) }
-
-fn is_sorted(list: &List) -> bool {
-    match *list {
-        List::Nil | List::Cons(_, box List::Nil) => true,
-        List::Cons(x, ref r @ box List::Cons(_, _)) => {
-            match *r {
-                box List::Cons(y, _) => (x <= y) && is_sorted(&**r),
-                _ => panic!()
-            }
-        }
-    }
+match x {
+    e @ 1 ... 5 => println!("got a range element {}", e),
+    _ => println!("anything"),
 }
-
-fn main() {
-    let a = List::Cons(6, box List::Cons(7, box List::Cons(42, box List::Nil)));
-    assert!(is_sorted(&a));
-}
-
 ```
 
 Patterns can also dereference pointers by using the `&`, `&mut` and `box`
