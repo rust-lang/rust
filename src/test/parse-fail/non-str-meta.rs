@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 // Issue #623 - non-string meta items are not serialized correctly;
 // for now just forbid them
 

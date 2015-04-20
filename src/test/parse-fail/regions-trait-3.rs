@@ -21,6 +21,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 trait get_ctxt<'a> {
     fn get_ctxt(self) -> &'a usize;
 }

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 pub fn main() {
     let s = "\u{lol}";
      //~^ ERROR illegal character in unicode escape: l

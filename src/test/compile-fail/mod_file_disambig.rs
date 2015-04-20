@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 mod mod_file_disambig_aux; //~ ERROR file for module `mod_file_disambig_aux` found at both
 
 fn main() {

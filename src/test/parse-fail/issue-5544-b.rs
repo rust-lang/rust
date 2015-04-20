@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 fn main() {
     let __isize = 0xff_ffff_ffff_ffff_ffff;
     //~^ ERROR int literal is too large

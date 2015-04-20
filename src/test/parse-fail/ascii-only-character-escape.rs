@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 fn main() {
     let x = "\x80"; //~ ERROR may only be used
     let y = "\xff"; //~ ERROR may only be used

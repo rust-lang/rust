@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 enum X<'a, T, 'b> {
 //~^ ERROR lifetime parameters must be declared prior to type parameters
     A(&'a T)

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 struct Heap;
 
 struct Vec<A = Heap, T>; //~ ERROR type parameters with a default must be trailing

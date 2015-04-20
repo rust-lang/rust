@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 // Test you can't use a higher-ranked trait bound inside of a qualified
 // path (just won't parse).
 

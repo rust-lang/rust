@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 const
 mut //~ ERROR: const globals cannot be mutable
 //~^ HELP did you mean to declare a static?

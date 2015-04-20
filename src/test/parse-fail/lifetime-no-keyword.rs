@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 fn foo<'a>(a: &'a isize) { }
 fn bar(a: &'static isize) { }
 fn baz(a: &'let isize) { } //~ ERROR invalid lifetime name

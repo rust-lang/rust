@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 // Test diagnostics for the removed struct inheritance feature.
 #![feature(struct_inherit)]
 

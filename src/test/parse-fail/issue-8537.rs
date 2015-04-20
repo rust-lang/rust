@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 pub extern
   "invalid-ab_isize" //~ ERROR illegal ABI
 fn foo() {}
