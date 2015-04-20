@@ -173,7 +173,7 @@ The value of static and const variables must be known at compile time. You
 can't cast a pointer as an integer because we can't know what value the
 address will take.
 
-However, pointers to other constants' address are allowed in constants,
+However, pointers to other constants' addresses are allowed in constants,
 example:
 
 ```
@@ -182,7 +182,7 @@ const Y: *const u32 = &X;
 ```
 
 Therefore, casting one of these non-constant pointers to an integer results
-in a non-constant integer whichs lead to this error. Example:
+in a non-constant integer which lead to this error. Example:
 
 ```
 const X: u32 = 50;
