@@ -165,7 +165,7 @@ fn main() {
 
 Rust has [move semantics][move] by default, so if we want to make a copy of some
 data, we call the `clone()` method. In this example, `y` is no longer a reference
-to the vector stored in `x`, but a copy of its first element, `"hello"`. Now
+to the vector stored in `x`, but a copy of its first element, `"Hello"`. Now
 that we don’t have a reference, our `push()` works just fine.
 
 [move]: move-semantics.html

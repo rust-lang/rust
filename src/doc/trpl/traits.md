@@ -1,10 +1,9 @@
 % Traits
 
-Do you remember the `impl` keyword, used to call a function with method
-syntax?
+Do you remember the `impl` keyword, used to call a function with [method
+syntax][methodsyntax]?
 
-```{rust}
-# #![feature(core)]
+```rust
 struct Circle {
     x: f64,
     y: f64,
@@ -18,11 +17,12 @@ impl Circle {
 }
 ```
 
+[methodsyntax]: method-syntax.html
+
 Traits are similar, except that we define a trait with just the method
 signature, then implement the trait for that struct. Like this:
 
-```{rust}
-# #![feature(core)]
+```rust
 struct Circle {
     x: f64,
     y: f64,
@@ -41,20 +41,13 @@ impl HasArea for Circle {
 ```
 
 As you can see, the `trait` block looks very similar to the `impl` block,
-but we don't define a body, just a type signature. When we `impl` a trait,
+but we don’t define a body, just a type signature. When we `impl` a trait,
 we use `impl Trait for Item`, rather than just `impl Item`.
-
-So what's the big deal? Remember the error we were getting with our generic
-`inverse` function?
-
-```text
-error: binary operation `==` cannot be applied to type `T`
-```
 
 We can use traits to constrain our generics. Consider this function, which
 does not compile, and gives us a similar error:
 
-```{rust,ignore}
+```rust,ignore
 fn print_area<T>(shape: T) {
     println!("This shape has an area of {}", shape.area());
 }
@@ -66,11 +59,11 @@ Rust complains:
 error: type `T` does not implement any method in scope named `area`
 ```
 
-Because `T` can be any type, we can't be sure that it implements the `area`
-method. But we can add a *trait constraint* to our generic `T`, ensuring
+Because `T` can be any type, we can’t be sure that it implements the `area`
+method. But we can add a ‘trait constraint’ to our generic `T`, ensuring
 that it does:
 
-```{rust}
+```rust
 # trait HasArea {
 #     fn area(&self) -> f64;
 # }
@@ -83,10 +76,9 @@ The syntax `<T: HasArea>` means `any type that implements the HasArea trait`.
 Because traits define function type signatures, we can be sure that any type
 which implements `HasArea` will have an `.area()` method.
 
-Here's an extended example of how this works:
+Here’s an extended example of how this works:
 
-```{rust}
-# #![feature(core)]
+```rust
 trait HasArea {
     fn area(&self) -> f64;
 }
@@ -144,10 +136,10 @@ This shape has an area of 3.141593
 This shape has an area of 1
 ```
 
-As you can see, `print_area` is now generic, but also ensures that we
-have passed in the correct types. If we pass in an incorrect type:
+As you can see, `print_area` is now generic, but also ensures that we have
+passed in the correct types. If we pass in an incorrect type:
 
-```{rust,ignore}
+```rust,ignore
 print_area(5);
 ```
 
@@ -157,11 +149,11 @@ We get a compile-time error:
 error: failed to find an implementation of trait main::HasArea for int
 ```
 
-So far, we've only added trait implementations to structs, but you can
-implement a trait for any type. So technically, we _could_ implement
-`HasArea` for `i32`:
+So far, we’ve only added trait implementations to structs, but you can
+implement a trait for any type. So technically, we _could_ implement `HasArea`
+for `i32`:
 
-```{rust}
+```rust
 trait HasArea {
     fn area(&self) -> f64;
 }
@@ -181,102 +173,57 @@ It is considered poor style to implement methods on such primitive types, even
 though it is possible.
 
 This may seem like the Wild West, but there are two other restrictions around
-implementing traits that prevent this from getting out of hand. First, traits
-must be `use`d in any scope where you wish to use the trait's method. So for
-example, this does not work:
+implementing traits that prevent this from getting out of hand. The first is
+that if the trait isn’t defined in your scope, it doesn’t apply. Here’s an
+example: the standard library provides a [`Write`][write] trait which adds
+extra functionality to `File`s, for doing file I/O. By default, a `File`
+won’t have its methods:
 
-```{rust,ignore}
-mod shapes {
-    use std::f64::consts;
+[write]: ../std/io/trait.Write.html
 
-    trait HasArea {
-        fn area(&self) -> f64;
-    }
-
-    struct Circle {
-        x: f64,
-        y: f64,
-        radius: f64,
-    }
-
-    impl HasArea for Circle {
-        fn area(&self) -> f64 {
-            consts::PI * (self.radius * self.radius)
-        }
-    }
-}
-
-fn main() {
-    let c = shapes::Circle {
-        x: 0.0f64,
-        y: 0.0f64,
-        radius: 1.0f64,
-    };
-
-    println!("{}", c.area());
-}
+```rust,ignore
+let mut f = std::fs::File::open("foo.txt").ok().expect("Couldn’t open foo.txt");
+let result = f.write("whatever".as_bytes());
+# result.unwrap(); // ignore the erorr
 ```
 
-Now that we've moved the structs and traits into their own module, we get an
-error:
+Here’s the error:
 
 ```text
-error: type `shapes::Circle` does not implement any method in scope named `area`
+error: type `std::fs::File` does not implement any method in scope named `write`
+
+let result = f.write(b”whatever”);
+               ^~~~~~~~~~~~~~~~~~
 ```
 
-If we add a `use` line right above `main` and make the right things public,
-everything is fine:
+We need to `use` the `Write` trait first:
 
-```{rust}
-# #![feature(core)]
-mod shapes {
-    use std::f64::consts;
+```rust,ignore
+use std::io::Write;
 
-    pub trait HasArea {
-        fn area(&self) -> f64;
-    }
-
-    pub struct Circle {
-        pub x: f64,
-        pub y: f64,
-        pub radius: f64,
-    }
-
-    impl HasArea for Circle {
-        fn area(&self) -> f64 {
-            consts::PI * (self.radius * self.radius)
-        }
-    }
-}
-
-use shapes::HasArea;
-
-fn main() {
-    let c = shapes::Circle {
-        x: 0.0f64,
-        y: 0.0f64,
-        radius: 1.0f64,
-    };
-
-    println!("{}", c.area());
-}
+let mut f = std::fs::File::open("foo.txt").ok().expect("Couldn’t open foo.txt");
+let result = f.write("whatever".as_bytes());
+# result.unwrap(); // ignore the erorr
 ```
+
+This will compile without error.
 
 This means that even if someone does something bad like add methods to `int`,
-it won't affect you, unless you `use` that trait.
+it won’t affect you, unless you `use` that trait.
 
-There's one more restriction on implementing traits. Either the trait or the
-type you're writing the `impl` for must be inside your crate. So, we could
-implement the `HasArea` type for `i32`, because `HasArea` is in our crate.  But
+There’s one more restriction on implementing traits. Either the trait or the
+type you’re writing the `impl` for must be defined by you. So, we could
+implement the `HasArea` type for `i32`, because `HasArea` is in our code. But
 if we tried to implement `Float`, a trait provided by Rust, for `i32`, we could
-not, because both the trait and the type aren't in our crate.
+not, because neither the trait nor the type are in our code.
 
 One last thing about traits: generic functions with a trait bound use
-*monomorphization* (*mono*: one, *morph*: form), so they are statically
-dispatched. What's that mean? Check out the chapter on [trait
-objects](trait-objects.html) for more.
+‘monomorphization’ (mono: one, morph: form), so they are statically dispatched.
+What’s that mean? Check out the chapter on [trait objects][to] for more details.
 
-## Multiple trait bounds
+[to]: trait-objects.html
+
+# Multiple trait bounds
 
 You’ve seen that you can bound a generic type parameter with a trait:
 
@@ -299,10 +246,10 @@ fn foo<T: Clone + Debug>(x: T) {
 
 `T` now needs to be both `Clone` as well as `Debug`.
 
-## Where clause
+# Where clause
 
 Writing functions with only a few generic types and a small number of trait
-bounds isn't too bad, but as the number increases, the syntax gets increasingly
+bounds isn’t too bad, but as the number increases, the syntax gets increasingly
 awkward:
 
 ```
@@ -318,7 +265,7 @@ fn foo<T: Clone, K: Clone + Debug>(x: T, y: K) {
 The name of the function is on the far left, and the parameter list is on the
 far right. The bounds are getting in the way.
 
-Rust has a solution, and it's called a '`where` clause':
+Rust has a solution, and it’s called a ‘`where` clause’:
 
 ```
 use std::fmt::Debug;
@@ -389,84 +336,9 @@ This shows off the additional feature of `where` clauses: they allow bounds
 where the left-hand side is an arbitrary type (`i32` in this case), not just a
 plain type parameter (like `T`).
 
-## Our `inverse` Example
+# Default methods
 
-Back in [Generics](generics.html), we were trying to write code like this:
-
-```{rust,ignore}
-fn inverse<T>(x: T) -> Result<T, String> {
-    if x == 0.0 { return Err("x cannot be zero!".to_string()); }
-
-    Ok(1.0 / x)
-}
-```
-
-If we try to compile it, we get this error:
-
-```text
-error: binary operation `==` cannot be applied to type `T`
-```
-
-This is because `T` is too generic: we don't know if a random `T` can be
-compared. For that, we can use trait bounds. It doesn't quite work, but try
-this:
-
-```{rust,ignore}
-fn inverse<T: PartialEq>(x: T) -> Result<T, String> {
-    if x == 0.0 { return Err("x cannot be zero!".to_string()); }
-
-    Ok(1.0 / x)
-}
-```
-
-You should get this error:
-
-```text
-error: mismatched types:
- expected `T`,
-    found `_`
-(expected type parameter,
-    found floating-point variable)
-```
-
-So this won't work. While our `T` is `PartialEq`, we expected to have another `T`,
-but instead, we found a floating-point variable. We need a different bound. `Float`
-to the rescue:
-
-```
-# #![feature(std_misc)]
-use std::num::Float;
-
-fn inverse<T: Float>(x: T) -> Result<T, String> {
-    if x == Float::zero() { return Err("x cannot be zero!".to_string()) }
-
-    let one: T = Float::one();
-    Ok(one / x)
-}
-```
-
-We've had to replace our generic `0.0` and `1.0` with the appropriate methods
-from the `Float` trait. Both `f32` and `f64` implement `Float`, so our function
-works just fine:
-
-```
-# #![feature(std_misc)]
-# use std::num::Float;
-# fn inverse<T: Float>(x: T) -> Result<T, String> {
-#     if x == Float::zero() { return Err("x cannot be zero!".to_string()) }
-#     let one: T = Float::one();
-#     Ok(one / x)
-# }
-println!("the inverse of {} is {:?}", 2.0f32, inverse(2.0f32));
-println!("the inverse of {} is {:?}", 2.0f64, inverse(2.0f64));
-
-println!("the inverse of {} is {:?}", 0.0f32, inverse(0.0f32));
-println!("the inverse of {} is {:?}", 0.0f64, inverse(0.0f64));
-```
-
-## Default methods
-
-There's one last feature of traits we should cover: default methods. It's
+There’s one last feature of traits we should cover: default methods. It’s
 easiest just to show an example:
 
 ```rust
@@ -477,8 +349,8 @@ trait Foo {
 }
 ```
 
-Implementors of the `Foo` trait need to implement `bar()`, but they don't
-need to implement `baz()`. They'll get this default behavior. They can
+Implementors of the `Foo` trait need to implement `bar()`, but they don’t
+need to implement `baz()`. They’ll get this default behavior. They can
 override the default if they so choose:
 
 ```rust
@@ -505,4 +377,44 @@ default.baz(); // prints "We called baz."
 
 let over = OverrideDefault;
 over.baz(); // prints "Override baz!"
+```
+
+# Inheritance
+
+Sometimes, implementing a trait requires implementing another trait:
+
+```rust
+trait Foo {
+    fn foo(&self);
+}
+
+trait FooBar : Foo {
+    fn foobar(&self);
+}
+```
+
+Implementors of `FooBar` must also implement `Foo`, like this:
+
+```rust
+# trait Foo {
+#     fn foo(&self);
+# }
+# trait FooBar : Foo {
+#     fn foobar(&self);
+# }
+struct Baz;
+
+impl Foo for Baz {
+    fn foo(&self) { println!("foo"); }
+}
+
+impl FooBar for Baz {
+    fn foobar(&self) { println!("foobar"); }
+}
+```
+
+If we forget to implement `Foo`, Rust will tell us:
+
+```text
+error: the trait `main::Foo` is not implemented for the type `main::Baz` [E0277]
 ```

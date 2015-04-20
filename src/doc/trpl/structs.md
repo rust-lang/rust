@@ -1,6 +1,6 @@
 % Structs
 
-Structs are a way of creating more complex datatypes. For example, if we were
+Structs are a way of creating more complex data types. For example, if we were
 doing calculations involving coordinates in 2D space, we would need both an `x`
 and a `y` value:
 
@@ -24,12 +24,12 @@ fn main() {
 }
 ```
 
-There’s a lot going on here, so let’s break it down. We declare a struct with
-the `struct` keyword, and then with a name. By convention, structs begin with a
-capital letter and are also camel cased: `PointInSpace`, not `Point_In_Space`.
+There’s a lot going on here, so let’s break it down. We declare a `struct` with
+the `struct` keyword, and then with a name. By convention, `struct`s begin with
+a capital letter and are camel cased: `PointInSpace`, not `Point_In_Space`.
 
 We can create an instance of our struct via `let`, as usual, but we use a `key:
-value` style syntax to set each field. The order doesn't need to be the same as
+value` style syntax to set each field. The order doesn’t need to be the same as
 in the original declaration.
 
 Finally, because fields have names, we can access the field through dot
