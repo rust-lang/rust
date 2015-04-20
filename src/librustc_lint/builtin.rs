@@ -923,7 +923,9 @@ impl NonSnakeCase {
                 allow_underscore = match c {
                     '_' if !allow_underscore => return false,
                     '_' => false,
-                    c if c.is_lowercase() => true,
+                    // It would be more obvious to use `c.is_lowercase`,
+                    // but some characters do not have a lowercase form
+                    c if !c.is_uppercase() => true,
                     _ => return false,
                 };
                 true
