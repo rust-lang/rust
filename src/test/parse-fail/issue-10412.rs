@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 
 trait Serializable<'self, T> { //~ ERROR no longer a special lifetime
     fn serialize(val : &'self T) -> Vec<u8> ; //~ ERROR no longer a special lifetime

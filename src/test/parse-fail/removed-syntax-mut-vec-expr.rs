@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 fn f() {
     let v = [mut 1, 2, 3, 4];
     //~^  ERROR expected identifier, found keyword `mut`

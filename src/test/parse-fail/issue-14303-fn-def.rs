@@ -8,5 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 fn foo<'a, T, 'b>(x: &'a T) {}
 //~^ ERROR lifetime parameters must be declared prior to type parameters

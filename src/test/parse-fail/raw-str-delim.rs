@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 static s: &'static str =
     r#x"#"x# //~ ERROR only `#` is allowed in raw string delimitation; found illegal character
 ;

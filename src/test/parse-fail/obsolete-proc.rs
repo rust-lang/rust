@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 // Test that we generate obsolete syntax errors around usages of `proc`.
 
 fn foo(p: proc()) { } //~ ERROR `proc` is a reserved keyword

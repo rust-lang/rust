@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 //error-pattern: discriminator values can only be used with a c-like enum
 
 enum color {

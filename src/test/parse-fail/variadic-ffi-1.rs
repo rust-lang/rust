@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 extern {
     fn printf(...); //~ ERROR: variadic function must be declared with at least one named argument
     fn printf(..., foo: isize); //~ ERROR: `...` must be last in argument list for variadic function
