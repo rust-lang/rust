@@ -412,11 +412,16 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
+    symlink_inner(src, dst, false)
+}
+
+pub fn symlink_inner(src: &Path, dst: &Path, dir: bool) -> io::Result<()> {
     use sys::c::compat::kernel32::CreateSymbolicLinkW;
     let src = to_utf16(src);
     let dst = to_utf16(dst);
+    let flags = if dir { c::SYMBOLIC_LINK_FLAG_DIRECTORY } else { 0 };
     try!(cvt(unsafe {
-        CreateSymbolicLinkW(dst.as_ptr(), src.as_ptr(), 0) as libc::BOOL
+        CreateSymbolicLinkW(dst.as_ptr(), src.as_ptr(), flags) as libc::BOOL
     }));
     Ok(())
 }
