@@ -64,7 +64,6 @@ use util::nodemap::FnvHashSet;
 use util::ppaux::{self, Repr, UserString};
 
 use std::iter::repeat;
-use std::rc::Rc;
 use std::slice;
 use syntax::{abi, ast, ast_util};
 use syntax::codemap::{Span, Pos};
@@ -83,7 +82,7 @@ pub trait AstConv<'tcx> {
     /// Returns the `TraitDef` for a given trait. This allows you to
     /// figure out the set of type parameters defined on the trait.
     fn get_trait_def(&self, span: Span, id: ast::DefId)
-                     -> Result<Rc<ty::TraitDef<'tcx>>, ErrorReported>;
+                     -> Result<&'tcx ty::TraitDef<'tcx>, ErrorReported>;
 
     /// Ensure that the super-predicates for the trait with the given
     /// id are available and also for the transitive set of
@@ -140,7 +139,7 @@ pub trait AstConv<'tcx> {
     /// This is fairly straightforward and can be accommodated in any context.
     fn projected_ty(&self,
                     span: Span,
-                    _trait_ref: Rc<ty::TraitRef<'tcx>>,
+                    _trait_ref: ty::TraitRef<'tcx>,
                     _item_name: ast::Name)
                     -> Ty<'tcx>;
 }
@@ -633,7 +632,7 @@ pub fn instantiate_mono_trait_ref<'tcx>(
     rscope: &RegionScope,
     trait_ref: &ast::TraitRef,
     self_ty: Option<Ty<'tcx>>)
-    -> Rc<ty::TraitRef<'tcx>>
+    -> ty::TraitRef<'tcx>
 {
     let trait_def_id = trait_def_id(this, trait_ref);
     ast_path_to_mono_trait_ref(this,
@@ -702,7 +701,7 @@ fn ast_path_to_poly_trait_ref<'a,'tcx>(
                                         trait_def_id,
                                         self_ty,
                                         trait_segment);
-    let poly_trait_ref = ty::Binder(Rc::new(ty::TraitRef::new(trait_def_id, substs)));
+    let poly_trait_ref = ty::Binder(ty::TraitRef::new(trait_def_id, substs));
 
     {
         let converted_bindings =
@@ -730,7 +729,7 @@ fn ast_path_to_mono_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
                                        trait_def_id: ast::DefId,
                                        self_ty: Option<Ty<'tcx>>,
                                        trait_segment: &ast::PathSegment)
-                                       -> Rc<ty::TraitRef<'tcx>>
+                                       -> ty::TraitRef<'tcx>
 {
     let (substs, assoc_bindings) =
         create_substs_for_ast_trait_ref(this,
@@ -741,7 +740,7 @@ fn ast_path_to_mono_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
                                         self_ty,
                                         trait_segment);
     prohibit_projections(this.tcx(), &assoc_bindings);
-    Rc::new(ty::TraitRef::new(trait_def_id, substs))
+    ty::TraitRef::new(trait_def_id, substs)
 }
 
 fn create_substs_for_ast_trait_ref<'a,'tcx>(this: &AstConv<'tcx>,
@@ -856,8 +855,8 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
         let mut dummy_substs = trait_ref.skip_binder().substs.clone(); // binder moved here -+
         assert!(dummy_substs.self_ty().is_none());                     //                    |
         dummy_substs.types.push(SelfSpace, dummy_self_ty);             //                    |
-        trait_ref = ty::Binder(Rc::new(ty::TraitRef::new(trait_ref.def_id(), // <------------+
-                                                         tcx.mk_substs(dummy_substs))));
+        trait_ref = ty::Binder(ty::TraitRef::new(trait_ref.def_id(),   // <------------+
+                                                 tcx.mk_substs(dummy_substs)));
     }
 
     try!(this.ensure_super_predicates(binding.span, trait_ref.def_id()));
@@ -874,8 +873,8 @@ fn ast_type_binding_to_poly_projection_predicate<'tcx>(
             let mut dummy_substs = candidate.0.substs.clone();
             assert!(dummy_substs.self_ty() == Some(dummy_self_ty));
             dummy_substs.types.pop(SelfSpace);
-            *candidate = ty::Binder(Rc::new(ty::TraitRef::new(candidate.def_id(),
-                                                              tcx.mk_substs(dummy_substs))));
+            *candidate = ty::Binder(ty::TraitRef::new(candidate.def_id(),
+                                                      tcx.mk_substs(dummy_substs)));
         }
     }
 

@@ -40,7 +40,6 @@ use middle::ty::{self, Ty};
 use middle::ty::MethodCall;
 use util::ppaux::Repr;
 
-use std::rc::Rc;
 use syntax::abi::{Rust, RustCall};
 use syntax::parse::token;
 use syntax::{ast, ast_map, attr, visit};
@@ -232,8 +231,8 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                              Vec::new()));
     let trait_substs = tcx.mk_substs(trait_substs);
     debug!("trait_substs={}", trait_substs.repr(tcx));
-    let trait_ref = ty::Binder(Rc::new(ty::TraitRef { def_id: trait_id,
-                                                      substs: trait_substs }));
+    let trait_ref = ty::Binder(ty::TraitRef { def_id: trait_id,
+                                              substs: trait_substs });
     let vtbl = fulfill_obligation(ccx,
                                   DUMMY_SP,
                                   trait_ref);

@@ -112,7 +112,6 @@ use util::lev_distance::lev_distance;
 
 use std::cell::{Cell, Ref, RefCell};
 use std::mem::replace;
-use std::rc::Rc;
 use std::iter::repeat;
 use std::slice;
 use syntax::{self, abi, attr};
@@ -747,7 +746,7 @@ pub fn check_item_type<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
               Some(impl_trait_ref) => {
                 check_impl_items_against_trait(ccx,
                                                it.span,
-                                               &*impl_trait_ref,
+                                               &impl_trait_ref,
                                                impl_items);
               }
               None => { }
@@ -1174,7 +1173,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
     }
 
     fn get_trait_def(&self, _: Span, id: ast::DefId)
-                     -> Result<Rc<ty::TraitDef<'tcx>>, ErrorReported>
+                     -> Result<&'tcx ty::TraitDef<'tcx>, ErrorReported>
     {
         Ok(ty::lookup_trait_def(self.tcx(), id))
     }
@@ -1244,7 +1243,7 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn projected_ty(&self,
                     span: Span,
-                    trait_ref: Rc<ty::TraitRef<'tcx>>,
+                    trait_ref: ty::TraitRef<'tcx>,
                     item_name: ast::Name)
                     -> Ty<'tcx>
     {
@@ -1457,7 +1456,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn normalize_associated_type(&self,
                                  span: Span,
-                                 trait_ref: Rc<ty::TraitRef<'tcx>>,
+                                 trait_ref: ty::TraitRef<'tcx>,
                                  item_name: ast::Name)
                                  -> Ty<'tcx>
     {

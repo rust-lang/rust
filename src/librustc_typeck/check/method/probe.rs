@@ -61,7 +61,7 @@ struct Candidate<'tcx> {
 enum CandidateKind<'tcx> {
     InherentImplCandidate(/* Impl */ ast::DefId, subst::Substs<'tcx>),
     ObjectCandidate(/* Trait */ ast::DefId, /* method_num */ usize, /* vtable index */ usize),
-    ExtensionImplCandidate(/* Impl */ ast::DefId, Rc<ty::TraitRef<'tcx>>,
+    ExtensionImplCandidate(/* Impl */ ast::DefId, ty::TraitRef<'tcx>,
                            subst::Substs<'tcx>, ItemIndex),
     ClosureCandidate(/* Trait */ ast::DefId, ItemIndex),
     WhereClauseCandidate(ty::PolyTraitRef<'tcx>, ItemIndex),

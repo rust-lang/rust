@@ -283,7 +283,7 @@ pub fn get_impl_polarity<'tcx>(tcx: &ty::ctxt<'tcx>,
 // if there is one.
 pub fn get_impl_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
                             def: ast::DefId)
-                            -> Option<Rc<ty::TraitRef<'tcx>>> {
+                            -> Option<ty::TraitRef<'tcx>> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::get_impl_trait(&*cdata, def.node, tcx)
