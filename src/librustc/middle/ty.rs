@@ -45,6 +45,7 @@ use middle::check_const;
 use middle::const_eval;
 use middle::def::{self, DefMap, ExportMap};
 use middle::dependency_format;
+use middle::fast_reject;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::mem_categorization as mc;
@@ -737,12 +738,6 @@ pub struct ctxt<'tcx> {
     /// A method will be in this list if and only if it is a destructor.
     pub destructors: RefCell<DefIdSet>,
 
-    /// Maps a trait onto a list of impls of that trait.
-    pub trait_impls: RefCell<DefIdMap<Rc<RefCell<Vec<ast::DefId>>>>>,
-
-    /// A set of traits that have a default impl
-    traits_with_default_impls: RefCell<DefIdMap<()>>,
-
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
@@ -766,12 +761,8 @@ pub struct ctxt<'tcx> {
     /// The set of external nominal types whose implementations have been read.
     /// This is used for lazy resolution of methods.
     pub populated_external_types: RefCell<DefIdSet>,
-
-    /// The set of external traits whose implementations have been read. This
-    /// is used for lazy resolution of traits.
-    pub populated_external_traits: RefCell<DefIdSet>,
-
-    /// The set of external primitive inherent implementations that have been read.
+    /// The set of external primitive types whose implementations have been read.
+    /// FIXME(arielb1): why is this separate from populated_external_types?
     pub populated_external_primitive_impls: RefCell<DefIdSet>,
 
     /// Borrows
@@ -824,9 +815,6 @@ pub struct ctxt<'tcx> {
     /// parameters are never placed into this cache, because their
     /// results are dependent on the parameter environment.
     pub type_impls_sized_cache: RefCell<HashMap<Ty<'tcx>,bool>>,
-
-    /// Caches whether traits are object safe
-    pub object_safety_cache: RefCell<DefIdMap<bool>>,
 
     /// Maps Expr NodeId's to their constant qualification.
     pub const_qualif_map: RefCell<NodeMap<check_const::ConstQualif>>,
@@ -966,6 +954,7 @@ impl fmt::Debug for TypeFlags {
 }
 
 impl<'tcx> PartialEq for TyS<'tcx> {
+    #[inline]
     fn eq(&self, other: &TyS<'tcx>) -> bool {
         // (self as *const _) == (other as *const _)
         (self as *const TyS<'tcx>) == (other as *const TyS<'tcx>)
@@ -2500,6 +2489,16 @@ pub struct TypeScheme<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
+bitflags! {
+    flags TraitFlags: u32 {
+        const NO_TRAIT_FLAGS        = 0,
+        const HAS_DEFAULT_IMPL      = 1 << 0,
+        const IS_OBJECT_SAFE        = 1 << 1,
+        const OBJECT_SAFETY_VALID   = 1 << 2,
+        const IMPLS_VALID           = 1 << 3,
+    }
+}
+
 /// As `TypeScheme` but for a trait ref.
 pub struct TraitDef<'tcx> {
     pub unsafety: ast::Unsafety,
@@ -2522,6 +2521,103 @@ pub struct TraitDef<'tcx> {
     /// A list of the associated types defined in this trait. Useful
     /// for resolving `X::Foo` type markers.
     pub associated_type_names: Vec<ast::Name>,
+
+    /// Impls of the trait.
+    pub nonblanket_impls: RefCell<
+        FnvHashMap<fast_reject::SimplifiedType, Vec<DefId>>
+    >,
+
+    /// Blanket impls associated with the trait.
+    pub blanket_impls: RefCell<Vec<DefId>>,
+
+    pub flags: Cell<TraitFlags>
+}
+
+impl<'tcx> TraitDef<'tcx> {
+    // returns None if not yet calculated
+    pub fn object_safety(&self) -> Option<bool> {
+        if self.flags.get().intersects(TraitFlags::OBJECT_SAFETY_VALID) {
+            Some(self.flags.get().intersects(TraitFlags::IS_OBJECT_SAFE))
+        } else {
+            None
+        }
+    }
+
+    pub fn set_object_safety(&self, is_safe: bool) {
+        self.flags.set(
+            self.flags.get() | if is_safe {
+                TraitFlags::OBJECT_SAFETY_VALID | TraitFlags::IS_OBJECT_SAFE
+            } else {
+                TraitFlags::OBJECT_SAFETY_VALID
+            }
+        );
+    }
+
+    /// Records a trait-to-implementation mapping.
+    pub fn record_impl(&self,
+                       tcx: &ctxt<'tcx>,
+                       impl_def_id: DefId,
+                       impl_trait_ref: TraitRef<'tcx>) {
+        // We don't want to borrow_mut after we already populated all impls,
+        // so check if an impl is present with an immutable borrow first.
+
+        if let Some(sty) = fast_reject::simplify_type(tcx,
+                                                      impl_trait_ref.self_ty(), false) {
+            if !self.nonblanket_impls.borrow().get(&sty).map(
+                    |s| s.contains(&impl_def_id)).unwrap_or(false) {
+                self.nonblanket_impls.borrow_mut().entry(sty).or_insert(vec![]).push(impl_def_id)
+            }
+        } else {
+            if !self.blanket_impls.borrow().contains(&impl_def_id) {
+                self.blanket_impls.borrow_mut().push(impl_def_id)
+            }
+        }
+    }
+
+
+    pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: &ctxt<'tcx>, mut f: F)  {
+        ty::populate_implementations_for_trait_if_necessary(tcx, self.trait_ref.def_id);
+
+        for &impl_def_id in self.blanket_impls.borrow().iter() {
+            f(impl_def_id);
+        }
+
+        for v in self.nonblanket_impls.borrow().values() {
+            for &impl_def_id in v {
+                f(impl_def_id);
+            }
+        }
+    }
+
+    pub fn for_each_relevant_impl<F: FnMut(DefId)>(&self,
+                                                   tcx: &ctxt<'tcx>,
+                                                   trait_ref: TraitRef<'tcx>,
+                                                   mut f: F)
+    {
+        ty::populate_implementations_for_trait_if_necessary(tcx, self.trait_ref.def_id);
+
+        for &impl_def_id in self.blanket_impls.borrow().iter() {
+            f(impl_def_id);
+        }
+
+        if let Some(self_ty) = trait_ref.substs.self_ty() {
+            if let Some(simp) = fast_reject::simplify_type(tcx, self_ty, false) {
+                if let Some(impls) = self.nonblanket_impls.borrow().get(&simp) {
+                    for &impl_def_id in impls {
+                        f(impl_def_id);
+                    }
+                }
+                return; // don't process all non-blanket impls
+            }
+        }
+
+        for v in self.nonblanket_impls.borrow().values() {
+            for &impl_def_id in v {
+                f(impl_def_id);
+            }
+        }
+    }
+
 }
 
 /// Records the substitutions used to translate the polytype for an
@@ -2681,14 +2777,11 @@ pub fn mk_ctxt<'tcx>(s: Session,
         struct_fields: RefCell::new(DefIdMap()),
         destructor_for_type: RefCell::new(DefIdMap()),
         destructors: RefCell::new(DefIdSet()),
-        trait_impls: RefCell::new(DefIdMap()),
-        traits_with_default_impls: RefCell::new(DefIdMap()),
         inherent_impls: RefCell::new(DefIdMap()),
         impl_items: RefCell::new(DefIdMap()),
         used_unsafe: RefCell::new(NodeSet()),
         used_mut_nodes: RefCell::new(NodeSet()),
         populated_external_types: RefCell::new(DefIdSet()),
-        populated_external_traits: RefCell::new(DefIdSet()),
         populated_external_primitive_impls: RefCell::new(DefIdSet()),
         upvar_capture_map: RefCell::new(FnvHashMap()),
         extern_const_statics: RefCell::new(DefIdMap()),
@@ -2705,7 +2798,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         repr_hint_cache: RefCell::new(DefIdMap()),
         type_impls_copy_cache: RefCell::new(HashMap::new()),
         type_impls_sized_cache: RefCell::new(HashMap::new()),
-        object_safety_cache: RefCell::new(DefIdMap()),
         const_qualif_map: RefCell::new(NodeMap()),
    }
 }
@@ -6223,50 +6315,36 @@ pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
 
 pub fn trait_has_default_impl(tcx: &ctxt, trait_def_id: DefId) -> bool {
     populate_implementations_for_trait_if_necessary(tcx, trait_def_id);
-    tcx.traits_with_default_impls.borrow().contains_key(&trait_def_id)
+
+    let def = lookup_trait_def(tcx, trait_def_id);
+    def.flags.get().intersects(TraitFlags::HAS_DEFAULT_IMPL)
 }
 
 /// Records a trait-to-implementation mapping.
 pub fn record_trait_has_default_impl(tcx: &ctxt, trait_def_id: DefId) {
-    // We're using the latest implementation found as the reference one.
-    // Duplicated implementations are caught and reported in the coherence
-    // step.
-    tcx.traits_with_default_impls.borrow_mut().insert(trait_def_id, ());
-}
-
-/// Records a trait-to-implementation mapping.
-pub fn record_trait_implementation(tcx: &ctxt,
-                                   trait_def_id: DefId,
-                                   impl_def_id: DefId) {
-
-    match tcx.trait_impls.borrow().get(&trait_def_id) {
-        Some(impls_for_trait) => {
-            impls_for_trait.borrow_mut().push(impl_def_id);
-            return;
-        }
-        None => {}
-    }
-
-    tcx.trait_impls.borrow_mut().insert(trait_def_id, Rc::new(RefCell::new(vec!(impl_def_id))));
+    let def = lookup_trait_def(tcx, trait_def_id);
+    def.flags.set(def.flags.get() | TraitFlags::HAS_DEFAULT_IMPL)
 }
 
 /// Load primitive inherent implementations if necessary
-pub fn populate_implementations_for_primitive_if_necessary(tcx: &ctxt, lang_def_id: ast::DefId) {
-    if lang_def_id.krate == LOCAL_CRATE {
-        return
-    }
-    if tcx.populated_external_primitive_impls.borrow().contains(&lang_def_id) {
+pub fn populate_implementations_for_primitive_if_necessary(tcx: &ctxt,
+                                                           primitive_def_id: ast::DefId) {
+    if primitive_def_id.krate == LOCAL_CRATE {
         return
     }
 
-    debug!("populate_implementations_for_primitive_if_necessary: searching for {:?}", lang_def_id);
+    if tcx.populated_external_primitive_impls.borrow().contains(&primitive_def_id) {
+        return
+    }
 
-    let impl_items = csearch::get_impl_items(&tcx.sess.cstore, lang_def_id);
+    debug!("populate_implementations_for_primitive_if_necessary: searching for {:?}",
+           primitive_def_id);
+
+    let impl_items = csearch::get_impl_items(&tcx.sess.cstore, primitive_def_id);
 
     // Store the implementation info.
-    tcx.impl_items.borrow_mut().insert(lang_def_id, impl_items);
-
-    tcx.populated_external_primitive_impls.borrow_mut().insert(lang_def_id);
+    tcx.impl_items.borrow_mut().insert(primitive_def_id, impl_items);
+    tcx.populated_external_primitive_impls.borrow_mut().insert(primitive_def_id);
 }
 
 /// Populates the type context with all the implementations for the given type
@@ -6276,6 +6354,7 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
     if type_id.krate == LOCAL_CRATE {
         return
     }
+
     if tcx.populated_external_types.borrow().contains(&type_id) {
         return
     }
@@ -6286,10 +6365,12 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
     csearch::each_implementation_for_type(&tcx.sess.cstore, type_id, |impl_def_id| {
         let impl_items = csearch::get_impl_items(&tcx.sess.cstore, impl_def_id);
 
-        // Record the trait->implementation mappings, if applicable.
-        let associated_traits = csearch::get_impl_trait(tcx, impl_def_id);
-        if let Some(ref trait_ref) = associated_traits {
-            record_trait_implementation(tcx, trait_ref.def_id, impl_def_id);
+        // Record the implementation, if needed
+        if let Some(trait_ref) = csearch::get_impl_trait(tcx, impl_def_id) {
+            let trait_def = lookup_trait_def(tcx, trait_ref.def_id);
+            trait_def.record_impl(tcx, impl_def_id, trait_ref);
+        } else {
+            inherent_impls.push(impl_def_id);
         }
 
         // For any methods that use a default implementation, add them to
@@ -6310,11 +6391,6 @@ pub fn populate_implementations_for_type_if_necessary(tcx: &ctxt,
 
         // Store the implementation info.
         tcx.impl_items.borrow_mut().insert(impl_def_id, impl_items);
-
-        // If this is an inherent implementation, record it.
-        if associated_traits.is_none() {
-            inherent_impls.push(impl_def_id);
-        }
     });
 
     tcx.inherent_impls.borrow_mut().insert(type_id, Rc::new(inherent_impls));
@@ -6330,7 +6406,8 @@ pub fn populate_implementations_for_trait_if_necessary(
         return
     }
 
-    if tcx.populated_external_traits.borrow().contains(&trait_id) {
+    let def = lookup_trait_def(tcx, trait_id);
+    if def.flags.get().intersects(TraitFlags::IMPLS_VALID) {
         return
     }
 
@@ -6340,9 +6417,9 @@ pub fn populate_implementations_for_trait_if_necessary(
 
     csearch::each_implementation_for_trait(&tcx.sess.cstore, trait_id, |implementation_def_id| {
         let impl_items = csearch::get_impl_items(&tcx.sess.cstore, implementation_def_id);
-
+        let trait_ref = impl_trait_ref(tcx, implementation_def_id).unwrap();
         // Record the trait->implementation mapping.
-        record_trait_implementation(tcx, trait_id, implementation_def_id);
+        def.record_impl(tcx, implementation_def_id, trait_ref);
 
         // For any methods that use a default implementation, add them to
         // the map. This is a bit unfortunate.
@@ -6364,7 +6441,7 @@ pub fn populate_implementations_for_trait_if_necessary(
         tcx.impl_items.borrow_mut().insert(implementation_def_id, impl_items);
     });
 
-    tcx.populated_external_traits.borrow_mut().insert(trait_id);
+    def.flags.set(def.flags.get() | TraitFlags::IMPLS_VALID);
 }
 
 /// Given the def_id of an impl, return the def_id of the trait it implements.

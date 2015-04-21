@@ -974,16 +974,14 @@ fn encode_inherent_implementations(ecx: &EncodeContext,
 fn encode_extension_implementations(ecx: &EncodeContext,
                                     rbml_w: &mut Encoder,
                                     trait_def_id: DefId) {
-    match ecx.tcx.trait_impls.borrow().get(&trait_def_id) {
-        None => {}
-        Some(implementations) => {
-            for &impl_def_id in &*implementations.borrow() {
-                rbml_w.start_tag(tag_items_data_item_extension_impl);
-                encode_def_id(rbml_w, impl_def_id);
-                rbml_w.end_tag();
-            }
-        }
-    }
+    assert!(ast_util::is_local(trait_def_id));
+    let def = ty::lookup_trait_def(ecx.tcx, trait_def_id);
+
+    def.for_each_impl(ecx.tcx, |impl_def_id| {
+        rbml_w.start_tag(tag_items_data_item_extension_impl);
+        encode_def_id(rbml_w, impl_def_id);
+        rbml_w.end_tag();
+    });
 }
 
 fn encode_stability(rbml_w: &mut Encoder, stab_opt: Option<attr::Stability>) {
