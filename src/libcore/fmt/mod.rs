@@ -83,6 +83,23 @@ pub trait Write {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_str(&mut self, s: &str) -> Result;
 
+    /// Writes a `char` into this writer, returning whether the write succeeded.
+    ///
+    /// A single `char` may be encoded as more than one byte.
+    /// This method can only succeed if the entire byte sequence was successfully
+    /// written, and this method will not return until all data has been
+    /// written or an error occurs.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an instance of `FormatError` on error.
+    #[stable(feature = "fmt_write_char", since = "1.1.0")]
+    fn write_char(&mut self, c: char) -> Result {
+        let mut utf_8 = [0u8; 4];
+        let bytes_written = c.encode_utf8(&mut utf_8).unwrap_or(0);
+        self.write_str(unsafe { mem::transmute(&utf_8[..bytes_written]) })
+    }
+
     /// Glue for usage of the `write!` macro with implementers of this trait.
     ///
     /// This method should generally not be invoked manually, but rather through
