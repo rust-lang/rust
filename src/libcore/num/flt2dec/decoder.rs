@@ -75,7 +75,7 @@ pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
         FpCategory::Infinite => FullDecoded::Infinite,
         FpCategory::Zero => FullDecoded::Zero,
         FpCategory::Subnormal => {
-            // (mant - 2, exp) -- (mant, exp) -- (mant + 2, exp)
+            // neighbors: (mant - 2, exp) -- (mant, exp) -- (mant + 2, exp)
             // Float::integer_decode always preserves the exponent,
             // so the mantissa is scaled for subnormals.
             FullDecoded::Finite(Decoded { mant: mant, minus: 1, plus: 1,
@@ -83,13 +83,13 @@ pub fn decode<T: DecodableFloat>(v: T) -> (/*negative?*/ bool, FullDecoded) {
         }
         FpCategory::Normal => {
             let minnorm = <T as DecodableFloat>::min_pos_norm_value().integer_decode();
-            if mant == minnorm.0 && exp == minnorm.1 {
-                // (maxmant, exp - 1) -- (minnormmant, exp) -- (minnormmant + 1, exp)
+            if mant == minnorm.0 {
+                // neighbors: (maxmant, exp - 1) -- (minnormmant, exp) -- (minnormmant + 1, exp)
                 // where maxmant = minnormmant * 2 - 1
-                FullDecoded::Finite(Decoded { mant: mant << 1, minus: 1, plus: 2,
-                                              exp: exp - 1, inclusive: even })
+                FullDecoded::Finite(Decoded { mant: mant << 2, minus: 1, plus: 2,
+                                              exp: exp - 2, inclusive: even })
             } else {
-                // (mant - 1, exp) -- (mant, exp) -- (mant + 1, exp)
+                // neighbors: (mant - 1, exp) -- (mant, exp) -- (mant + 1, exp)
                 FullDecoded::Finite(Decoded { mant: mant << 1, minus: 1, plus: 1,
                                               exp: exp - 1, inclusive: even })
             }

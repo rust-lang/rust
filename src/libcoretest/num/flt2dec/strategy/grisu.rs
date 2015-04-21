@@ -60,7 +60,7 @@ fn shortest_f32_exhaustive_equivalence_test() {
     //
     // this reports the progress and the number of f32 values returned `None`.
     // with `--nocapture` (and plenty of time and appropriate rustc flags), this should print:
-    // `done, ignored=17643160 passed=2121451879 failed=0`.
+    // `done, ignored=17643158 passed=2121451881 failed=0`.
 
     use core::num::flt2dec::strategy::dragon::format_shortest as fallback;
     f32_exhaustive_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS);
