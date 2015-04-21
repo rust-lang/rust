@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
-// ignore-lexer-test FIXME #15679
 
 // This file has utf-8 BOM, it should be compiled normally without error.
 
