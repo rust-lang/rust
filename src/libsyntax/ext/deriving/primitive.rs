@@ -40,7 +40,7 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                 args: vec!(Literal(path_local!(i64))),
                 ret_ty: Literal(Path::new_(pathvec_std!(cx, core::option::Option),
                                            None,
-                                           vec!(box Self_),
+                                           vec!(Box::new(Self_)),
                                            true)),
                 // #[inline] liable to cause code-bloat
                 attributes: attrs.clone(),
@@ -55,7 +55,7 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
                 args: vec!(Literal(path_local!(u64))),
                 ret_ty: Literal(Path::new_(pathvec_std!(cx, core::option::Option),
                                            None,
-                                           vec!(box Self_),
+                                           vec!(Box::new(Self_)),
                                            true)),
                 // #[inline] liable to cause code-bloat
                 attributes: attrs,
@@ -71,8 +71,8 @@ pub fn expand_deriving_from_primitive(cx: &mut ExtCtxt,
 }
 
 fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
-    let n = match substr.nonself_args {
-        [ref n] => n,
+    let n = match (substr.nonself_args.len(), substr.nonself_args.get(0)) {
+        (1, Some(o_f)) => o_f,
         _ => cx.span_bug(trait_span, "incorrect number of arguments in `derive(FromPrimitive)`")
     };
 

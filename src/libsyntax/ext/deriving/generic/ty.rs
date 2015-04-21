@@ -24,7 +24,7 @@ use parse::token::special_idents;
 use ptr::P;
 
 /// The types of pointers
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum PtrTy<'a> {
     /// &'lifetime mut
     Borrowed(Option<&'a str>, ast::Mutability),
@@ -34,7 +34,7 @@ pub enum PtrTy<'a> {
 
 /// A path, e.g. `::std::option::Option::<i32>` (global). Has support
 /// for type parameters and a lifetime.
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Path<'a> {
     pub path: Vec<&'a str> ,
     pub lifetime: Option<&'a str>,
@@ -85,7 +85,7 @@ impl<'a> Path<'a> {
 }
 
 /// A type. Supports pointers, Self, and literals
-#[derive(Clone)]
+#[derive(Clone, Eq, PartialEq)]
 pub enum Ty<'a> {
     Self_,
     /// &/Box/ Ty
@@ -109,7 +109,7 @@ pub fn borrowed_explicit_self<'r>() -> Option<Option<PtrTy<'r>>> {
 }
 
 pub fn borrowed_self<'r>() -> Ty<'r> {
-    borrowed(box Self_)
+    borrowed(Box::new(Self_))
 }
 
 pub fn nil_ty<'r>() -> Ty<'r> {

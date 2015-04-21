@@ -15,6 +15,7 @@ use parse::new_parser_from_source_str;
 use parse::parser::Parser;
 use parse::token;
 use ptr::P;
+use str::char_at;
 
 /// Map a string to tts, using a made-up filename:
 pub fn string_to_tts(source_str: String) -> Vec<ast::TokenTree> {
@@ -96,24 +97,24 @@ pub fn matches_codepattern(a : &str, b : &str) -> bool {
         else if idx_a == a.len() {return false;}
         else if idx_b == b.len() {
             // maybe the stuff left in a is all ws?
-            if is_whitespace(a.char_at(idx_a)) {
+            if is_whitespace(char_at(a, idx_a)) {
                 return scan_for_non_ws_or_end(a,idx_a) == a.len();
             } else {
                 return false;
             }
         }
         // ws in both given and pattern:
-        else if is_whitespace(a.char_at(idx_a))
-           && is_whitespace(b.char_at(idx_b)) {
+        else if is_whitespace(char_at(a, idx_a))
+           && is_whitespace(char_at(b, idx_b)) {
             idx_a = scan_for_non_ws_or_end(a,idx_a);
             idx_b = scan_for_non_ws_or_end(b,idx_b);
         }
         // ws in given only:
-        else if is_whitespace(a.char_at(idx_a)) {
+        else if is_whitespace(char_at(a, idx_a)) {
             idx_a = scan_for_non_ws_or_end(a,idx_a);
         }
         // *don't* silently eat ws in expected only.
-        else if a.char_at(idx_a) == b.char_at(idx_b) {
+        else if char_at(a, idx_a) == char_at(b, idx_b) {
             idx_a += 1;
             idx_b += 1;
         }
@@ -129,7 +130,7 @@ pub fn matches_codepattern(a : &str, b : &str) -> bool {
 fn scan_for_non_ws_or_end(a : &str, idx: usize) -> usize {
     let mut i = idx;
     let len = a.len();
-    while (i < len) && (is_whitespace(a.char_at(i))) {
+    while (i < len) && (is_whitespace(char_at(a, i))) {
         i += 1;
     }
     i

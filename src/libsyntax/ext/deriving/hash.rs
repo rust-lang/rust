@@ -41,7 +41,7 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
                                   vec![path_std!(cx, core::hash::Hasher)])],
                 },
                 explicit_self: borrowed_explicit_self(),
-                args: vec!(Ptr(box Literal(arg), Borrowed(None, MutMutable))),
+                args: vec!(Ptr(Box::new(Literal(arg)), Borrowed(None, MutMutable))),
                 ret_ty: nil_ty(),
                 attributes: vec![],
                 combine_substructure: combine_substructure(Box::new(|a, b, c| {
@@ -56,8 +56,8 @@ pub fn expand_deriving_hash(cx: &mut ExtCtxt,
 }
 
 fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
-    let state_expr = match substr.nonself_args {
-        [ref state_expr] => state_expr,
+    let state_expr = match (substr.nonself_args.len(), substr.nonself_args.get(0)) {
+        (1, Some(o_f)) => o_f,
         _ => cx.span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`")
     };
     let call_hash = |span, thing_expr| {

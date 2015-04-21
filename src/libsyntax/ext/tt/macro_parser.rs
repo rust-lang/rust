@@ -165,7 +165,7 @@ pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: ByteP
                            -> Box<MatcherPos> {
     let match_idx_hi = count_names(&ms[..]);
     let matches: Vec<_> = (0..match_idx_hi).map(|_| Vec::new()).collect();
-    box MatcherPos {
+    Box::new(MatcherPos {
         stack: vec![],
         top_elts: TtSeq(ms),
         sep: sep,
@@ -176,7 +176,7 @@ pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: ByteP
         match_cur: 0,
         match_hi: match_idx_hi,
         sp_lo: lo
-    }
+    })
 }
 
 /// NamedMatch is a pattern-match result for a single token::MATCH_NONTERMINAL:
@@ -396,7 +396,7 @@ pub fn parse(sess: &ParseSess,
                         let matches: Vec<_> = (0..ei.matches.len())
                             .map(|_| Vec::new()).collect();
                         let ei_t = ei;
-                        cur_eis.push(box MatcherPos {
+                        cur_eis.push(Box::new(MatcherPos {
                             stack: vec![],
                             sep: seq.separator.clone(),
                             idx: 0,
@@ -407,7 +407,7 @@ pub fn parse(sess: &ParseSess,
                             up: Some(ei_t),
                             sp_lo: sp.lo,
                             top_elts: Tt(TtSequence(sp, seq)),
-                        });
+                        }));
                     }
                     TtToken(_, MatchNt(..)) => {
                         // Built-in nonterminals never start with these tokens,
@@ -533,7 +533,7 @@ pub fn parse_nt(p: &mut Parser, sp: Span, name: &str) -> Nonterminal {
       "ty" => token::NtTy(p.parse_ty()),
       // this could be handled like a token, since it is one
       "ident" => match p.token {
-        token::Ident(sn,b) => { panictry!(p.bump()); token::NtIdent(box sn,b) }
+        token::Ident(sn,b) => { panictry!(p.bump()); token::NtIdent(Box::new(sn),b) }
         _ => {
             let token_str = pprust::token_to_string(&p.token);
             panic!(p.fatal(&format!("expected ident, found {}",
@@ -541,7 +541,7 @@ pub fn parse_nt(p: &mut Parser, sp: Span, name: &str) -> Nonterminal {
         }
       },
       "path" => {
-        token::NtPath(box panictry!(p.parse_path(LifetimeAndTypesWithoutColons)))
+        token::NtPath(Box::new(panictry!(p.parse_path(LifetimeAndTypesWithoutColons))))
       }
       "meta" => token::NtMeta(p.parse_meta_item()),
       _ => {

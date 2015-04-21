@@ -144,14 +144,14 @@ fn expand_deriving_encodable_imp(cx: &mut ExtCtxt,
                                     vec!(), true))))
                 },
                 explicit_self: borrowed_explicit_self(),
-                args: vec!(Ptr(box Literal(Path::new_local("__S")),
+                args: vec!(Ptr(Box::new(Literal(Path::new_local("__S"))),
                             Borrowed(None, MutMutable))),
                 ret_ty: Literal(Path::new_(
                     pathvec_std!(cx, core::result::Result),
                     None,
-                    vec!(box Tuple(Vec::new()), box Literal(Path::new_(
+                    vec!(Box::new(Tuple(Vec::new())), Box::new(Literal(Path::new_(
                         vec!["__S", "Error"], None, vec![], false
-                    ))),
+                    )))),
                     true
                 )),
                 attributes: Vec::new(),
