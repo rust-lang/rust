@@ -30,6 +30,7 @@
 #![feature(libc)]
 #![feature(link_args)]
 #![feature(staged_api)]
+#![feature(unsafe_destructor)]
 
 extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
@@ -488,9 +489,12 @@ pub type PassRef = *mut Pass_opaque;
 #[allow(missing_copy_implementations)]
 pub enum TargetMachine_opaque {}
 pub type TargetMachineRef = *mut TargetMachine_opaque;
-#[allow(missing_copy_implementations)]
 pub enum Archive_opaque {}
 pub type ArchiveRef = *mut Archive_opaque;
+pub enum ArchiveIterator_opaque {}
+pub type ArchiveIteratorRef = *mut ArchiveIterator_opaque;
+pub enum ArchiveChild_opaque {}
+pub type ArchiveChildRef = *mut ArchiveChild_opaque;
 #[allow(missing_copy_implementations)]
 pub enum Twine_opaque {}
 pub type TwineRef = *mut Twine_opaque;
@@ -2051,8 +2055,14 @@ extern {
     pub fn LLVMRustMarkAllFunctionsNounwind(M: ModuleRef);
 
     pub fn LLVMRustOpenArchive(path: *const c_char) -> ArchiveRef;
-    pub fn LLVMRustArchiveReadSection(AR: ArchiveRef, name: *const c_char,
-                                      out_len: *mut size_t) -> *const c_char;
+    pub fn LLVMRustArchiveIteratorNew(AR: ArchiveRef) -> ArchiveIteratorRef;
+    pub fn LLVMRustArchiveIteratorNext(AIR: ArchiveIteratorRef);
+    pub fn LLVMRustArchiveIteratorCurrent(AIR: ArchiveIteratorRef) -> ArchiveChildRef;
+    pub fn LLVMRustArchiveChildName(ACR: ArchiveChildRef,
+                                    size: *mut size_t) -> *const c_char;
+    pub fn LLVMRustArchiveChildData(ACR: ArchiveChildRef,
+                                    size: *mut size_t) -> *const c_char;
+    pub fn LLVMRustArchiveIteratorFree(AIR: ArchiveIteratorRef);
     pub fn LLVMRustDestroyArchive(AR: ArchiveRef);
 
     pub fn LLVMRustSetDLLExportStorageClass(V: ValueRef);
