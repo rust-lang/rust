@@ -23,6 +23,7 @@ pub fn target() -> Target {
         target_pointer_width: "32".to_string(),
         arch: "arm".to_string(),
         target_os: "linux".to_string(),
+        target_env: "gnueabi".to_string(),
 
         options: TargetOptions {
             features: "+v6".to_string(),
