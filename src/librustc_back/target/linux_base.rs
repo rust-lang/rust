@@ -19,12 +19,16 @@ pub fn opts() -> TargetOptions {
         morestack: true,
         linker_is_gnu: true,
         has_rpath: true,
-        pre_link_args: vec!(
-            // GNU-style linkers will use this to omit linking to libraries which
-            // don't actually fulfill any relocations, but only for libraries which
-            // follow this flag. Thus, use it before specifying libraries to link to.
+        pre_link_args: vec![
+            // We want to be able to strip as much executable code as possible
+            // from the linker command line, and this flag indicates to the
+            // linker that it can avoid linking in dynamic libraries that don't
+            // actually satisfy any symbols up to that point (as with many other
+            // resolutions the linker does). This option only applies to all
+            // following libraries so we're sure to pass it as one of the first
+            // arguments.
             "-Wl,--as-needed".to_string(),
-        ),
+        ],
         position_independent_executables: true,
         .. Default::default()
     }
