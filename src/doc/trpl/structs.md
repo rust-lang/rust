@@ -87,3 +87,33 @@ fn main() {
     point.y = 6; // this causes an error
 }
 ```
+
+# Update syntax
+
+A `struct` can include `..` to indicate that you want to use a copy of some
+other struct for some of the values. For example:
+
+```rust
+struct Point3d {
+    x: i32,
+    y: i32,
+    z: i32,
+}
+
+let mut point = Point3d { x: 0, y: 0, z: 0 };
+point = Point3d { y: 1, .. point };
+```
+
+This gives `point` a new `y`, but keeps the old `x` and `z` values. It doesn’t
+have to be the same `struct` either, you can use this syntax when making new
+ones, and it will copy the values you don’t specify:
+
+```rust
+# struct Point3d {
+#     x: i32,
+#     y: i32,
+#     z: i32,
+# }
+let origin = Point3d { x: 0, y: 0, z: 0 };
+let point = Point3d { z: 1, x: 2, .. origin };
+```
