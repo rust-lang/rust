@@ -12,7 +12,7 @@ javac *.java
 rustc -O verify.rs
 for file in ../*/**.rs; do
     echo $file;
-    grun RustLexer tokens -tokens < $file | ./verify $file RustLexer.tokens || break
+    grun RustLexer tokens -tokens < "$file" | ./verify "$file" RustLexer.tokens || break
 done
 ```
 
