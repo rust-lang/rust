@@ -28,7 +28,8 @@ use core::str::Split;
 use tables::grapheme::GraphemeCat;
 
 /// An iterator over the words of a string, separated by a sequence of whitespace
-#[stable(feature = "rust1", since = "1.0.0")]
+#[unstable(feature = "str_words",
+           reason = "words() will be replaced by split_whitespace() in 1.1.0")]
 pub struct Words<'a> {
     inner: Filter<Split<'a, fn(char) -> bool>, fn(&&str) -> bool>,
 }
