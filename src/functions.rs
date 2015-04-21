@@ -16,6 +16,7 @@ use syntax::print::pprust;
 use syntax::parse::token;
 
 impl<'a> FmtVisitor<'a> {
+    // TODO extract methods for args and generics
     pub fn rewrite_fn(&mut self,
                       indent: usize,
                       ident: ast::Ident,
@@ -31,11 +32,7 @@ impl<'a> FmtVisitor<'a> {
         // who comments there probably deserves what they get.
 
         let where_clause = &generics.where_clause;
-        let newline_brace = match FN_BRACE_STYLE {
-            BraceStyle::AlwaysNextLine => true,
-            BraceStyle::SameLineWhere if where_clause.predicates.len() > 0 => true,
-            _ => false,
-        };
+        let newline_brace = self.newline_for_brace(where_clause);
 
         let mut result = String::with_capacity(1024);
         // Vis unsafety abi.
@@ -81,11 +78,7 @@ impl<'a> FmtVisitor<'a> {
             result.push('>');
         }
 
-        let ret_str = match fd.output {
-            ast::FunctionRetTy::DefaultReturn(_) => String::new(),
-            ast::FunctionRetTy::NoReturn(_) => "-> !".to_string(),
-            ast::FunctionRetTy::Return(ref ty) => "-> ".to_string() + &pprust::ty_to_string(ty),
-        };
+        let ret_str = self.rewrite_return(&fd.output);
 
         // Args.
         let args = &fd.inputs;
@@ -172,23 +165,7 @@ impl<'a> FmtVisitor<'a> {
         result.push(')');
 
         // Where clause.
-        if where_clause.predicates.len() > 0 {
-            result.push('\n');
-            result.push_str(&make_indent(indent + 4));
-            result.push_str("where ");
-
-            let budget = IDEAL_WIDTH + LEEWAY - indent - 10;
-            let fmt = ListFormatting {
-                tactic: ListTactic::Vertical,
-                separator: ",",
-                trailing_separator: SeparatorTactic::Always,
-                indent: indent + 10,
-                h_width: budget,
-                v_width: budget,
-            };
-            let where_strs: Vec<_> = where_clause.predicates.iter().map(|p| (self.rewrite_pred(p), String::new())).collect();
-            result.push_str(&write_list(&where_strs, &fmt));
-        }
+        result.push_str(&self.rewrite_where_clause(where_clause, indent));
 
         // Return type.
         if ret_str.len() > 0 {
@@ -223,6 +200,47 @@ impl<'a> FmtVisitor<'a> {
         }
 
         result
+    }
+
+    fn newline_for_brace(&self, where_clause: &ast::WhereClause) -> bool {
+        match FN_BRACE_STYLE {
+            BraceStyle::AlwaysNextLine => true,
+            BraceStyle::SameLineWhere if where_clause.predicates.len() > 0 => true,
+            _ => false,
+        }
+    }
+
+    fn rewrite_where_clause(&self, where_clause: &ast::WhereClause, indent: usize) -> String {
+        let mut result = String::new();
+        if where_clause.predicates.len() == 0 {
+            return result;
+        }
+
+        result.push('\n');
+        result.push_str(&make_indent(indent + 4));
+        result.push_str("where ");
+
+        let budget = IDEAL_WIDTH + LEEWAY - indent - 10;
+        let fmt = ListFormatting {
+            tactic: ListTactic::Vertical,
+            separator: ",",
+            trailing_separator: SeparatorTactic::Always,
+            indent: indent + 10,
+            h_width: budget,
+            v_width: budget,
+        };
+        let where_strs: Vec<_> = where_clause.predicates.iter().map(|p| (self.rewrite_pred(p), String::new())).collect();
+        result.push_str(&write_list(&where_strs, &fmt));
+
+        result
+    }
+
+    fn rewrite_return(&self, ret: &ast::FunctionRetTy) -> String {
+        match *ret {
+            ast::FunctionRetTy::DefaultReturn(_) => String::new(),
+            ast::FunctionRetTy::NoReturn(_) => "-> !".to_string(),
+            ast::FunctionRetTy::Return(ref ty) => "-> ".to_string() + &pprust::ty_to_string(ty),
+        }        
     }
 
     // TODO we farm this out, but this could spill over the column limit, so we ought to handle it properly

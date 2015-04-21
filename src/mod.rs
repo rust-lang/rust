@@ -192,6 +192,7 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         self.block_indent -= TAB_SPACES;
         // TODO we should compress any newlines here to just one
+        // TODO somewhere here we are preserving bogus whitespace
         self.format_missing_with_indent(b.span.hi - BytePos(1));
         self.changes.push_str_span(b.span, "}");
         self.last_pos = b.span.hi;
