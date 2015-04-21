@@ -216,6 +216,13 @@ pub fn f32_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     // 10^18 * 0.314159231156617216
     check_shortest!(f(3.141592e17f32) => b"3141592", 18);
 
+    // regression test for decoders
+    // 10^8 * 0.3355443
+    // 10^8 * 0.33554432
+    // 10^8 * 0.33554436
+    let twoto25: f32 = StdFloat::ldexp(1.0, 25);
+    check_shortest!(f(twoto25) => b"33554432", 8);
+
     // 10^39 * 0.340282326356119256160033759537265639424
     // 10^39 * 0.34028234663852885981170418348451692544
     // 10^39 * 0.340282366920938463463374607431768211456
@@ -307,6 +314,13 @@ pub fn f64_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     // 10^18 * 0.3141592 (exact)
     // 10^18 * 0.314159200000000064
     check_shortest!(f(3.141592e17f64) => b"3141592", 18);
+
+    // regression test for decoders
+    // 10^20 * 0.18446744073709549568
+    // 10^20 * 0.18446744073709551616
+    // 10^20 * 0.18446744073709555712
+    let twoto64: f64 = StdFloat::ldexp(1.0, 64);
+    check_shortest!(f(twoto64) => b"18446744073709552", 20);
 
     // pathological case: high = 10^23 (exact). tie breaking should always prefer that.
     // 10^24 * 0.099999999999999974834176
@@ -492,7 +506,7 @@ pub fn f32_exhaustive_equivalence_test<F, G>(f: F, g: G, k: usize)
     // so why not simply testing all of them?
     //
     // this is of course very stressful (and thus should be behind an `#[ignore]` attribute),
-    // but with `-O3 -C lto` this only takes about two hours or so.
+    // but with `-C opt-level=3 -C lto` this only takes about an hour or so.
 
     // iterate from 0x0000_0001 to 0x7f7f_ffff, i.e. all finite ranges
     let (npassed, nignored) = iterate("f32_exhaustive_equivalence_test",
@@ -500,7 +514,7 @@ pub fn f32_exhaustive_equivalence_test<F, G>(f: F, g: G, k: usize)
         let x: f32 = unsafe {mem::transmute(i as u32 + 1)};
         decode_finite(x)
     });
-    assert_eq!((npassed, nignored), (2121451879, 17643160));
+    assert_eq!((npassed, nignored), (2121451881, 17643158));
 }
 
 fn to_string_with_parts<F>(mut f: F) -> String
