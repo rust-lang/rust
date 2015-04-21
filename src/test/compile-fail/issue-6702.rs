@@ -15,5 +15,5 @@ struct Monster {
 
 fn main() {
     let _m = Monster(); //~ ERROR `Monster` is a structure name, but
-    //~^ HELP Did you mean to write: `Monster { /* fields */ }`?
+    //~^ HELP did you mean to write: `Monster { /* fields */ }`?
 }

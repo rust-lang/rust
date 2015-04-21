@@ -1071,7 +1071,16 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 ast::MutImmutable => ""
             };
             if ty::type_is_trait(t_1) {
-                span_help!(fcx.tcx().sess, t_span, "did you mean `&{}{}`?", mtstr, tstr);
+                match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
+                    Ok(s) => {
+                        fcx.tcx().sess.span_suggestion(t_span,
+                                                       "try casting to a reference instead:",
+                                                       format!("&{}{}", mtstr, s));
+                    },
+                    Err(_) =>
+                        span_help!(fcx.tcx().sess, t_span,
+                                   "did you mean `&{}{}`?", mtstr, tstr),
+                }
             } else {
                 span_help!(fcx.tcx().sess, span,
                            "consider using an implicit coercion to `&{}{}` instead",
@@ -1079,7 +1088,15 @@ fn report_cast_to_unsized_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
         }
         ty::ty_uniq(..) => {
-            span_help!(fcx.tcx().sess, t_span, "did you mean `Box<{}>`?", tstr);
+            match fcx.tcx().sess.codemap().span_to_snippet(t_span) {
+                Ok(s) => {
+                    fcx.tcx().sess.span_suggestion(t_span,
+                                                   "try casting to a `Box` instead:",
+                                                   format!("Box<{}>", s));
+                },
+                Err(_) =>
+                    span_help!(fcx.tcx().sess, t_span, "did you mean `Box<{}>`?", tstr),
+            }
         }
         _ => {
             span_help!(fcx.tcx().sess, e_span,

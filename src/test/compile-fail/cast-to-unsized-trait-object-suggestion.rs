@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,8 +9,12 @@
 // except according to those terms.
 
 fn main() {
-    box (1 + 1)
-    //~^ HELP try using `box()` instead:
-    //~| SUGGESTION box() (1 + 1)
-    ; //~ ERROR expected expression, found `;`
+    &1 as Copy;
+    //~^ ERROR cast to unsized type
+    //~| HELP try casting to a reference instead:
+    //~| SUGGESTION &1 as &Copy;
+    Box::new(1) as Copy;
+    //~^ ERROR cast to unsized type
+    //~| HELP try casting to a `Box` instead:
+    //~| SUGGESTION Box::new(1) as Box<Copy>;
 }
