@@ -1248,12 +1248,13 @@ impl Path {
     /// use std::path::Path;
     ///
     /// Path::new("foo.txt");
+    /// ```
     ///
-    /// // Strings work too:
+    /// You can create `Path`s from `String`s, or even other `Path`s:
+    ///
+    /// ```
     /// let s = String::from("bar.txt");
     /// let p = Path::new(&s);
-    ///
-    /// // As do other `Path`s:
     /// Path::new(&p);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
