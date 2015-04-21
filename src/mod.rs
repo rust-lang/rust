@@ -282,15 +282,6 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     }
 }
 
-fn make_indent(width: usize) -> String {
-    let mut indent = String::with_capacity(width);
-    for _ in 0..width {
-        indent.push(' ')
-    }
-    indent
-}
-
-
 impl<'a> FmtVisitor<'a> {
     fn from_codemap<'b>(codemap: &'b CodeMap) -> FmtVisitor<'b> {
         FmtVisitor {
@@ -603,6 +594,15 @@ fn next_char(s: &str, mut i: usize) -> usize {
     i
 }
 
+#[inline]
+fn make_indent(width: usize) -> String {
+    let mut indent = String::with_capacity(width);
+    for _ in 0..width {
+        indent.push(' ')
+    }
+    indent
+}
+
 struct RustFmtCalls {
     input_path: Option<PathBuf>,
 }
@@ -615,7 +615,10 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
         Compilation::Continue
     }
 
-    fn some_input(&mut self, input: Input, input_path: Option<PathBuf>) -> (Input, Option<PathBuf>) {
+    fn some_input(&mut self,
+                  input: Input,
+                  input_path: Option<PathBuf>)
+                  -> (Input, Option<PathBuf>) {
         match input_path {
             Some(ref ip) => self.input_path = Some(ip.clone()),
             _ => {
