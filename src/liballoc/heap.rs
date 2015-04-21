@@ -133,6 +133,7 @@ const MIN_ALIGN: usize = 16;
 
 #[cfg(feature = "external_funcs")]
 mod imp {
+    #[allow(improper_ctypes)]
     extern {
         fn rust_allocate(size: usize, align: usize) -> *mut u8;
         fn rust_deallocate(ptr: *mut u8, old_size: usize, align: usize);
