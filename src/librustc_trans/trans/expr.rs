@@ -86,7 +86,6 @@ use syntax::ptr::P;
 use syntax::parse::token;
 use std::iter::repeat;
 use std::mem;
-use std::rc::Rc;
 
 // Destinations
 
@@ -320,8 +319,8 @@ pub fn unsized_info<'ccx, 'tcx>(ccx: &CrateContext<'ccx, 'tcx>,
             // Note that we preserve binding levels here:
             let substs = principal.0.substs.with_self_ty(source).erase_regions();
             let substs = ccx.tcx().mk_substs(substs);
-            let trait_ref = ty::Binder(Rc::new(ty::TraitRef { def_id: principal.def_id(),
-                                                               substs: substs }));
+            let trait_ref = ty::Binder(ty::TraitRef { def_id: principal.def_id(),
+                                                      substs: substs });
             consts::ptrcast(meth::get_vtable(ccx, trait_ref, param_substs),
                             Type::vtable_ptr(ccx))
         }

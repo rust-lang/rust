@@ -942,8 +942,8 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(tcx: &'a ty::ctxt<'tcx>,
     let trait_substs = tcx.mk_substs(trait_substs);
     debug!("resolve_trait_associated_const: trait_substs={}",
            trait_substs.repr(tcx));
-    let trait_ref = ty::Binder(Rc::new(ty::TraitRef { def_id: trait_id,
-                                                      substs: trait_substs }));
+    let trait_ref = ty::Binder(ty::TraitRef { def_id: trait_id,
+                                              substs: trait_substs });
 
     ty::populate_implementations_for_trait_if_necessary(tcx, trait_ref.def_id());
     let infcx = infer::new_infer_ctxt(tcx);

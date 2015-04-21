@@ -89,7 +89,7 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
 
 #[derive(Clone)]
 pub struct SelectionCache<'tcx> {
-    hashmap: RefCell<FnvHashMap<Rc<ty::TraitRef<'tcx>>,
+    hashmap: RefCell<FnvHashMap<ty::TraitRef<'tcx>,
                                 SelectionResult<'tcx, SelectionCandidate<'tcx>>>>,
 }
 
@@ -988,7 +988,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn match_projection(&mut self,
                         obligation: &TraitObligation<'tcx>,
                         trait_bound: ty::PolyTraitRef<'tcx>,
-                        skol_trait_ref: Rc<ty::TraitRef<'tcx>>,
+                        skol_trait_ref: ty::TraitRef<'tcx>,
                         skol_map: &infer::SkolemizationMap,
                         snapshot: &infer::CombinedSnapshot)
                         -> bool
@@ -2324,7 +2324,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Before we create the substitutions and everything, first
         // consider a "quick reject". This avoids creating more types
         // and so forth that we need to.
-        if self.fast_reject_trait_refs(obligation, &*impl_trait_ref) {
+        if self.fast_reject_trait_refs(obligation, &impl_trait_ref) {
             return Err(());
         }
 

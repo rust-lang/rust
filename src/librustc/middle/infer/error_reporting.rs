@@ -79,7 +79,6 @@ use middle::ty::{self, Ty};
 use middle::ty::{Region, ReFree};
 use std::cell::{Cell, RefCell};
 use std::char::from_u32;
-use std::rc::Rc;
 use std::string::String;
 use syntax::ast;
 use syntax::ast_map;
@@ -1680,13 +1679,13 @@ impl<'tcx> Resolvable<'tcx> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> Resolvable<'tcx> for Rc<ty::TraitRef<'tcx>> {
+impl<'tcx> Resolvable<'tcx> for ty::TraitRef<'tcx> {
     fn resolve<'a>(&self, infcx: &InferCtxt<'a, 'tcx>)
-                   -> Rc<ty::TraitRef<'tcx>> {
-        Rc::new(infcx.resolve_type_vars_if_possible(&**self))
+                   -> ty::TraitRef<'tcx> {
+        infcx.resolve_type_vars_if_possible(self)
     }
     fn contains_error(&self) -> bool {
-        ty::trait_ref_contains_error(&**self)
+        ty::trait_ref_contains_error(self)
     }
 }
 
@@ -1699,7 +1698,7 @@ impl<'tcx> Resolvable<'tcx> for ty::PolyTraitRef<'tcx> {
     }
 
     fn contains_error(&self) -> bool {
-        ty::trait_ref_contains_error(&*self.0)
+        ty::trait_ref_contains_error(&self.0)
     }
 }
 

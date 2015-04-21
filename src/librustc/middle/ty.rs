@@ -433,7 +433,7 @@ pub struct MethodParam<'tcx> {
     // be a supertrait of what the user actually typed. Note that it
     // never contains bound regions; those regions should have been
     // instantiated with fresh variables at this point.
-    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+    pub trait_ref: ty::TraitRef<'tcx>,
 
     // index of usize in the list of trait items. Note that this is NOT
     // the index into the vtable, because the list of trait items
@@ -451,7 +451,7 @@ pub struct MethodParam<'tcx> {
 #[derive(Clone, Debug)]
 pub struct MethodObject<'tcx> {
     // the (super)trait containing the method to be invoked
-    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+    pub trait_ref: TraitRef<'tcx>,
 
     // the actual base trait id of the object
     pub object_trait_id: ast::DefId,
@@ -588,10 +588,14 @@ pub struct TransmuteRestriction<'tcx> {
 
 /// Internal storage
 pub struct CtxtArenas<'tcx> {
+    // internings
     type_: TypedArena<TyS<'tcx>>,
     substs: TypedArena<Substs<'tcx>>,
     bare_fn: TypedArena<BareFnTy<'tcx>>,
     region: TypedArena<Region>,
+
+    // references
+    trait_defs: TypedArena<TraitDef<'tcx>>
 }
 
 impl<'tcx> CtxtArenas<'tcx> {
@@ -601,6 +605,8 @@ impl<'tcx> CtxtArenas<'tcx> {
             substs: TypedArena::new(),
             bare_fn: TypedArena::new(),
             region: TypedArena::new(),
+
+            trait_defs: TypedArena::new()
         }
     }
 }
@@ -678,10 +684,10 @@ pub struct ctxt<'tcx> {
     /// A cache for the trait_items() routine
     pub trait_items_cache: RefCell<DefIdMap<Rc<Vec<ImplOrTraitItem<'tcx>>>>>,
 
-    pub impl_trait_cache: RefCell<DefIdMap<Option<Rc<ty::TraitRef<'tcx>>>>>,
+    pub impl_trait_cache: RefCell<DefIdMap<Option<TraitRef<'tcx>>>>,
 
-    pub impl_trait_refs: RefCell<NodeMap<Rc<TraitRef<'tcx>>>>,
-    pub trait_defs: RefCell<DefIdMap<Rc<TraitDef<'tcx>>>>,
+    pub impl_trait_refs: RefCell<NodeMap<TraitRef<'tcx>>>,
+    pub trait_defs: RefCell<DefIdMap<&'tcx TraitDef<'tcx>>>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated predicates.
@@ -830,6 +836,13 @@ impl<'tcx> ctxt<'tcx> {
     pub fn node_types(&self) -> Ref<NodeMap<Ty<'tcx>>> { self.node_types.borrow() }
     pub fn node_type_insert(&self, id: NodeId, ty: Ty<'tcx>) {
         self.node_types.borrow_mut().insert(id, ty);
+    }
+
+    pub fn intern_trait_def(&self, def: TraitDef<'tcx>) -> &'tcx TraitDef<'tcx> {
+        let did = def.trait_ref.def_id;
+        let interned = self.arenas.trait_defs.alloc(def);
+        self.trait_defs.borrow_mut().insert(did, interned);
+        interned
     }
 
     pub fn store_free_region_map(&self, id: NodeId, map: FreeRegionMap) {
@@ -1414,10 +1427,10 @@ impl<'tcx> TyTrait<'tcx> {
         // otherwise the escaping regions would be captured by the binder
         assert!(!self_ty.has_escaping_regions());
 
-        ty::Binder(Rc::new(ty::TraitRef {
+        ty::Binder(TraitRef {
             def_id: self.principal.0.def_id,
             substs: tcx.mk_substs(self.principal.0.substs.with_self_ty(self_ty)),
-        }))
+        })
     }
 
     pub fn projection_bounds_with_self_ty(&self,
@@ -1432,9 +1445,8 @@ impl<'tcx> TyTrait<'tcx> {
             .map(|in_poly_projection_predicate| {
                 let in_projection_ty = &in_poly_projection_predicate.0.projection_ty;
                 let substs = tcx.mk_substs(in_projection_ty.trait_ref.substs.with_self_ty(self_ty));
-                let trait_ref =
-                    Rc::new(ty::TraitRef::new(in_projection_ty.trait_ref.def_id,
-                                              substs));
+                let trait_ref = ty::TraitRef::new(in_projection_ty.trait_ref.def_id,
+                                              substs);
                 let projection_ty = ty::ProjectionTy {
                     trait_ref: trait_ref,
                     item_name: in_projection_ty.item_name
@@ -1463,13 +1475,13 @@ impl<'tcx> TyTrait<'tcx> {
 /// Note that a `TraitRef` introduces a level of region binding, to
 /// account for higher-ranked trait bounds like `T : for<'a> Foo<&'a
 /// U>` or higher-ranked object types.
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
 }
 
-pub type PolyTraitRef<'tcx> = Binder<Rc<TraitRef<'tcx>>>;
+pub type PolyTraitRef<'tcx> = Binder<TraitRef<'tcx>>;
 
 impl<'tcx> PolyTraitRef<'tcx> {
     pub fn self_ty(&self) -> Ty<'tcx> {
@@ -1995,7 +2007,7 @@ impl<'tcx> Predicate<'tcx> {
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TraitPredicate<'tcx> {
-    pub trait_ref: Rc<TraitRef<'tcx>>
+    pub trait_ref: TraitRef<'tcx>
 }
 pub type PolyTraitPredicate<'tcx> = ty::Binder<TraitPredicate<'tcx>>;
 
@@ -2064,7 +2076,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ProjectionTy<'tcx> {
     /// The trait reference `T as Trait<..>`.
-    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+    pub trait_ref: ty::TraitRef<'tcx>,
 
     /// The name `N` of the associated type.
     pub item_name: ast::Name,
@@ -2080,7 +2092,7 @@ pub trait ToPolyTraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx>;
 }
 
-impl<'tcx> ToPolyTraitRef<'tcx> for Rc<TraitRef<'tcx>> {
+impl<'tcx> ToPolyTraitRef<'tcx> for TraitRef<'tcx> {
     fn to_poly_trait_ref(&self) -> PolyTraitRef<'tcx> {
         assert!(!self.has_escaping_regions());
         ty::Binder(self.clone())
@@ -2108,7 +2120,7 @@ pub trait AsPredicate<'tcx> {
     fn as_predicate(&self) -> Predicate<'tcx>;
 }
 
-impl<'tcx> AsPredicate<'tcx> for Rc<TraitRef<'tcx>> {
+impl<'tcx> AsPredicate<'tcx> for TraitRef<'tcx> {
     fn as_predicate(&self) -> Predicate<'tcx> {
         // we're about to add a binder, so let's check that we don't
         // accidentally capture anything, or else that might be some
@@ -2505,7 +2517,7 @@ pub struct TraitDef<'tcx> {
     /// implements the trait.
     pub generics: Generics<'tcx>,
 
-    pub trait_ref: Rc<ty::TraitRef<'tcx>>,
+    pub trait_ref: TraitRef<'tcx>,
 
     /// A list of the associated types defined in this trait. Useful
     /// for resolving `X::Foo` type markers.
@@ -3132,7 +3144,7 @@ pub fn sort_bounds_list(bounds: &mut [ty::PolyProjectionPredicate]) {
 }
 
 pub fn mk_projection<'tcx>(cx: &ctxt<'tcx>,
-                           trait_ref: Rc<ty::TraitRef<'tcx>>,
+                           trait_ref: TraitRef<'tcx>,
                            item_name: ast::Name)
                            -> Ty<'tcx> {
     // take a copy of substs so that we own the vectors inside
@@ -4398,9 +4410,9 @@ pub fn named_element_ty<'tcx>(cx: &ctxt<'tcx>,
 }
 
 pub fn impl_id_to_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId)
-                                  -> Rc<ty::TraitRef<'tcx>> {
+                                  -> ty::TraitRef<'tcx> {
     match cx.impl_trait_refs.borrow().get(&id) {
-        Some(ty) => ty.clone(),
+        Some(ty) => *ty,
         None => cx.sess.bug(
             &format!("impl_id_to_trait_ref: no trait ref for impl `{}`",
                     cx.map.node_to_string(id)))
@@ -5313,7 +5325,7 @@ pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
 }
 
 pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
-                            -> Option<Rc<TraitRef<'tcx>>> {
+                            -> Option<TraitRef<'tcx>> {
     memoized(&cx.impl_trait_cache, id, |id: ast::DefId| {
         if id.krate == ast::LOCAL_CRATE {
             debug!("(impl_trait_ref) searching for trait impl {:?}", id);
@@ -5819,10 +5831,10 @@ pub fn lookup_item_type<'tcx>(cx: &ctxt<'tcx>,
 
 /// Given the did of a trait, returns its canonical trait ref.
 pub fn lookup_trait_def<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
-                              -> Rc<TraitDef<'tcx>> {
+                              -> &'tcx TraitDef<'tcx> {
     memoized(&cx.trait_defs, did, |did: DefId| {
         assert!(did.krate != ast::LOCAL_CRATE);
-        Rc::new(csearch::get_trait_def(cx, did))
+        cx.arenas.trait_defs.alloc(csearch::get_trait_def(cx, did))
     })
 }
 

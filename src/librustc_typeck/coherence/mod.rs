@@ -300,7 +300,7 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
                                                              item.id);
 
                     self.instantiate_default_methods(local_def(item.id),
-                                                     &*trait_ref,
+                                                     &trait_ref,
                                                      &mut items);
                 }
 

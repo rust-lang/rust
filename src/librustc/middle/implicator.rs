@@ -16,7 +16,6 @@ use middle::traits;
 use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty_fold::{TypeFoldable, TypeFolder};
 
-use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;
 
@@ -324,7 +323,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
     }
 
     fn accumulate_from_assoc_types(&mut self,
-                                   trait_ref: Rc<ty::TraitRef<'tcx>>)
+                                   trait_ref: ty::TraitRef<'tcx>)
     {
         debug!("accumulate_from_assoc_types({})",
                trait_ref.repr(self.tcx()));
@@ -442,7 +441,7 @@ pub fn object_region_bounds<'tcx>(
     // Note that we preserve the overall binding levels here.
     assert!(!open_ty.has_escaping_regions());
     let substs = tcx.mk_substs(principal.0.substs.with_self_ty(open_ty));
-    let trait_refs = vec!(ty::Binder(Rc::new(ty::TraitRef::new(principal.0.def_id, substs))));
+    let trait_refs = vec!(ty::Binder(ty::TraitRef::new(principal.0.def_id, substs)));
 
     let param_bounds = ty::ParamBounds {
         region_bounds: Vec::new(),

@@ -247,13 +247,13 @@ pub fn item_type<'tcx>(_item_id: ast::DefId, item: rbml::Doc,
 }
 
 fn doc_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
-                       -> Rc<ty::TraitRef<'tcx>> {
+                       -> ty::TraitRef<'tcx> {
     parse_trait_ref_data(doc.data, cdata.cnum, doc.start, tcx,
                          |_, did| translate_def_id(cdata, did))
 }
 
 fn item_trait_ref<'tcx>(doc: rbml::Doc, tcx: &ty::ctxt<'tcx>, cdata: Cmd)
-                        -> Rc<ty::TraitRef<'tcx>> {
+                        -> ty::TraitRef<'tcx> {
     let tp = reader::get_doc(doc, tag_item_trait_ref);
     doc_trait_ref(tp, tcx, cdata)
 }
@@ -490,7 +490,7 @@ pub fn get_impl_polarity<'tcx>(cdata: Cmd,
 pub fn get_impl_trait<'tcx>(cdata: Cmd,
                             id: ast::NodeId,
                             tcx: &ty::ctxt<'tcx>)
-                            -> Option<Rc<ty::TraitRef<'tcx>>>
+                            -> Option<ty::TraitRef<'tcx>>
 {
     let item_doc = lookup_item(id, cdata.data());
     let fam = item_family(item_doc);
