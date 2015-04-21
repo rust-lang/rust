@@ -26,7 +26,6 @@ use std::rc::Rc;
 
 use std::fmt;
 
-use libc::c_uint;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 
@@ -287,13 +286,12 @@ pub const NO_EXPANSION: ExpnId = ExpnId(!0);
 pub const COMMAND_LINE_EXPN: ExpnId = ExpnId(!1);
 
 impl ExpnId {
-    pub fn from_llvm_cookie(cookie: c_uint) -> ExpnId {
-        ExpnId(cookie)
+    pub fn from_u32(id: u32) -> ExpnId {
+        ExpnId(id)
     }
 
-    pub fn to_llvm_cookie(self) -> i32 {
-        let ExpnId(cookie) = self;
-        cookie as i32
+    pub fn into_u32(self) -> u32 {
+        self.0
     }
 }
 
