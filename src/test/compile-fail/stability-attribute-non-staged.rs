@@ -8,11 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// These two generate an error to satisfy the compile-fail test
-#![deny(warnings)]
-#![feature(blah)] //~ ERROR
-
-#[unstable] //~ WARNING: stability attributes are deprecated
-#[stable] //~ WARNING: stability attributes are deprecated
-#[deprecated] //~ WARNING: stability attributes are deprecated
+#[unstable] //~ ERROR: stability attributes may not be used
+#[stable] //~ ERROR: stability attributes may not be used
+#[deprecated] //~ ERROR: stability attributes may not be used
 fn main() { }
