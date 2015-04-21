@@ -46,17 +46,10 @@
 #include "llvm-c/ExecutionEngine.h"
 #include "llvm-c/Object.h"
 
-#if LLVM_VERSION_MINOR >= 5
 #include "llvm/IR/IRPrintingPasses.h"
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/Linker/Linker.h"
-#else
-#include "llvm/Assembly/PrintModulePass.h"
-#include "llvm/DebugInfo.h"
-#include "llvm/DIBuilder.h"
-#include "llvm/Linker.h"
-#endif
 
 // Used by RustMCJITMemoryManager::getPointerToNamedFunction()
 // to get around glibc issues. See the function for more information.

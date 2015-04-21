@@ -2066,8 +2066,6 @@ extern {
     pub fn LLVMRustDestroyArchive(AR: ArchiveRef);
 
     pub fn LLVMRustSetDLLExportStorageClass(V: ValueRef);
-    pub fn LLVMVersionMajor() -> c_int;
-    pub fn LLVMVersionMinor() -> c_int;
 
     pub fn LLVMRustGetSectionName(SI: SectionIteratorRef,
                                   data: *mut *const c_char) -> c_int;

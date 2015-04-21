@@ -412,7 +412,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateStaticVariable(
     bool isLocalToUnit,
     LLVMValueRef Val,
     LLVMMetadataRef Decl = NULL) {
-#if LLVM_VERSION_MINOR == 6
+#if LLVM_VERSION_MINOR >= 6
     return wrap(Builder->createGlobalVariable(unwrapDI<DIDescriptor>(Context),
 #else
     return wrap(Builder->createStaticVariable(unwrapDI<DIDescriptor>(Context),
@@ -440,7 +440,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateVariable(
     int64_t* AddrOps,
     unsigned AddrOpsCount,
     unsigned ArgNo) {
-#if LLVM_VERSION_MINOR < 6
+#if LLVM_VERSION_MINOR == 5
     if (AddrOpsCount > 0) {
         SmallVector<llvm::Value *, 16> addr_ops;
         llvm::Type *Int64Ty = Type::getInt64Ty(unwrap<MDNode>(Scope)->getContext());
@@ -707,12 +707,12 @@ extern "C" void LLVMWriteValueToString(LLVMValueRef Value, RustStringRef str) {
 extern "C" bool
 LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     Module *Dst = unwrap(dst);
-#if LLVM_VERSION_MINOR == 5
-    MemoryBuffer* buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
-    ErrorOr<Module *> Src = llvm::getLazyBitcodeModule(buf, Dst->getContext());
-#else
+#if LLVM_VERSION_MINOR >= 6
     std::unique_ptr<MemoryBuffer> buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
     ErrorOr<Module *> Src = llvm::getLazyBitcodeModule(std::move(buf), Dst->getContext());
+#else
+    MemoryBuffer* buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
+    ErrorOr<Module *> Src = llvm::getLazyBitcodeModule(buf, Dst->getContext());
 #endif
     if (!Src) {
         LLVMRustSetLastError(Src.getError().message().c_str());
@@ -838,16 +838,6 @@ extern "C" void
 LLVMRustSetDLLExportStorageClass(LLVMValueRef Value) {
     GlobalValue *V = unwrap<GlobalValue>(Value);
     V->setDLLStorageClass(GlobalValue::DLLExportStorageClass);
-}
-
-extern "C" int
-LLVMVersionMinor() {
-    return LLVM_VERSION_MINOR;
-}
-
-extern "C" int
-LLVMVersionMajor() {
-    return LLVM_VERSION_MAJOR;
 }
 
 // Note that the two following functions look quite similar to the
