@@ -396,10 +396,10 @@ fn determine_sign(sign: Sign, decoded: &FullDecoded, negative: bool) -> &'static
 
 /// Formats given floating point number into the decimal form with at least
 /// given number of fractional digits. The result is stored to the supplied parts
-/// array while utilizing given byte buffer as a scratch. `upper` is only used to
-/// determine the case of non-finite values, i.e. `inf` and `nan`. The first part
-/// to be rendered is always a `Part::Sign` (which can be an empty string
-/// if no sign is rendered).
+/// array while utilizing given byte buffer as a scratch. `upper` is currently
+/// unused but left for the future decision to change the case of non-finite values,
+/// i.e. `inf` and `nan`. The first part to be rendered is always a `Part::Sign`
+/// (which can be an empty string if no sign is rendered).
 ///
 /// `format_shortest` should be the underlying digit-generation function.
 /// You probably would want `strategy::grisu::format_shortest` for this.
@@ -413,7 +413,7 @@ fn determine_sign(sign: Sign, decoded: &FullDecoded, negative: bool) -> &'static
 /// There should be at least 5 parts available, due to the worst case like
 /// `[+][0.][0000][45][0000]` with `frac_digits = 10`.
 pub fn to_shortest_str<'a, T, F>(mut format_shortest: F, v: T,
-                                 sign: Sign, frac_digits: usize, upper: bool,
+                                 sign: Sign, frac_digits: usize, _upper: bool,
                                  buf: &'a mut [u8], parts: &'a mut [Part<'a>]) -> Formatted<'a>
         where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
     assert!(parts.len() >= 4);
@@ -423,11 +423,11 @@ pub fn to_shortest_str<'a, T, F>(mut format_shortest: F, v: T,
     let sign = determine_sign(sign, &full_decoded, negative);
     match full_decoded {
         FullDecoded::Nan => {
-            parts[0] = Part::Copy(if upper { b"NAN" } else { b"nan" });
+            parts[0] = Part::Copy(b"NaN");
             Formatted { sign: sign, parts: &parts[..1] }
         }
         FullDecoded::Infinite => {
-            parts[0] = Part::Copy(if upper { b"INF" } else { b"inf" });
+            parts[0] = Part::Copy(b"inf");
             Formatted { sign: sign, parts: &parts[..1] }
         }
         FullDecoded::Zero => {
@@ -479,11 +479,11 @@ pub fn to_shortest_exp_str<'a, T, F>(mut format_shortest: F, v: T,
     let sign = determine_sign(sign, &full_decoded, negative);
     match full_decoded {
         FullDecoded::Nan => {
-            parts[0] = Part::Copy(if upper { b"NAN" } else { b"nan" });
+            parts[0] = Part::Copy(b"NaN");
             Formatted { sign: sign, parts: &parts[..1] }
         }
         FullDecoded::Infinite => {
-            parts[0] = Part::Copy(if upper { b"INF" } else { b"inf" });
+            parts[0] = Part::Copy(b"inf");
             Formatted { sign: sign, parts: &parts[..1] }
         }
         FullDecoded::Zero => {
@@ -557,11 +557,11 @@ pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
     let sign = determine_sign(sign, &full_decoded, negative);
     match full_decoded {
         FullDecoded::Nan => {
-            parts[0] = Part::Copy(if upper { b"NAN" } else { b"nan" });
+            parts[0] = Part::Copy(b"NaN");
             Formatted { sign: sign, parts: &parts[..1] }
         }
         FullDecoded::Infinite => {
-            parts[0] = Part::Copy(if upper { b"INF" } else { b"inf" });
+            parts[0] = Part::Copy(b"inf");
             Formatted { sign: sign, parts: &parts[..1] }
         }
         FullDecoded::Zero => {
@@ -589,10 +589,10 @@ pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
 
 /// Formats given floating point number into the decimal form with exactly
 /// given number of fractional digits. The result is stored to the supplied parts
-/// array while utilizing given byte buffer as a scratch. `upper` is only used to
-/// determine the case of non-finite values, i.e. `inf` and `nan`. The first part
-/// to be rendered is always a `Part::Sign` (which can be an empty string
-/// if no sign is rendered).
+/// array while utilizing given byte buffer as a scratch. `upper` is currently
+/// unused but left for the future decision to change the case of non-finite values,
+/// i.e. `inf` and `nan`. The first part to be rendered is always a `Part::Sign`
+/// (which can be an empty string if no sign is rendered).
 ///
 /// `format_exact` should be the underlying digit-generation function.
 /// You probably would want `strategy::grisu::format_exact` for this.
@@ -603,7 +603,7 @@ pub fn to_exact_exp_str<'a, T, F>(mut format_exact: F, v: T,
 /// There should be at least 5 parts available, due to the worst case like
 /// `[+][0.][0000][45][0000]` with `frac_digits = 10`.
 pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
-                                    sign: Sign, frac_digits: usize, upper: bool,
+                                    sign: Sign, frac_digits: usize, _upper: bool,
                                     buf: &'a mut [u8], parts: &'a mut [Part<'a>]) -> Formatted<'a>
         where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
     assert!(parts.len() >= 4);
@@ -612,11 +612,11 @@ pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
     let sign = determine_sign(sign, &full_decoded, negative);
     match full_decoded {
         FullDecoded::Nan => {
-            parts[0] = Part::Copy(if upper { b"NAN" } else { b"nan" });
+            parts[0] = Part::Copy(b"NaN");
             Formatted { sign: sign, parts: &parts[..1] }
         }
         FullDecoded::Infinite => {
-            parts[0] = Part::Copy(if upper { b"INF" } else { b"inf" });
+            parts[0] = Part::Copy(b"inf");
             Formatted { sign: sign, parts: &parts[..1] }
         }
         FullDecoded::Zero => {
