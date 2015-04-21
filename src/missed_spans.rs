@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use {FmtVisitor, make_indent};
+use utils::make_indent;
+use visitor::FmtVisitor;
+
 use syntax::codemap::{self, BytePos};
 
 impl<'a> FmtVisitor<'a> {

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use make_indent;
+use utils::make_indent;
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 pub enum ListTactic {

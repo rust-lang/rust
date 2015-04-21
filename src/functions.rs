@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use {FmtVisitor, ReturnIndent, make_indent, MAX_WIDTH, BraceStyle,
+use {ReturnIndent, MAX_WIDTH, BraceStyle,
      IDEAL_WIDTH, LEEWAY, FN_BRACE_STYLE, FN_RETURN_INDENT};
+use utils::make_indent;
 use lists::{write_list, ListFormatting, SeparatorTactic, ListTactic};
+use visitor::FmtVisitor;
 use syntax::{ast, abi};
 use syntax::print::pprust;
 use syntax::parse::token;
