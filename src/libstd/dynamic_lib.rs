@@ -259,19 +259,14 @@ mod dl {
 
 #[cfg(target_os = "windows")]
 mod dl {
+    use prelude::v1::*;
+
     use ffi::OsStr;
-    use iter::Iterator;
     use libc;
     use libc::consts::os::extra::ERROR_CALL_NOT_IMPLEMENTED;
-    use ops::FnOnce;
     use sys::os;
     use os::windows::prelude::*;
-    use option::Option::{self, Some, None};
     use ptr;
-    use result::Result;
-    use result::Result::{Ok, Err};
-    use string::String;
-    use vec::Vec;
     use sys::c::compat::kernel32::SetThreadErrorMode;
 
     pub fn open(filename: Option<&OsStr>) -> Result<*mut u8, String> {
