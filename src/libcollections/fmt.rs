@@ -246,7 +246,7 @@
 //!
 //! ```ignore
 //! format!      // described above
-//! write!       // first argument is a &mut old_io::Writer, the destination
+//! write!       // first argument is a &mut io::Write, the destination
 //! writeln!     // same as write but appends a newline
 //! print!       // the format string is printed to the standard output
 //! println!     // same as print but appends a newline
