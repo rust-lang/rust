@@ -18,7 +18,6 @@
 
 use prelude::v1::*;
 
-use iter::IntoIterator;
 use error::Error;
 use ffi::{OsStr, OsString};
 use fmt;

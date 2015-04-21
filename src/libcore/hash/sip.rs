@@ -13,7 +13,6 @@
 #![allow(deprecated)] // until the next snapshot for inherent wrapping ops
 
 use prelude::*;
-use default::Default;
 use super::Hasher;
 
 /// An implementation of SipHash 2-4.

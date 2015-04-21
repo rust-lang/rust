@@ -20,10 +20,9 @@ use self::Entry::*;
 use core::prelude::*;
 
 use core::cmp::Ordering;
-use core::default::Default;
 use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
-use core::iter::{Map, FromIterator, IntoIterator};
+use core::iter::{Map, FromIterator};
 use core::ops::Index;
 use core::{iter, fmt, mem, usize};
 use Bound::{self, Included, Excluded, Unbounded};
@@ -471,8 +470,32 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
 
+    /// Gets an owning iterator over the entries of the map.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(1, "a");
+    /// map.insert(2, "b");
+    /// map.insert(3, "c");
+    ///
+    /// for (key, value) in map.into_iter() {
+    ///     println!("{}: {}", key, value);
+    /// }
+    /// ```
     fn into_iter(self) -> IntoIter<K, V> {
-        self.into_iter()
+        let len = self.len();
+        let mut lca = VecDeque::new();
+        lca.push_back(Traverse::traverse(self.root));
+        IntoIter {
+            inner: AbsIter {
+                traversals: lca,
+                size: len,
+            }
+        }
     }
 }
 
@@ -1256,35 +1279,6 @@ impl<K, V> BTreeMap<K, V> {
         let mut lca = VecDeque::new();
         lca.push_back(Traverse::traverse(&mut self.root));
         IterMut {
-            inner: AbsIter {
-                traversals: lca,
-                size: len,
-            }
-        }
-    }
-
-    /// Gets an owning iterator over the entries of the map.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::BTreeMap;
-    ///
-    /// let mut map = BTreeMap::new();
-    /// map.insert(1, "a");
-    /// map.insert(2, "b");
-    /// map.insert(3, "c");
-    ///
-    /// for (key, value) in map.into_iter() {
-    ///     println!("{}: {}", key, value);
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_iter(self) -> IntoIter<K, V> {
-        let len = self.len();
-        let mut lca = VecDeque::new();
-        lca.push_back(Traverse::traverse(self.root));
-        IntoIter {
             inner: AbsIter {
                 traversals: lca,
                 size: len,

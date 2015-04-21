@@ -14,10 +14,9 @@
 use core::prelude::*;
 
 use core::cmp::Ordering::{self, Less, Greater, Equal};
-use core::default::Default;
 use core::fmt::Debug;
 use core::fmt;
-use core::iter::{Peekable, Map, FromIterator, IntoIterator};
+use core::iter::{Peekable, Map, FromIterator};
 use core::ops::{BitOr, BitAnd, BitXor, Sub};
 
 use borrow::Borrow;
@@ -131,27 +130,6 @@ impl<T> BTreeSet<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
         Iter { iter: self.map.keys() }
-    }
-
-    /// Gets an iterator for moving out the BtreeSet's contents.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![feature(core)]
-    /// use std::collections::BTreeSet;
-    ///
-    /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().cloned().collect();
-    ///
-    /// let v: Vec<usize> = set.into_iter().collect();
-    /// assert_eq!(v, [1, 2, 3, 4]);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_iter(self) -> IntoIter<T> {
-        fn first<A, B>((a, _): (A, B)) -> A { a }
-        let first: fn((T, ())) -> T = first; // coerce to fn pointer
-
-        IntoIter { iter: self.map.into_iter().map(first) }
     }
 }
 
@@ -500,8 +478,24 @@ impl<T> IntoIterator for BTreeSet<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
+    /// Gets an iterator for moving out the BtreeSet's contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(core)]
+    /// use std::collections::BTreeSet;
+    ///
+    /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().cloned().collect();
+    ///
+    /// let v: Vec<usize> = set.into_iter().collect();
+    /// assert_eq!(v, [1, 2, 3, 4]);
+    /// ```
     fn into_iter(self) -> IntoIter<T> {
-        self.into_iter()
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+        let first: fn((T, ())) -> T = first; // coerce to fn pointer
+
+        IntoIter { iter: self.map.into_iter().map(first) }
     }
 }
 
