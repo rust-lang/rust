@@ -43,7 +43,6 @@
 #![feature(std_misc)]
 #![feature(libc)]
 #![feature(set_stdio)]
-#![cfg_attr(test, feature(old_io))]
 
 extern crate getopts;
 extern crate serialize;

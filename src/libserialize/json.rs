@@ -2059,7 +2059,7 @@ impl<T: Iterator<Item=char>> Builder<T> {
     }
 }
 
-/// Decodes a json value from an `&mut old_io::Reader`
+/// Decodes a json value from an `&mut io::Read`
 pub fn from_reader(rdr: &mut Read) -> Result<Json, BuilderError> {
     let mut contents = Vec::new();
     match rdr.read_to_end(&mut contents) {
