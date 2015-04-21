@@ -12,7 +12,7 @@
 // exec-env:RUST_LOG=debug
 // compile-flags:-C debug-assertions=y
 
-#![feature(old_io, rustc_private)]
+#![feature(rustc_private)]
 
 #[macro_use]
 extern crate log;

@@ -260,7 +260,6 @@
 //! Example usage is:
 //!
 //! ```
-//! # #![feature(old_io)]
 //! # #![allow(unused_must_use)]
 //! use std::io::Write;
 //! let mut w = Vec::new();
@@ -288,7 +287,6 @@
 //! off, some example usage is:
 //!
 //! ```
-//! # #![feature(old_io)]
 //! use std::fmt;
 //! use std::io::{self, Write};
 //!

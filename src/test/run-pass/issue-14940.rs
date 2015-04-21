@@ -9,8 +9,6 @@
 // except according to those terms.
 
 
-#![feature(old_io, io)]
-
 use std::env;
 use std::process::Command;
 use std::io::{self, Write};
