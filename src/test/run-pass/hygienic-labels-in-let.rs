@@ -10,6 +10,14 @@
 
 // ignore-pretty: pprust doesn't print hygiene output
 
+// Test that labels injected by macros do not break hygiene.  This
+// checks cases where the macros invocations are under the rhs of a
+// let statement.
+
+// Issue #24278: The label/lifetime shadowing checker from #24162
+// conservatively ignores hygiene, and thus issues warnings that are
+// both true- and false-positives for this test.
+
 macro_rules! loop_x {
     ($e: expr) => {
         // $e shouldn't be able to interact with this 'x
