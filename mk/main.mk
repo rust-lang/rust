@@ -399,8 +399,10 @@ endif
 # Prerequisites for using the stageN compiler to build target artifacts
 TSREQ$(1)_T_$(2)_H_$(3) = \
 	$$(HSREQ$(1)_H_$(3)) \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/libmorestack.a \
-	$$(TLIB$(1)_T_$(2)_H_$(3))/libcompiler-rt.a
+	$$(foreach obj,$$(INSTALLED_OBJECTS),\
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(obj)) \
+	$$(foreach obj,$$(INSTALLED_OBJECTS_$(2)),\
+		$$(TLIB$(1)_T_$(2)_H_$(3))/$$(obj))
 
 # Prerequisites for a working stageN compiler and libraries, for a specific
 # target
