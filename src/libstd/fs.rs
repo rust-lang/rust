@@ -706,7 +706,7 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Given a path, query the file system to get information about a file,
 /// directory, etc.
 ///
-/// This function will traverse soft links to query information about the
+/// This function will traverse symbolic links to query information about the
 /// destination file.
 ///
 /// # Examples
@@ -820,9 +820,13 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
     fs_imp::link(src.as_ref(), dst.as_ref())
 }
 
-/// Creates a new soft link on the filesystem.
+/// Creates a new symbolic link on the filesystem.
 ///
-/// The `dst` path will be a soft link pointing to the `src` path.
+/// The `dst` path will be a symbolic link pointing to the `src` path.
+/// On Windows, this will be a file symlink, not a directory symlink;
+/// for this reason, the platform-specific `std::os::unix::fs::symlink`
+/// and `std::os::windows::fs::{symlink_file, symlink_dir}` should be
+/// used instead to make the intent explicit.
 ///
 /// # Examples
 ///
@@ -834,17 +838,20 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 /// # Ok(())
 /// # }
 /// ```
+#[deprecated(since = "1.0.0",
+             reason = "replaced with std::os::unix::fs::symlink and \
+                       std::os::windows::fs::{symlink_file, symlink_dir}")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()> {
     fs_imp::symlink(src.as_ref(), dst.as_ref())
 }
 
-/// Reads a soft link, returning the file that the link points to.
+/// Reads a symbolic link, returning the file that the link points to.
 ///
 /// # Errors
 ///
 /// This function will return an error on failure. Failure conditions include
-/// reading a file that does not exist or reading a file that is not a soft
+/// reading a file that does not exist or reading a file that is not a symbolic
 /// link.
 ///
 /// # Examples
@@ -937,8 +944,8 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// Removes a directory at this path, after removing all its contents. Use
 /// carefully!
 ///
-/// This function does **not** follow soft links and it will simply remove the
-/// soft link itself.
+/// This function does **not** follow symbolic links and it will simply remove the
+/// symbolic link itself.
 ///
 /// # Errors
 ///
