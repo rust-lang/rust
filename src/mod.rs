@@ -21,9 +21,11 @@
 
 // TODO priorities
 // Fix fns and methods properly
+//   dead spans
+//
 // Writing output
 // Smoke testing till we can use it
-// end of multi-line string has wspace
+//   end of multi-line string has wspace
 
 #[macro_use]
 extern crate log;
@@ -57,6 +59,26 @@ const LEEWAY: usize = 5;
 const MAX_WIDTH: usize = 100;
 const MIN_STRING: usize = 10;
 const TAB_SPACES: usize = 4;
+const FN_BRACE_STYLE: BraceStyle = BraceStyle::SameLineWhere;
+const FN_RETURN_INDENT: ReturnIndent = ReturnIndent::WithArgs;
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+enum BraceStyle {
+    AlwaysNextLine,
+    PreferSameLine,
+    // Prefer same line except where there is a where clause, in which case force
+    // the brace to the next line.
+    SameLineWhere,
+}
+
+// How to indent a function's return type.
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+enum ReturnIndent {
+    // Aligned with the arguments
+    WithArgs,
+    // Aligned with the where clause
+    WithWhereClause,
+}
 
 // Formatting which depends on the AST.
 fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap) -> ChangeSet<'a> {
@@ -162,6 +184,8 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
         self.last_pos = b.span.hi;
     }
 
+    // Note that this only gets called for function defintions. Required methods
+    // on traits do not get handled here.
     fn visit_fn(&mut self,
                 fk: visit::FnKind<'v>,
                 fd: &'v ast::FnDecl,
@@ -199,10 +223,6 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
             visit::FkFnBlock(..) => {}
         }
 
-        // FIXME we'll miss anything between the end of the signature and the start
-        // of the body, but we need more spans from the compiler to solve this.
-        self.changes.push_str_span(s, "\n");
-        self.changes.push_str_span(s, &make_indent(self.block_indent));
         self.last_pos = b.span.lo;
         self.visit_block(b)
     }
@@ -614,6 +634,13 @@ impl<'a> FmtVisitor<'a> {
         // FIXME we'll lose any comments in between parts of the function decl, but anyone
         // who comments there probably deserves what they get.
 
+        let where_clause = &generics.where_clause;
+        let newline_brace = match FN_BRACE_STYLE {
+            BraceStyle::AlwaysNextLine => true,
+            BraceStyle::SameLineWhere if where_clause.predicates.len() > 0 => true,
+            _ => false,
+        };
+
         let mut result = String::with_capacity(1024);
         // Vis unsafety abi.
         if vis == ast::Visibility::Public {
@@ -637,7 +664,6 @@ impl<'a> FmtVisitor<'a> {
         // there is a where clause at all.
         let lifetimes: &[_] = &generics.lifetimes;
         let tys: &[_] = &generics.ty_params;
-        let where_clause = &generics.where_clause;
         if lifetimes.len() + tys.len() > 0 {
             let budget = MAX_WIDTH - indent - result.len() - 2;
             // TODO might need to insert a newline if the generics are really long
@@ -673,7 +699,10 @@ impl<'a> FmtVisitor<'a> {
         // Try keeping everything on the same line
         if !result.contains("\n") {
             // 3 = `() `, space is before ret_string
-            let used_space = indent + result.len() + 3 + ret_str.len();
+            let mut used_space = indent + result.len() + 3 + ret_str.len();
+            if newline_brace {
+                used_space += 2;
+            }
             let one_line_budget = if used_space > MAX_WIDTH {
                 0
             } else {
@@ -771,13 +800,30 @@ impl<'a> FmtVisitor<'a> {
             // over the max width, then put the return type on a new line.
             if result.contains("\n") ||
                result.len() + indent + ret_str.len() > MAX_WIDTH {
-                let indent = indent + 4;
+                let indent = match FN_RETURN_INDENT {
+                    ReturnIndent::WithWhereClause => indent + 4,
+                    // TODO we might want to check that using the arg indent doesn't
+                    // blow our budget, and if it does, then fallback to the where
+                    // clause indent.
+                    ReturnIndent::WithArgs => arg_indent,
+                };
+
                 result.push('\n');
                 result.push_str(&make_indent(indent));
             } else {
                 result.push(' ');
             }
             result.push_str(&ret_str);
+        }
+
+        // Prepare for the function body by possibly adding a newline and indent.
+        // FIXME we'll miss anything between the end of the signature and the start
+        // of the body, but we need more spans from the compiler to solve this.
+        if newline_brace {
+            result.push('\n');
+            result.push_str(&make_indent(self.block_indent));
+        } else {
+            result.push(' ');
         }
 
         result
