@@ -1248,6 +1248,13 @@ impl Path {
     /// use std::path::Path;
     ///
     /// Path::new("foo.txt");
+    ///
+    /// // Strings work too
+    /// let s = String::from("bar.txt");
+    /// let p = Path::new(&s);
+    ///
+    /// // As do other Paths
+    /// Path::new(&p);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &Path {
