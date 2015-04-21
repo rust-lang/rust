@@ -68,6 +68,9 @@ extern crate test;
 
 pub use rustc_llvm as llvm;
 
+#[macro_use]
+mod macros;
+
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
 pub mod diagnostics;
@@ -141,6 +144,7 @@ pub mod util {
     pub mod ppaux;
     pub mod nodemap;
     pub mod lev_distance;
+    pub mod num;
 }
 
 pub mod lib {

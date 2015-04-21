@@ -14,9 +14,9 @@
 
 #![feature(optin_builtin_traits)]
 
-use std::marker::{MarkerTrait, PhantomData};
+use std::marker::{PhantomData};
 
-unsafe trait Zen: MarkerTrait {}
+unsafe trait Zen {}
 
 unsafe impl Zen for .. {}
 

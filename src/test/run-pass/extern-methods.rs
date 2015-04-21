@@ -8,12 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(core)]
-
-use std::marker::MarkerTrait;
-
-trait A : MarkerTrait {
+trait A {
     extern "fastcall" fn test1(i: i32);
     extern fn test2(i: i32);
 }

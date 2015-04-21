@@ -25,7 +25,6 @@ use default::Default;
 use fmt;
 use iter::ExactSizeIterator;
 use iter::{Map, Iterator, DoubleEndedIterator};
-use marker::Sized;
 use mem;
 use ops::{Fn, FnMut, FnOnce};
 use option::Option::{self, None, Some};
@@ -1461,30 +1460,6 @@ mod traits {
             self
         }
     }
-}
-
-/// Any string that can be represented as a slice
-#[unstable(feature = "core",
-           reason = "Instead of taking this bound generically, this trait will be \
-                     replaced with one of slicing syntax (&foo[..]), deref coercions, or \
-                     a more generic conversion trait")]
-#[deprecated(since = "1.0.0",
-             reason = "use std::convert::AsRef<str> instead")]
-pub trait Str {
-    /// Work with `self` as a slice.
-    fn as_slice<'a>(&'a self) -> &'a str;
-}
-
-#[allow(deprecated)]
-impl Str for str {
-    #[inline]
-    fn as_slice<'a>(&'a self) -> &'a str { self }
-}
-
-#[allow(deprecated)]
-impl<'a, S: ?Sized> Str for &'a S where S: Str {
-    #[inline]
-    fn as_slice(&self) -> &str { Str::as_slice(*self) }
 }
 
 /// Methods for string slices

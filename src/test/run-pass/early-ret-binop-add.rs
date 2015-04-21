@@ -10,8 +10,8 @@
 
 // pretty-expanded FIXME #23616
 
-use std::num::Int;
+use std::ops::Add;
 
-fn wsucc<T:Int>(n: T) -> T { n + { return n } }
+fn wsucc<T:Add<Output=T> + Copy>(n: T) -> T { n + { return n } }
 
 pub fn main() { }

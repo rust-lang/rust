@@ -18,7 +18,7 @@
 //! that do not need to record state.
 
 use core::prelude::*;
-use core::num::{Float, Int};
+use core::num::Float;
 use core::marker::PhantomData;
 
 use {Rng, Rand};

@@ -10,9 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(core)]
-
-trait Foo : ::std::marker::MarkerTrait {
+trait Foo {
 }
 
 fn b(_x: Box<Foo+Send>) {

@@ -10,12 +10,11 @@
 
 // Test which of the builtin types are considered POD.
 
-use std::marker::MarkerTrait;
 use std::rc::Rc;
 
 fn assert_copy<T:Copy>() { }
 
-trait Dummy : MarkerTrait { }
+trait Dummy { }
 
 #[derive(Copy, Clone)]
 struct MyStruct {

@@ -12,10 +12,7 @@
 
 #![feature(collections)]
 
-extern crate collections;
-
 use std::collections::BitVec;
-use std::num::Float;
 
 fn main() {
     // Generate sieve of Eratosthenes for n up to 1e6

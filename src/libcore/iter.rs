@@ -64,7 +64,7 @@ use cmp::{Ord, PartialOrd, PartialEq};
 use default::Default;
 use marker;
 use mem;
-use num::{Int, Zero, One};
+use num::{Zero, One};
 use ops::{self, Add, Sub, FnMut, Mul, RangeFrom};
 use option::Option::{self, Some, None};
 use marker::Sized;
@@ -2327,9 +2327,8 @@ impl<I: RandomAccessIterator, F> RandomAccessIterator for Inspect<I, F>
 /// An iterator that yields sequential Fibonacci numbers, and stops on overflow.
 ///
 /// ```
-/// # #![feature(core)]
+/// #![feature(core)]
 /// use std::iter::Unfold;
-/// use std::num::Int; // For `.checked_add()`
 ///
 /// // This iterator will yield up to the last Fibonacci number before the max
 /// // value of `u32`. You can simply change `u32` to `u64` in this line if
@@ -2641,80 +2640,6 @@ impl<A: Step + Zero + Clone> Iterator for StepBy<A, ops::Range<A>> {
                     Some(n)
                 }
             }
-        } else {
-            None
-        }
-    }
-}
-
-/// An iterator over the range [start, stop] by `step`. It handles overflow by stopping.
-#[derive(Clone)]
-#[unstable(feature = "core",
-           reason = "likely to be replaced by range notation and adapters")]
-pub struct RangeStepInclusive<A> {
-    state: A,
-    stop: A,
-    step: A,
-    rev: bool,
-    done: bool,
-}
-
-/// Returns an iterator over the range [start, stop] by `step`.
-///
-/// It handles overflow by stopping.
-///
-/// # Examples
-///
-/// ```
-/// # #![feature(core)]
-/// use std::iter::range_step_inclusive;
-///
-/// for i in range_step_inclusive(0, 10, 2) {
-///     println!("{}", i);
-/// }
-/// ```
-///
-/// This prints:
-///
-/// ```text
-/// 0
-/// 2
-/// 4
-/// 6
-/// 8
-/// 10
-/// ```
-#[inline]
-#[unstable(feature = "core",
-           reason = "likely to be replaced by range notation and adapters")]
-#[allow(deprecated)]
-pub fn range_step_inclusive<A: Int>(start: A, stop: A, step: A) -> RangeStepInclusive<A> {
-    let rev = step < Int::zero();
-    RangeStepInclusive {
-        state: start,
-        stop: stop,
-        step: step,
-        rev: rev,
-        done: false,
-    }
-}
-
-#[unstable(feature = "core",
-           reason = "likely to be replaced by range notation and adapters")]
-#[allow(deprecated)]
-impl<A: Int> Iterator for RangeStepInclusive<A> {
-    type Item = A;
-
-    #[inline]
-    fn next(&mut self) -> Option<A> {
-        if !self.done && ((self.rev && self.state >= self.stop) ||
-                          (!self.rev && self.state <= self.stop)) {
-            let result = self.state;
-            match self.state.checked_add(self.step) {
-                Some(x) => self.state = x,
-                None => self.done = true
-            }
-            Some(result)
         } else {
             None
         }

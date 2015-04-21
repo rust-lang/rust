@@ -20,11 +20,3 @@ pub use self::os_str::{OsString, OsStr};
 
 mod c_str;
 mod os_str;
-
-// FIXME (#21670): these should be defined in the os_str module
-/// Freely convertible to an `&OsStr` slice.
-#[unstable(feature = "std_misc")]
-pub trait AsOsStr {
-    /// Converts to an `&OsStr` slice.
-    fn as_os_str(&self) -> &OsStr;
-}

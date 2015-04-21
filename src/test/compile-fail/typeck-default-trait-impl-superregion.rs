@@ -13,8 +13,6 @@
 
 #![feature(optin_builtin_traits)]
 
-use std::marker::MarkerTrait;
-
 trait MyTrait : 'static {}
 
 impl MyTrait for .. {}

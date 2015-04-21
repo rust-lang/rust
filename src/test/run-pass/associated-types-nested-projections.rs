@@ -14,10 +14,9 @@
 
 #![feature(core)]
 
-use std::marker::MarkerTrait;
 use std::slice;
 
-trait Bound : MarkerTrait {}
+trait Bound {}
 
 impl<'a> Bound for &'a i32 {}
 
