@@ -547,25 +547,6 @@ impl<T, E> Result<T, E> {
         IterMut { inner: self.as_mut().ok() }
     }
 
-    /// Returns a consuming iterator over the possibly contained value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let x: Result<u32, &str> = Ok(5);
-    /// let v: Vec<u32> = x.into_iter().collect();
-    /// assert_eq!(v, [5]);
-    ///
-    /// let x: Result<u32, &str> = Err("nothing!");
-    /// let v: Vec<u32> = x.into_iter().collect();
-    /// assert_eq!(v, []);
-    /// ```
-    #[inline]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_iter(self) -> IntoIter<T> {
-        IntoIter { inner: self.ok() }
-    }
-
     ////////////////////////////////////////////////////////////////////////
     // Boolean operations on the values, eager and lazy
     /////////////////////////////////////////////////////////////////////////
@@ -804,6 +785,30 @@ impl<T, E> AsSlice<T> for Result<T, E> {
                 emp
             }
         }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T, E> IntoIterator for Result<T, E> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+
+    /// Returns a consuming iterator over the possibly contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x: Result<u32, &str> = Ok(5);
+    /// let v: Vec<u32> = x.into_iter().collect();
+    /// assert_eq!(v, [5]);
+    ///
+    /// let x: Result<u32, &str> = Err("nothing!");
+    /// let v: Vec<u32> = x.into_iter().collect();
+    /// assert_eq!(v, []);
+    /// ```
+    #[inline]
+    fn into_iter(self) -> IntoIter<T> {
+        IntoIter { inner: self.ok() }
     }
 }
 

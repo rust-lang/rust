@@ -55,7 +55,6 @@ use core::prelude::*;
 
 use core::any::Any;
 use core::cmp::Ordering;
-use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
 use core::mem;

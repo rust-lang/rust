@@ -26,17 +26,19 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use boxed::Box;
 #[stable(feature = "rust1", since = "1.0.0")]
+#[doc(no_inline)] pub use borrow::ToOwned;
+#[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use clone::Clone;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use cmp::{PartialEq, PartialOrd, Eq, Ord};
-#[unstable(feature = "convert")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use convert::{AsRef, AsMut, Into, From};
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(no_inline)] pub use iter::DoubleEndedIterator;
+#[doc(no_inline)] pub use default::Default;
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(no_inline)] pub use iter::ExactSizeIterator;
+#[doc(no_inline)] pub use iter::{Iterator, Extend, IntoIterator};
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(no_inline)] pub use iter::{Iterator, Extend};
+#[doc(no_inline)] pub use iter::{DoubleEndedIterator, ExactSizeIterator};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use option::Option::{self, Some, None};
 #[stable(feature = "rust1", since = "1.0.0")]

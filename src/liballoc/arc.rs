@@ -77,7 +77,6 @@ use core::atomic;
 use core::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
 use core::fmt;
 use core::cmp::Ordering;
-use core::default::Default;
 use core::mem::{min_align_of, size_of};
 use core::mem;
 use core::nonzero::NonZero;
