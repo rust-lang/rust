@@ -1473,6 +1473,32 @@ impl<A, B> Iterator for Chain<A, B> where
     }
 
     #[inline]
+    fn count(self) -> usize {
+        (if !self.flag { self.a.count() } else { 0 }) + self.b.count()
+    }
+
+    #[inline]
+    fn nth(&mut self, mut n: usize) -> Option<A::Item> {
+        if !self.flag {
+            for x in self.a.by_ref() {
+                if n == 0 {
+                    return Some(x)
+                }
+                n -= 1;
+            }
+            self.flag = true;
+        }
+        self.b.nth(n)
+    }
+
+    #[inline]
+    fn last(self) -> Option<A::Item> {
+        let a_last = if self.flag { None } else { self.a.last() };
+        let b_last = self.b.last();
+        b_last.or(a_last)
+    }
+
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (a_lower, a_upper) = self.a.size_hint();
         let (b_lower, b_upper) = self.b.size_hint();
@@ -1777,6 +1803,20 @@ impl<I> Iterator for Enumerate<I> where I: Iterator {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<(usize, I::Item)> {
+        self.iter.nth(n).map(|a| {
+            let i = self.count + n;
+            self.count = i + 1;
+            (i, a)
+        })
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.iter.count()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1832,6 +1872,28 @@ impl<I: Iterator> Iterator for Peekable<I> {
             Some(_) => self.peeked.take(),
             None => self.iter.next(),
         }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        (if self.peeked.is_some() { 1 } else { 0 }) + self.iter.count()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<I::Item> {
+        match self.peeked {
+            Some(_) if n == 0 => self.peeked.take(),
+            Some(_) => {
+                self.peeked = None;
+                self.iter.nth(n-1)
+            },
+            None => self.iter.nth(n)
+        }
+    }
+
+    #[inline]
+    fn last(self) -> Option<I::Item> {
+        self.iter.last().or(self.peeked)
     }
 
     #[inline]
@@ -1960,27 +2022,49 @@ impl<I> Iterator for Skip<I> where I: Iterator {
     type Item = <I as Iterator>::Item;
 
     #[inline]
-    fn next(&mut self) -> Option<<I as Iterator>::Item> {
-        let mut next = self.iter.next();
+    fn next(&mut self) -> Option<I::Item> {
         if self.n == 0 {
-            next
+            self.iter.next()
         } else {
-            let mut n = self.n;
-            while n > 0 {
-                n -= 1;
-                match next {
-                    Some(_) => {
-                        next = self.iter.next();
-                        continue
-                    }
-                    None => {
-                        self.n = 0;
-                        return None
-                    }
-                }
-            }
+            let old_n = self.n;
             self.n = 0;
-            next
+            self.iter.nth(old_n)
+        }
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<I::Item> {
+        // Can't just add n + self.n due to overflow.
+        if self.n == 0 {
+            self.iter.nth(n)
+        } else {
+            let to_skip = self.n;
+            self.n = 0;
+            // nth(n) skips n+1
+            if self.iter.nth(to_skip-1).is_none() {
+                return None;
+            }
+            self.iter.nth(n)
+        }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        self.iter.count().saturating_sub(self.n)
+    }
+
+    #[inline]
+    fn last(mut self) -> Option<I::Item> {
+        if self.n == 0 {
+            self.iter.last()
+        } else {
+            let next = self.next();
+            if next.is_some() {
+                // recurse. n should be 0.
+                self.last().or(next)
+            } else {
+                None
+            }
         }
     }
 
@@ -2034,6 +2118,20 @@ impl<I> Iterator for Take<I> where I: Iterator{
             self.n -= 1;
             self.iter.next()
         } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<I::Item> {
+        if self.n > n {
+            self.n -= n + 1;
+            self.iter.nth(n)
+        } else {
+            if self.n > 0 {
+                self.iter.nth(self.n - 1);
+                self.n = 0;
+            }
             None
         }
     }
@@ -2196,6 +2294,35 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
             let next = self.iter.next();
             self.done = next.is_none();
             next
+        }
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<I::Item> {
+        if self.done {
+            None
+        } else {
+            let nth = self.iter.nth(n);
+            self.done = nth.is_none();
+            nth
+        }
+    }
+
+    #[inline]
+    fn last(self) -> Option<I::Item> {
+        if self.done {
+            None
+        } else {
+            self.iter.last()
+        }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        if self.done {
+            0
+        } else {
+            self.iter.count()
         }
     }
 
