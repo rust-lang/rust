@@ -21,6 +21,8 @@ match x {
 }
 ```
 
+This prints `one`.
+
 # Multiple patterns
 
 You can match multiple patterns with `|`:
@@ -35,6 +37,8 @@ match x {
 }
 ```
 
+This prints `one or two`.
+
 # Ranges
 
 You can match a range of values with `...`:
@@ -48,7 +52,21 @@ match x {
 }
 ```
 
-Ranges are mostly used with integers and single characters.
+This prints `one through five`.
+
+Ranges are mostly used with integers and `char`s:
+
+```rust
+let x = '💅';
+
+match x {
+    'a' ... 'j' => println!("early letter"),
+    'k' ... 'z' => println!("late letter"),
+    _ => println!("something else"),
+}
+```
+
+This prints `something else`
 
 # Bindings
 
@@ -63,6 +81,8 @@ match x {
     _ => println!("anything"),
 }
 ```
+
+This prints `got a range element 1`.
 
 # Ignoring variants
 
@@ -83,6 +103,8 @@ match x {
 }
 ```
 
+This prints `Got an int!`.
+
 # Guards
 
 You can introduce ‘match guards’ with `if`:
@@ -102,6 +124,8 @@ match x {
 }
 ```
 
+This prints `Got an int!`
+
 # ref and ref mut
 
 If you want to get a [reference][ref], use the `ref` keyword:
@@ -113,6 +137,8 @@ match x {
     ref r => println!("Got a reference to {}", r),
 }
 ```
+
+This prints `Got a reference to 5`.
 
 [ref]: references-and-borrowing.html
 
@@ -130,7 +156,7 @@ match x {
 
 # Destructuring
 
-If you have a compound data type, like a `struct`, you can destructure it
+If you have a compound data type, like a [`struct`][struct], you can destructure it
 inside of a pattern:
 
 ```rust
@@ -145,6 +171,8 @@ match origin {
     Point { x: x, y: y } => println!("({},{})", x, y),
 }
 ```
+
+[struct]: structs.html
 
 If we only care about some of the values, we don’t have to give them all names:
 
@@ -161,6 +189,8 @@ match origin {
 }
 ```
 
+This prints `x is 0`.
+
 You can do this kind of match on any member, not just the first:
 
 ```rust
@@ -176,6 +206,8 @@ match origin {
 }
 ```
 
+This prints `y is 0`.
+
 This ‘destructuring’ behavior works on any compound data type, like
 [tuples][tuples] or [enums][enums].
 
@@ -187,10 +219,10 @@ This ‘destructuring’ behavior works on any compound data type, like
 Whew! That’s a lot of different ways to match things, and they can all be
 mixed and matched, depending on what you’re doing:
 
-```{rust,ignore}
+```rust,ignore
 match x {
     Foo { x: Some(ref name), y: None } => ...
 }
 ```
 
-Patterns are very powerful.  Make good use of them.
+Patterns are very powerful. Make good use of them.
