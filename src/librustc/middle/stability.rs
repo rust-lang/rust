@@ -95,9 +95,9 @@ impl<'a> Annotator<'a> {
                 let tag = attr.name();
                 if tag == "unstable" || tag == "stable" || tag == "deprecated" {
                     attr::mark_used(attr);
-                    self.sess.span_warn(attr.span(),
-                                        "stability attributes are deprecated \
-                                         and will soon become errors");
+                    self.sess.span_err(attr.span(),
+                                       "stability attributes may not be used outside \
+                                        of the standard library");
                 }
             }
             f(self);
