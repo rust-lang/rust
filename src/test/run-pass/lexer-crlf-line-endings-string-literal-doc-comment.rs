@@ -16,7 +16,6 @@
 // this directory should enforce it.
 
 // ignore-pretty
-// ignore-lexer-test FIXME #15882
 
 /// Doc comment that ends in CRLF
 pub fn foo() {}

@@ -7,8 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
-// ignore-lexer-test FIXME #15679
 
 //! The CodeMap tracks all the source code used within a single crate, mapping
 //! from integer byte positions to the original source code location. Each bit
