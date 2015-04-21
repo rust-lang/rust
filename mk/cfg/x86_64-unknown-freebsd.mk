@@ -11,15 +11,11 @@ CFG_JEMALLOC_CFLAGS_x86_64-unknown-freebsd := -I/usr/local/include $(CFLAGS)
 CFG_GCCISH_CFLAGS_x86_64-unknown-freebsd := -Wall -Werror -g -fPIC -I/usr/local/include $(CFLAGS)
 CFG_GCCISH_LINK_FLAGS_x86_64-unknown-freebsd := -shared -fPIC -g -pthread  -lrt
 CFG_GCCISH_DEF_FLAG_x86_64-unknown-freebsd := -Wl,--export-dynamic,--dynamic-list=
-CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-freebsd := -Wl,-whole-archive
-CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-freebsd := -Wl,-no-whole-archive
-CFG_DEF_SUFFIX_x86_64-unknown-freebsd := .bsd.def
 CFG_LLC_FLAGS_x86_64-unknown-freebsd :=
 CFG_INSTALL_NAME_x86_64-unknown-freebsd =
 CFG_EXE_SUFFIX_x86_64-unknown-freebsd :=
 CFG_WINDOWSY_x86_64-unknown-freebsd :=
 CFG_UNIXY_x86_64-unknown-freebsd := 1
-CFG_PATH_MUNGE_x86_64-unknown-freebsd :=
 CFG_LDPATH_x86_64-unknown-freebsd :=
 CFG_RUN_x86_64-unknown-freebsd=$(2)
 CFG_RUN_TARG_x86_64-unknown-freebsd=$(call CFG_RUN_x86_64-unknown-freebsd,,$(2))
