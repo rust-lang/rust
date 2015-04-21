@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that labels injected by macros do not break hygiene.
+
+// Issue #24278: The label/lifetime shadowing checker from #24162
+// conservatively ignores hygiene, and thus issues warnings that are
+// both true- and false-positives for this test.
 
 macro_rules! loop_x {
     ($e: expr) => {
