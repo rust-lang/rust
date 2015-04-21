@@ -583,6 +583,7 @@ valopt jemalloc-root "" "set directory where libjemalloc_pic.a is located"
 valopt build "${DEFAULT_BUILD}" "GNUs ./configure syntax LLVM build triple"
 valopt android-cross-path "/opt/ndk_standalone" "Android NDK standalone path"
 valopt release-channel "dev" "the name of the release channel to build"
+valopt musl-root "/usr/local" "MUSL root installation directory"
 
 # Many of these are saved below during the "writing configuration" step
 # (others are conditionally saved).
@@ -1058,6 +1059,13 @@ do
             fi
             ;;
 
+
+        *-musl)
+            if [ ! -f $CFG_MUSL_ROOT/lib/libc.a ]
+            then
+                err "musl libc $CFG_MUSL_ROOT/lib/libc.a not found"
+            fi
+            ;;
         *)
             ;;
     esac
