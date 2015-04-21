@@ -348,7 +348,7 @@ unsafe extern "C" fn report_inline_asm<'a, 'b>(cgcx: &'a CodegenContext<'a>,
 
     match cgcx.lto_ctxt {
         Some((sess, _)) => {
-            sess.codemap().with_expn_info(ExpnId::from_llvm_cookie(cookie), |info| match info {
+            sess.codemap().with_expn_info(ExpnId::from_u32(cookie), |info| match info {
                 Some(ei) => sess.span_err(ei.call_site, msg),
                 None     => sess.err(msg),
             });

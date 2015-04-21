@@ -192,7 +192,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 panictry!(p.check_unknown_macro_variable());
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
-                return box ParserAnyMacro {
+                return Box::new(ParserAnyMacro {
                     parser: RefCell::new(p),
 
                     // Pass along the original expansion site and the name of the macro
@@ -200,7 +200,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                     // macro leaves unparsed tokens.
                     site_span: sp,
                     macro_ident: name
-                }
+                })
               }
               Failure(sp, ref msg) => if sp.lo >= best_fail_spot.lo {
                 best_fail_spot = sp;
@@ -281,12 +281,12 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
         _ => cx.span_bug(def.span, "wrong-structured rhs")
     };
 
-    let exp: Box<_> = box MacroRulesMacroExpander {
+    let exp: Box<_> = Box::new(MacroRulesMacroExpander {
         name: def.ident,
         imported_from: def.imported_from,
         lhses: lhses,
         rhses: rhses,
-    };
+    });
 
     NormalTT(exp, Some(def.span), def.allow_internal_unstable)
 }

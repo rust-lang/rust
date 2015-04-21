@@ -78,6 +78,7 @@ use parse::PResult;
 use diagnostic::FatalError;
 
 use std::collections::HashSet;
+use std::fs;
 use std::io::prelude::*;
 use std::mem;
 use std::path::{Path, PathBuf};
@@ -436,10 +437,11 @@ impl<'a> Parser<'a> {
             // leave it in the input
             Ok(())
         } else {
-            let mut expected = edible.iter().map(|x| TokenType::Token(x.clone()))
-                                            .collect::<Vec<_>>();
-            expected.extend(inedible.iter().map(|x| TokenType::Token(x.clone())));
-            expected.push_all(&*self.expected_tokens);
+            let mut expected = edible.iter()
+                .map(|x| TokenType::Token(x.clone()))
+                .chain(inedible.iter().map(|x| TokenType::Token(x.clone())))
+                .chain(self.expected_tokens.iter().cloned())
+                .collect::<Vec<_>>();
             expected.sort_by(|a, b| a.to_string().cmp(&b.to_string()));
             expected.dedup();
             let expect = tokens_to_string(&expected[..]);
@@ -490,8 +492,10 @@ impl<'a> Parser<'a> {
         debug!("commit_expr {:?}", e);
         if let ExprPath(..) = e.node {
             // might be unit-struct construction; check for recoverableinput error.
-            let mut expected = edible.iter().cloned().collect::<Vec<_>>();
-            expected.push_all(inedible);
+            let expected = edible.iter()
+                .cloned()
+                .chain(inedible.iter().cloned())
+                .collect::<Vec<_>>();
             try!(self.check_for_erroneous_unit_struct_expecting(&expected[..]));
         }
         self.expect_one_of(edible, inedible)
@@ -509,8 +513,10 @@ impl<'a> Parser<'a> {
         if self.last_token
                .as_ref()
                .map_or(false, |t| t.is_ident() || t.is_path()) {
-            let mut expected = edible.iter().cloned().collect::<Vec<_>>();
-            expected.push_all(&inedible);
+            let expected = edible.iter()
+                .cloned()
+                .chain(inedible.iter().cloned())
+                .collect::<Vec<_>>();
             try!(self.check_for_erroneous_unit_struct_expecting(&expected));
         }
         self.expect_one_of(edible, inedible)
@@ -897,7 +903,7 @@ impl<'a> Parser<'a> {
         self.last_span = self.span;
         // Stash token for error recovery (sometimes; clone is not necessarily cheap).
         self.last_token = if self.token.is_ident() || self.token.is_path() {
-            Some(box self.token.clone())
+            Some(Box::new(self.token.clone()))
         } else {
             None
         };
@@ -1187,7 +1193,7 @@ impl<'a> Parser<'a> {
                     debug!("parse_trait_methods(): parsing provided method");
                     let (inner_attrs, body) =
                         try!(p.parse_inner_attrs_and_block());
-                    attrs.push_all(&inner_attrs[..]);
+                    attrs.extend(inner_attrs.iter().cloned());
                     Some(body)
                   }
 
@@ -1578,8 +1584,8 @@ impl<'a> Parser<'a> {
             token::Interpolated(token::NtPath(_)) => Some(try!(self.bump_and_get())),
             _ => None,
         };
-        if let Some(token::Interpolated(token::NtPath(box path))) = found {
-            return Ok(path);
+        if let Some(token::Interpolated(token::NtPath(path))) = found {
+            return Ok(*path);
         }
 
         let lo = self.span.lo;
@@ -4770,8 +4776,8 @@ impl<'a> Parser<'a> {
                 let secondary_path_str = format!("{}/mod.rs", mod_name);
                 let default_path = dir_path.join(&default_path_str[..]);
                 let secondary_path = dir_path.join(&secondary_path_str[..]);
-                let default_exists = default_path.exists();
-                let secondary_exists = secondary_path.exists();
+                let default_exists = fs::metadata(&default_path).is_ok();
+                let secondary_exists = fs::metadata(&secondary_path).is_ok();
 
                 if !self.owns_directory {
                     self.span_err(id_sp,
@@ -4834,7 +4840,7 @@ impl<'a> Parser<'a> {
         let mut included_mod_stack = self.sess.included_mod_stack.borrow_mut();
         match included_mod_stack.iter().position(|p| *p == path) {
             Some(i) => {
-                let mut err = String::from_str("circular modules: ");
+                let mut err = String::from("circular modules: ");
                 let len = included_mod_stack.len();
                 for p in &included_mod_stack[i.. len] {
                     err.push_str(&p.to_string_lossy());

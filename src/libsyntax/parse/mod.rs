@@ -16,7 +16,7 @@ use diagnostic::{SpanHandler, mk_span_handler, default_handler, Auto, FatalError
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
 use ptr::P;
-
+use str::char_at;
 
 use std::cell::{Cell, RefCell};
 use std::fs::File;
@@ -288,7 +288,7 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     // parsing tt's probably shouldn't require a parser at all.
     let cfg = Vec::new();
     let srdr = lexer::StringReader::new(&sess.span_diagnostic, filemap);
-    let mut p1 = Parser::new(sess, cfg, box srdr);
+    let mut p1 = Parser::new(sess, cfg, Box::new(srdr));
     panictry!(p1.parse_all_token_trees())
 }
 
@@ -297,7 +297,7 @@ pub fn tts_to_parser<'a>(sess: &'a ParseSess,
                          tts: Vec<ast::TokenTree>,
                          cfg: ast::CrateConfig) -> Parser<'a> {
     let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, None, tts);
-    let mut p = Parser::new(sess, cfg, box trdr);
+    let mut p = Parser::new(sess, cfg, Box::new(trdr));
     panictry!(p.check_unknown_macro_variable());
     p
 }
@@ -360,7 +360,7 @@ pub mod with_hygiene {
         use super::lexer::make_reader_with_embedded_idents as make_reader;
         let cfg = Vec::new();
         let srdr = make_reader(&sess.span_diagnostic, filemap);
-        let mut p1 = Parser::new(sess, cfg, box srdr);
+        let mut p1 = Parser::new(sess, cfg, Box::new(srdr));
         panictry!(p1.parse_all_token_trees())
     }
 }
@@ -536,7 +536,7 @@ pub fn raw_str_lit(lit: &str) -> String {
 // check if `s` looks like i32 or u1234 etc.
 fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
     s.len() > 1 &&
-        first_chars.contains(&s.char_at(0)) &&
+        first_chars.contains(&char_at(s, 0)) &&
         s[1..].chars().all(|c| '0' <= c && c <= '9')
 }
 
@@ -673,8 +673,8 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
     let orig = s;
     let mut ty = ast::UnsuffixedIntLit(ast::Plus);
 
-    if s.char_at(0) == '0' && s.len() > 1 {
-        match s.char_at(1) {
+    if char_at(s, 0) == '0' && s.len() > 1 {
+        match char_at(s, 1) {
             'x' => base = 16,
             'o' => base = 8,
             'b' => base = 2,
@@ -834,28 +834,44 @@ mod test {
     fn string_to_tts_macro () {
         let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
         let tts: &[ast::TokenTree] = &tts[..];
-        match tts {
-            [ast::TtToken(_, token::Ident(name_macro_rules, token::Plain)),
-             ast::TtToken(_, token::Not),
-             ast::TtToken(_, token::Ident(name_zip, token::Plain)),
-             ast::TtDelimited(_, ref macro_delimed)]
+
+        match (tts.len(), tts.get(0), tts.get(1), tts.get(2), tts.get(3)) {
+            (
+                4,
+                Some(&ast::TtToken(_, token::Ident(name_macro_rules, token::Plain))),
+                Some(&ast::TtToken(_, token::Not)),
+                Some(&ast::TtToken(_, token::Ident(name_zip, token::Plain))),
+                Some(&ast::TtDelimited(_, ref macro_delimed)),
+            )
             if name_macro_rules.as_str() == "macro_rules"
             && name_zip.as_str() == "zip" => {
-                match &macro_delimed.tts[..] {
-                    [ast::TtDelimited(_, ref first_delimed),
-                     ast::TtToken(_, token::FatArrow),
-                     ast::TtDelimited(_, ref second_delimed)]
+                let tts = &macro_delimed.tts[..];
+                match (tts.len(), tts.get(0), tts.get(1), tts.get(2)) {
+                    (
+                        3,
+                        Some(&ast::TtDelimited(_, ref first_delimed)),
+                        Some(&ast::TtToken(_, token::FatArrow)),
+                        Some(&ast::TtDelimited(_, ref second_delimed)),
+                    )
                     if macro_delimed.delim == token::Paren => {
-                        match &first_delimed.tts[..] {
-                            [ast::TtToken(_, token::Dollar),
-                             ast::TtToken(_, token::Ident(name, token::Plain))]
+                        let tts = &first_delimed.tts[..];
+                        match (tts.len(), tts.get(0), tts.get(1)) {
+                            (
+                                2,
+                                Some(&ast::TtToken(_, token::Dollar)),
+                                Some(&ast::TtToken(_, token::Ident(name, token::Plain))),
+                            )
                             if first_delimed.delim == token::Paren
                             && name.as_str() == "a" => {},
                             _ => panic!("value 3: {:?}", **first_delimed),
                         }
-                        match &second_delimed.tts[..] {
-                            [ast::TtToken(_, token::Dollar),
-                             ast::TtToken(_, token::Ident(name, token::Plain))]
+                        let tts = &second_delimed.tts[..];
+                        match (tts.len(), tts.get(0), tts.get(1)) {
+                            (
+                                2,
+                                Some(&ast::TtToken(_, token::Dollar)),
+                                Some(&ast::TtToken(_, token::Ident(name, token::Plain))),
+                            )
                             if second_delimed.delim == token::Paren
                             && name.as_str() == "a" => {},
                             _ => panic!("value 4: {:?}", **second_delimed),
