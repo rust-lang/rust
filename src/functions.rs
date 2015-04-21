@@ -224,7 +224,7 @@ impl<'a> FmtVisitor<'a> {
         let fmt = ListFormatting {
             tactic: ListTactic::Vertical,
             separator: ",",
-            trailing_separator: SeparatorTactic::Always,
+            trailing_separator: SeparatorTactic::Never,
             indent: indent + 10,
             h_width: budget,
             v_width: budget,

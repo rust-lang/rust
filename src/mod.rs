@@ -24,7 +24,6 @@
 //   dead spans
 //
 // Smoke testing till we can use it
-//   end of multi-line string has wspace
 //   no newline at the end of doc.rs
 
 #[macro_use]
@@ -192,7 +191,6 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
 
         self.block_indent -= TAB_SPACES;
         // TODO we should compress any newlines here to just one
-        // TODO somewhere here we are preserving bogus whitespace
         self.format_missing_with_indent(b.span.hi - BytePos(1));
         self.changes.push_str_span(b.span, "}");
         self.last_pos = b.span.hi;
@@ -557,7 +555,9 @@ impl<'a> FmtVisitor<'a> {
             ast::Expr_::ExprLit(ref l) => {
                 match l.node {
                     ast::Lit_::LitStr(ref is, _) => {
-                        return self.rewrite_string_lit(&is, l.span, width, offset);
+                        let result = self.rewrite_string_lit(&is, l.span, width, offset);
+                        debug!("string lit: `{}`", result);
+                        return result;
                     }
                     _ => {}
                 }
@@ -569,7 +569,6 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let result = self.snippet(expr.span);
-        debug!("snippet: {}", result);
         result
     }
 }
