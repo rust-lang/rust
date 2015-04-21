@@ -13,11 +13,12 @@ pub use self::CommentStyle::*;
 use ast;
 use codemap::{BytePos, CharPos, CodeMap, Pos};
 use diagnostic;
-use parse::lexer::{is_whitespace, Reader};
-use parse::lexer::{StringReader, TokenAndSpan};
 use parse::lexer::is_block_doc_comment;
+use parse::lexer::{StringReader, TokenAndSpan};
+use parse::lexer::{is_whitespace, Reader};
 use parse::lexer;
 use print::pprust;
+use str::char_at;
 
 use std::io::Read;
 use std::usize;
@@ -209,7 +210,7 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<usize> {
     let mut col = col.to_usize();
     let mut cursor: usize = 0;
     while col > 0 && cursor < len {
-        let ch = s.char_at(cursor);
+        let ch = char_at(s, cursor);
         if !ch.is_whitespace() {
             return None;
         }

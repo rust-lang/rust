@@ -16,7 +16,7 @@ use diagnostic::{SpanHandler, mk_span_handler, default_handler, Auto, FatalError
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
 use ptr::P;
-
+use str::char_at;
 
 use std::cell::{Cell, RefCell};
 use std::fs::File;
@@ -536,7 +536,7 @@ pub fn raw_str_lit(lit: &str) -> String {
 // check if `s` looks like i32 or u1234 etc.
 fn looks_like_width_suffix(first_chars: &[char], s: &str) -> bool {
     s.len() > 1 &&
-        first_chars.contains(&s.char_at(0)) &&
+        first_chars.contains(&char_at(s, 0)) &&
         s[1..].chars().all(|c| '0' <= c && c <= '9')
 }
 
@@ -673,8 +673,8 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
     let orig = s;
     let mut ty = ast::UnsuffixedIntLit(ast::Plus);
 
-    if s.char_at(0) == '0' && s.len() > 1 {
-        match s.char_at(1) {
+    if char_at(s, 0) == '0' && s.len() > 1 {
+        match char_at(s, 1) {
             'x' => base = 16,
             'o' => base = 8,
             'b' => base = 2,
