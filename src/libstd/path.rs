@@ -1249,11 +1249,11 @@ impl Path {
     ///
     /// Path::new("foo.txt");
     ///
-    /// // Strings work too
+    /// // Strings work too:
     /// let s = String::from("bar.txt");
     /// let p = Path::new(&s);
     ///
-    /// // As do other Paths
+    /// // As do other `Path`s:
     /// Path::new(&p);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
