@@ -83,7 +83,7 @@ use util::ppaux;
 use util::ppaux::{Repr,UserString};
 use write_ty_to_tcx;
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -1257,6 +1257,9 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         generics: ty_generics,
         trait_ref: trait_ref,
         associated_type_names: associated_type_names,
+        nonblanket_impls: RefCell::new(FnvHashMap()),
+        blanket_impls: RefCell::new(vec![]),
+        flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS)
     };
 
     return tcx.intern_trait_def(trait_def);

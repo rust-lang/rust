@@ -30,7 +30,9 @@ use middle::subst;
 use middle::ty::{ImplContainer, TraitContainer};
 use middle::ty::{self, Ty};
 use middle::astencode::vtable_decoder_helpers;
+use util::nodemap::FnvHashMap;
 
+use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::hash::{self, Hash, SipHasher};
 use std::io::prelude::*;
@@ -420,6 +422,9 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
         generics: generics,
         trait_ref: item_trait_ref(item_doc, tcx, cdata),
         associated_type_names: associated_type_names,
+        nonblanket_impls: RefCell::new(FnvHashMap()),
+        blanket_impls: RefCell::new(vec![]),
+        flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS)
     }
 }
 

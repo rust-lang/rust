@@ -1745,17 +1745,16 @@ impl LintPass for MissingDebugImplementations {
         };
 
         if self.impling_types.is_none() {
-            let impls = cx.tcx.trait_impls.borrow();
-            let impls = match impls.get(&debug) {
-                Some(impls) => {
-                    impls.borrow().iter()
-                         .filter(|d| d.krate == ast::LOCAL_CRATE)
-                         .filter_map(|d| ty::ty_to_def_id(ty::node_id_to_type(cx.tcx, d.node)))
-                         .map(|d| d.node)
-                         .collect()
+            let debug_def = ty::lookup_trait_def(cx.tcx, debug);
+            let mut impls = NodeSet();
+            debug_def.for_each_impl(cx.tcx, |d| {
+                if d.krate == ast::LOCAL_CRATE {
+                    if let Some(ty_def) = ty::ty_to_def_id(ty::node_id_to_type(cx.tcx, d.node)) {
+                        impls.insert(ty_def.node);
+                    }
                 }
-                None => NodeSet(),
-            };
+            });
+
             self.impling_types = Some(impls);
             debug!("{:?}", self.impling_types);
         }
