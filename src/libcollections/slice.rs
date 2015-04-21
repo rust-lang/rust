@@ -462,7 +462,7 @@ impl<T> [T] {
     /// Returns all but the first element of a slice.
     #[unstable(feature = "collections", reason = "likely to be renamed")]
     #[inline]
-    pub fn tail(&self) -> &[T] {
+    pub fn tail(&self) -> Option<&[T]> {
         core_slice::SliceExt::tail(self)
     }
 

@@ -359,7 +359,7 @@ Test Attributes:
 
 // Parses command line arguments into test options
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
-    let args_ = args.tail();
+    let args_ = args.tail().unwrap();
     let matches =
         match getopts::getopts(args_, &optgroups()) {
           Ok(m) => m,

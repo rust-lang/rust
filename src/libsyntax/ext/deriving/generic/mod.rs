@@ -1103,7 +1103,7 @@ impl<'a> MethodDef<'a> {
                     subpats.push(p);
                     idents
                 };
-                for self_arg_name in self_arg_names.tail() {
+                for self_arg_name in self_arg_names.tail().unwrap() {
                     let (p, idents) = mk_self_pat(cx, &self_arg_name[..]);
                     subpats.push(p);
                     self_pats_idents.push(idents);

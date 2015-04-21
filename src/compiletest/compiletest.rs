@@ -93,7 +93,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
 
     assert!(!args.is_empty());
     let argv0 = args[0].clone();
-    let args_ = args.tail();
+    let args_ = args.tail().unwrap();
     if args[1] == "-h" || args[1] == "--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
         println!("{}", getopts::usage(&message, &groups));

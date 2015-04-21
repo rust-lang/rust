@@ -79,7 +79,7 @@ pub trait SliceExt {
     fn chunks<'a>(&'a self, size: usize) -> Chunks<'a, Self::Item>;
     fn get<'a>(&'a self, index: usize) -> Option<&'a Self::Item>;
     fn first<'a>(&'a self) -> Option<&'a Self::Item>;
-    fn tail<'a>(&'a self) -> &'a [Self::Item];
+    fn tail<'a>(&'a self) -> Option<&'a [Self::Item]>;
     fn init<'a>(&'a self) -> &'a [Self::Item];
     fn last<'a>(&'a self) -> Option<&'a Self::Item>;
     unsafe fn get_unchecked<'a>(&'a self, index: usize) -> &'a Self::Item;
@@ -208,7 +208,9 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn tail(&self) -> &[T] { &self[1..] }
+    fn tail(&self) -> Option<&[T]> {
+        if self.len() == 0 { None } else { Some(&self[1..]) }
+    }
 
     #[inline]
     fn init(&self) -> &[T] {
