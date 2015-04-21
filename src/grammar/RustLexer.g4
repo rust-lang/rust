@@ -1,5 +1,12 @@
 lexer grammar RustLexer;
 
+@lexer::members {
+  public boolean is_at(int pos) {
+    return _input.index() == pos;
+  }
+}
+
+
 tokens {
     EQ, LT, LE, EQEQ, NE, GE, GT, ANDAND, OROR, NOT, TILDE, PLUT,
     MINUS, STAR, SLASH, PERCENT, CARET, AND, OR, SHL, SHR, BINOP,
@@ -8,14 +15,10 @@ tokens {
     LBRACE, RBRACE, POUND, DOLLAR, UNDERSCORE, LIT_CHAR,
     LIT_INTEGER, LIT_FLOAT, LIT_STR, LIT_STR_RAW, LIT_BINARY,
     LIT_BINARY_RAW, IDENT, LIFETIME, WHITESPACE, DOC_COMMENT,
-    COMMENT
+    COMMENT, SHEBANG
 }
 
-/* Note: due to antlr limitations, we can't represent XID_start and
- * XID_continue properly. ASCII-only substitute. */
-
-fragment XID_start : [_a-zA-Z] ;
-fragment XID_continue : [_a-zA-Z0-9] ;
+import xidstart , xidcontinue;
 
 
 /* Expression-operator symbols */
@@ -90,85 +93,54 @@ fragment CHAR_ESCAPE
   | [xX] HEXIT HEXIT
   | 'u' HEXIT HEXIT HEXIT HEXIT
   | 'U' HEXIT HEXIT HEXIT HEXIT HEXIT HEXIT HEXIT HEXIT
+  | 'u{' HEXIT '}'
+  | 'u{' HEXIT HEXIT '}'
+  | 'u{' HEXIT HEXIT HEXIT '}'
+  | 'u{' HEXIT HEXIT HEXIT HEXIT '}'
+  | 'u{' HEXIT HEXIT HEXIT HEXIT HEXIT '}'
+  | 'u{' HEXIT HEXIT HEXIT HEXIT HEXIT HEXIT '}'
   ;
 
 fragment SUFFIX
   : IDENT
   ;
 
+fragment INTEGER_SUFFIX
+  : { _input.LA(1) != 'e' && _input.LA(1) != 'E' }? SUFFIX
+  ;
+
 LIT_CHAR
-  : '\'' ( '\\' CHAR_ESCAPE | ~[\\'\n\t\r] ) '\'' SUFFIX?
+  : '\'' ( '\\' CHAR_ESCAPE
+         | ~[\\'\n\t\r]
+         | '\ud800' .. '\udbff' '\udc00' .. '\udfff'
+         )
+    '\'' SUFFIX?
   ;
 
 LIT_BYTE
-  : 'b\'' ( '\\' ( [xX] HEXIT HEXIT | [nrt\\'"0] ) | ~[\\'\n\t\r] ) '\'' SUFFIX?
+  : 'b\'' ( '\\' ( [xX] HEXIT HEXIT
+                 | [nrt\\'"0] )
+          | ~[\\'\n\t\r] '\udc00'..'\udfff'?
+          )
+    '\'' SUFFIX?
   ;
 
 LIT_INTEGER
-  : [0-9][0-9_]* SUFFIX?
-  | '0b' [01][01_]* SUFFIX?
-  | '0o' [0-7][0-7_]* SUFFIX?
-  | '0x' [0-9a-fA-F][0-9a-fA-F_]* SUFFIX?
+
+  : [0-9][0-9_]* INTEGER_SUFFIX?
+  | '0b' [01_]+ INTEGER_SUFFIX?
+  | '0o' [0-7_]+ INTEGER_SUFFIX?
+  | '0x' [0-9a-fA-F_]+ INTEGER_SUFFIX?
   ;
 
 LIT_FLOAT
   : [0-9][0-9_]* ('.' {
-        /* dot followed by another dot is a range, no float */
+        /* dot followed by another dot is a range, not a float */
         _input.LA(1) != '.' &&
-        /* dot followed by an identifier is an integer with a function call, no float */
+        /* dot followed by an identifier is an integer with a function call, not a float */
         _input.LA(1) != '_' &&
-        _input.LA(1) != 'a' &&
-        _input.LA(1) != 'b' &&
-        _input.LA(1) != 'c' &&
-        _input.LA(1) != 'd' &&
-        _input.LA(1) != 'e' &&
-        _input.LA(1) != 'f' &&
-        _input.LA(1) != 'g' &&
-        _input.LA(1) != 'h' &&
-        _input.LA(1) != 'i' &&
-        _input.LA(1) != 'j' &&
-        _input.LA(1) != 'k' &&
-        _input.LA(1) != 'l' &&
-        _input.LA(1) != 'm' &&
-        _input.LA(1) != 'n' &&
-        _input.LA(1) != 'o' &&
-        _input.LA(1) != 'p' &&
-        _input.LA(1) != 'q' &&
-        _input.LA(1) != 'r' &&
-        _input.LA(1) != 's' &&
-        _input.LA(1) != 't' &&
-        _input.LA(1) != 'u' &&
-        _input.LA(1) != 'v' &&
-        _input.LA(1) != 'w' &&
-        _input.LA(1) != 'x' &&
-        _input.LA(1) != 'y' &&
-        _input.LA(1) != 'z' &&
-        _input.LA(1) != 'A' &&
-        _input.LA(1) != 'B' &&
-        _input.LA(1) != 'C' &&
-        _input.LA(1) != 'D' &&
-        _input.LA(1) != 'E' &&
-        _input.LA(1) != 'F' &&
-        _input.LA(1) != 'G' &&
-        _input.LA(1) != 'H' &&
-        _input.LA(1) != 'I' &&
-        _input.LA(1) != 'J' &&
-        _input.LA(1) != 'K' &&
-        _input.LA(1) != 'L' &&
-        _input.LA(1) != 'M' &&
-        _input.LA(1) != 'N' &&
-        _input.LA(1) != 'O' &&
-        _input.LA(1) != 'P' &&
-        _input.LA(1) != 'Q' &&
-        _input.LA(1) != 'R' &&
-        _input.LA(1) != 'S' &&
-        _input.LA(1) != 'T' &&
-        _input.LA(1) != 'U' &&
-        _input.LA(1) != 'V' &&
-        _input.LA(1) != 'W' &&
-        _input.LA(1) != 'X' &&
-        _input.LA(1) != 'Y' &&
-        _input.LA(1) != 'Z'
+        !(_input.LA(1) >= 'a' && _input.LA(1) <= 'z') &&
+        !(_input.LA(1) >= 'A' && _input.LA(1) <= 'Z')
   }? | ('.' [0-9][0-9_]*)? ([eE] [-+]? [0-9][0-9_]*)? SUFFIX?)
   ;
 
@@ -176,8 +148,8 @@ LIT_STR
   : '"' ('\\\n' | '\\\r\n' | '\\' CHAR_ESCAPE | .)*? '"' SUFFIX?
   ;
 
-LIT_BINARY : 'b' LIT_STR SUFFIX?;
-LIT_BINARY_RAW : 'rb' LIT_STR_RAW SUFFIX?;
+LIT_BINARY : 'b' LIT_STR ;
+LIT_BINARY_RAW : 'b' LIT_STR_RAW ;
 
 /* this is a bit messy */
 
@@ -197,7 +169,7 @@ LIT_STR_RAW
 
 QUESTION : '?';
 
-IDENT : XID_start XID_continue* ;
+IDENT : XID_Start XID_Continue* ;
 
 fragment QUESTION_IDENTIFIER : QUESTION? IDENT;
 
@@ -205,13 +177,19 @@ LIFETIME : '\'' IDENT ;
 
 WHITESPACE : [ \r\n\t]+ ;
 
-UNDOC_COMMENT     : '////' ~[\r\n]* -> type(COMMENT) ;
+UNDOC_COMMENT     : '////' ~[\n]* -> type(COMMENT) ;
 YESDOC_COMMENT    : '///' ~[\r\n]* -> type(DOC_COMMENT) ;
 OUTER_DOC_COMMENT : '//!' ~[\r\n]* -> type(DOC_COMMENT) ;
-LINE_COMMENT      : '//' ~[\r\n]* -> type(COMMENT) ;
+LINE_COMMENT      : '//' ( ~[/\n] ~[\n]* )? -> type(COMMENT) ;
 
 DOC_BLOCK_COMMENT
   : ('/**' ~[*] | '/*!') (DOC_BLOCK_COMMENT | .)*? '*/' -> type(DOC_COMMENT)
   ;
 
 BLOCK_COMMENT : '/*' (BLOCK_COMMENT | .)*? '*/' -> type(COMMENT) ;
+
+/* these appear at the beginning of a file */
+
+SHEBANG : '#!' { is_at(2) && _input.LA(1) != '[' }? ~[\r\n]* -> type(SHEBANG) ;
+
+UTF8_BOM : '\ufeff' { is_at(1) }? -> skip ;

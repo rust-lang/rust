@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
-// ignore-lexer-test FIXME #15679
 
 // Test that multibyte characters don't crash the compiler
 pub fn main() {

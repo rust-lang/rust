@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
-// ignore-lexer-test FIXME #15877
 
 
 // Tests that we can call a function bounded over a supertrait from

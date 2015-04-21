@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 //
-// ignore-lexer-test FIXME #15883
 
 #[derive(Copy, Clone)]
 pub struct Quad { a: u64, b: u64, c: u64, d: u64 }
