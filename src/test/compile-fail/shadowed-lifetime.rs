@@ -15,14 +15,14 @@ struct Foo<'a>(&'a isize);
 impl<'a> Foo<'a> {
     //~^ NOTE shadowed lifetime `'a` declared here
     fn shadow_in_method<'a>(&'a self) -> &'a isize {
-        //~^ ERROR lifetime name `'a` shadows another lifetime name that is already in scope
+        //~^ ERROR lifetime name `'a` shadows a lifetime name that is already in scope
         self.0
     }
 
     fn shadow_in_type<'b>(&'b self) -> &'b isize {
         //~^ NOTE shadowed lifetime `'b` declared here
         let x: for<'b> fn(&'b isize) = panic!();
-        //~^ ERROR lifetime name `'b` shadows another lifetime name that is already in scope
+        //~^ ERROR lifetime name `'b` shadows a lifetime name that is already in scope
         self.0
     }
 
