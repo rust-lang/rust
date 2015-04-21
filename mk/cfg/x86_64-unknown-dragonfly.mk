@@ -11,15 +11,11 @@ CFG_JEMALLOC_CFLAGS_x86_64-unknown-dragonfly := -m64 -I/usr/include -I/usr/local
 CFG_GCCISH_CFLAGS_x86_64-unknown-dragonfly := -Wall -Werror -g -fPIC -m64 -I/usr/include -I/usr/local/include $(CFLAGS)
 CFG_GCCISH_LINK_FLAGS_x86_64-unknown-dragonfly := -shared -fPIC -g -pthread  -lrt -m64
 CFG_GCCISH_DEF_FLAG_x86_64-unknown-dragonfly := -Wl,--export-dynamic,--dynamic-list=
-CFG_GCCISH_PRE_LIB_FLAGS_x86_64-unknown-dragonfly := -Wl,-whole-archive
-CFG_GCCISH_POST_LIB_FLAGS_x86_64-unknown-dragonfly := -Wl,-no-whole-archive
-CFG_DEF_SUFFIX_x86_64-unknown-dragonfly := .bsd.def
 CFG_LLC_FLAGS_x86_64-unknown-dragonfly :=
 CFG_INSTALL_NAME_x86_64-unknown-dragonfly =
 CFG_EXE_SUFFIX_x86_64-unknown-dragonfly :=
 CFG_WINDOWSY_x86_64-unknown-dragonfly :=
 CFG_UNIXY_x86_64-unknown-dragonfly := 1
-CFG_PATH_MUNGE_x86_64-unknown-dragonfly :=
 CFG_LDPATH_x86_64-unknown-dragonfly :=
 CFG_RUN_x86_64-unknown-dragonfly=$(2)
 CFG_RUN_TARG_x86_64-unknown-dragonfly=$(call CFG_RUN_x86_64-unknown-dragonfly,,$(2))

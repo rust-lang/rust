@@ -13,15 +13,11 @@ CFG_GCCISH_CFLAGS_x86_64-pc-windows-gnu := -Wall -Werror -g -m64 -D_WIN32_WINNT=
 CFG_GCCISH_CXXFLAGS_x86_64-pc-windows-gnu := -fno-rtti $(CXXFLAGS)
 CFG_GCCISH_LINK_FLAGS_x86_64-pc-windows-gnu := -shared -g -m64
 CFG_GCCISH_DEF_FLAG_x86_64-pc-windows-gnu :=
-CFG_GCCISH_PRE_LIB_FLAGS_x86_64-pc-windows-gnu :=
-CFG_GCCISH_POST_LIB_FLAGS_x86_64-pc-windows-gnu :=
-CFG_DEF_SUFFIX_x86_64-pc-windows-gnu := .windows.def
 CFG_LLC_FLAGS_x86_64-pc-windows-gnu :=
 CFG_INSTALL_NAME_x86_64-pc-windows-gnu =
 CFG_EXE_SUFFIX_x86_64-pc-windows-gnu := .exe
 CFG_WINDOWSY_x86_64-pc-windows-gnu := 1
 CFG_UNIXY_x86_64-pc-windows-gnu :=
-CFG_PATH_MUNGE_x86_64-pc-windows-gnu :=
 CFG_LDPATH_x86_64-pc-windows-gnu :=
 CFG_RUN_x86_64-pc-windows-gnu=$(2)
 CFG_RUN_TARG_x86_64-pc-windows-gnu=$(call CFG_RUN_x86_64-pc-windows-gnu,,$(2))
