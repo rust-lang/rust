@@ -943,6 +943,7 @@ impl BitVec {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for BitVec {
+    /// Creates a new `BitVec` using `BitVec::new`
     #[inline]
     fn default() -> BitVec { BitVec::new() }
 }
@@ -1154,6 +1155,7 @@ pub struct BitSet {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for BitSet {
+    /// Creates a new `BitSet` using `BitSet::new`
     #[inline]
     fn default() -> BitSet { BitSet::new() }
 }

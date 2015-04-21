@@ -106,6 +106,8 @@ macro_rules! tuple_impls {
 
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T:Default),+> Default for ($($T,)+) {
+                /// Creates a new tuple containing the `Default` value for each of the type
+                /// parameters
                 #[stable(feature = "rust1", since = "1.0.0")]
                 #[inline]
                 fn default() -> ($($T,)+) {

@@ -96,6 +96,7 @@ pub struct OccupiedEntry<'a, V:'a> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<V> Default for VecMap<V> {
+    /// Creates a new `VecMap` using `VecMap::new`
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn default() -> VecMap<V> { VecMap::new() }

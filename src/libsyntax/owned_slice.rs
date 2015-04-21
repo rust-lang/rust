@@ -65,6 +65,7 @@ impl<T> Deref for OwnedSlice<T> {
 }
 
 impl<T> Default for OwnedSlice<T> {
+    /// Creates a new `OwnedSlice` using `OwnedSlice::empty`
     fn default() -> OwnedSlice<T> {
         OwnedSlice::empty()
     }
