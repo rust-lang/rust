@@ -55,6 +55,7 @@
     * [Deref coercions](deref-coercions.md)
     * [Macros](macros.md)
     * [Raw Pointers](raw-pointers.md)
+    * [`unsafe`](unsafe.md)
 * [Nightly Rust](nightly-rust.md)
     * [Compiler Plugins](compiler-plugins.md)
     * [Inline Assembly](inline-assembly.md)
