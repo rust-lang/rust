@@ -13,6 +13,7 @@ use io::prelude::*;
 use os::unix::prelude::*;
 
 use ffi::{CString, CStr, OsString, OsStr};
+use fmt;
 use io::{self, Error, SeekFrom};
 use libc::{self, c_int, size_t, off_t, c_char, mode_t};
 use mem;
@@ -291,6 +292,54 @@ fn cstr(path: &Path) -> io::Result<CString> {
 impl FromInner<c_int> for File {
     fn from_inner(fd: c_int) -> File {
         File(FileDesc::new(fd))
+    }
+}
+
+impl fmt::Debug for File {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        #[cfg(target_os = "linux")]
+        fn get_path(fd: c_int) -> Option<PathBuf> {
+            use string::ToString;
+            let mut p = PathBuf::from("/proc/self/fd");
+            p.push(&fd.to_string());
+            readlink(&p).ok()
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        fn get_path(_fd: c_int) -> Option<PathBuf> {
+            // FIXME(#24570): implement this for other Unix platforms
+            None
+        }
+
+        #[cfg(target_os = "linux")]
+        fn get_mode(fd: c_int) -> Option<(bool, bool)> {
+            let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
+            if mode == -1 {
+                return None;
+            }
+            match mode & libc::O_ACCMODE {
+                libc::O_RDONLY => Some((true, false)),
+                libc::O_RDWR => Some((true, true)),
+                libc::O_WRONLY => Some((false, true)),
+                _ => None
+            }
+        }
+
+        #[cfg(not(target_os = "linux"))]
+        fn get_mode(_fd: c_int) -> Option<(bool, bool)> {
+            // FIXME(#24570): implement this for other Unix platforms
+            None
+        }
+
+        let fd = self.0.raw();
+        let mut b = f.debug_struct("File").field("fd", &fd);
+        if let Some(path) = get_path(fd) {
+            b = b.field("path", &path);
+        }
+        if let Some((read, write)) = get_mode(fd) {
+            b = b.field("read", &read).field("write", &write);
+        }
+        b.finish()
     }
 }
 
