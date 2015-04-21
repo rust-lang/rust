@@ -171,7 +171,6 @@ impl Ipv4Addr {
                       ((self.octets()[0] as u16) << 8) | self.octets()[1] as u16,
                       ((self.octets()[2] as u16) << 8) | self.octets()[3] as u16)
     }
-
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -241,6 +240,21 @@ impl AsInner<libc::in_addr> for Ipv4Addr {
 impl FromInner<libc::in_addr> for Ipv4Addr {
     fn from_inner(addr: libc::in_addr) -> Ipv4Addr {
         Ipv4Addr { inner: addr }
+    }
+}
+
+#[stable(feature = "ip_u32", since = "1.1.0")]
+impl From<Ipv4Addr> for u32 {
+    fn from(ip: Ipv4Addr) -> u32 {
+        let ip = ip.octets();
+        ((ip[0] as u32) << 24) + ((ip[1] as u32) << 16) + ((ip[2] as u32) << 8) + (ip[3] as u32)
+    }
+}
+
+#[stable(feature = "ip_u32", since = "1.1.0")]
+impl From<u32> for Ipv4Addr {
+    fn from(ip: u32) -> Ipv4Addr {
+        Ipv4Addr::new((ip >> 24) as u8, (ip >> 16) as u8, (ip >> 8) as u8, ip as u8)
     }
 }
 
@@ -737,5 +751,17 @@ mod tests {
     fn to_socket_addr_socketaddr() {
         let a = sa4(Ipv4Addr::new(77, 88, 21, 11), 12345);
         assert_eq!(Ok(vec![a]), tsa(a));
+    }
+
+    #[test]
+    fn test_ipv4_to_int() {
+        let a = Ipv4Addr::new(127, 0, 0, 1);
+        assert_eq!(u32::from(a), 2130706433);
+    }
+
+    #[test]
+    fn test_int_to_ipv4() {
+        let a = Ipv4Addr::new(127, 0, 0, 1);
+        assert_eq!(Ipv4Addr::from(2130706433), a);
     }
 }
