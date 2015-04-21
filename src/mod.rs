@@ -23,9 +23,9 @@
 // Fix fns and methods properly
 //   dead spans
 //
-// Writing output
 // Smoke testing till we can use it
 //   end of multi-line string has wspace
+//   no newline at the end of doc.rs
 
 #[macro_use]
 extern crate log;
@@ -61,6 +61,15 @@ const MIN_STRING: usize = 10;
 const TAB_SPACES: usize = 4;
 const FN_BRACE_STYLE: BraceStyle = BraceStyle::SameLineWhere;
 const FN_RETURN_INDENT: ReturnIndent = ReturnIndent::WithArgs;
+
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum WriteMode {
+    Overwrite,
+    // str is the extension of the new file
+    NewFile(&'static str),
+    // Write the output to stdout.
+    Display,
+}
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 enum BraceStyle {
@@ -1062,8 +1071,12 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
             let mut changes = fmt_ast(krate, codemap);
             fmt_lines(&mut changes);
 
-            println!("{}", changes);
             // FIXME(#5) Should be user specified whether to show or replace.
+            let result = changes.write_all_files(WriteMode::Display);
+
+            if let Err(msg) = result {
+                println!("Error writing files: {}", msg);
+            }
         };
 
         control

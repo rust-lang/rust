@@ -17,6 +17,9 @@ use strings::string_buffer::StringBuffer;
 use std::collections::HashMap;
 use syntax::codemap::{CodeMap, Span,BytePos};
 use std::fmt;
+use std::fs::File;
+use std::io::Write;
+use WriteMode;
 
 // This is basically a wrapper around a bunch of Ropes which makes it convenient
 // to work with libsyntax. It is badly named.
@@ -84,8 +87,8 @@ impl<'a> ChangeSet<'a> {
         }
     }
 
-    pub fn push_str(&mut self, file_name: &str, text: &str) {
-        let buf = self.file_map.get_mut(&*file_name).unwrap();
+    pub fn push_str(&mut self, filename: &str, text: &str) {
+        let buf = self.file_map.get_mut(&*filename).unwrap();
         buf.push_str(text)
     }
 
@@ -94,13 +97,13 @@ impl<'a> ChangeSet<'a> {
         self.push_str(&file_name, text)
     }
 
-    pub fn cur_offset(&mut self, file_name: &str) -> usize {
-        self.file_map[&*file_name].cur_offset()
+    pub fn cur_offset(&mut self, filename: &str) -> usize {
+        self.file_map[&*filename].cur_offset()
     }
 
     pub fn cur_offset_span(&mut self, span: Span) -> usize {
-        let file_name = self.codemap.span_to_filename(span);
-        self.cur_offset(&file_name)
+        let filename = self.codemap.span_to_filename(span);
+        self.cur_offset(&filename)
     }
 
     // Return an iterator over the entire changed text.
@@ -112,6 +115,46 @@ impl<'a> ChangeSet<'a> {
         }
     }
 
+    pub fn write_all_files(&self, mode: WriteMode) -> Result<(), ::std::io::Error> {
+        for filename in self.file_map.keys() {
+            try!(self.write_file(filename, mode));
+        }
+
+        Ok(())
+    }
+
+    pub fn write_file(&self, filename: &str, mode: WriteMode) -> Result<(), ::std::io::Error> {
+        let text = &self.file_map[filename];
+
+        match mode {
+            WriteMode::Overwrite => {
+                // Do a little dance to make writing safer - write to a temp file
+                // rename the original to a .bk, then rename the temp file to the
+                // original.
+                let tmp_name = filename.to_string() + ".tmp";
+                let bk_name = filename.to_string() + ".bk";
+                {
+                    // Write text to temp file
+                    let mut tmp_file = try!(File::create(&tmp_name));
+                    try!(write!(tmp_file, "{}", text));
+                }
+
+                try!(::std::fs::rename(filename, bk_name));
+                try!(::std::fs::rename(tmp_name, filename));
+            }
+            WriteMode::NewFile(extn) => {
+                let filename = filename.to_string() + "." + extn;
+                let mut file = try!(File::create(&filename));
+                try!(write!(file, "{}", text));
+            }
+            _ => {
+                println!("{}:\n", filename);
+                println!("{}", text);
+            }
+        }
+
+        Ok(())
+    }
 }
 
 // Iterates over each file in the ChangSet. Yields the filename and the changed
