@@ -12,8 +12,6 @@
 
 // aux-build:issue13213aux.rs
 
-#![feature(old_io)]
-
 extern crate issue13213aux;
 
 // compile-flags:-g
