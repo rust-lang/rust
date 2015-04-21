@@ -187,8 +187,10 @@ them yourself.
 You can build a free-standing crate by adding `#![no_std]` to the crate
 attributes:
 
+```
 #![feature(no_std)]
 #![no_std]
+```
 
 See also https://doc.rust-lang.org/book/no-stdlib.html
 "##,
@@ -204,11 +206,13 @@ mutex can be declared `static` as well.
 
 If you want to match against a `static`, consider using a guard instead:
 
+```
 static FORTY_TWO: i32 = 42;
 match Some(42) {
     Some(x) if x == FORTY_TWO => ...
     ...
 }
+```
 "##,
 
 E0161: r##"
@@ -265,17 +269,21 @@ loop {
 E0170: r##"
 Enum variants are qualified by default. For example, given this type:
 
+```
 enum Method {
     GET,
     POST
 }
+```
 
 you would match it using:
 
+```
 match m {
     Method::GET => ...
     Method::POST => ...
 }
+```
 
 If you don't qualify the names, the code will bind new variables named "GET" and
 "POST" instead. This behavior is likely not what you want, so rustc warns when
@@ -284,8 +292,10 @@ that happens.
 Qualified names are good practice, and most code works well with them. But if
 you prefer them unqualified, you can import the variants into scope:
 
+```
 use Method::*;
 enum Method { GET, POST }
+```
 "##,
 
 E0267: r##"
@@ -305,7 +315,9 @@ E0296: r##"
 This error indicates that the given recursion limit could not be parsed. Ensure
 that the value provided is a positive integer between quotes, like so:
 
+```
 #![recursion_limit="1000"]
+```
 "##,
 
 E0297: r##"
