@@ -22,11 +22,12 @@
 #![unstable(feature = "rustc_private")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
+#![staged_api]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![feature(rustc_private)]
+#![feature(rustc_private, staged_api)]
 #![cfg_attr(test, feature(test))]
 
 #[macro_use] extern crate log;
