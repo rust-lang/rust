@@ -59,32 +59,6 @@ mod dragonfly_base;
 mod bitrig_base;
 mod openbsd_base;
 
-mod armv7_apple_ios;
-mod armv7s_apple_ios;
-mod i386_apple_ios;
-
-mod arm_linux_androideabi;
-mod arm_unknown_linux_gnueabi;
-mod arm_unknown_linux_gnueabihf;
-mod aarch64_apple_ios;
-mod aarch64_linux_android;
-mod aarch64_unknown_linux_gnu;
-mod i686_apple_darwin;
-mod i686_pc_windows_gnu;
-mod i686_unknown_dragonfly;
-mod i686_unknown_linux_gnu;
-mod mips_unknown_linux_gnu;
-mod mipsel_unknown_linux_gnu;
-mod powerpc_unknown_linux_gnu;
-mod x86_64_apple_darwin;
-mod x86_64_apple_ios;
-mod x86_64_pc_windows_gnu;
-mod x86_64_unknown_freebsd;
-mod x86_64_unknown_dragonfly;
-mod x86_64_unknown_bitrig;
-mod x86_64_unknown_linux_gnu;
-mod x86_64_unknown_openbsd;
-
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
 /// Every field here must be specified, and has no default value.
@@ -333,6 +307,7 @@ impl Target {
         macro_rules! load_specific {
             ( $($name:ident),+ ) => (
                 {
+                    $(mod $name;)*
                     let target = target.replace("-", "_");
                     if false { }
                     $(
@@ -362,6 +337,7 @@ impl Target {
             arm_unknown_linux_gnueabi,
             arm_unknown_linux_gnueabihf,
             aarch64_unknown_linux_gnu,
+            x86_64_unknown_linux_musl,
 
             arm_linux_androideabi,
             aarch64_linux_android,
