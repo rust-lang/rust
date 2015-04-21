@@ -41,16 +41,13 @@ pub struct ListFormatting<'a> {
 }
 
 // Format a list of strings into a string.
-pub fn write_list<'b>(items:&[(String, String)], formatting: &ListFormatting<'b>) -> String {
+// Precondition: all strings in items are trimmed.
+pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b>) -> String {
     if items.len() == 0 {
         return String::new();
     }
 
     let mut tactic = formatting.tactic;
-
-    let h_width = formatting.h_width;
-    let v_width = formatting.v_width;
-    let sep_len = formatting.separator.len();
 
     // Conservatively overestimates because of the changing separator tactic.
     let sep_count = if formatting.trailing_separator != SeparatorTactic::Never {
@@ -58,13 +55,14 @@ pub fn write_list<'b>(items:&[(String, String)], formatting: &ListFormatting<'b>
     } else {
         items.len() - 1
     };
+    let sep_len = formatting.separator.len();
+    let total_sep_len = (sep_len + 1) * sep_count;
 
-    // TODO count dead space too.
-    let total_width = items.iter().map(|&(ref s, _)| s.len()).fold(0, |a, l| a + l);
+    let total_width = calculate_width(items);
 
     // Check if we need to fallback from horizontal listing, if possible.
     if tactic == ListTactic::HorizontalVertical { 
-        if (total_width + (sep_len + 1) * sep_count) > h_width {
+        if total_width + total_sep_len > formatting.h_width {
             tactic = ListTactic::Vertical;
         } else {
             tactic = ListTactic::Horizontal;
@@ -73,16 +71,12 @@ pub fn write_list<'b>(items:&[(String, String)], formatting: &ListFormatting<'b>
 
     // Now that we know how we will layout, we can decide for sure if there
     // will be a trailing separator.
-    let trailing_separator = match formatting.trailing_separator {
-        SeparatorTactic::Always => true,
-        SeparatorTactic::Vertical => tactic == ListTactic::Vertical,
-        SeparatorTactic::Never => false,
-    };
+    let trailing_separator = needs_trailing_separator(formatting.trailing_separator, tactic);
 
     // Create a buffer for the result.
     // TODO could use a StringBuffer or rope for this
     let alloc_width = if tactic == ListTactic::Horizontal {
-        total_width + (sep_len + 1) * sep_count
+        total_width + total_sep_len
     } else {
         total_width + items.len() * (formatting.indent + 1)
     };
@@ -90,7 +84,7 @@ pub fn write_list<'b>(items:&[(String, String)], formatting: &ListFormatting<'b>
 
     let mut line_len = 0;
     let indent_str = &make_indent(formatting.indent);
-    for (i, &(ref item, _)) in items.iter().enumerate() {
+    for (i, &(ref item, ref comment)) in items.iter().enumerate() {
         let first = i == 0;
         let separate = i != items.len() - 1 || trailing_separator;
 
@@ -108,7 +102,7 @@ pub fn write_list<'b>(items:&[(String, String)], formatting: &ListFormatting<'b>
                     item_width += sep_len;
                 }
 
-                if line_len > 0 && line_len + item_width > v_width {
+                if line_len > 0 && line_len + item_width > formatting.v_width {
                     result.push('\n');
                     result.push_str(indent_str);
                     line_len = 0;
@@ -126,11 +120,42 @@ pub fn write_list<'b>(items:&[(String, String)], formatting: &ListFormatting<'b>
 
         result.push_str(item);
         
+        if tactic != ListTactic::Vertical && comment.len() > 0 {
+            result.push(' ');
+            result.push_str(comment);
+        }
+
         if separate {
             result.push_str(formatting.separator);
         }
-        // TODO dead spans
+
+        if tactic == ListTactic::Vertical && comment.len() > 0 {
+            result.push(' ');
+            result.push_str(comment);
+        }
     }
 
     result
+}
+
+fn needs_trailing_separator(separator_tactic: SeparatorTactic, list_tactic: ListTactic) -> bool {
+    match separator_tactic {
+        SeparatorTactic::Always => true,
+        SeparatorTactic::Vertical => list_tactic == ListTactic::Vertical,
+        SeparatorTactic::Never => false,
+    }
+}
+
+fn calculate_width(items:&[(String, String)]) -> usize {
+    let missed_width = items.iter().map(|&(_, ref s)| {
+        let text_len = s.trim().len();
+        if text_len > 0 {
+            // We'll put a space before any comment.
+            text_len + 1
+        } else {
+            text_len
+        }
+    }).fold(0, |a, l| a + l);
+    let item_width = items.iter().map(|&(ref s, _)| s.len()).fold(0, |a, l| a + l);
+    missed_width + item_width
 }

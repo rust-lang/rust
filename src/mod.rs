@@ -21,10 +21,12 @@
 
 // TODO priorities
 // Fix fns and methods properly
-//   dead spans
+//   dead spans (comments) - in generics
 //
 // Smoke testing till we can use it
 //   no newline at the end of doc.rs
+// fmt_skip annotations
+// take config options from a file
 
 #[macro_use]
 extern crate log;
@@ -107,7 +109,10 @@ fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap) -> ChangeSet<'a> {
     visitor.changes
 }
 
-// Formatting done on a char by char basis.
+// Formatting done on a char by char or line by line basis.
+// TODO warn on TODOs and FIXMEs without an issue number
+// TODO warn on bad license
+// TODO other stuff for parity with make tidy
 fn fmt_lines(changes: &mut ChangeSet) {
     // Iterate over the chars in the change set.
     for (f, text) in changes.text() {
@@ -124,7 +129,7 @@ fn fmt_lines(changes: &mut ChangeSet) {
                 }
                 // Check for any line width errors we couldn't correct.
                 if line_len > MAX_WIDTH {
-                    // FIXME store the error rather than reporting immediately.
+                    // TODO store the error rather than reporting immediately.
                     println!("Rustfmt couldn't fix (sorry). {}:{}: line longer than {} characters",
                              f, cur_line, MAX_WIDTH);
                 }
@@ -144,7 +149,7 @@ fn fmt_lines(changes: &mut ChangeSet) {
         }
 
         for &(l, _, _) in trims.iter() {
-            // FIXME store the error rather than reporting immediately.
+            // TODO store the error rather than reporting immediately.
             println!("Rustfmt left trailing whitespace at {}:{} (sorry)", f, l);
         }
     }

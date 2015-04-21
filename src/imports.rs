@@ -18,6 +18,10 @@ use syntax::print::pprust;
 
 use IDEAL_WIDTH;
 
+// TODO change import lists with one item to a single import
+//      remove empty lists (if they're even possible)
+// TODO (some day) remove unused imports, expand globs, compress many single imports into a list import
+
 impl<'a> FmtVisitor<'a> {
     // Basically just pretty prints a multi-item import.
     pub fn rewrite_use_list(&mut self,
