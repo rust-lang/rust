@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::marker::MarkerTrait;
-
 fn add_state(op: <isize as HasState>::State) {
 //~^ ERROR the trait `HasState` is not implemented for the type `isize`
 }
 
-trait HasState : MarkerTrait {
+trait HasState {
     type State;
 }
 

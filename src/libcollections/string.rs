@@ -837,15 +837,6 @@ impl<'a, 'b> PartialEq<Cow<'a, str>> for &'b str {
     fn ne(&self, other: &Cow<'a, str>) -> bool { PartialEq::ne(&self[..], &other[..]) }
 }
 
-#[unstable(feature = "collections", reason = "waiting on Str stabilization")]
-#[allow(deprecated)]
-impl Str for String {
-    #[inline]
-    fn as_slice(&self) -> &str {
-        unsafe { mem::transmute(&*self.vec) }
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for String {
     #[inline]
@@ -1064,14 +1055,6 @@ impl<'a> IntoCow<'a, str> for &'a str {
     #[inline]
     fn into_cow(self) -> Cow<'a, str> {
         Cow::Borrowed(self)
-    }
-}
-
-#[allow(deprecated)]
-impl<'a> Str for Cow<'a, str> {
-    #[inline]
-    fn as_slice<'b>(&'b self) -> &'b str {
-        &**self
     }
 }
 

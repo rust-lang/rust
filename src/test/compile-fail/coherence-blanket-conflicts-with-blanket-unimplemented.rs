@@ -19,9 +19,9 @@ trait MyTrait {
     fn get(&self) -> usize;
 }
 
-trait Even : ::std::marker::MarkerTrait { }
+trait Even {}
 
-trait Odd : ::std::marker::MarkerTrait { }
+trait Odd {}
 
 impl<T:Even> MyTrait for T { //~ ERROR E0119
     fn get(&self) -> usize { 0 }

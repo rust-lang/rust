@@ -17,9 +17,7 @@
 
 // public type, private value
 pub mod foo1 {
-    use std::marker::MarkerTrait;
-
-    pub trait Bar : MarkerTrait {
+    pub trait Bar {
     }
     pub struct Baz;
 
@@ -41,7 +39,7 @@ fn test_list1() {
 
 // private type, public value
 pub mod foo2 {
-    trait Bar : ::std::marker::MarkerTrait {
+    trait Bar {
     }
     pub struct Baz;
 
@@ -62,7 +60,7 @@ fn test_list2() {
 
 // neither public
 pub mod foo3 {
-    trait Bar : ::std::marker::MarkerTrait {
+    trait Bar {
     }
     pub struct Baz;
 

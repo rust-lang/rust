@@ -1592,18 +1592,6 @@ impl<T: Ord> Ord for Vec<T> {
 }
 
 #[unstable(feature = "collections",
-           reason = "will be replaced by slice syntax")]
-#[deprecated(since = "1.0.0", reason = "use &mut s[..] instead")]
-#[allow(deprecated)]
-impl<T> AsSlice<T> for Vec<T> {
-    /// Deprecated: use `&mut s[..]` instead.
-    #[inline]
-    fn as_slice(&self) -> &[T] {
-        self
-    }
-}
-
-#[unstable(feature = "collections",
            reason = "recent addition, needs more experience")]
 impl<'a, T: Clone> Add<&'a [T]> for Vec<T> {
     type Output = Vec<T>;

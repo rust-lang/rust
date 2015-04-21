@@ -20,7 +20,6 @@
 pub use self::MacroFormat::*;
 
 use std::cell::RefCell;
-use std::num::ToPrimitive;
 use std::ops::{Add, Sub};
 use std::rc::Rc;
 
@@ -862,7 +861,11 @@ impl CodeMap {
     pub fn record_expansion(&self, expn_info: ExpnInfo) -> ExpnId {
         let mut expansions = self.expansions.borrow_mut();
         expansions.push(expn_info);
-        ExpnId(expansions.len().to_u32().expect("too many ExpnInfo's!") - 1)
+        let len = expansions.len();
+        if len > u32::max_value() as usize {
+            panic!("too many ExpnInfo's!");
+        }
+        ExpnId(len as u32 - 1)
     }
 
     pub fn with_expn_info<T, F>(&self, id: ExpnId, f: F) -> T where

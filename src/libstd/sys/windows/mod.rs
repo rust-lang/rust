@@ -17,8 +17,7 @@ use prelude::v1::*;
 use ffi::{OsStr, OsString};
 use io::{self, ErrorKind};
 use libc;
-#[allow(deprecated)]
-use num::Int;
+use num::Zero;
 use os::windows::ffi::{OsStrExt, OsStringExt};
 use path::PathBuf;
 
@@ -144,9 +143,8 @@ pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
     }
 }
 
-#[allow(deprecated)]
-fn cvt<I: Int>(i: I) -> io::Result<I> {
-    if i == Int::zero() {
+fn cvt<I: PartialEq + Zero>(i: I) -> io::Result<I> {
+    if i == I::zero() {
         Err(io::Error::last_os_error())
     } else {
         Ok(i)

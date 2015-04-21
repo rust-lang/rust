@@ -15,11 +15,7 @@
 // necessary. Testing the methods of the impls is done within the source
 // file for each numeric type.
 
-
-#![feature(core)]
-
 use std::ops::Add;
-use std::num::ToPrimitive;
 
 pub fn main() {
 // ints
@@ -37,9 +33,4 @@ pub fn main() {
     assert_eq!(15_u16.add(6u16), 21_u16);
     assert_eq!(15_u32.add(6u32), 21_u32);
     assert_eq!(15_u64.add(6u64), 21_u64);
-
-// floats
-    // num
-    assert_eq!(10_f32.to_i32().unwrap(), 10);
-    assert_eq!(10_f64.to_i32().unwrap(), 10);
 }

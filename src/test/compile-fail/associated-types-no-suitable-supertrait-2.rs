@@ -19,7 +19,7 @@
 // which checks that the trait interface itself is not considered an
 // error as long as all impls satisfy the constraint.
 
-trait Get : ::std::marker::MarkerTrait {
+trait Get {
     type Value;
 }
 

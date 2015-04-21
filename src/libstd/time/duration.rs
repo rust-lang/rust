@@ -12,13 +12,10 @@
 
 #![unstable(feature = "std_misc")]
 
+use prelude::v1::*;
+
 use {fmt, i64};
-use ops::{Add, Sub, Mul, Div, Neg, FnOnce};
-use option::Option;
-use option::Option::{Some, None};
-#[allow(deprecated)] // Int
-use num::Int;
-use result::Result::Ok;
+use ops::{Add, Sub, Mul, Div, Neg};
 
 /// The number of nanoseconds in a microsecond.
 const NANOS_PER_MICRO: i32 = 1000;

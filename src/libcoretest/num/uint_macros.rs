@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! uint_module { ($T:ty, $T_i:ident) => (
+macro_rules! uint_module { ($T:ident, $T_i:ident) => (
 #[cfg(test)]
 mod tests {
     use core::$T_i::*;
-    use core::num::Int;
     use num;
     use core::ops::{BitOr, BitAnd, BitXor, Shl, Shr, Not};
 
@@ -97,30 +96,30 @@ mod tests {
 
     #[test]
     fn test_le() {
-        assert_eq!(Int::from_le(A.to_le()), A);
-        assert_eq!(Int::from_le(B.to_le()), B);
-        assert_eq!(Int::from_le(C.to_le()), C);
-        assert_eq!(Int::from_le(_0), _0);
-        assert_eq!(Int::from_le(_1), _1);
+        assert_eq!($T::from_le(A.to_le()), A);
+        assert_eq!($T::from_le(B.to_le()), B);
+        assert_eq!($T::from_le(C.to_le()), C);
+        assert_eq!($T::from_le(_0), _0);
+        assert_eq!($T::from_le(_1), _1);
         assert_eq!(_0.to_le(), _0);
         assert_eq!(_1.to_le(), _1);
     }
 
     #[test]
     fn test_be() {
-        assert_eq!(Int::from_be(A.to_be()), A);
-        assert_eq!(Int::from_be(B.to_be()), B);
-        assert_eq!(Int::from_be(C.to_be()), C);
-        assert_eq!(Int::from_be(_0), _0);
-        assert_eq!(Int::from_be(_1), _1);
+        assert_eq!($T::from_be(A.to_be()), A);
+        assert_eq!($T::from_be(B.to_be()), B);
+        assert_eq!($T::from_be(C.to_be()), C);
+        assert_eq!($T::from_be(_0), _0);
+        assert_eq!($T::from_be(_1), _1);
         assert_eq!(_0.to_be(), _0);
         assert_eq!(_1.to_be(), _1);
     }
 
     #[test]
     fn test_unsigned_checked_div() {
-        assert!(10.checked_div(2) == Some(5));
-        assert!(5.checked_div(0) == None);
+        assert!((10 as $T).checked_div(2) == Some(5));
+        assert!((5 as $T).checked_div(0) == None);
     }
 }
 

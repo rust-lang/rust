@@ -25,8 +25,6 @@ use sub::sub2 as msalias;
 use sub::sub2;
 use sub::sub2::nested_struct as sub_struct;
 use std::num::One;
-use std::num::cast;
-use std::num::{from_int,from_i8,from_i32};
 
 use std::mem::size_of;
 
@@ -42,7 +40,6 @@ fn test_alias<I: Iterator>(i: Option<<I as Iterator>::Item>) {
 
     // import tests
     fn foo(x: &One) {}
-    let _: Option<u8> = from_i32(45);
 
     let x = 42;
 

@@ -771,7 +771,7 @@ mod tests {
     }
 
     fn eq(a: Option<OsString>, b: Option<&str>) {
-        assert_eq!(a.as_ref().map(|s| &**s), b.map(OsStr::from_str).map(|s| &*s));
+        assert_eq!(a.as_ref().map(|s| &**s), b.map(OsStr::new).map(|s| &*s));
     }
 
     #[test]
@@ -894,7 +894,7 @@ mod tests {
     fn join_paths_unix() {
         fn test_eq(input: &[&str], output: &str) -> bool {
             &*join_paths(input.iter().cloned()).unwrap() ==
-                OsStr::from_str(output)
+                OsStr::new(output)
         }
 
         assert!(test_eq(&[], ""));
@@ -910,7 +910,7 @@ mod tests {
     fn join_paths_windows() {
         fn test_eq(input: &[&str], output: &str) -> bool {
             &*join_paths(input.iter().cloned()).unwrap() ==
-                OsStr::from_str(output)
+                OsStr::new(output)
         }
 
         assert!(test_eq(&[], ""));

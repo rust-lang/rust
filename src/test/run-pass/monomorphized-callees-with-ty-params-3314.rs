@@ -10,11 +10,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(core)]
-
-use std::marker::MarkerTrait;
-
-trait Serializer : MarkerTrait {
+trait Serializer {
 }
 
 trait Serializable {
