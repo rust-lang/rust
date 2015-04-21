@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// pretty-expanded FIXME #23616
-
-#![allow(unknown_features)]
-#![feature(box_syntax, old_io, std_misc, io, set_panic, set_stdio)]
+#![feature(box_syntax, set_stdio)]
 
 use std::io::prelude::*;
 use std::io;

@@ -12,7 +12,6 @@ use core::prelude::*;
 use io::prelude::*;
 use os::windows::prelude::*;
 
-use default::Default;
 use ffi::OsString;
 use fmt;
 use io::{self, Error, SeekFrom};

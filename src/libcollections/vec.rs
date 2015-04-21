@@ -63,7 +63,7 @@ use core::ops::{Index, IndexMut, Deref, Add};
 use core::ops;
 use core::ptr;
 use core::ptr::Unique;
-use core::slice::{self, AsSlice};
+use core::slice;
 use core::isize;
 use core::usize;
 
