@@ -342,7 +342,10 @@ fn min_stack_size(attr: *const libc::pthread_attr_t) -> usize {
     static mut __pthread_get_minstack: Option<F> = None;
 
     INIT.call_once(|| {
-        let lib = DynamicLibrary::open(None).unwrap();
+        let lib = match DynamicLibrary::open(None) {
+            Ok(l) => l,
+            Err(..) => return,
+        };
         unsafe {
             if let Ok(f) = lib.symbol("__pthread_get_minstack") {
                 __pthread_get_minstack = Some(mem::transmute::<*const (), F>(f));
