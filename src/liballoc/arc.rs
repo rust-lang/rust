@@ -675,7 +675,7 @@ impl<T> fmt::Pointer for Arc<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Default + Sync + Send> Default for Arc<T> {
+impl<T: Default> Default for Arc<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Arc<T> { Arc::new(Default::default()) }
 }
