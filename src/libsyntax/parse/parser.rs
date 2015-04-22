@@ -404,7 +404,11 @@ impl<'a> Parser<'a> {
                                    this_token_str)))
             }
         } else {
-            self.expect_one_of(slice::ref_slice(t), &[])
+            // FIXME: Using this because `slice::ref_slice` is unstable.
+            let slice = unsafe {
+                slice::from_raw_parts(t, 1)
+            };
+            self.expect_one_of(slice, &[])
         }
     }
 
