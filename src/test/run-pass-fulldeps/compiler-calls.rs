@@ -10,7 +10,7 @@
 
 // Test that the CompilerCalls interface to the compiler works.
 
-// ignore-android
+// ignore-cross-compile
 
 #![feature(rustc_private, path)]
 #![feature(core)]
