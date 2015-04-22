@@ -666,6 +666,60 @@ macro_rules! iterator {
                 let exact = diff / (if size == 0 {1} else {size});
                 (exact, Some(exact))
             }
+
+            #[inline]
+            fn count(self) -> usize {
+                self.size_hint().0
+            }
+
+            #[inline]
+            fn nth(&mut self, n: usize) -> Option<$elem> {
+                // could be implemented with slices, but this avoids bounds checks
+                unsafe {
+                    ::intrinsics::assume(!self.ptr.is_null());
+                    ::intrinsics::assume(!self.end.is_null());
+                    // There should be some way to use offset and optimize this to LEA but I don't
+                    // know how to do that AND detect overflow...
+                    let size = mem::size_of::<T>();
+                    if size == 0 {
+                        if let Some(new_ptr) = (self.ptr as usize).checked_add(n) {
+                            if new_ptr < (self.end as usize) {
+                                self.ptr = transmute(new_ptr + 1);
+                                return Some(&mut *(1 as *mut _))
+                            }
+                        }
+                    } else {
+                        if let Some(new_ptr) = n.checked_mul(size).and_then(|offset| {
+                            (self.ptr as usize).checked_add(offset)
+                        }) {
+                            if new_ptr < (self.end as usize) {
+                                self.ptr = transmute(new_ptr + size);
+                                return Some(transmute(new_ptr))
+                            }
+                        }
+                    }
+                    None
+                }
+            }
+
+            #[inline]
+            fn last(self) -> Option<$elem> {
+                // We could just call next_back but this avoids the memory write.
+                unsafe {
+                    ::intrinsics::assume(!self.ptr.is_null());
+                    ::intrinsics::assume(!self.end.is_null());
+                    if self.end == self.ptr {
+                        None
+                    } else {
+                        if mem::size_of::<T>() == 0 {
+                            // Use a non-null pointer value
+                            Some(&mut *(1 as *mut _))
+                        } else {
+                            Some(transmute(self.end.offset(-1)))
+                        }
+                    }
+                }
+            }
         }
 
         #[stable(feature = "rust1", since = "1.0.0")]
