@@ -750,7 +750,7 @@ then
     fi
 fi
 
-# By default the test suite *requires* valgrind. Detect it's absence.
+# By default the test suite *requires* valgrind. Detect its absence.
 if [ -z "$CFG_VALGRIND" ]
 then
     if [ ! -z "$CFG_ENABLE_VALGRIND" ] || [ -z "$CFG_DISABLE_VALGRIND_RPASS" ]
