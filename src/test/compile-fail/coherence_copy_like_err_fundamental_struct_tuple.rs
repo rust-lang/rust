@@ -17,11 +17,9 @@
 
 extern crate coherence_copy_like_lib as lib;
 
-use std::marker::MarkerTrait;
-
 struct MyType { x: i32 }
 
-trait MyTrait : MarkerTrait { }
+trait MyTrait { }
 
 impl<T: lib::MyCopy> MyTrait for T { } //~ ERROR E0119
 

@@ -35,7 +35,16 @@ use hash::Hasher;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang="send"]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
-#[allow(deprecated)]
+#[cfg(not(stage0))]
+pub unsafe trait Send {
+    // empty.
+}
+
+/// Types able to be transferred across thread boundaries.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[lang="send"]
+#[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
+#[cfg(stage0)]
 pub unsafe trait Send : MarkerTrait {
     // empty.
 }
@@ -51,7 +60,17 @@ impl !Send for Managed { }
 #[lang="sized"]
 #[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
 #[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
-#[allow(deprecated)]
+#[cfg(not(stage0))]
+pub trait Sized {
+    // Empty.
+}
+
+/// Types with a constant size known at compile-time.
+#[stable(feature = "rust1", since = "1.0.0")]
+#[lang="sized"]
+#[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
+#[fundamental] // for Default, for example, which requires that `[T]: !Default` be evaluatable
+#[cfg(stage0)]
 pub trait Sized : MarkerTrait {
     // Empty.
 }
@@ -199,13 +218,23 @@ pub trait Copy : Clone {
 /// the `sync` crate do ensure that any mutation cannot cause data
 /// races.  Hence these types are `Sync`.
 ///
-/// Any types with interior mutability must also use the `std::cell::UnsafeCell` wrapper around the
-/// value(s) which can be mutated when behind a `&` reference; not doing this is undefined
-/// behaviour (for example, `transmute`-ing from `&T` to `&mut T` is illegal).
+/// Any types with interior mutability must also use the `std::cell::UnsafeCell`
+/// wrapper around the value(s) which can be mutated when behind a `&`
+/// reference; not doing this is undefined behaviour (for example,
+/// `transmute`-ing from `&T` to `&mut T` is illegal).
+#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang="sync"]
 #[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
-#[allow(deprecated)]
+pub unsafe trait Sync {
+    // Empty
+}
+
+/// dox
+#[cfg(stage0)]
+#[stable(feature = "rust1", since = "1.0.0")]
+#[lang="sync"]
+#[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
 pub unsafe trait Sync : MarkerTrait {
     // Empty
 }
@@ -272,41 +301,19 @@ macro_rules! impls{
         )
 }
 
-/// `MarkerTrait` is deprecated and no longer needed.
+/// dox
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "No longer needed")]
-#[allow(deprecated)]
 #[cfg(stage0)]
 pub trait MarkerTrait : PhantomFn<Self,Self> { }
 
-/// `MarkerTrait` is deprecated and no longer needed.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "No longer needed")]
-#[allow(deprecated)]
-#[cfg(not(stage0))]
-pub trait MarkerTrait { }
+#[cfg(stage0)]
+impl<T: ?Sized> MarkerTrait for T {}
 
-#[allow(deprecated)]
-impl<T:?Sized> MarkerTrait for T { }
-
-/// `PhantomFn` is a deprecated marker trait that is no longer needed.
+/// dox
 #[lang="phantom_fn"]
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "No longer needed")]
 #[cfg(stage0)]
 pub trait PhantomFn<A:?Sized,R:?Sized=()> {
 }
-
-/// `PhantomFn` is a deprecated marker trait that is no longer needed.
-#[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "No longer needed")]
-#[cfg(not(stage0))]
-pub trait PhantomFn<A:?Sized,R:?Sized=()> {
-}
-
-#[allow(deprecated)]
-#[cfg(not(stage0))]
-impl<A:?Sized,R:?Sized,T:?Sized> PhantomFn<A,R> for T { }
 
 /// `PhantomData<T>` allows you to describe that a type acts as if it stores a value of type `T`,
 /// even though it does not. This allows you to inform the compiler about certain safety properties
@@ -454,8 +461,14 @@ mod impls {
 #[rustc_reflect_like]
 #[unstable(feature = "core", reason = "requires RFC and more experience")]
 #[allow(deprecated)]
-pub trait Reflect : MarkerTrait {
-}
+#[cfg(not(stage0))]
+pub trait Reflect {}
+
+/// dox
+#[rustc_reflect_like]
+#[unstable(feature = "core", reason = "requires RFC and more experience")]
+#[cfg(stage0)]
+pub trait Reflect: MarkerTrait {}
 
 impl Reflect for .. { }
 

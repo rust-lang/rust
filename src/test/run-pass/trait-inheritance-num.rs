@@ -10,16 +10,11 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(core)]
-
-use std::cmp::{PartialEq, PartialOrd};
-use std::num::NumCast;
-
-pub trait NumExt: NumCast + PartialEq + PartialOrd {}
+pub trait NumExt: PartialEq + PartialOrd {}
 
 pub trait FloatExt: NumExt {}
 
-fn greater_than_one<T: NumExt>(n: &T) -> bool { *n > NumCast::from(1).unwrap() }
-fn greater_than_one_float<T: FloatExt>(n: &T) -> bool { *n > NumCast::from(1).unwrap() }
+fn greater_than_one<T: NumExt>(n: &T) -> bool { loop {} }
+fn greater_than_one_float<T: FloatExt>(n: &T) -> bool { loop {} }
 
 pub fn main() {}

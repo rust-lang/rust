@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::marker::MarkerTrait;
-
-trait A : MarkerTrait {}
+trait A {}
 
 struct Struct {
     r: A+'static
@@ -22,6 +20,6 @@ fn new_struct(r: A+'static)
     Struct { r: r }
 }
 
-trait Curve : MarkerTrait {}
+trait Curve {}
 enum E {X(Curve+'static)}
 fn main() {}

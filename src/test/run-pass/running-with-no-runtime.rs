@@ -8,16 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(start, os, std_misc, old_io)]
+#![feature(start, std_misc)]
 
 use std::ffi::CStr;
 use std::process::{Command, Output};
-use std::os;
 use std::rt::unwind::try;
-use std::rt;
 use std::str;
-use std::thread::Thread;
-use std::thunk::Thunk;
 
 #[start]
 fn start(argc: isize, argv: *const *const u8) -> isize {

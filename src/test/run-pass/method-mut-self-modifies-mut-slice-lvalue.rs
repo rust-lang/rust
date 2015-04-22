@@ -13,9 +13,8 @@
 // temporary. Issue #19147.
 
 
-#![feature(core, old_io)]
+#![feature(core)]
 
-use std::mem;
 use std::slice;
 
 pub type IoResult<T> = Result<T, ()>;

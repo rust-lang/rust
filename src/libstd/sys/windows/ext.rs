@@ -191,7 +191,11 @@ pub mod ffi {
 #[unstable(feature = "fs_ext", reason = "may require more thought/methods")]
 pub mod fs {
     use fs::OpenOptions;
+    use sys;
     use sys_common::AsInnerMut;
+    use path::Path;
+    use convert::AsRef;
+    use io;
 
     /// Windows-specific extensions to `OpenOptions`
     pub trait OpenOptionsExt {
@@ -234,6 +238,50 @@ pub mod fs {
         fn share_mode(&mut self, access: i32) -> &mut OpenOptions {
             self.as_inner_mut().share_mode(access); self
         }
+    }
+
+    /// Creates a new file symbolic link on the filesystem.
+    ///
+    /// The `dst` path will be a file symbolic link pointing to the `src`
+    /// path.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// #![feature(fs_ext)]
+    /// use std::os::windows::fs;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// try!(fs::symlink_file("a.txt", "b.txt"));
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
+                                                        -> io::Result<()>
+    {
+        sys::fs2::symlink_inner(src.as_ref(), dst.as_ref(), false)
+    }
+
+    /// Creates a new directory symlink on the filesystem.
+    ///
+    /// The `dst` path will be a directory symbolic link pointing to the `src`
+    /// path.
+    ///
+    /// # Examples
+    ///
+    /// ```ignore
+    /// #![feature(fs_ext)]
+    /// use std::os::windows::fs;
+    ///
+    /// # fn foo() -> std::io::Result<()> {
+    /// try!(fs::symlink_file("a", "b"));
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>> (src: P, dst: Q)
+                                                        -> io::Result<()>
+    {
+        sys::fs2::symlink_inner(src.as_ref(), dst.as_ref(), true)
     }
 }
 

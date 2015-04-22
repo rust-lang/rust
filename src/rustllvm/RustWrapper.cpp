@@ -412,7 +412,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateStaticVariable(
     bool isLocalToUnit,
     LLVMValueRef Val,
     LLVMMetadataRef Decl = NULL) {
-#if LLVM_VERSION_MINOR == 6
+#if LLVM_VERSION_MINOR >= 6
     return wrap(Builder->createGlobalVariable(unwrapDI<DIDescriptor>(Context),
 #else
     return wrap(Builder->createStaticVariable(unwrapDI<DIDescriptor>(Context),
@@ -440,7 +440,7 @@ extern "C" LLVMMetadataRef LLVMDIBuilderCreateVariable(
     int64_t* AddrOps,
     unsigned AddrOpsCount,
     unsigned ArgNo) {
-#if LLVM_VERSION_MINOR < 6
+#if LLVM_VERSION_MINOR == 5
     if (AddrOpsCount > 0) {
         SmallVector<llvm::Value *, 16> addr_ops;
         llvm::Type *Int64Ty = Type::getInt64Ty(unwrap<MDNode>(Scope)->getContext());
@@ -707,12 +707,12 @@ extern "C" void LLVMWriteValueToString(LLVMValueRef Value, RustStringRef str) {
 extern "C" bool
 LLVMRustLinkInExternalBitcode(LLVMModuleRef dst, char *bc, size_t len) {
     Module *Dst = unwrap(dst);
-#if LLVM_VERSION_MINOR == 5
-    MemoryBuffer* buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
-    ErrorOr<Module *> Src = llvm::getLazyBitcodeModule(buf, Dst->getContext());
-#else
+#if LLVM_VERSION_MINOR >= 6
     std::unique_ptr<MemoryBuffer> buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
     ErrorOr<Module *> Src = llvm::getLazyBitcodeModule(std::move(buf), Dst->getContext());
+#else
+    MemoryBuffer* buf = MemoryBuffer::getMemBufferCopy(StringRef(bc, len));
+    ErrorOr<Module *> Src = llvm::getLazyBitcodeModule(buf, Dst->getContext());
 #endif
     if (!Src) {
         LLVMRustSetLastError(Src.getError().message().c_str());
@@ -770,53 +770,74 @@ LLVMRustOpenArchive(char *path) {
     return ret;
 }
 
-extern "C" const char*
 #if LLVM_VERSION_MINOR >= 6
-LLVMRustArchiveReadSection(OwningBinary<Archive> *ob, char *name, size_t *size) {
-
-    Archive *ar = ob->getBinary();
+typedef OwningBinary<Archive> RustArchive;
+#define GET_ARCHIVE(a) ((a)->getBinary())
 #else
-LLVMRustArchiveReadSection(Archive *ar, char *name, size_t *size) {
+typedef Archive RustArchive;
+#define GET_ARCHIVE(a) (a)
 #endif
 
-    Archive::child_iterator child = ar->child_begin(),
-                              end = ar->child_end();
-    for (; child != end; ++child) {
-        ErrorOr<StringRef> name_or_err = child->getName();
-        if (name_or_err.getError()) continue;
-        StringRef sect_name = name_or_err.get();
-        if (sect_name.trim(" ") == name) {
-            StringRef buf = child->getBuffer();
-            *size = buf.size();
-            return buf.data();
-        }
-    }
-    return NULL;
+extern "C" void
+LLVMRustDestroyArchive(RustArchive *ar) {
+    delete ar;
+}
+
+struct RustArchiveIterator {
+    Archive::child_iterator cur;
+    Archive::child_iterator end;
+};
+
+extern "C" RustArchiveIterator*
+LLVMRustArchiveIteratorNew(RustArchive *ra) {
+    Archive *ar = GET_ARCHIVE(ra);
+    RustArchiveIterator *rai = new RustArchiveIterator();
+    rai->cur = ar->child_begin();
+    rai->end = ar->child_end();
+    return rai;
+}
+
+extern "C" const Archive::Child*
+LLVMRustArchiveIteratorCurrent(RustArchiveIterator *rai) {
+    if (rai->cur == rai->end)
+        return NULL;
+    const Archive::Child &ret = *rai->cur;
+    return &ret;
 }
 
 extern "C" void
-#if LLVM_VERSION_MINOR >= 6
-LLVMRustDestroyArchive(OwningBinary<Archive> *ar) {
-#else
-LLVMRustDestroyArchive(Archive *ar) {
-#endif
-    delete ar;
+LLVMRustArchiveIteratorNext(RustArchiveIterator *rai) {
+    if (rai->cur == rai->end)
+        return;
+    ++rai->cur;
+}
+
+extern "C" void
+LLVMRustArchiveIteratorFree(RustArchiveIterator *rai) {
+    delete rai;
+}
+
+extern "C" const char*
+LLVMRustArchiveChildName(const Archive::Child *child, size_t *size) {
+    ErrorOr<StringRef> name_or_err = child->getName();
+    if (name_or_err.getError())
+        return NULL;
+    StringRef name = name_or_err.get();
+    *size = name.size();
+    return name.data();
+}
+
+extern "C" const char*
+LLVMRustArchiveChildData(Archive::Child *child, size_t *size) {
+    StringRef buf = child->getBuffer();
+    *size = buf.size();
+    return buf.data();
 }
 
 extern "C" void
 LLVMRustSetDLLExportStorageClass(LLVMValueRef Value) {
     GlobalValue *V = unwrap<GlobalValue>(Value);
     V->setDLLStorageClass(GlobalValue::DLLExportStorageClass);
-}
-
-extern "C" int
-LLVMVersionMinor() {
-    return LLVM_VERSION_MINOR;
-}
-
-extern "C" int
-LLVMVersionMajor() {
-    return LLVM_VERSION_MAJOR;
 }
 
 // Note that the two following functions look quite similar to the

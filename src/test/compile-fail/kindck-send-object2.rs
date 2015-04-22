@@ -10,10 +10,8 @@
 
 // Continue kindck-send-object1.rs.
 
-use std::marker::MarkerTrait;
-
 fn assert_send<T:Send>() { }
-trait Dummy : MarkerTrait { }
+trait Dummy { }
 
 fn test50() {
     assert_send::<&'static Dummy>(); //~ ERROR the trait `core::marker::Sync` is not implemented

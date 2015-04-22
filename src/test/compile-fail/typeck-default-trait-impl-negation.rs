@@ -10,13 +10,11 @@
 
 #![feature(optin_builtin_traits)]
 
-use std::marker::MarkerTrait;
-
-trait MyTrait: MarkerTrait {}
+trait MyTrait {}
 
 impl MyTrait for .. {}
 
-unsafe trait MyUnsafeTrait: MarkerTrait {}
+unsafe trait MyUnsafeTrait {}
 
 unsafe impl MyUnsafeTrait for .. {}
 

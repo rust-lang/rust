@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-#![feature(rustc_private, old_io)]
+#![feature(rustc_private)]
 
 extern crate rbml;
 extern crate serialize;

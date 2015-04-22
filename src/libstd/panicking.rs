@@ -19,7 +19,6 @@ use rt::{backtrace, unwind};
 use sys::stdio::Stderr;
 use thread;
 
-// Defined in this module instead of old_io::stdio so that the unwinding
 thread_local! {
     pub static LOCAL_STDERR: RefCell<Option<Box<Write + Send>>> = {
         RefCell::new(None)

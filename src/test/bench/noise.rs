@@ -14,7 +14,6 @@
 #![feature(rand, core)]
 
 use std::f32::consts::PI;
-use std::num::Float;
 use std::__rand::{Rng, thread_rng};
 
 #[derive(Copy, Clone)]

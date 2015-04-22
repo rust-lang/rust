@@ -67,7 +67,6 @@ mod test {
     use prelude::v1::*;
 
     use super::ReaderRng;
-    use num::Int;
     use rand::Rng;
 
     #[test]
@@ -78,18 +77,18 @@ mod test {
                   0,   0, 0, 0, 0, 0, 0, 3][..];
         let mut rng = ReaderRng::new(v);
 
-        assert_eq!(rng.next_u64(), 1.to_be());
-        assert_eq!(rng.next_u64(), 2.to_be());
-        assert_eq!(rng.next_u64(), 3.to_be());
+        assert_eq!(rng.next_u64(), 1u64.to_be());
+        assert_eq!(rng.next_u64(), 2u64.to_be());
+        assert_eq!(rng.next_u64(), 3u64.to_be());
     }
     #[test]
     fn test_reader_rng_u32() {
         let v = &[0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3][..];
         let mut rng = ReaderRng::new(v);
 
-        assert_eq!(rng.next_u32(), 1.to_be());
-        assert_eq!(rng.next_u32(), 2.to_be());
-        assert_eq!(rng.next_u32(), 3.to_be());
+        assert_eq!(rng.next_u32(), 1u32.to_be());
+        assert_eq!(rng.next_u32(), 2u32.to_be());
+        assert_eq!(rng.next_u32(), 3u32.to_be());
     }
     #[test]
     fn test_reader_rng_fill_bytes() {

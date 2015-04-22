@@ -17,7 +17,6 @@ use sys::mutex::{self, Mutex};
 use sys::time;
 use sys::sync as ffi;
 use time::Duration;
-use num::{Int, NumCast};
 
 pub struct Condvar { inner: UnsafeCell<ffi::pthread_cond_t> }
 
@@ -70,8 +69,8 @@ impl Condvar {
         let r = ffi::gettimeofday(&mut sys_now, ptr::null_mut());
         debug_assert_eq!(r, 0);
 
-        let seconds = NumCast::from(dur.num_seconds());
-        let timeout = match seconds.and_then(|s| sys_now.tv_sec.checked_add(s)) {
+        let seconds = dur.num_seconds() as libc::time_t;
+        let timeout = match sys_now.tv_sec.checked_add(seconds) {
             Some(sec) => {
                 libc::timespec {
                     tv_sec: sec,
@@ -81,7 +80,7 @@ impl Condvar {
             }
             None => {
                 libc::timespec {
-                    tv_sec: Int::max_value(),
+                    tv_sec: <libc::time_t>::max_value(),
                     tv_nsec: 1_000_000_000 - 1,
                 }
             }

@@ -18,10 +18,9 @@ use self::Entry::*;
 use core::prelude::*;
 
 use core::cmp::{max, Ordering};
-use core::default::Default;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::iter::{Enumerate, FilterMap, Map, FromIterator, IntoIterator};
+use core::iter::{Enumerate, FilterMap, Map, FromIterator};
 use core::iter;
 use core::mem::{replace, swap};
 use core::ops::{Index, IndexMut};
@@ -299,35 +298,6 @@ impl<V> VecMap<V> {
             back: self.v.len(),
             iter: self.v.iter_mut()
         }
-    }
-
-    /// Returns an iterator visiting all key-value pairs in ascending order of
-    /// the keys, consuming the original `VecMap`.
-    /// The iterator's element type is `(usize, &'r V)`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![feature(collections)]
-    /// use std::collections::VecMap;
-    ///
-    /// let mut map = VecMap::new();
-    /// map.insert(1, "a");
-    /// map.insert(3, "c");
-    /// map.insert(2, "b");
-    ///
-    /// let vec: Vec<(usize, &str)> = map.into_iter().collect();
-    ///
-    /// assert_eq!(vec, [(1, "a"), (2, "b"), (3, "c")]);
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_iter(self) -> IntoIter<V> {
-        fn filter<A>((i, v): (usize, Option<A>)) -> Option<(usize, A)> {
-            v.map(|v| (i, v))
-        }
-        let filter: fn((usize, Option<V>)) -> Option<(usize, V)> = filter; // coerce to fn ptr
-
-        IntoIter { iter: self.v.into_iter().enumerate().filter_map(filter) }
     }
 
     /// Moves all elements from `other` into the map while overwriting existing keys.
@@ -800,8 +770,32 @@ impl<T> IntoIterator for VecMap<T> {
     type Item = (usize, T);
     type IntoIter = IntoIter<T>;
 
+    /// Returns an iterator visiting all key-value pairs in ascending order of
+    /// the keys, consuming the original `VecMap`.
+    /// The iterator's element type is `(usize, &'r V)`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collections)]
+    /// use std::collections::VecMap;
+    ///
+    /// let mut map = VecMap::new();
+    /// map.insert(1, "a");
+    /// map.insert(3, "c");
+    /// map.insert(2, "b");
+    ///
+    /// let vec: Vec<(usize, &str)> = map.into_iter().collect();
+    ///
+    /// assert_eq!(vec, [(1, "a"), (2, "b"), (3, "c")]);
+    /// ```
     fn into_iter(self) -> IntoIter<T> {
-        self.into_iter()
+        fn filter<A>((i, v): (usize, Option<A>)) -> Option<(usize, A)> {
+            v.map(|v| (i, v))
+        }
+        let filter: fn((usize, Option<T>)) -> Option<(usize, T)> = filter; // coerce to fn ptr
+
+        IntoIter { iter: self.v.into_iter().enumerate().filter_map(filter) }
     }
 }
 

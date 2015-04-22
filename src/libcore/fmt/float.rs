@@ -11,15 +11,15 @@
 pub use self::ExponentFormat::*;
 pub use self::SignificantDigits::*;
 
-use char::{self, CharExt};
+use prelude::*;
+
+use char;
 use fmt;
-use iter::Iterator;
-use num::{cast, Float, ToPrimitive};
+use num::Float;
 use num::FpCategory as Fp;
-use ops::FnOnce;
-use result::Result::Ok;
-use slice::{self, SliceExt};
-use str::{self, StrExt};
+use ops::{Div, Rem, Mul};
+use slice;
+use str;
 
 /// A flag that specifies whether to use exponential (scientific) notation.
 pub enum ExponentFormat {
@@ -42,6 +42,21 @@ pub enum SignificantDigits {
     DigExact(usize)
 }
 
+#[doc(hidden)]
+pub trait MyFloat: Float + PartialEq + PartialOrd + Div<Output=Self> +
+                   Mul<Output=Self> + Rem<Output=Self> + Copy {
+    fn from_u32(u: u32) -> Self;
+    fn to_i32(&self) -> i32;
+}
+
+macro_rules! doit {
+    ($($t:ident)*) => ($(impl MyFloat for $t {
+        fn from_u32(u: u32) -> $t { u as $t }
+        fn to_i32(&self) -> i32 { *self as i32 }
+    })*)
+}
+doit! { f32 f64 }
+
 /// Converts a float number to its string representation.
 /// This is meant to be a common base implementation for various formatting styles.
 /// The number is assumed to be non-negative, callers use `Formatter::pad_integral`
@@ -63,7 +78,7 @@ pub enum SignificantDigits {
 /// # Panics
 ///
 /// - Panics if `num` is negative.
-pub fn float_to_str_bytes_common<T: Float, U, F>(
+pub fn float_to_str_bytes_common<T: MyFloat, U, F>(
     num: T,
     digits: SignificantDigits,
     exp_format: ExponentFormat,
@@ -72,10 +87,10 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
 ) -> U where
     F: FnOnce(&str) -> U,
 {
-    let _0: T = Float::zero();
-    let _1: T = Float::one();
+    let _0: T = T::zero();
+    let _1: T = T::one();
     let radix: u32 = 10;
-    let radix_f: T = cast(radix).unwrap();
+    let radix_f = T::from_u32(radix);
 
     assert!(num.is_nan() || num >= _0, "float_to_str_bytes_common: number is negative");
 
@@ -99,7 +114,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
     let (num, exp) = match exp_format {
         ExpDec if num != _0 => {
             let exp = num.log10().floor();
-            (num / radix_f.powf(exp), cast::<T, i32>(exp).unwrap())
+            (num / radix_f.powf(exp), exp.to_i32())
         }
         _ => (num, 0)
     };
@@ -114,7 +129,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
         deccum = deccum / radix_f;
         deccum = deccum.trunc();
 
-        let c = char::from_digit(current_digit.to_isize().unwrap() as u32, radix);
+        let c = char::from_digit(current_digit.to_i32() as u32, radix);
         buf[end] = c.unwrap() as u8;
         end += 1;
 
@@ -158,7 +173,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
 
             let current_digit = deccum.trunc();
 
-            let c = char::from_digit(current_digit.to_isize().unwrap() as u32, radix);
+            let c = char::from_digit(current_digit.to_i32() as u32, radix);
             buf[end] = c.unwrap() as u8;
             end += 1;
 

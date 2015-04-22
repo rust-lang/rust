@@ -21,9 +21,6 @@ use libc;
 use flate;
 
 use std::ffi::CString;
-use std::mem;
-#[allow(deprecated)]
-use std::num::Int;
 
 pub fn run(sess: &session::Session, llmod: ModuleRef,
            tm: TargetMachineRef, reachable: &[String]) {
@@ -63,13 +60,13 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         let file = &file[3..file.len() - 5]; // chop off lib/.rlib
         debug!("reading {}", file);
         for i in 0.. {
-            let bc_encoded = time(sess.time_passes(),
-                                  &format!("check for {}.{}.bytecode.deflate", name, i),
-                                  (),
-                                  |_| {
-                                      archive.read(&format!("{}.{}.bytecode.deflate",
-                                                           file, i))
-                                  });
+            let filename = format!("{}.{}.bytecode.deflate", file, i);
+            let msg = format!("check for {}", filename);
+            let bc_encoded = time(sess.time_passes(), &msg, (), |_| {
+                archive.iter().find(|section| {
+                    section.name() == Some(&filename[..])
+                })
+            });
             let bc_encoded = match bc_encoded {
                 Some(data) => data,
                 None => {
@@ -79,9 +76,10 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                                            path.display()));
                     }
                     // No more bitcode files to read.
-                    break;
-                },
+                    break
+                }
             };
+            let bc_encoded = bc_encoded.data();
 
             let bc_decoded = if is_versioned_bytecode_format(bc_encoded) {
                 time(sess.time_passes(), &format!("decode {}.{}.bc", file, i), (), |_| {
@@ -198,19 +196,15 @@ fn is_versioned_bytecode_format(bc: &[u8]) -> bool {
 }
 
 fn extract_bytecode_format_version(bc: &[u8]) -> u32 {
-    return read_from_le_bytes::<u32>(bc, link::RLIB_BYTECODE_OBJECT_VERSION_OFFSET);
+    let pos = link::RLIB_BYTECODE_OBJECT_VERSION_OFFSET;
+    let byte_data = &bc[pos..pos + 4];
+    let data = unsafe { *(byte_data.as_ptr() as *const u32) };
+    u32::from_le(data)
 }
 
 fn extract_compressed_bytecode_size_v1(bc: &[u8]) -> u64 {
-    return read_from_le_bytes::<u64>(bc, link::RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET);
-}
-
-#[allow(deprecated)]
-fn read_from_le_bytes<T: Int>(bytes: &[u8], position_in_bytes: usize) -> T {
-    let byte_data = &bytes[position_in_bytes..position_in_bytes + mem::size_of::<T>()];
-    let data = unsafe {
-        *(byte_data.as_ptr() as *const T)
-    };
-
-    Int::from_le(data)
+    let pos = link::RLIB_BYTECODE_OBJECT_V1_DATASIZE_OFFSET;
+    let byte_data = &bc[pos..pos + 8];
+    let data = unsafe { *(byte_data.as_ptr() as *const u64) };
+    u64::from_le(data)
 }

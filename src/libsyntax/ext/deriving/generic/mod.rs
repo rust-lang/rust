@@ -807,7 +807,7 @@ impl<'a> MethodDef<'a> {
                 Self_ if nonstatic  => {
                     self_args.push(arg_expr);
                 }
-                Ptr(box Self_, _) if nonstatic => {
+                Ptr(ref ty, _) if **ty == Self_ && nonstatic => {
                     self_args.push(cx.expr_deref(trait_.span, arg_expr))
                 }
                 _ => {
@@ -1103,7 +1103,7 @@ impl<'a> MethodDef<'a> {
                     subpats.push(p);
                     idents
                 };
-                for self_arg_name in self_arg_names.tail() {
+                for self_arg_name in &self_arg_names[1..] {
                     let (p, idents) = mk_self_pat(cx, &self_arg_name[..]);
                     subpats.push(p);
                     self_pats_idents.push(idents);

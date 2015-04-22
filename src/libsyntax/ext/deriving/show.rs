@@ -25,7 +25,7 @@ pub fn expand_deriving_show(cx: &mut ExtCtxt,
                             push: &mut FnMut(P<Item>))
 {
     // &mut ::std::fmt::Formatter
-    let fmtr = Ptr(box Literal(path_std!(cx, core::fmt::Formatter)),
+    let fmtr = Ptr(Box::new(Literal(path_std!(cx, core::fmt::Formatter))),
                    Borrowed(None, ast::MutMutable));
 
     let trait_def = TraitDef {

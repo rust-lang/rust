@@ -46,13 +46,8 @@ def run(args):
 
 f.write("\n")
 
-version = run([llconfig, '--version']).strip()
-
 # LLVM libs
-if version < '3.5':
-    args = [llconfig, '--libs']
-else:
-    args = [llconfig, '--libs', '--system-libs']
+args = [llconfig, '--libs', '--system-libs']
 
 args.extend(components)
 out = run(args)
@@ -72,11 +67,6 @@ for lib in out.strip().replace("\n", ' ').split(' '):
     if 'LLVM' in lib:
         f.write(", kind = \"static\"")
     f.write(")]\n")
-
-# llvm-config before 3.5 didn't have a system-libs flag
-if version < '3.5':
-    if os == 'win32':
-        f.write("#[link(name = \"imagehlp\")]")
 
 # LLVM ldflags
 out = run([llconfig, '--ldflags'])

@@ -28,7 +28,7 @@ use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
 use std_inject;
 
-use std::{ascii, mem};
+use std::ascii;
 use std::io::{self, Write, Read};
 use std::iter;
 
@@ -187,18 +187,13 @@ impl<'a> State<'a> {
 pub fn to_string<F>(f: F) -> String where
     F: FnOnce(&mut State) -> io::Result<()>,
 {
-    use std::raw::TraitObject;
-    let mut s = rust_printer(box Vec::new());
-    f(&mut s).unwrap();
-    eof(&mut s.s).unwrap();
-    let wr = unsafe {
-        // FIXME(pcwalton): A nasty function to extract the string from an `Write`
-        // that we "know" to be a `Vec<u8>` that works around the lack of checked
-        // downcasts.
-        let obj: &TraitObject = mem::transmute(&s.s.out);
-        mem::transmute::<*mut (), &Vec<u8>>(obj.data)
-    };
-    String::from_utf8(wr.clone()).unwrap()
+    let mut wr = Vec::new();
+    {
+        let mut printer = rust_printer(Box::new(&mut wr));
+        f(&mut printer).unwrap();
+        eof(&mut printer.s).unwrap();
+    }
+    String::from_utf8(wr).unwrap()
 }
 
 pub fn binop_to_string(op: BinOpToken) -> &'static str {
@@ -2799,13 +2794,13 @@ impl<'a> State<'a> {
         match lit.node {
             ast::LitStr(ref st, style) => self.print_string(&st, style),
             ast::LitByte(byte) => {
-                let mut res = String::from_str("b'");
+                let mut res = String::from("b'");
                 res.extend(ascii::escape_default(byte).map(|c| c as char));
                 res.push('\'');
                 word(&mut self.s, &res[..])
             }
             ast::LitChar(ch) => {
-                let mut res = String::from_str("'");
+                let mut res = String::from("'");
                 res.extend(ch.escape_default());
                 res.push('\'');
                 word(&mut self.s, &res[..])

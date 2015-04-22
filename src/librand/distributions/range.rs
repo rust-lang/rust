@@ -13,8 +13,6 @@
 // this is surprisingly complicated to be both generic & correct
 
 use core::prelude::PartialOrd;
-use core::num::Int;
-use core::num::wrapping::WrappingOps;
 
 use Rng;
 use distributions::{Sample, IndependentSample};
@@ -73,7 +71,7 @@ pub trait SampleRange {
 }
 
 macro_rules! integer_impl {
-    ($ty:ty, $unsigned:ty) => {
+    ($ty:ident, $unsigned:ident) => {
         impl SampleRange for $ty {
             // we play free and fast with unsigned vs signed here
             // (when $ty is signed), but that's fine, since the
@@ -83,7 +81,7 @@ macro_rules! integer_impl {
 
             fn construct_range(low: $ty, high: $ty) -> Range<$ty> {
                 let range = (high as $unsigned).wrapping_sub(low as $unsigned);
-                let unsigned_max: $unsigned = Int::max_value();
+                let unsigned_max: $unsigned = $unsigned::max_value();
 
                 // this is the largest number that fits into $unsigned
                 // that `range` divides evenly, so, if we've sampled
@@ -148,7 +146,6 @@ float_impl! { f64 }
 
 #[cfg(test)]
 mod tests {
-    use std::num::Int;
     use std::prelude::v1::*;
     use distributions::{Sample, IndependentSample};
     use super::Range as Range;
@@ -168,11 +165,11 @@ mod tests {
     fn test_integers() {
         let mut rng = ::test::rng();
         macro_rules! t {
-            ($($ty:ty),*) => {{
+            ($($ty:ident),*) => {{
                 $(
                    let v: &[($ty, $ty)] = &[(0, 10),
                                             (10, 127),
-                                            (Int::min_value(), Int::max_value())];
+                                            ($ty::min_value(), $ty::max_value())];
                    for &(low, high) in v {
                         let mut sampler: Range<$ty> = Range::new(low, high);
                         for _ in 0..1000 {

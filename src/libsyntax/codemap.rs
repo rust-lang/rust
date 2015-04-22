@@ -20,13 +20,11 @@
 pub use self::MacroFormat::*;
 
 use std::cell::RefCell;
-use std::num::ToPrimitive;
 use std::ops::{Add, Sub};
 use std::rc::Rc;
 
 use std::fmt;
 
-use libc::c_uint;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 
@@ -287,13 +285,12 @@ pub const NO_EXPANSION: ExpnId = ExpnId(!0);
 pub const COMMAND_LINE_EXPN: ExpnId = ExpnId(!1);
 
 impl ExpnId {
-    pub fn from_llvm_cookie(cookie: c_uint) -> ExpnId {
-        ExpnId(cookie)
+    pub fn from_u32(id: u32) -> ExpnId {
+        ExpnId(id)
     }
 
-    pub fn to_llvm_cookie(self) -> i32 {
-        let ExpnId(cookie) = self;
-        cookie as i32
+    pub fn into_u32(self) -> u32 {
+        self.0
     }
 }
 
@@ -557,9 +554,9 @@ impl CodeMap {
         // FIXME #12884: no efficient/safe way to remove from the start of a string
         // and reuse the allocation.
         let mut src = if src.starts_with("\u{feff}") {
-            String::from_str(&src[3..])
+            String::from(&src[3..])
         } else {
-            String::from_str(&src[..])
+            String::from(&src[..])
         };
 
         // Append '\n' in case it's not already there.
@@ -594,8 +591,8 @@ impl CodeMap {
     pub fn new_imported_filemap(&self,
                                 filename: FileName,
                                 source_len: usize,
-                                file_local_lines: Vec<BytePos>,
-                                file_local_multibyte_chars: Vec<MultiByteChar>)
+                                mut file_local_lines: Vec<BytePos>,
+                                mut file_local_multibyte_chars: Vec<MultiByteChar>)
                                 -> Rc<FileMap> {
         let mut files = self.files.borrow_mut();
         let start_pos = match files.last() {
@@ -606,19 +603,21 @@ impl CodeMap {
         let end_pos = Pos::from_usize(start_pos + source_len);
         let start_pos = Pos::from_usize(start_pos);
 
-        let lines = file_local_lines.map_in_place(|pos| pos + start_pos);
-        let multibyte_chars = file_local_multibyte_chars.map_in_place(|mbc| MultiByteChar {
-            pos: mbc.pos + start_pos,
-            bytes: mbc.bytes
-        });
+        for pos in &mut file_local_lines {
+            *pos = *pos + start_pos;
+        }
+
+        for mbc in &mut file_local_multibyte_chars {
+            mbc.pos = mbc.pos + start_pos;
+        }
 
         let filemap = Rc::new(FileMap {
             name: filename,
             src: None,
             start_pos: start_pos,
             end_pos: end_pos,
-            lines: RefCell::new(lines),
-            multibyte_chars: RefCell::new(multibyte_chars),
+            lines: RefCell::new(file_local_lines),
+            multibyte_chars: RefCell::new(file_local_multibyte_chars),
         });
 
         files.push(filemap.clone());
@@ -862,7 +861,11 @@ impl CodeMap {
     pub fn record_expansion(&self, expn_info: ExpnInfo) -> ExpnId {
         let mut expansions = self.expansions.borrow_mut();
         expansions.push(expn_info);
-        ExpnId(expansions.len().to_u32().expect("too many ExpnInfo's!") - 1)
+        let len = expansions.len();
+        if len > u32::max_value() as usize {
+            panic!("too many ExpnInfo's!");
+        }
+        ExpnId(len as u32 - 1)
     }
 
     pub fn with_expn_info<T, F>(&self, id: ExpnId, f: F) -> T where

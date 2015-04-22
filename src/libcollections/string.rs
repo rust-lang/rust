@@ -14,10 +14,9 @@
 
 use core::prelude::*;
 
-use core::default::Default;
 use core::fmt;
 use core::hash;
-use core::iter::{IntoIterator, FromIterator};
+use core::iter::FromIterator;
 use core::mem;
 use core::ops::{self, Deref, Add, Index};
 use core::ptr;
@@ -837,15 +836,6 @@ impl<'a, 'b> PartialEq<Cow<'a, str>> for &'b str {
     fn ne(&self, other: &Cow<'a, str>) -> bool { PartialEq::ne(&self[..], &other[..]) }
 }
 
-#[unstable(feature = "collections", reason = "waiting on Str stabilization")]
-#[allow(deprecated)]
-impl Str for String {
-    #[inline]
-    fn as_slice(&self) -> &str {
-        unsafe { mem::transmute(&*self.vec) }
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Default for String {
     #[inline]
@@ -1067,19 +1057,17 @@ impl<'a> IntoCow<'a, str> for &'a str {
     }
 }
 
-#[allow(deprecated)]
-impl<'a> Str for Cow<'a, str> {
-    #[inline]
-    fn as_slice<'b>(&'b self) -> &'b str {
-        &**self
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Write for String {
     #[inline]
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.push_str(s);
+        Ok(())
+    }
+
+    #[inline]
+    fn write_char(&mut self, c: char) -> fmt::Result {
+        self.push(c);
         Ok(())
     }
 }

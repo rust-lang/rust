@@ -208,7 +208,7 @@ fn main() {
     unsafe { f(); }
 }
 
-See also http://doc.rust-lang.org/book/unsafe-code.html
+See also http://doc.rust-lang.org/book/unsafe.html
 "##,
 
 E0152: r##"

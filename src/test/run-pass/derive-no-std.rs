@@ -31,7 +31,6 @@ enum Bar {
     Quux(u32),
 }
 
-#[derive(FromPrimitive)]
 enum Baz { A=0, B=5, }
 
 fn main() {

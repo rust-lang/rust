@@ -24,6 +24,7 @@ is the first. After this:
 * [Syntax and Semantics][ss] - Each bit of Rust, broken down into small chunks.
 * [Nightly Rust][nr] - Cutting-edge features that aren’t in stable builds yet.
 * [Glossary][gl] - A reference of terms used in the book.
+* [Academic Research][ar] - Literature that influenced Rust.
 
 [gs]: getting-started.html
 [lr]: learn-rust.html
@@ -31,6 +32,7 @@ is the first. After this:
 [ss]: syntax-and-semantics.html
 [nr]: nightly-rust.html
 [gl]: glossary.html
+[ar]: academic-research.html
 
 After reading this introduction, you’ll want to dive into either ‘Learn Rust’
 or ‘Syntax and Semantics’, depending on your preference: ‘Learn Rust’ if you

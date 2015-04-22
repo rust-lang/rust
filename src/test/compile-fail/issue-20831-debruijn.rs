@@ -14,10 +14,9 @@
 // away.
 
 use std::cell::RefCell;
-use std::marker::MarkerTrait;
 use std::ops::{Shl, Shr};
 
-pub trait Subscriber : MarkerTrait {
+pub trait Subscriber {
     type Input;
 }
 

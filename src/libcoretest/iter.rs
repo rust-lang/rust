@@ -11,7 +11,6 @@
 use core::iter::*;
 use core::iter::order::*;
 use core::iter::MinMaxResult::*;
-use core::num::SignedInt;
 use core::usize;
 use core::cmp;
 
@@ -781,16 +780,6 @@ fn test_range_step() {
     assert_eq!((200..255).step_by(50).collect::<Vec<u8>>(), [200, 250]);
     assert_eq!((200..-5).step_by(1).collect::<Vec<isize>>(), []);
     assert_eq!((200..200).step_by(1).collect::<Vec<isize>>(), []);
-}
-
-#[test]
-fn test_range_step_inclusive() {
-    assert_eq!(range_step_inclusive(0, 20, 5).collect::<Vec<isize>>(), [0, 5, 10, 15, 20]);
-    assert_eq!(range_step_inclusive(20, 0, -5).collect::<Vec<isize>>(), [20, 15, 10, 5, 0]);
-    assert_eq!(range_step_inclusive(20, 0, -6).collect::<Vec<isize>>(), [20, 14, 8, 2]);
-    assert_eq!(range_step_inclusive(200, 255, 50).collect::<Vec<u8>>(), [200, 250]);
-    assert_eq!(range_step_inclusive(200, -5, 1).collect::<Vec<isize>>(), []);
-    assert_eq!(range_step_inclusive(200, 200, 1).collect::<Vec<isize>>(), [200]);
 }
 
 #[test]
