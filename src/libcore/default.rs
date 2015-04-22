@@ -24,8 +24,6 @@
 //! How can we define some default values? You can use `Default`:
 //!
 //! ```
-//! use std::default::Default;
-//!
 //! #[derive(Default)]
 //! struct SomeOptions {
 //!     foo: i32,
@@ -42,8 +40,6 @@
 //! If you have your own type, you need to implement `Default` yourself:
 //!
 //! ```
-//! use std::default::Default;
-//!
 //! enum Kind {
 //!     A,
 //!     B,
@@ -70,7 +66,6 @@
 //! If you want to override a particular option, but still retain the other defaults:
 //!
 //! ```
-//! # use std::default::Default;
 //! # #[derive(Default)]
 //! # struct SomeOptions {
 //! #     foo: i32,
@@ -109,8 +104,6 @@ pub trait Default {
     /// Using built-in default values:
     ///
     /// ```
-    /// use std::default::Default;
-    ///
     /// let i: i8 = Default::default();
     /// let (x, y): (Option<String>, f64) = Default::default();
     /// let (a, b, (c, d)): (i32, u32, (bool, bool)) = Default::default();
@@ -119,8 +112,6 @@ pub trait Default {
     /// Making your own:
     ///
     /// ```
-    /// use std::default::Default;
-    ///
     /// enum Kind {
     ///     A,
     ///     B,

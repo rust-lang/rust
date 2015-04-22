@@ -459,7 +459,6 @@ impl<T: Default> Default for Rc<T> {
     ///
     /// ```
     /// use std::rc::Rc;
-    /// use std::default::Default;
     ///
     /// let x: Rc<i32> = Default::default();
     /// ```
