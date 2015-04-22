@@ -196,9 +196,11 @@ fn test_write() {
         write!(w, "{}", "hello");
         writeln!(w, "{}", "line");
         writeln!(w, "{foo}", foo="bar");
+        w.write_char('☃');
+        w.write_str("str");
     }
 
-    t!(buf, "34helloline\nbar\n");
+    t!(buf, "34helloline\nbar\n☃str");
 }
 
 // Just make sure that the macros are defined, there's not really a lot that we
