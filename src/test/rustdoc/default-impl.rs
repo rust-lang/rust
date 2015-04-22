@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:rustdoc-default-impl.rs
-// ignore-android
+// ignore-cross-compile
 
 extern crate rustdoc_default_impl as foo;
 
