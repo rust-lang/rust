@@ -80,7 +80,7 @@ impl<T> Clone for Slice<T> {
 /// `TraitObject` is guaranteed to match layouts, but it is not the
 /// type of trait objects (e.g. the fields are not directly accessible
 /// on a `&SomeTrait`) nor does it control that layout (changing the
-/// definition will not change the layout of a `&SometTrait`). It is
+/// definition will not change the layout of a `&SomeTrait`). It is
 /// only designed to be used by unsafe code that needs to manipulate
 /// the low-level details.
 ///
