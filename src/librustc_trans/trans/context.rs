@@ -21,6 +21,7 @@ use trans::builder::Builder;
 use trans::common::{ExternMap,BuilderRef_res};
 use trans::debuginfo;
 use trans::declare;
+use trans::glue::DropGlueKind;
 use trans::monomorphize::MonoId;
 use trans::type_::{Type, TypeNames};
 use middle::subst::Substs;
@@ -73,7 +74,7 @@ pub struct SharedCrateContext<'tcx> {
     check_drop_flag_for_sanity: bool,
 
     available_monomorphizations: RefCell<FnvHashSet<String>>,
-    available_drop_glues: RefCell<FnvHashMap<Ty<'tcx>, String>>,
+    available_drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, String>>,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
@@ -89,7 +90,7 @@ pub struct LocalCrateContext<'tcx> {
     item_vals: RefCell<NodeMap<ValueRef>>,
     needs_unwind_cleanup_cache: RefCell<FnvHashMap<Ty<'tcx>, bool>>,
     fn_pointer_shims: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
-    drop_glues: RefCell<FnvHashMap<Ty<'tcx>, ValueRef>>,
+    drop_glues: RefCell<FnvHashMap<DropGlueKind<'tcx>, ValueRef>>,
     /// Track mapping of external ids to local items imported for inlining
     external: RefCell<DefIdMap<Option<ast::NodeId>>>,
     /// Backwards version of the `external` map (inlined items to where they
@@ -574,7 +575,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.fn_pointer_shims
     }
 
-    pub fn drop_glues<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, ValueRef>> {
+    pub fn drop_glues<'a>(&'a self) -> &'a RefCell<FnvHashMap<DropGlueKind<'tcx>, ValueRef>> {
         &self.local.drop_glues
     }
 
@@ -660,7 +661,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.shared.available_monomorphizations
     }
 
-    pub fn available_drop_glues<'a>(&'a self) -> &'a RefCell<FnvHashMap<Ty<'tcx>, String>> {
+    pub fn available_drop_glues(&self) -> &RefCell<FnvHashMap<DropGlueKind<'tcx>, String>> {
         &self.shared.available_drop_glues
     }
 
