@@ -393,19 +393,22 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
-            zero: false
+            fill_on_drop: false,
+            skip_dtor: false,
         };
 
-        debug!("schedule_drop_mem({:?}, val={}, ty={})",
+        debug!("schedule_drop_mem({:?}, val={}, ty={}) fill_on_drop={} skip_dtor={}",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
-               ty.repr(self.ccx.tcx()));
+               ty.repr(self.ccx.tcx()),
+               drop.fill_on_drop,
+               drop.skip_dtor);
 
         self.schedule_clean(cleanup_scope, drop as CleanupObj);
     }
 
-    /// Schedules a (deep) drop and zero-ing of `val`, which is a pointer to an instance of `ty`
-    fn schedule_drop_and_zero_mem(&self,
+    /// Schedules a (deep) drop and filling of `val`, which is a pointer to an instance of `ty`
+    fn schedule_drop_and_fill_mem(&self,
                                   cleanup_scope: ScopeId,
                                   val: ValueRef,
                                   ty: Ty<'tcx>) {
@@ -416,14 +419,48 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
-            zero: true
+            fill_on_drop: true,
+            skip_dtor: false,
         };
 
-        debug!("schedule_drop_and_zero_mem({:?}, val={}, ty={}, zero={})",
+        debug!("schedule_drop_and_fill_mem({:?}, val={}, ty={}, fill_on_drop={}, skip_dtor={})",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
                ty.repr(self.ccx.tcx()),
-               true);
+               drop.fill_on_drop,
+               drop.skip_dtor);
+
+        self.schedule_clean(cleanup_scope, drop as CleanupObj);
+    }
+
+    /// Issue #23611: Schedules a (deep) drop of the contents of
+    /// `val`, which is a pointer to an instance of struct/enum type
+    /// `ty`. The scheduled code handles extracting the discriminant
+    /// and dropping the contents associated with that variant
+    /// *without* executing any associated drop implementation.
+    fn schedule_drop_enum_contents(&self,
+                                   cleanup_scope: ScopeId,
+                                   val: ValueRef,
+                                   ty: Ty<'tcx>) {
+        // `if` below could be "!contents_needs_drop"; skipping drop
+        // is just an optimization, so sound to be conservative.
+        if !self.type_needs_drop(ty) { return; }
+
+        let drop = box DropValue {
+            is_immediate: false,
+            must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
+            val: val,
+            ty: ty,
+            fill_on_drop: false,
+            skip_dtor: true,
+        };
+
+        debug!("schedule_drop_enum_contents({:?}, val={}, ty={}) fill_on_drop={} skip_dtor={}",
+               cleanup_scope,
+               self.ccx.tn().val_to_string(val),
+               ty.repr(self.ccx.tcx()),
+               drop.fill_on_drop,
+               drop.skip_dtor);
 
         self.schedule_clean(cleanup_scope, drop as CleanupObj);
     }
@@ -440,13 +477,16 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
             must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
-            zero: false
+            fill_on_drop: false,
+            skip_dtor: false,
         };
 
-        debug!("schedule_drop_immediate({:?}, val={}, ty={:?})",
+        debug!("schedule_drop_immediate({:?}, val={}, ty={:?}) fill_on_drop={} skip_dtor={}",
                cleanup_scope,
                self.ccx.tn().val_to_string(val),
-               ty.repr(self.ccx.tcx()));
+               ty.repr(self.ccx.tcx()),
+               drop.fill_on_drop,
+               drop.skip_dtor);
 
         self.schedule_clean(cleanup_scope, drop as CleanupObj);
     }
@@ -987,7 +1027,8 @@ pub struct DropValue<'tcx> {
     must_unwind: bool,
     val: ValueRef,
     ty: Ty<'tcx>,
-    zero: bool
+    fill_on_drop: bool,
+    skip_dtor: bool,
 }
 
 impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
@@ -1007,13 +1048,18 @@ impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
                    bcx: Block<'blk, 'tcx>,
                    debug_loc: DebugLoc)
                    -> Block<'blk, 'tcx> {
-        let _icx = base::push_ctxt("<DropValue as Cleanup>::trans");
-        let bcx = if self.is_immediate {
-            glue::drop_ty_immediate(bcx, self.val, self.ty, debug_loc)
+        let skip_dtor = self.skip_dtor;
+        let _icx = if skip_dtor {
+            base::push_ctxt("<DropValue as Cleanup>::trans skip_dtor=true")
         } else {
-            glue::drop_ty(bcx, self.val, self.ty, debug_loc)
+            base::push_ctxt("<DropValue as Cleanup>::trans skip_dtor=false")
         };
-        if self.zero {
+        let bcx = if self.is_immediate {
+            glue::drop_ty_immediate(bcx, self.val, self.ty, debug_loc, self.skip_dtor)
+        } else {
+            glue::drop_ty_core(bcx, self.val, self.ty, debug_loc, self.skip_dtor)
+        };
+        if self.fill_on_drop {
             base::drop_done_fill_mem(bcx, self.val, self.ty);
         }
         bcx
@@ -1190,10 +1236,14 @@ pub trait CleanupMethods<'blk, 'tcx> {
                          cleanup_scope: ScopeId,
                          val: ValueRef,
                          ty: Ty<'tcx>);
-    fn schedule_drop_and_zero_mem(&self,
+    fn schedule_drop_and_fill_mem(&self,
                                   cleanup_scope: ScopeId,
                                   val: ValueRef,
                                   ty: Ty<'tcx>);
+    fn schedule_drop_enum_contents(&self,
+                                   cleanup_scope: ScopeId,
+                                   val: ValueRef,
+                                   ty: Ty<'tcx>);
     fn schedule_drop_immediate(&self,
                                cleanup_scope: ScopeId,
                                val: ValueRef,
