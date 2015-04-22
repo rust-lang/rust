@@ -471,6 +471,17 @@ extern "system" {
                       hWritePipe: libc::LPHANDLE,
                       lpPipeAttributes: libc::LPSECURITY_ATTRIBUTES,
                       nSize: libc::DWORD) -> libc::BOOL;
+    pub fn CreateThread(lpThreadAttributes: libc::LPSECURITY_ATTRIBUTES,
+                        dwStackSize: libc::SIZE_T,
+                        lpStartAddress: extern "system" fn(*mut libc::c_void)
+                                                           -> libc::DWORD,
+                        lpParameter: libc::LPVOID,
+                        dwCreationFlags: libc::DWORD,
+                        lpThreadId: libc::LPDWORD) -> libc::HANDLE;
+    pub fn WaitForSingleObject(hHandle: libc::HANDLE,
+                               dwMilliseconds: libc::DWORD) -> libc::DWORD;
+    pub fn SwitchToThread() -> libc::BOOL;
+    pub fn Sleep(dwMilliseconds: libc::DWORD);
 }
 
 #[link(name = "userenv")]
