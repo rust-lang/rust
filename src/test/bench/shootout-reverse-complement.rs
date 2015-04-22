@@ -205,7 +205,7 @@ fn parallel<I: Iterator, F>(iter: I, ref f: F)
 
 fn main() {
     let mut data = Vec::with_capacity(1024 * 1024);
-    io::stdin().read_to_end(&mut data);
+    io::stdin().read_to_end(&mut data).unwrap();
     let tables = &Tables::new();
     parallel(mut_dna_seqs(&mut data), |seq| reverse_complement(seq, tables));
     io::stdout().write_all(&data).unwrap();
