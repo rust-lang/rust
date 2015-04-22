@@ -22,6 +22,7 @@ use feature_gate;
 use parse::token::InternedString;
 use parse::token;
 use ptr::P;
+use str::slice_shift_char;
 
 enum State {
     Asm,
@@ -109,7 +110,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     // It's the opposite of '=&' which means that the memory
                     // cannot be shared with any other operand (usually when
                     // a register is clobbered early.)
-                    let output = match constraint.slice_shift_char() {
+                    let output = match slice_shift_char(&constraint) {
                         Some(('=', _)) => None,
                         Some(('+', operand)) => {
                             Some(token::intern_and_get_ident(&format!(

@@ -31,7 +31,6 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(unicode)]
-#![feature(str_char)]
 
 extern crate arena;
 extern crate fmt_macros;
