@@ -103,14 +103,14 @@ use core::prelude::*;
 use ascii::*;
 use borrow::{Borrow, IntoCow, ToOwned, Cow};
 use cmp;
-use iter::{self, IntoIterator};
+use iter;
 use mem;
 use ops::{self, Deref};
 use string::String;
 use vec::Vec;
 use fmt;
 
-use ffi::{OsStr, OsString, AsOsStr};
+use ffi::{OsStr, OsString};
 
 use self::platform::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 
@@ -1185,14 +1185,6 @@ impl AsRef<OsStr> for PathBuf {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
-impl AsOsStr for PathBuf {
-    fn as_os_str(&self) -> &OsStr {
-        &self.inner[..]
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
 impl Into<OsString> for PathBuf {
     fn into(self) -> OsString {
         self.inner
@@ -1653,14 +1645,6 @@ impl AsRef<OsStr> for Path {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[deprecated(since = "1.0.0", reason = "trait is deprecated")]
-impl AsOsStr for Path {
-    fn as_os_str(&self) -> &OsStr {
-        &self.inner
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Path {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         self.inner.fmt(formatter)
@@ -1709,22 +1693,6 @@ impl cmp::Ord for Path {
     fn cmp(&self, other: &Path) -> cmp::Ordering {
         self.components().cmp(&other.components())
     }
-}
-
-/// Freely convertible to a `Path`.
-#[unstable(feature = "std_misc")]
-#[deprecated(since = "1.0.0", reason = "use std::convert::AsRef<Path> instead")]
-pub trait AsPath {
-    /// Converts to a `Path`.
-    #[unstable(feature = "std_misc")]
-    fn as_path(&self) -> &Path;
-}
-
-#[unstable(feature = "std_misc")]
-#[deprecated(since = "1.0.0", reason = "use std::convert::AsRef<Path> instead")]
-#[allow(deprecated)]
-impl<T: AsOsStr + ?Sized> AsPath for T {
-    fn as_path(&self) -> &Path { Path::new(self.as_os_str()) }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

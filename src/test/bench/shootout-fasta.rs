@@ -43,7 +43,6 @@ use std::env;
 use std::fs::File;
 use std::io::{self, BufWriter};
 use std::io::prelude::*;
-use std::num::Float;
 
 const LINE_LENGTH: usize = 60;
 const IM: u32 = 139968;

@@ -13,10 +13,11 @@ use codemap::{BytePos, CharPos, CodeMap, Pos, Span};
 use codemap;
 use diagnostic::SpanHandler;
 use ext::tt::transcribe::tt_next_token;
-use parse::token;
 use parse::token::str_to_ident;
+use parse::token;
+use str::char_at;
 
-use std::borrow::{IntoCow, Cow};
+use std::borrow::Cow;
 use std::char;
 use std::fmt;
 use std::mem::replace;
@@ -289,11 +290,11 @@ impl<'a> StringReader<'a> {
                           s: &'b str, errmsg: &'b str) -> Cow<'b, str> {
         let mut i = 0;
         while i < s.len() {
-            let ch = s.char_at(i);
+            let ch = char_at(s, i);
             let next = i + ch.len_utf8();
             if ch == '\r' {
-                if next < s.len() && s.char_at(next) == '\n' {
-                    return translate_crlf_(self, start, s, errmsg, i).into_cow();
+                if next < s.len() && char_at(s, next) == '\n' {
+                    return translate_crlf_(self, start, s, errmsg, i).into();
                 }
                 let pos = start + BytePos(i as u32);
                 let end_pos = start + BytePos(next as u32);
@@ -301,19 +302,19 @@ impl<'a> StringReader<'a> {
             }
             i = next;
         }
-        return s.into_cow();
+        return s.into();
 
         fn translate_crlf_(rdr: &StringReader, start: BytePos,
                         s: &str, errmsg: &str, mut i: usize) -> String {
             let mut buf = String::with_capacity(s.len());
             let mut j = 0;
             while i < s.len() {
-                let ch = s.char_at(i);
+                let ch = char_at(s, i);
                 let next = i + ch.len_utf8();
                 if ch == '\r' {
                     if j < i { buf.push_str(&s[j..i]); }
                     j = next;
-                    if next >= s.len() || s.char_at(next) != '\n' {
+                    if next >= s.len() || char_at(s, next) != '\n' {
                         let pos = start + BytePos(i as u32);
                         let end_pos = start + BytePos(next as u32);
                         rdr.err_span_(pos, end_pos, errmsg);
@@ -335,7 +336,7 @@ impl<'a> StringReader<'a> {
         if current_byte_offset < self.source_text.len() {
             assert!(self.curr.is_some());
             let last_char = self.curr.unwrap();
-            let ch = self.source_text.char_at(current_byte_offset);
+            let ch = char_at(&self.source_text, current_byte_offset);
             let next = current_byte_offset + ch.len_utf8();
             let byte_offset_diff = next - current_byte_offset;
             self.pos = self.pos + Pos::from_usize(byte_offset_diff);
@@ -357,7 +358,7 @@ impl<'a> StringReader<'a> {
     pub fn nextch(&self) -> Option<char> {
         let offset = self.byte_offset(self.pos).to_usize();
         if offset < self.source_text.len() {
-            Some(self.source_text.char_at(offset))
+            Some(char_at(&self.source_text, offset))
         } else {
             None
         }
@@ -371,9 +372,9 @@ impl<'a> StringReader<'a> {
         let offset = self.byte_offset(self.pos).to_usize();
         let s = &self.source_text[..];
         if offset >= s.len() { return None }
-        let next = offset + s.char_at(offset).len_utf8();
+        let next = offset + char_at(s, offset).len_utf8();
         if next < s.len() {
-            Some(s.char_at(next))
+            Some(char_at(s, next))
         } else {
             None
         }
@@ -564,7 +565,7 @@ impl<'a> StringReader<'a> {
                 let string = if has_cr {
                     self.translate_crlf(start_bpos, string,
                                         "bare CR not allowed in block doc-comment")
-                } else { string.into_cow() };
+                } else { string.into() };
                 token::DocComment(token::intern(&string[..]))
             } else {
                 token::Comment

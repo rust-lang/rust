@@ -29,8 +29,8 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
         cs_fold(
             true,  // use foldl
             |cx, span, subexpr, self_f, other_fs| {
-                let other_f = match other_fs {
-                    [ref o_f] => o_f,
+                let other_f = match (other_fs.len(), other_fs.get(0)) {
+                    (1, Some(o_f)) => o_f,
                     _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`")
                 };
 
@@ -46,8 +46,8 @@ pub fn expand_deriving_partial_eq(cx: &mut ExtCtxt,
         cs_fold(
             true,  // use foldl
             |cx, span, subexpr, self_f, other_fs| {
-                let other_f = match other_fs {
-                    [ref o_f] => o_f,
+                let other_f = match (other_fs.len(), other_fs.get(0)) {
+                    (1, Some(o_f)) => o_f,
                     _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialEq)`")
                 };
 

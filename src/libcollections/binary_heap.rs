@@ -152,8 +152,7 @@
 
 use core::prelude::*;
 
-use core::default::Default;
-use core::iter::{FromIterator, IntoIterator};
+use core::iter::{FromIterator};
 use core::mem::{zeroed, replace, swap};
 use core::ptr;
 
@@ -248,28 +247,6 @@ impl<T: Ord> BinaryHeap<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
         Iter { iter: self.data.iter() }
-    }
-
-    /// Creates a consuming iterator, that is, one that moves each value out of
-    /// the binary heap in arbitrary order. The binary heap cannot be used
-    /// after calling this.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # #![feature(collections)]
-    /// use std::collections::BinaryHeap;
-    /// let heap = BinaryHeap::from_vec(vec![1, 2, 3, 4]);
-    ///
-    /// // Print 1, 2, 3, 4 in arbitrary order
-    /// for x in heap.into_iter() {
-    ///     // x has type i32, not &i32
-    ///     println!("{}", x);
-    /// }
-    /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_iter(self) -> IntoIter<T> {
-        IntoIter { iter: self.data.into_iter() }
     }
 
     /// Returns the greatest item in the binary heap, or `None` if it is empty.
@@ -675,8 +652,25 @@ impl<T: Ord> IntoIterator for BinaryHeap<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
+    /// Creates a consuming iterator, that is, one that moves each value out of
+    /// the binary heap in arbitrary order. The binary heap cannot be used
+    /// after calling this.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(collections)]
+    /// use std::collections::BinaryHeap;
+    /// let heap = BinaryHeap::from_vec(vec![1, 2, 3, 4]);
+    ///
+    /// // Print 1, 2, 3, 4 in arbitrary order
+    /// for x in heap.into_iter() {
+    ///     // x has type i32, not &i32
+    ///     println!("{}", x);
+    /// }
+    /// ```
     fn into_iter(self) -> IntoIter<T> {
-        self.into_iter()
+        IntoIter { iter: self.data.into_iter() }
     }
 }
 

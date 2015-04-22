@@ -67,7 +67,7 @@ use rustc_unicode;
 use vec::Vec;
 use slice::SliceConcatExt;
 
-pub use core::str::{FromStr, Utf8Error, Str};
+pub use core::str::{FromStr, Utf8Error};
 pub use core::str::{Lines, LinesAny, CharRange};
 pub use core::str::{Split, RSplit};
 pub use core::str::{SplitN, RSplitN};
@@ -76,7 +76,7 @@ pub use core::str::{Matches, RMatches};
 pub use core::str::{MatchIndices, RMatchIndices};
 pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
 pub use core::str::{from_utf8_unchecked, ParseBoolError};
-pub use rustc_unicode::str::{Words, Graphemes, GraphemeIndices};
+pub use rustc_unicode::str::{SplitWhitespace, Words, Graphemes, GraphemeIndices};
 pub use core::str::pattern;
 
 /*
@@ -1737,25 +1737,42 @@ impl str {
         UnicodeStr::grapheme_indices(&self[..], is_extended)
     }
 
-    /// An iterator over the non-empty words of `self`.
-    ///
-    /// A 'word' is a subsequence separated by any sequence of whitespace.
-    /// Sequences of whitespace
-    /// are collapsed, so empty "words" are not included.
+    /// An iterator over the non-empty substrings of `self` which contain no whitespace,
+    /// and which are separated by any amount of whitespace.
     ///
     /// # Examples
     ///
     /// ```
     /// # #![feature(str_words)]
+    /// # #![allow(deprecated)]
     /// let some_words = " Mary   had\ta little  \n\t lamb";
     /// let v: Vec<&str> = some_words.words().collect();
     ///
     /// assert_eq!(v, ["Mary", "had", "a", "little", "lamb"]);
     /// ```
+    #[deprecated(reason = "words() will be removed. Use split_whitespace() instead",
+                 since = "1.1.0")]
     #[unstable(feature = "str_words",
                reason = "the precise algorithm to use is unclear")]
+    #[allow(deprecated)]
     pub fn words(&self) -> Words {
         UnicodeStr::words(&self[..])
+    }
+
+    /// An iterator over the non-empty substrings of `self` which contain no whitespace,
+    /// and which are separated by any amount of whitespace.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let some_words = " Mary   had\ta little  \n\t lamb";
+    /// let v: Vec<&str> = some_words.split_whitespace().collect();
+    ///
+    /// assert_eq!(v, ["Mary", "had", "a", "little", "lamb"]);
+    /// ```
+    #[stable(feature = "split_whitespace", since = "1.1.0")]
+    pub fn split_whitespace(&self) -> SplitWhitespace {
+        UnicodeStr::split_whitespace(&self[..])
     }
 
     /// Returns a string's displayed width in columns.

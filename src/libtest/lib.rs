@@ -43,7 +43,6 @@
 #![feature(std_misc)]
 #![feature(libc)]
 #![feature(set_stdio)]
-#![cfg_attr(test, feature(old_io))]
 
 extern crate getopts;
 extern crate serialize;
@@ -75,7 +74,6 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io;
 use std::iter::repeat;
-use std::num::{Float, Int};
 use std::path::PathBuf;
 use std::sync::mpsc::{channel, Sender};
 use std::sync::{Arc, Mutex};
@@ -413,7 +411,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
 #[derive(Clone, PartialEq)]
 pub struct BenchSamples {
-    ns_iter_summ: stats::Summary<f64>,
+    ns_iter_summ: stats::Summary,
     mb_s: usize,
 }
 
@@ -1066,7 +1064,7 @@ impl Bencher {
     }
 
     // This is a more statistics-driven benchmark algorithm
-    pub fn auto_bench<F>(&mut self, mut f: F) -> stats::Summary<f64> where F: FnMut(&mut Bencher) {
+    pub fn auto_bench<F>(&mut self, mut f: F) -> stats::Summary where F: FnMut(&mut Bencher) {
         // Initial bench run to get ballpark figure.
         let mut n = 1;
         self.bench_n(n, |x| f(x));

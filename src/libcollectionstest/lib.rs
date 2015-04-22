@@ -14,7 +14,6 @@
 #![feature(hash)]
 #![feature(rand)]
 #![feature(rustc_private)]
-#![feature(str_words)]
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]

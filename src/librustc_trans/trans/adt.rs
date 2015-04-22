@@ -45,8 +45,6 @@
 
 pub use self::Repr::*;
 
-#[allow(deprecated)]
-use std::num::Int;
 use std::rc::Rc;
 
 use llvm::{ValueRef, True, IntEQ, IntNE};

@@ -47,7 +47,7 @@ pub fn expand_deriving_partial_ord(cx: &mut ExtCtxt,
     let ordering_ty = Literal(path_std!(cx, core::cmp::Ordering));
     let ret_ty = Literal(Path::new_(pathvec_std!(cx, core::option::Option),
                                     None,
-                                    vec![box ordering_ty],
+                                    vec![Box::new(ordering_ty)],
                                     true));
 
     let inline = cx.meta_word(span, InternedString::new("inline"));
@@ -150,8 +150,8 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
             // }
 
             let new = {
-                let other_f = match other_fs {
-                    [ref o_f] => o_f,
+                let other_f = match (other_fs.len(), other_fs.get(0)) {
+                    (1, Some(o_f)) => o_f,
                     _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`"),
                 };
 
@@ -208,8 +208,8 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt,
             get use the binops to avoid auto-deref dereferencing too many
             layers of pointers, if the type includes pointers.
             */
-            let other_f = match other_fs {
-                [ref o_f] => o_f,
+            let other_f = match (other_fs.len(), other_fs.get(0)) {
+                (1, Some(o_f)) => o_f,
                 _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
             };
 

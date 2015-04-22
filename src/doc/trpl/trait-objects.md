@@ -1,15 +1,15 @@
 % Trait Objects
 
 When code involves polymorphism, there needs to be a mechanism to determine
-which specific version is actually run. This is called 'dispatch.' There are
+which specific version is actually run. This is called ‘dispatch’. There are
 two major forms of dispatch: static dispatch and dynamic dispatch. While Rust
 favors static dispatch, it also supports dynamic dispatch through a mechanism
-called 'trait objects.'
+called ‘trait objects’.
 
 ## Background
 
-For the rest of this chapter, we'll need a trait and some implementations.
-Let's make a simple one, `Foo`. It has one method that is expected to return a
+For the rest of this chapter, we’ll need a trait and some implementations.
+Let’s make a simple one, `Foo`. It has one method that is expected to return a
 `String`.
 
 ```rust
@@ -18,7 +18,7 @@ trait Foo {
 }
 ```
 
-We'll also implement this trait for `u8` and `String`:
+We’ll also implement this trait for `u8` and `String`:
 
 ```rust
 # trait Foo { fn method(&self) -> String; }
@@ -53,7 +53,7 @@ fn main() {
 }
 ```
 
-Rust uses 'monomorphization' to perform static dispatch here. This means that
+Rust uses ‘monomorphization’ to perform static dispatch here. This means that
 Rust will create a special version of `do_something()` for both `u8` and
 `String`, and then replace the call sites with calls to these specialized
 functions. In other words, Rust generates something like this:
@@ -82,7 +82,7 @@ fn main() {
 This has a great upside: static dispatch allows function calls to be
 inlined because the callee is known at compile time, and inlining is
 the key to good optimization. Static dispatch is fast, but it comes at
-a tradeoff: 'code bloat', due to many copies of the same function
+a tradeoff: ‘code bloat’, due to many copies of the same function
 existing in the binary, one for each type.
 
 Furthermore, compilers aren’t perfect and may “optimize” code to become slower.
@@ -99,7 +99,7 @@ reason.
 
 ## Dynamic dispatch
 
-Rust provides dynamic dispatch through a feature called 'trait objects.' Trait
+Rust provides dynamic dispatch through a feature called ‘trait objects’. Trait
 objects, like `&Foo` or `Box<Foo>`, are normal values that store a value of
 *any* type that implements the given trait, where the precise type can only be
 known at runtime.
@@ -109,12 +109,12 @@ implements the trait by *casting* it (e.g. `&x as &Foo`) or *coercing* it
 (e.g. using `&x` as an argument to a function that takes `&Foo`).
 
 These trait object coercions and casts also work for pointers like `&mut T` to
-`&mut Foo` and `Box<T>` to `Box<Foo>`, but that's all at the moment. Coercions
+`&mut Foo` and `Box<T>` to `Box<Foo>`, but that’s all at the moment. Coercions
 and casts are identical.
 
-This operation can be seen as "erasing" the compiler's knowledge about the
+This operation can be seen as ‘erasing’ the compiler’s knowledge about the
 specific type of the pointer, and hence trait objects are sometimes referred to
-as "type erasure".
+as ‘type erasure’.
 
 Coming back to the example above, we can use the same trait to perform dynamic
 dispatch with trait objects by casting:
@@ -167,7 +167,7 @@ on the heap to store it.
 
 For `Foo`, we would need to have a value that could be at least either a
 `String` (24 bytes) or a `u8` (1 byte), as well as any other type for which
-dependent crates may implement `Foo` (any number of bytes at all). There's no
+dependent crates may implement `Foo` (any number of bytes at all). There’s no
 way to guarantee that this last point can work if the values are stored without
 a pointer, because those other types can be arbitrarily large.
 
@@ -177,14 +177,14 @@ when we are tossing a trait object around, only the size of the pointer itself.
 ### Representation
 
 The methods of the trait can be called on a trait object via a special record
-of function pointers traditionally called a 'vtable' (created and managed by
+of function pointers traditionally called a ‘vtable’ (created and managed by
 the compiler).
 
 Trait objects are both simple and complicated: their core representation and
 layout is quite straight-forward, but there are some curly error messages and
 surprising behaviors to discover.
 
-Let's start simple, with the runtime representation of a trait object. The
+Let’s start simple, with the runtime representation of a trait object. The
 `std::raw` module contains structs with layouts that are the same as the
 complicated built-in types, [including trait objects][stdraw]:
 
@@ -199,12 +199,12 @@ pub struct TraitObject {
 
 [stdraw]: ../std/raw/struct.TraitObject.html
 
-That is, a trait object like `&Foo` consists of a "data" pointer and a "vtable"
+That is, a trait object like `&Foo` consists of a ‘data’ pointer and a ‘vtable’
 pointer.
 
 The data pointer addresses the data (of some unknown type `T`) that the trait
-object is storing, and the vtable pointer points to the vtable ("virtual method
-table") corresponding to the implementation of `Foo` for `T`.
+object is storing, and the vtable pointer points to the vtable (‘virtual method
+table’) corresponding to the implementation of `Foo` for `T`.
 
 
 A vtable is essentially a struct of function pointers, pointing to the concrete
@@ -212,7 +212,7 @@ piece of machine code for each method in the implementation. A method call like
 `trait_object.method()` will retrieve the correct pointer out of the vtable and
 then do a dynamic call of it. For example:
 
-```{rust,ignore}
+```rust,ignore
 struct FooVtable {
     destructor: fn(*mut ()),
     size: usize,
@@ -261,7 +261,7 @@ static Foo_for_String_vtable: FooVtable = FooVtable {
 ```
 
 The `destructor` field in each vtable points to a function that will clean up
-any resources of the vtable's type, for `u8` it is trivial, but for `String` it
+any resources of the vtable’s type, for `u8` it is trivial, but for `String` it
 will free the memory. This is necessary for owning trait objects like
 `Box<Foo>`, which need to clean-up both the `Box` allocation as well as the
 internal type when they go out of scope. The `size` and `align` fields store
@@ -270,11 +270,11 @@ essentially unused at the moment since the information is embedded in the
 destructor, but will be used in the future, as trait objects are progressively
 made more flexible.
 
-Suppose we've got some values that implement `Foo`, then the explicit form of
+Suppose we’ve got some values that implement `Foo`, then the explicit form of
 construction and use of `Foo` trait objects might look a bit like (ignoring the
-type mismatches: they're all just pointers anyway):
+type mismatches: they’re all just pointers anyway):
 
-```{rust,ignore}
+```rust,ignore
 let a: String = "foo".to_string();
 let x: u8 = 1;
 

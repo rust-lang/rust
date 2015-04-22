@@ -11,9 +11,7 @@
 #![feature(optin_builtin_traits, core)]
 #![crate_type = "rlib"]
 
-use std::marker::MarkerTrait;
-
-pub trait DefaultedTrait : MarkerTrait { }
+pub trait DefaultedTrait { }
 impl DefaultedTrait for .. { }
 
 pub struct Something<T> { t: T }

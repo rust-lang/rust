@@ -1,4 +1,4 @@
-% Unsafe Code
+% Unsafe
 
 Rust’s main draw is its powerful static guarantees about behavior. But safety
 checks are conservative by nature: there are some programs that are actually
@@ -76,7 +76,7 @@ behaviors that are certainly bad, but are expressly _not_ unsafe:
 * Integer overflow
 
 Rust cannot prevent all kinds of software problems. Buggy code can and will be
-written in Rust. These things arne’t great, but they don’t qualify as `unsafe`
+written in Rust. These things aren’t great, but they don’t qualify as `unsafe`
 specifically.
 
 # Unsafe Superpowers

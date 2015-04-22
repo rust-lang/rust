@@ -2653,26 +2653,8 @@ fn set_members_of_composite_type(cx: &CrateContext,
         let mut composite_types_completed =
             debug_context(cx).composite_types_completed.borrow_mut();
         if composite_types_completed.contains(&composite_type_metadata) {
-            let (llvm_version_major, llvm_version_minor) = unsafe {
-                (llvm::LLVMVersionMajor(), llvm::LLVMVersionMinor())
-            };
-
-            let actual_llvm_version = llvm_version_major * 1000000 + llvm_version_minor * 1000;
-            let min_supported_llvm_version = 3 * 1000000 + 4 * 1000;
-
-            if actual_llvm_version < min_supported_llvm_version {
-                cx.sess().warn(&format!("This version of rustc was built with LLVM \
-                                        {}.{}. Rustc just ran into a known \
-                                        debuginfo corruption problem thatoften \
-                                        occurs with LLVM versions below 3.4. \
-                                        Please use a rustc built with anewer \
-                                        version of LLVM.",
-                                       llvm_version_major,
-                                       llvm_version_minor));
-            } else {
-                cx.sess().bug("debuginfo::set_members_of_composite_type() - \
-                               Already completed forward declaration re-encountered.");
-            }
+            cx.sess().bug("debuginfo::set_members_of_composite_type() - \
+                           Already completed forward declaration re-encountered.");
         } else {
             composite_types_completed.insert(composite_type_metadata);
         }

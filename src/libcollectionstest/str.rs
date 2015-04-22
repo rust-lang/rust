@@ -939,9 +939,9 @@ fn test_rsplitn() {
 }
 
 #[test]
-fn test_words() {
+fn test_split_whitespace() {
     let data = "\n \tMäry   häd\tä  little lämb\nLittle lämb\n";
-    let words: Vec<&str> = data.words().collect();
+    let words: Vec<&str> = data.split_whitespace().collect();
     assert_eq!(words, ["Märy", "häd", "ä", "little", "lämb", "Little", "lämb"])
 }
 

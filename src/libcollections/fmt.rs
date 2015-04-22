@@ -175,7 +175,6 @@
 //! # #![feature(core, std_misc)]
 //! use std::fmt;
 //! use std::f64;
-//! use std::num::Float;
 //!
 //! #[derive(Debug)]
 //! struct Vector2D {
@@ -200,10 +199,11 @@
 //!         let magnitude = magnitude.sqrt();
 //!
 //!         // Respect the formatting flags by using the helper method
-//!         // `pad_integral` on the Formatter object. See the method documentation
-//!         // for details, and the function `pad` can be used to pad strings.
+//!         // `pad_integral` on the Formatter object. See the method
+//!         // documentation for details, and the function `pad` can be used
+//!         // to pad strings.
 //!         let decimals = f.precision().unwrap_or(3);
-//!         let string = f64::to_str_exact(magnitude, decimals);
+//!         let string = format!("{:.*}", decimals, magnitude);
 //!         f.pad_integral(true, "", &string)
 //!     }
 //! }
@@ -260,7 +260,6 @@
 //! Example usage is:
 //!
 //! ```
-//! # #![feature(old_io)]
 //! # #![allow(unused_must_use)]
 //! use std::io::Write;
 //! let mut w = Vec::new();
@@ -288,7 +287,6 @@
 //! off, some example usage is:
 //!
 //! ```
-//! # #![feature(old_io)]
 //! use std::fmt;
 //! use std::io::{self, Write};
 //!

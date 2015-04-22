@@ -40,7 +40,6 @@
 //! ```
 //! # #![feature(collections, core, step_by)]
 //! use std::collections::{BitSet, BitVec};
-//! use std::num::Float;
 //! use std::iter;
 //!
 //! let max_prime = 10000;
@@ -85,12 +84,11 @@ use core::prelude::*;
 
 use core::cmp::Ordering;
 use core::cmp;
-use core::default::Default;
 use core::fmt;
 use core::hash;
 use core::iter::RandomAccessIterator;
 use core::iter::{Chain, Enumerate, Repeat, Skip, Take, repeat, Cloned};
-use core::iter::{self, FromIterator, IntoIterator};
+use core::iter::{self, FromIterator};
 use core::ops::Index;
 use core::slice;
 use core::{u8, u32, usize};

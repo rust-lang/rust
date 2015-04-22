@@ -15,7 +15,10 @@
 #![feature(core)]
 
 use std::cmp::PartialOrd;
-use std::num::NumCast;
+
+pub trait NumCast {
+    fn from(i: i32) -> Option<Self>;
+}
 
 pub trait Num {
     fn from_int(i: isize) -> Self;

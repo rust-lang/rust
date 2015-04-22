@@ -1,20 +1,20 @@
 % Macros
 
-By now you've learned about many of the tools Rust provides for abstracting and
+By now you’ve learned about many of the tools Rust provides for abstracting and
 reusing code. These units of code reuse have a rich semantic structure. For
 example, functions have a type signature, type parameters have trait bounds,
 and overloaded functions must belong to a particular trait.
 
-This structure means that Rust's core abstractions have powerful compile-time
+This structure means that Rust’s core abstractions have powerful compile-time
 correctness checking. But this comes at the price of reduced flexibility. If
-you visually identify a pattern of repeated code, you may find it's difficult
+you visually identify a pattern of repeated code, you may find it’s difficult
 or cumbersome to express that pattern as a generic function, a trait, or
-anything else within Rust's semantics.
+anything else within Rust’s semantics.
 
-Macros allow us to abstract at a *syntactic* level. A macro invocation is
+Macros allow us to abstract at a syntactic level. A macro invocation is
 shorthand for an "expanded" syntactic form. This expansion happens early in
 compilation, before any static checking. As a result, macros can capture many
-patterns of code reuse that Rust's core abstractions cannot.
+patterns of code reuse that Rust’s core abstractions cannot.
 
 The drawback is that macro-based code can be harder to understand, because
 fewer of the built-in rules apply. Like an ordinary function, a well-behaved
@@ -23,8 +23,8 @@ difficult to design a well-behaved macro!  Additionally, compiler errors in
 macro code are harder to interpret, because they describe problems in the
 expanded code, not the source-level form that developers use.
 
-These drawbacks make macros something of a "feature of last resort". That's not
-to say that macros are bad; they are part of Rust because sometimes they're
+These drawbacks make macros something of a "feature of last resort". That’s not
+to say that macros are bad; they are part of Rust because sometimes they’re
 needed for truly concise, well-abstracted code. Just keep this tradeoff in
 mind.
 
@@ -40,7 +40,7 @@ let x: Vec<u32> = vec![1, 2, 3];
 # assert_eq!(x, [1, 2, 3]);
 ```
 
-This can't be an ordinary function, because it takes any number of arguments.
+This can’t be an ordinary function, because it takes any number of arguments.
 But we can imagine it as syntactic shorthand for
 
 ```rust
@@ -77,20 +77,20 @@ macro_rules! vec {
 # }
 ```
 
-Whoa, that's a lot of new syntax! Let's break it down.
+Whoa, that’s a lot of new syntax! Let’s break it down.
 
 ```ignore
 macro_rules! vec { ... }
 ```
 
-This says we're defining a macro named `vec`, much as `fn vec` would define a
-function named `vec`. In prose, we informally write a macro's name with an
+This says we’re defining a macro named `vec`, much as `fn vec` would define a
+function named `vec`. In prose, we informally write a macro’s name with an
 exclamation point, e.g. `vec!`. The exclamation point is part of the invocation
 syntax and serves to distinguish a macro from an ordinary function.
 
 ## Matching
 
-The macro is defined through a series of *rules*, which are pattern-matching
+The macro is defined through a series of rules, which are pattern-matching
 cases. Above, we had
 
 ```ignore
@@ -99,13 +99,13 @@ cases. Above, we had
 
 This is like a `match` expression arm, but the matching happens on Rust syntax
 trees, at compile time. The semicolon is optional on the last (here, only)
-case. The "pattern" on the left-hand side of `=>` is known as a *matcher*.
+case. The "pattern" on the left-hand side of `=>` is known as a ‘matcher’.
 These have [their own little grammar] within the language.
 
 [their own little grammar]: ../reference.html#macros
 
 The matcher `$x:expr` will match any Rust expression, binding that syntax tree
-to the *metavariable* `$x`. The identifier `expr` is a *fragment specifier*;
+to the ‘metavariable’ `$x`. The identifier `expr` is a ‘fragment specifier’;
 the full possibilities are enumerated in the [advanced macros chapter][].
 Surrounding the matcher with `$(...),*` will match zero or more expressions,
 separated by commas.
@@ -158,8 +158,8 @@ Each matched expression `$x` will produce a single `push` statement in the
 macro expansion. The repetition in the expansion proceeds in "lockstep" with
 repetition in the matcher (more on this in a moment).
 
-Because `$x` was already declared as matching an expression, we don't repeat
-`:expr` on the right-hand side. Also, we don't include a separating comma as
+Because `$x` was already declared as matching an expression, we don’t repeat
+`:expr` on the right-hand side. Also, we don’t include a separating comma as
 part of the repetition operator. Instead, we have a terminating semicolon
 within the repeated block.
 
@@ -180,7 +180,7 @@ The outer braces are part of the syntax of `macro_rules!`. In fact, you can use
 The inner braces are part of the expanded syntax. Remember, the `vec!` macro is
 used in an expression context. To write an expression with multiple statements,
 including `let`-bindings, we use a block. If your macro expands to a single
-expression, you don't need this extra layer of braces.
+expression, you don’t need this extra layer of braces.
 
 Note that we never *declared* that the macro produces an expression. In fact,
 this is not determined until we use the macro as an expression. With care, you
@@ -194,7 +194,7 @@ The repetition operator follows two principal rules:
 1. `$(...)*` walks through one "layer" of repetitions, for all of the `$name`s
    it contains, in lockstep, and
 2. each `$name` must be under at least as many `$(...)*`s as it was matched
-   against. If it is under more, it'll be duplicated, as appropriate.
+   against. If it is under more, it’ll be duplicated, as appropriate.
 
 This baroque macro illustrates the duplication of variables from outer
 repetition levels.
@@ -219,7 +219,7 @@ fn main() {
 }
 ```
 
-That's most of the matcher syntax. These examples use `$(...)*`, which is a
+That’s most of the matcher syntax. These examples use `$(...)*`, which is a
 "zero or more" match. Alternatively you can write `$(...)+` for a "one or
 more" match. Both forms optionally include a separator, which can be any token
 except `+` or `*`.
@@ -244,9 +244,9 @@ int main() {
 ```
 
 After expansion we have `5 * 2 + 3`, and multiplication has greater precedence
-than addition. If you've used C macros a lot, you probably know the standard
+than addition. If you’ve used C macros a lot, you probably know the standard
 idioms for avoiding this problem, as well as five or six others. In Rust, we
-don't have to worry about it.
+don’t have to worry about it.
 
 ```rust
 macro_rules! five_times {
@@ -261,8 +261,8 @@ fn main() {
 The metavariable `$x` is parsed as a single expression node, and keeps its
 place in the syntax tree even after substitution.
 
-Another common problem in macro systems is *variable capture*. Here's a C
-macro, using [a GNU C extension] to emulate Rust's expression blocks.
+Another common problem in macro systems is ‘variable capture’. Here’s a C
+macro, using [a GNU C extension] to emulate Rust’s expression blocks.
 
 [a GNU C extension]: https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html
 
@@ -275,7 +275,7 @@ macro, using [a GNU C extension] to emulate Rust's expression blocks.
 })
 ```
 
-Here's a simple use case that goes terribly wrong:
+Here’s a simple use case that goes terribly wrong:
 
 ```text
 const char *state = "reticulating splines";
@@ -315,10 +315,10 @@ fn main() {
 ```
 
 This works because Rust has a [hygienic macro system][]. Each macro expansion
-happens in a distinct *syntax context*, and each variable is tagged with the
-syntax context where it was introduced. It's as though the variable `state`
+happens in a distinct ‘syntax context’, and each variable is tagged with the
+syntax context where it was introduced. It’s as though the variable `state`
 inside `main` is painted a different "color" from the variable `state` inside
-the macro, and therefore they don't conflict.
+the macro, and therefore they don’t conflict.
 
 [hygienic macro system]: http://en.wikipedia.org/wiki/Hygienic_macro
 
@@ -336,7 +336,7 @@ fn main() {
 }
 ```
 
-Instead you need to pass the variable name into the invocation, so it's tagged
+Instead you need to pass the variable name into the invocation, so it’s tagged
 with the right syntax context.
 
 ```rust
@@ -368,7 +368,7 @@ fn main() {
 
 # Recursive macros
 
-A macro's expansion can include more macro invocations, including invocations
+A macro’s expansion can include more macro invocations, including invocations
 of the very same macro being expanded.  These recursive macros are useful for
 processing tree-structured input, as illustrated by this (simplistic) HTML
 shorthand:
@@ -429,7 +429,7 @@ they are unstable and require feature gates.
 Even when Rust code contains un-expanded macros, it can be parsed as a full
 [syntax tree][ast]. This property can be very useful for editors and other
 tools that process code. It also has a few consequences for the design of
-Rust's macro system.
+Rust’s macro system.
 
 [ast]: glossary.html#abstract-syntax-tree
 
@@ -454,13 +454,13 @@ consist of valid Rust tokens. Furthermore, parentheses, brackets, and braces
 must be balanced within a macro invocation. For example, `foo!([)` is
 forbidden. This allows Rust to know where the macro invocation ends.
 
-More formally, the macro invocation body must be a sequence of *token trees*.
+More formally, the macro invocation body must be a sequence of ‘token trees’.
 A token tree is defined recursively as either
 
 * a sequence of token trees surrounded by matching `()`, `[]`, or `{}`, or
 * any other single token.
 
-Within a matcher, each metavariable has a *fragment specifier*, identifying
+Within a matcher, each metavariable has a ‘fragment specifier’, identifying
 which syntactic form it matches.
 
 * `ident`: an identifier. Examples: `x`; `foo`.
@@ -482,7 +482,7 @@ There are additional rules regarding the next token after a metavariable:
 * `pat` variables must be followed by one of: `=> , =`
 * Other variables may be followed by any token.
 
-These rules provide some flexibility for Rust's syntax to evolve without
+These rules provide some flexibility for Rust’s syntax to evolve without
 breaking existing macros.
 
 The macro system does not deal with parse ambiguity at all. For example, the
@@ -500,7 +500,7 @@ One downside is that scoping works differently for macros, compared to other
 constructs in the language.
 
 Definition and expansion of macros both happen in a single depth-first,
-lexical-order traversal of a crate's source. So a macro defined at module scope
+lexical-order traversal of a crate’s source. So a macro defined at module scope
 is visible to any subsequent code in the same module, which includes the body
 of any subsequent child `mod` items.
 
@@ -508,8 +508,8 @@ A macro defined within the body of a single `fn`, or anywhere else not at
 module scope, is visible only within that item.
 
 If a module has the `macro_use` attribute, its macros are also visible in its
-parent module after the child's `mod` item. If the parent also has `macro_use`
-then the macros will be visible in the grandparent after the parent's `mod`
+parent module after the child’s `mod` item. If the parent also has `macro_use`
+then the macros will be visible in the grandparent after the parent’s `mod`
 item, and so forth.
 
 The `macro_use` attribute can also appear on `extern crate`. In this context
@@ -524,7 +524,7 @@ If the attribute is given simply as `#[macro_use]`, all macros are loaded. If
 there is no `#[macro_use]` attribute then no macros are loaded. Only macros
 defined with the `#[macro_export]` attribute may be loaded.
 
-To load a crate's macros *without* linking it into the output, use `#[no_link]`
+To load a crate’s macros without linking it into the output, use `#[no_link]`
 as well.
 
 An example:
@@ -619,12 +619,12 @@ only appear at the root of your crate, not inside `mod`. This ensures that
 
 The introductory chapter mentioned recursive macros, but it did not give the
 full story. Recursive macros are useful for another reason: Each recursive
-invocation gives you another opportunity to pattern-match the macro's
+invocation gives you another opportunity to pattern-match the macro’s
 arguments.
 
 As an extreme example, it is possible, though hardly advisable, to implement
 the [Bitwise Cyclic Tag](http://esolangs.org/wiki/Bitwise_Cyclic_Tag) automaton
-within Rust's macro system.
+within Rust’s macro system.
 
 ```rust
 macro_rules! bct {
@@ -765,9 +765,9 @@ as `unimplemented!` until you’re ready to write them.
 
 # Procedural macros
 
-If Rust's macro system can't do what you need, you may want to write a
+If Rust’s macro system can’t do what you need, you may want to write a
 [compiler plugin](plugins.html) instead. Compared to `macro_rules!`
 macros, this is significantly more work, the interfaces are much less stable,
 and bugs can be much harder to track down. In exchange you get the
 flexibility of running arbitrary Rust code within the compiler. Syntax
-extension plugins are sometimes called *procedural macros* for this reason.
+extension plugins are sometimes called ‘procedural macros’ for this reason.

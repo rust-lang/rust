@@ -10,15 +10,13 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(optin_builtin_traits, core)]
-
-use std::marker::{MarkerTrait, Send};
+#![feature(optin_builtin_traits)]
 
 struct TestType;
 
 impl TestType {}
 
-trait TestTrait : MarkerTrait {}
+trait TestTrait {}
 
 impl !Send for TestType {}
 

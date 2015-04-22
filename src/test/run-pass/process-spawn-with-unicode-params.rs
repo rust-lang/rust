@@ -17,15 +17,13 @@
 // intact.
 
 // ignore-aarch64
-#![feature(path, fs, os, io, old_path)]
 
 use std::io::prelude::*;
 use std::io;
 use std::fs;
 use std::process::Command;
-use std::os;
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 fn main() {
     let my_args = env::args().collect::<Vec<_>>();

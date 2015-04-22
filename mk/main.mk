@@ -13,12 +13,12 @@
 ######################################################################
 
 # The version number
-CFG_RELEASE_NUM=1.0.0
+CFG_RELEASE_NUM=1.1.0
 
 # An optional number to put after the label, e.g. '.2' -> '-beta.2'
 # NB Make sure it starts with a dot to conform to semver pre-release
 # versions (section 9)
-CFG_PRERELEASE_VERSION=.3
+CFG_PRERELEASE_VERSION=.1
 
 CFG_FILENAME_EXTRA=4e7c5e5c
 

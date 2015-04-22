@@ -204,12 +204,10 @@ use std::io::prelude::*;
 use std::io;
 use std::mem::swap;
 use std::num::FpCategory as Fp;
-#[allow(deprecated)]
-use std::num::wrapping::WrappingOps;
 use std::ops::Index;
 use std::str::FromStr;
 use std::string;
-use std::{char, f64, fmt, num, str};
+use std::{char, f64, fmt, str};
 use std;
 use rustc_unicode::str as unicode_str;
 use rustc_unicode::str::Utf16Item;
@@ -460,8 +458,8 @@ fn spaces(wr: &mut fmt::Write, mut n: usize) -> EncodeResult {
 fn fmt_number_or_null(v: f64) -> string::String {
     match v.classify() {
         Fp::Nan | Fp::Infinite => string::String::from_str("null"),
-        _ if v.fract() != 0f64 => f64::to_str_digits(v, 6),
-        _ => f64::to_str_digits(v, 6) + ".0",
+        _ if v.fract() != 0f64 => v.to_string(),
+        _ => v.to_string() + ".0",
     }
 }
 
@@ -1165,7 +1163,7 @@ impl Json {
     pub fn as_i64(&self) -> Option<i64> {
         match *self {
             Json::I64(n) => Some(n),
-            Json::U64(n) => num::cast(n),
+            Json::U64(n) => Some(n as i64),
             _ => None
         }
     }
@@ -1174,7 +1172,7 @@ impl Json {
     /// Returns None otherwise.
     pub fn as_u64(&self) -> Option<u64> {
         match *self {
-            Json::I64(n) => num::cast(n),
+            Json::I64(n) => Some(n as u64),
             Json::U64(n) => Some(n),
             _ => None
         }
@@ -1184,8 +1182,8 @@ impl Json {
     /// Returns None otherwise.
     pub fn as_f64(&self) -> Option<f64> {
         match *self {
-            Json::I64(n) => num::cast(n),
-            Json::U64(n) => num::cast(n),
+            Json::I64(n) => Some(n as f64),
+            Json::U64(n) => Some(n as f64),
             Json::F64(n) => Some(n),
             _ => None
         }
@@ -1556,7 +1554,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
 
     #[allow(deprecated)] // possible resolve bug is mapping these to traits
     fn parse_u64(&mut self) -> Result<u64, ParserError> {
-        let mut accum = 0;
+        let mut accum = 0u64;
         let last_accum = 0; // necessary to detect overflow.
 
         match self.ch_or_null() {
@@ -2059,7 +2057,7 @@ impl<T: Iterator<Item=char>> Builder<T> {
     }
 }
 
-/// Decodes a json value from an `&mut old_io::Reader`
+/// Decodes a json value from an `&mut io::Read`
 pub fn from_reader(rdr: &mut Read) -> Result<Json, BuilderError> {
     let mut contents = Vec::new();
     match rdr.read_to_end(&mut contents) {
@@ -2121,14 +2119,8 @@ macro_rules! read_primitive {
     ($name:ident, $ty:ty) => {
         fn $name(&mut self) -> DecodeResult<$ty> {
             match self.pop() {
-                Json::I64(f) => match num::cast(f) {
-                    Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
-                },
-                Json::U64(f) => match num::cast(f) {
-                    Some(f) => Ok(f),
-                    None => Err(ExpectedError("Number".to_string(), format!("{}", f))),
-                },
+                Json::I64(f) => Ok(f as $ty),
+                Json::U64(f) => Ok(f as $ty),
                 Json::F64(f) => Err(ExpectedError("Integer".to_string(), format!("{}", f))),
                 // re: #12967.. a type w/ numeric keys (ie HashMap<usize, V> etc)
                 // is going to have a string here, as per JSON spec.

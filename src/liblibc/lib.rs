@@ -3536,6 +3536,30 @@ pub mod consts {
             pub const IPV6_DROP_MEMBERSHIP: c_int = 21;
 
             pub const TCP_NODELAY: c_int = 1;
+            pub const TCP_MAXSEG: c_int = 2;
+            pub const TCP_CORK: c_int = 3;
+            pub const TCP_KEEPIDLE: c_int = 4;
+            pub const TCP_KEEPINTVL: c_int = 5;
+            pub const TCP_KEEPCNT: c_int = 6;
+            pub const TCP_SYNCNT: c_int = 7;
+            pub const TCP_LINGER2: c_int = 8;
+            pub const TCP_DEFER_ACCEPT: c_int = 9;
+            pub const TCP_WINDOW_CLAMP: c_int = 10;
+            pub const TCP_INFO: c_int = 11;
+            pub const TCP_QUICKACK: c_int = 12;
+            pub const TCP_CONGESTION: c_int = 13;
+            pub const TCP_MD5SIG: c_int = 14;
+            pub const TCP_COOKIE_TRANSACTIONS: c_int = 15;
+            pub const TCP_THIN_LINEAR_TIMEOUTS: c_int = 16;
+            pub const TCP_THIN_DUPACK: c_int = 17;
+            pub const TCP_USER_TIMEOUT: c_int = 18;
+            pub const TCP_REPAIR: c_int = 19;
+            pub const TCP_REPAIR_QUEUE: c_int = 20;
+            pub const TCP_QUEUE_SEQ: c_int = 21;
+            pub const TCP_REPAIR_OPTIONS: c_int = 22;
+            pub const TCP_FASTOPEN: c_int = 23;
+            pub const TCP_TIMESTAMP: c_int = 24;
+
             pub const SOL_SOCKET: c_int = 1;
 
             pub const SO_DEBUG: c_int = 1;

@@ -497,15 +497,6 @@ pub fn sleep_ms(ms: u32) {
     imp::sleep(Duration::milliseconds(ms as i64))
 }
 
-/// Deprecated: use `sleep_ms` instead.
-#[unstable(feature = "thread_sleep",
-           reason = "recently added, needs an RFC, and `Duration` itself is \
-                     unstable")]
-#[deprecated(since = "1.0.0", reason = "use sleep_ms instead")]
-pub fn sleep(dur: Duration) {
-    imp::sleep(dur)
-}
-
 /// Blocks unless or until the current thread's token is made available (may wake spuriously).
 ///
 /// See the module doc for more detail.
@@ -544,13 +535,6 @@ pub fn park_timeout_ms(ms: u32) {
         guard = g;
     }
     *guard = false;
-}
-
-/// Deprecated: use `park_timeout_ms`
-#[unstable(feature = "std_misc", reason = "recently introduced, depends on Duration")]
-#[deprecated(since = "1.0.0", reason = "use park_timeout_ms instead")]
-pub fn park_timeout(duration: Duration) {
-    park_timeout_ms(duration.num_milliseconds() as u32)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

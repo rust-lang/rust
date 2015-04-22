@@ -12,21 +12,16 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use prelude::*;
+
 use cell::{Cell, RefCell, Ref, RefMut, BorrowState};
-use char::CharExt;
-use clone::Clone;
-use iter::Iterator;
-use marker::{Copy, PhantomData, Sized};
+use marker::PhantomData;
 use mem;
-use num::Float;
-use option::Option;
-use option::Option::{Some, None};
-use result::Result::Ok;
-use ops::{Deref, FnOnce};
+use ops::Deref;
 use result;
-use slice::SliceExt;
+use num::Float;
 use slice;
-use str::{self, StrExt};
+use str;
 use self::rt::v1::Alignment;
 
 pub use self::num::radix;
@@ -82,6 +77,23 @@ pub trait Write {
     /// This function will return an instance of `FormatError` on error.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_str(&mut self, s: &str) -> Result;
+
+    /// Writes a `char` into this writer, returning whether the write succeeded.
+    ///
+    /// A single `char` may be encoded as more than one byte.
+    /// This method can only succeed if the entire byte sequence was successfully
+    /// written, and this method will not return until all data has been
+    /// written or an error occurs.
+    ///
+    /// # Errors
+    ///
+    /// This function will return an instance of `FormatError` on error.
+    #[stable(feature = "fmt_write_char", since = "1.1.0")]
+    fn write_char(&mut self, c: char) -> Result {
+        let mut utf_8 = [0u8; 4];
+        let bytes_written = c.encode_utf8(&mut utf_8).unwrap_or(0);
+        self.write_str(unsafe { mem::transmute(&utf_8[..bytes_written]) })
+    }
 
     /// Glue for usage of the `write!` macro with implementers of this trait.
     ///
@@ -912,7 +924,8 @@ impl<'a, T> Pointer for &'a mut T {
 }
 
 // Common code of floating point Debug and Display.
-fn float_to_str_common<T: Float, F>(num: &T, precision: Option<usize>, post: F) -> Result
+fn float_to_str_common<T: float::MyFloat, F>(num: &T, precision: Option<usize>,
+                                             post: F) -> Result
         where F : FnOnce(&str) -> Result {
     let digits = match precision {
         Some(i) => float::DigExact(i),
@@ -950,8 +963,6 @@ macro_rules! floating { ($ty:ident) => {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl LowerExp for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
-            use num::Float;
-
             let digits = match fmt.precision {
                 Some(i) => float::DigExact(i),
                 None => float::DigMax(6),
@@ -969,8 +980,6 @@ macro_rules! floating { ($ty:ident) => {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl UpperExp for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
-            use num::Float;
-
             let digits = match fmt.precision {
                 Some(i) => float::DigExact(i),
                 None => float::DigMax(6),

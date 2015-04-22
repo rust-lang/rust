@@ -8,7 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::num::ToPrimitive;
+pub trait ToPrimitive {
+    fn to_int(&self) -> isize { 0 }
+}
+
+impl ToPrimitive for i32 {}
+impl ToPrimitive for isize {}
 
 trait Add {
     fn to_int(&self) -> isize;

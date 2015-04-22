@@ -878,16 +878,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     // were introduced in LLVM 3.4, so we case on that.
     macro_rules! compatible_ifn {
         ($name:expr, $cname:ident ($($arg:expr),*) -> $ret:expr) => (
-            if unsafe { llvm::LLVMVersionMinor() >= 4 } {
-                // The `if key == $name` is already in ifn!
-                ifn!($name, fn($($arg),*) -> $ret);
-            } else if *key == $name {
-                let f = declare::declare_cfn(ccx, stringify!($cname),
-                                             Type::func(&[$($arg),*], &$ret),
-                                             ty::mk_nil(ccx.tcx()));
-                ccx.intrinsics().borrow_mut().insert($name, f.clone());
-                return Some(f);
-            }
+            ifn!($name, fn($($arg),*) -> $ret);
         )
     }
 

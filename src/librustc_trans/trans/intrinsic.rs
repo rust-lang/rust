@@ -746,11 +746,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     let src = to_arg_ty(bcx, llargs[2], tp_ty);
                     let res = AtomicCmpXchg(bcx, ptr, cmp, src, order,
                                             strongest_failure_ordering);
-                    if unsafe { llvm::LLVMVersionMinor() >= 5 } {
-                        ExtractValue(bcx, res, 0)
-                    } else {
-                        res
-                    }
+                    ExtractValue(bcx, res, 0)
                 }
 
                 "load" => {

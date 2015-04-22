@@ -15,7 +15,8 @@ use prelude::v1::*;
 
 use io::{self, ErrorKind};
 use libc;
-use num::{Int, SignedInt};
+use num::One;
+use ops::Neg;
 
 pub mod backtrace;
 pub mod c;
@@ -63,23 +64,8 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     }
 }
 
-#[inline]
-#[allow(deprecated)]
-pub fn retry<T, F> (mut f: F) -> T where
-    T: SignedInt,
-    F: FnMut() -> T,
-{
-    let one: T = Int::one();
-    loop {
-        let n = f();
-        if n == -one && os::errno() == libc::EINTR as i32 { }
-        else { return n }
-    }
-}
-
-#[allow(deprecated)]
-pub fn cvt<T: SignedInt>(t: T) -> io::Result<T> {
-    let one: T = Int::one();
+pub fn cvt<T: One + PartialEq + Neg<Output=T>>(t: T) -> io::Result<T> {
+    let one: T = T::one();
     if t == -one {
         Err(io::Error::last_os_error())
     } else {
@@ -89,7 +75,7 @@ pub fn cvt<T: SignedInt>(t: T) -> io::Result<T> {
 
 #[allow(deprecated)]
 pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
-    where T: SignedInt, F: FnMut() -> T
+    where T: One + PartialEq + Neg<Output=T>, F: FnMut() -> T
 {
     loop {
         match cvt(f()) {

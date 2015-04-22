@@ -33,7 +33,7 @@ let b = a as u32; // four eights makes 32
 
 It’s a ‘non-scalar cast’ because we have multiple values here: the four
 elements of the array. These kinds of casts are very dangerous, because they
-make assumptions about the way that multiple underlying strucutres are
+make assumptions about the way that multiple underlying structures are
 implemented. For this, we need something more dangerous.
 
 # `transmute`
@@ -59,7 +59,7 @@ unsafe {
 }
 ```
 
-We have to wrap the operation in an `unsafe` block, but this will compile
+We have to wrap the operation in an `unsafe` block for this to compile
 successfully. Technically, only the `mem::transmute` call itself needs to be in
 the block, but it's nice in this case to enclose everything related, so you
 know where to look. In this case, the details about `a` are also important, and

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(std_misc, old_path)]
+#![feature(std_misc)]
 
 use std::dynamic_lib::DynamicLibrary;
 

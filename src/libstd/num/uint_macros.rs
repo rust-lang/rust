@@ -12,12 +12,11 @@
 #![doc(hidden)]
 #![allow(unsigned_negation)]
 
-macro_rules! uint_module { ($T:ty) => (
+macro_rules! uint_module { ($T:ident) => (
 
 #[cfg(test)]
 mod tests {
     use prelude::v1::*;
-    use num::FromStrRadix;
 
     fn from_str<T: ::str::FromStr>(t: &str) -> Option<T> {
         ::str::FromStr::from_str(t).ok()
@@ -38,15 +37,15 @@ mod tests {
 
     #[test]
     pub fn test_parse_bytes() {
-        assert_eq!(FromStrRadix::from_str_radix("123", 10), Ok(123 as $T));
-        assert_eq!(FromStrRadix::from_str_radix("1001", 2), Ok(9 as $T));
-        assert_eq!(FromStrRadix::from_str_radix("123", 8), Ok(83 as $T));
-        assert_eq!(FromStrRadix::from_str_radix("123", 16), Ok(291 as u16));
-        assert_eq!(FromStrRadix::from_str_radix("ffff", 16), Ok(65535 as u16));
-        assert_eq!(FromStrRadix::from_str_radix("z", 36), Ok(35 as $T));
+        assert_eq!($T::from_str_radix("123", 10), Ok(123 as $T));
+        assert_eq!($T::from_str_radix("1001", 2), Ok(9 as $T));
+        assert_eq!($T::from_str_radix("123", 8), Ok(83 as $T));
+        assert_eq!(u16::from_str_radix("123", 16), Ok(291 as u16));
+        assert_eq!(u16::from_str_radix("ffff", 16), Ok(65535 as u16));
+        assert_eq!($T::from_str_radix("z", 36), Ok(35 as $T));
 
-        assert_eq!(FromStrRadix::from_str_radix("Z", 10).ok(), None::<$T>);
-        assert_eq!(FromStrRadix::from_str_radix("_", 2).ok(), None::<$T>);
+        assert_eq!($T::from_str_radix("Z", 10).ok(), None::<$T>);
+        assert_eq!($T::from_str_radix("_", 2).ok(), None::<$T>);
     }
 }
 

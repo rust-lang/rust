@@ -355,11 +355,4 @@ mod test {
         assert_eq!(numfnames.len(), numnames.len());
         assert_eq!(stringfnames.len(), stringnames.len());
     }
-
-    #[test]
-    #[ignore(reason = "no ncurses on buildbots, needs a bundled terminfo file to test against")]
-    fn test_parse() {
-        // FIXME #6870: Distribute a compiled file in src/tests and test there
-        // parse(old_io::fs_reader(&p("/usr/share/terminfo/r/rxvt-256color")).unwrap(), false);
-    }
 }
