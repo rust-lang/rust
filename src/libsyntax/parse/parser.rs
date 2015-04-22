@@ -3888,7 +3888,7 @@ impl<'a> Parser<'a> {
                     let bounds =
                         try!(self.parse_lifetimes(token::BinOp(token::Plus)));
 
-                    let hi = self.span.hi;
+                    let hi = self.last_span.hi;
                     let span = mk_sp(lo, hi);
 
                     where_clause.predicates.push(ast::WherePredicate::RegionPredicate(
@@ -3917,7 +3917,7 @@ impl<'a> Parser<'a> {
 
                     if try!(self.eat(&token::Colon) ){
                         let bounds = try!(self.parse_ty_param_bounds(BoundParsingMode::Bare));
-                        let hi = self.span.hi;
+                        let hi = self.last_span.hi;
                         let span = mk_sp(lo, hi);
 
                         if bounds.is_empty() {
@@ -3937,7 +3937,7 @@ impl<'a> Parser<'a> {
                         parsed_something = true;
                     } else if try!(self.eat(&token::Eq) ){
                         // let ty = try!(self.parse_ty_nopanic());
-                        let hi = self.span.hi;
+                        let hi = self.last_span.hi;
                         let span = mk_sp(lo, hi);
                         // where_clause.predicates.push(
                         //     ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
