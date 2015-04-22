@@ -323,7 +323,9 @@ dependencies = [
 name = "core"
 version = "0.0.0"
 dependencies = [
+ "bitflags 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.0.0",
+ "rustc_cratesio_shim 0.0.0",
 ]
 
 [[package]]
