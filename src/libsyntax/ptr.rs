@@ -39,7 +39,6 @@
 use std::fmt::{self, Display, Debug};
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
-use std::ptr;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -66,15 +65,10 @@ impl<T: 'static> P<T> {
     }
 
     /// Transform the inner value, consuming `self` and producing a new `P<T>`.
-    pub fn map<F>(mut self, f: F) -> P<T> where
+    pub fn map<F>(self, f: F) -> P<T> where
         F: FnOnce(T) -> T,
     {
-        unsafe {
-            let p = &mut *self.ptr;
-            // FIXME(#5016) this shouldn't need to drop-fill to be safe.
-            ptr::write(p, f(ptr::read_and_drop(p)));
-        }
-        self
+        P(f(*self.ptr))
     }
 }
 
