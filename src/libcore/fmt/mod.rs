@@ -731,6 +731,13 @@ impl<'a> Formatter<'a> {
         self.buf.write_str(data)
     }
 
+    /// Writes a `char` to the underlying buffer contained within this
+    /// formatter.
+    #[stable(feature = "fmt_write_char", since = "1.1.0")]
+    pub fn write_char(&mut self, c: char) -> Result {
+        self.buf.write_char(c)
+    }
+
     /// Writes some formatted information into this instance
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write_fmt(&mut self, fmt: Arguments) -> Result {
@@ -965,10 +972,7 @@ impl Debug for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Display for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        let mut utf8 = [0; 4];
-        let amt = self.encode_utf8(&mut utf8).unwrap_or(0);
-        let s: &str = unsafe { mem::transmute(&utf8[..amt]) };
-        Display::fmt(s, f)
+        f.write_char(*self)
     }
 }
 
