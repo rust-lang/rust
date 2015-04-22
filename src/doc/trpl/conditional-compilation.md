@@ -47,7 +47,7 @@ secure-password = ["bcrypt"]
 
 When you do this, Cargo passes along a flag to `rustc`:
 
-```
+```text
 --cfg feature="${feature_name}"
 ```
 
