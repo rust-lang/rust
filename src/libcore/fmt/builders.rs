@@ -110,7 +110,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
     }
 
     fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+        self.fmt.flags().intersects(FlagV1::ALTERNATE)
     }
 }
 
@@ -173,7 +173,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
     }
 
     fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+        self.fmt.flags().intersects(FlagV1::ALTERNATE)
     }
 }
 
@@ -205,7 +205,7 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
     }
 
     fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+        self.fmt.flags().intersects(FlagV1::ALTERNATE)
     }
 }
 
@@ -328,6 +328,6 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
     }
 
     fn is_pretty(&self) -> bool {
-        self.fmt.flags() & (1 << (FlagV1::Alternate as usize)) != 0
+        self.fmt.flags().intersects(FlagV1::ALTERNATE)
     }
 }
