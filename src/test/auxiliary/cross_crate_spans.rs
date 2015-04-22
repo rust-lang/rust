@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #![crate_type = "rlib"]
+
+#![allow(unused_variables)]
 #![omit_gdb_pretty_printer_section]
 
 // no-prefer-dynamic
