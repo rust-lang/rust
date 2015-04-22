@@ -1460,7 +1460,7 @@ impl<'a> fmt::Display for Item<'a> {
         try!(write!(fmt, "<span class='out-of-band'>"));
         try!(write!(fmt,
         r##"<span id='render-detail'>
-            <a id="collapse-all" href="#">[-]</a>&nbsp;<a id="expand-all" href="#">[+]</a>
+            <a id="toggle-all-docs" href="#" title="collapse all docs">[-]</a>
         </span>"##));
 
         // Write `src` tag
@@ -1473,8 +1473,8 @@ impl<'a> fmt::Display for Item<'a> {
             match self.href(self.cx) {
                 Some(l) => {
                     try!(write!(fmt, "<a id='src-{}' class='srclink' \
-                                       href='{}'>[src]</a>",
-                                self.item.def_id.node, l));
+                                       href='{}' title='{}'>[src]</a>",
+                                self.item.def_id.node, l, "goto source code"));
                 }
                 None => {}
             }
