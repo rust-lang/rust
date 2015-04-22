@@ -2737,9 +2737,17 @@ impl<A: Step + One> Iterator for ops::Range<A> where
 
     #[inline]
     fn next(&mut self) -> Option<A> {
-        if self.start < self.end {
-            let mut n = &self.start + &A::one();
-            mem::swap(&mut n, &mut self.start);
+        // FIXME #24660: this may start returning Some after returning
+        // None if the + overflows. This is OK per Iterator's
+        // definition, but it would be really nice for a core iterator
+        // like `x..y` to be as well behaved as
+        // possible. Unfortunately, for types like `i32`, LLVM
+        // mishandles the version that places the mutation inside the
+        // `if`: it seems to optimise the `Option<i32>` in a way that
+        // confuses it.
+        let mut n = &self.start + &A::one();
+        mem::swap(&mut n, &mut self.start);
+        if n < self.end {
             Some(n)
         } else {
             None

@@ -932,3 +932,10 @@ fn bench_max(b: &mut Bencher) {
         it.map(scatter).max()
     })
 }
+
+#[bench]
+fn bench_range_constant_fold(b: &mut Bencher) {
+    // this should be constant-folded to just '1000', and so this
+    // benchmark should run quickly...
+    b.iter(|| (0..1000).count())
+}
