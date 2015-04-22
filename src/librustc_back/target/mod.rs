@@ -91,14 +91,22 @@ pub struct Target {
 pub struct TargetOptions {
     /// Linker to invoke. Defaults to "cc".
     pub linker: String,
-    /// Linker arguments that are unconditionally passed *before* any user-defined libraries.
+    /// Linker arguments that are unconditionally passed *before* any
+    /// user-defined libraries.
     pub pre_link_args: Vec<String>,
-    /// Linker arguments that are unconditionally passed *after* any user-defined libraries.
+    /// Linker arguments that are unconditionally passed *after* any
+    /// user-defined libraries.
     pub post_link_args: Vec<String>,
-    /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults to "default".
+    /// Objects to link before and after all others, always found within the
+    /// sysroot folder.
+    pub pre_link_objects: Vec<String>,
+    pub post_link_objects: Vec<String>,
+    /// Default CPU to pass to LLVM. Corresponds to `llc -mcpu=$cpu`. Defaults
+    /// to "default".
     pub cpu: String,
-    /// Default target features to pass to LLVM. These features will *always* be passed, and cannot
-    /// be disabled even via `-C`. Corresponds to `llc -mattr=$features`.
+    /// Default target features to pass to LLVM. These features will *always* be
+    /// passed, and cannot be disabled even via `-C`. Corresponds to `llc
+    /// -mattr=$features`.
     pub features: String,
     /// Whether dynamic linking is available on this target. Defaults to false.
     pub dynamic_linking: bool,
@@ -183,6 +191,8 @@ impl Default for TargetOptions {
             has_rpath: false,
             no_compiler_rt: false,
             position_independent_executables: false,
+            pre_link_objects: Vec::new(),
+            post_link_objects: Vec::new(),
         }
     }
 }
