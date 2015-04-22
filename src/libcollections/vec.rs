@@ -473,8 +473,10 @@ impl<T> Vec<T> {
             let begin = ptr as *const T;
             let end = if mem::size_of::<T>() == 0 {
                 (ptr as usize + self.len()) as *const T
+            } else if self.cap == 0 {
+                begin
             } else {
-                ptr.offset(self.len() as isize) as *const T
+                begin.offset(self.len() as isize)
             };
             mem::forget(self);
             IntoIter { allocation: ptr, cap: cap, ptr: begin, end: end }
@@ -772,6 +774,8 @@ impl<T> Vec<T> {
             let begin = *self.ptr as *const T;
             let end = if mem::size_of::<T>() == 0 {
                 (*self.ptr as usize + self.len()) as *const T
+            } else if self.cap == 0 {
+                begin
             } else {
                 (*self.ptr).offset(self.len() as isize) as *const T
             };
@@ -883,8 +887,15 @@ impl<T> Vec<T> {
             //
             // 2) If the size of the elements in the vector is >1, the `usize` ->
             //    `isize` conversion can't overflow.
-            let offset = vec.len() as isize;
             let start = vec.as_mut_ptr();
+
+            let end = if vec.cap == 0 {
+                start
+            } else {
+                unsafe {
+                    start.offset(vec.len() as isize)
+                }
+            };
 
             let mut pv = PartialVecNonZeroSized {
                 vec: vec,
@@ -892,7 +903,7 @@ impl<T> Vec<T> {
                 start_t: start,
                 // This points inside the vector, as the vector has length
                 // `offset`.
-                end_t: unsafe { start.offset(offset) },
+                end_t: end,
                 start_u: start as *mut U,
                 end_u: start as *mut U,
 
@@ -1054,17 +1065,18 @@ impl<T> Vec<T> {
         assert!(at <= self.len(), "`at` out of bounds");
 
         let other_len = self.len - at;
+        let ptr = if self.cap == 0 {
+            self.as_ptr()
+        } else {
+            self.as_ptr().offset(at as isize)
+        };
         let mut other = Vec::with_capacity(other_len);
 
         // Unsafely `set_len` and copy items to `other`.
         unsafe {
             self.set_len(at);
             other.set_len(other_len);
-
-            ptr::copy_nonoverlapping(
-                self.as_ptr().offset(at as isize),
-                other.as_mut_ptr(),
-                other.len());
+            ptr::copy_nonoverlapping(ptr, other.as_mut_ptr(), other.len());
         }
         other
     }
