@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // ignore-pretty
-// ignore-android
+// ignore-cross-compile
 
 #![feature(quote, rustc_private)]
 
