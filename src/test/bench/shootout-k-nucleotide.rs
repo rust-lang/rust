@@ -38,7 +38,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// ignore-android see #10393 #13206
+// ignore-android: FIXME(#10393) hangs without output
 
 #![feature(box_syntax, std_misc, collections)]
 
