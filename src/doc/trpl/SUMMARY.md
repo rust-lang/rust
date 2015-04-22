@@ -7,7 +7,6 @@
 * [Learn Rust](learn-rust.md)
 * [Effective Rust](effective-rust.md)
     * [The Stack and the Heap](the-stack-and-the-heap.md)
-    * [Debug and Display](debug-and-display.md)
     * [Testing](testing.md)
     * [Documentation](documentation.md)
     * [Iterators](iterators.md)
