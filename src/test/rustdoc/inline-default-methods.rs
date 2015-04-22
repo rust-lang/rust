@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:inline-default-methods.rs
-// ignore-android
+// ignore-cross-compile
 
 extern crate inline_default_methods;
 

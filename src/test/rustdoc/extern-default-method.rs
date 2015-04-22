@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:rustdoc-extern-default-method.rs
-// ignore-android
+// ignore-cross-compile
 
 extern crate rustdoc_extern_default_method as ext;
 

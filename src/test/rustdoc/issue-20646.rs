@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue-20646.rs
-// ignore-android
+// ignore-cross-compile
 
 #![feature(associated_types)]
 
