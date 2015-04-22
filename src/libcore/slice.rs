@@ -674,51 +674,13 @@ macro_rules! iterator {
 
             #[inline]
             fn nth(&mut self, n: usize) -> Option<$elem> {
-                // could be implemented with slices, but this avoids bounds checks
-                unsafe {
-                    ::intrinsics::assume(!self.ptr.is_null());
-                    ::intrinsics::assume(!self.end.is_null());
-                    // There should be some way to use offset and optimize this to LEA but I don't
-                    // know how to do that AND detect overflow...
-                    let size = mem::size_of::<T>();
-                    if size == 0 {
-                        if let Some(new_ptr) = (self.ptr as usize).checked_add(n) {
-                            if new_ptr < (self.end as usize) {
-                                self.ptr = transmute(new_ptr + 1);
-                                return Some(&mut *(1 as *mut _))
-                            }
-                        }
-                    } else {
-                        if let Some(new_ptr) = n.checked_mul(size).and_then(|offset| {
-                            (self.ptr as usize).checked_add(offset)
-                        }) {
-                            if new_ptr < (self.end as usize) {
-                                self.ptr = transmute(new_ptr + size);
-                                return Some(transmute(new_ptr))
-                            }
-                        }
-                    }
-                    None
-                }
+                // Call helper method. Can't put the definition here because mut versus const.
+                self.iter_nth(n)
             }
 
             #[inline]
-            fn last(self) -> Option<$elem> {
-                // We could just call next_back but this avoids the memory write.
-                unsafe {
-                    ::intrinsics::assume(!self.ptr.is_null());
-                    ::intrinsics::assume(!self.end.is_null());
-                    if self.end == self.ptr {
-                        None
-                    } else {
-                        if mem::size_of::<T>() == 0 {
-                            // Use a non-null pointer value
-                            Some(&mut *(1 as *mut _))
-                        } else {
-                            Some(transmute(self.end.offset(-1)))
-                        }
-                    }
-                }
+            fn last(mut self) -> Option<$elem> {
+                self.next_back()
             }
         }
 
@@ -838,6 +800,27 @@ impl<'a, T> Iter<'a, T> {
     #[unstable(feature = "core")]
     pub fn as_slice(&self) -> &'a [T] {
         make_slice!(T => &'a [T]: self.ptr, self.end)
+    }
+
+    // Helper function for Iter::nth
+    fn iter_nth(&mut self, n: usize) -> Option<&'a T> {
+        match self.as_slice().get(n) {
+            Some(elem_ref) => if mem::size_of::<T>() == 0 {
+                unsafe {
+                    self.ptr = transmute((elem_ref as *const _) as usize + 1);
+                    Some(& *(1 as *const _))
+                }
+            } else {
+                unsafe {
+                    self.ptr = (elem_ref as *const _).offset(1);
+                    Some(elem_ref)
+                }
+            },
+            None => {
+                self.ptr = self.end;
+                None
+            }
+        }
     }
 }
 
@@ -967,6 +950,27 @@ impl<'a, T> IterMut<'a, T> {
     #[unstable(feature = "core")]
     pub fn into_slice(self) -> &'a mut [T] {
         make_mut_slice!(T => &'a mut [T]: self.ptr, self.end)
+    }
+
+    // Helper function for IterMut::nth
+    fn iter_nth(&mut self, n: usize) -> Option<&'a mut T> {
+        match make_mut_slice!(T => &'a mut [T]: self.ptr, self.end).get_mut(n) {
+            Some(elem_ref) => if mem::size_of::<T>() == 0 {
+                unsafe {
+                    self.ptr = transmute((elem_ref as *mut _) as usize + 1);
+                    Some(&mut *(1 as *mut _))
+                }
+            } else {
+                unsafe {
+                    self.ptr = (elem_ref as *mut _).offset(1);
+                    Some(elem_ref)
+                }
+            },
+            None => {
+                self.ptr = self.end;
+                None
+            }
+        }
     }
 }
 
