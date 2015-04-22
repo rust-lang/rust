@@ -1205,8 +1205,14 @@ pub trait RandomAccessIterator: Iterator {
 /// This trait is a helper for iterators like the vector iterator, so that
 /// it can support double-ended enumeration.
 ///
-/// `Iterator::size_hint` *must* return the exact size of the iterator.
-/// Note that the size must fit in `usize`.
+/// `ExactSizeIterator::len` must return the exact size of the iterator.
+///
+/// Note: The default implementation of `ExactSizeIterator::len` assumes
+/// that `Iterator::size_hint` returns the exact size of the iterator
+/// (`(exact_size, Some(exact_size))`). If this is not the case, you must
+/// provide your own `ExactSizeIterator::len` implementation.
+///
+/// Also Note: The size must fit in `usize`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExactSizeIterator: Iterator {
     #[inline]
