@@ -75,6 +75,8 @@
 #![feature(reflect)]
 #![feature(custom_attribute)]
 
+#[macro_use] #[no_link] extern crate rustc_bitflags;
+
 #[macro_use]
 mod macros;
 

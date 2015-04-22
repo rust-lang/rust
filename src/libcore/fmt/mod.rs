@@ -198,9 +198,16 @@ impl<'a> ArgumentV1<'a> {
 }
 
 // flags available in the v1 format of format_args
-#[derive(Copy, Clone)]
-#[allow(dead_code)] // SignMinus isn't currently used
-enum FlagV1 { SignPlus, SignMinus, Alternate, SignAwareZeroPad, }
+bitflags! {
+    #[derive(Copy, Clone)]
+    #[allow(dead_code)] // SignMinus isn't currently used
+    flags FlagV1 : u32 {
+        const SignPlus = 1 << 0,
+        const SignMinus = 1 << 1,
+        const Alternate = 1 << 2,
+        const SignAwareZeroPad = 1 << 3,
+    }
+}
 
 impl<'a> Arguments<'a> {
     /// When using the format_args!() macro, this function is used to generate the
@@ -472,12 +479,12 @@ impl<'a> Formatter<'a> {
         let mut sign = None;
         if !is_positive {
             sign = Some('-'); width += 1;
-        } else if self.flags & (1 << (FlagV1::SignPlus as u32)) != 0 {
+        } else if self.flags.contains(FlagV1::SignPlus) {
             sign = Some('+'); width += 1;
         }
 
         let mut prefixed = false;
-        if self.flags & (1 << (FlagV1::Alternate as u32)) != 0 {
+        if self.flags.contains(FlagV1::Alternate) {
             prefixed = true; width += prefix.char_len();
         }
 
@@ -507,7 +514,7 @@ impl<'a> Formatter<'a> {
             }
             // The sign and prefix goes before the padding if the fill character
             // is zero
-            Some(min) if self.flags & (1 << (FlagV1::SignAwareZeroPad as u32)) != 0 => {
+            Some(min) if self.flags.contains(FlagV1::SignAwareZeroPad) => {
                 self.fill = '0';
                 try!(write_prefix(self));
                 self.with_padding(min - width, Alignment::Right, |f| {
@@ -873,8 +880,8 @@ impl<T> Pointer for *const T {
         // it denotes whether to prefix with 0x. We use it to work out whether
         // or not to zero extend, and then unconditionally set it to get the
         // prefix.
-        if f.flags & 1 << (FlagV1::Alternate as u32) > 0 {
-            f.flags |= 1 << (FlagV1::SignAwareZeroPad as u32);
+        if f.flags.contains(FlagV1::Alternate) {
+            f.flags.insert(FlagV1::SignAwareZeroPad);
 
             if let None = f.width {
                 // The formats need two extra bytes, for the 0x
@@ -885,7 +892,7 @@ impl<T> Pointer for *const T {
                 }
             }
         }
-        f.flags |= 1 << (FlagV1::Alternate as u32);
+        f.flags.insert(FlagV1::Alternate);
 
         let ret = LowerHex::fmt(&(*self as usize), f);
 
