@@ -57,8 +57,7 @@ let x: Vec<u32> = {
 We can implement this shorthand, using a macro: [^actual]
 
 [^actual]: The actual definition of `vec!` in libcollections differs from the
-           one presented here, for reasons of efficiency and reusability. Some
-           of these are mentioned in the [advanced macros chapter][].
+           one presented here, for reasons of efficiency and reusability.
 
 ```rust
 macro_rules! vec {
@@ -106,7 +105,7 @@ These have [their own little grammar] within the language.
 
 The matcher `$x:expr` will match any Rust expression, binding that syntax tree
 to the ‘metavariable’ `$x`. The identifier `expr` is a ‘fragment specifier’;
-the full possibilities are enumerated in the [advanced macros chapter][].
+the full possibilities are enumerated later in this chapter.
 Surrounding the matcher with `$(...),*` will match zero or more expressions,
 separated by commas.
 
