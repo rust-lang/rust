@@ -60,6 +60,8 @@ impl<'a> ChangeSet<'a> {
             return Vec::new();
         }
 
+        // idx is the index into file_spans which indicates the current file, we
+        // with the file start denotes.
         let mut idx = match self.file_spans.binary_search(&(start.0, ::std::u32::MAX)) {
             Ok(i) => i,
             Err(0) => 0,
@@ -112,6 +114,13 @@ impl<'a> ChangeSet<'a> {
             change_set: self,
             keys: self.file_map.keys().collect(),
             cur_key: 0,
+        }
+    }
+
+    // Append a newline to the end of each file.
+    pub fn append_newlines(&mut self) {
+        for (_, s) in self.file_map.iter_mut() {
+            s.push_str("\n");
         }
     }
 

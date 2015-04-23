@@ -372,8 +372,9 @@ impl<'a> FmtVisitor<'a> {
         result.push_str(&make_indent(indent + 4));
         result.push_str("where ");
 
+        let comments = vec![String::new(); where_clause.predicates.len()];
         // TODO uncomment when spans are fixed
-        //println!("{:?} {:?}", where_clause.predicates.iter().map(|p| self.snippet(span_for_where_pred(p))).collect::<Vec<_>>(), next_span.lo);
+        // println!("{:?} {:?}", where_clause.predicates.iter().map(|p| self.snippet(span_for_where_pred(p))).collect::<Vec<_>>(), next_span.lo);
         // let comments = self.make_comments_for_list(Vec::new(),
         //                                            where_clause.predicates.iter(),
         //                                            ",",
@@ -381,7 +382,6 @@ impl<'a> FmtVisitor<'a> {
         //                                            |pred| span_for_where_pred(pred).lo,
         //                                            |pred| span_for_where_pred(pred).hi,
         //                                            next_span.lo);
-        let comments = vec![String::new(); where_clause.predicates.len()];
         let where_strs: Vec<_> = where_clause.predicates.iter()
                                                         .map(|p| (self.rewrite_pred(p)))
                                                         .zip(comments.into_iter())

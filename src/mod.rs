@@ -24,7 +24,6 @@
 //   dead spans (comments) - in where clause (wait for fixed spans, test)
 //
 // Smoke testing till we can use it
-//   ** no newline at the end of doc.rs
 // take config options from a file
 
 #[macro_use]
@@ -214,6 +213,9 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
             let krate = state.krate.unwrap();
             let codemap = state.session.codemap();
             let mut changes = fmt_ast(krate, codemap);
+            // For some reason, the codemap does not include terminating newlines
+            // so we must add one on for each file. This is sad.
+            changes.append_newlines();
             fmt_lines(&mut changes);
 
             // FIXME(#5) Should be user specified whether to show or replace.

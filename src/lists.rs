@@ -29,6 +29,7 @@ pub enum SeparatorTactic {
     Vertical,
 }
 
+// TODO having some helpful ctors for ListFormatting would be nice.
 pub struct ListFormatting<'a> {
     pub tactic: ListTactic,
     pub separator: &'a str,
