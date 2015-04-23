@@ -806,18 +806,23 @@
         window.location = $('.srclink').attr('href');
     }
 
-    $("#expand-all").on("click", function() {
-        $(".docblock").show();
-        $(".toggle-label").hide();
-        $(".toggle-wrapper").removeClass("collapsed");
-        $(".collapse-toggle").children(".inner").html("-");
-    });
-
-    $("#collapse-all").on("click", function() {
-        $(".docblock").hide();
-        $(".toggle-label").show();
-        $(".toggle-wrapper").addClass("collapsed");
-        $(".collapse-toggle").children(".inner").html("+");
+    $("#toggle-all-docs").on("click", function() {
+        var toggle = $("#toggle-all-docs");
+        if (toggle.html() == "[-]") {
+            toggle.html("[+]");
+            toggle.attr("title", "expand all docs");
+            $(".docblock").hide();
+            $(".toggle-label").show();
+            $(".toggle-wrapper").addClass("collapsed");
+            $(".collapse-toggle").children(".inner").html("+");
+        } else {
+            toggle.html("[-]");
+            toggle.attr("title", "collapse all docs");
+            $(".docblock").show();
+            $(".toggle-label").hide();
+            $(".toggle-wrapper").removeClass("collapsed");
+            $(".collapse-toggle").children(".inner").html("-");
+        }
     });
 
     $(document).on("click", ".collapse-toggle", function() {
