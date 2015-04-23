@@ -18,7 +18,7 @@ foo.bar().baz();
 Luckily, as you may have guessed with the leading question, you can! Rust provides
 the ability to use this ‘method call syntax’ via the `impl` keyword.
 
-## Method calls
+# Method calls
 
 Here’s how it works:
 
@@ -83,7 +83,7 @@ impl Circle {
 }
 ```
 
-## Chaining method calls
+# Chaining method calls
 
 So, now we know how to call a method, such as `foo.bar()`. But what about our
 original example, `foo.bar().baz()`? This is called ‘method chaining’, and we
@@ -127,7 +127,7 @@ fn grow(&self) -> Circle {
 We just say we’re returning a `Circle`. With this method, we can grow a new
 circle to any arbitrary size.
 
-## Static methods
+# Static methods
 
 You can also define methods that do not take a `self` parameter. Here’s a
 pattern that’s very common in Rust code:
@@ -158,7 +158,7 @@ This ‘static method’ builds a new `Circle` for us. Note that static methods
 are called with the `Struct::method()` syntax, rather than the `ref.method()`
 syntax.
 
-## Builder Pattern
+# Builder Pattern
 
 Let’s say that we want our users to be able to create Circles, but we will
 allow them to only set the properties they care about. Otherwise, the `x`
