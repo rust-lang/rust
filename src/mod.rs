@@ -117,12 +117,15 @@ fn fmt_ast<'a>(krate: &ast::Crate, codemap: &'a CodeMap) -> ChangeSet<'a> {
 // TODO warn on bad license
 // TODO other stuff for parity with make tidy
 fn fmt_lines(changes: &mut ChangeSet) {
+    let mut truncate_todo = Vec::new();
+
     // Iterate over the chars in the change set.
     for (f, text) in changes.text() {
         let mut trims = vec![];
         let mut last_wspace: Option<usize> = None;
         let mut line_len = 0;
         let mut cur_line = 1;
+        let mut newline_count = 0;
         for (c, b) in text.chars() {
             if c == '\n' { // TOOD test for \r too
                 // Check for (and record) trailing whitespace.
@@ -138,8 +141,10 @@ fn fmt_lines(changes: &mut ChangeSet) {
                 }
                 line_len = 0;
                 cur_line += 1;
+                newline_count += 1;
                 last_wspace = None;
             } else {
+                newline_count = 0;
                 line_len += 1;
                 if c.is_whitespace() {
                     if last_wspace.is_none() {
@@ -151,9 +156,22 @@ fn fmt_lines(changes: &mut ChangeSet) {
             }
         }
 
+        if newline_count > 1 {
+            truncate_todo.push((f, text.len - newline_count + 1))
+        }
+
         for &(l, _, _) in trims.iter() {
             // TODO store the error rather than reporting immediately.
             println!("Rustfmt left trailing whitespace at {}:{} (sorry)", f, l);
+        }
+    }
+
+    for (f, l) in truncate_todo {
+        // This unsafe block and the ridiculous dance with the cast is because
+        // the borrow checker thinks the first borrow of changes lasts for the
+        // whole function.
+        unsafe {
+            (*(changes as *const ChangeSet as *mut ChangeSet)).get_mut(f).truncate(l);
         }
     }
 }

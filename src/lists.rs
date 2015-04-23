@@ -62,7 +62,7 @@ pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b
     let total_width = calculate_width(items);
 
     // Check if we need to fallback from horizontal listing, if possible.
-    if tactic == ListTactic::HorizontalVertical { 
+    if tactic == ListTactic::HorizontalVertical {
         if total_width + total_sep_len > formatting.h_width {
             tactic = ListTactic::Vertical;
         } else {
@@ -120,7 +120,7 @@ pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b
         }
 
         result.push_str(item);
-        
+
         if tactic != ListTactic::Vertical && comment.len() > 0 {
             result.push(' ');
             result.push_str(comment);

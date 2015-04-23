@@ -99,6 +99,10 @@ impl<'a> ChangeSet<'a> {
         self.push_str(&file_name, text)
     }
 
+    pub fn get_mut(&mut self, file_name: &str) -> &mut StringBuffer {
+        self.file_map.get_mut(file_name).unwrap()
+    }
+
     pub fn cur_offset(&mut self, filename: &str) -> usize {
         self.file_map[&*filename].cur_offset()
     }
