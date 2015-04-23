@@ -48,7 +48,7 @@ pub struct Semaphore {
     cvar: Condvar,
 }
 
-/// An RAII guard which will release a resource acquired from a semaphore when
+/// A RAII guard which will release a resource acquired from a semaphore when
 /// dropped.
 pub struct SemaphoreGuard<'a> {
     sem: &'a Semaphore,
@@ -89,7 +89,7 @@ impl Semaphore {
         self.cvar.notify_one();
     }
 
-    /// Acquires a resource of this semaphore, returning an RAII guard to
+    /// Acquires a resource of this semaphore, returning a RAII guard to
     /// release the semaphore when dropped.
     ///
     /// This function is semantically equivalent to an `acquire` followed by a

@@ -32,7 +32,7 @@ unsafe impl<T: Send> Send for ReentrantMutex<T> {}
 unsafe impl<T: Send> Sync for ReentrantMutex<T> {}
 
 
-/// An RAII implementation of a "scoped lock" of a mutex. When this structure is
+/// A RAII implementation of a "scoped lock" of a mutex. When this structure is
 /// dropped (falls out of scope), the lock will be unlocked.
 ///
 /// The data protected by the mutex can be accessed through this guard via its
@@ -78,7 +78,7 @@ impl<T> ReentrantMutex<T> {
     /// Attempts to acquire this lock.
     ///
     /// If the lock could not be acquired at this time, then `Err` is returned.
-    /// Otherwise, an RAII guard is returned.
+    /// Otherwise, a RAII guard is returned.
     ///
     /// This function does not block.
     ///

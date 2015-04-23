@@ -154,7 +154,7 @@ impl<T> RwLock<T> {
     /// respect to the ordering of whether contentious readers or writers will
     /// acquire the lock first.
     ///
-    /// Returns an RAII guard which will release this thread's shared access
+    /// Returns a RAII guard which will release this thread's shared access
     /// once it is dropped.
     ///
     /// # Failure
@@ -172,7 +172,7 @@ impl<T> RwLock<T> {
     /// Attempts to acquire this lock with shared read access.
     ///
     /// This function will never block and will return immediately if `read`
-    /// would otherwise succeed. Returns `Some` of an RAII guard which will
+    /// would otherwise succeed. Returns `Some` of a RAII guard which will
     /// release the shared access of this thread when dropped, or `None` if the
     /// access could not be granted. This method does not provide any
     /// guarantees with respect to the ordering of whether contentious readers
@@ -200,7 +200,7 @@ impl<T> RwLock<T> {
     /// This function will not return while other writers or other readers
     /// currently have access to the lock.
     ///
-    /// Returns an RAII guard which will drop the write access of this rwlock
+    /// Returns a RAII guard which will drop the write access of this rwlock
     /// when dropped.
     ///
     /// # Failure
@@ -218,7 +218,7 @@ impl<T> RwLock<T> {
     /// Attempts to lock this rwlock with exclusive write access.
     ///
     /// This function does not ever block, and it will return `None` if a call
-    /// to `write` would otherwise block. If successful, an RAII guard is
+    /// to `write` would otherwise block. If successful, a RAII guard is
     /// returned.
     ///
     /// # Failure

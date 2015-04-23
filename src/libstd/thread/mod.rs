@@ -105,7 +105,7 @@
 //! ```
 //!
 //! The `scoped` function doesn't return a `Thread` directly; instead,
-//! it returns a *join guard*. The join guard is an RAII-style guard
+//! it returns a *join guard*. The join guard is a RAII-style guard
 //! that will automatically join the child thread (block until it
 //! terminates) when it is dropped. You can join the child thread in
 //! advance by calling the `join` method on the guard, which will also
@@ -688,7 +688,7 @@ impl<T> Drop for JoinHandle<T> {
     }
 }
 
-/// An RAII-style guard that will block until thread termination when dropped.
+/// A RAII-style guard that will block until thread termination when dropped.
 ///
 /// The type `T` is the return type for the thread's main function.
 ///

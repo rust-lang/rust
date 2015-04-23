@@ -157,7 +157,7 @@ pub struct StaticMutex {
     poison: poison::Flag,
 }
 
-/// An RAII implementation of a "scoped lock" of a mutex. When this structure is
+/// A RAII implementation of a "scoped lock" of a mutex. When this structure is
 /// dropped (falls out of scope), the lock will be unlocked.
 ///
 /// The data protected by the mutex can be access through this guard via its
@@ -197,7 +197,7 @@ impl<T> Mutex<T> {
     ///
     /// This function will block the local task until it is available to acquire
     /// the mutex. Upon returning, the task is the only task with the mutex
-    /// held. An RAII guard is returned to allow scoped unlock of the lock. When
+    /// held. A RAII guard is returned to allow scoped unlock of the lock. When
     /// the guard goes out of scope, the mutex will be unlocked.
     ///
     /// # Failure
@@ -213,7 +213,7 @@ impl<T> Mutex<T> {
     /// Attempts to acquire this lock.
     ///
     /// If the lock could not be acquired at this time, then `Err` is returned.
-    /// Otherwise, an RAII guard is returned. The lock will be unlocked when the
+    /// Otherwise, a RAII guard is returned. The lock will be unlocked when the
     /// guard is dropped.
     ///
     /// This function does not block.

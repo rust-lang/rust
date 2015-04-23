@@ -54,7 +54,7 @@ const DEFAULT_BUF_SIZE: usize = 64 * 1024;
 // byte-oriented reading method, but we must ensure that when returning we never
 // leave `buf` in a state such that it contains invalid UTF-8 in its bounds.
 //
-// To this end, we use an RAII guard (to protect against panics) which updates
+// To this end, we use a RAII guard (to protect against panics) which updates
 // the length of the string when it is dropped. This guard initially truncates
 // the string to the prior length and only after we've validated that the
 // new contents are valid UTF-8 do we allow it to set a longer length.
