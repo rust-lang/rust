@@ -735,15 +735,26 @@ Rust syntax is restricted in two ways:
 
 # Crates and source files
 
-Rust is a *compiled* language. Its semantics obey a *phase distinction* between
-compile-time and run-time. Those semantic rules that have a *static
+Although Rust, like any other language, can be implemented by an interpreter as
+well as a compiler, the only existing implementation is a compiler &mdash;
+from now on referred to as *the* Rust compiler &mdash; and the language has
+always been designed to be compiled. For these reasons, this section assumes a
+compiler.
+
+Rust's semantics obey a *phase distinction* between compile-time and
+run-time.[^phase-distinction] Those semantic rules that have a *static
 interpretation* govern the success or failure of compilation. Those semantics
 that have a *dynamic interpretation* govern the behavior of the program at
 run-time.
 
+[^phase-distinction]: This distinction would also exist in an interpreter.
+    Static checks like syntactic analysis, type checking, and lints should
+    happen before the program is executed regardless of when it is executed.
+
 The compilation model centers on artifacts called _crates_. Each compilation
 processes a single crate in source form, and if successful, produces a single
-crate in binary form: either an executable or a library.[^cratesourcefile]
+crate in binary form: either an executable or some sort of
+library.[^cratesourcefile]
 
 [^cratesourcefile]: A crate is somewhat analogous to an *assembly* in the
     ECMA-335 CLI model, a *library* in the SML/NJ Compilation Manager, a *unit*
@@ -764,21 +775,25 @@ extension `.rs`.
 A Rust source file describes a module, the name and location of which &mdash;
 in the module tree of the current crate &mdash; are defined from outside the
 source file: either by an explicit `mod_item` in a referencing source file, or
-by the name of the crate itself.
+by the name of the crate itself. Every source file is a module, but not every
+module needs its own source file: [module definitions](#modules) can be nested
+within one file.
 
 Each source file contains a sequence of zero or more `item` definitions, and
-may optionally begin with any number of `attributes` that apply to the
-containing module. Attributes on the anonymous crate module define important
-metadata that influences the behavior of the compiler.
+may optionally begin with any number of [attributes](#Items and attributes)
+that apply to the containing module, most of which influence the behavior of
+the compiler. The anonymous crate module can have additional attributes that
+apply to the crate as a whole.
 
 ```no_run
-// Crate name
+// Specify the crate name.
 #![crate_name = "projx"]
 
-// Specify the output type
+// Specify the type of output artifact.
 #![crate_type = "lib"]
 
-// Turn on a warning
+// Turn on a warning.
+// This can be done in any module, not just the anonymous crate module.
 #![warn(non_camel_case_types)]
 ```
 
