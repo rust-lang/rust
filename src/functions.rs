@@ -195,7 +195,7 @@ impl<'a> FmtVisitor<'a> {
         write_list(&arg_strs, &fmt)
     }
 
-    // Gets comments in between items of a list. 
+    // Gets comments in between items of a list.
     fn make_comments_for_list<T, I, F1, F2>(&self,
                                             prefix: Vec<String>,
                                             mut it: I,
@@ -228,7 +228,7 @@ impl<'a> FmtVisitor<'a> {
         // FIXME If you thought the crap with the commas was ugly, just wait.
         // This is awful. We're going to look from the last item span to the
         // start of the return type span, then we drop everything after the
-        // first closing paren. Obviously, this will break if there is a 
+        // first closing paren. Obviously, this will break if there is a
         // closing paren in the comment.
         // The fix is comments in the AST or a span for the closing paren.
         let snippet = self.snippet(codemap::mk_sp(prev_end, next_span_start));
@@ -406,7 +406,7 @@ impl<'a> FmtVisitor<'a> {
             ast::FunctionRetTy::DefaultReturn(_) => String::new(),
             ast::FunctionRetTy::NoReturn(_) => "-> !".to_string(),
             ast::FunctionRetTy::Return(ref ty) => "-> ".to_string() + &pprust::ty_to_string(ty),
-        }        
+        }
     }
 
     // TODO we farm this out, but this could spill over the column limit, so we ought to handle it properly

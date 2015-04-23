@@ -255,13 +255,13 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
 
 fn run(args: Vec<String>, write_mode: WriteMode) {
     let mut call_ctxt = RustFmtCalls { input_path: None, write_mode: write_mode };
-    rustc_driver::run_compiler(&args, &mut call_ctxt);    
+    rustc_driver::run_compiler(&args, &mut call_ctxt);
 }
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
-    //run(args, WriteMode::Display);
-    run(args, WriteMode::NewFile("new"));
+    run(args, WriteMode::Display);
+    //run(args, WriteMode::NewFile("new"));
     std::env::set_exit_status(0);
 
     // TODO unit tests
