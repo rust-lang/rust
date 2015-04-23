@@ -566,7 +566,7 @@ When this library is loaded with `#[macro_use] extern crate`, only `m2` will
 be imported.
 
 The Rust Reference has a [listing of macro-related
-attributes](../reference.html#macro--and-plugin-related-attributes).
+attributes](../reference.html#macro-related-attributes).
 
 # The variable `$crate`
 
