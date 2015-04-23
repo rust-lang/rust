@@ -3665,7 +3665,7 @@ implements trait `R`, casting `E` to the corresponding pointer type `&R` or
 represented as a pair of pointers: the vtable pointer for the `T`
 implementation of `R`, and the pointer value of `E`.
 
-An example of an trait object:
+An example of a trait object:
 
 ```
 trait Printable {
