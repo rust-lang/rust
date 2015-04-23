@@ -769,6 +769,7 @@ pub fn trans_switch<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             (_match::Switch, Some(trans_get_discr(bcx, r, scrutinee, None)))
         }
         Univariant(..) => {
+            // N.B.: Univariant means <= 1 enum variants (*not* == 1 variants).
             (_match::Single, None)
         }
     }
