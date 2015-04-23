@@ -21,11 +21,10 @@
 
 // TODO priorities
 // Fix fns and methods properly
-//   dead spans (comments) - in generics
+//   dead spans (comments) - in where clause (wait for fixed spans, test)
 //
 // Smoke testing till we can use it
-//   no newline at the end of doc.rs
-// fmt_skip annotations
+//   ** no newline at the end of doc.rs
 // take config options from a file
 
 #[macro_use]
@@ -48,6 +47,7 @@ use syntax::diagnostics;
 use syntax::visit;
 
 use std::path::PathBuf;
+use std::collections::HashMap;
 
 use changes::ChangeSet;
 use visitor::FmtVisitor;
@@ -69,14 +69,18 @@ const MIN_STRING: usize = 10;
 const TAB_SPACES: usize = 4;
 const FN_BRACE_STYLE: BraceStyle = BraceStyle::SameLineWhere;
 const FN_RETURN_INDENT: ReturnIndent = ReturnIndent::WithArgs;
+// When we get scoped annotations, we should have rustfmt::skip.
+const SKIP_ANNOTATION: &'static str = "rustfmt_skip";
 
-#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 pub enum WriteMode {
     Overwrite,
     // str is the extension of the new file
     NewFile(&'static str),
     // Write the output to stdout.
     Display,
+    // Return the result as a mapping from filenames to StringBuffers.
+    Return(&'static Fn(HashMap<String, String>)),
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -157,6 +161,7 @@ fn fmt_lines(changes: &mut ChangeSet) {
 
 struct RustFmtCalls {
     input_path: Option<PathBuf>,
+    write_mode: WriteMode,
 }
 
 impl<'a> CompilerCalls<'a> for RustFmtCalls {
@@ -202,19 +207,25 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
     }
 
     fn build_controller(&mut self, _: &Session) -> driver::CompileController<'a> {
+        let write_mode = self.write_mode;
         let mut control = driver::CompileController::basic();
         control.after_parse.stop = Compilation::Stop;
-        control.after_parse.callback = box |state| {
+        control.after_parse.callback = box move |state| {
             let krate = state.krate.unwrap();
             let codemap = state.session.codemap();
             let mut changes = fmt_ast(krate, codemap);
             fmt_lines(&mut changes);
 
             // FIXME(#5) Should be user specified whether to show or replace.
-            let result = changes.write_all_files(WriteMode::Display);
+            let result = changes.write_all_files(write_mode);
 
-            if let Err(msg) = result {
-                println!("Error writing files: {}", msg);
+            match result {
+                Err(msg) => println!("Error writing files: {}", msg),
+                Ok(result) => {
+                    if let WriteMode::Return(callback) = write_mode {
+                        callback(result);
+                    }
+                }
             }
         };
 
@@ -222,10 +233,14 @@ impl<'a> CompilerCalls<'a> for RustFmtCalls {
     }
 }
 
+fn run(args: Vec<String>, write_mode: WriteMode) {
+    let mut call_ctxt = RustFmtCalls { input_path: None, write_mode: write_mode };
+    rustc_driver::run_compiler(&args, &mut call_ctxt);    
+}
+
 fn main() {
     let args: Vec<_> = std::env::args().collect();
-    let mut call_ctxt = RustFmtCalls { input_path: None };
-    rustc_driver::run_compiler(&args, &mut call_ctxt);
+    run(args, WriteMode::Display);
     std::env::set_exit_status(0);
 
     // TODO unit tests
@@ -262,3 +277,68 @@ fn main() {
 // the right kind.
 
 // Should also make sure comments have the right indent
+
+#[cfg(test)]
+mod test {
+    use std::collections::HashMap;
+    use std::fs;
+    use std::io::Read;
+    use super::*;
+    use super::run;
+
+    // For now, the only supported regression tests are idempotent tests - the input and
+    // output must match exactly.
+    // TODO would be good to check for error messages and fail on them, or at least report.
+    #[test]
+    fn idempotent_tests() {
+        println!("Idempotent tests:");
+        unsafe { FAILURES = 0; }
+
+        // Get all files in the tests/idem directory
+        let files = fs::read_dir("tests/idem").unwrap();
+        // For each file, run rustfmt and collect the output
+        let mut count = 0;
+        for entry in files {
+            let path = entry.unwrap().path();
+            let file_name = path.to_str().unwrap();
+            println!("Testing '{}'...", file_name);
+            run(vec!["rustfmt".to_string(), file_name.to_string()], WriteMode::Return(HANDLE_RESULT));
+            count += 1;
+        }
+        // And also dogfood ourselves!
+        println!("Testing 'src/mod.rs'...");
+        run(vec!["rustfmt".to_string(), "src/mod.rs".to_string()], WriteMode::Return(HANDLE_RESULT));
+        count += 1;
+
+        // Display results
+        let fails = unsafe { FAILURES };
+        println!("Ran {} idempotent tests; {} failures.", count, fails);
+        assert!(fails == 0, "{} idempotent tests failed", fails);
+    }
+
+    // 'global' used by sys_tests and handle_result.
+    static mut FAILURES: i32 = 0;
+    // Ick, just needed to get a &'static to handle_result.
+    static HANDLE_RESULT: &'static Fn(HashMap<String, String>) = &handle_result;
+
+    // Compare output to input.
+    fn handle_result(result: HashMap<String, String>) {
+        let mut fails = 0;
+
+        for file_name in result.keys() {
+            let mut f = fs::File::open(file_name).unwrap();
+            let mut text = String::new();
+            f.read_to_string(&mut text).unwrap();
+            if result[file_name] != text {
+                fails += 1;
+                println!("Mismatch in {}.", file_name);
+            }
+        }
+
+        if fails > 0 {
+            unsafe {
+                FAILURES += 1;
+            }
+        }
+    }
+}

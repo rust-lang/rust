@@ -14,12 +14,11 @@ use utils::make_indent;
 use lists::{write_list, ListFormatting, SeparatorTactic, ListTactic};
 use visitor::FmtVisitor;
 use syntax::{ast, abi};
-use syntax::codemap::{self, Span};
+use syntax::codemap::{self, Span, BytePos};
 use syntax::print::pprust;
 use syntax::parse::token;
 
 impl<'a> FmtVisitor<'a> {
-    // TODO extract methods for args and generics
     pub fn rewrite_fn(&mut self,
                       indent: usize,
                       ident: ast::Ident,
@@ -28,7 +27,9 @@ impl<'a> FmtVisitor<'a> {
                       generics: &ast::Generics,
                       unsafety: &ast::Unsafety,
                       abi: &abi::Abi,
-                      vis: ast::Visibility)
+                      vis: ast::Visibility,
+                      next_span: Span) // next_span is a nasty hack, its a loose upper
+                                       // bound on any comments after the where clause.
         -> String
     {
         // FIXME we'll lose any comments in between parts of the function decl, but anyone
@@ -56,7 +57,10 @@ impl<'a> FmtVisitor<'a> {
         result.push_str(&token::get_ident(ident));
 
         // Generics.
-        result.push_str(&self.rewrite_generics(generics, indent));
+        let generics_indent = indent + result.len();
+        result.push_str(&self.rewrite_generics(generics,
+                                               generics_indent,
+                                               span_for_return(&fd.output)));
 
         let ret_str = self.rewrite_return(&fd.output);
 
@@ -74,7 +78,7 @@ impl<'a> FmtVisitor<'a> {
         result.push(')');
 
         // Where clause.
-        result.push_str(&self.rewrite_where_clause(where_clause, indent));
+        result.push_str(&self.rewrite_where_clause(where_clause, indent, next_span));
 
         // Return type.
         if ret_str.len() > 0 {
@@ -97,6 +101,8 @@ impl<'a> FmtVisitor<'a> {
             }
             result.push_str(&ret_str);
         }
+
+        // TODO any comments here?
 
         // Prepare for the function body by possibly adding a newline and indent.
         // FIXME we'll miss anything between the end of the signature and the start
@@ -157,40 +163,28 @@ impl<'a> FmtVisitor<'a> {
         // spans for the comment or parens, there is no chance of getting it right.
         // You also don't get to put a comment on self, unless it is explicit.
         if args.len() >= min_args {
-            let mut prev_end = args[min_args-1].ty.span.hi;
-            for arg in &args[min_args..] {
-                let cur_start = arg.pat.span.lo;
-                let snippet = self.snippet(codemap::mk_sp(prev_end, cur_start));
-                let mut snippet = snippet.trim();
-                if snippet.starts_with(",") {
-                    snippet = snippet[1..].trim();
-                } else if snippet.ends_with(",") {
-                    snippet = snippet[..snippet.len()-1].trim();
-                }
-                arg_comments.push(snippet.to_string());
-                prev_end = arg.ty.span.hi;
-            }
-            // Get the last commment.
-            // FIXME If you thought the crap with the commas was ugly, just wait.
-            // This is awful. We're going to look from the last arg span to the
-            // start of the return type span, then we drop everything after the
-            // first closing paren. Obviously, this will break if there is a 
-            // closing paren in the comment.
-            // The fix is comments in the AST or a span for the closing paren.
-            let snippet = self.snippet(codemap::mk_sp(prev_end, ret_span.lo));
-            let snippet = snippet.trim();
-            let snippet = &snippet[..snippet.find(")").unwrap()];
-            let snippet = snippet.trim();
-            arg_comments.push(snippet.to_string());
+            arg_comments = self.make_comments_for_list(arg_comments,
+                                                       args[min_args-1..].iter(),
+                                                       ",",
+                                                       ")",
+                                                       |arg| arg.pat.span.lo,
+                                                       |arg| arg.ty.span.hi,
+                                                       ret_span.lo);
         }
 
         debug!("comments: {:?}", arg_comments);
+
+        // If there are // comments, keep them multi-line.
+        let mut list_tactic = ListTactic::HorizontalVertical;
+        if arg_comments.iter().any(|c| c.contains("//")) {
+            list_tactic = ListTactic::Vertical;
+        }
 
         assert_eq!(arg_item_strs.len(), arg_comments.len());
         let arg_strs: Vec<_> = arg_item_strs.into_iter().zip(arg_comments.into_iter()).collect();
 
         let fmt = ListFormatting {
-            tactic: ListTactic::HorizontalVertical,
+            tactic: list_tactic,
             separator: ",",
             trailing_separator: SeparatorTactic::Never,
             indent: arg_indent,
@@ -199,6 +193,51 @@ impl<'a> FmtVisitor<'a> {
         };
 
         write_list(&arg_strs, &fmt)
+    }
+
+    // Gets comments in between items of a list. 
+    fn make_comments_for_list<T, I, F1, F2>(&self,
+                                            prefix: Vec<String>,
+                                            mut it: I,
+                                            separator: &str,
+                                            terminator: &str,
+                                            get_lo: F1,
+                                            get_hi: F2,
+                                            next_span_start: BytePos)
+        -> Vec<String>
+        where I: Iterator<Item=T>,
+              F1: Fn(&T) -> BytePos,
+              F2: Fn(&T) -> BytePos
+    {
+        let mut result = prefix;
+
+        let mut prev_end = get_hi(&it.next().unwrap());
+        for item in it {
+            let cur_start = get_lo(&item);
+            let snippet = self.snippet(codemap::mk_sp(prev_end, cur_start));
+            let mut snippet = snippet.trim();
+            if snippet.starts_with(separator) {
+                snippet = snippet[1..].trim();
+            } else if snippet.ends_with(separator) {
+                snippet = snippet[..snippet.len()-1].trim();
+            }
+            result.push(snippet.to_string());
+            prev_end = get_hi(&item);
+        }
+        // Get the last commment.
+        // FIXME If you thought the crap with the commas was ugly, just wait.
+        // This is awful. We're going to look from the last item span to the
+        // start of the return type span, then we drop everything after the
+        // first closing paren. Obviously, this will break if there is a 
+        // closing paren in the comment.
+        // The fix is comments in the AST or a span for the closing paren.
+        let snippet = self.snippet(codemap::mk_sp(prev_end, next_span_start));
+        let snippet = snippet.trim();
+        let snippet = &snippet[..snippet.find(terminator).unwrap()];
+        let snippet = snippet.trim();
+        result.push(snippet.to_string());
+
+        result
     }
 
     fn compute_budgets_for_args(&self,
@@ -260,37 +299,70 @@ impl<'a> FmtVisitor<'a> {
         }
     }
 
-    fn rewrite_generics(&self, generics: &ast::Generics, indent: usize) -> String {
+    fn rewrite_generics(&self, generics: &ast::Generics, indent: usize, ret_span: Span) -> String {
         // FIXME convert bounds to where clauses where they get too big or if
         // there is a where clause at all.
         let mut result = String::new();
         let lifetimes: &[_] = &generics.lifetimes;
         let tys: &[_] = &generics.ty_params;
-        if lifetimes.len() + tys.len() > 0 {
-            let budget = MAX_WIDTH - indent - result.len() - 2;
-            // TODO might need to insert a newline if the generics are really long
-            result.push('<');
-
-            let lt_strs = lifetimes.iter().map(|l| self.rewrite_lifetime_def(l));
-            let ty_strs = tys.iter().map(|ty| self.rewrite_ty_param(ty));
-            let generics_strs: Vec<_> = lt_strs.chain(ty_strs).map(|s| (s, String::new())).collect();
-            let fmt = ListFormatting {
-                tactic: ListTactic::HorizontalVertical,
-                separator: ",",
-                trailing_separator: SeparatorTactic::Never,
-                indent: indent + result.len() + 1,
-                h_width: budget,
-                v_width: budget,
-            };
-            result.push_str(&write_list(&generics_strs, &fmt));
-
-            result.push('>');
+        if lifetimes.len() + tys.len() == 0 {
+            return result;
         }
+
+        let budget = MAX_WIDTH - indent - 2;
+        // TODO might need to insert a newline if the generics are really long
+        result.push('<');
+
+        // Strings for the generics.
+        let lt_strs = lifetimes.iter().map(|l| self.rewrite_lifetime_def(l));
+        let ty_strs = tys.iter().map(|ty| self.rewrite_ty_param(ty));
+
+        // Extract comments between generics.
+        let lt_spans = lifetimes.iter().map(|l| {
+            let hi = if l.bounds.len() == 0 {
+                l.lifetime.span.hi
+            } else {
+                l.bounds[l.bounds.len() - 1].span.hi
+            };
+            codemap::mk_sp(l.lifetime.span.lo, hi)
+        });
+        let ty_spans = tys.iter().map(span_for_ty_param);
+        let comments = self.make_comments_for_list(Vec::new(),
+                                                   lt_spans.chain(ty_spans),
+                                                   ",",
+                                                   ">",
+                                                   |sp| sp.lo,
+                                                   |sp| sp.hi,
+                                                   ret_span.lo);
+
+        // If there are // comments, keep them multi-line.
+        let mut list_tactic = ListTactic::HorizontalVertical;
+        if comments.iter().any(|c| c.contains("//")) {
+            list_tactic = ListTactic::Vertical;
+        }
+
+        let generics_strs: Vec<_> = lt_strs.chain(ty_strs).zip(comments.into_iter()).collect();
+        let fmt = ListFormatting {
+            tactic: list_tactic,
+            separator: ",",
+            trailing_separator: SeparatorTactic::Never,
+            indent: indent + 1,
+            h_width: budget,
+            v_width: budget,
+        };
+        result.push_str(&write_list(&generics_strs, &fmt));
+
+        result.push('>');
 
         result
     }
 
-    fn rewrite_where_clause(&self, where_clause: &ast::WhereClause, indent: usize) -> String {
+    fn rewrite_where_clause(&self,
+                            where_clause: &ast::WhereClause,
+                            indent: usize,
+                            next_span: Span)
+        -> String
+    {
         let mut result = String::new();
         if where_clause.predicates.len() == 0 {
             return result;
@@ -299,6 +371,21 @@ impl<'a> FmtVisitor<'a> {
         result.push('\n');
         result.push_str(&make_indent(indent + 4));
         result.push_str("where ");
+
+        // TODO uncomment when spans are fixed
+        //println!("{:?} {:?}", where_clause.predicates.iter().map(|p| self.snippet(span_for_where_pred(p))).collect::<Vec<_>>(), next_span.lo);
+        // let comments = self.make_comments_for_list(Vec::new(),
+        //                                            where_clause.predicates.iter(),
+        //                                            ",",
+        //                                            "{",
+        //                                            |pred| span_for_where_pred(pred).lo,
+        //                                            |pred| span_for_where_pred(pred).hi,
+        //                                            next_span.lo);
+        let comments = vec![String::new(); where_clause.predicates.len()];
+        let where_strs: Vec<_> = where_clause.predicates.iter()
+                                                        .map(|p| (self.rewrite_pred(p)))
+                                                        .zip(comments.into_iter())
+                                                        .collect();
 
         let budget = IDEAL_WIDTH + LEEWAY - indent - 10;
         let fmt = ListFormatting {
@@ -309,7 +396,6 @@ impl<'a> FmtVisitor<'a> {
             h_width: budget,
             v_width: budget,
         };
-        let where_strs: Vec<_> = where_clause.predicates.iter().map(|p| (self.rewrite_pred(p), String::new())).collect();
         result.push_str(&write_list(&where_strs, &fmt));
 
         result
@@ -336,5 +422,29 @@ fn span_for_return(ret: &ast::FunctionRetTy) -> Span {
         ast::FunctionRetTy::NoReturn(ref span) |
         ast::FunctionRetTy::DefaultReturn(ref span) => span.clone(),
         ast::FunctionRetTy::Return(ref ty) => ty.span,
+    }
+}
+
+fn span_for_ty_param(ty: &ast::TyParam) -> Span {
+    // Note that ty.span is the span for ty.ident, not the whole item.
+    let lo = ty.span.lo;
+    if let Some(ref def) = ty.default {
+        return codemap::mk_sp(lo, def.span.hi);
+    }
+    if ty.bounds.len() == 0 {
+        return ty.span;
+    }
+    let hi = match ty.bounds[ty.bounds.len() - 1] {
+        ast::TyParamBound::TraitTyParamBound(ref ptr, _) => ptr.span.hi,
+        ast::TyParamBound::RegionTyParamBound(ref l) => l.span.hi,
+    };
+    codemap::mk_sp(lo, hi)
+}
+
+fn span_for_where_pred(pred: &ast::WherePredicate) -> Span {
+    match *pred {
+        ast::WherePredicate::BoundPredicate(ref p) => p.span,
+        ast::WherePredicate::RegionPredicate(ref p) => p.span,
+        ast::WherePredicate::EqPredicate(ref p) => p.span,
     }
 }

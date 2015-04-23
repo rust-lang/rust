@@ -12,7 +12,7 @@ use syntax::ast;
 use syntax::codemap::{CodeMap, Span, BytePos};
 use syntax::visit;
 
-use {MAX_WIDTH, TAB_SPACES};
+use {MAX_WIDTH, TAB_SPACES, SKIP_ANNOTATION};
 use changes::ChangeSet;
 
 pub struct FmtVisitor<'a> {
@@ -86,7 +86,8 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              generics,
                                              unsafety,
                                              abi,
-                                             vis);
+                                             vis,
+                                             b.span);
                 self.changes.push_str_span(s, &new_fn);
             }
             visit::FkMethod(ident, ref sig, vis) => {
@@ -97,7 +98,8 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                                              &sig.generics,
                                              &sig.unsafety,
                                              &sig.abi,
-                                             vis.unwrap_or(ast::Visibility::Inherited));
+                                             vis.unwrap_or(ast::Visibility::Inherited),
+                                             b.span);
                 self.changes.push_str_span(s, &new_fn);
             }
             visit::FkFnBlock(..) => {}
@@ -108,6 +110,10 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
     }
 
     fn visit_item(&mut self, item: &'v ast::Item) {
+        if item.attrs.iter().any(|a| is_skip(&a.node.value)) {
+            return;
+        }
+
         match item.node {
             ast::Item_::ItemUse(ref vp) => {
                 match vp.node {
@@ -133,6 +139,20 @@ impl<'a, 'v> visit::Visitor<'v> for FmtVisitor<'a> {
                 visit::walk_item(self, item);
             }
         }
+    }
+
+    fn visit_trait_item(&mut self, ti: &'v ast::TraitItem) {
+        if ti.attrs.iter().any(|a| is_skip(&a.node.value)) {
+            return;
+        }
+        visit::walk_trait_item(self, ti)
+    }
+
+    fn visit_impl_item(&mut self, ii: &'v ast::ImplItem) {
+        if ii.attrs.iter().any(|a| is_skip(&a.node.value)) {
+            return;
+        }
+        visit::walk_impl_item(self, ii)
     }
 
     fn visit_mac(&mut self, mac: &'v ast::Mac) {
@@ -169,5 +189,12 @@ impl<'a> FmtVisitor<'a> {
                 "".to_string()
             }
         }
+    }
+}
+
+fn is_skip(meta_item: &ast::MetaItem) -> bool {
+    match meta_item.node {
+        ast::MetaItem_::MetaWord(ref s) => *s == SKIP_ANNOTATION,
+        _ => false,
     }
 }

@@ -115,15 +115,19 @@ impl<'a> ChangeSet<'a> {
         }
     }
 
-    pub fn write_all_files(&self, mode: WriteMode) -> Result<(), ::std::io::Error> {
+    pub fn write_all_files(&self, mode: WriteMode) -> Result<(HashMap<String, String>), ::std::io::Error> {
+        let mut result = HashMap::new();
         for filename in self.file_map.keys() {
-            try!(self.write_file(filename, mode));
+            let one_result = try!(self.write_file(filename, mode));
+            if let Some(r) = one_result {
+                result.insert(filename.clone(), r);
+            }
         }
 
-        Ok(())
+        Ok(result)
     }
 
-    pub fn write_file(&self, filename: &str, mode: WriteMode) -> Result<(), ::std::io::Error> {
+    pub fn write_file(&self, filename: &str, mode: WriteMode) -> Result<Option<String>, ::std::io::Error> {
         let text = &self.file_map[filename];
 
         match mode {
@@ -147,13 +151,16 @@ impl<'a> ChangeSet<'a> {
                 let mut file = try!(File::create(&filename));
                 try!(write!(file, "{}", text));
             }
-            _ => {
+            WriteMode::Display => {
                 println!("{}:\n", filename);
                 println!("{}", text);
             }
+            WriteMode::Return(_) => {
+                return Ok(Some(text.to_string()));
+            }
         }
 
-        Ok(())
+        Ok(None)
     }
 }
 
