@@ -1452,7 +1452,7 @@ fn make_out_name(config: &Config, testfile: &Path, extension: &str) -> PathBuf {
 fn aux_output_dir_name(config: &Config, testfile: &Path) -> PathBuf {
     let f = output_base_name(config, testfile);
     let mut fname = f.file_name().unwrap().to_os_string();
-    fname.push("libaux");
+    fname.push(&format!(".{}.libaux", config.mode));
     f.with_file_name(&fname)
 }
 
