@@ -532,11 +532,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                obligation.repr(self.tcx()));
 
         self.infcx.probe(|snapshot| {
-            let (skol_obligation_trait_ref, skol_map) =
-                self.infcx().skolemize_late_bound_regions(&obligation.predicate, snapshot);
-            match self.match_impl(impl_def_id, obligation, snapshot,
-                                  &skol_map, skol_obligation_trait_ref.trait_ref.clone()) {
-                Ok(substs) => {
+            match self.match_impl(impl_def_id, obligation, snapshot) {
+                Ok((substs, skol_map)) => {
                     let vtable_impl = self.vtable_impl(impl_def_id,
                                                        substs,
                                                        obligation.cause.clone(),
@@ -1160,10 +1157,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let all_impls = self.all_impls(def_id);
         for &impl_def_id in &all_impls {
             self.infcx.probe(|snapshot| {
-                let (skol_obligation_trait_pred, skol_map) =
-                    self.infcx().skolemize_late_bound_regions(&obligation.predicate, snapshot);
-                match self.match_impl(impl_def_id, obligation, snapshot,
-                                      &skol_map, skol_obligation_trait_pred.trait_ref.clone()) {
+                match self.match_impl(impl_def_id, obligation, snapshot) {
                     Ok(_) => {
                         candidates.vec.push(ImplCandidate(impl_def_id));
                     }
@@ -2115,11 +2109,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // First, create the substitutions by matching the impl again,
         // this time not in a probe.
         self.infcx.commit_if_ok(|snapshot| {
-            let (skol_obligation_trait_ref, skol_map) =
-                self.infcx().skolemize_late_bound_regions(&obligation.predicate, snapshot);
-            let substs =
+            let (substs, skol_map) =
                 self.rematch_impl(impl_def_id, obligation,
-                                  snapshot, &skol_map, skol_obligation_trait_ref.trait_ref);
+                                  snapshot);
             debug!("confirm_impl_candidate substs={}", substs.repr(self.tcx()));
             Ok(self.vtable_impl(impl_def_id, substs, obligation.cause.clone(),
                                 obligation.recursion_depth + 1, skol_map, snapshot))
@@ -2306,14 +2298,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn rematch_impl(&mut self,
                     impl_def_id: ast::DefId,
                     obligation: &TraitObligation<'tcx>,
-                    snapshot: &infer::CombinedSnapshot,
-                    skol_map: &infer::SkolemizationMap,
-                    skol_obligation_trait_ref: Rc<ty::TraitRef<'tcx>>)
-                    -> Normalized<'tcx, Substs<'tcx>>
+                    snapshot: &infer::CombinedSnapshot)
+                    -> (Normalized<'tcx, Substs<'tcx>>, infer::SkolemizationMap)
     {
-        match self.match_impl(impl_def_id, obligation, snapshot,
-                              skol_map, skol_obligation_trait_ref) {
-            Ok(substs) => substs,
+        match self.match_impl(impl_def_id, obligation, snapshot) {
+            Ok((substs, skol_map)) => (substs, skol_map),
             Err(()) => {
                 self.tcx().sess.bug(
                     &format!("Impl {} was matchable against {} but now is not",
@@ -2326,10 +2315,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn match_impl(&mut self,
                   impl_def_id: ast::DefId,
                   obligation: &TraitObligation<'tcx>,
-                  snapshot: &infer::CombinedSnapshot,
-                  skol_map: &infer::SkolemizationMap,
-                  skol_obligation_trait_ref: Rc<ty::TraitRef<'tcx>>)
-                  -> Result<Normalized<'tcx, Substs<'tcx>>, ()>
+                  snapshot: &infer::CombinedSnapshot)
+                  -> Result<(Normalized<'tcx, Substs<'tcx>>,
+                             infer::SkolemizationMap), ()>
     {
         let impl_trait_ref = ty::impl_trait_ref(self.tcx(), impl_def_id).unwrap();
 
@@ -2339,6 +2327,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         if self.fast_reject_trait_refs(obligation, &*impl_trait_ref) {
             return Err(());
         }
+
+        let (skol_obligation, skol_map) = self.infcx().skolemize_late_bound_regions(
+            &obligation.predicate,
+            snapshot);
+        let skol_obligation_trait_ref = skol_obligation.trait_ref;
 
         let impl_substs = util::fresh_type_vars_for_impl(self.infcx,
                                                          obligation.cause.span,
@@ -2370,17 +2363,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Err(());
         }
 
-        if let Err(e) = self.infcx.leak_check(skol_map, snapshot) {
+        if let Err(e) = self.infcx.leak_check(&skol_map, snapshot) {
             debug!("match_impl: failed leak check due to `{}`",
                    ty::type_err_to_str(self.tcx(), &e));
             return Err(());
         }
 
         debug!("match_impl: success impl_substs={}", impl_substs.repr(self.tcx()));
-        Ok(Normalized {
+        Ok((Normalized {
             value: impl_substs,
             obligations: impl_trait_ref.obligations
-        })
+        }, skol_map))
     }
 
     fn fast_reject_trait_refs(&mut self,
