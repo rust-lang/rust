@@ -1,50 +1,51 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+//! Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+//! file at the top-level directory of this distribution and at
+//! http://!rust-lang.org/COPYRIGHT.
+//!
+//! Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+//! http://!www.apache.org/licenses/LICENSE-2.0> or the MIT license
+//! <LICENSE-MIT or http://!opensource.org/licenses/MIT>, at your
+//! option. This file may not be copied, modified, or distributed
+//! except according to those terms.
 
 //! # Debug Info Module
 //!
 //! This module serves the purpose of generating debug symbols. We use LLVM's
-//! [source level debugging](http://llvm.org/docs/SourceLevelDebugging.html)
-//! features for generating the debug information. The general principle is this:
+//! [source level debugging](http://!llvm.org/docs/SourceLevelDebugging.html)
+//! features for generating the debug information. The general principle is
+//! this:
 //!
 //! Given the right metadata in the LLVM IR, the LLVM code generator is able to
 //! create DWARF debug symbols for the given code. The
-//! [metadata](http://llvm.org/docs/LangRef.html#metadata-type) is structured much
-//! like DWARF *debugging information entries* (DIE), representing type information
-//! such as datatype layout, function signatures, block layout, variable location
-//! and scope information, etc. It is the purpose of this module to generate correct
-//! metadata and insert it into the LLVM IR.
+//! [metadata](http://!llvm.org/docs/LangRef.html#metadata-type) is structured
+//! much like DWARF *debugging information entries* (DIE), representing type
+//! information such as datatype layout, function signatures, block layout,
+//! variable location and scope information, etc. It is the purpose of this
+//! module to generate correct metadata and insert it into the LLVM IR.
 //!
 //! As the exact format of metadata trees may change between different LLVM
 //! versions, we now use LLVM
-//! [DIBuilder](http://llvm.org/docs/doxygen/html/classllvm_1_1DIBuilder.html) to
-//! create metadata where possible. This will hopefully ease the adaption of this
-//! module to future LLVM versions.
+//! [DIBuilder](http://!llvm.org/docs/doxygen/html/classllvm_1_1DIBuilder.html)
+//! to create metadata where possible. This will hopefully ease the adaption of
+//! this module to future LLVM versions.
 //!
-//! The public API of the module is a set of functions that will insert the correct
-//! metadata into the LLVM IR when called with the right parameters. The module is
-//! thus driven from an outside client with functions like
+//! The public API of the module is a set of functions that will insert the
+//! correct metadata into the LLVM IR when called with the right parameters.
+//! The module is thus driven from an outside client with functions like
 //! `debuginfo::create_local_var_metadata(bcx: block, local: &ast::local)`.
 //!
-//! Internally the module will try to reuse already created metadata by utilizing a
-//! cache. The way to get a shared metadata node when needed is thus to just call
-//! the corresponding function in this module:
+//! Internally the module will try to reuse already created metadata by
+//! utilizing a cache. The way to get a shared metadata node when needed is
+//! thus to just call the corresponding function in this module:
 //!
 //!     let file_metadata = file_metadata(crate_context, path);
 //!
-//! The function will take care of probing the cache for an existing node for that
-//! exact file path.
+//! The function will take care of probing the cache for an existing node for
+//! that exact file path.
 //!
 //! All private state used by the module is stored within either the
-//! CrateDebugContext struct (owned by the CrateContext) or the FunctionDebugContext
-//! (owned by the FunctionContext).
+//! CrateDebugContext struct (owned by the CrateContext) or the
+//! FunctionDebugContext (owned by the FunctionContext).
 //!
 //! This file consists of three conceptual sections:
 //! 1. The public interface of the module
@@ -54,12 +55,12 @@
 //!
 //! ## Recursive Types
 //!
-//! Some kinds of types, such as structs and enums can be recursive. That means that
-//! the type definition of some type X refers to some other type which in turn
-//! (transitively) refers to X. This introduces cycles into the type referral graph.
-//! A naive algorithm doing an on-demand, depth-first traversal of this graph when
-//! describing types, can get trapped in an endless loop when it reaches such a
-//! cycle.
+//! Some kinds of types, such as structs and enums can be recursive. That means
+//! that the type definition of some type X refers to some other type which in
+//! turn (transitively) refers to X. This introduces cycles into the type
+//! referral graph. A naive algorithm doing an on-demand, depth-first traversal
+//! of this graph when describing types, can get trapped in an endless loop
+//! when it reaches such a cycle.
 //!
 //! For example, the following simple type for a singly-linked list...
 //!
@@ -81,107 +82,111 @@
 //!       ...
 //! ```
 //!
-//! To break cycles like these, we use "forward declarations". That is, when the
-//! algorithm encounters a possibly recursive type (any struct or enum), it
+//! To break cycles like these, we use "forward declarations". That is, when
+//! the algorithm encounters a possibly recursive type (any struct or enum), it
 //! immediately creates a type description node and inserts it into the cache
-//! *before* describing the members of the type. This type description is just a
-//! stub (as type members are not described and added to it yet) but it allows the
-//! algorithm to already refer to the type. After the stub is inserted into the
-//! cache, the algorithm continues as before. If it now encounters a recursive
-//! reference, it will hit the cache and does not try to describe the type anew.
+//! *before* describing the members of the type. This type description is just
+//! a stub (as type members are not described and added to it yet) but it
+//! allows the algorithm to already refer to the type. After the stub is
+//! inserted into the cache, the algorithm continues as before. If it now
+//! encounters a recursive reference, it will hit the cache and does not try to
+//! describe the type anew.
 //!
-//! This behaviour is encapsulated in the 'RecursiveTypeDescription' enum, which
-//! represents a kind of continuation, storing all state needed to continue
-//! traversal at the type members after the type has been registered with the cache.
-//! (This implementation approach might be a tad over-engineered and may change in
-//! the future)
+//! This behaviour is encapsulated in the 'RecursiveTypeDescription' enum,
+//! which represents a kind of continuation, storing all state needed to
+//! continue traversal at the type members after the type has been registered
+//! with the cache. (This implementation approach might be a tad over-
+//! engineered and may change in the future)
 //!
 //!
 //! ## Source Locations and Line Information
 //!
-//! In addition to data type descriptions the debugging information must also allow
-//! to map machine code locations back to source code locations in order to be useful.
-//! This functionality is also handled in this module. The following functions allow
-//! to control source mappings:
+//! In addition to data type descriptions the debugging information must also
+//! allow to map machine code locations back to source code locations in order
+//! to be useful. This functionality is also handled in this module. The
+//! following functions allow to control source mappings:
 //!
 //! + set_source_location()
 //! + clear_source_location()
 //! + start_emitting_source_locations()
 //!
 //! `set_source_location()` allows to set the current source location. All IR
-//! instructions created after a call to this function will be linked to the given
-//! source location, until another location is specified with
+//! instructions created after a call to this function will be linked to the
+//! given source location, until another location is specified with
 //! `set_source_location()` or the source location is cleared with
-//! `clear_source_location()`. In the later case, subsequent IR instruction will not
-//! be linked to any source location. As you can see, this is a stateful API
-//! (mimicking the one in LLVM), so be careful with source locations set by previous
-//! calls. It's probably best to not rely on any specific state being present at a
-//! given point in code.
+//! `clear_source_location()`. In the later case, subsequent IR instruction
+//! will not be linked to any source location. As you can see, this is a
+//! stateful API (mimicking the one in LLVM), so be careful with source
+//! locations set by previous calls. It's probably best to not rely on any
+//! specific state being present at a given point in code.
 //!
-//! One topic that deserves some extra attention is *function prologues*. At the
-//! beginning of a function's machine code there are typically a few instructions
-//! for loading argument values into allocas and checking if there's enough stack
-//! space for the function to execute. This *prologue* is not visible in the source
-//! code and LLVM puts a special PROLOGUE END marker into the line table at the
-//! first non-prologue instruction of the function. In order to find out where the
-//! prologue ends, LLVM looks for the first instruction in the function body that is
-//! linked to a source location. So, when generating prologue instructions we have
-//! to make sure that we don't emit source location information until the 'real'
-//! function body begins. For this reason, source location emission is disabled by
-//! default for any new function being translated and is only activated after a call
-//! to the third function from the list above, `start_emitting_source_locations()`.
-//! This function should be called right before regularly starting to translate the
+//! One topic that deserves some extra attention is *function prologues*. At
+//! the beginning of a function's machine code there are typically a few
+//! instructions for loading argument values into allocas and checking if
+//! there's enough stack space for the function to execute. This *prologue* is
+//! not visible in the source code and LLVM puts a special PROLOGUE END marker
+//! into the line table at the first non-prologue instruction of the function.
+//! In order to find out where the prologue ends, LLVM looks for the first
+//! instruction in the function body that is linked to a source location. So,
+//! when generating prologue instructions we have to make sure that we don't
+//! emit source location information until the 'real' function body begins. For
+//! this reason, source location emission is disabled by default for any new
+//! function being translated and is only activated after a call to the third
+//! function from the list above, `start_emitting_source_locations()`. This
+//! function should be called right before regularly starting to translate the
 //! top-level block of the given function.
 //!
-//! There is one exception to the above rule: `llvm.dbg.declare` instruction must be
-//! linked to the source location of the variable being declared. For function
-//! parameters these `llvm.dbg.declare` instructions typically occur in the middle
-//! of the prologue, however, they are ignored by LLVM's prologue detection. The
-//! `create_argument_metadata()` and related functions take care of linking the
-//! `llvm.dbg.declare` instructions to the correct source locations even while
-//! source location emission is still disabled, so there is no need to do anything
-//! special with source location handling here.
+//! There is one exception to the above rule: `llvm.dbg.declare` instruction
+//! must be linked to the source location of the variable being declared. For
+//! function parameters these `llvm.dbg.declare` instructions typically occur
+//! in the middle of the prologue, however, they are ignored by LLVM's prologue
+//! detection. The `create_argument_metadata()` and related functions take care
+//! of linking the `llvm.dbg.declare` instructions to the correct source
+//! locations even while source location emission is still disabled, so there
+//! is no need to do anything special with source location handling here.
 //!
 //! ## Unique Type Identification
 //!
-//! In order for link-time optimization to work properly, LLVM needs a unique type
-//! identifier that tells it across compilation units which types are the same as
-//! others. This type identifier is created by TypeMap::get_unique_type_id_of_type()
-//! using the following algorithm:
+//! In order for link-time optimization to work properly, LLVM needs a unique
+//! type identifier that tells it across compilation units which types are the
+//! same as others. This type identifier is created by
+//! TypeMap::get_unique_type_id_of_type() using the following algorithm:
 //!
 //! (1) Primitive types have their name as ID
 //! (2) Structs, enums and traits have a multipart identifier
 //!
-//!     (1) The first part is the SVH (strict version hash) of the crate they were
-//!         originally defined in
+//!     (1) The first part is the SVH (strict version hash) of the crate they
+//!          wereoriginally defined in
 //!
-//!     (2) The second part is the ast::NodeId of the definition in their original
-//!         crate
+//!     (2) The second part is the ast::NodeId of the definition in their
+//!          originalcrate
 //!
-//!     (3) The final part is a concatenation of the type IDs of their concrete type
-//!         arguments if they are generic types.
+//!     (3) The final part is a concatenation of the type IDs of their concrete
+//!          typearguments if they are generic types.
 //!
-//! (3) Tuple-, pointer and function types are structurally identified, which means
-//!     that they are equivalent if their component types are equivalent (i.e. (int,
-//!     int) is the same regardless in which crate it is used).
+//! (3) Tuple-, pointer and function types are structurally identified, which
+//!     means that they are equivalent if their component types are equivalent
+//!     (i.e. (int, int) is the same regardless in which crate it is used).
 //!
-//! This algorithm also provides a stable ID for types that are defined in one crate
-//! but instantiated from metadata within another crate. We just have to take care
-//! to always map crate and node IDs back to the original crate context.
+//! This algorithm also provides a stable ID for types that are defined in one
+//! crate but instantiated from metadata within another crate. We just have to
+//! take care to always map crate and node IDs back to the original crate
+//! context.
 //!
-//! As a side-effect these unique type IDs also help to solve a problem arising from
-//! lifetime parameters. Since lifetime parameters are completely omitted in
-//! debuginfo, more than one `Ty` instance may map to the same debuginfo type
-//! metadata, that is, some struct `Struct<'a>` may have N instantiations with
-//! different concrete substitutions for `'a`, and thus there will be N `Ty`
-//! instances for the type `Struct<'a>` even though it is not generic otherwise.
-//! Unfortunately this means that we cannot use `ty::type_id()` as cheap identifier
-//! for type metadata---we have done this in the past, but it led to unnecessary
-//! metadata duplication in the best case and LLVM assertions in the worst. However,
-//! the unique type ID as described above *can* be used as identifier. Since it is
-//! comparatively expensive to construct, though, `ty::type_id()` is still used
-//! additionally as an optimization for cases where the exact same type has been
-//! seen before (which is most of the time).
+//! As a side-effect these unique type IDs also help to solve a problem arising
+//! from lifetime parameters. Since lifetime parameters are completely omitted
+//! in debuginfo, more than one `Ty` instance may map to the same debuginfo
+//! type metadata, that is, some struct `Struct<'a>` may have N instantiations
+//! with different concrete substitutions for `'a`, and thus there will be N
+//! `Ty` instances for the type `Struct<'a>` even though it is not generic
+//! otherwise. Unfortunately this means that we cannot use `ty::type_id()` as
+//! cheap identifier for type metadata---we have done this in the past, but it
+//! led to unnecessary metadata duplication in the best case and LLVM
+//! assertions in the worst. However, the unique type ID as described above
+//! *can* be used as identifier. Since it is comparatively expensive to
+//! construct, though, `ty::type_id()` is still used additionally as an
+//! optimization for cases where the exact same type has been seen before
+//! (which is most of the time).
 use self::VariableAccess::*;
 use self::VariableKind::*;
 use self::MemberOffset::*;
@@ -976,10 +981,11 @@ pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let aops = unsafe {
         [llvm::LLVMDIBuilderCreateOpDeref()]
     };
-    // Regardless of the actual type (`T`) we're always passed the stack slot (alloca)
-    // for the binding. For ByRef bindings that's a `T*` but for ByMove bindings we
-    // actually have `T**`. So to get the actual variable we need to dereference once
-    // more. For ByCopy we just use the stack slot we created for the binding.
+    // Regardless of the actual type (`T`) we're always passed the stack slot
+    // (alloca) for the binding. For ByRef bindings that's a `T*` but for ByMove
+    // bindings we actually have `T**`. So to get the actual variable we need to
+    // dereference once more. For ByCopy we just use the stack slot we created
+    // for the binding.
     let var_access = match binding.trmode {
         TrByCopy(llbinding) => DirectVariable {
             alloca: llbinding
@@ -1604,9 +1610,10 @@ fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
     // current compilation unit (i.e. if it is *static* in the C-sense). The
     // *reachable* set should provide a good approximation of this, as it
     // contains everything that might leak out of the current crate (by being
-    // externally visible or by being inlined into something externally visible).
-    // It might better to use the `exported_items` set from `driver::CrateAnalysis`
-    // in the future, but (atm) this set is not available in the translation pass.
+    // externally visible or by being inlined into something externally
+    // visible). It might better to use the `exported_items` set from
+    // `driver::CrateAnalysis` in the future, but (atm) this set is not
+    // available in the translation pass.
     !cx.reachable().contains(&node_id)
 }
 
@@ -1869,12 +1876,12 @@ fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 enum MemberOffset {
     FixedMemberOffset { bytes: usize },
-    // For ComputedMemberOffset, the offset is read from the llvm type definition
+    // For ComputedMemberOffset, the offset is read from the llvm type definition.
     ComputedMemberOffset
 }
 
 // Description of a type member, which can either be a regular field (as in
-// structs or tuples) or an enum variant
+// structs or tuples) or an enum variant.
 struct MemberDescription {
     name: String,
     llvm_type: Type,
@@ -1916,8 +1923,9 @@ impl<'tcx> MemberDescriptionFactory<'tcx> {
 
 // A description of some recursive type. It can either be already finished (as
 // with FinalMetadata) or it is not yet finished, but contains all information
-// needed to generate the missing parts of the description. See the documentation
-// section on Recursive Types at the top of this file for more information.
+// needed to generate the missing parts of the description. See the
+// documentation section on Recursive Types at the top of this file for more
+// information.
 enum RecursiveTypeDescription<'tcx> {
     UnfinishedMetadata {
         unfinished_type: Ty<'tcx>,
@@ -1954,7 +1962,8 @@ fn create_and_register_recursive_type_forward_declaration<'a, 'tcx>(
 
 impl<'tcx> RecursiveTypeDescription<'tcx> {
     // Finishes up the description of the type in question (mostly by providing
-    // descriptions of the fields of the given type) and returns the final type metadata.
+    // descriptions of the fields of the given type) and returns the final type
+    // metadata.
     fn finalize<'a>(&self, cx: &CrateContext<'a, 'tcx>) -> MetadataCreationResult {
         match *self {
             FinalMetadata(metadata) => MetadataCreationResult::new(metadata, false),
@@ -1970,7 +1979,8 @@ impl<'tcx> RecursiveTypeDescription<'tcx> {
                 // the TypeMap so that recursive references are possible. This
                 // will always be the case if the RecursiveTypeDescription has
                 // been properly created through the
-                // create_and_register_recursive_type_forward_declaration() function.
+                // create_and_register_recursive_type_forward_declaration()
+                // function.
                 {
                     let type_map = debug_context(cx).type_map.borrow();
                     if type_map.find_metadata_for_unique_id(unique_type_id).is_none() ||
@@ -2150,9 +2160,9 @@ fn prepare_tuple_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 // Describes the members of an enum value: An enum is described as a union of
 // structs in DWARF. This MemberDescriptionFactory provides the description for
-// the members of this union; so for every variant of the given enum, this factory
-// will produce one MemberDescription (all with no name and a fixed offset of
-// zero bytes).
+// the members of this union; so for every variant of the given enum, this
+// factory will produce one MemberDescription (all with no name and a fixed
+// offset of zero bytes).
 struct EnumMemberDescriptionFactory<'tcx> {
     enum_type: Ty<'tcx>,
     type_rep: Rc<adt::Repr<'tcx>>,
@@ -2496,9 +2506,9 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let discriminant_type_metadata = |inttype| {
         // We can reuse the type of the discriminant for all monomorphized
-        // instances of an enum because it doesn't depend on any type parameters.
-        // The def_id, uniquely identifying the enum's polytype acts as key in
-        // this cache.
+        // instances of an enum because it doesn't depend on any type
+        // parameters. The def_id, uniquely identifying the enum's polytype acts
+        // as key in this cache.
         let cached_discriminant_type_metadata = debug_context(cx).created_enum_disr_types
                                                                  .borrow()
                                                                  .get(&enum_def_id).cloned();
@@ -2640,10 +2650,11 @@ fn set_members_of_composite_type(cx: &CrateContext,
                                  composite_llvm_type: Type,
                                  member_descriptions: &[MemberDescription]) {
     // In some rare cases LLVM metadata uniquing would lead to an existing type
-    // description being used instead of a new one created in create_struct_stub.
-    // This would cause a hard to trace assertion in DICompositeType::SetTypeArray().
-    // The following check makes sure that we get a better error message if this
-    // should happen again due to some regression.
+    // description being used instead of a new one created in
+    // create_struct_stub. This would cause a hard to trace assertion in
+    // DICompositeType::SetTypeArray(). The following check makes sure that we
+    // get a better error message if this should happen again due to some
+    // regression.
     {
         let mut composite_types_completed =
             debug_context(cx).composite_types_completed.borrow_mut();
