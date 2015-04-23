@@ -249,6 +249,7 @@ pub mod fs {
     /// # Ok(())
     /// # }
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn symlink<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<()>
     {
         sys::fs2::symlink(src.as_ref(), dst.as_ref())
