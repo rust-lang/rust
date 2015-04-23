@@ -16,7 +16,7 @@ fn main() {
     // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let _bar = Box::new(1_usize) as std::fmt::Debug;
     //~^ ERROR cast to unsized type: `Box<usize>` as `core::fmt::Debug`
-    //~^^ HELP did you mean `Box<core::fmt::Debug>`?
+    //~^^ HELP try casting to a `Box` instead
 
     let _baz = 1_usize as std::fmt::Debug;
     //~^ ERROR cast to unsized type: `usize` as `core::fmt::Debug`

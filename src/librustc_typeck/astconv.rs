@@ -66,7 +66,7 @@ use std::iter::repeat;
 use std::rc::Rc;
 use std::slice;
 use syntax::{abi, ast, ast_util};
-use syntax::codemap::Span;
+use syntax::codemap::{Span, Pos};
 use syntax::parse::token;
 use syntax::print::pprust;
 
@@ -975,21 +975,32 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
             span_err!(this.tcx().sess, ty.span, E0178,
                       "expected a path on the left-hand side of `+`, not `{}`",
                       pprust::ty_to_string(ty));
-            match ty.node {
-                ast::TyRptr(None, ref mut_ty) => {
-                    fileline_help!(this.tcx().sess, ty.span,
-                               "perhaps you meant `&{}({} +{})`? (per RFC 438)",
-                               ppaux::mutability_to_string(mut_ty.mutbl),
-                               pprust::ty_to_string(&*mut_ty.ty),
-                               pprust::bounds_to_string(bounds));
+            let hi = bounds.iter().map(|x| match *x {
+                ast::TraitTyParamBound(ref tr, _) => tr.span.hi,
+                ast::RegionTyParamBound(ref r) => r.span.hi,
+            }).max_by(|x| x.to_usize());
+            let full_span = hi.map(|hi| Span {
+                lo: ty.span.lo,
+                hi: hi,
+                expn_id: ty.span.expn_id,
+            });
+            match (&ty.node, full_span) {
+                (&ast::TyRptr(None, ref mut_ty), Some(full_span)) => {
+                    this.tcx().sess
+                        .span_suggestion(full_span, "try adding parentheses (per RFC 438):",
+                                         format!("&{}({} +{})",
+                                                 ppaux::mutability_to_string(mut_ty.mutbl),
+                                                 pprust::ty_to_string(&*mut_ty.ty),
+                                                 pprust::bounds_to_string(bounds)));
                 }
-               ast::TyRptr(Some(ref lt), ref mut_ty) => {
-                    fileline_help!(this.tcx().sess, ty.span,
-                               "perhaps you meant `&{} {}({} +{})`? (per RFC 438)",
-                               pprust::lifetime_to_string(lt),
-                               ppaux::mutability_to_string(mut_ty.mutbl),
-                               pprust::ty_to_string(&*mut_ty.ty),
-                               pprust::bounds_to_string(bounds));
+                (&ast::TyRptr(Some(ref lt), ref mut_ty), Some(full_span)) => {
+                    this.tcx().sess
+                        .span_suggestion(full_span, "try adding parentheses (per RFC 438):",
+                                         format!("&{} {}({} +{})",
+                                                 pprust::lifetime_to_string(lt),
+                                                 ppaux::mutability_to_string(mut_ty.mutbl),
+                                                 pprust::ty_to_string(&*mut_ty.ty),
+                                                 pprust::bounds_to_string(bounds)));
                 }
 
                 _ => {

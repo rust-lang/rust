@@ -978,6 +978,9 @@ impl<'a> Parser<'a> {
     pub fn span_help(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_help(sp, m)
     }
+    pub fn span_suggestion(&self, sp: Span, m: &str, n: String) {
+        self.sess.span_diagnostic.span_suggestion(sp, m, n)
+    }
     pub fn fileline_help(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.fileline_help(sp, m)
     }
@@ -2600,6 +2603,7 @@ impl<'a> Parser<'a> {
             }
 
             let lo = self.span.lo;
+            let box_hi = self.span.hi;
 
             try!(self.bump());
 
@@ -2616,9 +2620,10 @@ impl<'a> Parser<'a> {
                         self.span_err(span,
                                       &format!("expected expression, found `{}`",
                                               this_token_to_string));
-                        let box_span = mk_sp(lo, self.last_span.hi);
-                        self.span_help(box_span,
-                                       "perhaps you meant `box() (foo)` instead?");
+                        let box_span = mk_sp(lo, box_hi);
+                        self.span_suggestion(box_span,
+                                             "try using `box()` instead:",
+                                             "box()".to_string());
                         self.abort_if_errors();
                     }
                     let subexpression = try!(self.parse_prefix_expr());
