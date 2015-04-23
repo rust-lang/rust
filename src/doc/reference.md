@@ -3685,7 +3685,7 @@ fn main() {
 }
 ```
 
-In this example, the trait `Printable` occurs as an trait object in both the
+In this example, the trait `Printable` occurs as a trait object in both the
 type signature of `print`, and the cast expression in `main`.
 
 ### Type parameters
