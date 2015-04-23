@@ -68,6 +68,9 @@ impl<'a> FmtVisitor<'a> {
         let (one_line_budget, multi_line_budget, arg_indent) =
             self.compute_budgets_for_args(&mut result, indent, ret_str.len(), newline_brace);
 
+        debug!("rewrite_fn: one_line_budget: {}, multi_line_budget: {}, arg_indent: {}",
+               one_line_budget, multi_line_budget, arg_indent);
+
         result.push('(');
         result.push_str(&self.rewrite_args(&fd.inputs,
                                            explicit_self,
@@ -252,8 +255,8 @@ impl<'a> FmtVisitor<'a> {
         // Try keeping everything on the same line
         if !result.contains("\n") {
             // 3 = `() `, space is before ret_string
-            let mut used_space = indent + result.len() + 3 + ret_str_len;
-            if newline_brace {
+            let mut used_space = indent + result.len() + ret_str_len + 3;
+            if !newline_brace {
                 used_space += 2;
             }
             let one_line_budget = if used_space > MAX_WIDTH {
@@ -262,11 +265,13 @@ impl<'a> FmtVisitor<'a> {
                 MAX_WIDTH - used_space
             };
 
+            // 2 = `()`
             let used_space = indent + result.len() + 2;
             let max_space = IDEAL_WIDTH + LEEWAY;
+            debug!("compute_budgets_for_args: used_space: {}, max_space: {}",
+                   used_space, max_space);
             if used_space < max_space {
                 budgets = Some((one_line_budget,
-                                // 2 = `()`
                                 max_space - used_space,
                                 indent + result.len() + 1));
             }

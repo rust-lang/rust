@@ -63,6 +63,8 @@ pub fn write_list<'b>(items: &[(String, String)], formatting: &ListFormatting<'b
 
     // Check if we need to fallback from horizontal listing, if possible.
     if tactic == ListTactic::HorizontalVertical {
+        debug!("write_list: total_width: {}, total_sep_len: {}, h_width: {}",
+               total_width, total_sep_len, formatting.h_width);
         if total_width + total_sep_len > formatting.h_width {
             tactic = ListTactic::Vertical;
         } else {

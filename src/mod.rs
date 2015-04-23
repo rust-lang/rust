@@ -157,6 +157,7 @@ fn fmt_lines(changes: &mut ChangeSet) {
         }
 
         if newline_count > 1 {
+            debug!("track truncate: {} {} {}", f, text.len, newline_count);
             truncate_todo.push((f, text.len - newline_count + 1))
         }
 
