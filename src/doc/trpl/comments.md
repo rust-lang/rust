@@ -43,3 +43,18 @@ value passed to it is `false`.
 
 You can use the [`rustdoc`](documentation.html) tool to generate HTML documentation
 from these doc comments, and also to run the code examples as tests!
+
+Rust also supports a third kind of comment that is used less often.  A *multi-line
+comment* starts with `/*` and ends with `*/`.  Multi-line comments are useful
+for commenting out several lines of code temporarily, during development:
+
+```rust
+fn count(n) {
+    let range = 0..n;
+    /*
+    for i in range {
+        println!("{}", i);
+    }
+    */
+}
+```
