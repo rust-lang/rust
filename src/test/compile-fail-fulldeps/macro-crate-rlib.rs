@@ -11,7 +11,6 @@
 // aux-build:rlib_crate_test.rs
 // ignore-stage1
 // ignore-tidy-linelength
-// ignore-android
 // ignore-cross-compile gives a different error message
 
 #![feature(plugin)]

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // aux-build:issue-21801.rs
-// ignore-android
+// ignore-cross-compile
 
 extern crate issue_21801;
 

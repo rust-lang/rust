@@ -27,7 +27,8 @@ define MK_TARGETS
 # on some platforms, but LLVM just prints a warning so that's fine for
 # now.
 $(1): simd.rs
-	$$(RUSTC) --target=$(1) --emit=llvm-ir,asm simd.rs -C target-feature='+neon,+sse2'
+	$$(RUSTC) --target=$(1) --emit=llvm-ir,asm simd.rs \
+                -C target-feature='+neon,+sse2' -C extra-filename=-$(1)
 endef
 
 $(foreach targetxxx,$(TARGETS),$(eval $(call MK_TARGETS,$(targetxxx))))
