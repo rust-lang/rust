@@ -10,7 +10,6 @@
 
 use std::prelude::v1::*;
 use std::{str, mem, i16, f32, f64, fmt};
-use std::num::Float as StdFloat;
 use std::slice::bytes;
 use std::__rand as rand;
 use rand::{Rand, XorShiftRng};
@@ -159,12 +158,12 @@ fn check_exact<F, T>(mut f: F, v: T, vstr: &str, expected: &[u8], expectedk: i16
     }
 }
 
-fn check_exact_one<F, T>(mut f: F, x: T, e: isize, tstr: &str, expected: &[u8], expectedk: i16)
-        where T: DecodableFloat + StdFloat + fmt::Display,
+fn check_exact_one<F, T>(mut f: F, x: i64, e: isize, tstr: &str, expected: &[u8], expectedk: i16)
+        where T: DecodableFloat + fmt::Display,
               F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
     // use a large enough buffer
     let mut buf = [b'_'; 1024];
-    let v: T = StdFloat::ldexp(x, e);
+    let v: T = DecodableFloat::ldexpi(x, e);
     let decoded = decode_finite(v);
 
     try_exact!(f(&decoded) => &mut buf, &expected, expectedk;
@@ -220,8 +219,7 @@ pub fn f32_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     // 10^8 * 0.3355443
     // 10^8 * 0.33554432
     // 10^8 * 0.33554436
-    let twoto25: f32 = StdFloat::ldexp(1.0, 25);
-    check_shortest!(f(twoto25) => b"33554432", 8);
+    check_shortest!(f(f32::ldexp(1.0, 25)) => b"33554432", 8);
 
     // 10^39 * 0.340282326356119256160033759537265639424
     // 10^39 * 0.34028234663852885981170418348451692544
@@ -236,13 +234,13 @@ pub fn f32_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     // 10^-44 * 0
     // 10^-44 * 0.1401298464324817070923729583289916131280...
     // 10^-44 * 0.2802596928649634141847459166579832262560...
-    let minf32: f32 = StdFloat::ldexp(1.0, -149);
+    let minf32 = f32::ldexp(1.0, -149);
     check_shortest!(f(minf32) => b"1", -44);
 }
 
 pub fn f32_exact_sanity_test<F>(mut f: F)
         where F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
-    let minf32: f32 = StdFloat::ldexp(1.0, -149);
+    let minf32 = f32::ldexp(1.0, -149);
 
     check_exact!(f(0.1f32)            => b"100000001490116119384765625             ", 0);
     check_exact!(f(1.0f32/3.0)        => b"3333333432674407958984375               ", 0);
@@ -253,32 +251,32 @@ pub fn f32_exact_sanity_test<F>(mut f: F)
     check_exact!(f(minf32)            => b"1401298464324817070923729583289916131280", -44);
 
     // [1], Table 16: Stress Inputs for Converting 24-bit Binary to Decimal, < 1/2 ULP
-    check_exact_one!(f(12676506.0, -102; f32) => b"2",            -23);
-    check_exact_one!(f(12676506.0, -103; f32) => b"12",           -23);
-    check_exact_one!(f(15445013.0,   86; f32) => b"119",           34);
-    check_exact_one!(f(13734123.0, -138; f32) => b"3941",         -34);
-    check_exact_one!(f(12428269.0, -130; f32) => b"91308",        -32);
-    check_exact_one!(f(15334037.0, -146; f32) => b"171900",       -36);
-    check_exact_one!(f(11518287.0,  -41; f32) => b"5237910",       -5);
-    check_exact_one!(f(12584953.0, -145; f32) => b"28216440",     -36);
-    check_exact_one!(f(15961084.0, -125; f32) => b"375243281",    -30);
-    check_exact_one!(f(14915817.0, -146; f32) => b"1672120916",   -36);
-    check_exact_one!(f(10845484.0, -102; f32) => b"21388945814",  -23);
-    check_exact_one!(f(16431059.0,  -61; f32) => b"712583594561", -11);
+    check_exact_one!(f(12676506, -102; f32) => b"2",            -23);
+    check_exact_one!(f(12676506, -103; f32) => b"12",           -23);
+    check_exact_one!(f(15445013,   86; f32) => b"119",           34);
+    check_exact_one!(f(13734123, -138; f32) => b"3941",         -34);
+    check_exact_one!(f(12428269, -130; f32) => b"91308",        -32);
+    check_exact_one!(f(15334037, -146; f32) => b"171900",       -36);
+    check_exact_one!(f(11518287,  -41; f32) => b"5237910",       -5);
+    check_exact_one!(f(12584953, -145; f32) => b"28216440",     -36);
+    check_exact_one!(f(15961084, -125; f32) => b"375243281",    -30);
+    check_exact_one!(f(14915817, -146; f32) => b"1672120916",   -36);
+    check_exact_one!(f(10845484, -102; f32) => b"21388945814",  -23);
+    check_exact_one!(f(16431059,  -61; f32) => b"712583594561", -11);
 
     // [1], Table 17: Stress Inputs for Converting 24-bit Binary to Decimal, > 1/2 ULP
-    check_exact_one!(f(16093626.0,   69; f32) => b"1",             29);
-    check_exact_one!(f( 9983778.0,   25; f32) => b"34",            15);
-    check_exact_one!(f(12745034.0,  104; f32) => b"259",           39);
-    check_exact_one!(f(12706553.0,   72; f32) => b"6001",          29);
-    check_exact_one!(f(11005028.0,   45; f32) => b"38721",         21);
-    check_exact_one!(f(15059547.0,   71; f32) => b"355584",        29);
-    check_exact_one!(f(16015691.0,  -99; f32) => b"2526831",      -22);
-    check_exact_one!(f( 8667859.0,   56; f32) => b"62458507",      24);
-    check_exact_one!(f(14855922.0,  -82; f32) => b"307213267",    -17);
-    check_exact_one!(f(14855922.0,  -83; f32) => b"1536066333",   -17);
-    check_exact_one!(f(10144164.0, -110; f32) => b"78147796834",  -26);
-    check_exact_one!(f(13248074.0,   95; f32) => b"524810279937",  36);
+    check_exact_one!(f(16093626,   69; f32) => b"1",             29);
+    check_exact_one!(f( 9983778,   25; f32) => b"34",            15);
+    check_exact_one!(f(12745034,  104; f32) => b"259",           39);
+    check_exact_one!(f(12706553,   72; f32) => b"6001",          29);
+    check_exact_one!(f(11005028,   45; f32) => b"38721",         21);
+    check_exact_one!(f(15059547,   71; f32) => b"355584",        29);
+    check_exact_one!(f(16015691,  -99; f32) => b"2526831",      -22);
+    check_exact_one!(f( 8667859,   56; f32) => b"62458507",      24);
+    check_exact_one!(f(14855922,  -82; f32) => b"307213267",    -17);
+    check_exact_one!(f(14855922,  -83; f32) => b"1536066333",   -17);
+    check_exact_one!(f(10144164, -110; f32) => b"78147796834",  -26);
+    check_exact_one!(f(13248074,   95; f32) => b"524810279937",  36);
 }
 
 pub fn f64_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
@@ -319,8 +317,7 @@ pub fn f64_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     // 10^20 * 0.18446744073709549568
     // 10^20 * 0.18446744073709551616
     // 10^20 * 0.18446744073709555712
-    let twoto64: f64 = StdFloat::ldexp(1.0, 64);
-    check_shortest!(f(twoto64) => b"18446744073709552", 20);
+    check_shortest!(f(f64::ldexp(1.0, 64)) => b"18446744073709552", 20);
 
     // pathological case: high = 10^23 (exact). tie breaking should always prefer that.
     // 10^24 * 0.099999999999999974834176
@@ -341,13 +338,13 @@ pub fn f64_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8])
     // 10^-323 * 0
     // 10^-323 * 0.4940656458412465441765687928682213723650...
     // 10^-323 * 0.9881312916824930883531375857364427447301...
-    let minf64: f64 = StdFloat::ldexp(1.0, -1074);
+    let minf64 = f64::ldexp(1.0, -1074);
     check_shortest!(f(minf64) => b"5", -323);
 }
 
 pub fn f64_exact_sanity_test<F>(mut f: F)
         where F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
-    let minf64: f64 = StdFloat::ldexp(1.0, -1074);
+    let minf64 = f64::ldexp(1.0, -1074);
 
     check_exact!(f(0.1f64)            => b"1000000000000000055511151231257827021181", 0);
     check_exact!(f(0.45f64)           => b"4500000000000000111022302462515654042363", 0);
@@ -381,52 +378,52 @@ pub fn f64_exact_sanity_test<F>(mut f: F)
                                            7538682506419718265533447265625         ", -323);
 
     // [1], Table 3: Stress Inputs for Converting 53-bit Binary to Decimal, < 1/2 ULP
-    check_exact_one!(f(8511030020275656.0,  -342; f64) => b"9",                       -87);
-    check_exact_one!(f(5201988407066741.0,  -824; f64) => b"46",                     -232);
-    check_exact_one!(f(6406892948269899.0,   237; f64) => b"141",                      88);
-    check_exact_one!(f(8431154198732492.0,    72; f64) => b"3981",                     38);
-    check_exact_one!(f(6475049196144587.0,    99; f64) => b"41040",                    46);
-    check_exact_one!(f(8274307542972842.0,   726; f64) => b"292084",                  235);
-    check_exact_one!(f(5381065484265332.0,  -456; f64) => b"2891946",                -121);
-    check_exact_one!(f(6761728585499734.0, -1057; f64) => b"43787718",               -302);
-    check_exact_one!(f(7976538478610756.0,   376; f64) => b"122770163",               130);
-    check_exact_one!(f(5982403858958067.0,   377; f64) => b"1841552452",              130);
-    check_exact_one!(f(5536995190630837.0,    93; f64) => b"54835744350",              44);
-    check_exact_one!(f(7225450889282194.0,   710; f64) => b"389190181146",            230);
-    check_exact_one!(f(7225450889282194.0,   709; f64) => b"1945950905732",           230);
-    check_exact_one!(f(8703372741147379.0,   117; f64) => b"14460958381605",           52);
-    check_exact_one!(f(8944262675275217.0, -1001; f64) => b"417367747458531",        -285);
-    check_exact_one!(f(7459803696087692.0,  -707; f64) => b"1107950772878888",       -196);
-    check_exact_one!(f(6080469016670379.0,  -381; f64) => b"12345501366327440",       -98);
-    check_exact_one!(f(8385515147034757.0,   721; f64) => b"925031711960365024",      233);
-    check_exact_one!(f(7514216811389786.0,  -828; f64) => b"4198047150284889840",    -233);
-    check_exact_one!(f(8397297803260511.0,  -345; f64) => b"11716315319786511046",    -87);
-    check_exact_one!(f(6733459239310543.0,   202; f64) => b"432810072844612493629",    77);
-    check_exact_one!(f(8091450587292794.0,  -473; f64) => b"3317710118160031081518", -126);
+    check_exact_one!(f(8511030020275656,  -342; f64) => b"9",                       -87);
+    check_exact_one!(f(5201988407066741,  -824; f64) => b"46",                     -232);
+    check_exact_one!(f(6406892948269899,   237; f64) => b"141",                      88);
+    check_exact_one!(f(8431154198732492,    72; f64) => b"3981",                     38);
+    check_exact_one!(f(6475049196144587,    99; f64) => b"41040",                    46);
+    check_exact_one!(f(8274307542972842,   726; f64) => b"292084",                  235);
+    check_exact_one!(f(5381065484265332,  -456; f64) => b"2891946",                -121);
+    check_exact_one!(f(6761728585499734, -1057; f64) => b"43787718",               -302);
+    check_exact_one!(f(7976538478610756,   376; f64) => b"122770163",               130);
+    check_exact_one!(f(5982403858958067,   377; f64) => b"1841552452",              130);
+    check_exact_one!(f(5536995190630837,    93; f64) => b"54835744350",              44);
+    check_exact_one!(f(7225450889282194,   710; f64) => b"389190181146",            230);
+    check_exact_one!(f(7225450889282194,   709; f64) => b"1945950905732",           230);
+    check_exact_one!(f(8703372741147379,   117; f64) => b"14460958381605",           52);
+    check_exact_one!(f(8944262675275217, -1001; f64) => b"417367747458531",        -285);
+    check_exact_one!(f(7459803696087692,  -707; f64) => b"1107950772878888",       -196);
+    check_exact_one!(f(6080469016670379,  -381; f64) => b"12345501366327440",       -98);
+    check_exact_one!(f(8385515147034757,   721; f64) => b"925031711960365024",      233);
+    check_exact_one!(f(7514216811389786,  -828; f64) => b"4198047150284889840",    -233);
+    check_exact_one!(f(8397297803260511,  -345; f64) => b"11716315319786511046",    -87);
+    check_exact_one!(f(6733459239310543,   202; f64) => b"432810072844612493629",    77);
+    check_exact_one!(f(8091450587292794,  -473; f64) => b"3317710118160031081518", -126);
 
     // [1], Table 4: Stress Inputs for Converting 53-bit Binary to Decimal, > 1/2 ULP
-    check_exact_one!(f(6567258882077402.0,   952; f64) => b"3",                       303);
-    check_exact_one!(f(6712731423444934.0,   535; f64) => b"76",                      177);
-    check_exact_one!(f(6712731423444934.0,   534; f64) => b"378",                     177);
-    check_exact_one!(f(5298405411573037.0,  -957; f64) => b"4350",                   -272);
-    check_exact_one!(f(5137311167659507.0,  -144; f64) => b"23037",                   -27);
-    check_exact_one!(f(6722280709661868.0,   363; f64) => b"126301",                  126);
-    check_exact_one!(f(5344436398034927.0,  -169; f64) => b"7142211",                 -35);
-    check_exact_one!(f(8369123604277281.0,  -853; f64) => b"13934574",               -240);
-    check_exact_one!(f(8995822108487663.0,  -780; f64) => b"141463449",              -218);
-    check_exact_one!(f(8942832835564782.0,  -383; f64) => b"4539277920",              -99);
-    check_exact_one!(f(8942832835564782.0,  -384; f64) => b"22696389598",             -99);
-    check_exact_one!(f(8942832835564782.0,  -385; f64) => b"113481947988",            -99);
-    check_exact_one!(f(6965949469487146.0,  -249; f64) => b"7700366561890",           -59);
-    check_exact_one!(f(6965949469487146.0,  -250; f64) => b"38501832809448",          -59);
-    check_exact_one!(f(6965949469487146.0,  -251; f64) => b"192509164047238",         -59);
-    check_exact_one!(f(7487252720986826.0,   548; f64) => b"6898586531774201",        181);
-    check_exact_one!(f(5592117679628511.0,   164; f64) => b"13076622631878654",        66);
-    check_exact_one!(f(8887055249355788.0,   665; f64) => b"136052020756121240",      217);
-    check_exact_one!(f(6994187472632449.0,   690; f64) => b"3592810217475959676",     224);
-    check_exact_one!(f(8797576579012143.0,   588; f64) => b"89125197712484551899",    193);
-    check_exact_one!(f(7363326733505337.0,   272; f64) => b"558769757362301140950",    98);
-    check_exact_one!(f(8549497411294502.0,  -448; f64) => b"1176257830728540379990", -118);
+    check_exact_one!(f(6567258882077402,   952; f64) => b"3",                       303);
+    check_exact_one!(f(6712731423444934,   535; f64) => b"76",                      177);
+    check_exact_one!(f(6712731423444934,   534; f64) => b"378",                     177);
+    check_exact_one!(f(5298405411573037,  -957; f64) => b"4350",                   -272);
+    check_exact_one!(f(5137311167659507,  -144; f64) => b"23037",                   -27);
+    check_exact_one!(f(6722280709661868,   363; f64) => b"126301",                  126);
+    check_exact_one!(f(5344436398034927,  -169; f64) => b"7142211",                 -35);
+    check_exact_one!(f(8369123604277281,  -853; f64) => b"13934574",               -240);
+    check_exact_one!(f(8995822108487663,  -780; f64) => b"141463449",              -218);
+    check_exact_one!(f(8942832835564782,  -383; f64) => b"4539277920",              -99);
+    check_exact_one!(f(8942832835564782,  -384; f64) => b"22696389598",             -99);
+    check_exact_one!(f(8942832835564782,  -385; f64) => b"113481947988",            -99);
+    check_exact_one!(f(6965949469487146,  -249; f64) => b"7700366561890",           -59);
+    check_exact_one!(f(6965949469487146,  -250; f64) => b"38501832809448",          -59);
+    check_exact_one!(f(6965949469487146,  -251; f64) => b"192509164047238",         -59);
+    check_exact_one!(f(7487252720986826,   548; f64) => b"6898586531774201",        181);
+    check_exact_one!(f(5592117679628511,   164; f64) => b"13076622631878654",        66);
+    check_exact_one!(f(8887055249355788,   665; f64) => b"136052020756121240",      217);
+    check_exact_one!(f(6994187472632449,   690; f64) => b"3592810217475959676",     224);
+    check_exact_one!(f(8797576579012143,   588; f64) => b"89125197712484551899",    193);
+    check_exact_one!(f(7363326733505337,   272; f64) => b"558769757362301140950",    98);
+    check_exact_one!(f(8549497411294502,  -448; f64) => b"1176257830728540379990", -118);
 }
 
 pub fn more_shortest_sanity_test<F>(mut f: F) where F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
@@ -532,8 +529,7 @@ pub fn to_shortest_str_test<F>(mut f_: F)
     use core::num::flt2dec::Sign::*;
 
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, frac_digits: usize, upper: bool) -> String
-            where T: DecodableFloat + StdFloat,
-                  F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
+            where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
         to_string_with_parts(|buf, parts| to_shortest_str(|d,b| f(d,b), v, sign,
                                                           frac_digits, upper, buf, parts))
     }
@@ -600,7 +596,7 @@ pub fn to_shortest_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, f32::MAX, Minus, 1, false), format!("34028235{:0>31}.0", ""));
     assert_eq!(to_string(f, f32::MAX, Minus, 8, false), format!("34028235{:0>31}.00000000", ""));
 
-    let minf32: f32 = StdFloat::ldexp(1.0, -149);
+    let minf32 = f32::ldexp(1.0, -149);
     assert_eq!(to_string(f, minf32, Minus,  0, false), format!("0.{:0>44}1", ""));
     assert_eq!(to_string(f, minf32, Minus, 45, false), format!("0.{:0>44}1", ""));
     assert_eq!(to_string(f, minf32, Minus, 46, false), format!("0.{:0>44}10", ""));
@@ -612,7 +608,7 @@ pub fn to_shortest_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, f64::MAX, Minus, 8, false),
                format!("17976931348623157{:0>292}.00000000", ""));
 
-    let minf64: f64 = StdFloat::ldexp(1.0, -1074);
+    let minf64 = f64::ldexp(1.0, -1074);
     assert_eq!(to_string(f, minf64, Minus,   0, false), format!("0.{:0>323}5", ""));
     assert_eq!(to_string(f, minf64, Minus, 324, false), format!("0.{:0>323}5", ""));
     assert_eq!(to_string(f, minf64, Minus, 325, false), format!("0.{:0>323}50", ""));
@@ -626,8 +622,7 @@ pub fn to_shortest_exp_str_test<F>(mut f_: F)
     use core::num::flt2dec::Sign::*;
 
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, exp_bounds: (i16, i16), upper: bool) -> String
-            where T: DecodableFloat + StdFloat,
-                  F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
+            where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8]) -> (usize, i16) {
         to_string_with_parts(|buf, parts| to_shortest_exp_str(|d,b| f(d,b), v, sign,
                                                               exp_bounds, upper, buf, parts))
     }
@@ -715,7 +710,7 @@ pub fn to_shortest_exp_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, f32::MAX, Minus, (-39, 38), false), "3.4028235e38");
     assert_eq!(to_string(f, f32::MAX, Minus, (-38, 39), false), format!("34028235{:0>31}", ""));
 
-    let minf32: f32 = StdFloat::ldexp(1.0, -149);
+    let minf32 = f32::ldexp(1.0, -149);
     assert_eq!(to_string(f, minf32, Minus, ( -4, 16), false), "1e-45");
     assert_eq!(to_string(f, minf32, Minus, (-44, 45), false), "1e-45");
     assert_eq!(to_string(f, minf32, Minus, (-45, 44), false), format!("0.{:0>44}1", ""));
@@ -727,7 +722,7 @@ pub fn to_shortest_exp_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, f64::MAX, Minus, (-309, 308), false),
                "1.7976931348623157e308");
 
-    let minf64: f64 = StdFloat::ldexp(1.0, -1074);
+    let minf64 = f64::ldexp(1.0, -1074);
     assert_eq!(to_string(f, minf64, Minus, (  -4,  16), false), "5e-324");
     assert_eq!(to_string(f, minf64, Minus, (-324, 323), false), format!("0.{:0>323}5", ""));
     assert_eq!(to_string(f, minf64, Minus, (-323, 324), false), "5e-324");
@@ -740,8 +735,7 @@ pub fn to_exact_exp_str_test<F>(mut f_: F)
     use core::num::flt2dec::Sign::*;
 
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, ndigits: usize, upper: bool) -> String
-            where T: DecodableFloat + StdFloat,
-                  F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
+            where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
         to_string_with_parts(|buf, parts| to_exact_exp_str(|d,b,l| f(d,b,l), v, sign,
                                                            ndigits, upper, buf, parts))
     }
@@ -860,7 +854,7 @@ pub fn to_exact_exp_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, f32::MAX, Minus, 64, false),
                "3.402823466385288598117041834845169254400000000000000000000000000e38");
 
-    let minf32: f32 = StdFloat::ldexp(1.0, -149);
+    let minf32 = f32::ldexp(1.0, -149);
     assert_eq!(to_string(f, minf32, Minus,   1, false), "1e-45");
     assert_eq!(to_string(f, minf32, Minus,   2, false), "1.4e-45");
     assert_eq!(to_string(f, minf32, Minus,   4, false), "1.401e-45");
@@ -900,7 +894,7 @@ pub fn to_exact_exp_str_test<F>(mut f_: F)
                  0000000000000000000000000000000000000000000000000000000000000000e308");
 
     // okay, this is becoming tough. fortunately for us, this is almost the worst case.
-    let minf64: f64 = StdFloat::ldexp(1.0, -1074);
+    let minf64 = f64::ldexp(1.0, -1074);
     assert_eq!(to_string(f, minf64, Minus,    1, false), "5e-324");
     assert_eq!(to_string(f, minf64, Minus,    2, false), "4.9e-324");
     assert_eq!(to_string(f, minf64, Minus,    4, false), "4.941e-324");
@@ -961,8 +955,7 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
     use core::num::flt2dec::Sign::*;
 
     fn to_string<T, F>(f: &mut F, v: T, sign: Sign, frac_digits: usize, upper: bool) -> String
-            where T: DecodableFloat + StdFloat,
-                  F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
+            where T: DecodableFloat, F: FnMut(&Decoded, &mut [u8], i16) -> (usize, i16) {
         to_string_with_parts(|buf, parts| to_exact_fixed_str(|d,b,l| f(d,b,l), v, sign,
                                                              frac_digits, upper, buf, parts))
     }
@@ -1102,7 +1095,7 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
     assert_eq!(to_string(f, f32::MAX, Minus, 2, false),
                "340282346638528859811704183484516925440.00");
 
-    let minf32: f32 = StdFloat::ldexp(1.0, -149);
+    let minf32 = f32::ldexp(1.0, -149);
     assert_eq!(to_string(f, minf32, Minus,   0, false), "0");
     assert_eq!(to_string(f, minf32, Minus,   1, false), "0.0");
     assert_eq!(to_string(f, minf32, Minus,   2, false), "0.00");
@@ -1134,7 +1127,7 @@ pub fn to_exact_fixed_str_test<F>(mut f_: F)
                 9440758685084551339423045832369032229481658085593321233482747978\
                 26204144723168738177180919299881250404026184124858368.0000000000");
 
-    let minf64: f64 = StdFloat::ldexp(1.0, -1074);
+    let minf64 = f64::ldexp(1.0, -1074);
     assert_eq!(to_string(f, minf64, Minus, 0, false), "0");
     assert_eq!(to_string(f, minf64, Minus, 1, false), "0.0");
     assert_eq!(to_string(f, minf64, Minus, 10, false), "0.0000000000");
