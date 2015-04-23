@@ -30,8 +30,12 @@ CFG_PACKAGE_VERS=$(CFG_RELEASE_NUM)
 CFG_DISABLE_UNSTABLE_FEATURES=1
 endif
 ifeq ($(CFG_RELEASE_CHANNEL),beta)
-CFG_RELEASE=$(CFG_RELEASE_NUM)-beta$(CFG_PRERELEASE_VERSION)
-CFG_PACKAGE_VERS=$(CFG_RELEASE_NUM)-beta$(CFG_PRERELEASE_VERSION)
+CFG_RELEASE=$(CFG_RELEASE_NUM)-beta
+# When building beta distributables just reuse the same "beta" name
+# so when we upload we'll always override the previous beta. This
+# doesn't actually impact the version reported by rustc - it's just
+# for file naming.
+CFG_PACKAGE_VERS=beta
 CFG_DISABLE_UNSTABLE_FEATURES=1
 endif
 ifeq ($(CFG_RELEASE_CHANNEL),nightly)
