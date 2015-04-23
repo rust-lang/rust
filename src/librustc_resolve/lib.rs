@@ -3138,7 +3138,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                           uses it like a function name",
                                          path_name));
 
-                        let msg = format!("Did you mean to write: \
+                        let msg = format!("did you mean to write: \
                                            `{} {{ /* fields */ }}`?",
                                           path_name);
                         if self.emit_errors {
@@ -3179,7 +3179,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                 uses it like a function name",
                                                 path_name));
 
-                                let msg = format!("Did you mean to write: \
+                                let msg = format!("did you mean to write: \
                                                      `{} {{ /* fields */ }}`?",
                                                     path_name);
                                 if self.emit_errors {
