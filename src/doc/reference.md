@@ -3183,7 +3183,7 @@ for i in 0..256 {
 }
 ```
 
-Like `loop` expressions, `while` loops can be controlled with `break` or
+Like `loop` expressions, `for` loops can be controlled with `break` or
 `continue`, and may optionally have a _label_. See [infinite
 loops](#infinite-loops), [break expressions](#break-expressions), and
 [continue expressions](#continue-expressions) for more information.
