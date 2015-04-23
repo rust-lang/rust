@@ -159,3 +159,27 @@ fn refcell_default() {
     let cell: RefCell<u64> = Default::default();
     assert_eq!(0, *cell.borrow());
 }
+
+#[test]
+fn unsafe_cell_unsized() {
+    let cell: &UnsafeCell<[i32]> = &UnsafeCell::new([1, 2, 3]);
+    {
+        let val: &mut [i32] = unsafe { &mut *cell.get() };
+        val[0] = 4;
+        val[2] = 5;
+    }
+    let comp: &mut [i32] = &mut [4, 2, 5];
+    assert_eq!(unsafe { &mut *cell.get() }, comp);
+}
+
+#[test]
+fn refcell_unsized() {
+    let cell: &RefCell<[i32]> = &RefCell::new([1, 2, 3]);
+    {
+        let b = &mut *cell.borrow_mut();
+        b[0] = 4;
+        b[2] = 5;
+    }
+    let comp: &mut [i32] = &mut [4, 2, 5];
+    assert_eq!(&*cell.borrow(), comp);
+}
