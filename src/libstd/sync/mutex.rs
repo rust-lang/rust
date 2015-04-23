@@ -161,7 +161,7 @@ pub struct StaticMutex {
 /// dropped (falls out of scope), the lock will be unlocked.
 ///
 /// The data protected by the mutex can be access through this guard via its
-/// Deref and DerefMut implementations
+/// `Deref` and `DerefMut` implementations
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct MutexGuard<'a, T: 'a> {
