@@ -3383,16 +3383,9 @@ User-defined types have limited capabilities.
 
 The primitive types are the following:
 
-* The "unit" type `()`, having the single "unit" value `()` (occasionally called
-  "nil"). [^unittype]
 * The boolean type `bool` with values `true` and `false`.
 * The machine types.
 * The machine-dependent integer and floating-point types.
-
-[^unittype]: The "unit" value `()` is *not* a sentinel "null pointer" value for
-    reference variables; the "unit" type is the implicit return type from functions
-    otherwise lacking a return type, and can be used in other contexts (such as
-    message-sending or type-parametric code) as a zero-size type.]
 
 #### Machine types
 
@@ -3434,7 +3427,7 @@ UTF-32 string.
 A value of type `str` is a Unicode string, represented as an array of 8-bit
 unsigned bytes holding a sequence of UTF-8 codepoints. Since `str` is of
 unknown size, it is not a _first-class_ type, but can only be instantiated
-through a pointer type, such as `&str` or `String`.
+through a pointer type, such as `&str`.
 
 ### Tuple types
 
@@ -3490,7 +3483,7 @@ to an array or slice is always bounds-checked.
 A `struct` *type* is a heterogeneous product of other types, called the
 *fields* of the type.[^structtype]
 
-[^structtype]: `struct` types are analogous `struct` types in C,
+[^structtype]: `struct` types are analogous to `struct` types in C,
     the *record* types of the ML family,
     or the *structure* types of the Lisp family.
 
@@ -3504,7 +3497,7 @@ a corresponding struct *expression*; the resulting `struct` value will always
 have the same memory layout.
 
 The fields of a `struct` may be qualified by [visibility
-modifiers](#re-exporting-and-visibility), to allow access to data in a
+modifiers](#visibility-and-privacy), to allow access to data in a
 structure outside a module.
 
 A _tuple struct_ type is just like a structure type, except that the fields are
@@ -3572,18 +3565,18 @@ varieties of pointer in Rust:
 
 * References (`&`)
   : These point to memory _owned by some other value_.
-    A reference type is written `&type` for some lifetime-variable `f`,
-    or just `&'a type` when you need an explicit lifetime.
+    A reference type is written `&type`,
+    or `&'a type` when you need to specify an explicit lifetime.
     Copying a reference is a "shallow" operation:
     it involves only copying the pointer itself.
-    Releasing a reference typically has no effect on the value it points to,
-    with the exception of temporary values, which are released when the last
-    reference to them is released.
+    Releasing a reference has no effect on the value it points to,
+    but a reference of a temporary value will keep it alive during the scope
+    of the reference itself.
 
 * Raw pointers (`*`)
   : Raw pointers are pointers without safety or liveness guarantees.
     Raw pointers are written as `*const T` or `*mut T`,
-    for example `*const int` means a raw pointer to an integer.
+    for example `*const i32` means a raw pointer to a 32-bit integer.
     Copying or dropping a raw pointer has no effect on the lifecycle of any
     other value. Dereferencing a raw pointer or converting it to any other
     pointer type is an [`unsafe` operation](#unsafe-functions).
@@ -3616,38 +3609,26 @@ x = bo(5,7);
 
 ### Closure types
 
-```{.ebnf .notation}
-closure_type := [ 'unsafe' ] [ '<' lifetime-list '>' ] '|' arg-list '|'
-                [ ':' bound-list ] [ '->' type ]
-lifetime-list := lifetime | lifetime ',' lifetime-list
-arg-list := ident ':' type | ident ':' type ',' arg-list
-bound-list := bound | bound '+' bound-list
-bound := path | lifetime
-```
+A [lambda expression](#lambda-expressions) produces a closure value with
+a unique, anonymous type that cannot be written out.
 
-The type of a closure mapping an input of type `A` to an output of type `B` is
-`|A| -> B`. A closure with no arguments or return values has type `||`.
+Depending on the requirements of the closure, its type implements one or
+more of the closure traits:
 
-An example of creating and calling a closure:
+* `FnOnce`
+  : The closure can be called once. A closure called as `FnOnce`
+    can move out values from its environment.
 
-```rust
-let captured_var = 10;
+* `FnMut`
+  : The closure can be called multiple times as mutable. A closure called as
+    `FnMut` can mutate values from its environment. `FnMut` implies
+    `FnOnce`.
 
-let closure_no_args = || println!("captured_var={}", captured_var);
+* `Fn`
+  : The closure can be called multiple times through a shared reference.
+    A closure called as `Fn` can neither move out from nor mutate values
+    from its environment. `Fn` implies `FnMut` and `FnOnce`.
 
-let closure_args = |arg: i32| -> i32 {
-  println!("captured_var={}, arg={}", captured_var, arg);
-  arg // Note lack of semicolon after 'arg'
-};
-
-fn call_closure<F: Fn(), G: Fn(i32) -> i32>(c1: F, c2: G) {
-  c1();
-  c2(2);
-}
-
-call_closure(closure_no_args, closure_args);
-
-```
 
 ### Object types
 
@@ -3694,19 +3675,19 @@ Within the body of an item that has type parameter declarations, the names of
 its type parameters are types:
 
 ```ignore
-fn map<A: Clone, B: Clone>(f: |A| -> B, xs: &[A]) -> Vec<B> {
+fn to_vec<A: Clone>(xs: &[A]) -> Vec<A> {
     if xs.is_empty() {
        return vec![];
     }
-    let first: B = f(xs[0].clone());
-    let mut rest: Vec<B> = map(f, xs.slice(1, xs.len()));
+    let first: A = xs[0].clone();
+    let mut rest: Vec<A> = to_vec(&xs[1..]);
     rest.insert(0, first);
-    return rest;
+    rest
 }
 ```
 
-Here, `first` has type `B`, referring to `map`'s `B` type parameter; and `rest`
-has type `Vec<B>`, a vector type with element type `B`.
+Here, `first` has type `A`, referring to `to_vec`'s `A` type parameter; and `rest`
+has type `Vec<A>`, a vector with element type `A`.
 
 ### Self types
 
