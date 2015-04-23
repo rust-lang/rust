@@ -306,6 +306,14 @@ pub struct Iter<'a, T: 'a> {
     rx: &'a Receiver<T>
 }
 
+/// An owning iterator over messages on a receiver, this iterator will block
+/// whenever `next` is called, waiting for a new message, and `None` will be
+/// returned when the corresponding channel has hung up.
+#[stable(feature = "receiver_into_iter", since = "1.1.0")]
+pub struct IntoIter<T> {
+    rx: Receiver<T>
+}
+
 /// The sending-half of Rust's asynchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -897,6 +905,29 @@ impl<'a, T> Iterator for Iter<'a, T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> { self.rx.recv().ok() }
+}
+
+#[stable(feature = "receiver_into_iter", since = "1.1.0")]
+impl<'a, T> IntoIterator for &'a Receiver<T> {
+    type Item = T;
+    type IntoIter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> { self.iter() }
+}
+
+impl<T> Iterator for IntoIter<T> {
+    type Item = T;
+    fn next(&mut self) -> Option<T> { self.rx.recv().ok() }
+}
+
+#[stable(feature = "receiver_into_iter", since = "1.1.0")]
+impl <T> IntoIterator for Receiver<T> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        IntoIter { rx: self }
+    }
 }
 
 #[unsafe_destructor]
@@ -1505,6 +1536,32 @@ mod test {
         let _ = tx.send(2);
         drop(tx);
         assert_eq!(count_rx.recv().unwrap(), 4);
+    }
+
+    #[test]
+    fn test_recv_into_iter_owned() {
+        let mut iter = {
+          let (tx, rx) = channel::<i32>();
+          tx.send(1).unwrap();
+          tx.send(2).unwrap();
+
+          rx.into_iter()
+        };
+        assert_eq!(iter.next().unwrap(), 1);
+        assert_eq!(iter.next().unwrap(), 2);
+        assert_eq!(iter.next().is_none(), true);
+    }
+
+    #[test]
+    fn test_recv_into_iter_borrowed() {
+        let (tx, rx) = channel::<i32>();
+        tx.send(1).unwrap();
+        tx.send(2).unwrap();
+        drop(tx);
+        let mut iter = (&rx).into_iter();
+        assert_eq!(iter.next().unwrap(), 1);
+        assert_eq!(iter.next().unwrap(), 2);
+        assert_eq!(iter.next().is_none(), true);
     }
 
     #[test]
