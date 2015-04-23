@@ -60,13 +60,13 @@ use sys_common::rwlock as sys;
 /// } // write lock is dropped here
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct RwLock<T> {
+pub struct RwLock<T: ?Sized> {
     inner: Box<StaticRwLock>,
     data: UnsafeCell<T>,
 }
 
-unsafe impl<T: Send + Sync> Send for RwLock<T> {}
-unsafe impl<T: Send + Sync> Sync for RwLock<T> {}
+unsafe impl<T: ?Sized + Send + Sync> Send for RwLock<T> {}
+unsafe impl<T: ?Sized + Send + Sync> Sync for RwLock<T> {}
 
 /// Structure representing a statically allocated RwLock.
 ///
@@ -111,24 +111,24 @@ pub const RW_LOCK_INIT: StaticRwLock = StaticRwLock {
 /// dropped.
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct RwLockReadGuard<'a, T: 'a> {
+pub struct RwLockReadGuard<'a, T: ?Sized + 'a> {
     __lock: &'a StaticRwLock,
     __data: &'a UnsafeCell<T>,
 }
 
-impl<'a, T> !marker::Send for RwLockReadGuard<'a, T> {}
+impl<'a, T: ?Sized> !marker::Send for RwLockReadGuard<'a, T> {}
 
 /// RAII structure used to release the exclusive write access of a lock when
 /// dropped.
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct RwLockWriteGuard<'a, T: 'a> {
+pub struct RwLockWriteGuard<'a, T: ?Sized + 'a> {
     __lock: &'a StaticRwLock,
     __data: &'a UnsafeCell<T>,
     __poison: poison::Guard,
 }
 
-impl<'a, T> !marker::Send for RwLockWriteGuard<'a, T> {}
+impl<'a, T: ?Sized> !marker::Send for RwLockWriteGuard<'a, T> {}
 
 impl<T> RwLock<T> {
     /// Creates a new instance of an `RwLock<T>` which is unlocked.
@@ -144,7 +144,9 @@ impl<T> RwLock<T> {
     pub fn new(t: T) -> RwLock<T> {
         RwLock { inner: box RW_LOCK_INIT, data: UnsafeCell::new(t) }
     }
+}
 
+impl<T: ?Sized> RwLock<T> {
     /// Locks this rwlock with shared read access, blocking the current thread
     /// until it can be acquired.
     ///
@@ -250,19 +252,19 @@ impl<T> RwLock<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for RwLock<T> {
+impl<T: ?Sized> Drop for RwLock<T> {
     fn drop(&mut self) {
         unsafe { self.inner.lock.destroy() }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: fmt::Debug> fmt::Debug for RwLock<T> {
+impl<T: ?Sized + fmt::Debug> fmt::Debug for RwLock<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.try_read() {
-            Ok(guard) => write!(f, "RwLock {{ data: {:?} }}", *guard),
+            Ok(guard) => write!(f, "RwLock {{ data: {:?} }}", &*guard),
             Err(TryLockError::Poisoned(err)) => {
-                write!(f, "RwLock {{ data: Poisoned({:?}) }}", **err.get_ref())
+                write!(f, "RwLock {{ data: Poisoned({:?}) }}", &**err.get_ref())
             },
             Err(TryLockError::WouldBlock) => write!(f, "RwLock {{ <locked> }}")
         }
@@ -341,8 +343,7 @@ impl StaticRwLock {
     }
 }
 
-impl<'rwlock, T> RwLockReadGuard<'rwlock, T> {
-
+impl<'rwlock, T: ?Sized> RwLockReadGuard<'rwlock, T> {
     fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
            -> LockResult<RwLockReadGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |_| {
@@ -353,8 +354,8 @@ impl<'rwlock, T> RwLockReadGuard<'rwlock, T> {
         })
     }
 }
-impl<'rwlock, T> RwLockWriteGuard<'rwlock, T> {
 
+impl<'rwlock, T: ?Sized> RwLockWriteGuard<'rwlock, T> {
     fn new(lock: &'rwlock StaticRwLock, data: &'rwlock UnsafeCell<T>)
            -> LockResult<RwLockWriteGuard<'rwlock, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
@@ -368,33 +369,35 @@ impl<'rwlock, T> RwLockWriteGuard<'rwlock, T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'rwlock, T> Deref for RwLockReadGuard<'rwlock, T> {
+impl<'rwlock, T: ?Sized> Deref for RwLockReadGuard<'rwlock, T> {
     type Target = T;
 
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'rwlock, T> Deref for RwLockWriteGuard<'rwlock, T> {
+impl<'rwlock, T: ?Sized> Deref for RwLockWriteGuard<'rwlock, T> {
     type Target = T;
 
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
+
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'rwlock, T> DerefMut for RwLockWriteGuard<'rwlock, T> {
+impl<'rwlock, T: ?Sized> DerefMut for RwLockWriteGuard<'rwlock, T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.__data.get() }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Drop for RwLockReadGuard<'a, T> {
+impl<'a, T: ?Sized> Drop for RwLockReadGuard<'a, T> {
     fn drop(&mut self) {
         unsafe { self.__lock.lock.read_unlock(); }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> Drop for RwLockWriteGuard<'a, T> {
+impl<'a, T: ?Sized> Drop for RwLockWriteGuard<'a, T> {
     fn drop(&mut self) {
         self.__lock.poison.done(&self.__poison);
         unsafe { self.__lock.lock.write_unlock(); }
@@ -561,5 +564,17 @@ mod tests {
         }).join();
         let lock = arc.read().unwrap();
         assert_eq!(*lock, 2);
+    }
+
+    #[test]
+    fn test_rwlock_unsized() {
+        let rw: &RwLock<[i32]> = &RwLock::new([1, 2, 3]);
+        {
+            let b = &mut *rw.write().unwrap();
+            b[0] = 4;
+            b[2] = 5;
+        }
+        let comp: &[i32] = &[4, 2, 5];
+        assert_eq!(&*rw.read().unwrap(), comp);
     }
 }

@@ -1062,7 +1062,7 @@ impl<T: Copy + Debug> Debug for Cell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Debug> Debug for RefCell<T> {
+impl<T: ?Sized + Debug> Debug for RefCell<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self.borrow_state() {
             BorrowState::Unused | BorrowState::Reading => {
@@ -1074,14 +1074,14 @@ impl<T: Debug> Debug for RefCell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, T: Debug> Debug for Ref<'b, T> {
+impl<'b, T: ?Sized + Debug> Debug for Ref<'b, T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         Debug::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'b, T: Debug> Debug for RefMut<'b, T> {
+impl<'b, T: ?Sized + Debug> Debug for RefMut<'b, T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         Debug::fmt(&*(self.deref()), f)
     }
