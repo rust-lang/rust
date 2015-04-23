@@ -240,7 +240,8 @@ fn run(args: Vec<String>, write_mode: WriteMode) {
 
 fn main() {
     let args: Vec<_> = std::env::args().collect();
-    run(args, WriteMode::Display);
+    //run(args, WriteMode::Display);
+    run(args, WriteMode::NewFile("new"));
     std::env::set_exit_status(0);
 
     // TODO unit tests

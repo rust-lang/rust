@@ -10,12 +10,12 @@
 
 
 // TODO
-// print to files 
+// print to files
 // tests
 
 use strings::string_buffer::StringBuffer;
 use std::collections::HashMap;
-use syntax::codemap::{CodeMap, Span,BytePos};
+use syntax::codemap::{CodeMap, Span, BytePos};
 use std::fmt;
 use std::fs::File;
 use std::io::Write;
@@ -115,7 +115,9 @@ impl<'a> ChangeSet<'a> {
         }
     }
 
-    pub fn write_all_files(&self, mode: WriteMode) -> Result<(HashMap<String, String>), ::std::io::Error> {
+    pub fn write_all_files(&self,
+                           mode: WriteMode)
+                           -> Result<(HashMap<String, String>), ::std::io::Error> {
         let mut result = HashMap::new();
         for filename in self.file_map.keys() {
             let one_result = try!(self.write_file(filename, mode));
@@ -127,7 +129,10 @@ impl<'a> ChangeSet<'a> {
         Ok(result)
     }
 
-    pub fn write_file(&self, filename: &str, mode: WriteMode) -> Result<Option<String>, ::std::io::Error> {
+    pub fn write_file(&self,
+                      filename: &str,
+                      mode: WriteMode)
+                      -> Result<Option<String>, ::std::io::Error> {
         let text = &self.file_map[filename];
 
         match mode {
@@ -194,5 +199,5 @@ impl<'a> fmt::Display for ChangeSet<'a> {
             try!(write!(fmt, "{}\n\n", r));
         }
         Ok(())
-    }    
+    }
 }
