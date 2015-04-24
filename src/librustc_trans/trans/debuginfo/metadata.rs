@@ -1,15 +1,15 @@
 // Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
-// http://!rust-lang.org/COPYRIGHT.
+// http://rust-lang.org/COPYRIGHT.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://!www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://!opensource.org/licenses/MIT>, at your
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
 use super::utils::{debug_context, DIB, span_start, bytes_to_bits, size_and_align_of,
-                  get_namespace_and_span_for_item};
+                   get_namespace_and_span_for_item};
 use super::{UNKNOWN_FILE_METADATA, UNKNOWN_SCOPE_METADATA,
             UniqueTypeId, FLAGS_NONE};
 use super::types::compute_debuginfo_type_name;
@@ -34,6 +34,7 @@ use std::path::Path;
 use std::ptr;
 use syntax::codemap::Span;
 use syntax::{ast, codemap};
+
 
 const DW_LANG_RUST: c_uint = 0x9000;
 #[allow(non_upper_case_globals)]
