@@ -51,6 +51,7 @@
 use middle::astconv_util::{prim_ty_to_ty, check_path_args, NO_TPS, NO_REGIONS};
 use middle::const_eval;
 use middle::def;
+use middle::implicator::object_region_bounds;
 use middle::resolve_lifetime as rl;
 use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
@@ -2085,39 +2086,6 @@ fn compute_object_lifetime_bound<'tcx>(
                   "ambiguous lifetime bound, explicit lifetime bound required");
     }
     return r;
-}
-
-/// Given an object type like `SomeTrait+Send`, computes the lifetime
-/// bounds that must hold on the elided self type. These are derived
-/// from the declarations of `SomeTrait`, `Send`, and friends -- if
-/// they declare `trait SomeTrait : 'static`, for example, then
-/// `'static` would appear in the list. The hard work is done by
-/// `ty::required_region_bounds`, see that for more information.
-pub fn object_region_bounds<'tcx>(
-    tcx: &ty::ctxt<'tcx>,
-    principal: &ty::PolyTraitRef<'tcx>,
-    others: ty::BuiltinBounds)
-    -> Vec<ty::Region>
-{
-    // Since we don't actually *know* the self type for an object,
-    // this "open(err)" serves as a kind of dummy standin -- basically
-    // a skolemized type.
-    let open_ty = ty::mk_infer(tcx, ty::FreshTy(0));
-
-    // Note that we preserve the overall binding levels here.
-    assert!(!open_ty.has_escaping_regions());
-    let substs = tcx.mk_substs(principal.0.substs.with_self_ty(open_ty));
-    let trait_refs = vec!(ty::Binder(Rc::new(ty::TraitRef::new(principal.0.def_id, substs))));
-
-    let param_bounds = ty::ParamBounds {
-        region_bounds: Vec::new(),
-        builtin_bounds: others,
-        trait_bounds: trait_refs,
-        projection_bounds: Vec::new(), // not relevant to computing region bounds
-    };
-
-    let predicates = ty::predicates(tcx, open_ty, &param_bounds);
-    ty::required_region_bounds(tcx, open_ty, predicates)
 }
 
 pub struct PartitionedBounds<'a> {

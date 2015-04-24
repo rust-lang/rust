@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::free_region::FreeRegionMap;
 use middle::infer;
 use middle::traits;
 use middle::ty::{self};
@@ -354,9 +355,19 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         Ok(_) => {}
     }
 
-    // Finally, resolve all regions. This catches wily misuses of lifetime
-    // parameters.
-    infcx.resolve_regions_and_report_errors(impl_m_body_id);
+    // Finally, resolve all regions. This catches wily misuses of
+    // lifetime parameters. We have to build up a plausible lifetime
+    // environment based on what we find in the trait. We could also
+    // include the obligations derived from the method argument types,
+    // but I don't think it's necessary -- after all, those are still
+    // in effect when type-checking the body, and all the
+    // where-clauses in the header etc should be implied by the trait
+    // anyway, so it shouldn't be needed there either. Anyway, we can
+    // always add more relations later (it's backwards compat).
+    let mut free_regions = FreeRegionMap::new();
+    free_regions.relate_free_regions_from_predicates(tcx, &trait_param_env.caller_bounds);
+
+    infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
 
     fn check_region_bounds_on_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                                 span: Span,

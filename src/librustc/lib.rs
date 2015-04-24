@@ -106,8 +106,10 @@ pub mod middle {
     pub mod entry;
     pub mod expr_use_visitor;
     pub mod fast_reject;
+    pub mod free_region;
     pub mod intrinsicck;
     pub mod infer;
+    pub mod implicator;
     pub mod lang_items;
     pub mod liveness;
     pub mod mem_categorization;
