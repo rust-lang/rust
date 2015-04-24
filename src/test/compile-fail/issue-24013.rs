@@ -8,24 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() { }
-
-// Before these errors would ICE as "cat_expr Errd" because the errors
-// were unknown when the bug was triggered.
-
-fn unconstrained_type() {
-    [];
+fn main() {
+    use std::mem::{transmute, swap};
+    let a = 1;
+    let b = 2;
+    unsafe {swap::<&mut _>(transmute(&a), transmute(&b))};
     //~^ ERROR cannot determine a type for this expression: unconstrained type
-}
-
-fn invalid_impl_within_scope() {
-    {
-        use std::ops::Deref;
-        struct Something;
-
-        impl Deref for Something {}
-        //~^ ERROR not all trait items implemented, missing: `Target`, `deref`
-
-        *Something
-    };
 }
