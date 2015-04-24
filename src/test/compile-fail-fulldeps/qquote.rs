@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-cross-compile
-// ignore-pretty
 
 #![feature(quote, rustc_private)]
 
@@ -50,18 +49,7 @@ fn main() {
     let cx = parse::new_parse_sess();
 
     assert_eq!(pprust::expr_to_string(&*quote_expr!(&cx, 23)), "23");
-    assert_eq!(pprust::pat_to_string(&*quote_pat!(&cx, Some(_))), "Some(_)");
-    assert_eq!(pprust::ty_to_string(&*quote_ty!(&cx, isize)), "isize");
 
-    let arm = quote_arm!(&cx, (ref x, ref y) => (x, y),);
-    assert_eq!(pprust::arm_to_string(&arm), " (ref x, ref y) => (x, y),");
-
-    let attr = quote_attr!(&cx, #![cfg(foo = "bar")]);
-    assert_eq!(pprust::attr_to_string(&attr), "#![cfg(foo = \"bar\")]");
-
-    let item = quote_item!(&cx, static x : isize = 10;).unwrap();
-    assert_eq!(pprust::item_to_string(&*item), "static x: isize = 10;");
-
-    let stmt = quote_stmt!(&cx, let x = 20;).unwrap();
-    assert_eq!(pprust::stmt_to_string(&*stmt), "let x = 20;");
+    let expr = quote_expr!(&cx, 2 - $abcd + 7); //~ ERROR unresolved name: `abcd`
+    assert_eq!(pprust::expr_to_string(&*expr), "2 - $abcd + 7");
 }
