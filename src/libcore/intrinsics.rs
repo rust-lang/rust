@@ -267,9 +267,6 @@ extern "rust-intrinsic" {
     /// `Copy`, then may return `true` or `false`.
     pub fn needs_drop<T>() -> bool;
 
-    /// Returns `true` if a type is managed (will be allocated on the local heap)
-    pub fn owns_managed<T>() -> bool;
-
     /// Calculates the offset from a pointer.
     ///
     /// This is implemented as an intrinsic to avoid converting to and from an
