@@ -1,23 +1,15 @@
 // Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
-// http://!rust-lang.org/COPYRIGHT.
+// http://rust-lang.org/COPYRIGHT.
 //
 // Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://!www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://!opensource.org/licenses/MIT>, at your
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
 // See doc.rs for documentation.
 mod doc;
-
-pub mod gdb;
-mod utils;
-mod create;
-mod namespace;
-mod types;
-mod metadata;
-mod adt;
 
 use self::VariableAccess::*;
 use self::VariableKind::*;
@@ -30,7 +22,8 @@ use self::utils::{debug_context, DIB, span_start,
 use self::create::{declare_local, create_DIArray, is_node_local_to_unit};
 use self::namespace::{namespace_for_item, NamespaceTreeNode};
 use self::types::{compute_debuginfo_type_name, push_debuginfo_type_name};
-use self::metadata::{type_metadata, file_metadata, scope_metadata, compile_unit_metadata, MetadataCreationResult};
+use self::metadata::{type_metadata, file_metadata, scope_metadata,
+                     compile_unit_metadata, MetadataCreationResult};
 use self::adt::{MemberDescriptionFactory, set_members_of_composite_type};
 
 use llvm;
@@ -58,6 +51,15 @@ use syntax::util::interner::Interner;
 use syntax::codemap::{Span, Pos};
 use syntax::{ast, codemap, ast_util, ast_map};
 use syntax::parse::token::{self, special_idents};
+
+pub mod gdb;
+mod utils;
+mod create;
+mod namespace;
+mod types;
+mod metadata;
+mod adt;
+
 
 #[allow(non_upper_case_globals)]
 const DW_TAG_auto_variable: c_uint = 0x100;
