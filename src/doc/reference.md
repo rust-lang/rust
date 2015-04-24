@@ -700,9 +700,9 @@ in macro rules). In the transcriber, the designator is already known, and so
 only the name of a matched nonterminal comes after the dollar sign.
 
 In both the matcher and transcriber, the Kleene star-like operator indicates
-repetition. The Kleene star operator consists of `$` and parenthesis, optionally
+repetition. The Kleene star operator consists of `$` and parentheses, optionally
 followed by a separator token, followed by `*` or `+`. `*` means zero or more
-repetitions, `+` means at least one repetition. The parenthesis are not matched or
+repetitions, `+` means at least one repetition. The parentheses are not matched or
 transcribed. On the matcher side, a name is bound to _all_ of the names it
 matches, in a structure that mimics the structure of the repetition encountered
 on a successful match. The job of the transcriber is to sort that structure
