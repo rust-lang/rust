@@ -10,12 +10,13 @@
 
 use super::utils::{debug_context, DIB, span_start, bytes_to_bits, size_and_align_of,
                   get_namespace_and_span_for_item};
-use super::{prepare_struct_metadata, prepare_tuple_metadata, prepare_enum_metadata,
-            composite_type_metadata, UNKNOWN_FILE_METADATA, UNKNOWN_SCOPE_METADATA,
-            UniqueTypeId, MemberDescription, FLAGS_NONE};
-use super::MemberOffset::ComputedMemberOffset;
+use super::{UNKNOWN_FILE_METADATA, UNKNOWN_SCOPE_METADATA,
+            UniqueTypeId, FLAGS_NONE};
 use super::types::compute_debuginfo_type_name;
 use super::create::create_DIArray;
+use super::adt::{prepare_struct_metadata, prepare_tuple_metadata, prepare_enum_metadata,
+                 composite_type_metadata, MemberDescription};
+use super::adt::MemberOffset::ComputedMemberOffset;
 
 use llvm;
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor};
