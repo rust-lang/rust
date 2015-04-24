@@ -29,41 +29,6 @@ You may also be interested in the [grammar].
 
 # Notation
 
-Rust's grammar is defined over Unicode code points, each conventionally denoted
-`U+XXXX`, for 4 or more hexadecimal digits `X`. _Most_ of Rust's grammar is
-confined to the ASCII range of Unicode, and is described in this document by a
-dialect of Extended Backus-Naur Form (EBNF), specifically a dialect of EBNF
-supported by common automated LL(k) parsing tools such as `llgen`, rather than
-the dialect given in ISO 14977. The dialect can be defined self-referentially
-as follows:
-
-```{.ebnf .notation}
-grammar : rule + ;
-rule    : nonterminal ':' productionrule ';' ;
-productionrule : production [ '|' production ] * ;
-production : term * ;
-term : element repeats ;
-element : LITERAL | IDENTIFIER | '[' productionrule ']' ;
-repeats : [ '*' | '+' ] NUMBER ? | NUMBER ? | '?' ;
-```
-
-Where:
-
-- Whitespace in the grammar is ignored.
-- Square brackets are used to group rules.
-- `LITERAL` is a single printable ASCII character, or an escaped hexadecimal
-  ASCII code of the form `\xQQ`, in single quotes, denoting the corresponding
-  Unicode code point `U+00QQ`.
-- `IDENTIFIER` is a nonempty string of ASCII letters and underscores.
-- The `repeat` forms apply to the adjacent `element`, and are as follows:
-  - `?` means zero or one repetition
-  - `*` means zero or more repetitions
-  - `+` means one or more repetitions
-  - NUMBER trailing a repeat symbol gives a maximum repetition count
-  - NUMBER on its own gives an exact repetition count
-
-This EBNF dialect should hopefully be familiar to many readers.
-
 ## Unicode productions
 
 A few productions in Rust's grammar permit Unicode code points outside the ASCII
@@ -132,13 +97,6 @@ Some productions are defined by exclusion of particular Unicode characters:
 
 ## Comments
 
-```{.ebnf .gram}
-comment : block_comment | line_comment ;
-block_comment : "/*" block_comment_body * "*/" ;
-block_comment_body : [block_comment | character] * ;
-line_comment : "//" non_eol * ;
-```
-
 Comments in Rust code follow the general C++ style of line and block-comment
 forms. Nested block comments are supported.
 
@@ -159,11 +117,6 @@ Non-doc comments are interpreted as a form of whitespace.
 
 ## Whitespace
 
-```{.ebnf .gram}
-whitespace_char : '\x20' | '\x09' | '\x0a' | '\x0d' ;
-whitespace : [ whitespace_char | comment ] + ;
-```
-
 The `whitespace_char` production is any nonempty Unicode string consisting of
 any of the following Unicode characters: `U+0020` (space, `' '`), `U+0009`
 (tab, `'\t'`), `U+000A` (LF, `'\n'`), `U+000D` (CR, `'\r'`).
@@ -176,40 +129,10 @@ with any other legal whitespace element, such as a single space character.
 
 ## Tokens
 
-```{.ebnf .gram}
-simple_token : keyword | unop | binop ;
-token : simple_token | ident | literal | symbol | whitespace token ;
-```
-
 Tokens are primitive productions in the grammar defined by regular
 (non-recursive) languages. "Simple" tokens are given in [string table
 production](#string-table-productions) form, and occur in the rest of the
 grammar as double-quoted strings. Other tokens have exact rules given.
-
-### Keywords
-
-<p id="keyword-table-marker"></p>
-
-|          |          |          |          |         |
-|----------|----------|----------|----------|---------|
-| abstract | alignof  | as       | become   | box     |
-| break    | const    | continue | crate    | do      |
-| else     | enum     | extern   | false    | final   |
-| fn       | for      | if       | impl     | in      |
-| let      | loop     | macro    | match    | mod     |
-| move     | mut      | offsetof | override | priv    |
-| proc     | pub      | pure     | ref      | return  |
-| Self     | self     | sizeof   | static   | struct  |
-| super    | trait    | true     | type     | typeof  |
-| unsafe   | unsized  | use      | virtual  | where   |
-| while    | yield    |          |          |         |
-
-
-Each of these keywords has special meaning in its grammar, and all of them are
-excluded from the `ident` rule.
-
-Note that some of these keywords are reserved, and do not currently do
-anything.
 
 ### Literals
 
@@ -217,11 +140,6 @@ A literal is an expression consisting of a single token, rather than a sequence
 of tokens, that immediately and directly denotes the value it evaluates to,
 rather than referring to it by name or some other evaluation rule. A literal is
 a form of constant expression, so is evaluated (primarily) at compile time.
-
-```{.ebnf .gram}
-lit_suffix : ident;
-literal : [ string_lit | char_lit | byte_string_lit | byte_lit | num_lit ] lit_suffix ?;
-```
 
 The optional suffix is only used for certain numeric literals, but is
 reserved for future extension, that is, the above gives the lexical
@@ -275,32 +193,6 @@ cases mentioned in [Number literals](#number-literals) below.
 
 #### Character and string literals
 
-```{.ebnf .gram}
-char_lit : '\x27' char_body '\x27' ;
-string_lit : '"' string_body * '"' | 'r' raw_string ;
-
-char_body : non_single_quote
-          | '\x5c' [ '\x27' | common_escape | unicode_escape ] ;
-
-string_body : non_double_quote
-            | '\x5c' [ '\x22' | common_escape | unicode_escape ] ;
-raw_string : '"' raw_string_body '"' | '#' raw_string '#' ;
-
-common_escape : '\x5c'
-              | 'n' | 'r' | 't' | '0'
-              | 'x' hex_digit 2
-
-unicode_escape : 'u' '{' hex_digit+ 6 '}';
-
-hex_digit : 'a' | 'b' | 'c' | 'd' | 'e' | 'f'
-          | 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
-          | dec_digit ;
-oct_digit : '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' ;
-dec_digit : '0' | nonzero_dec ;
-nonzero_dec: '1' | '2' | '3' | '4'
-           | '5' | '6' | '7' | '8' | '9' ;
-```
-
 ##### Character literals
 
 A _character literal_ is a single Unicode character enclosed within two
@@ -349,11 +241,10 @@ following forms:
 
 Raw string literals do not process any escapes. They start with the character
 `U+0072` (`r`), followed by zero or more of the character `U+0023` (`#`) and a
-`U+0022` (double-quote) character. The _raw string body_ is not defined in the
-EBNF grammar above: it can contain any sequence of Unicode characters and is
-terminated only by another `U+0022` (double-quote) character, followed by the
-same number of `U+0023` (`#`) characters that preceded the opening `U+0022`
-(double-quote) character.
+`U+0022` (double-quote) character. The _raw string body_ can contain any sequence
+of Unicode characters and is terminated only by another `U+0022` (double-quote)
+character, followed by the same number of `U+0023` (`#`) characters that preceded
+the opening `U+0022` (double-quote) character.
 
 All Unicode characters contained in the raw string body represent themselves,
 the characters `U+0022` (double-quote) (except when followed by at least as
@@ -375,19 +266,6 @@ r##"foo #"# bar"##;                // foo #"# bar
 
 #### Byte and byte string literals
 
-```{.ebnf .gram}
-byte_lit : "b\x27" byte_body '\x27' ;
-byte_string_lit : "b\x22" string_body * '\x22' | "br" raw_byte_string ;
-
-byte_body : ascii_non_single_quote
-          | '\x5c' [ '\x27' | common_escape ] ;
-
-byte_string_body : ascii_non_double_quote
-            | '\x5c' [ '\x22' | common_escape ] ;
-raw_byte_string : '"' raw_byte_string_body '"' | '#' raw_byte_string '#' ;
-
-```
-
 ##### Byte literals
 
 A _byte literal_ is a single ASCII character (in the `U+0000` to `U+007F`
@@ -403,7 +281,7 @@ preceded by the characters `U+0062` (`b`) and `U+0022` (double-quote), and
 followed by the character `U+0022`. If the character `U+0022` is present within
 the literal, it must be _escaped_ by a preceding `U+005C` (`\`) character.
 Alternatively, a byte string literal can be a _raw byte string literal_, defined
-below. A byte string literal is equivalent to a `&'static [u8]` borrowed array
+below. A byte string literal of length `n` is equivalent to a `&'static [u8; n]` borrowed fixed-sized array
 of unsigned 8-bit integers.
 
 Some additional _escapes_ are available in either byte or non-raw byte string
@@ -424,11 +302,10 @@ following forms:
 Raw byte string literals do not process any escapes. They start with the
 character `U+0062` (`b`), followed by `U+0072` (`r`), followed by zero or more
 of the character `U+0023` (`#`), and a `U+0022` (double-quote) character. The
-_raw string body_ is not defined in the EBNF grammar above: it can contain any
-sequence of ASCII characters and is terminated only by another `U+0022`
-(double-quote) character, followed by the same number of `U+0023` (`#`)
-characters that preceded the opening `U+0022` (double-quote) character. A raw
-byte string literal can not contain any non-ASCII byte.
+_raw string body_ can contain any sequence of ASCII characters and is terminated
+only by another `U+0022` (double-quote) character, followed by the same number of
+`U+0023` (`#`) characters that preceded the opening `U+0022` (double-quote)
+character. A raw byte string literal can not contain any non-ASCII byte.
 
 All characters contained in the raw string body represent their ASCII encoding,
 the characters `U+0022` (double-quote) (except when followed by at least as
@@ -449,19 +326,6 @@ b"\\x52"; br"\x52";                  // \x52
 ```
 
 #### Number literals
-
-```{.ebnf .gram}
-num_lit : nonzero_dec [ dec_digit | '_' ] * float_suffix ?
-        | '0' [       [ dec_digit | '_' ] * float_suffix ?
-              | 'b'   [ '1' | '0' | '_' ] +
-              | 'o'   [ oct_digit | '_' ] +
-              | 'x'   [ hex_digit | '_' ] +  ] ;
-
-float_suffix : [ exponent | '.' dec_lit exponent ? ] ? ;
-
-exponent : ['E' | 'e'] ['-' | '+' ] ? dec_lit ;
-dec_lit : [ dec_digit | '_' ] + ;
-```
 
 A _number literal_ is either an _integer literal_ or a _floating-point
 literal_. The grammar for recognizing the two kinds of literals is mixed.
@@ -540,12 +404,6 @@ The two values of the boolean type are written `true` and `false`.
 
 ### Symbols
 
-```{.ebnf .gram}
-symbol : "::" | "->"
-       | '#' | '[' | ']' | '(' | ')' | '{' | '}'
-       | ',' | ';' ;
-```
-
 Symbols are a general class of printable [token](#tokens) that play structural
 roles in a variety of grammar productions. They are catalogued here for
 completeness as the set of remaining miscellaneous printable tokens that do not
@@ -554,16 +412,6 @@ operators](#binary-operator-expressions), or [keywords](#keywords).
 
 
 ## Paths
-
-```{.ebnf .gram}
-expr_path : [ "::" ] ident [ "::" expr_path_tail ] + ;
-expr_path_tail : '<' type_expr [ ',' type_expr ] + '>'
-               | expr_path ;
-
-type_path : ident [ type_path_tail ] + ;
-type_path_tail : '<' type_expr [ ',' type_expr ] + '>'
-               | "::" type_path ;
-```
 
 A _path_ is a sequence of one or more path components _logically_ separated by
 a namespace qualifier (`::`). If a path consists of only one component, it may
@@ -659,19 +507,6 @@ Users of `rustc` can define new syntax extensions in two ways:
   declarative way.
 
 ## Macros
-
-```{.ebnf .gram}
-expr_macro_rules : "macro_rules" '!' ident '(' macro_rule * ')' ;
-macro_rule : '(' matcher * ')' "=>" '(' transcriber * ')' ';' ;
-matcher : '(' matcher * ')' | '[' matcher * ']'
-        | '{' matcher * '}' | '$' ident ':' ident
-        | '$' '(' matcher * ')' sep_token? [ '*' | '+' ]
-        | non_special_token ;
-transcriber : '(' transcriber * ')' | '[' transcriber * ']'
-            | '{' transcriber * '}' | '$' ident
-            | '$' '(' transcriber * ')' sep_token? [ '*' | '+' ]
-            | non_special_token ;
-```
 
 `macro_rules` allows users to define syntax extension in a declarative way.  We
 call such extensions "macros by example" or simply "macros" — to be distinguished
@@ -811,12 +646,6 @@ Crates contain [items](#items), each of which may have some number of
 
 ## Items
 
-```{.ebnf .gram}
-item : extern_crate_decl | use_decl | mod_item | fn_item | type_item
-     | struct_item | enum_item | static_item | trait_item | impl_item
-     | extern_block ;
-```
-
 An _item_ is a component of a crate. Items are organized within a crate by a
 nested set of [modules](#modules). Every crate has a single "outermost"
 anonymous module; all further items within the crate have [paths](#paths)
@@ -862,11 +691,6 @@ general type-parametric types, only type-parametric items. That is, Rust has
 no notion of type abstraction: there are no first-class "forall" types.
 
 ### Modules
-
-```{.ebnf .gram}
-mod_item : "mod" ident ( ';' | '{' mod '}' );
-mod : item * ;
-```
 
 A module is a container for zero or more [items](#items).
 
@@ -928,11 +752,6 @@ mod thread {
 
 ##### Extern crate declarations
 
-```{.ebnf .gram}
-extern_crate_decl : "extern" "crate" crate_name
-crate_name: ident | ( string_lit "as" ident )
-```
-
 An _`extern crate` declaration_ specifies a dependency on an external crate.
 The external crate is then bound into the declaring scope as the `ident`
 provided in the `extern_crate_decl`.
@@ -957,17 +776,6 @@ extern crate std as ruststd; // linking to 'std' under another name
 ```
 
 ##### Use declarations
-
-```{.ebnf .gram}
-use_decl : "pub" ? "use" [ path "as" ident
-                          | path_glob ] ;
-
-path_glob : ident [ "::" [ path_glob
-                          | '*' ] ] ?
-          | '{' path_item [ ',' path_item ] * '}' ;
-
-path_item : ident | "self" ;
-```
 
 A _use declaration_ creates one or more local name bindings synonymous with
 some other [path](#paths). Usually a `use` declaration is used to shorten the
@@ -1413,10 +1221,6 @@ it were `Bar(i32)`, this is disallowed.
 
 ### Constant items
 
-```{.ebnf .gram}
-const_item : "const" ident ':' type '=' expr ';' ;
-```
-
 A *constant item* is a named _constant value_ which is not associated with a
 specific memory location in the program. Constants are essentially inlined
 wherever they are used, meaning that they are copied directly into the relevant
@@ -1452,10 +1256,6 @@ const BITS_N_STRINGS: BitsNStrings<'static> = BitsNStrings {
 ```
 
 ### Static items
-
-```{.ebnf .gram}
-static_item : "static" ident ':' type '=' expr ';' ;
-```
 
 A *static item* is similar to a *constant*, except that it represents a precise
 memory location in the program. A static is never "inlined" at the usage site,
@@ -1711,11 +1511,6 @@ impl Seq<bool> for u32 {
 
 ### External blocks
 
-```{.ebnf .gram}
-extern_block_item : "extern" '{' extern_block '}' ;
-extern_block : [ foreign_fn ] * ;
-```
-
 External blocks form the basis for Rust's foreign function interface.
 Declarations in an external block describe symbols in external, non-Rust
 libraries.
@@ -1914,13 +1709,6 @@ chain" being short-circuited through the reexport instead of passing through
 the namespace hierarchy as it normally would.
 
 ## Attributes
-
-```{.ebnf .gram}
-attribute : '#' '!' ? '[' meta_item ']' ;
-meta_item : ident [ '=' literal
-                  | '(' meta_seq ')' ] ? ;
-meta_seq : meta_item [ ',' meta_seq ] ? ;
-```
 
 Any item declaration may have an _attribute_ applied to it. Attributes in Rust
 are modeled on Attributes in ECMA-335, with the syntax coming from ECMA-334
@@ -2503,7 +2291,7 @@ The currently implemented features of the reference compiler are:
                               terms of encapsulation).
 
 If a feature is promoted to a language feature, then all existing programs will
-start to receive compilation warnings about #[feature] directives which enabled
+start to receive compilation warnings about `#![feature]` directives which enabled
 the new feature (because the directive is no longer necessary). However, if a
 feature is decided to be removed from the language, errors will be issued (if
 there isn't a parser error first). The directive in this case is no longer
@@ -2553,11 +2341,6 @@ in meaning to declaring the item outside the statement block.
 > declaring a function-local item.
 
 #### Variable declarations
-
-```{.ebnf .gram}
-let_decl : "let" pat [':' type ] ? [ init ] ? ';' ;
-init : [ '=' ] expr ;
-```
 
 A _variable declaration_ introduces a new set of variable, given by a pattern. The
 pattern may be followed by a type annotation, and/or an initializer expression.
@@ -2649,7 +2432,7 @@ parentheses. They are used to create [tuple-typed](#tuple-types) values.
 ```{.tuple}
 (0,);
 (0.0, 4.5);
-("a", 4us, true);
+("a", 4usize, true);
 ```
 
 ### Unit expressions
@@ -2658,15 +2441,6 @@ The expression `()` denotes the _unit value_, the only value of the type with
 the same name.
 
 ### Structure expressions
-
-```{.ebnf .gram}
-struct_expr : expr_path '{' ident ':' expr
-                      [ ',' ident ':' expr ] *
-                      [ ".." expr ] '}' |
-              expr_path '(' expr
-                      [ ',' expr ] * ')' |
-              expr_path ;
-```
 
 There are several forms of structure expressions. A _structure expression_
 consists of the [path](#paths) of a [structure item](#structures), followed by
@@ -2718,11 +2492,6 @@ Point3d {y: 0, z: 10, .. base};
 
 ### Block expressions
 
-```{.ebnf .gram}
-block_expr : '{' [ stmt ';' | item ] *
-                 [ expr ] '}' ;
-```
-
 A _block expression_ is similar to a module in terms of the declarations that
 are possible. Each block conceptually introduces a new namespace scope. Use
 items can bring new names into scopes and declared items are in scope for only
@@ -2745,10 +2514,6 @@ assert_eq!(5, x);
 
 ### Method-call expressions
 
-```{.ebnf .gram}
-method_call_expr : expr '.' ident paren_expr_list ;
-```
-
 A _method call_ consists of an expression followed by a single dot, an
 identifier, and a parenthesized expression-list. Method calls are resolved to
 methods on specific traits, either statically dispatching to a method if the
@@ -2756,10 +2521,6 @@ exact `self`-type of the left-hand-side is known, or dynamically dispatching if
 the left-hand-side expression is an indirect [trait object](#trait-objects).
 
 ### Field expressions
-
-```{.ebnf .gram}
-field_expr : expr '.' ident ;
-```
 
 A _field expression_ consists of an expression followed by a single dot and an
 identifier, when not immediately followed by a parenthesized expression-list
@@ -2781,12 +2542,6 @@ automatically dereferenced to make the field access possible.
 
 ### Array expressions
 
-```{.ebnf .gram}
-array_expr : '[' "mut" ? array_elems? ']' ;
-
-array_elems : [expr [',' expr]*] | [expr ';' expr] ;
-```
-
 An [array](#array,-and-slice-types) _expression_ is written by enclosing zero
 or more comma-separated expressions of uniform type in square brackets.
 
@@ -2803,10 +2558,6 @@ constant expression that can be evaluated at compile time, such as a
 
 ### Index expressions
 
-```{.ebnf .gram}
-idx_expr : expr '[' expr ']' ;
-```
-
 [Array](#array,-and-slice-types)-typed expressions can be indexed by
 writing a square-bracket-enclosed expression (the index) after them. When the
 array is mutable, the resulting [lvalue](#lvalues,-rvalues-and-temporaries) can
@@ -2822,13 +2573,6 @@ _panicked state_.
 ```
 
 ### Range expressions
-
-```{.ebnf .gram}
-range_expr : expr ".." expr |
-             expr ".." |
-             ".." expr |
-             ".." ;
-```
 
 The `..` operator will construct an object of one of the `std::ops::Range` variants.
 
@@ -2871,10 +2615,6 @@ before the expression they apply to.
     two's complement representation of the value.
 
 ### Binary operator expressions
-
-```{.ebnf .gram}
-binop_expr : expr binop expr ;
-```
 
 Binary operators expressions are given in terms of [operator
 precedence](#operator-precedence).
@@ -3036,10 +2776,6 @@ An expression enclosed in parentheses evaluates to the result of the enclosed
 expression. Parentheses can be used to explicitly specify evaluation order
 within an expression.
 
-```{.ebnf .gram}
-paren_expr : '(' expr ')' ;
-```
-
 An example of a parenthesized expression:
 
 ```
@@ -3048,12 +2784,6 @@ let x: i32 = (2 + 3) * 4;
 
 
 ### Call expressions
-
-```{.ebnf .gram}
-expr_list : [ expr [ ',' expr ]* ] ? ;
-paren_expr_list : '(' expr_list ')' ;
-call_expr : expr paren_expr_list ;
-```
 
 A _call expression_ invokes a function, providing zero or more input variables
 and an optional location to move the function's output into. If the function
@@ -3069,11 +2799,6 @@ let pi: Result<f32, _> = "3.14".parse();
 ```
 
 ### Lambda expressions
-
-```{.ebnf .gram}
-ident_list : [ ident [ ',' ident ]* ] ? ;
-lambda_expr : '|' ident_list '|' expr ;
-```
 
 A _lambda expression_ (sometimes called an "anonymous function expression")
 defines a function and denotes it as a value, in a single expression. A lambda
@@ -3118,10 +2843,6 @@ ten_times(|j| println!("hello, {}", j));
 
 A `loop` expression denotes an infinite loop.
 
-```{.ebnf .gram}
-loop_expr : [ lifetime ':' ] "loop" '{' block '}';
-```
-
 A `loop` expression may optionally have a _label_. The label is written as
 a lifetime preceding the loop expression, as in `'foo: loop{ }`. If a
 label is present, then labeled `break` and `continue` expressions nested
@@ -3131,10 +2852,6 @@ expressions](#continue-expressions).
 
 ### Break expressions
 
-```{.ebnf .gram}
-break_expr : "break" [ lifetime ];
-```
-
 A `break` expression has an optional _label_. If the label is absent, then
 executing a `break` expression immediately terminates the innermost loop
 enclosing it. It is only permitted in the body of a loop. If the label is
@@ -3142,10 +2859,6 @@ present, then `break 'foo` terminates the loop with label `'foo`, which need not
 be the innermost label enclosing the `break` expression, but must enclose it.
 
 ### Continue expressions
-
-```{.ebnf .gram}
-continue_expr : "continue" [ lifetime ];
-```
 
 A `continue` expression has an optional _label_. If the label is absent, then
 executing a `continue` expression immediately terminates the current iteration
@@ -3159,10 +2872,6 @@ innermost label enclosing the `break` expression, but must enclose it.
 A `continue` expression is only permitted in the body of a loop.
 
 ### While loops
-
-```{.ebnf .gram}
-while_expr : [ lifetime ':' ] "while" no_struct_literal_expr '{' block '}' ;
-```
 
 A `while` loop begins by evaluating the boolean loop conditional expression.
 If the loop conditional expression evaluates to `true`, the loop body block
@@ -3187,26 +2896,22 @@ loops](#infinite-loops), [break expressions](#break-expressions), and
 
 ### For expressions
 
-```{.ebnf .gram}
-for_expr : [ lifetime ':' ] "for" pat "in" no_struct_literal_expr '{' block '}' ;
-```
-
 A `for` expression is a syntactic construct for looping over elements provided
-by an implementation of `std::iter::Iterator`.
+by an implementation of `std::iter::IntoIterator`.
 
 An example of a for loop over the contents of an array:
 
 ```
 # type Foo = i32;
-# fn bar(f: Foo) { }
+# fn bar(f: &Foo) { }
 # let a = 0;
 # let b = 0;
 # let c = 0;
 
 let v: &[Foo] = &[a, b, c];
 
-for e in v.iter() {
-    bar(*e);
+for e in v {
+    bar(e);
 }
 ```
 
@@ -3226,14 +2931,6 @@ loops](#infinite-loops), [break expressions](#break-expressions), and
 
 ### If expressions
 
-```{.ebnf .gram}
-if_expr : "if" no_struct_literal_expr '{' block '}'
-          else_tail ? ;
-
-else_tail : "else" [ if_expr | if_let_expr
-                   | '{' block '}' ] ;
-```
-
 An `if` expression is a conditional branch in program control. The form of an
 `if` expression is a condition expression, followed by a consequent block, any
 number of `else if` conditions and blocks, and an optional trailing `else`
@@ -3245,14 +2942,6 @@ if` condition is evaluated. If all `if` and `else if` conditions evaluate to
 `false` then any `else` block is executed.
 
 ### Match expressions
-
-```{.ebnf .gram}
-match_expr : "match" no_struct_literal_expr '{' match_arm * '}' ;
-
-match_arm : attribute * match_pat "=>" [ expr "," | '{' block '}' ] ;
-
-match_pat : pat [ '|' pat ] * [ "if" expr ] ? ;
-```
 
 A `match` expression branches on a *pattern*. The exact form of matching that
 occurs depends on the pattern. Patterns consist of some combination of
@@ -3370,22 +3059,12 @@ let message = match maybe_digit {
 
 ### If let expressions
 
-```{.ebnf .gram}
-if_let_expr : "if" "let" pat '=' expr '{' block '}'
-               else_tail ? ;
-else_tail : "else" [ if_expr | if_let_expr | '{' block '}' ] ;
-```
-
 An `if let` expression is semantically identical to an `if` expression but in place
 of a condition expression it expects a refutable let statement. If the value of the
 expression on the right hand side of the let statement matches the pattern, the corresponding
 block will execute, otherwise flow proceeds to the first `else` block that follows.
 
 ### While let loops
-
-```{.ebnf .gram}
-while_let_expr : "while" "let" pat '=' expr '{' block '}' ;
-```
 
 A `while let` loop is semantically identical to a `while` loop but in place of a
 condition expression it expects a refutable let statement. If the value of the
@@ -3394,10 +3073,6 @@ loop body block executes and control returns to the pattern matching statement.
 Otherwise, the while expression completes.
 
 ### Return expressions
-
-```{.ebnf .gram}
-return_expr : "return" expr ? ;
-```
 
 Return expressions are denoted with the keyword `return`. Evaluating a `return`
 expression moves its argument into the designated output location for the
