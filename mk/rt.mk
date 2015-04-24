@@ -113,7 +113,7 @@ $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1)): $$(OBJS_$(2)_$(1))
 
 ifeq ($$(findstring windows,$(1)),windows)
 $$(RT_OUTPUT_DIR_$(1))/lib$(2).a: $$(RT_OUTPUT_DIR_$(1))/$$(NATIVE_$(2)_$(1))
-	$$(Q)cp $$< $$^
+	$$(Q)cp $$^ $$@
 endif
 
 endef
@@ -227,7 +227,7 @@ COMPRT_DEPS := $(wildcard \
               $(S)src/compiler-rt/*/*/*/*)
 endif
 
-COMPRT_NAME_$(1) := $$(call CFG_STATIC_LIB_NAME_$(1),compiler-rt)
+COMPRT_NAME_$(1) := libcompiler-rt.a
 COMPRT_LIB_$(1) := $$(RT_OUTPUT_DIR_$(1))/$$(COMPRT_NAME_$(1))
 COMPRT_BUILD_DIR_$(1) := $$(RT_OUTPUT_DIR_$(1))/compiler-rt
 
