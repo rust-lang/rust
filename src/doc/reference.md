@@ -29,7 +29,7 @@ You may also be interested in the [grammar].
 
 # Notation
 
-Rust's grammar is defined over Unicode codepoints, each conventionally denoted
+Rust's grammar is defined over Unicode code points, each conventionally denoted
 `U+XXXX`, for 4 or more hexadecimal digits `X`. _Most_ of Rust's grammar is
 confined to the ASCII range of Unicode, and is described in this document by a
 dialect of Extended Backus-Naur Form (EBNF), specifically a dialect of EBNF
@@ -53,7 +53,7 @@ Where:
 - Square brackets are used to group rules.
 - `LITERAL` is a single printable ASCII character, or an escaped hexadecimal
   ASCII code of the form `\xQQ`, in single quotes, denoting the corresponding
-  Unicode codepoint `U+00QQ`.
+  Unicode code point `U+00QQ`.
 - `IDENTIFIER` is a nonempty string of ASCII letters and underscores.
 - The `repeat` forms apply to the adjacent `element`, and are as follows:
   - `?` means zero or one repetition
@@ -66,9 +66,9 @@ This EBNF dialect should hopefully be familiar to many readers.
 
 ## Unicode productions
 
-A few productions in Rust's grammar permit Unicode codepoints outside the ASCII
+A few productions in Rust's grammar permit Unicode code points outside the ASCII
 range. We define these productions in terms of character properties specified
-in the Unicode standard, rather than in terms of ASCII-range codepoints. The
+in the Unicode standard, rather than in terms of ASCII-range code points. The
 section [Special Unicode Productions](#special-unicode-productions) lists these
 productions.
 
@@ -91,10 +91,10 @@ production. See [tokens](#tokens) for more information.
 
 ## Input format
 
-Rust input is interpreted as a sequence of Unicode codepoints encoded in UTF-8.
+Rust input is interpreted as a sequence of Unicode code points encoded in UTF-8.
 Most Rust grammar rules are defined in terms of printable ASCII-range
-codepoints, but a small number are defined in terms of Unicode properties or
-explicit codepoint lists. [^inputformat]
+code points, but a small number are defined in terms of Unicode properties or
+explicit code point lists. [^inputformat]
 
 [^inputformat]: Substitute definitions for the special Unicode productions are
   provided to the grammar verifier, restricted to ASCII range, when verifying the
@@ -147,7 +147,7 @@ comments beginning with exactly one repeated asterisk in the block-open
 sequence (`/**`), are interpreted as a special syntax for `doc`
 [attributes](#attributes). That is, they are equivalent to writing
 `#[doc="..."]` around the body of the comment (this includes the comment
-characters themselves, ie `/// Foo` turns into `#[doc="/// Foo"]`).
+characters themselves, i.e. `/// Foo` turns into `#[doc="/// Foo"]`).
 
 Line comments beginning with `//!` and block comments beginning with `/*!` are
 doc comments that apply to the parent of the comment, rather than the item
@@ -333,14 +333,14 @@ Some additional _escapes_ are available in either character or non-raw string
 literals. An escape starts with a `U+005C` (`\`) and continues with one of the
 following forms:
 
-* An _8-bit codepoint escape_ escape starts with `U+0078` (`x`) and is
-  followed by exactly two _hex digits_. It denotes the Unicode codepoint
+* An _8-bit code point escape_ starts with `U+0078` (`x`) and is
+  followed by exactly two _hex digits_. It denotes the Unicode code point
   equal to the provided hex value.
-* A _24-bit codepoint escape_ starts with `U+0075` (`u`) and is followed
+* A _24-bit code point escape_ starts with `U+0075` (`u`) and is followed
   by up to six _hex digits_ surrounded by braces `U+007B` (`{`) and `U+007D`
-  (`}`). It denotes the Unicode codepoint equal to the provided hex value.
+  (`}`). It denotes the Unicode code point equal to the provided hex value.
 * A _whitespace escape_ is one of the characters `U+006E` (`n`), `U+0072`
-  (`r`), or `U+0074` (`t`), denoting the unicode values `U+000A` (LF),
+  (`r`), or `U+0074` (`t`), denoting the Unicode values `U+000A` (LF),
   `U+000D` (CR) or `U+0009` (HT) respectively.
 * The _backslash escape_ is the character `U+005C` (`\`) which must be
   escaped in order to denote *itself*.
@@ -410,7 +410,7 @@ Some additional _escapes_ are available in either byte or non-raw byte string
 literals. An escape starts with a `U+005C` (`\`) and continues with one of the
 following forms:
 
-* An _byte escape_ escape starts with `U+0078` (`x`) and is
+* A _byte escape_ escape starts with `U+0078` (`x`) and is
   followed by exactly two _hex digits_. It denotes the byte
   equal to the provided hex value.
 * A _whitespace escape_ is one of the characters `U+006E` (`n`), `U+0072`
@@ -700,9 +700,9 @@ in macro rules). In the transcriber, the designator is already known, and so
 only the name of a matched nonterminal comes after the dollar sign.
 
 In both the matcher and transcriber, the Kleene star-like operator indicates
-repetition. The Kleene star operator consists of `$` and parens, optionally
+repetition. The Kleene star operator consists of `$` and parenthesis, optionally
 followed by a separator token, followed by `*` or `+`. `*` means zero or more
-repetitions, `+` means at least one repetition. The parens are not matched or
+repetitions, `+` means at least one repetition. The parenthesis are not matched or
 transcribed. On the matcher side, a name is bound to _all_ of the names it
 matches, in a structure that mimics the structure of the repetition encountered
 on a successful match. The job of the transcriber is to sort that structure
@@ -1203,9 +1203,9 @@ the guarantee that these issues are never caused by safe code.
 
 [noalias]: http://llvm.org/docs/LangRef.html#noalias
 
-##### Behaviour not considered unsafe
+##### Behavior not considered unsafe
 
-This is a list of behaviour not considered *unsafe* in Rust terms, but that may
+This is a list of behavior not considered *unsafe* in Rust terms, but that may
 be undesired.
 
 * Deadlocks
@@ -1298,7 +1298,7 @@ specific type, but may implement several different traits, or be compatible with
 several different type constraints.
 
 For example, the following defines the type `Point` as a synonym for the type
-`(u8, u8)`, the type of pairs of unsigned 8 bit integers.:
+`(u8, u8)`, the type of pairs of unsigned 8 bit integers:
 
 ```
 type Point = (u8, u8);
@@ -1952,7 +1952,7 @@ type int8_t = i8;
 
 ### Crate-only attributes
 
-- `crate_name` - specify the this crate's crate name.
+- `crate_name` - specify the crate's crate name.
 - `crate_type` - see [linkage](#linkage).
 - `feature` - see [compiler features](#compiler-features).
 - `no_builtins` - disable optimizing certain code patterns to invocations of
@@ -3464,7 +3464,7 @@ is not a surrogate), represented as a 32-bit unsigned word in the 0x0000 to
 UTF-32 string.
 
 A value of type `str` is a Unicode string, represented as an array of 8-bit
-unsigned bytes holding a sequence of UTF-8 codepoints. Since `str` is of
+unsigned bytes holding a sequence of UTF-8 code points. Since `str` is of
 unknown size, it is not a _first-class_ type, but can only be instantiated
 through a pointer type, such as `&str` or `String`.
 
