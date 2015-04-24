@@ -2503,7 +2503,7 @@ The currently implemented features of the reference compiler are:
                               terms of encapsulation).
 
 If a feature is promoted to a language feature, then all existing programs will
-start to receive compilation warnings about #[feature] directives which enabled
+start to receive compilation warnings about `#![feature]` directives which enabled
 the new feature (because the directive is no longer necessary). However, if a
 feature is decided to be removed from the language, errors will be issued (if
 there isn't a parser error first). The directive in this case is no longer
