@@ -11,6 +11,8 @@
 // See doc.rs for documentation.
 mod doc;
 
+pub mod gdb;
+
 use self::VariableAccess::*;
 use self::VariableKind::*;
 use self::MemberOffset::*;
@@ -25,9 +27,8 @@ use llvm::debuginfo::*;
 use metadata::csearch;
 use middle::subst::{self, Substs};
 use trans::{self, adt, machine, type_of};
-use trans::common::{self, NodeIdAndSpan, CrateContext, FunctionContext, Block, C_bytes,
+use trans::common::{self, NodeIdAndSpan, CrateContext, FunctionContext, Block,
                     NormalizingClosureTyper};
-use trans::declare;
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::monomorphize;
 use trans::type_::Type;
@@ -46,7 +47,7 @@ use std::ptr;
 use std::rc::{Rc, Weak};
 use syntax::util::interner::Interner;
 use syntax::codemap::{Span, Pos};
-use syntax::{ast, codemap, ast_util, ast_map, attr};
+use syntax::{ast, codemap, ast_util, ast_map};
 use syntax::parse::token::{self, special_idents};
 
 const DW_LANG_RUST: c_uint = 0x9000;
@@ -552,12 +553,12 @@ pub fn finalize(cx: &CrateContext) {
     debug!("finalize");
     let _ = compile_unit_metadata(cx);
 
-    if needs_gdb_debug_scripts_section(cx) {
+    if gdb::needs_gdb_debug_scripts_section(cx) {
         // Add a .debug_gdb_scripts section to this compile-unit. This will
         // cause GDB to try and load the gdb_load_rust_pretty_printers.py file,
         // which activates the Rust pretty printers for binary this section is
         // contained in.
-        get_or_insert_gdb_debug_scripts_section_global(cx);
+        gdb::get_or_insert_gdb_debug_scripts_section_global(cx);
     }
 
     unsafe {
@@ -3865,78 +3866,4 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
             }
         }
     })
-}
-
-
-//=-----------------------------------------------------------------------------
-// .debug_gdb_scripts binary section
-//=-----------------------------------------------------------------------------
-
-/// Inserts a side-effect free instruction sequence that makes sure that the
-/// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
-pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext) {
-    if needs_gdb_debug_scripts_section(ccx) {
-        let empty = CString::new("").unwrap();
-        let gdb_debug_scripts_section_global =
-            get_or_insert_gdb_debug_scripts_section_global(ccx);
-        unsafe {
-            let volative_load_instruction =
-                llvm::LLVMBuildLoad(ccx.raw_builder(),
-                                    gdb_debug_scripts_section_global,
-                                    empty.as_ptr());
-            llvm::LLVMSetVolatile(volative_load_instruction, llvm::True);
-        }
-    }
-}
-
-/// Allocates the global variable responsible for the .debug_gdb_scripts binary
-/// section.
-fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
-                                                  -> llvm::ValueRef {
-    let section_var_name = "__rustc_debug_gdb_scripts_section__";
-
-    let section_var = unsafe {
-        llvm::LLVMGetNamedGlobal(ccx.llmod(),
-                                 section_var_name.as_ptr() as *const _)
-    };
-
-    if section_var == ptr::null_mut() {
-        let section_name = b".debug_gdb_scripts\0";
-        let section_contents = b"\x01gdb_load_rust_pretty_printers.py\0";
-
-        unsafe {
-            let llvm_type = Type::array(&Type::i8(ccx),
-                                        section_contents.len() as u64);
-
-            let section_var = declare::define_global(ccx, section_var_name,
-                                                     llvm_type).unwrap_or_else(||{
-                ccx.sess().bug(&format!("symbol `{}` is already defined", section_var_name))
-            });
-            llvm::LLVMSetSection(section_var, section_name.as_ptr() as *const _);
-            llvm::LLVMSetInitializer(section_var, C_bytes(ccx, section_contents));
-            llvm::LLVMSetGlobalConstant(section_var, llvm::True);
-            llvm::LLVMSetUnnamedAddr(section_var, llvm::True);
-            llvm::SetLinkage(section_var, llvm::Linkage::LinkOnceODRLinkage);
-            // This should make sure that the whole section is not larger than
-            // the string it contains. Otherwise we get a warning from GDB.
-            llvm::LLVMSetAlignment(section_var, 1);
-            section_var
-        }
-    } else {
-        section_var
-    }
-}
-
-fn needs_gdb_debug_scripts_section(ccx: &CrateContext) -> bool {
-    let omit_gdb_pretty_printer_section =
-        attr::contains_name(&ccx.tcx()
-                                .map
-                                .krate()
-                                .attrs,
-                            "omit_gdb_pretty_printer_section");
-
-    !omit_gdb_pretty_printer_section &&
-    !ccx.sess().target.target.options.is_like_osx &&
-    !ccx.sess().target.target.options.is_like_windows &&
-    ccx.sess().opts.debuginfo != NoDebugInfo
 }
