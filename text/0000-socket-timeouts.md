@@ -31,18 +31,27 @@ expose functionality like `set_nodelay`:
 ```rust
 impl TcpStream {
     pub fn set_read_timeout(&self, dur: Duration) -> io::Result<()> { ... }
+    pub fn read_timeout(&self) -> Duration;
+
     pub fn set_write_timeout(&self, dur: Duration) -> io::Result<()> { ... }
+    pub fn write_timeout(&self) -> Duration;
 }
 
 impl UdpSocket {
     pub fn set_read_timeout(&self, dur: Duration) -> io::Result<()> { ... }
+    pub fn read_timeout(&self) -> Duration;
+
     pub fn set_write_timeout(&self, dur: Duration) -> io::Result<()> { ... }
+    pub fn write_timeout(&self) -> Duration;
 }
 ```
 
-These methods take an amount of time in the form of a `Duration`,
+The setter methods take an amount of time in the form of a `Duration`,
 which is [undergoing stabilization][duration-reform]. They are
-implemented via straightforward calls to `setsockopt`.
+implemented via straightforward calls to `setsockopt`. A `Duration` of
+zero represents *no timeout*.
+
+The corresponding socket options are `SO_RCVTIMEO` and `SO_SNDTIMEO`.
 
 # Drawbacks
 
@@ -62,6 +71,22 @@ enough in practice to justify a departure from the traditional API.
 
 # Alternatives
 
+## `Option<Duration>`
+
+It's a bit unfortunate -- and rather un-Rustic -- to special case a
+zero duration as "no timeout".
+
+An alternative would be to use `Option<Duration>`, and, on
+`Some(Duration::zero())` yield an invalid input error. That would
+force more clarity about intent and help guard against accidental
+disabling of timeouts for arithmetic reasons.
+
+On the other hand, it may have the risk of *introducing* bugs for
+those who expect a different semantics -- though the use of option
+types will likely serve as a sufficient heads-up.
+
+## Wrapping for compositionality
+
 A different approach would be to *wrap* socket types with a "timeout
 modifier", which would be responsible for setting and resetting the
 timeouts:
@@ -69,7 +94,7 @@ timeouts:
 ```rust
 struct WithTimeout<T> {
     timeout: Duration,
-    innter: T
+    inner: T
 }
 
 impl<T> WithTimeout<T> {
