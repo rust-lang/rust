@@ -16,16 +16,14 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
-use fmt;
-use core::num;
-
 pub use core::num::{Zero, One};
-pub use core::num::{FpCategory, ParseIntError};
+pub use core::num::{FpCategory, ParseIntError, ParseFloatError};
 pub use core::num::{wrapping, Wrapping};
 
-#[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
 #[cfg(test)] use cmp::PartialEq;
+#[cfg(test)] use fmt;
 #[cfg(test)] use marker::Copy;
+#[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
 
 /// Helper function for testing numeric operations
 #[cfg(test)]
@@ -41,31 +39,6 @@ pub fn test_num<T>(ten: T, two: T) where
     assert_eq!(ten.mul(two),  ten * two);
     assert_eq!(ten.div(two),  ten / two);
     assert_eq!(ten.rem(two),  ten % two);
-}
-
-/// An error which can be returned when parsing a float.
-#[derive(Debug, Clone, PartialEq)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct ParseFloatError { inner: num::ParseFloatError }
-
-impl ::sys_common::FromInner<num::ParseFloatError> for ParseFloatError {
-    fn from_inner(inner: num::ParseFloatError) -> ParseFloatError {
-        ParseFloatError { inner: inner }
-    }
-}
-
-impl ParseFloatError {
-    #[unstable(feature = "core", reason = "available through Error trait")]
-    pub fn description(&self) -> &str {
-        self.inner.description()
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Display for ParseFloatError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
-    }
 }
 
 #[cfg(test)]
