@@ -29,7 +29,7 @@ You may also be interested in the [grammar].
 
 # Notation
 
-Rust's grammar is defined over Unicode codepoints, each conventionally denoted
+Rust's grammar is defined over Unicode code points, each conventionally denoted
 `U+XXXX`, for 4 or more hexadecimal digits `X`. _Most_ of Rust's grammar is
 confined to the ASCII range of Unicode, and is described in this document by a
 dialect of Extended Backus-Naur Form (EBNF), specifically a dialect of EBNF
@@ -53,7 +53,7 @@ Where:
 - Square brackets are used to group rules.
 - `LITERAL` is a single printable ASCII character, or an escaped hexadecimal
   ASCII code of the form `\xQQ`, in single quotes, denoting the corresponding
-  Unicode codepoint `U+00QQ`.
+  Unicode code point `U+00QQ`.
 - `IDENTIFIER` is a nonempty string of ASCII letters and underscores.
 - The `repeat` forms apply to the adjacent `element`, and are as follows:
   - `?` means zero or one repetition
@@ -66,9 +66,9 @@ This EBNF dialect should hopefully be familiar to many readers.
 
 ## Unicode productions
 
-A few productions in Rust's grammar permit Unicode codepoints outside the ASCII
+A few productions in Rust's grammar permit Unicode code points outside the ASCII
 range. We define these productions in terms of character properties specified
-in the Unicode standard, rather than in terms of ASCII-range codepoints. The
+in the Unicode standard, rather than in terms of ASCII-range code points. The
 section [Special Unicode Productions](#special-unicode-productions) lists these
 productions.
 
@@ -91,10 +91,10 @@ production. See [tokens](#tokens) for more information.
 
 ## Input format
 
-Rust input is interpreted as a sequence of Unicode codepoints encoded in UTF-8.
+Rust input is interpreted as a sequence of Unicode code points encoded in UTF-8.
 Most Rust grammar rules are defined in terms of printable ASCII-range
-codepoints, but a small number are defined in terms of Unicode properties or
-explicit codepoint lists. [^inputformat]
+code points, but a small number are defined in terms of Unicode properties or
+explicit code point lists. [^inputformat]
 
 [^inputformat]: Substitute definitions for the special Unicode productions are
   provided to the grammar verifier, restricted to ASCII range, when verifying the
@@ -147,11 +147,13 @@ comments beginning with exactly one repeated asterisk in the block-open
 sequence (`/**`), are interpreted as a special syntax for `doc`
 [attributes](#attributes). That is, they are equivalent to writing
 `#[doc="..."]` around the body of the comment (this includes the comment
-characters themselves, ie `/// Foo` turns into `#[doc="/// Foo"]`).
+characters themselves, i.e. `/// Foo` turns into `#[doc="/// Foo"]`).
 
-`//!` comments apply to the parent of the comment, rather than the item that
-follows. `//!` comments are usually used to display information on the crate
-index page.
+Line comments beginning with `//!` and block comments beginning with `/*!` are
+doc comments that apply to the parent of the comment, rather than the item
+that follows.  That is, they are equivalent to writing `#![doc="..."]` around
+the body of the comment. `//!` comments are usually used to display
+information on the crate index page.
 
 Non-doc comments are interpreted as a form of whitespace.
 
@@ -196,10 +198,11 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 | fn       | for      | if       | impl     | in      |
 | let      | loop     | macro    | match    | mod     |
 | move     | mut      | offsetof | override | priv    |
-| pub      | pure     | ref      | return   | sizeof  |
-| static   | self     | struct   | super    | true    |
-| trait    | type     | typeof   | unsafe   | unsized |
-| use      | virtual  | where    | while    | yield   |
+| proc     | pub      | pure     | ref      | return  |
+| Self     | self     | sizeof   | static   | struct  |
+| super    | trait    | true     | type     | typeof  |
+| unsafe   | unsized  | use      | virtual  | where   |
+| while    | yield    |          |          |         |
 
 
 Each of these keywords has special meaning in its grammar, and all of them are
@@ -330,14 +333,14 @@ Some additional _escapes_ are available in either character or non-raw string
 literals. An escape starts with a `U+005C` (`\`) and continues with one of the
 following forms:
 
-* An _8-bit codepoint escape_ escape starts with `U+0078` (`x`) and is
-  followed by exactly two _hex digits_. It denotes the Unicode codepoint
+* An _8-bit code point escape_ starts with `U+0078` (`x`) and is
+  followed by exactly two _hex digits_. It denotes the Unicode code point
   equal to the provided hex value.
-* A _24-bit codepoint escape_ starts with `U+0075` (`u`) and is followed
+* A _24-bit code point escape_ starts with `U+0075` (`u`) and is followed
   by up to six _hex digits_ surrounded by braces `U+007B` (`{`) and `U+007D`
-  (`}`). It denotes the Unicode codepoint equal to the provided hex value.
+  (`}`). It denotes the Unicode code point equal to the provided hex value.
 * A _whitespace escape_ is one of the characters `U+006E` (`n`), `U+0072`
-  (`r`), or `U+0074` (`t`), denoting the unicode values `U+000A` (LF),
+  (`r`), or `U+0074` (`t`), denoting the Unicode values `U+000A` (LF),
   `U+000D` (CR) or `U+0009` (HT) respectively.
 * The _backslash escape_ is the character `U+005C` (`\`) which must be
   escaped in order to denote *itself*.
@@ -407,7 +410,7 @@ Some additional _escapes_ are available in either byte or non-raw byte string
 literals. An escape starts with a `U+005C` (`\`) and continues with one of the
 following forms:
 
-* An _byte escape_ escape starts with `U+0078` (`x`) and is
+* A _byte escape_ escape starts with `U+0078` (`x`) and is
   followed by exactly two _hex digits_. It denotes the byte
   equal to the provided hex value.
 * A _whitespace escape_ is one of the characters `U+006E` (`n`), `U+0072`
@@ -697,9 +700,9 @@ in macro rules). In the transcriber, the designator is already known, and so
 only the name of a matched nonterminal comes after the dollar sign.
 
 In both the matcher and transcriber, the Kleene star-like operator indicates
-repetition. The Kleene star operator consists of `$` and parens, optionally
+repetition. The Kleene star operator consists of `$` and parentheses, optionally
 followed by a separator token, followed by `*` or `+`. `*` means zero or more
-repetitions, `+` means at least one repetition. The parens are not matched or
+repetitions, `+` means at least one repetition. The parentheses are not matched or
 transcribed. On the matcher side, a name is bound to _all_ of the names it
 matches, in a structure that mimics the structure of the repetition encountered
 on a successful match. The job of the transcriber is to sort that structure
@@ -1099,39 +1102,30 @@ signature. Each type parameter must be explicitly declared, in an
 angle-bracket-enclosed, comma-separated list following the function name.
 
 ```{.ignore}
-fn iter<T>(seq: &[T], f: |T|) {
-    for elt in seq.iter() { f(elt); }
+fn iter<T, F>(seq: &[T], f: F) where T: Copy, F: Fn(T) {
+    for elt in seq { f(*elt); }
 }
-fn map<T, U>(seq: &[T], f: |T| -> U) -> Vec<U> {
+fn map<T, U, F>(seq: &[T], f: F) -> Vec<U> where T: Copy, U: Copy, F: Fn(T) -> U {
     let mut acc = vec![];
-    for elt in seq.iter() { acc.push(f(elt)); }
+    for elt in seq { acc.push(f(*elt)); }
     acc
 }
 ```
 
 Inside the function signature and body, the name of the type parameter can be
-used as a type name.
+used as a type name. [Trait](#traits) bounds can be specified for type parameters
+to allow methods with that trait to be called on values of that type. This is
+specified using the `where` syntax, as in the above example.
 
 When a generic function is referenced, its type is instantiated based on the
 context of the reference. For example, calling the `iter` function defined
 above on `[1, 2]` will instantiate type parameter `T` with `i32`, and require
-the closure parameter to have type `fn(i32)`.
+the closure parameter to have type `Fn(i32)`.
 
 The type parameters can also be explicitly supplied in a trailing
 [path](#paths) component after the function name. This might be necessary if
 there is not sufficient context to determine the type parameters. For example,
 `mem::size_of::<u32>() == 4`.
-
-Since a parameter type is opaque to the generic function, the set of operations
-that can be performed on it is limited. Values of parameter type can only be
-moved, not copied.
-
-```
-fn id<T>(x: T) -> T { x }
-```
-
-Similarly, [trait](#traits) bounds can be specified for type parameters to
-allow methods with that trait to be called on values of that type.
 
 #### Unsafety
 
@@ -1209,9 +1203,9 @@ the guarantee that these issues are never caused by safe code.
 
 [noalias]: http://llvm.org/docs/LangRef.html#noalias
 
-##### Behaviour not considered unsafe
+##### Behavior not considered unsafe
 
-This is a list of behaviour not considered *unsafe* in Rust terms, but that may
+This is a list of behavior not considered *unsafe* in Rust terms, but that may
 be undesired.
 
 * Deadlocks
@@ -1304,7 +1298,7 @@ specific type, but may implement several different traits, or be compatible with
 several different type constraints.
 
 For example, the following defines the type `Point` as a synonym for the type
-`(u8, u8)`, the type of pairs of unsigned 8 bit integers.:
+`(u8, u8)`, the type of pairs of unsigned 8 bit integers:
 
 ```
 type Point = (u8, u8);
@@ -1555,7 +1549,7 @@ fn draw_twice<T: Shape>(surface: Surface, sh: T) {
 }
 ```
 
-Traits also define an [object type](#object-types) with the same name as the
+Traits also define an [trait object](#trait-objects) with the same name as the
 trait. Values of this type are created by [casting](#type-cast-expressions)
 pointer values (pointing to a type for which an implementation of the given
 trait is in scope) to pointers to the trait name, used as a type.
@@ -1958,7 +1952,7 @@ type int8_t = i8;
 
 ### Crate-only attributes
 
-- `crate_name` - specify the this crate's crate name.
+- `crate_name` - specify the crate's crate name.
 - `crate_type` - see [linkage](#linkage).
 - `feature` - see [compiler features](#compiler-features).
 - `no_builtins` - disable optimizing certain code patterns to invocations of
@@ -2146,7 +2140,7 @@ The following configurations must be defined by the implementation:
   `"unix"` or `"windows"`. The value of this configuration option is defined
   as a configuration itself, like `unix` or `windows`.
 * `target_os = "..."`. Operating system of the target, examples include
-  `"win32"`, `"macos"`, `"linux"`, `"android"`, `"freebsd"`, `"dragonfly"`,
+  `"windows"`, `"macos"`, `"ios"`, `"linux"`, `"android"`, `"freebsd"`, `"dragonfly"`,
   `"bitrig"` or `"openbsd"`.
 * `target_pointer_width = "..."`. Target pointer width in bits. This is set
   to `"32"` for targets with 32-bit pointers, and likewise set to `"64"` for
@@ -2744,7 +2738,7 @@ A _method call_ consists of an expression followed by a single dot, an
 identifier, and a parenthesized expression-list. Method calls are resolved to
 methods on specific traits, either statically dispatching to a method if the
 exact `self`-type of the left-hand-side is known, or dynamically dispatching if
-the left-hand-side expression is an indirect [object type](#object-types).
+the left-hand-side expression is an indirect [trait object](#trait-objects).
 
 ### Field expressions
 
@@ -2810,6 +2804,33 @@ _panicked state_.
 ```{should-fail}
 ([1, 2, 3, 4])[0];
 (["a", "b"])[10]; // panics
+```
+
+### Range expressions
+
+```{.ebnf .gram}
+range_expr : expr ".." expr |
+             expr ".." |
+             ".." expr |
+             ".." ;
+```
+
+The `..` operator will construct an object of one of the `std::ops::Range` variants.
+
+```
+1..2;   // std::ops::Range
+3..;    // std::ops::RangeFrom
+..4;    // std::ops::RangeTo
+..;     // std::ops::RangeFull
+```
+
+The following expressions are equivalent.
+
+```
+let x = std::ops::Range {start: 0, end: 10};
+let y = 0..10;
+
+assert_eq!(x,y);
 ```
 
 ### Unary operator expressions
@@ -3078,6 +3099,50 @@ fn ten_times<F>(f: F) where F: Fn(i32) {
 ten_times(|j| println!("hello, {}", j));
 ```
 
+### Infinite loops
+
+A `loop` expression denotes an infinite loop.
+
+```{.ebnf .gram}
+loop_expr : [ lifetime ':' ] "loop" '{' block '}';
+```
+
+A `loop` expression may optionally have a _label_. The label is written as
+a lifetime preceding the loop expression, as in `'foo: loop{ }`. If a
+label is present, then labeled `break` and `continue` expressions nested
+within this loop may exit out of this loop or return control to its head.
+See [Break expressions](#break-expressions) and [Continue
+expressions](#continue-expressions).
+
+### Break expressions
+
+```{.ebnf .gram}
+break_expr : "break" [ lifetime ];
+```
+
+A `break` expression has an optional _label_. If the label is absent, then
+executing a `break` expression immediately terminates the innermost loop
+enclosing it. It is only permitted in the body of a loop. If the label is
+present, then `break 'foo` terminates the loop with label `'foo`, which need not
+be the innermost label enclosing the `break` expression, but must enclose it.
+
+### Continue expressions
+
+```{.ebnf .gram}
+continue_expr : "continue" [ lifetime ];
+```
+
+A `continue` expression has an optional _label_. If the label is absent, then
+executing a `continue` expression immediately terminates the current iteration
+of the innermost loop enclosing it, returning control to the loop *head*. In
+the case of a `while` loop, the head is the conditional expression controlling
+the loop. In the case of a `for` loop, the head is the call-expression
+controlling the loop. If the label is present, then `continue 'foo` returns
+control to the head of the loop with label `'foo`, which need not be the
+innermost label enclosing the `break` expression, but must enclose it.
+
+A `continue` expression is only permitted in the body of a loop.
+
 ### While loops
 
 ```{.ebnf .gram}
@@ -3100,48 +3165,10 @@ while i < 10 {
 }
 ```
 
-### Infinite loops
-
-A `loop` expression denotes an infinite loop.
-
-```{.ebnf .gram}
-loop_expr : [ lifetime ':' ] "loop" '{' block '}';
-```
-
-A `loop` expression may optionally have a _label_. If a label is present, then
-labeled `break` and `continue` expressions nested within this loop may exit out
-of this loop or return control to its head. See [Break
-expressions](#break-expressions) and [Continue
-expressions](#continue-expressions).
-
-### Break expressions
-
-```{.ebnf .gram}
-break_expr : "break" [ lifetime ];
-```
-
-A `break` expression has an optional _label_. If the label is absent, then
-executing a `break` expression immediately terminates the innermost loop
-enclosing it. It is only permitted in the body of a loop. If the label is
-present, then `break foo` terminates the loop with label `foo`, which need not
-be the innermost label enclosing the `break` expression, but must enclose it.
-
-### Continue expressions
-
-```{.ebnf .gram}
-continue_expr : "continue" [ lifetime ];
-```
-
-A `continue` expression has an optional _label_. If the label is absent, then
-executing a `continue` expression immediately terminates the current iteration
-of the innermost loop enclosing it, returning control to the loop *head*. In
-the case of a `while` loop, the head is the conditional expression controlling
-the loop. In the case of a `for` loop, the head is the call-expression
-controlling the loop. If the label is present, then `continue foo` returns
-control to the head of the loop with label `foo`, which need not be the
-innermost label enclosing the `break` expression, but must enclose it.
-
-A `continue` expression is only permitted in the body of a loop.
+Like `loop` expressions, `while` loops can be controlled with `break` or
+`continue`, and may optionally have a _label_. See [infinite
+loops](#infinite-loops), [break expressions](#break-expressions), and
+[continue expressions](#continue-expressions) for more information.
 
 ### For expressions
 
@@ -3176,6 +3203,11 @@ for i in 0..256 {
     bar(i);
 }
 ```
+
+Like `loop` expressions, `for` loops can be controlled with `break` or
+`continue`, and may optionally have a _label_. See [infinite
+loops](#infinite-loops), [break expressions](#break-expressions), and
+[continue expressions](#continue-expressions) for more information.
 
 ### If expressions
 
@@ -3432,7 +3464,7 @@ is not a surrogate), represented as a 32-bit unsigned word in the 0x0000 to
 UTF-32 string.
 
 A value of type `str` is a Unicode string, represented as an array of 8-bit
-unsigned bytes holding a sequence of UTF-8 codepoints. Since `str` is of
+unsigned bytes holding a sequence of UTF-8 code points. Since `str` is of
 unknown size, it is not a _first-class_ type, but can only be instantiated
 through a pointer type, such as `&str` or `String`.
 
@@ -3649,23 +3681,23 @@ call_closure(closure_no_args, closure_args);
 
 ```
 
-### Object types
+### Trait objects
 
 Every trait item (see [traits](#traits)) defines a type with the same name as
-the trait. This type is called the _object type_ of the trait. Object types
+the trait. This type is called the _trait object_ of the trait. Trait objects
 permit "late binding" of methods, dispatched using _virtual method tables_
 ("vtables"). Whereas most calls to trait methods are "early bound" (statically
 resolved) to specific implementations at compile time, a call to a method on an
-object type is only resolved to a vtable entry at compile time. The actual
+trait objects is only resolved to a vtable entry at compile time. The actual
 implementation for each vtable entry can vary on an object-by-object basis.
 
 Given a pointer-typed expression `E` of type `&T` or `Box<T>`, where `T`
 implements trait `R`, casting `E` to the corresponding pointer type `&R` or
-`Box<R>` results in a value of the _object type_ `R`. This result is
+`Box<R>` results in a value of the _trait object_ `R`. This result is
 represented as a pair of pointers: the vtable pointer for the `T`
 implementation of `R`, and the pointer value of `E`.
 
-An example of an object type:
+An example of a trait object:
 
 ```
 trait Printable {
@@ -3685,7 +3717,7 @@ fn main() {
 }
 ```
 
-In this example, the trait `Printable` occurs as an object type in both the
+In this example, the trait `Printable` occurs as a trait object in both the
 type signature of `print`, and the cast expression in `main`.
 
 ### Type parameters
