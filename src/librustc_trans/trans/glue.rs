@@ -30,7 +30,6 @@ use trans::callee;
 use trans::cleanup;
 use trans::cleanup::CleanupMethods;
 use trans::common::*;
-use trans::datum;
 use trans::debuginfo::DebugLoc;
 use trans::declare;
 use trans::expr;
@@ -361,75 +360,36 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  substs: &subst::Substs<'tcx>)
                                  -> Block<'blk, 'tcx>
 {
-    let repr = adt::represent_type(bcx.ccx(), t);
+    debug!("trans_struct_drop t: {}", bcx.ty_to_string(t));
 
     // Find and call the actual destructor
-    let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, t,
-                                 class_did, substs);
+    let dtor_addr = get_res_dtor(bcx.ccx(), dtor_did, t, class_did, substs);
 
-    // The first argument is the "self" argument for drop
+    // Class dtors have no explicit args, so the params should
+    // just consist of the environment (self).
     let params = unsafe {
         let ty = Type::from_ref(llvm::LLVMTypeOf(dtor_addr));
         ty.element_type().func_params()
     };
+    assert_eq!(params.len(), 1);
 
-    let fty = ty::lookup_item_type(bcx.tcx(), dtor_did).ty.subst(bcx.tcx(), substs);
-    let self_ty = match fty.sty {
-        ty::ty_bare_fn(_, ref f) => {
-            let sig = ty::erase_late_bound_regions(bcx.tcx(), &f.sig);
-            assert!(sig.inputs.len() == 1);
-            sig.inputs[0]
-        }
-        _ => bcx.sess().bug(&format!("Expected function type, found {}",
-                                    bcx.ty_to_string(fty)))
-    };
+    // Be sure to put the contents into a scope so we can use an invoke
+    // instruction to call the user destructor but still call the field
+    // destructors if the user destructor panics.
+    //
+    // FIXME (#14875) panic-in-drop semantics might be unsupported; we
+    // might well consider changing below to more direct code.
+    let contents_scope = bcx.fcx.push_custom_cleanup_scope();
 
-    let (struct_data, info) = if type_is_sized(bcx.tcx(), t) {
-        (v0, None)
-    } else {
-        let data = GEPi(bcx, v0, &[0, abi::FAT_PTR_ADDR]);
-        let info = GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]);
-        (Load(bcx, data), Some(Load(bcx, info)))
-    };
+    // Issue #23611: schedule cleanup of contents, re-inspecting the
+    // discriminant (if any) in case of variant swap in drop code.
+    bcx.fcx.schedule_drop_enum_contents(cleanup::CustomScope(contents_scope), v0, t);
 
-    debug!("trans_struct_drop t: {} fty: {} self_ty: {}",
-           bcx.ty_to_string(t), bcx.ty_to_string(fty), bcx.ty_to_string(self_ty));
-    // TODO: surely no reason to keep dispatching on variants here.
-    adt::fold_variants(bcx, &*repr, struct_data, |variant_cx, struct_info, value| {
-        debug!("trans_struct_drop fold_variant: struct_info: {:?}", struct_info);
-        // Be sure to put the enum contents into a scope so we can use an invoke
-        // instruction to call the user destructor but still call the field
-        // destructors if the user destructor panics.
-        let field_scope = variant_cx.fcx.push_custom_cleanup_scope();
-        variant_cx.fcx.schedule_drop_enum_contents(cleanup::CustomScope(field_scope), v0, t);
+    let glue_type = get_drop_glue_type(bcx.ccx(), t);
+    let dtor_ty = ty::mk_ctor_fn(bcx.tcx(), class_did, &[glue_type], ty::mk_nil(bcx.tcx()));
+    let (_, bcx) = invoke(bcx, dtor_addr, &[v0], dtor_ty, DebugLoc::None);
 
-        // Class dtors have no explicit args, so the params should
-        // just consist of the environment (self).
-        assert_eq!(params.len(), 1);
-        let self_arg = if type_is_fat_ptr(bcx.tcx(), self_ty) {
-            // The dtor expects a fat pointer, so make one, even if we have to fake it.
-            let scratch = datum::rvalue_scratch_datum(bcx, t, "__fat_ptr_drop_self");
-            Store(bcx, value, GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
-            Store(bcx,
-                  // If we just had a thin pointer, make a fat pointer by sticking
-                  // null where we put the unsizing info. This works because t
-                  // is a sized type, so we will only unpack the fat pointer, never
-                  // use the fake info.
-                  info.unwrap_or(C_null(Type::i8p(bcx.ccx()))),
-                  GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_EXTRA]));
-            PointerCast(variant_cx, scratch.val, params[0])
-        } else {
-            PointerCast(variant_cx, value, params[0])
-        };
-
-        let dtor_ty = ty::mk_ctor_fn(bcx.tcx(),
-                                     class_did,
-                                     &[get_drop_glue_type(bcx.ccx(), t)],
-                                     ty::mk_nil(bcx.tcx()));
-        let (_, variant_cx) = invoke(variant_cx, dtor_addr, &[self_arg], dtor_ty, DebugLoc::None);
-
-        variant_cx.fcx.pop_and_trans_custom_cleanup_scope(variant_cx, field_scope)
-    })
+    bcx.fcx.pop_and_trans_custom_cleanup_scope(bcx, contents_scope)
 }
 
 fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: ValueRef)
