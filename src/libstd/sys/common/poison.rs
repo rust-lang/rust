@@ -10,6 +10,7 @@
 
 use prelude::v1::*;
 
+use marker::Reflect;
 use cell::UnsafeCell;
 use error::{Error};
 use fmt;
@@ -109,7 +110,7 @@ impl<T> fmt::Display for PoisonError<T> {
     }
 }
 
-impl<T: Send> Error for PoisonError<T> {
+impl<T: Send + Reflect> Error for PoisonError<T> {
     fn description(&self) -> &str {
         "poisoned lock: another task failed inside"
     }
@@ -155,13 +156,13 @@ impl<T> fmt::Debug for TryLockError<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> fmt::Display for TryLockError<T> {
+impl<T: Send + Reflect> fmt::Display for TryLockError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.description().fmt(f)
     }
 }
 
-impl<T: Send> Error for TryLockError<T> {
+impl<T: Send + Reflect> Error for TryLockError<T> {
     fn description(&self) -> &str {
         match *self {
             TryLockError::Poisoned(ref p) => p.description(),
