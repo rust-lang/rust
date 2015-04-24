@@ -10,8 +10,9 @@
 
 // Utility Functions.
 
-use super::{FunctionDebugContext, CrateDebugContext, file_metadata};
+use super::{FunctionDebugContext, CrateDebugContext};
 use super::namespace::namespace_for_item;
+use super::metadata::file_metadata;
 
 use llvm;
 use llvm::debuginfo::{DIScope, DISubprogram, DIBuilderRef};

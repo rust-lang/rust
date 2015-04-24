@@ -11,8 +11,9 @@
 // Module-Internal debug info creation functions.
 
 use super::utils::{span_start, DIB};
+use super::metadata::{type_metadata, file_metadata};
 
-use super::{set_debug_location, type_metadata, file_metadata, DW_TAG_auto_variable, DW_TAG_arg_variable};
+use super::{set_debug_location, DW_TAG_auto_variable, DW_TAG_arg_variable};
 use super::VariableKind::{self, ArgumentVariable, CapturedVariable, LocalVariable};
 use super::VariableAccess::{self, DirectVariable, IndirectVariable};
 use super::InternalDebugLocation::{self, UnknownLocation};
