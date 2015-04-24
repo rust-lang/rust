@@ -8,6 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// SNAP 5520801
+#[cfg(stage0)]
+#[macro_export]
+macro_rules! __unstable_rustc_ensure_not_fmt_string_literal {
+    ($name:expr, $e:expr) => { $e }
+}
+
 /// Entry point of task panic, for details, see std::macros
 #[macro_export]
 macro_rules! panic {
@@ -15,7 +22,9 @@ macro_rules! panic {
         panic!("explicit panic")
     );
     ($msg:expr) => ({
-        static _MSG_FILE_LINE: (&'static str, &'static str, u32) = ($msg, file!(), line!());
+        static _MSG_FILE_LINE: (&'static str, &'static str, u32) =
+            (__unstable_rustc_ensure_not_fmt_string_literal!("unary `panic!`", $msg),
+             file!(), line!());
         ::core::panicking::panic(&_MSG_FILE_LINE)
     });
     ($fmt:expr, $($arg:tt)*) => ({
@@ -56,7 +65,8 @@ macro_rules! panic {
 macro_rules! assert {
     ($cond:expr) => (
         if !$cond {
-            panic!(concat!("assertion failed: ", stringify!($cond)))
+            const MSG: &'static str = concat!("assertion failed: ", stringify!($cond));
+            panic!(MSG)
         }
     );
     ($cond:expr, $($arg:tt)+) => (

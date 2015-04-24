@@ -95,6 +95,6 @@ fn test_match_option_string() {
     let five = "Five".to_string();
     match Some(five) {
         Some(s) => assert_eq!(s, "Five"),
-        None => panic!("unexpected None while matching on Some(String { ... })")
+        None => panic!(("unexpected None while matching on Some(String { ... })"))
     }
 }

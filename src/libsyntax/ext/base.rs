@@ -458,6 +458,14 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
     syntax_expanders.insert(intern("format_args"),
                             // format_args uses `unstable` things internally.
                             NormalTT(Box::new(ext::format::expand_format_args), None, true));
+
+    // ensure_not_fmt_string_literal is passed `unstable` things to
+    // use in its expansion. (Of course, that should not actually
+    // force us to pass `true` to allow the use of unstable things;
+    // i.e. this is working around a bug elsewhere.)
+    let tt = NormalTT(Box::new(ext::format::ensure_not_fmt_string_literal), None, true);
+    syntax_expanders.insert(intern("__unstable_rustc_ensure_not_fmt_string_literal"), tt);
+
     syntax_expanders.insert(intern("env"),
                             builtin_normal_expander(
                                     ext::env::expand_env));
@@ -746,19 +754,38 @@ impl<'a> ExtCtxt<'a> {
     }
 }
 
+pub type ExprStringLitResult =
+    Result<(P<ast::Expr>, InternedString, ast::StrStyle), P<ast::Expr>>;
+
+/// Extract a string literal from macro expanded version of `expr`.
+///
+/// if `expr` is not string literal, then Err with span for expanded
+/// input, but does not emit any messages nor stop compilation.
+pub fn expr_string_lit(cx: &mut ExtCtxt, expr: P<ast::Expr>) -> ExprStringLitResult
+{
+    // we want to be able to handle e.g. concat("foo", "bar")
+    let expr = cx.expander().fold_expr(expr);
+    let lit = match expr.node {
+        ast::ExprLit(ref l) => match l.node {
+            ast::LitStr(ref s, style) => Some(((*s).clone(), style)),
+            _ => None
+        },
+        _ => None
+    };
+    match lit {
+        Some(lit) => Ok((expr, lit.0, lit.1)),
+        None => Err(expr),
+    }
+}
+
 /// Extract a string literal from the macro expanded version of `expr`,
 /// emitting `err_msg` if `expr` is not a string literal. This does not stop
 /// compilation on error, merely emits a non-fatal error and returns None.
 pub fn expr_to_string(cx: &mut ExtCtxt, expr: P<ast::Expr>, err_msg: &str)
                       -> Option<(InternedString, ast::StrStyle)> {
-    // we want to be able to handle e.g. concat("foo", "bar")
-    let expr = cx.expander().fold_expr(expr);
-    match expr.node {
-        ast::ExprLit(ref l) => match l.node {
-            ast::LitStr(ref s, style) => return Some(((*s).clone(), style)),
-            _ => cx.span_err(l.span, err_msg)
-        },
-        _ => cx.span_err(expr.span, err_msg)
+    match expr_string_lit(cx, expr) {
+        Ok((_, s, style)) => return Some((s, style)),
+        Err(e) => cx.span_err(e.span, err_msg),
     }
     None
 }
