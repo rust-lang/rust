@@ -346,7 +346,7 @@ impl Iterator for Packets {
 
 #[cfg(test)]
 #[allow(unused_imports)]
-mod test {
+mod tests {
     use prelude::v1::*;
 
     use thread;

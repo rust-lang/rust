@@ -1869,7 +1869,7 @@ pub struct MacroDef {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use serialize;
     use super::*;
 

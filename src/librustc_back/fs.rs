@@ -41,7 +41,7 @@ pub fn realpath(original: &Path) -> io::Result<PathBuf> {
 }
 
 #[cfg(all(not(windows), test))]
-mod test {
+mod tests {
     use tempdir::TempDir;
     use std::fs::{self, File};
     use super::realpath;

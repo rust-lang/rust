@@ -384,7 +384,7 @@ mod imp {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     extern crate test;
     use self::test::Bencher;
     use boxed::Box;

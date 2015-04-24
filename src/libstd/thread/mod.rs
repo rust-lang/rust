@@ -722,7 +722,7 @@ fn _assert_sync_and_send() {
 ////////////////////////////////////////////////////////////////////////////////
 
 #[cfg(test)]
-mod test {
+mod tests {
     use prelude::v1::*;
 
     use any::Any;
