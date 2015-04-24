@@ -2649,7 +2649,7 @@ parentheses. They are used to create [tuple-typed](#tuple-types) values.
 ```{.tuple}
 (0,);
 (0.0, 4.5);
-("a", 4us, true);
+("a", 4usize, true);
 ```
 
 ### Unit expressions
@@ -3205,7 +3205,7 @@ An example of a for loop over the contents of an array:
 
 let v: &[Foo] = &[a, b, c];
 
-for e in v.iter() {
+for e in v {
     bar(*e);
 }
 ```
@@ -3741,12 +3741,12 @@ Within the body of an item that has type parameter declarations, the names of
 its type parameters are types:
 
 ```ignore
-fn map<A: Clone, B: Clone>(f: |A| -> B, xs: &[A]) -> Vec<B> {
+fn map<A: Clone, B: Clone, F: Fn(A) -> B>(f: F, xs: &[A]) -> Vec<B> {
     if xs.is_empty() {
        return vec![];
     }
     let first: B = f(xs[0].clone());
-    let mut rest: Vec<B> = map(f, xs.slice(1, xs.len()));
+    let mut rest: Vec<B> = map(f, &xs[1..]);
     rest.insert(0, first);
     return rest;
 }
