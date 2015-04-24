@@ -625,6 +625,36 @@ impl<'a, T> IntoIterator for &'a mut [T] {
     }
 }
 
+#[inline(always)]
+fn size_from_ptr<T>(_: *const T) -> usize {
+    mem::size_of::<T>()
+}
+
+
+// Use macro to be generic over const/mut
+macro_rules! slice_offset {
+    ($ptr:expr, $by:expr) => {{
+        let ptr = $ptr;
+        if size_from_ptr(ptr) == 0 {
+            transmute(ptr as usize + $by)
+        } else {
+            ptr.offset($by)
+        }
+    }};
+}
+
+macro_rules! slice_ref {
+    ($ptr:expr) => {{
+        let ptr = $ptr;
+        if size_from_ptr(ptr) == 0 {
+            // Use a non-null pointer value
+            &mut *(1 as *mut _)
+        } else {
+            transmute(ptr)
+        }
+    }};
+}
+
 // The shared definition of the `Iter` and `IterMut` iterators
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
@@ -641,20 +671,9 @@ macro_rules! iterator {
                     if self.ptr == self.end {
                         None
                     } else {
-                        if mem::size_of::<T>() == 0 {
-                            // purposefully don't use 'ptr.offset' because for
-                            // vectors with 0-size elements this would return the
-                            // same pointer.
-                            self.ptr = transmute(self.ptr as usize + 1);
-
-                            // Use a non-null pointer value
-                            Some(&mut *(1 as *mut _))
-                        } else {
-                            let old = self.ptr;
-                            self.ptr = self.ptr.offset(1);
-
-                            Some(transmute(old))
-                        }
+                        let old = self.ptr;
+                        self.ptr = slice_offset!(self.ptr, 1);
+                        Some(slice_ref!(old))
                     }
                 }
             }
@@ -695,17 +714,8 @@ macro_rules! iterator {
                     if self.end == self.ptr {
                         None
                     } else {
-                        if mem::size_of::<T>() == 0 {
-                            // See above for why 'ptr.offset' isn't used
-                            self.end = transmute(self.end as usize - 1);
-
-                            // Use a non-null pointer value
-                            Some(&mut *(1 as *mut _))
-                        } else {
-                            self.end = self.end.offset(-1);
-
-                            Some(transmute(self.end))
-                        }
+                        self.end = slice_offset!(self.end, -1);
+                        Some(slice_ref!(self.end))
                     }
                 }
             }
@@ -805,16 +815,9 @@ impl<'a, T> Iter<'a, T> {
     // Helper function for Iter::nth
     fn iter_nth(&mut self, n: usize) -> Option<&'a T> {
         match self.as_slice().get(n) {
-            Some(elem_ref) => if mem::size_of::<T>() == 0 {
-                unsafe {
-                    self.ptr = transmute((elem_ref as *const _) as usize + 1);
-                    Some(& *(1 as *const _))
-                }
-            } else {
-                unsafe {
-                    self.ptr = (elem_ref as *const _).offset(1);
-                    Some(elem_ref)
-                }
+            Some(elem_ref) => unsafe {
+                self.ptr = slice_offset!(elem_ref as *const _, 1);
+                Some(slice_ref!(elem_ref))
             },
             None => {
                 self.ptr = self.end;
@@ -955,16 +958,9 @@ impl<'a, T> IterMut<'a, T> {
     // Helper function for IterMut::nth
     fn iter_nth(&mut self, n: usize) -> Option<&'a mut T> {
         match make_mut_slice!(T => &'a mut [T]: self.ptr, self.end).get_mut(n) {
-            Some(elem_ref) => if mem::size_of::<T>() == 0 {
-                unsafe {
-                    self.ptr = transmute((elem_ref as *mut _) as usize + 1);
-                    Some(&mut *(1 as *mut _))
-                }
-            } else {
-                unsafe {
-                    self.ptr = (elem_ref as *mut _).offset(1);
-                    Some(elem_ref)
-                }
+            Some(elem_ref) => unsafe {
+                self.ptr = slice_offset!(elem_ref as *mut _, 1);
+                Some(slice_ref!(elem_ref))
             },
             None => {
                 self.ptr = self.end;
