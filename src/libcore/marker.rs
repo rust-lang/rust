@@ -416,6 +416,8 @@ mod impls {
 #[rustc_reflect_like]
 #[unstable(feature = "core", reason = "requires RFC and more experience")]
 #[allow(deprecated)]
+#[rustc_on_unimplemented = "`{Self}` does not implement `Any`; \
+                            ensure all type parameters are bounded by `Any`"]
 pub trait Reflect {}
 
 impl Reflect for .. { }
