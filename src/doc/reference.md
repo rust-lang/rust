@@ -2432,7 +2432,7 @@ parentheses. They are used to create [tuple-typed](#tuple-types) values.
 ```{.tuple}
 (0,);
 (0.0, 4.5);
-("a", 4us, true);
+("a", 4usize, true);
 ```
 
 ### Unit expressions
@@ -2903,7 +2903,7 @@ An example of a for loop over the contents of an array:
 
 ```
 # type Foo = i32;
-# fn bar(f: Foo) { }
+# fn bar(f: &Foo) { }
 # let a = 0;
 # let b = 0;
 # let c = 0;
