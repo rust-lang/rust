@@ -1538,7 +1538,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
             F64Value(res)
         } else {
             if neg {
-                let res = (res as i64).wrapping_neg();
+                let res = !(res as i64) + 1; // wrapping_neg
 
                 // Make sure we didn't underflow.
                 if res > 0 {

@@ -506,7 +506,7 @@ macro_rules! int_impl {
         #[inline]
         pub fn abs(self) -> $T {
             if self.is_negative() {
-                self.wrapping_neg()
+                !self + 1 // wrapping_neg
             } else {
                 self
             }
