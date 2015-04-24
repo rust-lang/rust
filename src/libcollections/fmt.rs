@@ -406,11 +406,11 @@
 //!
 //! For floating-point types, this indicates how many digits after the decimal point should be
 //! printed.
-//! 
+//!
 //! There are three possible ways to specify the desired `precision`:
 //!
-//! There are three possible ways to specify the desired `precision`: 
-//! 1. An integer `.N`, 
+//! There are three possible ways to specify the desired `precision`:
+//! 1. An integer `.N`,
 //! 2. an integer followed by dollar sign `.N$`, or
 //! 3. an asterisk `.*`.
 //!
@@ -422,23 +422,23 @@
 //! the first input holds the `usize` precision, and the second holds the value to print.  Note
 //! that in this case, if one uses the format string `{<arg>:<spec>.*}`, then the `<arg>` part
 //! refers to the *value* to print, and the `precision` must come in the input preceding `<arg>`.
-//! 
-//! For example, these: 
+//!
+//! For example, these:
 //!
 //! ```
 //! // Hello {arg 0 (x)} is {arg 1 (0.01} with precision specified inline (5)}
 //! println!("Hello {0} is {1:.5}", "x", 0.01);
-//! 
+//!
 //! // Hello {arg 1 (x)} is {arg 2 (0.01} with precision specified in arg 0 (5)}
 //! println!("Hello {1} is {2:.0$}", 5, "x", 0.01);
 //!
 //! // Hello {arg 0 (x)} is {arg 2 (0.01} with precision specified in arg 1 (5)}
 //! println!("Hello {0} is {2:.1$}", "x", 5, 0.01);
-//! 
+//!
 //! // Hello {next arg (x)} is {second of next two args (0.01} with precision
 //! //                          specified in first of next two args (5)}
 //! println!("Hello {} is {:.*}",    "x", 5, 0.01);
-//! 
+//!
 //! // Hello {next arg (x)} is {arg 2 (0.01} with precision
 //! //                          specified in its predecessor (5)}
 //! println!("Hello {} is {2:.*}",   "x", 5, 0.01);
@@ -458,7 +458,7 @@
 //! ```
 //!
 //! print two significantly different things:
-//! 
+//!
 //! ```text
 //! Hello, `1234.560` has 3 fractional digits
 //! Hello, `123` has 3 characters
