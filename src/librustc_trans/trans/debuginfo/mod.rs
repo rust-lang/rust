@@ -13,10 +13,12 @@ mod doc;
 
 pub mod gdb;
 mod utils;
+mod create;
 
 use self::utils::{debug_context, DIB, span_start, bytes_to_bits, size_and_align_of,
                   assert_type_for_node_id, get_namespace_and_span_for_item, fn_should_be_ignored,
                   contains_nodebug_attribute, create_scope_map};
+use self::create::{declare_local, create_DIArray, is_node_local_to_unit};
 
 use self::VariableAccess::*;
 use self::VariableKind::*;
@@ -31,7 +33,7 @@ use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::*;
 use metadata::csearch;
 use middle::subst::{self, Substs};
-use trans::{self, adt, machine, type_of};
+use trans::{adt, machine, type_of};
 use trans::common::{self, NodeIdAndSpan, CrateContext, FunctionContext, Block,
                     NormalizingClosureTyper};
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
@@ -535,7 +537,7 @@ struct FunctionDebugContextData {
     source_location_override: Cell<bool>,
 }
 
-enum VariableAccess<'a> {
+pub enum VariableAccess<'a> {
     // The llptr given is an alloca containing the variable's value
     DirectVariable { alloca: ValueRef },
     // The llptr given is an alloca containing the start of some pointer chain
@@ -543,7 +545,7 @@ enum VariableAccess<'a> {
     IndirectVariable { alloca: ValueRef, address_operations: &'a [i64] }
 }
 
-enum VariableKind {
+pub enum VariableKind {
     ArgumentVariable(usize /*index*/),
     LocalVariable,
     CapturedVariable,
@@ -1430,29 +1432,6 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-//=-----------------------------------------------------------------------------
-// Module-Internal debug info creation functions
-//=-----------------------------------------------------------------------------
-
-fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
-{
-    // The is_local_to_unit flag indicates whether a function is local to the
-    // current compilation unit (i.e. if it is *static* in the C-sense). The
-    // *reachable* set should provide a good approximation of this, as it
-    // contains everything that might leak out of the current crate (by being
-    // externally visible or by being inlined into something externally
-    // visible). It might better to use the `exported_items` set from
-    // `driver::CrateAnalysis` in the future, but (atm) this set is not
-    // available in the translation pass.
-    !cx.reachable().contains(&node_id)
-}
-
-#[allow(non_snake_case)]
-fn create_DIArray(builder: DIBuilderRef, arr: &[DIDescriptor]) -> DIArray {
-    return unsafe {
-        llvm::LLVMDIBuilderGetOrCreateArray(builder, arr.as_ptr(), arr.len() as u32)
-    };
-}
 
 fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
     let work_dir = &cx.sess().working_dir;
@@ -1504,76 +1483,6 @@ fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
     }
 }
 
-fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                             variable_name: ast::Name,
-                             variable_type: Ty<'tcx>,
-                             scope_metadata: DIScope,
-                             variable_access: VariableAccess,
-                             variable_kind: VariableKind,
-                             span: Span) {
-    let cx: &CrateContext = bcx.ccx();
-
-    let filename = span_start(cx, span).file.name.clone();
-    let file_metadata = file_metadata(cx, &filename[..]);
-
-    let name = token::get_name(variable_name);
-    let loc = span_start(cx, span);
-    let type_metadata = type_metadata(cx, variable_type, span);
-
-    let (argument_index, dwarf_tag) = match variable_kind {
-        ArgumentVariable(index) => (index as c_uint, DW_TAG_arg_variable),
-        LocalVariable    |
-        CapturedVariable => (0, DW_TAG_auto_variable)
-    };
-
-    let name = CString::new(name.as_bytes()).unwrap();
-    match (variable_access, &[][..]) {
-        (DirectVariable { alloca }, address_operations) |
-        (IndirectVariable {alloca, address_operations}, _) => {
-            let metadata = unsafe {
-                llvm::LLVMDIBuilderCreateVariable(
-                    DIB(cx),
-                    dwarf_tag,
-                    scope_metadata,
-                    name.as_ptr(),
-                    file_metadata,
-                    loc.line as c_uint,
-                    type_metadata,
-                    cx.sess().opts.optimize != config::No,
-                    0,
-                    address_operations.as_ptr(),
-                    address_operations.len() as c_uint,
-                    argument_index)
-            };
-            set_debug_location(cx, InternalDebugLocation::new(scope_metadata,
-                                                      loc.line,
-                                                      loc.col.to_usize()));
-            unsafe {
-                let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
-                    DIB(cx),
-                    alloca,
-                    metadata,
-                    address_operations.as_ptr(),
-                    address_operations.len() as c_uint,
-                    bcx.llbb);
-
-                llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
-            }
-        }
-    }
-
-    match variable_kind {
-        ArgumentVariable(_) | CapturedVariable => {
-            assert!(!bcx.fcx
-                        .debug_context
-                        .get_ref(cx, span)
-                        .source_locations_enabled
-                        .get());
-            set_debug_location(cx, UnknownLocation);
-        }
-        _ => { /* nothing to do */ }
-    }
-}
 
 fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
     match debug_context(cx).created_files.borrow().get(full_path) {
