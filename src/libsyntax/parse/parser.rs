@@ -1151,8 +1151,8 @@ impl<'a> Parser<'a> {
             &token::CloseDelim(token::Brace),
             seq_sep_none(),
             |p| {
-            let lo = p.span.lo;
             let mut attrs = p.parse_outer_attributes();
+            let lo = p.span.lo;
 
             let (name, node) = if try!(p.eat_keyword(keywords::Type)) {
                 let TyParam {ident, bounds, default, ..} = try!(p.parse_ty_param());
@@ -3409,8 +3409,8 @@ impl<'a> Parser<'a> {
             }
         }
 
-        let lo = self.span.lo;
         let attrs = self.parse_outer_attributes();
+        let lo = self.span.lo;
 
         Ok(Some(if self.check_keyword(keywords::Let) {
             check_expected_item(self, &attrs);
@@ -4304,8 +4304,8 @@ impl<'a> Parser<'a> {
 
     /// Parse an impl item.
     pub fn parse_impl_item(&mut self) -> PResult<P<ImplItem>> {
-        let lo = self.span.lo;
         let mut attrs = self.parse_outer_attributes();
+        let lo = self.span.lo;
         let vis = try!(self.parse_visibility());
         let (name, node) = if try!(self.eat_keyword(keywords::Type)) {
             let name = try!(self.parse_ident());
@@ -5380,9 +5380,8 @@ impl<'a> Parser<'a> {
 
     /// Parse a foreign item.
     fn parse_foreign_item(&mut self) -> PResult<Option<P<ForeignItem>>> {
-        let lo = self.span.lo;
-
         let attrs = self.parse_outer_attributes();
+        let lo = self.span.lo;
         let visibility = try!(self.parse_visibility());
 
         if self.check_keyword(keywords::Static) {
