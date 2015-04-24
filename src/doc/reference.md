@@ -149,9 +149,11 @@ sequence (`/**`), are interpreted as a special syntax for `doc`
 `#[doc="..."]` around the body of the comment (this includes the comment
 characters themselves, ie `/// Foo` turns into `#[doc="/// Foo"]`).
 
-`//!` comments apply to the parent of the comment, rather than the item that
-follows. `//!` comments are usually used to display information on the crate
-index page.
+Line comments beginning with `//!` and block comments beginning with `/*!` are
+doc comments that apply to the parent of the comment, rather than the item
+that follows.  That is, they are equivalent to writing `#![doc="..."]` around
+the body of the comment. `//!` comments are usually used to display
+information on the crate index page.
 
 Non-doc comments are interpreted as a form of whitespace.
 
