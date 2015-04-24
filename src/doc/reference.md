@@ -1555,7 +1555,7 @@ fn draw_twice<T: Shape>(surface: Surface, sh: T) {
 }
 ```
 
-Traits also define an [object type](#object-types) with the same name as the
+Traits also define an [trait object](#trait-objects) with the same name as the
 trait. Values of this type are created by [casting](#type-cast-expressions)
 pointer values (pointing to a type for which an implementation of the given
 trait is in scope) to pointers to the trait name, used as a type.
@@ -2744,7 +2744,7 @@ A _method call_ consists of an expression followed by a single dot, an
 identifier, and a parenthesized expression-list. Method calls are resolved to
 methods on specific traits, either statically dispatching to a method if the
 exact `self`-type of the left-hand-side is known, or dynamically dispatching if
-the left-hand-side expression is an indirect [object type](#object-types).
+the left-hand-side expression is an indirect [trait object](#trait-objects).
 
 ### Field expressions
 
@@ -3649,23 +3649,23 @@ call_closure(closure_no_args, closure_args);
 
 ```
 
-### Object types
+### Trait objects
 
 Every trait item (see [traits](#traits)) defines a type with the same name as
-the trait. This type is called the _object type_ of the trait. Object types
+the trait. This type is called the _trait object_ of the trait. Trait objects
 permit "late binding" of methods, dispatched using _virtual method tables_
 ("vtables"). Whereas most calls to trait methods are "early bound" (statically
 resolved) to specific implementations at compile time, a call to a method on an
-object type is only resolved to a vtable entry at compile time. The actual
+trait objects is only resolved to a vtable entry at compile time. The actual
 implementation for each vtable entry can vary on an object-by-object basis.
 
 Given a pointer-typed expression `E` of type `&T` or `Box<T>`, where `T`
 implements trait `R`, casting `E` to the corresponding pointer type `&R` or
-`Box<R>` results in a value of the _object type_ `R`. This result is
+`Box<R>` results in a value of the _trait object_ `R`. This result is
 represented as a pair of pointers: the vtable pointer for the `T`
 implementation of `R`, and the pointer value of `E`.
 
-An example of an object type:
+An example of a trait object:
 
 ```
 trait Printable {
@@ -3685,7 +3685,7 @@ fn main() {
 }
 ```
 
-In this example, the trait `Printable` occurs as an object type in both the
+In this example, the trait `Printable` occurs as a trait object in both the
 type signature of `print`, and the cast expression in `main`.
 
 ### Type parameters
