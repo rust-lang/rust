@@ -949,7 +949,7 @@ pub struct MalformedCodemapPositions {
 //
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use std::rc::Rc;
 

@@ -3008,7 +3008,7 @@ impl<'a> State<'a> {
 fn repeat(s: &str, n: usize) -> String { iter::repeat(s).take(n).collect() }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     use ast;

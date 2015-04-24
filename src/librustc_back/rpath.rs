@@ -171,7 +171,7 @@ fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {
 }
 
 #[cfg(all(unix, test))]
-mod test {
+mod tests {
     use super::{RPathConfig};
     use super::{minimize_rpaths, rpaths_to_flags, get_rpath_relative_to_output};
     use std::path::{Path, PathBuf};

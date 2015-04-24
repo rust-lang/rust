@@ -1065,7 +1065,7 @@ impl error::Error for TryRecvError {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use prelude::v1::*;
 
     use std::env;

@@ -1772,7 +1772,7 @@ impl<T: fmt::Debug> fmt::Debug for VecDeque<T> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use core::iter::{Iterator, self};
     use core::option::Option::Some;
 

@@ -746,7 +746,7 @@ pub fn fresh_mark() -> ast::Mrk {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use ast;
     use ext::mtwt;

@@ -761,7 +761,7 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
     use std::rc::Rc;
     use codemap::{Span, BytePos, Pos, Spanned, NO_EXPANSION};
