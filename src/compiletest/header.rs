@@ -170,6 +170,9 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
         format!("ignore-{}",
                 config.stage_id.split('-').next().unwrap())
     }
+    fn ignore_env(config: &Config) -> String {
+        format!("ignore-{}", util::get_env(&config.target).unwrap_or("<unknown>"))
+    }
     fn ignore_gdb(config: &Config, line: &str) -> bool {
         if config.mode != common::DebugInfoGdb {
             return false;
@@ -231,6 +234,7 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
         !parse_name_directive(ln, &ignore_target(config)) &&
         !parse_name_directive(ln, &ignore_architecture(config)) &&
         !parse_name_directive(ln, &ignore_stage(config)) &&
+        !parse_name_directive(ln, &ignore_env(config)) &&
         !(config.mode == common::Pretty && parse_name_directive(ln, "ignore-pretty")) &&
         !(config.target != config.host && parse_name_directive(ln, "ignore-cross-compile")) &&
         !ignore_gdb(config, ln) &&
