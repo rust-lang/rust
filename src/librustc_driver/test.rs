@@ -16,6 +16,7 @@ use driver;
 use rustc_lint;
 use rustc_resolve as resolve;
 use rustc_typeck::middle::lang_items;
+use rustc_typeck::middle::free_region::FreeRegionMap;
 use rustc_typeck::middle::region::{self, CodeExtent, DestructionScopeData};
 use rustc_typeck::middle::resolve_lifetime;
 use rustc_typeck::middle::stability;
@@ -138,7 +139,8 @@ fn test_env<F>(source_string: &str,
                           stability::Index::new(krate));
     let infcx = infer::new_infer_ctxt(&tcx);
     body(Env { infcx: &infcx });
-    infcx.resolve_regions_and_report_errors(ast::CRATE_NODE_ID);
+    let free_regions = FreeRegionMap::new();
+    infcx.resolve_regions_and_report_errors(&free_regions, ast::CRATE_NODE_ID);
     assert_eq!(tcx.sess.err_count(), expected_err_count);
 }
 
