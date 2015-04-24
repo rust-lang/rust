@@ -30,6 +30,7 @@ pub use self::buffered::{BufReader, BufWriter, BufStream, LineWriter};
 pub use self::buffered::IntoInnerError;
 pub use self::cursor::Cursor;
 pub use self::error::{Result, Error, ErrorKind};
+pub use self::iterator::{IterReader};
 pub use self::util::{copy, sink, Sink, empty, Empty, repeat, Repeat};
 pub use self::stdio::{stdin, stdout, stderr, _print, Stdin, Stdout, Stderr};
 pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
@@ -43,6 +44,7 @@ mod buffered;
 mod cursor;
 mod error;
 mod impls;
+mod iterator;
 mod util;
 mod stdio;
 
