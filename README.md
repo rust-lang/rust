@@ -52,6 +52,7 @@ the direction the language is evolving in.
 * [0979-align-splitn-with-other-languages.md](text/0979-align-splitn-with-other-languages.md)
 * [1011-process.exit.md](text/1011-process.exit.md)
 * [1023-rebalancing-coherence.md](text/1023-rebalancing-coherence.md)
+* [1044-io-fs-2.1.md](text/1044-io-fs-2.1.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
