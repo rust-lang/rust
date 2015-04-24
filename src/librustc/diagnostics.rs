@@ -75,11 +75,13 @@ the following is invalid as it requires the entire Option<String> to be moved
 into a variable called `op_string` while simultaneously requiring the inner
 String to be moved into a variable called `s`.
 
+```
 let x = Some("s".to_string());
 match x {
     op_string @ Some(s) => ...
     None => ...
 }
+```
 
 See also Error 303.
 "##,
@@ -90,10 +92,12 @@ name is bound by move in a pattern, it should also be moved to wherever it is
 referenced in the pattern guard code. Doing so however would prevent the name
 from being available in the body of the match arm. Consider the following:
 
+```
 match Some("hi".to_string()) {
     Some(s) if s.len() == 0 => // use s.
     ...
 }
+```
 
 The variable `s` has type String, and its use in the guard is as a variable of
 type String. The guard code effectively executes in a separate scope to the body
@@ -102,11 +106,13 @@ become unavailable in the body of the arm. Although this example seems
 innocuous, the problem is most clear when considering functions that take their
 argument by value.
 
+```
 match Some("hi".to_string()) {
     Some(s) if { drop(s); false } => (),
     Some(s) => // use s.
     ...
 }
+```
 
 The value would be dropped in the guard then become unavailable not only in the
 body of that arm but also in all subsequent arms! The solution is to bind by
@@ -219,8 +225,10 @@ them yourself.
 You can build a free-standing crate by adding `#![no_std]` to the crate
 attributes:
 
+```
 #![feature(no_std)]
 #![no_std]
+```
 
 See also https://doc.rust-lang.org/book/no-stdlib.html
 "##,
@@ -236,11 +244,13 @@ mutex can be declared `static` as well.
 
 If you want to match against a `static`, consider using a guard instead:
 
+```
 static FORTY_TWO: i32 = 42;
 match Some(42) {
     Some(x) if x == FORTY_TWO => ...
     ...
 }
+```
 "##,
 
 E0161: r##"
@@ -256,6 +266,7 @@ An if-let pattern attempts to match the pattern, and enters the body if the
 match was succesful. If the match is irrefutable (when it cannot fail to match),
 use a regular `let`-binding instead. For instance:
 
+```
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
@@ -268,6 +279,7 @@ if let Irrefutable(x) = irr {
 // Try this instead:
 let Irrefutable(x) = irr;
 foo(x);
+```
 "##,
 
 E0165: r##"
@@ -275,6 +287,7 @@ A while-let pattern attempts to match the pattern, and enters the body if the
 match was succesful. If the match is irrefutable (when it cannot fail to match),
 use a regular `let`-binding inside a `loop` instead. For instance:
 
+```
 struct Irrefutable(i32);
 let irr = Irrefutable(0);
 
@@ -288,22 +301,27 @@ loop {
     let Irrefutable(x) = irr;
     ...
 }
+```
 "##,
 
 E0170: r##"
 Enum variants are qualified by default. For example, given this type:
 
+```
 enum Method {
     GET,
     POST
 }
+```
 
 you would match it using:
 
+```
 match m {
     Method::GET => ...
     Method::POST => ...
 }
+```
 
 If you don't qualify the names, the code will bind new variables named "GET" and
 "POST" instead. This behavior is likely not what you want, so rustc warns when
@@ -312,8 +330,10 @@ that happens.
 Qualified names are good practice, and most code works well with them. But if
 you prefer them unqualified, you can import the variants into scope:
 
+```
 use Method::*;
 enum Method { GET, POST }
+```
 "##,
 
 E0267: r##"
@@ -333,7 +353,9 @@ E0296: r##"
 This error indicates that the given recursion limit could not be parsed. Ensure
 that the value provided is a positive integer between quotes, like so:
 
+```
 #![recursion_limit="1000"]
+```
 "##,
 
 E0297: r##"
@@ -342,6 +364,7 @@ that a name will be extracted in all cases. Instead of pattern matching the
 loop variable, consider using a `match` or `if let` inside the loop body. For
 instance:
 
+```
 // This fails because `None` is not covered.
 for Some(x) in xs {
     ...
@@ -361,6 +384,7 @@ for item in xs {
         ...
     }
 }
+```
 "##,
 
 E0301: r##"
@@ -370,11 +394,13 @@ on which the match depends in such a way, that the match would not be
 exhaustive. For instance, the following would not match any arm if mutable
 borrows were allowed:
 
+```
 match Some(()) {
     None => { },
     option if option.take().is_none() => { /* impossible, option is `Some` */ },
     Some(_) => { } // When the previous match failed, the option became `None`.
 }
+```
 "##,
 
 E0302: r##"
@@ -384,11 +410,13 @@ on which the match depends in such a way, that the match would not be
 exhaustive. For instance, the following would not match any arm if assignments
 were allowed:
 
+```
 match Some(()) {
     None => { },
     option if { option = None; false } { },
     Some(_) => { } // When the previous match failed, the option became `None`.
 }
+```
 "##,
 
 E0303: r##"
@@ -396,9 +424,10 @@ In certain cases it is possible for sub-bindings to violate memory safety.
 Updates to the borrow checker in a future version of Rust may remove this
 restriction, but for now patterns must be rewritten without sub-bindings.
 
-// Before.
-match Some("hi".to_string()) {
-    ref op_string_ref @ Some(ref s) => ...
+```
+// Code like this...
+match Some(5) {
+    ref op_num @ Some(num) => ...
     None => ...
 }
 
@@ -410,6 +439,7 @@ match Some("hi".to_string()) {
     }
     None => ...
 }
+```
 
 The `op_string_ref` binding has type &Option<&String> in both cases.
 
