@@ -40,14 +40,6 @@ impl Drop for DynamicLibrary {
 }
 
 impl DynamicLibrary {
-    // FIXME (#12938): Until DST lands, we cannot decompose &str into
-    // & and str, so we cannot usefully take ToCStr arguments by
-    // reference (without forcing an additional & around &str). So we
-    // are instead temporarily adding an instance for &Path, so that
-    // we can take ToCStr as owned. When DST lands, the &Path instance
-    // should be removed, and arguments bound by ToCStr should be
-    // passed by reference. (Here: in the `open` method.)
-
     /// Lazily open a dynamic library. When passed None it gives a
     /// handle to the calling process
     pub fn open(filename: Option<&Path>) -> Result<DynamicLibrary, String> {

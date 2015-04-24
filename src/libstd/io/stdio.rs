@@ -95,6 +95,8 @@ impl Write for StderrRaw {
 ///
 /// This handle implements the `Read` trait, but beware that concurrent reads
 /// of `Stdin` must be executed with care.
+///
+/// Created by the function `io::stdin()`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdin {
     inner: Arc<Mutex<BufReader<StdinRaw>>>,
@@ -206,6 +208,8 @@ const OUT_MAX: usize = ::usize::MAX;
 /// Each handle shares a global buffer of data to be written to the standard
 /// output stream. Access is also synchronized via a lock and explicit control
 /// over locking is available via the `lock` method.
+///
+/// Created by the function `io::stdout()`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdout {
     // FIXME: this should be LineWriter or BufWriter depending on the state of
