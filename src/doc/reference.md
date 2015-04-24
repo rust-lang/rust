@@ -1099,39 +1099,30 @@ signature. Each type parameter must be explicitly declared, in an
 angle-bracket-enclosed, comma-separated list following the function name.
 
 ```{.ignore}
-fn iter<T>(seq: &[T], f: |T|) {
-    for elt in seq.iter() { f(elt); }
+fn iter<T, F>(seq: &[T], f: F) where T: Copy, F: Fn(T) {
+    for elt in seq { f(*elt); }
 }
-fn map<T, U>(seq: &[T], f: |T| -> U) -> Vec<U> {
+fn map<T, U, F>(seq: &[T], f: F) -> Vec<U> where T: Copy, U: Copy, F: Fn(T) -> U {
     let mut acc = vec![];
-    for elt in seq.iter() { acc.push(f(elt)); }
+    for elt in seq { acc.push(f(*elt)); }
     acc
 }
 ```
 
 Inside the function signature and body, the name of the type parameter can be
-used as a type name.
+used as a type name. [Trait](#traits) bounds can be specified for type parameters
+to allow methods with that trait to be called on values of that type. This is
+specified using the `where` syntax, as in the above example.
 
 When a generic function is referenced, its type is instantiated based on the
 context of the reference. For example, calling the `iter` function defined
 above on `[1, 2]` will instantiate type parameter `T` with `i32`, and require
-the closure parameter to have type `fn(i32)`.
+the closure parameter to have type `Fn(i32)`.
 
 The type parameters can also be explicitly supplied in a trailing
 [path](#paths) component after the function name. This might be necessary if
 there is not sufficient context to determine the type parameters. For example,
 `mem::size_of::<u32>() == 4`.
-
-Since a parameter type is opaque to the generic function, the set of operations
-that can be performed on it is limited. Values of parameter type can only be
-moved, not copied.
-
-```
-fn id<T>(x: T) -> T { x }
-```
-
-Similarly, [trait](#traits) bounds can be specified for type parameters to
-allow methods with that trait to be called on values of that type.
 
 #### Unsafety
 
