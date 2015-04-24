@@ -828,6 +828,9 @@
     $(document).on("click", ".collapse-toggle", function() {
         var toggle = $(this);
         var relatedDoc = toggle.parent().next();
+        if (relatedDoc.is(".stability")) {
+            relatedDoc = relatedDoc.next();
+        }
         if (relatedDoc.is(".docblock")) {
             if (relatedDoc.is(":visible")) {
                 relatedDoc.slideUp({duration:'fast', easing:'linear'});
@@ -848,9 +851,10 @@
             .html("[<span class='inner'>-</span>]");
 
         $(".method").each(function() {
-           if ($(this).next().is(".docblock")) {
-               $(this).children().first().after(toggle.clone());
-           }
+            if ($(this).next().is(".docblock") ||
+                ($(this).next().is(".stability") && $(this).next().next().is(".docblock"))) {
+                    $(this).children().first().after(toggle.clone());
+            }
         });
 
         var mainToggle =
