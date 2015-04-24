@@ -26,7 +26,6 @@
     * [References and Borrowing](references-and-borrowing.md)
     * [Lifetimes](lifetimes.md)
     * [Mutability](mutability.md)
-    * [Move semantics](move-semantics.md)
     * [Enums](enums.md)
     * [Match](match.md)
     * [Structs](structs.md)
