@@ -21,6 +21,7 @@ use self::Classification::*;
 use super::{RegionVariableOrigin, SubregionOrigin, TypeTrace, MiscVariable};
 
 use rustc_data_structures::graph::{self, Direction, NodeIndex};
+use middle::free_region::FreeRegionMap;
 use middle::region;
 use middle::ty::{self, Ty};
 use middle::ty::{BoundRegion, FreeRegion, Region, RegionVid};
@@ -711,19 +712,19 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     /// fixed-point iteration to find region values which satisfy all
     /// constraints, assuming such values can be found; if they cannot,
     /// errors are reported.
-    pub fn resolve_regions(&self, subject_node: ast::NodeId) -> Vec<RegionResolutionError<'tcx>> {
+    pub fn resolve_regions(&self,
+                           free_regions: &FreeRegionMap,
+                           subject_node: ast::NodeId)
+                           -> Vec<RegionResolutionError<'tcx>>
+    {
         debug!("RegionVarBindings: resolve_regions()");
         let mut errors = vec!();
-        let v = self.infer_variable_values(&mut errors, subject_node);
+        let v = self.infer_variable_values(free_regions, &mut errors, subject_node);
         *self.values.borrow_mut() = Some(v);
         errors
     }
 
-    fn is_subregion_of(&self, sub: Region, sup: Region) -> bool {
-        self.tcx.region_maps.is_subregion_of(sub, sup)
-    }
-
-    fn lub_concrete_regions(&self, a: Region, b: Region) -> Region {
+    fn lub_concrete_regions(&self, free_regions: &FreeRegionMap, a: Region, b: Region) -> Region {
         match (a, b) {
           (ReLateBound(..), _) |
           (_, ReLateBound(..)) |
@@ -781,7 +782,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
           }
 
           (ReFree(ref a_fr), ReFree(ref b_fr)) => {
-             self.lub_free_regions(a_fr, b_fr)
+             self.lub_free_regions(free_regions, a_fr, b_fr)
           }
 
           // For these types, we cannot define any additional
@@ -796,23 +797,25 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     /// Computes a region that encloses both free region arguments. Guarantee that if the same two
     /// regions are given as argument, in any order, a consistent result is returned.
     fn lub_free_regions(&self,
+                        free_regions: &FreeRegionMap,
                         a: &FreeRegion,
                         b: &FreeRegion)
                         -> ty::Region
     {
         return match a.cmp(b) {
-            Less => helper(self, a, b),
-            Greater => helper(self, b, a),
+            Less => helper(self, free_regions, a, b),
+            Greater => helper(self, free_regions, b, a),
             Equal => ty::ReFree(*a)
         };
 
-        fn helper(this: &RegionVarBindings,
+        fn helper(_this: &RegionVarBindings,
+                  free_regions: &FreeRegionMap,
                   a: &FreeRegion,
                   b: &FreeRegion) -> ty::Region
         {
-            if this.tcx.region_maps.sub_free_region(*a, *b) {
+            if free_regions.sub_free_region(*a, *b) {
                 ty::ReFree(*b)
-            } else if this.tcx.region_maps.sub_free_region(*b, *a) {
+            } else if free_regions.sub_free_region(*b, *a) {
                 ty::ReFree(*a)
             } else {
                 ty::ReStatic
@@ -821,6 +824,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     fn glb_concrete_regions(&self,
+                            free_regions: &FreeRegionMap,
                             a: Region,
                             b: Region)
                             -> RelateResult<'tcx, Region>
@@ -878,7 +882,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             }
 
             (ReFree(ref a_fr), ReFree(ref b_fr)) => {
-                self.glb_free_regions(a_fr, b_fr)
+                self.glb_free_regions(free_regions, a_fr, b_fr)
             }
 
             // For these types, we cannot define any additional
@@ -898,23 +902,25 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     /// if the same two regions are given as argument, in any order, a consistent result is
     /// returned.
     fn glb_free_regions(&self,
+                        free_regions: &FreeRegionMap,
                         a: &FreeRegion,
                         b: &FreeRegion)
                         -> RelateResult<'tcx, ty::Region>
     {
         return match a.cmp(b) {
-            Less => helper(self, a, b),
-            Greater => helper(self, b, a),
+            Less => helper(self, free_regions, a, b),
+            Greater => helper(self, free_regions, b, a),
             Equal => Ok(ty::ReFree(*a))
         };
 
         fn helper<'a, 'tcx>(this: &RegionVarBindings<'a, 'tcx>,
+                            free_regions: &FreeRegionMap,
                             a: &FreeRegion,
                             b: &FreeRegion) -> RelateResult<'tcx, ty::Region>
         {
-            if this.tcx.region_maps.sub_free_region(*a, *b) {
+            if free_regions.sub_free_region(*a, *b) {
                 Ok(ty::ReFree(*a))
-            } else if this.tcx.region_maps.sub_free_region(*b, *a) {
+            } else if free_regions.sub_free_region(*b, *a) {
                 Ok(ty::ReFree(*b))
             } else {
                 this.intersect_scopes(ty::ReFree(*a), ty::ReFree(*b),
@@ -970,6 +976,7 @@ type RegionGraph = graph::Graph<(), Constraint>;
 
 impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     fn infer_variable_values(&self,
+                             free_regions: &FreeRegionMap,
                              errors: &mut Vec<RegionResolutionError<'tcx>>,
                              subject: ast::NodeId) -> Vec<VarValue>
     {
@@ -980,12 +987,13 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         debug!("----() End constraint listing {:?}---", self.dump_constraints());
         graphviz::maybe_print_constraints_for(self, subject);
 
-        self.expansion(&mut var_data);
-        self.contraction(&mut var_data);
+        self.expansion(free_regions, &mut var_data);
+        self.contraction(free_regions, &mut var_data);
         let values =
-            self.extract_values_and_collect_conflicts(&var_data[..],
+            self.extract_values_and_collect_conflicts(free_regions,
+                                                      &var_data[..],
                                                       errors);
-        self.collect_concrete_region_errors(&values, errors);
+        self.collect_concrete_region_errors(free_regions, &values, errors);
         values
     }
 
@@ -1009,7 +1017,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
     }
 
-    fn expansion(&self, var_data: &mut [VarData]) {
+    fn expansion(&self, free_regions: &FreeRegionMap, var_data: &mut [VarData]) {
         self.iterate_until_fixed_point("Expansion", |constraint| {
             debug!("expansion: constraint={} origin={}",
                    constraint.repr(self.tcx),
@@ -1020,14 +1028,14 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             match *constraint {
               ConstrainRegSubVar(a_region, b_vid) => {
                 let b_data = &mut var_data[b_vid.index as usize];
-                self.expand_node(a_region, b_vid, b_data)
+                self.expand_node(free_regions, a_region, b_vid, b_data)
               }
               ConstrainVarSubVar(a_vid, b_vid) => {
                 match var_data[a_vid.index as usize].value {
                   NoValue | ErrorValue => false,
                   Value(a_region) => {
                     let b_node = &mut var_data[b_vid.index as usize];
-                    self.expand_node(a_region, b_vid, b_node)
+                    self.expand_node(free_regions, a_region, b_vid, b_node)
                   }
                 }
               }
@@ -1040,6 +1048,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     fn expand_node(&self,
+                   free_regions: &FreeRegionMap,
                    a_region: Region,
                    b_vid: RegionVid,
                    b_data: &mut VarData)
@@ -1072,7 +1081,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
           }
 
           Value(cur_region) => {
-            let lub = self.lub_concrete_regions(a_region, cur_region);
+            let lub = self.lub_concrete_regions(free_regions, a_region, cur_region);
             if lub == cur_region {
                 return false;
             }
@@ -1093,6 +1102,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     fn contraction(&self,
+                   free_regions: &FreeRegionMap,
                    var_data: &mut [VarData]) {
         self.iterate_until_fixed_point("Contraction", |constraint| {
             debug!("contraction: constraint={} origin={}",
@@ -1111,19 +1121,20 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                   NoValue | ErrorValue => false,
                   Value(b_region) => {
                     let a_data = &mut var_data[a_vid.index as usize];
-                    self.contract_node(a_vid, a_data, b_region)
+                    self.contract_node(free_regions, a_vid, a_data, b_region)
                   }
                 }
               }
               ConstrainVarSubReg(a_vid, b_region) => {
                 let a_data = &mut var_data[a_vid.index as usize];
-                self.contract_node(a_vid, a_data, b_region)
+                self.contract_node(free_regions, a_vid, a_data, b_region)
               }
             }
         })
     }
 
     fn contract_node(&self,
+                     free_regions: &FreeRegionMap,
                      a_vid: RegionVid,
                      a_data: &mut VarData,
                      b_region: Region)
@@ -1143,19 +1154,23 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
             Value(a_region) => {
                 match a_data.classification {
-                    Expanding => check_node(self, a_vid, a_data, a_region, b_region),
-                    Contracting => adjust_node(self, a_vid, a_data, a_region, b_region),
+                    Expanding =>
+                        check_node(self, free_regions, a_vid, a_data, a_region, b_region),
+                    Contracting =>
+                        adjust_node(self, free_regions, a_vid, a_data, a_region, b_region),
                 }
             }
         };
 
         fn check_node(this: &RegionVarBindings,
+                      free_regions: &FreeRegionMap,
                       a_vid: RegionVid,
                       a_data: &mut VarData,
                       a_region: Region,
                       b_region: Region)
-                      -> bool {
-            if !this.is_subregion_of(a_region, b_region) {
+                      -> bool
+        {
+            if !free_regions.is_subregion_of(this.tcx, a_region, b_region) {
                 debug!("Setting {:?} to ErrorValue: {} not subregion of {}",
                        a_vid,
                        a_region.repr(this.tcx),
@@ -1166,12 +1181,13 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         }
 
         fn adjust_node(this: &RegionVarBindings,
+                       free_regions: &FreeRegionMap,
                        a_vid: RegionVid,
                        a_data: &mut VarData,
                        a_region: Region,
                        b_region: Region)
                        -> bool {
-            match this.glb_concrete_regions(a_region, b_region) {
+            match this.glb_concrete_regions(free_regions, a_region, b_region) {
                 Ok(glb) => {
                     if glb == a_region {
                         false
@@ -1197,6 +1213,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     fn collect_concrete_region_errors(&self,
+                                      free_regions: &FreeRegionMap,
                                       values: &Vec<VarValue>,
                                       errors: &mut Vec<RegionResolutionError<'tcx>>)
     {
@@ -1204,7 +1221,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         for verify in &*self.verifys.borrow() {
             match *verify {
                 VerifyRegSubReg(ref origin, sub, sup) => {
-                    if self.is_subregion_of(sub, sup) {
+                    if free_regions.is_subregion_of(self.tcx, sub, sup) {
                         continue;
                     }
 
@@ -1222,7 +1239,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     let sub = normalize(values, sub);
                     if sups.iter()
                            .map(|&sup| normalize(values, sup))
-                           .any(|sup| self.is_subregion_of(sub, sup))
+                           .any(|sup| free_regions.is_subregion_of(self.tcx, sub, sup))
                     {
                         continue;
                     }
@@ -1239,6 +1256,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
     fn extract_values_and_collect_conflicts(
         &self,
+        free_regions: &FreeRegionMap,
         var_data: &[VarData],
         errors: &mut Vec<RegionResolutionError<'tcx>>)
         -> Vec<VarValue>
@@ -1304,12 +1322,12 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     match var_data[idx].classification {
                         Expanding => {
                             self.collect_error_for_expanding_node(
-                                graph, var_data, &mut dup_vec,
+                                free_regions, graph, var_data, &mut dup_vec,
                                 node_vid, errors);
                         }
                         Contracting => {
                             self.collect_error_for_contracting_node(
-                                graph, var_data, &mut dup_vec,
+                                free_regions, graph, var_data, &mut dup_vec,
                                 node_vid, errors);
                         }
                     }
@@ -1355,13 +1373,13 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         return graph;
     }
 
-    fn collect_error_for_expanding_node(
-        &self,
-        graph: &RegionGraph,
-        var_data: &[VarData],
-        dup_vec: &mut [u32],
-        node_idx: RegionVid,
-        errors: &mut Vec<RegionResolutionError<'tcx>>)
+    fn collect_error_for_expanding_node(&self,
+                                        free_regions: &FreeRegionMap,
+                                        graph: &RegionGraph,
+                                        var_data: &[VarData],
+                                        dup_vec: &mut [u32],
+                                        node_idx: RegionVid,
+                                        errors: &mut Vec<RegionResolutionError<'tcx>>)
     {
         // Errors in expanding nodes result from a lower-bound that is
         // not contained by an upper-bound.
@@ -1394,8 +1412,9 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         for lower_bound in &lower_bounds {
             for upper_bound in &upper_bounds {
-                if !self.is_subregion_of(lower_bound.region,
-                                         upper_bound.region) {
+                if !free_regions.is_subregion_of(self.tcx,
+                                                 lower_bound.region,
+                                                 upper_bound.region) {
                     debug!("pushing SubSupConflict sub: {:?} sup: {:?}",
                            lower_bound.region, upper_bound.region);
                     errors.push(SubSupConflict(
@@ -1420,6 +1439,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
     fn collect_error_for_contracting_node(
         &self,
+        free_regions: &FreeRegionMap,
         graph: &RegionGraph,
         var_data: &[VarData],
         dup_vec: &mut [u32],
@@ -1438,7 +1458,8 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         for upper_bound_1 in &upper_bounds {
             for upper_bound_2 in &upper_bounds {
-                match self.glb_concrete_regions(upper_bound_1.region,
+                match self.glb_concrete_regions(free_regions,
+                                                upper_bound_1.region,
                                                 upper_bound_2.region) {
                   Ok(_) => {}
                   Err(_) => {

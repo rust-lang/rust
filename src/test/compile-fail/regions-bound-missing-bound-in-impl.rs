@@ -50,7 +50,9 @@ impl<'a, 't> Foo<'a, 't> for &'a isize {
     fn okay_bound<'b,'c,'e:'b+'c>(self, b: Inv<'b>, c: Inv<'c>, e: Inv<'e>) {
     }
 
-    fn another_bound<'x: 't>(self, x: Inv<'x>, y: Inv<'t>) {}
+    fn another_bound<'x: 't>(self, x: Inv<'x>, y: Inv<'t>) {
+        //~^ ERROR lifetime bound not satisfied
+    }
 }
 
 fn main() { }
