@@ -19,8 +19,7 @@ extern crate rustc;
 use syntax::ast::{self, TokenTree, Item, MetaItem};
 use syntax::codemap::Span;
 use syntax::ext::base::*;
-use syntax::parse::token;
-use syntax::parse;
+use syntax::parse::{self, token};
 use syntax::ptr::P;
 use rustc::plugin::Registry;
 
@@ -42,6 +41,9 @@ pub fn plugin_registrar(reg: &mut Registry) {
         token::intern("into_multi_foo"),
         // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         MultiModifier(Box::new(expand_into_foo_multi)));
+    reg.register_syntax_extension(
+        token::intern("duplicate"),
+        MultiDecorator(box expand_duplicate));
 }
 
 fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
@@ -100,6 +102,83 @@ fn expand_into_foo_multi(cx: &mut ExtCtxt,
                     _ => unreachable!("trait parsed to something other than trait")
                 }
             })
+        }
+    }
+}
+
+// Create a duplicate of the annotatable, based on the MetaItem
+fn expand_duplicate(cx: &mut ExtCtxt,
+                    sp: Span,
+                    mi: &MetaItem,
+                    it: &Annotatable,
+                    mut push: Box<FnMut(Annotatable)>)
+{
+    let copy_name = match mi.node {
+        ast::MetaItem_::MetaList(_, ref xs) => {
+            if let ast::MetaItem_::MetaWord(ref w) = xs[0].node {
+                token::str_to_ident(w.get())
+            } else {
+                cx.span_err(mi.span, "Expected word");
+                return;
+            }
+        }
+        _ => {
+            cx.span_err(mi.span, "Expected list");
+            return;
+        }
+    };
+
+    // Duplicate the item but replace its ident by the MetaItem
+    match it.clone() {
+        Annotatable::Item(it) => {
+            let mut new_it = (*it).clone();
+            new_it.attrs.clear();
+            new_it.ident = copy_name;
+            push(Annotatable::Item(P(new_it)));
+        }
+        Annotatable::ImplItem(it) => {
+            match it {
+                ImplItem::MethodImplItem(m) => {
+                    let mut new_m = (*m).clone();
+                    new_m.attrs.clear();
+                    replace_method_name(&mut new_m.node, copy_name);
+                    push(Annotatable::ImplItem(ImplItem::MethodImplItem(P(new_m))));
+                }
+                ImplItem::TypeImplItem(t) => {
+                    let mut new_t = (*t).clone();
+                    new_t.attrs.clear();
+                    new_t.ident = copy_name;
+                    push(Annotatable::ImplItem(ImplItem::TypeImplItem(P(new_t))));
+                }
+            }
+        }
+        Annotatable::TraitItem(it) => {
+            match it {
+                TraitItem::RequiredMethod(rm) => {
+                    let mut new_rm = rm.clone();
+                    new_rm.attrs.clear();
+                    new_rm.ident = copy_name;
+                    push(Annotatable::TraitItem(TraitItem::RequiredMethod(new_rm)));
+                }
+                TraitItem::ProvidedMethod(pm) => {
+                    let mut new_pm = (*pm).clone();
+                    new_pm.attrs.clear();
+                    replace_method_name(&mut new_pm.node, copy_name);
+                    push(Annotatable::TraitItem(TraitItem::ProvidedMethod(P(new_pm))));
+                }
+                TraitItem::TypeTraitItem(t) => {
+                    let mut new_t = (*t).clone();
+                    new_t.attrs.clear();
+                    new_t.ty_param.ident = copy_name;
+                    push(Annotatable::TraitItem(TraitItem::TypeTraitItem(P(new_t))));
+                }
+            }
+        }
+    }
+
+    fn replace_method_name(m: &mut ast::Method_, i: ast::Ident) {
+        if let &mut ast::Method_::MethDecl(ref mut ident, _, _, _, _, _, _, _) = m {
+            *ident = i
         }
     }
 }

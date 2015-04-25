@@ -814,7 +814,6 @@ impl<'a> State<'a> {
         word(&mut self.s, ";")
     }
 
-
     /// Pretty-print an item
     pub fn print_item(&mut self, item: &ast::Item) -> io::Result<()> {
         try!(self.hardbreak_if_not_bol());

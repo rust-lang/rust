@@ -30,6 +30,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::default::Default;
 
+#[unstable(feature = "rustc_private")]
+#[deprecated(since = "1.0.0", reason = "replaced by MultiItemDecorator")]
 pub trait ItemDecorator {
     fn expand(&self,
               ecx: &mut ExtCtxt,
@@ -39,6 +41,9 @@ pub trait ItemDecorator {
               push: &mut FnMut(P<ast::Item>));
 }
 
+#[allow(deprecated)]
+#[unstable(feature = "rustc_private")]
+#[deprecated(since = "1.0.0", reason = "replaced by MultiItemDecorator")]
 impl<F> ItemDecorator for F
     where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &ast::Item, &mut FnMut(P<ast::Item>))
 {
@@ -52,6 +57,8 @@ impl<F> ItemDecorator for F
     }
 }
 
+#[unstable(feature = "rustc_private")]
+#[deprecated(since = "1.0.0", reason = "replaced by MultiItemModifier")]
 pub trait ItemModifier {
     fn expand(&self,
               ecx: &mut ExtCtxt,
@@ -61,9 +68,13 @@ pub trait ItemModifier {
               -> P<ast::Item>;
 }
 
+#[allow(deprecated)]
+#[unstable(feature = "rustc_private")]
+#[deprecated(since = "1.0.0", reason = "replaced by MultiItemModifier")]
 impl<F> ItemModifier for F
     where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, P<ast::Item>) -> P<ast::Item>
 {
+
     fn expand(&self,
               ecx: &mut ExtCtxt,
               span: Span,
@@ -124,6 +135,29 @@ impl Annotatable {
             Annotatable::ImplItem(i) => i,
             _ => panic!("expected Item")
         }
+    }
+}
+
+// A more flexible ItemDecorator.
+pub trait MultiItemDecorator {
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              sp: Span,
+              meta_item: &ast::MetaItem,
+              item: &Annotatable,
+              push: Box<FnMut(Annotatable)>);
+}
+
+impl<F> MultiItemDecorator for F
+    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &Annotatable, Box<FnMut(Annotatable)>)
+{
+    fn expand(&self,
+              ecx: &mut ExtCtxt,
+              sp: Span,
+              meta_item: &ast::MetaItem,
+              item: &Annotatable,
+              push: Box<FnMut(Annotatable)>) {
+        (*self)(ecx, sp, meta_item, item, push)
     }
 }
 
@@ -397,12 +431,20 @@ impl MacResult for DummyResult {
 pub enum SyntaxExtension {
     /// A syntax extension that is attached to an item and creates new items
     /// based upon it.
-    ///
-    /// `#[derive(...)]` is an `ItemDecorator`.
+    #[unstable(feature = "rustc_private")]
+    #[deprecated(since = "1.0.0", reason = "replaced by MultiDecorator")]
     Decorator(Box<ItemDecorator + 'static>),
+
+    /// A syntax extension that is attached to an item and creates new items
+    /// based upon it.
+    ///
+    /// `#[derive(...)]` is a `MultiItemDecorator`.
+    MultiDecorator(Box<MultiItemDecorator + 'static>),
 
     /// A syntax extension that is attached to an item and modifies it
     /// in-place.
+    #[unstable(feature = "rustc_private")]
+    #[deprecated(since = "1.0.0", reason = "replaced by MultiModifier")]
     Modifier(Box<ItemModifier + 'static>),
 
     /// A syntax extension that is attached to an item and modifies it
@@ -473,6 +515,13 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
     syntax_expanders.insert(intern("log_syntax"),
                             builtin_normal_expander(
                                     ext::log_syntax::expand_syntax_ext));
+<<<<<<< HEAD
+=======
+    syntax_expanders.insert(intern("derive"),
+                            MultiDecorator(box ext::deriving::expand_meta_derive));
+    syntax_expanders.insert(intern("deriving"),
+                            MultiDecorator(box ext::deriving::expand_deprecated_deriving));
+>>>>>>> 143f2db3174103e459218958f567985b1f47944b
 
     ext::deriving::register_all(&mut syntax_expanders);
 
@@ -537,6 +586,11 @@ fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
     syntax_expanders.insert(intern("cfg"),
                             builtin_normal_expander(
                                     ext::cfg::expand_cfg));
+<<<<<<< HEAD
+=======
+    syntax_expanders.insert(intern("cfg_attr"),
+                            MultiModifier(box ext::cfg_attr::expand));
+>>>>>>> 143f2db3174103e459218958f567985b1f47944b
     syntax_expanders.insert(intern("trace_macros"),
                             builtin_normal_expander(
                                     ext::trace_macros::expand_trace_macros));
