@@ -65,14 +65,9 @@ explicit code point lists. [^inputformat]
   provided to the grammar verifier, restricted to ASCII range, when verifying the
   grammar in this document.
 
-## Special Unicode Productions
+## Identifiers
 
-The following productions in the Rust grammar are defined in terms of Unicode
-properties: `ident`, `non_null`, `non_eol`, `non_single_quote` and `non_double_quote`.
-
-### Identifiers
-
-The `ident` production is any nonempty Unicode[^non_ascii_idents] string of the following form:
+An identifier is any nonempty Unicode[^non_ascii_idents] string of the following form:
 
 [^non_ascii_idents]: Non-ASCII characters in identifiers are currently feature
   gated. This is expected to improve soon.
@@ -85,15 +80,6 @@ that does _not_ occur in the set of [keywords](#keywords).
 > **Note**: `XID_start` and `XID_continue` as character properties cover the
 > character ranges used to form the more familiar C and Java language-family
 > identifiers.
-
-### Delimiter-restricted productions
-
-Some productions are defined by exclusion of particular Unicode characters:
-
-- `non_null` is any single Unicode character aside from `U+0000` (null)
-- `non_eol` is `non_null` restricted to exclude `U+000A` (`'\n'`)
-- `non_single_quote` is `non_null` restricted to exclude `U+0027`  (`'`)
-- `non_double_quote` is `non_null` restricted to exclude `U+0022` (`"`)
 
 ## Comments
 
