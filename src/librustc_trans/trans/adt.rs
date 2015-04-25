@@ -414,6 +414,10 @@ fn find_discr_field_candidate<'tcx>(tcx: &ty::ctxt<'tcx>,
             assert_eq!(nonzero_fields.len(), 1);
             let nonzero_field = ty::lookup_field_type(tcx, did, nonzero_fields[0].id, substs);
             match nonzero_field.sty {
+                ty::ty_ptr(ty::mt { ty, .. }) if !type_is_sized(tcx, ty) => {
+                    path.push_all(&[0, FAT_PTR_ADDR]);
+                    Some(path)
+                },
                 ty::ty_ptr(..) | ty::ty_int(..) | ty::ty_uint(..) => {
                     path.push(0);
                     Some(path)
