@@ -1,6 +1,6 @@
 % Variable Bindings
 
-Virtually every non-‘Hello World’Rust program uses *variable bindings*. They
+Virtually every non-'Hello World’ Rust program uses *variable bindings*. They
 look like this:
 
 ```rust

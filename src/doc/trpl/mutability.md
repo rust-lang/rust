@@ -129,7 +129,7 @@ about it first.
 
 ## Field-level mutability
 
-Mutabilty is a property of either a borrow (`&mut`) or a binding (`let mut`).
+Mutability is a property of either a borrow (`&mut`) or a binding (`let mut`).
 This means that, for example, you cannot have a [`struct`][struct] with
 some fields mutable and some immutable:
 
