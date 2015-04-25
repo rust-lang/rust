@@ -808,7 +808,7 @@
 
     $("#toggle-all-docs").on("click", function() {
         var toggle = $("#toggle-all-docs");
-        if (toggle.html() == "[-]") {
+        if (toggle.html() == "[−]") {
             toggle.html("[+]");
             toggle.attr("title", "expand all docs");
             $(".docblock").hide();
@@ -816,12 +816,12 @@
             $(".toggle-wrapper").addClass("collapsed");
             $(".collapse-toggle").children(".inner").html("+");
         } else {
-            toggle.html("[-]");
+            toggle.html("[−]");
             toggle.attr("title", "collapse all docs");
             $(".docblock").show();
             $(".toggle-label").hide();
             $(".toggle-wrapper").removeClass("collapsed");
-            $(".collapse-toggle").children(".inner").html("-");
+            $(".collapse-toggle").children(".inner").html("−");
         }
     });
 
@@ -840,7 +840,7 @@
             } else {
                 relatedDoc.slideDown({duration:'fast', easing:'linear'});
                 toggle.parent(".toggle-wrapper").removeClass("collapsed");
-                toggle.children(".inner").html("-");
+                toggle.children(".inner").html("−");
                 toggle.children(".toggle-label").hide();
             }
         }
@@ -848,7 +848,7 @@
 
     $(function() {
         var toggle = $("<a/>", {'href': 'javascript:void(0)', 'class': 'collapse-toggle'})
-            .html("[<span class='inner'>-</span>]");
+            .html("[<span class='inner'>−</span>]");
 
         $(".method").each(function() {
             if ($(this).next().is(".docblock") ||
