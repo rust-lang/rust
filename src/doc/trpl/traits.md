@@ -184,7 +184,7 @@ won’t have its methods:
 ```rust,ignore
 let mut f = std::fs::File::open("foo.txt").ok().expect("Couldn’t open foo.txt");
 let result = f.write("whatever".as_bytes());
-# result.unwrap(); // ignore the erorr
+# result.unwrap(); // ignore the error
 ```
 
 Here’s the error:
@@ -203,7 +203,7 @@ use std::io::Write;
 
 let mut f = std::fs::File::open("foo.txt").ok().expect("Couldn’t open foo.txt");
 let result = f.write("whatever".as_bytes());
-# result.unwrap(); // ignore the erorr
+# result.unwrap(); // ignore the error
 ```
 
 This will compile without error.

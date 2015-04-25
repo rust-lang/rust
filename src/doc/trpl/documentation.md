@@ -556,7 +556,7 @@ This sets a few different options, with a logo, favicon, and a root URL.
 
 ## Generation options
 
-`rustdoc` also contains a few other options on the command line, for further customiziation:
+`rustdoc` also contains a few other options on the command line, for further customization:
 
 - `--html-in-header FILE`: includes the contents of FILE at the end of the
   `<head>...</head>` section.

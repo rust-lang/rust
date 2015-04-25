@@ -155,7 +155,7 @@ A function that takes a trait object is not specialized to each of the types
 that implements `Foo`: only one copy is generated, often (but not always)
 resulting in less code bloat. However, this comes at the cost of requiring
 slower virtual function calls, and effectively inhibiting any chance of
-inlining and related optimisations from occurring.
+inlining and related optimizations from occurring.
 
 ### Why pointers?
 

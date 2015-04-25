@@ -294,7 +294,7 @@ is `Fn(i32) -> i32`.
 
 There’s one other key point here: because we’re bounding a generic with a
 trait, this will get monomorphized, and therefore, we’ll be doing static
-dispatch into the closure. That’s pretty neat. In many langauges, closures are
+dispatch into the closure. That’s pretty neat. In many languages, closures are
 inherently heap allocated, and will always involve dynamic dispatch. In Rust,
 we can stack allocate our closure environment, and statically dispatch the
 call. This happens quite often with iterators and their adapters, which often
