@@ -80,17 +80,8 @@ pub mod generic;
 fn expand_derive(cx: &mut ExtCtxt,
                  span: Span,
                  mitem: &MetaItem,
-                 annotatable: &Annotatable)
-                 -> P<Annotatable> {
-    // Derive can only be applied to items
-    let item = match annotatable {
-        &Annotatable::Item(ref it) => it.clone(),
-        _ => {
-            cx.span_err(span, "`derive` can only be applied to items");
-            return;
-        }
-    };
-
+                 item: P<Item>)
+                 -> P<Item> {
     item.map(|mut item| {
         if mitem.value_str().is_some() {
             cx.span_err(mitem.span, "unexpected value in `derive`");
@@ -123,7 +114,7 @@ fn expand_derive(cx: &mut ExtCtxt,
                 intern_and_get_ident(&format!("derive_{}", tname)))));
         }
 
-        Annotatable::Item(item)
+        item
     })
 }
 

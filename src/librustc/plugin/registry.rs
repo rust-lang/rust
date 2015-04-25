@@ -14,13 +14,8 @@ use lint::{LintPassObject, LintId, Lint};
 use session::Session;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
-<<<<<<< HEAD
-use syntax::ext::base::{IdentTT, Decorator, Modifier, MultiModifier, MacroRulesTT};
-use syntax::ext::base::MacroExpanderFn;
-=======
-use syntax::ext::base::{IdentTT, Decorator, MultiDecorator, Modifier, MultiModifier, MacroRulesTT};
-use syntax::ext::base::{MacroExpanderFn};
->>>>>>> 143f2db3174103e459218958f567985b1f47944b
+use syntax::ext::base::{IdentTT, Decorator, Modifier, MultiModifier, MultiDecorator};
+use syntax::ext::base::{MacroExpanderFn, MacroRulesTT};
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ptr::P;

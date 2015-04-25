@@ -1134,9 +1134,12 @@ fn expand_annotatable(a: Annotatable,
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,
                         callee: NameAndSpan {
-                            name: mname.get().to_string(),
+                            name: mname.to_string(),
                             format: MacroAttribute,
-                            span: None
+                            span: Some(attr.span),
+                            // attributes can do whatever they like,
+                            // for now.
+                            allow_internal_unstable: true,
                         }
                     });
 
