@@ -367,6 +367,8 @@ fn zeroed_process_information() -> libc::types::os::arch::extra::PROCESS_INFORMA
 
 // Produces a wide string *without terminating null*
 fn make_command_line(prog: &OsStr, args: &[OsString]) -> Vec<u16> {
+    // Encode the command and arguments in a command line string such
+    // that the spawned process may recover them using CommandLineToArgvW.
     let mut cmd: Vec<u16> = Vec::new();
     append_arg(&mut cmd, prog);
     for arg in args {
@@ -387,30 +389,27 @@ fn make_command_line(prog: &OsStr, args: &[OsString]) -> Vec<u16> {
         }
 
         let mut iter = arg.encode_wide();
+        let mut backslashes: usize = 0;
         while let Some(x) = iter.next() {
-            if x == '"' as u16 {
-                // escape quotes
-                cmd.push('\\' as u16);
-                cmd.push('"' as u16);
-            } else if x == '\\' as u16 {
-                // is this a run of backslashes followed by a " ?
-                if iter.clone().skip_while(|y| *y == '\\' as u16).next() == Some('"' as u16) {
-                    // Double it ... NOTE: this behavior is being
-                    // preserved as it's been part of Rust for a long
-                    // time, but no one seems to know exactly why this
-                    // is the right thing to do.
-                    cmd.push('\\' as u16);
-                    cmd.push('\\' as u16);
-                } else {
-                    // Push it through unescaped
-                    cmd.push('\\' as u16);
-                }
+            if x == '\\' as u16 {
+                backslashes += 1;
             } else {
-                cmd.push(x)
+                if x == '"' as u16 {
+                    // Add n+1 backslashes to total 2n+1 before internal '"'.
+                    for _ in 0..(backslashes+1) {
+                        cmd.push('\\' as u16);
+                    }
+                }
+                backslashes = 0;
             }
+            cmd.push(x);
         }
 
         if quote {
+            // Add n backslashes to total 2n before ending '"'.
+            for _ in 0..backslashes {
+                cmd.push('\\' as u16);
+            }
             cmd.push('"' as u16);
         }
     }
@@ -485,6 +484,10 @@ mod tests {
         assert_eq!(
             test_wrapper("echo", &["a b c"]),
             "echo \"a b c\""
+        );
+        assert_eq!(
+            test_wrapper("echo", &["\" \\\" \\", "\\"]),
+            "echo \"\\\" \\\\\\\" \\\\\" \\"
         );
         assert_eq!(
             test_wrapper("\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}", &[]),
