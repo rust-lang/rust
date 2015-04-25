@@ -68,12 +68,14 @@ explicit code point lists. [^inputformat]
 ## Special Unicode Productions
 
 The following productions in the Rust grammar are defined in terms of Unicode
-properties: `ident`, `non_null`, `non_star`, `non_eol`, `non_slash_or_star`,
-`non_single_quote` and `non_double_quote`.
+properties: `ident`, `non_null`, `non_eol`, `non_single_quote` and `non_double_quote`.
 
 ### Identifiers
 
-The `ident` production is any nonempty Unicode string of the following form:
+The `ident` production is any nonempty Unicode[^non_ascii_idents] string of the following form:
+
+[^non_ascii_idents]: Non-ASCII characters in identifiers are currently feature
+  gated. This is expected to improve soon.
 
 - The first character has property `XID_start`
 - The remaining characters have property `XID_continue`
@@ -90,8 +92,6 @@ Some productions are defined by exclusion of particular Unicode characters:
 
 - `non_null` is any single Unicode character aside from `U+0000` (null)
 - `non_eol` is `non_null` restricted to exclude `U+000A` (`'\n'`)
-- `non_star` is `non_null` restricted to exclude `U+002A` (`*`)
-- `non_slash_or_star` is `non_null` restricted to exclude `U+002F` (`/`) and `U+002A` (`*`)
 - `non_single_quote` is `non_null` restricted to exclude `U+0027`  (`'`)
 - `non_double_quote` is `non_null` restricted to exclude `U+0022` (`"`)
 
@@ -1977,7 +1977,7 @@ For any lint check `C`:
 
 The lint checks supported by the compiler can be found via `rustc -W help`,
 along with their default settings.  [Compiler
-plugins](book/plugins.html#lint-plugins) can provide additional lint checks.
+plugins](book/compiler-plugins.html#lint-plugins) can provide additional lint checks.
 
 ```{.ignore}
 mod m1 {
@@ -3647,4 +3647,4 @@ that have since been removed):
   pattern syntax
 
 [ffi]: book/ffi.html
-[plugin]: book/plugins.html
+[plugin]: book/compiler-plugins.html
