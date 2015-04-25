@@ -2291,7 +2291,7 @@ The currently implemented features of the reference compiler are:
                               terms of encapsulation).
 
 If a feature is promoted to a language feature, then all existing programs will
-start to receive compilation warnings about #[feature] directives which enabled
+start to receive compilation warnings about `#![feature]` directives which enabled
 the new feature (because the directive is no longer necessary). However, if a
 feature is decided to be removed from the language, errors will be issued (if
 there isn't a parser error first). The directive in this case is no longer
@@ -2897,7 +2897,7 @@ loops](#infinite-loops), [break expressions](#break-expressions), and
 ### For expressions
 
 A `for` expression is a syntactic construct for looping over elements provided
-by an implementation of `std::iter::Iterator`.
+by an implementation of `std::iter::IntoIterator`.
 
 An example of a for loop over the contents of an array:
 
@@ -2910,8 +2910,8 @@ An example of a for loop over the contents of an array:
 
 let v: &[Foo] = &[a, b, c];
 
-for e in v.iter() {
-    bar(*e);
+for e in v {
+    bar(e);
 }
 ```
 
