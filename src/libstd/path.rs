@@ -1245,6 +1245,8 @@ impl Path {
     /// You can create `Path`s from `String`s, or even other `Path`s:
     ///
     /// ```
+    /// use std::path::Path;
+    ///
     /// let s = String::from("bar.txt");
     /// let p = Path::new(&s);
     /// Path::new(&p);
