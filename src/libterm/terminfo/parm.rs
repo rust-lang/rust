@@ -573,7 +573,7 @@ fn format(val: Param, op: FormatOp, flags: Flags) -> Result<Vec<u8> ,String> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::{expand,Param,Words,Variables,Number};
     use std::result::Result::Ok;
 

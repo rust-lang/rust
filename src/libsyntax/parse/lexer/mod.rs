@@ -1501,7 +1501,7 @@ fn ident_continue(c: Option<char>) -> bool {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     use codemap::{BytePos, CodeMap, Span, NO_EXPANSION};

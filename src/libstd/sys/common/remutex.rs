@@ -151,7 +151,7 @@ impl<'a, T> Drop for ReentrantMutexGuard<'a, T> {
 
 
 #[cfg(test)]
-mod test {
+mod tests {
     use prelude::v1::*;
     use sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
     use cell::RefCell;

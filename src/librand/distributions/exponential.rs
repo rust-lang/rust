@@ -82,7 +82,7 @@ impl IndependentSample<f64> for Exp {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::prelude::v1::*;
 
     use distributions::{Sample, IndependentSample};

@@ -102,7 +102,7 @@ impl Write for Sink {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use prelude::v1::*;
 
     use io::prelude::*;

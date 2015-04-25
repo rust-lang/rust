@@ -276,7 +276,7 @@ impl IndependentSample<f64> for StudentT {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::prelude::v1::*;
 
     use distributions::{Sample, IndependentSample};

@@ -1111,7 +1111,7 @@ impl fmt::Display for CrateType {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
 
     use session::config::{build_configuration, optgroups, build_session_options};
     use session::build_session;

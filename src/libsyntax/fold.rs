@@ -1343,7 +1343,7 @@ pub fn noop_fold_stmt<T: Folder>(Spanned {node, span}: Stmt, folder: &mut T)
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::io;
     use ast;
     use util::parser_testing::{string_to_crate, matches_codepattern};
