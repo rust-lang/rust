@@ -152,19 +152,19 @@ token : simple_token | ident | literal | symbol | whitespace token ;
 
 <p id="keyword-table-marker"></p>
 
-|          |          |          |          |        |
-|----------|----------|----------|----------|--------|
-| abstract | alignof  | as       | become   | box    |
-| break    | const    | continue | crate    | do     |
-| else     | enum     | extern   | false    | final  |
-| fn       | for      | if       | impl     | in     |
-| let      | loop     | match    | mod      | move   |
-| mut      | offsetof | once     | override | priv   |
-| proc     | pub      | pure     | ref      | return |
-| sizeof   | static   | self     | struct   | super  |
-| true     | trait    | type     | typeof   | unsafe |
-| unsized  | use      | virtual  | where    | while  |
-| yield    |          |          |          |        |
+|          |          |          |          |         |
+|----------|----------|----------|----------|---------|
+| abstract | alignof  | as       | become   | box     |
+| break    | const    | continue | crate    | do      |
+| else     | enum     | extern   | false    | final   |
+| fn       | for      | if       | impl     | in      |
+| let      | loop     | macro    | match    | mod     |
+| move     | mut      | offsetof | override | priv    |
+| proc     | pub      | pure     | ref      | return  |
+| Self     | self     | sizeof   | static   | struct  |
+| super    | trait    | true     | type     | typeof  |
+| unsafe   | unsized  | use      | virtual  | where   |
+| while    | yield    |          |          |         |
 
 
 Each of these keywords has special meaning in its grammar, and all of them are
@@ -524,6 +524,15 @@ array_elems : [expr [',' expr]*] | [expr ',' ".." expr] ;
 idx_expr : expr '[' expr ']' ;
 ```
 
+### Range expressions
+
+```antlr
+range_expr : expr ".." expr |
+             expr ".." |
+             ".." expr |
+             ".." ;
+```
+
 ### Unary operator expressions
 
 **FIXME:** grammar?
@@ -610,7 +619,7 @@ lambda_expr : '|' ident_list '|' expr ;
 ### While loops
 
 ```antlr
-while_expr : "while" no_struct_literal_expr '{' block '}' ;
+while_expr : [ lifetime ':' ] "while" no_struct_literal_expr '{' block '}' ;
 ```
 
 ### Infinite loops
@@ -634,7 +643,7 @@ continue_expr : "continue" [ lifetime ];
 ### For expressions
 
 ```antlr
-for_expr : "for" pat "in" no_struct_literal_expr '{' block '}' ;
+for_expr : [ lifetime ':' ] "for" pat "in" no_struct_literal_expr '{' block '}' ;
 ```
 
 ### If expressions
