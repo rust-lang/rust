@@ -902,7 +902,9 @@ impl<'a> Parser<'a> {
     pub fn bump(&mut self) -> PResult<()> {
         self.last_span = self.span;
         // Stash token for error recovery (sometimes; clone is not necessarily cheap).
-        self.last_token = if self.token.is_ident() || self.token.is_path() {
+        self.last_token = if self.token.is_ident() ||
+                          self.token.is_path() ||
+                          self.token == token::Comma {
             Some(Box::new(self.token.clone()))
         } else {
             None
@@ -3807,7 +3809,36 @@ impl<'a> Parser<'a> {
     fn parse_generic_values_after_lt(&mut self) -> PResult<(Vec<ast::Lifetime>,
                                                             Vec<P<Ty>>,
                                                             Vec<P<TypeBinding>>)> {
+        let span_lo = self.span.lo;
         let lifetimes = try!(self.parse_lifetimes(token::Comma));
+
+        let missing_comma = !lifetimes.is_empty() &&
+                            !self.token.is_like_gt() &&
+                            self.last_token
+                                .as_ref().map_or(true,
+                                                 |x| &**x != &token::Comma);
+
+        if missing_comma {
+
+            let msg = format!("expected `,` or `>` after lifetime \
+                              name, found `{}`",
+                              self.this_token_to_string());
+            self.span_err(self.span, &msg);
+
+            let span_hi = self.span.hi;
+            let span_hi = if self.parse_ty_nopanic().is_ok() {
+                self.span.hi
+            } else {
+                span_hi
+            };
+
+            let msg = format!("did you mean a single argument type &'a Type, \
+                              or did you mean the comma-separated arguments \
+                              'a, Type?");
+            self.span_note(mk_sp(span_lo, span_hi), &msg);
+
+            self.abort_if_errors()
+        }
 
         // First parse types.
         let (types, returned) = try!(self.parse_seq_to_gt_or_return(
