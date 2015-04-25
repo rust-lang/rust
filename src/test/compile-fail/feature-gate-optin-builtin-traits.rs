@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that patterns including the box syntax are gated by `box_patterns` feature gate.
+// Test that default and negative trait implementations are gated by
+// `optin_builtin_traits` feature gate
 
-fn main() {
-    let x = Box::new(1);
+struct DummyStruct;
 
-    match x {
-        box 1 => (),
-        //~^ box pattern syntax is experimental
-        _     => ()
-    };
+trait DummyTrait {
+    fn dummy(&self) {}
 }
+
+impl DummyTrait for .. {}
+//~^ ERROR default trait implementations are experimental and possibly buggy
+
+impl !DummyTrait for DummyStruct {}
+//~^ ERROR negative trait bounds are not yet fully implemented; use marker types for now
+
+fn main() {}
