@@ -204,7 +204,7 @@ impl<T> MoveMap<T> for SmallVector<T> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test]

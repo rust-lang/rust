@@ -933,7 +933,7 @@ impl<A: Hash> Hash for LinkedList<A> {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::clone::Clone;
     use std::iter::{Iterator, IntoIterator};
     use std::option::Option::{Some, None, self};

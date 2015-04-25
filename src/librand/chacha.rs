@@ -202,7 +202,7 @@ impl Rand for ChaChaRng {
 
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::prelude::v1::*;
 
     use core::iter::order;

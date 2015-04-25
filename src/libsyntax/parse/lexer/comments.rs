@@ -383,7 +383,7 @@ pub fn gather_comments_and_literals(span_diagnostic: &diagnostic::SpanHandler,
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use super::*;
 
     #[test] fn test_block_doc_comment_1() {

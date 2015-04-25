@@ -632,7 +632,7 @@ pub fn lit_is_str(lit: &Lit) -> bool {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use ast::*;
     use super::*;
 

@@ -120,7 +120,7 @@ impl Default for ReseedWithDefault {
 }
 
 #[cfg(test)]
-mod test {
+mod tests {
     use std::prelude::v1::*;
 
     use core::iter::{order, repeat};
