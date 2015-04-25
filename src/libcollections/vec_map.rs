@@ -47,9 +47,8 @@ use vec::Vec;
 ///
 /// assert_eq!(months.get(&1), Some(&"Jan"));
 ///
-/// match months.get_mut(&3) {
-///     Some(value) => *value = "Venus",
-///     None => (),
+/// if let Some(value) = months.get_mut(&3) {
+///     *value = "Venus";
 /// }
 ///
 /// assert_eq!(months.get(&3), Some(&"Venus"));
@@ -528,9 +527,8 @@ impl<V> VecMap<V> {
     ///
     /// let mut map = VecMap::new();
     /// map.insert(1, "a");
-    /// match map.get_mut(&1) {
-    ///     Some(x) => *x = "b",
-    ///     None => (),
+    /// if let Some(x) = map.get_mut(&1) {
+    ///     *x = "b";
     /// }
     /// assert_eq!(map[1], "b");
     /// ```

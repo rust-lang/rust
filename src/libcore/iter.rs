@@ -179,8 +179,8 @@ pub trait Iterator {
 
     /// Creates an iterator that iterates over both this and the specified
     /// iterators simultaneously, yielding the two elements as pairs. When
-    /// either iterator returns None, all further invocations of next() will
-    /// return None.
+    /// either iterator returns `None`, all further invocations of next() will
+    /// return `None`.
     ///
     /// # Examples
     ///
@@ -254,7 +254,7 @@ pub trait Iterator {
     }
 
     /// Creates an iterator that both filters and maps elements.
-    /// If the specified function returns None, the element is skipped.
+    /// If the specified function returns `None`, the element is skipped.
     /// Otherwise the option is unwrapped and the new value is yielded.
     ///
     /// # Examples
@@ -403,7 +403,7 @@ pub trait Iterator {
     /// Creates a new iterator that behaves in a similar fashion to fold.
     /// There is a state which is passed between each iteration and can be
     /// mutated as necessary. The yielded values from the closure are yielded
-    /// from the Scan instance when not None.
+    /// from the Scan instance when not `None`.
     ///
     /// # Examples
     ///
@@ -701,7 +701,7 @@ pub trait Iterator {
 
     /// Returns the index of the last element satisfying the specified predicate
     ///
-    /// If no element matches, None is returned.
+    /// If no element matches, `None` is returned.
     ///
     /// Does not consume the iterator *before* the first found element.
     ///
@@ -2246,8 +2246,9 @@ impl<I> RandomAccessIterator for Fuse<I> where I: RandomAccessIterator {
 impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {}
 
 impl<I> Fuse<I> {
-    /// Resets the fuse such that the next call to .next() or .next_back() will
-    /// call the underlying iterator again even if it previously returned None.
+    /// Resets the `Fuse` such that the next call to `.next()` or
+    /// `.next_back()` will call the underlying iterator again even if it
+    /// previously returned `None`.
     #[inline]
     #[unstable(feature = "core", reason = "seems marginal")]
     pub fn reset_fuse(&mut self) {

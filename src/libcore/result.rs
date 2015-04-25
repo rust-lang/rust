@@ -86,12 +86,12 @@
 //! useful value.
 //!
 //! Consider the `write_all` method defined for I/O types
-//! by the [`Write`](../io/trait.Write.html) trait:
+//! by the [`Write`](../../std/io/trait.Write.html) trait:
 //!
 //! ```
 //! use std::io;
 //!
-//! trait Writer {
+//! trait Write {
 //!     fn write_all(&mut self, bytes: &[u8]) -> Result<(), io::Error>;
 //! }
 //! ```
@@ -706,8 +706,8 @@ impl<T, E: fmt::Debug> Result<T, E> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is an `Err`, with a custom panic message provided
-    /// by the `Err`'s value.
+    /// Panics if the value is an `Err`, with a panic message provided by the
+    /// `Err`'s value.
     ///
     /// # Examples
     ///

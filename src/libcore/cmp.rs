@@ -14,27 +14,6 @@
 //! implement comparison operators. Rust programs may implement `PartialOrd` to overload the `<`,
 //! `<=`, `>`, and `>=` operators, and may implement `PartialEq` to overload the `==` and `!=`
 //! operators.
-//!
-//! For example, to define a type with a customized definition for the PartialEq operators, you
-//! could do the following:
-//!
-//! ```
-//! # #![feature(core)]
-//! struct FuzzyNum {
-//!     num: i32,
-//! }
-//!
-//! impl PartialEq for FuzzyNum {
-//!     // Our custom eq allows numbers which are near each other to be equal! :D
-//!     fn eq(&self, other: &FuzzyNum) -> bool {
-//!         (self.num - other.num).abs() < 5
-//!     }
-//! }
-//!
-//! // Now these binary operators will work when applied!
-//! assert!(FuzzyNum { num: 37 } == FuzzyNum { num: 34 });
-//! assert!(FuzzyNum { num: 25 } != FuzzyNum { num: 57 });
-//! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

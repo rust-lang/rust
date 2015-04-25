@@ -1067,9 +1067,8 @@ impl<K, V, S> HashMap<K, V, S>
     ///
     /// let mut map = HashMap::new();
     /// map.insert(1, "a");
-    /// match map.get_mut(&1) {
-    ///     Some(x) => *x = "b",
-    ///     None => (),
+    /// if let Some(x) = map.get_mut(&1) {
+    ///     *x = "b";
     /// }
     /// assert_eq!(map[&1], "b");
     /// ```
@@ -1464,7 +1463,6 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 }
 
 impl<'a, K, V> Entry<'a, K, V> {
-    /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant.
     #[unstable(feature = "std_misc",
                reason = "will soon be replaced by or_insert")]
     #[deprecated(since = "1.0",
