@@ -256,6 +256,7 @@ pub mod fs {
     /// # Ok(())
     /// # }
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q)
                                                         -> io::Result<()>
     {
@@ -278,6 +279,7 @@ pub mod fs {
     /// # Ok(())
     /// # }
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>> (src: P, dst: Q)
                                                         -> io::Result<()>
     {
