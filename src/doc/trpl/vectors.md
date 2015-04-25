@@ -56,3 +56,4 @@ Vectors have many more useful methods, which you can read about in [their
 API documentation][vec].
 
 [vec]: ../std/vec/index.html
+[generic]: generics.html
