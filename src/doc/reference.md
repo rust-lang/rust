@@ -1977,7 +1977,7 @@ For any lint check `C`:
 
 The lint checks supported by the compiler can be found via `rustc -W help`,
 along with their default settings.  [Compiler
-plugins](book/plugins.html#lint-plugins) can provide additional lint checks.
+plugins](book/compiler-plugins.html#lint-plugins) can provide additional lint checks.
 
 ```{.ignore}
 mod m1 {
@@ -3647,4 +3647,4 @@ that have since been removed):
   pattern syntax
 
 [ffi]: book/ffi.html
-[plugin]: book/plugins.html
+[plugin]: book/compiler-plugins.html
