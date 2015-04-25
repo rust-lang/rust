@@ -477,6 +477,7 @@ pub fn expand_item(it: P<ast::Item>, fld: &mut MacroExpander)
         .into_iter().map(|i| i.expect_item()).collect()
 }
 
+#[allow(deprecated)] // This is needed because the `ItemModifier` trait is used
 fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
                          -> P<ast::Item> {
     // partition the attributes into ItemModifiers and others
@@ -1082,6 +1083,7 @@ impl<'a> Folder for PatIdentRenamer<'a> {
     }
 }
 
+#[allow(deprecated)] // This is needed because the `Decorator` variant is used
 fn expand_annotatable(a: Annotatable,
                       fld: &mut MacroExpander)
                       -> SmallVector<Annotatable> {
@@ -1120,9 +1122,31 @@ fn expand_annotatable(a: Annotatable,
                     let mut items: SmallVector<P<ast::Item>> = SmallVector::zero();
                     dec.expand(fld.cx, attr.span, &*attr.node.value, &**it,
                                &mut |item| items.push(item));
-                    decorator_items.extend(
-                        items.into_iter()
-                             .flat_map(|item| expand_item(item, fld).into_iter()));
+                    decorator_items.extend(items.into_iter()
+                        .flat_map(|item| expand_item(item, fld).into_iter()
+                                                               .map(|i| Annotatable::Item(i))));
+
+                    fld.cx.bt_pop();
+                }
+                MultiDecorator(ref dec) => {
+                    attr::mark_used(attr);
+
+                    fld.cx.bt_push(ExpnInfo {
+                        call_site: attr.span,
+                        callee: NameAndSpan {
+                            name: mname.get().to_string(),
+                            format: MacroAttribute,
+                            span: None
+                        }
+                    });
+
+                    // we'd ideally decorator_items.push_all(expand_annotatable(ann, fld)),
+                    // but that double-mut-borrows fld
+                    let mut anns: SmallVector<Annotatable> = SmallVector::zero();
+                    dec.expand(fld.cx, attr.span, &*attr.node.value, &a,
+                               &mut |ann| anns.push(ann));
+                    decorator_items.extend(anns.into_iter()
+                        .flat_map(|ann| expand_annotatable(ann, fld).into_iter()));
 
                     fld.cx.bt_pop();
                 }
@@ -1184,7 +1208,7 @@ fn expand_annotatable(a: Annotatable,
         }
     };
 
-    new_items.push_all(decorator_items.into_iter().map(|i| Annotatable::Item(i)).collect());
+    new_items.push_all(decorator_items);
     new_items
 }
 

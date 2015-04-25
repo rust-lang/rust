@@ -13,9 +13,9 @@
 //! FIXME (#2810): hygiene. Search for "__" strings (in other files too). We also assume "extra" is
 //! the standard library, and "std" is the core library.
 
-use ast::{Item, MetaItem, MetaWord};
+use ast::{Item, MetaItem, MetaWord, MetaList, MetaNameValue};
 use attr::AttrMetaMethods;
-use ext::base::{ExtCtxt, SyntaxEnv, Decorator, ItemDecorator, Modifier};
+use ext::base::{ExtCtxt, SyntaxEnv, Decorator, ItemDecorator, Modifier, Annotatable};
 use ext::build::AstBuilder;
 use feature_gate;
 use codemap::Span;
@@ -78,9 +78,19 @@ pub mod ord;
 pub mod generic;
 
 fn expand_derive(cx: &mut ExtCtxt,
-                 _: Span,
+                 span: Span,
                  mitem: &MetaItem,
-                 item: P<Item>) -> P<Item> {
+                 annotatable: &Annotatable)
+                 -> P<Annotatable> {
+    // Derive can only be applied to items
+    let item = match annotatable {
+        &Annotatable::Item(ref it) => it.clone(),
+        _ => {
+            cx.span_err(span, "`derive` can only be applied to items");
+            return;
+        }
+    };
+
     item.map(|mut item| {
         if mitem.value_str().is_some() {
             cx.span_err(mitem.span, "unexpected value in `derive`");
@@ -113,7 +123,7 @@ fn expand_derive(cx: &mut ExtCtxt,
                 intern_and_get_ident(&format!("derive_{}", tname)))));
         }
 
-        item
+        Annotatable::Item(item)
     })
 }
 

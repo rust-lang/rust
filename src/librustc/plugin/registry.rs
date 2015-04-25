@@ -14,8 +14,13 @@ use lint::{LintPassObject, LintId, Lint};
 use session::Session;
 
 use syntax::ext::base::{SyntaxExtension, NamedSyntaxExtension, NormalTT};
+<<<<<<< HEAD
 use syntax::ext::base::{IdentTT, Decorator, Modifier, MultiModifier, MacroRulesTT};
 use syntax::ext::base::MacroExpanderFn;
+=======
+use syntax::ext::base::{IdentTT, Decorator, MultiDecorator, Modifier, MultiModifier, MacroRulesTT};
+use syntax::ext::base::{MacroExpanderFn};
+>>>>>>> 143f2db3174103e459218958f567985b1f47944b
 use syntax::codemap::Span;
 use syntax::parse::token;
 use syntax::ptr::P;
@@ -84,6 +89,7 @@ impl<'a> Registry<'a> {
     /// Register a syntax extension of any kind.
     ///
     /// This is the most general hook into `libsyntax`'s expansion behavior.
+    #[allow(deprecated)]
     pub fn register_syntax_extension(&mut self, name: ast::Name, extension: SyntaxExtension) {
         self.syntax_exts.push((name, match extension {
             NormalTT(ext, _, allow_internal_unstable) => {
@@ -93,6 +99,7 @@ impl<'a> Registry<'a> {
                 IdentTT(ext, Some(self.krate_span), allow_internal_unstable)
             }
             Decorator(ext) => Decorator(ext),
+            MultiDecorator(ext) => MultiDecorator(ext),
             Modifier(ext) => Modifier(ext),
             MultiModifier(ext) => MultiModifier(ext),
             MacroRulesTT => {
