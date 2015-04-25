@@ -8,9 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::marker::MarkerTrait;
-
-trait MyTrait: MarkerTrait {
+trait MyTrait {
     const C: bool;
     //~^ associated constants are experimental
     //~| add #![feature(associated_consts)] to the crate attributes to enable

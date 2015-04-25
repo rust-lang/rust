@@ -10,15 +10,13 @@
 
 #![feature(associated_consts)]
 
-use std::marker::MarkerTrait;
-
 struct MyType;
 
 impl MyType {
     const IMPL_IS_INHERENT: bool = true;
 }
 
-trait MyTrait: MarkerTrait {
+trait MyTrait {
     const IMPL_IS_INHERENT: bool;
     const IMPL_IS_ON_TRAIT: bool;
 }

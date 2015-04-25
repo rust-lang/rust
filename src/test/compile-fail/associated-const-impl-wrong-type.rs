@@ -10,9 +10,7 @@
 
 #![feature(associated_consts)]
 
-use std::marker::MarkerTrait;
-
-trait Foo: MarkerTrait {
+trait Foo {
     const BAR: u32;
 }
 
