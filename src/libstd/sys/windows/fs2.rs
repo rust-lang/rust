@@ -13,7 +13,6 @@ use io::prelude::*;
 use os::windows::prelude::*;
 
 use ffi::OsString;
-use fmt;
 use io::{self, Error, SeekFrom};
 use libc::{self, HANDLE};
 use mem;
