@@ -10,8 +10,6 @@
 
 #![feature(associated_consts)]
 
-use std::marker::MarkerTrait;
-
 mod bar1 {
     pub use self::bar2::Foo;
     mod bar2 {

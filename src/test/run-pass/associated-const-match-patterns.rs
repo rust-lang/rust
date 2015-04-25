@@ -10,8 +10,6 @@
 
 #![feature(associated_consts)]
 
-use std::marker::MarkerTrait;
-
 struct Foo;
 
 enum Bar {
@@ -24,7 +22,7 @@ impl Foo {
     const MYBAR: Bar = Bar::Var2;
 }
 
-trait HasBar: MarkerTrait {
+trait HasBar {
     const THEBAR: Bar;
 }
 

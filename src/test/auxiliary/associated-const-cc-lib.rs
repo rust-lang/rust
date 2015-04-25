@@ -12,10 +12,8 @@
 
 #![crate_type="lib"]
 
-use std::marker::MarkerTrait;
-
 // These items are for testing that associated consts work cross-crate.
-pub trait Foo: MarkerTrait {
+pub trait Foo {
     const BAR: usize;
 }
 
@@ -26,7 +24,7 @@ impl Foo for FooNoDefault {
 }
 
 // These test that defaults and default resolution work cross-crate.
-pub trait FooDefault: MarkerTrait {
+pub trait FooDefault {
     const BAR: usize = 1;
 }
 

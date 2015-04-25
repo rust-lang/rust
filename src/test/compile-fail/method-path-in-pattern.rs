@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::marker::MarkerTrait;
-
 struct Foo;
 
 impl Foo {
     fn bar(&self) {}
 }
 
-trait MyTrait: MarkerTrait {
+trait MyTrait {
     fn trait_bar() {}
 }
 
